@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::sym;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -16,6 +16,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
             .tcx
             .type_of(impl_id)
             .instantiate_identity()
+            .skip_norm_wip()
             .is_diag_item(cx, sym::PathBuf)
         && let ExprKind::Lit(lit) = arg.kind
         && let LitKind::Str(ref path_lit, _) = lit.node

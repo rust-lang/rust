@@ -1,9 +1,10 @@
 //@aux-build:proc_macros.rs
-#![allow(clippy::unnecessary_fold, unused)]
 #![warn(clippy::manual_try_fold)]
+#![expect(clippy::unnecessary_fold)]
 #![feature(try_trait_v2)]
+#![feature(try_trait_v2_residual)]
 //@no-rustfix
-use std::ops::{ControlFlow, FromResidual, Try};
+use std::ops::{ControlFlow, FromResidual, Residual, Try};
 
 #[macro_use]
 extern crate proc_macros;
@@ -11,15 +12,21 @@ extern crate proc_macros;
 // Test custom `Try` with more than 1 argument
 struct NotOption(i32, i32);
 
+struct NotOptionResidual;
+
 impl<R> FromResidual<R> for NotOption {
     fn from_residual(_: R) -> Self {
         todo!()
     }
 }
 
+impl Residual<()> for NotOptionResidual {
+    type TryType = NotOption;
+}
+
 impl Try for NotOption {
     type Output = ();
-    type Residual = ();
+    type Residual = NotOptionResidual;
 
     fn from_output(_: Self::Output) -> Self {
         todo!()
@@ -34,15 +41,21 @@ impl Try for NotOption {
 #[derive(Default)]
 struct NotOptionButWorse(i32);
 
+struct NotOptionButWorseResidual;
+
 impl<R> FromResidual<R> for NotOptionButWorse {
     fn from_residual(_: R) -> Self {
         todo!()
     }
 }
 
+impl Residual<()> for NotOptionButWorseResidual {
+    type TryType = NotOptionButWorse;
+}
+
 impl Try for NotOptionButWorse {
     type Output = ();
-    type Residual = ();
+    type Residual = NotOptionButWorseResidual;
 
     fn from_output(_: Self::Output) -> Self {
         todo!()
@@ -119,7 +132,6 @@ mod issue11876 {
         }
     }
 
-    #[allow(dead_code)]
     struct Fold<S, A, F> {
         this: S,
         init: A,

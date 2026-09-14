@@ -28,18 +28,21 @@ use crate::marker::{PointeeSized, Unsize};
 /// [`Unsize`][unsize] is used to mark types which can be coerced to DSTs if behind
 /// pointers. It is implemented automatically by the compiler.
 ///
-/// [dst-coerce]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
+/// [dst-coerce]: https://rust-lang.github.io/rfcs/0982-dst-coercion.html
 /// [unsize]: crate::marker::Unsize
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 #[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T: PointeeSized> {
+pub trait CoerceUnsized<T: PointeeSized>: Sized {
     // Empty.
 }
 
 // &mut T -> &mut U
 #[unstable(feature = "coerce_unsized", issue = "18598")]
-impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a mut U> for &'a mut T {}
+impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a mut U>
+    for &'b mut T
+{
+}
 // &mut T -> &U
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b mut T {}
@@ -116,7 +119,7 @@ impl<T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<*const U> for *
 /// [^1]: Formerly known as *object safety*.
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 #[lang = "dispatch_from_dyn"]
-pub trait DispatchFromDyn<T> {
+pub trait DispatchFromDyn<T>: Sized {
     // Empty.
 }
 

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 macro_rules! compiles_fine {
     (#[$at:meta]) => {

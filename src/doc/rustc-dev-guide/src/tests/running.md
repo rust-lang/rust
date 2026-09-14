@@ -77,8 +77,7 @@ Likewise, you can test a single file by passing its path:
 ```
 
 `x` doesn't support running a single tool test by passing its path yet.
-You'll have to use the `--test-args` argument as described
-[below](#running-an-individual-test).
+You'll have to use the `--test-args` argument as described [below](#running-an-individual-test).
 
 ```text
 ./x test src/tools/miri --test-args tests/fail/uninit/padding-enum.rs
@@ -190,8 +189,8 @@ just like when running the tests without the `--bless` flag.
 
 There are a few options for running tests:
 
-* `bootstrap.toml` has the `rust.verbose-tests` option. If `false`, each test will
-  print a single dot (the default).
+* `bootstrap.toml` has the `rust.verbose-tests` option.
+  If `false`, each test will print a single dot (the default).
   If `true`, the name of every test will be printed.
   This is equivalent to the `--quiet` option in the [Rust test
   harness](https://doc.rust-lang.org/rustc/tests/).
@@ -202,7 +201,7 @@ There are a few options for running tests:
 
 Pass UI tests now have three modes, `check-pass`, `build-pass` and `run-pass`.
 When `--pass $mode` is passed, these tests will be forced to run under the given
-`$mode` unless the directive `//@ ignore-pass` exists in the test file.
+`$mode` unless the directive `//@ no-pass-override` exists in the test file.
 For example, you can run all the tests in `tests/ui` as `check-pass`:
 
 ```text
@@ -253,8 +252,7 @@ send test programs to `remote-test-server` running on the remote machine.
 `remote-test-server` provides *unauthenticated remote code
 execution* so be careful where it is used.
 
-To do this, first build `remote-test-server` for the remote machine
-(using RISC-V as an example):
+To do this, first build `remote-test-server` for the remote machine (using RISC-V as an example):
 
 ```text
 ./x build src/tools/remote-test-server --target riscv64gc-unknown-linux-gnu
@@ -322,7 +320,8 @@ Tests which fail to build unexpectedly (or `ui` tests producing incorrect build
 output) may fail without ever running on the remote machine.
 
 There is a default timeout of 30 minutes in case the `remote-test-server`
-cannot be reached by the `x` command. This timeout can be modified by using the
+cannot be reached by the `x` command.
+This timeout can be modified by using the
 `TEST_DEVICE_CONNECT_TIMEOUT_SECONDS` environment variable.
 
 ## Testing on emulators

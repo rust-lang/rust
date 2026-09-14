@@ -1,9 +1,7 @@
 //@ test-mir-pass: GVN
 //@ compile-flags: -O
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// skip-filecheck
-
-#![feature(never_type)]
+//@ skip-filecheck
 
 #[derive(Copy, Clone)]
 pub enum E {

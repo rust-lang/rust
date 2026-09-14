@@ -42,11 +42,19 @@ fn cfg_any_e(v: ThinVec<CfgEntry>) -> CfgEntry {
 }
 
 fn cfg_not(v: CfgEntry) -> Cfg {
-    Cfg(CfgEntry::Not(Box::new(v), DUMMY_SP))
+    Cfg(cfg_not_e(v))
+}
+
+fn cfg_not_e(v: CfgEntry) -> CfgEntry {
+    CfgEntry::Not(Box::new(v), DUMMY_SP)
 }
 
 fn cfg_true() -> Cfg {
-    Cfg(CfgEntry::Bool(true, DUMMY_SP))
+    Cfg(cfg_true_e())
+}
+
+fn cfg_true_e() -> CfgEntry {
+    CfgEntry::Bool(true, DUMMY_SP)
 }
 
 fn cfg_false() -> Cfg {
@@ -377,6 +385,32 @@ fn test_render_long_html() {
                 .render_long_html(),
             "Available on <strong>x86-64 and target feature <code>sse2</code></strong> only."
         );
+        // `any(true)`
+        assert_eq!(
+            cfg_any(thin_vec![cfg_true_e()]).render_long_html(),
+            "Available <strong>everywhere</strong>.",
+        );
+        // `not(any(true))`
+        assert_eq!(
+            cfg_not(cfg_any_e(thin_vec![cfg_true_e()])).render_long_html(),
+            "Available <strong>nowhere</strong>.",
+        );
+        // `any(all(true))`
+        assert_eq!(
+            cfg_any(thin_vec![cfg_all_e(thin_vec![cfg_true_e()])]).render_long_html(),
+            "Available <strong>everywhere</strong>."
+        );
+        // `not(any(all(true)))`
+        assert_eq!(
+            cfg_not(cfg_any_e(thin_vec![cfg_all_e(thin_vec![cfg_true_e()])])).render_long_html(),
+            "Available <strong>not(everywhere)</strong>.",
+        );
+        // `not(not(any(all(true))))`
+        assert_eq!(
+            cfg_not(cfg_not_e(cfg_any_e(thin_vec![cfg_all_e(thin_vec![cfg_true_e()])])))
+                .render_long_html(),
+            "Available <strong>everywhere</strong>.",
+        );
     })
 }
 
@@ -416,5 +450,36 @@ fn test_simplify_with() {
         // Multiple cfgs eliminate the matching subset of multiple assumed cfg
         assert_eq!(foobar.simplify_with(&barbaz).as_ref(), Some(&Cfg(foo)));
         assert_eq!(foobar.simplify_with(&foobarbaz), None);
+    });
+}
+
+#[test]
+fn test_sort_for_rendering() {
+    create_default_session_globals_then(|| {
+        let mut cfg = cfg_any(thin_vec![
+            name_value_cfg_e("feature", "sync"),
+            name_value_cfg_e("target_os", "linux"),
+            cfg_all_e(thin_vec![word_cfg_e("unix")]),
+            name_value_cfg_e("target_feature", "sse2"),
+            name_value_cfg_e("target_os", "android"),
+            name_value_cfg_e("feature", "alloc"),
+        ]);
+
+        cfg.sort_for_rendering();
+
+        let expected = cfg_any(thin_vec![
+            // Category 0: Targets (Sorted Alphabetically: Android -> Linux)
+            name_value_cfg_e("target_os", "android"),
+            name_value_cfg_e("target_os", "linux"),
+            // Category 1: Target Features
+            name_value_cfg_e("target_feature", "sse2"),
+            // Category 2: Crate Features (Sorted Alphabetically: alloc -> sync)
+            name_value_cfg_e("feature", "alloc"),
+            name_value_cfg_e("feature", "sync"),
+            // Category 3: Nested logic pushed to the end
+            cfg_all_e(thin_vec![word_cfg_e("unix")]),
+        ]);
+
+        assert_eq!(cfg, expected);
     });
 }

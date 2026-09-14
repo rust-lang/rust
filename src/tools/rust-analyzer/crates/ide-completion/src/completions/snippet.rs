@@ -10,7 +10,7 @@ use crate::{
 
 pub(crate) fn complete_expr_snippet(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     &PathExprCtx { in_block_expr, .. }: &PathExprCtx<'_>,
 ) {
@@ -50,7 +50,7 @@ macro_rules! $1 {
 
 pub(crate) fn complete_item_snippet(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     kind: &ItemListKind,
 ) {
@@ -117,7 +117,12 @@ macro_rules! $1 {
     }
 }
 
-fn snippet(ctx: &CompletionContext<'_>, cap: SnippetCap, label: &str, snippet: &str) -> Builder {
+fn snippet(
+    ctx: &CompletionContext<'_, '_>,
+    cap: SnippetCap,
+    label: &str,
+    snippet: &str,
+) -> Builder {
     let mut item =
         CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), label, ctx.edition);
     item.insert_snippet(cap, snippet);
@@ -126,7 +131,7 @@ fn snippet(ctx: &CompletionContext<'_>, cap: SnippetCap, label: &str, snippet: &
 
 fn add_custom_completions(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     cap: SnippetCap,
     scope: SnippetScope,
 ) -> Option<()> {

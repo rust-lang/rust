@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _};
 use clippy_utils::{is_none_expr, last_path_segment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, AmbigArg};
@@ -92,7 +92,7 @@ pub(super) fn check(
             (sym::None, sym::unwrap_or_default, _) => {
                 let ty = cx.typeck_results().expr_ty(expr);
                 let default_ty_string = if let ty::Adt(def, ..) = ty.kind() {
-                    with_forced_trimmed_paths!(format!("{}", cx.tcx.def_path_str(def.did())))
+                    with_forced_trimmed_paths!(cx.tcx.def_path_str(def.did()))
                 } else {
                     "Default".to_string()
                 };

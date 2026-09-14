@@ -1,5 +1,3 @@
-#![allow(unused_imports)]
-#![allow(dead_code)]
 #![warn(clippy::unsafe_removed_from_name)]
 
 use std::cell::UnsafeCell as TotallySafeCell;
@@ -22,6 +20,7 @@ use std::cell::UnsafeCell as Bombsawayunsafe;
 mod mod_with_some_unsafe_things {
     pub struct Safe;
     pub struct Unsafe;
+    pub trait UnsafeTrait {}
 }
 
 use mod_with_some_unsafe_things::Unsafe as LieAboutModSafety;
@@ -39,5 +38,11 @@ use mod_with_some_unsafe_things::Unsafe as SuperUnsafeModThing;
 
 #[allow(clippy::unsafe_removed_from_name)]
 use mod_with_some_unsafe_things::Unsafe as SuperSafeThing;
+
+// issue #16768, don't lint when "renaming" to '_'
+use mod_with_some_unsafe_things::UnsafeTrait as _;
+
+use mod_with_some_unsafe_things::UnsafeTrait as FakeSafeTrait;
+//~^ unsafe_removed_from_name
 
 fn main() {}

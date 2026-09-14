@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::span_contains_comment;
 use rustc_errors::Applicability;
@@ -11,7 +11,7 @@ use rustc_span::symbol::sym;
 
 use super::MAP_FLATTEN;
 
-/// lint use of `map().flatten()` for `Iterators` and 'Options'
+/// lint use of `map().flatten()` for `Iterator`s, 'Option's, and `Result`s.
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, map_arg: &Expr<'_>, map_span: Span) {
     if let Some((caller_ty_name, method_to_use)) = try_get_caller_ty_name_and_method_name(cx, expr, recv, map_arg) {
         let mut applicability = Applicability::MachineApplicable;
@@ -19,7 +19,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, map_
         let closure_snippet = snippet_with_applicability(cx, map_arg.span, "..", &mut applicability);
         let span = expr.span.with_lo(map_span.lo());
         // If the methods are separated with comments, we don't apply suggestion automatically.
-        if span_contains_comment(cx.tcx.sess.source_map(), span) {
+        if span_contains_comment(cx, span) {
             applicability = Applicability::Unspecified;
         }
         span_lint_and_sugg(

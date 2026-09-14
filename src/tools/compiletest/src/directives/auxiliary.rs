@@ -13,16 +13,16 @@ mod tests;
 
 /// The value of an `aux-crate` directive.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct AuxCrate {
+pub(crate) struct AuxCrate {
     /// Contains `--extern` modifiers, if any. See the tracking issue for more
     /// info: <https://github.com/rust-lang/rust/issues/98405>
     /// With `aux-crate: noprelude:foo=bar.rs` this will be `noprelude`.
-    pub extern_modifiers: Option<String>,
+    pub(crate) extern_modifiers: Option<String>,
     /// With `aux-crate: foo=bar.rs` this will be `foo`.
     /// With `aux-crate: noprelude:foo=bar.rs` this will be `foo`.
-    pub name: String,
+    pub(crate) name: String,
     /// With `aux-crate: foo=bar.rs` this will be `bar.rs`.
-    pub path: String,
+    pub(crate) path: String,
 }
 
 /// The value of a `proc-macro` directive.
@@ -31,9 +31,9 @@ pub(crate) struct ProcMacro {
     /// Contains `--extern` modifiers, if any. See the tracking issue for more
     /// info: <https://github.com/rust-lang/rust/issues/98405>
     /// With `proc-macro: noprelude:bar.rs` this will be `noprelude`.
-    pub extern_modifiers: Option<String>,
+    pub(crate) extern_modifiers: Option<String>,
     /// With `proc-macro: bar.rs` this will be `bar.rs`.
-    pub path: String,
+    pub(crate) path: String,
 }
 
 /// Properties parsed from `aux-*` test directives.

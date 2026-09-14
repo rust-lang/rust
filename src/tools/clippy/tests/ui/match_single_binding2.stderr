@@ -1,5 +1,5 @@
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding2.rs:16:36
+  --> tests/ui/match_single_binding2.rs:14:36
    |
 LL |               Some((iter, _item)) => match iter.size_hint() {
    |  ____________________________________^
@@ -19,7 +19,7 @@ LL ~             },
    |
 
 error: this match could be written as a `let` statement
-  --> tests/ui/match_single_binding2.rs:30:13
+  --> tests/ui/match_single_binding2.rs:28:13
    |
 LL | /             match get_tup() {
 LL | |
@@ -34,7 +34,7 @@ LL +             println!("a {a:?} and b {b:?}")
    |
 
 error: this match could be replaced by its scrutinee and body
-  --> tests/ui/match_single_binding2.rs:42:5
+  --> tests/ui/match_single_binding2.rs:40:5
    |
 LL | /     match side_effects() {
 LL | |
@@ -49,7 +49,7 @@ LL +     println!("Side effects");
    |
 
 error: this match could be replaced by its scrutinee and body
-  --> tests/ui/match_single_binding2.rs:50:5
+  --> tests/ui/match_single_binding2.rs:48:5
    |
 LL | /     match match x {
 LL | |

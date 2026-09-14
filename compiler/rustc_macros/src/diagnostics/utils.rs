@@ -1,8 +1,9 @@
 use std::cell::RefCell;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashSet};
 use std::fmt;
 use std::str::FromStr;
 
+use indexmap::IndexMap;
 use proc_macro::Span;
 use proc_macro2::{Ident, TokenStream};
 use quote::{ToTokens, format_ident, quote};
@@ -12,7 +13,6 @@ use syn::spanned::Spanned;
 use syn::{Attribute, Field, LitStr, Meta, Path, Token, Type, TypeTuple, parenthesized};
 use synstructure::{BindingInfo, VariantInfo};
 
-use super::error::invalid_attr;
 use crate::diagnostics::error::{
     DiagnosticDeriveError, span_err, throw_invalid_attr, throw_span_err,
 };
@@ -260,7 +260,7 @@ impl<T> SetOnce<T> for SpannedOption<T> {
     }
 }
 
-pub(super) type FieldMap = HashMap<String, TokenStream>;
+pub(super) type FieldMap = IndexMap<String, (syn::Ident, TokenStream)>;
 
 /// In the strings in the attributes supplied to this macro, we want callers to be able to
 /// reference fields in the format string. For example:
@@ -344,7 +344,7 @@ pub(super) fn build_format(
     let args = referenced_fields.into_iter().map(|field: String| {
         let field_ident = format_ident!("{}", field);
         let value = match field_map.get(&field) {
-            Some(value) => value.clone(),
+            Some(value) => value.1.clone(),
             // This field doesn't exist. Emit a diagnostic.
             None => {
                 span_err(span.unwrap(), format!("`{field}` doesn't refer to a field on this type"))
@@ -408,11 +408,11 @@ impl quote::ToTokens for Applicability {
 
 /// Build the mapping of field names to fields. This allows attributes to peek values from
 /// other fields.
-pub(super) fn build_field_mapping(variant: &VariantInfo<'_>) -> HashMap<String, TokenStream> {
+pub(super) fn build_field_mapping(variant: &VariantInfo<'_>) -> FieldMap {
     let mut fields_map = FieldMap::new();
     for binding in variant.bindings() {
         if let Some(ident) = &binding.ast().ident {
-            fields_map.insert(ident.to_string(), quote! { #binding });
+            fields_map.insert(ident.to_string(), (ident.clone(), quote! { #binding }));
         }
     }
     fields_map
@@ -541,16 +541,6 @@ impl SuggestionKind {
             }
         }
     }
-
-    fn from_suffix(s: &str) -> Option<Self> {
-        match s {
-            "" => Some(SuggestionKind::Normal),
-            "_short" => Some(SuggestionKind::Short),
-            "_hidden" => Some(SuggestionKind::Hidden),
-            "_verbose" => Some(SuggestionKind::Verbose),
-            _ => None,
-        }
-    }
 }
 
 /// Types of subdiagnostics that can be created using attributes
@@ -568,7 +558,7 @@ pub(super) enum SubdiagnosticKind {
     HelpOnce,
     /// `#[warning(...)]`
     Warn,
-    /// `#[suggestion{,_short,_hidden,_verbose}]`
+    /// `#[suggestion(..)]`
     Suggestion {
         suggestion_kind: SuggestionKind,
         applicability: SpannedOption<Applicability>,
@@ -579,7 +569,7 @@ pub(super) enum SubdiagnosticKind {
         /// `let __formatted_code = /* whatever */;`
         code_init: TokenStream,
     },
-    /// `#[multipart_suggestion{,_short,_hidden,_verbose}]`
+    /// `#[multipart_suggestion(..)]`
     MultipartSuggestion {
         suggestion_kind: SuggestionKind,
         applicability: SpannedOption<Applicability>,
@@ -598,6 +588,7 @@ impl SubdiagnosticVariant {
     pub(super) fn from_attr(
         attr: &Attribute,
         fields: &FieldMap,
+        used_fields: &mut HashSet<proc_macro2::Ident>,
     ) -> Result<Option<SubdiagnosticVariant>, DiagnosticDeriveError> {
         // Always allow documentation comments.
         if is_doc_comment(attr) {
@@ -616,44 +607,18 @@ impl SubdiagnosticVariant {
             "help" => SubdiagnosticKind::Help,
             "help_once" => SubdiagnosticKind::HelpOnce,
             "warning" => SubdiagnosticKind::Warn,
+            "suggestion" => SubdiagnosticKind::Suggestion {
+                suggestion_kind: SuggestionKind::Normal,
+                applicability: None,
+                code_field: new_code_ident(),
+                code_init: TokenStream::new(),
+            },
+            "multipart_suggestion" => SubdiagnosticKind::MultipartSuggestion {
+                suggestion_kind: SuggestionKind::Normal,
+                applicability: None,
+            },
             _ => {
-                // Recover old `#[(multipart_)suggestion_*]` syntaxes
-                // FIXME(#100717): remove
-                if let Some(suggestion_kind) =
-                    name.strip_prefix("suggestion").and_then(SuggestionKind::from_suffix)
-                {
-                    if suggestion_kind != SuggestionKind::Normal {
-                        invalid_attr(attr)
-                            .help(format!(
-                                r#"Use `#[suggestion(..., style = "{suggestion_kind}")]` instead"#
-                            ))
-                            .emit();
-                    }
-
-                    SubdiagnosticKind::Suggestion {
-                        suggestion_kind: SuggestionKind::Normal,
-                        applicability: None,
-                        code_field: new_code_ident(),
-                        code_init: TokenStream::new(),
-                    }
-                } else if let Some(suggestion_kind) =
-                    name.strip_prefix("multipart_suggestion").and_then(SuggestionKind::from_suffix)
-                {
-                    if suggestion_kind != SuggestionKind::Normal {
-                        invalid_attr(attr)
-                            .help(format!(
-                                r#"Use `#[multipart_suggestion(..., style = "{suggestion_kind}")]` instead"#
-                            ))
-                            .emit();
-                    }
-
-                    SubdiagnosticKind::MultipartSuggestion {
-                        suggestion_kind: SuggestionKind::Normal,
-                        applicability: None,
-                    }
-                } else {
-                    throw_invalid_attr!(attr);
-                }
+                throw_invalid_attr!(attr);
             }
         };
 
@@ -708,7 +673,13 @@ impl SubdiagnosticVariant {
                     }
                     if !input.is_empty() { input.parse::<Token![,]>()?; }
                     if is_first {
-                        message = Some(Message { attr_span: attr.span(), message_span: inline_message.span(), value: inline_message.value() });
+                        message = Some(Message::new(
+                            attr.span(),
+                            inline_message.span(),
+                            inline_message.value(),
+                            fields,
+                            used_fields,
+                        ));
                         is_first = false;
                     } else {
                         span_err(inline_message.span().unwrap(), "a diagnostic message must be the first argument to the attribute").emit();

@@ -9,14 +9,14 @@ help: a struct with a similar name exists
 LL |     module::Struct::foo();
    |                  +
 
-error[E0599]: no function or associated item named `fob` found for struct `Struct` in the current scope
+error[E0599]: no associated function or constant named `fob` found for struct `Struct` in the current scope
   --> $DIR/typo-suggestion-mistyped-in-path.rs:23:13
    |
 LL | struct Struct;
-   | ------------- function or associated item `fob` not found for this struct
+   | ------------- associated function or constant `fob` not found for this struct
 ...
 LL |     Struct::fob();
-   |             ^^^ function or associated item not found in `Struct`
+   |             ^^^ associated function or constant not found in `Struct`
    |
 help: there is an associated function `foo` with a similar name
    |

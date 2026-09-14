@@ -44,6 +44,14 @@ LL | #![forbid()]
    = note: attribute `forbid` with an empty list has no effect
 
 error: unused attribute
+  --> $DIR/empty-attributes.rs:7:1
+   |
+LL | #![feature()]
+   | ^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `feature` with an empty list has no effect
+
+error: unused attribute
   --> $DIR/empty-attributes.rs:9:1
    |
 LL | #[repr()]
@@ -58,14 +66,6 @@ LL | #[target_feature()]
    | ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
    = note: using `target_feature` with an empty list has no effect
-
-error: unused attribute
-  --> $DIR/empty-attributes.rs:7:1
-   |
-LL | #![feature()]
-   | ^^^^^^^^^^^^^ help: remove this attribute
-   |
-   = note: using `feature` with an empty list has no effect
 
 error: aborting due to 8 previous errors
 

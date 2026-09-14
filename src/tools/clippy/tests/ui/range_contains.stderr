@@ -79,53 +79,65 @@ error: manual `Range::contains` implementation
 LL |     y >= 0. && y < 1.;
    |     ^^^^^^^^^^^^^^^^^ help: use: `(0. ..1.).contains(&y)`
 
-error: manual `!RangeInclusive::contains` implementation
-  --> tests/ui/range_contains.rs:59:5
-   |
-LL |     y < 0. || y > 1.;
-   |     ^^^^^^^^^^^^^^^^ help: use: `!(0. ..=1.).contains(&y)`
-
 error: manual `RangeInclusive::contains` implementation
-  --> tests/ui/range_contains.rs:63:5
+  --> tests/ui/range_contains.rs:62:5
    |
 LL |     x >= -10 && x <= 10;
    |     ^^^^^^^^^^^^^^^^^^^ help: use: `(-10..=10).contains(&x)`
 
 error: manual `RangeInclusive::contains` implementation
-  --> tests/ui/range_contains.rs:66:5
+  --> tests/ui/range_contains.rs:65:5
    |
 LL |     y >= -3. && y <= 3.;
    |     ^^^^^^^^^^^^^^^^^^^ help: use: `(-3. ..=3.).contains(&y)`
 
 error: manual `RangeInclusive::contains` implementation
-  --> tests/ui/range_contains.rs:72:30
+  --> tests/ui/range_contains.rs:71:30
    |
 LL |     (x >= 0) && (x <= 10) && (z >= 0) && (z <= 10);
    |                              ^^^^^^^^^^^^^^^^^^^^^ help: use: `(0..=10).contains(&z)`
 
 error: manual `RangeInclusive::contains` implementation
-  --> tests/ui/range_contains.rs:72:5
+  --> tests/ui/range_contains.rs:71:5
    |
 LL |     (x >= 0) && (x <= 10) && (z >= 0) && (z <= 10);
    |     ^^^^^^^^^^^^^^^^^^^^^ help: use: `(0..=10).contains(&x)`
 
 error: manual `!Range::contains` implementation
-  --> tests/ui/range_contains.rs:75:29
+  --> tests/ui/range_contains.rs:74:29
    |
 LL |     (x < 0) || (x >= 10) || (z < 0) || (z >= 10);
    |                             ^^^^^^^^^^^^^^^^^^^^ help: use: `!(0..10).contains(&z)`
 
 error: manual `!Range::contains` implementation
-  --> tests/ui/range_contains.rs:75:5
+  --> tests/ui/range_contains.rs:74:5
    |
 LL |     (x < 0) || (x >= 10) || (z < 0) || (z >= 10);
    |     ^^^^^^^^^^^^^^^^^^^^ help: use: `!(0..10).contains(&x)`
 
 error: manual `Range::contains` implementation
-  --> tests/ui/range_contains.rs:96:5
+  --> tests/ui/range_contains.rs:95:5
    |
 LL |     x >= 8 && x < 35;
    |     ^^^^^^^^^^^^^^^^ help: use: `(8..35).contains(&x)`
 
-error: aborting due to 21 previous errors
+error: manual `Range::contains` implementation
+  --> tests/ui/range_contains.rs:103:5
+   |
+LL |     q >= 0.0 && q < 1.0;
+   |     ^^^^^^^^^^^^^^^^^^^ help: use: `(0.0..1.0).contains(&q)`
+
+error: manual `RangeInclusive::contains` implementation
+  --> tests/ui/range_contains.rs:105:5
+   |
+LL |     q >= 0.0 && q <= 1.0;
+   |     ^^^^^^^^^^^^^^^^^^^^ help: use: `(0.0..=1.0).contains(&q)`
+
+error: manual `Range::contains` implementation
+  --> tests/ui/range_contains.rs:113:5
+   |
+LL |     r >= 0.0 && r < 1.0;
+   |     ^^^^^^^^^^^^^^^^^^^ help: use: `(0.0..1.0).contains(&r)`
+
+error: aborting due to 23 previous errors
 

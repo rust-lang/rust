@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 macro_rules! default {
     ($($x:tt)*) => { $($x)* }
 }

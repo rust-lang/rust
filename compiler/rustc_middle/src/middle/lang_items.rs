@@ -7,7 +7,7 @@
 //! * Traits that represent operators; e.g., `Add`, `Sub`, `Index`.
 //! * Functions called by the compiler itself.
 
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_span::Span;
 use rustc_target::spec::PanicStrategy;
@@ -19,7 +19,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// If not found, fatally aborts compilation.
     pub fn require_lang_item(self, lang_item: LangItem, span: Span) -> DefId {
         self.lang_items().get(lang_item).unwrap_or_else(|| {
-            self.dcx().emit_fatal(crate::error::RequiresLangItem { span, name: lang_item.name() });
+            self.dcx()
+                .emit_fatal(crate::diagnostics::RequiresLangItem { span, name: lang_item.name() });
         })
     }
 
@@ -53,6 +54,25 @@ impl<'tcx> TyCtxt<'tcx> {
             LangItem::AsyncFnOnce => Some(ty::ClosureKind::FnOnce),
             _ => None,
         }
+    }
+
+    /// Given a [`DefId`], returns whether it is one of the built-in callable
+    /// traits: `Fn`/`FnMut`/`FnOnce` or `AsyncFn`/`AsyncFnMut`/`AsyncFnOnce`.
+    ///
+    /// These built-in callable traits all model their inputs using the
+    /// `rust-call` ABI, which is tupled at the type level.
+    pub fn is_callable_trait(self, id: DefId) -> bool {
+        matches!(
+            self.as_lang_item(id),
+            Some(
+                LangItem::Fn
+                    | LangItem::FnMut
+                    | LangItem::FnOnce
+                    | LangItem::AsyncFn
+                    | LangItem::AsyncFnMut
+                    | LangItem::AsyncFnOnce
+            )
+        )
     }
 
     /// Given a [`ty::ClosureKind`], get the [`DefId`] of its corresponding `Fn`-family
@@ -90,13 +110,11 @@ impl<'tcx> TyCtxt<'tcx> {
 /// the case of panic=abort. In these situations some lang items are injected by
 /// crates and don't actually need to be defined in libstd.
 pub fn required(tcx: TyCtxt<'_>, lang_item: LangItem) -> bool {
-    // If we're not compiling with unwinding, we won't actually need these
-    // symbols. Other panic runtimes ensure that the relevant symbols are
+    // If we're not compiling with unwinding, we won't actually need this
+    // symbol. Other panic runtimes ensure that the relevant symbols are
     // available to link things together, but they're never exercised.
     match tcx.sess.panic_strategy() {
-        PanicStrategy::Abort => {
-            lang_item != LangItem::EhPersonality && lang_item != LangItem::EhCatchTypeinfo
-        }
+        PanicStrategy::Abort => lang_item != LangItem::EhPersonality,
         PanicStrategy::Unwind => true,
         PanicStrategy::ImmediateAbort => false,
     }

@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at .bytes[2]: encountered uninitialized memory, but expected an integer
+error: Undefined Behavior: constructing invalid value of type Bar: at .bytes[2], encountered uninitialized memory, but expected an integer
   --> tests/fail/uninit/padding-struct-in-union.rs:LL:CC
    |
 LL |     let _val = unsafe { (foobar.foo, foobar.bar) };

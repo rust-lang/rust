@@ -94,11 +94,7 @@ const UNWIND_DATA_REG: (i32, i32) = (4, 5); // a0, a1
 // https://github.com/gcc-mirror/gcc/blob/trunk/libgcc/unwind-c.c
 
 cfg_select! {
-    all(
-        target_arch = "arm",
-        not(target_vendor = "apple"),
-        not(target_os = "netbsd"),
-    ) => {
+    all(target_arch = "arm", not(target_vendor = "apple"), not(target_os = "netbsd")) => {
         /// personality fn called by [ARM EHABI][armeabi-eh]
         ///
         /// 32-bit ARM on iOS/tvOS/watchOS does not use ARM EHABI, it uses
@@ -138,7 +134,11 @@ cfg_select! {
                 // take only the context pointer, GCC personality routines stash a pointer to
                 // exception_object in the context, using location reserved for ARM's
                 // "scratch register" (r12).
-                uw::_Unwind_SetGR(context, uw::UNWIND_POINTER_REG, exception_object as uw::_Unwind_Ptr);
+                uw::_Unwind_SetGR(
+                    context,
+                    uw::UNWIND_POINTER_REG,
+                    exception_object as uw::_Unwind_Ptr,
+                );
                 // ...A more principled approach would be to provide the full definition of ARM's
                 // _Unwind_Context in our libunwind bindings and fetch the required data from there
                 // directly, bypassing DWARF compatibility functions.
@@ -164,8 +164,12 @@ cfg_select! {
                 } else {
                     match eh_action {
                         EHAction::None => return continue_unwind(exception_object, context),
-                        EHAction::Filter(_) if state & uw::_US_FORCE_UNWIND as c_int != 0 => return continue_unwind(exception_object, context),
-                        EHAction::Cleanup(lpad) | EHAction::Catch(lpad) | EHAction::Filter(lpad) => {
+                        EHAction::Filter(_) if state & uw::_US_FORCE_UNWIND as c_int != 0 => {
+                            return continue_unwind(exception_object, context);
+                        }
+                        EHAction::Cleanup(lpad)
+                        | EHAction::Catch(lpad)
+                        | EHAction::Filter(lpad) => {
                             uw::_Unwind_SetGR(
                                 context,
                                 UNWIND_DATA_REG.0,
@@ -204,6 +208,35 @@ cfg_select! {
         }
     }
     _ => {
+        #[rustc_force_inline]
+        unsafe fn sign_lpad(context: *mut uw::_Unwind_Context, lpad: *const u8) -> *const u8 {
+            cfg_select! {
+                all(target_abi = "pauthtest", target_arch = "aarch64") => {
+                    // DWARF register number for SP on AArch64.
+                    const SP_REG: i32 = 31;
+
+                    unsafe {
+                        let sp = uw::_Unwind_GetGR(context, SP_REG).addr() as u64;
+                        let mut addr = lpad.addr();
+
+                        // `pacib` corresponds to `ptrauth_key_process_dependent_code` in <ptrauth.h>.
+                        core::arch::asm!(
+                            "pacib {addr}, {sp}",
+                            addr = inout(reg) addr,
+                            sp = in(reg) sp,
+                            options(nostack, preserves_flags)
+                        );
+
+                        lpad.with_addr(addr)
+                    }
+                }
+                _ => {
+                    let _ = context;
+                    lpad
+                }
+            }
+        }
+
         /// Default personality routine, which is used directly on most targets
         /// and indirectly on Windows x86_64 and AArch64 via SEH.
         unsafe extern "C" fn rust_eh_personality_impl(
@@ -231,15 +264,16 @@ cfg_select! {
                     match eh_action {
                         EHAction::None => uw::_URC_CONTINUE_UNWIND,
                         // Forced unwinding hits a terminate action.
-                        EHAction::Filter(_) if actions & uw::_UA_FORCE_UNWIND != 0 => uw::_URC_CONTINUE_UNWIND,
-                        EHAction::Cleanup(lpad) | EHAction::Catch(lpad) | EHAction::Filter(lpad) => {
-                            uw::_Unwind_SetGR(
-                                context,
-                                UNWIND_DATA_REG.0,
-                                exception_object.cast(),
-                            );
+                        EHAction::Filter(_) if actions & uw::_UA_FORCE_UNWIND != 0 => {
+                            uw::_URC_CONTINUE_UNWIND
+                        }
+                        EHAction::Cleanup(lpad)
+                        | EHAction::Catch(lpad)
+                        | EHAction::Filter(lpad) => {
+                            uw::_Unwind_SetGR(context, UNWIND_DATA_REG.0, exception_object.cast());
                             uw::_Unwind_SetGR(context, UNWIND_DATA_REG.1, core::ptr::null());
-                            uw::_Unwind_SetIP(context, lpad);
+                            let maybe_signed_lpad = sign_lpad(context, lpad);
+                            uw::_Unwind_SetIP(context, maybe_signed_lpad);
                             uw::_URC_INSTALL_CONTEXT
                         }
                         EHAction::Terminate => uw::_URC_FATAL_PHASE2_ERROR,
@@ -250,7 +284,11 @@ cfg_select! {
 
         cfg_select! {
             any(
-                all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"),
+                all(
+                    windows,
+                    any(target_arch = "aarch64", target_arch = "x86_64"),
+                    target_env = "gnu"
+                ),
                 target_os = "cygwin",
             ) => {
                 /// personality fn called by [Windows Structured Exception Handling][windows-eh]

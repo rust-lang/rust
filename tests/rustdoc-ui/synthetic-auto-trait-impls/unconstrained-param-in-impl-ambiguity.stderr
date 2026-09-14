@@ -2,7 +2,10 @@ error[E0207]: the type parameter `Q` is not constrained by the impl trait, self 
   --> $DIR/unconstrained-param-in-impl-ambiguity.rs:7:13
    |
 LL | unsafe impl<Q: Trait> Send for Inner {}
-   |             ^ unconstrained type parameter
+   |            -^--------
+   |            ||
+   |            |unconstrained type parameter
+   |            help: remove the unused type parameter `Q`
 
 error: aborting due to 1 previous error
 

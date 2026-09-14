@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
+error: Undefined Behavior: constructing invalid value of type E: at .<enum-tag>, encountered an uninhabited enum variant
   --> tests/fail/validity/uninhabited_variant.rs:LL:CC
    |
 LL |         std::mem::transmute::<u32, E>(1);

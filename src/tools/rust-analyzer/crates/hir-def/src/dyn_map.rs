@@ -68,7 +68,7 @@ pub mod keys {
     pub const MACRO_CALL: Key<ast::MacroCall, MacroCallId> = Key::new();
     pub const ATTR_MACRO_CALL: Key<ast::Item, MacroCallId> = Key::new();
     pub const DERIVE_MACRO_CALL: Key<
-        ast::Attr,
+        ast::Meta,
         (
             AttrId,
             /* derive() */ MacroCallId,
@@ -119,10 +119,6 @@ pub struct Key<K, V, P = (K, V)> {
 }
 
 impl<K, V, P> Key<K, V, P> {
-    #[allow(
-        clippy::new_without_default,
-        reason = "this a const fn, so it can't be default yet. See <https://github.com/rust-lang/rust/issues/63065>"
-    )]
     pub(crate) const fn new() -> Key<K, V, P> {
         Key { _phantom: PhantomData }
     }

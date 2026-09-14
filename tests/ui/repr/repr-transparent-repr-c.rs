@@ -1,5 +1,3 @@
-#![deny(repr_transparent_non_zst_fields)]
-
 #[repr(C)]
 pub struct ReprC1Zst {
     pub _f: (),
@@ -16,17 +14,14 @@ pub struct T3(ReprC1Zst, ());
 
 #[repr(transparent)]
 pub struct T5(Sized, ReprC1Zst);
-//~^ ERROR zero-sized fields in `repr(transparent)` cannot contain `repr(C)` types
-//~| WARN this was previously accepted by the compiler
+//~^ ERROR needs at most one non-trivial field
 
 #[repr(transparent)]
 pub struct T6(ReprC1Zst, Sized);
-//~^ ERROR zero-sized fields in `repr(transparent)` cannot contain `repr(C)` types
-//~| WARN this was previously accepted by the compiler
+//~^ ERROR needs at most one non-trivial field
 
 #[repr(transparent)]
-pub struct T7(T1, Sized); // still wrong, even when the repr(C) is hidden inside another type
-//~^ ERROR zero-sized fields in `repr(transparent)` cannot contain `repr(C)` types
-//~| WARN this was previously accepted by the compiler
+pub struct T7(T1, [Sized; 0]); // still wrong, even when the repr(C) is hidden inside another type
+//~^ ERROR needs at most one non-trivial field
 
 fn main() {}

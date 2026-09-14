@@ -189,5 +189,35 @@ LL | |         None
 LL | |     };
    | |_____^ help: try: `{ Some(16).filter(|&x| x % 2 == 0) }`
 
-error: aborting due to 15 previous errors
+error: manual implementation of `Option::filter`
+  --> tests/ui/manual_filter.rs:298:9
+   |
+LL |     opt.and_then(|x| if x == 0 { None } else { Some(x) });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter(|&x| x != 0)`
+
+error: manual implementation of `Option::filter`
+  --> tests/ui/manual_filter.rs:302:9
+   |
+LL |     opt.and_then(move |x| if x == y { Some(x) } else { None });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter(move |&x| x == y)`
+
+error: manual implementation of `Option::filter`
+  --> tests/ui/manual_filter.rs:306:10
+   |
+LL |     opt1.and_then(|s| if s.len() > 2 { Some(s) } else { None });
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter(|s| s.len() > 2)`
+
+error: manual implementation of `Option::filter`
+  --> tests/ui/manual_filter.rs:312:9
+   |
+LL |     opt.and_then(|x| if unsafe { f(x as u32) } { Some(x) } else { None });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter(|&x| unsafe { f(x as u32) })`
+
+error: manual implementation of `Option::filter`
+  --> tests/ui/manual_filter.rs:314:9
+   |
+LL |     opt.and_then(|x| unsafe { if f(x as u32) { Some(x) } else { None } });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter(|&x| unsafe { f(x as u32) })`
+
+error: aborting due to 20 previous errors
 

@@ -8,9 +8,9 @@
 // the frontmatter opening and the frontmatter close.
 
 //@ check-pass
-// ignore-tidy-end-whitespace
-// ignore-tidy-leading-newlines
-// ignore-tidy-tab
+// ignore-tidy-file-end-whitespace
+// ignore-tidy-file-leading-newlines
+// ignore-tidy-file-tab
 
 #![feature(frontmatter)]
 

@@ -1,5 +1,5 @@
 #![warn(clippy::map_flatten)]
-#![allow(clippy::unnecessary_filter_map)]
+#![allow(clippy::manual_filter, clippy::unnecessary_filter_map)]
 
 // issue #8506, multi-line
 #[rustfmt::skip]

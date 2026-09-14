@@ -5,7 +5,6 @@
 use crate::ffi::CStr;
 use crate::io;
 use crate::os::unix::net;
-use crate::sealed::Sealed;
 use crate::sys::AsInner;
 
 /// NetBSD-specific functionality for `AF_UNIX` sockets [`UnixDatagram`]
@@ -14,7 +13,7 @@ use crate::sys::AsInner;
 /// [`UnixDatagram`]: net::UnixDatagram
 /// [`UnixStream`]: net::UnixStream
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-pub trait UnixSocketExt: Sealed {
+pub impl(self) trait UnixSocketExt {
     /// Query the current setting of socket option `LOCAL_CREDS`.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     fn local_creds(&self) -> io::Result<bool>;
@@ -28,7 +27,8 @@ pub trait UnixSocketExt: Sealed {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_os = "netbsd", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "netbsd"), doc = "```ignore (needs netbsd)")]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::netbsd::net::UnixSocketExt;
     /// use std::os::unix::net::UnixDatagram;

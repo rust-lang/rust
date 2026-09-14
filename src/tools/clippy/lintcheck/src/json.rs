@@ -7,7 +7,7 @@
 use std::path::{Path, PathBuf};
 use std::{fmt, fs};
 
-use itertools::{EitherOrBoth, Itertools};
+use itertools::{EitherOrBoth, Itertools as _};
 use serde::{Deserialize, Serialize};
 
 use crate::ClippyWarning;

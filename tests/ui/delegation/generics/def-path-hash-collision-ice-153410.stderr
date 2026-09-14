@@ -1,0 +1,42 @@
+error[E0575]: cannot find method or associated constant `Item` in trait `Iterator`
+  --> $DIR/def-path-hash-collision-ice-153410.rs:21:58
+   |
+LL |     reuse< < <for<'a> fn()>::Output>::Item as Iterator>::*;
+   |                                                          ^ not found in `Iterator`
+   |
+   = note: an associated type named `Iterator::Item` exists in another namespace
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/def-path-hash-collision-ice-153410.rs:19:6
+   |
+LL | impl Iterator {
+   |      ^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL | impl dyn Iterator {
+   |      +++
+help: you might have intended to implement this trait for a given type
+   |
+LL | impl Iterator for /* Type */ {
+   |               ++++++++++++++
+
+error[E0223]: ambiguous associated type
+  --> $DIR/def-path-hash-collision-ice-153410.rs:21:14
+   |
+LL |     reuse< < <for<'a> fn()>::Output>::Item as Iterator>::*;
+   |              ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     reuse< < <for<'a> fn()>::Output>::Item as Iterator>::*;
+LL +     reuse< < <fn() as BitOr>::Output>::Item as Iterator>::*;
+   |
+LL -     reuse< < <for<'a> fn()>::Output>::Item as Iterator>::*;
+LL +     reuse< < <fn() as IntoFuture>::Output>::Item as Iterator>::*;
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0223, E0575, E0782.
+For more information about an error, try `rustc --explain E0223`.

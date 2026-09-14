@@ -19,7 +19,7 @@ use crate::{AssistContext, AssistId, Assists};
 // struct Foo {foo: i32, bar: i32};
 // const test: Foo = Foo {foo: 1, bar: 0}
 // ```
-pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let path = ctx.find_node_at_offset::<ast::Path>()?;
     let record =
         path.syntax().parent().and_then(<Either<ast::RecordExpr, ast::RecordPat>>::cast)?;
@@ -71,14 +71,12 @@ pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         "Reorder record fields",
         target,
         |builder| {
-            let mut editor = builder.make_editor(&parent_node);
+            let editor = builder.make_editor(&parent_node);
 
             match fields {
-                Either::Left((sorted, field_list)) => {
-                    replace(&mut editor, field_list.fields(), sorted)
-                }
+                Either::Left((sorted, field_list)) => replace(&editor, field_list.fields(), sorted),
                 Either::Right((sorted, field_list)) => {
-                    replace(&mut editor, field_list.fields(), sorted)
+                    replace(&editor, field_list.fields(), sorted)
                 }
             }
 
@@ -88,7 +86,7 @@ pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 }
 
 fn replace<T: AstNode + PartialEq>(
-    editor: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     fields: impl Iterator<Item = T>,
     sorted_fields: impl IntoIterator<Item = T>,
 ) {
@@ -99,7 +97,7 @@ fn replace<T: AstNode + PartialEq>(
 
 fn compute_fields_ranks(
     path: &ast::Path,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<FxHashMap<String, usize>> {
     let strukt = match ctx.sema.resolve_path(path) {
         Some(hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Struct(it)))) => it,

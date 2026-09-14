@@ -1,13 +1,15 @@
 use rustc_abi::{Scalar, Size, TagEncoding, Variants, WrappingRange};
-use rustc_hir::LangItem;
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::PrimitiveExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypingEnv};
-use rustc_session::Session;
 use tracing::debug;
+
+use crate::PassPolicy;
 
 /// This pass inserts checks for a valid enum discriminant where they are most
 /// likely to find UB, because checking everywhere like Miri would generate too
@@ -15,8 +17,9 @@ use tracing::debug;
 pub(super) struct CheckEnums;
 
 impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
-    fn is_enabled(&self, sess: &Session) -> bool {
-        sess.ub_checks()
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // When UB checks are enabled this is part of their semantics, not an optimization.
+        PassPolicy::optional(ctx.ub_checks())
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -61,6 +64,7 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
                             basic_blocks[block].terminator = Some(Terminator {
                                 source_info,
                                 kind: TerminatorKind::Goto { target: new_block },
+                                attributes: ThinVec::new(),
                             });
                         }
                         EnumCheckType::Direct { source_op, discr, op_size, valid_discrs } => {
@@ -106,10 +110,6 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
                 }
             }
         }
-    }
-
-    fn is_required(&self) -> bool {
-        true
     }
 }
 
@@ -395,6 +395,7 @@ fn insert_direct_enum_check<'tcx>(
                 invalid_discr_block,
             ),
         },
+        attributes: ThinVec::new(),
     });
 
     // Abort in case of an invalid enum discriminant.
@@ -414,6 +415,7 @@ fn insert_direct_enum_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
+        attributes: ThinVec::new(),
     });
 }
 
@@ -430,11 +432,14 @@ fn insert_uninhabited_enum_check<'tcx>(
         source_info,
         StatementKind::Assign(Box::new((
             is_ok,
-            Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
-                span: source_info.span,
-                user_ty: None,
-                const_: Const::Val(ConstValue::from_bool(false), tcx.types.bool),
-            }))),
+            Rvalue::Use(
+                Operand::Constant(Box::new(ConstOperand {
+                    span: source_info.span,
+                    user_ty: None,
+                    const_: Const::Val(ConstValue::from_bool(false), tcx.types.bool),
+                })),
+                WithRetag::Yes, // it's a bool, retag doesn't matter
+            ),
         ))),
     ));
 
@@ -456,6 +461,7 @@ fn insert_uninhabited_enum_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
+        attributes: ThinVec::new(),
     });
 }
 
@@ -533,5 +539,6 @@ fn insert_niche_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
+        attributes: ThinVec::new(),
     });
 }

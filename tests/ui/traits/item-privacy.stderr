@@ -47,14 +47,14 @@ LL |         fn a(&self) { }
 LL |     c.a();
    |       ^ private method
 
-error[E0599]: no function or associated item named `a` found for struct `S` in the current scope
+error[E0599]: no associated function or constant named `a` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:79:8
    |
 LL | struct S;
-   | -------- function or associated item `a` not found for this struct
+   | -------- associated function or constant `a` not found for this struct
 ...
 LL |     S::a(&S);
-   |        ^ function or associated item not found in `S`
+   |        ^ associated function or constant not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = help: trait `method::A` which provides `a` is implemented but not reachable
@@ -64,14 +64,14 @@ help: there is an associated constant `B` with a similar name
 LL |         const B: u8 = 0;
    |         ^^^^^^^^^^^
 
-error[E0599]: no function or associated item named `b` found for struct `S` in the current scope
+error[E0599]: no associated function or constant named `b` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:81:8
    |
 LL | struct S;
-   | -------- function or associated item `b` not found for this struct
+   | -------- associated function or constant `b` not found for this struct
 ...
 LL |     S::b(&S);
-   |        ^ function or associated item not found in `S`
+   |        ^ associated function or constant not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
 help: there is an associated constant `B` with a similar name
@@ -93,14 +93,14 @@ LL |         fn a(&self) { }
 LL |     <dyn C>::a(&S);
    |              ^ private method
 
-error[E0599]: no associated item named `A` found for struct `S` in the current scope
+error[E0599]: no associated function or constant named `A` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:98:8
    |
 LL | struct S;
-   | -------- associated item `A` not found for this struct
+   | -------- associated function or constant `A` not found for this struct
 ...
 LL |     S::A;
-   |        ^ associated item not found in `S`
+   |        ^ associated function or constant not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = help: trait `assoc_const::A` which provides `A` is implemented but not reachable
@@ -110,14 +110,14 @@ LL -     S::A;
 LL +     S::B;
    |
 
-error[E0599]: no associated item named `B` found for struct `S` in the current scope
+error[E0599]: no associated function or constant named `B` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:99:8
    |
 LL | struct S;
-   | -------- associated item `B` not found for this struct
+   | -------- associated function or constant `B` not found for this struct
 ...
 LL |     S::B;
-   |        ^ associated item not found in `S`
+   |        ^ associated function or constant not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
 help: there is a method `b` with a similar name

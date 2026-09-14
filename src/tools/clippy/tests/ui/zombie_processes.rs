@@ -1,5 +1,5 @@
 #![warn(clippy::zombie_processes)]
-#![allow(clippy::if_same_then_else, clippy::ifs_same_cond, clippy::needless_return)]
+#![expect(clippy::if_same_then_else, clippy::ifs_same_cond, clippy::needless_return)]
 
 use std::process::{Child, Command, ExitStatus};
 

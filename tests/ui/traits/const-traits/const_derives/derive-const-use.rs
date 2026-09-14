@@ -3,12 +3,16 @@
 
 pub struct A;
 
-impl const Default for A {
-    fn default() -> A { A }
+const impl Default for A {
+    fn default() -> A {
+        A
+    }
 }
 
-impl const PartialEq for A {
-    fn eq(&self, _: &A) -> bool { true }
+const impl PartialEq for A {
+    fn eq(&self, _: &A) -> bool {
+        true
+    }
 }
 
 #[derive_const(Default, PartialEq)]

@@ -1,8 +1,11 @@
 //@ needs-unwind
 //@ compile-flags: -C no-prepopulate-passes -Copt-level=0
+// Pauthtest generates pointer authentication metadata for call instructions
+// and wraps function pointers in ConstPtrAuth. Disable this test for this target
+// to avoid clutter from pointer authentication complexity.
+//@ ignore-pauthtest
 
 #![crate_type = "lib"]
-#![feature(c_variadic)]
 #![no_std]
 use core::ffi::VaList;
 
@@ -28,10 +31,11 @@ pub unsafe extern "C" fn c_variadic(n: i32, mut ap: ...) -> i32 {
     // CHECK: call void @llvm.va_start
     let mut sum = 0;
     for _ in 0..n {
-        sum += ap.arg::<i32>();
+        sum += ap.next_arg::<i32>();
     }
     sum
-    // CHECK: call void @llvm.va_end
+    // We no longer call the LLVM va_end.
+    // CHECK-NOT: call void @llvm.va_end
 }
 
 // Ensure that we generate the correct `call` signature when calling a Rust

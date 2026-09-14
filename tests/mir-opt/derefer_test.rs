@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ test-mir-pass: Derefer
 // EMIT_MIR derefer_test.main.Derefer.diff
 fn main() {

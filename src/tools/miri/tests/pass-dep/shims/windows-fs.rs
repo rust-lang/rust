@@ -22,7 +22,7 @@ use windows_sys::Win32::Storage::FileSystem::{
     FILE_ALLOCATION_INFO, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_BEGIN,
     FILE_CURRENT, FILE_END_OF_FILE_INFO, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT,
     FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, FileAllocationInfo, FileEndOfFileInfo,
-    FlushFileBuffers, GetFileInformationByHandle, OPEN_ALWAYS, OPEN_EXISTING,
+    FlushFileBuffers, GetFileInformationByHandle, MoveFileExW, OPEN_ALWAYS, OPEN_EXISTING,
     SetFileInformationByHandle, SetFilePointerEx,
 };
 use windows_sys::Win32::System::IO::IO_STATUS_BLOCK;
@@ -42,6 +42,7 @@ fn main() {
         test_set_file_info();
         test_dup_handle();
         test_flush_buffers();
+        test_move_file();
     }
 }
 
@@ -374,6 +375,23 @@ unsafe fn test_flush_buffers() {
     if FlushFileBuffers(file.as_raw_handle()) != 0 {
         panic!("Successfully flushed buffers on read-only file");
     }
+}
+
+unsafe fn test_move_file() {
+    let tmp_dir = utils::tmp();
+
+    let temp = tmp_dir.join("test_move_file.txt");
+    let temp_new = tmp_dir.join("test_move_file_new.txt");
+    let mut file = fs::File::options().create(true).write(true).open(&temp).unwrap();
+    file.write_all(b"Hello, World!\n").unwrap();
+
+    let from = to_wide_cstr(&temp);
+    let to = to_wide_cstr(&temp_new);
+    if MoveFileExW(from.as_ptr(), to.as_ptr(), 1) == 0 {
+        panic!("Failed to rename file from {} to {}", temp.display(), temp_new.display());
+    }
+
+    assert_eq!(fs::read_to_string(temp_new).unwrap(), "Hello, World!\n");
 }
 
 fn to_wide_cstr(path: &Path) -> Vec<u16> {

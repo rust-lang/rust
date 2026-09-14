@@ -1,6 +1,5 @@
 //@aux-build:proc_macros.rs
 //@aux-build:proc_macro_derive.rs
-#![allow(unused)]
 #![warn(clippy::allow_attributes)]
 #![no_main]
 

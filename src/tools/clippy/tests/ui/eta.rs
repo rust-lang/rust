@@ -2,18 +2,15 @@
 //@require-annotations-for-level: ERROR
 
 #![warn(clippy::redundant_closure, clippy::redundant_closure_for_method_calls)]
-#![allow(unused)]
-#![allow(
+#![allow(clippy::redundant_closure_call)]
+#![expect(
     clippy::needless_borrow,
     clippy::needless_option_as_deref,
-    clippy::needless_pass_by_value,
     clippy::no_effect,
     clippy::option_map_unit_fn,
-    clippy::redundant_closure_call,
-    clippy::uninlined_format_args,
-    clippy::useless_vec,
     clippy::unnecessary_map_on_constructor,
-    clippy::needless_lifetimes
+    clippy::unnecessary_option_map_or_else,
+    clippy::useless_vec
 )]
 
 use std::path::{Path, PathBuf};
@@ -660,4 +657,33 @@ fn issue16641() {
 
     (0..10).flat_map(|x| (0..10).map(|y| closure(y))).count();
     //~^ redundant_closure
+}
+
+mod issue_13094 {
+    fn issue_13094<T>(
+        mat_a: &[Vec<T>],
+        mat_b: &[Vec<T>],
+        add: impl Fn(T, T) -> T,
+        mul: impl Fn(T, T) -> T,
+    ) -> Vec<Vec<T>>
+    where
+        T: Clone,
+    {
+        // C(i,j) = Σ（0,k-1) A(i,k) * B(k,j)
+        let m = mat_a.len();
+        let n = mat_b.len();
+        (0..m)
+            .map(|i| {
+                (0..n)
+                    .map(|j| {
+                        (0..m)
+                            .map(|k| mul(mat_a[i][k].clone(), mat_b[k][j].clone()))
+                            .reduce(|a, b| add(a, b))
+                            //~^ redundant_closure
+                            .expect("Matrix must be qualified!")
+                    })
+                    .collect()
+            })
+            .collect()
+    }
 }

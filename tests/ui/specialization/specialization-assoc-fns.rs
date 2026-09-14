@@ -2,7 +2,7 @@
 
 // Test that non-method associated functions can be specialized
 
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 trait Foo {
     fn mk() -> Self;

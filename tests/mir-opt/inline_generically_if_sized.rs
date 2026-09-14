@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ test-mir-pass: Inline
 //@ compile-flags: --crate-type=lib -C panic=abort
 

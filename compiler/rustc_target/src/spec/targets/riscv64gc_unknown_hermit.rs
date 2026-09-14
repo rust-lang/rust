@@ -1,5 +1,5 @@
 use crate::spec::{
-    Arch, CodeModel, RelocModel, Target, TargetMetadata, TargetOptions, TlsModel, base,
+    Arch, CodeModel, LlvmAbi, RelocModel, Target, TargetMetadata, TargetOptions, TlsModel, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -21,7 +21,7 @@ pub(crate) fn target() -> Target {
             code_model: Some(CodeModel::Medium),
             tls_model: TlsModel::LocalExec,
             max_atomic_width: Some(64),
-            llvm_abiname: "lp64d".into(),
+            llvm_abiname: LlvmAbi::Lp64d,
             ..base::hermit::opts()
         },
     }

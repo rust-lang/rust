@@ -3,8 +3,7 @@ use std::iter;
 use tracing::debug;
 
 use super::{
-    ExpectedFound, RelateResult, StructurallyRelateAliases, TypeRelation,
-    structurally_relate_consts, structurally_relate_tys,
+    ExpectedFound, RelateResult, TypeRelation, structurally_relate_consts, structurally_relate_tys,
 };
 use crate::error::TypeError;
 use crate::inherent::*;
@@ -23,11 +22,6 @@ where
 
     fn param_env(&self) -> I::ParamEnv;
 
-    /// Whether aliases should be related structurally. This is pretty much
-    /// always `No` unless you're equating in some specific locations of the
-    /// new solver. See the comments in these use-cases for more details.
-    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases;
-
     /// Register obligations that must hold in order for this relation to hold
     fn register_goals(&mut self, obligations: impl IntoIterator<Item = Goal<I, I::Predicate>>);
 
@@ -37,9 +31,6 @@ where
         &mut self,
         obligations: impl IntoIterator<Item: Upcast<I, I::Predicate>>,
     );
-
-    /// Register `AliasRelate` obligation(s) that both types must be related to each other.
-    fn register_alias_relate_predicate(&mut self, a: I::Ty, b: I::Ty);
 }
 
 pub fn super_combine_tys<Infcx, I, R>(
@@ -114,23 +105,20 @@ where
         {
             panic!("We do not expect to encounter `Fresh` variables in the new solver")
         }
-
-        (_, ty::Alias(..)) | (ty::Alias(..), _) if infcx.next_trait_solver() => {
-            match relation.structurally_relate_aliases() {
-                StructurallyRelateAliases::Yes => structurally_relate_tys(relation, a, b),
-                StructurallyRelateAliases::No => {
-                    relation.register_alias_relate_predicate(a, b);
-                    Ok(a)
-                }
-            }
+        (ty::Alias(ty::IsRigid::No, _), _) | (_, ty::Alias(ty::IsRigid::No, _))
+            if infcx.next_trait_solver() =>
+        {
+            panic!("non-rigid aliases should be handled in the caller of super_combine_tys")
         }
 
         // All other cases of inference are errors
         (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
 
-        (ty::Alias(ty::Opaque, _), _) | (_, ty::Alias(ty::Opaque, _)) => {
-            assert!(!infcx.next_trait_solver());
-            match infcx.typing_mode() {
+        (ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }), _)
+        | (_, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }))
+            if !infcx.next_trait_solver() =>
+        {
+            match infcx.typing_mode_raw().assert_not_erased() {
                 // During coherence, opaque types should be treated as *possibly*
                 // equal to any other type. This is an
                 // extremely heavy hammer, but can be relaxed in a forwards-compatible
@@ -139,10 +127,12 @@ where
                     relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
                     Ok(a)
                 }
-                TypingMode::Analysis { .. }
-                | TypingMode::Borrowck { .. }
-                | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis => structurally_relate_tys(relation, a, b),
+                TypingMode::Typeck { .. }
+                | TypingMode::Reflection
+                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostBorrowck { .. }
+                | TypingMode::PostAnalysis
+                | TypingMode::Codegen => structurally_relate_tys(relation, a, b),
             }
         }
 
@@ -189,36 +179,39 @@ where
             )
         }
 
+        (ty::ConstKind::Alias(ty::IsRigid::No, alias), _) if infcx.next_trait_solver() => {
+            relation.register_predicates([ty::ProjectionClause {
+                projection_term: alias.into(),
+                term: b.into(),
+            }]);
+            Ok(b)
+        }
+        (_, ty::ConstKind::Alias(ty::IsRigid::No, alias)) if infcx.next_trait_solver() => {
+            relation.register_predicates([ty::ProjectionClause {
+                projection_term: alias.into(),
+                term: a.into(),
+            }]);
+            Ok(b)
+        }
+
         (ty::ConstKind::Infer(ty::InferConst::Var(vid)), _) => {
-            infcx.instantiate_const_var_raw(relation, true, vid, b)?;
+            infcx.instantiate_const_var(relation, true, vid, b)?;
             Ok(b)
         }
 
         (_, ty::ConstKind::Infer(ty::InferConst::Var(vid))) => {
-            infcx.instantiate_const_var_raw(relation, false, vid, a)?;
+            infcx.instantiate_const_var(relation, false, vid, a)?;
             Ok(a)
         }
 
-        (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
-            if infcx.cx().features().generic_const_exprs() || infcx.next_trait_solver() =>
+        (ty::ConstKind::Alias(ty::IsRigid::No, _), _)
+        | (_, ty::ConstKind::Alias(ty::IsRigid::No, _))
+            if infcx.cx().features().generic_const_exprs() =>
         {
-            match relation.structurally_relate_aliases() {
-                StructurallyRelateAliases::No => {
-                    relation.register_predicates([if infcx.next_trait_solver() {
-                        ty::PredicateKind::AliasRelate(
-                            a.into(),
-                            b.into(),
-                            ty::AliasRelationDirection::Equate,
-                        )
-                    } else {
-                        ty::PredicateKind::ConstEquate(a, b)
-                    }]);
-
-                    Ok(b)
-                }
-                StructurallyRelateAliases::Yes => structurally_relate_consts(relation, a, b),
-            }
+            relation.register_predicates([ty::PredicateKind::ConstEquate(a, b)]);
+            Ok(b)
         }
+
         _ => structurally_relate_consts(relation, a, b),
     }
 }
@@ -250,7 +243,7 @@ where
             ty::Bivariant => {
                 let has_non_region_infer = |arg: I::GenericArg| {
                     arg.has_non_region_infer()
-                        && infcx.resolve_vars_if_possible(arg).has_non_region_infer()
+                        && infcx.deeply_resolve_ignoring_regions(arg).has_non_region_infer()
                 };
                 if has_non_region_infer(a) || has_non_region_infer(b) {
                     has_unconstrained_bivariant_arg = true;

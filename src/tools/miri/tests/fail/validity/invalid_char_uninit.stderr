@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at [0]: encountered uninitialized memory, but expected a unicode scalar value
+error: Undefined Behavior: constructing invalid value of type [char; 1]: at [0], encountered uninitialized memory, but expected a unicode scalar value
   --> tests/fail/validity/invalid_char_uninit.rs:LL:CC
    |
 LL |     let _b = unsafe { MyUninit { init: () }.uninit };

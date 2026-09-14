@@ -55,7 +55,7 @@ pub enum PassMode {
     /// The argument has a layout abi of `ScalarPair`.
     Pair(Opaque, Opaque),
     /// Pass the argument after casting it.
-    Cast { pad_i32: bool, cast: Opaque },
+    Cast { pad_i32_count: u8, cast: Opaque },
     /// Pass the argument indirectly via a hidden pointer.
     Indirect { attrs: Opaque, meta_attrs: Opaque, on_stack: bool },
 }
@@ -232,12 +232,20 @@ pub enum TagEncoding {
     },
 }
 
+/// How many scalable vectors are in a `ValueAbi::ScalableVector`?
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct NumScalableVectors(pub(crate) u8);
+
 /// Describes how values of the type are passed by target ABIs,
 /// in terms of categories of C types there are ABI rules for.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum ValueAbi {
     Scalar(Scalar),
-    ScalarPair(Scalar, Scalar),
+    ScalarPair {
+        a: Scalar,
+        b: Scalar,
+        b_offset: Size,
+    },
     Vector {
         element: Scalar,
         count: u64,
@@ -245,6 +253,7 @@ pub enum ValueAbi {
     ScalableVector {
         element: Scalar,
         count: u64,
+        number_of_vectors: NumScalableVectors,
     },
     Aggregate {
         /// If true, the size is exact, otherwise it's only a lower bound.
@@ -257,7 +266,7 @@ impl ValueAbi {
     pub fn is_unsized(&self) -> bool {
         match *self {
             ValueAbi::Scalar(_)
-            | ValueAbi::ScalarPair(..)
+            | ValueAbi::ScalarPair { .. }
             | ValueAbi::Vector { .. }
             // FIXME(rustc_scalable_vector): Scalable vectors are `Sized` while the
             // `sized_hierarchy` feature is not yet fully implemented. After `sized_hierarchy` is
@@ -450,8 +459,11 @@ pub enum CallConvention {
     PreserveMost,
     PreserveAll,
     PreserveNone,
+    Tail,
 
     Custom,
+
+    Swift,
 
     // Target-specific calling conventions.
     ArmAapcs,

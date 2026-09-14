@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a dangling box (0x18[noalloc] has no provenance)
+error: Undefined Behavior: constructing invalid value of type std::boxed::Box<i32>: encountered a dangling box (0x18[noalloc] has no provenance)
   --> tests/fail/dangling_pointers/deref_dangling_box.rs:LL:CC
    |
 LL |     let _val = unsafe { addr_of_mut!(**outer) };

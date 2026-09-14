@@ -1,13 +1,13 @@
 error: const stability on the impl does not match the const stability on the trait
   --> $DIR/staged-api.rs:96:1
    |
-LL | impl const U for u8 {}
+LL | const impl U for u8 {}
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this impl is (implicitly) stable...
   --> $DIR/staged-api.rs:96:1
    |
-LL | impl const U for u8 {}
+LL | const impl U for u8 {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 note: ...but the trait is unstable
   --> $DIR/staged-api.rs:90:13
@@ -18,7 +18,7 @@ LL | const trait U {}
 error: trait implementations cannot be const stable yet
   --> $DIR/staged-api.rs:100:1
    |
-LL | impl const U for u16 {}
+LL | const impl U for u16 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
@@ -26,13 +26,13 @@ LL | impl const U for u16 {}
 error: const stability on the impl does not match the const stability on the trait
   --> $DIR/staged-api.rs:100:1
    |
-LL | impl const U for u16 {}
+LL | const impl U for u16 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this impl is (implicitly) stable...
   --> $DIR/staged-api.rs:100:1
    |
-LL | impl const U for u16 {}
+LL | const impl U for u16 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
 note: ...but the trait is unstable
   --> $DIR/staged-api.rs:90:13
@@ -43,7 +43,7 @@ LL | const trait U {}
 error: trait implementations cannot be const stable yet
   --> $DIR/staged-api.rs:111:1
    |
-LL | impl const S for u16 {}
+LL | const impl S for u16 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
@@ -51,13 +51,13 @@ LL | impl const S for u16 {}
 error: const stability on the impl does not match the const stability on the trait
   --> $DIR/staged-api.rs:115:1
    |
-LL | impl const S for u32 {}
+LL | const impl S for u32 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this impl is unstable...
   --> $DIR/staged-api.rs:115:1
    |
-LL | impl const S for u32 {}
+LL | const impl S for u32 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
 note: ...but the trait is stable
   --> $DIR/staged-api.rs:93:13

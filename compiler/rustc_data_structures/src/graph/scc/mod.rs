@@ -27,7 +27,7 @@ mod tests;
 /// the max/min element of the SCC, or all of the above.
 ///
 /// Concretely, the both merge operations must commute, e.g. where `merge`
-/// is `update_scc` and `update_reached`: `a.merge(b) == b.merge(a)`
+/// is `update_scc` and `update_reachable`: `a.merge(b) == b.merge(a)`
 ///
 /// In general, what you want is probably always min/max according
 /// to some ordering, potentially with side constraints (min x such

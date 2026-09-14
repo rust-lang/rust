@@ -1,12 +1,14 @@
-use crate::{
-    FnAbi,
-    next_solver::{
-        Binder, Clauses, EarlyBinder, FnSig, PolyFnSig, StoredBoundVarKinds, StoredClauses,
-        StoredTy, StoredTys, Ty, abi::Safety,
-    },
+use hir_def::TraitId;
+use macros::{TypeFoldable, TypeVisitable};
+use salsa::SalsaValue;
+
+use crate::next_solver::{
+    Binder, Clauses, DbInterner, EarlyBinder, FnSig, FnSigKind, GenericArg, PolyFnSig,
+    StoredBoundVarKinds, StoredClauses, StoredGenericArg, StoredGenericArgs, StoredTy, StoredTys,
+    TraitRef, Ty,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub struct StoredEarlyBinder<T>(T);
 
 impl<T> StoredEarlyBinder<T> {
@@ -38,6 +40,13 @@ impl StoredEarlyBinder<StoredTy> {
     }
 }
 
+impl StoredEarlyBinder<StoredGenericArg> {
+    #[inline]
+    pub fn get<'db>(&self) -> EarlyBinder<'db, GenericArg<'db>> {
+        self.get_with(|it| it.as_ref())
+    }
+}
+
 impl StoredEarlyBinder<StoredClauses> {
     #[inline]
     pub fn get<'db>(&self) -> EarlyBinder<'db, Clauses<'db>> {
@@ -45,39 +54,80 @@ impl StoredEarlyBinder<StoredClauses> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+impl StoredEarlyBinder<StoredPolyFnSig> {
+    #[inline]
+    pub fn get<'db>(&'db self) -> EarlyBinder<'db, PolyFnSig<'db>> {
+        self.get_with(|it| it.get())
+    }
+}
+
+impl StoredEarlyBinder<StoredTraitRef> {
+    #[inline]
+    pub fn get<'db>(&'db self, interner: DbInterner<'db>) -> EarlyBinder<'db, TraitRef<'db>> {
+        self.get_with(|it| it.get(interner))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct StoredPolyFnSig {
     bound_vars: StoredBoundVarKinds,
-    inputs_and_output: StoredTys,
-    c_variadic: bool,
-    safety: Safety,
-    abi: FnAbi,
+    sig: StoredFnSig,
 }
 
 impl StoredPolyFnSig {
     #[inline]
     pub fn new(sig: PolyFnSig<'_>) -> Self {
         let bound_vars = sig.bound_vars().store();
-        let sig = sig.skip_binder();
-        Self {
-            bound_vars,
-            inputs_and_output: sig.inputs_and_output.store(),
-            c_variadic: sig.c_variadic,
-            safety: sig.safety,
-            abi: sig.abi,
-        }
+        Self { bound_vars, sig: StoredFnSig::new(sig.skip_binder()) }
     }
 
     #[inline]
     pub fn get(&self) -> PolyFnSig<'_> {
-        Binder::bind_with_vars(
-            FnSig {
-                inputs_and_output: self.inputs_and_output.as_ref(),
-                c_variadic: self.c_variadic,
-                safety: self.safety,
-                abi: self.abi,
-            },
-            self.bound_vars.as_ref(),
-        )
+        Binder::bind_with_vars(self.sig.get(), self.bound_vars.as_ref())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
+pub struct StoredFnSig {
+    inputs_and_output: StoredTys,
+    #[type_visitable(ignore)]
+    fn_sig_kind: FnSigKind<'static>,
+}
+
+impl StoredFnSig {
+    #[inline]
+    pub fn new(sig: FnSig<'_>) -> Self {
+        Self {
+            inputs_and_output: sig.inputs_and_output.store(),
+            fn_sig_kind: FnSigKind::new(
+                sig.fn_sig_kind.abi(),
+                sig.fn_sig_kind.safety(),
+                sig.fn_sig_kind.c_variadic(),
+            ),
+        }
+    }
+
+    #[inline]
+    pub fn get(&self) -> FnSig<'_> {
+        FnSig { inputs_and_output: self.inputs_and_output.as_ref(), fn_sig_kind: self.fn_sig_kind }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable, SalsaValue)]
+pub struct StoredTraitRef {
+    #[type_visitable(ignore)]
+    def_id: TraitId,
+    args: StoredGenericArgs,
+}
+
+impl StoredTraitRef {
+    #[inline]
+    pub fn new(trait_ref: TraitRef<'_>) -> Self {
+        Self { def_id: trait_ref.def_id.0, args: trait_ref.args.store() }
+    }
+
+    #[inline]
+    pub fn get<'db>(&'db self, interner: DbInterner<'db>) -> TraitRef<'db> {
+        TraitRef::new_from_args(interner, self.def_id.into(), self.args.as_ref())
     }
 }

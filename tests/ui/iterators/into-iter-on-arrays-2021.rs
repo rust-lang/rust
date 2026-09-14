@@ -4,13 +4,14 @@
 use std::array::IntoIter;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::boxed::BoxedArrayIntoIter;
 
 fn main() {
     let array = [0; 10];
 
     // In 2021, the method dispatches to `IntoIterator for [T; N]`.
     let _: IntoIter<i32, 10> = array.into_iter();
-    let _: IntoIter<i32, 10> = Box::new(array).into_iter();
+    let _: BoxedArrayIntoIter<i32, 10> = Box::new(array).into_iter();
 
     // The `array_into_iter` lint doesn't cover other wrappers that deref to an array.
     let _: IntoIter<i32, 10> = Rc::new(array).into_iter();

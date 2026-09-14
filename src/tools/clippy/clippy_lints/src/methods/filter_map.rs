@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::macros::{is_panic, matching_root_macro_call, root_macro_call};
-use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::source::{indent_of, reindent_multiline, snippet};
 use clippy_utils::{SpanlessEq, higher, peel_blocks, sym};
 use hir::{Body, HirId, MatchSource, Pat};
@@ -9,9 +9,10 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::{Closure, Expr, ExprKind, PatKind, PathSegment, QPath, UnOp};
 use rustc_lint::LateContext;
+use rustc_middle::ty::TypeckResults;
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_span::Span;
 use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{Span, SyntaxContext};
 
 use super::{MANUAL_FILTER_MAP, MANUAL_FIND_MAP, OPTION_FILTER_MAP, RESULT_FILTER_MAP};
 
@@ -108,6 +109,7 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
     pub fn check_map_call(
         &self,
         cx: &LateContext<'tcx>,
+        ctxt: SyntaxContext,
         map_body: &'tcx Body<'tcx>,
         map_param_id: HirId,
         filter_param_id: HirId,
@@ -136,7 +138,9 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                     // .map(|y| y[.acceptable_method()].unwrap())
                     && let simple_equal = (receiver.res_local_id() == Some(filter_param_id)
                         && map_arg_peeled.res_local_id() == Some(map_param_id))
-                    && let eq_fallback = (|a: &Expr<'_>, b: &Expr<'_>| {
+                    && let eq_fallback =
+                    (|a_typeck_results: &TypeckResults<'tcx>, a: &Expr<'_>,
+                     b_typeck_results: &TypeckResults<'tcx>, b: &Expr<'_>| {
                         // in `filter(|x| ..)`, replace `*x` with `x`
                         let a_path = if !is_filter_param_ref
                             && let ExprKind::Unary(UnOp::Deref, expr_path) = a.kind
@@ -144,10 +148,10 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                         // let the filter closure arg and the map closure arg be equal
                         a_path.res_local_id() == Some(filter_param_id)
                             && b.res_local_id() == Some(map_param_id)
-                            && cx.typeck_results().expr_ty_adjusted(a) == cx.typeck_results().expr_ty_adjusted(b)
+                            && a_typeck_results.expr_ty_adjusted(a) == b_typeck_results.expr_ty_adjusted(b)
                     })
                     && (simple_equal
-                        || SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(receiver, map_arg_peeled))
+                        || SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(ctxt, receiver, map_arg_peeled))
                 {
                     Some(CheckResult::Method {
                         map_arg,
@@ -244,11 +248,11 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                 }),
                 _ => None,
             }
-        } else if matching_root_macro_call(cx, expr.span, sym::matches_macro).is_some()
+        } else if let ExprKind::Match(scrutinee, [arm, _], _) = expr.kind
             // we know for a fact that the wildcard pattern is the second arm
-            && let ExprKind::Match(scrutinee, [arm, _], _) = expr.kind
             && scrutinee.res_local_id() == Some(filter_param_id)
             && let PatKind::TupleStruct(QPath::Resolved(_, path), ..) = arm.pat.kind
+            && matching_root_macro_call(cx, expr.span, sym::matches_macro).is_some()
             && let Some(variant_def_id) = path.res.opt_def_id()
         {
             Some(OffendingFilterExpr::Matches { variant_def_id })
@@ -320,7 +324,9 @@ pub(super) fn check(
         return;
     }
 
-    if let Some((map_param_ident, check_result)) = is_find_or_filter(cx, map_recv, filter_arg, map_arg) {
+    if let Some((map_param_ident, check_result)) =
+        is_find_or_filter(cx, expr.span.ctxt(), map_recv, filter_arg, map_arg)
+    {
         let span = filter_span.with_hi(expr.span.hi());
         let (filter_name, lint) = if is_find {
             ("find", MANUAL_FIND_MAP)
@@ -394,6 +400,7 @@ pub(super) fn check(
 
 fn is_find_or_filter<'a>(
     cx: &LateContext<'a>,
+    ctxt: SyntaxContext,
     map_recv: &Expr<'_>,
     filter_arg: &Expr<'_>,
     map_arg: &Expr<'_>,
@@ -419,7 +426,7 @@ fn is_find_or_filter<'a>(
         && let PatKind::Binding(_, map_param_id, map_param_ident, None) = map_param.pat.kind
 
         && let Some(check_result) =
-            offending_expr.check_map_call(cx, map_body, map_param_id, filter_param_id, is_filter_param_ref)
+            offending_expr.check_map_call(cx, ctxt, map_body, map_param_id, filter_param_id, is_filter_param_ref)
     {
         return Some((map_param_ident, check_result));
     }

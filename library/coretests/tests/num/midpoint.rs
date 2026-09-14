@@ -4,7 +4,7 @@
 //!  - midpoint(-a, -b) == -midpoint(a, b)
 
 #[test]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri is too slow
 fn midpoint_obvious_impl_i8() {
     for a in i8::MIN..=i8::MAX {
         for b in i8::MIN..=i8::MAX {
@@ -14,7 +14,7 @@ fn midpoint_obvious_impl_i8() {
 }
 
 #[test]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri is too slow
 fn midpoint_obvious_impl_u8() {
     for a in u8::MIN..=u8::MAX {
         for b in u8::MIN..=u8::MAX {
@@ -24,7 +24,7 @@ fn midpoint_obvious_impl_u8() {
 }
 
 #[test]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri is too slow
 fn midpoint_order_expectation_i8() {
     for a in i8::MIN..=i8::MAX {
         for b in i8::MIN..=i8::MAX {
@@ -34,7 +34,7 @@ fn midpoint_order_expectation_i8() {
 }
 
 #[test]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri is too slow
 fn midpoint_order_expectation_u8() {
     for a in u8::MIN..=u8::MAX {
         for b in u8::MIN..=u8::MAX {
@@ -44,7 +44,7 @@ fn midpoint_order_expectation_u8() {
 }
 
 #[test]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri is too slow
 fn midpoint_negative_expectation() {
     for a in 0..=i8::MAX {
         for b in 0..=i8::MAX {

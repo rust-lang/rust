@@ -57,9 +57,6 @@
 //!
 //! [`Once`]: crate::sync::Once
 
-// If we are not unwinding, `PoisonError` is uninhabited.
-#![cfg_attr(not(panic = "unwind"), expect(unreachable_code))]
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::condvar::Condvar;
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
@@ -266,6 +263,7 @@ impl<T> PoisonError<T> {
     /// or [`RwLock::read`](crate::sync::RwLock::read).
     ///
     /// This method may panic if std was built with `panic="abort"`.
+    #[doc(auto_cfg = false)]
     #[cfg(panic = "unwind")]
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn new(data: T) -> PoisonError<T> {
@@ -278,6 +276,7 @@ impl<T> PoisonError<T> {
     /// or [`RwLock::read`](crate::sync::RwLock::read).
     ///
     /// This method may panic if std was built with `panic="abort"`.
+    #[doc(auto_cfg = false)]
     #[cfg(not(panic = "unwind"))]
     #[stable(feature = "sync_poison", since = "1.2.0")]
     #[track_caller]

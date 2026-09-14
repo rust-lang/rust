@@ -4,7 +4,6 @@ struct T<const X: bool>;
 fn bad_args_1() {
     S::<5 + 2 >> 7>;
     //~^ ERROR expressions must be enclosed in braces to be used as const generic arguments
-    //~| ERROR comparison operators cannot be chained
 }
 
 fn bad_args_2() {

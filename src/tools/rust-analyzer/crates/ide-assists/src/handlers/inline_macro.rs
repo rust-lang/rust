@@ -1,8 +1,10 @@
-use hir::db::ExpandDatabase;
 use ide_db::syntax_helpers::prettify_macro_expansion;
-use syntax::ast::{self, AstNode};
+use syntax::ast::{self, AstNode, edit::IndentLevel};
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{
+    AssistContext, AssistId, Assists,
+    utils::{cover_edit_range, original_range_in},
+};
 
 // Assist: inline_macro
 //
@@ -35,11 +37,19 @@ use crate::{AssistContext, AssistId, Assists};
 //     println!("{number}");
 // }
 // ```
-pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let unexpanded = ctx.find_node_at_offset::<ast::MacroCall>()?;
-    let macro_call = ctx.sema.to_def(&unexpanded)?;
+pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
+    let source = ctx.source_file().syntax();
+    let sel = ctx.selection_trimmed();
+    let (macro_call, text_range) = ctx
+        .sema
+        .find_nodes_at_offset_with_descend::<ast::MacroCall>(source, ctx.offset())
+        .find_map(|macro_call_node| {
+            let macro_call = ctx.sema.to_def(&macro_call_node)?;
+            let original_range =
+                original_range_in(ctx.file_id(), &ctx.sema, macro_call_node.syntax())?;
+            original_range.contains_range(sel).then_some((macro_call, original_range))
+        })?;
     let target_crate_id = ctx.sema.file_to_module_def(ctx.vfs_file_id())?.krate(ctx.db()).into();
-    let text_range = unexpanded.syntax().text_range();
 
     acc.add(
         AssistId::refactor_inline("inline_macro"),
@@ -47,11 +57,22 @@ pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         text_range,
         |builder| {
             let expanded = ctx.sema.parse_or_expand(macro_call.into());
-            let span_map = ctx.sema.db.expansion_span_map(macro_call);
+            let span_map = macro_call.expansion_span_map(ctx.sema.db);
             // Don't call `prettify_macro_expansion()` outside the actual assist action; it does some heavy rowan tree manipulation,
             // which can be very costly for big macros when it is done *even without the assist being invoked*.
-            let expanded = prettify_macro_expansion(ctx.db(), expanded, &span_map, target_crate_id);
-            builder.replace(text_range, expanded.to_string())
+            let expanded = prettify_macro_expansion(ctx.db(), expanded, span_map, target_crate_id);
+
+            // macro_call is from an expansion, use source position for indent
+            let indent = source
+                .token_at_offset(text_range.start())
+                .right_biased()
+                .map_or_else(IndentLevel::zero, |t| IndentLevel::from_token(&t));
+            let expanded = ast::edit::indent(&expanded, indent);
+
+            let editor = builder.make_editor(source);
+            let place = cover_edit_range(source, text_range);
+            editor.replace_all(place, vec![expanded.into()]);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -100,6 +121,7 @@ macro_rules! num {
 "#
         };
     }
+
     #[test]
     fn inline_macro_target() {
         check_assist_target(
@@ -150,6 +172,23 @@ macro_rules! num {
         check_assist_not_applicable(
             inline_macro,
             concat!(simple_macro!(), r#"fn f() { let result$0 = foo!(foo); }"#),
+        );
+    }
+
+    #[test]
+    fn inline_macro_in_included_file() {
+        // Regression test for climbing from the included file into an uncached includer root.
+        check_assist_not_applicable(
+            inline_macro,
+            r#"
+//- minicore:include
+//- /main.rs
+include!("a.rs");
+//- /a.rs
+fn foo() {
+    let x = 1$0;
+}
+"#,
         );
     }
 
@@ -207,15 +246,15 @@ macro_rules! num {
             inline_macro,
             r#"
 macro_rules! foo {
-  () => {foo!()}
+  ($t:tt) => {foo!(1)}
 }
-fn f() { let result = foo$0!(); }
+fn f() { let result = foo$0!(0); }
 "#,
             r#"
 macro_rules! foo {
-  () => {foo!()}
+  ($t:tt) => {foo!(1)}
 }
-fn f() { let result = foo!(); }
+fn f() { let result = foo!(1); }
 "#,
         );
     }
@@ -258,7 +297,7 @@ macro_rules! whitespace {
         if true {}
     };
 }
-fn f() { if true{}; }
+fn f() { if true {}; }
 "#,
         )
     }
@@ -297,12 +336,12 @@ macro_rules! foo {
 }
 fn main() {
     cfg_if!{
-    if #[cfg(test)]{
-        1;
-    }else {
-        1;
-    }
-};
+        if #[cfg(test)]{
+            1;
+        }else {
+            1;
+        }
+    };
 }
 "#,
         );
@@ -373,6 +412,37 @@ fn bar() {
 fn bar() {
     a::Foo;
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn inline_macro_in_macro() {
+        check_assist(
+            inline_macro,
+            r#"
+macro_rules! foo { () => { 2 }; }
+macro_rules! m { ($($tt:tt)*) => { $($tt)* }; }
+fn f() { m! { $0foo!(); } }
+"#,
+            r#"
+macro_rules! foo { () => { 2 }; }
+macro_rules! m { ($($tt:tt)*) => { $($tt)* }; }
+fn f() { m! { 2; } }
+"#,
+        );
+        check_assist(
+            inline_macro,
+            r#"
+//- proc_macros: identity
+macro_rules! foo { () => { 2 }; }
+#[proc_macros::identity]
+fn f() { $0foo!(); }
+"#,
+            r#"
+macro_rules! foo { () => { 2 }; }
+#[proc_macros::identity]
+fn f() { 2; }
 "#,
         );
     }

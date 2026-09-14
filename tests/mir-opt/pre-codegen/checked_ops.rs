@@ -4,7 +4,7 @@
 #![crate_type = "lib"]
 #![feature(step_trait)]
 
-// EMIT_MIR checked_ops.step_forward.PreCodegen.after.mir
+// EMIT_MIR checked_ops.step_forward.runtime-optimized.after.mir
 pub fn step_forward(x: u16, n: usize) -> u16 {
     // This uses `u16` so that the conversion to usize is always widening.
 
@@ -13,7 +13,7 @@ pub fn step_forward(x: u16, n: usize) -> u16 {
     std::iter::Step::forward(x, n)
 }
 
-// EMIT_MIR checked_ops.checked_shl.PreCodegen.after.mir
+// EMIT_MIR checked_ops.checked_shl.runtime-optimized.after.mir
 pub fn checked_shl(x: u32, rhs: u32) -> Option<u32> {
     // CHECK-LABEL: fn checked_shl
     // CHECK: [[TEMP:_[0-9]+]] = ShlUnchecked(copy _1, copy _2)
@@ -21,7 +21,7 @@ pub fn checked_shl(x: u32, rhs: u32) -> Option<u32> {
     x.checked_shl(rhs)
 }
 
-// EMIT_MIR checked_ops.use_checked_sub.PreCodegen.after.mir
+// EMIT_MIR checked_ops.use_checked_sub.runtime-optimized.after.mir
 pub fn use_checked_sub(x: u32, rhs: u32) {
     // We want this to be equivalent to open-coding it, leaving no `Option`s around.
     // FIXME(#138544): It's not yet.
@@ -37,7 +37,7 @@ pub fn use_checked_sub(x: u32, rhs: u32) {
     }
 }
 
-// EMIT_MIR checked_ops.saturating_sub_at_home.PreCodegen.after.mir
+// EMIT_MIR checked_ops.saturating_sub_at_home.runtime-optimized.after.mir
 pub fn saturating_sub_at_home(lhs: u32, rhs: u32) -> u32 {
     // FIXME(#138544): Similarly here, the `Option` ought to optimize away
 

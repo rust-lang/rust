@@ -2,26 +2,26 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::{is_from_proc_macro, trait_ref_of_method};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_ast::visit::{try_visit, walk_list};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
-use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
+use rustc_hir::attrs::lang_items;
 use rustc_hir::intravisit::{
-    Visitor, VisitorExt, walk_fn_decl, walk_generic_args, walk_generics, walk_impl_item_ref, walk_param_bound,
-    walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty, walk_where_predicate,
+    IgnoreNested, NestedFilter, Visitor, walk_fn_decl, walk_generic_args, walk_generic_param,
+    walk_generics, walk_impl_item_ref, walk_param_bound, walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty,
+    walk_where_predicate,
 };
 use rustc_hir::{
     AmbigArg, BodyId, FnDecl, FnPtrTy, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind,
     Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeKind, LifetimeParamKind, Node,
-    PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereBoundPredicate, WherePredicate,
-    WherePredicateKind, lang_items,
+    PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, TraitRef, Ty, TyKind, WhereBoundPredicate,
+    WherePredicate, WherePredicateKind,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, kw};
@@ -136,7 +136,7 @@ pub struct Lifetimes {
 
 impl Lifetimes {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -157,6 +157,12 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
             && !is_from_proc_macro(cx, item)
         {
             report_extra_impl_lifetimes(cx, impl_);
+        }
+    }
+
+    fn check_poly_trait_ref(&mut self, cx: &LateContext<'tcx>, poly_trait_ref: &'tcx PolyTraitRef<'tcx>) {
+        if !poly_trait_ref.span.from_expansion() {
+            report_extra_trait_object_lifetimes(cx, poly_trait_ref.bound_generic_params, &poly_trait_ref.trait_ref);
         }
     }
 
@@ -370,8 +376,8 @@ fn could_use_elision<'tcx>(
 
     // A lifetime can be newly elided if:
     // - It occurs only once among the inputs.
-    // - If there are multiple input lifetimes, then the newly elided lifetime does not occur among the
-    //   outputs (because eliding such an lifetime would create an ambiguity).
+    // - If there are multiple input lifetimes, then the newly elided lifetime does not occur among the outputs (because
+    //   eliding such an lifetime would create an ambiguity).
     let elidable_lts = named_lifetime_occurrences(&input_lts)
         .into_iter()
         .filter_map(|(def_id, occurrences)| {
@@ -411,7 +417,7 @@ fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxIndexSet<LocalDefI
 fn non_elidable_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Ident>, msrv: Msrv) -> bool {
     if let Some(ident) = ident
         && ident.name == kw::SelfLower
-        && !func.implicit_self.has_implicit_self()
+        && !func.implicit_self().has_implicit_self()
         && let Some(self_ty) = func.inputs.first()
         && !msrv.meets(cx, msrvs::EXPLICIT_SELF_TYPE_ELISION)
     {
@@ -551,14 +557,6 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
                     }
                 }
             },
-            WherePredicateKind::EqPredicate(ref pred) => {
-                let mut visitor = RefVisitor::new(cx);
-                walk_unambig_ty(&mut visitor, pred.lhs_ty);
-                walk_unambig_ty(&mut visitor, pred.rhs_ty);
-                if !visitor.lts.is_empty() {
-                    return true;
-                }
-            },
         }
     }
     false
@@ -587,9 +585,8 @@ impl<'cx, 'tcx, F> LifetimeChecker<'cx, 'tcx, F>
 where
     F: NestedFilter<'tcx>,
 {
-    fn new(cx: &'cx LateContext<'tcx>, generics: &'tcx Generics<'_>) -> LifetimeChecker<'cx, 'tcx, F> {
-        let map = generics
-            .params
+    fn new(cx: &'cx LateContext<'tcx>, generic_params: &'tcx [GenericParam<'_>]) -> LifetimeChecker<'cx, 'tcx, F> {
+        let map = generic_params
             .iter()
             .filter_map(|par| match par.kind {
                 GenericParamKind::Lifetime {
@@ -598,6 +595,7 @@ where
                 _ => None,
             })
             .collect();
+
         Self {
             cx,
             map,
@@ -697,7 +695,7 @@ fn is_candidate_for_elision(fd: &FnDecl<'_>) -> bool {
         }
     }
 
-    if fd.lifetime_elision_allowed
+    if fd.lifetime_elision_allowed()
         && let Return(ret_ty) = fd.output
         && walk_unambig_ty(&mut V, ret_ty).is_break()
     {
@@ -711,8 +709,36 @@ fn is_candidate_for_elision(fd: &FnDecl<'_>) -> bool {
     }
 }
 
+fn report_extra_trait_object_lifetimes<'tcx>(
+    cx: &LateContext<'tcx>,
+    generic_params: &'tcx [GenericParam<'_>],
+    trait_ref: &'tcx TraitRef<'tcx>,
+) {
+    let mut checker = LifetimeChecker::<IgnoreNested>::new(cx, generic_params);
+
+    for param in generic_params {
+        walk_generic_param(&mut checker, param);
+    }
+
+    walk_trait_ref(&mut checker, trait_ref);
+
+    for (def_id, usages) in checker.map {
+        if usages
+            .iter()
+            .all(|usage| usage.in_where_predicate && !usage.in_bounded_ty && !usage.in_generics_arg)
+        {
+            span_lint(
+                cx,
+                EXTRA_UNUSED_LIFETIMES,
+                cx.tcx.def_span(def_id),
+                "this lifetime isn't used in the type",
+            );
+        }
+    }
+}
+
 fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, generics: &'tcx Generics<'_>) {
-    let mut checker = LifetimeChecker::<hir_nested_filter::None>::new(cx, generics);
+    let mut checker = LifetimeChecker::<IgnoreNested>::new(cx, generics.params);
 
     walk_generics(&mut checker, generics);
     walk_fn_decl(&mut checker, func);
@@ -733,7 +759,7 @@ fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, 
 }
 
 fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'_>) {
-    let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, impl_.generics);
+    let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, impl_.generics.params);
 
     walk_generics(&mut checker, impl_.generics);
     if let Some(of_trait) = impl_.of_trait {
@@ -888,10 +914,10 @@ fn elision_suggestions(
         vec![(generics.span, String::new())]
     } else {
         // 1. Start from the last elidable lifetime
-        // 2. While the lifetimes preceding it are also elidable, construct spans going from the current
-        //    lifetime to the comma before it
-        // 3. Once this chain of elidable lifetimes stops, switch to constructing spans going from the
-        //    current lifetime to the comma _after_ it
+        // 2. While the lifetimes preceding it are also elidable, construct spans going from the current lifetime to the
+        //    comma before it
+        // 3. Once this chain of elidable lifetimes stops, switch to constructing spans going from the current lifetime
+        //    to the comma _after_ it
         let mut end: Option<LocalDefId> = None;
         elidable_lts
             .iter()

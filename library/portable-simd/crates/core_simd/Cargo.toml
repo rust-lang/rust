@@ -18,12 +18,24 @@ wasm-bindgen = "0.2"
 wasm-bindgen-test = "0.3"
 
 [dev-dependencies.proptest]
-version = "0.10"
+workspace = true
+
+# Enable the `wasm_js` feature so that getrandom works on wasm32-unknown-unknown.
+[dev-dependencies.getrandom]
+version = "0.3.4"
 default-features = false
-features = ["alloc"]
+features = ["wasm_js"]
 
 [dev-dependencies.test_helpers]
 path = "../test_helpers"
 
 [dev-dependencies]
 std_float = { path = "../std_float/", features = ["as_crate"] }
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    # Internal features aren't marked known config by default, we use these to
+    # gate tests.
+    'cfg(target_has_reliable_f16_math)',
+]

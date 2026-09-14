@@ -9,7 +9,7 @@ use crate::{
 use hir::{
     AsAssocItem, AssocItem, CallableKind, FileRange, HasCrate, InFile, ModuleDef, Semantics, sym,
 };
-use ide_db::{MiniCore, ra_fixture::UpmapFromRaFixture};
+use ide_db::ra_fixture::{RaFixtureConfig, UpmapFromRaFixture};
 use ide_db::{
     RootDatabase, SymbolKind,
     base_db::{AnchoredPath, SourceDatabase},
@@ -26,7 +26,7 @@ use syntax::{
 
 #[derive(Debug)]
 pub struct GotoDefinitionConfig<'a> {
-    pub minicore: MiniCore<'a>,
+    pub ra_fixture: RaFixtureConfig<'a>,
 }
 
 // Feature: Go to Definition
@@ -40,6 +40,21 @@ pub struct GotoDefinitionConfig<'a> {
 // | VS Code | <kbd>F12</kbd> |
 //
 // ![Go to Definition](https://user-images.githubusercontent.com/48062697/113065563-025fbe00-91b1-11eb-83e4-a5a703610b23.gif)
+//
+// #### Special Go to Definitions
+//
+// You can go to definition on operators and keywords as well. The behavior goes as follows:
+//
+//  - On overloadable operators, this will take you to the `impl` of the operator's trait for this type, or to the trait if
+//    the impl cannot be determined.
+//  - For `?` on `Result` that goes through a non-trivial `From` (i.e. not the blanket `impl<T> From<T> for T`), it'll take
+//    you to the `From` impl.
+//  - On control flow keywords (loops, conditions, etc.) and `fn`, it'll take you to all exit points for this construct
+//    or its entrance, the opposite of the keyword you're at (e.g. on `fn` it'll take you to all exit points, and on `return`
+//    it'll take you to the `fn`).
+//  - It'll skip known blanket impls from the standard library where possible. For example, on a `try_into()` that comes
+//    from the blanket `impl<T: TryFrom<U>, U> TryInto<T> for U`, it'll take you to the `TryFrom` impl, and if it also
+//    comes from the blanket `impl<T: From<U>, U> TryFrom<U> for T`, it'll take you to the `From` impl.
 pub(crate) fn goto_definition(
     db: &RootDatabase,
     FilePosition { file_id, offset }: FilePosition,
@@ -56,7 +71,9 @@ pub(crate) fn goto_definition(
         | T![super]
         | T![crate]
         | T![Self]
-        | COMMENT => 4,
+        | COMMENT
+        | INNER_DOC_COMMENT
+        | OUTER_DOC_COMMENT => 4,
         // index and prefix ops
         T!['['] | T![']'] | T![?] | T![*] | T![-] | T![!] => 3,
         kind if kind.is_keyword(edition) => 2,
@@ -95,6 +112,11 @@ pub(crate) fn goto_definition(
             continue;
         }
 
+        if let Some(n) = find_definition_for_comparison_operators(sema, &token.value) {
+            navs.extend(n);
+            continue;
+        }
+
         let parent = token.value.parent()?;
 
         if let Some(question_mark_conversion) = goto_question_mark_conversions(sema, &parent) {
@@ -105,7 +127,7 @@ pub(crate) fn goto_definition(
         if let Some(token) = ast::String::cast(token.value.clone())
             && let Some(original_token) = ast::String::cast(original_token.clone())
             && let Some((analysis, fixture_analysis)) =
-                Analysis::from_ra_fixture(sema, original_token, &token, config.minicore)
+                Analysis::from_ra_fixture(sema, original_token, &token, &config.ra_fixture)
             && let Some((virtual_file_id, file_offset)) = fixture_analysis.map_offset_down(offset)
         {
             return hir::attach_db_allow_change(&analysis.db, || {
@@ -264,6 +286,62 @@ fn find_definition_for_known_blanket_dual_impls(
     Some(def_to_nav(sema, def))
 }
 
+// If the token is a comparison operator (!=, <, <=, >, >=) that resolves to a default trait method, navigate to the corresponding primary method (eq for ne, partial_cmp for the others).
+fn find_definition_for_comparison_operators(
+    sema: &Semantics<'_, RootDatabase>,
+    original_token: &SyntaxToken,
+) -> Option<Vec<NavigationTarget>> {
+    let bin_expr = ast::BinExpr::cast(original_token.parent()?)?;
+
+    let f = sema.resolve_bin_expr(&bin_expr)?;
+    let assoc = f.as_assoc_item(sema.db)?;
+
+    let lhs_type = sema.type_of_expr(&bin_expr.lhs()?)?.original;
+    let rhs_type = sema.type_of_expr(&bin_expr.rhs()?)?.original;
+
+    let t = match assoc.container(sema.db) {
+        hir::AssocItemContainer::Trait(t) => t,
+        hir::AssocItemContainer::Impl(_) => return None, // Already implemented by the type
+    };
+
+    let fn_name = f.name(sema.db);
+    let fn_name_str = fn_name.as_str();
+
+    let trait_name = t.name(sema.db);
+    let trait_name_str = trait_name.as_str();
+
+    let (target_fn_name, expected_trait) = match fn_name_str {
+        "ne" => ("eq", "PartialEq"),
+        "lt" | "le" | "gt" | "ge" => ("partial_cmp", "PartialOrd"),
+        _ => return None,
+    };
+
+    if trait_name_str != expected_trait {
+        return None;
+    }
+
+    let primary_f = t.items(sema.db).into_iter().find_map(|item| {
+        if let hir::AssocItem::Function(func) = item
+            && func.name(sema.db).as_str() == target_fn_name
+        {
+            return Some(func);
+        }
+        None
+    })?;
+
+    // Chalk requires ALL trait substitutions, including `Self`!
+    // We must pass [Self, Rhs]
+    let resolved_f = sema.resolve_trait_impl_method(
+        lhs_type.clone(),
+        t,
+        primary_f,
+        [lhs_type.clone(), rhs_type.clone()],
+    )?;
+
+    let def = Definition::from(resolved_f);
+
+    Some(def_to_nav(sema, def))
+}
 fn try_lookup_include_path(
     sema: &Semantics<'_, RootDatabase>,
     token: InFile<ast::String>,
@@ -291,7 +369,6 @@ fn try_lookup_include_path(
         kind: None,
         container_name: None,
         description: None,
-        docs: None,
     })
 }
 
@@ -324,7 +401,7 @@ fn try_lookup_macro_def_in_macro_use(
 /// ```
 fn try_filter_trait_item_definition(
     sema: &Semantics<'_, RootDatabase>,
-    def: &Definition,
+    def: &Definition<'_>,
 ) -> Option<Vec<NavigationTarget>> {
     let db = sema.db;
     let assoc = def.as_assoc_item(db)?;
@@ -578,7 +655,7 @@ fn nav_for_break_points(
     Some(navs)
 }
 
-fn def_to_nav(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Vec<NavigationTarget> {
+fn def_to_nav(sema: &Semantics<'_, RootDatabase>, def: Definition<'_>) -> Vec<NavigationTarget> {
     def.try_to_nav(sema).map(|it| it.collect()).unwrap_or_default()
 }
 
@@ -605,11 +682,11 @@ fn expr_to_nav(
 #[cfg(test)]
 mod tests {
     use crate::{GotoDefinitionConfig, fixture};
-    use ide_db::{FileRange, MiniCore};
+    use ide_db::{FileRange, ra_fixture::RaFixtureConfig};
     use itertools::Itertools;
 
     const TEST_CONFIG: GotoDefinitionConfig<'_> =
-        GotoDefinitionConfig { minicore: MiniCore::default() };
+        GotoDefinitionConfig { ra_fixture: RaFixtureConfig::default() };
 
     #[track_caller]
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
@@ -644,6 +721,13 @@ mod tests {
             .info;
 
         assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {navs:?}")
+    }
+
+    #[track_caller]
+    fn check_no_definition(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
+        let (analysis, position) = fixture::position(ra_fixture);
+        let navs = analysis.goto_definition(position, &TEST_CONFIG).unwrap();
+        assert!(navs.is_none(), "didn't expect this to resolve anywhere: {navs:?}");
     }
 
     fn check_name(expected_name: &str, #[rust_analyzer::rust_fixture] ra_fixture: &str) {
@@ -923,6 +1007,21 @@ impl Trait for T {
 }"#,
         );
     }
+
+    #[test]
+    fn goto_def_array_length_prefers_value_namespace() {
+        check(
+            r#"
+struct N;
+
+trait Trait {}
+
+impl<const N: usize> Trait for [N; N$0] {}
+         //^
+"#,
+        );
+    }
+
     #[test]
     fn goto_def_in_mac_call_in_attr_invoc() {
         check(
@@ -2041,6 +2140,30 @@ pub fn foo() { }
     }
 
     #[test]
+    fn no_panic_on_offset_inside_doc_comment_prefix() {
+        // If the cursor (offset) points inside `///`/`//!`/the opening quote, i.e. before the docs' contents,
+        // this should not create navigation.
+        check_no_definition(
+            r#"
+$0/// [`S`]
+struct S;
+"#,
+        );
+        check_no_definition(
+            r#"
+//$0! [`S`]
+struct S;
+"#,
+        );
+        check_no_definition(
+            r#"
+#[doc = $0"[`S`]"]
+struct S;
+"#,
+        );
+    }
+
+    #[test]
     fn goto_def_for_intra_doc_link_outer_same_file() {
         check(
             r#"
@@ -2238,10 +2361,7 @@ fn main() {
         );
     }
 
-    // macros in this position are not yet supported
     #[test]
-    // FIXME
-    #[should_panic]
     fn goto_doc_include_str() {
         check(
             r#"
@@ -4095,6 +4215,43 @@ impl From<Foo> for Bar {
 fn foo() -> Result<(), Bar> {
     Err(Foo)?$0;
     Ok(())
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn goto_definition_for_comparison_operators() {
+        check(
+            r#"
+//- minicore: eq, ord
+struct Foo;
+impl PartialEq for Foo {
+    fn eq(&self, other: &Self) -> bool { true }
+     //^^
+}
+
+fn main() {
+    let a = Foo;
+    let b = Foo;
+    let _ = a !=$0 b;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn ide_features_work_in_field_default() {
+        check(
+            r#"
+struct S;
+impl S {
+    fn foo(&self) {}
+    // ^^^
+}
+
+struct Struct {
+    field: () = S.foo$0(),
 }
         "#,
         );

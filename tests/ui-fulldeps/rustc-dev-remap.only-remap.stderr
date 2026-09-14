@@ -16,6 +16,9 @@ help: the following other types implement trait `VisitorResult`
   ::: /rustc-dev/xyz/compiler/rustc_ast_ir/src/visit.rs:LL:COL
    |
    = note: `ControlFlow<T>`
+  ::: /rustc-dev/xyz/compiler/rustc_ast_ir/src/visit.rs:LL:COL
+   |
+   = note: `Result<(), E>`
 note: required by a bound in `rustc_ast::visit::Visitor::Result`
   --> /rustc-dev/xyz/compiler/rustc_ast/src/visit.rs:LL:COL
   ::: /rustc-dev/xyz/compiler/rustc_ast/src/visit.rs:LL:COL

@@ -1,11 +1,11 @@
 use hir::{AsAssocItem, ModuleDef, PathResolution};
 use ide_db::{
-    helpers::mod_path_to_ast,
-    imports::insert_use::{ImportScope, insert_use},
+    helpers::mod_path_to_ast_with_factory,
+    imports::insert_use::{ImportScope, insert_use_with_editor},
 };
 use syntax::{
     AstNode, Edition, SyntaxNode,
-    ast::{self, HasGenericArgs, make},
+    ast::{self, HasGenericArgs},
     match_ast,
     syntax_editor::SyntaxEditor,
 };
@@ -29,7 +29,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 pub(crate) fn replace_qualified_name_with_use(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let original_path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements
@@ -39,6 +39,12 @@ pub(crate) fn replace_qualified_name_with_use(
     }
 
     let original_path = target_path(ctx, original_path)?;
+
+    // There is no qualifier to replace, so there is nothing for this assist to do
+    if original_path.qualifier().is_none() {
+        cov_mark::hit!(not_applicable_for_unqualified_path);
+        return None;
+    }
 
     // then search for an import for the first path segment of what we want to replace
     // that way it is less likely that we import the item from a different location due re-exports
@@ -73,9 +79,9 @@ pub(crate) fn replace_qualified_name_with_use(
             // Now that we've brought the name into scope, re-qualify all paths that could be
             // affected (that is, all paths inside the node we added the `use` to).
             let scope_node = scope.as_syntax_node();
-            let mut editor = builder.make_editor(scope_node);
-            shorten_paths(&mut editor, scope_node, &original_path);
-            builder.add_file_edits(ctx.vfs_file_id(), editor);
+            let editor = builder.make_editor(scope_node);
+            shorten_paths(&editor, scope_node, &original_path);
+            let make = editor.make();
             let path = drop_generic_args(&original_path);
             let edition = ctx
                 .sema
@@ -83,18 +89,19 @@ pub(crate) fn replace_qualified_name_with_use(
                 .map(|semantics_scope| semantics_scope.krate().edition(ctx.db()))
                 .unwrap_or(Edition::CURRENT);
             // stick the found import in front of the to be replaced path
-            let path =
-                match path_to_qualifier.and_then(|it| mod_path_to_ast(&it, edition).qualifier()) {
-                    Some(qualifier) => make::path_concat(qualifier, path),
-                    None => path,
-                };
-            let scope = builder.make_import_scope_mut(scope);
-            insert_use(&scope, path, &ctx.config.insert_use);
+            let path = match path_to_qualifier
+                .and_then(|it| mod_path_to_ast_with_factory(make, &it, edition).qualifier())
+            {
+                Some(qualifier) => make.path_concat(qualifier, path),
+                None => path,
+            };
+            insert_use_with_editor(&scope, path, &ctx.config.insert_use, &editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
 
-fn target_path(ctx: &AssistContext<'_>, mut original_path: ast::Path) -> Option<ast::Path> {
+fn target_path(ctx: &AssistContext<'_, '_>, mut original_path: ast::Path) -> Option<ast::Path> {
     let on_first = original_path.qualifier().is_none();
 
     if on_first {
@@ -102,7 +109,7 @@ fn target_path(ctx: &AssistContext<'_>, mut original_path: ast::Path) -> Option<
     }
 
     match ctx.sema.resolve_path(&original_path)? {
-        PathResolution::Def(ModuleDef::Variant(_)) if on_first => original_path.qualifier(),
+        PathResolution::Def(ModuleDef::EnumVariant(_)) if on_first => original_path.qualifier(),
         PathResolution::Def(def) if def.as_assoc_item(ctx.db()).is_some() => {
             on_first.then_some(original_path.qualifier()?)
         }
@@ -111,8 +118,7 @@ fn target_path(ctx: &AssistContext<'_>, mut original_path: ast::Path) -> Option<
 }
 
 fn drop_generic_args(path: &ast::Path) -> ast::Path {
-    let path = path.clone_subtree();
-    let mut editor = SyntaxEditor::new(path.syntax().clone());
+    let (editor, path) = SyntaxEditor::with_ast_node(path);
     if let Some(segment) = path.segment()
         && let Some(generic_args) = segment.generic_arg_list()
     {
@@ -123,7 +129,7 @@ fn drop_generic_args(path: &ast::Path) -> ast::Path {
 }
 
 /// Mutates `node` to shorten `path` in all descendants of `node`.
-fn shorten_paths(editor: &mut SyntaxEditor, node: &SyntaxNode, path: &ast::Path) {
+fn shorten_paths(editor: &SyntaxEditor, node: &SyntaxNode, path: &ast::Path) {
     for child in node.children() {
         match_ast! {
             match child {
@@ -142,7 +148,7 @@ fn shorten_paths(editor: &mut SyntaxEditor, node: &SyntaxNode, path: &ast::Path)
     }
 }
 
-fn maybe_replace_path(editor: &mut SyntaxEditor, path: ast::Path, target: ast::Path) -> Option<()> {
+fn maybe_replace_path(editor: &SyntaxEditor, path: ast::Path, target: ast::Path) -> Option<()> {
     if !path_eq_no_generics(path.clone(), target) {
         return None;
     }
@@ -248,6 +254,22 @@ fs::Path
     fn test_replace_not_applicable_in_use() {
         cov_mark::check!(not_applicable_in_use);
         check_assist_not_applicable(replace_qualified_name_with_use, r"use std::fmt$0;");
+    }
+
+    #[test]
+    fn test_replace_not_applicable_for_unqualified_path() {
+        cov_mark::check!(not_applicable_for_unqualified_path);
+        check_assist_not_applicable(
+            replace_qualified_name_with_use,
+            r"
+//- /main.rs crate:main deps:sub
+fn main() {
+    su$0b();
+}
+//- /sub.rs crate:sub
+pub fn sub() {}
+",
+        );
     }
 
     #[test]

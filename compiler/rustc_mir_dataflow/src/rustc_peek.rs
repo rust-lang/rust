@@ -5,7 +5,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{Span, sym};
 use tracing::{debug, info};
 
-use crate::errors::{
+use crate::diagnostics::{
     PeekArgumentNotALocal, PeekArgumentUntracked, PeekBitNotSet, PeekMustBeNotTemporary,
     PeekMustBePlaceOrRefPlace, StopAfterDataFlowEndedCompilation,
 };
@@ -97,7 +97,7 @@ where
             (PeekCallKind::ByRef, mir::Rvalue::Ref(_, _, place))
             | (
                 PeekCallKind::ByVal,
-                mir::Rvalue::Use(mir::Operand::Move(place) | mir::Operand::Copy(place)),
+                mir::Rvalue::Use(mir::Operand::Move(place) | mir::Operand::Copy(place), _),
             ) => {
                 let loc = Location { block: bb, statement_index };
                 cursor.seek_before_primary_effect(loc);
@@ -119,7 +119,7 @@ fn value_assigned_to_local<'a, 'tcx>(
     stmt: &'a mir::Statement<'tcx>,
     local: Local,
 ) -> Option<&'a mir::Rvalue<'tcx>> {
-    if let mir::StatementKind::Assign(box (place, rvalue)) = &stmt.kind
+    if let mir::StatementKind::Assign((place, rvalue)) = &stmt.kind
         && let Some(l) = place.as_local()
         && local == l
     {
@@ -163,6 +163,8 @@ impl PeekCall {
             &terminator.kind
             && let ty::FnDef(def_id, fn_args) = *func.const_.ty().kind()
         {
+            let fn_args = fn_args.no_bound_vars().unwrap();
+
             if tcx.intrinsic(def_id)?.name != sym::rustc_peek {
                 return None;
             }

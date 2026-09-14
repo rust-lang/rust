@@ -30,16 +30,16 @@
 //@ lldb-command:run
 
 //@ lldb-command:v packed
-//@ lldb-check:[...] { x = 123 y = 234 z = 345 }
+//@ lldb-check:[...] {x:123, y:234, z:345}
 
 //@ lldb-command:v packedInPacked
-//@ lldb-check:[...] { a = 1111 b = { x = 2222 y = 3333 z = 4444 } c = 5555 d = { x = 6666 y = 7777 z = 8888 } }
+//@ lldb-check:[...] {a:1111, b:{x:2222, y:3333, z:4444}, c:5555, d:{x:6666, y:7777, z:8888}}
 
 //@ lldb-command:v packedInUnpacked
-//@ lldb-check:[...] { a = -1111 b = { x = -2222 y = -3333 z = -4444 } c = -5555 d = { x = -6666 y = -7777 z = -8888 } }
+//@ lldb-check:[...] {a:-1111, b:{x:-2222, y:-3333, z:-4444}, c:-5555, d:{x:-6666, y:-7777, z:-8888}}
 
 //@ lldb-command:v unpackedInPacked
-//@ lldb-check:[...] { a = 987 b = { x = 876 y = 765 z = 654 w = 543 } c = { x = 432 y = 321 z = 210 w = 109 } d = -98 }
+//@ lldb-check:[...] {a:987, b:{x:876, y:765, z:654, w:543}, c:{x:432, y:321, z:210, w:109}, d:-98}
 
 //@ lldb-command:expr sizeof(packed)
 //@ lldb-check:[...] 14
@@ -49,14 +49,14 @@
 
 #![allow(unused_variables)]
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct Packed {
     x: i16,
     y: i32,
     z: i64
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct PackedInPacked {
     a: i32,
     b: Packed,
@@ -64,6 +64,7 @@ struct PackedInPacked {
     d: Packed
 }
 
+#[repr(C)]
 // layout (64 bit): aaaa bbbb bbbb bbbb bb.. .... cccc cccc dddd dddd dddd dd..
 struct PackedInUnpacked {
     a: i32,
@@ -72,6 +73,7 @@ struct PackedInUnpacked {
     d: Packed
 }
 
+#[repr(C)]
 // layout (64 bit): xx.. yyyy zz.. .... wwww wwww
 struct Unpacked {
     x: i16,
@@ -81,7 +83,7 @@ struct Unpacked {
 }
 
 // layout (64 bit): aabb bbbb bbbb bbbb bbbb bbbb bbcc cccc cccc cccc cccc cccc ccdd dddd dd
-#[repr(packed)]
+#[repr(C, packed)]
 struct UnpackedInPacked {
     a: i16,
     b: Unpacked,

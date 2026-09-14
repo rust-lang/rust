@@ -22,9 +22,11 @@ warning: value assigned to `value` is never read
   --> $DIR/goto.rs:71:25
    |
 LL |         let mut value = false;
-   |                         ^^^^^
+   |                         ^^^^^ this value is reassigned later and never used
+...
+LL |                 value = true;
+   |                 ------------ `value` is overwritten here before the previous value is read
    |
-   = help: maybe it is overwritten before being read?
    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
 
 warning: 2 warnings emitted

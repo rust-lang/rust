@@ -1,17 +1,16 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_expr_use_or_unification_node;
-use clippy_utils::res::{MaybeQPath, MaybeResPath};
+use clippy_utils::res::{MaybeQPath as _, MaybeResPath as _};
 use core::cell::Cell;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::hir_id::HirIdMap;
 use rustc_hir::{
-    Body, Expr, ExprKind, HirId, ImplItem, ImplItemImplKind, ImplItemKind, Node, PatKind, TraitItem, TraitItemKind,
+    Body, Expr, ExprKind, HirId, HirIdMap, ImplItem, ImplItemImplKind, ImplItemKind, Node, PatKind, TraitItem,
+    TraitItemKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, ConstKind, GenericArgKind, GenericArgsRef};
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::{Ident, kw};
 use std::iter;
@@ -321,7 +320,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
             }) => (
                 owner_id.to_def_id(),
                 FnKind::TraitFn,
-                usize::from(sig.decl.implicit_self.has_implicit_self()),
+                usize::from(sig.decl.implicit_self().has_implicit_self()),
             ),
             Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Fn(ref sig, _),
@@ -332,14 +331,14 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                 if let ImplItemImplKind::Trait { trait_item_def_id, .. } = impl_kind
                     && let Ok(trait_item_id) = trait_item_def_id
                 {
-                    let impl_id = cx.tcx.parent(owner_id.into());
-                    let trait_ref = cx.tcx.impl_trait_ref(impl_id).instantiate_identity();
+                    let impl_id = cx.tcx.local_parent(owner_id.def_id);
+                    let trait_ref = cx.tcx.impl_trait_ref(impl_id).instantiate_identity().skip_norm_wip();
                     (
                         trait_item_id,
                         FnKind::ImplTraitFn(
                             std::ptr::from_ref(cx.tcx.erase_and_anonymize_regions(trait_ref.args)) as usize
                         ),
-                        usize::from(sig.decl.implicit_self.has_implicit_self()),
+                        usize::from(sig.decl.implicit_self().has_implicit_self()),
                     )
                 } else {
                     (owner_id.to_def_id(), FnKind::Fn, 0)

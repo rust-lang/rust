@@ -7,13 +7,13 @@ LL |     let x = Some(()).iter().map(|()| 1).sum::<f32>();
    |                                         required by a bound introduced by this call
    |
    = help: the trait `Sum<{integer}>` is not implemented for `f32`
-help: the following other types implement trait `Sum<A>`
+help: `f32` implements trait `Sum<A>`
   --> $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
    |
-   = note: `f32` implements `Sum`
+   = note: `Sum`
   ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
    |
-   = note: `f32` implements `Sum<&f32>`
+   = note: `Sum<&f32>`
   ::: $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
    |
    = note: in this macro invocation

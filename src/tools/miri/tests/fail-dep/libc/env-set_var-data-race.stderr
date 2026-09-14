@@ -1,8 +1,8 @@
 error: Undefined Behavior: Data race detected between (1) non-atomic write on thread `main` and (2) non-atomic read on thread `unnamed-ID` at ALLOC
   --> tests/fail-dep/libc/env-set_var-data-race.rs:LL:CC
    |
-LL |         libc::getenv(b"TZ/0".as_ptr().cast());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (2) just happened here
+LL |         libc::getenv(c"TZ".as_ptr());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (2) just happened here
    |
 help: and (1) occurred earlier here
   --> tests/fail-dep/libc/env-set_var-data-race.rs:LL:CC
@@ -19,7 +19,7 @@ LL |       let t = thread::spawn(|| unsafe {
    |  _____________^
 LL | |         // Access the environment in another thread without taking the env lock.
 LL | |         // This represents some C code that queries the environment.
-LL | |         libc::getenv(b"TZ/0".as_ptr().cast());
+LL | |         libc::getenv(c"TZ".as_ptr());
 LL | |     });
    | |______^
 

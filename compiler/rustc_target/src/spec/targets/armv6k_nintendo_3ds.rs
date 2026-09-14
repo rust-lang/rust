@@ -1,5 +1,5 @@
 use crate::spec::{
-    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, Os, RelocModel, Target, TargetMetadata,
+    Arch, Cc, CfgAbi, Env, FloatAbi, LinkerFlavor, Lld, Os, RelocModel, Target, TargetMetadata,
     TargetOptions, cvs,
 };
 
@@ -29,7 +29,7 @@ pub(crate) fn target() -> Target {
             env: Env::Newlib,
             vendor: "nintendo".into(),
             cpu: "mpcore".into(),
-            abi: Abi::EabiHf,
+            cfg_abi: CfgAbi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             families: cvs!["unix"],
             linker: Some("arm-none-eabi-gcc".into()),

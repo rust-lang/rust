@@ -15,7 +15,10 @@ const MIN_NUMBER_OF_DIGITS_TO_FORMAT: usize = 5;
 // ```
 // const _: i32 = 1_012_345;
 // ```
-pub(crate) fn reformat_number_literal(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn reformat_number_literal(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let literal = ctx.find_node_at_offset::<ast::Literal>()?;
     let literal = match literal.kind() {
         ast::LiteralKind::IntNumber(it) => it,

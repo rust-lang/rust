@@ -8,16 +8,19 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: read
+
 jobs:
   sysroots:
     name: Build the sysroots
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build the sysroots
         run: |
           rustup toolchain install nightly
-          cargo install -f rustup-toolchain-install-master
+          cargo install --locked -f rustup-toolchain-install-master
           ./miri toolchain -c rust-docs # Docs are the only place targets are separated by tier
           ./miri install
           python3 -m pip install beautifulsoup4
@@ -25,7 +28,7 @@ jobs:
       - name: Upload build errors
         # We don't want to skip this step on failure
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: failures
           path: failures.tar.gz
@@ -38,7 +41,7 @@ jobs:
     steps:
       # Download our build error logs
       - name: Download build errors
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: failures
       # Send a Zulip notification

@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::{fs, io};
+use std::{env, fs, io};
 
 /// Install all the npm deps, and return the path of `node_modules`.
 pub fn install(src_root_path: &Path, out_dir: &Path, yarn: &Path) -> Result<PathBuf, io::Error> {
@@ -19,7 +19,7 @@ pub fn install(src_root_path: &Path, out_dir: &Path, yarn: &Path) -> Result<Path
     let mut cmd = Command::new(yarn);
     cmd.arg("install");
     // make sure our `yarn.lock` file actually means something
-    cmd.arg("--frozen");
+    cmd.arg("--frozen-lockfile");
 
     cmd.current_dir(out_dir);
     let exit_status = cmd
@@ -36,6 +36,14 @@ pub fn install(src_root_path: &Path, out_dir: &Path, yarn: &Path) -> Result<Path
         eprintln!("yarn install did not exit successfully");
         return Err(io::Error::other(Box::<dyn Error + Send + Sync>::from(format!(
             "yarn install returned exit code {exit_status}"
+        ))));
+    }
+    if env::var("BOOTSTRAP_SKIP_YARN_LOCK_CHECK").is_err()
+        && fs::read_to_string(src_root_path.join("yarn.lock"))?
+            != fs::read_to_string(out_dir.join("yarn.lock"))?
+    {
+        return Err(io::Error::other(Box::<dyn Error + Send + Sync>::from(format!(
+            "yarn lockfile was modified despite --frozen-lockfile.  please file a bug report.  this check can be bypassed by setting $BOOTSTRAP_SKIP_YARN_LOCK_CHECK`"
         ))));
     }
     Ok(nm_path)

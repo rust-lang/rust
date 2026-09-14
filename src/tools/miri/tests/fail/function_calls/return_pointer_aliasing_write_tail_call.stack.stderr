@@ -19,8 +19,8 @@ LL | |     }
 help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique in-place function argument/return passing protection
   --> tests/fail/function_calls/return_pointer_aliasing_write_tail_call.rs:LL:CC
    |
-LL |     become myfun2(ptr)
-   |     ^^^^^^^^^^^^^^^^^^
+LL | fn myfun(ptr: *mut i32) -> i32 {
+   |                            ^^^
    = note: stack backtrace:
            0: myfun2
                at tests/fail/function_calls/return_pointer_aliasing_write_tail_call.rs:LL:CC

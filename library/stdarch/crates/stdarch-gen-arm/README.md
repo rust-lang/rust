@@ -1,11 +1,11 @@
 # stdarch-gen-arm generator guide
 ## Running the generator
-- Run: `cargo run --bin=stdarch-gen-arm -- crates/stdarch-gen-arm/spec`
-```
-$ cargo run --bin=stdarch-gen-arm -- crates/stdarch-gen-arm/spec
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.18s
-     Running `target/debug/stdarch-gen-arm crates/stdarch-gen-arm/spec`
-```
+
+Run: `cargo +nightly run --bin=stdarch-gen-arm -- crates/stdarch-gen-arm/spec crates/core_arch/src`
+
+NOTE: If you are running this from rust-lang/rust, you must be in the `library/stdarch`
+working directory.
+
 ## Input/Output
 ### Input files (intrinsic YAML definitions)
  - `crates/stdarch-gen-arm/spec/<feature>/*.spec.yml`
@@ -205,9 +205,6 @@ MatchKind:
 - `Array`
     - An array of expressions
     - Usage: `Array: [<expression>, ...]`
-- `SvUndef`
-    - Returns the LLVM `undef` symbol
-    - Usage: `SvUndef`
 - `Multiply`
     - Simply `*`
     - Usage: `Multiply: [<expression>, <expression>]`

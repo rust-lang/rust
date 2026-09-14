@@ -5,14 +5,14 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{first_line_of_span, indent_of, snippet};
 use clippy_utils::ty::{for_each_top_level_late_bound_region, is_copy};
 use clippy_utils::{get_builtin_attr, is_lint_allowed, sym};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
-use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty::{GenericArgKind, RegionKind, Ty, TypeVisitableExt};
+use rustc_lint::LateContext;
+use rustc_middle::ty::{GenericArgKind, RegionKind, Ty, TypeVisitableExt as _};
 use rustc_span::Span;
 
 use super::SIGNIFICANT_DROP_IN_SCRUTINEE;
@@ -184,7 +184,6 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
     fn has_sig_drop_attr_impl(&mut self, ty: Ty<'tcx>) -> bool {
         if let Some(adt) = ty.ty_adt_def()
             && get_builtin_attr(
-                self.cx.sess(),
                 #[allow(deprecated)]
                 self.cx.tcx.get_all_attrs(adt.did()),
                 sym::has_significant_drop,
@@ -204,7 +203,7 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
                 // if some field has significant drop,
                 adt.all_fields()
                     .map(|field| field.ty(self.cx.tcx, args))
-                    .any(|ty| self.has_sig_drop_attr_impl(ty))
+                    .any(|ty| self.has_sig_drop_attr_impl(ty.skip_norm_wip()))
                     // or if there is no generic lifetime and..
                     // (to avoid false positive on `Ref<'a, MutexGuard<Foo>>`)
                     || (args
@@ -344,7 +343,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
         };
 
         let fn_sig = if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(parent_expr.hir_id) {
-            self.cx.tcx.fn_sig(def_id).instantiate_identity()
+            self.cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip()
         } else {
             return;
         };

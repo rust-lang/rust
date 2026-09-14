@@ -8,9 +8,9 @@ LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
    = note: stack backtrace:
            0: std::sys::thread::PLATFORM::Thread::join
                at RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
-           1: std::thread::lifecycle::JoinInner::join
+           1: std::thread::lifecycle::JoinInner::<'_, ()>::join
                at RUSTLIB/std/src/thread/lifecycle.rs:LL:CC
-           2: std::thread::JoinHandle::join
+           2: std::thread::JoinHandle::<()>::join
                at RUSTLIB/std/src/thread/join_handle.rs:LL:CC
            3: main
                at tests/fail-dep/libc/libc_epoll_block_two_thread.rs:LL:CC
@@ -18,8 +18,12 @@ LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
 error: the evaluated program deadlocked
   --> tests/fail-dep/libc/libc_epoll_block_two_thread.rs:LL:CC
    |
-LL |         check_epoll_wait::<TAG>(epfd, &expected, -1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ thread got stuck here
+LL | /         check_epoll_wait(
+LL | |             epfd,
+LL | |             &[Ev { events: EPOLLOUT, data: fd1 }, Ev { events: EPOLLOUT, data: fd2 }],
+LL | |             -1,
+LL | |         );
+   | |_________^ thread got stuck here
    |
    = note: this is on thread `unnamed-ID`
 note: the current function got called indirectly due to this code
@@ -27,8 +31,11 @@ note: the current function got called indirectly due to this code
    |
 LL |       let thread2 = thread::spawn(move || {
    |  ___________________^
-LL | |         check_epoll_wait::<TAG>(epfd, &expected, -1);
 LL | |
+LL | |         check_epoll_wait(
+LL | |             epfd,
+...  |
+LL | |         );
 LL | |     });
    | |______^
 

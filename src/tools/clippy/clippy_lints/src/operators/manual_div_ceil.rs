@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _};
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
-use clippy_utils::{SpanlessEq, sym};
+use clippy_utils::{eq_expr_value, sym};
 use rustc_ast::{BinOpKind, LitIntType, LitKind, UnOp};
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
@@ -21,6 +21,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, op: BinOpKind, lhs: &
         && check_int_ty_and_feature(cx, cx.typeck_results().expr_ty(rhs))
         && msrv.meets(cx, msrvs::DIV_CEIL)
     {
+        let ctxt = expr.span.ctxt();
         match lhs.kind {
             ExprKind::Binary(inner_op, inner_lhs, inner_rhs) => {
                 // (x + (y - 1)) / y
@@ -28,7 +29,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, op: BinOpKind, lhs: &
                     && inner_op.node == BinOpKind::Add
                     && sub_op.node == BinOpKind::Sub
                     && check_literal(sub_rhs)
-                    && check_eq_expr(cx, sub_lhs, rhs)
+                    && eq_expr_value(cx, ctxt, sub_lhs, rhs)
                 {
                     build_suggestion(cx, expr, inner_lhs, rhs, &mut applicability);
                     return;
@@ -39,7 +40,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, op: BinOpKind, lhs: &
                     && inner_op.node == BinOpKind::Add
                     && sub_op.node == BinOpKind::Sub
                     && check_literal(sub_rhs)
-                    && check_eq_expr(cx, sub_lhs, rhs)
+                    && eq_expr_value(cx, ctxt, sub_lhs, rhs)
                 {
                     build_suggestion(cx, expr, inner_rhs, rhs, &mut applicability);
                     return;
@@ -50,7 +51,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, op: BinOpKind, lhs: &
                     && inner_op.node == BinOpKind::Sub
                     && add_op.node == BinOpKind::Add
                     && check_literal(inner_rhs)
-                    && check_eq_expr(cx, add_rhs, rhs)
+                    && eq_expr_value(cx, ctxt, add_rhs, rhs)
                 {
                     build_suggestion(cx, expr, add_lhs, rhs, &mut applicability);
                 }
@@ -76,7 +77,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, op: BinOpKind, lhs: &
             ExprKind::MethodCall(method, receiver, [next_multiple_of_arg], _)
                 if method.ident.name == sym::next_multiple_of
                     && check_int_ty(cx.typeck_results().expr_ty(receiver))
-                    && check_eq_expr(cx, next_multiple_of_arg, rhs) =>
+                    && eq_expr_value(cx, ctxt, next_multiple_of_arg, rhs) =>
             {
                 // x.next_multiple_of(Y) / Y
                 build_suggestion(cx, expr, receiver, rhs, &mut applicability);
@@ -88,7 +89,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, op: BinOpKind, lhs: &
                     .assoc_fn_parent(cx)
                     .opt_impl_ty(cx)
                     && check_int_ty(impl_ty_binder.skip_binder())
-                    && check_eq_expr(cx, next_multiple_of_arg, rhs)
+                    && eq_expr_value(cx, ctxt, next_multiple_of_arg, rhs)
                 {
                     build_suggestion(cx, expr, receiver, rhs, &mut applicability);
                 }
@@ -137,10 +138,6 @@ fn check_literal(expr: &Expr<'_>) -> bool {
     false
 }
 
-fn check_eq_expr(cx: &LateContext<'_>, lhs: &Expr<'_>, rhs: &Expr<'_>) -> bool {
-    SpanlessEq::new(cx).eq_expr(lhs, rhs)
-}
-
 fn build_suggestion(
     cx: &LateContext<'_>,
     expr: &Expr<'_>,
@@ -148,7 +145,8 @@ fn build_suggestion(
     rhs: &Expr<'_>,
     applicability: &mut Applicability,
 ) {
-    let dividend_sugg = Sugg::hir_with_applicability(cx, lhs, "..", applicability).maybe_paren();
+    let ctxt = expr.span.ctxt();
+    let dividend_sugg = Sugg::hir_with_context(cx, lhs, ctxt, "..", applicability).maybe_paren();
     let rhs_ty = cx.typeck_results().expr_ty(rhs);
     let type_suffix = if cx.typeck_results().expr_ty(lhs).is_numeric()
         && matches!(
@@ -176,17 +174,13 @@ fn build_suggestion(
     // suggestion message, we want to make a suggestion string before `div_ceil` like
     // `(-2048_{type_suffix})`.
     let suggestion_before_div_ceil = if has_enclosing_paren(&dividend_sugg_str) {
-        format!(
-            "{}{})",
-            &dividend_sugg_str[..dividend_sugg_str.len() - 1].to_string(),
-            type_suffix
-        )
+        format!("{}{type_suffix})", &dividend_sugg_str[..dividend_sugg_str.len() - 1])
     } else {
         format!("{dividend_sugg_str}{type_suffix}")
     };
 
     // Dereference the RHS if it is a reference type
-    let divisor_snippet = match Sugg::hir_with_context(cx, rhs, expr.span.ctxt(), "_", applicability) {
+    let divisor_snippet = match Sugg::hir_with_context(cx, rhs, ctxt, "_", applicability) {
         sugg if rhs_ty.is_ref() => sugg.deref(),
         sugg => sugg,
     };

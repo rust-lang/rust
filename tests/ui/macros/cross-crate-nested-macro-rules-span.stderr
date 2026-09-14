@@ -1,0 +1,27 @@
+error: macros that expand to items must be delimited with braces or followed by a semicolon
+  --> $DIR/cross-crate-nested-macro-rules-span.rs:15:1
+   |
+LL | all_trigger_fields!(make_event_subscription);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `all_trigger_fields` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0223]: ambiguous associated type
+  --> $DIR/cross-crate-nested-macro-rules-span.rs:10:40
+   |
+LL |         pub struct EventSubscription($($channel<nested_macro_rules_definition::$ty>::ReaderId),*);
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | all_trigger_fields!(make_event_subscription);
+   | -------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `make_event_subscription` which comes from the expansion of the macro `all_trigger_fields` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: if there were a trait named `Example` with associated type `ReaderId` implemented for `nested_macro_rules_definition::NotificationChannel<ProjectileCreated>`, you could use the fully-qualified path
+   |
+LL -         pub struct EventSubscription($($channel<nested_macro_rules_definition::$ty>::ReaderId),*);
+LL +         pub struct EventSubscription($(<nested_macro_rules_definition::NotificationChannel<ProjectileCreated> as Example>::ReaderId),*);
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0223`.

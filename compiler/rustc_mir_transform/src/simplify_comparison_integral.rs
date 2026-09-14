@@ -3,12 +3,12 @@ use std::iter;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{
-    BasicBlock, BinOp, Body, Operand, Place, Rvalue, Statement, StatementKind, SwitchTargets,
-    TerminatorKind,
+    BasicBlock, BinOp, Body, Operand, Place, Rvalue, StatementKind, SwitchTargets, TerminatorKind,
 };
 use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
 
+use crate::PassPolicy;
 use crate::ssa::SsaLocals;
 
 /// Pass to convert `if` conditions on integrals into switches on the integral.
@@ -16,7 +16,6 @@ use crate::ssa::SsaLocals;
 ///
 /// ```ignore (MIR)
 /// _3 = Eq(move _4, const 43i32);
-/// StorageDead(_4);
 /// switchInt(_3) -> [false: bb2, otherwise: bb3];
 /// ```
 ///
@@ -28,8 +27,8 @@ use crate::ssa::SsaLocals;
 pub(super) struct SimplifyComparisonIntegral;
 
 impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 1
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 2)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -39,8 +38,6 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
         let ssa = SsaLocals::new(tcx, body, typing_env);
         let helper = OptimizationFinder { body };
         let opts = helper.find_optimizations(&ssa);
-        let mut storage_deads_to_insert = vec![];
-        let mut storage_deads_to_remove: Vec<(usize, BasicBlock)> = vec![];
         for opt in opts {
             trace!("SUCCESS: Applying {:?}", opt);
             // replace terminator with a switchInt that switches on the integer directly
@@ -76,54 +73,24 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
                 _ => unreachable!(),
             }
 
-            // delete comparison statement if it the value being switched on was moved, which means
-            // it can not be used later on
-            if opt.can_remove_bin_op_stmt {
-                bb.statements[opt.bin_op_stmt_idx].make_nop(true);
-            } else {
-                // if the integer being compared to a const integral is being moved into the
-                // comparison, e.g `_2 = Eq(move _3, const 'x');`
-                // we want to avoid making a double move later on in the switchInt on _3.
-                // So to avoid `switchInt(move _3) -> ['x': bb2, otherwise: bb1];`,
-                // we convert the move in the comparison statement to a copy.
+            // if the integer being compared to a const integral is being moved into the
+            // comparison, e.g `_2 = Eq(move _3, const 'x');`
+            // we want to avoid making a double move later on in the switchInt on _3.
+            // So to avoid `switchInt(move _3) -> ['x': bb2, otherwise: bb1];`,
+            // we convert the move in the comparison statement to a copy.
 
-                // unwrap is safe as we know this statement is an assign
-                let (_, rhs) = bb.statements[opt.bin_op_stmt_idx].kind.as_assign_mut().unwrap();
+            // unwrap is safe as we know this statement is an assign
+            let (_, rhs) = bb.statements[opt.bin_op_stmt_idx].kind.as_assign_mut().unwrap();
 
-                use Operand::*;
-                match rhs {
-                    Rvalue::BinaryOp(_, box (left @ Move(_), Constant(_))) => {
-                        *left = Copy(opt.to_switch_on);
-                    }
-                    Rvalue::BinaryOp(_, box (Constant(_), right @ Move(_))) => {
-                        *right = Copy(opt.to_switch_on);
-                    }
-                    _ => (),
+            use Operand::*;
+            match rhs {
+                Rvalue::BinaryOp(_, (left @ Move(_), Constant(_))) => {
+                    *left = Copy(opt.to_switch_on);
                 }
-            }
-
-            let terminator = bb.terminator();
-
-            // remove StorageDead (if it exists) being used in the assign of the comparison
-            for (stmt_idx, stmt) in bb.statements.iter().enumerate() {
-                if !matches!(
-                    stmt.kind,
-                    StatementKind::StorageDead(local) if local == opt.to_switch_on.local
-                ) {
-                    continue;
+                Rvalue::BinaryOp(_, (Constant(_), right @ Move(_))) => {
+                    *right = Copy(opt.to_switch_on);
                 }
-                storage_deads_to_remove.push((stmt_idx, opt.bb_idx));
-                // if we have StorageDeads to remove then make sure to insert them at the top of
-                // each target
-                for bb_idx in new_targets.all_targets() {
-                    storage_deads_to_insert.push((
-                        *bb_idx,
-                        Statement::new(
-                            terminator.source_info,
-                            StatementKind::StorageDead(opt.to_switch_on.local),
-                        ),
-                    ));
-                }
+                _ => (),
             }
 
             let [bb_cond, bb_otherwise] = match new_targets.all_targets() {
@@ -137,18 +104,6 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
             terminator.kind =
                 TerminatorKind::SwitchInt { discr: Operand::Copy(opt.to_switch_on), targets };
         }
-
-        for (idx, bb_idx) in storage_deads_to_remove {
-            body.basic_blocks_mut()[bb_idx].statements[idx].make_nop(true);
-        }
-
-        for (idx, stmt) in storage_deads_to_insert {
-            body.basic_blocks_mut()[idx].statements.insert(0, stmt);
-        }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 
@@ -173,21 +128,31 @@ impl<'tcx> OptimizationFinder<'_, 'tcx> {
                 // find the statement that assigns the place being switched on
                 bb.statements.iter().enumerate().rev().find_map(|(stmt_idx, stmt)| {
                     match &stmt.kind {
-                        rustc_middle::mir::StatementKind::Assign(box (lhs, rhs))
+                        rustc_middle::mir::StatementKind::Assign((lhs, rhs))
                             if *lhs == place_switched_on =>
                         {
                             match rhs {
-                                Rvalue::BinaryOp(
-                                    op @ (BinOp::Eq | BinOp::Ne),
-                                    box (left, right),
-                                ) => {
+                                Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), (left, right)) => {
                                     let (branch_value_scalar, branch_value_ty, to_switch_on) =
                                         find_branch_value_info(left, right, ssa)?;
+
+                                    // The transformation adds a use of `to_switch_on` at the
+                                    // terminator. Both storage markers make the local uninitialized,
+                                    // so either invalidates the value used by the comparison.
+                                    if bb.statements[stmt_idx + 1..].iter().any(|stmt| {
+                                        matches!(
+                                            stmt.kind,
+                                            StatementKind::StorageLive(local)
+                                                | StatementKind::StorageDead(local)
+                                                if local == to_switch_on.local
+                                        )
+                                    }) {
+                                        return None;
+                                    }
 
                                     Some(OptimizationInfo {
                                         bin_op_stmt_idx: stmt_idx,
                                         bb_idx,
-                                        can_remove_bin_op_stmt: discr.is_move(),
                                         to_switch_on,
                                         branch_value_scalar,
                                         branch_value_ty,
@@ -238,11 +203,8 @@ fn find_branch_value_info<'tcx>(
 struct OptimizationInfo<'tcx> {
     /// Basic block to apply the optimization
     bb_idx: BasicBlock,
-    /// Statement index of Eq/Ne assignment that can be removed. None if the assignment can not be
-    /// removed - i.e the statement is used later on
+    /// Statement index of Eq/Ne assignment
     bin_op_stmt_idx: usize,
-    /// Can remove Eq/Ne assignment
-    can_remove_bin_op_stmt: bool,
     /// Place that needs to be switched on. This place is of type integral
     to_switch_on: Place<'tcx>,
     /// Constant to use in switch target value

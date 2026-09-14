@@ -46,7 +46,7 @@ for SEARCH_PYTHON in $SEARCH; do
     fi
 done
 
-python=$(bash -c "compgen -c python" | grep '^python[2-3]\.[0-9]+$' | head -n1)
+python=$(bash -c "compgen -c python" | grep -E '^python[2-3](\.[0-9]+)?$' | head -n1)
 if ! [ "$python" = "" ]; then
     exec "$python" "$xpy" "$@"
 fi

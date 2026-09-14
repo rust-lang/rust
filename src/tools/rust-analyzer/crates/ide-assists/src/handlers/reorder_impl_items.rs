@@ -42,7 +42,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     fn c() {}
 // }
 // ```
-pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let impl_ast = ctx.find_node_at_offset::<ast::Impl>()?;
     let items = impl_ast.assoc_item_list()?;
 
@@ -82,7 +82,7 @@ pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                 ast::AssocItem::MacroCall(_) => None,
             };
 
-            name.and_then(|n| ranks.get(n.text().as_str().trim_start_matches("r#")).copied())
+            name.and_then(|n| ranks.get(n.text().trim_start_matches("r#")).copied())
                 .unwrap_or(usize::MAX)
         })
         .collect();
@@ -99,7 +99,7 @@ pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         "Sort items by trait definition",
         target,
         |builder| {
-            let mut editor = builder.make_editor(&parent_node);
+            let editor = builder.make_editor(&parent_node);
 
             assoc_items
                 .into_iter()
@@ -113,7 +113,7 @@ pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 
 fn compute_item_ranks(
     path: &ast::Path,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<FxHashMap<String, usize>> {
     let td = trait_definition(path, &ctx.sema)?;
 

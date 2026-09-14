@@ -91,22 +91,9 @@ fn download_crate_for_training(sh: &Shell, pgo_dir: &Path, repo: &str) -> anyhow
     let target_path = pgo_dir.join(normalized_path);
     cmd!(sh, "git clone --depth 1 https://github.com/{repo} {revision...} {target_path}")
         .run()
-        .with_context(|| "cannot download PGO training crate from {repo}")?;
+        .with_context(|| format!("cannot download PGO training crate from {repo}"))?;
 
     Ok(target_path)
-}
-
-/// Helper function to create a build command for rust-analyzer
-pub(crate) fn build_command<'a>(
-    sh: &'a Shell,
-    command: &str,
-    target_name: &str,
-    features: &[&str],
-) -> Cmd<'a> {
-    cmd!(
-        sh,
-        "cargo {command} --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} {features...} --release"
-    )
 }
 
 pub(crate) fn apply_pgo_to_cmd<'a>(cmd: Cmd<'a>, profile_path: &Path) -> Cmd<'a> {

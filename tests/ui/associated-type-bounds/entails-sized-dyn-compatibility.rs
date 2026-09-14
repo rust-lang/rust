@@ -1,4 +1,4 @@
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ check-pass
 
 trait Tr1: Sized { type As1; }
 trait Tr2<'a>: Sized { type As2; }

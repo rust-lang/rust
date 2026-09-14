@@ -71,7 +71,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         }
         Unary { arg, op: _ } => visitor.visit_expr(&visitor.thir()[arg]),
         Cast { source } => visitor.visit_expr(&visitor.thir()[source]),
-        Use { source } => visitor.visit_expr(&visitor.thir()[source]),
+        ValueExpr { source } => visitor.visit_expr(&visitor.thir()[source]),
         NeverToAny { source } => visitor.visit_expr(&visitor.thir()[source]),
         PointerCoercion { source, cast: _, is_from_as_cast: _ } => {
             visitor.visit_expr(&visitor.thir()[source])
@@ -81,7 +81,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             visitor.visit_pat(pat);
         }
         Loop { body } => visitor.visit_expr(&visitor.thir()[body]),
-        LoopMatch { match_data: box LoopMatchMatchData { scrutinee, ref arms, .. }, .. }
+        LoopMatch { match_data: LoopMatchMatchData { scrutinee, ref arms, .. }, .. }
         | Match { scrutinee, ref arms, .. } => {
             visitor.visit_expr(&visitor.thir()[scrutinee]);
             for &arm in &**arms {
@@ -123,7 +123,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
                 visitor.visit_expr(&visitor.thir()[field]);
             }
         }
-        Adt(box AdtExpr {
+        Adt(AdtExpr {
             ref fields,
             ref base,
             adt_def: _,
@@ -145,7 +145,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         PlaceUnwrapUnsafeBinder { source }
         | ValueUnwrapUnsafeBinder { source }
         | WrapUnsafeBinder { source } => visitor.visit_expr(&visitor.thir()[source]),
-        Closure(box ClosureExpr {
+        Closure(ClosureExpr {
             closure_id: _,
             args: _,
             upvars: _,
@@ -158,7 +158,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         NamedConst { def_id: _, args: _, user_ty: _ } => {}
         ConstParam { param: _, def_id: _ } => {}
         StaticRef { alloc_id: _, ty: _, def_id: _ } => {}
-        InlineAsm(box InlineAsmExpr {
+        InlineAsm(InlineAsmExpr {
             asm_macro: _,
             ref operands,
             template: _,
@@ -187,6 +187,9 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         }
         ThreadLocalRef(_) => {}
         Yield { value } => visitor.visit_expr(&visitor.thir()[value]),
+        Reborrow { source, mutability: _, target: _ } => {
+            visitor.visit_expr(&visitor.thir()[source])
+        }
     }
 }
 
@@ -247,6 +250,12 @@ pub fn walk_pat<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     visitor: &mut V,
     pat: &'thir Pat<'tcx>,
 ) {
+    if let PatKind::Guard { subpattern, condition } = &pat.kind {
+        visitor.visit_pat(subpattern);
+        visitor.visit_expr(&visitor.thir()[*condition]);
+        return;
+    };
+
     for_each_immediate_subpat(pat, |p| visitor.visit_pat(p));
 }
 
@@ -286,6 +295,10 @@ pub(crate) fn for_each_immediate_subpat<'a, 'tcx>(
             for pat in pats {
                 callback(pat);
             }
+        }
+
+        PatKind::Guard { subpattern, .. } => {
+            callback(subpattern);
         }
     }
 }

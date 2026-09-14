@@ -1,6 +1,4 @@
-#![allow(clippy::if_same_then_else)]
-#![allow(clippy::deref_addrof)]
-#![allow(clippy::nonminimal_bool)]
+#![expect(clippy::deref_addrof)]
 
 fn foo() -> bool {
     true

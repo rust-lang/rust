@@ -1,4 +1,4 @@
-use hir::{db::ExpandDatabase, diagnostics::RemoveUnnecessaryElse};
+use hir::diagnostics::RemoveUnnecessaryElse;
 use ide_db::text_edit::TextEdit;
 use ide_db::{assists::Assist, source_change::SourceChange};
 use itertools::Itertools;
@@ -19,7 +19,7 @@ use crate::{
 // This diagnostic is triggered when there is an `else` block for an `if` expression whose
 // then branch diverges (e.g. ends with a `return`, `continue`, `break` e.t.c).
 pub(crate) fn remove_unnecessary_else(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &RemoveUnnecessaryElse,
 ) -> Option<Diagnostic> {
     if d.if_expr.file_id.macro_file().is_some() {
@@ -40,15 +40,15 @@ pub(crate) fn remove_unnecessary_else(
     )
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveUnnecessaryElse) -> Option<Vec<Assist>> {
-    let root = ctx.sema.db.parse_or_expand(d.if_expr.file_id);
+fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &RemoveUnnecessaryElse) -> Option<Vec<Assist>> {
+    let root = d.if_expr.file_id.parse_or_expand(ctx.sema.db);
     let if_expr = d.if_expr.value.to_node(&root);
     let if_expr = ctx.sema.original_ast_node(if_expr)?;
 
     let mut indent = IndentLevel::from_node(if_expr.syntax());
     let has_parent_if_expr = if_expr.syntax().parent().and_then(ast::IfExpr::cast).is_some();
     if has_parent_if_expr {
-        indent = indent + 1;
+        indent += 1;
     }
     let else_replacement = match if_expr.else_branch()? {
         ast::ElseBranch::Block(block) => block

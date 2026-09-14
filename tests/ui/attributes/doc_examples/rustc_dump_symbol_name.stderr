@@ -1,0 +1,32 @@
+error: symbol-name(_RNvCsCRATE_HASH_22rustc_dump_symbol_name7mangled)
+ --> $DIR/rustc_dump_symbol_name.rs:7:1
+  |
+7 | #[rustc_dump_symbol_name]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(rustc_dump_symbol_name[6981ee133444a33d]::mangled)
+ --> $DIR/rustc_dump_symbol_name.rs:7:1
+  |
+7 | #[rustc_dump_symbol_name]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(rustc_dump_symbol_name::mangled)
+ --> $DIR/rustc_dump_symbol_name.rs:7:1
+  |
+7 | #[rustc_dump_symbol_name]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(no_mangle)
+  --> $DIR/rustc_dump_symbol_name.rs:10:1
+   |
+10 | #[rustc_dump_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(abort)
+  --> $DIR/rustc_dump_symbol_name.rs:15:5
+   |
+15 |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

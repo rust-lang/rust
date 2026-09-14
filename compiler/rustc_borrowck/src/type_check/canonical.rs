@@ -5,12 +5,10 @@ use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_middle::bug;
 use rustc_middle::mir::{Body, ConstraintCategory};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Upcast};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Unnormalized, Upcast};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
-use rustc_trait_selection::solve::NoSolution;
 use rustc_trait_selection::traits::ObligationCause;
-use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
 use tracing::{debug, instrument};
 
@@ -26,7 +24,7 @@ pub(crate) fn fully_perform_op_raw<'tcx, R: fmt::Debug, Op>(
     body: &Body<'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
     region_bound_pairs: &RegionBoundPairs<'tcx>,
-    known_type_outlives_obligations: &[ty::PolyTypeOutlivesPredicate<'tcx>],
+    known_type_outlives_obligations: &[ty::PolyTypeOutlivesClause<'tcx>],
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
     locations: Locations,
     category: ConstraintCategory<'tcx>,
@@ -132,52 +130,54 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
-        self.prove_predicate(
-            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::Trait(
-                ty::TraitPredicate { trait_ref, polarity: ty::PredicatePolarity::Positive },
-            ))),
+        self.prove_clause(
+            ty::ClauseKind::Trait(ty::TraitClause {
+                trait_ref,
+                polarity: ty::ClausePolarity::Positive,
+            }),
             locations,
             category,
         );
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn normalize_and_prove_instantiated_predicates(
+    pub(super) fn normalize_and_prove_instantiated_clauses(
         &mut self,
         // Keep this parameter for now, in case we start using
         // it in `ConstraintCategory` at some point.
         _def_id: DefId,
-        instantiated_predicates: ty::InstantiatedPredicates<'tcx>,
+        instantiated_clauses: ty::InstantiatedClauses<'tcx>,
         locations: Locations,
     ) {
-        for (predicate, span) in instantiated_predicates {
-            debug!(?span, ?predicate);
+        for (clause, span) in instantiated_clauses {
+            debug!(?span, ?clause);
             let category = ConstraintCategory::Predicate(span);
-            let predicate = self.normalize_with_category(predicate, locations, category);
-            self.prove_predicate(predicate, locations, category);
+            let clause = self.normalize_with_category(clause, locations, category);
+            self.prove_clause(clause, locations, category);
         }
     }
 
-    pub(super) fn prove_predicates(
+    pub(super) fn prove_clauses(
         &mut self,
-        predicates: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + std::fmt::Debug>,
+        clauses: impl IntoIterator<Item: Upcast<TyCtxt<'tcx>, ty::Clause<'tcx>> + std::fmt::Debug>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
-        for predicate in predicates {
-            self.prove_predicate(predicate, locations, category);
+        for clause in clauses {
+            self.prove_clause(clause, locations, category);
         }
     }
 
     #[instrument(skip(self), level = "debug")]
-    pub(super) fn prove_predicate(
+    pub(super) fn prove_clause(
         &mut self,
-        predicate: impl Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + std::fmt::Debug,
+        clause: impl Upcast<TyCtxt<'tcx>, ty::Clause<'tcx>> + std::fmt::Debug,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
         let param_env = self.infcx.param_env;
-        let predicate = predicate.upcast(self.tcx());
+        // Upcast to a `Clause`, then to a `Predicate`.
+        let predicate = clause.upcast(self.tcx()).upcast(self.tcx());
         let _: Result<_, ErrorGuaranteed> = self.fully_perform_op(
             locations,
             category,
@@ -185,29 +185,36 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
     }
 
-    pub(super) fn normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
+    pub(super) fn normalize<T>(
+        &mut self,
+        value: Unnormalized<'tcx, T>,
+        location: impl NormalizeLocation,
+    ) -> T
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
         self.normalize_with_category(value, location, ConstraintCategory::Boring)
     }
 
-    pub(super) fn deeply_normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
+    pub(super) fn deeply_normalize<T>(
+        &mut self,
+        value: Unnormalized<'tcx, T>,
+        location: impl NormalizeLocation,
+    ) -> Result<T, ErrorGuaranteed>
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
-        let result: Result<_, ErrorGuaranteed> = self.fully_perform_op(
+        self.fully_perform_op(
             location.to_locations(),
             ConstraintCategory::Boring,
-            self.infcx.param_env.and(type_op::normalize::DeeplyNormalize { value }),
-        );
-        result.unwrap_or(value)
+            self.infcx.param_env.and(type_op::normalize::Normalize { value }),
+        )
     }
 
     #[instrument(skip(self), level = "debug")]
     pub(super) fn normalize_with_category<T>(
         &mut self,
-        value: T,
+        value: Unnormalized<'tcx, T>,
         location: impl NormalizeLocation,
         category: ConstraintCategory<'tcx>,
     ) -> T
@@ -220,7 +227,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             category,
             param_env.and(type_op::normalize::Normalize { value }),
         );
-        result.unwrap_or(value)
+        result.unwrap_or(value.skip_norm_wip())
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -237,75 +244,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             body.source.def_id().expect_local(),
         );
 
-        if self.infcx.next_trait_solver() {
-            let param_env = self.infcx.param_env;
-            // FIXME: Make this into a real type op?
-            self.fully_perform_op(
-                location.to_locations(),
-                ConstraintCategory::Boring,
-                CustomTypeOp::new(
-                    |ocx| {
-                        let structurally_normalize = |ty| {
-                            ocx.structurally_normalize_ty(
-                                &cause,
-                                param_env,
-                                ty,
-                            )
-                            .unwrap_or_else(|_| bug!("struct tail should have been computable, since we computed it in HIR"))
-                        };
-
-                        let tail = tcx.struct_tail_raw(
-                            ty,
-                            &cause,
-                            structurally_normalize,
-                            || {},
-                        );
-
-                        Ok(tail)
-                    },
-                    "normalizing struct tail",
-                ),
-            )
-            .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
-        } else {
-            let mut normalize = |ty| self.normalize(ty, location);
-            let tail = tcx.struct_tail_raw(ty, &cause, &mut normalize, || {});
-            normalize(tail)
-        }
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    pub(super) fn structurally_resolve(
-        &mut self,
-        ty: Ty<'tcx>,
-        location: impl NormalizeLocation,
-    ) -> Ty<'tcx> {
-        if self.infcx.next_trait_solver() {
-            let body = self.body;
-            let param_env = self.infcx.param_env;
-            // FIXME: Make this into a real type op?
-            self.fully_perform_op(
-                location.to_locations(),
-                ConstraintCategory::Boring,
-                CustomTypeOp::new(
-                    |ocx| {
-                        ocx.structurally_normalize_ty(
-                            &ObligationCause::misc(
-                                location.to_locations().span(body),
-                                body.source.def_id().expect_local(),
-                            ),
-                            param_env,
-                            ty,
-                        )
-                        .map_err(|_| NoSolution)
-                    },
-                    "normalizing struct tail",
-                ),
-            )
-            .unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar))
-        } else {
-            self.normalize(ty, location)
-        }
+        let mut normalize = |ty| self.normalize(ty, location);
+        tcx.struct_tail_raw(ty, &cause, &mut normalize, || {})
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -350,7 +290,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // hack in `equate_inputs_and_outputs` which does have associated test cases.
         let mir_ty = match self.infcx.next_trait_solver() {
             true => mir_ty,
-            false => self.normalize(mir_ty, Locations::All(span)),
+            false => self.normalize(Unnormalized::new_wip(mir_ty), Locations::All(span)),
         };
 
         let cause = ObligationCause::dummy_with_span(span);
@@ -364,7 +304,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // obligation for the unnormalized user_ty here. This is
                     // where the "incorrectly skips the WF checks we normally do"
                     // happens
-                    let user_ty = ocx.normalize(&cause, param_env, user_ty);
+                    let user_ty = ocx.normalize(&cause, param_env, Unnormalized::new_wip(user_ty));
                     ocx.eq(&cause, param_env, user_ty, mir_ty)?;
                     Ok(())
                 },

@@ -1,14 +1,13 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::return_ty;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_with_applicability};
-use clippy_utils::sugg::DiagExt;
+use clippy_utils::sugg::DiagExt as _;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{Attribute, HirIdSet};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::ty::AssocKind;
-use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -90,14 +89,14 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                 && impl_item.generics.params.is_empty()
                 && sig.decl.inputs.is_empty()
                 && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id)
-                && let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+                && let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip()
                 && self_ty == return_ty(cx, impl_item.owner_id)
                 && let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
             {
                 if self.impling_types.is_none() {
                     let mut impls = HirIdSet::default();
                     for &d in cx.tcx.local_trait_impls(default_trait_id) {
-                        let ty = cx.tcx.type_of(d).instantiate_identity();
+                        let ty = cx.tcx.type_of(d).instantiate_identity().skip_norm_wip();
                         if let Some(ty_def) = ty.ty_adt_def()
                             && let Some(local_def_id) = ty_def.did().as_local()
                         {
@@ -110,7 +109,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                 // Check if a Default implementation exists for the Self type, regardless of
                 // generics
                 if let Some(ref impling_types) = self.impling_types
-                    && let self_def = cx.tcx.type_of(item.owner_id).instantiate_identity()
+                    && let self_def = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip()
                     && let Some(self_def) = self_def.ty_adt_def()
                     && let Some(self_local_did) = self_def.did().as_local()
                     && let self_id = cx.tcx.local_def_id_to_hir_id(self_local_did)
@@ -179,7 +178,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                     impl_item.span,
                     format!("you should consider adding a `Default` implementation for `{self_type_snip}`"),
                     |diag| {
-                        diag.suggest_prepend_item(
+                        diag.suggest_append_item(
                             cx,
                             item.span,
                             "try adding this",

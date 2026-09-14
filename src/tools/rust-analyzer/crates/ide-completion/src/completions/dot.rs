@@ -1,9 +1,9 @@
 //! Completes references after dot (fields and method calls).
 
-use std::ops::ControlFlow;
+use std::{collections::hash_map, ops::ControlFlow};
 
-use hir::{Complete, Function, HasContainer, ItemContainer, MethodCandidateCallback};
-use ide_db::FxHashSet;
+use hir::{Complete, Function, HasContainer, ItemContainer, MethodCandidateCallback, Name};
+use ide_db::{FxHashMap, FxHashSet};
 use itertools::Either;
 use syntax::SmolStr;
 
@@ -18,7 +18,7 @@ use crate::{
 /// Complete dot accesses, i.e. fields or methods.
 pub(crate) fn complete_dot(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     dot_access: &DotAccess<'_>,
 ) {
     let receiver_ty = match dot_access {
@@ -93,7 +93,7 @@ pub(crate) fn complete_dot(
         // Does <&receiver_ty as IntoIterator>::IntoIter` exist? Assume `iter` is valid
         let iter = receiver_ty
             .autoderef(ctx.db)
-            .map(|ty| ty.strip_references().add_reference(hir::Mutability::Shared))
+            .map(|ty| ty.strip_references().add_reference(ctx.db, hir::Mutability::Shared))
             .find_map(|ty| ty.into_iterator_iter(ctx.db))
             .map(|ty| (ty, SmolStr::new_static("iter()")));
         // Does <receiver_ty as IntoIterator>::IntoIter` exist?
@@ -118,6 +118,9 @@ pub(crate) fn complete_dot(
                 ctx: dot_access.ctx,
             };
             complete_methods(ctx, &iter, &traits_in_scope, |func| {
+                if func.name(ctx.db) == hir::sym::into_iter {
+                    return;
+                }
                 acc.add_method(ctx, &dot_access, func, Some(iter_sym.clone()), None)
             });
         }
@@ -126,7 +129,7 @@ pub(crate) fn complete_dot(
 
 pub(crate) fn complete_undotted_self(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     expr_ctx: &PathExprCtx<'_>,
 ) {
@@ -198,7 +201,7 @@ pub(crate) fn complete_undotted_self(
 
 fn complete_fields(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     receiver: &hir::Type<'_>,
     mut named_field: impl FnMut(&mut Completions, hir::Field, hir::Type<'_>),
     mut tuple_index: impl FnMut(&mut Completions, usize, hir::Type<'_>),
@@ -227,21 +230,24 @@ fn complete_fields(
 }
 
 fn complete_methods(
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     receiver: &hir::Type<'_>,
     traits_in_scope: &FxHashSet<hir::TraitId>,
     f: impl FnMut(hir::Function),
 ) {
-    struct Callback<'a, F> {
-        ctx: &'a CompletionContext<'a>,
+    struct Callback<'a, 'db, F> {
+        ctx: &'a CompletionContext<'a, 'db>,
         f: F,
         // We deliberately deduplicate by function ID and not name, because while inherent methods cannot be
         // duplicated, trait methods can. And it is still useful to show all of them (even when there
         // is also an inherent method, especially considering that it may be private, and filtered later).
         seen_methods: FxHashSet<Function>,
+        // However, duplicate inherent methods is usually meaningless
+        // https://github.com/rust-lang/rust-analyzer/issues/20773#issuecomment-4302781553
+        seen_inherent_methods: FxHashMap<Name, Function>,
     }
 
-    impl<F> MethodCandidateCallback for Callback<'_, F>
+    impl<F> MethodCandidateCallback for Callback<'_, '_, F>
     where
         F: FnMut(hir::Function),
     {
@@ -249,7 +255,21 @@ fn complete_methods(
         // `where` clauses or `dyn Trait`.
         fn on_inherent_method(&mut self, func: hir::Function) -> ControlFlow<()> {
             if func.self_param(self.ctx.db).is_some() && self.seen_methods.insert(func) {
-                (self.f)(func);
+                let same_name = self.seen_inherent_methods.entry(func.name(self.ctx.db));
+                let do_complete = match &same_name {
+                    hash_map::Entry::Vacant(_) => true,
+                    hash_map::Entry::Occupied(same_func) => {
+                        match self.ctx.is_visible(same_func.get()) {
+                            crate::context::Visible::Yes => false,
+                            crate::context::Visible::Editable => true,
+                            crate::context::Visible::No => true,
+                        }
+                    }
+                };
+                if do_complete {
+                    same_name.insert_entry(func);
+                    (self.f)(func);
+                }
             }
             ControlFlow::Continue(())
         }
@@ -277,7 +297,12 @@ fn complete_methods(
         &ctx.scope,
         traits_in_scope,
         None,
-        Callback { ctx, f, seen_methods: FxHashSet::default() },
+        Callback {
+            ctx,
+            f,
+            seen_methods: FxHashSet::default(),
+            seen_inherent_methods: FxHashMap::default(),
+        },
     );
 }
 
@@ -371,6 +396,27 @@ impl A {
                 me foo()      fn(&self)
             "#]],
         )
+    }
+
+    #[test]
+    fn method_completion_with_late_bound_lifetime_in_return_type() {
+        check_no_kw(
+            r#"
+//- minicore: deref
+struct RelPath;
+struct StripPrefixError;
+enum Result<T, E> { Ok(T), Err(E) }
+impl RelPath {
+    fn strip_prefix<'a>(&'a self) -> Result<&'a RelPath, StripPrefixError> {
+        let path: &RelPath = self.strip_$0;
+        loop {}
+    }
+}
+"#,
+            expect![[r#"
+                me strip_prefix() fn(&'a self) -> Result<&RelPath, StripPrefixError>
+            "#]],
+        );
     }
 
     #[test]
@@ -870,6 +916,86 @@ fn test(a: A) {
     }
 
     #[test]
+    fn test_inherent_method_no_same_name() {
+        check_no_kw(
+            r#"
+//- minicore: deref
+struct A {}
+struct B {}
+impl core::ops::Deref for A {
+    type Target = B;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+trait Foo { fn foo(&self) -> u32 {} }
+impl Foo for A {}
+impl Foo for B {}
+impl A { fn foo(&self) -> u8 {} }
+impl B { fn foo(&self) -> u16 {} }
+fn test(a: A) {
+    a.$0
+}
+"#,
+            expect![[r#"
+                me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
+                me foo()                                                fn(&self) -> u8
+                me foo() (as Foo)                                      fn(&self) -> u32
+            "#]],
+        );
+
+        check_no_kw(
+            r#"
+//- minicore: deref
+//- /dep.rs crate:dep
+pub struct A {}
+pub struct B {}
+pub struct C {}
+pub struct D {}
+pub struct E {}
+pub struct F {}
+impl core::ops::Deref for A {
+    type Target = B;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::Deref for B {
+    type Target = C;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::Deref for C {
+    type Target = D;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::Deref for D {
+    type Target = E;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::Deref for E {
+    type Target = F;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+pub trait Foo { fn foo(&self) -> u32 {} }
+impl Foo for A {}
+impl Foo for B {}
+impl A { fn foo(&self) -> u8 {} }
+impl B { pub fn foo(&self) -> u16 {} }
+impl C { fn foo(&self) -> i8 {} }
+impl D { fn foo(&self) -> i16 {} }
+impl E { pub fn foo(&self) -> i32 {} }
+impl F { pub fn foo(&self) -> f32 {} }
+//- /main.rs crate:main deps:dep
+use dep::*;
+fn test(a: A) {
+    a.$0
+}
+"#,
+            expect![[r#"
+                me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
+                me foo()                                               fn(&self) -> u16
+                me foo() (as Foo)                                      fn(&self) -> u32
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_completion_works_in_consts() {
         check_no_kw(
             r#"
@@ -1093,7 +1219,7 @@ impl Foo { fn foo(&mut self) { let _: fn(&mut Self) = |this| { $0 } } }"#,
                 me this.foo() fn(&mut self)
                 lc self            &mut Foo
                 lc this            &mut Foo
-                md core
+                md core::
                 sp Self                 Foo
                 st Foo                  Foo
                 tt Fn
@@ -1117,7 +1243,7 @@ impl Foo { fn foo(&self) { let _: fn(&Self) = |foo| { $0 } } }"#,
                 me self.foo() fn(&self)
                 lc foo             &Foo
                 lc self            &Foo
-                md core
+                md core::
                 sp Self             Foo
                 st Foo              Foo
                 tt Fn
@@ -1137,7 +1263,7 @@ impl Foo { fn foo(&self) { let _: fn(&Self) = || { $0 } } }"#,
                 fd self.field       i32
                 me self.foo() fn(&self)
                 lc self            &Foo
-                md core
+                md core::
                 sp Self             Foo
                 st Foo              Foo
                 tt Fn
@@ -1159,7 +1285,7 @@ impl Foo { fn foo(&self) { let _: fn(&Self, &Self) = |foo, other| { $0 } } }"#,
                 lc foo             &Foo
                 lc other           &Foo
                 lc self            &Foo
-                md core
+                md core::
                 sp Self             Foo
                 st Foo              Foo
                 tt Fn
@@ -1558,7 +1684,6 @@ fn foo() {
             expect![[r#"
                 me into_iter() (as IntoIterator)                fn(self) -> <Self as IntoIterator>::IntoIter
                 me into_iter().by_ref() (as Iterator)                             fn(&mut self) -> &mut Self
-                me into_iter().into_iter() (as IntoIterator)    fn(self) -> <Self as IntoIterator>::IntoIter
                 me into_iter().next() (as Iterator)        fn(&mut self) -> Option<<Self as Iterator>::Item>
                 me into_iter().nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
             "#]],
@@ -1592,7 +1717,6 @@ fn foo() {
                 me into_iter() (as IntoIterator)           fn(self) -> <Self as IntoIterator>::IntoIter
                 me iter()                                                             fn(&self) -> Iter
                 me iter().by_ref() (as Iterator)                             fn(&mut self) -> &mut Self
-                me iter().into_iter() (as IntoIterator)    fn(self) -> <Self as IntoIterator>::IntoIter
                 me iter().next() (as Iterator)        fn(&mut self) -> Option<<Self as Iterator>::Item>
                 me iter().nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
             "#]],

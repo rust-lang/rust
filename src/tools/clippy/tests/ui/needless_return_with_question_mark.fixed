@@ -1,12 +1,11 @@
 //@aux-build:proc_macros.rs
-#![allow(
+#![warn(clippy::needless_return_with_question_mark)]
+#![expect(
+    clippy::diverging_sub_expression,
     clippy::needless_return,
     clippy::no_effect,
     clippy::unit_arg,
-    clippy::useless_conversion,
-    clippy::diverging_sub_expression,
-    clippy::let_unit_value,
-    unused
+    clippy::useless_conversion
 )]
 
 #[macro_use]
@@ -127,4 +126,40 @@ fn general_return() {
         };
         Ok(())
     }
+}
+
+async fn async_fn() -> Result<(), ()> {
+    if true {
+        Err(())?;
+        //~^ needless_return_with_question_mark
+    }
+    Ok(())
+}
+
+async fn async_block() -> Result<(), ()> {
+    async {
+        if true {
+            Err(())?;
+            //~^ needless_return_with_question_mark
+        }
+        Ok(())
+    }
+    .await
+}
+
+async fn async_block_final_stmt() -> Result<(), ()> {
+    async {
+        return Err(())?;
+    }
+    .await
+}
+
+fn last_stmt() -> Result<(), ()> {
+    return Err(())?;
+}
+
+fn expr_after_stmt() -> Result<(), ()> {
+    Err(())?;
+    //~^ needless_return_with_question_mark
+    Ok(())
 }

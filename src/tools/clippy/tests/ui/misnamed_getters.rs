@@ -1,6 +1,5 @@
-#![allow(unused)]
-#![allow(clippy::struct_field_names)]
 #![warn(clippy::misnamed_getters)]
+#![expect(clippy::struct_field_names)]
 
 struct A {
     a: u8,

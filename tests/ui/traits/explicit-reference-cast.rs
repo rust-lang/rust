@@ -7,7 +7,7 @@ pub struct ToolA(PathBuf);
 //~^ HELP the trait `From<&PathBuf>` is not implemented for `ToolA`
 
 impl From<&Path> for ToolA {
-    //~^ HELP the following other types implement trait `From<T>`
+    //~^ HELP `ToolA` implements trait `From<T>`
     fn from(p: &Path) -> ToolA {
         ToolA(p.to_path_buf())
     }

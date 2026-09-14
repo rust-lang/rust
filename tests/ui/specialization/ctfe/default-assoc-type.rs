@@ -2,7 +2,6 @@
 //! even if they rely on specialization.
 //@ check-pass
 #![feature(specialization)]
-//~^ WARNING the feature `specialization` is incomplete and may not be safe to use
 
 trait Foo {
     type Assoc: Trait;

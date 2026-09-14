@@ -1,7 +1,4 @@
 // Test for #124423, which causes an ice bug: only `variances_of` returns `&[ty::Variance]`
-//
-//@ compile-flags: -Z threads=16
-//@ compare-output-by-lines
 
 use std::fmt::Debug;
 
@@ -43,7 +40,7 @@ fn x<'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
 //~| ERROR use of undeclared lifetime name `'a`
 //~| ERROR use of undeclared lifetime name `'a`
 //~| ERROR at least one trait is required for an object type
-//~| ERROR no function or associated item named `u32` found for struct `Box<_, _>` in the current scope
+//~| ERROR no associated function or constant named `u32` found for struct `Box<_, _>` in the current scope
 
 fn elided4(_: &impl Copy + 'a) ->  new  { x(x) }
 //~^ ERROR ambiguous `+` in a type

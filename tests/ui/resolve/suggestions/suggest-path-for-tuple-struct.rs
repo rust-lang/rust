@@ -20,7 +20,7 @@ use module::{SomeTupleStruct, SomeRegularStruct};
 
 fn main() {
     let _ = SomeTupleStruct.new();
-    //~^ ERROR expected value, found struct `SomeTupleStruct`
+    //~^ ERROR cannot find value `SomeTupleStruct` in this scope
     let _ = SomeRegularStruct.new();
-    //~^ ERROR expected value, found struct `SomeRegularStruct`
+    //~^ ERROR cannot find value `SomeRegularStruct` in this scope
 }

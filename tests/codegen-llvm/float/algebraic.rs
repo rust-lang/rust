@@ -6,7 +6,6 @@
 #![crate_type = "lib"]
 #![feature(f16)]
 #![feature(f128)]
-#![feature(float_algebraic)]
 
 // CHECK-LABEL: @f16_algebraic_add
 #[no_mangle]

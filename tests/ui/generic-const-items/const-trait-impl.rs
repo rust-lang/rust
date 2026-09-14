@@ -15,13 +15,14 @@ const trait Create {
     fn create() -> Self;
 }
 
-impl const Create for i32 {
+const impl Create for i32 {
     fn create() -> i32 {
         4096
     }
 }
 
-trait Mod { // doesn't need to be a const trait
+// doesn't need to be a const trait
+trait Mod {
     const CREATE<T: const Create>: T;
 }
 

@@ -1,6 +1,6 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/51506>
 
-#![feature(never_type, specialization)]
+#![feature(specialization)]
 #![allow(incomplete_features)]
 
 use std::iter::{self, Empty};

@@ -40,7 +40,7 @@ use crate::{AssistContext, AssistId, Assists};
 // fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
 // ```
 
-pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let ret_type = ctx.find_node_at_offset::<ast::RetType>()?;
     let parent = ret_type.syntax().parent()?;
     let body_expr = match_ast! {
@@ -77,9 +77,9 @@ pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             kind.label(),
             type_ref.syntax().text_range(),
             |builder| {
-                let mut editor = builder.make_editor(&parent);
-                let make = SyntaxFactory::with_mappings();
-                let alias = wrapper_alias(ctx, &make, core_wrapper, type_ref, &ty, kind.symbol());
+                let editor = builder.make_editor(&parent);
+                let make = editor.make();
+                let alias = wrapper_alias(ctx, make, core_wrapper, type_ref, &ty, kind.symbol());
                 let (ast_new_return_ty, semantic_new_return_ty) = alias.unwrap_or_else(|| {
                     let (ast_ty, ty_constructor) = match kind {
                         WrapperKind::Option => {
@@ -92,7 +92,7 @@ pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     };
                     let semantic_ty = ty_constructor
                         .map(|ty_constructor| {
-                            hir::Adt::from(ty_constructor).ty_with_args(ctx.db(), [ty.clone()])
+                            hir::Adt::from(ty_constructor).ty(ctx.db()).instantiate([ty.clone()])
                         })
                         .unwrap_or_else(|| ty.clone());
                     (ast_ty, semantic_ty)
@@ -156,8 +156,6 @@ pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         );
                     }
                 }
-
-                editor.add_mappings(make.finish_with_mappings());
                 builder.add_file_edits(ctx.vfs_file_id(), editor);
             },
         );
@@ -214,7 +212,7 @@ impl WrapperKind {
 
 // Try to find an wrapper type alias in the current scope (shadowing the default).
 fn wrapper_alias<'db>(
-    ctx: &AssistContext<'db>,
+    ctx: &AssistContext<'_, 'db>,
     make: &SyntaxFactory,
     core_wrapper: hir::Enum,
     ast_ret_type: &ast::Type,
@@ -258,7 +256,7 @@ fn wrapper_alias<'db>(
             );
 
             let new_ty =
-                hir::Adt::from(enum_ty).ty_with_args(ctx.db(), [semantic_ret_type.clone()]);
+                hir::Adt::from(enum_ty).ty(ctx.db()).instantiate([semantic_ret_type.clone()]);
 
             Some((make.ty_path(path), new_ty))
         })
@@ -964,7 +962,7 @@ fn foo(num: i32) -> Option<i32> {
         check_assist_by_label(
             wrap_return_type,
             r#"
-//- minicore: option
+//- minicore: option, fn
 fn foo(the_field: u32) ->$0 u32 {
     let true_closure = || { return true; };
     if the_field < 5 {
@@ -998,7 +996,7 @@ fn foo(the_field: u32) -> Option<u32> {
         check_assist_by_label(
             wrap_return_type,
             r#"
-//- minicore: option
+//- minicore: option, fn
 fn foo(the_field: u32) -> u32$0 {
     let true_closure = || {
         return true;
@@ -2035,7 +2033,7 @@ fn foo(num: i32) -> Result<i32, ${0:_}> {
         check_assist_by_label(
             wrap_return_type,
             r#"
-//- minicore: result
+//- minicore: result, fn
 fn foo(the_field: u32) ->$0 u32 {
     let true_closure = || { return true; };
     if the_field < 5 {
@@ -2069,7 +2067,7 @@ fn foo(the_field: u32) -> Result<u32, ${0:_}> {
         check_assist_by_label(
             wrap_return_type,
             r#"
-//- minicore: result
+//- minicore: result, fn
 fn foo(the_field: u32) -> u32$0 {
     let true_closure = || {
         return true;

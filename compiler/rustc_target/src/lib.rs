@@ -24,8 +24,6 @@ pub mod target_features;
 #[cfg(test)]
 mod tests;
 
-use rustc_abi::HashStableContext;
-
 /// The name of rustc's own place to organize libraries.
 ///
 /// Used to be `rustc`, now the default is `rustlib`.

@@ -73,7 +73,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::definitions::DisambiguatorState;
+use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_middle::bug;
 use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
@@ -110,7 +110,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
 
     let parent_def_id = tcx.local_parent(coroutine_def_id);
     let ty::CoroutineClosure(_, parent_args) =
-        *tcx.type_of(parent_def_id).instantiate_identity().kind()
+        *tcx.type_of(parent_def_id).instantiate_identity().skip_norm_wip().kind()
     else {
         bug!("coroutine's parent was not a coroutine-closure");
     };
@@ -221,10 +221,12 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
         None,
         DefKind::SyntheticCoroutineBody,
         None,
-        &mut DisambiguatorState::new(),
+        &mut PerParentDisambiguatorState::new(parent_def_id),
     );
-    by_move_body.source =
-        mir::MirSource::from_instance(InstanceKind::Item(body_def.def_id().to_def_id()));
+    by_move_body.source = mir::MirSource {
+        instance: InstanceKind::Item(body_def.def_id().to_def_id()),
+        promoted: None,
+    };
 
     if let Some(dumper) = MirDumper::new(tcx, "built", &by_move_body) {
         dumper.set_disambiguator(&"after").dump_mir(&by_move_body);
@@ -239,13 +241,13 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     body_def.coroutine_kind(tcx.coroutine_kind(coroutine_def_id));
     body_def.def_ident_span(tcx.def_ident_span(coroutine_def_id));
     body_def.def_span(tcx.def_span(coroutine_def_id));
-    body_def.explicit_predicates_of(tcx.explicit_predicates_of(coroutine_def_id));
+    body_def.explicit_clauses_of(tcx.explicit_clauses_of(coroutine_def_id));
     body_def.generics_of(tcx.generics_of(coroutine_def_id).clone());
     body_def.param_env(tcx.param_env(coroutine_def_id));
-    body_def.explicit_predicates_of(tcx.explicit_predicates_of(coroutine_def_id));
+    body_def.explicit_clauses_of(tcx.explicit_clauses_of(coroutine_def_id));
 
     // The type of the coroutine is the `by_move_coroutine_ty`.
-    body_def.type_of(ty::EarlyBinder::bind(by_move_coroutine_ty));
+    body_def.type_of(ty::EarlyBinder::bind(tcx, by_move_coroutine_ty));
 
     body_def.mir_built(tcx.arena.alloc(Steal::new(by_move_body)));
 
@@ -346,7 +348,7 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
         // here at all since they're fully a MIR borrowck artifact, and we
         // don't need to borrowck by-move MIR bodies. But it's best to preserve
         // as much as we can between these two bodies :)
-        if let mir::StatementKind::Assign(box (_, rvalue)) = &statement.kind
+        if let mir::StatementKind::Assign((_, rvalue)) = &statement.kind
             && let mir::Rvalue::Ref(_, mir::BorrowKind::Fake(mir::FakeBorrowKind::Shallow), place) =
                 rvalue
             && let mir::PlaceRef {

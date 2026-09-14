@@ -1,12 +1,11 @@
 //@aux-build:interior_mutable_const.rs
 
 #![deny(clippy::borrow_interior_mutable_const)]
-#![allow(
-    clippy::declare_interior_mutable_const,
-    clippy::out_of_bounds_indexing,
+#![expect(
     const_item_interior_mutations,
     const_item_mutation,
-    unconditional_panic
+    clippy::declare_interior_mutable_const,
+    clippy::out_of_bounds_indexing
 )]
 
 use core::cell::{Cell, UnsafeCell};

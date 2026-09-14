@@ -5,14 +5,13 @@
 use hir::{HasSource, PathResolution};
 use ide_db::FxHashMap;
 use ide_db::{
-    defs::Definition, imports::insert_use::ast_to_remove_for_path_in_use_stmt,
-    search::FileReference,
+    defs::Definition, imports::insert_use::remove_use_tree_if_simple, search::FileReference,
 };
 use itertools::Itertools;
 use syntax::ast::syntax_factory::SyntaxFactory;
 use syntax::syntax_editor::SyntaxEditor;
 use syntax::{
-    AstNode, NodeOrToken, SyntaxNode,
+    AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T,
     ast::{self, HasGenericParams, HasName},
 };
 
@@ -46,7 +45,7 @@ use super::inline_call::split_refs_and_uses;
 //     let _: i32 = 3;
 // }
 // ```
-pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let ast_alias = name.syntax().parent().and_then(ast::TypeAlias::cast)?;
 
@@ -70,16 +69,14 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
 
             let mut inline_refs_for_file = |file_id, refs: Vec<FileReference>| {
                 let source = ctx.sema.parse(file_id);
-                let mut editor = builder.make_editor(source.syntax());
+                let editor = builder.make_editor(source.syntax());
 
-                let (path_types, path_type_uses) =
-                    split_refs_and_uses(builder, refs, |path_type| {
-                        path_type.syntax().ancestors().nth(3).and_then(ast::PathType::cast)
-                    });
+                let (path_types, path_type_uses) = split_refs_and_uses(refs, |path_type| {
+                    path_type.syntax().ancestors().nth(3).and_then(ast::PathType::cast)
+                });
                 path_type_uses
                     .iter()
-                    .flat_map(ast_to_remove_for_path_in_use_stmt)
-                    .for_each(|x| editor.delete(x.syntax()));
+                    .for_each(|use_tree| remove_use_tree_if_simple(use_tree, &editor));
 
                 for (target, replacement) in path_types.into_iter().filter_map(|path_type| {
                     let replacement =
@@ -101,7 +98,7 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
                 inline_refs_for_file(file_id, refs);
             }
             if !definition_deleted {
-                let mut editor = builder.make_editor(ast_alias.syntax());
+                let editor = builder.make_editor(ast_alias.syntax());
                 editor.delete(ast_alias.syntax());
                 builder.add_file_edits(ctx.vfs_file_id(), editor)
             }
@@ -128,7 +125,7 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
 //     let a: Vec<u32>;
 // }
 // ```
-pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let alias_instance = ctx.find_node_at_offset::<ast::PathType>()?;
     let concrete_type;
     let replacement;
@@ -138,7 +135,20 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
                 PathResolution::SelfType(imp) => {
                     concrete_type = imp.source(ctx.db())?.value.self_ty()?;
                 }
-                // FIXME: should also work in ADT definitions
+                PathResolution::Def(hir::ModuleDef::Adt(adt)) => {
+                    let make = SyntaxFactory::without_mappings();
+                    let src = adt.source(ctx.db())?.value;
+                    let name = src.name()?;
+                    let generic_params = src.generic_param_list();
+                    let name_ref = make.name_ref(name.text());
+                    let segment = match generic_params {
+                        Some(params) => {
+                            make.path_segment_generics(name_ref, params.to_generic_args(&make))
+                        }
+                        None => make.path_segment(name_ref),
+                    };
+                    concrete_type = make.ty_path_from_segments([segment], false);
+                }
                 _ => return None,
             }
 
@@ -156,7 +166,7 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         "Inline type alias",
         alias_instance.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(alias_instance.syntax());
+            let editor = builder.make_editor(alias_instance.syntax());
             let replace = replacement.replace_generic(&concrete_type);
             editor.replace(alias_instance.syntax(), replace);
             builder.add_file_edits(ctx.vfs_file_id(), editor);
@@ -170,7 +180,7 @@ impl Replacement {
             Replacement::Generic { lifetime_map, const_and_type_map } => {
                 create_replacement(lifetime_map, const_and_type_map, concrete_type)
             }
-            Replacement::Plain => concrete_type.syntax().clone_subtree().clone_for_update(),
+            Replacement::Plain => concrete_type.syntax().clone(),
         }
     }
 }
@@ -312,9 +322,8 @@ fn create_replacement(
     const_and_type_map: &ConstAndTypeMap,
     concrete_type: &ast::Type,
 ) -> SyntaxNode {
-    let updated_concrete_type = concrete_type.syntax().clone_subtree();
-    let mut editor = SyntaxEditor::new(updated_concrete_type.clone());
-
+    let (editor, updated_concrete_type) = SyntaxEditor::new(concrete_type.syntax().clone());
+    let make = editor.make();
     let mut replacements: Vec<(SyntaxNode, SyntaxNode)> = Vec::new();
     let mut removals: Vec<NodeOrToken<SyntaxNode, _>> = Vec::new();
 
@@ -322,16 +331,46 @@ fn create_replacement(
         if let Some(old_lifetime) = ast::Lifetime::cast(syntax.clone()) {
             if let Some(new_lifetime) = lifetime_map.0.get(&old_lifetime.to_string()) {
                 if new_lifetime.text() == "'_" {
-                    removals.push(NodeOrToken::Node(syntax.clone()));
+                    // Check if this lifetime is inside a LifetimeArg (in angle brackets)
+                    if let Some(lifetime_arg) =
+                        old_lifetime.syntax().parent().and_then(ast::LifetimeArg::cast)
+                    {
+                        // Remove LifetimeArg and associated comma/whitespace
+                        let lifetime_arg_syntax = lifetime_arg.syntax();
+                        removals.push(NodeOrToken::Node(lifetime_arg_syntax.clone()));
 
-                    if let Some(ws) = syntax.next_sibling_or_token() {
-                        removals.push(ws.clone());
+                        // Remove comma and whitespace (look forward then backward)
+                        let comma_and_ws: Vec<_> = lifetime_arg_syntax
+                            .siblings_with_tokens(syntax::Direction::Next)
+                            .skip(1)
+                            .take_while(|it| it.as_token().is_some())
+                            .take_while_inclusive(|it| it.kind() == T![,])
+                            .collect();
+
+                        if comma_and_ws.iter().any(|it| it.kind() == T![,]) {
+                            removals.extend(comma_and_ws);
+                        } else {
+                            // No comma after, try before
+                            let comma_and_ws: Vec<_> = lifetime_arg_syntax
+                                .siblings_with_tokens(syntax::Direction::Prev)
+                                .skip(1)
+                                .take_while(|it| it.as_token().is_some())
+                                .take_while_inclusive(|it| it.kind() == T![,])
+                                .collect();
+                            removals.extend(comma_and_ws);
+                        }
+                        continue;
                     }
-
+                    removals.push(NodeOrToken::Node(syntax.clone()));
+                    if let Some(ws) = syntax.next_sibling_or_token()
+                        && ws.kind() == SyntaxKind::WHITESPACE
+                    {
+                        removals.push(ws);
+                    }
                     continue;
                 }
 
-                replacements.push((syntax.clone(), new_lifetime.syntax().clone_for_update()));
+                replacements.push((syntax.clone(), new_lifetime.syntax().clone()));
             }
         } else if let Some(name_ref) = ast::NameRef::cast(syntax.clone()) {
             let Some(replacement_syntax) = const_and_type_map.0.get(&name_ref.to_string()) else {
@@ -339,13 +378,40 @@ fn create_replacement(
             };
             let new_string = replacement_syntax.to_string();
             let new = if new_string == "_" {
-                let make = SyntaxFactory::without_mappings();
                 make.wildcard_pat().syntax().clone()
             } else {
                 replacement_syntax.clone()
             };
 
             replacements.push((syntax.clone(), new));
+        }
+    }
+
+    // Deduplicate removals to avoid intersecting changes
+    removals.sort_by_key(|n| n.text_range().start());
+    removals.dedup();
+
+    // Remove GenericArgList entirely if all its args are being removed (avoids empty angle brackets)
+    let generic_arg_lists_to_check: Vec<_> =
+        updated_concrete_type.descendants().filter_map(ast::GenericArgList::cast).collect();
+
+    for generic_arg_list in generic_arg_lists_to_check {
+        let will_be_empty = generic_arg_list.generic_args().all(|arg| match arg {
+            ast::GenericArg::LifetimeArg(lt_arg) => removals.iter().any(|removal| {
+                if let NodeOrToken::Node(node) = removal { node == lt_arg.syntax() } else { false }
+            }),
+            _ => false,
+        });
+
+        if will_be_empty && generic_arg_list.generic_args().next().is_some() {
+            removals.retain(|removal| {
+                if let NodeOrToken::Node(node) = removal {
+                    !node.ancestors().any(|anc| anc == *generic_arg_list.syntax())
+                } else {
+                    true
+                }
+            });
+            removals.push(NodeOrToken::Node(generic_arg_list.syntax().clone()));
         }
     }
 
@@ -359,7 +425,7 @@ fn create_replacement(
     editor.finish().new_root().clone()
 }
 
-fn get_type_alias(ctx: &AssistContext<'_>, path: &ast::PathType) -> Option<ast::TypeAlias> {
+fn get_type_alias(ctx: &AssistContext<'_, '_>, path: &ast::PathType) -> Option<ast::TypeAlias> {
     let resolved_path = ctx.sema.resolve_path(&path.path()?)?;
 
     // We need the generics in the correct order to be able to map any provided
@@ -391,15 +457,12 @@ impl ConstOrTypeGeneric {
     }
 
     fn replacement_value(&self) -> Option<SyntaxNode> {
-        Some(
-            match self {
-                ConstOrTypeGeneric::ConstArg(ca) => ca.expr()?.syntax().clone(),
-                ConstOrTypeGeneric::TypeArg(ta) => ta.syntax().clone(),
-                ConstOrTypeGeneric::ConstParam(cp) => cp.default_val()?.syntax().clone(),
-                ConstOrTypeGeneric::TypeParam(tp) => tp.default_type()?.syntax().clone(),
-            }
-            .clone_for_update(),
-        )
+        Some(match self {
+            ConstOrTypeGeneric::ConstArg(ca) => ca.expr()?.syntax().clone(),
+            ConstOrTypeGeneric::TypeArg(ta) => ta.syntax().clone(),
+            ConstOrTypeGeneric::ConstParam(cp) => cp.default_val()?.syntax().clone(),
+            ConstOrTypeGeneric::TypeParam(tp) => tp.default_type()?.syntax().clone(),
+        })
     }
 }
 
@@ -946,6 +1009,110 @@ trait Tr {
         );
     }
 
+    #[test]
+    fn inline_self_type_in_adt_definition() {
+        check_assist(
+            inline_type_alias,
+            r#"
+enum Foo {
+    A(i32),
+    B(Box<Self$0>),
+}
+"#,
+            r#"
+enum Foo {
+    A(i32),
+    B(Box<Foo>),
+}
+"#,
+        );
+        check_assist(
+            inline_type_alias,
+            r#"
+struct Foo {
+    a: Box<Self$0>,
+}
+"#,
+            r#"
+struct Foo {
+    a: Box<Foo>,
+}
+"#,
+        );
+        check_assist(
+            inline_type_alias,
+            r#"
+struct Foo<T> {
+    a: T,
+    b: Box<Self$0>,
+}
+"#,
+            r#"
+struct Foo<T> {
+    a: T,
+    b: Box<Foo<T>>,
+}
+"#,
+        );
+        check_assist(
+            inline_type_alias,
+            r#"
+union Foo {
+    a: u32,
+    b: std::mem::ManuallyDrop<Box<Self$0>>,
+}
+"#,
+            r#"
+union Foo {
+    a: u32,
+    b: std::mem::ManuallyDrop<Box<Foo>>,
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn inline_types_with_lifetime() {
+        check_assist(
+            inline_type_alias_uses,
+            r#"
+struct A<'a, 'b>(pub &'a mut &'b mut ());
+
+type $0T<'a, 'b> = A<'a, 'b>;
+
+fn foo(_: T) {}
+"#,
+            r#"
+struct A<'a, 'b>(pub &'a mut &'b mut ());
+
+
+
+fn foo(_: A) {}
+"#,
+        );
+    }
+
+    #[test]
+    fn mixed_lifetime_and_type_args() {
+        check_assist(
+            inline_type_alias,
+            r#"
+type Foo<'a, T> = Bar<'a, T>;
+struct Bar<'a, T>(&'a T);
+fn main() {
+    let a: $0Foo<u32>;
+}
+"#,
+            r#"
+type Foo<'a, T> = Bar<'a, T>;
+struct Bar<'a, T>(&'a T);
+fn main() {
+    let a: Bar<u32>;
+}
+"#,
+        );
+    }
+
     mod inline_type_alias_uses {
         use crate::{handlers::inline_type_alias::inline_type_alias_uses, tests::check_assist};
 
@@ -999,7 +1166,6 @@ fn f() -> Vec<&str> {
 }
 
 //- /foo.rs
-
 fn foo() {
     let _: Vec<i8> = Vec::new();
 }
@@ -1028,7 +1194,6 @@ mod foo;
 
 
 //- /foo.rs
-
 fn foo() {
     let _: i32 = 0;
 }

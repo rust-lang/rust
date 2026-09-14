@@ -2,6 +2,8 @@
 
 //@ only-linux
 //@ ignore-cross-compile
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 // FIXME: This test isn't comprehensive and isn't covering all possible combinations.
 
@@ -23,7 +25,7 @@ fn check_compression(compression: &str, to_find: &str) {
         } else {
             assert_contains(
                 stderr,
-                format!("unknown debuginfo compression algorithm {compression}"),
+                format!("unsupported debuginfo compression algorithm {compression}"),
             );
         }
     });

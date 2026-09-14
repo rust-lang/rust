@@ -1,7 +1,6 @@
 // https://github.com/rust-lang/rust/issues/55380
 //@ run-pass
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete
 
 pub trait Foo {
     fn abc() -> u32;

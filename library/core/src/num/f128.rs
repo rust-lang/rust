@@ -10,8 +10,9 @@
 //! defined directly on the `f128` type.
 
 #![unstable(feature = "f128", issue = "116909")]
+#![expect(clippy::approx_constant, reason = "this module defines f128 constants")]
 
-use crate::convert::FloatToInt;
+use crate::convert::{FloatToFloat, FloatToInt};
 use crate::num::FpCategory;
 use crate::panic::const_assert;
 use crate::{intrinsics, mem};
@@ -33,6 +34,7 @@ pub mod consts {
     pub const TAU: f128 = 6.28318530717958647692528676655900576839433879875021164194989_f128;
 
     /// The golden ratio (φ)
+    #[doc(alias = "phi")]
     #[unstable(feature = "f128", issue = "116909")]
     pub const GOLDEN_RATIO: f128 =
         1.61803398874989484820458683436563811772030917980576286213545_f128;
@@ -338,14 +340,78 @@ impl f128 {
     #[unstable(feature = "float_exact_integer_constants", issue = "152466")]
     pub const MIN_EXACT_INTEGER: i128 = -Self::MAX_EXACT_INTEGER;
 
-    /// Sign bit
-    pub(crate) const SIGN_MASK: u128 = 0x8000_0000_0000_0000_0000_0000_0000_0000;
+    /// The mask of the bit used to encode the sign of an [`f128`].
+    ///
+    /// This bit is set when the sign is negative and unset when the sign is
+    /// positive.
+    /// If you only need to check whether a value is positive or negative,
+    /// [`is_sign_positive`] or [`is_sign_negative`] can be used.
+    ///
+    /// [`is_sign_positive`]: f128::is_sign_positive
+    /// [`is_sign_negative`]: f128::is_sign_negative
+    /// ```rust
+    /// #![feature(float_masks)]
+    /// #![feature(f128)]
+    /// # #[cfg(target_has_reliable_f128)] {
+    /// let sign_mask = f128::SIGN_MASK;
+    /// let a = 1.6552f128;
+    /// let a_bits = a.to_bits();
+    ///
+    /// assert_eq!(a_bits & sign_mask, 0x0);
+    /// assert_eq!(f128::from_bits(a_bits ^ sign_mask), -a);
+    /// assert_eq!(sign_mask, (-0.0f128).to_bits());
+    /// # }
+    /// ```
+    #[unstable(feature = "float_masks", issue = "154064")]
+    pub const SIGN_MASK: u128 = 0x8000_0000_0000_0000_0000_0000_0000_0000;
 
-    /// Exponent mask
-    pub(crate) const EXP_MASK: u128 = 0x7fff_0000_0000_0000_0000_0000_0000_0000;
+    /// The mask of the bits used to encode the exponent of an [`f128`].
+    ///
+    /// Note that the exponent is stored as a biased value, with a bias of 16383 for `f128`.
+    ///
+    /// ```rust
+    /// #![feature(float_masks)]
+    /// #![feature(f128)]
+    /// # #[cfg(target_has_reliable_f128)] {
+    /// fn get_exp(a: f128) -> i128 {
+    ///     let bias = 16383;
+    ///     let biased = a.to_bits() & f128::EXPONENT_MASK;
+    ///     (biased >> (f128::MANTISSA_DIGITS - 1)).cast_signed() - bias
+    /// }
+    ///
+    /// assert_eq!(get_exp(0.5), -1);
+    /// assert_eq!(get_exp(1.0), 0);
+    /// assert_eq!(get_exp(2.0), 1);
+    /// assert_eq!(get_exp(4.0), 2);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_masks", issue = "154064")]
+    pub const EXPONENT_MASK: u128 = 0x7fff_0000_0000_0000_0000_0000_0000_0000;
 
-    /// Mantissa mask
-    pub(crate) const MAN_MASK: u128 = 0x0000_ffff_ffff_ffff_ffff_ffff_ffff_ffff;
+    /// The mask of the bits used to encode the mantissa of an [`f128`].
+    ///
+    /// ```rust
+    /// #![feature(float_masks)]
+    /// #![feature(f128)]
+    /// # #[cfg(target_has_reliable_f128)] {
+    /// let mantissa_mask = f128::MANTISSA_MASK;
+    ///
+    /// assert_eq!(0f128.to_bits() & mantissa_mask, 0x0);
+    /// assert_eq!(1f128.to_bits() & mantissa_mask, 0x0);
+    ///
+    /// // multiplying a finite value by a power of 2 doesn't change its mantissa
+    /// // unless the result or initial value is not normal.
+    /// let a = 1.6552f128;
+    /// let b = 4.0 * a;
+    /// assert_eq!(a.to_bits() & mantissa_mask, b.to_bits() & mantissa_mask);
+    ///
+    /// // The maximum and minimum values have a saturated significand
+    /// assert_eq!(f128::MAX.to_bits() & f128::MANTISSA_MASK, f128::MANTISSA_MASK);
+    /// assert_eq!(f128::MIN.to_bits() & f128::MANTISSA_MASK, f128::MANTISSA_MASK);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_masks", issue = "154064")]
+    pub const MANTISSA_MASK: u128 = 0x0000_ffff_ffff_ffff_ffff_ffff_ffff_ffff;
 
     /// Minimum representable positive value (min subnormal)
     const TINY_BITS: u128 = 0x1;
@@ -507,11 +573,12 @@ impl f128 {
     /// ```
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
+    #[must_use]
     pub const fn classify(self) -> FpCategory {
         let bits = self.to_bits();
-        match (bits & Self::MAN_MASK, bits & Self::EXP_MASK) {
-            (0, Self::EXP_MASK) => FpCategory::Infinite,
-            (_, Self::EXP_MASK) => FpCategory::Nan,
+        match (bits & Self::MANTISSA_MASK, bits & Self::EXPONENT_MASK) {
+            (0, Self::EXPONENT_MASK) => FpCategory::Infinite,
+            (_, Self::EXPONENT_MASK) => FpCategory::Nan,
             (0, 0) => FpCategory::Zero,
             (_, 0) => FpCategory::Subnormal,
             _ => FpCategory::Normal,
@@ -526,7 +593,7 @@ impl f128 {
     /// conserved over arithmetic operations, the result of `is_sign_positive` on
     /// a NaN might produce an unexpected or non-portable result. See the [specification
     /// of NaN bit patterns](f32#nan-bit-patterns) for more info. Use `self.signum() == 1.0`
-    /// if you need fully portable behavior (will return `false` for all NaNs).
+    /// if you need fully portable behavior (will return NaN for all NaNs).
     ///
     /// ```
     /// #![feature(f128)]
@@ -552,7 +619,7 @@ impl f128 {
     /// conserved over arithmetic operations, the result of `is_sign_negative` on
     /// a NaN might produce an unexpected or non-portable result. See the [specification
     /// of NaN bit patterns](f32#nan-bit-patterns) for more info. Use `self.signum() == -1.0`
-    /// if you need fully portable behavior (will return `false` for all NaNs).
+    /// if you need fully portable behavior (will return NaN for all NaNs).
     ///
     /// ```
     /// #![feature(f128)]
@@ -607,6 +674,7 @@ impl f128 {
     #[inline]
     #[doc(alias = "nextUp")]
     #[unstable(feature = "f128", issue = "116909")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn next_up(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -661,6 +729,7 @@ impl f128 {
     #[inline]
     #[doc(alias = "nextDown")]
     #[unstable(feature = "f128", issue = "116909")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn next_down(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -775,7 +844,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let x = 1.0f128;
     /// let y = 2.0f128;
@@ -806,7 +875,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let x = 1.0f128;
     /// let y = 2.0f128;
@@ -838,7 +907,7 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_minimum_maximum)]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let x = 1.0f128;
     /// let y = 2.0f128;
@@ -870,7 +939,7 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_minimum_maximum)]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let x = 1.0f128;
     /// let y = 2.0f128;
@@ -906,8 +975,10 @@ impl f128 {
     #[doc(alias = "average")]
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     pub const fn midpoint(self, other: f128) -> f128 {
-        const HI: f128 = f128::MAX / 2.;
+        const HI: f128 = f128::MAX * 0.5;
 
         let (a, b) = (self, other);
         let abs_a = a.abs();
@@ -915,9 +986,9 @@ impl f128 {
 
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
-            (a + b) / 2.
+            (a + b) * 0.5
         } else {
-            (a / 2.) + (b / 2.)
+            (a * 0.5) + (b * 0.5)
         }
     }
 
@@ -955,6 +1026,100 @@ impl f128 {
         // SAFETY: the caller must uphold the safety contract for
         // `FloatToInt::to_int_unchecked`.
         unsafe { FloatToInt::<Int>::to_int_unchecked(self) }
+    }
+
+    /// Converts to the target float type, rounding as defined in IEEE 754.
+    ///
+    /// This is equivalent to `self as Flt`. Narrowing to a smaller type can
+    /// produce an infinity.
+    ///
+    /// ```
+    /// #![feature(float_conversions, f128)]
+    /// # #[cfg(target_has_reliable_f128)] {
+    ///
+    /// let x = 1.5_f128;
+    /// assert_eq!(x.cast::<f64>(), 1.5_f64);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[inline]
+    pub fn cast<Flt>(self) -> Flt
+    where
+        Self: FloatToFloat<Flt>,
+    {
+        FloatToFloat::<Flt>::cast(self)
+    }
+
+    /// Rounds toward zero and converts to any primitive integer type, saturating
+    /// at the type's boundaries and mapping `NaN` to zero.
+    ///
+    /// This is equivalent to `self as Int`.
+    ///
+    /// ```
+    /// #![feature(float_conversions, f128)]
+    /// # #[cfg(target_has_reliable_f128)] {
+    ///
+    /// assert_eq!(4.6_f128.to_int_saturating::<u8>(), 4);
+    /// assert_eq!(f128::NAN.to_int_saturating::<u8>(), 0);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[inline]
+    pub fn to_int_saturating<Int>(self) -> Int
+    where
+        Self: FloatToInt<Int>,
+    {
+        FloatToInt::<Int>::to_int_saturating(self)
+    }
+
+    /// Rounds toward zero and converts to any primitive integer type, returning
+    /// `None` if the value is `NaN`, infinite, or does not fit in the target type.
+    ///
+    /// ```
+    /// #![feature(float_conversions, f128)]
+    /// # #[cfg(target_has_reliable_f128)] {
+    ///
+    /// assert_eq!(4.6_f128.to_int_checked::<u8>(), Some(4));
+    /// assert_eq!(f128::NAN.to_int_checked::<u8>(), None);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[inline]
+    pub fn to_int_checked<Int>(self) -> Option<Int>
+    where
+        Self: FloatToInt<Int>,
+    {
+        FloatToInt::<Int>::to_int_checked(self)
+    }
+
+    /// Rounds toward zero and converts to any primitive integer type.
+    ///
+    /// This is equivalent to `self.to_int_checked().unwrap()`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is `NaN`, infinite, or does not fit in the target type.
+    ///
+    /// ```
+    /// #![feature(float_conversions, f128)]
+    /// # #[cfg(target_has_reliable_f128)] {
+    ///
+    /// assert_eq!(4.6_f128.to_int_strict::<u8>(), 4);
+    /// # }
+    /// ```
+    #[unstable(feature = "float_conversions", issue = "159913")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[inline]
+    #[track_caller]
+    pub fn to_int_strict<Int>(self) -> Int
+    where
+        Self: FloatToInt<Int>,
+    {
+        self.to_int_checked::<Int>()
+            .expect("the value cannot be represented in the target integer type")
     }
 
     /// Raw transmutation to `u128`.
@@ -1317,7 +1482,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(target_has_reliable_f128)] {
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// assert!((-3.0f128).clamp(-2.0, 1.0) == -2.0);
     /// assert!((0.0f128).clamp(-2.0, 1.0) == 0.0);
@@ -1334,6 +1499,7 @@ impl f128 {
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "NaN is also invalid")]
     pub const fn clamp(mut self, min: f128, max: f128) -> f128 {
         const_assert!(
             min <= max,
@@ -1378,10 +1544,48 @@ impl f128 {
     #[inline]
     #[unstable(feature = "clamp_magnitude", issue = "148519")]
     #[must_use = "this returns the clamped value and does not modify the original"]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "NaN is also invalid")]
     pub fn clamp_magnitude(self, limit: f128) -> f128 {
-        assert!(limit >= 0.0, "limit must be non-negative");
+        assert!(limit >= 0.0, "limit must be non-negative and not NaN");
         let limit = limit.abs(); // Canonicalises -0.0 to 0.0
         self.clamp(-limit, limit)
+    }
+
+    /// Restrict a value to a certain range, unless it is NaN.
+    ///
+    /// This is largely equal to `max`, `min`, or `clamp`, depending on whether the range is
+    /// `min..`, `..=max`, or `min..=max`, respectively. However, unlike `max` and `min`, it will
+    /// panic if any bound is NaN.
+    ///
+    /// Note that this function returns NaN if the initial value was NaN as
+    /// well.
+    ///
+    /// Exclusive ranges are not permitted.
+    ///
+    /// # Panics
+    ///
+    /// Panics on `min..=max` if `min > max`, or if any bound is NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f128, clamp_to)]
+    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// assert_eq!((-3.0f128).clamp_to(-2.0..=1.0), -2.0);
+    /// assert_eq!(0.0f128.clamp_to(-2.0..=1.0), 0.0);
+    /// assert_eq!(2.0f128.clamp_to(..=1.0), 1.0);
+    /// assert_eq!(5.0f128.clamp_to(7.0..), 7.0);
+    /// assert!(f128::NAN.clamp_to(1.0..=2.0).is_nan());
+    /// # }
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "clamp_to", issue = "147781")]
+    pub fn clamp_to<R>(self, range: R) -> Self
+    where
+        R: crate::cmp::ClampBounds<Self>,
+    {
+        range.clamp(self)
     }
 
     /// Computes the absolute value of `self`.
@@ -1408,7 +1612,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn abs(self) -> Self {
-        intrinsics::fabsf128(self)
+        intrinsics::fabs(self)
     }
 
     /// Returns a number that represents the sign of `self`.
@@ -1481,8 +1685,8 @@ impl f128 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[unstable(feature = "f128", issue = "116909")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[inline]
     pub const fn algebraic_add(self, rhs: f128) -> f128 {
         intrinsics::fadd_algebraic(self, rhs)
@@ -1492,8 +1696,8 @@ impl f128 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[unstable(feature = "f128", issue = "116909")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[inline]
     pub const fn algebraic_sub(self, rhs: f128) -> f128 {
         intrinsics::fsub_algebraic(self, rhs)
@@ -1503,8 +1707,8 @@ impl f128 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[unstable(feature = "f128", issue = "116909")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[inline]
     pub const fn algebraic_mul(self, rhs: f128) -> f128 {
         intrinsics::fmul_algebraic(self, rhs)
@@ -1514,8 +1718,8 @@ impl f128 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[unstable(feature = "f128", issue = "116909")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[inline]
     pub const fn algebraic_div(self, rhs: f128) -> f128 {
         intrinsics::fdiv_algebraic(self, rhs)
@@ -1525,11 +1729,38 @@ impl f128 {
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "136469")]
-    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
+    #[unstable(feature = "f128", issue = "116909")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[inline]
     pub const fn algebraic_rem(self, rhs: f128) -> f128 {
         intrinsics::frem_algebraic(self, rhs)
+    }
+
+    /// Returns `self` if the value is not NaN, otherwise returns `replacement`
+    /// if `self` is NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(float_nan_to)]
+    /// # #[cfg(target_has_reliable_f128)] {
+    ///
+    /// let n = f128::NAN;
+    /// let x = 2.0f128;
+    /// let y = f128::INFINITY;
+    ///
+    /// assert_eq!(n.nan_to(0.0f128), 0.0f128);
+    /// assert_eq!(x.nan_to(0.0f128), 2.0f128);
+    /// assert_eq!(y.nan_to(0.0f128), f128::INFINITY);
+    /// # }
+    /// ```
+    #[must_use = "method returns a new float and does not mutate the original value"]
+    #[unstable(feature = "float_nan_to", issue = "161248")]
+    #[rustc_const_unstable(feature = "float_nan_to", issue = "161248")]
+    #[inline]
+    pub const fn nan_to(self, replacement: f128) -> f128 {
+        if self.is_nan() { replacement } else { self }
     }
 }
 
@@ -1550,8 +1781,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let f = 3.7_f128;
     /// let g = 3.0_f128;
@@ -1579,8 +1809,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let f = 3.01_f128;
     /// let g = 4.0_f128;
@@ -1608,8 +1837,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let f = 3.3_f128;
     /// let g = -3.3_f128;
@@ -1642,8 +1870,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let f = 3.3_f128;
     /// let g = -3.3_f128;
@@ -1674,8 +1901,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let f = 3.7_f128;
     /// let g = 3.0_f128;
@@ -1704,8 +1930,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let x = 3.6_f128;
     /// let y = -3.6_f128;
@@ -1743,8 +1968,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let m = 10.0_f128;
     /// let x = 4.0_f128;
@@ -1788,8 +2012,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let a: f128 = 7.0;
     /// let b = 4.0;
@@ -1832,8 +2055,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let a: f128 = 7.0;
     /// let b = 4.0;
@@ -1875,12 +2097,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 2.0_f128;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
-    /// assert!(abs_difference <= f128::EPSILON);
+    /// assert!(abs_difference <= 1e-9);
     ///
     /// assert_eq!(f128::powi(f128::NAN, 0), 1.0);
     /// assert_eq!(f128::powi(0.0, 0), 1.0);
@@ -1908,8 +2129,7 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
-    /// # #[cfg(target_has_reliable_f128_math)] {
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
     ///
     /// let positive = 4.0_f128;
     /// let negative = -4.0_f128;

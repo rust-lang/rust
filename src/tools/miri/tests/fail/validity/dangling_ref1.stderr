@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a dangling reference (0x10[noalloc] has no provenance)
+error: Undefined Behavior: constructing invalid value of type &i32: encountered a dangling reference (0x10[noalloc] has no provenance)
   --> tests/fail/validity/dangling_ref1.rs:LL:CC
    |
 LL |     let _x: &i32 = unsafe { mem::transmute(16usize) };

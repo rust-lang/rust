@@ -31,10 +31,10 @@
 //! ```
 //!
 //! We probably should replace most of the code here with bincode someday, but,
-//! as we don't have bincode in Cargo.toml yet, lets stick with serde_json for
+//! as we don't have bincode in Cargo.toml yet, let's stick with serde_json for
 //! the time being.
 
-#[cfg(feature = "sysroot-abi")]
+#[cfg(feature = "in-rust-tree")]
 use proc_macro_srv::TokenStream;
 
 use std::collections::VecDeque;
@@ -54,7 +54,7 @@ pub type SpanDataIndexMap =
 
 pub fn serialize_span_data_index_map(map: &SpanDataIndexMap) -> Vec<u32> {
     map.iter()
-        .flat_map(|span| {
+        .map(|span| {
             [
                 span.anchor.file_id.as_u32(),
                 span.anchor.ast_id.into_raw(),
@@ -63,14 +63,16 @@ pub fn serialize_span_data_index_map(map: &SpanDataIndexMap) -> Vec<u32> {
                 span.ctx.into_u32(),
             ]
         })
-        .collect()
+        .collect::<Vec<_>>()
+        .into_flattened()
 }
 
 pub fn deserialize_span_data_index_map(map: &[u32]) -> SpanDataIndexMap {
-    debug_assert!(map.len().is_multiple_of(5));
-    map.chunks_exact(5)
-        .map(|span| {
-            let &[file_id, ast_id, start, end, e] = span else { unreachable!() };
+    let (chunks, remainder) = map.as_chunks();
+    assert!(remainder.is_empty());
+    chunks
+        .iter()
+        .map(|&[file_id, ast_id, start, end, e]| {
             Span {
                 anchor: SpanAnchor {
                     file_id: EditionedFileId::from_raw(file_id),
@@ -195,7 +197,7 @@ impl FlatTree {
     }
 }
 
-#[cfg(feature = "sysroot-abi")]
+#[cfg(feature = "in-rust-tree")]
 impl FlatTree {
     pub fn from_tokenstream(
         tokenstream: proc_macro_srv::TokenStream<Span>,
@@ -345,14 +347,13 @@ impl FlatTree {
 }
 
 fn read_vec<T, F: Fn([u32; N]) -> T, const N: usize>(xs: Vec<u32>, f: F) -> Vec<T> {
-    let mut chunks = xs.chunks_exact(N);
-    let res = chunks.by_ref().map(|chunk| f(chunk.try_into().unwrap())).collect();
-    assert!(chunks.remainder().is_empty());
-    res
+    let (chunks, remainder) = xs.as_chunks();
+    assert!(remainder.is_empty());
+    chunks.iter().map(|chunk| f(*chunk)).collect()
 }
 
 fn write_vec<T, F: Fn(T) -> [u32; N], const N: usize>(xs: Vec<T>, f: F) -> Vec<u32> {
-    xs.into_iter().flat_map(f).collect()
+    xs.into_iter().map(f).collect::<Vec<_>>().into_flattened()
 }
 
 impl SubtreeRepr {
@@ -495,6 +496,10 @@ impl<'a, T: SpanTransformer<Span = span::Span>> Writer<'a, '_, T, tt::iter::TtIt
         }
     }
 
+    #[expect(
+        clippy::explicit_counter_loop,
+        reason = "it looks better the current way since we use `first_tt` before the loop"
+    )]
     fn subtree(&mut self, idx: usize, n_tt: usize, subtree: tt::iter::TtIter<'a>) {
         let mut first_tt = self.token_tree.len();
         self.token_tree.resize(first_tt + n_tt, !0);
@@ -587,7 +592,7 @@ impl<'a, T: SpanTransformer, U> Writer<'a, '_, T, U> {
         T::token_id_of(self.span_data_table, span)
     }
 
-    #[cfg(feature = "sysroot-abi")]
+    #[cfg(feature = "in-rust-tree")]
     pub(crate) fn intern(&mut self, text: &'a str) -> u32 {
         let table = &mut self.text;
         *self.string_table.entry(text.into()).or_insert_with(|| {
@@ -607,7 +612,7 @@ impl<'a, T: SpanTransformer, U> Writer<'a, '_, T, U> {
     }
 }
 
-#[cfg(feature = "sysroot-abi")]
+#[cfg(feature = "in-rust-tree")]
 impl<'a, T: SpanTransformer>
     Writer<'a, '_, T, Option<proc_macro_srv::TokenStreamIter<'a, T::Span>>>
 {
@@ -848,7 +853,7 @@ impl<T: SpanTransformer<Span = span::Span>> Reader<'_, T> {
     }
 }
 
-#[cfg(feature = "sysroot-abi")]
+#[cfg(feature = "in-rust-tree")]
 impl<T: SpanTransformer> Reader<'_, T> {
     pub(crate) fn read_tokenstream(
         self,

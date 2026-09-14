@@ -12,9 +12,9 @@ use crate::num::NonZero;
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sys::helpers::WStrUnits;
-use crate::sys::pal::os::current_exe;
 use crate::sys::pal::{ensure_no_nuls, fill_utf16_buf};
 use crate::sys::path::get_long_path;
+use crate::sys::paths::current_exe;
 use crate::sys::{AsInner, c, to_u16s};
 use crate::{io, iter, ptr};
 
@@ -106,7 +106,7 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
             // If not `in_quotes`, a space or tab ends the argument.
             SPACE | TAB if !in_quotes => {
                 ret_val.push(OsString::from_wide(&cur[..]));
-                cur.truncate(0);
+                cur.clear();
 
                 // Skip whitespace.
                 code_units.advance_while(|w| w == SPACE || w == TAB);
@@ -115,7 +115,7 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
             BACKSLASH => {
                 let backslash_count = code_units.advance_while(|w| w == BACKSLASH) + 1;
                 if code_units.peek() == Some(QUOTE) {
-                    cur.extend(iter::repeat(BACKSLASH.get()).take(backslash_count / 2));
+                    cur.extend(iter::repeat_n(BACKSLASH.get(), backslash_count / 2));
                     // The quote is escaped if there are an odd number of backslashes.
                     if backslash_count % 2 == 1 {
                         code_units.next();
@@ -123,7 +123,7 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
                     }
                 } else {
                     // If there is no quote on the end then there is no escaping.
-                    cur.extend(iter::repeat(BACKSLASH.get()).take(backslash_count));
+                    cur.extend(iter::repeat_n(BACKSLASH.get(), backslash_count));
                 }
             }
             // If `in_quotes` and not backslash escaped (see above) then a quote either
@@ -295,7 +295,7 @@ pub(crate) fn make_bat_command_line(
     force_quotes: bool,
 ) -> io::Result<Vec<u16>> {
     const INVALID_ARGUMENT_ERROR: io::Error =
-        io::const_error!(io::ErrorKind::InvalidInput, r#"batch file arguments are invalid"#);
+        io::const_error!(io::ErrorKind::InvalidInput, r"batch file arguments are invalid");
     // Set the start of the command line to `cmd.exe /c "`
     // It is necessary to surround the command in an extra pair of quotes,
     // hence the trailing quote here. It will be closed after all arguments

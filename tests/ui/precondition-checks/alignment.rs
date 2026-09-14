@@ -6,6 +6,6 @@
 
 fn main() {
     unsafe {
-        std::ptr::Alignment::new_unchecked(0);
+        std::mem::Alignment::new_unchecked(0);
     }
 }

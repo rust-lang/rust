@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: wrong trait in wide pointer vtable: expected `Trait<for<'a> fn(&'a ())>`, but encountered `Trait<fn(&())>`
+error: Undefined Behavior: constructing invalid value of type &dyn Trait<for<'a> fn(&'a ())>: wrong trait in wide pointer vtable: expected `Trait<for<'a> fn(&'a ())>`, but encountered `Trait<fn(&())>`
   --> tests/fail/validity/dyn-transmute-inner-binder.rs:LL:CC
    |
 LL |     let y: &dyn Trait<for<'a> fn(&'a ())> = unsafe { std::mem::transmute(x) };

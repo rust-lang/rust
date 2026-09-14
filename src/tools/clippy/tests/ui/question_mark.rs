@@ -1,5 +1,11 @@
 #![feature(try_blocks)]
-#![allow(clippy::unnecessary_wraps, clippy::no_effect)]
+#![warn(clippy::question_mark)]
+#![allow(
+    clippy::needless_return,
+    clippy::no_effect,
+    clippy::toplevel_ref_arg,
+    clippy::unnecessary_wraps
+)]
 
 use std::sync::MutexGuard;
 
@@ -156,6 +162,7 @@ fn func() -> Option<i32> {
     };
 
     let s: &str = match &Some(String::new()) {
+        //~^ question_mark
         Some(v) => v,
         None => return None,
     };
@@ -178,6 +185,7 @@ fn func() -> Option<i32> {
     };
 
     match f() {
+        //~^ question_mark
         Some(val) => {
             println!("{val}");
             val
@@ -485,7 +493,6 @@ fn issue_13417_mut(foo: &mut StructWithOptionString) -> Option<String> {
 }
 
 #[allow(clippy::disallowed_names)]
-#[allow(unused)]
 fn issue_13417_weirder(foo: &mut StructWithOptionString, mut bar: Option<WrapperStructWithString>) -> Option<()> {
     let Some(ref x @ ref y) = foo.opt_x else {
         return None;
@@ -648,4 +655,70 @@ fn issue16429(b: i32) -> Option<i32> {
     };
 
     Some(0)
+}
+
+fn issue16654() -> Result<(), i32> {
+    let result = func_returning_result();
+
+    #[allow(clippy::collapsible_if)]
+    if true {
+        if let Err(err) = result {
+            //~^ question_mark
+            return Err(err);
+        }
+    }
+
+    _ = [if let Err(err) = result {
+        //~^ question_mark
+        return Err(err);
+    }];
+
+    Ok(())
+}
+
+#[rustfmt::skip]
+fn issue16751(mut v: Option<usize>) -> Option<usize> {
+    let _ = match &v {
+        //~^ question_mark
+        Some(n) => {
+            println!("{n}");
+            Some(42)
+        }
+        None => return None,
+    };
+
+    let _ = match v {
+        //~^ question_mark
+        Some(ref mut n) => {
+            println!("{n}");
+            Some(42)
+        }
+        None => return None,
+    };
+
+    let _ = if let Some(ref mut n) = v {
+        //~^ question_mark
+        println!("{n}");
+        42
+    } else {
+        return None;
+    };
+
+    match v {
+        //~^ question_mark
+        Some(n) => if n > 10 { Some(42) } else { None },
+        None => return None,
+    }
+}
+
+fn issue_destructuring_assignment() -> Option<(i32, i32)> {
+    let mut a = 0i32;
+    let mut b = 0i32;
+    let opt: Option<(i32, i32)> = Some((1, 2));
+    match opt {
+        //~^ question_mark
+        Some(x) => (a, b) = x,
+        None => return None,
+    }
+    Some((a, b))
 }

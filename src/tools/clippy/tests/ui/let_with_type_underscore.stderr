@@ -1,5 +1,5 @@
 error: variable declared with type underscore
-  --> tests/ui/let_with_type_underscore.rs:15:5
+  --> tests/ui/let_with_type_underscore.rs:14:5
    |
 LL |     let x: _ = 1;
    |     ^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     let x = 1;
    |
 
 error: variable declared with type underscore
-  --> tests/ui/let_with_type_underscore.rs:17:5
+  --> tests/ui/let_with_type_underscore.rs:16:5
    |
 LL |     let _: _ = 2;
    |     ^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +     let _ = 2;
    |
 
 error: variable declared with type underscore
-  --> tests/ui/let_with_type_underscore.rs:19:5
+  --> tests/ui/let_with_type_underscore.rs:18:5
    |
 LL |     let x: _ = func();
    |     ^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL +     let x = func();
    |
 
 error: variable declared with type underscore
-  --> tests/ui/let_with_type_underscore.rs:21:5
+  --> tests/ui/let_with_type_underscore.rs:20:5
    |
 LL |     let x: _;
    |     ^^^^^^^^^
@@ -49,7 +49,7 @@ LL +     let x;
    |
 
 error: variable declared with type underscore
-  --> tests/ui/let_with_type_underscore.rs:29:5
+  --> tests/ui/let_with_type_underscore.rs:28:5
    |
 LL |     let x : _ = 1;
    |     ^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL +     let x = 1;
    |
 
 error: variable declared with type underscore
-  --> tests/ui/let_with_type_underscore.rs:50:5
+  --> tests/ui/let_with_type_underscore.rs:49:5
    |
 LL |     let (a): _ = 0;
    |     ^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL +     let (a) = 0;
    |
 
 error: variable declared with type underscore
-  --> tests/ui/let_with_type_underscore.rs:52:5
+  --> tests/ui/let_with_type_underscore.rs:51:5
    |
 LL |     let ((a)): _ = 0;
    |     ^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL +     let ((a)) = 0;
    |
 
 error: variable declared with type underscore
-  --> tests/ui/let_with_type_underscore.rs:54:5
+  --> tests/ui/let_with_type_underscore.rs:53:5
    |
 LL |     let ((a,)): _ = (0,);
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ LL +     let ((a,)) = (0,);
    |
 
 error: variable declared with type underscore
-  --> tests/ui/let_with_type_underscore.rs:57:5
+  --> tests/ui/let_with_type_underscore.rs:56:5
    |
 LL |     let (   (a   )   ):  _ = 0;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -9,6 +9,6 @@ extern "C" {
 
 fn main() {
     unsafe {
-        u8_id(2); //~ ERROR: invalid value: encountered 0x02, but expected a boolean
+        u8_id(2); //~ ERROR: encountered 0x02, but expected a boolean
     }
 }

@@ -4,6 +4,7 @@ use std::ops::Range;
 
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
+use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
@@ -99,6 +100,16 @@ pub struct TypeVariableOrigin {
     pub param_def_id: Option<DefId>,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct FloatVariableOrigin {
+    pub span: Span,
+
+    /// `HirId` to lint at for this float variable, if any.
+    ///
+    /// This should only be used for diagnostics.
+    pub lint_id: Option<HirId>,
+}
+
 #[derive(Clone)]
 pub(crate) struct TypeVariableData {
     origin: TypeVariableOrigin,
@@ -145,6 +156,10 @@ impl<'tcx> TypeVariableStorage<'tcx> {
     pub(super) fn finalize_rollback(&mut self) {
         debug_assert!(self.values.len() >= self.eq_relations.len());
         self.values.truncate(self.eq_relations.len());
+    }
+
+    pub(crate) fn sub_unification_table_ref(&self) -> &ut::UnificationTableStorage<TyVidSubKey> {
+        &self.sub_unification_table
     }
 }
 
@@ -235,13 +250,11 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     }
 
     /// Returns the "root" variable of `vid` in the `sub_unification_table`
-    /// equivalence table. All type variables that have been are related via
+    /// equivalence table. All type variables that have been related via
     /// equality or subtyping will yield the same root variable (per the
     /// union-find algorithm), so `sub_unification_table_root_var(a)
-    /// == sub_unification_table_root_var(b)` implies that:
-    /// ```text
-    /// exists X. (a <: X || X <: a) && (b <: X || X <: b)
-    /// ```
+    /// == sub_unification_table_root_var(b)` implies that `a` and `b` are
+    /// transitively related via subtyping.
     pub(crate) fn sub_unification_table_root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
         self.sub_unification_table().find(vid).vid
     }
@@ -296,16 +309,13 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         (range.clone(), range.map(|index| self.var_origin(index)).collect())
     }
 
-    /// Returns indices of all variables that are not yet
-    /// instantiated.
-    pub(crate) fn unresolved_variables(&mut self) -> Vec<ty::TyVid> {
+    /// Returns indices of all root variables that are not yet instantiated.
+    pub(crate) fn unresolved_root_variables(&mut self) -> Vec<ty::TyVid> {
         (0..self.num_vars())
-            .filter_map(|i| {
-                let vid = ty::TyVid::from_usize(i);
-                match self.probe(vid) {
-                    TypeVariableValue::Unknown { .. } => Some(vid),
-                    TypeVariableValue::Known { .. } => None,
-                }
+            .map(ty::TyVid::from_usize)
+            .filter(|&vid| {
+                let (root, value) = self.probe_with_root_vid(vid);
+                root == vid && value.is_unknown()
             })
             .collect()
     }

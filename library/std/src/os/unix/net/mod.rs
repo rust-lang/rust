@@ -10,7 +10,7 @@ mod ancillary;
 mod datagram;
 mod listener;
 mod stream;
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(all(test, not(any(target_os = "emscripten", target_os = "l4re"))))]
 mod tests;
 #[cfg(any(
     target_os = "android",
@@ -20,6 +20,7 @@ mod tests;
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "nto",
+    target_os = "qnx",
     target_vendor = "apple",
     target_os = "cygwin"
 ))]
@@ -44,6 +45,7 @@ pub use self::stream::*;
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "nto",
+    target_os = "qnx",
     target_vendor = "apple",
     target_os = "cygwin",
 ))]

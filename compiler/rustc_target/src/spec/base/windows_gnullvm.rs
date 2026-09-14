@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::spec::crt_objects::pre_mingw_self_contained;
 use crate::spec::{
-    Abi, BinaryFormat, Cc, DebuginfoKind, Env, LinkSelfContainedDefault, LinkerFlavor, Lld, Os,
+    BinaryFormat, Cc, CfgAbi, DebuginfoKind, Env, LinkSelfContainedDefault, LinkerFlavor, Lld, Os,
     SplitDebuginfo, TargetOptions, add_link_args, cvs,
 };
 
@@ -13,20 +13,21 @@ pub(crate) fn opts() -> TargetOptions {
     // but LLVM maintainers rejected it: https://reviews.llvm.org/D51440
     let pre_link_args = TargetOptions::link_args(
         LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-        &["-nolibc", "--unwindlib=none"],
+        &["-nolibc", "--unwindlib=libunwind", "-static-libgcc"],
     );
     // Order of `late_link_args*` does not matter with LLD.
     let mingw_libs = &["-lmingw32", "-lmingwex", "-lmsvcrt", "-lkernel32", "-luser32"];
 
     let mut late_link_args =
         TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
+    add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::No, Lld::No), &["-l:libunwind.a"]);
     add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
 
     TargetOptions {
         os: Os::Windows,
         env: Env::Gnu,
         vendor: "pc".into(),
-        abi: Abi::Llvm,
+        cfg_abi: CfgAbi::Llvm,
         linker: Some("clang".into()),
         dynamic_linking: true,
         dll_tls_export: false,
@@ -36,7 +37,6 @@ pub(crate) fn opts() -> TargetOptions {
         families: cvs!["windows"],
         is_like_windows: true,
         binary_format: BinaryFormat::Coff,
-        allows_weak_linkage: false,
         pre_link_args,
         pre_link_objects_self_contained: pre_mingw_self_contained(),
         link_self_contained: LinkSelfContainedDefault::InferredForMingw,
@@ -47,12 +47,11 @@ pub(crate) fn opts() -> TargetOptions {
         eh_frame_header: false,
         no_default_libraries: false,
         has_thread_local: true,
-        crt_static_allows_dylibs: true,
-        crt_static_respected: true,
         debuginfo_kind: DebuginfoKind::Dwarf,
         // FIXME(davidtwco): Support Split DWARF on Windows GNU - may require LLVM changes to
         // output DWO, despite using DWARF, doesn't use ELF..
         supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
+        mcount: "_mcount".into(),
         ..Default::default()
     }
 }

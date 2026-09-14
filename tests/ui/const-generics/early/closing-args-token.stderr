@@ -10,18 +10,7 @@ LL |     S::<{ 5 + 2 } >> 7>;
    |         +       +
 
 error: comparison operators cannot be chained
-  --> $DIR/closing-args-token.rs:5:16
-   |
-LL |     S::<5 + 2 >> 7>;
-   |                ^  ^
-   |
-help: split the comparison into two
-   |
-LL |     S::<5 + 2 >> 7 && 7>;
-   |                    ++++
-
-error: comparison operators cannot be chained
-  --> $DIR/closing-args-token.rs:11:20
+  --> $DIR/closing-args-token.rs:10:20
    |
 LL |     S::<{ 5 + 2 } >> 7>;
    |                    ^  ^
@@ -32,13 +21,13 @@ LL |     S::<{ 5 + 2 } >> 7 && 7>;
    |                        ++++
 
 error: expected expression, found `;`
-  --> $DIR/closing-args-token.rs:16:16
+  --> $DIR/closing-args-token.rs:15:16
    |
 LL |     T::<0 >= 3>;
    |                ^ expected expression
 
 error: comparison operators cannot be chained
-  --> $DIR/closing-args-token.rs:22:12
+  --> $DIR/closing-args-token.rs:21:12
    |
 LL |     T::<x >>= 2 > 0>;
    |            ^^   ^
@@ -48,5 +37,5 @@ help: split the comparison into two
 LL |     T::<x >>= 2 && 2 > 0>;
    |                 ++++
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 

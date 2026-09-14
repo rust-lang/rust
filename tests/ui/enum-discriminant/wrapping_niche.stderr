@@ -4,13 +4,7 @@ error: layout_of(UnsignedAroundZero) = Layout {
                abi: Align(2 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I16,
-                       false,
-                   ),
-                   valid_range: (..=1) | (65535..),
-               },
+               u16 is (..=1) | (65535..),
            ),
            fields: Arbitrary {
                offsets: [
@@ -23,87 +17,45 @@ error: layout_of(UnsignedAroundZero) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I16,
-                       false,
-                   ),
+                   value: u16,
                    valid_range: (..=1) | (65535..),
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I16,
-                       false,
-                   ),
-                   valid_range: (..=1) | (65535..),
-               },
+               tag: u16 is (..=1) | (65535..),
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 9885373149222004003,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 9885373149222004003,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 2,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 9885373149222004003,
                    },
                ],
            },
@@ -122,13 +74,7 @@ error: layout_of(SignedAroundZero) = Layout {
                abi: Align(2 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I16,
-                       true,
-                   ),
-                   valid_range: (..=1) | (65535..),
-               },
+               i16 is -1..=1,
            ),
            fields: Arbitrary {
                offsets: [
@@ -141,87 +87,45 @@ error: layout_of(SignedAroundZero) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I16,
-                       true,
-                   ),
+                   value: i16,
                    valid_range: (..=1) | (65535..),
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I16,
-                       true,
-                   ),
-                   valid_range: (..=1) | (65535..),
-               },
+               tag: i16 is -1..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 2684536712112553499,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 2684536712112553499,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 2,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(2 bytes),
-                       randomization_seed: 2684536712112553499,
                    },
                ],
            },

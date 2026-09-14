@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //! A basic smoke test to check for GNU Property Note to see that for `x86_64` targets when [`-Z
 //! cf-protection=branch`][intel-cet-tracking-issue] is requested, that the
 //!
@@ -37,6 +37,7 @@
 // FIXME(#93754): increase the test coverage of this test.
 //@ only-x86_64-unknown-linux-gnu
 //@ ignore-cross-compile
+//@ ignore-backends: gcc
 
 use run_make_support::{bare_rustc, llvm_readobj};
 

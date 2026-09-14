@@ -247,7 +247,7 @@ The steps of this process are as follows:
 
 1. LLVM needs changing.
 
-   LLVM does not emit Interface types at all, so this needs to be implemented in the LLVM first.
+   LLVM does not emit Interface types at all, so this needs to be implemented in LLVM first.
 
    Get sign off on LLVM maintainers that this is a good idea.
 

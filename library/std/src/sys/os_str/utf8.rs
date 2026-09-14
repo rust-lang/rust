@@ -11,12 +11,12 @@ use crate::{fmt, mem};
 
 #[derive(Hash)]
 #[repr(transparent)]
-pub struct Buf {
+pub(crate) struct Buf {
     pub inner: String,
 }
 
 #[repr(transparent)]
-pub struct Slice {
+pub(crate) struct Slice {
     pub inner: str,
 }
 
@@ -226,8 +226,14 @@ impl Slice {
 
     #[track_caller]
     #[inline]
+    pub fn try_check_public_boundary(&self, index: usize) -> Option<()> {
+        if self.inner.is_char_boundary(index) { Some(()) } else { None }
+    }
+
+    #[track_caller]
+    #[inline]
     pub fn check_public_boundary(&self, index: usize) {
-        if !self.inner.is_char_boundary(index) {
+        if self.try_check_public_boundary(index).is_none() {
             panic!("byte index {index} is not an OsStr boundary");
         }
     }

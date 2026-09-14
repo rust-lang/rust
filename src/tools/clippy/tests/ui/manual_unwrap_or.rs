@@ -1,10 +1,5 @@
-#![allow(dead_code)]
-#![allow(
-    unused_variables,
-    clippy::unnecessary_wraps,
-    clippy::unnecessary_literal_unwrap,
-    clippy::manual_unwrap_or_default
-)]
+#![warn(clippy::manual_unwrap_or)]
+#![allow(clippy::manual_unwrap_or_default, clippy::unnecessary_literal_unwrap)]
 
 fn option_unwrap_or() {
     // int case

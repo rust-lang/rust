@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows -Zmiri-genmc-verbose
+//@compile-flags: -Zmiri-genmc-verbose
 //@normalize-stderr-test: "Verification took .*s" -> "Verification took [TIME]s"
 
 // Test that we can detect a deadlock involving `std::sync::Mutex` in GenMC mode.
@@ -9,7 +9,6 @@
 // FIXME(genmc): use `std::thread` once GenMC mode performance is better and produces fewer warnings for compare_exchange.
 
 #![no_main]
-#![feature(abort_unwind)]
 
 #[path = "../../../utils/genmc.rs"]
 mod genmc;

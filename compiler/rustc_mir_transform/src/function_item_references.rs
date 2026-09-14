@@ -1,13 +1,13 @@
 use itertools::Itertools;
 use rustc_abi::ExternAbi;
 use rustc_hir::def_id::DefId;
+use rustc_lint_defs::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
-use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{Span, Spanned, sym};
 
-use crate::errors;
+use crate::diagnostics;
 
 pub(super) struct FunctionItemReferences;
 
@@ -52,7 +52,12 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
                         }
                     }
                 } else {
-                    self.check_bound_args(def_id, args_ref, args, source_info);
+                    self.check_bound_args(
+                        def_id,
+                        args_ref.no_bound_vars().unwrap(),
+                        args,
+                        source_info,
+                    );
                 }
             }
         }
@@ -83,8 +88,9 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
                         // If the inner type matches the type bound by `Pointer`
                         if inner_ty == bound_ty {
                             // Do an instantiation using the parameters from the callsite
-                            let instantiated_ty =
-                                EarlyBinder::bind(inner_ty).instantiate(self.tcx, args_ref);
+                            let instantiated_ty = EarlyBinder::bind(self.tcx, inner_ty)
+                                .instantiate(self.tcx, args_ref)
+                                .skip_norm_wip();
                             if let Some((fn_id, fn_args)) =
                                 FunctionItemRefChecker::is_fn_ref(instantiated_ty)
                             {
@@ -126,7 +132,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         referent_ty
             .map(|ref_ty| {
                 if let ty::FnDef(def_id, args_ref) = *ref_ty.kind() {
-                    Some((def_id, args_ref))
+                    Some((def_id, args_ref.no_bound_vars().unwrap()))
                 } else {
                     None
                 }
@@ -151,16 +157,14 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             .unwrap_crate_local()
             .lint_root;
         // FIXME: use existing printing routines to print the function signature
-        let fn_sig = self.tcx.fn_sig(fn_id).instantiate(self.tcx, fn_args);
+        let fn_sig = self.tcx.fn_sig(fn_id).instantiate(self.tcx, fn_args).skip_norm_wip();
         let unsafety = fn_sig.safety().prefix_str();
         let abi = match fn_sig.abi() {
             ExternAbi::Rust => String::from(""),
             other_abi => format!("extern {other_abi} "),
         };
         let ident = self.tcx.item_ident(fn_id);
-        let ty_params = fn_args.types().map(|ty| format!("{ty}"));
-        let const_params = fn_args.consts().map(|c| format!("{c}"));
-        let params = ty_params.chain(const_params).join(", ");
+        let params = fn_args.terms().map(|term| format!("{term}")).join(", ");
         let num_args = fn_sig.inputs().map_bound(|inputs| inputs.len()).skip_binder();
         let variadic = if fn_sig.c_variadic() { ", ..." } else { "" };
         let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };
@@ -178,7 +182,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             FUNCTION_ITEM_REFERENCES,
             lint_root,
             span,
-            errors::FnItemRef { span, sugg, ident },
+            diagnostics::FnItemRef { span, sugg, ident },
         );
     }
 }

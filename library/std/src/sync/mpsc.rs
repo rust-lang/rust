@@ -15,8 +15,9 @@
 //!
 //! 1. An asynchronous, infinitely buffered channel. The [`channel`] function
 //!    will return a `(Sender, Receiver)` tuple where all sends will be
-//!    **asynchronous** (they never block). The channel conceptually has an
-//!    infinite buffer.
+//!    **asynchronous** (they never block for space to become available; see
+//!    [`std::sync`] for precise guarantees on blocking.) The channel
+//!    conceptually has an infinite buffer.
 //!
 //! 2. A synchronous, bounded channel. The [`sync_channel`] function will
 //!    return a `(SyncSender, Receiver)` tuple where the storage for pending
@@ -26,6 +27,7 @@
 //!    channel where each sender atomically hands off a message to a receiver.
 //!
 //! [`send`]: Sender::send
+//! [`std::sync`]: ../index.html#blocking-guarantees
 //!
 //! ## Disconnection
 //!
@@ -142,6 +144,8 @@
 // not exposed publicly, but if you are curious about the implementation,
 // that's where everything is.
 
+use core::clone::Share;
+
 use crate::sync::mpmc;
 use crate::time::{Duration, Instant};
 use crate::{error, fmt};
@@ -173,7 +177,7 @@ use crate::{error, fmt};
 /// println!("{}", recv.recv().unwrap()); // Received after 2 seconds
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Receiver")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "MpscReceiver")]
 pub struct Receiver<T> {
     inner: mpmc::Receiver<T>,
 }
@@ -226,9 +230,11 @@ pub struct Iter<'a, T: 'a> {
 /// if the corresponding channel has hung up.
 ///
 /// This iterator will never block the caller in order to wait for data to
-/// become available. Instead, it will return [`None`].
+/// become available. Instead, it will return [`None`]. (See [`std::sync`] for
+/// precise guarantees on blocking.)
 ///
 /// [`try_iter`]: Receiver::try_iter
+/// [`std::sync`]: ../index.html#blocking-guarantees
 ///
 /// # Examples
 ///
@@ -330,6 +336,7 @@ pub struct IntoIter<T> {
 /// assert_eq!(3, msg + msg2);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "MpscSender")]
 pub struct Sender<T> {
     inner: mpmc::Sender<T>,
 }
@@ -587,7 +594,10 @@ impl<T> Sender<T> {
     /// will be received. It is possible for the corresponding receiver to
     /// hang up immediately after this function returns [`Ok`].
     ///
-    /// This method will never block the current thread.
+    /// This method will never block the caller in order to wait for space to
+    /// become available. (See [`std::sync`] for precise guarantees on blocking.)
+    ///
+    /// [`std::sync`]: ../index.html#blocking-guarantees
     ///
     /// # Examples
     ///
@@ -607,6 +617,29 @@ impl<T> Sender<T> {
     pub fn send(&self, t: T) -> Result<(), SendError<T>> {
         self.inner.send(t)
     }
+
+    /// Returns `true` if the channel is disconnected.
+    ///
+    /// Note that a return value of `false` does not guarantee the channel will
+    /// remain connected. The channel may be disconnected immediately after this method
+    /// returns, so a subsequent [`Sender::send`] may still fail with [`SendError`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpsc_is_disconnected)]
+    ///
+    /// use std::sync::mpsc::channel;
+    ///
+    /// let (tx, rx) = channel::<i32>();
+    /// assert!(!tx.is_disconnected());
+    /// drop(rx);
+    /// assert!(tx.is_disconnected());
+    /// ```
+    #[unstable(feature = "mpsc_is_disconnected", issue = "153668")]
+    pub fn is_disconnected(&self) -> bool {
+        self.inner.is_disconnected()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -620,6 +653,9 @@ impl<T> Clone for Sender<T> {
         Sender { inner: self.inner.clone() }
     }
 }
+
+#[unstable(feature = "share_trait", issue = "156756")]
+impl<T> Share for Sender<T> {}
 
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for Sender<T> {
@@ -750,6 +786,9 @@ impl<T> Clone for SyncSender<T> {
     }
 }
 
+#[unstable(feature = "share_trait", issue = "156756")]
+impl<T> Share for SyncSender<T> {}
+
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for SyncSender<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -766,7 +805,8 @@ impl<T> Receiver<T> {
     ///
     /// This method will never block the caller in order to wait for data to
     /// become available. Instead, this will always return immediately with a
-    /// possible option of pending data on the channel.
+    /// possible option of pending data on the channel. (See [`std::sync`] for
+    /// precise guarantees on blocking.)
     ///
     /// This is useful for a flavor of "optimistic check" before deciding to
     /// block on a receiver.
@@ -775,6 +815,7 @@ impl<T> Receiver<T> {
     /// (one for disconnection, one for an empty buffer).
     ///
     /// [`recv`]: Self::recv
+    /// [`std::sync`]: ../index.html#blocking-guarantees
     ///
     /// # Examples
     ///
@@ -1037,6 +1078,29 @@ impl<T> Receiver<T> {
     #[stable(feature = "receiver_try_iter", since = "1.15.0")]
     pub fn try_iter(&self) -> TryIter<'_, T> {
         TryIter { rx: self }
+    }
+
+    /// Returns `true` if the channel is disconnected.
+    ///
+    /// Note that a return value of `false` does not guarantee the channel will
+    /// remain connected. The channel may be disconnected immediately after this method
+    /// returns, so a subsequent [`Receiver::recv`] may still fail with [`RecvError`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpsc_is_disconnected)]
+    ///
+    /// use std::sync::mpsc::channel;
+    ///
+    /// let (tx, rx) = channel::<i32>();
+    /// assert!(!rx.is_disconnected());
+    /// drop(tx);
+    /// assert!(rx.is_disconnected());
+    /// ```
+    #[unstable(feature = "mpsc_is_disconnected", issue = "153668")]
+    pub fn is_disconnected(&self) -> bool {
+        self.inner.is_disconnected()
     }
 }
 

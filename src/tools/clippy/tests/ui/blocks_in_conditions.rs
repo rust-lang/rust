@@ -1,13 +1,7 @@
 //@aux-build:proc_macro_attr.rs
 
 #![warn(clippy::blocks_in_conditions)]
-#![allow(
-    unused,
-    unnecessary_transmutes,
-    clippy::needless_ifs,
-    clippy::missing_transmute_annotations
-)]
-#![warn(clippy::nonminimal_bool)]
+#![expect(unnecessary_transmutes, clippy::missing_transmute_annotations, clippy::needless_ifs)]
 
 macro_rules! blocky {
     () => {{ true }};
@@ -46,7 +40,6 @@ fn condition_has_block_with_single_expression() -> i32 {
 fn condition_is_normal() -> i32 {
     let x = 3;
     if true && x == 3 { 6 } else { 10 }
-    //~^ nonminimal_bool
 }
 
 fn condition_is_unsafe_block() {
@@ -113,6 +106,68 @@ fn in_closure() {
         .any(|x| x == 5)
     {
         println!("contains 4!");
+    }
+}
+
+fn issue_15112() {
+    {
+        let v = std::sync::Mutex::new(0);
+        match { *v.lock().unwrap() } {
+            1 => {
+                todo!()
+            },
+            2 => {
+                todo!()
+            },
+            _ => {},
+        }
+    }
+
+    {
+        // No Drop impl, so braces should be removed
+        struct Foo;
+
+        impl Foo {
+            fn foo(&self) -> i32 {
+                0
+            }
+        }
+
+        match { Foo.foo() } {
+            //~^ ERROR: omit braces around single expression condition
+            1 => {
+                todo!()
+            },
+            2 => {
+                todo!()
+            },
+            _ => {},
+        }
+    }
+
+    {
+        // Drop impl, so braces should be kept
+        struct Bar;
+
+        impl Drop for Bar {
+            fn drop(&mut self) {}
+        }
+
+        impl Bar {
+            fn bar(&self) -> i32 {
+                0
+            }
+        }
+
+        match { Bar.bar() } {
+            1 => {
+                todo!()
+            },
+            2 => {
+                todo!()
+            },
+            _ => {},
+        }
     }
 }
 

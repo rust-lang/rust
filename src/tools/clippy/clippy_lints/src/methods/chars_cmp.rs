@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::method_chain_args;
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::MaybeQPath as _;
 use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

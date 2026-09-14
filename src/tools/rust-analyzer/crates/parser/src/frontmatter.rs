@@ -102,15 +102,19 @@ impl<'s> ScriptSource<'s> {
         // Ends with a line that starts with a matching number of `-` only followed by whitespace
         let nl_fence_pattern = format!("\n{fence_pattern}");
         let Some(frontmatter_nl) = input.find_slice(nl_fence_pattern.as_str()) else {
-            for len in (2..(nl_fence_pattern.len() - 1)).rev() {
-                let Some(frontmatter_nl) = input.find_slice(&nl_fence_pattern[0..len]) else {
+            for prefix_len in (2..=(nl_fence_pattern.len() - 1)).rev() {
+                let Some(frontmatter_nl) = input.find_slice(&nl_fence_pattern[0..prefix_len])
+                else {
                     continue;
                 };
-                let _ = input.next_slice(frontmatter_nl.start + 1);
+                let nl_len = "\n".len();
+                let close_len = prefix_len - nl_len;
+
+                let _ = input.next_slice(frontmatter_nl.start + nl_len);
                 let close_start = input.current_token_start();
-                let _ = input.next_slice(len);
+                let _ = input.next_slice(close_len);
                 let close_end = input.current_token_start();
-                let fewer_dashes = fence_length - len;
+                let fewer_dashes = fence_length - close_len;
                 return Err(FrontmatterError::new(
                     format!(
                         "closing code fence has {fewer_dashes} less `-` than the opening fence"
@@ -263,7 +267,7 @@ pub fn strip_ws_lines(input: &str) -> Option<usize> {
 /// True if `c` is considered a whitespace according to Rust language definition.
 /// See [Rust language reference](https://doc.rust-lang.org/reference/whitespace.html)
 /// for definitions of these classes.
-fn is_whitespace(c: char) -> bool {
+pub(crate) fn is_whitespace(c: char) -> bool {
     // This is Pattern_White_Space.
     //
     // Note that this set is stable (ie, it doesn't change with different

@@ -1,5 +1,5 @@
 //@ edition: 2021
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 // This file deliberately contains line and column numbers larger than 127,
 // to verify that `coverage-dump`'s ULEB128 parser can handle them.

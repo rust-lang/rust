@@ -4,4 +4,4 @@ expression: test tidyselftest
 ---
 [Test] test::CrateBootstrap
     targets: [x86_64-unknown-linux-gnu]
-    - Set({test::tidyselftest})
+    - Set({tidyselftest})

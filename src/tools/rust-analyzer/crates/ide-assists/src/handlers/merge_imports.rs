@@ -1,14 +1,12 @@
-use either::Either;
 use ide_db::imports::{
     insert_use::{ImportGranularity, InsertUseConfig},
     merge_imports::{MergeBehavior, try_merge_imports, try_merge_trees},
 };
 use syntax::{
-    AstNode, SyntaxElement, SyntaxNode,
+    AstNode, SyntaxElement,
     algo::neighbor,
-    ast::{self, syntax_factory::SyntaxFactory},
-    match_ast,
-    syntax_editor::Removable,
+    ast, match_ast,
+    syntax_editor::{Removable, SyntaxEditor},
 };
 
 use crate::{
@@ -16,8 +14,6 @@ use crate::{
     assist_context::{AssistContext, Assists},
     utils::next_prev,
 };
-
-use Edit::*;
 
 // Assist: merge_imports
 //
@@ -31,17 +27,18 @@ use Edit::*;
 // ```
 // use std::{fmt::Formatter, io};
 // ```
-pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let (target, edits) = if ctx.has_empty_selection() {
+pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
+    let (target, editor) = if ctx.has_empty_selection() {
         // Merge a neighbor
         cov_mark::hit!(merge_with_use_item_neighbors);
         let tree = ctx.find_node_at_offset::<ast::UseTree>()?.top_use_tree();
         let target = tree.syntax().text_range();
 
         let use_item = tree.syntax().parent().and_then(ast::Use::cast)?;
-        let mut neighbor = next_prev().find_map(|dir| neighbor(&use_item, dir)).into_iter();
-        let edits = use_item.try_merge_from(&mut neighbor, &ctx.config.insert_use);
-        (target, edits?)
+        let neighbor = next_prev().find_map(|dir| neighbor(&use_item, dir))?;
+        let (editor, _) = SyntaxEditor::new(use_item.syntax().parent()?.tree_top());
+        merge_uses(use_item, vec![neighbor], &ctx.config.insert_use, &editor)?;
+        (target, editor)
     } else {
         // Merge selected
         let selection_range = ctx.selection_trimmed();
@@ -49,110 +46,85 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
             SyntaxElement::Node(n) => n,
             SyntaxElement::Token(t) => t.parent()?,
         };
-        let mut selected_nodes =
-            parent_node.children().filter(|it| selection_range.contains_range(it.text_range()));
+        let mut selected_nodes = parent_node.children().filter(|it| {
+            selection_range.intersect(it.text_range()).is_some_and(|it| !it.is_empty())
+        });
 
         let first_selected = selected_nodes.next()?;
-        let edits = match_ast! {
+        let (editor, _) = SyntaxEditor::new(parent_node.tree_top());
+        match_ast! {
             match first_selected {
                 ast::Use(use_item) => {
                     cov_mark::hit!(merge_with_selected_use_item_neighbors);
-                    use_item.try_merge_from(&mut selected_nodes.filter_map(ast::Use::cast), &ctx.config.insert_use)
+                    merge_uses(
+                        use_item,
+                        selected_nodes.filter_map(ast::Use::cast).collect(),
+                        &ctx.config.insert_use,
+                        &editor,
+                    )?;
                 },
                 ast::UseTree(use_tree) => {
                     cov_mark::hit!(merge_with_selected_use_tree_neighbors);
-                    use_tree.try_merge_from(&mut selected_nodes.filter_map(ast::UseTree::cast), &ctx.config.insert_use)
+                    merge_use_trees(
+                        use_tree,
+                        selected_nodes.filter_map(ast::UseTree::cast).collect(),
+                        &editor,
+                    )?;
                 },
                 _ => return None,
             }
-        };
-        (selection_range, edits?)
-    };
-
-    let parent_node = match ctx.covering_element() {
-        SyntaxElement::Node(n) => n,
-        SyntaxElement::Token(t) => t.parent()?,
+        }
+        (selection_range, editor)
     };
 
     acc.add(AssistId::refactor_rewrite("merge_imports"), "Merge imports", target, |builder| {
-        let make = SyntaxFactory::with_mappings();
-        let mut editor = builder.make_editor(&parent_node);
-
-        for edit in edits {
-            match edit {
-                Remove(it) => {
-                    let node = it.as_ref();
-                    if let Some(left) = node.left() {
-                        left.remove(&mut editor);
-                    } else if let Some(right) = node.right() {
-                        right.remove(&mut editor);
-                    }
-                }
-                Replace(old, new) => {
-                    editor.replace(old, &new);
-                }
-            }
-        }
-        editor.add_mappings(make.finish_with_mappings());
         builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
 
-trait Merge: AstNode + Clone {
-    fn try_merge_from(
-        self,
-        items: &mut dyn Iterator<Item = Self>,
-        cfg: &InsertUseConfig,
-    ) -> Option<Vec<Edit>> {
-        let mut edits = Vec::new();
-        let mut merged = self.clone();
-        for item in items {
-            merged = merged.try_merge(&item, cfg)?;
-            edits.push(Edit::Remove(item.into_either()));
-        }
-        if !edits.is_empty() {
-            edits.push(Edit::replace(self, merged));
-            Some(edits)
-        } else {
-            None
-        }
+fn merge_uses(
+    first: ast::Use,
+    rest: Vec<ast::Use>,
+    cfg: &InsertUseConfig,
+    editor: &SyntaxEditor,
+) -> Option<()> {
+    if rest.is_empty() {
+        return None;
     }
-    fn try_merge(&self, other: &Self, cfg: &InsertUseConfig) -> Option<Self>;
-    fn into_either(self) -> Either<ast::Use, ast::UseTree>;
+
+    let mb = match cfg.granularity {
+        ImportGranularity::One => MergeBehavior::One,
+        _ => MergeBehavior::Crate,
+    };
+    let mut merged = first.clone();
+    for item in &rest {
+        merged = try_merge_imports(editor.make(), &merged, item, mb)?;
+    }
+    for item in rest {
+        item.remove(editor);
+    }
+    editor.replace(first.syntax(), merged.syntax());
+    Some(())
 }
 
-impl Merge for ast::Use {
-    fn try_merge(&self, other: &Self, cfg: &InsertUseConfig) -> Option<Self> {
-        let mb = match cfg.granularity {
-            ImportGranularity::One => MergeBehavior::One,
-            _ => MergeBehavior::Crate,
-        };
-        try_merge_imports(self, other, mb)
+fn merge_use_trees(
+    first: ast::UseTree,
+    rest: Vec<ast::UseTree>,
+    editor: &SyntaxEditor,
+) -> Option<()> {
+    if rest.is_empty() {
+        return None;
     }
-    fn into_either(self) -> Either<ast::Use, ast::UseTree> {
-        Either::Left(self)
-    }
-}
 
-impl Merge for ast::UseTree {
-    fn try_merge(&self, other: &Self, _: &InsertUseConfig) -> Option<Self> {
-        try_merge_trees(self, other, MergeBehavior::Crate)
+    let mut merged = first.clone();
+    for item in &rest {
+        merged = try_merge_trees(editor.make(), &merged, item, MergeBehavior::Crate)?;
     }
-    fn into_either(self) -> Either<ast::Use, ast::UseTree> {
-        Either::Right(self)
+    for item in rest {
+        item.remove(editor);
     }
-}
-
-#[derive(Debug)]
-enum Edit {
-    Remove(Either<ast::Use, ast::UseTree>),
-    Replace(SyntaxNode, SyntaxNode),
-}
-
-impl Edit {
-    fn replace(old: impl AstNode, new: impl AstNode) -> Self {
-        Edit::Replace(old.syntax().clone(), new.syntax().clone())
-    }
+    editor.replace(first.syntax(), merged.syntax());
+    Some(())
 }
 
 #[cfg(test)]
@@ -564,6 +536,62 @@ use foo::{bar, baz};
     }
 
     #[test]
+    fn mod_indent_whitespace() {
+        check_assist(
+            merge_imports,
+            r"
+mod tests {
+    use foo$0::bar;
+    use foo::baz;
+    fn feature() {}
+}
+",
+            r"
+mod tests {
+    use foo::{bar, baz};
+    fn feature() {}
+}
+",
+        );
+        check_assist(
+            merge_imports,
+            r"
+mod tests {
+    use foo$0::bar;
+    use foo::baz;
+
+    fn feature() {}
+}
+",
+            r"
+mod tests {
+    use foo::{bar, baz};
+
+    fn feature() {}
+}
+",
+        );
+        check_assist(
+            merge_imports,
+            r"
+mod tests {
+    use foo::bar;
+    use foo$0::baz;
+
+    fn feature() {}
+}
+",
+            r"
+mod tests {
+    use foo::{bar, baz};
+
+    fn feature() {}
+}
+",
+        );
+    }
+
+    #[test]
     fn works_with_trailing_comma() {
         check_assist(
             merge_imports,
@@ -678,6 +706,25 @@ use std::fmt::Result;
     }
 
     #[test]
+    fn merge_partial_selection_uses() {
+        cov_mark::check!(merge_with_selected_use_item_neighbors);
+        check_assist(
+            merge_imports,
+            r"
+use std::fmt::Error;
+$0use std::fmt::Display;
+use std::fmt::Debug;
+use std::fmt::Write;
+use$0 std::fmt::Result;
+",
+            r"
+use std::fmt::Error;
+use std::fmt::{Debug, Display, Result, Write};
+",
+        );
+    }
+
+    #[test]
     fn merge_selection_use_trees() {
         cov_mark::check!(merge_with_selected_use_tree_neighbors);
         check_assist(
@@ -777,6 +824,28 @@ mod top {
 }
 
 use top::{a::A, b::{B as D, B as C}};
+",
+        );
+    }
+
+    #[test]
+    fn test_merge_with_trailing_path_separator() {
+        check_assist_not_applicable(
+            merge_imports,
+            r"
+use foo::bar;
+use foo::$0;
+",
+        );
+    }
+
+    #[test]
+    fn test_merge_with_malformed_colon_path_segment() {
+        check_assist_not_applicable(
+            merge_imports,
+            r"
+use foo::bar;
+use foo::$0:;
 ",
         );
     }

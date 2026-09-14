@@ -1,6 +1,6 @@
 //@ compile-flags: -Z print-type-sizes --crate-type=lib
 //@ build-pass
-//@ ignore-pass
+//@ no-pass-override (codegen affects -Zprint-type-sizes)
 
 // At one point, zero-sized fields such as those in this file were causing
 // incorrect output from `-Z print-type-sizes`.

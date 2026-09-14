@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a null function pointer
+error: Undefined Behavior: constructing invalid value of type fn(): encountered a null function pointer
   --> tests/fail/intrinsics/zero_fn_ptr.rs:LL:CC
    |
 LL |     let _ = unsafe { std::mem::zeroed::<fn()>() };

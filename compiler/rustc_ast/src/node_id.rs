@@ -1,5 +1,6 @@
 use std::fmt;
 
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_span::LocalExpnId;
 
 rustc_index::newtype_index! {
@@ -15,6 +16,15 @@ rustc_index::newtype_index! {
     pub struct NodeId {
         /// The [`NodeId`] used to represent the root of the crate.
         const CRATE_NODE_ID = 0;
+    }
+}
+
+impl StableHash for NodeId {
+    #[inline]
+    fn stable_hash<Hcx: StableHashCtxt>(&self, _: &mut Hcx, _: &mut StableHasher) {
+        // This impl is never called but is necessary for types implementing `StableHash` such as
+        // `MainDefinition` and `DocLinkResMap` (both of which occur in `ResolverGlobalCtxt`).
+        panic!("Node IDs should not appear in incremental state");
     }
 }
 

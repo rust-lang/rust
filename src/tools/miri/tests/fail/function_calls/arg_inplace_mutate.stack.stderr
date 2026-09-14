@@ -19,8 +19,8 @@ LL | |     }
 help: <TAG> is this argument
   --> tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
    |
-LL |     unsafe { ptr.write(S(0)) };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn callee(x: S, ptr: *mut S) {
+   |           ^
    = note: stack backtrace:
            0: callee
                at tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC

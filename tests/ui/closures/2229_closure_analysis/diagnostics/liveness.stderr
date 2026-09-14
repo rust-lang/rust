@@ -80,9 +80,10 @@ warning: value assigned to `e.x` is never read
   --> $DIR/liveness.rs:74:13
    |
 LL |             e.x = Some("e1");
-   |             ^^^^^^^^^^^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
+   |             ^^^^^^^^^^^^^^^^ this value is reassigned later and never used
+LL |
+LL |             e.x = Some("e2");
+   |             ---------------- `e.x` is overwritten here before the previous value is read
 
 warning: value assigned to `e.x` is never read
   --> $DIR/liveness.rs:76:13
@@ -104,9 +105,10 @@ warning: value assigned to `b` is never read
   --> $DIR/liveness.rs:77:13
    |
 LL |             b = Some("e1");
-   |             ^^^^^^^^^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
+   |             ^^^^^^^^^^^^^^ this value is reassigned later and never used
+LL |
+LL |             b = Some("e2");
+   |             -------------- `b` is overwritten here before the previous value is read
 
 warning: value assigned to `b` is never read
   --> $DIR/liveness.rs:79:13
@@ -120,17 +122,17 @@ warning: value assigned to `d.x` is never read
   --> $DIR/liveness.rs:68:13
    |
 LL |             d.x = Some("d1");
-   |             ^^^^^^^^^^^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
+   |             ^^^^^^^^^^^^^^^^ this value is reassigned later and never used
+LL |             d.x = Some("d2");
+   |             ---------------- `d.x` is overwritten here before the previous value is read
 
 warning: value assigned to `a` is never read
   --> $DIR/liveness.rs:70:13
    |
 LL |             a = Some("d1");
-   |             ^^^^^^^^^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
+   |             ^^^^^^^^^^^^^^ this value is reassigned later and never used
+LL |             a = Some("d2");
+   |             -------------- `a` is overwritten here before the previous value is read
 
 warning: 16 warnings emitted
 

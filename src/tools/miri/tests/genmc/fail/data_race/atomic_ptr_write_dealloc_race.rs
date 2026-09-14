@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // Test that use-after-free bugs involving atomic pointers are detected in GenMC mode.
 // Compared to `atomic_ptr_dealloc_write_race.rs`, this variant checks that the data race is still detected, even if the write happens before the free.
 //

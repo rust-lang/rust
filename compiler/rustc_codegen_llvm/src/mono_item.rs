@@ -8,10 +8,10 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::mir::mono::Visibility;
+use rustc_middle::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
-use rustc_session::config::CrateType;
+use rustc_structures::CrateType;
 use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::{Arch, RelocModel};
 use tracing::debug;
@@ -19,7 +19,7 @@ use tracing::debug;
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::errors::SymbolAlreadyDefined;
+use crate::diagnostics::SymbolAlreadyDefined;
 use crate::type_of::LayoutLlvmExt;
 use crate::{base, llvm};
 
@@ -135,7 +135,8 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         let ty = self.get_type_of_global(aliasee);
 
         for (alias, linkage, visibility) in aliases {
-            let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, *alias));
+            let instance = Instance::mono(self.tcx, *alias);
+            let symbol_name = self.tcx.symbol_name(instance);
             tracing::debug!("STATIC ALIAS: {alias:?} {linkage:?} {visibility:?}");
 
             let lldecl = llvm::add_alias(
@@ -145,6 +146,13 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 aliasee,
                 &CString::new(symbol_name.name).unwrap(),
             );
+            // Add the alias name to the set of cached items, so there is no duplicate
+            // instance added to it during the normal `external static` codegen
+            let prev_entry = self.instances.borrow_mut().insert(instance, lldecl);
+
+            // If there already was a previous entry, then `add_static_aliases` was called multiple times for the same `alias`
+            // which would result in incorrect codegen
+            assert!(prev_entry.is_none(), "An instance was already present for {instance:?}");
 
             llvm::set_visibility(lldecl, base::visibility_to_llvm(*visibility));
             llvm::set_linkage(lldecl, base::linkage_to_llvm(*linkage));
@@ -161,7 +169,10 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     ) {
         for (alias, linkage, visibility) in aliases {
             let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, *alias));
-            tracing::debug!("FUNCTION ALIAS: {alias:?} {linkage:?} {visibility:?}");
+            tracing::debug!(
+                "FUNCTION ALIAS: generating fn {} that calls {aliasee_instance:?} ({alias:?} {linkage:?} {visibility:?})",
+                symbol_name.name
+            );
 
             // predefine another copy of the original instance
             // with a new symbol name
@@ -187,12 +198,21 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 args.push(llvm::get_param(alias_lldecl, index));
             }
 
+            // For an indirect return, the alias's own first parameter is the
+            // caller-provided return slot: forward it to the aliasee as such.
+            let (return_slot, args) = if fn_abi.ret.is_indirect() {
+                let (sret_ptr, rest) = args.split_first().unwrap();
+                (ReturnSlot::Indirect(*sret_ptr), rest)
+            } else {
+                (ReturnSlot::Direct, &args[..])
+            };
             let call = start_bx.call(
                 fn_ty,
                 Some(attrs),
                 Some(fn_abi),
                 aliasee,
-                &args,
+                return_slot,
+                args,
                 None,
                 Some(aliasee_instance),
             );

@@ -1,4 +1,4 @@
-//~ ERROR reached the recursion limit finding the struct tail for `<[Hello] as Normalize>::Assoc`
+//~ ERROR reached the recursion limit finding the struct tail for `Hello`
 // Regression test for #129541
 
 //@ revisions: unique_curr unique_next multiple_curr multiple_next

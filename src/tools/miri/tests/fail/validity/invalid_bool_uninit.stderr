@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at [0]: encountered uninitialized memory, but expected a boolean
+error: Undefined Behavior: constructing invalid value of type [bool; 1]: at [0], encountered uninitialized memory, but expected a boolean
   --> tests/fail/validity/invalid_bool_uninit.rs:LL:CC
    |
 LL |     let _b = unsafe { MyUninit { init: () }.uninit };

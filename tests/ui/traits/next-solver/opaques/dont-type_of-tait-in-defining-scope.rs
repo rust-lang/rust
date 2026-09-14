@@ -13,8 +13,8 @@ fn needs_send<T: Send>() {}
 
 #[define_opaque(Foo)]
 fn test(_: Foo) {
-    //~^ ERROR type annotations needed
     needs_send::<Foo>();
+    //~^ ERROR type annotations needed
 }
 
 #[define_opaque(Foo)]

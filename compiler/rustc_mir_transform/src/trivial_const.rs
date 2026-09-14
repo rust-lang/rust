@@ -6,7 +6,7 @@ use rustc_middle::mir::{
     Body, Const, ConstValue, Operand, Place, RETURN_PLACE, Rvalue, START_BLOCK, StatementKind,
     TerminatorKind, UnevaluatedConst,
 };
-use rustc_middle::ty::{Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{AnonConstKind, Ty, TyCtxt, TypeVisitableExt};
 
 /// If the given def is a trivial const, returns the value and type the const evaluates to.
 ///
@@ -52,10 +52,21 @@ where
     F: FnOnce() -> B,
     B: Deref<Target = Body<'tcx>>,
 {
-    if !matches!(
-        tcx.def_kind(def),
-        DefKind::AssocConst { .. } | DefKind::Const { .. } | DefKind::AnonConst
-    ) {
+    match tcx.def_kind(def) {
+        DefKind::AssocConst | DefKind::Const => (),
+        DefKind::AnonConst if tcx.anon_const_kind(def) != AnonConstKind::NonTypeSystemInline => (),
+        _ => return None,
+    }
+
+    // If there are impossible clauses then MIR passes will replace the body with
+    // `unreachable` causing const eval errors when trying to evaluate the body. For
+    // now we avoid using trivial consts for such bodies so that the behaviour doesn't
+    // change.
+    if crate::impossible_clauses::has_impossible_clauses(tcx, def.into()) {
+        return None;
+    }
+
+    if !tcx.opaque_types_defined_by(def).is_empty() {
         return None;
     }
 
@@ -78,7 +89,7 @@ where
         return None;
     }
 
-    let StatementKind::Assign(box (place, rvalue)) = &block.statements[0].kind else {
+    let StatementKind::Assign((place, rvalue)) = &block.statements[0].kind else {
         return None;
     };
 
@@ -86,7 +97,7 @@ where
         return None;
     }
 
-    let Rvalue::Use(Operand::Constant(c)) = rvalue else {
+    let Rvalue::Use(Operand::Constant(c), _) = rvalue else {
         return None;
     };
     match c.const_ {

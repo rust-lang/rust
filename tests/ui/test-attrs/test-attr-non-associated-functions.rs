@@ -5,12 +5,12 @@ struct A {}
 
 impl A {
     #[test]
-    //~^ ERROR the `#[test]` attribute may only be used on a free function
+    //~^ ERROR the `test` attribute may only be used on a free function
     fn new() -> A {
         A {}
     }
     #[test]
-    //~^ ERROR the `#[test]` attribute may only be used on a free function
+    //~^ ERROR the `test` attribute may only be used on a free function
     fn recovery_witness() -> A {
         A {}
     }

@@ -1,8 +1,7 @@
 //@ check-pass
 
 #![crate_type = "lib"]
-#![warn(clippy::imprecise_flops)]
-#![warn(clippy::suboptimal_flops)]
+#![warn(clippy::imprecise_flops, clippy::suboptimal_flops)]
 #![no_std]
 
 // The following should not lint, as the suggested methods `{f16,f32,f64,f128}.mul_add()`

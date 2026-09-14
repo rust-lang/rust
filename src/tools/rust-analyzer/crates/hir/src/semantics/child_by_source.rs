@@ -4,36 +4,58 @@
 //! This module allows one to go in the opposite direction: start with a syntax
 //! node for a *child*, and get its hir.
 
+use base_db::SourceDatabase;
 use either::Either;
 use hir_expand::HirFileId;
 use span::AstIdNode;
 use syntax::{AstPtr, ast};
 
 use hir_def::{
-    AdtId, AssocItemId, AstIdLoc, DefWithBodyId, EnumId, FieldId, GenericDefId, ImplId,
+    AdtId, AssocItemId, AstIdLoc, AttrDefId, DefWithBodyId, EnumId, FieldId, GenericDefId, ImplId,
     LifetimeParamId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, TypeOrConstParamId,
     VariantId,
-    db::DefDatabase,
+    attrs::{AttrFlags, Docs},
     dyn_map::{
         DynMap,
         keys::{self, Key},
     },
+    expr_store::Body,
     hir::generics::GenericParams,
     item_scope::ItemScope,
+    signatures::{EnumSignature, ImplSignature, TraitSignature},
     src::{HasChildSource, HasSource},
 };
 
 pub(crate) trait ChildBySource {
-    fn child_by_source(&self, db: &dyn DefDatabase, file_id: HirFileId) -> DynMap {
+    fn child_by_source(&self, db: &dyn SourceDatabase, file_id: HirFileId) -> DynMap {
         let mut res = DynMap::default();
         self.child_by_source_to(db, &mut res, file_id);
         res
     }
-    fn child_by_source_to(&self, db: &dyn DefDatabase, map: &mut DynMap, file_id: HirFileId);
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, map: &mut DynMap, file_id: HirFileId);
+}
+
+impl ChildBySource for Docs {
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, res: &mut DynMap, file_id: HirFileId) {
+        self.macro_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
+            |(ast_id, call_id)| {
+                let ptr = ast_id.to_ptr(db);
+                res[keys::MACRO_CALL].insert(ptr, call_id);
+            },
+        );
+    }
+}
+
+impl ChildBySource for AttrDefId {
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, map: &mut DynMap, file_id: HirFileId) {
+        if let Some(docs) = AttrFlags::docs(db, *self) {
+            docs.child_by_source_to(db, map, file_id);
+        }
+    }
 }
 
 impl ChildBySource for TraitId {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, res: &mut DynMap, file_id: HirFileId) {
         let data = self.trait_items(db);
 
         data.macro_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
@@ -49,17 +71,19 @@ impl ChildBySource for TraitId {
         data.items.iter().for_each(|&(_, item)| {
             add_assoc_item(db, res, file_id, item);
         });
-        let (_, source_map) = db.trait_signature_with_source_map(*self);
+        let (_, source_map) = TraitSignature::with_source_map(db, *self);
         source_map.expansions().filter(|(ast, _)| ast.file_id == file_id).for_each(
             |(ast, &exp_id)| {
                 res[keys::MACRO_CALL].insert(ast.value, exp_id);
             },
         );
+
+        AttrDefId::from(*self).child_by_source_to(db, res, file_id);
     }
 }
 
 impl ChildBySource for ImplId {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, res: &mut DynMap, file_id: HirFileId) {
         let data = self.impl_items(db);
         data.macro_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
@@ -74,25 +98,29 @@ impl ChildBySource for ImplId {
         data.items.iter().for_each(|&(_, item)| {
             add_assoc_item(db, res, file_id, item);
         });
-        let (_, source_map) = db.impl_signature_with_source_map(*self);
+        let (_, source_map) = ImplSignature::with_source_map(db, *self);
         source_map.expansions().filter(|(ast, _)| ast.file_id == file_id).for_each(
             |(ast, &exp_id)| {
                 res[keys::MACRO_CALL].insert(ast.value, exp_id);
             },
         );
+
+        AttrDefId::from(*self).child_by_source_to(db, res, file_id);
     }
 }
 
 impl ChildBySource for ModuleId {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, res: &mut DynMap, file_id: HirFileId) {
         let def_map = self.def_map(db);
         let module_data = &def_map[*self];
         module_data.scope.child_by_source_to(db, res, file_id);
+
+        AttrDefId::from(*self).child_by_source_to(db, res, file_id);
     }
 }
 
 impl ChildBySource for ItemScope {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, res: &mut DynMap, file_id: HirFileId) {
         self.declarations().for_each(|item| add_module_def(db, res, file_id, item));
         self.impls().for_each(|imp| insert_item_loc(db, res, file_id, imp, keys::IMPL));
         self.extern_blocks().for_each(|extern_block| {
@@ -124,8 +152,7 @@ impl ChildBySource for ItemScope {
                 calls.for_each(|(attr_id, call_id, calls)| {
                     // FIXME: Is this the right crate?
                     let krate = call_id.lookup(db).krate;
-                    // FIXME: Fix cfg_attr handling.
-                    let (attr, _, _, _) = attr_id.find_attr_range_with_source(db, krate, &adt);
+                    let (_, attr) = attr_id.find_attr_range_with_source(db, krate, &adt);
                     res[keys::DERIVE_MACRO_CALL]
                         .insert(AstPtr::new(&attr), (attr_id, call_id, calls.into()));
                 });
@@ -138,7 +165,7 @@ impl ChildBySource for ItemScope {
             },
         );
         fn add_module_def(
-            db: &dyn DefDatabase,
+            db: &dyn SourceDatabase,
             map: &mut DynMap,
             file_id: HirFileId,
             item: ModuleDefId,
@@ -176,7 +203,7 @@ impl ChildBySource for ItemScope {
 }
 
 impl ChildBySource for VariantId {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, _: HirFileId) {
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, res: &mut DynMap, file_id: HirFileId) {
         let arena_map = self.child_source(db);
         let arena_map = arena_map.as_ref();
         let parent = *self;
@@ -189,32 +216,40 @@ impl ChildBySource for VariantId {
         }
         let (_, sm) = self.fields_with_source_map(db);
         sm.expansions().for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
+
+        AttrDefId::from(*self).child_by_source_to(db, res, file_id);
+        AttrFlags::fields_docs(db, *self)
+            .values()
+            .flatten()
+            .for_each(|docs| docs.child_by_source_to(db, res, file_id));
     }
 }
 
 impl ChildBySource for EnumId {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, res: &mut DynMap, file_id: HirFileId) {
         let loc = &self.lookup(db);
         if file_id != loc.id.file_id {
             return;
         }
 
-        let ast_id_map = db.ast_id_map(loc.id.file_id);
+        let ast_id_map = loc.id.file_id.ast_id_map(db);
 
-        self.enum_variants(db).variants.iter().for_each(|&(variant, _, _)| {
+        self.enum_variants(db).variants.values().for_each(|&(variant, _)| {
             res[keys::ENUM_VARIANT].insert(ast_id_map.get(variant.lookup(db).id.value), variant);
         });
-        let (_, source_map) = db.enum_signature_with_source_map(*self);
+        let (_, source_map) = EnumSignature::with_source_map(db, *self);
         source_map
             .expansions()
             .filter(|(ast, _)| ast.file_id == file_id)
             .for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
+
+        AttrDefId::from(*self).child_by_source_to(db, res, file_id);
     }
 }
 
 impl ChildBySource for DefWithBodyId {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let (body, sm) = db.body_with_source_map(*self);
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, res: &mut DynMap, file_id: HirFileId) {
+        let (body, sm) = Body::with_source_map(db, *self);
         if let &DefWithBodyId::VariantId(v) = self {
             VariantId::EnumVariantId(v).child_by_source_to(db, res, file_id)
         }
@@ -227,20 +262,19 @@ impl ChildBySource for DefWithBodyId {
             // All block expressions are merged into the same map, because they logically all add
             // inner items to the containing `DefWithBodyId`.
             def_map[def_map.root].scope.child_by_source_to(db, res, file_id);
-            res[keys::BLOCK].insert(block.lookup(db).ast_id.to_ptr(db), block);
+            res[keys::BLOCK].insert(block.ast_id(db).to_ptr(db), block);
         }
     }
 }
 
 impl ChildBySource for GenericDefId {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
+    fn child_by_source_to(&self, db: &dyn SourceDatabase, res: &mut DynMap, file_id: HirFileId) {
         let (gfile_id, generic_params_list) = self.file_id_and_params_of(db);
         if gfile_id != file_id {
             return;
         }
 
-        let (generic_params, _, source_map) =
-            GenericParams::generic_params_and_store_and_source_map(db, *self);
+        let (generic_params, _, source_map) = GenericParams::with_source_map(db, *self);
         let mut toc_idx_iter = generic_params.iter_type_or_consts().map(|(idx, _)| idx);
         let lts_idx_iter = generic_params.iter_lt().map(|(idx, _)| idx);
 
@@ -273,17 +307,28 @@ impl ChildBySource for GenericDefId {
             .expansions()
             .filter(|(ast, _)| ast.file_id == file_id)
             .for_each(|(ast, &exp_id)| res[keys::MACRO_CALL].insert(ast.value, exp_id));
+
+        let attr_def = match *self {
+            GenericDefId::AdtId(it) => AttrDefId::from(it),
+            GenericDefId::ConstId(it) => it.into(),
+            GenericDefId::FunctionId(it) => it.into(),
+            GenericDefId::ImplId(it) => it.into(),
+            GenericDefId::StaticId(it) => it.into(),
+            GenericDefId::TraitId(it) => it.into(),
+            GenericDefId::TypeAliasId(it) => it.into(),
+        };
+        attr_def.child_by_source_to(db, res, file_id);
     }
 }
 
 fn insert_item_loc<ID, N, Data>(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     res: &mut DynMap,
     file_id: HirFileId,
     id: ID,
     key: Key<N, ID>,
 ) where
-    ID: Lookup<Database = dyn DefDatabase, Data = Data> + 'static,
+    ID: Lookup<Data = Data> + 'static,
     Data: AstIdLoc<Ast = N>,
     N: AstIdNode + 'static,
 {
@@ -293,7 +338,12 @@ fn insert_item_loc<ID, N, Data>(
     }
 }
 
-fn add_assoc_item(db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId, item: AssocItemId) {
+fn add_assoc_item(
+    db: &dyn SourceDatabase,
+    res: &mut DynMap,
+    file_id: HirFileId,
+    item: AssocItemId,
+) {
     match item {
         AssocItemId::FunctionId(func) => insert_item_loc(db, res, file_id, func, keys::FUNCTION),
         AssocItemId::ConstId(konst) => insert_item_loc(db, res, file_id, konst, keys::CONST),

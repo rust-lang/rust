@@ -1,0 +1,21 @@
+warning: overflow evaluating the requirement `(): Trait<i32>`
+  --> $DIR/overflow-discards-constraints.rs:69:5
+   |
+LL |     foo(); // register a `(): Trait<?t>` obligation
+   |     ^^^^^
+   |
+   = note: which requires `W1<i32>: Trait<i32>`
+   = note: which requires `W2<i32>: Trait<i32>`
+   = note: which requires `W3<i32>: Trait<i32>`
+   = note: which requires `W4<i32>: Trait<i32>`
+   = note: which requires `W5<i32>: Trait<i32>`
+   = note: and so on...
+   = help: consider adding a manual `impl` of auto traits like `Send` for intermediate types, if auto traits are involved
+   = help: or consider increasing the recursion limit by adding a `#![recursion_limit = "12"]` attribute to your crate (`overflow_discards_constraints`)
+   = note: this lint is attached to the whole crate and can't be disabled on a per-function basis
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #159228 <https://github.com/rust-lang/rust/issues/159228>
+   = note: `#[warn(recursion_depth_exceeding_limit)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+

@@ -6,7 +6,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // Only traits defined in the current crate can be implemented for arbitrary types
 pub(crate) fn trait_impl_orphan(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TraitImplOrphan,
 ) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(
@@ -113,6 +113,39 @@ pub trait Trait {}
 struct Foo;
 impl foo::Trait for &&Foo {}
         "#,
+        );
+    }
+
+    #[test]
+    fn associated_type_normalizes_to_local_type() {
+        check_diagnostics(
+            r#"
+//- /foo.rs crate:foo
+pub trait Trait {}
+//- /main.rs crate:main deps:foo
+trait LocalTrait { type Assoc; }
+struct LocalType;
+impl LocalTrait for () { type Assoc = LocalType; }
+impl foo::Trait for <() as LocalTrait>::Assoc {}
+impl foo::Trait for &<() as LocalTrait>::Assoc {}
+"#,
+        );
+    }
+
+    #[test]
+    fn associated_type_normalizes_to_foreign_type() {
+        check_diagnostics(
+            r#"
+//- /foo.rs crate:foo
+pub trait Trait {}
+//- /bar.rs crate:bar
+pub struct ForeignType;
+pub trait Alias { type Assoc; }
+impl Alias for () { type Assoc = ForeignType; }
+//- /main.rs crate:main deps:foo,bar
+  impl foo::Trait for <() as bar::Alias>::Assoc {}
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: only traits defined in the current crate can be implemented for arbitrary types
+"#,
         );
     }
 }

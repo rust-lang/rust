@@ -11,10 +11,6 @@ note: `Foo::foo` takes ownership of the receiver `self`, which moves `*foo`
    |
 LL |     fn foo(self) {}
    |            ^^^^
-help: you can `clone` the value and consume it, but this might not be your desired behavior
-   |
-LL |     <Foo as Clone>::clone(&foo).foo();
-   |     +++++++++++++++++++++++   +
 help: consider cloning the value if the performance cost is acceptable
    |
 LL |     foo.clone().foo();

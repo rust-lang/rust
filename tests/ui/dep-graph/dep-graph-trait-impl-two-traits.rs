@@ -29,7 +29,7 @@ mod x {
 mod y {
     use crate::{Foo, Bar};
 
-    #[rustc_then_this_would_need(typeck)] //~ ERROR no path
+    #[rustc_then_this_would_need(typeck_root)] //~ ERROR no path
     pub fn call_bar() {
         char::bar('a');
     }
@@ -38,7 +38,7 @@ mod y {
 mod z {
     use crate::y;
 
-    #[rustc_then_this_would_need(typeck)] //~ ERROR no path
+    #[rustc_then_this_would_need(typeck_root)] //~ ERROR no path
     pub fn z() {
         y::call_bar();
     }

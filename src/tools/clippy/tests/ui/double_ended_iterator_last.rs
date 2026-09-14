@@ -2,7 +2,7 @@
 
 // Typical case
 pub fn last_arg(s: &str) -> Option<&str> {
-    s.split(' ').last() //~ ERROR: called `Iterator::last` on a `DoubleEndedIterator`
+    s.split(' ').last() //~ double_ended_iterator_last
 }
 
 fn main() {
@@ -19,7 +19,7 @@ fn main() {
             Some(())
         }
     }
-    let _ = DeIterator.last(); //~ ERROR: called `Iterator::last` on a `DoubleEndedIterator`
+    let _ = DeIterator.last(); //~ double_ended_iterator_last
     // Should not apply to other methods of Iterator
     let _ = DeIterator.count();
 

@@ -1,5 +1,5 @@
 error: only trait impls can be reused
-  --> $DIR/impl-reuse-non-trait-impl.rs:6:1
+  --> $DIR/impl-reuse-non-trait-impl.rs:5:1
    |
 LL | reuse impl Trait { self.0 }
    | ^^^^^^^^^^^^^^^^

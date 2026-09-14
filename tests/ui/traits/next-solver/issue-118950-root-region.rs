@@ -2,8 +2,7 @@
 //
 // This is a gnarly test but I don't know how to minimize it, frankly.
 
-#![feature(lazy_type_alias)]
-//~^ WARN the feature `lazy_type_alias` is incomplete
+#![feature(checked_type_aliases)]
 
 trait ToUnit<'a> {
     type Unit;

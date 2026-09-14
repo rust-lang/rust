@@ -54,7 +54,7 @@ index 2e16f2cf27..3ac3df99a8 100644
 --- a/src/bootstrap/bootstrap.py
 +++ b/src/bootstrap/bootstrap.py
 @@ -1147,6 +1147,8 @@ class RustBuild(object):
-             args += ["-Zwarnings"]
+         if deny_warnings:
              env["CARGO_BUILD_WARNINGS"] = "deny"
 
 +        env["RUSTFLAGS"] += " -Zbinary-dep-depinfo"
@@ -63,18 +63,18 @@ index 2e16f2cf27..3ac3df99a8 100644
          # Note that RUSTFLAGS_BOOTSTRAP should always be added to the end of
          # RUSTFLAGS, since that causes RUSTFLAGS_BOOTSTRAP to override RUSTFLAGS.
 diff --git a/src/bootstrap/src/core/config/config.rs b/src/bootstrap/src/core/config/config.rs
-index a656927b1f6..44fc5546fac 100644
+index bc68bfe396..00143ef3ed 100644
 --- a/src/bootstrap/src/core/config/config.rs
 +++ b/src/bootstrap/src/core/config/config.rs
-@@ -2249,7 +2249,7 @@ pub fn parse_download_ci_llvm<'a>(
-             }
-
-             #[cfg(not(test))]
--            if b && dwn_ctx.is_running_on_ci && CiEnv::is_rust_lang_managed_ci_job() {
-+            if false && dwn_ctx.is_running_on_ci && CiEnv::is_rust_lang_managed_ci_job() {
-                 // On rust-lang CI, we must always rebuild LLVM if there were any modifications to it
-                 panic!(
-                     "\`llvm.download-ci-llvm\` cannot be set to \`true\` on CI. Use \`if-unchanged\` instead."
+@@ -2230,7 +2230,7 @@ pub fn download_ci_rustc_commit<'a>(
+         match freshness {
+             PathFreshness::LastModifiedUpstream { upstream } => upstream,
+             PathFreshness::HasLocalModifications { upstream, modifications } => {
+-                if dwn_ctx.is_running_on_ci() {
++                if false && dwn_ctx.is_running_on_ci() {
+                     eprintln!("CI rustc commit matches with HEAD and we are in CI.");
+                     eprintln!(
+                         "\`rustc.download-ci\` functionality will be skipped as artifacts are not available."
 diff --git a/src/build_helper/src/git.rs b/src/build_helper/src/git.rs
 index 330fb465de..a4593ed96f 100644
 --- a/src/build_helper/src/git.rs
@@ -93,5 +93,5 @@ EOF
 popd
 
 # Allow the testsuite to use llvm tools
-host_triple=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
-export LLVM_BIN_DIR="$(rustc --print sysroot)/lib/rustlib/$host_triple/bin"
+host_tuple=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
+export LLVM_BIN_DIR="$(rustc --print sysroot)/lib/rustlib/$host_tuple/bin"

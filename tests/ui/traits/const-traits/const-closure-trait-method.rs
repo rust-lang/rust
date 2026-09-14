@@ -7,8 +7,10 @@ const trait Tr {
     fn a(self) -> i32;
 }
 
-impl const Tr for () {
-    fn a(self) -> i32 { 42 }
+const impl Tr for () {
+    fn a(self) -> i32 {
+        42
+    }
 }
 
 const fn need_const_closure<T: [const] FnOnce(()) -> i32>(x: T) -> i32 {

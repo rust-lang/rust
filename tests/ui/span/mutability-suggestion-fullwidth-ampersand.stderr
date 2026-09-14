@@ -1,0 +1,27 @@
+error: unknown start of token: \u{ff06}
+  --> $DIR/mutability-suggestion-fullwidth-ampersand.rs:3:11
+   |
+LL | fn foo(x: ＆Vec<u8>) {
+   |           ^^
+   |
+help: Unicode character '＆' (Fullwidth Ampersand) looks like '&' (Ampersand), but it is not
+   |
+LL - fn foo(x: ＆Vec<u8>) {
+LL + fn foo(x: &Vec<u8>) {
+   |
+
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+  --> $DIR/mutability-suggestion-fullwidth-ampersand.rs:5:5
+   |
+LL |     x.push(0);
+   |     ^ `x` is a `&` reference, so it cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL - fn foo(x: ＆Vec<u8>) {
+LL + fn foo(x: &mut Vec<u8>) {
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

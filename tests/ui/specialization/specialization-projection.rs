@@ -1,7 +1,7 @@
 //@ run-pass
 #![allow(dead_code)]
 
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 // Make sure we *can* project non-defaulted associated types
 // cf ui/specialization/specialization-default-projection.rs

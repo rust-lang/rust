@@ -1,7 +1,6 @@
 //@ run-pass
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 trait Trait<T> {
     fn foo<U>(&self, x: T, y: U) -> (T, U) {

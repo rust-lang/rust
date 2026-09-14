@@ -10,9 +10,9 @@ LL |             self.lock.inner.unlock();
    = note: stack backtrace:
            0: <std::sync::MutexGuard<'_, u64> as std::ops::Drop>::drop
                at RUSTLIB/std/src/sync/poison/mutex.rs:LL:CC
-           1: std::ptr::drop_in_place))
+           1: std::ptr::drop_glue::<std::sync::MutexGuard<'_, u64>> - shim(Some(std::sync::MutexGuard<'_, u64>))
                at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-           2: std::mem::drop
+           2: std::mem::drop::<std::sync::MutexGuard<'_, u64>>
                at RUSTLIB/core/src/mem/mod.rs:LL:CC
            3: miri_start
                at tests/genmc/fail/shims/mutex_double_unlock.rs:LL:CC

@@ -69,23 +69,53 @@ impl MetadataExt for Metadata {
     fn st_size(&self) -> u64 {
         self.as_inner().as_inner().st_size as u64
     }
+    #[cfg(vxworks_lt_25_09)]
     fn st_atime(&self) -> i64 {
         self.as_inner().as_inner().st_atime as i64
     }
+    #[cfg(not(vxworks_lt_25_09))]
+    fn st_atime(&self) -> i64 {
+        self.as_inner().as_inner().st_atim.tv_sec as i64
+    }
+    #[cfg(vxworks_lt_25_09)]
     fn st_atime_nsec(&self) -> i64 {
         0
     }
+    #[cfg(not(vxworks_lt_25_09))]
+    fn st_atime_nsec(&self) -> i64 {
+        self.as_inner().as_inner().st_atim.tv_nsec as i64
+    }
+    #[cfg(vxworks_lt_25_09)]
     fn st_mtime(&self) -> i64 {
         self.as_inner().as_inner().st_mtime as i64
     }
+    #[cfg(not(vxworks_lt_25_09))]
+    fn st_mtime(&self) -> i64 {
+        self.as_inner().as_inner().st_mtim.tv_sec as i64
+    }
+    #[cfg(vxworks_lt_25_09)]
     fn st_mtime_nsec(&self) -> i64 {
         0
     }
+    #[cfg(not(vxworks_lt_25_09))]
+    fn st_mtime_nsec(&self) -> i64 {
+        self.as_inner().as_inner().st_mtim.tv_nsec as i64
+    }
+    #[cfg(vxworks_lt_25_09)]
     fn st_ctime(&self) -> i64 {
         self.as_inner().as_inner().st_ctime as i64
     }
+    #[cfg(not(vxworks_lt_25_09))]
+    fn st_ctime(&self) -> i64 {
+        self.as_inner().as_inner().st_ctim.tv_sec as i64
+    }
+    #[cfg(vxworks_lt_25_09)]
     fn st_ctime_nsec(&self) -> i64 {
         0
+    }
+    #[cfg(not(vxworks_lt_25_09))]
+    fn st_ctime_nsec(&self) -> i64 {
+        self.as_inner().as_inner().st_ctim.tv_nsec as i64
     }
     fn st_blksize(&self) -> u64 {
         self.as_inner().as_inner().st_blksize as u64

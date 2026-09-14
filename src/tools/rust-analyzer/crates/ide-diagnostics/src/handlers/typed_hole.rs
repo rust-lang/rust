@@ -2,7 +2,6 @@ use std::ops::Not;
 
 use hir::{
     ClosureStyle, FindPathConfig, HirDisplay,
-    db::ExpandDatabase,
     term_search::{TermSearchConfig, TermSearchCtx, term_search},
 };
 use ide_db::text_edit::TextEdit;
@@ -20,7 +19,10 @@ use syntax::AstNode;
 // Diagnostic: typed-hole
 //
 // This diagnostic is triggered when an underscore expression is used in an invalid position.
-pub(crate) fn typed_hole(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole<'_>) -> Diagnostic {
+pub(crate) fn typed_hole<'db>(
+    ctx: &DiagnosticsContext<'_, 'db>,
+    d: &hir::TypedHole<'db>,
+) -> Diagnostic {
     let display_range = ctx.sema.diagnostics_display_range(d.expr.map(|it| it.into()));
     let (message, fixes) = if d.expected.is_unknown() {
         ("`_` expressions may only appear on the left-hand side of an assignment".to_owned(), None)
@@ -41,9 +43,9 @@ pub(crate) fn typed_hole(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole<'_>) -
         .with_fixes(fixes)
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole<'_>) -> Option<Vec<Assist>> {
+fn fixes<'db>(ctx: &DiagnosticsContext<'_, 'db>, d: &hir::TypedHole<'db>) -> Option<Vec<Assist>> {
     let db = ctx.sema.db;
-    let root = db.parse_or_expand(d.expr.file_id);
+    let root = d.expr.file_id.parse_or_expand(db);
     let (original_range, _) =
         d.expr.as_ref().map(|it| it.to_node(&root)).syntax().original_file_range_opt(db)?;
     let scope = ctx.sema.scope(d.expr.value.to_node(&root).syntax())?;
@@ -52,12 +54,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole<'_>) -> Option<Vec<Ass
         sema: &ctx.sema,
         scope: &scope,
         goal: d.expected.clone(),
-        config: TermSearchConfig {
-            fuel: ctx.config.term_search_fuel,
-            enable_borrowcheck: ctx.config.term_search_borrowck,
-
-            ..Default::default()
-        },
+        config: TermSearchConfig { fuel: ctx.config.term_search_fuel, ..Default::default() },
     };
     let paths = term_search(&term_search_ctx);
 
@@ -166,6 +163,8 @@ fn t<T>() -> T { loop {} }
             r#"
 fn main() {
     let _x = [(); _];
+               // ^ error: type annotations needed
+               // | full type: `[(); _]`
     // FIXME: This should trigger error
     // let _y: [(); 10] = [(); _];
     _ = 0;
@@ -440,6 +439,46 @@ fn rdtscp() -> u64 {
     }
     (hi << 32) | lo
 }"#,
+        );
+    }
+
+    #[test]
+    fn asm_sym_with_macro_expr_fragment() {
+        // Regression test for issue #21582
+        // When `$e:expr` captures a path and is used in `sym $e`, the path gets
+        // wrapped in parentheses during macro expansion due to invisible delimiters.
+        // This should not cause false positive typed-hole errors.
+        check_diagnostics(
+            r#"
+//- minicore: asm
+macro_rules! m {
+    ($e:expr) => {
+        core::arch::asm!("/*{f}*/", f = sym $e, out("ax") _)
+    };
+}
+
+fn generic<T>() {}
+
+fn main() {
+    unsafe {
+        m!(generic::<i32>);
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn term_search_lookup_const() {
+        check_diagnostics(
+            r#"
+struct S { f: i32 }
+const C: i32 = 0;
+fn main() {
+    let _: S = _;
+             //^ 💡 error: invalid `_` expression, expected type `S`
+}
+"#,
         );
     }
 }

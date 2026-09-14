@@ -1,0 +1,22 @@
+error[E0277]: the trait bound `i32: Trait` is not satisfied
+  --> $DIR/dont-ice-on-normalization-failure.rs:12:32
+   |
+LL | type TraitObject = dyn Generic<<i32 as Trait>::Associated>;
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `i32`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dont-ice-on-normalization-failure.rs:6:1
+   |
+LL | trait Trait {
+   | ^^^^^^^^^^^
+
+error[E0271]: type mismatch resolving `TraitObject == _`
+  --> $DIR/dont-ice-on-normalization-failure.rs:15:13
+   |
+LL | struct Wrap(TraitObject);
+   |             ^^^^^^^^^^^ types differ
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.

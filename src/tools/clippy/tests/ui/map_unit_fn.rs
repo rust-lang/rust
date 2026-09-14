@@ -1,6 +1,5 @@
 //@ check-pass
 
-#![allow(unused)]
 struct Mappable;
 
 impl Mappable {

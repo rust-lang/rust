@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered 0x02, but expected a boolean
+error: Undefined Behavior: constructing invalid value of type bool: encountered 0x02, but expected a boolean
   --> tests/fail/validity/invalid_bool.rs:LL:CC
    |
 LL |     let _b = unsafe { std::mem::transmute::<u8, bool>(2) };

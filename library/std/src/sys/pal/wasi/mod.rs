@@ -7,10 +7,6 @@
 use crate::io;
 
 pub mod conf;
-#[allow(unused)]
-#[path = "../wasm/atomics/futex.rs"]
-pub mod futex;
-pub mod os;
 pub mod stack_overflow;
 #[path = "../unix/time.rs"]
 pub mod time;
@@ -30,7 +26,7 @@ pub fn abort_internal() -> ! {
 
 #[inline]
 #[cfg(target_env = "p1")]
-pub(crate) fn err2io(err: wasi::Errno) -> crate::io::Error {
+pub(crate) fn err2io(err: wasip1::Errno) -> crate::io::Error {
     crate::io::Error::from_raw_os_error(err.raw().into())
 }
 

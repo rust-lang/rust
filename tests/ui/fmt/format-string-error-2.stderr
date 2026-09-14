@@ -208,5 +208,22 @@ LL |     println!("{x=}");
    |
    = note: to print `{`, you can escape it using `{{`
 
-error: aborting due to 21 previous errors
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/format-string-error-2.rs:96:20
+   |
+LL |           "fn main() {\n\
+   |  ____________________^
+LL | |             \n\
+LL | |         }"
+   | |_________^
+   |
+   = note: if you intended to print `{`, you can escape it with `{{`
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/format-string-error-2.rs:103:15
+   |
+LL |     println!("{ }");
+   |               ^^^
+
+error: aborting due to 23 previous errors
 

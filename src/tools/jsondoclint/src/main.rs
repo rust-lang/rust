@@ -81,7 +81,7 @@ fn main() -> Result<()> {
                     [sel] => eprintln!(
                         "{} not in index or paths, but referred to at '{}'",
                         err.id.0,
-                        json_find::to_jsonpath(&sel)
+                        json_find::to_jsonpath(sel)
                     ),
                     [sel, ..] => {
                         if verbose {
@@ -99,7 +99,7 @@ fn main() -> Result<()> {
                             eprintln!(
                                 "{} not in index or paths, but referred to at '{}' and {} more",
                                 err.id.0,
-                                json_find::to_jsonpath(&sel),
+                                json_find::to_jsonpath(sel),
                                 sels.len() - 1,
                             )
                         }

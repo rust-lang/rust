@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered $HEX[ALLOC]<TAG>, but expected a vtable pointer
+error: Undefined Behavior: constructing invalid value of type *mut FunnyPointer: encountered $HEX[ALLOC]<TAG>, but expected a vtable pointer
   --> tests/fail/issue-miri-1112.rs:LL:CC
    |
 LL |         let obj = std::mem::transmute::<FatPointer, *mut FunnyPointer>(obj);

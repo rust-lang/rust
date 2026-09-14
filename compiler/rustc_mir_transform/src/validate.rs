@@ -2,24 +2,24 @@
 
 use rustc_abi::{ExternAbi, FIRST_VARIANT, Size};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::LangItem;
 use rustc_hir::attrs::InlineAttr;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
-use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, CoroutineArgsExt, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Upcast, Variance,
+    self, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast, Variance,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_trait_selection::traits::ObligationCtxt;
 
+use crate::PassPolicy;
 use crate::util::{self, most_packed_projection};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -97,8 +97,8 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(true)
     }
 }
 
@@ -144,26 +144,21 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
             let src = self.body.basic_blocks.get(location.block).unwrap();
             match (src.is_cleanup, bb.is_cleanup, edge_kind) {
                 // Non-cleanup blocks can jump to non-cleanup blocks along non-unwind edges
-                (false, false, EdgeKind::Normal)
+                (false, false, EdgeKind::Normal) => {}
                 // Cleanup blocks can jump to cleanup blocks along non-unwind edges
-                | (true, true, EdgeKind::Normal) => {}
+                (true, true, EdgeKind::Normal) => {}
                 // Non-cleanup blocks can jump to cleanup blocks along unwind edges
                 (false, true, EdgeKind::Unwind) => {
                     self.unwind_edge_count += 1;
                 }
                 // All other jumps are invalid
-                _ => {
-                    self.fail(
-                        location,
-                        format!(
-                            "{:?} edge to {:?} violates unwind invariants (cleanup {:?} -> {:?})",
-                            edge_kind,
-                            bb,
-                            src.is_cleanup,
-                            bb.is_cleanup,
-                        )
-                    )
-                }
+                _ => self.fail(
+                    location,
+                    format!(
+                        "{:?} edge to {:?} violates unwind invariants (cleanup {:?} -> {:?})",
+                        edge_kind, bb, src.is_cleanup, bb.is_cleanup,
+                    ),
+                ),
             }
         } else {
             self.fail(location, format!("encountered jump to invalid basic block {bb:?}"))
@@ -319,17 +314,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
                 }
             }
-            StatementKind::Retag(kind, _) => {
-                // FIXME(JakobDegen) The validator should check that `self.body.phase <
-                // DropsLowered`. However, this causes ICEs with generation of drop shims, which
-                // seem to fail to set their `MirPhase` correctly.
-                if matches!(kind, RetagKind::TwoPhase) {
-                    self.fail(location, format!("explicit `{kind:?}` is forbidden"));
-                }
-            }
             StatementKind::Coverage(kind) => {
                 if self.body.phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup)
-                    && let CoverageKind::BlockMarker { .. } | CoverageKind::SpanMarker { .. } = kind
+                    && kind.is_removed_after_analysis()
                 {
                     self.fail(
                         location,
@@ -379,6 +366,12 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_unwind_edge(location, *unwind);
                 if let Some(drop) = drop {
                     self.check_edge(location, *drop, EdgeKind::Normal);
+                    if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                        self.fail(
+                            location,
+                            "`async drop` should have been removed after drop elaboration",
+                        );
+                    }
                 }
             }
             TerminatorKind::Call { func, args, .. }
@@ -436,6 +429,26 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                                     terminator.kind,
                                 ),
                             );
+                        }
+
+                        // Call arguments are moved by reference, so they must be plain locals
+                        // or the contents of a box; other moved places violate MIR invariants.
+                        if self.tcx.sess.opts.unstable_opts.validate_mir
+                            && self.body.phase < MirPhase::Runtime(RuntimePhase::Initial)
+                        {
+                            let is_plain_local = place.projection.is_empty();
+                            let is_box_deref =
+                                matches!(place.projection.as_ref(), [ProjectionElem::Deref])
+                                    && self.body.local_decls[place.local].ty.is_box();
+                            if !is_plain_local && !is_box_deref {
+                                self.fail(
+                                    location,
+                                    format!(
+                                        "encountered `Move` of a non-local, non-box place in `Call` terminator: {:?}",
+                                        terminator.kind,
+                                    ),
+                                );
+                            }
                         }
                     }
                 }
@@ -628,7 +641,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             param_env,
             pred,
         ));
-        ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+        ocx.evaluate_obligations_error_on_ambiguity().no_errors()
     }
 }
 
@@ -685,8 +698,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 };
 
                 let kind = match parent_ty.ty.kind() {
-                    &ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                        self.tcx.type_of(def_id).instantiate(self.tcx, args).kind()
+                    &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+                        self.tcx.type_of(def_id).instantiate(self.tcx, args).skip_norm_wip().kind()
                     }
                     kind => kind,
                 };
@@ -713,7 +726,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
 
-                        if adt_def.repr().simd() {
+                        if adt_def.repr().simd() || adt_def.repr().scalable() {
                             self.fail(
                                 location,
                                 format!(
@@ -727,7 +740,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             fail_out_of_bounds(self, location);
                             return;
                         };
-                        check_equal(self, location, field.ty(self.tcx, args));
+                        check_equal(self, location, field.ty(self.tcx, args).skip_norm_wip());
                     }
                     ty::Closure(_, args) => {
                         let args = args.as_closure();
@@ -789,15 +802,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 return;
                             };
 
-                            ty::EarlyBinder::bind(f_ty.ty).instantiate(self.tcx, args)
-                        } else {
-                            let Some(&f_ty) = args.as_coroutine().prefix_tys().get(f.index())
-                            else {
-                                fail_out_of_bounds(self, location);
-                                return;
-                            };
-
+                            ty::EarlyBinder::bind(self.tcx, f_ty.ty)
+                                .instantiate(self.tcx, args)
+                                .skip_norm_wip()
+                        } else if let Some(&f_ty) = args.as_coroutine().upvar_tys().get(f.index()) {
                             f_ty
+                        } else {
+                            fail_out_of_bounds(self, location);
+                            return;
                         };
 
                         check_equal(self, location, f_ty);
@@ -904,7 +916,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     }
 
     fn visit_var_debug_info(&mut self, debuginfo: &VarDebugInfo<'tcx>) {
-        if let Some(box VarDebugInfoFragment { ty, ref projection }) = debuginfo.composite {
+        if let Some(VarDebugInfoFragment { ty, ref projection }) = debuginfo.composite {
             if ty.is_union() || ty.is_enum() {
                 self.fail(
                     START_BLOCK.start_location(),
@@ -971,7 +983,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
         }
 
-        if let ClearCrossCrate::Set(box LocalInfo::DerefTemp) =
+        if let ClearCrossCrate::Set(LocalInfo::DerefTemp) =
             self.body.local_decls[place.local].local_info
             && !place.is_indirect_first_projection()
         {
@@ -1016,7 +1028,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             };
         }
         match rvalue {
-            Rvalue::Use(_) => {}
+            Rvalue::Use(_, _) => {}
             Rvalue::CopyForDeref(_) => {
                 if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(location, "`CopyForDeref` should have been removed in runtime MIR");
@@ -1154,7 +1166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            Rvalue::Ref(..) => {}
+            Rvalue::Ref(..) | Rvalue::Reborrow(..) => {}
             Rvalue::BinaryOp(op, vals) => {
                 use BinOp::*;
                 let a = vals.0.ty(&self.body.local_decls, self.tcx);
@@ -1393,13 +1405,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
-                    CastKind::Transmute => {
+                    CastKind::Transmute | CastKind::BoxDerefTransmute => {
                         // Unlike `mem::transmute`, a MIR `Transmute` is well-formed
                         // for any two `Sized` types, just potentially UB to run.
 
                         if !self
                             .tcx
-                            .normalize_erasing_regions(self.typing_env, op_ty)
+                            .normalize_erasing_regions(
+                                self.typing_env,
+                                Unnormalized::new_wip(op_ty),
+                            )
                             .is_sized(self.tcx, self.typing_env)
                         {
                             self.fail(
@@ -1409,13 +1424,27 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         }
                         if !self
                             .tcx
-                            .normalize_erasing_regions(self.typing_env, *target_type)
+                            .normalize_erasing_regions(
+                                self.typing_env,
+                                Unnormalized::new_wip(*target_type),
+                            )
                             .is_sized(self.tcx, self.typing_env)
                         {
                             self.fail(
                                 location,
                                 format!("Cannot transmute to non-`Sized` type {target_type:?}"),
                             );
+                        }
+
+                        if matches!(kind, CastKind::BoxDerefTransmute) {
+                            if !target_type.is_raw_ptr() {
+                                self.fail(
+                                    location,
+                                    format!(
+                                        "Cannot BoxDerefTransmute to non-pointer type {target_type}"
+                                    ),
+                                );
+                            }
                         }
                     }
                     CastKind::Subtype => {
@@ -1456,7 +1485,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match &statement.kind {
-            StatementKind::Assign(box (dest, rvalue)) => {
+            StatementKind::Assign((dest, rvalue)) => {
                 // LHS and RHS of the assignment must have the same type.
                 let left_ty = dest.ty(&self.body.local_decls, self.tcx).ty;
                 let right_ty = rvalue.ty(&self.body.local_decls, self.tcx);
@@ -1474,7 +1503,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
 
                 if let Some(local) = dest.as_local()
-                    && let ClearCrossCrate::Set(box LocalInfo::DerefTemp) =
+                    && let ClearCrossCrate::Set(LocalInfo::DerefTemp) =
                         self.body.local_decls[local].local_info
                     && !matches!(rvalue, Rvalue::CopyForDeref(_))
                 {
@@ -1497,7 +1526,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {
+            StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(op)) => {
                 let ty = op.ty(&self.body.local_decls, self.tcx);
                 if !ty.is_bool() {
                     self.fail(
@@ -1506,7 +1535,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+            StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(
                 CopyNonOverlapping { src, dst, count },
             )) => {
                 let src_ty = src.ty(&self.body.local_decls, self.tcx);
@@ -1547,7 +1576,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let pty = place.ty(&self.body.local_decls, self.tcx).ty;
                 if !matches!(
                     pty.kind(),
-                    ty::Adt(..) | ty::Coroutine(..) | ty::Alias(ty::Opaque, ..)
+                    ty::Adt(..)
+                        | ty::Coroutine(..)
+                        | ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })
                 ) {
                     self.fail(
                         location,
@@ -1555,14 +1586,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             "`SetDiscriminant` is only allowed on ADTs and coroutines, not {pty}"
                         ),
                     );
-                }
-            }
-            StatementKind::Retag(kind, _) => {
-                // FIXME(JakobDegen) The validator should check that `self.body.phase <
-                // DropsLowered`. However, this causes ICEs with generation of drop shims, which
-                // seem to fail to set their `MirPhase` correctly.
-                if matches!(kind, RetagKind::TwoPhase) {
-                    self.fail(location, format!("explicit `{kind:?}` is forbidden"));
                 }
             }
             StatementKind::StorageLive(_)
@@ -1647,7 +1670,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     }
 
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
-        if let ClearCrossCrate::Set(box LocalInfo::DerefTemp) = local_decl.local_info {
+        if let ClearCrossCrate::Set(LocalInfo::DerefTemp) = local_decl.local_info {
             if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                 self.fail(
                     START_BLOCK.start_location(),

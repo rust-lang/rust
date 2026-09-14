@@ -10,7 +10,6 @@
 // which is provided by the first impl that it is specializing.
 
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete
 #![feature(with_negative_coherence)]
 
 trait BoxIter {

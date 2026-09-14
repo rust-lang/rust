@@ -34,8 +34,7 @@
       }
   
       bb0: {
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           StorageLive(_4);
           _4 = copy _1;
 -         _3 = move _4 as *mut u8 (Transmute);
@@ -54,8 +53,7 @@
       bb1: {
           StorageDead(_6);
           StorageDead(_5);
--         StorageLive(_8);
-+         nop;
+          StorageLive(_8);
           StorageLive(_9);
           StorageLive(_10);
           StorageLive(_11);
@@ -82,8 +80,7 @@
       bb2: {
           StorageDead(_14);
           StorageDead(_13);
--         StorageLive(_16);
-+         nop;
+          StorageLive(_16);
           StorageLive(_17);
           _17 = copy _2;
 -         _16 = move _17 as *const [u8] (Transmute);
@@ -103,12 +100,9 @@
           StorageDead(_19);
           StorageDead(_18);
           _0 = const ();
--         StorageDead(_16);
--         StorageDead(_8);
--         StorageDead(_3);
-+         nop;
-+         nop;
-+         nop;
+          StorageDead(_16);
+          StorageDead(_8);
+          StorageDead(_3);
           return;
       }
   }

@@ -17,8 +17,7 @@ use rustc_hir::{
     Body, FnDecl, FnRetTy, GenericArg, ImplItem, ImplItemKind, Item, ItemKind, LetStmt, MutTy, QPath, TraitFn,
     TraitItem, TraitItemKind, TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 
@@ -514,7 +513,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         };
 
         match item.kind {
-            TraitItemKind::Const(ty, _, _) | TraitItemKind::Type(_, Some(ty)) => {
+            TraitItemKind::Const(ty, _) | TraitItemKind::Type(_, Some(ty)) => {
                 self.check_ty(cx, ty, context);
             },
             TraitItemKind::Fn(ref sig, trait_method) => {

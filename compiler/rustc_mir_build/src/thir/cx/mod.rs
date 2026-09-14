@@ -4,23 +4,30 @@
 
 use rustc_data_structures::steal::Steal;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, HirId, find_attr};
 use rustc_middle::bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, TyCtxt};
 
 /// Query implementation for [`TyCtxt::thir_body`].
-pub(crate) fn thir_body(
-    tcx: TyCtxt<'_>,
+pub(crate) fn thir_body<'tcx>(
+    tcx: TyCtxt<'tcx>,
     owner_def: LocalDefId,
-) -> Result<(&Steal<Thir<'_>>, ExprId), ErrorGuaranteed> {
-    debug_assert!(!tcx.is_type_const(owner_def.to_def_id()), "thir_body queried for type_const");
+) -> Result<(&'tcx Steal<Thir<'tcx>>, ExprId), ErrorGuaranteed> {
+    if cfg!(debug_assertions)
+        && matches!(tcx.def_kind(owner_def), DefKind::Const | DefKind::AssocConst)
+    {
+        debug_assert!(
+            tcx.const_of_item(owner_def.to_def_id()).is_none(),
+            "thir_body queried for directly represented const item: {owner_def:?}"
+        );
+    }
 
     let body = tcx.hir_body_owned_by(owner_def);
-    let mut cx = ThirBuildCx::new(tcx, owner_def);
+    let mut cx: ThirBuildCx<'tcx> = ThirBuildCx::new(tcx, owner_def);
     if let Some(reported) = cx.typeck_results.tainted_by_errors {
         return Err(reported);
     }
@@ -50,7 +57,7 @@ pub(crate) fn thir_body(
 }
 
 /// Context for lowering HIR to THIR for a single function body (or other kind of body).
-struct ThirBuildCx<'tcx> {
+pub(crate) struct ThirBuildCx<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// The THIR data that this context is building.
     thir: Thir<'tcx>,
@@ -99,12 +106,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
         Self {
             tcx,
             thir: Thir::new(body_type),
-            // FIXME(#132279): We're in a body, we should use a typing
-            // mode which reveals the opaque types defined by that body.
-            typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
+            typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def),
             typeck_results,
             body_owner: def.to_def_id(),
-            apply_adjustments: !find_attr!(tcx.hir_attrs(hir_id), CustomMir(..) => ()).is_some(),
+            apply_adjustments: !find_attr!(tcx, hir_id, CustomMir(..)),
         }
     }
 
@@ -118,6 +123,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let_stmt_type: Option<&hir::Ty<'tcx>>,
     ) -> Box<Pat<'tcx>> {
         crate::thir::pattern::pat_from_hir(
+            self,
             self.tcx,
             self.typing_env,
             self.typeck_results,
@@ -183,25 +189,26 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 // Make sure that inferred closure args have no type span
                 .and_then(|ty| if param.pat.span != ty.span { Some(ty.span) } else { None });
 
-            let self_kind = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
-                Some(fn_decl.implicit_self)
+            let self_kind = if index == 0 && fn_decl.implicit_self().has_implicit_self() {
+                Some(fn_decl.implicit_self())
             } else {
                 None
             };
 
             // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
             // (as it's created inside the body itself, not passed in from outside).
-            let ty = if fn_decl.c_variadic && index == fn_decl.inputs.len() {
+            let ty = if fn_decl.c_variadic() && index == fn_decl.inputs.len() {
                 let va_list_did = self.tcx.require_lang_item(LangItem::VaList, param.span);
 
                 self.tcx
                     .type_of(va_list_did)
                     .instantiate(self.tcx, &[self.tcx.lifetimes.re_erased.into()])
+                    .skip_norm_wip()
             } else {
                 fn_sig.inputs()[index]
             };
 
-            let pat = self.pattern_from_hir(param.pat);
+            let pat: Box<Pat<'tcx>> = self.pattern_from_hir(param.pat);
             Param { pat: Some(pat), ty, ty_span, self_kind, hir_id: Some(param.hir_id) }
         })
     }

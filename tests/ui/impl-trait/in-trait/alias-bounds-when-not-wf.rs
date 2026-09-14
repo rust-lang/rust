@@ -1,7 +1,6 @@
 //@ compile-flags: -Znext-solver
 
-#![feature(lazy_type_alias)]
-//~^ WARN the feature `lazy_type_alias` is incomplete
+#![feature(checked_type_aliases)]
 
 trait Foo {}
 
@@ -14,8 +13,7 @@ struct W<T>(T);
 // `usize: Foo` doesn't hold. Therefore we ICE, because we don't expect to still
 // encounter weak types in `assemble_alias_bound_candidates_recur`.
 fn hello(_: W<A<usize>>) {}
-//~^ ERROR the trait bound `usize: Foo` is not satisfied
-//~| ERROR the trait bound `usize: Foo` is not satisfied
-//~| ERROR the trait bound `usize: Foo` is not satisfied
-
+//~^ ERROR: the trait bound `usize: Foo` is not satisfied
+//~| ERROR: the trait bound `usize: Foo` is not satisfied
+//~| ERROR: the type `W<A<usize>>` is not well-formed
 fn main() {}

@@ -18,7 +18,6 @@ pub(crate) fn opts(endian: Endian) -> TargetOptions {
         //   BPF_PROG_LOAD and not all BPF libraries do that yet
         merge_functions: MergeFunctions::Disabled,
         obj_is_bitcode: true,
-        requires_lto: false,
         singlethread: true,
         // When targeting the `v3` cpu in llvm, 32-bit atomics are also supported.
         // But making this value change based on the target cpu can be mostly confusing

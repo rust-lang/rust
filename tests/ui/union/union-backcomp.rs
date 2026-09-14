@@ -1,4 +1,5 @@
 //@ run-pass
+//@ reference: lex.keywords.weak.union
 
 #![allow(path_statements)]
 #![allow(dead_code)]

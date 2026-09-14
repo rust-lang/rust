@@ -1,0 +1,37 @@
+#![feature(prelude_import)]
+#![no_std]
+//@ check-pass
+//@ force-host
+//@ no-prefer-dynamic
+//@ compile-flags: -Z unpretty=expanded
+//@ needs-unwind compiling proc macros with panic=abort causes a warning
+//@ edition: 2015
+
+#![crate_type = "proc-macro"]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+
+extern crate proc_macro;
+
+use proc_macro::TokenStream;
+
+#[proc_macro]
+pub fn a(x: TokenStream) -> TokenStream { x }
+
+#[proc_macro_derive(B, attributes(attr_a, attr_b))]
+pub fn b(x: TokenStream) -> TokenStream { x }
+
+#[proc_macro_attribute]
+pub fn c(x: TokenStream, y: TokenStream) -> TokenStream { y }
+const _: () =
+    {
+        extern crate proc_macro;
+        #[rustc_proc_macro_decls]
+        #[used]
+        #[allow(deprecated)]
+        static _DECLS: &[proc_macro::bridge::client::Client] =
+            &[proc_macro::bridge::client::Client::expand1(a),
+                        proc_macro::bridge::client::Client::expand1(b),
+                        proc_macro::bridge::client::Client::expand2(c)];
+    };

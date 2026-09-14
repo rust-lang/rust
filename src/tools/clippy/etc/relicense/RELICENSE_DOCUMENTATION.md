@@ -43,8 +43,7 @@ There are a few people in relicense_comments.txt who are not found in contributo
 - @JayKickliter [agreed to the relicense on their pull
   request](https://github.com/rust-lang/rust-clippy/pull/3195#issuecomment-423781016)
   ([archive](https://web.archive.org/web/20181005190730/https://github.com/rust-lang/rust-clippy/pull/3195),
-  [screenshot](https://user-images.githubusercontent.com/1617736/46573514-5cb69580-c94b-11e8-8ffb-05a5bd02e2cc.png)
-
+  [screenshot](https://user-images.githubusercontent.com/1617736/46573514-5cb69580-c94b-11e8-8ffb-05a5bd02e2cc.png))
 - @sanmai-NL's [contribution](https://github.com/rust-lang/rust-clippy/commits?author=sanmai-NL) is a minor one-word
   addition which doesn't count for copyright assignment
 - @zmt00's [contributions](https://github.com/rust-lang/rust-clippy/commits?author=zmt00) are minor typo fixes and don't

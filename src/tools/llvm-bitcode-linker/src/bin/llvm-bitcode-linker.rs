@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
-use clap::Parser;
+use anyhow::anyhow;
+use clap::{ArgAction, Parser};
 use llvm_bitcode_linker::{Optimization, Session, Target};
+use tracing::level_filters::LevelFilter;
 
 #[derive(Debug, Parser)]
 /// Linker for embedded code without any system dependencies
@@ -46,12 +48,28 @@ pub struct Args {
     /// The optimization level
     #[arg(short = 'O', value_enum, default_value = "0")]
     optimization: Optimization,
+
+    /// Increase linker diagnostic verbosity (-v = info, -vv = debug)
+    #[arg(short = 'v', long = "verbose", action = ArgAction::Count)]
+    verbose: u8,
 }
 
 fn main() -> anyhow::Result<()> {
-    tracing_subscriber::FmtSubscriber::builder().with_max_level(tracing::Level::DEBUG).init();
-
     let args = Args::parse();
+
+    let max_tracing_level = match args.verbose {
+        0 => LevelFilter::OFF,
+        1 => LevelFilter::INFO,
+        _ => LevelFilter::TRACE,
+    };
+
+    tracing_subscriber::FmtSubscriber::builder()
+        .with_max_level(max_tracing_level)
+        .with_target(false)
+        .without_time()
+        .with_level(false)
+        .with_ansi(false)
+        .init();
 
     let mut linker = Session::new(args.target, args.target_cpu, args.target_feature, args.output);
 
@@ -61,5 +79,11 @@ fn main() -> anyhow::Result<()> {
         linker.add_file(rlib);
     }
 
-    linker.lto(args.optimization, args.debug)
+    let hint = if max_tracing_level < LevelFilter::ERROR {
+        "Pass `-v` to llvm-bitcode-linker for additional diagnostic output."
+    } else {
+        ""
+    };
+
+    linker.lto(args.optimization, args.debug).map_err(|err| anyhow!("{err}\n{hint}"))
 }

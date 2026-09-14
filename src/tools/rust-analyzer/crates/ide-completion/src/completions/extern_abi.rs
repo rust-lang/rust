@@ -43,7 +43,7 @@ const SUPPORTED_CALLING_CONVENTIONS: &[&str] = &[
 
 pub(crate) fn complete_extern_abi(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     expanded: &ast::String,
 ) -> Option<()> {
     if !expanded.syntax().parent().is_some_and(|it| ast::Abi::can_cast(it.kind())) {

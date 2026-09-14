@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 // Test that the comments we emit in MIR opts are accurate.
 //
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
@@ -6,7 +6,7 @@
 
 #![crate_type = "lib"]
 
-// EMIT_MIR spans.outer.PreCodegen.after.mir
+// EMIT_MIR spans.outer.runtime-optimized.after.mir
 pub fn outer(v: u8) -> u8 {
     inner(&v)
 }

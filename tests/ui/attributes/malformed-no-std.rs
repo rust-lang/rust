@@ -12,10 +12,10 @@
 //~^ ERROR malformed `no_core` attribute input
 #![no_core("bar")]
 //~^ ERROR malformed `no_core` attribute input
-//~| WARN unused attribute
+//~| ERROR multiple `no_core` attributes
 #![no_core(foo = "bar")]
 //~^ ERROR malformed `no_core` attribute input
-//~| WARN unused attribute
+//~| ERROR multiple `no_core` attributes
 
 #[deny(unused_attributes)]
 #[no_std]

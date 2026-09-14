@@ -42,8 +42,8 @@ mod hostname;
 mod ip_addr;
 mod socket_addr;
 mod tcp;
-#[cfg(test)]
-pub(crate) mod test;
+#[cfg(all(test, not(target_os = "l4re")))]
+pub(crate) mod tests;
 mod udp;
 
 /// Possible values which can be passed to the [`TcpStream::shutdown`] method.

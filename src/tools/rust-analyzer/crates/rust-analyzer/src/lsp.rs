@@ -3,7 +3,7 @@
 use core::fmt;
 
 use hir::Mutability;
-use ide::{CompletionItem, CompletionItemRefMode, CompletionRelevance};
+use ide::{CompletionItem, CompletionItemImport, CompletionItemRefMode, CompletionRelevance};
 use tenthash::TentHash;
 
 pub mod ext;
@@ -136,8 +136,10 @@ pub(crate) fn completion_item_hash(item: &CompletionItem, is_ref_completion: boo
 
     hasher.update(item.import_to_add.len().to_ne_bytes());
     for import_path in &item.import_to_add {
-        hasher.update(import_path.len().to_ne_bytes());
-        hasher.update(import_path);
+        let CompletionItemImport { path, as_underscore } = import_path;
+        hasher.update(path.len().to_ne_bytes());
+        hasher.update(path);
+        hasher.update([u8::from(*as_underscore)]);
     }
 
     hasher.finalize()

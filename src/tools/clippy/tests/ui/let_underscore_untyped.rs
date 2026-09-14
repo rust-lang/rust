@@ -1,6 +1,5 @@
 //@aux-build: proc_macros.rs
 
-#![allow(unused)]
 #![warn(clippy::let_underscore_untyped)]
 
 extern crate proc_macros;

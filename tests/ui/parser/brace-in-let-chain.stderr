@@ -4,24 +4,46 @@ error: this file contains an unclosed delimiter
 LL | fn main() {
    |           - unclosed delimiter
 ...
+LL |         && let () = ()
+   |         -- you might have meant to continue an if-let chain here
+...
 LL | fn quux() {
    |           - unclosed delimiter
+...
+LL |         && let () = ()
+   |         -- you might have meant to continue an if-let chain here
 ...
 LL | fn foobar() {
    |             - unclosed delimiter
 ...
+LL |         && let () = ()
+   |         -- you might have meant to continue an if-let chain here
+...
 LL | fn fubar() {
    |            - unclosed delimiter
+...
+LL |             && let () = ()
+   |             -- you might have meant to continue an if-let chain here
 ...
 LL | fn qux() {
    |          - unclosed delimiter
 ...
+LL |             && let () = ()
+   |             -- you might have meant to continue an if-let chain here
+...
 LL | fn foo() {
    |          - another 3 unclosed delimiters begin from here
+LL |     {
+LL |     && let () = ()
+   |     -- you might have meant to continue an if-let chain here
+...
+LL |         && let () = ()
+   |         -- you might have meant to continue an if-let chain here
 ...
 LL |         {
    |         - this delimiter might not be properly closed...
 LL |             && let () = ()
+   |             -- you might have meant to continue an if-let chain here
 LL |     }
    |     - ...as it matches this but it has different indentation
 LL | }

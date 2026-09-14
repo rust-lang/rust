@@ -1,19 +1,23 @@
 use rustc_ast::token::Token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, NodeId, token};
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttrPath, CfgEntry};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_feature::{AttributeTemplate, Features};
-use rustc_hir::attrs::CfgEntry;
-use rustc_hir::{AttrPath, Target};
+use rustc_errors::Diagnostic;
+use rustc_feature::Features;
+use rustc_lint_defs::builtin::UNREACHABLE_CFG_SELECT_PREDICATES;
 use rustc_parse::exp;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::Session;
-use rustc_session::lint::BuiltinLintDiag;
-use rustc_session::lint::builtin::UNREACHABLE_CFG_SELECT_PREDICATES;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
-use crate::parser::MetaItemOrLitParser;
-use crate::{AttributeParser, ParsedDescription, ShouldEmit, parse_cfg_entry};
+use crate::attributes::AttributeSafety;
+use crate::parser::{AllowExprMetavar, MetaItemOrLitParser};
+use crate::{
+    AttributeParser, AttributeTemplate, EvalConfigResult, ParsedDescription, ShouldEmit,
+    diagnostics, parse_cfg_entry,
+};
 
 #[derive(Clone)]
 pub enum CfgSelectPredicate {
@@ -44,25 +48,33 @@ pub struct CfgSelectBranches {
 impl CfgSelectBranches {
     /// Removes the top-most branch for which `predicate` returns `true`,
     /// or the wildcard if none of the reachable branches satisfied the predicate.
-    pub fn pop_first_match<F>(&mut self, predicate: F) -> Option<(TokenStream, Span)>
+    pub fn pop_first_match<F>(&mut self, predicate: F) -> Option<(CfgEntry, TokenStream, Span)>
     where
-        F: Fn(&CfgEntry) -> bool,
+        F: Fn(&CfgEntry) -> EvalConfigResult,
     {
-        for (index, (cfg, _, _)) in self.reachable.iter().enumerate() {
-            if predicate(cfg) {
-                let matched = self.reachable.remove(index);
-                return Some((matched.1, matched.2));
+        for (index, (cfg, _, _)) in self.reachable.iter_mut().enumerate() {
+            match predicate(cfg) {
+                EvalConfigResult::True => {
+                    return Some(self.reachable.remove(index));
+                }
+                EvalConfigResult::False { reason } => {
+                    *cfg = reason;
+                }
             }
         }
 
-        self.wildcard.take().map(|(_, tts, span)| (tts, span))
+        self.wildcard.take().map(|(_, tts, span)| (CfgEntry::Bool(true, span), tts, span))
     }
 
     /// Consume this value and iterate over all the `TokenStream`s that it stores.
-    pub fn into_iter_tts(self) -> impl Iterator<Item = (TokenStream, Span)> {
-        let it1 = self.reachable.into_iter().map(|(_, tts, span)| (tts, span));
-        let it2 = self.wildcard.into_iter().map(|(_, tts, span)| (tts, span));
-        let it3 = self.unreachable.into_iter().map(|(_, tts, span)| (tts, span));
+    pub fn into_iter_tts(self) -> impl Iterator<Item = (CfgEntry, TokenStream, Span)> {
+        let it1 = self.reachable.into_iter();
+        let it2 =
+            self.wildcard.into_iter().map(|(_, tts, span)| (CfgEntry::Bool(true, span), tts, span));
+        let it3 = self
+            .unreachable
+            .into_iter()
+            .map(|(_, tts, span)| (CfgEntry::Bool(false, span), tts, span));
 
         it1.chain(it2).chain(it3)
     }
@@ -77,11 +89,13 @@ pub fn parse_cfg_select(
     let mut branches = CfgSelectBranches::default();
 
     while p.token != token::Eof {
+        p.recover_from_outer_attributes("`cfg_select` branches").map_err(|e| e.emit())?;
+
         if p.eat_keyword(exp!(Underscore)) {
             let underscore = p.prev_token;
             p.expect(exp!(FatArrow)).map_err(|e| e.emit())?;
 
-            let tts = p.parse_delimited_token_tree().map_err(|e| e.emit())?;
+            let tts = p.parse_cfg_select_branch_rhs().map_err(|e| e.emit())?;
             let span = underscore.span.to(p.token.span);
 
             match branches.wildcard {
@@ -94,6 +108,7 @@ pub fn parse_cfg_select(
             let meta = MetaItemOrLitParser::parse_single(
                 p,
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+                AllowExprMetavar::Yes,
             )
             .map_err(|diag| diag.emit())?;
             let cfg_span = meta.span();
@@ -104,6 +119,7 @@ pub fn parse_cfg_select(
                 AttrStyle::Inner,
                 AttrPath { segments: vec![sym::cfg_select].into_boxed_slice(), span: cfg_span },
                 None,
+                AttributeSafety::Normal,
                 ParsedDescription::Macro,
                 cfg_span,
                 lint_node_id,
@@ -118,7 +134,7 @@ pub fn parse_cfg_select(
 
             p.expect(exp!(FatArrow)).map_err(|e| e.emit())?;
 
-            let tts = p.parse_delimited_token_tree().map_err(|e| e.emit())?;
+            let tts = p.parse_cfg_select_branch_rhs().map_err(|e| e.emit())?;
             let span = cfg_span.to(p.token.span);
 
             match branches.wildcard {
@@ -152,11 +168,17 @@ fn lint_unreachable(
 
     let branch_is_unreachable = |predicate: CfgSelectPredicate, wildcard_span| {
         let span = predicate.span();
-        p.psess.buffer_lint(
+        p.psess.dyn_buffer_lint(
             UNREACHABLE_CFG_SELECT_PREDICATES,
             span,
             lint_node_id,
-            BuiltinLintDiag::UnreachableCfg { span, wildcard_span },
+            move |dcx, level| match wildcard_span {
+                Some(wildcard_span) => {
+                    diagnostics::UnreachableCfgSelectPredicateWildcard { span, wildcard_span }
+                        .into_diag(dcx, level)
+                }
+                None => diagnostics::UnreachableCfgSelectPredicate { span }.into_diag(dcx, level),
+            },
         );
     };
 
@@ -189,7 +211,9 @@ fn lint_unreachable(
                         }
                     }
                 }
-                Some(_) => { /* for now we don't bother solving these */ }
+                Some(_) => {
+                    // FIXME(https://github.com/rust-lang/rust/pull/149960#issuecomment-3780301699): expand capabilities.
+                }
             },
             CfgEntry::Not(inner, _) => match &**inner {
                 CfgEntry::NameValue { name, value: None, .. } => {
@@ -208,7 +232,9 @@ fn lint_unreachable(
                         }
                     }
                 }
-                _ => { /* for now we don't bother solving these */ }
+                _ => {
+                    // FIXME(https://github.com/rust-lang/rust/pull/149960#issuecomment-3780301699): expand capabilities.
+                }
             },
             CfgEntry::All(_, _) | CfgEntry::Any(_, _) => {
                 /* for now we don't bother solving these */

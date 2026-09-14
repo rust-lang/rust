@@ -1,5 +1,5 @@
 error: the following explicit lifetimes could be elided: 'a, 'b
-  --> tests/ui/elidable_lifetime_names.rs:9:21
+  --> tests/ui/elidable_lifetime_names.rs:10:21
    |
 LL | fn lifetime_param_2<'a, 'b>(_x: Ref<'a>, _y: &'b u8) {}
    |                     ^^  ^^          ^^        ^^
@@ -13,7 +13,7 @@ LL + fn lifetime_param_2(_x: Ref<'_>, _y: &u8) {}
    |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> tests/ui/elidable_lifetime_names.rs:34:15
+  --> tests/ui/elidable_lifetime_names.rs:35:15
    |
 LL | fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
    |               ^^               ^^                   ^^
@@ -25,7 +25,7 @@ LL + fn fn_bound_2<F, I>(_m: Lt<'_, I>, _f: F) -> Lt<'_, I>
    |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> tests/ui/elidable_lifetime_names.rs:44:19
+  --> tests/ui/elidable_lifetime_names.rs:45:19
    |
 LL | fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str {
    |                   ^^            ^^       ^^
@@ -37,7 +37,7 @@ LL + fn struct_with_lt(_foo: Foo<'_>) -> &str {
    |
 
 error: the following explicit lifetimes could be elided: 'b
-  --> tests/ui/elidable_lifetime_names.rs:59:25
+  --> tests/ui/elidable_lifetime_names.rs:60:25
    |
 LL | fn struct_with_lt4a<'a, 'b>(_foo: &'a Foo<'b>) -> &'a str {
    |                         ^^                ^^
@@ -49,7 +49,7 @@ LL + fn struct_with_lt4a<'a>(_foo: &'a Foo<'_>) -> &'a str {
    |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> tests/ui/elidable_lifetime_names.rs:66:18
+  --> tests/ui/elidable_lifetime_names.rs:67:18
    |
 LL | fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str {
    |                  ^^                 ^^       ^^
@@ -61,7 +61,7 @@ LL + fn alias_with_lt(_foo: FooAlias<'_>) -> &str {
    |
 
 error: the following explicit lifetimes could be elided: 'b
-  --> tests/ui/elidable_lifetime_names.rs:81:24
+  --> tests/ui/elidable_lifetime_names.rs:82:24
    |
 LL | fn alias_with_lt4a<'a, 'b>(_foo: &'a FooAlias<'b>) -> &'a str {
    |                        ^^                     ^^
@@ -73,7 +73,7 @@ LL + fn alias_with_lt4a<'a>(_foo: &'a FooAlias<'_>) -> &'a str {
    |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> tests/ui/elidable_lifetime_names.rs:91:24
+  --> tests/ui/elidable_lifetime_names.rs:92:24
    |
 LL | fn out_return_type_lts<'a>(e: &'a str) -> Cow<'a> {
    |                        ^^      ^^             ^^
@@ -85,7 +85,7 @@ LL + fn out_return_type_lts(e: &str) -> Cow<'_> {
    |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> tests/ui/elidable_lifetime_names.rs:103:10
+  --> tests/ui/elidable_lifetime_names.rs:104:10
    |
 LL |     impl<'a> Foo for Baz<'a> {}
    |          ^^              ^^
@@ -97,7 +97,7 @@ LL +     impl Foo for Baz<'_> {}
    |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> tests/ui/elidable_lifetime_names.rs:106:16
+  --> tests/ui/elidable_lifetime_names.rs:107:16
    |
 LL |         fn baz<'a>(&'a self) -> impl Foo + 'a {
    |                ^^   ^^                     ^^
@@ -109,7 +109,7 @@ LL +         fn baz(&self) -> impl Foo + '_ {
    |
 
 error: the following explicit lifetimes could be elided: 'py
-  --> tests/ui/elidable_lifetime_names.rs:139:14
+  --> tests/ui/elidable_lifetime_names.rs:140:14
    |
 LL |     impl<'t, 'py> ContentString<'t> {
    |              ^^^
@@ -125,7 +125,7 @@ LL ~         fn map_content2(&self, f: impl FnOnce(&'t str) -> &'t str) -> Conte
    |
 
 error: the following explicit lifetimes could be elided: 'py
-  --> tests/ui/elidable_lifetime_names.rs:150:14
+  --> tests/ui/elidable_lifetime_names.rs:151:14
    |
 LL |     impl<'t, 'py> ContentString<'t> {
    |              ^^^
@@ -141,7 +141,7 @@ LL ~         fn map_content3(&'_ self, f: impl FnOnce(&'t str) -> &'t str) -> Co
    |
 
 error: the following explicit lifetimes could be elided: 'py
-  --> tests/ui/elidable_lifetime_names.rs:171:14
+  --> tests/ui/elidable_lifetime_names.rs:172:14
    |
 LL |     impl<'t, 'py> ContentString<'t> {
    |              ^^^
@@ -159,7 +159,7 @@ LL ~         ) -> Content<'t, '_> {
    |
 
 error: the following explicit lifetimes could be elided: 'a, 's
-  --> tests/ui/elidable_lifetime_names.rs:202:15
+  --> tests/ui/elidable_lifetime_names.rs:203:15
    |
 LL |     impl<'de, 'a, 's> Trait<'de> for UnitVariantAccess<'a, 'de, 's> {}
    |               ^^  ^^                                   ^^       ^^
@@ -171,7 +171,7 @@ LL +     impl<'de> Trait<'de> for UnitVariantAccess<'_, 'de, '_> {}
    |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> tests/ui/elidable_lifetime_names.rs:226:10
+  --> tests/ui/elidable_lifetime_names.rs:227:10
    |
 LL |     impl<'a> T for S1<'a> {}
    |          ^^           ^^
@@ -183,7 +183,7 @@ LL +     impl T for S1<'_> {}
    |
 
 error: the following explicit lifetimes could be elided: 'b
-  --> tests/ui/elidable_lifetime_names.rs:234:14
+  --> tests/ui/elidable_lifetime_names.rs:235:14
    |
 LL |     impl<'a, 'b> TA<'a> for S2<'a, 'b> {}
    |              ^^                    ^^
@@ -195,7 +195,7 @@ LL +     impl<'a> TA<'a> for S2<'a, '_> {}
    |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> tests/ui/elidable_lifetime_names.rs:238:10
+  --> tests/ui/elidable_lifetime_names.rs:239:10
    |
 LL |     impl<'a, 'b> TB<'b> for S2<'a, 'b> {}
    |          ^^                    ^^
@@ -207,7 +207,7 @@ LL +     impl<'b> TB<'b> for S2<'_, 'b> {}
    |
 
 error: the following explicit lifetimes could be elided: 'a, 'b
-  --> tests/ui/elidable_lifetime_names.rs:242:10
+  --> tests/ui/elidable_lifetime_names.rs:243:10
    |
 LL |     impl<'a, 'b> T for S2<'a, 'b> {}
    |          ^^  ^^           ^^  ^^
@@ -219,7 +219,7 @@ LL +     impl T for S2<'_, '_> {}
    |
 
 error: the following explicit lifetimes could be elided: 'c
-  --> tests/ui/elidable_lifetime_names.rs:250:18
+  --> tests/ui/elidable_lifetime_names.rs:251:18
    |
 LL |     impl<'a, 'b, 'c> TAB<'a, 'b> for S3<'a, 'b, 'c> {}
    |                  ^^                             ^^
@@ -231,7 +231,7 @@ LL +     impl<'a, 'b> TAB<'a, 'b> for S3<'a, 'b, '_> {}
    |
 
 error: the following explicit lifetimes could be elided: 'b
-  --> tests/ui/elidable_lifetime_names.rs:254:14
+  --> tests/ui/elidable_lifetime_names.rs:255:14
    |
 LL |     impl<'a, 'b, 'c> TAC<'a, 'c> for S3<'a, 'b, 'c> {}
    |              ^^                             ^^
@@ -243,7 +243,7 @@ LL +     impl<'a, 'c> TAC<'a, 'c> for S3<'a, '_, 'c> {}
    |
 
 error: the following explicit lifetimes could be elided: 'b, 'c
-  --> tests/ui/elidable_lifetime_names.rs:258:14
+  --> tests/ui/elidable_lifetime_names.rs:259:14
    |
 LL |     impl<'a, 'b, 'c> TA<'a> for S3<'a, 'b, 'c> {}
    |              ^^  ^^                    ^^  ^^
@@ -255,7 +255,7 @@ LL +     impl<'a> TA<'a> for S3<'a, '_, '_> {}
    |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> tests/ui/elidable_lifetime_names.rs:262:10
+  --> tests/ui/elidable_lifetime_names.rs:263:10
    |
 LL |     impl<'a, 'b, 'c> TBC<'b, 'c> for S3<'a, 'b, 'c> {}
    |          ^^                             ^^
@@ -267,7 +267,7 @@ LL +     impl<'b, 'c> TBC<'b, 'c> for S3<'_, 'b, 'c> {}
    |
 
 error: the following explicit lifetimes could be elided: 'a, 'c
-  --> tests/ui/elidable_lifetime_names.rs:266:10
+  --> tests/ui/elidable_lifetime_names.rs:267:10
    |
 LL |     impl<'a, 'b, 'c> TB<'b> for S3<'a, 'b, 'c> {}
    |          ^^      ^^                ^^      ^^
@@ -279,7 +279,7 @@ LL +     impl<'b> TB<'b> for S3<'_, 'b, '_> {}
    |
 
 error: the following explicit lifetimes could be elided: 'a, 'b
-  --> tests/ui/elidable_lifetime_names.rs:270:10
+  --> tests/ui/elidable_lifetime_names.rs:271:10
    |
 LL |     impl<'a, 'b, 'c> TC<'c> for S3<'a, 'b, 'c> {}
    |          ^^  ^^                    ^^  ^^
@@ -291,7 +291,7 @@ LL +     impl<'c> TC<'c> for S3<'_, '_, 'c> {}
    |
 
 error: the following explicit lifetimes could be elided: 'a, 'b, 'c
-  --> tests/ui/elidable_lifetime_names.rs:274:10
+  --> tests/ui/elidable_lifetime_names.rs:275:10
    |
 LL |     impl<'a, 'b, 'c> T for S3<'a, 'b, 'c> {}
    |          ^^  ^^  ^^           ^^  ^^  ^^

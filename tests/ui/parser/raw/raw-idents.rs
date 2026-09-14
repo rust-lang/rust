@@ -6,7 +6,7 @@
 //@[e2024] edition:2024
 
 // Ensure that all (usable as identifier) keywords work as raw identifiers in all positions.
-// This was motivated by issue #137128, where `r#move`/`r#static`` did not work as `const` names
+// This was motivated by issue #137128, where `r#move`/`r#static` did not work as `const` names
 // due to a parser check not acounting for raw identifiers.
 
 #![crate_type = "lib"]

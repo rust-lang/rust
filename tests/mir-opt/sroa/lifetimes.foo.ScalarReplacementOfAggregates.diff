@@ -115,8 +115,8 @@
           StorageLive(_15);
           StorageLive(_16);
           StorageLive(_17);
--         _24 = copy (_12.0: &std::boxed::Box<dyn std::fmt::Display>);
-+         _24 = copy _32;
+-         _24 = no_retag copy (_12.0: &std::boxed::Box<dyn std::fmt::Display>);
++         _24 = no_retag copy _32;
           _17 = &(*_24);
           _16 = core::fmt::rt::Argument::<'_>::new_display::<Box<dyn std::fmt::Display>>(move _17) -> [return: bb3, unwind unreachable];
       }
@@ -125,8 +125,8 @@
           StorageDead(_17);
           StorageLive(_18);
           StorageLive(_19);
--         _25 = copy (_12.1: &u32);
-+         _25 = copy _33;
+-         _25 = no_retag copy (_12.1: &u32);
++         _25 = no_retag copy _33;
           _19 = &(*_25);
           _18 = core::fmt::rt::Argument::<'_>::new_display::<u32>(move _19) -> [return: bb4, unwind unreachable];
       }

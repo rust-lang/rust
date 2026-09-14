@@ -4,10 +4,10 @@ error[E0282]: type annotations needed
 LL |         channel();
    |         ^^^^^^^ cannot infer type of the type parameter `T` declared on the function `channel`
    |
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the type parameter `T`
    |
-LL |         channel::<T>();
-   |                +++++
+LL |         channel::</* Type */>();
+   |                ++++++++++++++
 
 error[E0282]: type annotations needed
   --> $DIR/channel.rs:13:9
@@ -15,10 +15,10 @@ error[E0282]: type annotations needed
 LL |         channel();
    |         ^^^^^^^ cannot infer type of the type parameter `T` declared on the function `channel`
    |
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the type parameter `T`
    |
-LL |         channel::<T>();
-   |                +++++
+LL |         channel::</* Type */>();
+   |                ++++++++++++++
 
 error: aborting due to 2 previous errors
 

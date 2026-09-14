@@ -8,6 +8,7 @@
 
 use std::error::Error;
 use std::hash::BuildHasherDefault;
+use std::str::FromStr;
 use std::{fmt, mem, ops};
 
 use cfg::{CfgOptions, HashableCfgOptions};
@@ -21,7 +22,10 @@ use span::Edition;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, AnchoredPath, FileId, VfsPath, file_set::FileSet};
 
-use crate::{CrateWorkspaceData, EditionedFileId, FxIndexSet, RootQueryDb};
+use crate::{
+    CrateWorkspaceData, EditionedFileId, FxIndexSet, SourceDatabase, all_crates,
+    set_all_crates_with_durability,
+};
 
 pub type ProcMacroPaths =
     FxHashMap<CrateBuilderId, Result<(String, AbsPathBuf), ProcMacroLoadingError>>;
@@ -254,9 +258,10 @@ impl fmt::Display for LangCrateOrigin {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateDisplayName {
-    // The name we use to display various paths (with `_`).
+    /// The name we use to display various paths (with `_`).
     crate_name: CrateName,
-    // The name as specified in Cargo.toml (with `-`).
+    /// The name as self-declared by the crate. For example, the name declared in the manifest of
+    /// the crate. This may contain dashes `-`.
     canonical_name: Symbol,
 }
 
@@ -311,14 +316,17 @@ impl ReleaseChannel {
             ReleaseChannel::Nightly => "nightly",
         }
     }
+}
 
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(str: &str) -> Option<Self> {
-        Some(match str {
+impl FromStr for ReleaseChannel {
+    type Err = ();
+
+    fn from_str(str: &str) -> Result<Self, Self::Err> {
+        Ok(match str {
             "" | "stable" => ReleaseChannel::Stable,
             "nightly" => ReleaseChannel::Nightly,
             _ if str.starts_with("beta") => ReleaseChannel::Beta,
-            _ => return None,
+            _ => return Err(()),
         })
     }
 }
@@ -444,7 +452,7 @@ impl BuiltDependency {
 
 pub type CratesIdMap = FxHashMap<CrateBuilderId, Crate>;
 
-#[salsa_macros::input]
+#[salsa::input]
 #[derive(Debug, PartialOrd, Ord)]
 pub struct Crate {
     #[returns(ref)]
@@ -490,13 +498,13 @@ impl Crate {
     /// including the crate itself.
     ///
     /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
-    pub fn transitive_rev_deps(self, db: &dyn RootQueryDb) -> Box<[Crate]> {
+    pub fn transitive_rev_deps(self, db: &dyn SourceDatabase) -> Box<[Crate]> {
         let mut worklist = vec![self];
         let mut rev_deps = FxHashSet::default();
         rev_deps.insert(self);
 
         let mut inverted_graph = FxHashMap::<_, Vec<_>>::default();
-        db.all_crates().iter().for_each(|&krate| {
+        all_crates(db).iter().for_each(|&krate| {
             krate
                 .data(db)
                 .dependencies
@@ -586,14 +594,14 @@ impl CrateGraphBuilder {
         Ok(())
     }
 
-    pub fn set_in_db(self, db: &mut dyn RootQueryDb) -> CratesIdMap {
+    pub fn set_in_db(self, db: &mut dyn SourceDatabase) -> CratesIdMap {
+        let old_all_crates = all_crates(db);
+
         // For some reason in some repositories we have duplicate crates, so we use a set and not `Vec`.
         // We use an `IndexSet` because the list needs to be topologically sorted.
         let mut all_crates = FxIndexSet::with_capacity_and_hasher(self.arena.len(), FxBuildHasher);
         let mut visited = FxHashMap::default();
         let mut visited_root_files = FxHashSet::default();
-
-        let old_all_crates = db.all_crates();
 
         let crates_map = db.crates_map();
         // salsa doesn't compare new input to old input to see if they are the same, so here we are doing all the work ourselves.
@@ -612,17 +620,14 @@ impl CrateGraphBuilder {
         if old_all_crates.len() != all_crates.len()
             || old_all_crates.iter().any(|&krate| !all_crates.contains(&krate))
         {
-            db.set_all_crates_with_durability(
-                Arc::new(Vec::from_iter(all_crates).into_boxed_slice()),
-                Durability::MEDIUM,
-            );
+            set_all_crates_with_durability(db, all_crates, Durability::MEDIUM);
         }
 
         return visited;
 
         fn go(
             graph: &CrateGraphBuilder,
-            db: &mut dyn RootQueryDb,
+            db: &mut dyn SourceDatabase,
             crates_map: &CratesMap,
             visited: &mut FxHashMap<CrateBuilderId, Crate>,
             visited_root_files: &mut FxHashSet<FileId>,
@@ -929,6 +934,27 @@ impl<'a> IntoIterator for &'a Env {
     }
 }
 
+/// The crate graph had a cycle. This is typically a bug, and
+/// rust-analyzer logs a warning when it encounters a cycle. Generally
+/// rust-analyzer will continue working OK in the presence of cycle,
+/// but it's better to have an accurate crate graph.
+///
+/// ## dev-dependencies
+///
+/// Note that it's actually legal for a Cargo package (i.e. a thing
+/// with a `Cargo.toml`) to depend on itself in dev-dependencies. This
+/// can enable additional features, and is typically used when a
+/// project wants features to be enabled in tests. Dev-dependencies
+/// are not propagated, so they aren't visible to package that depend
+/// on this one.
+///
+/// <https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#development-dependencies>
+///
+/// However, rust-analyzer constructs its crate graph from Cargo
+/// metadata, so it can end up producing a cyclic crate graph from a
+/// well-formed package graph.
+///
+/// <https://github.com/rust-lang/rust-analyzer/issues/14167>
 #[derive(Debug)]
 pub struct CyclicDependenciesError {
     path: Vec<(CrateBuilderId, Option<CrateDisplayName>)>,

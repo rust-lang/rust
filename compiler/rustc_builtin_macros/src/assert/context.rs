@@ -102,7 +102,6 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 UseTree {
                     prefix: this.cx.path(this.span, vec![Ident::with_dummy_span(sym)]),
                     kind: UseTreeKind::Simple(None),
-                    span: this.span,
                 },
                 DUMMY_NODE_ID,
             )
@@ -121,7 +120,6 @@ impl<'cx, 'a> Context<'cx, 'a> {
                         ],
                         span: self.span,
                     },
-                    span: self.span,
                 }),
             ),
         )
@@ -155,7 +153,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     } else {
                         format!(
                             "Assertion failed: {escaped_expr_str}\nWith captures:\n{}",
-                            &self.fmt_string
+                            self.fmt_string
                         )
                     }),
                     suffix: None,
@@ -250,6 +248,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     self.manage_cond_expr(arg);
                 }
             }
+            ExprKind::Move(local_expr, _) => {
+                self.manage_cond_expr(local_expr);
+            }
             ExprKind::Path(_, Path { segments, .. }) if let [path_segment] = &segments[..] => {
                 let path_ident = path_segment.ident;
                 self.manage_initial_capture(expr, path_ident);
@@ -322,6 +323,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Yeet(_)
             | ExprKind::Become(_)
             | ExprKind::Yield(_)
+            | ExprKind::DirectConstArg(_)
             | ExprKind::UnsafeBinderCast(..) => {}
         }
     }

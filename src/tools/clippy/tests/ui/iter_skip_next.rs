@@ -1,11 +1,8 @@
 //@aux-build:option_helpers.rs
 
 #![warn(clippy::iter_skip_next)]
-#![allow(clippy::disallowed_names)]
-#![allow(clippy::iter_nth)]
-#![allow(clippy::useless_vec)]
-#![allow(clippy::iter_out_of_bounds)]
-#![allow(unused_mut, dead_code)]
+#![expect(clippy::disallowed_names, clippy::useless_vec)]
+#![allow(clippy::iter_nth, clippy::iter_out_of_bounds)]
 
 extern crate option_helpers;
 

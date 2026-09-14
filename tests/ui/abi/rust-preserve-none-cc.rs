@@ -1,5 +1,6 @@
 //@ run-pass
 //@ needs-unwind
+//@ ignore-backends: gcc
 
 #![feature(rust_preserve_none_cc)]
 
@@ -17,9 +18,7 @@ extern "rust-preserve-none" fn oven_explosion() {
 
 #[inline(never)]
 fn bite_into(yummy: u64) -> u64 {
-    let did_it_actually = std::panic::catch_unwind(move || {
-        oven_explosion()
-    });
+    let did_it_actually = std::panic::catch_unwind(move || oven_explosion());
     assert!(did_it_actually.is_err());
     yummy - 25
 }
@@ -52,16 +51,26 @@ extern "rust-preserve-none" fn lotsa_apples(
         and_a.rome.iter().sum(),
         fuji + ambrosia,
         cosmic_crisp - honeycrisp,
-        bite_into(and_a.golden_delicious)
+        bite_into(and_a.golden_delicious),
     )
 }
 
 fn main() {
-    let pie = lotsa_apples(220, 140, 210.54201234, &[180, 210], (), CrateOf {
-        mcintosh: 150.0,
-        golden_delicious: 185,
-        jonagold: None,
-        rome: [180, 182, 184, 186, 188, 190, 192, 194, 196, 198, 200, 202]
-    }, 270, 193.1, &[]);
+    let pie = lotsa_apples(
+        220,
+        140,
+        210.54201234,
+        &[180, 210],
+        (),
+        CrateOf {
+            mcintosh: 150.0,
+            golden_delicious: 185,
+            jonagold: None,
+            rome: [180, 182, 184, 186, 188, 190, 192, 194, 196, 198, 200, 202],
+        },
+        270,
+        193.1,
+        &[],
+    );
     assert_eq!(pie, (2292, 403.64201234, 50, 160));
 }

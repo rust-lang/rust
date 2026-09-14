@@ -1,5 +1,3 @@
-# EditorConfig helps developers define and maintain consistent
-# coding styles between different editors and IDEs
 # editorconfig.org
 
 root = true
@@ -12,5 +10,5 @@ insert_final_newline = true
 indent_style = space
 indent_size = 4
 
-[*.yml]
+[*.{yaml,yml}]
 indent_size = 2

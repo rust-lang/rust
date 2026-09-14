@@ -1,7 +1,7 @@
 use ide_db::source_change::SourceChangeBuilder;
 use syntax::{
-    AstToken,
-    ast::{self, IsString, make::tokens::literal},
+    AstNode, AstToken,
+    ast::{self, IsString},
 };
 
 use crate::{
@@ -24,7 +24,7 @@ use crate::{
 //     r#"Hello, World!"#;
 // }
 // ```
-pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let token = ctx.find_token_at_offset::<ast::AnyString>()?;
     if token.is_raw() {
         return None;
@@ -60,7 +60,7 @@ pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
 //     "Hello, \"World!\"";
 // }
 // ```
-pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let token = ctx.find_token_at_offset::<ast::AnyString>()?;
     if !token.is_raw() {
         return None;
@@ -97,7 +97,7 @@ pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
 //     r##"Hello, World!"##;
 // }
 // ```
-pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let token = ctx.find_token_at_offset::<ast::AnyString>()?;
     if !token.is_raw() {
         return None;
@@ -128,7 +128,7 @@ pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()>
 //     r"Hello, World!";
 // }
 // ```
-pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let token = ctx.find_token_at_offset::<ast::AnyString>()?;
     if !token.is_raw() {
         return None;
@@ -160,25 +160,20 @@ fn replace_literal(
     token: &impl AstToken,
     new: &str,
     builder: &mut SourceChangeBuilder,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) {
-    let token = token.syntax();
-    let node = token.parent().expect("no parent token");
-    let mut edit = builder.make_editor(&node);
-    let new_literal = literal(new);
-
-    edit.replace(token, mut_token(new_literal));
-
-    builder.add_file_edits(ctx.vfs_file_id(), edit);
-}
-
-fn mut_token(token: syntax::SyntaxToken) -> syntax::SyntaxToken {
-    let node = token.parent().expect("no parent token");
-    node.clone_for_update()
-        .children_with_tokens()
-        .filter_map(|it| it.into_token())
-        .find(|it| it.text_range() == token.text_range() && it.text() == token.text())
-        .unwrap()
+    let old_token = token.syntax();
+    let parent = old_token.parent().expect("no parent token");
+    let editor = builder.make_editor(&parent);
+    let make = editor.make();
+    let new_literal = make.expr_literal(new);
+    let new_token = new_literal
+        .syntax()
+        .first_child_or_token()
+        .and_then(|it| it.into_token())
+        .expect("literal has no token child");
+    editor.replace(old_token, new_token);
+    builder.add_file_edits(ctx.vfs_file_id(), editor);
 }
 
 #[cfg(test)]

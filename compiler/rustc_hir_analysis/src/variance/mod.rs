@@ -11,6 +11,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{
     self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    Unnormalized,
 };
 use tracing::{debug, instrument};
 
@@ -47,11 +48,6 @@ pub(super) fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Va
         | DefKind::Struct
         | DefKind::Union
         | DefKind::Ctor(..) => {
-            // These are inferred.
-            let crate_map = tcx.crate_variances(());
-            return crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);
-        }
-        DefKind::TyAlias if tcx.type_alias_is_lazy(item_def_id) => {
             // These are inferred.
             let crate_map = tcx.crate_variances(());
             return crate_map.variances.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);
@@ -143,7 +139,7 @@ fn variance_of_opaque(
         #[instrument(level = "trace", skip(self), ret)]
         fn visit_ty(&mut self, t: Ty<'tcx>) {
             match t.kind() {
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                     self.visit_opaque(*def_id, args);
                 }
                 _ => t.super_visit_with(self),
@@ -185,20 +181,24 @@ fn variance_of_opaque(
     let mut collector =
         OpaqueTypeLifetimeCollector { tcx, root_def_id: item_def_id.to_def_id(), variances };
     let id_args = ty::GenericArgs::identity_for_item(tcx, item_def_id);
-    for (pred, _) in tcx.explicit_item_bounds(item_def_id).iter_instantiated_copied(tcx, id_args) {
-        debug!(?pred);
+    for (clause, _) in tcx
+        .explicit_item_bounds(item_def_id)
+        .iter_instantiated_copied(tcx, id_args)
+        .map(Unnormalized::skip_norm_wip)
+    {
+        debug!(?clause);
 
         // We only ignore opaque type args if the opaque type is the outermost type.
         // The opaque type may be nested within itself via recursion in e.g.
         // type Foo<'a> = impl PartialEq<Foo<'a>>;
         // which thus mentions `'a` and should thus accept hidden types that borrow 'a
         // instead of requiring an additional `+ 'a`.
-        match pred.kind().skip_binder() {
-            ty::ClauseKind::Trait(ty::TraitPredicate {
+        match clause.kind().skip_binder() {
+            ty::ClauseKind::Trait(ty::TraitClause {
                 trait_ref: ty::TraitRef { def_id: _, args, .. },
                 polarity: _,
             })
-            | ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+            | ty::ClauseKind::HostEffect(ty::HostEffectClause {
                 trait_ref: ty::TraitRef { def_id: _, args, .. },
                 constness: _,
             }) => {
@@ -206,7 +206,7 @@ fn variance_of_opaque(
                     arg.visit_with(&mut collector);
                 }
             }
-            ty::ClauseKind::Projection(ty::ProjectionPredicate {
+            ty::ClauseKind::Projection(ty::ProjectionClause {
                 projection_term: ty::AliasTerm { args, .. },
                 term,
             }) => {
@@ -215,11 +215,11 @@ fn variance_of_opaque(
                 }
                 term.visit_with(&mut collector);
             }
-            ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(_, region)) => {
+            ty::ClauseKind::TypeOutlives(ty::OutlivesClause(_, region)) => {
                 region.visit_with(&mut collector);
             }
             _ => {
-                pred.visit_with(&mut collector);
+                clause.visit_with(&mut collector);
             }
         }
     }

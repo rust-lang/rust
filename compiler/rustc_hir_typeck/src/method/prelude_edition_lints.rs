@@ -5,10 +5,11 @@ use hir::{HirId, ItemKind};
 use rustc_ast::join_path_idents;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
+use rustc_lint_defs::builtin::{RUST_2021_PRELUDE_COLLISIONS, RUST_2024_PRELUDE_COLLISIONS};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::lint::builtin::{RUST_2021_PRELUDE_COLLISIONS, RUST_2024_PRELUDE_COLLISIONS};
 use rustc_span::{Ident, STDLIB_STABLE_CRATES, Span, Symbol, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
@@ -16,15 +17,15 @@ use tracing::debug;
 use crate::FnCtxt;
 use crate::method::probe::{self, Pick};
 
-struct AmbiguousTraitMethodCall<'a, 'b, 'tcx> {
+struct AmbiguousTraitMethodCall<'a, 'tcx> {
     segment_name: Symbol,
     self_expr_span: Span,
     pick: &'a Pick<'tcx>,
     tcx: TyCtxt<'tcx>,
-    edition: &'b str,
+    edition: &'static str,
 }
 
-impl<'a, 'b, 'c, 'tcx> Diagnostic<'a, ()> for AmbiguousTraitMethodCall<'b, 'c, 'tcx> {
+impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for AmbiguousTraitMethodCall<'b, 'tcx> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         let Self { segment_name, self_expr_span, pick, tcx, edition } = self;
         let mut lint = Diag::new(
@@ -80,20 +81,18 @@ impl<'a, 'b, 'c, 'tcx> Diagnostic<'a, ()> for AmbiguousTraitMethodCall<'b, 'c, '
     }
 }
 
-struct AmbiguousTraitMethod<'a, 'b, 'tcx, 'pcx, 'fnctx> {
-    segment: &'a hir::PathSegment<'pcx>,
+struct AmbiguousTraitMethod<'a, 'tcx, 'fnctx> {
+    segment: &'a hir::PathSegment<'tcx>,
     call_expr: &'tcx hir::Expr<'tcx>,
     self_expr: &'tcx hir::Expr<'tcx>,
     pick: &'a Pick<'tcx>,
     args: &'tcx [hir::Expr<'tcx>],
-    edition: &'b str,
+    edition: &'static str,
     span: Span,
     this: &'a FnCtxt<'fnctx, 'tcx>,
 }
 
-impl<'a, 'b, 'c, 'tcx, 'pcx, 'fnctx> Diagnostic<'a, ()>
-    for AmbiguousTraitMethod<'b, 'c, 'tcx, 'pcx, 'fnctx>
-{
+impl<'a, 'c, 'tcx, 'fnctx> Diagnostic<'a, ()> for AmbiguousTraitMethod<'c, 'tcx, 'fnctx> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         let Self { segment, call_expr, self_expr, pick, args, edition, span, this } = self;
         let mut lint = Diag::new(
@@ -158,7 +157,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(super) fn lint_edition_dependent_dot_call(
         &self,
         self_ty: Ty<'tcx>,
-        segment: &hir::PathSegment<'_>,
+        segment: &hir::PathSegment<'tcx>,
         span: Span,
         call_expr: &'tcx hir::Expr<'tcx>,
         self_expr: &'tcx hir::Expr<'tcx>,
@@ -178,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We check that the self type is `Pin<&mut _>` to avoid false positives for this common name.
                 if !span.at_least_rust_2024()
                     && let ty::Adt(adt_def, args) = self_ty.kind()
-                    && self.tcx.is_lang_item(adt_def.did(), hir::LangItem::Pin)
+                    && self.tcx.is_lang_item(adt_def.did(), LangItem::Pin)
                     && let ty::Ref(_, _, ty::Mutability::Mut) =
                         args[0].as_type().unwrap().kind() =>
             {

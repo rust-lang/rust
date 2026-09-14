@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{CallableKind, ClosureStyle, HirDisplay, InFile, db::ExpandDatabase};
+use hir::{CallableKind, ClosureStyle, HirDisplay, InFile};
 use ide_db::{
     famous_defs::FamousDefs,
     source_change::{SourceChange, SourceChangeBuilder},
@@ -8,9 +8,8 @@ use ide_db::{
 use syntax::{
     AstNode, AstPtr, TextSize,
     ast::{
-        self, BlockExpr, Expr, ExprStmt, HasArgList,
+        self, BlockExpr, Expr, ExprStmt, HasArgList, RefExpr,
         edit::{AstNodeEdit, IndentLevel},
-        syntax_factory::SyntaxFactory,
     },
 };
 
@@ -20,7 +19,14 @@ use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_dis
 //
 // This diagnostic is triggered when the type of an expression or pattern does not match
 // the expected type.
-pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch<'_>) -> Diagnostic {
+pub(crate) fn type_mismatch(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::TypeMismatch<'_>,
+) -> Option<Diagnostic> {
+    if d.expected.is_unknown() || d.actual.is_unknown() {
+        return None;
+    }
+
     let display_range = adjusted_display_range(ctx, d.expr_or_pat, &|node| {
         let Either::Left(expr) = node else { return None };
         let salient_token_range = match expr {
@@ -39,69 +45,144 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch<
         cov_mark::hit!(type_mismatch_range_adjustment);
         Some(salient_token_range)
     });
-    Diagnostic::new(
-        DiagnosticCode::RustcHardError("E0308"),
-        format!(
-            "expected {}, found {}",
-            d.expected
-                .display(ctx.sema.db, ctx.display_target)
-                .with_closure_style(ClosureStyle::ClosureWithId),
-            d.actual
-                .display(ctx.sema.db, ctx.display_target)
-                .with_closure_style(ClosureStyle::ClosureWithId),
-        ),
-        display_range,
+
+    let expected = d
+        .expected
+        .display(ctx.db(), ctx.display_target)
+        .with_closure_style(ClosureStyle::ClosureWithId)
+        .to_string();
+    let actual = d
+        .actual
+        .display(ctx.db(), ctx.display_target)
+        .with_closure_style(ClosureStyle::ClosureWithId)
+        .to_string();
+
+    // The types differ (that's why we're here), yet they render the same, e.g. `foo::S` and
+    // `bar::S` both render as `S`. Retry with qualified paths so the message isn't a useless
+    // "expected S, found S".
+    let (expected, actual) = if expected == actual {
+        qualified_display(ctx, d).unwrap_or((expected, actual))
+    } else {
+        (expected, actual)
+    };
+
+    Some(
+        Diagnostic::new(
+            DiagnosticCode::RustcHardError("E0308"),
+            format!("expected {expected}, found {actual}"),
+            display_range,
+        )
+        .stable()
+        .with_fixes(fixes(ctx, d)),
     )
-    .stable()
-    .with_fixes(fixes(ctx, d))
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch<'_>) -> Option<Vec<Assist>> {
+/// Renders both sides of the mismatch with qualified paths, for when their plain names collide.
+/// Returns `None` if either side has no renderable path, in which case both keep their plain
+/// names — mixing a qualified and an unqualified name would be more confusing, not less.
+fn qualified_display(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::TypeMismatch<'_>,
+) -> Option<(String, String)> {
+    let root = d.expr_or_pat.file_id.parse_or_expand(ctx.db());
+    let module = ctx.sema.scope(d.expr_or_pat.value.to_node(&root).syntax())?.module();
+    let expected = d.expected.display_source_code(ctx.db(), module.into(), true).ok()?;
+    let actual = d.actual.display_source_code(ctx.db(), module.into(), true).ok()?;
+    Some((expected, actual))
+}
+
+fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::TypeMismatch<'_>) -> Option<Vec<Assist>> {
     let mut fixes = Vec::new();
 
     if let Some(expr_ptr) = d.expr_or_pat.value.cast::<ast::Expr>() {
         let expr_ptr = &InFile { file_id: d.expr_or_pat.file_id, value: expr_ptr };
-        add_reference(ctx, d, expr_ptr, &mut fixes);
+        add_or_fix_reference(ctx, d, expr_ptr, &mut fixes);
         add_missing_ok_or_some(ctx, d, expr_ptr, &mut fixes);
         remove_unnecessary_wrapper(ctx, d, expr_ptr, &mut fixes);
         remove_semicolon(ctx, d, expr_ptr, &mut fixes);
         str_ref_to_owned(ctx, d, expr_ptr, &mut fixes);
+        add_await(ctx, d, expr_ptr, &mut fixes);
+        array_length(ctx, d, expr_ptr, &mut fixes);
     }
 
     if fixes.is_empty() { None } else { Some(fixes) }
 }
 
-fn add_reference(
-    ctx: &DiagnosticsContext<'_>,
+fn add_or_fix_reference(
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TypeMismatch<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
     let range = ctx.sema.diagnostics_display_range((*expr_ptr).map(|it| it.into()));
 
-    let (_, mutability) = d.expected.as_reference()?;
-    let actual_with_ref = d.actual.add_reference(mutability);
-    if !actual_with_ref.could_coerce_to(ctx.sema.db, &d.expected) {
+    let (expected_with_ref_removed, expected_mutability) = d.expected.as_reference()?;
+
+    if let Some((actual_with_ref_removed, hir::Mutability::Shared)) = d.actual.as_reference()
+        && expected_mutability == hir::Mutability::Mut
+        && actual_with_ref_removed.could_coerce_to(ctx.db(), &expected_with_ref_removed)
+    {
+        // The actual type is `&T`, and the expected type is `&mut T`, (or `U` that `T` can be coerced to).
+        // It's likely that, instead of adding a reference, we should just change the mutability of
+        // the existing one.
+
+        let expr = expr_ptr.to_node(ctx.db());
+        // If the node comes from a macro expansion, then we shouldn't assist,
+        // as the suggestion would overwrite the macro _definition_ position
+        let expr = ctx.sema.original_ast_node(expr)?;
+        let expr_without_ref = RefExpr::cast(expr.syntax().clone())?.expr()?;
+
+        let pos = expr_without_ref.syntax().text_range().start();
+        let edit = TextEdit::insert(pos, expected_mutability.as_keyword_for_ref().to_owned());
+        let source_change = SourceChange::from_text_edit(range.file_id, edit);
+        acc.push(fix(
+            "make_reference_mutable",
+            "Make reference mutable",
+            source_change,
+            range.range,
+        ));
+        return Some(());
+    }
+
+    let actual_with_ref = d.actual.add_reference(ctx.db(), expected_mutability);
+    if !actual_with_ref.could_coerce_to(ctx.db(), &d.expected) {
         return None;
     }
 
-    let ampersands = format!("&{}", mutability.as_keyword_for_ref());
+    let expr = expr_ptr.to_node(ctx.db());
+    let assign = expr
+        .syntax()
+        .parent()
+        .and_then(ast::BinExpr::cast)
+        .filter(|it| it.op_kind() == Some(ast::BinaryOp::Assignment { op: None }));
+    if let Some(assign) = assign
+        && expected_mutability.is_mut()
+        && let Some(range) = ctx.sema.original_range_opt(assign.syntax())
+    {
+        let edit = TextEdit::insert(range.range.start(), "*".to_owned());
+        let source_change = SourceChange::from_text_edit(range.file_id.file_id(ctx.db()), edit);
+        acc.push(fix("add_deref_here", "Add deref here", source_change, range.range));
+        return Some(());
+    }
 
-    let edit = TextEdit::insert(range.range.start(), ampersands);
+    let ampersands = format!("&{}", expected_mutability.as_keyword_for_ref());
+
+    let edit = insert_prefix(&expr, range.range, &ampersands);
     let source_change = SourceChange::from_text_edit(range.file_id, edit);
     acc.push(fix("add_reference_here", "Add reference here", source_change, range.range));
     Some(())
 }
 
 fn add_missing_ok_or_some(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TypeMismatch<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let root = expr_ptr.file_id.parse_or_expand(ctx.db());
     let expr = expr_ptr.value.to_node(&root);
-    let expr_range = expr.syntax().text_range();
+    let hir::FileRange { file_id, range: expr_range } =
+        ctx.sema.original_range_opt(expr.syntax())?;
     let scope = ctx.sema.scope(expr.syntax())?;
 
     let expected_adt = d.expected.as_adt()?;
@@ -117,12 +198,13 @@ fn add_missing_ok_or_some(
 
     let variant_name = if Some(expected_enum) == core_result { "Ok" } else { "Some" };
 
-    let wrapped_actual_ty =
-        expected_adt.ty_with_args(ctx.sema.db, std::iter::once(d.actual.clone()));
+    let wrapped_actual_ty = expected_adt.ty(ctx.db()).instantiate([d.actual.clone()]);
 
-    if !d.expected.could_unify_with(ctx.sema.db, &wrapped_actual_ty) {
+    if !d.expected.could_unify_with(ctx.db(), &wrapped_actual_ty) {
         return None;
     }
+
+    let file_id = file_id.file_id(ctx.db());
 
     if d.actual.is_unit() {
         if let Expr::BlockExpr(block) = &expr {
@@ -135,21 +217,18 @@ fn add_missing_ok_or_some(
                     // Empty block
                     let indent = block_indent + 1;
                     builder.insert(
-                        block.syntax().text_range().start() + TextSize::from(1),
+                        expr_range.start() + TextSize::from(1),
                         format!("\n{indent}{variant_name}(())\n{block_indent}"),
                     );
                 } else {
                     let indent = IndentLevel::from(1);
                     builder.insert(
-                        block.syntax().text_range().end() - TextSize::from(1),
+                        expr_range.end() - TextSize::from(1),
                         format!("{indent}{variant_name}(())\n{block_indent}"),
                     );
                 }
 
-                let source_change = SourceChange::from_text_edit(
-                    expr_ptr.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
-                    builder.finish(),
-                );
+                let source_change = SourceChange::from_text_edit(file_id, builder.finish());
                 let name = format!("Insert {variant_name}(()) as the tail of this block");
                 acc.push(fix("insert_wrapped_unit", &name, source_change, expr_range));
             }
@@ -158,40 +237,46 @@ fn add_missing_ok_or_some(
             // Fix for forms like `fn foo() -> Result<(), String> { return; }`
             if ret_expr.expr().is_none() {
                 let mut builder = TextEdit::builder();
-                builder
-                    .insert(ret_expr.syntax().text_range().end(), format!(" {variant_name}(())"));
-                let source_change = SourceChange::from_text_edit(
-                    expr_ptr.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
-                    builder.finish(),
-                );
+                builder.insert(expr_range.end(), format!(" {variant_name}(())"));
+                let source_change = SourceChange::from_text_edit(file_id, builder.finish());
                 let name = format!("Insert {variant_name}(()) as the return value");
                 acc.push(fix("insert_wrapped_unit", &name, source_change, expr_range));
             }
+            return Some(());
+        } else if expr.is_block_like()
+            && expr.syntax().parent().and_then(ast::StmtList::cast).is_some()
+        {
+            // Fix for forms like `fn foo() -> Result<(), String> { for _ in 0..8 {} }`
+            let mut builder = TextEdit::builder();
+            let indent = expr.indent_level();
+            builder.insert(expr_range.end(), format!("\n{indent}{variant_name}(())"));
+
+            let source_change = SourceChange::from_text_edit(file_id, builder.finish());
+            let name = format!("Insert {variant_name}(()) as the tail of this block");
+            acc.push(fix("insert_wrapped_unit", &name, source_change, expr_range));
             return Some(());
         }
     }
 
     let mut builder = TextEdit::builder();
-    builder.insert(expr.syntax().text_range().start(), format!("{variant_name}("));
-    builder.insert(expr.syntax().text_range().end(), ")".to_owned());
-    let source_change = SourceChange::from_text_edit(
-        expr_ptr.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
-        builder.finish(),
-    );
+    builder.insert(expr_range.start(), format!("{variant_name}("));
+    builder.insert(expr_range.end(), ")".to_owned());
+    let source_change = SourceChange::from_text_edit(file_id, builder.finish());
     let name = format!("Wrap in {variant_name}");
     acc.push(fix("wrap_in_constructor", &name, source_change, expr_range));
     Some(())
 }
 
 fn remove_unnecessary_wrapper(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TypeMismatch<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let db = ctx.sema.db;
-    let root = db.parse_or_expand(expr_ptr.file_id);
+    let db = ctx.db();
+    let root = expr_ptr.file_id.parse_or_expand(db);
     let expr = expr_ptr.value.to_node(&root);
+    // FIXME: support inside MacroCall?
     let expr = ctx.sema.original_ast_node(expr)?;
 
     let Expr::CallExpr(call_expr) = expr else {
@@ -211,7 +296,7 @@ fn remove_unnecessary_wrapper(
         return None;
     }
 
-    let inner_type = variant.fields(db).first()?.ty_with_args(db, d.actual.type_arguments());
+    let inner_type = variant.fields(db).first()?.ty(db).instantiate(d.actual.type_arguments());
     if !d.expected.could_unify_with(db, &inner_type) {
         return None;
     }
@@ -219,8 +304,8 @@ fn remove_unnecessary_wrapper(
     let inner_arg = call_expr.arg_list()?.args().next()?;
 
     let file_id = expr_ptr.file_id.original_file(db);
-    let mut builder = SourceChangeBuilder::new(file_id.file_id(ctx.sema.db));
-    let mut editor;
+    let mut builder = SourceChangeBuilder::new(file_id.file_id(ctx.db()));
+    let editor;
     match inner_arg {
         // We're returning `()`
         Expr::TupleExpr(tup) if tup.fields().next().is_none() => {
@@ -230,7 +315,7 @@ fn remove_unnecessary_wrapper(
                 .and_then(Either::<ast::ReturnExpr, ast::StmtList>::cast)?;
 
             editor = builder.make_editor(parent.syntax());
-            let make = SyntaxFactory::with_mappings();
+            let make = editor.make();
 
             match parent {
                 Either::Left(ret_expr) => {
@@ -246,8 +331,6 @@ fn remove_unnecessary_wrapper(
                     editor.replace(stmt_list.syntax().parent()?, new_block.syntax());
                 }
             }
-
-            editor.add_mappings(make.finish_with_mappings());
         }
         _ => {
             editor = builder.make_editor(call_expr.syntax());
@@ -255,7 +338,7 @@ fn remove_unnecessary_wrapper(
         }
     }
 
-    builder.add_file_edits(file_id.file_id(ctx.sema.db), editor);
+    builder.add_file_edits(file_id.file_id(ctx.db()), editor);
     let name = format!("Remove unnecessary {}() wrapper", variant.name(db).as_str());
     acc.push(fix(
         "remove_unnecessary_wrapper",
@@ -267,28 +350,29 @@ fn remove_unnecessary_wrapper(
 }
 
 fn remove_semicolon(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TypeMismatch<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let root = expr_ptr.file_id.parse_or_expand(ctx.db());
     let expr = expr_ptr.value.to_node(&root);
     if !d.actual.is_unit() {
         return None;
     }
     let block = BlockExpr::cast(expr.syntax().clone())?;
+    // FIXME: support inside MacroCall?
     let expr_before_semi =
         block.statements().last().and_then(|s| ExprStmt::cast(s.syntax().clone()))?;
     let type_before_semi = ctx.sema.type_of_expr(&expr_before_semi.expr()?)?.original();
-    if !type_before_semi.could_coerce_to(ctx.sema.db, &d.expected) {
+    if !type_before_semi.could_coerce_to(ctx.db(), &d.expected) {
         return None;
     }
     let semicolon_range = expr_before_semi.semicolon_token()?.text_range();
 
     let edit = TextEdit::delete(semicolon_range);
     let source_change = SourceChange::from_text_edit(
-        expr_ptr.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
+        expr_ptr.file_id.original_file(ctx.db()).file_id(ctx.db()),
         edit,
     );
 
@@ -297,38 +381,133 @@ fn remove_semicolon(
 }
 
 fn str_ref_to_owned(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TypeMismatch<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let expected = d.expected.display(ctx.sema.db, ctx.display_target);
+    let expected = d.expected.display(ctx.db(), ctx.display_target);
     // FIXME do this properly
     let is_applicable = d.actual.strip_reference().is_str() && expected.to_string() == "String";
     if !is_applicable {
         return None;
     }
 
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let root = expr_ptr.file_id.parse_or_expand(ctx.db());
     let expr = expr_ptr.value.to_node(&root);
-    let expr_range = expr.syntax().text_range();
+    let hir::FileRange { file_id, range } = ctx.sema.original_range_opt(expr.syntax())?;
 
-    let to_owned = ".to_owned()".to_owned();
-
-    let edit = TextEdit::insert(expr.syntax().text_range().end(), to_owned);
-    let source_change = SourceChange::from_text_edit(
-        expr_ptr.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
-        edit,
-    );
-    acc.push(fix("str_ref_to_owned", "Add .to_owned() here", source_change, expr_range));
+    let edit = insert_postfix(&expr, range, ".to_owned()");
+    let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.db()), edit);
+    acc.push(fix("str_ref_to_owned", "Add .to_owned() here", source_change, range));
 
     Some(())
+}
+
+fn add_await(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::TypeMismatch<'_>,
+    expr_ptr: &InFile<AstPtr<ast::Expr>>,
+    acc: &mut Vec<Assist>,
+) -> Option<()> {
+    let output = d.actual.clone().future_output(ctx.db())?;
+    // XXX: maybe should check if ctx is async
+    let is_applicable = output.could_coerce_to(ctx.db(), &d.expected);
+    if !is_applicable {
+        return None;
+    }
+
+    let root = expr_ptr.file_id.parse_or_expand(ctx.db());
+    let expr = expr_ptr.value.to_node(&root);
+    let hir::FileRange { file_id, range } = ctx.sema.original_range_opt(expr.syntax())?;
+
+    let edit = insert_postfix(&expr, range, ".await");
+    let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.db()), edit);
+    acc.push(fix("add_await", "Add .await here", source_change, range));
+
+    Some(())
+}
+
+fn array_length(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::TypeMismatch<'_>,
+    expr_ptr: &InFile<AstPtr<ast::Expr>>,
+    acc: &mut Vec<Assist>,
+) -> Option<()> {
+    let (ty1, expected) = d.expected.as_array(ctx.db())?;
+    let (ty2, actual) = d.actual.as_array(ctx.db())?;
+
+    if !ty1.could_unify_with(ctx.db(), &ty2) || expected == actual {
+        return None;
+    }
+
+    let root = expr_ptr.file_id.parse_or_expand(ctx.db());
+    let expr = expr_ptr.value.to_node(&root);
+    let container = skip_transparent(expr).syntax().parent()?;
+    let ty = syntax::match_ast! {
+        match container {
+            ast::LetStmt(it) => it.ty()?,
+            ast::Static(it) => it.ty()?,
+            ast::Const(it) => it.ty()?,
+            _ => return None,
+        }
+    };
+    let ast::Type::ArrayType(ty) = ty else { return None };
+    let len = ty.const_arg()?.expr()?;
+    let hir::FileRange { range: len_range, .. } = ctx.sema.original_range_opt(len.syntax())?;
+    let hir::FileRange { range, file_id } = ctx.sema.original_range_opt(&container)?;
+
+    let edit = TextEdit::replace(len_range, actual.to_string());
+    let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.db()), edit);
+    let label = &format!("Change array length to {actual}");
+    acc.push(fix("array_length", label, source_change, range));
+
+    fn skip_transparent(mut expr: Expr) -> Expr {
+        while let Some(parent) = expr.syntax().parent() {
+            if let Some(it) = ast::StmtList::cast(parent.clone())
+                && it.statements().next().is_none()
+                && let Some(parent) = it.syntax().parent().and_then(Expr::cast)
+            {
+                expr = parent;
+            } else if let Some(parent) = ast::ParenExpr::cast(parent) {
+                expr = parent.into();
+            } else {
+                break;
+            }
+        }
+        expr
+    }
+
+    Some(())
+}
+
+fn insert_prefix(expr: &Expr, range: syntax::TextRange, text: &str) -> TextEdit {
+    if expr.precedence().needs_parentheses_in(ast::prec::ExprPrecedence::Prefix) {
+        let mut builder = TextEdit::builder();
+        builder.insert(range.start(), format!("{text}("));
+        builder.insert(range.end(), ")".to_owned());
+        builder.finish()
+    } else {
+        TextEdit::insert(range.start(), text.to_owned())
+    }
+}
+
+fn insert_postfix(expr: &Expr, range: syntax::TextRange, text: &str) -> TextEdit {
+    if expr.precedence().needs_parentheses_in(ast::prec::ExprPrecedence::Postfix) {
+        let mut builder = TextEdit::builder();
+        builder.insert(range.start(), "(".to_owned());
+        builder.insert(range.end(), format!("){text}"));
+        builder.finish()
+    } else {
+        TextEdit::insert(range.end(), text.to_owned())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::tests::{
-        check_diagnostics, check_diagnostics_with_disabled, check_fix, check_has_fix, check_no_fix,
+        check_diagnostics, check_diagnostics_with_disabled, check_fix, check_fix_with_disabled,
+        check_has_fix, check_no_fix,
     };
 
     #[test]
@@ -381,6 +560,112 @@ fn test(_arg: &mut i32) {}
     }
 
     #[test]
+    fn fix_reference_to_int() {
+        check_fix(
+            r#"
+fn main() {
+    test($0&123);
+}
+fn test(_arg: &mut i32) {}
+            "#,
+            r#"
+fn main() {
+    test(&mut 123);
+}
+fn test(_arg: &mut i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn add_reference_to_parenthesized_int() {
+        check_fix(
+            r#"
+fn main() {
+    test(($0123));
+}
+fn test(_arg: &i32) {}
+            "#,
+            r#"
+fn main() {
+    test((&123));
+}
+fn test(_arg: &i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn add_mutable_reference_to_parenthesized_int() {
+        check_fix(
+            r#"
+fn main() {
+    test(($0123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+            r#"
+fn main() {
+    test((&mut 123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn fix_reference_to_parenthesized_int_paren_inside_ref() {
+        check_fix(
+            r#"
+fn main() {
+    test(&$0(123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+            r#"
+fn main() {
+    test(&mut (123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn fix_reference_to_parenthesized_int_ref_inside_paren() {
+        check_fix(
+            r#"
+fn main() {
+    test(($0&123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+            r#"
+fn main() {
+    test((&mut 123));
+}
+fn test(_arg: &mut i32) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn add_deref_in_assign() {
+        check_fix(
+            r#"
+fn test(arg: &mut i32) {
+    arg = $02;
+}
+            "#,
+            r#"
+fn test(arg: &mut i32) {
+    *arg = 2;
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn add_reference_to_array() {
         check_fix(
             r#"
@@ -395,6 +680,19 @@ fn main() {
     test(&[1, 2, 3]);
 }
 fn test(_arg: &[i32]) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn fix_reference_to_array() {
+        check_no_fix(
+            r#"
+//- minicore: coerce_unsized
+fn main() {
+    test($0&[1, 2, 3]);
+}
+fn test(_arg: &mut [i32]) {}
             "#,
         );
     }
@@ -433,6 +731,80 @@ fn test(_arg: &Bar) {}
     }
 
     #[test]
+    fn add_reference_needs_parentheses() {
+        check_fix(
+            r#"
+//- minicore: add
+struct Foo;
+impl core::ops::Add<i32> for Foo {
+    type Output = Foo;
+    fn add(self, rhs: i32) -> Self::Output { loop {} }
+}
+
+fn main() {
+    test($0Foo + 2);
+}
+fn test(_arg: &Foo) {}
+            "#,
+            r#"
+struct Foo;
+impl core::ops::Add<i32> for Foo {
+    type Output = Foo;
+    fn add(self, rhs: i32) -> Self::Output { loop {} }
+}
+
+fn main() {
+    test(&(Foo + 2));
+}
+fn test(_arg: &Foo) {}
+            "#,
+        );
+    }
+
+    #[test]
+    // FIXME: this should suggest making the reference mutable instead: `&Foo -> &mut Foo`.
+    // Currently it doesn't, as the logic for that assist strips away references, and thus checks
+    // whether `Foo` can be coerced to `Bar` (which it can't), instead of checking `&mut Foo` to
+    // `&mut Bar` (which it can)
+    fn fix_reference_with_autoderef() {
+        check_fix(
+            r#"
+//- minicore: coerce_unsized, deref_mut
+struct Foo;
+struct Bar;
+impl core::ops::Deref for Foo {
+    type Target = Bar;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::DerefMut for Foo {
+    fn deref_mut(&mut self) -> &mut Self::Target { loop {} }
+}
+
+fn main() {
+    test($0&Foo);
+}
+fn test(_arg: &mut Bar) {}
+            "#,
+            r#"
+struct Foo;
+struct Bar;
+impl core::ops::Deref for Foo {
+    type Target = Bar;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::DerefMut for Foo {
+    fn deref_mut(&mut self) -> &mut Self::Target { loop {} }
+}
+
+fn main() {
+    test(&mut &Foo);
+}
+fn test(_arg: &mut Bar) {}
+            "#,
+        );
+    }
+
+    #[test]
     fn add_reference_to_method_call() {
         check_fix(
             r#"
@@ -457,7 +829,7 @@ impl Test {
     }
 
     #[test]
-    fn add_reference_to_let_stmt() {
+    fn add_reference_in_let_stmt() {
         check_fix(
             r#"
 fn main() {
@@ -467,6 +839,38 @@ fn main() {
             r#"
 fn main() {
     let test: &i32 = &123;
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn add_mutable_reference_in_let_stmt() {
+        check_fix(
+            r#"
+fn main() {
+    let _test: &mut i32 = $0123;
+}
+            "#,
+            r#"
+fn main() {
+    let _test: &mut i32 = &mut 123;
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn fix_reference_in_let_stmt() {
+        check_fix(
+            r#"
+fn main() {
+    let _test: &mut i32 = $0&123;
+}
+            "#,
+            r#"
+fn main() {
+    let _test: &mut i32 = &mut 123;
 }
             "#,
         );
@@ -501,16 +905,50 @@ fn main() {
     }
 
     #[test]
-    fn add_mutable_reference_to_let_stmt() {
+    fn fix_reference_to_macro_call() {
         check_fix(
             r#"
+macro_rules! thousand {
+    () => {
+        1000_u64
+    };
+}
+
+fn test(_foo: &mut u64) {}
 fn main() {
-    let _test: &mut i32 = $0123;
+    test($0&thousand!());
 }
             "#,
             r#"
+macro_rules! thousand {
+    () => {
+        1000_u64
+    };
+}
+
+fn test(_foo: &mut u64) {}
 fn main() {
-    let _test: &mut i32 = &mut 123;
+    test(&mut thousand!());
+}
+            "#,
+        );
+    }
+
+    #[test]
+    // If the immutable reference comes from a macro expansion,
+    // we can't do anything to change it to a mutable one.
+    fn dont_fix_reference_inside_macro_call() {
+        check_no_fix(
+            r#"
+macro_rules! thousand {
+    () => {
+        &1000_u64
+    };
+}
+
+fn test(_foo: &mut u64) {}
+fn main() {
+    test($0thousand!());
 }
             "#,
         );
@@ -565,6 +1003,32 @@ fn div(x: i32, y: i32) -> Result<i32, ()> {
         return Err(());
     }
     Ok(x / y)
+}
+"#,
+        );
+
+        check_fix(
+            r#"
+//- minicore: option, result
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+identity! {
+    fn div(x: i32, y: i32) -> Result<i32, ()> {
+        if y == 0 {
+            return Err(());
+        }
+        x / y$0
+    }
+}
+"#,
+            r#"
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+identity! {
+    fn div(x: i32, y: i32) -> Result<i32, ()> {
+        if y == 0 {
+            return Err(());
+        }
+        Ok(x / y)
+    }
 }
 "#,
         );
@@ -700,11 +1164,26 @@ fn foo() -> Result<(), ()> {
 }
             "#,
         );
+
+        check_fix(
+            r#"
+//- minicore: result, iterator
+fn foo() -> Result<(), ()> {
+    for _ in 0..5 {}$0
+}
+            "#,
+            r#"
+fn foo() -> Result<(), ()> {
+    for _ in 0..5 {}
+    Ok(())
+}
+            "#,
+        );
     }
 
     #[test]
     fn wrapped_unit_as_return_expr() {
-        check_fix(
+        check_fix_with_disabled(
             r#"
 //- minicore: result
 fn foo(b: bool) -> Result<(), String> {
@@ -722,6 +1201,7 @@ fn foo(b: bool) -> Result<(), String> {
 
     Err("oh dear".to_owned())
 }"#,
+            &["E0599"],
         );
     }
 
@@ -771,7 +1251,7 @@ fn foo() -> SomeOtherEnum { 0$0 }
 
     #[test]
     fn unwrap_return_type() {
-        check_fix(
+        check_fix_with_disabled(
             r#"
 //- minicore: option, result
 fn div(x: i32, y: i32) -> i32 {
@@ -789,6 +1269,7 @@ fn div(x: i32, y: i32) -> i32 {
     x / y
 }
 "#,
+            &["E0282"],
         );
     }
 
@@ -846,7 +1327,7 @@ fn div(x: i32, y: i32) -> i32 {
 
     #[test]
     fn unwrap_return_type_option_tail_unit() {
-        check_fix(
+        check_fix_with_disabled(
             r#"
 //- minicore: option, result
 fn div(x: i32, y: i32) {
@@ -864,12 +1345,13 @@ fn div(x: i32, y: i32) {
     }
 }
 "#,
+            &["E0282"],
         );
     }
 
     #[test]
     fn unwrap_return_type_handles_generic_functions() {
-        check_fix(
+        check_fix_with_disabled(
             r#"
 //- minicore: option, result
 fn div<T>(x: T) -> T {
@@ -887,12 +1369,13 @@ fn div<T>(x: T) -> T {
     x
 }
 "#,
+            &["E0282"],
         );
     }
 
     #[test]
     fn unwrap_return_type_handles_type_aliases() {
-        check_fix(
+        check_fix_with_disabled(
             r#"
 //- minicore: option, result
 type MyResult<T> = T;
@@ -914,12 +1397,13 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
     x / y
 }
 "#,
+            &["E0282"],
         );
     }
 
     #[test]
     fn unwrap_tail_expr() {
-        check_fix(
+        check_fix_with_disabled(
             r#"
 //- minicore: result
 fn foo() -> () {
@@ -932,12 +1416,13 @@ fn foo() -> () {
     println!("Hello, world!");
 }
             "#,
+            &["E0282"],
         );
     }
 
     #[test]
     fn unwrap_to_empty_block() {
-        check_fix(
+        check_fix_with_disabled(
             r#"
 //- minicore: result
 fn foo() -> () {
@@ -947,6 +1432,7 @@ fn foo() -> () {
             r#"
 fn foo() -> () {}
             "#,
+            &["E0282"],
         );
     }
 
@@ -1040,6 +1526,144 @@ fn test() -> String {
 }
             "#,
         );
+
+        check_fix(
+            r#"
+struct String;
+
+fn test() -> String {
+    let s = &"a";
+    *s$0
+}
+            "#,
+            r#"
+struct String;
+
+fn test() -> String {
+    let s = &"a";
+    (*s).to_owned()
+}
+            "#,
+        );
+
+        check_fix(
+            r#"
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+struct String;
+
+identity! {
+    fn test() -> String {
+        "a"$0
+    }
+}
+            "#,
+            r#"
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+struct String;
+
+identity! {
+    fn test() -> String {
+        "a".to_owned()
+    }
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn add_await() {
+        check_fix(
+            r#"
+//- minicore: future
+async fn foo() -> u32 { 2 }
+async fn test() {
+    let x: u32 = foo()$0;
+}
+            "#,
+            r#"
+async fn foo() -> u32 { 2 }
+async fn test() {
+    let x: u32 = foo().await;
+}
+            "#,
+        );
+
+        check_fix(
+            r#"
+//- minicore: future
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+async fn foo() -> u32 { 2 }
+identity! {
+    async fn test() {
+        let x: u32 = foo()$0;
+    }
+}
+            "#,
+            r#"
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+async fn foo() -> u32 { 2 }
+identity! {
+    async fn test() {
+        let x: u32 = foo().await;
+    }
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn array_length() {
+        check_fix(
+            r#"
+const VALS: [i32; 2$0] = [1, 2, 3];
+            "#,
+            r#"
+const VALS: [i32; 3] = [1, 2, 3];
+            "#,
+        );
+
+        check_fix(
+            r#"
+static VALS: [i32; 2$0] = [1, 2, 3];
+            "#,
+            r#"
+static VALS: [i32; 3] = [1, 2, 3];
+            "#,
+        );
+
+        check_fix(
+            r#"
+static VALS: [i32; 2$0] = {[1, 2, 3]};
+            "#,
+            r#"
+static VALS: [i32; 3] = {[1, 2, 3]};
+            "#,
+        );
+
+        // Convenient trigger range
+        check_fix(
+            r#"
+static VALS: [i32; 2] = [$01, 2, 3];
+            "#,
+            r#"
+static VALS: [i32; 3] = [1, 2, 3];
+            "#,
+        );
+
+        check_fix(
+            r#"
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+identity! {
+    const VALS: [i32; 2$0] = [1, 2, 3];
+}
+            "#,
+            r#"
+macro_rules! identity { ($($t:tt)*) => ($($t)*) }
+identity! {
+    const VALS: [i32; 3] = [1, 2, 3];
+}
+            "#,
+        );
     }
 
     #[test]
@@ -1116,11 +1740,23 @@ fn f() {
     let &() = &mut ();
       //^^^ error: expected &mut (), found &()
     match &() {
-        // FIXME: we should only show the deep one.
         &9 => ()
-      //^^ error: expected &(), found &i32
        //^ error: expected (), found i32
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn type_mismatch_in_condition() {
+        check_diagnostics(
+            r#"
+fn f() {
+    if 1 {}
+     //^ error: expected bool, found i32
+    match () { _ if 1 => (), _ => () }
+                  //^ error: expected bool, found i32
 }
 "#,
         );
@@ -1171,7 +1807,7 @@ trait B {}
 
 fn test(a: &dyn A) -> &dyn B {
     a
-  //^ error: expected &(dyn B + 'static), found &(dyn A + 'static)
+  //^💡 error: expected &(dyn B + 'static), found &(dyn A + 'static)
 }
 "#,
         );
@@ -1251,6 +1887,157 @@ fn main() {
      // ^^^^^^ error: expected S, found E
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn test_ignore_unknown_mismatch() {
+        check_diagnostics(
+            r#"
+pub trait Foo {
+    type Out;
+}
+impl Foo for [i32; 1] {
+    type Out = ();
+}
+pub fn foo<T: Foo>(_: T) -> (T::Out,) { loop { } }
+
+fn main() {
+    let _x = foo(2);
+     // ^^ error: type annotations needed
+          // ^^^ error: the trait bound `i32: Foo` is not satisfied
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn regression_21668() {
+        check_diagnostics(
+            r#"
+mod std {
+    pub enum Ordering { Less }
+}
+pub use std::*;
+
+pub mod evil {
+    pub struct Ordering(pub i32);
+}
+
+pub mod oblivious {
+    use crate::Ordering;
+
+    pub fn what() -> Ordering {
+        Ordering(2)
+    }
+}
+pub use evil::Ordering;
+"#,
+        );
+    }
+
+    // Tests for qualified paths on name collision (issue #22331)
+
+    #[test]
+    fn type_mismatch_collision_basic_structs() {
+        check_diagnostics(
+            r#"
+mod foo {
+    pub struct S;
+}
+mod bar {
+    pub struct S;
+}
+fn test(_: foo::S) {
+    test(bar::S);
+       //^^^^^^ error: expected foo::S, found bar::S
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn type_mismatch_collision_in_generic() {
+        check_diagnostics(
+            r#"
+//- minicore: option
+mod foo {
+    pub struct S;
+}
+mod bar {
+    pub struct S;
+}
+fn make() -> Option<bar::S> { loop {} }
+fn test(_: Option<foo::S>) {
+    test(make());
+       //^^^^^^ error: expected Option<foo::S>, found Option<bar::S>
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn type_mismatch_no_collision_unchanged() {
+        check_diagnostics(
+            r#"
+mod foo {
+    pub struct S;
+}
+mod bar {
+    pub struct T;
+}
+fn test(_: foo::S) {
+    test(bar::T);
+       //^^^^^^ error: expected S, found T
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn type_mismatch_multiple_collisions() {
+        check_diagnostics(
+            r#"
+//- minicore: result
+mod foo {
+    pub struct T;
+}
+mod bar {
+    pub struct T;
+}
+mod baz {
+    pub struct E;
+}
+mod qux {
+    pub struct E;
+}
+fn make() -> Result<bar::T, qux::E> { loop {} }
+fn test(_: Result<foo::T, baz::E>) {
+    test(make());
+       //^^^^^^ error: expected Result<foo::T, baz::E>, found Result<bar::T, qux::E>
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn regression_23313() {
+        check_diagnostics(
+            r#"
+fn hello_world() {}
+
+struct Wrapper<const call: fn() -> ()>;
+
+impl<const F: fn() -> ()> Wrapper<{
+    Wrapper::<{hello_world}>::call();
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: no such associated item
+  }> {
+//^ 💡 error: expected fn(), found ()
+    fn hello_world() {
+        F();
+    }
+}
+        "#,
         );
     }
 }

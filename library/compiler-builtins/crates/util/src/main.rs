@@ -8,11 +8,10 @@ use std::env;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use cfg_if::cfg_if;
-use libm::support::{Float, Hexf, hf32, hf64};
+use libm::support::{Float, Hex, hf32, hf64};
 #[cfg(feature = "build-mpfr")]
 use libm_test::mpfloat::MpOp;
-use libm_test::{Hex, MathOp, TupleCall};
+use libm_test::{MathOp, TupleCall, builtins_wrapper};
 #[cfg(feature = "build-mpfr")]
 use rug::az::{self, Az};
 
@@ -37,7 +36,14 @@ SUBCOMMAND:
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
-    let str_args = args.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+    let str_args = args
+        .iter()
+        .map(|s| {
+            // Allow pasting from comma-separated arguments
+            let s = s.as_str();
+            s.strip_suffix(",").unwrap_or(s)
+        })
+        .collect::<Vec<_>>();
 
     match &str_args.as_slice()[1..] {
         ["eval" | "x", basis, op, inputs @ ..] => do_eval(basis, op, inputs),
@@ -55,6 +61,7 @@ macro_rules! handle_call {
         CFn: $CFn:ty,
         RustFn: $RustFn:ty,
         RustArgs: $RustArgs:ty,
+        path: $path:path,
         attrs: [$($attr:meta),*],
         extra: ($basis:ident, $op:ident, $inputs:ident),
         fn_extra: $musl_fn:expr,
@@ -64,7 +71,7 @@ macro_rules! handle_call {
             type Op = libm_test::op::$fn_name::Routine;
 
             let input = <$RustArgs>::parse($inputs);
-            let libm_fn: <Op as MathOp>::RustFn = libm::$fn_name;
+            let libm_fn: <Op as MathOp>::RustFn = $path;
 
             let output = match $basis {
                 "libm" => input.call_intercept_panics(libm_fn),
@@ -81,7 +88,7 @@ macro_rules! handle_call {
                 }
                 _ => panic!("unrecognized or disabled basis '{}'", $basis),
             };
-            println!("{output:?} {:x}", Hexf(output));
+            println!("{output:?} {:x}", Hex(output));
             return;
         }
     };
@@ -91,7 +98,7 @@ macro_rules! handle_call {
 fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
     libm_macros::for_each_function! {
         callback: handle_call,
-        emit_types: [CFn, RustFn, RustArgs],
+        emit_types: [CFn, RustFn, RustArgs, path],
         extra: (basis, op, inputs),
         fn_extra: match MACRO_FN_NAME {
             // Not provided by musl
@@ -106,7 +113,8 @@ fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
             | roundeven
             | roundevenf
             | ALL_F16
-            | ALL_F128 => None,
+            | ALL_F128
+            | ALL_BUILTINS => None,
             _ => Some(musl_math_sys::MACRO_FN_NAME)
         }
     }
@@ -118,13 +126,14 @@ fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
 fn do_classify(inputs: &[&str]) {
     for s in inputs {
         if let Some(s) = s.strip_suffix("f16") {
-            cfg_if! {
-                if #[cfg(f16_enabled)] {
+            cfg_select! {
+                f16_enabled => {
                     let s = s.trim_end_matches("_");
                     let x: f16 = parse(&[s], 0);
                     classify_print(x);
                     continue;
-                } else {
+                }
+                _ => {
                     panic!("parsing this type requires f16 support: `{s}`");
                 }
             }
@@ -141,15 +150,18 @@ fn do_classify(inputs: &[&str]) {
             continue;
         }
         if let Some(s) = s.strip_suffix("f128") {
-            cfg_if! {
-                if #[cfg(all(f128_enabled, feature = "build-mpfr"))] {
+            cfg_select! {
+                all(f128_enabled, feature = "build-mpfr") => {
                     let s = s.trim_end_matches("_");
                     let x: f128 = parse_rug(&[s], 0);
                     classify_print(x);
                     continue;
-                } else {
-                    panic!("parsing this type requires f128 support and \
-                            the `build-mpfr` feature: `{s}`");
+                }
+                _ => {
+                    panic!(
+                        "parsing this type requires f128 support and \
+                        the `build-mpfr` feature: `{s}`"
+                    );
                 }
             }
         };
@@ -160,18 +172,17 @@ fn do_classify(inputs: &[&str]) {
 fn classify_print<F>(x: F)
 where
     F: Float,
-    F::Int: Hex,
 {
     println!("{x:?}");
-    println!("    hex:  {}", Hexf(x));
-    println!("    bits: {}", x.to_bits().hex());
+    println!("    hex:  {}", Hex(x));
+    println!("    bits: {}", Hex(x.to_bits()));
     println!("    nan:  {}", x.is_nan());
     println!("    inf:  {}", x.is_infinite());
     println!("    normal: {}", !x.is_subnormal());
     println!("    pos:  {}", x.is_sign_positive());
-    println!("    exp:  {} {}", x.ex(), x.ex().hex());
+    println!("    exp:  {} {}", x.ex(), Hex(x.ex()));
     println!("    exp unbiased: {}", x.exp_unbiased());
-    println!("    frac: {} {}", x.frac(), x.frac().hex());
+    println!("    frac: {} {}", x.frac(), Hex(x.frac()));
 }
 
 /// Parse a tuple from a space-delimited string.
@@ -308,6 +319,48 @@ impl_parse_tuple!(f64);
 #[cfg(f128_enabled)]
 impl_parse_tuple_via_rug!(f128);
 
+macro_rules! impl_parse_tuple_int {
+    (@skip_u32 $ty:ty) => {
+        impl ParseTuple for ($ty,) {
+            fn parse(input: &[&str]) -> Self {
+                assert_eq!(input.len(), 1, "expected a single argument, got {input:?}");
+                (parse(input, 0),)
+            }
+        }
+
+        impl ParseTuple for ($ty, $ty) {
+            fn parse(input: &[&str]) -> Self {
+                assert_eq!(input.len(), 2, "expected two arguments, got {input:?}");
+                (parse(input, 0), parse(input, 1))
+            }
+        }
+
+        impl FromStrRadix for $ty {
+            fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError> {
+                let s = strip_radix_prefix(s, radix);
+                <$ty>::from_str_radix(s, radix)
+            }
+        }
+    };
+    ($ty:ty) => {
+        impl_parse_tuple_int!(@skip_u32 $ty);
+
+        impl ParseTuple for ($ty, u32) {
+            fn parse(input: &[&str]) -> Self {
+                assert_eq!(input.len(), 2, "expected two arguments, got {input:?}");
+                (parse(input, 0), parse(input, 1))
+            }
+        }
+    };
+}
+
+impl_parse_tuple_int!(i32);
+impl_parse_tuple_int!(i64);
+impl_parse_tuple_int!(i128);
+impl_parse_tuple_int!(@skip_u32 u32);
+impl_parse_tuple_int!(u64);
+impl_parse_tuple_int!(u128);
+
 /// Try to parse the number, printing a nice message on failure.
 fn parse<T: FromStr + FromStrRadix>(input: &[&str], idx: usize) -> T {
     let s = input[idx];
@@ -352,13 +405,6 @@ where
 
 trait FromStrRadix: Sized {
     fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError>;
-}
-
-impl FromStrRadix for i32 {
-    fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError> {
-        let s = strip_radix_prefix(s, radix);
-        i32::from_str_radix(s, radix)
-    }
 }
 
 #[cfg(f16_enabled)]

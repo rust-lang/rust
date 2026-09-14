@@ -1,7 +1,8 @@
 use std::fmt::Debug;
 
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, Ty, Upcast};
+use rustc_middle::ty::{self, Ty, TyVid, Upcast};
+use thin_vec::{ThinVec, thin_vec};
 
 use super::{ObligationCause, PredicateObligation, PredicateObligations};
 use crate::infer::InferCtxt;
@@ -30,6 +31,90 @@ impl<'tcx> ScrubbedTraitError<'tcx> {
             ScrubbedTraitError::TrueError => true,
             ScrubbedTraitError::Ambiguity | ScrubbedTraitError::Cycle(_) => false,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+#[must_use]
+pub enum TraitErrors<E> {
+    HasErrors(ThinVec<E>),
+    NoErrors,
+}
+
+impl<E> TraitErrors<E> {
+    #[inline]
+    pub fn from_iter(iter: impl ExactSizeIterator<Item = E>) -> TraitErrors<E> {
+        if iter.len() == 0 { TraitErrors::NoErrors } else { TraitErrors::HasErrors(iter.collect()) }
+    }
+
+    #[inline]
+    pub fn has_errors(&self) -> bool {
+        matches!(self, TraitErrors::HasErrors(_))
+    }
+
+    #[inline]
+    pub fn no_errors(&self) -> bool {
+        matches!(self, TraitErrors::NoErrors)
+    }
+
+    #[inline]
+    pub fn as_slice(&self) -> &[E] {
+        match self {
+            TraitErrors::HasErrors(errors) => errors.as_slice(),
+            TraitErrors::NoErrors => &[],
+        }
+    }
+
+    #[inline]
+    pub fn as_mut_slice(&mut self) -> &mut [E] {
+        match self {
+            TraitErrors::HasErrors(errors) => errors.as_mut_slice(),
+            TraitErrors::NoErrors => &mut [],
+        }
+    }
+
+    #[inline]
+    pub fn into_thin_vec(self) -> ThinVec<E> {
+        match self {
+            TraitErrors::HasErrors(errors) => errors,
+            TraitErrors::NoErrors => ThinVec::new(),
+        }
+    }
+
+    #[cold]
+    pub fn push(&mut self, err: E) {
+        match self {
+            TraitErrors::HasErrors(errors) => errors.push(err),
+            TraitErrors::NoErrors => *self = TraitErrors::HasErrors(thin_vec![err]),
+        }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        match self {
+            TraitErrors::HasErrors(errors) => errors.len(),
+            TraitErrors::NoErrors => 0,
+        }
+    }
+}
+
+impl<E> IntoIterator for TraitErrors<E> {
+    type Item = E;
+    type IntoIter = thin_vec::IntoIter<E>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.into_thin_vec().into_iter()
+    }
+}
+
+impl<'a, E> IntoIterator for &'a TraitErrors<E> {
+    type Item = &'a E;
+    type IntoIter = std::slice::Iter<'a, E>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.as_slice().iter()
     }
 }
 
@@ -82,9 +167,9 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     ///
     /// Returns a list of errors from obligations that evaluated to Err.
     #[must_use]
-    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
+    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E>;
 
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E>;
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E>;
 
     /// Evaluate all pending obligations, return error if they can't be evaluated.
     ///
@@ -95,9 +180,12 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     ///
     /// Returns a list of errors from obligations that evaluated to Ambiguous or Err.
     #[must_use]
-    fn evaluate_obligations_error_on_ambiguity(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+    fn evaluate_obligations_error_on_ambiguity(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+    ) -> TraitErrors<E> {
         let errors = self.try_evaluate_obligations(infcx);
-        if !errors.is_empty() {
+        if errors.has_errors() {
             return errors;
         }
 
@@ -107,6 +195,29 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     fn has_pending_obligations(&self) -> bool;
 
     fn pending_obligations(&self) -> PredicateObligations<'tcx>;
+
+    /// Pending obligations potentially referencing an inference variable whose
+    /// sub-unification root is `_sub_root`. May be conservative: implementations
+    /// can return obligations that don't actually reference `_sub_root` (the
+    /// default just returns everything).
+    fn pending_obligations_potentially_referencing_sub_root(
+        &self,
+        _infcx: &InferCtxt<'tcx>,
+        _sub_root: TyVid,
+    ) -> PredicateObligations<'tcx> {
+        self.pending_obligations()
+    }
+
+    /// Pending obligations potentially referencing float inference variables.
+    ///
+    /// FIXME: use a generic filter for `pending_obligations_potentially_referencing_sub_root`
+    /// and this after `TraitEngine` doesn't need to be dyn compatible.
+    fn pending_obligations_potentially_referencing_float_infer(
+        &self,
+        _infcx: &InferCtxt<'tcx>,
+    ) -> PredicateObligations<'tcx> {
+        self.pending_obligations()
+    }
 
     /// Among all pending obligations, collect those are stalled on a inference variable which has
     /// changed since the last call to `try_evaluate_obligations`. Those obligations are marked as

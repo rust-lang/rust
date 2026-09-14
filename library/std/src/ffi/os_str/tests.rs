@@ -290,6 +290,108 @@ fn slice_surrogate_edge() {
 }
 
 #[test]
+fn os_str_slice_at() {
+    #[track_caller]
+    fn slice_at_ok(input: &OsStr, index: usize, expected: (&str, &str)) {
+        let expected = (OsStr::new(expected.0), OsStr::new(expected.1));
+        assert_eq!(input.split_at(index), expected);
+        assert_eq!(input.split_at_checked(index), Some(expected));
+    }
+
+    let os_str = OsStr::new("123გ🦀4");
+    slice_at_ok(os_str, 0, ("", "123გ🦀4"));
+    slice_at_ok(os_str, 1, ("1", "23გ🦀4"));
+    slice_at_ok(os_str, 2, ("12", "3გ🦀4"));
+    slice_at_ok(os_str, 3, ("123", "გ🦀4"));
+    slice_at_ok(os_str, 6, ("123გ", "🦀4"));
+    slice_at_ok(os_str, 10, ("123გ🦀", "4"));
+    slice_at_ok(os_str, 11, ("123გ🦀4", ""));
+
+    // Invalid boundaries should fail.
+    assert!(os_str.split_at_checked(4).is_none());
+    assert!(os_str.split_at_checked(5).is_none());
+    assert!(os_str.split_at_checked(7).is_none());
+    assert!(os_str.split_at_checked(8).is_none());
+    assert!(os_str.split_at_checked(9).is_none());
+    // Out of bounds
+    assert!(os_str.split_at_checked(12).is_none());
+}
+
+#[test]
+#[should_panic]
+fn os_str_slice_at_out_of_bounds() {
+    let crab = OsStr::new("🦀");
+    let _ = crab.split_at(5);
+}
+
+#[test]
+#[should_panic]
+fn os_str_slice_at_mid_char() {
+    let crab = OsStr::new("🦀");
+    let _ = crab.split_at(2);
+}
+
+#[cfg(unix)]
+#[test]
+fn os_str_slice_at_unix() {
+    use crate::os::unix::ffi::OsStrExt;
+
+    let broken_utf8 = OsStr::from_bytes(&"🦀".as_bytes()[..3]);
+    let invalid = OsStr::from_bytes(b"\xFF");
+
+    // Check that broken UTF-8 isn't treated as if it's valid.
+    let mut os_string = invalid.to_os_string();
+    os_string.push(broken_utf8);
+    assert_eq!(os_string.split_at_checked(1), None);
+
+    // We should be able to split on ascii with invalid UTF-8 between
+    let os_string = OsStr::from_bytes(b"a\xFFa");
+    assert_eq!(os_string.split_at_checked(1), Some(("a".as_ref(), OsStr::from_bytes(b"\xFFa"))));
+    assert_eq!(os_string.split_at_checked(2), Some((OsStr::from_bytes(b"a\xFF"), "a".as_ref(),)));
+
+    let os_string = OsStr::from_bytes(&"abc🦀".as_bytes()[..6]);
+    assert_eq!(
+        os_string.split_at_checked(3),
+        Some(("abc".as_ref(), OsStr::from_bytes(b"\xF0\x9F\xA6")))
+    );
+
+    let mut os_string = invalid.to_os_string();
+    os_string.push("🦀");
+    assert_eq!(os_string.split_at_checked(1), Some((invalid, "🦀".as_ref())));
+}
+
+#[test]
+#[cfg(windows)]
+fn os_str_slice_at_windows() {
+    use crate::os::windows::ffi::OsStringExt;
+
+    // slicing between unpaired surrogates should not be possible
+    // checking is implemented as a loop so we're agnostic towards
+    // the internal encoding
+    let os_string = OsString::from_wide(&[0xD800, 0xD800]);
+    for i in 1..os_string.len() {
+        assert_eq!(os_string.split_at_checked(i), None);
+    }
+    // For completeness, check that splitting at the start and end still works.
+    assert!(os_string.split_at_checked(0).is_some());
+    assert!(os_string.split_at_checked(os_string.len()).is_some());
+
+    // check that slicing before and after unpaired surrogates work
+    let surrogate = OsString::from_wide(&[0xD800]);
+
+    let mut os_string = surrogate.clone();
+    os_string.push("🦀");
+    assert_eq!(
+        os_string.split_at_checked(surrogate.len()),
+        Some((surrogate.as_ref(), "🦀".as_ref()))
+    );
+
+    let mut os_string = OsString::from("🦀");
+    os_string.push(&surrogate);
+    assert_eq!(os_string.split_at_checked("🦀".len()), Some(("🦀".as_ref(), surrogate.as_ref())));
+}
+
+#[test]
 fn clone_to_uninit() {
     let a = OsStr::new("hello.txt");
 

@@ -1,8 +1,7 @@
 //@aux-build:proc_macro_attr.rs
 
-#![allow(unused)]
 #![warn(clippy::empty_docs)]
-#![allow(clippy::mixed_attributes_style)]
+#![expect(clippy::mixed_attributes_style)]
 #![feature(extern_types)]
 
 mod outer {

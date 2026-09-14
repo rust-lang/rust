@@ -1,5 +1,5 @@
-#![allow(dead_code, clippy::double_parens, clippy::unnecessary_cast)]
-#![warn(clippy::suboptimal_flops, clippy::imprecise_flops)]
+#![expect(clippy::unnecessary_cast)]
+#![warn(clippy::imprecise_flops, clippy::suboptimal_flops)]
 
 // FIXME(f16_f128): add tests for these types once math functions are available
 

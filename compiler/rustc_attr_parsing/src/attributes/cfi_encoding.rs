@@ -1,30 +1,25 @@
+use rustc_feature::AttributeStability;
+
 use super::prelude::*;
 pub(crate) struct CfiEncodingParser;
-impl<S: Stage> SingleAttributeParser<S> for CfiEncodingParser {
+impl SingleAttributeParser for CfiEncodingParser {
     const PATH: &[Symbol] = &[sym::cfi_encoding];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Struct),
         Allow(Target::ForeignTy),
         Allow(Target::Enum),
         Allow(Target::Union),
     ]);
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "encoding");
+    const STABILITY: AttributeStability = unstable!(cfi_encoding);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(name_value) = args.name_value() else {
-            cx.expected_name_value(cx.attr_span, Some(sym::cfi_encoding));
-            return None;
-        };
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let name_value = cx.expect_name_value(args, cx.attr_span, Some(sym::cfi_encoding))?;
 
-        let Some(value_str) = name_value.value_as_str() else {
-            cx.expected_string_literal(name_value.value_span, None);
-            return None;
-        };
+        let value_str = cx.expect_string_literal(name_value)?;
 
         if value_str.as_str().trim().is_empty() {
-            cx.expected_non_empty_string_literal(name_value.value_span);
+            cx.adcx().expected_non_empty_string_literal(name_value.value_span);
             return None;
         }
 

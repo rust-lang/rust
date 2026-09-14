@@ -1,13 +1,12 @@
 use std::fmt::Display;
 
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -75,7 +74,8 @@ impl LateLintPass<'_> for ManualRotate {
             && let Some((l_shift_dir, l_expr, l_amount)) = parse_shift(l)
             && let Some((r_shift_dir, r_expr, r_amount)) = parse_shift(r)
             && l_shift_dir != r_shift_dir
-            && clippy_utils::eq_expr_value(cx, l_expr, r_expr)
+            && let ctxt = expr.span.ctxt()
+            && clippy_utils::eq_expr_value(cx, ctxt, l_expr, r_expr)
             && let Some(bit_width) = match cx.typeck_results().expr_ty(expr).kind() {
                 ty::Int(itype) => itype.bit_width(),
                 ty::Uint(itype) => itype.bit_width(),
@@ -84,7 +84,6 @@ impl LateLintPass<'_> for ManualRotate {
         {
             let const_eval = ConstEvalCtxt::new(cx);
 
-            let ctxt = expr.span.ctxt();
             let (shift_function, amount) = if let Some(Constant::Int(l_amount_val)) =
                 const_eval.eval_local(l_amount, ctxt)
                 && let Some(Constant::Int(r_amount_val)) = const_eval.eval_local(r_amount, ctxt)
@@ -103,7 +102,7 @@ impl LateLintPass<'_> for ManualRotate {
                 };
 
                 if let Some(Constant::Int(minuend)) = const_eval.eval_local(minuend, ctxt)
-                    && clippy_utils::eq_expr_value(cx, amount1, amount2)
+                    && clippy_utils::eq_expr_value(cx, ctxt, amount1, amount2)
                     // (x << s) | (x >> bit_width - s)
                     && ((binop.node == BinOpKind::Sub && u128::from(bit_width) == minuend)
                         // (x << s) | (x >> (bit_width - 1) ^ s)
@@ -116,17 +115,23 @@ impl LateLintPass<'_> for ManualRotate {
                 }
             };
 
-            let mut applicability = Applicability::MachineApplicable;
-            let expr_sugg = sugg::Sugg::hir_with_applicability(cx, l_expr, "_", &mut applicability).maybe_paren();
-            let amount = sugg::Sugg::hir_with_applicability(cx, amount, "_", &mut applicability);
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 MANUAL_ROTATE,
                 expr.span,
                 "there is no need to manually implement bit rotation",
-                "this expression can be rewritten as",
-                format!("{expr_sugg}.{shift_function}({amount})"),
-                Applicability::MachineApplicable,
+                |diag| {
+                    let mut applicability = Applicability::MachineApplicable;
+                    let expr_sugg = sugg::Sugg::hir_with_context(cx, l_expr, expr.span.ctxt(), "_", &mut applicability)
+                        .maybe_paren();
+                    let amount = sugg::Sugg::hir_with_context(cx, amount, expr.span.ctxt(), "_", &mut applicability);
+                    diag.span_suggestion(
+                        expr.span,
+                        "this expression can be rewritten as",
+                        format!("{expr_sugg}.{shift_function}({amount})"),
+                        applicability,
+                    );
+                },
             );
         }
     }

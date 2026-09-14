@@ -1,11 +1,5 @@
 #![warn(clippy::excessive_precision)]
-#![allow(
-    dead_code,
-    overflowing_literals,
-    unused_variables,
-    clippy::print_literal,
-    clippy::useless_vec
-)]
+#![allow(overflowing_literals, clippy::print_literal, clippy::useless_vec)]
 
 fn main() {
     // Overly specified constants

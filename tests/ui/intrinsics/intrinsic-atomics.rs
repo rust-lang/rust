@@ -6,13 +6,13 @@ pub fn main() {
     unsafe {
         let mut x: Box<_> = Box::new(1);
 
-        assert_eq!(rusti::atomic_load::<_, { SeqCst }>(&*x), 1);
+        assert_eq!(rusti::atomic_load::<_, { SeqCst }, false>(&*x), 1);
         *x = 5;
-        assert_eq!(rusti::atomic_load::<_, { Acquire }>(&*x), 5);
+        assert_eq!(rusti::atomic_load::<_, { Acquire }, false>(&*x), 5);
 
-        rusti::atomic_store::<_, { SeqCst }>(&mut *x, 3);
+        rusti::atomic_store::<_, { SeqCst }, false>(&mut *x, 3);
         assert_eq!(*x, 3);
-        rusti::atomic_store::<_, { Release }>(&mut *x, 1);
+        rusti::atomic_store::<_, { Release }, false>(&mut *x, 1);
         assert_eq!(*x, 1);
 
         assert_eq!(rusti::atomic_cxchg::<_, { SeqCst }, { SeqCst }>(&mut *x, 1, 2), (1, true));

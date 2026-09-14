@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered null pointer, but expected a vtable pointer
+error: Undefined Behavior: constructing invalid value of type *mut dyn main::T: encountered null pointer, but expected a vtable pointer
   --> tests/fail/validity/invalid_wide_raw.rs:LL:CC
    |
 LL |     dbg!(S { x: unsafe { std::mem::transmute((0usize, 0usize)) } });

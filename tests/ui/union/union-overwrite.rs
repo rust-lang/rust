@@ -1,4 +1,6 @@
 //@ run-pass
+//@ reference: items.union.common-storage
+//@ reference: items.union.fields.read
 
 #[repr(C)]
 #[derive(Copy, Clone)]

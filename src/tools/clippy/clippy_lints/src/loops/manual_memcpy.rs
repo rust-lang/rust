@@ -1,6 +1,6 @@
 use super::{IncrementVisitor, InitializeVisitor, MANUAL_MEMCPY};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_copy;
@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
     if let Some(higher::Range {
         start: Some(start),
         end: Some(end),
-        limits,
+        ty: range_ty,
         span: _,
     }) = higher::Range::hir(cx, arg)
         // the var must be a single name
@@ -89,7 +89,11 @@ pub(super) fn check<'tcx>(
                     }
                 })
             })
-            .map(|o| o.map(|(ty, dst, src)| build_manual_memcpy_suggestion(cx, start, end, limits, ty, &dst, &src)))
+            .map(|o| {
+                o.map(|(ty, dst, src)| {
+                    build_manual_memcpy_suggestion(cx, start, end, range_ty.limits(), ty, &dst, &src)
+                })
+            })
             .collect::<Option<Vec<_>>>()
             .filter(|v| !v.is_empty())
             .map(|v| v.join("\n    "));
@@ -230,6 +234,10 @@ impl<'a> MinifyingSugg<'a> {
     fn into_sugg(self) -> Sugg<'a> {
         self.0
     }
+
+    fn is_zero(&self) -> bool {
+        matches!(&self.0, Sugg::NonParen(s) | Sugg::MaybeParen(s) if s == "0")
+    }
 }
 
 impl<'a> From<Sugg<'a>> for MinifyingSugg<'a> {
@@ -241,9 +249,9 @@ impl<'a> From<Sugg<'a>> for MinifyingSugg<'a> {
 impl std::ops::Add for &MinifyingSugg<'static> {
     type Output = MinifyingSugg<'static>;
     fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.to_string().as_str(), rhs.to_string().as_str()) {
-            ("0", _) => rhs.clone(),
-            (_, "0") => self.clone(),
+        match (self.is_zero(), rhs.is_zero()) {
+            (true, _) => rhs.clone(),
+            (_, true) => self.clone(),
             (_, _) => (&self.0 + &rhs.0).into(),
         }
     }
@@ -252,11 +260,14 @@ impl std::ops::Add for &MinifyingSugg<'static> {
 impl std::ops::Sub for &MinifyingSugg<'static> {
     type Output = MinifyingSugg<'static>;
     fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.to_string().as_str(), rhs.to_string().as_str()) {
-            (_, "0") => self.clone(),
-            ("0", _) => (-rhs.0.clone()).into(),
-            (x, y) if x == y => sugg::ZERO.into(),
-            (_, _) => (&self.0 - &rhs.0).into(),
+        if rhs.is_zero() {
+            self.clone()
+        } else if self.is_zero() {
+            (-rhs.0.clone()).into()
+        } else if self.to_string() == rhs.to_string() {
+            sugg::ZERO.into()
+        } else {
+            (&self.0 - &rhs.0).into()
         }
     }
 }
@@ -264,9 +275,9 @@ impl std::ops::Sub for &MinifyingSugg<'static> {
 impl std::ops::Add<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
     type Output = MinifyingSugg<'static>;
     fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.to_string().as_str(), rhs.to_string().as_str()) {
-            ("0", _) => rhs.clone(),
-            (_, "0") => self,
+        match (self.is_zero(), rhs.is_zero()) {
+            (true, _) => rhs.clone(),
+            (_, true) => self,
             (_, _) => (self.0 + &rhs.0).into(),
         }
     }
@@ -275,11 +286,14 @@ impl std::ops::Add<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
 impl std::ops::Sub<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
     type Output = MinifyingSugg<'static>;
     fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.to_string().as_str(), rhs.to_string().as_str()) {
-            (_, "0") => self,
-            ("0", _) => (-rhs.0.clone()).into(),
-            (x, y) if x == y => sugg::ZERO.into(),
-            (_, _) => (self.0 - &rhs.0).into(),
+        if rhs.is_zero() {
+            self
+        } else if self.is_zero() {
+            (-rhs.0.clone()).into()
+        } else if self.to_string() == rhs.to_string() {
+            sugg::ZERO.into()
+        } else {
+            (self.0 - &rhs.0).into()
         }
     }
 }
@@ -385,8 +399,8 @@ fn get_details_from_idx<'tcx>(
         ExprKind::Binary(op, lhs, rhs) => match op.node {
             BinOpKind::Add => {
                 let offset_opt = get_start(lhs, starts)
-                    .and_then(|s| get_offset(cx, rhs, starts).map(|o| (s, o)))
-                    .or_else(|| get_start(rhs, starts).and_then(|s| get_offset(cx, lhs, starts).map(|o| (s, o))));
+                    .zip(get_offset(cx, rhs, starts))
+                    .or_else(|| get_start(rhs, starts).zip(get_offset(cx, lhs, starts)));
 
                 offset_opt.map(|(s, o)| (s, Offset::positive(o)))
             },

@@ -32,5 +32,5 @@ ENV \
 
 ENV HOSTS=x86_64-pc-solaris
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs
-ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS
+ENV RUST_CONFIGURE_ARGS="--enable-extended --disable-docs"
+ENV SCRIPT="python3 ../x.py dist --host $HOSTS --target $HOSTS"

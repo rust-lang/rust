@@ -175,7 +175,7 @@ pub fn collect_consts(body: &Body) -> HashMap<String, &Allocation> {
         .iter()
         .flat_map(|block| block.statements.iter())
         .filter_map(|statement| {
-            let StatementKind::Assign(place, Rvalue::Use(Operand::Constant(const_op))) =
+            let StatementKind::Assign(place, Rvalue::Use(Operand::Constant(const_op), _)) =
                 &statement.kind
             else {
                 return None;

@@ -8,11 +8,11 @@ use crate::directives::{LineNumber, line_directive};
 use crate::runtest::ProcRes;
 
 /// Representation of information to invoke a debugger and check its output
-pub(super) struct DebuggerCommands {
+pub(crate) struct DebuggerCommands {
     /// Commands for the debuuger
-    pub commands: Vec<String>,
+    pub(crate) commands: Vec<String>,
     /// Lines to insert breakpoints at
-    pub breakpoint_lines: Vec<LineNumber>,
+    pub(crate) breakpoint_lines: Vec<LineNumber>,
     /// Contains the source line number to check and the line itself
     check_lines: Vec<(LineNumber, String)>,
     /// Source file name
@@ -22,14 +22,11 @@ pub(super) struct DebuggerCommands {
 }
 
 impl DebuggerCommands {
-    pub fn parse_from(
+    pub(crate) fn parse_from(
         file: &Utf8Path,
         debugger_prefix: &str,
         test_revision: Option<&str>,
     ) -> Result<Self, String> {
-        let command_directive = format!("{debugger_prefix}-command");
-        let check_directive = format!("{debugger_prefix}-check");
-
         let mut breakpoint_lines = vec![];
         let mut commands = vec![];
         let mut check_lines = vec![];
@@ -51,15 +48,22 @@ impl DebuggerCommands {
                 continue;
             }
 
-            if directive.name == command_directive
-                && let Some(command) = directive.value_after_colon()
-            {
-                commands.push(command.to_string());
-            }
-            if directive.name == check_directive
-                && let Some(pattern) = directive.value_after_colon()
-            {
-                check_lines.push((line_number, pattern.to_string()));
+            let Some(directive_kind) = directive.name.strip_prefix(debugger_prefix) else {
+                continue;
+            };
+
+            match (directive_kind, directive.value_after_colon()) {
+                ("-command", Some(command)) => commands.push(command.to_string()),
+                ("-check", Some(pattern)) => check_lines.push((line_number, pattern.to_string())),
+                ("-repr", Some(var_name)) => {
+                    // pseudo-command intercepted by `debugger_tester` to run custom variable
+                    // inspection logic.
+                    commands.push(format!("repr {}", var_name.trim()));
+                    // Artificially output by `debugger_tester` to confirm that the inspection logic
+                    // encountered no errors.
+                    check_lines.push((line_number, format!("{var_name}: Ok")));
+                }
+                _ => continue,
             }
         }
 
@@ -75,7 +79,7 @@ impl DebuggerCommands {
     /// Given debugger output and lines to check, ensure that every line is
     /// contained in the debugger output. The check lines need to be found in
     /// order, but there can be extra lines between.
-    pub fn check_output(&self, debugger_run_result: &ProcRes) -> Result<(), String> {
+    pub(crate) fn check_output(&self, debugger_run_result: &ProcRes) -> Result<(), String> {
         // (src_lineno, ck_line)  that we did find
         let mut found = vec![];
         // (src_lineno, ck_line) that we couldn't find

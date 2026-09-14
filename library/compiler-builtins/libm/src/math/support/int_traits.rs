@@ -3,6 +3,8 @@ use core::{cmp, fmt, ops};
 mod narrowing_div;
 pub use narrowing_div::NarrowingDiv;
 
+use crate::support::DisplayHex;
+
 /// Minimal integer implementations needed on all integer types, including wide integers.
 #[allow(dead_code)] // Some constants are only used with tests
 pub trait MinInt:
@@ -40,6 +42,7 @@ pub trait Int:
     + fmt::Display
     + fmt::Binary
     + fmt::LowerHex
+    + DisplayHex
     + ops::AddAssign
     + ops::SubAssign
     + ops::MulAssign
@@ -107,6 +110,7 @@ pub trait Int:
     fn borrowing_sub(self, other: Self, borrow: bool) -> (Self, bool);
     fn leading_zeros(self) -> u32;
     fn trailing_zeros(self) -> u32;
+    fn count_ones(self) -> u32;
     fn ilog2(self) -> u32;
 }
 
@@ -174,6 +178,10 @@ macro_rules! int_impl_common {
 
         fn trailing_zeros(self) -> u32 {
             <Self>::trailing_zeros(self)
+        }
+
+        fn count_ones(self) -> u32 {
+            <Self>::count_ones(self)
         }
 
         fn ilog2(self) -> u32 {

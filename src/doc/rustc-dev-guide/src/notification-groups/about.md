@@ -22,12 +22,14 @@ Here's the list of the notification groups:
 - [Apple](./apple.md)
 - [ARM](./arm.md)
 - [Emscripten](./emscripten.md)
+- [Fuchsia](./fuchsia.md)
 - [LoongArch](./loongarch.md)
 - [RISC-V](./risc-v.md)
 - [WASI](./wasi.md)
 - [WebAssembly](./wasm.md)
 - [Windows](./windows.md)
 - [Rust for Linux](./rust-for-linux.md)
+- [GPU target](./gpu-target.md)
 
 ## What issues are a good fit for notification groups?
 
@@ -106,3 +108,7 @@ or contributors, and is typically done as part of compiler team triage.**
 [rustbot]: https://github.com/rust-lang/triagebot/
 [`ping`]: https://forge.rust-lang.org/triagebot/pinging.html
 [`triagebot.toml`]: https://github.com/rust-lang/rust/blob/HEAD/triagebot.toml
+
+## Adding a notification group
+
+See [Forge](https://forge.rust-lang.org/compiler/notification-groups.html#creating-a-notification-group).

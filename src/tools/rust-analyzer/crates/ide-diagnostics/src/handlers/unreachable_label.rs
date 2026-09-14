@@ -2,7 +2,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unreachable-label
 pub(crate) fn unreachable_label(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::UnreachableLabel,
 ) -> Diagnostic {
     let name = &d.name;

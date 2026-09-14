@@ -1,11 +1,4 @@
-#![allow(
-    unused_variables,
-    unused_assignments,
-    clippy::similar_names,
-    clippy::disallowed_names,
-    clippy::branches_sharing_code,
-    clippy::needless_late_init
-)]
+#![expect(clippy::disallowed_names, clippy::needless_late_init)]
 #![warn(clippy::useless_let_if_seq)]
 //@no-rustfix
 fn f() -> bool {

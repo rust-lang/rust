@@ -1,4 +1,4 @@
-use hir::{CaseType, InFile, db::ExpandDatabase};
+use hir::{CaseType, InFile};
 use ide_db::{assists::Assist, defs::NameClass, rename::RenameDefinition};
 use syntax::AstNode;
 
@@ -13,7 +13,10 @@ use crate::{
 // Diagnostic: incorrect-ident-case
 //
 // This diagnostic is triggered if an item name doesn't follow [Rust naming convention](https://doc.rust-lang.org/1.0.0/style/style/naming/README.html).
-pub(crate) fn incorrect_case(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Diagnostic {
+pub(crate) fn incorrect_case(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::IncorrectCase,
+) -> Diagnostic {
     let code = match d.expected_case {
         CaseType::LowerSnakeCase => DiagnosticCode::RustcLint("non_snake_case"),
         CaseType::UpperSnakeCase => DiagnosticCode::RustcLint("non_upper_case_globals"),
@@ -33,8 +36,8 @@ pub(crate) fn incorrect_case(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCas
     .with_fixes(fixes(ctx, d))
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Option<Vec<Assist>> {
-    let root = ctx.sema.db.parse_or_expand(d.file);
+fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::IncorrectCase) -> Option<Vec<Assist>> {
+    let root = d.file.parse_or_expand(ctx.sema.db);
     let name_node = d.ident.to_node(&root);
     let def = NameClass::classify(&ctx.sema, &name_node)?.defined()?;
 
@@ -58,7 +61,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Option<Vec<Ass
 
 #[cfg(test)]
 mod change_case {
-    use crate::tests::{check_diagnostics, check_diagnostics_with_disabled, check_fix};
+    use crate::tests::{check_diagnostics, check_fix, check_fix_with_disabled};
 
     #[test]
     fn test_rename_incorrect_case() {
@@ -105,7 +108,7 @@ pub fn some_fn(val: u8) -> u8 {
 "#,
         );
 
-        check_fix(
+        check_fix_with_disabled(
             r#"
 fn some_fn() {
     let whatAWeird_Formatting$0 = 10;
@@ -118,6 +121,7 @@ fn some_fn() {
     another_func(what_aweird_formatting);
 }
 "#,
+            &["E0425"],
         );
 
         check_fix(
@@ -244,6 +248,16 @@ struct SCREAMING_CASE {}
     }
 
     #[test]
+    fn incorrect_raw_struct_name() {
+        check_diagnostics(
+            r#"
+struct r#pub {}
+    // ^^^^^ 💡 warn: Structure `r#pub` should have UpperCamelCase name, e.g. `Pub`
+"#,
+        );
+    }
+
+    #[test]
     fn no_diagnostic_for_camel_cased_acronyms_in_struct_name() {
         check_diagnostics(
             r#"
@@ -332,6 +346,16 @@ enum AABB {}
             r#"
 enum SomeEnum { SOME_VARIANT(u8) }
              // ^^^^^^^^^^^^ 💡 warn: Variant `SOME_VARIANT` should have UpperCamelCase name, e.g. `SomeVariant`
+"#,
+        );
+    }
+
+    #[test]
+    fn incorrect_raw_enum_variant_name() {
+        check_diagnostics(
+            r#"
+enum SomeEnum { r#pub }
+             // ^^^^^ 💡 warn: Variant `r#pub` should have UpperCamelCase name, e.g. `Pub`
 "#,
         );
     }
@@ -614,7 +638,7 @@ trait BAD_TRAIT {
         cov_mark::check!(trait_impl_assoc_const_incorrect_case_ignored);
         cov_mark::check!(trait_impl_assoc_type_incorrect_case_ignored);
         cov_mark::check_count!(trait_impl_assoc_func_name_incorrect_case_ignored, 2);
-        check_diagnostics_with_disabled(
+        check_diagnostics(
             r#"
 trait BAD_TRAIT {
    // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have UpperCamelCase name, e.g. `BadTrait`
@@ -640,7 +664,6 @@ impl BAD_TRAIT for () {
     fn BadFunction() {}
 }
     "#,
-            &["unused_variables"],
         );
     }
 
@@ -851,8 +874,6 @@ static FOO: () = {
     }
 
     #[test]
-    // FIXME
-    #[should_panic]
     fn enum_variant_body_inner_item() {
         check_diagnostics(
             r#"
@@ -1003,21 +1024,20 @@ fn func() {
     fn override_lint_level() {
         check_diagnostics(
             r#"
-#![allow(unused_variables)]
 #[warn(nonstandard_style)]
 fn foo() {
-    let BAR;
+    let BAR: i32;
      // ^^^ 💡 warn: Variable `BAR` should have snake_case name, e.g. `bar`
     #[allow(non_snake_case)]
-    let FOO;
+    let FOO: i32;
 }
 
 #[warn(nonstandard_style)]
 fn foo() {
-    let BAR;
+    let BAR: i32;
      // ^^^ 💡 warn: Variable `BAR` should have snake_case name, e.g. `bar`
     #[expect(non_snake_case)]
-    let FOO;
+    let FOO: i32;
     #[allow(non_snake_case)]
     struct qux;
         // ^^^ 💡 warn: Structure `qux` should have UpperCamelCase name, e.g. `Qux`
@@ -1060,7 +1080,7 @@ mod FINE_WITH_BAD_CASE;
 struct QUX;
 const foo: i32 = 0;
 fn BAR() {
-    let BAZ;
+    let BAZ: i32;
     _ = BAZ;
 }
         "#,

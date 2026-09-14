@@ -23,7 +23,7 @@ struct MoveDataBuilder<'a, 'tcx, F> {
 impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn new(body: &'a Body<'tcx>, tcx: TyCtxt<'tcx>, filter: F) -> Self {
         let mut move_paths = IndexVec::new();
-        let mut path_map = IndexVec::new();
+        let mut move_out_path_map = IndexVec::new();
         let mut init_path_map = IndexVec::new();
 
         let locals = body
@@ -36,7 +36,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 if filter(l.ty) {
                     Some(new_move_path(
                         &mut move_paths,
-                        &mut path_map,
+                        &mut move_out_path_map,
                         &mut init_path_map,
                         None,
                         Place::from(i),
@@ -52,15 +52,15 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             loc: Location::START,
             tcx,
             data: MoveData {
-                moves: IndexVec::new(),
-                loc_map: LocationMap::new(body),
+                move_outs: IndexVec::new(),
+                move_out_loc_map: LocationMap::new(body),
                 rev_lookup: MovePathLookup {
                     locals,
                     projections: Default::default(),
                     un_derefer: Default::default(),
                 },
                 move_paths,
-                path_map,
+                move_out_path_map,
                 inits: IndexVec::new(),
                 init_loc_map: LocationMap::new(body),
                 init_path_map,
@@ -72,7 +72,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
 
 fn new_move_path<'tcx>(
     move_paths: &mut IndexVec<MovePathIndex, MovePath<'tcx>>,
-    path_map: &mut IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
+    move_out_path_map: &mut IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
     init_path_map: &mut IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
     parent: Option<MovePathIndex>,
     place: Place<'tcx>,
@@ -85,7 +85,7 @@ fn new_move_path<'tcx>(
         move_paths[move_path].next_sibling = next_sibling;
     }
 
-    let path_map_ent = path_map.push(smallvec![]);
+    let path_map_ent = move_out_path_map.push(smallvec![]);
     assert_eq!(path_map_ent, move_path);
 
     let init_path_map_ent = init_path_map.push(smallvec![]);
@@ -279,7 +279,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 base = *data.rev_lookup.projections.entry((base, move_elem)).or_insert_with(|| {
                     new_move_path(
                         &mut data.move_paths,
-                        &mut data.path_map,
+                        &mut data.move_out_path_map,
                         &mut data.init_path_map,
                         Some(base),
                         place_ref.project_deeper(&[elem], tcx),
@@ -305,12 +305,12 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
         mk_place: impl FnOnce(TyCtxt<'tcx>) -> Place<'tcx>,
     ) -> MovePathIndex {
         let MoveDataBuilder {
-            data: MoveData { rev_lookup, move_paths, path_map, init_path_map, .. },
+            data: MoveData { rev_lookup, move_paths, move_out_path_map, init_path_map, .. },
             tcx,
             ..
         } = self;
         *rev_lookup.projections.entry((base, elem)).or_insert_with(move || {
-            new_move_path(move_paths, path_map, init_path_map, Some(base), mk_place(*tcx))
+            new_move_path(move_paths, move_out_path_map, init_path_map, Some(base), mk_place(*tcx))
         })
     }
 
@@ -323,7 +323,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn finalize(self) -> MoveData<'tcx> {
         debug!("{}", {
             debug!("moves for {:?}:", self.body.span);
-            for (j, mo) in self.data.moves.iter_enumerated() {
+            for (j, mo) in self.data.move_outs.iter_enumerated() {
                 debug!("    {:?} = {:?}", j, mo);
             }
             debug!("move paths for {:?}:", self.body.span);
@@ -379,7 +379,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         debug!("gather_statement({:?}, {:?})", self.loc, stmt);
         match &stmt.kind {
-            StatementKind::Assign(box (place, Rvalue::CopyForDeref(reffed))) => {
+            StatementKind::Assign((place, Rvalue::CopyForDeref(reffed))) => {
                 let local = place.as_local().unwrap();
                 assert!(self.body.local_decls[local].is_deref_temp());
 
@@ -389,12 +389,12 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 let base_local = rev_lookup.un_derefer.deref_chain(local).first().unwrap().local;
                 rev_lookup.locals[local] = rev_lookup.locals[base_local];
             }
-            StatementKind::Assign(box (place, rval)) => {
+            StatementKind::Assign((place, rval)) => {
                 self.create_move_path(*place);
                 self.gather_init(place.as_ref(), InitKind::Deep);
                 self.gather_rvalue(rval);
             }
-            StatementKind::FakeRead(box (_, place)) => {
+            StatementKind::FakeRead((_, place)) => {
                 self.create_move_path(*place);
             }
             StatementKind::StorageLive(_) => {}
@@ -410,8 +410,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     "SetDiscriminant/Deinit should not exist during borrowck"
                 );
             }
-            StatementKind::Retag { .. }
-            | StatementKind::AscribeUserType(..)
+            StatementKind::AscribeUserType(..)
             | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
@@ -424,12 +423,12 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn gather_rvalue(&mut self, rvalue: &Rvalue<'tcx>) {
         match *rvalue {
             Rvalue::ThreadLocalRef(_) => {} // not-a-move
-            Rvalue::Use(ref operand)
+            Rvalue::Use(ref operand, _)
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::Cast(_, ref operand, _)
             | Rvalue::UnaryOp(_, ref operand)
             | Rvalue::WrapUnsafeBinder(ref operand, _) => self.gather_operand(operand),
-            Rvalue::BinaryOp(ref _binop, box (ref lhs, ref rhs)) => {
+            Rvalue::BinaryOp(ref _binop, (ref lhs, ref rhs)) => {
                 self.gather_operand(lhs);
                 self.gather_operand(rhs);
             }
@@ -439,7 +438,10 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 }
             }
             Rvalue::CopyForDeref(..) => unreachable!(),
-            Rvalue::Ref(..) | Rvalue::RawPtr(..) | Rvalue::Discriminant(..) => {}
+            Rvalue::Ref(..)
+            | Rvalue::Reborrow(..)
+            | Rvalue::RawPtr(..)
+            | Rvalue::Discriminant(..) => {}
         }
     }
 
@@ -448,12 +450,12 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
         match term.kind {
             TerminatorKind::Goto { target: _ }
             | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::FalseUnwind { .. } => {}
             // In some sense returning moves the return place into the current
             // call's destination, however, since there are no statements after
             // this that could possibly access the return place, this doesn't
             // need recording.
-            | TerminatorKind::Return
+            TerminatorKind::Return
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::CoroutineDrop
@@ -508,8 +510,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             } => {
                 for op in operands {
                     match *op {
-                        InlineAsmOperand::In { reg: _, ref value }
-                         => {
+                        InlineAsmOperand::In { reg: _, ref value } => {
                             self.gather_operand(value);
                         }
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
@@ -552,13 +553,13 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     }
 
     fn record_move(&mut self, place: Place<'tcx>, path: MovePathIndex) {
-        let move_out = self.data.moves.push(MoveOut { path, source: self.loc });
+        let move_out = self.data.move_outs.push(MoveOut { path, source: self.loc });
         debug!(
             "gather_move({:?}, {:?}): adding move {:?} of {:?}",
             self.loc, place, move_out, path
         );
-        self.data.path_map[path].push(move_out);
-        self.data.loc_map[self.loc].push(move_out);
+        self.data.move_out_path_map[path].push(move_out);
+        self.data.move_out_loc_map[self.loc].push(move_out);
     }
 
     fn gather_init(&mut self, place: PlaceRef<'tcx>, kind: InitKind) {

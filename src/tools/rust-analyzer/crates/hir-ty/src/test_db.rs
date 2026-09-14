@@ -3,11 +3,11 @@
 use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
-    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Nonce, RootQueryDb,
-    SourceDatabase, SourceRoot, SourceRootId, SourceRootInput,
+    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Nonce, SourceDatabase, SourceRoot,
+    SourceRootId, SourceRootInput, all_crates, relevant_crates, set_all_crates_with_durability,
 };
 
-use hir_def::{ModuleId, db::DefDatabase, nameres::crate_def_map};
+use hir_def::{ModuleId, nameres::crate_def_map};
 use hir_expand::EditionedFileId;
 use rustc_hash::FxHashMap;
 use salsa::Durability;
@@ -16,7 +16,7 @@ use syntax::TextRange;
 use test_utils::extract_annotations;
 use triomphe::Arc;
 
-#[salsa_macros::db]
+#[salsa::db]
 pub(crate) struct TestDB {
     storage: salsa::Storage<Self>,
     files: Arc<base_db::Files>,
@@ -43,9 +43,9 @@ impl Default for TestDB {
             crates_map: Default::default(),
             nonce: Nonce::new(),
         };
-        this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
+        hir_def::set_expand_proc_attr_macros(&mut this, true);
         // This needs to be here otherwise `CrateGraphBuilder` panics.
-        this.set_all_crates(Arc::new(Box::new([])));
+        set_all_crates_with_durability(&mut this, std::iter::empty(), Durability::HIGH);
         _ = base_db::LibraryRoots::builder(Default::default())
             .durability(Durability::MEDIUM)
             .new(&this);
@@ -64,7 +64,7 @@ impl Clone for TestDB {
             files: self.files.clone(),
             crates_map: self.crates_map.clone(),
             events: self.events.clone(),
-            nonce: Nonce::new(),
+            nonce: self.nonce,
         }
     }
 }
@@ -75,7 +75,7 @@ impl fmt::Debug for TestDB {
     }
 }
 
-#[salsa_macros::db]
+#[salsa::db]
 impl SourceDatabase for TestDB {
     fn file_text(&self, file_id: base_db::FileId) -> FileText {
         self.files.file_text(file_id)
@@ -112,7 +112,7 @@ impl SourceDatabase for TestDB {
     }
 
     fn file_source_root(&self, id: base_db::FileId) -> FileSourceRootInput {
-        self.files.file_source_root(id)
+        self.files.file_source_root(self, id)
     }
 
     fn set_file_source_root_with_durability(
@@ -132,9 +132,13 @@ impl SourceDatabase for TestDB {
     fn nonce_and_revision(&self) -> (Nonce, salsa::Revision) {
         (self.nonce, salsa::plumbing::ZalsaDatabase::zalsa(self).current_revision())
     }
+
+    fn line_column(&self, _file: FileId, _offset: syntax::TextSize) -> Result<(u32, u32), ()> {
+        Err(())
+    }
 }
 
-#[salsa_macros::db]
+#[salsa::db]
 impl salsa::Database for TestDB {}
 
 impl panic::RefUnwindSafe for TestDB {}
@@ -142,7 +146,7 @@ impl panic::RefUnwindSafe for TestDB {}
 impl TestDB {
     pub(crate) fn module_for_file_opt(&self, file_id: impl Into<FileId>) -> Option<ModuleId> {
         let file_id = file_id.into();
-        for &krate in self.relevant_crates(file_id).iter() {
+        for &krate in relevant_crates(self, file_id).iter() {
             let crate_def_map = crate_def_map(self, krate);
             for (module_id, data) in crate_def_map.modules() {
                 if data.origin.file_id().map(|file_id| file_id.file_id(self)) == Some(file_id) {
@@ -161,7 +165,7 @@ impl TestDB {
         &self,
     ) -> FxHashMap<EditionedFileId, Vec<(TextRange, String)>> {
         let mut files = Vec::new();
-        for &krate in self.all_crates().iter() {
+        for &krate in all_crates(self).iter() {
             let crate_def_map = crate_def_map(self, krate);
             for (module_id, _) in crate_def_map.modules() {
                 let file_id = crate_def_map[module_id].origin.file_id();

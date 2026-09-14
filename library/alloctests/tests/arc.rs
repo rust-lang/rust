@@ -86,6 +86,34 @@ fn eq() {
     assert_eq!(*x.0.borrow(), 0);
 }
 
+#[test]
+fn eq_unsized() {
+    #[derive(Eq)]
+    struct TestEq<T: ?Sized>(RefCell<usize>, T);
+    impl<T: ?Sized> PartialEq for TestEq<T> {
+        fn eq(&self, other: &TestEq<T>) -> bool {
+            *self.0.borrow_mut() += 1;
+            *other.0.borrow_mut() += 1;
+            true
+        }
+    }
+    let x = Arc::<TestEq<[u8; 3]>>::new(TestEq(RefCell::new(0), [0, 1, 2])) as Arc<TestEq<[u8]>>;
+    assert!(x == x);
+    assert!(!(x != x));
+    assert_eq!(*x.0.borrow(), 0);
+}
+
+#[test]
+fn eq_unsized_slice() {
+    let a: Arc<[()]> = Arc::new([(); 3]);
+    let ptr: *const () = Arc::into_raw(a.clone()).cast();
+    let b: Arc<[()]> = unsafe { Arc::from_raw(ptr.cast_slice(42)) };
+    assert!(a == a);
+    assert!(!(a != a));
+    assert!(a != b);
+    assert!(!(a == b));
+}
+
 // The test code below is identical to that in `rc.rs`.
 // For better maintainability we therefore define this type alias.
 type Rc<T, A = std::alloc::Global> = Arc<T, A>;
@@ -298,5 +326,71 @@ mod pin_coerce_unsized {
     }
     pub fn pin_unique_arc(arg: Pin<UniqueArc<String>>) -> Pin<UniqueArc<dyn MyTrait>> {
         arg
+    }
+}
+
+/// Test that `Arc::make_mut` does not forget an allocator when it steals the data.
+#[test]
+fn issue_158875_make_mut_dont_leak_allocator() {
+    use std::alloc::Global;
+
+    let alloc = Rc::new(Global);
+
+    {
+        let mut arc = Arc::new_in(123, alloc.clone());
+        let weak = Arc::downgrade(&arc); // create a weak so make_mut steals the data
+        _ = Arc::make_mut(&mut arc);
+        assert_eq!(weak.upgrade(), None);
+    }
+
+    assert_eq!(Rc::strong_count(&alloc), 1); // if this is >1, we have a memory leak!
+}
+
+#[test]
+#[should_panic = "capacity overflow"]
+fn new_uninit_slice_capacity_overflow() {
+    let _ = Arc::<[u8]>::new_uninit_slice(isize::MAX as usize);
+}
+
+mod arc_allocator_provenance {
+    //! Regression tests for issues where the pointer passed back to the allocator
+    //! only had the provenance of a reborrow, which is unsound with allocators
+    //! that store metadata next to the allocation.
+    //! Mainly meant to be run in Miri (but should also work outside it).
+
+    use std::alloc::{AllocError, Allocator, Global, Layout};
+    use std::ptr::NonNull;
+    use std::sync::Arc;
+
+    struct MyMetadataAlloc;
+
+    fn widen(layout: Layout) -> Layout {
+        Layout::from_size_align(layout.size() + 10, layout.align())
+            .unwrap_or_else(|_| std::process::abort())
+    }
+
+    unsafe impl Allocator for MyMetadataAlloc {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            // imagine we are storing metadata in the extra bytes
+            let ptr = Global.allocate(widen(layout))?;
+            Ok(NonNull::slice_from_raw_parts(ptr.cast(), layout.size()))
+        }
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            // SAFETY: we get back a pointer with the same provenance as was
+            // returned by `allocate`, so it's okay to deallocate the full
+            // `layout.size() + 10` bytes through it.
+            unsafe { Global.deallocate(ptr, widen(layout)) }
+        }
+    }
+
+    #[test]
+    fn issue_162719() {
+        drop(Arc::<i32, _>::new_uninit_in(MyMetadataAlloc));
+        drop(Arc::new_in(1i32, MyMetadataAlloc));
+    }
+
+    #[test]
+    fn issue_162720() {
+        drop(Arc::new_cyclic_in(|_| 1i32, MyMetadataAlloc));
     }
 }

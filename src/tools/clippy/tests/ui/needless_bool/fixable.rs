@@ -1,15 +1,6 @@
 #![warn(clippy::needless_bool)]
-#![allow(
-    unused,
-    dead_code,
-    clippy::no_effect,
-    clippy::if_same_then_else,
-    clippy::equatable_if_let,
-    clippy::needless_ifs,
-    clippy::needless_return,
-    clippy::self_named_constructors,
-    clippy::struct_field_names
-)]
+#![allow(clippy::no_effect)]
+#![expect(clippy::needless_return)]
 
 use std::cell::Cell;
 
@@ -21,7 +12,6 @@ macro_rules! bool_comparison_trigger {
             $($i: (Cell<bool>, bool, bool)),+
         }
 
-        #[allow(dead_code)]
         impl Trigger {
             pub fn trigger(&self, key: &str) -> bool {
                 $(
@@ -226,4 +216,38 @@ fn issue12846() {
     // parentheses are not needed here
     let _x = if a { true } else { false }.then(|| todo!());
     //~^ needless_bool
+}
+
+fn operands_need_parentheses() {
+    let a = true;
+    let b = false;
+    let z = true;
+
+    // parentheses are needed here
+    let _x = if a || b { true } else { false } && z;
+    //~^ needless_bool
+    let _x = if a || b { true } else { false } == z;
+    //~^ needless_bool
+    let _x = !if a || b { true } else { false };
+    //~^ needless_bool
+
+    // parentheses are not needed here
+    let _x = if a { true } else { false } && z;
+    //~^ needless_bool
+}
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test_expr {
+        ($val:expr) => {
+            ($val + 1 > 0)
+        };
+    }
+
+    let x = 42;
+    if test_expr!(x) {
+        true
+    } else {
+        false
+    };
+    //~^^^^^ needless_bool
 }

@@ -17,7 +17,8 @@ pub struct Cycle<I> {
     iter: I,
 }
 
-impl<I: Clone> Cycle<I> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const impl<I: [const] Clone> Cycle<I> {
     pub(in crate::iter) fn new(iter: I) -> Cycle<I> {
         Cycle { orig: iter.clone(), iter }
     }

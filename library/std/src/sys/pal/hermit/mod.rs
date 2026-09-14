@@ -21,8 +21,7 @@ use crate::os::hermit::hermit_abi;
 use crate::os::raw::c_char;
 use crate::sys::env;
 
-pub mod futex;
-pub mod os;
+#[path = "../unix/time.rs"]
 pub mod time;
 
 pub fn unsupported<T>() -> io::Result<T> {

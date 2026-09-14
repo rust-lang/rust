@@ -1,8 +1,6 @@
 //@ run-pass
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
-#![allow(late_bound_lifetime_arguments)]
 
 //! This is one of the mapping tests, which tests mapping of delegee parent and child
 //! generic params, whose main goal is to create cases with
@@ -11,10 +9,10 @@
 //! added. At some tests user-specified args are specified in reuse statement.
 
 // Testing lifetimes + types + consts in both parent and child, reusing in
-// a function without generic params
+// a function without generic params, with impl traits
 mod test_1 {
     trait Trait<'b, 'c, 'a, T, const N: usize>: Sized {
-        fn foo<'d: 'd, U, const M: bool>(self) {}
+        fn foo<'d: 'd, U, const M: bool>(self, _f: impl FnOnce() -> ()) {}
     }
 
     impl Trait<'static, 'static, 'static, i32, 1> for u8 {}
@@ -22,12 +20,12 @@ mod test_1 {
     pub fn check() {
         fn no_ctx() {
             reuse Trait::foo as bar;
-            bar::<'static, 'static, 'static, 'static, u8, i32, 1, String, true>(123);
+            bar::<'static, 'static, 'static, 'static, u8, i32, 1, String, true>(123, || ());
         }
 
         fn with_ctx<'a, 'b, 'c, A, B, C, const N: usize, const M: bool>() {
             reuse Trait::foo as bar;
-            bar::<'static, 'static, 'static, 'a, u8, i32, 1, A, M>(123);
+            bar::<'static, 'static, 'static, 'a, u8, i32, 1, A, M>(123, || ());
         }
 
         no_ctx();
@@ -172,14 +170,14 @@ mod test_10 {
     pub fn check() {
         fn with_ctx<'a, 'b, 'c, A, B, C, const N: usize, const M: bool>() {
             reuse <u8 as Trait>::foo as bar;
-            bar::<'a, 'b, 'c, u8, C, A, M>();
-            bar::<'static, 'static, 'static, u8, i32, i32, false>();
+            bar::<'a, 'b, 'c, C, A, M>();
+            bar::<'static, 'static, 'static, i32, i32, false>();
 
             reuse <u8 as Trait::<'static, 'static, i32>>::foo as bar1;
-            bar1::<'static, u8, i32, true>();
+            bar1::<'static, i32, true>();
 
             reuse <u8 as Trait::<'static, 'static, i32>>::foo::<'static, u32, true> as bar2;
-            bar2::<u8>();
+            bar2();
         }
 
         with_ctx::<i32, i32, i32, 1, true>();
@@ -212,7 +210,7 @@ mod test_11 {
 
     pub fn check<'b>() {
         reuse <usize as Trait>::foo;
-        foo::<'static, 'b, usize, u32, Struct, String, false>();
+        foo::<'static, 'b, u32, Struct, String, false>();
     }
 }
 

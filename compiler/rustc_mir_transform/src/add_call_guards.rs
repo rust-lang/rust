@@ -15,10 +15,13 @@
 //!
 //! NOTE: Simplify CFG will happily undo most of the work this pass does.
 
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
+
+use crate::PassPolicy;
 
 #[derive(PartialEq)]
 pub(super) enum AddCallGuards {
@@ -86,7 +89,11 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
         let cur_len = body.basic_blocks.len();
         let mut new_block = |source_info: SourceInfo, is_cleanup: bool, target: BasicBlock| {
             let block = BasicBlockData::new(
-                Some(Terminator { source_info, kind: TerminatorKind::Goto { target } }),
+                Some(Terminator {
+                    source_info,
+                    kind: TerminatorKind::Goto { target },
+                    attributes: ThinVec::new(),
+                }),
                 is_cleanup,
             );
             let idx = cur_len + new_blocks.len();
@@ -122,8 +129,10 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
         basic_blocks.extend(new_blocks);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // Breaks critical edges so codegen can place edge-specific actions without affecting
+        // other control-flow edges.
+        PassPolicy::Required
     }
 }
 

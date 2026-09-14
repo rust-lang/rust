@@ -1,13 +1,5 @@
 //@aux-build:proc_macros.rs
-#![allow(
-    dead_code,
-    clippy::needless_ifs,
-    clippy::similar_names,
-    clippy::single_match,
-    clippy::toplevel_ref_arg,
-    unused_mut,
-    unused_variables
-)]
+#![expect(clippy::single_match, clippy::toplevel_ref_arg)]
 #![warn(clippy::disallowed_names)]
 
 extern crate proc_macros;

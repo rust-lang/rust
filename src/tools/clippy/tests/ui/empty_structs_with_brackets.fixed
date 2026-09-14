@@ -1,5 +1,4 @@
 #![warn(clippy::empty_structs_with_brackets)]
-#![allow(dead_code)]
 
 pub struct MyEmptyStruct; // should trigger lint
 //~^ empty_structs_with_brackets

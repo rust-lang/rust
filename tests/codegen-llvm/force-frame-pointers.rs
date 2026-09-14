@@ -16,3 +16,6 @@
 // Always: attributes #{{.*}} "frame-pointer"="all"
 // NonLeaf: attributes #{{.*}} "frame-pointer"="non-leaf"
 pub fn foo() {}
+
+// Always: !{{[0-9]+}} = !{i32 7, !"frame-pointer", i32 2}
+// NonLeaf: !{{[0-9]+}} = !{i32 7, !"frame-pointer", i32 1}

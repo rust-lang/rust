@@ -6,7 +6,6 @@
 //@[ord_in_3] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_in_3
 //@compile-flags: --test
 
-#![allow(dead_code)]
 #![deny(clippy::arbitrary_source_item_ordering)]
 
 #[allow(clippy::arbitrary_source_item_ordering)]

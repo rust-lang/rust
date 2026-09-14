@@ -1,4 +1,4 @@
-error: constant of non-structural type `&[O<B>]` in a pattern
+error: constant of non-structural type `O<B>` in a pattern
   --> $DIR/issue-65466.rs:14:9
    |
 LL | struct B;

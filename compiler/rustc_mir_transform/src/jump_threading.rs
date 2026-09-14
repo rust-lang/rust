@@ -68,6 +68,7 @@ use rustc_mir_dataflow::value_analysis::{
 use rustc_span::DUMMY_SP;
 use tracing::{debug, instrument, trace};
 
+use crate::PassPolicy;
 use crate::cost_checker::CostChecker;
 
 pub(super) struct JumpThreading;
@@ -75,8 +76,13 @@ pub(super) struct JumpThreading;
 const MAX_COST: u8 = 100;
 
 impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // Jump threading can duplicate calls in control-flow.
+        // This leads to incorrect code when done for so called "convergent" operations on GPU
+        // targets, similar to how inline assembly cannot be duplicated on all targets.
+        // Conservatively prevent this by disabling the pass.
+        // See also issue #137086.
+        PassPolicy::optional(ctx.mir_opt_level() >= 2 && !ctx.target.is_like_gpu)
     }
 
     #[instrument(skip_all level = "debug")]
@@ -97,7 +103,7 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
             ecx: InterpCx::new(tcx, DUMMY_SP, typing_env, DummyMachine),
             body,
             map: Map::new(tcx, body, PlaceCollectionMode::OnDemand),
-            maybe_loop_headers: loops::maybe_loop_headers(body),
+            maybe_loop_headers: maybe_loop_headers(body),
             entry_states: IndexVec::from_elem(ConditionSet::default(), &body.basic_blocks),
         };
 
@@ -139,10 +145,6 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
         if let Some(opportunities) = OpportunitySet::new(body, entry_states) {
             opportunities.apply();
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 
@@ -388,17 +390,16 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         stmt: &Statement<'tcx>,
     ) -> Option<(Place<'tcx>, Option<TrackElem>)> {
         match stmt.kind {
-            StatementKind::Assign(box (place, _)) => Some((place, None)),
-            StatementKind::SetDiscriminant { box place, variant_index: _ } => {
-                Some((place, Some(TrackElem::Discriminant)))
+            StatementKind::Assign((place, _)) => Some((place, None)),
+            StatementKind::SetDiscriminant { ref place, variant_index: _ } => {
+                Some((**place, Some(TrackElem::Discriminant)))
             }
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                 Some((Place::from(local), None))
             }
-            StatementKind::Retag(..)
-            | StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(..))
+            | StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(..))
             // copy_nonoverlapping takes pointers and mutated the pointed-to value.
-            | StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(..))
+            | StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(..))
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)
@@ -504,14 +505,14 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
     ) {
         let Some(lhs) = self.place(*lhs_place, None) else { return };
         match rvalue {
-            Rvalue::Use(operand) => self.process_operand(lhs, operand, state),
+            Rvalue::Use(operand, _) => self.process_operand(lhs, operand, state),
             // Transfer the conditions on the copy rhs.
             Rvalue::Discriminant(rhs) => {
                 let Some(rhs) = self.place(*rhs, Some(TrackElem::Discriminant)) else { return };
                 self.process_copy(lhs, rhs, state)
             }
             // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
-            Rvalue::Aggregate(box kind, operands) => {
+            Rvalue::Aggregate(kind, operands) => {
                 let agg_ty = lhs_place.ty(self.body, self.tcx).ty;
                 let lhs = match kind {
                     // Do not support unions.
@@ -566,8 +567,8 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             // Create a condition on `rhs ?= B`.
             Rvalue::BinaryOp(
                 op,
-                box (Operand::Move(operand) | Operand::Copy(operand), Operand::Constant(value))
-                | box (Operand::Constant(value), Operand::Move(operand) | Operand::Copy(operand)),
+                (Operand::Move(operand) | Operand::Copy(operand), Operand::Constant(value))
+                | (Operand::Constant(value), Operand::Move(operand) | Operand::Copy(operand)),
             ) => {
                 let equals = match op {
                     BinOp::Eq => ScalarInt::TRUE,
@@ -610,8 +611,8 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         match &stmt.kind {
             // If we expect `discriminant(place) ?= A`,
             // we have an opportunity if `variant_index ?= A`.
-            StatementKind::SetDiscriminant { box place, variant_index } => {
-                let Some(discr_target) = self.place(*place, Some(TrackElem::Discriminant)) else {
+            StatementKind::SetDiscriminant { place, variant_index } => {
+                let Some(discr_target) = self.place(**place, Some(TrackElem::Discriminant)) else {
                     return;
                 };
                 let enum_ty = place.ty(self.body, self.tcx).ty;
@@ -626,15 +627,13 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 self.process_immediate(discr_target, discr, state)
             }
             // If we expect `lhs ?= true`, we have an opportunity if we assume `lhs == true`.
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(
+            StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(
                 Operand::Copy(place) | Operand::Move(place),
             )) => {
                 let Some(place) = self.place_value(*place, None) else { return };
                 state.fulfill_matches(place, ScalarInt::TRUE);
             }
-            StatementKind::Assign(box (lhs_place, rhs)) => {
-                self.process_assign(lhs_place, rhs, state)
-            }
+            StatementKind::Assign((lhs_place, rhs)) => self.process_assign(lhs_place, rhs, state),
             _ => {}
         }
     }
@@ -716,7 +715,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 // had in the previous arm. All we can conclude is that the replacement condition
                 // `discr != value` can be threaded, and nothing else.
                 if c.polarity == Polarity::Ne
-                    && let Ok(value) = c.value.try_to_bits(discr_layout.size)
+                    && let value = c.value.to_bits(discr_layout.size)
                     && targets.all_values().contains(&value.into())
                 {
                     edges_fulfilling_condition.insert(targets.otherwise());
@@ -1099,4 +1098,30 @@ impl<'a, 'tcx> OpportunitySet<'a, 'tcx> {
 
         Some(new_target)
     }
+}
+
+/// Compute the set of loop headers in the given body. A loop header is usually defined as a block
+/// which dominates one of its predecessors. This definition is only correct for reducible CFGs.
+/// However, computing dominators is expensive, so we approximate according to the post-order
+/// traversal order. A loop header for us is a block which is visited after its predecessor in
+/// post-order. This is ok as we mostly need a heuristic.
+fn maybe_loop_headers(body: &Body<'_>) -> DenseBitSet<BasicBlock> {
+    let mut maybe_loop_headers = DenseBitSet::new_empty(body.basic_blocks.len());
+    let mut visited = DenseBitSet::new_empty(body.basic_blocks.len());
+    for (bb, bbdata) in traversal::postorder(body) {
+        // Post-order means we visit successors before the block for acyclic CFGs.
+        // If the successor is not visited yet, consider it a loop header.
+        for succ in bbdata.terminator().successors() {
+            if !visited.contains(succ) {
+                maybe_loop_headers.insert(succ);
+            }
+        }
+
+        // Only mark `bb` as visited after we checked the successors, in case we have a self-loop.
+        //     bb1: goto -> bb1;
+        let _new = visited.insert(bb);
+        debug_assert!(_new);
+    }
+
+    maybe_loop_headers
 }

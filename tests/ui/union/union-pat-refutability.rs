@@ -1,4 +1,7 @@
 //@ run-pass
+//@ reference: items.union.pattern.intro
+//@ reference: items.union.pattern.safety
+//@ reference: patterns.struct.refutable
 
 #![allow(dead_code)]
 

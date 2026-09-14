@@ -83,14 +83,14 @@ struct DiagnosticCode {
     code: String,
 }
 
-pub fn rustfix_diagnostics_only(output: &str) -> String {
+pub(crate) fn rustfix_diagnostics_only(output: &str) -> String {
     output
         .lines()
         .filter(|line| line.starts_with('{') && serde_json::from_str::<Diagnostic>(line).is_ok())
         .collect()
 }
 
-pub fn extract_rendered(output: &str) -> String {
+pub(crate) fn extract_rendered(output: &str) -> String {
     output
         .lines()
         .filter_map(|line| {
@@ -137,7 +137,7 @@ pub fn extract_rendered(output: &str) -> String {
         .collect()
 }
 
-pub fn parse_output(file_name: &str, output: &str) -> Vec<Error> {
+pub(crate) fn parse_output(file_name: &str, output: &str) -> Vec<Error> {
     let mut errors = Vec::new();
     for line in output.lines() {
         // Compiler can emit non-json lines in non-`--error-format=json` modes,

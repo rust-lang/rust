@@ -1,17 +1,16 @@
 //@ run-pass
 //@ ignore-backends: gcc
-#![feature(c_variadic)]
 
 #[repr(transparent)]
 struct Struct(i32);
 
 impl Struct {
     unsafe extern "C" fn associated_function(mut ap: ...) -> i32 {
-        unsafe { ap.arg() }
+        unsafe { ap.next_arg() }
     }
 
     unsafe extern "C" fn method(&self, mut ap: ...) -> i32 {
-        self.0 + unsafe { ap.arg::<i32>() }
+        self.0 + unsafe { ap.next_arg::<i32>() }
     }
 }
 
@@ -19,23 +18,23 @@ trait Trait: Sized {
     fn get(&self) -> i32;
 
     unsafe extern "C" fn trait_associated_function(mut ap: ...) -> i32 {
-        unsafe { ap.arg() }
+        unsafe { ap.next_arg() }
     }
 
     unsafe extern "C" fn trait_method_owned(self, mut ap: ...) -> i32 {
-        self.get() + unsafe { ap.arg::<i32>() }
+        self.get() + unsafe { ap.next_arg::<i32>() }
     }
 
     unsafe extern "C" fn trait_method_ref(&self, mut ap: ...) -> i32 {
-        self.get() + unsafe { ap.arg::<i32>() }
+        self.get() + unsafe { ap.next_arg::<i32>() }
     }
 
     unsafe extern "C" fn trait_method_mut(&mut self, mut ap: ...) -> i32 {
-        self.get() + unsafe { ap.arg::<i32>() }
+        self.get() + unsafe { ap.next_arg::<i32>() }
     }
 
     unsafe extern "C" fn trait_fat_pointer(self: Box<Self>, mut ap: ...) -> i32 {
-        self.get() + unsafe { ap.arg::<i32>() }
+        self.get() + unsafe { ap.next_arg::<i32>() }
     }
 }
 

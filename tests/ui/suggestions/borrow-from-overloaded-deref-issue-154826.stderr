@@ -1,0 +1,16 @@
+error[E0507]: cannot move out of dereference of `LazyLock<(Vec<u8>,)>`
+  --> $DIR/borrow-from-overloaded-deref-issue-154826.rs:8:16
+   |
+LL |     let (v,) = *V;
+   |          -     ^^
+   |          |
+   |          data moved here because `v` has type `Vec<u8>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |     let (v,) = &*V;
+   |                +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

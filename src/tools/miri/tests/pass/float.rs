@@ -7,21 +7,29 @@
 #![allow(arithmetic_overflow)]
 #![allow(internal_features)]
 #![allow(unnecessary_transmutes)]
+#![deny(deprecated_in_future)]
 
 use std::any::type_name;
 use std::cmp::min;
+use std::f16::consts as f16_consts;
+use std::f32::consts as f32_consts;
+use std::f64::consts as f64_consts;
+use std::f128::consts as f128_consts;
 use std::fmt::{Debug, Display, LowerHex};
 use std::hint::black_box;
-use std::{f16, f32, f64, f128};
 
 #[path = "../utils/mod.rs"]
 mod utils;
 use utils::check_nondet;
 
+/// Error tolerance in ULP.
+/// Miri adds 4 ULP of errors itself, and we allow for 4 additional ULP of host float error.
+const ERR_TOLERANCE: i32 = 8;
+
 /// Compare the two floats, allowing for $ulp many ULPs of error.
 ///
 /// ULP means "Units in the Last Place" or "Units of Least Precision".
-/// The ULP of a float `a`` is the smallest possible change at `a`, so the ULP difference represents how
+/// The ULP of a float `a` is the smallest possible change at `a`, so the ULP difference represents how
 /// many discrete floating-point steps are needed to reach the actual value from the expected value.
 ///
 /// Essentially ULP can be seen as a distance metric of floating-point numbers, but with
@@ -29,7 +37,7 @@ use utils::check_nondet;
 /// have a large value difference, their ULP can still be 1, so they are still "approximatly equal",
 /// but the EPSILON check would have failed.
 macro_rules! assert_approx_eq {
-    ($a:expr, $b:expr, $ulp:expr) => {{
+    ($a:expr, $b:expr, $ulp:expr $( , )?) => {{
         let (actual, expected) = ($a, $b);
         let allowed_ulp_diff = $ulp;
         let _force_same_type = actual == expected;
@@ -42,9 +50,10 @@ macro_rules! assert_approx_eq {
         };
     }};
 
-    ($a:expr, $b: expr) => {
-        // accept up to 8ULP (4ULP for host floats and 4ULP for miri artificial error).
-        assert_approx_eq!($a, $b, 8);
+    ($a:expr, $b: expr $( , )?) => {
+        // Accept up to 12ULP (4ULP for miri artificial error and the rest for host floats).
+        // We saw failures on an i686-linux host with a limit of 8!
+        assert_approx_eq!($a, $b, ERR_TOLERANCE);
     };
 }
 
@@ -149,7 +158,7 @@ where
 
 /// Helper function to avoid promotion so that this tests "run-time" casts, not CTFE.
 /// Doesn't make a big difference when running this in Miri, but it means we can compare this
-/// with the LLVM backend by running `rustc -Zmir-opt-level=0 -Zsaturating-float-casts`.
+/// with the LLVM backend by running `rustc -Zmir-opt-level=0`.
 #[track_caller]
 #[inline(never)]
 fn assert_eq<T: PartialEq + Debug>(x: T, y: T) {
@@ -1018,10 +1027,10 @@ fn mul_add() {
     assert_eq!(3.0f64.mul_add(2.0f64, 5.0f64), 11.0);
     assert_eq!(3.0f128.mul_add(2.0f128, 5.0f128), 11.0);
 
-    assert_eq!(0.0f16.mul_add(-2.0f16, f16::consts::E), f16::consts::E);
-    assert_eq!(0.0f32.mul_add(-2.0f32, f32::consts::E), f32::consts::E);
-    assert_eq!(0.0f64.mul_add(-2.0f64, f64::consts::E), f64::consts::E);
-    assert_eq!(0.0f128.mul_add(-2.0f128, f128::consts::E), f128::consts::E);
+    assert_eq!(0.0f16.mul_add(-2.0f16, f16_consts::E), f16_consts::E);
+    assert_eq!(0.0f32.mul_add(-2.0f32, f32_consts::E), f32_consts::E);
+    assert_eq!(0.0f64.mul_add(-2.0f64, f64_consts::E), f64_consts::E);
+    assert_eq!(0.0f128.mul_add(-2.0f128, f128_consts::E), f128_consts::E);
 
     assert_eq!((-3.2f16).mul_add(2.4, f16::NEG_INFINITY), f16::NEG_INFINITY);
     assert_eq!((-3.2f32).mul_add(2.4, f32::NEG_INFINITY), f32::NEG_INFINITY);
@@ -1124,16 +1133,16 @@ fn libm() {
     assert_biteq((-0f32).powi(9), -0.0, "-0^x = -0 where x is negative");
     assert_biteq((-0f64).powi(99), -0.0, "-0^x = -0 where x is negative");
 
-    assert_approx_eq!(1f16.exp(), f16::consts::E);
-    assert_approx_eq!(1f32.exp(), f32::consts::E);
-    assert_approx_eq!(1f64.exp(), f64::consts::E);
+    assert_approx_eq!(1f16.exp(), f16_consts::E);
+    assert_approx_eq!(1f32.exp(), f32_consts::E);
+    assert_approx_eq!(1f64.exp(), f64_consts::E);
     assert_eq!(0f16.exp(), 1.0);
     assert_eq!(0f32.exp(), 1.0);
     assert_eq!(0f64.exp(), 1.0);
 
-    assert_approx_eq!(1f16.exp_m1(), f16::consts::E - 1.0);
-    assert_approx_eq!(1f32.exp_m1(), f32::consts::E - 1.0);
-    assert_approx_eq!(1f64.exp_m1(), f64::consts::E - 1.0);
+    assert_approx_eq!(1f16.exp_m1(), f16_consts::E - 1.0);
+    assert_approx_eq!(1f32.exp_m1(), f32_consts::E - 1.0);
+    assert_approx_eq!(1f64.exp_m1(), f64_consts::E - 1.0);
     assert_approx_eq!(f16::NEG_INFINITY.exp_m1(), -1.0);
     assert_approx_eq!(f32::NEG_INFINITY.exp_m1(), -1.0);
     assert_approx_eq!(f64::NEG_INFINITY.exp_m1(), -1.0);
@@ -1145,9 +1154,9 @@ fn libm() {
     assert_eq!(0f32.exp2(), 1.0);
     assert_eq!(0f64.exp2(), 1.0);
 
-    assert_approx_eq!(f16::consts::E.ln(), 1f16);
-    assert_approx_eq!(f32::consts::E.ln(), 1f32);
-    assert_approx_eq!(f64::consts::E.ln(), 1f64);
+    assert_approx_eq!(f16_consts::E.ln(), 1f16);
+    assert_approx_eq!(f32_consts::E.ln(), 1f32);
+    assert_approx_eq!(f64_consts::E.ln(), 1f64);
     assert_eq!(1f16.ln(), 0.0);
     assert_eq!(1f32.ln(), 0.0);
     assert_eq!(1f64.ln(), 0.0);
@@ -1158,11 +1167,11 @@ fn libm() {
 
     assert_approx_eq!(10f16.log10(), 1f16);
     assert_approx_eq!(10f32.log10(), 1f32);
-    assert_approx_eq!(f64::consts::E.log10(), f64::consts::LOG10_E);
+    assert_approx_eq!(f64_consts::E.log10(), f64_consts::LOG10_E);
 
     assert_approx_eq!(8f16.log2(), 3f16);
     assert_approx_eq!(8f32.log2(), 3f32);
-    assert_approx_eq!(f64::consts::E.log2(), f64::consts::LOG2_E);
+    assert_approx_eq!(f64_consts::E.log2(), f64_consts::LOG2_E);
 
     #[allow(deprecated)]
     {
@@ -1188,13 +1197,13 @@ fn libm() {
     assert_eq!(0f16.sin(), 0f16);
     assert_eq!(0f32.sin(), 0f32);
     assert_eq!(0f64.sin(), 0f64);
-    assert_approx_eq!(f16::consts::FRAC_PI_6.sin(), 0.5);
-    assert_approx_eq!(f32::consts::FRAC_PI_6.sin(), 0.5);
-    assert_approx_eq!(f64::consts::FRAC_PI_6.sin(), 0.5);
-    // Increase error tolerance to 16ULP because of the extra operation.
-    assert_approx_eq!(f16::consts::FRAC_PI_4.sin().asin(), f16::consts::FRAC_PI_4, 16);
-    assert_approx_eq!(f32::consts::FRAC_PI_4.sin().asin(), f32::consts::FRAC_PI_4, 16);
-    assert_approx_eq!(f64::consts::FRAC_PI_4.sin().asin(), f64::consts::FRAC_PI_4, 16);
+    assert_approx_eq!(f16_consts::FRAC_PI_6.sin(), 0.5);
+    assert_approx_eq!(f32_consts::FRAC_PI_6.sin(), 0.5);
+    assert_approx_eq!(f64_consts::FRAC_PI_6.sin(), 0.5);
+    // Increase error tolerance because of the extra operation.
+    assert_approx_eq!(f16_consts::FRAC_PI_4.sin().asin(), f16_consts::FRAC_PI_4, 2 * ERR_TOLERANCE);
+    assert_approx_eq!(f32_consts::FRAC_PI_4.sin().asin(), f32_consts::FRAC_PI_4, 2 * ERR_TOLERANCE);
+    assert_approx_eq!(f64_consts::FRAC_PI_4.sin().asin(), f64_consts::FRAC_PI_4, 2 * ERR_TOLERANCE);
     assert_biteq(0.0f16.asin(), 0.0f16, "asin(+0) = +0");
     assert_biteq((-0.0f16).asin(), -0.0, "asin(-0) = -0");
     assert_biteq(0.0f32.asin(), 0.0f32, "asin(+0) = +0");
@@ -1211,12 +1220,12 @@ fn libm() {
 
     // Ensure `sin` always returns something that is a valid input for `asin`, and same for
     // `cos` and `acos`.
-    let halve_pi_f16 = std::f16::consts::FRAC_PI_2;
-    let halve_pi_f32 = std::f32::consts::FRAC_PI_2;
-    let halve_pi_f64 = std::f64::consts::FRAC_PI_2;
-    let pi_f16 = std::f16::consts::PI;
-    let pi_f32 = std::f32::consts::PI;
-    let pi_f64 = std::f64::consts::PI;
+    let halve_pi_f16 = f16_consts::FRAC_PI_2;
+    let halve_pi_f32 = f32_consts::FRAC_PI_2;
+    let halve_pi_f64 = f64_consts::FRAC_PI_2;
+    let pi_f16 = f16_consts::PI;
+    let pi_f32 = f32_consts::PI;
+    let pi_f64 = f64_consts::PI;
     for _ in 0..64 {
         // sin() should be clamped to [-1, 1] so asin() can never return NaN
         assert!(!halve_pi_f16.sin().asin().is_nan());
@@ -1231,13 +1240,13 @@ fn libm() {
     assert_eq!(0f16.cos(), 1f16);
     assert_eq!(0f32.cos(), 1f32);
     assert_eq!(0f64.cos(), 1f64);
-    assert_approx_eq!(f16::consts::FRAC_PI_3.cos(), 0.5);
-    assert_approx_eq!(f32::consts::FRAC_PI_3.cos(), 0.5);
-    assert_approx_eq!(f64::consts::FRAC_PI_3.cos(), 0.5);
-    // Increase error tolerance to 16ULP because of the extra operation.
-    assert_approx_eq!(f16::consts::FRAC_PI_4.cos().acos(), f16::consts::FRAC_PI_4, 16);
-    assert_approx_eq!(f32::consts::FRAC_PI_4.cos().acos(), f32::consts::FRAC_PI_4, 16);
-    assert_approx_eq!(f64::consts::FRAC_PI_4.cos().acos(), f64::consts::FRAC_PI_4, 16);
+    assert_approx_eq!(f16_consts::FRAC_PI_3.cos(), 0.5);
+    assert_approx_eq!(f32_consts::FRAC_PI_3.cos(), 0.5);
+    assert_approx_eq!(f64_consts::FRAC_PI_3.cos(), 0.5);
+    // Increase error tolerance because of the extra operation.
+    assert_approx_eq!(f16_consts::FRAC_PI_4.cos().acos(), f16_consts::FRAC_PI_4, 2 * ERR_TOLERANCE);
+    assert_approx_eq!(f32_consts::FRAC_PI_4.cos().acos(), f32_consts::FRAC_PI_4, 2 * ERR_TOLERANCE);
+    assert_approx_eq!(f64_consts::FRAC_PI_4.cos().acos(), f64_consts::FRAC_PI_4, 2 * ERR_TOLERANCE);
     assert_biteq(1.0f16.acos(), 0.0, "acos(1) = 0");
     assert_biteq(1.0f32.acos(), 0.0, "acos(1) = 0");
     assert_biteq(1.0f64.acos(), 0.0, "acos(1) = 0");
@@ -1258,9 +1267,10 @@ fn libm() {
     assert_approx_eq!(1.0f16.tan(), 1.557408f16);
     assert_approx_eq!(1.0f32.tan(), 1.557408f32);
     assert_approx_eq!(1.0f64.tan(), 1.5574077246549023f64);
-    assert_approx_eq!(1.0_f16, 1.0_f16.tan().atan());
-    assert_approx_eq!(1.0_f32, 1.0_f32.tan().atan());
-    assert_approx_eq!(1.0_f64, 1.0_f64.tan().atan());
+    // Increase error tolerance because of the extra operation.
+    assert_approx_eq!(1.0_f16, 1.0_f16.tan().atan(), 2 * ERR_TOLERANCE);
+    assert_approx_eq!(1.0_f32, 1.0_f32.tan().atan(), 2 * ERR_TOLERANCE);
+    assert_approx_eq!(1.0_f64, 1.0_f64.tan().atan(), 2 * ERR_TOLERANCE);
     assert_approx_eq!(1.0f16.atan2(2.0f16), 0.46364761f16);
     assert_approx_eq!(1.0f32.atan2(2.0f32), 0.46364761f32);
     assert_approx_eq!(1.0f32.atan2(2.0f32), 0.46364761f32);
@@ -1311,17 +1321,21 @@ fn libm() {
     fixed_atan2_cases!(f32);
     fixed_atan2_cases!(f64);
 
+    // Imprecise operations on both sides needs higher error tolerance.
     assert_approx_eq!(
         1.0f16.tanh(),
-        (1.0 - f16::consts::E.powi(-2)) / (1.0 + f16::consts::E.powi(-2))
+        (1.0 - f16_consts::E.powi(-2)) / (1.0 + f16_consts::E.powi(-2)),
+        2 * ERR_TOLERANCE,
     );
     assert_approx_eq!(
         1.0f32.tanh(),
-        (1.0 - f32::consts::E.powi(-2)) / (1.0 + f32::consts::E.powi(-2))
+        (1.0 - f32_consts::E.powi(-2)) / (1.0 + f32_consts::E.powi(-2)),
+        2 * ERR_TOLERANCE,
     );
     assert_approx_eq!(
         1.0f64.tanh(),
-        (1.0 - f64::consts::E.powi(-2)) / (1.0 + f64::consts::E.powi(-2))
+        (1.0 - f64_consts::E.powi(-2)) / (1.0 + f64_consts::E.powi(-2)),
+        2 * ERR_TOLERANCE,
     );
     assert_eq!(f16::INFINITY.tanh(), 1.0);
     assert_eq!(f16::NEG_INFINITY.tanh(), -1.0);
@@ -1337,22 +1351,23 @@ fn libm() {
     assert_approx_eq!(5.0f16.gamma(), 24.0);
     assert_approx_eq!(5.0f32.gamma(), 24.0);
     assert_approx_eq!(5.0f64.gamma(), 24.0);
-    assert_approx_eq!((-0.5f16).gamma(), (-2.0) * f16::consts::PI.sqrt());
-    assert_approx_eq!((-0.5f32).gamma(), (-2.0) * f32::consts::PI.sqrt());
-    assert_approx_eq!((-0.5f64).gamma(), (-2.0) * f64::consts::PI.sqrt());
+    assert_approx_eq!((-0.5f16).gamma(), (-2.0) * f16_consts::PI.sqrt());
+    assert_approx_eq!((-0.5f32).gamma(), (-2.0) * f32_consts::PI.sqrt());
+    assert_approx_eq!((-0.5f64).gamma(), (-2.0) * f64_consts::PI.sqrt());
 
     assert_eq!(2.0f16.ln_gamma(), (0.0, 1));
     assert_eq!(2.0f32.ln_gamma(), (0.0, 1));
     assert_eq!(2.0f64.ln_gamma(), (0.0, 1));
-    // Gamma(-0.5) = -2*sqrt(π)
+    // Gamma(-0.5) = -2*sqrt(π), then apply `ln` on both sides.
+    // This has imprecise float ops on both sides so we double the error tolerance.
     let (val, sign) = (-0.5f16).ln_gamma();
-    assert_approx_eq!(val, (2.0 * f16::consts::PI.sqrt()).ln());
+    assert_approx_eq!(val, (2.0 * f16_consts::PI.sqrt()).ln(), 2 * ERR_TOLERANCE);
     assert_eq!(sign, -1);
     let (val, sign) = (-0.5f32).ln_gamma();
-    assert_approx_eq!(val, (2.0 * f32::consts::PI.sqrt()).ln());
+    assert_approx_eq!(val, (2.0 * f32_consts::PI.sqrt()).ln(), 2 * ERR_TOLERANCE);
     assert_eq!(sign, -1);
     let (val, sign) = (-0.5f64).ln_gamma();
-    assert_approx_eq!(val, (2.0 * f64::consts::PI.sqrt()).ln());
+    assert_approx_eq!(val, (2.0 * f64_consts::PI.sqrt()).ln(), 2 * ERR_TOLERANCE);
     assert_eq!(sign, -1);
 
     assert_approx_eq!(1.0f16.erf(), 0.84270079294971486934122063508260926f16);
@@ -1514,12 +1529,6 @@ fn test_fmuladd() {
 }
 
 fn test_non_determinism() {
-    if cfg!(force_intrinsic_fallback) {
-        // Skip this test when we use the fallback bodies, as that one is deterministic.
-        // (CI sets `--cfg force_intrinsic_fallback` together with `-Zmiri-force-intrinsic-fallback`.)
-        return;
-    }
-
     use std::intrinsics::{
         fadd_algebraic, fadd_fast, fdiv_algebraic, fdiv_fast, fmul_algebraic, fmul_fast,
         frem_algebraic, frem_fast, fsub_algebraic, fsub_fast,
@@ -1551,7 +1560,7 @@ fn test_non_determinism() {
         check_nondet(|| a.log(b));
         check_nondet(|| a.exp());
         check_nondet(|| 10f16.exp2());
-        check_nondet(|| f16::consts::E.ln());
+        check_nondet(|| f16_consts::E.ln());
         check_nondet(|| 10f16.log10());
         check_nondet(|| 8f16.log2());
         check_nondet(|| 1f16.sin());
@@ -1587,7 +1596,7 @@ fn test_non_determinism() {
         check_nondet(|| a.log(b));
         check_nondet(|| a.exp());
         check_nondet(|| 10f32.exp2());
-        check_nondet(|| f32::consts::E.ln());
+        check_nondet(|| f32_consts::E.ln());
         check_nondet(|| 10f32.log10());
         check_nondet(|| 8f32.log2());
         check_nondet(|| 1f32.ln_1p());
@@ -1607,9 +1616,9 @@ fn test_non_determinism() {
             check_nondet(|| 1.0f32.sinh());
             check_nondet(|| 1.0f32.cosh());
             check_nondet(|| 1.0f32.tanh());
+            check_nondet(|| 1.0f32.asinh());
+            check_nondet(|| 2.0f32.acosh());
         }
-        check_nondet(|| 1.0f32.asinh());
-        check_nondet(|| 2.0f32.acosh());
         check_nondet(|| 0.5f32.atanh());
         check_nondet(|| 5.0f32.gamma());
         check_nondet(|| 5.0f32.ln_gamma());
@@ -1624,8 +1633,8 @@ fn test_non_determinism() {
         check_nondet(|| a.exp());
         check_nondet(|| 50f64.exp2());
         check_nondet(|| 3f64.ln());
-        check_nondet(|| f64::consts::E.log10());
-        check_nondet(|| f64::consts::E.log2());
+        check_nondet(|| f64_consts::E.log10());
+        check_nondet(|| f64_consts::E.log2());
         check_nondet(|| 1f64.ln_1p());
         check_nondet(|| 27.0f64.cbrt());
         check_nondet(|| 3.0f64.hypot(4.0f64));

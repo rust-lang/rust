@@ -4,10 +4,10 @@ error[E0282]: type annotations needed
 LL |     S { o: &None };
    |     ^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `S`
    |
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the type parameter `T`
    |
-LL |     S::<T> { o: &None };
-   |      +++++
+LL |     S::</* Type */> { o: &None };
+   |      ++++++++++++++
 
 error: aborting due to 1 previous error
 

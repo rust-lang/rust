@@ -10,7 +10,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 // Diagnostic: private-field
 //
 // This diagnostic is triggered if the accessed field is not visible from the current module.
-pub(crate) fn private_field(ctx: &DiagnosticsContext<'_>, d: &hir::PrivateField) -> Diagnostic {
+pub(crate) fn private_field(ctx: &DiagnosticsContext<'_, '_>, d: &hir::PrivateField) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
         DiagnosticCode::RustcHardError("E0616"),

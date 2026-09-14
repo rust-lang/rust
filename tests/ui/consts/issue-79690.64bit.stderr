@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value at .1: encountered a dangling reference (going beyond the bounds of its allocation)
+error[E0080]: constructing invalid value of type Fat<'_>: at .1, encountered a dangling reference (going beyond the bounds of its allocation)
   --> $DIR/issue-79690.rs:30:1
    |
 LL | const G: Fat = unsafe { Transmute { t: FOO }.u };
@@ -6,7 +6,7 @@ LL | const G: Fat = unsafe { Transmute { t: FOO }.u };
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾ALLOC0<imm>╼ ╾ALLOC1╼ │ ╾──────╼╾──────╼
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼ │ ╾──────╼╾──────╼
            }
 
 error: aborting due to 1 previous error

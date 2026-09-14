@@ -1028,6 +1028,15 @@ fn test_into_iter_next_chunk() {
 }
 
 #[test]
+fn test_into_iter_next_chunk_back() {
+    let mut iter = b"lorem".to_vec().into_iter();
+
+    assert_eq!(iter.next_chunk_back().unwrap(), [b'e', b'm']); // N is inferred as 2
+    assert_eq!(iter.next_chunk_back().unwrap(), [b'l', b'o', b'r']); // N is inferred as 3
+    assert_eq!(iter.next_chunk_back::<4>().unwrap_err().as_slice(), &[]); // N is explicitly 4
+}
+
+#[test]
 fn test_into_iter_clone() {
     fn iter_equal<I: Iterator<Item = i32>>(it: I, slice: &[i32]) {
         let v: Vec<i32> = it.collect();
@@ -1110,7 +1119,7 @@ fn test_into_iter_zst() {
     struct AlignedZstWithDrop([u64; 0]);
     impl Drop for AlignedZstWithDrop {
         fn drop(&mut self) {
-            let addr = self as *mut _ as usize;
+            let addr = (self as *mut Self).addr();
             assert!(hint::black_box(addr) % align_of::<u64>() == 0);
         }
     }
@@ -1130,6 +1139,14 @@ fn test_into_iter_zst() {
 
     let mut it = vec![C, C].into_iter();
     it.next_chunk::<4>().unwrap_err();
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk_back::<1>().unwrap();
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk_back::<4>().unwrap_err();
     drop(it);
 }
 
@@ -1322,6 +1339,25 @@ fn test_from_cow() {
     assert_eq!(Vec::from(Cow::Owned(owned)), vec!["owned", "(vec)"]);
 }
 
+#[test]
+fn test_partial_eq_cow_symmetric() {
+    let v: Vec<i32> = vec![1, 2, 3];
+    let c: Cow<'_, [i32]> = Cow::Borrowed(&[1, 2, 3]);
+
+    assert_eq!(c, v);
+    assert_eq!(v, c);
+
+    let s: &[i32] = &[1, 2, 3];
+    assert_eq!(s, c);
+
+    let mut arr = [1, 2, 3];
+    let ms: &mut [i32] = &mut arr;
+    assert_eq!(ms, c);
+
+    let v2: Vec<i32> = vec![1, 2, 4];
+    assert!(v2 != c);
+}
+
 #[allow(dead_code)]
 fn assert_covariance() {
     fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> {
@@ -1356,10 +1392,10 @@ fn overaligned_allocations() {
     for i in 0..0x1000 {
         v.reserve_exact(i);
         assert!(v[0].0 == 273);
-        assert!(v.as_ptr() as usize & 0xff == 0);
+        assert!(v.as_ptr().addr() & 0xff == 0);
         v.shrink_to_fit();
         assert!(v[0].0 == 273);
-        assert!(v.as_ptr() as usize & 0xff == 0);
+        assert!(v.as_ptr().addr() & 0xff == 0);
     }
 }
 
@@ -1651,13 +1687,17 @@ fn extract_if_unconsumed() {
 
 #[test]
 fn extract_if_debug() {
-    let mut vec = vec![1, 2];
-    let mut drain = vec.extract_if(.., |&mut x| x % 2 != 0);
-    assert!(format!("{drain:?}").contains("Some(1)"));
-    drain.next();
-    assert!(format!("{drain:?}").contains("Some(2)"));
-    drain.next();
-    assert!(format!("{drain:?}").contains("None"));
+    let mut vec = vec![1, 2, 3, 4, 5, 6, 7, 8];
+    let mut drain = vec.extract_if(1..5, |&mut x| x % 2 != 0);
+    assert_eq!(
+        format!("{drain:?}"),
+        "ExtractIf { retained: [1], remainder: [2, 3, 4, 5], skipped_tail: [6, 7, 8], .. }"
+    );
+    drain.next().unwrap();
+    assert_eq!(
+        format!("{drain:?}"),
+        "ExtractIf { retained: [1, 2], remainder: [4, 5], skipped_tail: [6, 7, 8], .. }"
+    );
 }
 
 #[test]
@@ -2537,7 +2577,7 @@ fn test_extend_from_within_panicking_clone() {
 }
 
 #[test]
-#[should_panic = "vec len overflow"]
+#[should_panic = "the product of vec len and N shouldn't overflow"]
 fn test_into_flattened_size_overflow() {
     let v = vec![[(); usize::MAX]; 2];
     let _ = v.into_flattened();
@@ -2565,12 +2605,12 @@ fn test_box_zero_allocator() {
             } else {
                 unsafe { std::alloc::alloc(layout) }
             };
-            Ok(NonNull::slice_from_raw_parts(NonNull::new(ptr).ok_or(AllocError)?, layout.size()))
+            Ok(NonNull::new(ptr).ok_or(AllocError)?.cast_slice(layout.size()))
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
             if layout.size() == 0 {
-                let addr = ptr.as_ptr() as usize;
+                let addr = ptr.as_ptr().addr();
                 let mut state = self.state.borrow_mut();
                 std::println!("freeing {addr}");
                 assert!(state.0.remove(&addr), "ZST free that wasn't allocated");
@@ -2763,4 +2803,49 @@ fn const_heap() {
     };
 
     assert_eq!([1, 2, 4, 8, 16, 32], X);
+}
+
+// regression test for issue #153158. `const_make_global` previously assumed `Vec<T>`'s buf
+// always has a heap allocation, which lead to compilation errors.
+#[test]
+fn const_make_global_empty_or_zst_regression() {
+    const EMPTY_SLICE: &'static [i32] = {
+        let empty_vec: Vec<i32> = Vec::new();
+        empty_vec.const_make_global()
+    };
+
+    assert_eq!(EMPTY_SLICE, &[]);
+
+    const ZST_SLICE: &'static [()] = {
+        let mut zst_vec: Vec<()> = Vec::new();
+        zst_vec.push(());
+        zst_vec.push(());
+        zst_vec.push(());
+        zst_vec.const_make_global()
+    };
+
+    assert_eq!(ZST_SLICE, &[(), (), ()]);
+}
+
+#[test]
+fn const_heap_vec_macro() {
+    const X: &'static [u32] = {
+        let x: Vec<u32> = vec![];
+        assert!(x == []);
+        x.const_make_global()
+    };
+
+    const Y: &'static [u32] = {
+        let y: Vec<u32> = vec![1, 2, 3];
+        assert!(y == [1, 2, 3]);
+        y.const_make_global()
+    };
+
+    // This arm isn't const yet.
+    // const Z: &'static [u32] = {
+    //     vec![4; 2].const_make_global()
+    // };
+
+    assert_eq!(X, []);
+    assert_eq!(Y, [1, 2, 3]);
 }

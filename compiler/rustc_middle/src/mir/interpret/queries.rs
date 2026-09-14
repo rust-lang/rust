@@ -1,6 +1,6 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_session::lint;
+use rustc_lint_defs::builtin::CONST_EVALUATABLE_UNCHECKED;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
@@ -9,7 +9,7 @@ use super::{
 };
 use crate::mir::interpret::ValTreeCreationError;
 use crate::ty::{self, ConstToValTreeResult, GenericArgs, TyCtxt, TypeVisitableExt};
-use crate::{error, mir};
+use crate::{diagnostics, mir};
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
@@ -90,7 +90,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_resolve_for_typeck(
         self,
         typing_env: ty::TypingEnv<'tcx>,
-        ct: ty::UnevaluatedConst<'tcx>,
+        ct: ty::AliasConst<'tcx>,
         span: Span,
     ) -> ConstToValTreeResult<'tcx> {
         // Cannot resolve `Unevaluated` constants that contain inference
@@ -103,17 +103,26 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        let cid = match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
+        let def_id = match ct.kind {
+            ty::AliasConstKind::InherentSelf { .. } => {
+                bug!("got AliasConstKind::InherentSelf in const_eval_resolve_for_typeck")
+            }
+            ty::AliasConstKind::Projection { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id }
+            | ty::AliasConstKind::Free { def_id }
+            | ty::AliasConstKind::Anon { def_id } => def_id,
+        };
+
+        let cid = match ty::Instance::try_resolve(self, typing_env, def_id, ct.args) {
             Ok(Some(instance)) => GlobalId { instance, promoted: None },
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
-            Ok(None) => return Err(ErrorHandled::TooGeneric(DUMMY_SP).into()),
+            Ok(None) => return Err(ErrorHandled::TooGeneric(DUMMY_SP)),
             Err(err) => {
                 return Err(ErrorHandled::Reported(
                     ReportedErrorInfo::non_const_eval_error(err),
                     DUMMY_SP,
-                )
-                .into());
+                ));
             }
         };
 
@@ -125,6 +134,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // @lcnr believes that successfully evaluating even though there are
             // used generic parameters is a bug of evaluation, so checking for it
             // here does feel somewhat sensible.
+            let def_id = cid.instance.def_id();
             if !self.features().generic_const_exprs()
                 && ct.args.has_non_region_param()
                 // We only FCW for anon consts as repeat expr counts with anon consts are the only place
@@ -133,16 +143,16 @@ impl<'tcx> TyCtxt<'tcx> {
                 //
                 // If we don't *only* FCW anon consts we can wind up incorrectly FCW'ing uses of assoc
                 // consts in pattern positions. #140447
-                && self.def_kind(cid.instance.def_id()) == DefKind::AnonConst
-                && !self.is_trivial_const(cid.instance.def_id())
+                && self.def_kind(def_id) == DefKind::AnonConst
+                && !self.is_trivial_const(def_id)
+                && let Some(local_def_id) = def_id.as_local()
             {
-                let mir_body = self.mir_for_ctfe(cid.instance.def_id());
+                let mir_body = self.mir_for_ctfe(def_id);
                 if mir_body.is_polymorphic {
-                    let Some(local_def_id) = ct.def.as_local() else { return };
                     self.emit_node_span_lint(
-                        lint::builtin::CONST_EVALUATABLE_UNCHECKED,
+                        CONST_EVALUATABLE_UNCHECKED,
                         self.local_def_id_to_hir_id(local_def_id),
-                        self.def_span(ct.def),
+                        self.def_span(def_id),
                         rustc_errors::DiagDecorator(|lint| {
                             lint.primary_message(
                                 "cannot use constants which depend on generic parameters in types",
@@ -212,14 +222,21 @@ impl<'tcx> TyCtxt<'tcx> {
                     ValTreeCreationError::NonSupportedType(ty) => Ok(Err(ty)),
                     // Report the others.
                     ValTreeCreationError::NodesOverflow => {
-                        let handled = self.dcx().emit_err(error::MaxNumNodesInValtree {
+                        let handled = self.dcx().emit_err(diagnostics::MaxNumNodesInValtree {
                             span,
                             global_const_id: cid.display(self),
                         });
                         Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
                     }
                     ValTreeCreationError::InvalidConst => {
-                        let handled = self.dcx().emit_err(error::InvalidConstInValtree {
+                        let handled = self.dcx().emit_err(diagnostics::InvalidConstInValtree {
+                            span,
+                            global_const_id: cid.display(self),
+                        });
+                        Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
+                    }
+                    ValTreeCreationError::CyclicConst => {
+                        let handled = self.dcx().emit_err(diagnostics::CyclicConstInValtree {
                             span,
                             global_const_id: cid.display(self),
                         });

@@ -46,7 +46,9 @@ jobs:
 
     - name: Install packages
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
-      run: sudo apt-get install ninja-build ripgrep llvm-14-tools libgccjit-12-dev
+      run: |
+        sudo apt-get update
+        sudo apt-get install ninja-build ripgrep llvm-14-tools libgccjit-12-dev
 
     - name: Setup path to libgccjit
       run: echo 'gcc-path = "/usr/lib/gcc/x86_64-linux-gnu/12"' > config.toml

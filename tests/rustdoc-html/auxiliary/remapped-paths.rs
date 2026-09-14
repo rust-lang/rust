@@ -1,4 +1,4 @@
-//@ compile-flags:-Zunstable-options --remap-path-prefix={{src-base}}=
+//@ compile-flags:--remap-path-prefix={{src-base}}=
 
 pub struct MyStruct {
     field: u32,

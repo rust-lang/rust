@@ -4,6 +4,7 @@ COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
 COPY scripts/crosstool-ng.sh /scripts/
+COPY scripts/crosstool-ng-sha256-20260705.diff /scripts/
 RUN sh /scripts/crosstool-ng.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
@@ -27,11 +28,10 @@ ENV \
 
 ENV HOSTS=powerpc64le-unknown-linux-gnu
 
-ENV RUST_CONFIGURE_ARGS \
-    --enable-extended \
+ENV RUST_CONFIGURE_ARGS="--enable-extended \
     --enable-full-tools \
     --enable-profiler \
     --enable-sanitizers \
-    --disable-docs
+    --disable-docs"
 
-ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS
+ENV SCRIPT="python3 ../x.py dist --host $HOSTS --target $HOSTS"

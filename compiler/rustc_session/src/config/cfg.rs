@@ -31,7 +31,7 @@ use rustc_span::{Symbol, sym};
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, Target};
 
 use crate::config::{CrateType, FmtDebug};
-use crate::{Session, errors};
+use crate::{Session, diagnostics};
 
 /// The parsed `--cfg` options that define the compilation environment of the
 /// crate, used to drive conditional compilation.
@@ -62,6 +62,13 @@ impl<T: Eq + Hash> ExpectedValues<T> {
     fn insert(&mut self, value: T) -> bool {
         match self {
             ExpectedValues::Some(expecteds) => expecteds.insert(Some(value)),
+            ExpectedValues::Any => false,
+        }
+    }
+
+    pub fn contains(&self, value: &Option<T>) -> bool {
+        match self {
+            ExpectedValues::Some(expecteds) => expecteds.contains(value),
             ExpectedValues::Any => false,
         }
     }
@@ -98,7 +105,7 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
             None,
             ast::CRATE_NODE_ID,
-            errors::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.into(),
+            diagnostics::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.into(),
         )
     };
 
@@ -137,11 +144,13 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_endian, Some(_))
             | (sym::target_env, None | Some(_))
             | (sym::target_family, Some(_))
+            | (sym::target_object_format, Some(_))
             | (sym::target_os, Some(_))
             | (sym::target_pointer_width, Some(_))
             | (sym::target_vendor, None | Some(_))
             | (sym::target_has_atomic, Some(_))
-            | (sym::target_has_atomic_equal_alignment, Some(_))
+            | (sym::target_has_threads, None | Some(_))
+            | (sym::target_has_atomic_primitive_alignment, Some(_))
             | (sym::target_has_atomic_load_store, Some(_))
             | (sym::target_has_reliable_f16, None | Some(_))
             | (sym::target_has_reliable_f16_math, None | Some(_))
@@ -149,7 +158,6 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_has_reliable_f128_math, None | Some(_))
             | (sym::target_thread_local, None) => disallow(cfg, "--target"),
             (sym::fmt_debug, None | Some(_)) => disallow(cfg, "-Z fmt-debug"),
-            (sym::emscripten_wasm_eh, None | Some(_)) => disallow(cfg, "-Z emscripten_wasm_eh"),
             _ => {}
         }
     }
@@ -229,6 +237,10 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         if s == SanitizerSet::KERNELADDRESS {
             s = SanitizerSet::ADDRESS;
         }
+        // KHWASAN is still HWASAN under the hood, so it uses the same attribute.
+        if s == SanitizerSet::KERNELHWADDRESS {
+            s = SanitizerSet::HWADDRESS;
+        }
         ins_str!(sym::sanitize, &s.to_string());
     }
 
@@ -239,10 +251,11 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         ins_none!(sym::sanitizer_cfi_normalize_integers);
     }
 
-    ins_sym!(sym::target_abi, sess.target.abi.desc_symbol());
+    ins_sym!(sym::target_abi, sess.target.cfg_abi.desc_symbol());
     ins_sym!(sym::target_arch, sess.target.arch.desc_symbol());
-    ins_str!(sym::target_endian, sess.target.endian.as_str());
+    ins_sym!(sym::target_endian, sess.target.endian.desc_symbol());
     ins_sym!(sym::target_env, sess.target.env.desc_symbol());
+    ins_sym!(sym::target_object_format, sess.target.options.binary_format.desc_symbol());
 
     for family in sess.target.families.as_ref() {
         ins_str!(sym::target_family, family);
@@ -280,7 +293,7 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
                     ins_sym!(sym::target_has_atomic, sym);
                 }
                 if align.bits() == i {
-                    ins_sym!(sym::target_has_atomic_equal_alignment, sym);
+                    ins_sym!(sym::target_has_atomic_primitive_alignment, sym);
                 }
                 ins_sym!(sym::target_has_atomic_load_store, sym);
             };
@@ -289,6 +302,10 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
                 insert_atomic(sym::ptr, layout.pointer_align().abi);
             }
         }
+    }
+
+    if !sess.target.singlethread(&sess.internal_target_features) {
+        ins_none!(sym::target_has_threads);
     }
 
     ins_sym!(sym::target_os, sess.target.os.desc_symbol());
@@ -307,11 +324,6 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
 
     if sess.ub_checks() {
         ins_none!(sym::ub_checks);
-    }
-
-    // Nightly-only implementation detail for the `panic_unwind` and `unwind` crates.
-    if sess.is_nightly_build() && sess.opts.unstable_opts.emscripten_wasm_eh {
-        ins_none!(sym::emscripten_wasm_eh);
     }
 
     if sess.contract_checks() {
@@ -379,6 +391,7 @@ impl CheckCfg {
         ins!(sym::doc, no_values);
         ins!(sym::doctest, no_values);
         ins!(sym::miri, no_values);
+        ins!(sym::rust_analyzer, no_values);
         ins!(sym::rustfmt, no_values);
 
         ins!(sym::overflow_checks, no_values);
@@ -409,12 +422,13 @@ impl CheckCfg {
 
         // sym::target_*
         {
-            const VALUES: [&Symbol; 8] = [
+            const VALUES: [&Symbol; 9] = [
                 &sym::target_abi,
                 &sym::target_arch,
                 &sym::target_endian,
                 &sym::target_env,
                 &sym::target_family,
+                &sym::target_object_format,
                 &sym::target_os,
                 &sym::target_pointer_width,
                 &sym::target_vendor,
@@ -438,6 +452,7 @@ impl CheckCfg {
                     Some(values_target_endian),
                     Some(values_target_env),
                     Some(values_target_family),
+                    Some(values_target_object_format),
                     Some(values_target_os),
                     Some(values_target_pointer_width),
                     Some(values_target_vendor),
@@ -447,13 +462,14 @@ impl CheckCfg {
                 };
 
                 for target in Target::builtins().chain(iter::once(current_target.clone())) {
-                    values_target_abi.insert(target.options.abi.desc_symbol());
+                    values_target_abi.insert(target.options.cfg_abi.desc_symbol());
                     values_target_arch.insert(target.arch.desc_symbol());
-                    values_target_endian.insert(Symbol::intern(target.options.endian.as_str()));
+                    values_target_endian.insert(target.options.endian.desc_symbol());
                     values_target_env.insert(target.options.env.desc_symbol());
                     values_target_family.extend(
                         target.options.families.iter().map(|family| Symbol::intern(family)),
                     );
+                    values_target_object_format.insert(target.options.binary_format.desc_symbol());
                     values_target_os.insert(target.options.os.desc_symbol());
                     values_target_pointer_width.insert(sym::integer(target.pointer_width));
                     values_target_vendor.insert(target.vendor_symbol());
@@ -469,15 +485,13 @@ impl CheckCfg {
             sym::integer(64usize),
             sym::integer(128usize),
         ];
-        for sym in [
-            sym::target_has_atomic,
-            sym::target_has_atomic_equal_alignment,
-            sym::target_has_atomic_load_store,
-        ] {
+        for sym in [sym::target_has_atomic, sym::target_has_atomic_load_store] {
             ins!(sym, no_values).extend(atomic_values);
         }
+        ins!(sym::target_has_atomic_primitive_alignment, empty_values).extend(atomic_values);
 
         ins!(sym::target_thread_local, no_values);
+        ins!(sym::target_has_threads, no_values);
 
         ins!(sym::ub_checks, no_values);
         ins!(sym::contract_checks, no_values);

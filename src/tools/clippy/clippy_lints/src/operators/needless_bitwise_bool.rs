@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -24,12 +24,12 @@ pub(super) fn check(cx: &LateContext<'_>, e: &Expr<'_>, op: BinOpKind, lhs: &Exp
             e.span,
             "use of bitwise operator instead of lazy operator between booleans",
             |diag| {
-                if let Some(lhs_snip) = lhs.span.get_source_text(cx)
-                    && let Some(rhs_snip) = rhs.span.get_source_text(cx)
-                {
-                    let sugg = format!("{lhs_snip} {op_str} {rhs_snip}");
-                    diag.span_suggestion(e.span, "try", sugg, Applicability::MachineApplicable);
-                }
+                let mut applicability = Applicability::MachineApplicable;
+                let expr_span_ctxt = e.span.ctxt();
+                let (lhs_snip, _) = snippet_with_context(cx, lhs.span, expr_span_ctxt, "..", &mut applicability);
+                let (rhs_snip, _) = snippet_with_context(cx, rhs.span, expr_span_ctxt, "..", &mut applicability);
+
+                diag.span_suggestion(e.span, "try", format!("{lhs_snip} {op_str} {rhs_snip}"), applicability);
             },
         );
     }

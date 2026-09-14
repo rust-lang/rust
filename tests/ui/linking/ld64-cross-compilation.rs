@@ -6,6 +6,8 @@
 //@ run-pass
 //@ only-x86_64-apple-darwin
 
+#![allow(linker_messages)]
+
 fn main() {
     let dst: Vec<u8> = Vec::new();
     let len = broken_func(std::hint::black_box(2), dst);

@@ -1193,7 +1193,7 @@ fn test() {
             123..167 '{     ...o(); }': ()
             133..134 's': &'? S
             137..151 'unsafe { f() }': &'? S
-            146..147 'f': fn f() -> &'static S
+            146..147 'f': extern "C" fn f() -> &'static S
             146..149 'f()': &'static S
             157..158 's': &'? S
             157..164 's.foo()': bool
@@ -1367,7 +1367,7 @@ mod a {
 mod b {
     fn foo() {
         let x = super::a::Bar::new().0;
-             // ^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Some(Not))))
+             // ^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Not)))
              // ^^^^^^^^^^^^^^^^^^^^^^ type: char
     }
 }
@@ -1715,8 +1715,8 @@ fn f<S: Sized, T, U: ?Sized>() {
             95..103 'u32::foo': fn foo<u32>() -> u8
             109..115 'S::foo': fn foo<S>() -> u8
             121..127 'T::foo': fn foo<T>() -> u8
-            133..139 'U::foo': fn foo<U>() -> u8
-            145..157 '<[u32]>::foo': fn foo<[u32]>() -> u8
+            133..139 'U::foo': {unknown}
+            145..157 '<[u32]>::foo': {unknown}
         "#]],
     );
 }
@@ -2129,7 +2129,7 @@ impl Foo {
 use core::mem::ManuallyDrop;
 fn test() {
     ManuallyDrop::new(Foo).foo();
-  //^^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref(Not))
+  //^^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Not))), Borrow(Ref(Not))
 }
 "#,
     );
@@ -2256,5 +2256,32 @@ fn main() {
  // ^^^^^^^^^^^^^^^^^^^^^ u32
 }
     "#,
+    );
+}
+
+#[test]
+fn trait_impl_with_error_self_ty_does_not_match_arbitrary_receiver() {
+    check_types(
+        r#"
+//- minicore: sized
+trait UnrelatedTrait {
+    fn take(self) {}
+}
+
+struct MyOption<T>(T);
+
+impl<T> MyOption<T> {
+    fn take(&mut self) -> MyOption<T> {
+        loop {}
+    }
+}
+
+fn f<T>(mut o: MyOption<T>) {
+    let value = o.take();
+      //^^^^^ MyOption<T>
+}
+
+impl UnrelatedTrait for &'_ MissingType {}
+"#,
     );
 }

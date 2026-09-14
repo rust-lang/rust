@@ -82,9 +82,7 @@
 use core::mem::size_of;
 use core::ops;
 
-use super::HalfRep;
-use crate::float::Float;
-use crate::int::{CastFrom, CastInto, DInt, HInt, Int, MinInt};
+use crate::support::{CastFrom, CastInto, DInt, Float, HInt, HalfRep, Int, MinInt};
 
 fn div<F: Float>(a: F, b: F) -> F
 where
@@ -617,7 +615,7 @@ intrinsics! {
         div(a, b)
     }
 
-    #[ppc_alias = __divkf3]
+    #[ppc_name = __divkf3]
     #[cfg(f128_enabled)]
     pub extern "C" fn __divtf3(a: f128, b: f128) -> f128 {
         div(a, b)

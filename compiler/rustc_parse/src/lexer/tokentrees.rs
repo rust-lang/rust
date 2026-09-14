@@ -14,7 +14,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     pub(super) fn lex_token_trees(
         &mut self,
         is_delimited: bool,
-    ) -> Result<(Spacing, TokenStream), Vec<Diag<'psess>>> {
+    ) -> Result<(Spacing, TokenStream), Diag<'psess>> {
         // Move past the opening delimiter.
         let open_spacing = self.bump_minimal();
 
@@ -35,11 +35,11 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 return if is_delimited {
                     Ok((open_spacing, TokenStream::new(buf)))
                 } else {
-                    Err(vec![self.close_delim_err(delim)])
+                    Err(self.close_delim_err(delim))
                 };
             } else if self.token.kind == token::Eof {
                 return if is_delimited {
-                    Err(vec![self.eof_err()])
+                    Err(self.eof_err())
                 } else {
                     Ok((open_spacing, TokenStream::new(buf)))
                 };
@@ -54,7 +54,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     fn lex_token_tree_open_delim(
         &mut self,
         open_delim: Delimiter,
-    ) -> Result<TokenTree, Vec<Diag<'psess>>> {
+    ) -> Result<TokenTree, Diag<'psess>> {
         // The span for beginning of the delimited section.
         let pre_span = self.token.span;
 
@@ -72,12 +72,11 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let close_spacing = if let Some(close_delim) = self.token.kind.close_delim() {
             if close_delim == open_delim {
                 // Correct delimiter.
-                let (open_delimiter, open_delimiter_span) =
-                    self.diag_info.open_delimiters.pop().unwrap();
+                self.diag_info.open_delimiters.pop().unwrap();
                 let close_delimiter_span = self.token.span;
 
                 if tts.is_empty() && close_delim == Delimiter::Brace {
-                    let empty_block_span = open_delimiter_span.to(close_delimiter_span);
+                    let empty_block_span = pre_span.to(close_delimiter_span);
                     if !sm.is_multiline(empty_block_span) {
                         // Only track if the block is in the form of `{}`, otherwise it is
                         // likely that it was written on purpose.
@@ -86,11 +85,18 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 }
 
                 // only add braces
-                if let (Delimiter::Brace, Delimiter::Brace) = (open_delimiter, open_delim) {
+                if Delimiter::Brace == open_delim {
                     // Add all the matching spans, we will sort by span later
-                    self.diag_info
-                        .matching_block_spans
-                        .push((open_delimiter_span, close_delimiter_span));
+                    self.diag_info.matching_block_spans.push((pre_span, close_delimiter_span));
+                }
+
+                // A brace-delimited block whose first token is `&&`/`||` usually means
+                // the user meant to continue an if-let chain, e.g. `if let P = e { && cond {`.
+                if Delimiter::Brace == open_delim
+                    && let Some(TokenTree::Token(tok, _)) = tts.iter().next()
+                    && matches!(tok.kind, token::AndAnd | token::OrOr)
+                {
+                    self.diag_info.if_let_chain_hint_spans.push(tok.span);
                 }
 
                 // Move past the closing delimiter.

@@ -1,6 +1,9 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+
 #![feature(sized_hierarchy)]
 #![feature(non_lifetime_binders)]
-//~^ WARN the feature `non_lifetime_binders` is incomplete
 
 use std::marker::PointeeSized;
 

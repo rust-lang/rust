@@ -21,7 +21,10 @@ use crate::{AssistContext, Assists};
 //     todo!()
 // }
 // ```
-pub(crate) fn unwrap_type_to_generic_arg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn unwrap_type_to_generic_arg(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let path_type = ctx.find_node_at_offset::<ast::PathType>()?;
     let path = path_type.path()?;
     let segment = path.segment()?;
@@ -46,7 +49,7 @@ pub(crate) fn unwrap_type_to_generic_arg(acc: &mut Assists, ctx: &AssistContext<
         format!("Unwrap type to type argument {generic_arg}"),
         path_type.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(path_type.syntax());
+            let editor = builder.make_editor(path_type.syntax());
             editor.replace(path_type.syntax(), generic_arg.syntax());
 
             builder.add_file_edits(ctx.vfs_file_id(), editor);

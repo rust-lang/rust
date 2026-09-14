@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `U: TransmuteFrom<T, _>` is not satisfied
+  --> $DIR/generic-transmute-from-regression.rs:6:44
+   |
+LL |         std::mem::TransmuteFrom::transmute(x)
+   |         ---------------------------------- ^ the nightly-only, unstable trait `TransmuteFrom<T, _>` is not implemented for `U`
+   |         |
+   |         required by a bound introduced by this call
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

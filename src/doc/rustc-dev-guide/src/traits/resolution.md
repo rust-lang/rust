@@ -6,7 +6,7 @@ some non-obvious things.
 **Note:** This chapter (and its subchapters) describe how the trait
 solver **currently** works. However, we are in the process of
 designing a new trait solver. If you'd prefer to read about *that*,
-see [*this* subchapter](./chalk.html).
+see [*this* subchapter](./chalk.md).
 
 ## Major concepts
 
@@ -181,7 +181,7 @@ in that list. If so, it is considered satisfied. More precisely, we
 want to check whether there is a where-clause obligation that is for
 the same trait (or some subtrait) and which can match against the obligation.
 
-[parameter environment]: ../typing-parameter-envs.html
+[parameter environment]: ../typing-parameter-envs.md
 
 Consider this simple example:
 

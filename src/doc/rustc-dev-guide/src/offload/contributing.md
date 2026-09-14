@@ -1,8 +1,13 @@
 # Contributing
 
-Contributions are always welcome. This project is experimental, so the documentation and code are likely incomplete. Please ask on [Zulip](https://rust-lang.zulipchat.com/#narrow/channel/422870-t-compiler.2Fgpgpu-backend) (preferred) or the Rust Community Discord for help if you get stuck or if our documentation is unclear.
+Contributions are always welcome.
+This project is experimental, so the documentation and code are likely incomplete.
+Please ask on [Zulip](https://rust-lang.zulipchat.com/#narrow/channel/422870-t-compiler.2Fgpgpu-backend) (preferred) or the Rust Community Discord for help if you get stuck or if our documentation is unclear.
 
-We generally try to automate as much of the compilation process as possible for users. However, as a contributor it might sometimes be easier to directly rewrite and compile the LLVM-IR modules (.ll) to quickly iterate on changes, without needing to repeatedly recompile rustc. For people familiar with LLVM we therefore have the shell script below. Only when you are then happy with the IR changes you can work on updating rustc to generate the new, desired output.
+We generally try to automate as much of the compilation process as possible for users.
+However, as a contributor it might sometimes be easier to directly rewrite and compile the LLVM-IR modules (.ll) to quickly iterate on changes, without needing to repeatedly recompile rustc.
+For people familiar with LLVM we therefore have the shell script below.
+Only when you are then happy with the IR changes you can work on updating rustc to generate the new, desired output.
 
 ```sh
 set -e
@@ -10,9 +15,11 @@ set -e
 # inputs:
 # lib.ll (host code) + host.out (device)
 
-# You only need to run the first three commands once to generate lib.ll and host.out from your rust code.
+# You only need to run the commands below once to generate lib.ll and host.out from your rust code.
 
-# RUSTFLAGS="-Ctarget-cpu=gfx90a --emit=llvm-bc,llvm-ir -Zoffload=Device -Csave-temps -Zunstable-options" cargo +offload build -Zunstable-options -v --target amdgcn-amd-amdhsa -Zbuild-std=core -r
+# RUSTFLAGS="--emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=HostMetadata=/absolute/path/to/offload.manifest -Zunstable-options" cargo +offload build -r
+#
+# RUSTFLAGS="-Ctarget-cpu=gfx90a --emit=llvm-bc,llvm-ir -Zoffload=Device=/absolute/path/to/offload.manifest -Csave-temps -Zunstable-options" cargo +offload build -Zunstable-options -v --target amdgcn-amd-amdhsa -Zbuild-std=core -r
 #
 # RUSTFLAGS="--emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=Host=/absolute/path/to/project/target/amdgcn-amd-amdhsa/release/deps/host.out -Zunstable-options" cargo +offload build -r
 #
@@ -29,4 +36,6 @@ opt lib.ll -o lib.bc
 LIBOMPTARGET_INFO=-1 OFFLOAD_TRACK_ALLOCATION_TRACES=true ./a.out
 ```
 
-Please update the `<path>` placeholders on the `clang-linker-wrapper` invocation. You will likely also need to adjust the library paths. See the linked usage section for details: [usage](usage.md#compile-instructions)
+Please update the `<path>` placeholders on the `clang-linker-wrapper` invocation.
+You will likely also need to adjust the library paths.
+See the linked usage section for details: [usage](usage.md#compile-instructions)

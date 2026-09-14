@@ -1,0 +1,16 @@
+# dlmalloc has a dependency on windows-sys for when it gets compiled for Windows.
+# std however never actually uses dlmalloc on Windows. As dlmalloc is the only
+# user of windows-sys in the standard library, the windows-sys crate unnecessarily
+# increases the size of the vendored crates. By replacing it with an empty crate
+# we save about 19MB.
+
+[package]
+name = "windows-sys"
+version = "0.61.100"
+edition = "2024"
+
+[features]
+Win32_Foundation = []
+Win32_System_Memory = []
+Win32_System_Threading = []
+Win32_System_SystemInformation = []

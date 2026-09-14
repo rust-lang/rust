@@ -4,9 +4,10 @@ mod overly_long_real_world_cases;
 
 use hir::setup_tracing;
 use ide_db::{
-    LineIndexDatabase, RootDatabase,
+    RootDatabase,
     assists::{AssistResolveStrategy, ExprFillDefaultMode},
     base_db::SourceDatabase,
+    line_index,
 };
 use itertools::Itertools;
 use stdx::trim_indent;
@@ -56,11 +57,11 @@ fn check_nth_fix(
 pub(crate) fn check_fix_with_disabled(
     #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
     #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
-    disabled: impl Iterator<Item = String>,
+    disabled: &[&str],
 ) {
     let mut config = DiagnosticsConfig::test_sample();
     config.expr_fill_default = ExprFillDefaultMode::Default;
-    config.disabled.extend(disabled);
+    config.disabled.extend(disabled.iter().map(|&disabled| disabled.to_owned()));
     check_nth_fix_with_config(config, 0, ra_fixture_before, ra_fixture_after)
 }
 
@@ -242,7 +243,7 @@ pub(crate) fn check_diagnostics_with_config(
         .into_group_map();
     for file_id in files {
         let file_id = file_id.file_id(&db);
-        let line_index = db.line_index(file_id);
+        let line_index = line_index(&db, file_id);
 
         let mut actual = annotations.remove(&file_id).unwrap_or_default();
         let mut expected = extract_annotations(db.file_text(file_id).text(&db));

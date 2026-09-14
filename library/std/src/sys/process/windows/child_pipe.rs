@@ -1,6 +1,9 @@
+use crate::ffi::c_void;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::ops::Neg;
 use crate::os::windows::prelude::*;
+use crate::sync::atomic::Atomic;
+use crate::sync::atomic::Ordering::Relaxed;
 use crate::sys::handle::Handle;
 use crate::sys::{FromInner, IntoInner, api, c};
 use crate::{mem, ptr};
@@ -70,11 +73,20 @@ pub(super) fn child_pipe(ours_readable: bool, their_handle_inheritable: bool) ->
         let mut object_attributes = c::OBJECT_ATTRIBUTES::default();
         object_attributes.Length = size_of::<c::OBJECT_ATTRIBUTES>() as u32;
 
-        // Open a handle to the pipe filesystem (`\??\PIPE\`).
-        // This will be used when creating a new annon pipe.
-        let pipe_fs = {
-            let path = api::unicode_str!(r"\??\PIPE\");
-            object_attributes.ObjectName = path.as_ptr();
+        // Open a handle to the pipe filesystem (`\Device\NamedPipe\`).
+        // This will be used when creating a new anonymous pipe.
+        //
+        // We cache the handle once so we can reuse it without needing to reopen it each time.
+        // NOTE: this means the handle may appear to be leaked but that's fine because
+        // it's only one handle and the OS will clean it up when the process exits.
+        static PIPE_FS: Atomic<c::HANDLE> = Atomic::<c::HANDLE>::new(ptr::null_mut());
+        let pipe_fs = if let handle = PIPE_FS.load(Relaxed)
+            && !handle.is_null()
+        {
+            handle
+        } else {
+            let path = api::unicode_str!(r"\Device\NamedPipe\");
+            object_attributes.ObjectName = path.as_ptr().cast_mut();
             let mut pipe_fs = ptr::null_mut();
             let status = c::NtOpenFile(
                 &mut pipe_fs,
@@ -85,7 +97,13 @@ pub(super) fn child_pipe(ours_readable: bool, their_handle_inheritable: bool) ->
                 c::FILE_SYNCHRONOUS_IO_NONALERT, // synchronous access
             );
             if c::nt_success(status) {
-                Handle::from_raw_handle(pipe_fs)
+                match PIPE_FS.compare_exchange(ptr::null_mut(), pipe_fs, Relaxed, Relaxed) {
+                    Ok(_) => pipe_fs,
+                    Err(existing) => {
+                        c::CloseHandle(pipe_fs);
+                        existing
+                    }
+                }
             } else {
                 return Err(io::Error::from_raw_os_error(c::RtlNtStatusToDosError(status) as i32));
             }
@@ -98,13 +116,13 @@ pub(super) fn child_pipe(ours_readable: bool, their_handle_inheritable: bool) ->
         // There's no difference to the OS itself but it's possible that third party
         // DLLs which hook in to processes could be relying on the exact form of this string.
         let empty = c::UNICODE_STRING::default();
-        object_attributes.ObjectName = &raw const empty;
+        object_attributes.ObjectName = (&raw const empty).cast_mut();
 
         // Create our side of the pipe for async access.
         let ours = {
             // Use the pipe filesystem as the root directory.
             // With no name provided, an anonymous pipe will be created.
-            object_attributes.RootDirectory = pipe_fs.as_raw_handle();
+            object_attributes.RootDirectory = pipe_fs;
 
             // A negative timeout value is a relative time (rather than an absolute time).
             // The time is given in 100's of nanoseconds so this is 50 milliseconds.
@@ -226,7 +244,7 @@ impl ChildPipe {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let result = unsafe {
             let len = crate::cmp::min(buf.len(), u32::MAX as usize) as u32;
-            let ptr = buf.as_mut_ptr();
+            let ptr = buf.as_mut_ptr().cast::<c_void>();
             self.alertable_io_internal(|overlapped, callback| {
                 c::ReadFileEx(self.inner.as_raw_handle(), ptr, len, overlapped, callback)
             })
@@ -242,10 +260,10 @@ impl ChildPipe {
         }
     }
 
-    pub fn read_buf(&self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         let result = unsafe {
             let len = crate::cmp::min(buf.capacity(), u32::MAX as usize) as u32;
-            let ptr = buf.as_mut().as_mut_ptr().cast::<u8>();
+            let ptr = buf.as_mut().as_mut_ptr().cast::<c_void>();
             self.alertable_io_internal(|overlapped, callback| {
                 c::ReadFileEx(self.inner.as_raw_handle(), ptr, len, overlapped, callback)
             })
@@ -260,7 +278,7 @@ impl ChildPipe {
             Err(e) => Err(e),
             Ok(n) => {
                 unsafe {
-                    buf.advance_unchecked(n);
+                    buf.advance(n);
                 }
                 Ok(())
             }
@@ -284,7 +302,13 @@ impl ChildPipe {
         unsafe {
             let len = crate::cmp::min(buf.len(), u32::MAX as usize) as u32;
             self.alertable_io_internal(|overlapped, callback| {
-                c::WriteFileEx(self.inner.as_raw_handle(), buf.as_ptr(), len, overlapped, callback)
+                c::WriteFileEx(
+                    self.inner.as_raw_handle(),
+                    buf.as_ptr().cast::<c_void>(),
+                    len,
+                    overlapped,
+                    callback,
+                )
             })
         }
     }

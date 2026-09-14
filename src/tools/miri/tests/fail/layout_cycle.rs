@@ -1,9 +1,7 @@
-//@error-in-other-file: a cycle occurred during layout computation
-//~^ ERROR: cycle detected when computing layout of
-
 use std::mem;
 
 pub struct S<T: Tr> {
+    //~^ ERROR: cycle detected when computing layout of
     pub f: <T as Tr>::I,
 }
 

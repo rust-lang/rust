@@ -1,0 +1,64 @@
+error[E0454]: link name must not be empty
+  --> $DIR/invalid-link-name.rs:3:15
+   |
+LL | #[link(name = "")]
+   |               ^^ empty link name
+
+error[E0454]: link name must not be empty
+  --> $DIR/invalid-link-name.rs:6:19
+   |
+LL |     #[link_name = ""]
+   |                   ^^ empty link name
+
+error[E0648]: link name may not contain null characters
+  --> $DIR/invalid-link-name.rs:22:15
+   |
+LL | #[link(name = "\0")]
+   |               ^^^^
+
+error[E0648]: link name may not contain null characters
+  --> $DIR/invalid-link-name.rs:26:15
+   |
+LL | #[link(name = "foo\0")]
+   |               ^^^^^^^
+
+error[E0648]: link name may not contain null characters
+  --> $DIR/invalid-link-name.rs:30:15
+   |
+LL | #[link(name = "\0foo")]
+   |               ^^^^^^^
+
+error[E0648]: link name may not contain null characters
+  --> $DIR/invalid-link-name.rs:34:15
+   |
+LL | #[link(name = "fo\0o")]
+   |               ^^^^^^^
+
+error[E0648]: link name may not contain null characters
+  --> $DIR/invalid-link-name.rs:39:19
+   |
+LL |     #[link_name = "\0"]
+   |                   ^^^^
+
+error[E0648]: link name may not contain null characters
+  --> $DIR/invalid-link-name.rs:43:19
+   |
+LL |     #[link_name = "foo\0"]
+   |                   ^^^^^^^
+
+error[E0648]: link name may not contain null characters
+  --> $DIR/invalid-link-name.rs:47:19
+   |
+LL |     #[link_name = "\0foo"]
+   |                   ^^^^^^^
+
+error[E0648]: link name may not contain null characters
+  --> $DIR/invalid-link-name.rs:51:19
+   |
+LL |     #[link_name = "fo\0o"]
+   |                   ^^^^^^^
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0454, E0648.
+For more information about an error, try `rustc --explain E0454`.

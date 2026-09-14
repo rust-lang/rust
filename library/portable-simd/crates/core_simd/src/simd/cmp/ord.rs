@@ -144,7 +144,7 @@ macro_rules! impl_float {
     }
 }
 
-impl_float! { f32, f64 }
+impl_float! { f16, f32, f64 }
 
 macro_rules! impl_mask {
     { $($integer:ty),* } => {

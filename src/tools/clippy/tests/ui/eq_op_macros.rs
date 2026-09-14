@@ -1,5 +1,5 @@
 #![warn(clippy::eq_op)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 
 // lint also in macro definition
 macro_rules! assert_in_macro_def {

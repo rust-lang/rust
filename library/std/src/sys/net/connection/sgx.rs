@@ -169,7 +169,7 @@ impl TcpStream {
         self.inner.inner.read(buf)
     }
 
-    pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.inner.inner.read_buf(buf)
     }
 
@@ -217,6 +217,14 @@ impl TcpStream {
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
         sgx_ineffective(None)
+    }
+
+    pub fn set_keepalive(&self, _: bool) -> io::Result<()> {
+        sgx_ineffective(())
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
+        sgx_ineffective(false)
     }
 
     pub fn set_nodelay(&self, _: bool) -> io::Result<()> {
@@ -506,9 +514,23 @@ impl Iterator for LookupHost {
     }
 }
 
+pub(crate) fn lookup_host_string(addr: impl Into<String>) -> io::Result<LookupHost> {
+    Err(io::Error::new(io::ErrorKind::Uncategorized, NonIpSockAddr { host: addr.into() }))
+}
+
 pub fn lookup_host(host: &str, port: u16) -> io::Result<LookupHost> {
-    Err(io::Error::new(
-        io::ErrorKind::Uncategorized,
-        NonIpSockAddr { host: format!("{host}:{port}") },
-    ))
+    lookup_host_string(format!("{host}:{port}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unparseable_sockaddr() {
+        let addr = "local";
+        let error = addr.to_socket_addrs().unwrap_err();
+        let non_ip_addr = error.downcast::<NonIpSockAddr>().unwrap();
+        assert_eq!(addr, non_ip_addr.host);
+    }
 }

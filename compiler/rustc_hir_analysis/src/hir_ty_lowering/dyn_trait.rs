@@ -2,12 +2,13 @@ use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, StashKey,
-    Suggestions, struct_span_code_err,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, StashKey, Suggestions,
+    struct_span_code_err,
 };
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, LangItem};
+use rustc_hir::{self as hir, HirId};
 use rustc_lint_defs::builtin::{BARE_TRAIT_OBJECTS, UNUSED_ASSOCIATED_TYPE_BOUNDS};
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{
@@ -23,7 +24,7 @@ use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use super::HirTyLowerer;
-use crate::errors::DynTraitAssocItemBindingMentionsSelf;
+use crate::diagnostics::DynTraitAssocItemBindingMentionsSelf;
 use crate::hir_ty_lowering::{
     GenericArgCountMismatch, ImpliedBoundsContext, OverlappingAsssocItemConstraints,
     PredicateFilter, RegionInferReason,
@@ -36,7 +37,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_bounds: &[hir::PolyTraitRef<'tcx>],
+        hir_bounds: &[hir::PolyTraitRef<'_>],
         lifetime: &hir::Lifetime,
         syntax: TraitObjectSyntax,
     ) -> Ty<'tcx> {
@@ -206,7 +207,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         if let Some((principal_trait, ref spans)) = principal_trait {
             let principal_trait = principal_trait.map_bound(|trait_pred| {
-                assert_eq!(trait_pred.polarity, ty::PredicatePolarity::Positive);
+                assert_eq!(trait_pred.polarity, ty::ClausePolarity::Positive);
                 trait_pred.trait_ref
             });
 
@@ -231,9 +232,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         ordered_associated_items.extend(
                             tcx.associated_items(pred.trait_ref.def_id)
                                 .in_definition_order()
-                                // Only associated types & type consts can possibly be
-                                // constrained in a trait object type via a binding.
-                                .filter(|item| item.is_type() || item.is_type_const())
+                                .filter(|item| item.can_have_equality_constraint(tcx))
                                 // Traits with RPITITs are simply not dyn compatible (for now).
                                 .filter(|item| !item.is_impl_trait_in_trait())
                                 .map(|item| (item.def_id, trait_ref)),
@@ -297,7 +296,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     UNUSED_ASSOCIATED_TYPE_BOUNDS,
                     hir_id,
                     span,
-                    crate::errors::UnusedAssociatedTypeBounds { span },
+                    crate::diagnostics::UnusedAssociatedTypeBounds { span },
                 );
             }
         }
@@ -351,7 +350,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let principal_trait_ref = principal_trait.map(|(trait_pred, spans)| {
             trait_pred.map_bound(|trait_pred| {
                 let trait_ref = trait_pred.trait_ref;
-                assert_eq!(trait_pred.polarity, ty::PredicatePolarity::Positive);
+                assert_eq!(trait_pred.polarity, ty::ClausePolarity::Positive);
                 assert_eq!(trait_ref.self_ty(), dummy_self);
 
                 let span = *spans.first().unwrap();
@@ -402,12 +401,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 // Like for trait refs, verify that `dummy_self` did not leak inside default type
                 // parameters.
-                let references_self = b.projection_term.args.iter().skip(1).any(|arg| {
-                    if arg.walk().any(|arg| arg == dummy_self.into()) {
-                        return true;
-                    }
-                    false
-                });
+                let references_self = b
+                    .projection_term
+                    .args
+                    .iter()
+                    .skip(1)
+                    .any(|arg| arg.walk().any(|arg| arg == dummy_self.into()));
                 if references_self {
                     let guar = tcx
                         .dcx()
@@ -424,7 +423,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut auto_trait_predicates: Vec<_> = auto_traits
             .into_iter()
             .map(|(trait_pred, _)| {
-                assert_eq!(trait_pred.polarity(), ty::PredicatePolarity::Positive);
+                assert_eq!(trait_pred.polarity(), ty::ClausePolarity::Positive);
                 assert_eq!(trait_pred.self_ty().skip_binder(), dummy_self);
 
                 ty::Binder::dummy(ty::ExistentialPredicate::AutoTrait(trait_pred.def_id()))
@@ -434,36 +433,41 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // N.b. principal, projections, auto traits
         // FIXME: This is actually wrong with multiple principals in regards to symbol mangling
-        let mut v = principal_trait_ref
+        let mut predicates = principal_trait_ref
             .into_iter()
             .chain(existential_projections)
             .chain(auto_trait_predicates)
             .collect::<SmallVec<[_; 8]>>();
-        v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
-        let existential_predicates = tcx.mk_poly_existential_predicates(&v);
+        predicates.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
+        let predicates = tcx.mk_poly_existential_predicates(&predicates);
 
-        // Use explicitly-specified region bound, unless the bound is missing.
-        let region_bound = if !lifetime.is_elided() {
-            self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
+        let region_bound = self.lower_trait_object_lifetime(lifetime, predicates, span);
+
+        Ty::new_dynamic(tcx, predicates, region_bound)
+    }
+
+    fn lower_trait_object_lifetime(
+        &self,
+        lifetime: &hir::Lifetime,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        span: Span,
+    ) -> ty::Region<'tcx> {
+        // Curiously, we also use the *object region bound* for `Infer` (`'_`)
+        // while we obviously don't use the *object lifetime default* for it...
+        if let hir::LifetimeKind::ImplicitObjectLifetimeDefault | hir::LifetimeKind::Infer =
+            lifetime.kind
+            && let Some(region) = self.compute_object_lifetime_bound(span, predicates)
+        {
+            return region;
+        }
+
+        let reason = if let hir::LifetimeKind::ImplicitObjectLifetimeDefault = lifetime.kind {
+            RegionInferReason::ObjectLifetimeDefault(span.shrink_to_hi())
         } else {
-            self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                // Curiously, we prefer object lifetime default for `+ '_`...
-                if tcx.named_bound_var(lifetime.hir_id).is_some() {
-                    self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
-                } else {
-                    let reason =
-                        if let hir::LifetimeKind::ImplicitObjectLifetimeDefault = lifetime.kind {
-                            RegionInferReason::ObjectLifetimeDefault(span.shrink_to_hi())
-                        } else {
-                            RegionInferReason::ExplicitObjectLifetime
-                        };
-                    self.re_infer(span, reason)
-                }
-            })
+            RegionInferReason::ExplicitObjectLifetime
         };
-        debug!(?region_bound);
 
-        Ty::new_dynamic(tcx, existential_predicates, region_bound)
+        self.lower_lifetime(lifetime, reason)
     }
 
     /// Check that elaborating the principal of a trait ref doesn't lead to projections
@@ -472,7 +476,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// `elaborated-predicates-unconstrained-late-bound.rs` for a test.
     fn check_elaborated_projection_mentions_input_lifetimes(
         &self,
-        pred: ty::PolyProjectionPredicate<'tcx>,
+        pred: ty::PolyProjectionClause<'tcx>,
         span: Span,
         supertrait_span: Span,
     ) {
@@ -515,6 +519,48 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         );
     }
 
+    /// Given the bounds on an object, determines what single region bound (if any) we can
+    /// use to summarize this type.
+    ///
+    /// The basic idea is that we will use the bound the user
+    /// provided, if they provided one, and otherwise search the supertypes of trait bounds
+    /// for region bounds. It may be that we can derive no bound at all, in which case
+    /// we return `None`.
+    #[instrument(level = "debug", skip(self, span), ret)]
+    fn compute_object_lifetime_bound(
+        &self,
+        span: Span,
+        existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+    ) -> Option<ty::Region<'tcx>> // if None, use the default
+    {
+        let tcx = self.tcx();
+
+        // No explicit region bound specified. Therefore, examine trait
+        // bounds and see if we can derive region bounds from those.
+        let derived_region_bounds = traits::wf::object_region_bounds(tcx, existential_predicates);
+
+        // If there are no derived region bounds, then report back that we
+        // can find no region bound. The caller will use the default.
+        if derived_region_bounds.is_empty() {
+            return None;
+        }
+
+        // If any of the derived region bounds are 'static, that is always
+        // the best choice.
+        if derived_region_bounds.iter().any(|r| r.is_static()) {
+            return Some(tcx.lifetimes.re_static);
+        }
+
+        // Determine whether there is exactly one unique region in the set
+        // of derived region bounds. If so, use that. Otherwise, report an
+        // error.
+        let r = derived_region_bounds[0];
+        if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
+            self.dcx().emit_err(crate::diagnostics::AmbiguousLifetimeBound { span });
+        }
+        Some(r)
+    }
+
     /// Prohibit or lint against *bare* trait object types depending on the edition.
     ///
     /// *Bare* trait object types are ones that aren't preceded by the keyword `dyn`.
@@ -523,7 +569,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_bounds: &[hir::PolyTraitRef<'tcx>],
+        hir_bounds: &[hir::PolyTraitRef<'_>],
     ) -> Option<ErrorGuaranteed> {
         struct TraitObjectWithoutDyn<'a, 'tcx> {
             span: Span,
@@ -552,19 +598,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
         let [poly_trait_ref, ..] = hir_bounds else { return None };
 
-        let in_path = match tcx.parent_hir_node(hir_id) {
-            hir::Node::Ty(hir::Ty {
-                kind: hir::TyKind::Path(hir::QPath::TypeRelative(qself, _)),
-                ..
-            })
-            | hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Path(hir::QPath::TypeRelative(qself, _)),
-                ..
-            })
-            | hir::Node::PatExpr(hir::PatExpr {
-                kind: hir::PatExprKind::Path(hir::QPath::TypeRelative(qself, _)),
-                ..
-            }) if qself.hir_id == hir_id => true,
+        let in_path = match tcx.parent_hir_node(hir_id).path() {
+            Some(hir::QPath::TypeRelative(qself, _)) if qself.hir_id == hir_id => true,
             _ => false,
         };
         let needs_bracket = in_path
@@ -704,7 +739,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Make sure that we are in the condition to suggest the blanket implementation.
-    fn maybe_suggest_blanket_trait_impl<G: EmissionGuarantee>(
+    fn maybe_suggest_blanket_trait_impl<G>(
         &self,
         span: Span,
         hir_id: hir::HirId,
@@ -836,7 +871,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_bounds: &[hir::PolyTraitRef<'tcx>],
+        hir_bounds: &[hir::PolyTraitRef<'_>],
         diag: &mut Diag<'_>,
     ) -> bool {
         let tcx = self.tcx();

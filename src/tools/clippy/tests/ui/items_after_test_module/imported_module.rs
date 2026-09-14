@@ -1,6 +1,5 @@
 //@ check-pass
 //@compile-flags: --test
-#![allow(unused)]
 #![warn(clippy::items_after_test_module)]
 
 // Nothing here should lint, as `tests` is an imported module (that has no body).

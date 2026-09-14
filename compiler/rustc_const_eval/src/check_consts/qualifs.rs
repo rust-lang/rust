@@ -6,10 +6,10 @@
 // having basically only two use-cases that act in different ways.
 
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, AdtDef, Ty};
+use rustc_middle::ty::{self, AdtDef, Ty, TypingMode};
 use rustc_middle::{bug, mir};
 use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
 use tracing::instrument;
@@ -45,10 +45,10 @@ pub trait Qualif {
     const ANALYSIS_NAME: &'static str;
 
     /// Whether this `Qualif` is cleared when a local is moved from.
-    const IS_CLEARED_ON_MOVE: bool = false;
+    const IS_CLEARED_ON_MOVE: bool;
 
     /// Whether this `Qualif` might be evaluated after the promotion and can encounter a promoted.
-    const ALLOW_PROMOTED: bool = false;
+    const ALLOW_PROMOTED: bool;
 
     /// Extracts the field of `ConstQualifs` that corresponds to this `Qualif`.
     fn in_qualifs(qualifs: &ConstQualifs) -> bool;
@@ -79,6 +79,8 @@ pub struct HasMutInterior;
 
 impl Qualif for HasMutInterior {
     const ANALYSIS_NAME: &'static str = "flow_has_mut_interior";
+    const IS_CLEARED_ON_MOVE: bool = false;
+    const ALLOW_PROMOTED: bool = false;
 
     fn in_qualifs(qualifs: &ConstQualifs) -> bool {
         qualifs.has_mut_interior
@@ -100,16 +102,14 @@ impl Qualif for HasMutInterior {
         // Instead we invoke an obligation context manually, and provide the opaque type inference settings
         // that allow the trait solver to just error out instead of cycling.
         let freeze_def_id = cx.tcx.require_lang_item(LangItem::Freeze, cx.body.span);
-        // FIXME(#132279): Once we've got a typing mode which reveals opaque types using the HIR
-        // typeck results without causing query cycles, we should use this here instead of defining
-        // opaque types.
-        let typing_env = ty::TypingEnv {
-            typing_mode: ty::TypingMode::analysis_in_body(
-                cx.tcx,
-                cx.body.source.def_id().expect_local(),
-            ),
-            param_env: cx.typing_env.param_env,
+        let did = cx.body.source.def_id().expect_local();
+
+        let typing_env = if cx.tcx.use_typing_mode_post_typeck_until_borrowck() {
+            cx.typing_env
+        } else {
+            ty::TypingEnv::new(cx.typing_env.param_env, TypingMode::analysis_in_body(cx.tcx, did))
         };
+
         let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(typing_env);
         let ocx = ObligationCtxt::new(&infcx);
         let obligation = Obligation::new(
@@ -120,7 +120,7 @@ impl Qualif for HasMutInterior {
         );
         ocx.register_obligation(obligation);
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        !errors.is_empty()
+        !errors.no_errors()
     }
 
     fn is_structural_in_adt_value<'tcx>(_cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
@@ -197,7 +197,7 @@ impl Qualif for NeedsNonConstDrop {
                     },
                 ),
         ));
-        !ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+        !ocx.evaluate_obligations_error_on_ambiguity().no_errors()
     }
 
     fn is_structural_in_adt_value<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
@@ -234,12 +234,12 @@ where
 
         Rvalue::CopyForDeref(place) => in_place::<Q, _>(cx, in_local, place.as_ref()),
 
-        Rvalue::Use(operand)
+        Rvalue::Use(operand, _)
         | Rvalue::Repeat(operand, _)
         | Rvalue::UnaryOp(_, operand)
         | Rvalue::Cast(_, operand, _) => in_operand::<Q, _>(cx, in_local, operand),
 
-        Rvalue::BinaryOp(_, box (lhs, rhs)) => {
+        Rvalue::BinaryOp(_, (lhs, rhs)) => {
             in_operand::<Q, _>(cx, in_local, lhs) || in_operand::<Q, _>(cx, in_local, rhs)
         }
 
@@ -254,6 +254,8 @@ where
 
             in_place::<Q, _>(cx, in_local, place.as_ref())
         }
+
+        Rvalue::Reborrow(_, _, place) => in_place::<Q, _>(cx, in_local, place.as_ref()),
 
         Rvalue::WrapUnsafeBinder(op, _) => in_operand::<Q, _>(cx, in_local, op),
 
@@ -290,6 +292,7 @@ where
             ProjectionElem::Index(index) if in_local(index) => return true,
 
             ProjectionElem::Deref
+            | ProjectionElem::PhantomDeref
             | ProjectionElem::Field(_, _)
             | ProjectionElem::OpaqueCast(_)
             | ProjectionElem::ConstantIndex { .. }
@@ -344,13 +347,13 @@ where
     let uneval = match constant.const_ {
         Const::Ty(_, ct) => match ct.kind() {
             ty::ConstKind::Param(_) | ty::ConstKind::Error(_) => None,
-            // Unevaluated consts in MIR bodies don't have associated MIR (e.g. `type const`).
-            ty::ConstKind::Unevaluated(_) => None,
+            // Alias consts in MIR bodies don't have associated MIR (e.g. `type const`).
+            ty::ConstKind::Alias(_, _) => None,
             // FIXME(mgca): Investigate whether using `None` for `ConstKind::Value` is overly
             // strict, and if instead we should be doing some kind of value-based analysis.
             ty::ConstKind::Value(_) => None,
             _ => bug!(
-                "expected ConstKind::Param, ConstKind::Value, ConstKind::Unevaluated, or ConstKind::Error here, found {:?}",
+                "expected ConstKind::Param, ConstKind::Value, ConstKind::Alias, or ConstKind::Error here, found {:?}",
                 ct
             ),
         },

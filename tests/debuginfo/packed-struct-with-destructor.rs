@@ -37,33 +37,33 @@
 //@ lldb-command:run
 
 //@ lldb-command:v packed
-//@ lldb-check:[...] { x = 123 y = 234 z = 345 }
+//@ lldb-check:[...] {x:123, y:234, z:345}
 
 //@ lldb-command:v packedInPacked
-//@ lldb-check:[...] { a = 1111 b = { x = 2222 y = 3333 z = 4444 } c = 5555 d = { x = 6666 y = 7777 z = 8888 } }
+//@ lldb-check:[...] {a:1111, b:{x:2222, y:3333, z:4444}, c:5555, d:{x:6666, y:7777, z:8888}}
 
 //@ lldb-command:v packedInUnpacked
-//@ lldb-check:[...] { a = -1111 b = { x = -2222 y = -3333 z = -4444 } c = -5555 d = { x = -6666 y = -7777 z = -8888 } }
+//@ lldb-check:[...] {a:-1111, b:{x:-2222, y:-3333, z:-4444}, c:-5555, d:{x:-6666, y:-7777, z:-8888}}
 
 //@ lldb-command:v unpackedInPacked
-//@ lldb-check:[...] { a = 987 b = { x = 876 y = 765 z = 654 } c = { x = 543 y = 432 z = 321 } d = 210 }
+//@ lldb-check:[...] {a:987, b:{x:876, y:765, z:654}, c:{x:543, y:432, z:321}, d:210}
 
 //@ lldb-command:v packedInPackedWithDrop
-//@ lldb-check:[...] { a = 11 b = { x = 22 y = 33 z = 44 } c = 55 d = { x = 66 y = 77 z = 88 } }
+//@ lldb-check:[...] {a:11, b:{x:22, y:33, z:44}, c:55, d:{x:66, y:77, z:88}}
 
 //@ lldb-command:v packedInUnpackedWithDrop
-//@ lldb-check:[...] { a = -11 b = { x = -22 y = -33 z = -44 } c = -55 d = { x = -66 y = -77 z = -88 } }
+//@ lldb-check:[...] {a:-11, b:{x:-22, y:-33, z:-44}, c:-55, d:{x:-66, y:-77, z:-88}}
 
 //@ lldb-command:v unpackedInPackedWithDrop
-//@ lldb-check:[...] { a = 98 b = { x = 87 y = 76 z = 65 } c = { x = 54 y = 43 z = 32 } d = 21 }
+//@ lldb-check:[...] {a:98, b:{x:87, y:76, z:65}, c:{x:54, y:43, z:32}, d:21}
 
 //@ lldb-command:v deeplyNested
-//@ lldb-check:[...] { a = { a = 1 b = { x = 2 y = 3 z = 4 } c = 5 d = { x = 6 y = 7 z = 8 } } b = { a = 9 b = { x = 10 y = 11 z = 12 } c = { x = 13 y = 14 z = 15 } d = 16 } c = { a = 17 b = { x = 18 y = 19 z = 20 } c = 21 d = { x = 22 y = 23 z = 24 } } d = { a = 25 b = { x = 26 y = 27 z = 28 } c = 29 d = { x = 30 y = 31 z = 32 } } e = { a = 33 b = { x = 34 y = 35 z = 36 } c = { x = 37 y = 38 z = 39 } d = 40 } f = { a = 41 b = { x = 42 y = 43 z = 44 } c = 45 d = { x = 46 y = 47 z = 48 } } }
+//@ lldb-check:[...] {a:{a:1, b:{x:2, y:3, z:4}, c:5, d:{x:6, y:7, z:8}}, b:{a:9, b:{x:10, y:11, z:12}, c:{x:13, y:14, z:15}, d:16}, c:{a:17, b:{x:18, y:19, z:20}, c:21, d:{x:22, y:23, z:24}}, d:{a:25, b:{x:26, y:27, z:28}, c:29, d:{x:30, y:31, z:32}}, e:{a:33, b:{x:34, y:35, z:36}, c:{x:37, y:38, z:39}, d:40}, f:{a:41, b:{x:42, y:43, z:44}, c:45, d:{x:46, y:47, z:48}}}
 
 
 #![allow(unused_variables)]
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct Packed {
     x: i16,
     y: i32,
@@ -74,7 +74,7 @@ impl Drop for Packed {
     fn drop(&mut self) {}
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct PackedInPacked {
     a: i32,
     b: Packed,
@@ -82,6 +82,7 @@ struct PackedInPacked {
     d: Packed
 }
 
+#[repr(C)]
 struct PackedInUnpacked {
     a: i32,
     b: Packed,
@@ -89,6 +90,7 @@ struct PackedInUnpacked {
     d: Packed
 }
 
+#[repr(C)]
 struct Unpacked {
     x: i64,
     y: i32,
@@ -99,7 +101,7 @@ impl Drop for Unpacked {
     fn drop(&mut self) {}
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct UnpackedInPacked {
     a: i16,
     b: Unpacked,
@@ -107,7 +109,7 @@ struct UnpackedInPacked {
     d: i64
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct PackedInPackedWithDrop {
     a: i32,
     b: Packed,
@@ -119,6 +121,7 @@ impl Drop for PackedInPackedWithDrop {
     fn drop(&mut self) {}
 }
 
+#[repr(C)]
 struct PackedInUnpackedWithDrop {
     a: i32,
     b: Packed,
@@ -130,7 +133,7 @@ impl Drop for PackedInUnpackedWithDrop {
     fn drop(&mut self) {}
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct UnpackedInPackedWithDrop {
     a: i16,
     b: Unpacked,
@@ -142,6 +145,7 @@ impl Drop for UnpackedInPackedWithDrop {
     fn drop(&mut self) {}
 }
 
+#[repr(C)]
 struct DeeplyNested {
     a: PackedInPacked,
     b: UnpackedInPackedWithDrop,

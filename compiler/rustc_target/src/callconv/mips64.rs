@@ -1,8 +1,9 @@
+use arrayvec::ArrayVec;
 use rustc_abi::{
     BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, TyAbiInterface,
 };
 
-use crate::callconv::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
+use crate::callconv::{ArgAbi, ArgAttribute, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
 
 fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
     // Always sign extend u32 values on 64-bit mips
@@ -26,8 +27,15 @@ where
 {
     match ret.layout.field(cx, i).backend_repr {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
-            Primitive::Float(Float::F32) => Some(Reg::f32()),
-            Primitive::Float(Float::F64) => Some(Reg::f64()),
+            Primitive::Float(float) => {
+                match float {
+                    // C does not have the f16 type
+                    Float::F16 => None,
+                    Float::F32 => Some(Reg::f32()),
+                    Float::F64 => Some(Reg::f64()),
+                    Float::F128 => Some(Reg::f128()),
+                }
+            }
             _ => None,
         },
         _ => None,
@@ -54,14 +62,17 @@ where
         if let FieldsShape::Arbitrary { .. } = ret.layout.fields {
             if ret.layout.fields.count() == 1 {
                 if let Some(reg) = float_reg(cx, ret, 0) {
-                    ret.cast_to(reg);
+                    // The inreg attribute forces LLVM to return a struct containing a f128 in
+                    // $f0 and $f1 rather than $f0 and $f2, see:
+                    // https://github.com/llvm/llvm-project/blob/a81db64570f94c2ca8ac0f598c0b5bba1a7ae59e/llvm/lib/Target/Mips/MipsCallingConv.td#L48-L51
+                    ret.cast_to_with_attrs(reg, ArgAttribute::InReg.into());
                     return;
                 }
             } else if ret.layout.fields.count() == 2
                 && let Some(reg0) = float_reg(cx, ret, 0)
                 && let Some(reg1) = float_reg(cx, ret, 1)
             {
-                ret.cast_to(CastTarget::pair(reg0, reg1));
+                ret.cast_to_with_attrs(CastTarget::pair(reg0, reg1), ArgAttribute::InReg.into());
                 return;
             }
         }
@@ -81,12 +92,11 @@ where
 {
     let dl = cx.data_layout();
     let size = arg.layout.size;
-    let mut prefix = [None; 8];
-    let mut prefix_index = 0;
+    let mut prefix = ArrayVec::new();
 
     // Detect need for padding
     let align = Ord::clamp(arg.layout.align.abi, dl.i64_align, dl.i128_align);
-    let pad_i32 = !offset.is_aligned(align);
+    let pad_i32 = u8::from(!offset.is_aligned(align));
 
     if !arg.layout.is_aggregate() {
         extend_integer_width_mips(arg, 64);
@@ -107,7 +117,7 @@ where
                 // doubles not part of another aggregate are passed as floats.
                 let mut last_offset = Size::ZERO;
 
-                for i in 0..arg.layout.fields.count() {
+                'outer: for i in 0..arg.layout.fields.count() {
                     let field = arg.layout.field(cx, i);
                     let offset = arg.layout.fields.offset(i);
 
@@ -117,19 +127,15 @@ where
                             if offset.is_aligned(dl.f64_align) {
                                 // Insert enough integers to cover [last_offset, offset)
                                 assert!(last_offset.is_aligned(dl.f64_align));
-                                for _ in 0..((offset - last_offset).bits() / 64)
-                                    .min((prefix.len() - prefix_index) as u64)
-                                {
-                                    prefix[prefix_index] = Some(Reg::i64());
-                                    prefix_index += 1;
+                                for _ in 0..((offset - last_offset).bits() / 64) {
+                                    if prefix.try_push(Reg::i64()).is_err() {
+                                        break 'outer;
+                                    }
                                 }
 
-                                if prefix_index == prefix.len() {
+                                if prefix.try_push(Reg::f64()).is_err() {
                                     break;
                                 }
-
-                                prefix[prefix_index] = Some(Reg::f64());
-                                prefix_index += 1;
                                 last_offset = offset + Reg::f64().size;
                             }
                         }
@@ -139,7 +145,7 @@ where
         };
 
         // Extract first 8 chunks as the prefix
-        let rest_size = size - Size::from_bytes(8) * prefix_index as u64;
+        let rest_size = size - Size::from_bytes(8) * prefix.len() as u64;
         arg.cast_to_and_pad_i32(
             CastTarget::prefixed(prefix, Uniform::new(Reg::i64(), rest_size)),
             pad_i32,

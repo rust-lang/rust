@@ -6,11 +6,12 @@ use clippy_utils::{
 };
 use rustc_ast::MetaItemInner;
 use rustc_errors::Applicability;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, Expr, ExprKind, HirId, LangItem, MatchSource, StmtKind};
-use rustc_lint::{LateContext, Level, LintContext};
+use rustc_hir::{Body, Expr, ExprKind, HirId, MatchSource, StmtKind};
+use rustc_lint::{LateContext, Level, LintContext as _};
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos as _, Span};
 use std::borrow::Cow;
 use std::fmt::Display;
 
@@ -181,7 +182,7 @@ fn check_final_expr<'tcx>(
             match cx.tcx.hir_attrs(expr.hir_id) {
                 [] => {},
                 [attr] => {
-                    if matches!(Level::from_attr(attr), Some((Level::Expect, _)))
+                    if matches!(Level::from_opt_symbol(attr.name()), Some(Level::Expect))
                         && let metas = attr.meta_item_list()
                         && let Some(lst) = metas
                         && let [MetaItemInner::MetaItem(meta_item), ..] = lst.as_slice()
@@ -259,7 +260,7 @@ fn emit_return_lint(
 // Go backwards while encountering whitespace and extend the given Span to that point.
 fn extend_span_to_previous_non_ws(cx: &LateContext<'_>, sp: Span) -> Span {
     if let Ok(prev_source) = cx.sess().source_map().span_to_prev_source(sp) {
-        let ws = [b' ', b'\t', b'\n'];
+        let ws = *b" \t\n";
         if let Some(non_ws_pos) = prev_source.bytes().rposition(|c| !ws.contains(&c)) {
             let len = prev_source.len() - non_ws_pos - 1;
             return sp.with_lo(sp.lo() - BytePos::from_usize(len));

@@ -1,4 +1,4 @@
-//@ignore-target: windows # Windows uses a different unwinding mechanism
+//@ignore-target: windows-msvc # MSVC uses a different unwinding mechanism
 #![feature(core_intrinsics, panic_unwind, rustc_attrs)]
 #![allow(internal_features)]
 
@@ -27,7 +27,7 @@ fn panic(data: Box<dyn Any + Send>) -> u32 {
         _uwe: uw::_Unwind_Exception {
             exception_class: miri_exception_class(),
             exception_cleanup: Some(exception_cleanup),
-            private: [core::ptr::null(); uw::unwinder_private_data_size],
+            private: [core::ptr::null(); _],
         },
         cause: data,
     });
@@ -64,10 +64,10 @@ fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
 
     let data_ptr = ptr::addr_of_mut!(data) as *mut u8;
     unsafe {
-        return if std::intrinsics::catch_unwind(do_call::<F, R>, data_ptr, do_catch::<F, R>) == 0 {
-            Ok(data.r.take().unwrap())
-        } else {
+        return if std::intrinsics::catch_unwind(do_call::<F, R>, data_ptr, do_catch::<F, R>) {
             Err(data.p.take().unwrap())
+        } else {
+            Ok(data.r.take().unwrap())
         };
     }
 

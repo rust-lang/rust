@@ -1,11 +1,9 @@
-// skip-filecheck
+//@ skip-filecheck
 
 //@ edition: 2021
 // In ed 2021 and below, we fallback `!` to `()`.
 // This would introduce a `! -> ()` coercion which would
 // be UB if we didn't disallow this explicitly.
-
-#![feature(never_type)]
 
 // EMIT_MIR uninhabited_not_read.main.SimplifyLocals-final.after.mir
 fn main() {

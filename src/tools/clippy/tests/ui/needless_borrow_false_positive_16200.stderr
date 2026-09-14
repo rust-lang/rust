@@ -1,0 +1,29 @@
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow_false_positive_16200.rs:31:5
+   |
+LL |     (&&Test).run();
+   |     ^^^^^^^^ help: change this to: `(&Test)`
+   |
+   = note: `-D clippy::needless-borrow` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow_false_positive_16200.rs:34:5
+   |
+LL |     (&&Test2).run();
+   |     ^^^^^^^^^ help: change this to: `(&Test2)`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> tests/ui/needless_borrow_false_positive_16200.rs:36:5
+   |
+LL |     (&Test3).run();
+   |     ^^^^^^^^ help: change this to: `Test3`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow_false_positive_16200.rs:37:5
+   |
+LL |     (&&Test3).run();
+   |     ^^^^^^^^^ help: change this to: `Test3`
+
+error: aborting due to 4 previous errors
+

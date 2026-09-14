@@ -1,6 +1,7 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
+//@ compile-flags: -Zinternal-testing-features
 #![feature(negative_bounds)]
 #![feature(sized_hierarchy)]
 

@@ -30,18 +30,18 @@ except ImportError:
 # These should be collaborators of the rust-lang/rust repository (with at least
 # read privileges on it). CI will fail otherwise.
 MAINTAINERS = {
-    "book": {"ehuss", "chriskrycho", "carols10cents"},
-    "nomicon": {"ehuss", "JohnTitor"},
-    "reference": {"ehuss"},
-    "rust-by-example": {"ehuss", "marioidival"},
+    "book": {"traviscross", "chriskrycho", "carols10cents"},
+    "nomicon": {"traviscross", "JohnTitor"},
+    "reference": {"traviscross"},
+    "rust-by-example": {"traviscross", "marioidival"},
     "embedded-book": {
-        "ehuss",
+        "traviscross",
         "adamgreig",
         "andre-richter",
         "jamesmunns",
         "therealprof",
     },
-    "edition-guide": {"ehuss"},
+    "edition-guide": {"traviscross"},
 }
 
 LABELS = {

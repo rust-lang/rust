@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // Test that we can read the initial value of global, heap and stack allocations in GenMC mode.
 
 #![no_main]

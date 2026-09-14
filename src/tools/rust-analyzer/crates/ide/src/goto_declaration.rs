@@ -79,13 +79,13 @@ pub(crate) fn goto_declaration(
 
 #[cfg(test)]
 mod tests {
-    use ide_db::{FileRange, MiniCore};
+    use ide_db::{FileRange, ra_fixture::RaFixtureConfig};
     use itertools::Itertools;
 
     use crate::{GotoDefinitionConfig, fixture};
 
     const TEST_CONFIG: GotoDefinitionConfig<'_> =
-        GotoDefinitionConfig { minicore: MiniCore::default() };
+        GotoDefinitionConfig { ra_fixture: RaFixtureConfig::default() };
 
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);

@@ -94,10 +94,6 @@ pub struct OsString {
     inner: Buf,
 }
 
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for OsString {}
-
 /// Borrowed reference to an OS string (see [`OsString`]).
 ///
 /// This type represents a borrowed reference to a string in the operating system's preferred
@@ -119,10 +115,6 @@ impl crate::sealed::Sealed for OsString {}
 pub struct OsStr {
     inner: Slice,
 }
-
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for OsStr {}
 
 impl OsString {
     /// Constructs a new empty `OsString`.
@@ -727,7 +719,7 @@ impl fmt::Debug for OsString {
 impl PartialEq for OsString {
     #[inline]
     fn eq(&self, other: &OsString) -> bool {
-        &**self == &**other
+        **self == **other
     }
 }
 
@@ -770,23 +762,23 @@ impl Eq for OsString {}
 impl PartialOrd for OsString {
     #[inline]
     fn partial_cmp(&self, other: &OsString) -> Option<cmp::Ordering> {
-        (&**self).partial_cmp(&**other)
+        (**self).partial_cmp(&**other)
     }
     #[inline]
     fn lt(&self, other: &OsString) -> bool {
-        &**self < &**other
+        **self < **other
     }
     #[inline]
     fn le(&self, other: &OsString) -> bool {
-        &**self <= &**other
+        **self <= **other
     }
     #[inline]
     fn gt(&self, other: &OsString) -> bool {
-        &**self > &**other
+        **self > **other
     }
     #[inline]
     fn ge(&self, other: &OsString) -> bool {
-        &**self >= &**other
+        **self >= **other
     }
 }
 
@@ -794,7 +786,7 @@ impl PartialOrd for OsString {
 impl PartialOrd<str> for OsString {
     #[inline]
     fn partial_cmp(&self, other: &str) -> Option<cmp::Ordering> {
-        (&**self).partial_cmp(other)
+        (**self).partial_cmp(other)
     }
 }
 
@@ -802,7 +794,7 @@ impl PartialOrd<str> for OsString {
 impl Ord for OsString {
     #[inline]
     fn cmp(&self, other: &OsString) -> cmp::Ordering {
-        (&**self).cmp(&**other)
+        (**self).cmp(&**other)
     }
 }
 
@@ -810,7 +802,7 @@ impl Ord for OsString {
 impl Hash for OsString {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        (&**self).hash(state)
+        (**self).hash(state)
     }
 }
 
@@ -925,7 +917,7 @@ impl OsStr {
     /// Any non-UTF-8 sequences are replaced with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
-    /// [U+FFFD]: crate::char::REPLACEMENT_CHARACTER
+    /// [U+FFFD]: char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
     ///
@@ -1053,6 +1045,61 @@ impl OsStr {
     pub fn into_os_string(self: Box<Self>) -> OsString {
         let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut Slice) };
         OsString { inner: Buf::from_box(boxed) }
+    }
+
+    /// Divides one string slice into two at an index.
+    ///
+    /// The two slices returned go from the start of the string slice to `mid`, and from `mid` to the end of the string slice.
+    ///
+    /// The argument, `mid`, should be a byte offset from the start of the string.
+    /// It must also be on a valid `OsStr` boundary.
+    /// See [`split_at_checked`][Self::split_at_checked] for the definition of a valid boundary.
+    ///
+    /// Panics
+    ///
+    /// Panics if `mid` is not on a valid boundary, or if it is past the end of the last code point of the string slice.
+    /// For a non-panicking alternative see [`split_at_checked`][Self::split_at_checked].
+    #[unstable(feature = "os_str_split_at", issue = "none")]
+    pub fn split_at(&self, mid: usize) -> (&OsStr, &OsStr) {
+        self.inner.check_public_boundary(mid);
+
+        // SAFETY: we've checked it's in bounds and a valid boundary
+        unsafe { self.split_at_unchecked(mid) }
+    }
+
+    /// Divides one string slice into two at an index.
+    ///
+    /// The two slices returned go from the start of the string slice to `mid`, and from `mid` to the end of the string slice.
+    ///
+    /// The argument, `mid`, should be a valid byte offset from the start of the string.
+    /// It must also be on a valid `OsStr` boundary.
+    /// The method returns `None` if that’s not the case.
+    /// A valid `OsStr` boundary is one of:
+    /// - The start of the string
+    /// - The end of the string
+    /// - The start of a valid non-empty UTF-8 substring
+    /// - Immediately follows a valid non-empty UTF-8 substring
+    #[unstable(feature = "os_str_split_at", issue = "none")]
+    pub fn split_at_checked(&self, mid: usize) -> Option<(&OsStr, &OsStr)> {
+        self.inner.try_check_public_boundary(mid)?;
+
+        // SAFETY: we've checked it's in bounds and a valid boundary
+        unsafe { Some(self.split_at_unchecked(mid)) }
+    }
+
+    /// Splits an `OsStr` without checking if `mid` is a valid boundary.
+    /// You should use `split_at` or `split_at_checked` instead.
+    ///
+    /// # Safety
+    ///
+    /// Any caller must ensure `mid` is within bounds and lies on
+    /// a valid `OsStr` boundary for the platform.
+    unsafe fn split_at_unchecked(&self, mid: usize) -> (&OsStr, &OsStr) {
+        // SAFETY: it's up to the caller to ensure this is safe.
+        unsafe {
+            let (first, second) = self.as_encoded_bytes().split_at_unchecked(mid);
+            (Self::from_encoded_bytes_unchecked(first), Self::from_encoded_bytes_unchecked(second))
+        }
     }
 
     /// Converts an OS string slice to a byte slice.  To convert the byte slice back into an OS
@@ -1703,7 +1750,7 @@ impl ToOwned for OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<OsStr> for OsStr {
+const impl AsRef<OsStr> for OsStr {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         self
@@ -1730,7 +1777,7 @@ impl AsRef<OsStr> for str {
 impl AsRef<OsStr> for String {
     #[inline]
     fn as_ref(&self) -> &OsStr {
-        (&**self).as_ref()
+        (**self).as_ref()
     }
 }
 
@@ -1757,10 +1804,10 @@ impl AsInner<Slice> for OsStr {
 
 #[stable(feature = "osstring_from_str", since = "1.45.0")]
 impl FromStr for OsString {
-    type Err = core::convert::Infallible;
+    type Err = !;
 
     #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, !> {
         Ok(OsString::from(s))
     }
 }
@@ -1768,7 +1815,7 @@ impl FromStr for OsString {
 #[stable(feature = "osstring_extend", since = "1.52.0")]
 impl Extend<OsString> for OsString {
     #[inline]
-    fn extend<T: IntoIterator<Item = OsString>>(&mut self, iter: T) {
+    fn extend<I: IntoIterator<Item = OsString>>(&mut self, iter: I) {
         for s in iter {
             self.push(&s);
         }
@@ -1778,7 +1825,7 @@ impl Extend<OsString> for OsString {
 #[stable(feature = "osstring_extend", since = "1.52.0")]
 impl<'a> Extend<&'a OsStr> for OsString {
     #[inline]
-    fn extend<T: IntoIterator<Item = &'a OsStr>>(&mut self, iter: T) {
+    fn extend<I: IntoIterator<Item = &'a OsStr>>(&mut self, iter: I) {
         for s in iter {
             self.push(s);
         }
@@ -1788,7 +1835,7 @@ impl<'a> Extend<&'a OsStr> for OsString {
 #[stable(feature = "osstring_extend", since = "1.52.0")]
 impl<'a> Extend<Cow<'a, OsStr>> for OsString {
     #[inline]
-    fn extend<T: IntoIterator<Item = Cow<'a, OsStr>>>(&mut self, iter: T) {
+    fn extend<I: IntoIterator<Item = Cow<'a, OsStr>>>(&mut self, iter: I) {
         for s in iter {
             self.push(&s);
         }

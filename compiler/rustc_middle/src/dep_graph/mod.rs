@@ -2,9 +2,7 @@ use std::panic;
 
 use tracing::instrument;
 
-pub use self::dep_node::{
-    DepKind, DepKindVTable, DepNode, WorkProductId, dep_kind_from_label, label_strs,
-};
+pub use self::dep_node::{DepKind, DepKindVTable, DepNode, WorkProductId, dep_kind_from_label};
 pub use self::dep_node_key::DepNodeKey;
 pub use self::graph::{
     DepGraph, DepGraphData, DepNodeIndex, QuerySideEffect, TaskDepsRef, WorkProduct,
@@ -14,7 +12,7 @@ use self::graph::{MarkFrame, print_markframe_trace};
 pub use self::retained::RetainedDepGraph;
 pub use self::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 pub use crate::dep_graph::debug::{DepNodeFilter, EdgeFilter};
-use crate::ty::print::with_reduced_queries;
+pub use crate::ty::print::with_reduced_queries;
 use crate::ty::{self, TyCtxt};
 
 mod debug;
@@ -82,11 +80,7 @@ where
 impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn dep_kind_vtable(self, dk: DepKind) -> &'tcx DepKindVTable<'tcx> {
-        &self.dep_kind_vtables[dk.as_usize()]
-    }
-
-    fn with_reduced_queries<T>(self, f: impl FnOnce() -> T) -> T {
-        with_reduced_queries!(f())
+        &self.query_system.dep_kind_vtables[dk.as_usize()]
     }
 
     #[inline(always)]

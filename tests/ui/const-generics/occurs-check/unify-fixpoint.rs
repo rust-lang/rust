@@ -4,8 +4,7 @@
 
 //@ compile-flags: -Zunstable-options
 //@ check-pass
-#![feature(generic_const_exprs)] //~ WARN the feature `generic_const_exprs` is incomplete
-
+#![feature(generic_const_exprs)]
 
 fn bind<const N: usize>(value: [u8; N + 2]) -> [u8; N * 2] {
     todo!()

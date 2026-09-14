@@ -2,7 +2,7 @@
 //! normal visitor, which just walks the entire body in one shot, the
 //! `ExprUseVisitor` determines how expressions are being used.
 //!
-//! In the compiler, this is only used for upvar inference, but there
+//! In the compiler, this is only used for upvar inference and diagnostics, but there
 //! are many uses within clippy.
 
 use std::cell::{Ref, RefCell};
@@ -157,7 +157,7 @@ pub trait TypeInformationCtxt<'tcx> {
 
     fn typeck_results(&self) -> Self::TypeckResults<'_>;
 
-    fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T;
+    fn deeply_resolve_ignoring_regions<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T;
 
     fn structurally_resolve_type(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx>;
 
@@ -188,8 +188,8 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
         self.typeck_results.borrow()
     }
 
-    fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
-        self.infcx.resolve_vars_if_possible(t)
+    fn deeply_resolve_ignoring_regions<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
+        self.infcx.deeply_resolve_ignoring_regions(t)
     }
 
     fn structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -217,7 +217,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
     }
 
     fn body_owner_def_id(&self) -> LocalDefId {
-        self.body_id
+        self.body_def_id
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -234,7 +234,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
     type Error = !;
 
     fn typeck_results(&self) -> Self::TypeckResults<'_> {
-        self.0.maybe_typeck_results().expect("expected typeck results")
+        self.0.typeck_results()
     }
 
     fn structurally_resolve_type(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -242,7 +242,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
         ty
     }
 
-    fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
+    fn deeply_resolve_ignoring_regions<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
         t
     }
 
@@ -451,7 +451,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             }
 
             hir::ExprKind::Let(hir::LetExpr { pat, init, .. }) => {
-                self.walk_local(init, pat, None, || self.borrow_expr(init, BorrowKind::Immutable))?;
+                self.walk_local(init, pat, None)?;
             }
 
             hir::ExprKind::Match(discr, arms, _) => {
@@ -577,7 +577,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     fn walk_stmt(&self, stmt: &hir::Stmt<'_>) -> Result<(), Cx::Error> {
         match stmt.kind {
             hir::StmtKind::Let(hir::LetStmt { pat, init: Some(expr), els, .. }) => {
-                self.walk_local(expr, pat, *els, || Ok(()))?;
+                self.walk_local(expr, pat, *els)?;
             }
 
             hir::StmtKind::Let(_) => {}
@@ -617,19 +617,14 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         Ok(())
     }
 
-    fn walk_local<F>(
+    fn walk_local(
         &self,
         expr: &hir::Expr<'_>,
         pat: &hir::Pat<'_>,
         els: Option<&hir::Block<'_>>,
-        mut f: F,
-    ) -> Result<(), Cx::Error>
-    where
-        F: FnMut() -> Result<(), Cx::Error>,
-    {
+    ) -> Result<(), Cx::Error> {
         self.walk_expr(expr)?;
         let expr_place = self.cat_expr(expr)?;
-        f()?;
         self.fake_read_scrutinee(&expr_place, els.is_some())?;
         self.walk_pat(&expr_place, pat, false)?;
         if let Some(els) = els {
@@ -695,7 +690,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         let field_place = self.cat_projection(
                             with_expr.hir_id,
                             with_place.clone(),
-                            with_field.ty(self.cx.tcx(), args),
+                            with_field.ty(self.cx.tcx(), args).skip_norm_wip(),
                             ProjectionKind::Field(f_index, FIRST_VARIANT),
                         );
                         self.consume_or_copy(&field_place, field_place.hir_id);
@@ -727,7 +722,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let typeck_results = self.cx.typeck_results();
         let adjustments = typeck_results.expr_adjustments(expr);
         let mut place_with_id = self.cat_expr_unadjusted(expr)?;
-        for adjustment in adjustments {
+        for (adjustment_index, adjustment) in adjustments.iter().enumerate() {
+            let is_last_adjustment = adjustment_index + 1 == adjustments.len();
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
             match adjustment.kind {
                 adjustment::Adjust::NeverToAny | adjustment::Adjust::Pointer(_) => {
@@ -752,14 +748,13 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     self.walk_autoref(expr, &place_with_id, autoref);
                 }
 
-                adjustment::Adjust::ReborrowPin(mutbl) => {
-                    // Reborrowing a Pin is like a combinations of a deref and a borrow, so we do
-                    // both.
-                    let bk = match mutbl {
-                        ty::Mutability::Not => ty::BorrowKind::Immutable,
-                        ty::Mutability::Mut => ty::BorrowKind::Mutable,
-                    };
+                adjustment::Adjust::GenericReborrow(mutability) if is_last_adjustment => {
+                    let bk = ty::BorrowKind::from_mutbl(mutability);
                     self.delegate.borrow_mut().borrow(&place_with_id, place_with_id.hir_id, bk);
+                }
+
+                adjustment::Adjust::GenericReborrow(_) => {
+                    span_bug!(expr.span, "generic reborrow adjustment must be terminal");
                 }
             }
             place_with_id = self.cat_expr_adjusted(expr, place_with_id, adjustment)?;
@@ -910,8 +905,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
                     let res = self.cx.typeck_results().qpath_res(qpath, *hir_id);
                     match res {
-                        Res::Def(DefKind::Const { .. }, _)
-                        | Res::Def(DefKind::AssocConst { .. }, _) => {
+                        Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {
                             // Named constants have to be equated with the value
                             // being matched, so that's a read of the value being matched.
                             //
@@ -958,7 +952,6 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     }
                 }
                 PatKind::Or(_)
-                | PatKind::Box(_)
                 | PatKind::Ref(..)
                 | PatKind::Guard(..)
                 | PatKind::Tuple(..)
@@ -1133,7 +1126,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     ) -> Result<Ty<'tcx>, Cx::Error> {
         match ty {
             Some(ty) => {
-                let ty = self.cx.resolve_vars_if_possible(ty);
+                let ty = self.cx.deeply_resolve_ignoring_regions(ty);
                 self.cx.error_reported_in_ty(ty)?;
                 Ok(ty)
             }
@@ -1272,7 +1265,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     where
         F: FnOnce() -> Result<PlaceWithHirId<'tcx>, Cx::Error>,
     {
-        let target = self.cx.resolve_vars_if_possible(adjustment.target);
+        let target = self.cx.deeply_resolve_ignoring_regions(adjustment.target);
         match adjustment.kind {
             adjustment::Adjust::Deref(deref_kind) => {
                 // Equivalent to *expr or something similar.
@@ -1293,7 +1286,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             adjustment::Adjust::NeverToAny
             | adjustment::Adjust::Pointer(_)
             | adjustment::Adjust::Borrow(_)
-            | adjustment::Adjust::ReborrowPin(..) => {
+            | adjustment::Adjust::GenericReborrow(..) => {
                 // Result is an rvalue.
                 Ok(self.cat_rvalue(expr.hir_id, target))
             }
@@ -1408,9 +1401,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         match res {
             Res::Def(
                 DefKind::Ctor(..)
-                | DefKind::Const { .. }
+                | DefKind::Const
                 | DefKind::ConstParam
-                | DefKind::AssocConst { .. }
+                | DefKind::AssocConst
                 | DefKind::Fn
                 | DefKind::AssocFn,
                 _,
@@ -1473,7 +1466,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 && self
                     .cx
                     .structurally_resolve_type(self.cx.tcx().hir_span(base_place.hir_id), place_ty)
-                    .is_impl_trait()
+                    .is_opaque()
             {
                 projections.push(Projection { kind: ProjectionKind::OpaqueCast, ty: node_ty });
             }
@@ -1768,8 +1761,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.cat_pattern(place_with_id, subpat, op)?;
             }
 
-            PatKind::Box(subpat) | PatKind::Ref(subpat, _, _) => {
-                // box p1, &p1, &mut p1. we can ignore the mutability of
+            PatKind::Ref(subpat, _, _) => {
+                // &p1, &mut p1. we can ignore the mutability of
                 // PatKind::Ref since that information is already contained
                 // in the type.
                 let subplace = self.cat_deref(pat.hir_id, place_with_id)?;
@@ -1865,4 +1858,28 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             false
         }
     }
+}
+
+struct ExprPlaceDelegate;
+
+impl<'tcx> Delegate<'tcx> for ExprPlaceDelegate {
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn borrow(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {}
+
+    fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+}
+
+/// Categorizes `expr` as a place for diagnostic suggestions.
+///
+/// This should be used for diagnostics purpose only.
+pub(crate) fn expr_place<'tcx>(
+    fcx: &FnCtxt<'_, 'tcx>,
+    expr: &hir::Expr<'_>,
+) -> Result<PlaceWithHirId<'tcx>, ErrorGuaranteed> {
+    ExprUseVisitor::new(fcx, ExprPlaceDelegate).cat_expr(expr)
 }

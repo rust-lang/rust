@@ -1,7 +1,7 @@
 use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
 
-use crate::rmeta::decoder::Metadata;
+use crate::rmeta::decoder::MetaBlob;
 use crate::rmeta::*;
 
 pub(super) trait IsDefault: Default {
@@ -165,17 +165,14 @@ fixed_size_enum! {
         ( AssocTy                                  )
         ( TyParam                                  )
         ( Fn                                       )
-        ( Const { is_type_const: true}             )
-        ( Const { is_type_const: false}            )
+        ( Const                                    )
         ( ConstParam                               )
         ( AssocFn                                  )
-        ( AssocConst { is_type_const:true }        )
-        ( AssocConst { is_type_const:false }       )
+        ( AssocConst                               )
         ( ExternCrate                              )
         ( Use                                      )
         ( ForeignMod                               )
         ( AnonConst                                )
-        ( InlineConst                              )
         ( OpaqueTy                                 )
         ( Field                                    )
         ( LifetimeParam                            )
@@ -203,6 +200,7 @@ fixed_size_enum! {
         ( Macro(MACRO_KINDS_DERIVE_BANG)           )
         ( Macro(MACRO_KINDS_DERIVE_ATTR_BANG)      )
         ( SyntheticCoroutineBody                   )
+        ( TestBinderConstraints                    )
     } unreachable {
         ( Macro(_)                                 )
     }
@@ -225,8 +223,9 @@ defaulted_enum! {
 
 defaulted_enum! {
     hir::Constness {
-        ( Const    )
+        ( Const { always: false } )
         ( NotConst )
+        ( Const { always: true } )
     }
 }
 
@@ -486,7 +485,7 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
         }
     }
 
-    pub(crate) fn encode(&self, buf: &mut FileEncoder) -> LazyTable<I, T> {
+    pub(crate) fn encode(&self, buf: &mut FileEncoder<'_>) -> LazyTable<I, T> {
         let pos = buf.position();
 
         let width = self.width;
@@ -515,7 +514,7 @@ where
     for<'tcx> T::Value<'tcx>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
     /// Given the metadata, extract out the value at a particular index (if any).
-    pub(super) fn get<'a, 'tcx, M: Metadata<'a>>(&self, metadata: M, i: I) -> T::Value<'tcx> {
+    pub(super) fn get<'a, 'tcx, M: MetaBlob<'a>>(&self, metadata: M, i: I) -> T::Value<'tcx> {
         // Access past the end of the table returns a Default
         if i.index() >= self.len {
             return Default::default();

@@ -1,9 +1,13 @@
 #![warn(clippy::large_const_arrays)]
-#![allow(dead_code)]
 
 #[derive(Clone, Copy)]
 pub struct S {
     pub data: [u64; 32],
+}
+
+#[derive(Clone, Copy)]
+pub struct Q {
+    pub data: [u32; 1_000_000],
 }
 
 // Should lint
@@ -15,12 +19,21 @@ const FOO_COMPUTED: [u32; 1_000 * 100] = [0u32; 1_000 * 100];
 //~^ large_const_arrays
 const FOO: [u32; 1_000_000] = [0u32; 1_000_000];
 //~^ large_const_arrays
+pub const FOO_TUPLE: ([u32; 1_000_000],) = ([0u32; 1_000_000],);
+//~^ large_const_arrays
+pub const FOO_TUPLE_NESTED: (u8, ([u32; 1_000_000],)) = (0, ([0u32; 1_000_000],));
+//~^ large_const_arrays
+pub const FOO_STRUCT: Q = Q {
+    //~^ large_const_arrays
+    data: [0u32; 1_000_000],
+};
 
 // Good
 pub(crate) const G_FOO_PUB_CRATE: [u32; 250] = [0u32; 250];
 pub const G_FOO_PUB: [u32; 250] = [0u32; 250];
 const G_FOO_COMPUTED: [u32; 25 * 10] = [0u32; 25 * 10];
 const G_FOO: [u32; 250] = [0u32; 250];
+const G_TUPLE_SMALL: ([u32; 250],) = ([0u32; 250],);
 
 fn main() {
     // Should lint

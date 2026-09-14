@@ -96,10 +96,11 @@ The following test suites are available, with links for more information:
 | [`rustdoc-json`][rustdoc-json-tests] | Check JSON output of `rustdoc`                                           |
 | `rustdoc-ui`                         | Check terminal output of `rustdoc` ([see also](ui.md))                   |
 
-Some rustdoc-specific tests can also be found in `ui/rustdoc/`.
+`ui/rustdoc/` also contains some rustdoc-specific tests.
 These tests ensure that certain lints that are emitted as part of executing rustdoc
 are also run when executing rustc.
-Run-make tests pertaining to rustdoc are typically named `run-make/rustdoc-*/`.
+
+`run-make/rustdoc/` contains run-make tests pertaining to rustdoc.
 
 [rustdoc-html-tests]: ../rustdoc-internals/rustdoc-html-test-suite.md
 [rustdoc-gui-tests]: ../rustdoc-internals/rustdoc-gui-test-suite.md
@@ -156,11 +157,12 @@ series of steps.
 Compiletest starts with an empty directory with the `-C incremental` flag, and
 then runs the compiler for each revision, reusing the incremental results from previous steps.
 
-The revisions should start with:
+Each revision name must start with one of:
 
-* `rpass` — the test should compile and run successfully
-* `rfail` — the test should compile successfully, but the executable should fail to run
-* `cfail` — the test should fail to compile
+* `cpass` - the test must compile successfully (check build, no codegen)
+* `bfail` — the test must fail to compile (full build, with codegen)
+* `bpass` — the test must compile successully (full build, with codegen)
+* `rpass` — the test must compile and run successfully
 
 To make the revisions unique, you should add a suffix like `rpass1` and `rpass2`.
 
@@ -185,15 +187,10 @@ fn foo() {
 fn main() { foo(); }
 ```
 
-`cfail` tests support the `forbid-output` directive to specify that a certain
+Incremental tests support the `forbid-output` directive to specify that a certain
 substring must not appear anywhere in the compiler output.
 This can be useful to ensure certain errors do not appear, but this can be fragile as error messages
 change over time, and a test may no longer be checking the right thing but will still pass.
-
-`cfail` tests support the `should-ice` directive to specify that a test should
-cause an Internal Compiler Error (ICE).
-This is a highly specialized directive
-to check that the incremental cache continues to work after an ICE.
 
 Incremental tests may use the attribute `#[rustc_clean(...)]` attribute.
 This attribute compares the fingerprint from the current compilation session with the previous one.
@@ -219,9 +216,14 @@ A simple example of a test using `rustc_clean` is the [hello_world test].
 
 ### Debuginfo tests
 
-The tests in [`tests/debuginfo`] test debuginfo generation.
-They build a program, launch a debugger, and issue commands to the debugger.
-A single test can work with cdb, gdb, and lldb.
+>[!IMPORTANT]
+> As of [#159455](https://github.com/rust-lang/rust/pull/159455) These tests were made
+> opt-in. For further context, see:
+> [Stabilizing the state of the debuginfo test suite](https://github.com/rust-lang/compiler-team/issues/1012)
+
+The tests in [`tests/debuginfo`] test how debuginfo is interpreted by the supported debuggers, and
+confirm our visualizers still work as expected. They build a program, launch a debugger, and issue
+commands to the debugger. A single test can work with cdb, gdb, and lldb.
 
 Most tests should have the `//@ compile-flags: -g` directive or something
 similar to generate the appropriate debuginfo.
@@ -231,20 +233,16 @@ To set a breakpoint on a line, add a `// #break` comment on the line.
 The debuginfo tests consist of a series of debugger commands along with
 "check" lines which specify output that is expected from the debugger.
 
-The commands are comments of the form `// $DEBUGGER-command:$COMMAND` where
+The commands are comments of the form `//@ $DEBUGGER-command:$COMMAND` where
 `$DEBUGGER` is the debugger being used and `$COMMAND` is the debugger command to execute.
 
 The debugger values can be:
 
 - `cdb`
 - `gdb`
-- `gdbg` — GDB without Rust support (versions older than 7.11)
-- `gdbr` — GDB with Rust support
 - `lldb`
-- `lldbg` — LLDB without Rust support
-- `lldbr` — LLDB with Rust support (this no longer exists)
 
-The command to check the output are of the form `// $DEBUGGER-check:$OUTPUT`
+The command to check the output are of the form `//@ $DEBUGGER-check:$OUTPUT`
 where `$OUTPUT` is the output to expect.
 
 For example, the following will build the test, start the debugger, set a
@@ -265,6 +263,35 @@ fn main() {
 fn b() {}
 ```
 
+Additionally, there is a special command, `//@ $DEBUGGER-repr:$VAR_NAME` intended to verify
+variables (and their visualizers) with more granularity than can be achieved with simple string
+comparison. This directive should be preferred over the `-command`/`-check` whenever possible.
+
+> [!NOTE]
+> At time of writing (July 2026) this command is limited to LLDB, with an implementation coming soon
+> for GDB. There are not firm plans to port the logic to CDB.
+
+This command effectivly desugars into:
+
+```
+//@ $DEBUGGER-command:repr $VAR_NAME
+//@ $DEBUGGER-check:$VAR_NAME ok
+```
+
+The `repr $VAR_NAME` command is intercepted by special logic that uses the debuggers' API to inspect
+data that isn't reflected in the variable's printed output. The variable in memory is compared
+against input data stored in
+`tests/debuginfo/<test_name>/input/<debugger>_input/<target_group>.json` and
+provides detailed error messages on failure.
+
+> [!IMPORTANT]
+> `-repr` directives **are** compatible with the `--bless` option, unlike `-command`/`-check`.
+> `--bless`-ing a file with `-repr` commands will automatically create/update the appropriate
+> target's input data file.
+
+The implementation details of this command are further described in
+[the Testing section of the Debug Info chapter](../debuginfo/testing.md).
+
 The following [directives](directives.md) are available to disable a test based on
 the debugger currently being used:
 
@@ -275,7 +302,11 @@ the debugger currently being used:
   to the given version
 - `ignore-gdb-version: 7.11.90 - 8.0.9` — ignores the test if the version of
   gdb is in a range (inclusive)
-- `min-lldb-version: 310` — ignores the test if the version of lldb is below the given version
+- `min-apple-lldb-version: 1703.0.236.21`/`min-llvm-lldb-version: 21.1.0` — ignores the test if the
+  version of lldb is below the given version.
+  Note: Apple's fork of LLDB (distributed with Xcode) uses a different versioning scheme that is not
+  easily mappable to LLVM's LLDB version numbers. As such, the version gates are specified by
+  vendor. Further info on manually checking version equivalence is available [here](../debuginfo/testing.md#lldb-versioning)
 - `rust-lldb` — ignores the test if lldb is not contain the Rust plugin.
   NOTE: The "Rust" version of LLDB doesn't exist anymore, so this will always be ignored.
   This should probably be removed.
@@ -283,15 +314,25 @@ the debugger currently being used:
 By passing the `--debugger` option to compiletest, you can specify a single debugger to run tests with.
 For example, `./x test tests/debuginfo -- --debugger gdb` will only test GDB commands.
 
-> **Note on running lldb debuginfo tests locally**
+> **Note on running lldb debuginfo tests locally with a prebuilt lldb
+> distribution**
 >
 > If you want to run lldb debuginfo tests locally, then currently on Windows it
 > is required that:
+>
+> # LLDB 21
 >
 > - You have Python 3.10 installed.
 > - You have `python310.dll` available in your `PATH` env var. This is not
 >   provided by the standard Python installer you obtain from `python.org`; you
 >   need to add this to `PATH` manually.
+>
+> # LLDB 22
+>
+> - You have Python 3.11 installed.
+> - You have `python311.dll` available in your `PATH`.
+> - It is recommended that you acquire a Python installation via `pymanager`,
+>   which has follow-up installer scripts to help you configure `PATH`.
 >
 > Otherwise the lldb debuginfo tests can produce crashes in mysterious ways.
 
@@ -336,7 +377,7 @@ If you need to work with `#![no_std]` cross-compiling tests, consult the
 ### Assembly tests
 
 The tests in [`tests/assembly-llvm`] test LLVM assembly output.
-They compile the test with the `--emit=asm` flag to emit a `.s` file with the assembly output.
+They compile the test with the `--emit asm` flag to emit a `.s` file with the assembly output.
 They then run the LLVM [FileCheck] tool.
 
 Each test should be annotated with the `//@ assembly-output:` directive with a
@@ -460,6 +501,16 @@ However, revisions or building auxiliary via directives are not currently suppor
 `rmake.rs` and `run-make-support` may *not* use any nightly/unstable features,
 as they must be compilable by a stage 0 rustc that may be a beta or even stable rustc.
 
+By default, run-make tests print each subprocess command and its stdout/stderr.
+When running with `--no-capture` on `panic=abort` test suites (such as `cg_clif`),
+this can flood the terminal.
+Omit `--verbose-run-make-subprocess-output` to
+suppress this output for passing tests — failing tests always print regardless:
+
+```bash
+./x test tests/run-make --no-capture --verbose-run-make-subprocess-output=false
+```
+
 #### Quickly check if `rmake.rs` tests can be compiled
 
 You can quickly check if `rmake.rs` tests can be compiled without having to
@@ -545,7 +596,7 @@ some reason, use the `//@ ignore-coverage-map` or `//@ ignore-coverage-run` dire
 
 In `coverage-map` mode, these tests verify the mappings between source code
 regions and coverage counters that are emitted by LLVM.
-They compile the test with `--emit=llvm-ir`, then use a custom tool ([`src/tools/coverage-dump`]) to
+They compile the test with `--emit llvm-ir`, then use a custom tool ([`src/tools/coverage-dump`]) to
 extract and pretty-print the coverage mappings embedded in the IR.
 These tests don't require the profiler runtime, so they run in PR CI jobs and are easy to
 run/bless locally.
@@ -662,12 +713,11 @@ However, it uses the `--extern` flag
 to link to the extern crate to make the crate be available as an extern prelude.
 That allows you to specify the additional syntax of the `--extern` flag, such as
 renaming a dependency.
-For example, `//@ aux-crate:foo=bar.rs` will compile
-`auxiliary/bar.rs` and make it available under then name `foo` within the test.
+For example, `//@ aux-crate: foo=bar.rs` will compile
+`auxiliary/bar.rs` and make it available under the name `foo` within the test.
 This is similar to how Cargo does dependency renaming.
-It is also possible to
-specify [`--extern` modifiers](https://github.com/rust-lang/rust/issues/98405).
-For example, `//@ aux-crate:noprelude:foo=bar.rs`.
+It is also possible to specify [`--extern` modifiers].
+For example, `//@ aux-crate: noprelude:foo=bar.rs`.
 
 `aux-bin` is similar to `aux-build` but will build a binary instead of a library.
 The binary will be available in `auxiliary/bin` relative to the working directory of the test.
@@ -685,7 +735,7 @@ same parent folder as the main test file.
 However, it also has four additional
 preset behavior compared to `aux-build` for the proc-macro test auxiliary:
 
-1. The aux test file is built with `--crate-type=proc-macro`.
+1. The aux test file is built with `--crate-type proc-macro`.
 2. The aux test file is built without `-C prefer-dynamic`, i.e. it will not try
    to produce a dylib for the aux crate.
 3. The aux crate is made available to the test file via extern prelude with
@@ -815,13 +865,14 @@ check for any problems that might arise.
 To run the tests in a different mode, you need to pass the `--compare-mode` CLI flag:
 
 ```bash
-./x test tests/ui --compare-mode=chalk
+./x test tests/ui --compare-mode=next-solver
 ```
 
 The possible compare modes are:
 
-- `polonius` — Runs with Polonius with `-Zpolonius`.
-- `chalk` — Runs with Chalk with `-Zchalk`.
+- `polonius` — Runs with Polonius with `-Zpolonius=next`.
+- `next-solver` — Runs with the next trait solver with `-Znext-solver`.
+- `next-solver-coherence` — Runs coherence with the next trait solver with `-Znext-solver=coherence`.
 - `split-dwarf` — Runs with unpacked split-DWARF with `-Csplit-debuginfo=unpacked`.
 - `split-dwarf-single` — Runs with packed split-DWARF with `-Csplit-debuginfo=packed`.
 
@@ -853,3 +904,5 @@ Where `N` is the number of threads to use for the parallel frontend, and `M` is 
 Also, when running with `--parallel-frontend-threads`, the `compare-output-by-lines` directive would be implied for all tests, since the output from the parallel frontend can be non-deterministic in terms of the order of lines.
 
 The parallel frontend is available in UI tests only at the moment, and is not currently supported in other test suites.
+
+[`--extern` modifiers]: https://github.com/rust-lang/rust/issues/98405

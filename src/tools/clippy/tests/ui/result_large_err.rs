@@ -1,7 +1,7 @@
 //@ignore-bitwidth: 32
 
 #![warn(clippy::result_large_err)]
-#![allow(clippy::large_enum_variant)]
+#![expect(clippy::large_enum_variant)]
 
 pub fn small_err() -> Result<(), u128> {
     Ok(())
@@ -149,4 +149,18 @@ fn issue16249() {
     //~^ result_large_err
     let closure = || Ok::<(), Large>(());
     //~^ result_large_err
+}
+
+pub async fn async_large_err() -> Result<(), [u8; 512]> {
+    //~^ result_large_err
+    Ok(())
+}
+
+pub async fn async_small_err() -> Result<(), u128> {
+    Ok(())
+}
+
+pub async fn async_struct_error() -> Result<(), FullyDefinedLargeError> {
+    //~^ result_large_err
+    Ok(())
 }

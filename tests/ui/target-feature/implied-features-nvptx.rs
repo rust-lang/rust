@@ -1,5 +1,5 @@
-//@ assembly-output: ptx-linker
-//@ compile-flags: --crate-type cdylib -C target-cpu=sm_80 -Z unstable-options -Clinker-flavor=llbc
+//@ assembly-output: emit-asm
+//@ compile-flags: --crate-type cdylib -C target-cpu=sm_80
 //@ only-nvptx64
 //@ build-pass
 #![no_std]

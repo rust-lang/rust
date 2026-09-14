@@ -11,6 +11,8 @@ use rustc_span::Spanned;
 use super::IMPRECISE_FLOPS;
 
 pub(super) fn detect(cx: &LateContext<'_>, receiver: &Expr<'_>, app: &mut Applicability) -> Option<String> {
+    let ctxt = receiver.span.ctxt();
+
     if let ExprKind::Binary(
         Spanned {
             node: BinOpKind::Add, ..
@@ -34,8 +36,8 @@ pub(super) fn detect(cx: &LateContext<'_>, receiver: &Expr<'_>, app: &mut Applic
                 rmul_lhs,
                 rmul_rhs,
             ) = add_rhs.kind
-            && eq_expr_value(cx, lmul_lhs, lmul_rhs)
-            && eq_expr_value(cx, rmul_lhs, rmul_rhs)
+            && eq_expr_value(cx, ctxt, lmul_lhs, lmul_rhs)
+            && eq_expr_value(cx, ctxt, rmul_lhs, rmul_rhs)
         {
             return Some(format!(
                 "{}.hypot({})",
@@ -61,6 +63,29 @@ pub(super) fn detect(cx: &LateContext<'_>, receiver: &Expr<'_>, app: &mut Applic
                 Sugg::hir_with_applicability(cx, rargs_0, "_", app)
             ));
         }
+    }
+
+    // Check if expression is of the form x.mul_add(x, y * y)
+    // Note: the enclosing `.sqrt()` is already stripped off, the dispatch happens in
+    // `floating_point_arithmetic/mod.rs`
+    if let ExprKind::MethodCall(PathSegment { ident: method, .. }, self_arg, [arg1, arg2], _) = receiver.kind
+        && method.name == sym::mul_add
+        && cx.typeck_results().expr_ty(self_arg).is_floating_point()
+        && eq_expr_value(cx, ctxt, self_arg, arg1)
+        && let ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::Mul, ..
+            },
+            mul_lhs,
+            mul_rhs,
+        ) = arg2.kind
+        && eq_expr_value(cx, ctxt, mul_lhs, mul_rhs)
+    {
+        return Some(format!(
+            "{}.hypot({})",
+            Sugg::hir_with_applicability(cx, self_arg, "_", app).maybe_paren(),
+            Sugg::hir_with_applicability(cx, mul_lhs, "_", app)
+        ));
     }
 
     None

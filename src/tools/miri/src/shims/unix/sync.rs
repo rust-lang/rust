@@ -6,16 +6,20 @@ use crate::*;
 
 /// Do a bytewise comparison of the two places. This is used to check if
 /// a synchronization primitive matches its static initializer value.
+///
+/// `prefix`, if set, indicates that only the first N bytes should be compared.
 fn bytewise_equal<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
     left: &MPlaceTy<'tcx>,
     right: &MPlaceTy<'tcx>,
+    prefix: Option<u64>,
 ) -> InterpResult<'tcx, bool> {
     let size = left.layout.size;
     assert_eq!(size, right.layout.size);
+    let cmp_size = prefix.map(Size::from_bytes).unwrap_or(size);
 
-    let left_bytes = ecx.read_bytes_ptr_strip_provenance(left.ptr(), size)?;
-    let right_bytes = ecx.read_bytes_ptr_strip_provenance(right.ptr(), size)?;
+    let left_bytes = ecx.read_bytes_ptr_strip_provenance(left.ptr(), cmp_size)?;
+    let right_bytes = ecx.read_bytes_ptr_strip_provenance(right.ptr(), cmp_size)?;
 
     interp_ok(left_bytes == right_bytes)
 }
@@ -31,7 +35,13 @@ const PTHREAD_INIT: u8 = 1;
 #[inline]
 fn mutexattr_kind_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
     interp_ok(match &ecx.tcx.sess.target.os {
-        Os::Linux | Os::Illumos | Os::Solaris | Os::MacOs | Os::FreeBsd | Os::Android => 0,
+        Os::Linux
+        | Os::Illumos
+        | Os::Solaris
+        | Os::MacOs
+        | Os::FreeBsd
+        | Os::Android
+        | Os::NetBsd => 0,
         os => throw_unsup_format!("`pthread_mutexattr` is not supported on {os}"),
     })
 }
@@ -131,8 +141,8 @@ impl SyncObj for PthreadMutex {
 fn mutex_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> {
     let offset = match &ecx.tcx.sess.target.os {
         Os::Linux | Os::Illumos | Os::Solaris | Os::FreeBsd | Os::Android => 0,
-        // macOS stores a signature in the first bytes, so we move to offset 4.
-        Os::MacOs => 4,
+        // macOS and NetBSD store a signature in the first bytes, so we move to offset 4.
+        Os::MacOs | Os::NetBsd => 4,
         os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
     };
     let offset = Size::from_bytes(offset);
@@ -159,7 +169,7 @@ fn mutex_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size>
                 check_static_initializer("PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP");
                 check_static_initializer("PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP");
             }
-            Os::Illumos | Os::Solaris | Os::MacOs | Os::FreeBsd | Os::Android => {
+            Os::Illumos | Os::Solaris | Os::MacOs | Os::FreeBsd | Os::Android | Os::NetBsd => {
                 // No non-standard initializers.
             }
             os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
@@ -208,8 +218,15 @@ fn mutex_kind_from_static_initializer<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
     mutex: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx, MutexKind> {
+    let prefix = match &ecx.tcx.sess.target.os {
+        // On android, there's a 4-byte `value` header followed by "padding", and some versions
+        // of libc leave that uninitialized. Only check the `value` bytes.
+        Os::Android => Some(4),
+        _ => None,
+    };
+    let is_initializer = |name| bytewise_equal(ecx, mutex, &ecx.eval_path(&["libc", name]), prefix);
+
     // All the static initializers recognized here *must* be checked in `mutex_init_offset`!
-    let is_initializer = |name| bytewise_equal(ecx, mutex, &ecx.eval_path(&["libc", name]));
 
     // PTHREAD_MUTEX_INITIALIZER is recognized on all targets.
     if is_initializer("PTHREAD_MUTEX_INITIALIZER")? {
@@ -292,10 +309,17 @@ where
         PTHREAD_UNINIT,
         PTHREAD_INIT,
         |ecx| {
+            let prefix = match &ecx.tcx.sess.target.os {
+                // On android, there's a 4-byte `value` header followed by "padding", and some
+                // versions of libc leave that uninitialized. Only check the `value` bytes.
+                Os::Android => Some(4),
+                _ => None,
+            };
             if !bytewise_equal(
                 ecx,
                 &rwlock,
                 &ecx.eval_path(&["libc", "PTHREAD_RWLOCK_INITIALIZER"]),
+                prefix,
             )? {
                 throw_ub_format!(
                     "`pthread_rwlock_t` was not properly initialized at this location, or it got overwritten"
@@ -419,10 +443,17 @@ where
         PTHREAD_UNINIT,
         PTHREAD_INIT,
         |ecx| {
+            let prefix = match &ecx.tcx.sess.target.os {
+                // On android, there's a 4-byte `value` header followed by "padding", and some
+                // versions of libc leave that uninitialized. Only check the `value` bytes.
+                Os::Android => Some(4),
+                _ => None,
+            };
             if !bytewise_equal(
                 ecx,
                 &cond,
                 &ecx.eval_path(&["libc", "PTHREAD_COND_INITIALIZER"]),
+                prefix,
             )? {
                 throw_ub_format!(
                     "`pthread_cond_t` was not properly initialized at this location, or it got overwritten"
@@ -895,22 +926,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(());
         };
 
-        let (clock, anchor) = if macos_relative_np {
+        let (clock, style) = if macos_relative_np {
             // `pthread_cond_timedwait_relative_np` always measures time against the
             // monotonic clock, regardless of the condvar clock.
-            (TimeoutClock::Monotonic, TimeoutAnchor::Relative)
+            (TimeoutClock::Monotonic, TimeoutStyle::Relative)
         } else {
             if data.clock == TimeoutClock::RealTime {
                 this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
             }
 
-            (data.clock, TimeoutAnchor::Absolute)
+            (data.clock, TimeoutStyle::Absolute)
         };
 
         this.condvar_wait(
             data.condvar_ref,
             mutex_ref,
-            Some((clock, anchor, duration)),
+            Some(this.machine.timeout(clock, style, duration)),
             Scalar::from_i32(0),
             this.eval_libc("ETIMEDOUT"), // retval_timeout
             dest.clone(),

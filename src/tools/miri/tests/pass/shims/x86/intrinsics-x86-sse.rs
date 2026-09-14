@@ -1,13 +1,15 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
+//@run-native
 #![allow(unnecessary_transmutes)]
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
-use std::f32::NAN;
 use std::mem::transmute;
+
+const NAN: f32 = f32::NAN;
 
 fn main() {
     assert!(is_x86_feature_detected!("sse"));

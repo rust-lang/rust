@@ -4,9 +4,9 @@ use rustc_hir::Target;
 use rustc_span::sym;
 use smallvec::SmallVec;
 
-use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext, ResolverAstLoweringExt};
+use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
 
-impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
+impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_block(
         &mut self,
         b: &Block,
@@ -44,17 +44,11 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     stmts.push(hir::Stmt { hir_id, kind, span });
                 }
                 StmtKind::Item(it) => {
-                    stmts.extend(self.lower_item_ref(it).into_iter().enumerate().map(
-                        |(i, item_id)| {
-                            let hir_id = match i {
-                                0 => self.lower_node_id(s.id),
-                                _ => self.next_id(),
-                            };
-                            let kind = hir::StmtKind::Item(item_id);
-                            let span = self.lower_span(s.span);
-                            hir::Stmt { hir_id, kind, span }
-                        },
-                    ));
+                    let item_id = self.lower_item_ref(it);
+                    let hir_id = self.lower_node_id(s.id);
+                    let kind = hir::StmtKind::Item(item_id);
+                    let span = self.lower_span(s.span);
+                    stmts.push(hir::Stmt { hir_id, kind, span });
                 }
                 StmtKind::Expr(e) => {
                     let e = self.lower_expr(e);

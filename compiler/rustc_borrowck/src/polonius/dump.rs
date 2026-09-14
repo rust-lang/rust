@@ -107,7 +107,7 @@ impl LocalizedConstraintGraphVisitor for LocalizedOutlivesConstraintCollector {
 /// - a mermaid graph of the NLL regions and the constraints between them
 /// - a mermaid graph of the NLL SCCs and the constraints between them
 fn emit_polonius_dump<'tcx>(
-    dumper: &MirDumper<'_, '_, 'tcx>,
+    dumper: &MirDumper<'_, 'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
@@ -186,7 +186,7 @@ fn emit_polonius_dump<'tcx>(
 
 /// Emits the polonius MIR, as escaped HTML.
 fn emit_html_mir<'tcx>(
-    dumper: &MirDumper<'_, '_, 'tcx>,
+    dumper: &MirDumper<'_, 'tcx>,
     body: &Body<'tcx>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {

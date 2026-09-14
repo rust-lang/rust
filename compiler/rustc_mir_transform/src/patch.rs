@@ -1,4 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::Ty;
@@ -92,6 +93,7 @@ impl<'tcx> MirPatch<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::UnwindResume,
+                attributes: ThinVec::new(),
             }),
             true,
         ));
@@ -108,6 +110,7 @@ impl<'tcx> MirPatch<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Unreachable,
+                attributes: ThinVec::new(),
             }),
             true,
         ));
@@ -124,6 +127,7 @@ impl<'tcx> MirPatch<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::Unreachable,
+                attributes: ThinVec::new(),
             }),
             false,
         ));
@@ -142,6 +146,7 @@ impl<'tcx> MirPatch<'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(self.body_span),
                 kind: TerminatorKind::UnwindTerminate(reason),
+                attributes: ThinVec::new(),
             }),
             true,
         ));
@@ -164,11 +169,6 @@ impl<'tcx> MirPatch<'tcx> {
             Some(new) => &self.new_blocks[new],
             None => &body[bb],
         }
-    }
-
-    pub(crate) fn terminator_loc(&self, body: &Body<'tcx>, bb: BasicBlock) -> Location {
-        let offset = self.block(body, bb).statements.len();
-        Location { block: bb, statement_index: offset }
     }
 
     /// Queues the addition of a new temporary with additional local info.

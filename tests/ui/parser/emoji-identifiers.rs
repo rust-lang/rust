@@ -6,7 +6,7 @@ impl 👀 {
     }
 }
 fn i_like_to_😅_a_lot() -> 👀 { //~ ERROR identifiers cannot contain emoji
-    👀::full_of✨() //~ ERROR no function or associated item named `full_of✨` found for struct `👀`
+    👀::full_of✨() //~ ERROR no associated function or constant named `full_of✨` found for struct `👀`
     //~^ ERROR identifiers cannot contain emoji
 }
 fn main() {

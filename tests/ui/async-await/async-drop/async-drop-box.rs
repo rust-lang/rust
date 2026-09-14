@@ -1,11 +1,8 @@
 //@ run-pass
 //@ check-run-results
 // struct `Foo` has both sync and async drop.
-// `Foo` is always inside `Box`
+// `Foo` is always inside `Box`.
 // Sync version is called in sync context, async version is called in async function.
-
-//@ known-bug: #143658
-// async version is never actually called
 
 #![feature(async_drop)]
 #![allow(incomplete_features)]
@@ -29,6 +26,10 @@ use std::{
 struct Foo {
     my_resource_handle: usize,
 }
+
+trait DynFoo {}
+
+impl DynFoo for Foo {}
 
 impl Foo {
     fn new(my_resource_handle: usize) -> Self {
@@ -58,11 +59,19 @@ fn main() {
     }
     println!("Middle");
     block_on(bar(10));
+    println!("Dyn");
+    block_on(bar_dyn(20));
     println!("Done")
 }
 
 async fn bar(ident_base: usize) {
     let _first = Box::new(Foo::new(ident_base));
+}
+
+async fn bar_dyn(ident_base: usize) {
+    // FIXME(async_drop): boxed dyn pointees should eventually use async drop
+    // glue in async contexts. For now this documents the sync-drop fallback.
+    let _first: Box<dyn DynFoo> = Box::new(Foo::new(ident_base));
 }
 
 fn block_on<F>(fut_unpin: F) -> F::Output

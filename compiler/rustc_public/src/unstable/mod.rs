@@ -26,7 +26,7 @@ mod internal_cx;
 pub trait InternalCx<'tcx>: Copy + Clone {
     fn tcx(self) -> TyCtxt<'tcx>;
 
-    fn lift<T: ty::Lift<TyCtxt<'tcx>>>(self, value: T) -> Option<T::Lifted>;
+    fn lift<T: ty::Lift<TyCtxt<'tcx>>>(self, value: T) -> T::Lifted;
 
     fn mk_args_from_iter<I, T>(self, iter: I) -> T::Output
     where
@@ -55,6 +55,11 @@ pub trait InternalCx<'tcx>: Copy + Clone {
     fn mk_place_elems(self, v: &[mir::PlaceElem<'tcx>]) -> &'tcx List<mir::PlaceElem<'tcx>>;
 
     fn adt_def(self, def_id: rustc_hir::def_id::DefId) -> ty::AdtDef<'tcx>;
+
+    fn mk_patterns_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: ty::CollectAndApply<ty::Pattern<'tcx>, &'tcx List<ty::Pattern<'tcx>>>;
 }
 
 /// Trait used to convert between an internal MIR type to a rustc_public's IR type.
@@ -115,16 +120,14 @@ pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::Impl { .. }
-        | DefKind::GlobalAsm => {
+        | DefKind::GlobalAsm
+        | DefKind::TestBinderConstraints => {
             unreachable!("Not a valid item kind: {kind:?}");
         }
         DefKind::Closure | DefKind::AssocFn | DefKind::Fn | DefKind::SyntheticCoroutineBody => {
             ItemKind::Fn
         }
-        DefKind::Const { .. }
-        | DefKind::InlineConst
-        | DefKind::AssocConst { .. }
-        | DefKind::AnonConst => ItemKind::Const,
+        DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => ItemKind::Const,
         DefKind::Static { .. } => ItemKind::Static,
         DefKind::Ctor(_, rustc_hir::def::CtorKind::Const) => ItemKind::Ctor(CtorKind::Const),
         DefKind::Ctor(_, rustc_hir::def::CtorKind::Fn) => ItemKind::Ctor(CtorKind::Fn),

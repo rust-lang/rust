@@ -177,7 +177,7 @@ impl<'scope, 'env> Scope<'scope, 'env> {
     /// Spawns a new thread within a scope, returning a [`ScopedJoinHandle`] for it.
     ///
     /// Unlike non-scoped threads, threads spawned with this function may
-    /// borrow non-`'static` data from the outside the scope. See [`scope`] for
+    /// borrow non-`'static` data from outside the scope. See [`scope`] for
     /// details.
     ///
     /// The join handle provides a [`join`] method that can be used to join the spawned

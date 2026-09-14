@@ -4,7 +4,6 @@ use crate::ffi::OsStr;
 use crate::os::net::linux_ext;
 use crate::os::unix::ffi::OsStrExt;
 use crate::path::Path;
-use crate::sealed::Sealed;
 use crate::sys::cvt;
 use crate::{fmt, io, mem, ptr};
 
@@ -54,7 +53,15 @@ pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::s
     let mut len = SUN_PATH_OFFSET + bytes.len();
     match bytes.get(0) {
         Some(&0) | None => {}
-        Some(_) => len += 1,
+        Some(_) => {
+            // on QNX7.1 and QNX8 the `len` value returned by the SUN_LEN
+            // macro in its libc does not include the null byte in the count so
+            // don't add it here to match what a C program passes to bind(2) and
+            // similar functions
+            if cfg!(not(any(target_os = "qnx", target_env = "nto71"))) {
+                len += 1
+            }
+        }
     }
     Ok((addr, len as libc::socklen_t))
 }
@@ -69,7 +76,8 @@ enum AddressKind<'a> {
 ///
 /// # Examples
 ///
-/// ```
+#[cfg_attr(target_family = "unix", doc = "```")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 /// use std::os::unix::net::UnixListener;
 ///
 /// let socket = match UnixListener::bind("/tmp/sock") {
@@ -138,7 +146,8 @@ impl SocketAddr {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::SocketAddr;
     /// use std::path::Path;
     ///
@@ -151,7 +160,8 @@ impl SocketAddr {
     ///
     /// Creating a `SocketAddr` with a NULL byte results in an error.
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::SocketAddr;
     ///
     /// assert!(SocketAddr::from_pathname("/path/with/\0/bytes").is_err());
@@ -170,7 +180,8 @@ impl SocketAddr {
     ///
     /// A named address:
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::UnixListener;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -183,7 +194,8 @@ impl SocketAddr {
     ///
     /// An unnamed address:
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::UnixDatagram;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -205,7 +217,8 @@ impl SocketAddr {
     ///
     /// With a pathname:
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::UnixListener;
     /// use std::path::Path;
     ///
@@ -219,7 +232,8 @@ impl SocketAddr {
     ///
     /// Without a pathname:
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::os::unix::net::UnixDatagram;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -248,13 +262,14 @@ impl SocketAddr {
         } else if self.addr.sun_path[0] == 0 {
             AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
         } else {
-            AddressKind::Pathname(OsStr::from_bytes(&path[..len - 1]).as_ref())
+            // linux adds a trailing NUL and counts it in the length, freebsd, netbsd
+            // and qnx do not, and a caller may bind(2) without one either. unix(7)
+            // gives the portable rule: strnlen(sun_path, len - offsetof(sun_path))
+            let end = core::slice::memchr::memchr(0, &path[..len]).unwrap_or(len);
+            AddressKind::Pathname(OsStr::from_bytes(&path[..end]).as_ref())
         }
     }
 }
-
-#[stable(feature = "unix_socket_abstract", since = "1.70.0")]
-impl Sealed for SocketAddr {}
 
 #[doc(cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin")))]
 #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]

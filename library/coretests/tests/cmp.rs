@@ -28,6 +28,20 @@ fn test_mut_int_totalord() {
 }
 
 #[test]
+fn test_max_min_signedness() {
+    use std::cmp::{max, min};
+    // Check the "same" 8-bit values where the signedness of the operation matters
+    assert_eq!(max::<u8>(0, 255), 255);
+    assert_eq!(max::<u8>(255, 0), 255);
+    assert_eq!(min::<u8>(0, 255), 0);
+    assert_eq!(min::<u8>(255, 0), 0);
+    assert_eq!(max::<i8>(0, -1), 0);
+    assert_eq!(max::<i8>(-1, 0), 0);
+    assert_eq!(min::<i8>(0, -1), -1);
+    assert_eq!(min::<i8>(-1, 0), -1);
+}
+
+#[test]
 fn test_ord_max_min() {
     assert_eq!(1.max(2), 2);
     assert_eq!(2.max(1), 2);
@@ -46,6 +60,40 @@ fn test_ord_min_max_by() {
     assert_eq!(cmp::max_by(1, -1, f), -1);
     assert_eq!(cmp::max_by(1, -2, f), -2);
     assert_eq!(cmp::max_by(2, -1, f), 2);
+}
+
+// Regression test for #136307 / #139357: ensure compare() receives (v1, v2), not (v2, v1).
+#[test]
+fn min_by_compare_argument_order() {
+    let mut order = vec![];
+    let res = cmp::min_by(1i32, 2, |a, b| {
+        order.push((*a, *b));
+        a.cmp(b)
+    });
+    assert_eq!(res, 1);
+    assert_eq!(order, [(1, 2)]);
+}
+
+#[test]
+fn max_by_compare_argument_order() {
+    let mut order = vec![];
+    let res = cmp::max_by(1i32, 2, |a, b| {
+        order.push((*a, *b));
+        a.cmp(b)
+    });
+    assert_eq!(res, 2);
+    assert_eq!(order, [(1, 2)]);
+}
+
+#[test]
+fn minmax_by_compare_argument_order() {
+    let mut order = vec![];
+    let res = cmp::minmax_by(1i32, 2, |a, b| {
+        order.push((*a, *b));
+        a.cmp(b)
+    });
+    assert_eq!(res, [1, 2]);
+    assert_eq!(order, [(1, 2)]);
 }
 
 #[test]
@@ -220,13 +268,13 @@ mod const_cmp {
 
     struct S(i32);
 
-    impl const PartialEq for S {
+    const impl PartialEq for S {
         fn eq(&self, other: &Self) -> bool {
             self.0 == other.0
         }
     }
 
-    impl const PartialOrd for S {
+    const impl PartialOrd for S {
         fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
             let ret = match (self.0, other.0) {
                 (a, b) if a > b => Ordering::Greater,
@@ -245,4 +293,13 @@ mod const_cmp {
     const _: () = assert!(S(1) >= S(1));
     const _: () = assert!(S(0) < S(1));
     const _: () = assert!(S(1) > S(0));
+}
+
+mod const_splat {
+    use super::*;
+
+    const _: () = assert!(cmp::smallest(1, 2, 3, 4) == 1);
+    const _: () = assert!(cmp::smallest(4, 3, 2, 1) == 1);
+    const _: () = assert!(cmp::largest(1, 2, 3, 4) == 4);
+    const _: () = assert!(cmp::largest(4, 3, 2, 1) == 4);
 }

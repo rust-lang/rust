@@ -4,8 +4,10 @@ use std::ops::ControlFlow;
 
 use hir_def::{
     AssocItemId, ConstId, FunctionId, GenericDefId, HasModule, TraitId, TypeAliasId,
-    TypeOrConstParamId, TypeParamId, hir::generics::LocalTypeOrConstParamId,
-    nameres::crate_def_map, signatures::TraitFlags,
+    TypeOrConstParamId, TypeParamId,
+    hir::generics::{GenericParams, LocalTypeOrConstParamId},
+    signatures::{FunctionSignature, TraitFlags, TraitSignature},
+    unstable_features::UnstableFeatures,
 };
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
@@ -19,10 +21,14 @@ use crate::{
     db::{HirDatabase, InternedOpaqueTyId},
     lower::{GenericPredicates, associated_ty_item_bounds},
     next_solver::{
-        Binder, Clause, Clauses, DbInterner, EarlyBinder, GenericArgs, Goal, ParamEnv, ParamTy,
-        SolverDefId, TraitPredicate, TraitRef, Ty, TypingMode, infer::DbInternerInferExt, mk_param,
+        AliasTy, Binder, Clause, Clauses, DbInterner, EarlyBinder, GenericArgs, ParamEnv, ParamTy,
+        SolverDefId, TraitPredicate, TraitRef, Ty, TypingMode, Unnormalized,
+        infer::{
+            DbInternerInferExt,
+            traits::{Obligation, ObligationCause},
+        },
+        mk_param,
     },
-    traits::next_trait_solve_in_ctxt,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -108,13 +114,15 @@ where
     // rustc checks for non-lifetime binders here, but we don't support HRTB yet
 
     let trait_data = trait_.trait_items(db);
+    let mut features = None;
     for (_, assoc_item) in &trait_data.items {
-        dyn_compatibility_violation_for_assoc_item(db, trait_, *assoc_item, cb)?;
+        dyn_compatibility_violation_for_assoc_item(db, &mut features, trait_, *assoc_item, cb)?;
     }
 
     ControlFlow::Continue(())
 }
 
+#[salsa::tracked(returns(clone))]
 pub fn dyn_compatibility_of_trait_query(
     db: &dyn HirDatabase,
     trait_: TraitId,
@@ -139,8 +147,8 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
     // FIXME: We should use `explicit_predicates_of` here, which hasn't been implemented to
     // rust-analyzer yet
     // https://github.com/rust-lang/rust/blob/ddaf12390d3ffb7d5ba74491a48f3cd528e5d777/compiler/rustc_hir_analysis/src/collect/predicates_of.rs#L490
-    elaborate::elaborate(interner, predicates.iter_identity_copied()).any(|pred| {
-        match pred.kind().skip_binder() {
+    elaborate::elaborate(interner, predicates.iter_identity().map(Unnormalized::skip_norm_wip)).any(
+        |pred| match pred.kind().skip_binder() {
             ClauseKind::Trait(trait_pred) => {
                 if sized == trait_pred.def_id().0
                     && let rustc_type_ir::TyKind::Param(param_ty) =
@@ -153,17 +161,17 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
                 }
             }
             _ => false,
-        }
-    })
+        },
+    )
 }
 
 // rustc gathers all the spans that references `Self` for error rendering,
 // but we don't have good way to render such locations.
 // So, just return single boolean value for existence of such `Self` reference
 fn predicates_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
-    GenericPredicates::query_explicit(db, trait_.into())
-        .iter_identity_copied()
-        .any(|pred| predicate_references_self(db, trait_, pred, AllowSelfProjection::No))
+    GenericPredicates::query_explicit(db, trait_.into()).iter_identity().any(|pred| {
+        predicate_references_self(db, trait_, pred.skip_norm_wip(), AllowSelfProjection::No)
+    })
 }
 
 // Same as the above, `predicates_reference_self`
@@ -237,30 +245,26 @@ fn contains_illegal_self_type_reference<'db, T: rustc_type_ir::TypeVisitable<DbI
             match ty.kind() {
                 rustc_type_ir::TyKind::Param(param) if param.index == 0 => ControlFlow::Break(()),
                 rustc_type_ir::TyKind::Param(_) => ControlFlow::Continue(()),
-                rustc_type_ir::TyKind::Alias(AliasTyKind::Projection, proj) => {
-                    match self.allow_self_projection {
-                        AllowSelfProjection::Yes => {
-                            let trait_ = proj.trait_def_id(interner);
-                            let trait_ = match trait_ {
-                                SolverDefId::TraitId(id) => id,
-                                _ => unreachable!(),
-                            };
-                            if self.super_traits.is_none() {
-                                self.super_traits = Some(
-                                    elaborate::supertrait_def_ids(interner, self.trait_.into())
-                                        .map(|super_trait| super_trait.0)
-                                        .collect(),
-                                )
-                            }
-                            if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
-                                ControlFlow::Continue(())
-                            } else {
-                                ty.super_visit_with(self)
-                            }
+                rustc_type_ir::TyKind::Alias(
+                    proj @ AliasTy { kind: AliasTyKind::Projection { .. }, .. },
+                ) => match self.allow_self_projection {
+                    AllowSelfProjection::Yes => {
+                        let trait_ = proj.trait_def_id(interner).0;
+                        if self.super_traits.is_none() {
+                            self.super_traits = Some(
+                                elaborate::supertrait_def_ids(interner, self.trait_.into())
+                                    .map(|super_trait| super_trait.0)
+                                    .collect(),
+                            )
                         }
-                        AllowSelfProjection::No => ty.super_visit_with(self),
+                        if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
+                            ControlFlow::Continue(())
+                        } else {
+                            ty.super_visit_with(self)
+                        }
                     }
-                }
+                    AllowSelfProjection::No => ty.super_visit_with(self),
+                },
                 _ => ty.super_visit_with(self),
             }
         }
@@ -271,8 +275,9 @@ fn contains_illegal_self_type_reference<'db, T: rustc_type_ir::TypeVisitable<DbI
     t.visit_with(&mut visitor).is_break()
 }
 
-fn dyn_compatibility_violation_for_assoc_item<F>(
-    db: &dyn HirDatabase,
+fn dyn_compatibility_violation_for_assoc_item<'db, F>(
+    db: &'db dyn HirDatabase,
+    features: &mut Option<&'db UnstableFeatures>,
     trait_: TraitId,
     item: AssocItemId,
     cb: &mut F,
@@ -294,11 +299,13 @@ where
             })
         }
         AssocItemId::TypeAliasId(it) => {
-            let def_map = crate_def_map(db, trait_.krate(db));
-            if def_map.is_unstable_feature_enabled(&intern::sym::generic_associated_type_extended) {
+            if features
+                .get_or_insert_with(|| UnstableFeatures::query(db, trait_.krate(db)))
+                .generic_associated_type_extended
+            {
                 ControlFlow::Continue(())
             } else {
-                let generic_params = db.generic_params(item.into());
+                let generic_params = GenericParams::of(db, item.into());
                 if !generic_params.is_empty() {
                     cb(DynCompatibilityViolation::GAT(it))
                 } else {
@@ -318,7 +325,7 @@ fn virtual_call_violations_for_method<F>(
 where
     F: FnMut(MethodViolationCode) -> ControlFlow<()>,
 {
-    let func_data = db.function_signature(func);
+    let func_data = FunctionSignature::of(db, func);
     if !func_data.has_self_param() {
         cb(MethodViolationCode::StaticMethod)?;
     }
@@ -349,7 +356,7 @@ where
         cb(mvc)?;
     }
 
-    let generic_params = db.generic_params(func.into());
+    let generic_params = GenericParams::of(db, func.into());
     if generic_params.len_type_or_consts() > 0 {
         cb(MethodViolationCode::Generic)?;
     }
@@ -358,8 +365,8 @@ where
         cb(MethodViolationCode::UndispatchableReceiver)?;
     }
 
-    let predicates = GenericPredicates::query_own(db, func.into());
-    for pred in predicates.iter_identity_copied() {
+    let predicates = GenericPredicates::query_own_explicit(db, func.into());
+    for pred in predicates.iter_identity() {
         let pred = pred.kind().skip_binder();
 
         if matches!(pred, ClauseKind::TypeOutlives(_)) {
@@ -371,7 +378,7 @@ where
             trait_ref: pred_trait_ref,
             polarity: PredicatePolarity::Positive,
         }) = pred
-            && let trait_data = db.trait_signature(pred_trait_ref.def_id.0)
+            && let trait_data = TraitSignature::of(db, pred_trait_ref.def_id.0)
             && trait_data.flags.contains(TraitFlags::AUTO)
             && let rustc_type_ir::TyKind::Param(ParamTy { index: 0, .. }) =
                 pred_trait_ref.self_ty().kind()
@@ -389,12 +396,12 @@ where
 }
 
 fn receiver_is_dispatchable<'db>(
-    db: &dyn HirDatabase,
+    db: &'db dyn HirDatabase,
     trait_: TraitId,
     func: FunctionId,
     sig: &EarlyBinder<'db, Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>>,
 ) -> bool {
-    let sig = sig.instantiate_identity();
+    let sig = sig.instantiate_identity().skip_norm_wip();
 
     let module = trait_.module(db);
     let interner = DbInterner::new_with(db, module.krate(db));
@@ -411,9 +418,7 @@ fn receiver_is_dispatchable<'db>(
         return true;
     }
 
-    let Some(&receiver_ty) = sig.inputs().skip_binder().first() else {
-        return false;
-    };
+    let receiver_ty = interner.liberate_late_bound_regions(func.into(), sig.input(0));
 
     let lang_items = interner.lang_items();
     let traits = (lang_items.Unsize, lang_items.DispatchFromDyn);
@@ -421,15 +426,9 @@ fn receiver_is_dispatchable<'db>(
         return false;
     };
 
-    let meta_sized_did = lang_items.MetaSized;
-
-    // TODO: This is for supporting dyn compatibility for toolchains doesn't contain `MetaSized`
-    // trait. Uncomment and short circuit here once `MINIMUM_SUPPORTED_TOOLCHAIN_VERSION`
-    // become > 1.88.0
-    //
-    // let Some(meta_sized_did) = meta_sized_did else {
-    //     return false;
-    // };
+    let Some(meta_sized_did) = lang_items.MetaSized else {
+        return false;
+    };
 
     // Type `U`
     // FIXME: That seems problematic to fake a generic param like that?
@@ -445,21 +444,22 @@ fn receiver_is_dispatchable<'db>(
             TraitRef::new(interner, unsize_did.into(), [self_param_ty, unsized_self_ty]);
 
         // U: Trait<Arg1, ..., ArgN>
-        let args = GenericArgs::for_item(interner, trait_.into(), |index, kind, _| {
+        let args = GenericArgs::for_item(interner, trait_.into(), |index, kind, _, _| {
             if index == 0 { unsized_self_ty.into() } else { mk_param(interner, index, kind) }
         });
         let trait_predicate = TraitRef::new_from_args(interner, trait_.into(), args);
 
-        let meta_sized_predicate = meta_sized_did
-            .map(|did| TraitRef::new(interner, did.into(), [unsized_self_ty]).upcast(interner));
+        let meta_sized_predicate =
+            TraitRef::new(interner, meta_sized_did.into(), [unsized_self_ty]).upcast(interner);
 
         ParamEnv {
             clauses: Clauses::new_from_iter(
                 interner,
                 generic_predicates
-                    .iter_identity_copied()
+                    .iter_identity()
+                    .map(Unnormalized::skip_norm_wip)
                     .chain([unsize_predicate.upcast(interner), trait_predicate.upcast(interner)])
-                    .chain(meta_sized_predicate),
+                    .chain(std::iter::once(meta_sized_predicate)),
             ),
         }
     };
@@ -467,12 +467,11 @@ fn receiver_is_dispatchable<'db>(
     // Receiver: DispatchFromDyn<Receiver[Self => U]>
     let predicate =
         TraitRef::new(interner, dispatch_from_dyn_did.into(), [receiver_ty, unsized_receiver_ty]);
-    let goal = Goal::new(interner, param_env, predicate);
+    let obligation = Obligation::new(interner, ObligationCause::dummy(), param_env, predicate);
 
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
     // the receiver is dispatchable iff the obligation holds
-    let res = next_trait_solve_in_ctxt(&infcx, goal);
-    res.map_or(false, |res| matches!(res.1, rustc_type_ir::solve::Certainty::Yes))
+    infcx.predicate_must_hold_modulo_regions(&obligation)
 }
 
 fn receiver_for_self_ty<'db>(
@@ -481,32 +480,33 @@ fn receiver_for_self_ty<'db>(
     receiver_ty: Ty<'db>,
     self_ty: Ty<'db>,
 ) -> Ty<'db> {
-    let args = GenericArgs::for_item(interner, SolverDefId::FunctionId(func), |index, kind, _| {
-        if index == 0 { self_ty.into() } else { mk_param(interner, index, kind) }
-    });
+    let args =
+        GenericArgs::for_item(interner, SolverDefId::FunctionId(func), |index, kind, _, _| {
+            if index == 0 { self_ty.into() } else { mk_param(interner, index, kind) }
+        });
 
-    EarlyBinder::bind(receiver_ty).instantiate(interner, args)
+    EarlyBinder::bind(receiver_ty).instantiate(interner, args).skip_norm_wip()
 }
 
 fn contains_illegal_impl_trait_in_trait<'db>(
     db: &'db dyn HirDatabase,
     sig: &EarlyBinder<'db, Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>>,
 ) -> Option<MethodViolationCode> {
-    struct OpaqueTypeCollector(FxHashSet<InternedOpaqueTyId>);
+    struct OpaqueTypeCollector<'db>(FxHashSet<InternedOpaqueTyId<'db>>);
 
-    impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for OpaqueTypeCollector {
+    impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for OpaqueTypeCollector<'db> {
         type Result = ControlFlow<()>;
 
         fn visit_ty(
             &mut self,
             ty: <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
         ) -> Self::Result {
-            if let rustc_type_ir::TyKind::Alias(AliasTyKind::Opaque, op) = ty.kind() {
-                let id = match op.def_id {
-                    SolverDefId::InternedOpaqueTyId(id) => id,
-                    _ => unreachable!(),
-                };
-                self.0.insert(id);
+            if let rustc_type_ir::TyKind::Alias(AliasTy {
+                kind: AliasTyKind::Opaque { def_id },
+                ..
+            }) = ty.kind()
+            {
+                self.0.insert(def_id.0);
             }
             ty.super_visit_with(self)
         }
@@ -519,7 +519,7 @@ fn contains_illegal_impl_trait_in_trait<'db>(
     // Since we haven't implemented RPITIT in proper way like rustc yet,
     // just check whether `ret` contains RPIT for now
     for opaque_ty in visitor.0 {
-        let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty);
+        let impl_trait_id = opaque_ty.loc(db);
         if matches!(impl_trait_id, ImplTraitId::ReturnTypeImplTrait(..)) {
             return Some(MethodViolationCode::ReferencesImplTraitInTrait);
         }

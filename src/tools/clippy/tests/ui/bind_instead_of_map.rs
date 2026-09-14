@@ -1,4 +1,5 @@
 #![deny(clippy::bind_instead_of_map)]
+#![expect(clippy::manual_filter)]
 
 // need a main anyway, use it get rid of unused warnings too
 pub fn main() {
@@ -24,4 +25,10 @@ pub fn foo() -> Option<String> {
 
 pub fn example2(x: bool) -> Option<&'static str> {
     Some("a").and_then(|s| Some(if x { s } else { return None }))
+}
+
+fn issue16861(b: bool, res: Result<u32, u32>) {
+    let _: Result<u32, u32> = res.or_else(|_| panic!("should not happen"));
+    let _: Result<u32, u32> = res.or_else(|_| if b { panic!("should not happen") } else { Err(42) });
+    //~^ bind_instead_of_map
 }

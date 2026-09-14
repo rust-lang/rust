@@ -5,7 +5,7 @@ use rustc_infer::traits::solve::inspect::ProbeKind;
 use rustc_infer::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_infer::traits::{
     BuiltinImplSource, ImplSource, ImplSourceUserDefinedData, Obligation, ObligationCause,
-    Selection, SelectionError, SelectionResult, TraitObligation,
+    PolyTraitObligation, Selection, SelectionError, SelectionResult,
 };
 use rustc_macros::extension;
 use rustc_middle::{bug, span_bug};
@@ -16,10 +16,10 @@ use crate::solve::inspect::{self, InferCtxtProofTreeExt};
 
 #[extension(pub trait InferCtxtSelectExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
-    /// Do not use this directly. This is called from [`crate::traits::SelectionContext::select`].
+    /// Do not use this directly. This is called from [`crate::traits::SelectionContext::poly_select`].
     fn select_in_new_trait_solver(
         &self,
-        obligation: &TraitObligation<'tcx>,
+        obligation: &PolyTraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         assert!(self.next_trait_solver());
 
@@ -62,7 +62,7 @@ impl<'tcx> inspect::ProofTreeVisitor<'tcx> for Select {
 
         // Don't winnow until `Certainty::Yes` -- we don't need to winnow until
         // codegen, and only on the good path.
-        if matches!(goal.result().unwrap(), Certainty::Maybe { .. }) {
+        if matches!(goal.result().unwrap(), Certainty::Maybe(_)) {
             return ControlFlow::Break(Ok(None));
         }
 
@@ -95,7 +95,7 @@ fn candidate_should_be_dropped_in_favor_of<'tcx>(
 ) -> bool {
     // Don't winnow until `Certainty::Yes` -- we don't need to winnow until
     // codegen, and only on the good path.
-    if matches!(other.result().unwrap(), Certainty::Maybe { .. }) {
+    if matches!(other.result().unwrap(), Certainty::Maybe(_)) {
         return false;
     }
 
@@ -145,13 +145,13 @@ fn to_selection<'tcx>(
     span: Span,
     cand: inspect::InspectCandidate<'_, 'tcx>,
 ) -> Option<Selection<'tcx>> {
-    if let Certainty::Maybe { .. } = cand.shallow_certainty() {
+    if let Certainty::Maybe(_) = cand.shallow_certainty() {
         return None;
     }
 
     let nested = match cand.result().expect("expected positive result") {
         Certainty::Yes => thin_vec![],
-        Certainty::Maybe { .. } => cand
+        Certainty::Maybe(_) => cand
             .instantiate_nested_goals(span)
             .into_iter()
             .map(|nested| {

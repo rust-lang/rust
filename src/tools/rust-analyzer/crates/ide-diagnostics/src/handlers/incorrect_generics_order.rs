@@ -6,7 +6,7 @@ use syntax::SyntaxKind;
 //
 // This diagnostic is triggered the order of provided generic arguments does not match their declaration.
 pub(crate) fn incorrect_generics_order(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::IncorrectGenericsOrder,
 ) -> Diagnostic {
     let provided_description = match d.provided_arg.value.kind() {

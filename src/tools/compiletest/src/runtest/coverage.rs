@@ -8,7 +8,7 @@ use glob::glob;
 
 use crate::common::{TestSuite, UI_COVERAGE, UI_COVERAGE_MAP};
 use crate::runtest::{Emit, ProcRes, TestCx, WillExecute};
-use crate::util::static_regex;
+use crate::util::{ArgFileCommand, static_regex};
 
 impl<'test> TestCx<'test> {
     fn coverage_dump_path(&self) -> &Utf8Path {
@@ -27,9 +27,9 @@ impl<'test> TestCx<'test> {
         }
         drop(proc_res);
 
-        let mut dump_command = Command::new(coverage_dump_path);
+        let mut dump_command = ArgFileCommand::new(coverage_dump_path);
         dump_command.arg(llvm_ir_path);
-        let proc_res = self.run_command_to_procres(&mut dump_command);
+        let proc_res = self.run_command_to_procres(dump_command);
         if !proc_res.status.success() {
             self.fatal_proc_rec("coverage-dump failed!", &proc_res);
         }
@@ -227,7 +227,11 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn run_llvm_tool(&self, name: &str, configure_cmd_fn: impl FnOnce(&mut Command)) -> ProcRes {
+    fn run_llvm_tool(
+        &self,
+        name: &str,
+        configure_cmd_fn: impl FnOnce(&mut ArgFileCommand),
+    ) -> ProcRes {
         let tool_path = self
             .config
             .llvm_bin_dir
@@ -235,10 +239,10 @@ impl<'test> TestCx<'test> {
             .expect("this test expects the LLVM bin dir to be available")
             .join(name);
 
-        let mut cmd = Command::new(tool_path);
+        let mut cmd = ArgFileCommand::new(tool_path);
         configure_cmd_fn(&mut cmd);
 
-        self.run_command_to_procres(&mut cmd)
+        self.run_command_to_procres(cmd)
     }
 
     fn normalize_coverage_output(&self, coverage: &str) -> Result<String, String> {

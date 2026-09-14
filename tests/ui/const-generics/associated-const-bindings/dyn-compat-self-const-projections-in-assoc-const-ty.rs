@@ -7,6 +7,7 @@
 #![feature(
     adt_const_params,
     min_generic_const_args,
+    macroless_generic_const_args,
     const_param_ty_trait,
     generic_const_parameter_types
 )]
@@ -14,12 +15,13 @@
 
 trait A {
     type Ty: std::marker::ConstParamTy_;
-    type const CT: Self::Ty;
+    #[rustc_always_gca]
+    const CT: Self::Ty;
 }
 
 impl A for () {
     type Ty = i32;
-    type const CT: i32 = 0;
+    const CT: i32 = core::direct_const_arg!(0);
 }
 
 fn main() {

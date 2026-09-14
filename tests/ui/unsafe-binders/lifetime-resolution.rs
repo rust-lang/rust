@@ -1,5 +1,4 @@
 #![feature(unsafe_binders)]
-//~^ WARN the feature `unsafe_binders` is incomplete
 
 fn foo<'a>() {
     let good: unsafe<'b> &'a &'b ();

@@ -102,8 +102,78 @@ LL -     drop(a4);
 LL +     let _ = a4;
    |
 
+warning: calls to `std::ptr::drop_in_place` with a pointer to a value that implements `Copy` does nothing
+  --> $DIR/dropping_copy_types.rs:57:9
+   |
+LL |         std::ptr::drop_in_place(&raw mut s6);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^-----------^
+   |                                 |
+   |                                 argument has type `*mut SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -         std::ptr::drop_in_place(&raw mut s6);
+LL +         let _ = &raw mut s6;
+   |
+
+warning: calls to `std::ptr::drop_in_place` with a pointer to a value that implements `Copy` does nothing
+  --> $DIR/dropping_copy_types.rs:61:9
+   |
+LL |         std::ptr::drop_in_place(ptr);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^---^
+   |                                 |
+   |                                 argument has type `*mut SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -         std::ptr::drop_in_place(ptr);
+LL +         let _ = ptr;
+   |
+
+warning: calls to `std::ptr::drop_in_place` with a pointer to a value that implements `Copy` does nothing
+  --> $DIR/dropping_copy_types.rs:63:9
+   |
+LL |         std::ptr::drop_in_place(&mut SomeStruct {} as *mut _);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^----------------------------^
+   |                                 |
+   |                                 argument has type `*mut SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -         std::ptr::drop_in_place(&mut SomeStruct {} as *mut _);
+LL +         let _ = &mut SomeStruct {} as *mut _;
+   |
+
+warning: calls to `drop_in_place` with a pointer to a value that implements `Copy` does nothing
+  --> $DIR/dropping_copy_types.rs:68:9
+   |
+LL |         (&raw mut s8).drop_in_place();
+   |         -------------^^^^^^^^^^^^^^^^
+   |         |
+   |         argument has type `*mut SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -         (&raw mut s8).drop_in_place();
+LL +         let _ = (&raw mut s8);
+   |
+
+warning: calls to `drop_in_place` with a pointer to a value that implements `Copy` does nothing
+  --> $DIR/dropping_copy_types.rs:72:9
+   |
+LL |         ptr.drop_in_place();
+   |         ---^^^^^^^^^^^^^^^^
+   |         |
+   |         argument has type `*mut SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -         ptr.drop_in_place();
+LL +         let _ = ptr;
+   |
+
 warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
-  --> $DIR/dropping_copy_types.rs:71:13
+  --> $DIR/dropping_copy_types.rs:91:13
    |
 LL |             drop(println_and(13));
    |             ^^^^^---------------^
@@ -117,7 +187,7 @@ LL +             let _ = println_and(13);
    |
 
 warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
-  --> $DIR/dropping_copy_types.rs:74:14
+  --> $DIR/dropping_copy_types.rs:94:14
    |
 LL |         3 if drop(println_and(14)) == () => (),
    |              ^^^^^---------------^
@@ -127,7 +197,7 @@ LL |         3 if drop(println_and(14)) == () => (),
    = note: use `let _ = ...` to ignore the expression or result
 
 warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
-  --> $DIR/dropping_copy_types.rs:76:14
+  --> $DIR/dropping_copy_types.rs:96:14
    |
 LL |         4 => drop(2),
    |              ^^^^^-^
@@ -136,5 +206,5 @@ LL |         4 => drop(2),
    |
    = note: use `let _ = ...` to ignore the expression or result
 
-warning: 10 warnings emitted
+warning: 15 warnings emitted
 

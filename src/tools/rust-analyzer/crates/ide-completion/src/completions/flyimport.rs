@@ -108,10 +108,10 @@ use crate::{
 // The feature can be forcefully turned off in the settings with the `rust-analyzer.completion.autoimport.enable` flag.
 // Note that having this flag set to `true` does not guarantee that the feature is enabled: your client needs to have the corresponding
 // capability enabled.
-pub(crate) fn import_on_the_fly_path(
+pub(crate) fn import_on_the_fly_path<'db>(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
-    path_ctx: &PathCompletionCtx<'_>,
+    ctx: &CompletionContext<'_, 'db>,
+    path_ctx: &PathCompletionCtx<'db>,
 ) -> Option<()> {
     if !ctx.config.enable_imports_on_the_fly {
         return None;
@@ -133,9 +133,15 @@ pub(crate) fn import_on_the_fly_path(
     let potential_import_name = import_name(ctx);
     let qualifier = match qualified {
         Qualified::With { path, .. } => Some(path.clone()),
-        _ => None,
+        Qualified::TypeAnchor { .. } => return None,
+        Qualified::No | Qualified::Absolute => None,
     };
-    let import_assets = import_assets_for_path(ctx, &potential_import_name, qualifier.clone())?;
+    let import_assets = import_assets_for_path(
+        ctx,
+        Some(&path_ctx.path),
+        &potential_import_name,
+        qualifier.clone(),
+    )?;
 
     import_on_the_fly(
         acc,
@@ -149,7 +155,7 @@ pub(crate) fn import_on_the_fly_path(
 
 pub(crate) fn import_on_the_fly_pat(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     pattern_ctx: &PatternContext,
 ) -> Option<()> {
     if !ctx.config.enable_imports_on_the_fly {
@@ -160,7 +166,7 @@ pub(crate) fn import_on_the_fly_pat(
     }
 
     let potential_import_name = import_name(ctx);
-    let import_assets = import_assets_for_path(ctx, &potential_import_name, None)?;
+    let import_assets = import_assets_for_path(ctx, None, &potential_import_name, None)?;
 
     import_on_the_fly_pat_(
         acc,
@@ -172,10 +178,10 @@ pub(crate) fn import_on_the_fly_pat(
     )
 }
 
-pub(crate) fn import_on_the_fly_dot(
+pub(crate) fn import_on_the_fly_dot<'db>(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
-    dot_access: &DotAccess<'_>,
+    ctx: &CompletionContext<'_, 'db>,
+    dot_access: &DotAccess<'db>,
 ) -> Option<()> {
     if !ctx.config.enable_imports_on_the_fly {
         return None;
@@ -200,11 +206,11 @@ pub(crate) fn import_on_the_fly_dot(
     )
 }
 
-fn import_on_the_fly(
+fn import_on_the_fly<'db>(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
-    path_ctx @ PathCompletionCtx { kind, .. }: &PathCompletionCtx<'_>,
-    import_assets: ImportAssets<'_>,
+    ctx: &CompletionContext<'_, 'db>,
+    path_ctx @ PathCompletionCtx { kind, .. }: &PathCompletionCtx<'db>,
+    import_assets: ImportAssets<'db>,
     position: SyntaxNode,
     potential_import_name: String,
 ) -> Option<()> {
@@ -256,6 +262,7 @@ fn import_on_the_fly(
         }
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
+    let mut import_name_buffer = String::new();
 
     let import_cfg = ctx.config.import_path_config();
 
@@ -270,9 +277,13 @@ fn import_on_the_fly(
         })
         .filter(|import| filter_excluded_flyimport(ctx, import))
         .sorted_by(|a, b| {
-            let key = |import_path| {
+            let mut key = |import_path| {
                 (
-                    compute_fuzzy_completion_order_key(import_path, &user_input_lowercased),
+                    compute_fuzzy_completion_order_key(
+                        import_path,
+                        &user_input_lowercased,
+                        &mut import_name_buffer,
+                    ),
                     import_path,
                 )
             };
@@ -286,11 +297,11 @@ fn import_on_the_fly(
     Some(())
 }
 
-fn import_on_the_fly_pat_(
+fn import_on_the_fly_pat_<'db>(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, 'db>,
     pattern_ctx: &PatternContext,
-    import_assets: ImportAssets<'_>,
+    import_assets: ImportAssets<'db>,
     position: SyntaxNode,
     potential_import_name: String,
 ) -> Option<()> {
@@ -304,6 +315,7 @@ fn import_on_the_fly_pat_(
         ItemInNs::Values(def) => matches!(def, hir::ModuleDef::Const(_)),
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
+    let mut import_name_buffer = String::new();
     let cfg = ctx.config.import_path_config();
 
     import_assets
@@ -316,9 +328,13 @@ fn import_on_the_fly_pat_(
                 && ctx.check_stability(original_item.attrs(ctx.db).as_ref())
         })
         .sorted_by(|a, b| {
-            let key = |import_path| {
+            let mut key = |import_path| {
                 (
-                    compute_fuzzy_completion_order_key(import_path, &user_input_lowercased),
+                    compute_fuzzy_completion_order_key(
+                        import_path,
+                        &user_input_lowercased,
+                        &mut import_name_buffer,
+                    ),
                     import_path,
                 )
             };
@@ -332,11 +348,11 @@ fn import_on_the_fly_pat_(
     Some(())
 }
 
-fn import_on_the_fly_method(
+fn import_on_the_fly_method<'db>(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
-    dot_access: &DotAccess<'_>,
-    import_assets: ImportAssets<'_>,
+    ctx: &CompletionContext<'_, 'db>,
+    dot_access: &DotAccess<'db>,
+    import_assets: ImportAssets<'db>,
     position: SyntaxNode,
     potential_import_name: String,
 ) -> Option<()> {
@@ -345,6 +361,7 @@ fn import_on_the_fly_method(
     ImportScope::find_insert_use_container(&position, &ctx.sema)?;
 
     let user_input_lowercased = potential_import_name.to_lowercase();
+    let mut import_name_buffer = String::new();
 
     let cfg = ctx.config.import_path_config();
 
@@ -356,9 +373,13 @@ fn import_on_the_fly_method(
         })
         .filter(|import| filter_excluded_flyimport(ctx, import))
         .sorted_by(|a, b| {
-            let key = |import_path| {
+            let mut key = |import_path| {
                 (
-                    compute_fuzzy_completion_order_key(import_path, &user_input_lowercased),
+                    compute_fuzzy_completion_order_key(
+                        import_path,
+                        &user_input_lowercased,
+                        &mut import_name_buffer,
+                    ),
                     import_path,
                 )
             };
@@ -372,7 +393,7 @@ fn import_on_the_fly_method(
     Some(())
 }
 
-fn filter_excluded_flyimport(ctx: &CompletionContext<'_>, import: &LocatedImport) -> bool {
+fn filter_excluded_flyimport(ctx: &CompletionContext<'_, '_>, import: &LocatedImport) -> bool {
     let def = import.item_to_import.into_module_def();
     let is_exclude_flyimport = ctx.exclude_flyimport.get(&def).copied();
 
@@ -394,14 +415,15 @@ fn filter_excluded_flyimport(ctx: &CompletionContext<'_>, import: &LocatedImport
     true
 }
 
-fn import_name(ctx: &CompletionContext<'_>) -> String {
+fn import_name(ctx: &CompletionContext<'_, '_>) -> String {
     let token_kind = ctx.token.kind();
 
     if token_kind.is_any_identifier() { ctx.token.to_string() } else { String::new() }
 }
 
 fn import_assets_for_path<'db>(
-    ctx: &CompletionContext<'db>,
+    ctx: &CompletionContext<'_, 'db>,
+    path: Option<&ast::Path>,
     potential_import_name: &str,
     qualifier: Option<ast::Path>,
 ) -> Option<ImportAssets<'db>> {
@@ -411,6 +433,7 @@ fn import_assets_for_path<'db>(
     let fuzzy_name_length = potential_import_name.len();
     let mut assets_for_path = ImportAssets::for_fuzzy_path(
         ctx.module,
+        path,
         qualifier,
         potential_import_name.to_owned(),
         &ctx.sema,
@@ -429,15 +452,15 @@ fn import_assets_for_path<'db>(
 fn compute_fuzzy_completion_order_key(
     proposed_mod_path: &hir::ModPath,
     user_input_lowercased: &str,
+    import_name_buffer: &mut String,
 ) -> usize {
     cov_mark::hit!(certain_fuzzy_order_test);
-    let import_name = match proposed_mod_path.segments().last() {
-        // FIXME: nasty alloc, this is a hot path!
-        Some(name) => name.as_str().to_ascii_lowercase(),
-        None => return usize::MAX,
+    let Some(import_name) = proposed_mod_path.segments().last() else {
+        return usize::MAX;
     };
-    match import_name.match_indices(user_input_lowercased).next() {
-        Some((first_matching_index, _)) => first_matching_index,
-        None => usize::MAX,
-    }
+
+    import_name_buffer.clear();
+    import_name_buffer.push_str(import_name.as_str());
+    import_name_buffer.make_ascii_lowercase();
+    import_name_buffer.find(user_input_lowercased).unwrap_or(usize::MAX)
 }

@@ -61,7 +61,7 @@ where
 
             BackendRepr::SimdScalableVector { .. } => panic!("scalable vectors are unsupported"),
 
-            BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => {
+            BackendRepr::ScalarPair { .. } | BackendRepr::Memory { .. } => {
                 for i in 0..layout.fields.count() {
                     let field_off = off + layout.fields.offset(i);
                     classify(cx, layout.field(cx, i), cls, field_off)?;
@@ -151,7 +151,7 @@ fn reg_component(cls: &[Option<Class>], i: &mut usize, size: Size) -> Option<Reg
                     _ => Reg::f64(),
                 }
             } else {
-                Reg { kind: RegKind::Vector, size: Size::from_bytes(8) * (vec_len as u64) }
+                Reg::opaque_vector(Size::from_bytes(8) * (vec_len as u64))
             })
         }
         Some(c) => unreachable!("reg_component: unhandled class {:?}", c),

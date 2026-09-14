@@ -1,11 +1,10 @@
-use super::sealed::Sealed;
 use crate::simd::{
     Mask, Select, Simd, SimdCast, SimdElement,
     cmp::{SimdPartialEq, SimdPartialOrd},
 };
 
 /// Operations on SIMD vectors of floats.
-pub trait SimdFloat: Copy + Sealed {
+pub impl(self) trait SimdFloat: Copy {
     /// Mask type used for manipulating this SIMD vector type.
     type Mask;
 
@@ -240,8 +239,6 @@ pub trait SimdFloat: Copy + Sealed {
 macro_rules! impl_trait {
     { $($ty:ty { bits: $bits_ty:ty, mask: $mask_ty:ty }),* } => {
         $(
-        impl<const N: usize> Sealed for Simd<$ty, N> {}
-
         impl<const N: usize> SimdFloat for Simd<$ty, N>
         {
             type Mask = Mask<<$mask_ty as SimdElement>::Mask, N>;
@@ -385,13 +382,13 @@ macro_rules! impl_trait {
             #[inline]
             fn simd_min(self, other: Self) -> Self {
                 // Safety: `self` and `other` are float vectors
-                unsafe { core::intrinsics::simd::simd_fmin(self, other) }
+                unsafe { core::intrinsics::simd::simd_minimum_number_nsz(self, other) }
             }
 
             #[inline]
             fn simd_max(self, other: Self) -> Self {
                 // Safety: `self` and `other` are floating point vectors
-                unsafe { core::intrinsics::simd::simd_fmax(self, other) }
+                unsafe { core::intrinsics::simd::simd_maximum_number_nsz(self, other) }
             }
 
             #[inline]
@@ -430,18 +427,18 @@ macro_rules! impl_trait {
 
             #[inline]
             fn reduce_max(self) -> Self::Scalar {
-                // Safety: `self` is a float vector
-                unsafe { core::intrinsics::simd::simd_reduce_max(self) }
+                // LLVM has no intrinsic we can use here
+                // (https://github.com/llvm/llvm-project/issues/185827).
+                self.as_array().iter().copied().fold(Self::Scalar::NAN, Self::Scalar::max)
             }
 
             #[inline]
             fn reduce_min(self) -> Self::Scalar {
-                // Safety: `self` is a float vector
-                unsafe { core::intrinsics::simd::simd_reduce_min(self) }
+                self.as_array().iter().copied().fold(Self::Scalar::NAN, Self::Scalar::min)
             }
         }
         )*
     }
 }
 
-impl_trait! { f32 { bits: u32, mask: i32 }, f64 { bits: u64, mask: i64 } }
+impl_trait! { f16 { bits: u16, mask: i16 }, f32 { bits: u32, mask: i32 }, f64 { bits: u64, mask: i64 } }

@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 #![feature(const_trait_impl)]
 #![feature(const_default)]
 #![feature(derive_const)]
@@ -8,7 +7,7 @@ mod issue15493 {
     #[repr(transparent)]
     struct Foo(u64);
 
-    impl const Default for Foo {
+    const impl Default for Foo {
         //~^ derivable_impls
         fn default() -> Self {
             Self(0)
@@ -21,7 +20,7 @@ mod issue15493 {
         B,
     }
 
-    impl const Default for Bar {
+    const impl Default for Bar {
         //~^ derivable_impls
         fn default() -> Self {
             Bar::A

@@ -5,6 +5,8 @@ use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
+use crate::PassPolicy;
+
 struct EraseDerefTempsVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
@@ -16,7 +18,9 @@ impl<'tcx> MutVisitor<'tcx> for EraseDerefTempsVisitor<'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, _: Location) {
         if let &mut Rvalue::CopyForDeref(place) = rvalue {
-            *rvalue = Rvalue::Use(Operand::Copy(place))
+            // We do *NOT* want a retag here! This assignment might copy a mutable reference we
+            // can't actually copy, we just need it temporarily to create another pointer.
+            *rvalue = Rvalue::Use(Operand::Copy(place), WithRetag::No)
         }
     }
 
@@ -35,7 +39,8 @@ impl<'tcx> crate::MirPass<'tcx> for EraseDerefTemps {
         EraseDerefTempsVisitor { tcx }.visit_body_preserves_cfg(body);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // Later MIR stages assume that CopyForDeref is gone.
+        PassPolicy::Required
     }
 }

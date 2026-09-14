@@ -1,7 +1,7 @@
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
     AstNode, SyntaxNode,
-    ast::{self, HasName, Name, edit::AstNodeEdit, syntax_factory::SyntaxFactory},
+    ast::{self, HasName, Name, edit::AstNodeEdit},
     syntax_editor::SyntaxEditor,
 };
 
@@ -29,7 +29,10 @@ use crate::{
 //     let Some(val) = opt else { return };
 // }
 // ```
-pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_match_to_let_else(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let let_stmt: ast::LetStmt = ctx.find_node_at_offset()?;
     let pat = let_stmt.pat()?;
     if ctx.offset() > pat.syntax().text_range().end() {
@@ -61,9 +64,17 @@ pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'
         |builder| {
             let extracting_arm_pat =
                 rename_variable(&extracting_arm_pat, &extracted_variable_positions, pat);
+            let (open_paren, close_paren) = if ast::OrPat::can_cast(extracting_arm_pat.kind()) {
+                // Or patterns cannot put put directly under let statements.
+                // FIXME: Do this with `SyntaxEditor` in `rename_variable()`, it's just difficult right now
+                // since it re-roots nodes.
+                ("(", ")")
+            } else {
+                ("", "")
+            };
             builder.replace(
                 let_stmt.syntax().text_range(),
-                format!("let {extracting_arm_pat} = {initializer_expr} else {diverging_arm_expr};"),
+                format!("let {open_paren}{extracting_arm_pat}{close_paren} = {initializer_expr} else {diverging_arm_expr};"),
             )
         },
     )
@@ -71,7 +82,7 @@ pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'
 
 // Given a match expression, find extracting and diverging arms.
 fn find_arms(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     match_expr: &ast::MatchExpr,
 ) -> Option<(ast::MatchArm, ast::MatchArm)> {
     let arms = match_expr.match_arm_list()?.arms().collect::<Vec<_>>();
@@ -82,7 +93,7 @@ fn find_arms(
     let mut extracting = None;
     let mut diverging = None;
     for arm in arms {
-        if ctx.sema.type_of_expr(&arm.expr()?)?.original().is_never() {
+        if ctx.sema.expr_is_diverging(&arm.expr()?) {
             diverging = Some(arm);
         } else {
             extracting = Some(arm);
@@ -99,7 +110,7 @@ fn find_arms(
 }
 
 // Given an extracting arm, find the extracted variable.
-fn find_extracted_variable(ctx: &AssistContext<'_>, arm: &ast::MatchArm) -> Option<Vec<Name>> {
+fn find_extracted_variable(ctx: &AssistContext<'_, '_>, arm: &ast::MatchArm) -> Option<Vec<Name>> {
     match arm.expr()? {
         ast::Expr::PathExpr(path) => {
             let name_ref = path.syntax().descendants().find_map(ast::NameRef::cast)?;
@@ -121,9 +132,8 @@ fn find_extracted_variable(ctx: &AssistContext<'_>, arm: &ast::MatchArm) -> Opti
 
 // Rename `extracted` with `binding` in `pat`.
 fn rename_variable(pat: &ast::Pat, extracted: &[Name], binding: ast::Pat) -> SyntaxNode {
-    let syntax = pat.syntax().clone_subtree();
-    let mut editor = SyntaxEditor::new(syntax.clone());
-    let make = SyntaxFactory::with_mappings();
+    let (editor, syntax) = SyntaxEditor::new(pat.syntax().clone());
+    let make = editor.make();
     let extracted = extracted
         .iter()
         .map(|e| e.syntax().text_range() - pat.syntax().text_range().start())
@@ -138,18 +148,13 @@ fn rename_variable(pat: &ast::Pat, extracted: &[Name], binding: ast::Pat) -> Syn
             if let Some(name_ref) = record_pat_field.field_name() {
                 editor.replace(
                     record_pat_field.syntax(),
-                    make.record_pat_field(
-                        make.name_ref(&name_ref.text()),
-                        binding.clone_for_update(),
-                    )
-                    .syntax(),
+                    make.record_pat_field(make.name_ref(name_ref.text()), binding.clone()).syntax(),
                 );
             }
         } else {
-            editor.replace(extracted_syntax, binding.syntax().clone_for_update());
+            editor.replace(extracted_syntax, binding.syntax());
         }
     }
-    editor.add_mappings(make.finish_with_mappings());
     let new_node = editor.finish().new_root().clone();
     if let Some(pat) = ast::Pat::cast(new_node.clone()) {
         pat.dedent(1.into()).syntax().clone()
@@ -546,6 +551,40 @@ fn f() {
     };
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn top_level_or_pat() {
+        check_assist(
+            convert_match_to_let_else,
+            r#"
+enum E {
+    A(u32),
+    B(u32),
+    C,
+}
+
+fn foo() {
+    let e = E::A(0);
+    let _$0 = match e {
+        E::A(v) | E::B(v) => v,
+        _ => return,
+    };
+}
+        "#,
+            r#"
+enum E {
+    A(u32),
+    B(u32),
+    C,
+}
+
+fn foo() {
+    let e = E::A(0);
+    let (E::A(_) | E::B(_)) = e else { return };
+}
+        "#,
         );
     }
 }

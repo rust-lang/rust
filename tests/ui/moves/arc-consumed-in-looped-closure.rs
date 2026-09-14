@@ -19,7 +19,7 @@ impl ThreadPool {
 }
 
 fn main() {
-    let results = Arc::new(Mutex::new(Vec::new())); //~ NOTE move occurs because
+    let results = Arc::new(Mutex::new(Vec::new())); //~ NOTE this move could be avoided by cloning the original `Arc`, which is inexpensive
     let pool = ThreadPool {
         workers: vec![],
         queue: Arc::new(()),
@@ -29,6 +29,7 @@ fn main() {
         // let results = Arc::clone(&results); // Forgot this.
         pool.execute(move || { //~ ERROR E0382
             //~^ NOTE value moved into closure here, in previous iteration of loop
+            //~| NOTE consider using `Arc::clone`
             //~| HELP consider cloning the value before moving it into the closure
             let mut r = results.lock().unwrap(); //~ NOTE use occurs due to use in closure
             r.push(i);

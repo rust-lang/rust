@@ -3,7 +3,7 @@
 //@[private] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/ref_option/private
 //@[all] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/ref_option/all
 
-#![allow(unused, clippy::needless_lifetimes, clippy::borrowed_box)]
+#![allow(clippy::borrowed_box, clippy::needless_lifetimes)]
 #![warn(clippy::ref_option)]
 
 fn opt_u8(a: &Option<u8>) {}

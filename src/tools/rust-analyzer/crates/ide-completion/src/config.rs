@@ -6,8 +6,9 @@
 
 use hir::FindPathConfig;
 use ide_db::{
-    MiniCore, SnippetCap,
+    SnippetCap,
     imports::{import_assets::ImportPathConfig, insert_use::InsertUseConfig},
+    ra_fixture::RaFixtureConfig,
 };
 
 use crate::{CompletionFieldsToResolve, snippet::Snippet};
@@ -24,6 +25,7 @@ pub struct CompletionConfig<'a> {
     pub term_search_fuel: u64,
     pub full_function_signatures: bool,
     pub callable: Option<CallableSnippets>,
+    pub add_colons_to_module: bool,
     pub add_semicolon_to_unit: bool,
     pub snippet_cap: Option<SnippetCap>,
     pub insert_use: InsertUseConfig,
@@ -35,13 +37,15 @@ pub struct CompletionConfig<'a> {
     pub fields_to_resolve: CompletionFieldsToResolve,
     pub exclude_flyimport: Vec<(String, AutoImportExclusionType)>,
     pub exclude_traits: &'a [String],
-    pub minicore: MiniCore<'a>,
+    pub ra_fixture: RaFixtureConfig<'a>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AutoImportExclusionType {
     Always,
     Methods,
+    SubItems,
+    Variants,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

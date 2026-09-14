@@ -1,6 +1,5 @@
 // Regression test for #133271.
 #![feature(generic_const_exprs)]
-//~^ WARN the feature `generic_const_exprs` is incomplete
 
 struct Foo;
 impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo

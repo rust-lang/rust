@@ -1,5 +1,5 @@
 //@ revisions: bounded123 bounded321 replaced123 replaced321
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows -Zmiri-genmc-verbose
+//@compile-flags: -Zmiri-genmc-verbose
 //@normalize-stderr-test: "Verification took .*s" -> "Verification took [TIME]s"
 
 // This test uses GenMC assume statements to bound or replace spinloops.
@@ -50,7 +50,7 @@ fn spin_until(value: u64) {
     unsafe { miri_genmc_assume(false) };
 }
 
-#[cfg(not(any(bounded123, bounded321)))]
+#[cfg(any(replaced123, replaced321))]
 /// For full replacement, we limit it to only 1 load.
 fn spin_until(value: u64) {
     unsafe { miri_genmc_assume(FLAG.load(Acquire) == value) };

@@ -3,7 +3,7 @@
 
 use rustc_abi::{BackendRepr, HasDataLayout, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi, Reg, RegKind};
+use crate::callconv::{ArgAbi, FnAbi, Reg};
 use crate::spec::{Env, HasTargetSpec, Os};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
@@ -42,6 +42,11 @@ where
         return;
     }
 
+    if arg.layout.is_complex_number(cx) {
+        arg.make_indirect();
+        return;
+    }
+
     let size = arg.layout.size;
     if size.bits() <= 128 {
         if let BackendRepr::SimdVector { .. } = arg.layout.backend_repr {
@@ -51,7 +56,7 @@ where
 
         if arg.layout.is_single_vector_element(cx, size) {
             // pass non-transparent wrappers around a vector as `PassMode::Cast`
-            arg.cast_to(Reg { kind: RegKind::Vector, size });
+            arg.cast_to(Reg::opaque_vector(size));
             return;
         }
     }

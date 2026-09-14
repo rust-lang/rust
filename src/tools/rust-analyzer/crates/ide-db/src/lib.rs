@@ -60,13 +60,10 @@ use salsa::Durability;
 use std::{fmt, mem::ManuallyDrop};
 
 use base_db::{
-    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, Nonce, RootQueryDb,
-    SourceDatabase, SourceRoot, SourceRootId, SourceRootInput, query_group,
+    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, Nonce, SourceDatabase,
+    SourceRoot, SourceRootId, SourceRootInput, set_all_crates_with_durability,
 };
-use hir::{
-    FilePositionWrapper, FileRangeWrapper,
-    db::{DefDatabase, ExpandDatabase, HirDatabase},
-};
+use hir::{FilePositionWrapper, FileRangeWrapper, db::HirDatabase};
 use triomphe::Arc;
 
 use crate::line_index::LineIndex;
@@ -81,7 +78,7 @@ pub use span::{self, FileId};
 pub type FilePosition = FilePositionWrapper<FileId>;
 pub type FileRange = FileRangeWrapper<FileId>;
 
-#[salsa_macros::db]
+#[salsa::db]
 pub struct RootDatabase {
     // FIXME: Revisit this commit now that we migrated to the new salsa, given we store arcs in this
     // db directly now
@@ -97,7 +94,7 @@ pub struct RootDatabase {
 
 impl std::panic::RefUnwindSafe for RootDatabase {}
 
-#[salsa_macros::db]
+#[salsa::db]
 impl salsa::Database for RootDatabase {}
 
 impl Drop for RootDatabase {
@@ -112,7 +109,7 @@ impl Clone for RootDatabase {
             storage: self.storage.clone(),
             files: self.files.clone(),
             crates_map: self.crates_map.clone(),
-            nonce: Nonce::new(),
+            nonce: self.nonce,
         }
     }
 }
@@ -123,7 +120,7 @@ impl fmt::Debug for RootDatabase {
     }
 }
 
-#[salsa_macros::db]
+#[salsa::db]
 impl SourceDatabase for RootDatabase {
     fn file_text(&self, file_id: vfs::FileId) -> FileText {
         self.files.file_text(file_id)
@@ -160,7 +157,7 @@ impl SourceDatabase for RootDatabase {
     }
 
     fn file_source_root(&self, id: vfs::FileId) -> FileSourceRootInput {
-        self.files.file_source_root(id)
+        self.files.file_source_root(self, id)
     }
 
     fn set_file_source_root_with_durability(
@@ -180,6 +177,10 @@ impl SourceDatabase for RootDatabase {
     fn nonce_and_revision(&self) -> (Nonce, salsa::Revision) {
         (self.nonce, salsa::plumbing::ZalsaDatabase::zalsa(self).current_revision())
     }
+
+    fn line_column(&self, file: FileId, offset: syntax::TextSize) -> Result<(u32, u32), ()> {
+        line_index(self, file).try_line_col(offset).map(|lc| (lc.line, lc.col)).ok_or(())
+    }
 }
 
 impl Default for RootDatabase {
@@ -197,22 +198,22 @@ impl RootDatabase {
             nonce: Nonce::new(),
         };
         // This needs to be here otherwise `CrateGraphBuilder` will panic.
-        db.set_all_crates(Arc::new(Box::new([])));
+        set_all_crates_with_durability(&mut db, std::iter::empty(), Durability::HIGH);
         CrateGraphBuilder::default().set_in_db(&mut db);
-        db.set_proc_macros_with_durability(Default::default(), Durability::MEDIUM);
+        hir::ProcMacros::init_default(&db, Durability::MEDIUM);
         _ = base_db::LibraryRoots::builder(Default::default())
             .durability(Durability::MEDIUM)
             .new(&db);
         _ = base_db::LocalRoots::builder(Default::default())
             .durability(Durability::MEDIUM)
             .new(&db);
-        db.set_expand_proc_attr_macros_with_durability(false, Durability::HIGH);
+        hir::db::set_expand_proc_attr_macros(&mut db, false);
         db.update_base_query_lru_capacities(lru_capacity);
         db
     }
 
     pub fn enable_proc_attr_macros(&mut self) {
-        self.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
+        hir::db::set_expand_proc_attr_macros(self, true);
     }
 
     pub fn update_base_query_lru_capacities(&mut self, _lru_capacity: Option<u16>) {
@@ -252,15 +253,21 @@ impl RootDatabase {
     }
 }
 
-#[query_group::query_group]
-pub trait LineIndexDatabase: base_db::RootQueryDb {
-    #[salsa::invoke_interned(line_index)]
-    fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
-}
-
-fn line_index(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
-    let text = db.file_text(file_id).text(db);
-    Arc::new(LineIndex::new(text))
+pub fn line_index(db: &dyn SourceDatabase, file_id: FileId) -> &Arc<LineIndex> {
+    #[salsa::interned]
+    pub struct InternedFileId {
+        #[returns(copy)]
+        id: FileId,
+    }
+    #[salsa::tracked(returns(ref))]
+    fn line_index<'db>(
+        db: &'db dyn SourceDatabase,
+        file_id: InternedFileId<'db>,
+    ) -> Arc<LineIndex> {
+        let text = db.file_text(file_id.id(db)).text(db);
+        Arc::new(LineIndex::new(text))
+    }
+    line_index(db, InternedFileId::new(db, file_id))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -312,7 +319,7 @@ impl SymbolKind {
     pub fn from_module_def(db: &dyn HirDatabase, it: hir::ModuleDef) -> Self {
         match it {
             hir::ModuleDef::Const(..) => SymbolKind::Const,
-            hir::ModuleDef::Variant(..) => SymbolKind::Variant,
+            hir::ModuleDef::EnumVariant(..) => SymbolKind::Variant,
             hir::ModuleDef::Function(..) => SymbolKind::Function,
             hir::ModuleDef::Macro(mac) if mac.is_proc_macro() => SymbolKind::ProcMacro,
             hir::ModuleDef::Macro(..) => SymbolKind::Macro,
@@ -380,7 +387,7 @@ pub enum Severity {
     Allow,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct MiniCore<'a>(&'a str);
 
 impl<'a> MiniCore<'a> {
@@ -392,6 +399,21 @@ impl<'a> MiniCore<'a> {
     #[inline]
     pub const fn default() -> Self {
         Self(test_utils::MiniCore::RAW_SOURCE)
+    }
+}
+
+impl std::fmt::Debug for MiniCore<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut d = f.debug_tuple("MiniCore");
+        if self.0 == test_utils::MiniCore::RAW_SOURCE {
+            // Don't print the whole contents if they correspond to the default.
+            // The `format_args!` makes it so that the output is
+            // `MiniCore(<default>)` and not `MiniCore("<default>").
+            d.field(&format_args!("<default>"));
+        } else {
+            d.field(&self.0);
+        };
+        d.finish()
     }
 }
 

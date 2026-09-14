@@ -57,7 +57,7 @@ impl RenamedFnArgs {
     {
         let mut renamed: Vec<(Span, String)> = vec![];
 
-        debug_assert!(default_idents.size_hint() == current_idents.size_hint());
+        debug_assert_eq!(default_idents.size_hint(), current_idents.size_hint());
         for (default_ident, current_ident) in iter::zip(default_idents, current_idents) {
             let has_name_to_check = |ident: Option<Ident>| {
                 ident

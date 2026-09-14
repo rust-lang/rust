@@ -702,7 +702,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             self.apply_rewrites(&node_rewrites);
         }
 
-        node_rewrites.truncate(0);
+        node_rewrites.clear();
         self.reused_node_vec = node_rewrites;
     }
 

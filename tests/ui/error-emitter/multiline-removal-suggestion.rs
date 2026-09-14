@@ -2,7 +2,7 @@
 //@ compile-flags: --error-format=human --color=always
 //@ edition:2018
 //@ only-linux
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 // We use `\t` instead of spaces for indentation to ensure that the highlighting logic properly
 // accounts for replaced characters (like we do for `\t` with `    `). The naïve way of highlighting
 // could be counting chars of the original code, instead of operating on the code as it is being
@@ -56,4 +56,3 @@ fn bay() -> Vec<(bool, HashSet<u8>)> {
 		.collect()
 }
 fn main() {}
-//@ ignore-parallel-frontend invalid svg(multiple threads trying to write to the same file)

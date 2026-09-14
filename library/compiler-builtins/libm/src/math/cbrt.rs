@@ -208,7 +208,7 @@ mod tests {
 
     #[test]
     fn spot_checks() {
-        if !cfg!(x86_no_sse) {
+        if !cfg!(x86_no_sse2) {
             // Exposes a rounding mode problem. Ignored on i586 because of inaccurate FMA.
             assert_biteq!(
                 cbrt(f64::from_bits(0xf7f792b28f600000)),

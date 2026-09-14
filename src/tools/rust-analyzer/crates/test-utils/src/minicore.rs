@@ -11,6 +11,7 @@
 //!     add:
 //!     asm:
 //!     assert:
+//!     async_iterator: option, future, pin
 //!     as_mut: sized
 //!     as_ref: sized
 //!     async_fn: fn, tuple, future, copy
@@ -21,21 +22,22 @@
 //!     cell: copy, drop
 //!     clone: sized
 //!     coerce_pointee: derive, sized, unsize, coerce_unsized, dispatch_from_dyn
+//!     reborrow: derive, copy
 //!     coerce_unsized: unsize
 //!     concat:
 //!     copy: clone
 //!     default: sized
 //!     deref_mut: deref
 //!     deref: sized
+//!     deref_pat: deref
 //!     derive:
 //!     discriminant:
 //!     drop: sized
 //!     env: option
-//!     eq: sized
+//!     eq: sized, unary_ops, builtin_impls
 //!     error: fmt
+//!     float_consts: unary_ops, builtin_impls
 //!     fmt: option, result, transmute, coerce_unsized, copy, clone, derive
-//!     fmt_before_1_93_0: fmt
-//!     fmt_before_1_89_0: fmt_before_1_93_0
 //!     fn: sized, tuple
 //!     from: sized, result
 //!     future: pin
@@ -50,11 +52,14 @@
 //!     iterator: option
 //!     iterators: iterator, fn
 //!     manually_drop: drop
-//!     non_null:
-//!     non_zero:
+//!     matches:
+//!     non_null: pat
+//!     non_zero: pat, transmute, option
 //!     option: panic
 //!     ord: eq, option
 //!     panic: fmt
+//!     panic_location: panic
+//!     pat: panic
 //!     phantom_data:
 //!     pin:
 //!     pointee: copy, send, sync, ord, hash, unpin, phantom_data
@@ -66,7 +71,7 @@
 //!     size_of: sized
 //!     sized:
 //!     slice:
-//!     str:
+//!     str: sized, result
 //!     sync: sized
 //!     transmute:
 //!     try: infallible
@@ -204,6 +209,20 @@ pub mod marker {
         /* compiler built-in */
     }
     // endregion:coerce_pointee
+
+    // region:reborrow
+    #[rustc_builtin_macro(Reborrow)]
+    pub macro Reborrow($item:item) {}
+
+    #[lang = "reborrow"]
+    pub trait Reborrow {}
+
+    #[rustc_builtin_macro(CoerceShared, attributes(coerce_shared))]
+    pub macro CoerceShared($item:item) {}
+
+    #[lang = "coerce_shared"]
+    pub trait CoerceShared<Target: Copy>: Reborrow {}
+    // endregion:reborrow
 }
 
 // region:default
@@ -351,11 +370,13 @@ pub mod clone {
         }
     }
 
+    // region:index
     impl<T: Clone> Clone for [T; 1] {
         fn clone(&self) -> Self {
             [self[0].clone()]
         }
     }
+    // endregion:index
     // endregion:builtin_impls
 
     // region:derive
@@ -534,10 +555,10 @@ pub mod ptr {
 
     // endregion:pointee
     // region:non_null
-    #[rustc_layout_scalar_valid_range_start(1)]
     #[rustc_nonnull_optimization_guaranteed]
+    #[repr(transparent)]
     pub struct NonNull<T: crate::marker::PointeeSized> {
-        pointer: *const T,
+        pointer: crate::pattern_type!(*const T is !null),
     }
     // region:coerce_unsized
     impl<T: crate::marker::PointeeSized, U: crate::marker::PointeeSized>
@@ -614,6 +635,15 @@ pub mod ops {
         }
         // endregion:deref_mut
 
+        // region:deref_pat
+        #[lang = "deref_pure"]
+        #[rustc_dyn_incompatible_trait]
+        pub unsafe trait DerefPure: PointeeSized {}
+
+        unsafe impl<T: ?Sized> DerefPure for &T {}
+        unsafe impl<T: ?Sized> DerefPure for &mut T {}
+        // endregion:deref_pat
+
         // region:receiver
         #[lang = "receiver"]
         pub trait Receiver: PointeeSized {
@@ -631,15 +661,24 @@ pub mod ops {
     }
     pub use self::deref::{
         Deref,
-        DerefMut, // :deref_mut
-        Receiver, // :receiver
+        DerefMut,  // :deref_mut
+        DerefPure, // :deref_pat
+        Receiver,  // :receiver
     };
     // endregion:deref
 
     // region:drop
     #[lang = "drop"]
     pub trait Drop {
-        fn drop(&mut self);
+        fn drop(&mut self) {
+            // region:pin
+            Drop::pin_drop(crate::pin::Pin::new(self))
+            // endregion:pin
+        }
+
+        // region:pin
+        fn pin_drop(self: crate::pin::Pin<&mut Self>) {}
+        // endregion:pin
     }
     // endregion:drop
 
@@ -698,6 +737,37 @@ pub mod ops {
         unsafe impl<T> SliceIndex<[T]> for usize {
             type Output = T;
         }
+
+        macro_rules! impl_index_range {
+            ( $($range:ty,)* ) => {
+                $(
+                    unsafe impl<T> SliceIndex<[T]> for $range {
+                        type Output = [T];
+                    }
+                )*
+            }
+        }
+
+        // region:range
+        impl_index_range!(
+            crate::ops::RangeFull,
+            crate::ops::Range<usize>,
+            crate::ops::RangeFrom<usize>,
+            crate::ops::RangeTo<usize>,
+            crate::ops::RangeInclusive<usize>,
+            crate::ops::RangeToInclusive<usize>,
+        );
+        // endregion:range
+
+        // region:new_range
+        impl_index_range!(
+            crate::range::Range<usize>,
+            crate::range::RangeFrom<usize>,
+            crate::range::RangeInclusive<usize>,
+            crate::range::RangeToInclusive<usize>,
+        );
+        // endregion:new_range
+
         // endregion:slice
     }
     pub use self::index::{Index, IndexMut};
@@ -731,10 +801,41 @@ pub mod ops {
             pub(crate) exhausted: bool,
         }
 
+        impl<Idx> RangeInclusive<Idx> {
+            #[lang = "range_inclusive_new"]
+            pub const fn new(start: Idx, end: Idx) -> Self {
+                Self { start, end, exhausted: false }
+            }
+        }
+
         #[lang = "RangeToInclusive"]
         pub struct RangeToInclusive<Idx> {
             pub end: Idx,
         }
+
+        // region:iterator
+        pub trait Step {}
+        macro_rules! impl_step {
+            ( $( $ty:ty ),* $(,)? ) => {
+                $(
+                    impl Step for $ty {}
+                )*
+            };
+        }
+        impl_step!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+
+        macro_rules! impl_iterator {
+            ( $( $range:ident ),* $(,)? ) => {
+                $(
+                    impl<Idx: Step> Iterator for $range<Idx> {
+                        type Item = Idx;
+                        fn next(&mut self) -> Option<Self::Item> { loop {} }
+                    }
+                )*
+            };
+        }
+        impl_iterator!(Range, RangeFrom, RangeTo, RangeInclusive, RangeToInclusive);
+        // endregion:iterator
     }
     pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
     pub use self::range::{RangeInclusive, RangeToInclusive};
@@ -936,6 +1037,14 @@ pub mod ops {
                 }
             }
         }
+
+        mod internal_implementation_detail {
+            #[lang = "async_fn_kind_helper"]
+            trait AsyncFnKindHelper<GoalKind> {
+                #[lang = "async_fn_kind_upvars"]
+                type Upvars<'closure_env, Inputs, Upvars, BorrowedUpvarsAsFnPtr>;
+            }
+        }
     }
     pub use self::async_function::{AsyncFn, AsyncFnMut, AsyncFnOnce};
     // endregion:async_fn
@@ -1110,6 +1219,30 @@ pub mod ops {
         #[must_use = "this returns the result of the operation, without modifying the original"]
         fn neg(self) -> Self::Output;
     }
+
+    // region:builtin_impls
+    macro_rules! not_impl {
+        ($($t:ty)*) => ($(
+            impl const Not for $t {
+                type Output = $t;
+                fn not(self) -> $t { !self }
+            }
+        )*)
+    }
+
+    not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+
+    macro_rules! neg_impl {
+        ($($t:ty)*) => ($(
+            impl const Neg for $t {
+                type Output = $t;
+                fn neg(self) -> $t { -self }
+            }
+        )*)
+    }
+
+    neg_impl! { isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
+    // endregion:builtin_impls
     // endregion:unary_ops
 
     // region:coroutine
@@ -1169,12 +1302,12 @@ pub mod range {
     #[lang = "RangeInclusiveCopy"]
     pub struct RangeInclusive<Idx> {
         pub start: Idx,
-        pub end: Idx,
+        pub last: Idx,
     }
 
     #[lang = "RangeToInclusiveCopy"]
     pub struct RangeToInclusive<Idx> {
-        pub end: Idx,
+        pub last: Idx,
     }
 }
 // endregion:new_range
@@ -1281,6 +1414,38 @@ pub mod fmt {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result;
     }
 
+    impl<T: ?Sized + Debug> Debug for &T {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+            T::fmt(&**self, f)
+        }
+    }
+    impl<T: ?Sized + Display> Display for &T {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+            T::fmt(&**self, f)
+        }
+    }
+
+    macro_rules! impl_fmt_traits {
+        ( $($ty:ty),* $(,)? ) => {
+            $(
+                impl Debug for $ty {
+                    fn fmt(&self, f: &mut Formatter<'_>) -> Result { loop {} }
+                }
+                impl Display for $ty {
+                    fn fmt(&self, f: &mut Formatter<'_>) -> Result { loop {} }
+                }
+            )*
+        }
+    }
+
+    impl_fmt_traits!(str);
+
+    // region:builtin_impls
+    impl_fmt_traits!(
+        i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, bool, char,
+    );
+    // endregion:builtin_impls
+
     mod rt {
         use super::*;
 
@@ -1313,111 +1478,8 @@ pub mod fmt {
             Center,
             Unknown,
         }
-
-        // region:fmt_before_1_93_0
-        #[lang = "format_count"]
-        pub enum Count {
-            Is(usize),
-            Param(usize),
-            Implied,
-        }
-
-        #[lang = "format_placeholder"]
-        pub struct Placeholder {
-            pub position: usize,
-            pub fill: char,
-            pub align: Alignment,
-            pub flags: u32,
-            pub precision: Count,
-            pub width: Count,
-        }
-
-        impl Placeholder {
-            pub const fn new(
-                position: usize,
-                fill: char,
-                align: Alignment,
-                flags: u32,
-                precision: Count,
-                width: Count,
-            ) -> Self {
-                Placeholder { position, fill, align, flags, precision, width }
-            }
-        }
-        // endregion:fmt_before_1_93_0
-
-        // region:fmt_before_1_89_0
-        #[lang = "format_unsafe_arg"]
-        pub struct UnsafeArg {
-            _private: (),
-        }
-
-        impl UnsafeArg {
-            pub unsafe fn new() -> Self {
-                UnsafeArg { _private: () }
-            }
-        }
-        // endregion:fmt_before_1_89_0
     }
 
-    // region:fmt_before_1_93_0
-    #[derive(Copy, Clone)]
-    #[lang = "format_arguments"]
-    pub struct Arguments<'a> {
-        pieces: &'a [&'static str],
-        fmt: Option<&'a [rt::Placeholder]>,
-        args: &'a [rt::Argument<'a>],
-    }
-
-    impl<'a> Arguments<'a> {
-        pub const fn new_v1(pieces: &'a [&'static str], args: &'a [Argument<'a>]) -> Arguments<'a> {
-            Arguments { pieces, fmt: None, args }
-        }
-
-        pub const fn new_const(pieces: &'a [&'static str]) -> Arguments<'a> {
-            Arguments { pieces, fmt: None, args: &[] }
-        }
-
-        // region:fmt_before_1_89_0
-        pub fn new_v1_formatted(
-            pieces: &'a [&'static str],
-            args: &'a [rt::Argument<'a>],
-            fmt: &'a [rt::Placeholder],
-            _unsafe_arg: rt::UnsafeArg,
-        ) -> Arguments<'a> {
-            Arguments { pieces, fmt: Some(fmt), args }
-        }
-        // endregion:fmt_before_1_89_0
-
-        // region:!fmt_before_1_89_0
-        pub unsafe fn new_v1_formatted(
-            pieces: &'a [&'static str],
-            args: &'a [rt::Argument<'a>],
-            fmt: &'a [rt::Placeholder],
-        ) -> Arguments<'a> {
-            Arguments { pieces, fmt: Some(fmt), args }
-        }
-        // endregion:!fmt_before_1_89_0
-
-        pub fn from_str_nonconst(s: &'static str) -> Arguments<'a> {
-            Self::from_str(s)
-        }
-
-        pub const fn from_str(s: &'static str) -> Arguments<'a> {
-            Arguments { pieces: &[s], fmt: None, args: &[] }
-        }
-
-        pub const fn as_str(&self) -> Option<&'static str> {
-            match (self.pieces, self.args) {
-                ([], []) => Some(""),
-                ([s], []) => Some(s),
-                _ => None,
-            }
-        }
-    }
-    // endregion:fmt_before_1_93_0
-
-    // region:!fmt_before_1_93_0
     #[lang = "format_arguments"]
     #[derive(Copy, Clone)]
     pub struct Arguments<'a> {
@@ -1449,7 +1511,6 @@ pub mod fmt {
             }
         }
     }
-    // endregion:!fmt_before_1_93_0
 
     // region:derive
     pub(crate) mod derive {
@@ -1503,11 +1564,25 @@ pub mod slice {
             loop {}
         }
     }
+
+    // region:default
+    impl<T> const Default for &[T] {
+        fn default() -> Self {
+            &[]
+        }
+    }
+    impl<T> const Default for &mut [T] {
+        fn default() -> Self {
+            &mut []
+        }
+    }
+    // endregion:default
 }
 // endregion:slice
 
 // region:option
 pub mod option {
+    #[lang = "Option"]
     pub enum Option<T> {
         #[lang = "None"]
         None,
@@ -1590,6 +1665,43 @@ pub mod result {
         #[lang = "Err"]
         Err(E),
     }
+    impl<T, E> Result<T, E> {
+        pub const fn or<F>(self, res: Result<T, F>) -> Result<T, F> {
+            match self {
+                Ok(v) => Ok(v),
+                Err(_) => res,
+            }
+        }
+
+        pub const fn unwrap_or(self, default: T) -> T {
+            match self {
+                Ok(t) => t,
+                Err(_) => default,
+            }
+        }
+
+        // region:fn
+        pub const fn or_else<F, O>(self, op: O) -> Result<T, F>
+        where
+            O: FnOnce(E) -> Result<T, F>,
+        {
+            match self {
+                Ok(t) => Ok(t),
+                Err(e) => op(e),
+            }
+        }
+
+        pub const fn unwrap_or_else<F>(self, op: F) -> T
+        where
+            F: FnOnce(E) -> T,
+        {
+            match self {
+                Ok(t) => t,
+                Err(e) => op(e),
+            }
+        }
+        // endregion:fn
+    }
 }
 // endregion:result
 
@@ -1657,6 +1769,7 @@ pub mod future {
     }
 }
 pub mod task {
+    #[lang = "Poll"]
     pub enum Poll<T> {
         #[lang = "Ready"]
         Ready(T),
@@ -1669,6 +1782,22 @@ pub mod task {
     }
 }
 // endregion:future
+
+// region:async_iterator
+pub mod async_iter {
+    use crate::{
+        pin::Pin,
+        task::{Context, Poll},
+    };
+
+    #[lang = "async_iterator"]
+    pub trait AsyncIterator {
+        type Item;
+
+        fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>>;
+    }
+}
+// endregion:async_iterator
 
 // region:iterator
 pub mod iter {
@@ -1700,6 +1829,22 @@ pub mod iter {
             type Item = I::Item;
 
             fn next(&mut self) -> Option<I::Item> {
+                loop {}
+            }
+        }
+
+        pub struct Map<I, F> {
+            iter: I,
+            f: F,
+        }
+        impl<B, I: Iterator, F> Iterator for Map<I, F>
+        where
+            F: FnMut(I::Item) -> B,
+        {
+            type Item = B;
+
+            #[inline]
+            fn next(&mut self) -> B {
                 loop {}
             }
         }
@@ -1778,6 +1923,13 @@ pub mod iter {
                 {
                     loop {}
                 }
+                fn map<B, F>(self, _f: F) -> crate::iter::Map<Self, F>
+                where
+                    Self: Sized,
+                    F: FnMut(Self::Item) -> B,
+                {
+                    loop {}
+                }
                 fn filter_map<B, F>(self, _f: F) -> crate::iter::FilterMap<Self, F>
                 where
                     Self: Sized,
@@ -1840,7 +1992,7 @@ pub mod iter {
             pub struct Iter<'a, T> {
                 slice: &'a [T],
             }
-            impl<'a, T> IntoIterator for &'a [T; N] {
+            impl<'a, T, const N: usize> IntoIterator for &'a [T; N] {
                 type Item = &'a T;
                 type IntoIter = Iter<'a, T>;
                 fn into_iter(self) -> Self::IntoIter {
@@ -1888,7 +2040,38 @@ pub mod str {
 // endregion:str
 
 // region:panic
-mod panic {
+pub mod panic {
+    // region:panic_location
+    #[rustc_intrinsic]
+    pub const fn caller_location() -> &'static Location<'static>;
+
+    #[lang = "panic_location"]
+    pub struct Location<'a> {
+        file: &'a str,
+        line: u32,
+        col: u32,
+    }
+
+    impl<'a> Location<'a> {
+        #[track_caller]
+        pub const fn caller() -> &'static Location<'static> {
+            caller_location()
+        }
+
+        pub const fn file(&self) -> &str {
+            self.file
+        }
+
+        pub const fn line(&self) -> u32 {
+            self.line
+        }
+
+        pub const fn column(&self) -> u32 {
+            self.col
+        }
+    }
+    // endregion:panic_location
+
     pub macro panic_2021 {
         () => ({
             const fn panic_cold_explicit() -> ! {
@@ -2106,14 +2289,82 @@ mod macros {
     #[macro_export]
     macro_rules! option_env {}
     // endregion:env
+
+    // region:deref_pat
+    #[allow_internal_unstable(builtin_syntax)]
+    pub macro deref($pat:pat) {
+        builtin # deref($pat)
+    }
+    // endregion:deref_pat
 }
+
+// region:pat
+pub mod pat {
+    #[macro_export]
+    #[rustc_builtin_macro(pattern_type)]
+    macro_rules! pattern_type {
+        ($($arg:tt)*) => {
+            /* compiler built-in */
+        };
+    }
+
+    pub const trait RangePattern {
+        #[lang = "RangeMin"]
+        const MIN: Self;
+
+        #[lang = "RangeMax"]
+        const MAX: Self;
+
+        #[lang = "RangeSub"]
+        fn sub_one(self) -> Self;
+    }
+
+    impl const RangePattern for u8 {
+        const MIN: u8 = 0;
+        const MAX: u8 = 0xFF;
+        fn sub_one(self) -> Self {
+            if self == Self::MIN {
+                panic!("exclusive range end at minimum value of type")
+            } else {
+                self - 1
+            }
+        }
+    }
+
+    impl const RangePattern for i32 {
+        const MIN: i32 = 0x80_00_00_00;
+        const MAX: i32 = 0x7F_FF_FF_FF;
+        fn sub_one(self) -> Self {
+            if self == Self::MIN {
+                panic!("exclusive range end at minimum value of type")
+            } else {
+                self - 1
+            }
+        }
+    }
+
+    // region:coerce_unsized
+    impl<T: crate::marker::PointeeSized, U: crate::marker::PointeeSized>
+        crate::ops::CoerceUnsized<pattern_type!(*const U is !null)> for pattern_type!(*const T is !null)
+    where
+        T: crate::marker::Unsize<U>,
+    {
+    }
+    // endregion:coerce_unsized
+
+    // region:dispatch_from_dyn
+    impl<T: crate::ops::DispatchFromDyn<U>, U>
+        crate::ops::DispatchFromDyn<pattern_type!(U is !null)> for pattern_type!(T is !null)
+    {
+    }
+    // endregion:dispatch_from_dyn
+}
+// endregion:pat
 
 // region:non_zero
 pub mod num {
     #[repr(transparent)]
-    #[rustc_layout_scalar_valid_range_start(1)]
-    #[rustc_nonnull_optimization_guaranteed]
-    pub struct NonZeroU8(u8);
+    pub struct NonZeroU8(crate::pattern_type!(u8 is 1..));
 }
 // endregion:non_zero
 
@@ -2160,6 +2411,32 @@ pub mod error {
 }
 // endregion:error
 
+// region:float_consts
+impl f32 {
+    pub const INFINITY: f32 = 0.0;
+    pub const NEG_INFINITY: f32 = -0.0;
+}
+
+impl f64 {
+    pub const INFINITY: f64 = 0.0;
+    pub const NEG_INFINITY: f64 = -0.0;
+}
+
+pub mod f32 {
+    #[deprecated]
+    pub const INFINITY: f32 = 0.0;
+    #[deprecated]
+    pub const NEG_INFINITY: f32 = -0.0;
+}
+
+pub mod f64 {
+    #[deprecated]
+    pub const INFINITY: f64 = 0.0;
+    #[deprecated]
+    pub const NEG_INFINITY: f64 = -0.0;
+}
+// endregion:float_consts
+
 // region:column
 #[rustc_builtin_macro]
 #[macro_export]
@@ -2168,8 +2445,23 @@ macro_rules! column {
 }
 // endregion:column
 
+// region:matches
+#[macro_export]
+#[allow_internal_unstable(non_exhaustive_omitted_patterns_lint, stmt_expr_attributes)]
+macro_rules! matches {
+    ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
+        #[allow(non_exhaustive_omitted_patterns)]
+        match $expression {
+            $pattern $(if $guard)? => true,
+            _ => false
+        }
+    };
+}
+// endregion:matches
+
 pub mod prelude {
     pub mod v1 {
+        #[rustfmt::skip]
         pub use crate::{
             clone::Clone,                                 // :clone
             cmp::{Eq, PartialEq},                         // :eq
@@ -2182,6 +2474,7 @@ pub mod prelude {
             hash::derive::Hash,                           // :hash, derive
             iter::{FromIterator, IntoIterator, Iterator}, // :iterator
             macros::builtin::{derive, derive_const},      // :derive
+            macros::deref,                                // :deref_pat
             marker::Copy,                                 // :copy
             marker::Send,                                 // :send
             marker::Sized,                                // :sized
@@ -2195,6 +2488,16 @@ pub mod prelude {
             panic,                                        // :panic
             result::Result::{self, Err, Ok},              // :result
             str::FromStr,                                 // :str
+            write, writeln,                               // :write
+            assert,                                       // :assert
+            format_args, format_args_nl, const_format_args, print, // :fmt
+            todo,                                         // :todo
+            unimplemented,                                // :unimplemented
+            include,                                      // :include
+            include_bytes,                                // :include_bytes
+            concat,                                       // :concat
+            env, option_env,                              // :env
+            matches,                                      // :matches
         };
     }
 

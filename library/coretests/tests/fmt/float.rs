@@ -1,3 +1,5 @@
+use core::fmt::{self, Write};
+
 #[test]
 fn test_format_f64() {
     assert_eq!("1", format!("{:.0}", 1.0f64));
@@ -168,6 +170,72 @@ fn test_format_f32_rounds_ties_to_even() {
     assert_eq!("-6E0", format!("{:.0E}", -5.5f32));
     assert_eq!("-1.28E2", format!("{:.2E}", -127.5f32));
     assert_eq!("-1.28E2", format!("{:.2E}", -128.5f32));
+}
+
+#[test]
+fn test_format_f64_max_precision_exponential() {
+    struct ExactExpWriter {
+        prefix: &'static [u8],
+        zeroes_remaining: u32,
+        suffix: &'static [u8],
+        prefix_pos: usize,
+        suffix_pos: usize,
+        total_len: u32,
+    }
+
+    impl ExactExpWriter {
+        fn new(prefix: &'static str, suffix: &'static str) -> Self {
+            Self {
+                prefix: prefix.as_bytes(),
+                zeroes_remaining: u16::MAX.into(),
+                suffix: suffix.as_bytes(),
+                prefix_pos: 0,
+                suffix_pos: 0,
+                total_len: 0,
+            }
+        }
+
+        fn finish(self) {
+            assert_eq!(self.prefix_pos, self.prefix.len());
+            assert_eq!(self.zeroes_remaining, 0);
+            assert_eq!(self.suffix_pos, self.suffix.len());
+            assert_eq!(self.total_len, u32::from(u16::MAX) + 4);
+        }
+    }
+
+    impl Write for ExactExpWriter {
+        fn write_str(&mut self, s: &str) -> fmt::Result {
+            for byte in s.bytes() {
+                self.total_len += 1;
+
+                if self.prefix_pos < self.prefix.len() {
+                    assert_eq!(byte, self.prefix[self.prefix_pos]);
+                    self.prefix_pos += 1;
+                } else if self.zeroes_remaining > 0 {
+                    assert_eq!(byte, b'0');
+                    self.zeroes_remaining -= 1;
+                } else {
+                    assert!(self.suffix_pos < self.suffix.len());
+                    assert_eq!(byte, self.suffix[self.suffix_pos]);
+                    self.suffix_pos += 1;
+                }
+            }
+
+            Ok(())
+        }
+    }
+
+    fn assert_exact_exp(args: fmt::Arguments<'_>, prefix: &'static str, suffix: &'static str) {
+        let mut writer = ExactExpWriter::new(prefix, suffix);
+        fmt::write(&mut writer, args).unwrap();
+        writer.finish();
+    }
+
+    assert_exact_exp(format_args!("{:.65535e}", 0.0f64), "0.", "e0");
+    assert_exact_exp(format_args!("{:.65535e}", 1.0f64), "1.", "e0");
+    assert_exact_exp(format_args!("{:.65535E}", 0.0f64), "0.", "E0");
+    assert_exact_exp(format_args!("{:.65535E}", 1.0f64), "1.", "E0");
+    assert_exact_exp(format_args!("{:65535.65535e}", 1.0f64), "1.", "e0");
 }
 
 fn is_exponential(s: &str) -> bool {

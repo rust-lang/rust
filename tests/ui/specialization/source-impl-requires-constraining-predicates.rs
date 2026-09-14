@@ -7,7 +7,6 @@
 // `[u32; 0]: IntoIterator<Item = ?U>` predicate to constrain the `?U` impl arg.
 
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete
 
 trait Spec {
     type Assoc;

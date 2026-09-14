@@ -2,7 +2,7 @@
 
 //@ aux-build:specialization_cross_crate.rs
 
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 extern crate specialization_cross_crate;
 

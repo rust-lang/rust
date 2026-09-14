@@ -1,4 +1,4 @@
-#![allow(clippy::disallowed_types, clippy::print_stderr)]
+#![allow(clippy::print_stderr)]
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
@@ -21,13 +21,13 @@ impl Tidy {
 }
 
 fn check_lsp_extensions_docs(sh: &Shell) {
-    let expected_hash = {
+    let actual_hash = {
         let lsp_ext_rs =
             sh.read_file(project_root().join("crates/rust-analyzer/src/lsp/ext.rs")).unwrap();
         stable_hash(lsp_ext_rs.as_str())
     };
 
-    let actual_hash = {
+    let expected_hash = {
         let lsp_extensions_md = sh
             .read_file(project_root().join("docs/book/src/contributing/lsp-extensions.md"))
             .unwrap();
@@ -100,6 +100,10 @@ fn check_cargo_toml(path: &Path, text: String) {
         if !text.contains("path=") {
             continue;
         }
+        #[expect(
+            clippy::collapsible_match,
+            reason = "this changes meaning, as `dev-dependencies` includes `dependencies`"
+        )]
         match section {
             Some(s) if s.contains("dev-dependencies") => {
                 if text.contains("version") {
@@ -131,7 +135,6 @@ fn check_licenses(sh: &Shell) {
         "(MIT OR Apache-2.0) AND Unicode-3.0",
         "0BSD OR MIT OR Apache-2.0",
         "Apache-2.0 / MIT",
-        "Apache-2.0 OR BSL-1.0",
         "Apache-2.0 OR MIT",
         "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
         "Apache-2.0 WITH LLVM-exception",
@@ -151,6 +154,7 @@ fn check_licenses(sh: &Shell) {
         "Unlicense OR MIT",
         "Unlicense/MIT",
         "Zlib",
+        "Zlib OR Apache-2.0 OR MIT",
     ];
 
     let meta = cmd!(sh, "cargo metadata --format-version 1").read().unwrap();
@@ -201,9 +205,9 @@ fn check_test_attrs(path: &Path, text: &str) {
     }
     if let Some((line, _)) = text
         .lines()
-        .tuple_windows()
+        .array_windows()
         .enumerate()
-        .find(|(_, (a, b))| b.contains("#[should_panic") && !a.contains("FIXME"))
+        .find(|(_, [a, b])| b.contains("#[should_panic") && !a.contains("FIXME"))
     {
         panic!(
             "\ndon't add `#[should_panic]` tests, see:\n\n    {}\n\n   {}:{line}\n",

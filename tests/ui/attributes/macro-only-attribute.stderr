@@ -1,0 +1,18 @@
+error: attribute should be applied to a macro
+  --> $DIR/macro-only-attribute.rs:6:1
+   |
+LL | #[allow_internal_unstable(something)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn not_a_macro_unstable() {}
+   | ---------------------------- not a macro
+
+error: attribute should be applied to a macro
+  --> $DIR/macro-only-attribute.rs:9:1
+   |
+LL | #[allow_internal_unsafe]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn not_a_macro_unsafe() {}
+   | -------------------------- not a macro
+
+error: aborting due to 2 previous errors
+

@@ -1,5 +1,5 @@
 #![warn(clippy::fn_to_numeric_cast_any)]
-#![allow(clippy::fn_to_numeric_cast, clippy::fn_to_numeric_cast_with_truncation)]
+#![expect(clippy::fn_to_numeric_cast, clippy::fn_to_numeric_cast_with_truncation)]
 #![allow(function_casts_as_integer)]
 //@no-rustfix
 fn foo() -> u8 {
@@ -82,7 +82,7 @@ fn closure_to_fn_to_integer() {
 
 fn fn_to_raw_ptr() {
     let _ = foo as *const ();
-    //~^ fn_to_numeric_cast_any
+    let _ = foo as *mut ();
 }
 
 fn cast_fn_to_self() {

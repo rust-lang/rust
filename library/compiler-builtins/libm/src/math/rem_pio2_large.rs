@@ -228,7 +228,7 @@ pub(crate) fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> 
     // FIXME(rust-lang/rust#144518): Inline assembly would cause `no_panic` to fail
     // on the callers of this function. As a workaround, avoid inlining `floor` here
     // when implemented with assembly.
-    #[cfg_attr(x86_no_sse, inline(never))]
+    #[cfg_attr(x86_no_sse2, inline(never))]
     extern "C" fn floor(x: f64) -> f64 {
         super::floor(x)
     }

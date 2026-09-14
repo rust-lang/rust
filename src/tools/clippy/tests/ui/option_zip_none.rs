@@ -1,0 +1,78 @@
+#![warn(clippy::option_zip_none)]
+#![allow(clippy::needless_borrow)]
+mod edge_case {
+    trait MyZip {
+        fn zip(self, other: Option<()>) -> &'static str;
+    }
+
+    impl<T> MyZip for &Option<T> {
+        fn zip(self, _other: Option<()>) -> &'static str {
+            "not Option::zip"
+        }
+    }
+
+    pub fn test_custom_trait() {
+        let opt = Some(1);
+        let _ = (&opt).zip(None::<()>);
+    }
+
+    enum MyOption {
+        Some(i32),
+        None,
+    }
+
+    impl MyOption {
+        fn zip(self, _other: Option<()>) -> &'static str {
+            "not Option::zip"
+        }
+    }
+
+    pub fn test_custom_enum() {
+        let opt = MyOption::Some(1);
+        let _ = opt.zip(None::<()>);
+    }
+}
+
+fn main() {
+    let opt = Some(5);
+
+    let _ = opt.zip(None::<()>);
+    //~^ option_zip_none
+
+    let _ = opt.zip(Some(42));
+
+    let iter = vec![1, 2, 3].into_iter();
+    let _ = iter.zip(std::iter::empty::<i32>());
+
+    let standard_opt = Some(1);
+    let _ = (&standard_opt).zip(None::<()>);
+    //~^ option_zip_none
+
+    let _ = None::<i32>.zip(Some(1));
+    //~^ option_zip_none
+
+    let _ = Some(1).zip(None::<()>);
+    //~^ option_zip_none
+
+    macro_rules! macro_none {
+        () => {
+            None::<()>
+        };
+    }
+    let opt = Some(1);
+    let _ = opt.zip(macro_none!());
+    //~^ option_zip_none
+
+    macro_rules! macro_zip {
+        ($opt:expr) => {
+            $opt.zip(None::<()>)
+        };
+    }
+    let _ = macro_zip!(Some(1));
+    macro_rules! macro_zip_arg {
+        ($opt:expr, $arg:expr) => {
+            $opt.zip($arg)
+        };
+    }
+    let _ = macro_zip_arg!(Some(1), None::<()>);
+}

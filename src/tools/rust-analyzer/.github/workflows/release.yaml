@@ -17,8 +17,6 @@ env:
   RUSTUP_MAX_RETRIES: 10
   FETCH_DEPTH: 0 # pull in the tags for the version string
   MACOSX_DEPLOYMENT_TARGET: 14.0
-  ZIG_VERSION: 0.13.0
-  ZIGBUILD_VERSION: 0.19.8
 
 jobs:
   dist:
@@ -29,36 +27,45 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             code-target: win32-x64
+            allocator: mimalloc
             pgo: clap-rs/clap@v4.5.36
           - os: windows-latest
             target: i686-pc-windows-msvc
+            allocator: mimalloc
             pgo: clap-rs/clap@v4.5.36
           - os: windows-latest
             target: aarch64-pc-windows-msvc
             code-target: win32-arm64
+            allocator: mimalloc
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             # Use a container with glibc 2.28
-            # Zig is not used because it doesn't work with PGO
             container: quay.io/pypa/manylinux_2_28_x86_64
             code-target: linux-x64
+            allocator: system
             pgo: clap-rs/clap@v4.5.36
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             container: quay.io/pypa/manylinux_2_28_aarch64
             code-target: linux-arm64
+            allocator: system
             pgo: clap-rs/clap@v4.5.36
           - os: ubuntu-latest
             target: arm-unknown-linux-gnueabihf
-            zig_target: arm-unknown-linux-gnueabihf.2.28
+            # Use a Debian 10 (EOL) container for glibc 2.28
+            # pypa/manylinux only has armv7l and glibc 2.31
+            container: debian:10
             code-target: linux-armhf
+            allocator: system
           - os: macos-14
             target: x86_64-apple-darwin
             code-target: darwin-x64
+            allocator: system
             pgo: clap-rs/clap@v4.5.36
           - os: macos-14
             target: aarch64-apple-darwin
             code-target: darwin-arm64
+            allocator: system
             pgo: clap-rs/clap@v4.5.36
 
     name: dist (${{ matrix.target }})
@@ -67,15 +74,24 @@ jobs:
 
     env:
       RA_TARGET: ${{ matrix.target }}
+      ALLOCATOR_FLAG: ${{ matrix.allocator != 'system' && format('--{0}', matrix.allocator) || '' }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
 
+      - name: Install target dependencies
+        if: ${{ matrix.target == 'arm-unknown-linux-gnueabihf' }}
+        run: |
+          sed -i -e 's/deb.debian.org/archive.debian.org/g' -e 's/security.debian.org/archive.debian.org/g' -e '/buster-updates/d' /etc/apt/sources.list
+          apt-get update
+          apt-get dist-upgrade -y
+          apt-get install -y curl gcc gcc-8-arm-linux-gnueabihf
+
       - name: Install Node.js toolchain
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
 
@@ -92,21 +108,8 @@ jobs:
           rustup component add rust-src ${{ matrix.pgo && 'llvm-tools' || '' }}
           rustup target add ${{ matrix.target }}
 
-      - name: Install Zig toolchain
-        if: ${{ matrix.zig_target }}
-        run: |
-          which cargo
-          curl -L "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-$(uname -m)-${ZIG_VERSION}.tar.xz" | sudo tar JxC /usr/local
-          sudo ln -s "/usr/local/zig-linux-$(uname -m)-${ZIG_VERSION}/zig" /usr/local/bin/zig
-          curl -L "https://github.com/rust-cross/cargo-zigbuild/releases/download/v${ZIGBUILD_VERSION}/cargo-zigbuild-v${ZIGBUILD_VERSION}.x86_64-unknown-linux-musl.tar.gz" | tar zxC ~/.cargo/bin
-
-      - name: Dist (plain)
-        if: ${{ !matrix.zig_target }}
-        run: cargo xtask dist --client-patch-version ${{ github.run_number }} ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
-
-      - name: Dist (using zigbuild)
-        if: ${{ matrix.zig_target }}
-        run: RA_TARGET=${{ matrix.zig_target}} cargo xtask dist --client-patch-version ${{ github.run_number }} --zig ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
+      - name: Dist
+        run: cargo xtask dist --client-patch-version ${{ github.run_number }} ${{ env.ALLOCATOR_FLAG }} ${{ matrix.pgo && format('--pgo {0}', matrix.pgo) || ''}}
 
       - run: npm ci
         working-directory: editors/code
@@ -143,7 +146,7 @@ jobs:
         run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/std -q
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.target }}
           path: ./dist
@@ -166,7 +169,7 @@ jobs:
         run: apk add --no-cache git clang lld musl-dev nodejs npm
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
 
@@ -189,72 +192,47 @@ jobs:
       - run: rm -rf editors/code/server
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-x86_64-unknown-linux-musl
           path: ./dist
 
   publish:
     if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
-    name: publish
     runs-on: ubuntu-latest
     needs: ["dist", "dist-x86_64-unknown-linux-musl"]
     steps:
-      - name: Install Nodejs
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - run: echo "TAG=$(date --iso -u)" >> $GITHUB_ENV
-        if: github.ref == 'refs/heads/release'
-      - run: echo "TAG=nightly" >> $GITHUB_ENV
-        if: github.ref != 'refs/heads/release'
-      - run: 'echo "TAG: $TAG"'
-
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
+
+      - name: Set release tag
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/release" ]; then
+            git fetch --tags
+            today=$(date --iso -u)
+            last_tag=$(git tag -l "${today}*" | sort -V | tail -n1)
+            if [ -n "$last_tag" ]; then
+              last_v=$(echo "$last_tag" | grep -oP '(?<=\.)\d+' || echo 0)
+              new_v=$(($last_v + 1))
+              tag="${today}.${new_v}"
+            else
+              tag="$today"
+            fi
+            echo "TAG=$tag" >> $GITHUB_ENV
+          else
+            echo "TAG=nightly" >> $GITHUB_ENV
+          fi
 
       - run: echo "HEAD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
       - run: 'echo "HEAD_SHA: $HEAD_SHA"'
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
-          name: dist-aarch64-apple-darwin
+          pattern: dist-*
           path: dist
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist-x86_64-apple-darwin
-          path: dist
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist-x86_64-unknown-linux-gnu
-          path: dist
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist-x86_64-unknown-linux-musl
-          path: dist
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist-aarch64-unknown-linux-gnu
-          path: dist
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist-arm-unknown-linux-gnueabihf
-          path: dist
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist-x86_64-pc-windows-msvc
-          path: dist
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist-i686-pc-windows-msvc
-          path: dist
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist-aarch64-pc-windows-msvc
-          path: dist
+          merge-multiple: true
       - run: ls -al ./dist
 
       - name: Publish Release
@@ -264,30 +242,41 @@ jobs:
           name: ${{ env.TAG }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: rm dist/rust-analyzer-no-server.vsix
+  publish-extension:
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
+    name: publish-extension (${{ matrix.cmd }})
+    runs-on: ubuntu-latest
+    needs: publish
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cmd: vsce
+          - cmd: ovsx
+    steps:
+      - name: Install Nodejs
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: ${{ env.FETCH_DEPTH }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
 
       - run: npm ci
         working-directory: ./editors/code
 
-      - name: Publish Extension (Code Marketplace, release)
-        if: github.ref == 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
+      - name: Publish Extension
+        if: github.repository == 'rust-lang/rust-analyzer'
+        env:
+          PUBLISH_PAT: ${{ (matrix.cmd == 'vsce' && secrets.MARKETPLACE_TOKEN) || (matrix.cmd == 'ovsx' && secrets.OPENVSX_TOKEN) }}
         working-directory: ./editors/code
-        # token from https://dev.azure.com/rust-analyzer/
-        run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
-
-      - name: Publish Extension (OpenVSX, release)
-        if: github.ref == 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
-        working-directory: ./editors/code
-        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
-        timeout-minutes: 2
-
-      - name: Publish Extension (Code Marketplace, nightly)
-        if: github.ref != 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
-        working-directory: ./editors/code
-        run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix --pre-release
-
-      - name: Publish Extension (OpenVSX, nightly)
-        if: github.ref != 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
-        working-directory: ./editors/code
-        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
+        run: npx ${{ matrix.cmd }} publish --skip-duplicate --pat "$PUBLISH_PAT" --packagePath ../../dist/rust-analyzer-*.vsix ${{ github.ref != 'refs/heads/release' && '--pre-release' || '' }}
         timeout-minutes: 2

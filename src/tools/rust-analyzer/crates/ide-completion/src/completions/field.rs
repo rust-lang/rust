@@ -7,7 +7,7 @@ use crate::{
 
 pub(crate) fn complete_field_list_tuple_variant(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
 ) {
     if ctx.qualifier_ctx.vis_node.is_some() {
@@ -28,7 +28,7 @@ pub(crate) fn complete_field_list_tuple_variant(
 
 pub(crate) fn complete_field_list_record_variant(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
 ) {
     if ctx.qualifier_ctx.vis_node.is_none() {
         let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);

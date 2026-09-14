@@ -22,13 +22,13 @@ LL | |     }
 help: the protected tag <TAG> was created here, in the initial state Reserved
   --> tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
    |
-LL |     x.0 = 0;
-   |     ^^^^^^^
+LL | fn change_arg(mut x: S, ptr: *mut S) {
+   |               ^^^^^
 help: the protected tag <TAG> later transitioned to Unique due to a child write access at offsets [0x0..0x4]
   --> tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
    |
-LL |     x.0 = 0;
-   |     ^^^^^^^
+LL | fn change_arg(mut x: S, ptr: *mut S) {
+   |               ^^^^^
    = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
    = note: stack backtrace:
            0: change_arg

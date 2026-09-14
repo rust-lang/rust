@@ -5,7 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt, fold_regions};
+use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized, fold_regions};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 
@@ -24,7 +24,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
     let kind = tcx.def_kind(def_id);
     match kind {
         DefKind::Fn => {
-            let sig = tcx.fn_sig(def_id).instantiate_identity();
+            let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
             let liberated_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
             tcx.arena.alloc_from_iter(itertools::zip_eq(
                 liberated_sig.inputs_and_output,
@@ -32,7 +32,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             ))
         }
         DefKind::AssocFn => {
-            let sig = tcx.fn_sig(def_id).instantiate_identity();
+            let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
             let liberated_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
             let mut assumed_wf_types: Vec<_> =
                 tcx.assumed_wf_types(tcx.local_parent(def_id)).into();
@@ -49,7 +49,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                 let trait_ref = tcx.impl_trait_ref(def_id);
                 trait_ref.skip_binder().args.types().collect()
             } else {
-                vec![tcx.type_of(def_id).instantiate_identity()]
+                vec![tcx.type_of(def_id).instantiate_identity().skip_norm_wip()]
             };
 
             let mut impl_spans = impl_spans(tcx, def_id);
@@ -66,7 +66,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                     //
                     // Side-note: We don't really need to do this remapping for early-bound
                     // lifetimes because they're already "linked" by the bidirectional outlives
-                    // predicates we insert in the `explicit_predicates_of` query for RPITITs.
+                    // clauses we insert in the `explicit_clauses_of` query for RPITITs.
                     let mut mapping = FxHashMap::default();
                     let generics = tcx.generics_of(def_id);
 
@@ -113,29 +113,28 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                     let args = ty::GenericArgs::identity_for_item(tcx, def_id).rebase_onto(
                         tcx,
                         impl_def_id.to_def_id(),
-                        tcx.impl_trait_ref(impl_def_id).instantiate_identity().args,
+                        tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_norm_wip().args,
                     );
                     tcx.arena.alloc_from_iter(
-                        ty::EarlyBinder::bind(tcx.assumed_wf_types_for_rpitit(rpitit_def_id))
+                        ty::EarlyBinder::bind_iter(tcx.assumed_wf_types_for_rpitit(rpitit_def_id))
                             .iter_instantiated_copied(tcx, args)
+                            .map(Unnormalized::skip_norm_wip)
                             .chain(tcx.assumed_wf_types(impl_def_id).into_iter().copied()),
                     )
                 }
             }
         }
-        DefKind::AssocConst { .. } | DefKind::AssocTy => {
-            tcx.assumed_wf_types(tcx.local_parent(def_id))
-        }
+        DefKind::AssocConst | DefKind::AssocTy => tcx.assumed_wf_types(tcx.local_parent(def_id)),
         DefKind::Static { .. }
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::AnonConst
-        | DefKind::InlineConst
         | DefKind::Struct
         | DefKind::Union
         | DefKind::Enum
         | DefKind::Trait
         | DefKind::TraitAlias
-        | DefKind::TyAlias => ty::List::empty(),
+        | DefKind::TyAlias
+        | DefKind::TestBinderConstraints => ty::List::empty(),
         DefKind::OpaqueTy
         | DefKind::Mod
         | DefKind::Variant
@@ -175,13 +174,13 @@ fn impl_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Span>
     if let hir::ItemKind::Impl(impl_) = item.kind {
         let trait_args = impl_
             .of_trait
-            .into_iter()
-            .flat_map(|of_trait| of_trait.trait_ref.path.segments.last().unwrap().args().args)
+            .map(|of_trait| of_trait.trait_ref.path.segments.last().unwrap().args().args)
+            .into_flat_iter()
             .map(|arg| arg.span());
         let dummy_spans_for_default_args = impl_
             .of_trait
-            .into_iter()
-            .flat_map(|of_trait| iter::repeat(of_trait.trait_ref.path.span));
+            .map(|of_trait| iter::repeat(of_trait.trait_ref.path.span))
+            .into_flat_iter();
         iter::once(impl_.self_ty.span).chain(trait_args).chain(dummy_spans_for_default_args)
     } else {
         bug!("unexpected item for impl {def_id:?}: {item:?}")

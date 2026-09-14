@@ -1,4 +1,6 @@
 #!/bin/sh
+# ignore-tidy-file-tab
+# ignore-tidy-file-linelength
 set -ex
 
 hide_output() {
@@ -41,8 +43,6 @@ if [ ! -d $MUSL ]; then
   # - https://www.openwall.com/lists/musl/2025/02/13/1/1
   # - https://www.openwall.com/lists/musl/2025/02/13/1/2
   #
-  # ignore-tidy-tab
-  # ignore-tidy-linelength
   patch -p1 -d $MUSL <<EOF
 --- a/src/locale/iconv.c
 +++ b/src/locale/iconv.c
@@ -71,6 +71,19 @@ EOF
  			*outb -= k;
  			break;
 EOF
+
+  # Apply patches for CVE-2026-6042 and CVE-2026-40200.
+  #
+  # At the time of adding these patches no release containing them has been published by the musl
+  # project, so we just apply them directly on top of the version we were distributing already. The
+  # patches should be removed once we upgrade to musl >= 1.2.7.
+  #
+  # Advisory: https://www.openwall.com/lists/oss-security/2026/04/09/19
+  # Patches:  https://www.openwall.com/lists/musl/2026/04/03/2/1
+  patch -p1 -d $MUSL </build/musl-cve-2026-6042.diff
+  # Advisory: https://www.openwall.com/lists/musl/2026/04/10/3
+  # Patches:  https://www.openwall.com/lists/musl/2026/04/10/3/1
+  patch -p1 -d $MUSL </build/musl-cve-2026-40200.diff
 fi
 
 cd $MUSL

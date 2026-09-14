@@ -86,7 +86,10 @@ use syntax::{
 //     }
 // }
 // ```
-pub(crate) fn generate_delegate_trait(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_delegate_trait(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     if !ctx.config.code_action_grouping {
         return None;
     }
@@ -118,7 +121,7 @@ struct Field {
 
 impl Field {
     pub(crate) fn new(
-        ctx: &AssistContext<'_>,
+        ctx: &AssistContext<'_, '_>,
         f: Either<ast::RecordField, (ast::TupleField, ast::TupleFieldList)>,
     ) -> Option<Field> {
         let db = ctx.sema.db;
@@ -202,7 +205,7 @@ impl Struct {
         Some(Struct { name, strukt: s })
     }
 
-    pub(crate) fn delegate(&self, field: Field, acc: &mut Assists, ctx: &AssistContext<'_>) {
+    pub(crate) fn delegate(&self, field: Field, acc: &mut Assists, ctx: &AssistContext<'_, '_>) {
         let db = ctx.db();
 
         for (index, delegee) in field.impls.iter().enumerate() {
@@ -249,7 +252,7 @@ impl Struct {
 }
 
 fn generate_impl(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     strukt: &Struct,
     field_ty: &ast::Type,
     field_name: &str,
@@ -271,9 +274,9 @@ fn generate_impl(
                 None,
                 delegee.is_unsafe(db),
                 bound_params.clone(),
-                bound_params.map(|params| params.to_generic_args()),
+                bound_params.map(|params| params.to_generic_args(&make)),
                 strukt_params.clone(),
-                strukt_params.map(|params| params.to_generic_args()),
+                strukt_params.map(|params| params.to_generic_args(&make)),
                 delegee.is_auto(db),
                 make.ty(&delegee.name(db).display_no_db(edition).to_smolstr()),
                 strukt_ty,
@@ -315,7 +318,7 @@ fn generate_impl(
             let strukt_params = resolve_name_conflicts(strukt_params, &old_impl_params);
             let (field_ty, ty_where_clause) = match &strukt_params {
                 Some(strukt_params) => {
-                    let args = strukt_params.to_generic_args();
+                    let args = strukt_params.to_generic_args(&make);
                     let field_ty = rename_strukt_args(ctx, ast_strukt, field_ty, &args)?;
                     let where_clause = ast_strukt
                         .where_clause()
@@ -346,6 +349,7 @@ fn generate_impl(
 
             // 2.2) Generate generic args applied on impl.
             let (transform_args, trait_gen_params) = generate_args_for_impl(
+                &make,
                 old_impl_params,
                 &old_impl.self_ty()?,
                 &field_ty,
@@ -363,16 +367,16 @@ fn generate_impl(
                         ast_strukt,
                         &old_impl,
                         &transform_args,
-                        trait_args.clone_subtree(),
+                        trait_args.clone(),
                     ) {
-                        *trait_args = new_args.clone_subtree();
+                        *trait_args = new_args.clone();
                         Some(new_args)
                     } else {
                         None
                     }
                 });
 
-            let type_gen_args = strukt_params.clone().map(|params| params.to_generic_args());
+            let type_gen_args = strukt_params.clone().map(|params| params.to_generic_args(&make));
             let path_type = make.ty(&trait_.name(db).display_no_db(edition).to_smolstr());
             let path_type = transform_impl(ctx, ast_strukt, &old_impl, &transform_args, path_type)?;
             // 3) Generate delegate trait impl
@@ -412,7 +416,7 @@ fn generate_impl(
 }
 
 fn transform_impl<N: ast::AstNode>(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     strukt: &ast::Struct,
     old_impl: &ast::Impl,
     args: &Option<GenericArgList>,
@@ -494,7 +498,7 @@ fn remove_instantiated_params(
     }
 }
 
-fn remove_useless_where_clauses(editor: &mut SyntaxEditor, delegate: &ast::Impl) {
+fn remove_useless_where_clauses(editor: &SyntaxEditor, delegate: &ast::Impl) {
     let Some(wc) = delegate.where_clause() else {
         return;
     };
@@ -563,7 +567,7 @@ fn finalize_delegate(
         return Some(delegate.clone());
     }
 
-    let mut editor = SyntaxEditor::new(delegate.syntax().clone_subtree());
+    let (editor, delegate) = SyntaxEditor::with_ast_node(delegate);
 
     // 1. Replace assoc_item_list if we have new items
     if let Some(items) = assoc_items
@@ -577,7 +581,7 @@ fn finalize_delegate(
 
     // 2. Remove useless where clauses
     if remove_where_clauses {
-        remove_useless_where_clauses(&mut editor, delegate);
+        remove_useless_where_clauses(&editor, &delegate);
     }
 
     ast::Impl::cast(editor.finish().new_root().clone())
@@ -590,13 +594,15 @@ fn finalize_delegate(
 // While the last two generic args `B` and `C` doesn't change, it remains
 // `<B, C>`. So we apply `<T, B, C>` as generic arguments to impl.
 fn generate_args_for_impl(
+    make: &SyntaxFactory,
     old_impl_gpl: Option<GenericParamList>,
     self_ty: &ast::Type,
     field_ty: &ast::Type,
     trait_params: Option<GenericParamList>,
     old_trait_args: &FxHashSet<String>,
 ) -> (Option<ast::GenericArgList>, Option<GenericParamList>) {
-    let Some(old_impl_args) = old_impl_gpl.map(|gpl| gpl.to_generic_args().generic_args()) else {
+    let Some(old_impl_args) = old_impl_gpl.map(|gpl| gpl.to_generic_args(make).generic_args())
+    else {
         return (None, trait_params);
     };
 
@@ -638,7 +644,7 @@ fn generate_args_for_impl(
 }
 
 fn rename_strukt_args<N>(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     strukt: &ast::Struct,
     item: &N,
     args: &GenericArgList,
@@ -654,7 +660,7 @@ where
     N::cast(transform.apply(item.syntax()))
 }
 
-fn has_self_type(trait_: hir::Trait, ctx: &AssistContext<'_>) -> bool {
+fn has_self_type(trait_: hir::Trait, ctx: &AssistContext<'_, '_>) -> bool {
     ctx.sema
         .source(trait_)
         .and_then(|src| {
@@ -703,7 +709,7 @@ fn resolve_name_conflicts(
                         }
                     }
                     p @ ast::GenericParam::LifetimeParam(_) => {
-                        new_params.push(p.clone_for_update());
+                        new_params.push(p);
                     }
                     ast::GenericParam::TypeParam(t) => {
                         let type_bounds = t.type_bound_list();
@@ -782,7 +788,7 @@ fn func_assoc_item(
                 };
 
                 // Build argument list with self expression prepended
-                let other_args = convert_param_list_to_arg_list(l);
+                let other_args = convert_param_list_to_arg_list(l, &make);
                 let all_args: Vec<ast::Expr> =
                     std::iter::once(tail_expr_self).chain(other_args.args()).collect();
                 let args = make.arg_list(all_args);
@@ -790,13 +796,13 @@ fn func_assoc_item(
                 make.expr_call(make.expr_path(qualified_path), args).into()
             }
             None => make
-                .expr_call(make.expr_path(qualified_path), convert_param_list_to_arg_list(l))
+                .expr_call(make.expr_path(qualified_path), convert_param_list_to_arg_list(l, &make))
                 .into(),
         },
         None => make
             .expr_call(
                 make.expr_path(qualified_path),
-                convert_param_list_to_arg_list(make.param_list(None, Vec::new())),
+                convert_param_list_to_arg_list(make.param_list(None, Vec::new()), &make),
             )
             .into(),
     };

@@ -17,14 +17,22 @@ use std::fmt;
 
 use hir_def::{
     AdtId, ConstId, EnumId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
-    ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, UnionId, attrs::AttrFlags,
-    db::DefDatabase, hir::Pat, item_tree::FieldsShape, signatures::StaticFlags, src::HasSource,
+    ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    attrs::AttrFlags,
+    expr_store::Body,
+    hir::Pat,
+    item_tree::FieldsShape,
+    signatures::{
+        ConstSignature, EnumSignature, FunctionSignature, StaticFlags, StaticSignature,
+        StructSignature, TraitSignature, TypeAliasSignature, UnionSignature,
+    },
+    src::HasSource,
 };
 use hir_expand::{
     HirFileId,
     name::{AsName, Name},
 };
-use intern::sym;
+use rustc_abi::ExternAbi;
 use stdx::{always, never};
 use syntax::{
     AstNode, AstPtr, ToSmolStr,
@@ -178,7 +186,7 @@ impl<'a> DeclValidator<'a> {
 
     fn validate_trait(&mut self, trait_id: TraitId) {
         // Check the trait name.
-        let data = self.db.trait_signature(trait_id);
+        let data = TraitSignature::of(self.db, trait_id);
         self.create_incorrect_case_diagnostic_for_item_name(
             trait_id,
             &data.name,
@@ -197,12 +205,12 @@ impl<'a> DeclValidator<'a> {
         // Check the function name.
         // Skipped if function is an associated item of a trait implementation.
         if !self.is_trait_impl_container(container) {
-            let data = self.db.function_signature(func);
+            let data = FunctionSignature::of(self.db, func);
 
             // Don't run the lint on extern "[not Rust]" fn items with the
             // #[no_mangle] attribute.
             let no_mangle = AttrFlags::query(self.db, func.into()).contains(AttrFlags::NO_MANGLE);
-            if no_mangle && data.abi.as_ref().is_some_and(|abi| *abi != sym::Rust) {
+            if no_mangle && data.abi != ExternAbi::Rust {
                 cov_mark::hit!(extern_func_no_mangle_ignored);
             } else {
                 self.create_incorrect_case_diagnostic_for_item_name(
@@ -223,7 +231,7 @@ impl<'a> DeclValidator<'a> {
     /// Check incorrect names for patterns inside the function body.
     /// This includes function parameters except for trait implementation associated functions.
     fn validate_func_body(&mut self, func: FunctionId) {
-        let body = self.db.body(func.into());
+        let body = Body::of(self.db, func.into());
         let edition = self.edition(func);
         let mut pats_replacements = body
             .pats()
@@ -250,7 +258,7 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let source_map = self.db.body_with_source_map(func.into()).1;
+        let source_map = &Body::with_source_map(self.db, func.into()).1;
         for (id, replacement) in pats_replacements {
             let Ok(source_ptr) = source_map.pat_syntax(id) else {
                 continue;
@@ -292,7 +300,7 @@ impl<'a> DeclValidator<'a> {
 
     fn validate_struct(&mut self, struct_id: StructId) {
         // Check the structure name.
-        let data = self.db.struct_signature(struct_id);
+        let data = StructSignature::of(self.db, struct_id);
 
         // rustc implementation excuses repr(C) since C structs predominantly don't
         // use camel case.
@@ -385,7 +393,7 @@ impl<'a> DeclValidator<'a> {
 
     fn validate_union(&mut self, union_id: UnionId) {
         // Check the union name.
-        let data = self.db.union_signature(union_id);
+        let data = UnionSignature::of(self.db, union_id);
 
         // rustc implementation excuses repr(C) since C unions predominantly don't
         // use camel case.
@@ -473,7 +481,7 @@ impl<'a> DeclValidator<'a> {
 
     fn validate_enum(&mut self, enum_id: EnumId) {
         // Check the enum name.
-        let data = self.db.enum_signature(enum_id);
+        let data = EnumSignature::of(self.db, enum_id);
 
         // rustc implementation excuses repr(C) since C structs predominantly don't
         // use camel case.
@@ -495,21 +503,18 @@ impl<'a> DeclValidator<'a> {
     fn validate_enum_variants(&mut self, enum_id: EnumId) {
         let data = enum_id.enum_variants(self.db);
 
-        for (variant_id, _, _) in data.variants.iter() {
+        for (variant_id, _) in data.variants.values() {
             self.validate_enum_variant_fields(*variant_id);
         }
 
-        let edition = self.edition(enum_id);
         let mut enum_variants_replacements = data
             .variants
-            .iter()
-            .filter_map(|(_, name, _)| {
-                to_camel_case(&name.display_no_db(edition).to_smolstr()).map(|new_name| {
-                    Replacement {
-                        current_name: name.clone(),
-                        suggested_text: new_name,
-                        expected_case: CaseType::UpperCamelCase,
-                    }
+            .keys()
+            .filter_map(|name| {
+                to_camel_case(name.as_str()).map(|new_name| Replacement {
+                    current_name: name.clone(),
+                    suggested_text: new_name,
+                    expected_case: CaseType::UpperCamelCase,
                 })
             })
             .peekable();
@@ -644,7 +649,7 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let data = self.db.const_signature(const_id);
+        let data = ConstSignature::of(self.db, const_id);
         let Some(name) = &data.name else {
             return;
         };
@@ -657,7 +662,7 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_static(&mut self, static_id: StaticId) {
-        let data = self.db.static_signature(static_id);
+        let data = StaticSignature::of(self.db, static_id);
         if data.flags.contains(StaticFlags::EXTERN) {
             cov_mark::hit!(extern_static_incorrect_case_ignored);
             return;
@@ -683,7 +688,7 @@ impl<'a> DeclValidator<'a> {
         }
 
         // Check the type alias name.
-        let data = self.db.type_alias_signature(type_alias_id);
+        let data = TypeAliasSignature::of(self.db, type_alias_id);
         self.create_incorrect_case_diagnostic_for_item_name(
             type_alias_id,
             &data.name,
@@ -701,7 +706,7 @@ impl<'a> DeclValidator<'a> {
     ) where
         N: AstNode + HasName + fmt::Debug,
         S: HasSource<Value = N>,
-        L: Lookup<Data = S, Database = dyn DefDatabase> + HasModule + Copy,
+        L: Lookup<Data = S> + HasModule + Copy,
     {
         let to_expected_case_type = match expected_case {
             CaseType::LowerSnakeCase => to_lower_snake_case,
@@ -709,11 +714,12 @@ impl<'a> DeclValidator<'a> {
             CaseType::UpperCamelCase => to_camel_case,
         };
         let edition = self.edition(item_id);
-        let Some(replacement) =
-            to_expected_case_type(&name.display(self.db, edition).to_smolstr()).map(|new_name| {
-                Replacement { current_name: name.clone(), suggested_text: new_name, expected_case }
-            })
-        else {
+        let Some(replacement) = to_expected_case_type(name.as_str()).map(|mut new_name| {
+            if is_raw_identifier(&new_name, edition) {
+                new_name.insert_str(0, "r#");
+            }
+            Replacement { current_name: name.clone(), suggested_text: new_name, expected_case }
+        }) else {
             return;
         };
 

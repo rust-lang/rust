@@ -326,7 +326,7 @@ static TBL: [u64; TBLSIZE * 2] = [
 pub fn exp2(mut x: f64) -> f64 {
     select_implementation! {
         name: x87_exp2,
-        use_arch_required: x86_no_sse,
+        use_arch_required: x86_no_sse2,
         args: x,
     }
 

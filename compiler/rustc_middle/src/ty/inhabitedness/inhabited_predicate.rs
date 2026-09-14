@@ -1,15 +1,16 @@
-use rustc_macros::HashStable;
+use rustc_macros::StableHash;
+use rustc_span::def_id::{LocalModId, ModId};
 use smallvec::SmallVec;
 use tracing::instrument;
 
-use crate::ty::{self, DefId, OpaqueTypeKey, Ty, TyCtxt, TypingEnv};
+use crate::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypingEnv, Unnormalized};
 
 /// Represents whether some type is inhabited in a given context.
 /// Examples of uninhabited types are `!`, `enum Void {}`, or a struct
 /// containing either of those types.
 /// A type's inhabitedness may depend on the `ParamEnv` as well as what types
 /// are visible in the current module.
-#[derive(Clone, Copy, Debug, PartialEq, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, StableHash)]
 pub enum InhabitedPredicate<'tcx> {
     /// Inhabited
     True,
@@ -20,7 +21,7 @@ pub enum InhabitedPredicate<'tcx> {
     ConstIsZero(ty::Const<'tcx>),
     /// Uninhabited if within a certain module. This occurs when an uninhabited
     /// type has restricted visibility.
-    NotInModule(DefId),
+    NotInModule(ModId),
     /// Inhabited if some generic type is inhabited.
     /// These are replaced by calling [`Self::instantiate`].
     GenericType(Ty<'tcx>),
@@ -38,7 +39,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         typing_env: TypingEnv<'tcx>,
-        module_def_id: DefId,
+        module_def_id: LocalModId,
     ) -> bool {
         self.apply_revealing_opaque(tcx, typing_env, module_def_id, &|_| None)
     }
@@ -49,7 +50,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         typing_env: TypingEnv<'tcx>,
-        module_def_id: DefId,
+        module_def_id: LocalModId,
         reveal_opaque: &impl Fn(OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>>,
     ) -> bool {
         let Ok(result) = self.apply_inner::<!>(
@@ -83,7 +84,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: TypingEnv<'tcx>,
         eval_stack: &mut SmallVec<[Ty<'tcx>; 1]>, // for cycle detection
-        in_module: &impl Fn(DefId) -> Result<bool, E>,
+        in_module: &impl Fn(ModId) -> Result<bool, E>,
         reveal_opaque: &impl Fn(OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>>,
     ) -> Result<bool, E> {
         match self {
@@ -98,7 +99,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
             // we have a param_env available, we can do better.
             Self::GenericType(t) => {
                 let normalized_pred = tcx
-                    .try_normalize_erasing_regions(typing_env, t)
+                    .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(t))
                     .map_or(self, |t| t.inhabited_predicate(tcx));
                 match normalized_pred {
                     // We don't have more information than we started with, so consider inhabited.
@@ -243,7 +244,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     fn instantiate_opt(self, tcx: TyCtxt<'tcx>, args: ty::GenericArgsRef<'tcx>) -> Option<Self> {
         match self {
             Self::ConstIsZero(c) => {
-                let c = ty::EarlyBinder::bind(c).instantiate(tcx, args);
+                let c = ty::EarlyBinder::bind(tcx, c).instantiate(tcx, args).skip_norm_wip();
                 let pred = match c.try_to_target_usize(tcx) {
                     Some(0) => Self::True,
                     Some(1..) => Self::False,
@@ -251,9 +252,12 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                 };
                 Some(pred)
             }
-            Self::GenericType(t) => {
-                Some(ty::EarlyBinder::bind(t).instantiate(tcx, args).inhabited_predicate(tcx))
-            }
+            Self::GenericType(t) => Some(
+                ty::EarlyBinder::bind(tcx, t)
+                    .instantiate(tcx, args)
+                    .skip_norm_wip()
+                    .inhabited_predicate(tcx),
+            ),
             Self::And(&[a, b]) => match a.instantiate_opt(tcx, args) {
                 None => b.instantiate_opt(tcx, args).map(|b| a.and(tcx, b)),
                 Some(InhabitedPredicate::False) => Some(InhabitedPredicate::False),

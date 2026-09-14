@@ -1,15 +1,8 @@
-#![allow(
-    unused,
-    clippy::needless_ifs,
-    clippy::suspicious_map,
-    clippy::iter_count,
-    clippy::manual_contains
-)]
+#![warn(clippy::needless_collect)]
+#![allow(clippy::iter_cloned_collect, clippy::iter_next_slice)]
 
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList};
 
-#[warn(clippy::needless_collect)]
-#[allow(unused_variables, clippy::iter_cloned_collect, clippy::iter_next_slice)]
 fn main() {
     let sample = [1; 5];
     let len = sample.iter().collect::<Vec<_>>().len();
@@ -220,7 +213,6 @@ fn issue16270() {
     _ = &(1..3).collect::<Vec<i32>>()[..];
 }
 
-#[warn(clippy::needless_collect)]
 mod collect_push_then_iter {
     use std::collections::{BinaryHeap, LinkedList, VecDeque};
 

@@ -7,8 +7,13 @@ static URL_PREFIX: &str = "https://www.unicode.org/Public/UCD/latest/ucd/";
 
 static README: &str = "ReadMe.txt";
 
-static RESOURCES: &[&str] =
-    &["DerivedCoreProperties.txt", "PropList.txt", "UnicodeData.txt", "SpecialCasing.txt"];
+static RESOURCES: &[&str] = &[
+    "CaseFolding.txt",
+    "DerivedCoreProperties.txt",
+    "PropList.txt",
+    "SpecialCasing.txt",
+    "UnicodeData.txt",
+];
 
 #[track_caller]
 fn fetch(url: &str) -> Output {

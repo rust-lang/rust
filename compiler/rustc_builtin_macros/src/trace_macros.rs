@@ -2,7 +2,7 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
 use rustc_span::{Span, kw};
 
-use crate::errors;
+use crate::diagnostics;
 
 pub(crate) fn expand_trace_macros(
     cx: &mut ExtCtxt<'_>,
@@ -21,7 +21,7 @@ pub(crate) fn expand_trace_macros(
     };
     err |= iter.next().is_some();
     if err {
-        cx.dcx().emit_err(errors::TraceMacros { span: sp });
+        cx.dcx().emit_err(diagnostics::TraceMacros { span: sp });
     } else {
         cx.set_trace_macros(value);
     }

@@ -14,5 +14,4 @@ fn main() {
     //~^ ERROR `C` is ambiguous
     //~| ERROR `C` is ambiguous
     //~| WARN this was previously accepted
-    //~| WARN this was previously accepted
 }

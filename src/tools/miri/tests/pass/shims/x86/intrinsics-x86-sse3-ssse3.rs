@@ -2,6 +2,7 @@
 //@only-target: x86_64 i686
 // SSSE3 implicitly enables SSE3
 //@compile-flags: -C target-feature=+ssse3
+//@run-native
 
 use core::mem::transmute;
 #[cfg(target_arch = "x86")]

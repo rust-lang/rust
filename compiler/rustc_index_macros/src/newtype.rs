@@ -24,8 +24,6 @@ impl Parse for Newtype {
         let mut encodable = false;
         let mut ord = false;
         let mut stable_hash = false;
-        let mut stable_hash_generic = false;
-        let mut stable_hash_no_context = false;
         let mut gate_rustc_only = quote! {};
         let mut gate_rustc_only_cfg = quote! { all() };
 
@@ -46,14 +44,6 @@ impl Parse for Newtype {
                 }
                 "stable_hash" => {
                     stable_hash = true;
-                    false
-                }
-                "stable_hash_generic" => {
-                    stable_hash_generic = true;
-                    false
-                }
-                "stable_hash_no_context" => {
-                    stable_hash_no_context = true;
                     false
                 }
                 "max" => {
@@ -146,15 +136,29 @@ impl Parse for Newtype {
                     fn backward_checked(start: Self, u: usize) -> Option<Self> {
                         Self::index(start).checked_sub(u).map(Self::from_usize)
                     }
+
+                    #[inline]
+                    fn forward_overflowing(start: Self, u: usize) -> (Self, bool) {
+                        let (s, o) = Self::index(start).overflowing_add(u);
+                        (Self::from_usize(s), o)
+                    }
+
+                    #[inline]
+                    fn backward_overflowing(start: Self, u: usize) -> (Self, bool) {
+                        let (s, o) = Self::index(start).overflowing_sub(u);
+                        (Self::from_usize(s), o)
+                    }
                 }
                 impl ::std::cmp::Ord for #name {
+                    #[inline]
                     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
                         self.as_u32().cmp(&other.as_u32())
                     }
                 }
                 impl ::std::cmp::PartialOrd for #name {
+                    #[inline]
                     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-                        self.as_u32().partial_cmp(&other.as_u32())
+                        Some(self.cmp(other))
                     }
                 }
             }
@@ -162,21 +166,18 @@ impl Parse for Newtype {
             quote! {}
         };
 
-        let hash_stable = if stable_hash {
+        let stable_hash_impl = if stable_hash {
             quote! {
                 #gate_rustc_only
-                impl<'__ctx> ::rustc_data_structures::stable_hasher::HashStable<::rustc_middle::ich::StableHashingContext<'__ctx>> for #name {
-                    fn hash_stable(&self, hcx: &mut ::rustc_middle::ich::StableHashingContext<'__ctx>, hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
-                        self.as_u32().hash_stable(hcx, hasher)
-                    }
-                }
-            }
-        } else if stable_hash_generic || stable_hash_no_context {
-            quote! {
-                #gate_rustc_only
-                impl<CTX> ::rustc_data_structures::stable_hasher::HashStable<CTX> for #name {
-                    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
-                        self.as_u32().hash_stable(hcx, hasher)
+                impl ::rustc_data_structures::stable_hash::StableHash for #name {
+                    fn stable_hash<
+                        __Hcx: ::rustc_data_structures::stable_hash::StableHashCtxt
+                    >(
+                        &self,
+                        hcx: &mut __Hcx,
+                        hasher: &mut ::rustc_data_structures::stable_hash::StableHasher
+                    ) {
+                        self.as_u32().stable_hash(hcx, hasher)
                     }
                 }
             }
@@ -320,7 +321,7 @@ impl Parse for Newtype {
 
             #step
 
-            #hash_stable
+            #stable_hash_impl
 
             impl From<#name> for u32 {
                 #[inline]

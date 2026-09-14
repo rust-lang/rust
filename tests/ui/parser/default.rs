@@ -1,7 +1,6 @@
 // Test successful and unsuccessful parsing of the `default` contextual keyword
 
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete
 
 trait Foo {
     fn foo<T: Default>() -> T;

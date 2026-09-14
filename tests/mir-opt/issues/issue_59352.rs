@@ -9,7 +9,7 @@
 // Once the optimizer can do that, this test case will need to be updated and codegen/issue-59352.rs
 // removed.
 
-// EMIT_MIR issue_59352.num_to_digit.PreCodegen.after.mir
+// EMIT_MIR issue_59352.num_to_digit.runtime-optimized.after.mir
 //@ compile-flags: -Z mir-opt-level=3 -Z span_free_formats
 
 pub fn num_to_digit(num: char) -> u32 {

@@ -6,8 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Block, Body, HirId, Path, PathSegment, StabilityLevel, StableSince};
-use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, Lint, LintContext as _, impl_lint_pass};
 use rustc_span::symbol::kw;
 use rustc_span::{Span, sym};
 
@@ -101,7 +100,7 @@ impl StdReexports {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             lint_points: Option::default(),
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
         }
     }
 
@@ -124,14 +123,14 @@ enum LintPoint {
 impl<'tcx> LateLintPass<'tcx> for StdReexports {
     fn check_path(&mut self, cx: &LateContext<'tcx>, path: &Path<'tcx>, _: HirId) {
         if let Res::Def(def_kind, def_id) = path.res
+            && !matches!(def_kind, DefKind::Macro(_))
             && let Some(first_segment) = get_first_segment(path)
+            && let Res::Def(DefKind::Mod, crate_def_id) = first_segment.res
+            && crate_def_id.is_crate_root()
             && is_stable(cx, def_id, self.msrv)
             && !path.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, &first_segment.ident)
-            && !matches!(def_kind, DefKind::Macro(_))
             && let Some(last_segment) = path.segments.last()
-            && let Res::Def(DefKind::Mod, crate_def_id) = first_segment.res
-            && crate_def_id.is_crate_root()
         {
             let (lint, used_mod, replace_with) = match first_segment.ident.name {
                 sym::std => match cx.tcx.crate_name(def_id.krate) {
@@ -238,20 +237,21 @@ fn get_first_segment<'tcx>(path: &Path<'tcx>) -> Option<&'tcx PathSegment<'tcx>>
 /// Does not catch individually moved items
 fn is_stable(cx: &LateContext<'_>, mut def_id: DefId, msrv: Msrv) -> bool {
     loop {
-        if let Some(stability) = cx.tcx.lookup_stability(def_id)
-            && let StabilityLevel::Stable {
-                since,
-                allowed_through_unstable_modules: None,
-            } = stability.level
-        {
-            let stable = match since {
-                StableSince::Version(v) => msrv.meets(cx, v),
-                StableSince::Current => msrv.current(cx).is_none(),
-                StableSince::Err(_) => false,
-            };
-
-            if !stable {
-                return false;
+        if let Some(stability) = cx.tcx.lookup_stability(def_id) {
+            match stability.level {
+                // Workaround for items from `core::intrinsics` with a stable export in a different module.
+                // Not that we ignore the `since` field as we are already accessing the item in question.
+                StabilityLevel::Stable {
+                    allowed_through_unstable_modules: Some(_),
+                    ..
+                } => return true,
+                StabilityLevel::Stable { since, .. } => match since {
+                    StableSince::Version(v) if !msrv.meets(cx, v) => return false,
+                    StableSince::Current if msrv.current(cx).is_none() => return false,
+                    StableSince::Err(_) => return false,
+                    StableSince::Version(_) | StableSince::Current => {},
+                },
+                StabilityLevel::Unstable { .. } => return false,
             }
         }
 

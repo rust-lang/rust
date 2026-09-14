@@ -3,9 +3,9 @@
 /// Rounds the argument down to the next integer, except that we account for potential imprecision
 /// in the input, so if `f` is very close to an integer, it will round to that.
 fn round_down_imprecise(f: f32) -> u32 {
-    // Rounds up for values less than 16*EPSILON below an integer,
+    // Rounds up for values less than 32*EPSILON below an integer,
     // and rounds down for everything else.
-    (f + 16.0 * f32::EPSILON) as u32
+    (f + 32.0 * f32::EPSILON) as u32
 }
 
 #[test]
@@ -50,7 +50,6 @@ fn checked_ilog() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // FIXME test is broken on Miri: https://github.com/rust-lang/rust/issues/137591
 fn checked_ilog2() {
     assert_eq!(5u32.checked_ilog2(), Some(2));
     assert_eq!(0u64.checked_ilog2(), None);

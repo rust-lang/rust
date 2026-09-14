@@ -16,7 +16,7 @@ struct S5;
 #[cfg_attr(a::b)] //~ ERROR malformed `cfg_attr` attribute input
 struct S6;
 
-#[cfg_attr(a())] //~ ERROR invalid predicate `a`
+#[cfg_attr(a())] //~ ERROR malformed `cfg_attr` attribute input [E0539]
 struct S7;
 
 #[cfg_attr(a = 10)] //~ ERROR malformed `cfg_attr` attribute input

@@ -7,8 +7,8 @@ mod utils;
 type GetEntropyFn = unsafe extern "C" fn(*mut u8, libc::size_t) -> libc::c_int;
 
 fn main() {
-    let name = "getentropy\0";
-    let addr = unsafe { libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr() as *const _) as usize };
+    let name = c"getentropy";
+    let addr = unsafe { libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) as usize };
     // If the GC does not account for the extra_fn_ptr entry that this dlsym just added, this GC
     // run will delete our entry for the base addr of the function pointer we will transmute to,
     // and the call through the function pointer will report UB.

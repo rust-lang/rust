@@ -8,7 +8,7 @@ use ide_db::{
 use stdx::never;
 use syntax::{
     AstNode, Direction, SyntaxNode, SyntaxToken, T,
-    ast::{self, Use, UseTree, VisibilityKind, make},
+    ast::{self, Use, UseTree, VisibilityKind},
 };
 
 use crate::{
@@ -41,7 +41,7 @@ use crate::{
 //
 // fn qux(bar: Bar, baz: Baz) {}
 // ```
-pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let star = ctx.find_token_syntax_at_offset(T![*])?;
     let use_tree = star.parent().and_then(ast::UseTree::cast)?;
     let use_item = star.parent_ancestors().find_map(ast::Use::cast)?;
@@ -99,7 +99,7 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 //
 // pub use foo::{Bar, Baz};
 // ```
-pub(crate) fn expand_glob_reexport(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn expand_glob_reexport(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let star = ctx.find_token_syntax_at_offset(T![*])?;
     let use_tree = star.parent().and_then(ast::UseTree::cast)?;
     let use_item = star.parent_ancestors().find_map(ast::Use::cast)?;
@@ -140,7 +140,7 @@ pub(crate) fn expand_glob_reexport(acc: &mut Assists, ctx: &AssistContext<'_>) -
 }
 
 fn build_expanded_import(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     builder: &mut SourceChangeBuilder,
     use_tree: UseTree,
     use_item: Use,
@@ -148,6 +148,8 @@ fn build_expanded_import(
     current_module: Module,
     reexport_public_items: bool,
 ) {
+    let editor = builder.make_editor(use_tree.syntax());
+    let make = editor.make();
     let (must_be_pub, visible_from) = if !reexport_public_items {
         (false, current_module)
     } else {
@@ -160,22 +162,21 @@ fn build_expanded_import(
         }
     };
 
-    let refs_in_target = find_refs_in_mod(ctx, target_module, visible_from, must_be_pub);
+    let refs_in_target =
+        find_refs_in_mod(ctx, target_module, current_module, visible_from, must_be_pub);
     let imported_defs = find_imported_defs(ctx, use_item);
 
     let filtered_defs =
         if reexport_public_items { refs_in_target } else { refs_in_target.used_refs(ctx) };
 
     let names_to_import = find_names_to_import(filtered_defs, imported_defs);
-    let expanded = make::use_tree_list(names_to_import.iter().map(|n| {
-        let path = make::ext::ident_path(
+    let expanded = make.use_tree_list(names_to_import.iter().map(|n| {
+        let path = make.ident_path(
             &n.display(ctx.db(), current_module.krate(ctx.db()).edition(ctx.db())).to_string(),
         );
-        make::use_tree(path, None, None, false)
-    }))
-    .clone_for_update();
+        make.use_tree(path, None, None, false)
+    }));
 
-    let mut editor = builder.make_editor(use_tree.syntax());
     match use_tree.star_token() {
         Some(star) => {
             let needs_braces = use_tree.path().is_some() && names_to_import.len() != 1;
@@ -237,21 +238,25 @@ fn find_parent_and_path(
     }
 }
 
-fn def_is_referenced_in(def: Definition, ctx: &AssistContext<'_>) -> bool {
+fn def_is_referenced_in<'db>(def: Definition<'db>, ctx: &AssistContext<'_, 'db>) -> bool {
     let search_scope = SearchScope::single_file(ctx.file_id());
     def.usages(&ctx.sema).in_scope(&search_scope).at_least_one()
 }
 
 #[derive(Debug, Clone)]
-struct Ref {
+struct Ref<'db> {
     // could be alias
     visible_name: Name,
-    def: Definition,
+    def: Definition<'db>,
     is_pub: bool,
 }
 
-impl Ref {
-    fn from_scope_def(ctx: &AssistContext<'_>, name: Name, scope_def: ScopeDef) -> Option<Self> {
+impl<'db> Ref<'db> {
+    fn from_scope_def(
+        ctx: &AssistContext<'_, 'db>,
+        name: Name,
+        scope_def: ScopeDef<'db>,
+    ) -> Option<Self> {
         match scope_def {
             ScopeDef::ModuleDef(def) => Some(Ref {
                 visible_name: name,
@@ -264,10 +269,10 @@ impl Ref {
 }
 
 #[derive(Debug, Clone)]
-struct Refs(Vec<Ref>);
+struct Refs<'db>(Vec<Ref<'db>>);
 
-impl Refs {
-    fn used_refs(&self, ctx: &AssistContext<'_>) -> Refs {
+impl<'db> Refs<'db> {
+    fn used_refs(&self, ctx: &AssistContext<'_, 'db>) -> Refs<'db> {
         Refs(
             self.0
                 .clone()
@@ -291,23 +296,28 @@ impl Refs {
         )
     }
 
-    fn filter_out_by_defs(&self, defs: Vec<Definition>) -> Refs {
+    fn filter_out_by_defs(&self, defs: Vec<Definition<'db>>) -> Refs<'db> {
         Refs(self.0.clone().into_iter().filter(|r| !defs.contains(&r.def)).collect())
     }
 }
 
-fn find_refs_in_mod(
-    ctx: &AssistContext<'_>,
+fn find_refs_in_mod<'db>(
+    ctx: &AssistContext<'_, 'db>,
     expandable: Expandable,
+    current_module: Module,
     visible_from: Module,
     must_be_pub: bool,
-) -> Refs {
+) -> Refs<'db> {
     match expandable {
         Expandable::Module(module) => {
             let module_scope = module.scope(ctx.db(), Some(visible_from));
             let refs = module_scope
                 .into_iter()
                 .filter_map(|(n, d)| Ref::from_scope_def(ctx, n, d))
+                .filter(|r| match r.def {
+                    Definition::Module(it) => it != current_module,
+                    _ => r.def.module(ctx.db()).map_or(false, |it| it != current_module),
+                })
                 .filter(|r| !must_be_pub || r.is_pub)
                 .collect();
             Refs(refs)
@@ -317,7 +327,7 @@ fn find_refs_in_mod(
                 .into_iter()
                 .map(|v| Ref {
                     visible_name: v.name(ctx.db()),
-                    def: Definition::Variant(v),
+                    def: Definition::EnumVariant(v),
                     is_pub: true,
                 })
                 .collect(),
@@ -325,8 +335,8 @@ fn find_refs_in_mod(
     }
 }
 
-fn is_visible_from(ctx: &AssistContext<'_>, expandable: &Expandable, from: Module) -> bool {
-    fn is_mod_visible_from(ctx: &AssistContext<'_>, module: Module, from: Module) -> bool {
+fn is_visible_from(ctx: &AssistContext<'_, '_>, expandable: &Expandable, from: Module) -> bool {
+    fn is_mod_visible_from(ctx: &AssistContext<'_, '_>, module: Module, from: Module) -> bool {
         match module.parent(ctx.db()) {
             Some(parent) => {
                 module.visibility(ctx.db()).is_visible_from(ctx.db(), from.into())
@@ -366,7 +376,7 @@ fn is_visible_from(ctx: &AssistContext<'_>, expandable: &Expandable, from: Modul
 // use foo::*$0;
 // use baz::Baz;
 // ↑ ---------------
-fn find_imported_defs(ctx: &AssistContext<'_>, use_item: Use) -> Vec<Definition> {
+fn find_imported_defs<'db>(ctx: &AssistContext<'_, 'db>, use_item: Use) -> Vec<Definition<'db>> {
     [Direction::Prev, Direction::Next]
         .into_iter()
         .flat_map(|dir| {
@@ -379,7 +389,7 @@ fn find_imported_defs(ctx: &AssistContext<'_>, use_item: Use) -> Vec<Definition>
                 | Definition::Module(_)
                 | Definition::Function(_)
                 | Definition::Adt(_)
-                | Definition::Variant(_)
+                | Definition::EnumVariant(_)
                 | Definition::Const(_)
                 | Definition::Static(_)
                 | Definition::Trait(_)
@@ -391,7 +401,10 @@ fn find_imported_defs(ctx: &AssistContext<'_>, use_item: Use) -> Vec<Definition>
         .collect()
 }
 
-fn find_names_to_import(refs_in_target: Refs, imported_defs: Vec<Definition>) -> Vec<Name> {
+fn find_names_to_import<'db>(
+    refs_in_target: Refs<'db>,
+    imported_defs: Vec<Definition<'db>>,
+) -> Vec<Name> {
     let final_refs = refs_in_target.filter_out_by_defs(imported_defs);
     final_refs.0.iter().map(|r| r.visible_name.clone()).collect()
 }
@@ -435,6 +448,31 @@ use foo::{Bar, Baz, f};
 fn qux(bar: Bar, baz: Baz) {
     f();
 }
+",
+        )
+    }
+
+    #[test]
+    fn expanding_glob_import_on_cycle_import() {
+        check_assist(
+            expand_glob_import,
+            r"
+mod foo {
+    pub use crate::*$0;
+    pub struct Foo;
+    pub fn bar() -> Bar { _ = Foo; Bar }
+}
+pub use foo::*;
+pub struct Bar;
+",
+            r"
+mod foo {
+    pub use crate::Bar;
+    pub struct Foo;
+    pub fn bar() -> Bar { _ = Foo; Bar }
+}
+pub use foo::*;
+pub struct Bar;
 ",
         )
     }

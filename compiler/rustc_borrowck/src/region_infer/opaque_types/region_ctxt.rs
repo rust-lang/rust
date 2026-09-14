@@ -78,11 +78,11 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         let placeholder_indices = Default::default();
         let mut scc_values =
             RegionValues::new(location_map, universal_regions.len(), placeholder_indices);
-        for variable in definitions.indices() {
+        for (variable, definition) in definitions.iter_enumerated() {
             let scc = constraint_sccs.scc(variable);
-            match definitions[variable].origin {
+            match definition.origin {
                 NllRegionVariableOrigin::FreeRegion => {
-                    scc_values.add_element(scc, variable);
+                    scc_values.add_free_region(scc, variable);
                 }
                 _ => {}
             }

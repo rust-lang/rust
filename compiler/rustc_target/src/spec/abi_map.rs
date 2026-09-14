@@ -60,12 +60,16 @@ impl AbiMap {
             Arch::Msp430 => ArchKind::Msp430,
             Arch::Nvptx64 => ArchKind::Nvptx,
             Arch::RiscV32 | Arch::RiscV64 => ArchKind::Riscv,
+            Arch::SpirV => ArchKind::Spirv,
+            Arch::Wasm32 | Arch::Wasm64 => ArchKind::Wasm,
             Arch::X86 => ArchKind::X86,
             Arch::X86_64 => ArchKind::X86_64,
             _ => ArchKind::Other,
         };
 
-        let os = if target.is_like_windows {
+        let os = if target.is_like_darwin {
+            OsKind::Apple
+        } else if target.is_like_windows {
             OsKind::Windows
         } else if target.is_like_vexos {
             OsKind::VEXos
@@ -80,17 +84,29 @@ impl AbiMap {
     pub fn canonize_abi(&self, extern_abi: ExternAbi, has_c_varargs: bool) -> AbiMapping {
         let AbiMap { os, arch } = *self;
 
+        if extern_abi == ExternAbi::Swift {
+            // Per https://www.swift.org/blog/abi-stability-and-more/, Swift's ABI
+            // is only stable on Apple platforms, so we reject it elsewhere.
+            match os {
+                OsKind::Apple => {}
+                _ => return AbiMapping::Invalid,
+            }
+        }
+
         let canon_abi = match (extern_abi, arch) {
             // infallible lowerings
             (ExternAbi::C { .. }, _) => CanonAbi::C,
             (ExternAbi::Rust | ExternAbi::RustCall, _) => CanonAbi::Rust,
-            (ExternAbi::Unadjusted, _) => CanonAbi::C,
+
+            // Dummy mapping to prevent reporting an error in the frontend
+            (ExternAbi::LlvmIntrinsic, _) => CanonAbi::C,
 
             (ExternAbi::RustCold, _) if self.os == OsKind::Windows => CanonAbi::Rust,
             (ExternAbi::RustCold, _) => CanonAbi::RustCold,
             (ExternAbi::RustPreserveNone, _) => CanonAbi::RustPreserveNone,
+            (ExternAbi::RustTail, _) => CanonAbi::RustTail,
 
-            (ExternAbi::Custom, _) => CanonAbi::Custom,
+            (ExternAbi::Swift, _) => CanonAbi::Swift,
 
             (ExternAbi::System { .. }, ArchKind::X86)
                 if os == OsKind::Windows && !has_c_varargs =>
@@ -107,6 +123,9 @@ impl AbiMap {
             /* multi-platform */
             // always and forever
             (ExternAbi::RustInvalid, _) => return AbiMapping::Invalid,
+
+            (ExternAbi::Custom, ArchKind::Wasm | ArchKind::Spirv) => return AbiMapping::Invalid,
+            (ExternAbi::Custom, _) => CanonAbi::Custom,
 
             (ExternAbi::EfiApi, ArchKind::Arm(..)) => CanonAbi::Arm(ArmCall::Aapcs),
             (ExternAbi::EfiApi, ArchKind::X86_64) => CanonAbi::X86(X86Call::Win64),
@@ -207,12 +226,15 @@ enum ArchKind {
     Riscv,
     X86,
     X86_64,
+    Wasm,
+    Spirv,
     /// Architectures which don't need other considerations for ABI lowering
     Other,
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum OsKind {
+    Apple,
     Windows,
     VEXos,
     Other,

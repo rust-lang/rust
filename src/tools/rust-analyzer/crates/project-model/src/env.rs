@@ -79,18 +79,31 @@ pub(crate) fn cargo_config_env(
     for (key, entry) in env_toml {
         let key = key.as_ref().as_ref();
         let value = match entry.as_ref() {
-            DeValue::String(s) => String::from(s.clone()),
+            DeValue::String(s) => {
+                // Plain string entries have no `force` option, so they should not
+                // override existing environment variables (matching Cargo behavior).
+                if extra_env.get(key).is_some_and(Option::is_some) {
+                    continue;
+                }
+                if let Ok(val) = std::env::var(key) { val } else { String::from(s.clone()) }
+            }
             DeValue::Table(entry) => {
                 // Each entry MUST have a `value` key.
                 let Some(map) = entry.get("value").and_then(|v| v.as_ref().as_str()) else {
                     continue;
                 };
-                // If the entry already exists in the environment AND the `force` key is not set to
-                // true, then don't overwrite the value.
-                if extra_env.get(key).is_some_and(Option::is_some)
-                    && !entry.get("force").and_then(|v| v.as_ref().as_bool()).unwrap_or(false)
-                {
-                    continue;
+                let is_forced =
+                    entry.get("force").and_then(|v| v.as_ref().as_bool()).unwrap_or(false);
+                // If the entry already exists in the environment AND the `force` key is not set
+                // to true, use the existing value instead of the config value.
+                if !is_forced {
+                    if extra_env.get(key).is_some_and(Option::is_some) {
+                        continue;
+                    }
+                    if let Ok(val) = std::env::var(key) {
+                        env.insert(key, val);
+                        continue;
+                    }
                 }
 
                 if let Some(base) = entry.get("relative").and_then(|v| {
@@ -124,38 +137,80 @@ fn parse_output_cargo_config_env_works() {
     .unwrap();
     let config_path = cwd.join(".cargo").join("config.toml");
     let raw = r#"
-env.CARGO_WORKSPACE_DIR.relative = true
-env.CARGO_WORKSPACE_DIR.value = ""
-env.INVALID.relative = "invalidbool"
-env.INVALID.value = "../relative"
-env.RELATIVE.relative = true
-env.RELATIVE.value = "../relative"
-env.TEST.value = "test"
-env.FORCED.value = "test"
-env.FORCED.force = true
-env.UNFORCED.value = "test"
-env.UNFORCED.forced = false
-env.OVERWRITTEN.value = "test"
-env.NOT_AN_OBJECT = "value"
+env.RA_TEST_WORKSPACE_DIR.relative = true
+env.RA_TEST_WORKSPACE_DIR.value = ""
+env.RA_TEST_INVALID.relative = "invalidbool"
+env.RA_TEST_INVALID.value = "../relative"
+env.RA_TEST_RELATIVE.relative = true
+env.RA_TEST_RELATIVE.value = "../relative"
+env.RA_TEST_UNSET.value = "test"
+env.RA_TEST_FORCED.value = "test"
+env.RA_TEST_FORCED.force = true
+env.RA_TEST_UNFORCED.value = "test"
+env.RA_TEST_UNFORCED.forced = false
+env.RA_TEST_OVERWRITTEN.value = "test"
+env.RA_TEST_NOT_AN_OBJECT = "value"
 "#;
     let raw = raw.lines().map(|l| format!("{l} # {config_path}")).join("\n");
     let config = CargoConfigFile::from_string_for_test(raw);
     let extra_env = [
-        ("FORCED", Some("ignored")),
-        ("UNFORCED", Some("newvalue")),
-        ("OVERWRITTEN", Some("newvalue")),
-        ("TEST", None),
+        ("RA_TEST_FORCED", Some("ignored")),
+        ("RA_TEST_UNFORCED", Some("newvalue")),
+        ("RA_TEST_OVERWRITTEN", Some("newvalue")),
+        ("RA_TEST_UNSET", None),
     ]
     .iter()
-    .map(|(k, v)| (k.to_string(), v.map(ToString::to_string)))
+    .map(|(k, v)| (k.to_string(), v.map(str::to_owned)))
     .collect();
     let env = cargo_config_env(&Some(config), &extra_env);
-    assert_eq!(env.get("CARGO_WORKSPACE_DIR").as_deref(), Some(cwd.join("").as_str()));
-    assert_eq!(env.get("RELATIVE").as_deref(), Some(cwd.join("../relative").as_str()));
-    assert_eq!(env.get("INVALID").as_deref(), Some("../relative"));
-    assert_eq!(env.get("TEST").as_deref(), Some("test"));
-    assert_eq!(env.get("FORCED").as_deref(), Some("test"));
-    assert_eq!(env.get("UNFORCED").as_deref(), Some("newvalue"));
-    assert_eq!(env.get("OVERWRITTEN").as_deref(), Some("newvalue"));
-    assert_eq!(env.get("NOT_AN_OBJECT").as_deref(), Some("value"));
+    assert_eq!(env.get("RA_TEST_WORKSPACE_DIR").as_deref(), Some(cwd.join("").as_str()));
+    assert_eq!(env.get("RA_TEST_RELATIVE").as_deref(), Some(cwd.join("../relative").as_str()));
+    assert_eq!(env.get("RA_TEST_INVALID").as_deref(), Some("../relative"));
+    assert_eq!(env.get("RA_TEST_UNSET").as_deref(), Some("test"));
+    assert_eq!(env.get("RA_TEST_FORCED").as_deref(), Some("test"));
+    assert_eq!(env.get("RA_TEST_UNFORCED").as_deref(), Some("newvalue"));
+    assert_eq!(env.get("RA_TEST_OVERWRITTEN").as_deref(), Some("newvalue"));
+    assert_eq!(env.get("RA_TEST_NOT_AN_OBJECT").as_deref(), Some("value"));
+}
+
+#[test]
+fn cargo_config_env_respects_process_env() {
+    use itertools::Itertools;
+
+    let cwd = paths::AbsPathBuf::try_from(
+        paths::Utf8PathBuf::try_from(std::env::current_dir().unwrap()).unwrap(),
+    )
+    .unwrap();
+    let config_path = cwd.join(".cargo").join("config.toml");
+
+    // SAFETY: this test is not run in parallel with other tests that depend on these env vars.
+    unsafe {
+        std::env::set_var("RA_TEST_PROCESS_ENV_STRING", "from_process");
+        std::env::set_var("RA_TEST_PROCESS_ENV_TABLE", "from_process");
+        std::env::set_var("RA_TEST_PROCESS_ENV_FORCED", "from_process");
+    }
+
+    let raw = r#"
+env.RA_TEST_PROCESS_ENV_STRING = "from_config"
+env.RA_TEST_PROCESS_ENV_TABLE.value = "from_config"
+env.RA_TEST_PROCESS_ENV_FORCED.value = "from_config"
+env.RA_TEST_PROCESS_ENV_FORCED.force = true
+"#;
+    let raw = raw.lines().map(|l| format!("{l} # {config_path}")).join("\n");
+    let config = CargoConfigFile::from_string_for_test(raw);
+    let extra_env = FxHashMap::default();
+    let env = cargo_config_env(&Some(config), &extra_env);
+
+    // Plain string form should use process env value, not config value
+    assert_eq!(env.get("RA_TEST_PROCESS_ENV_STRING").as_deref(), Some("from_process"));
+    // Table form without force should use process env value, not config value
+    assert_eq!(env.get("RA_TEST_PROCESS_ENV_TABLE").as_deref(), Some("from_process"));
+    // Table form with force=true should override process env
+    assert_eq!(env.get("RA_TEST_PROCESS_ENV_FORCED").as_deref(), Some("from_config"));
+
+    unsafe {
+        std::env::remove_var("RA_TEST_PROCESS_ENV_STRING");
+        std::env::remove_var("RA_TEST_PROCESS_ENV_TABLE");
+        std::env::remove_var("RA_TEST_PROCESS_ENV_FORCED");
+    }
 }

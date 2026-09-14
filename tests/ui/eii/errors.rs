@@ -8,7 +8,7 @@
 #[eii_declaration(bar)] //~ ERROR `#[eii_declaration(...)]` is only valid on macros
 fn hello() {
     #[eii_declaration(bar)] //~ ERROR `#[eii_declaration(...)]` is only valid on macros
-    let x = 3 + 3;
+    let x = 3 + 3;          //~| ERROR macro attributes on statements are unstable
 }
 
 #[eii_declaration] //~ ERROR `#[eii_declaration(...)]` expects a list of one or two elements
@@ -25,11 +25,9 @@ unsafe extern "Rust" {
     safe fn bar(x: u64) -> u64;
 }
 
-#[foo] //~ ERROR `#[foo]` is only valid on functions
-static X: u64 = 4;
-#[foo] //~ ERROR `#[foo]` is only valid on functions
+#[foo] //~ ERROR `#[foo]` is only valid on functions and statics
 const Y: u64 = 4;
-#[foo] //~ ERROR `#[foo]` is only valid on functions
+#[foo] //~ ERROR `#[foo]` is only valid on functions and statics
 macro bar() {}
 
 #[foo()]

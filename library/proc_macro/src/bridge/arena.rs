@@ -9,14 +9,6 @@ use std::mem::MaybeUninit;
 use std::ops::Range;
 use std::{cmp, ptr, slice};
 
-// The arenas start with PAGE-sized chunks, and then each new chunk is twice as
-// big as its predecessor, up until we reach HUGE_PAGE-sized chunks, whereupon
-// we stop growing. This scales well, from arenas that are barely used up to
-// arenas that are used for 100s of MiBs. Note also that the chosen sizes match
-// the usual sizes of pages and huge pages on Linux.
-const PAGE: usize = 4096;
-const HUGE_PAGE: usize = 2 * 1024 * 1024;
-
 /// A minimal arena allocator inspired by `rustc_arena::DroplessArena`.
 ///
 /// This is unfortunately a complete re-implementation rather than a dependency
@@ -44,6 +36,18 @@ impl Arena {
     #[inline(never)]
     #[cold]
     fn grow(&self, additional: usize) {
+        // The arenas start with PAGE-sized chunks, and then each new chunk is twice as
+        // big as its predecessor, up until we reach HUGE_PAGE-sized chunks, whereupon
+        // we stop growing. This scales well, from arenas that are barely used up to
+        // arenas that are used for 100s of MiBs. Note also that the chosen sizes match
+        // the usual sizes of pages and huge pages on Linux.
+        const PAGE: usize = 4096;
+        const HUGE_PAGE: usize =
+            cfg_select! {
+                any(target_pointer_width = "64", target_pointer_width = "32") => 2 * 1024 * 1024,
+                _ => 8192, // just make it compile for -Zbuild-std
+            };
+
         let mut chunks = self.chunks.borrow_mut();
         let mut new_cap;
         if let Some(last_chunk) = chunks.last_mut() {
@@ -58,11 +62,10 @@ impl Arena {
         // Also ensure that this chunk can fit `additional`.
         new_cap = cmp::max(additional, new_cap);
 
-        let mut chunk = Box::new_uninit_slice(new_cap);
+        let chunk = chunks.push_mut(Box::new_uninit_slice(new_cap));
         let Range { start, end } = chunk.as_mut_ptr_range();
         self.start.set(start);
         self.end.set(end);
-        chunks.push(chunk);
     }
 
     /// Allocates a byte slice with specified size from the current memory

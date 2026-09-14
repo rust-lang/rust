@@ -1,11 +1,6 @@
 #![warn(clippy::iter_kv_map)]
-#![allow(
-    unused_mut,
-    clippy::redundant_clone,
-    clippy::redundant_closure,
-    clippy::suspicious_map,
-    clippy::map_identity
-)]
+#![allow(clippy::redundant_closure)]
+#![expect(clippy::suspicious_map)]
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -233,5 +228,17 @@ fn issue16515() {
 
     let hash_map: HashMap<u32, u32> = HashMap::new();
     hash_map.into_iter().filter_map(|(_, v)| (v > 0).then_some(1));
+    //~^ iter_kv_map
+}
+
+fn issue16742() {
+    let map: HashMap<u32, Vec<u32>> = HashMap::new();
+    map.iter().flat_map(|(_, v)| v.iter().map(|i| *i + 1));
+    //~^ iter_kv_map
+    map.iter().flat_map(|(_, v)| v);
+    //~^ iter_kv_map
+
+    let map: HashMap<u32, Vec<u32>> = HashMap::new();
+    map.into_iter().flat_map(|(_, v)| v);
     //~^ iter_kv_map
 }

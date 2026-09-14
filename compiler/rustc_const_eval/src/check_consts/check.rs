@@ -6,9 +6,10 @@ use std::ops::Deref;
 use std::{assert_matches, mem};
 
 use rustc_errors::{Diag, ErrorGuaranteed};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem, find_attr};
+use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::Visitor;
@@ -29,7 +30,7 @@ use super::qualifs::{self, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstCx, Qualif};
 use crate::check_consts::is_fn_or_trait_safe_to_expose_on_stable;
-use crate::errors;
+use crate::diagnostics;
 
 type QualifResults<'mir, 'tcx, Q> =
     rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'tcx, Q>>;
@@ -48,69 +49,11 @@ pub(crate) struct Qualifs<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
-    /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
-    ///
-    /// Only updates the cursor if absolutely necessary
-    pub(crate) fn needs_drop(
-        &mut self,
-        ccx: &'mir ConstCx<'mir, 'tcx>,
-        local: Local,
-        location: Location,
-    ) -> bool {
-        let ty = ccx.body.local_decls[local].ty;
-        // Peeking into opaque types causes cycles if the current function declares said opaque
-        // type. Thus we avoid short circuiting on the type and instead run the more expensive
-        // analysis that looks at the actual usage within this function
-        if !ty.has_opaque_types() && !NeedsDrop::in_any_value_of_ty(ccx, ty) {
-            return false;
-        }
-
-        let needs_drop = self.needs_drop.get_or_insert_with(|| {
-            let ConstCx { tcx, body, .. } = *ccx;
-
-            FlowSensitiveAnalysis::new(NeedsDrop, ccx)
-                .iterate_to_fixpoint(tcx, body, None)
-                .into_results_cursor(body)
-        });
-
-        needs_drop.seek_before_primary_effect(location);
-        needs_drop.get().contains(local)
-    }
-
-    /// Returns `true` if `local` is `NeedsNonConstDrop` at the given `Location`.
-    ///
-    /// Only updates the cursor if absolutely necessary
-    pub(crate) fn needs_non_const_drop(
-        &mut self,
-        ccx: &'mir ConstCx<'mir, 'tcx>,
-        local: Local,
-        location: Location,
-    ) -> bool {
-        let ty = ccx.body.local_decls[local].ty;
-        // Peeking into opaque types causes cycles if the current function declares said opaque
-        // type. Thus we avoid short circuiting on the type and instead run the more expensive
-        // analysis that looks at the actual usage within this function
-        if !ty.has_opaque_types() && !NeedsNonConstDrop::in_any_value_of_ty(ccx, ty) {
-            return false;
-        }
-
-        let needs_non_const_drop = self.needs_non_const_drop.get_or_insert_with(|| {
-            let ConstCx { tcx, body, .. } = *ccx;
-
-            FlowSensitiveAnalysis::new(NeedsNonConstDrop, ccx)
-                .iterate_to_fixpoint(tcx, body, None)
-                .into_results_cursor(body)
-        });
-
-        needs_non_const_drop.seek_before_primary_effect(location);
-        needs_non_const_drop.get().contains(local)
-    }
-
-    /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
+    /// Does `Q` hold for the `local` at the given `Location`?
     ///
     /// Only updates the cursor if absolutely necessary.
-    fn has_mut_interior(
-        &mut self,
+    fn in_local<Q: Qualif>(
+        qualif_results: &mut Option<QualifResults<'mir, 'tcx, Q>>,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
         location: Location,
@@ -118,21 +61,21 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         let ty = ccx.body.local_decls[local].ty;
         // Peeking into opaque types causes cycles if the current function declares said opaque
         // type. Thus we avoid short circuiting on the type and instead run the more expensive
-        // analysis that looks at the actual usage within this function
-        if !ty.has_opaque_types() && !HasMutInterior::in_any_value_of_ty(ccx, ty) {
+        // analysis that looks at the actual usage within this function.
+        if !ty.has_opaque_types() && !Q::in_any_value_of_ty(ccx, ty) {
             return false;
         }
 
-        let has_mut_interior = self.has_mut_interior.get_or_insert_with(|| {
+        let qualif_results = qualif_results.get_or_insert_with(|| {
             let ConstCx { tcx, body, .. } = *ccx;
 
-            FlowSensitiveAnalysis::new(HasMutInterior, ccx)
+            FlowSensitiveAnalysis::new(ccx)
                 .iterate_to_fixpoint(tcx, body, None)
                 .into_results_cursor(body)
         });
 
-        has_mut_interior.seek_before_primary_effect(location);
-        has_mut_interior.get().contains(local)
+        qualif_results.seek_before_primary_effect(location);
+        qualif_results.get().contains(local)
     }
 
     fn in_return_place(
@@ -160,9 +103,19 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         let return_loc = ccx.body.terminator_loc(return_block);
 
         ConstQualifs {
-            needs_drop: self.needs_drop(ccx, RETURN_PLACE, return_loc),
-            needs_non_const_drop: self.needs_non_const_drop(ccx, RETURN_PLACE, return_loc),
-            has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc),
+            needs_drop: Self::in_local(&mut self.needs_drop, ccx, RETURN_PLACE, return_loc),
+            needs_non_const_drop: Self::in_local(
+                &mut self.needs_non_const_drop,
+                ccx,
+                RETURN_PLACE,
+                return_loc,
+            ),
+            has_mut_interior: Self::in_local(
+                &mut self.has_mut_interior,
+                ccx,
+                RETURN_PLACE,
+                return_loc,
+            ),
             tainted_by_errors,
         }
     }
@@ -399,8 +352,9 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 ty::BoundConstness::Const
             }
         };
-        let const_conditions =
-            ocx.normalize(&ObligationCause::misc(call_span, body_id), param_env, const_conditions);
+        let const_conditions = const_conditions.into_iter().map(|(c, s)| {
+            (ocx.normalize(&ObligationCause::misc(call_span, body_id), param_env, c), s)
+        });
         ocx.register_obligations(const_conditions.into_iter().map(|(trait_ref, span)| {
             Obligation::new(
                 tcx,
@@ -415,7 +369,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }));
 
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if errors.is_empty() {
+        if errors.no_errors() {
             Some(ConstConditionsHold::Yes)
         } else {
             tcx.dcx()
@@ -433,7 +387,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         let ty_of_dropped_place = dropped_place.ty(self.body, self.tcx).ty;
 
         let needs_drop = if let Some(local) = dropped_place.as_local() {
-            self.qualifs.needs_drop(self.ccx, local, location)
+            Qualifs::in_local(&mut self.qualifs.needs_drop, self.ccx, local, location)
         } else {
             qualifs::NeedsDrop::in_any_value_of_ty(self.ccx, ty_of_dropped_place)
         };
@@ -446,7 +400,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         let needs_non_const_drop = if let Some(local) = dropped_place.as_local() {
             // Use the span where the local was declared as the span of the drop error.
             err_span = self.body.local_decls[local].source_info.span;
-            self.qualifs.needs_non_const_drop(self.ccx, local, location)
+            Qualifs::in_local(&mut self.qualifs.needs_non_const_drop, self.ccx, local, location)
         } else {
             qualifs::NeedsNonConstDrop::in_any_value_of_ty(self.ccx, ty_of_dropped_place)
         };
@@ -474,7 +428,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 if self.enforce_recursive_const_stability()
                     && !is_fn_or_trait_safe_to_expose_on_stable(self.tcx, def_id)
                 {
-                    self.dcx().emit_err(errors::UnmarkedConstItemExposed {
+                    self.dcx().emit_err(diagnostics::UnmarkedConstItemExposed {
                         span: self.span,
                         def_path: self.tcx.def_path_str(def_id),
                     });
@@ -569,7 +523,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         match rvalue {
             Rvalue::ThreadLocalRef(_) => self.check_op(ops::ThreadLocalAccess),
 
-            Rvalue::Use(_)
+            Rvalue::Use(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
             | Rvalue::Discriminant(..) => {}
@@ -600,13 +554,24 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | Rvalue::RawPtr(RawPtrKind::Const, place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     self.ccx,
-                    &mut |local| self.qualifs.has_mut_interior(self.ccx, local, location),
+                    &mut |local| {
+                        Qualifs::in_local(
+                            &mut self.qualifs.has_mut_interior,
+                            self.ccx,
+                            local,
+                            location,
+                        )
+                    },
                     place.as_ref(),
                 );
 
                 if borrowed_place_has_mut_interior && self.place_may_escape(place) {
                     self.check_op(ops::EscapingCellBorrow);
                 }
+            }
+
+            Rvalue::Reborrow(..) => {
+                // FIXME(reborrow): figure out if this is relevant at all.
             }
 
             Rvalue::RawPtr(RawPtrKind::FakeForPtrMetadata, place) => {
@@ -621,28 +586,38 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Cast(
-                CastKind::PointerCoercion(
+                CastKind::IntToInt
+                | CastKind::FloatToInt
+                | CastKind::FloatToFloat
+                | CastKind::IntToFloat
+                | CastKind::PtrToPtr
+                | CastKind::FnPtrToPtr
+                | CastKind::Transmute
+                | CastKind::BoxDerefTransmute
+                | CastKind::PointerCoercion(
                     PointerCoercion::MutToConstPointer
                     | PointerCoercion::ArrayToPointer
                     | PointerCoercion::UnsafeFnPointer
                     | PointerCoercion::ClosureFnPointer(_)
-                    | PointerCoercion::ReifyFnPointer(_),
+                    | PointerCoercion::ReifyFnPointer(_)
+                    | PointerCoercion::Unsize,
                     _,
                 ),
                 _,
                 _,
             ) => {
-                // These are all okay; they only change the type, not the data.
+                // Operations that are fully supported by const-eval.
             }
-
+            // Special checks for special casts
             Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => {
                 self.check_op(ops::RawPtrToIntCast);
             }
             Rvalue::Cast(CastKind::PointerWithExposedProvenance, _, _) => {
                 // Since no pointer can ever get exposed (rejected above), this is easy to support.
             }
-
-            Rvalue::Cast(_, _, _) => {}
+            Rvalue::Cast(kind @ CastKind::Subtype, _, _) => {
+                span_bug!(self.span, "invalid CastKind for this MIR phase: {kind:?}");
+            }
 
             Rvalue::UnaryOp(op, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
@@ -664,7 +639,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, box (lhs, rhs)) => {
+            Rvalue::BinaryOp(op, (lhs, rhs)) => {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
@@ -724,7 +699,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::Retag { .. }
             | StatementKind::PlaceMention(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
@@ -753,7 +727,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let fn_ty = func.ty(body, tcx);
 
                 let (callee, fn_args) = match *fn_ty.kind() {
-                    ty::FnDef(def_id, fn_args) => (def_id, fn_args),
+                    ty::FnDef(def_id, fn_args) => (def_id, fn_args.no_bound_vars().unwrap()),
 
                     ty::FnPtr(..) => {
                         self.check_op(ops::FnCallIndirect);
@@ -775,7 +749,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // to do different checks than usual.
 
                     trace!("attempting to call a trait method");
-                    let is_const = tcx.constness(callee) == hir::Constness::Const;
+                    let is_const =
+                        matches!(tcx.constness(callee), hir::Constness::Const { always: false });
 
                     // Only consider a trait to be const if the const conditions hold.
                     // Otherwise, it's really misleading to call something "conditionally"
@@ -869,7 +844,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             // regular stability, and regular stability is checked separately.
                             // However, we *do* have to worry about *recursive* const stability.
                             if !is_const_stable && self.enforce_recursive_const_stability() {
-                                self.dcx().emit_err(errors::UnmarkedIntrinsicExposed {
+                                self.dcx().emit_err(diagnostics::UnmarkedIntrinsicExposed {
                                     span: self.span,
                                     def_path: self.tcx.def_path_str(callee),
                                 });
@@ -983,7 +958,7 @@ fn emit_unstable_in_stable_exposed_error(
 ) -> ErrorGuaranteed {
     let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
-    ccx.dcx().emit_err(errors::UnstableInStableExposed {
+    ccx.dcx().emit_err(diagnostics::UnstableInStableExposed {
         gate: gate.to_string(),
         span,
         attr_span,

@@ -8,6 +8,6 @@ pub trait Foo {
 
 pub struct Bar<T>(<Self as Foo>::Type) where Self: ;
 //~^ ERROR the trait bound `Bar<T>: Foo` is not satisfied
-//~| ERROR overflow evaluating the requirement `Bar<T> well-formed`
+//~| ERROR overflow evaluating whether `Bar<T>` is well-formed
 
 fn main() {}

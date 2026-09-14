@@ -7,7 +7,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity, adjusted_d
 //
 // Diagnoses incorrect safety annotations of trait impls.
 pub(crate) fn trait_impl_incorrect_safety(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TraitImplIncorrectSafety,
 ) -> Diagnostic {
     Diagnostic::new(

@@ -9,9 +9,13 @@ pub mod link;
 pub(crate) mod linker;
 pub mod lto;
 pub mod metadata;
+pub mod rmeta_link;
 pub(crate) mod rpath;
+mod symbol_edit;
 pub mod symbol_export;
 pub mod write;
+
+pub use symbol_export::{exported_non_generic_symbols_helper, reachable_non_generics_helper};
 
 /// The target triple depends on the deployment target, and is required to
 /// enable features such as cross-language LTO, and for picking the right

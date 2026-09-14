@@ -13,7 +13,7 @@ note: ...and refers to the module `mem` which is defined here
   --> $SRC_DIR/std/src/lib.rs:LL:COL
    |
    = note: you could import this directly
-help: import `mem` through the re-export
+help: import `mem` directly
    |
 LL -     use foo::mem;
 LL +     use std::mem;

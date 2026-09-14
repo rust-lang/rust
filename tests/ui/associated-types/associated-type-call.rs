@@ -15,7 +15,7 @@ impl Trait for () {
 
     fn f() {
         <Self>::Assoc();
-        //~^ ERROR no associated item named `Assoc` found for unit type `()` in the current scope
+        //~^ ERROR no associated function or constant named `Assoc` found for unit type `()` in the current scope
     }
 }
 

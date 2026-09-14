@@ -37,7 +37,7 @@ pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {
 
 #[stable(feature = "char_convert", since = "1.13.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<char> for u32 {
+const impl From<char> for u32 {
     /// Converts a [`char`] into a [`u32`].
     ///
     /// # Examples
@@ -56,7 +56,7 @@ impl const From<char> for u32 {
 
 #[stable(feature = "more_char_conversions", since = "1.51.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<char> for u64 {
+const impl From<char> for u64 {
     /// Converts a [`char`] into a [`u64`].
     ///
     /// # Examples
@@ -77,7 +77,7 @@ impl const From<char> for u64 {
 
 #[stable(feature = "more_char_conversions", since = "1.51.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<char> for u128 {
+const impl From<char> for u128 {
     /// Converts a [`char`] into a [`u128`].
     ///
     /// # Examples
@@ -102,7 +102,7 @@ impl const From<char> for u128 {
 /// See [`impl From<u8> for char`](char#impl-From<u8>-for-char) for details on the encoding.
 #[stable(feature = "u8_from_char", since = "1.59.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const TryFrom<char> for u8 {
+const impl TryFrom<char> for u8 {
     type Error = TryFromCharError;
 
     /// Tries to convert a [`char`] into a [`u8`].
@@ -132,7 +132,7 @@ impl const TryFrom<char> for u8 {
 /// This corresponds to the UCS-2 encoding, as specified in ISO/IEC 10646:2003.
 #[stable(feature = "u16_from_char", since = "1.74.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const TryFrom<char> for u16 {
+const impl TryFrom<char> for u16 {
     type Error = TryFromCharError;
 
     /// Tries to convert a [`char`] into a [`u16`].
@@ -164,7 +164,7 @@ impl const TryFrom<char> for u16 {
 /// UTF-32 code point to the extent representable by pointer addresses.
 #[stable(feature = "usize_try_from_char", since = "1.94.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const TryFrom<char> for usize {
+const impl TryFrom<char> for usize {
     type Error = TryFromCharError;
 
     /// Tries to convert a [`char`] into a [`usize`].
@@ -214,7 +214,7 @@ impl const TryFrom<char> for usize {
 /// C0 and C1 control codes.
 #[stable(feature = "char_convert", since = "1.13.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<u8> for char {
+const impl From<u8> for char {
     /// Converts a [`u8`] into a [`char`].
     ///
     /// # Examples
@@ -300,7 +300,7 @@ const fn char_try_from_u32(i: u32) -> Result<char, CharTryFromError> {
 
 #[stable(feature = "try_from", since = "1.34.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const TryFrom<u32> for char {
+const impl TryFrom<u32> for char {
     type Error = CharTryFromError;
 
     #[inline]

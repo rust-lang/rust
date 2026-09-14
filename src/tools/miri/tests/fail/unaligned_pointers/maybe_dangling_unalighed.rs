@@ -10,6 +10,6 @@ fn main() {
     unsafe {
         let unaligned = MaybeDangling::new(a.as_ptr().byte_add(1));
         transmute::<MaybeDangling<*const u16>, MaybeDangling<&u16>>(unaligned)
-        //~^ ERROR: Undefined Behavior: constructing invalid value: encountered an unaligned reference
+        //~^ ERROR: encountered an unaligned reference
     };
 }

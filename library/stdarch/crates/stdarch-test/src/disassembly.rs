@@ -158,16 +158,26 @@ fn parse(output: &str) -> HashSet<Function> {
             };
 
             if cfg!(any(target_arch = "aarch64", target_arch = "arm64ec")) {
-                // Normalize [us]shll.* ..., #0 instructions to the preferred form: [us]xtl.* ...
-                // as neither LLVM objdump nor dumpbin does that.
-                // See https://developer.arm.com/documentation/ddi0602/latest/SIMD-FP-Instructions/UXTL--UXTL2--Unsigned-extend-Long--an-alias-of-USHLL--USHLL2-
-                // and https://developer.arm.com/documentation/ddi0602/latest/SIMD-FP-Instructions/SXTL--SXTL2--Signed-extend-Long--an-alias-of-SSHLL--SSHLL2-
-                // for details.
+                // Normalize `[us]shll{2}.* ..., #0` instructions to the preferred
+                // form: `[us]xtl{2}.* ...` as neither LLVM objdump nor dumpbin does that.
+                //
+                // SVE has `[us]shll[tb]` instructions that don't have an equivalent alias.
+                //
+                // See Arm documentation for details:
+                //
+                // - https://developer.arm.com/documentation/ddi0602/2026-03/SIMD-FP-Instructions/UXTL--UXTL2--Unsigned-extend-long--an-alias-of-USHLL--USHLL2-?lang=en
+                // - https://developer.arm.com/documentation/ddi0602/2026-03/SIMD-FP-Instructions/SXTL--SXTL2--Signed-extend-long--an-alias-of-SSHLL--SSHLL2-?lang=en
                 fn is_shll(instr: &str) -> bool {
                     if cfg!(target_env = "msvc") {
-                        instr.starts_with("ushll") || instr.starts_with("sshll")
+                        instr == "ushll"
+                            || instr == "ushll2"
+                            || instr == "sshll"
+                            || instr == "sshll2"
                     } else {
-                        instr.starts_with("ushll.") || instr.starts_with("sshll.")
+                        instr == "ushll."
+                            || instr == "ushll2."
+                            || instr == "sshll."
+                            || instr == "sshll2."
                     }
                 }
                 match (parts.first(), parts.last()) {
@@ -188,8 +198,11 @@ fn parse(output: &str) -> HashSet<Function> {
                 };
             }
 
+            // When using vectorcall the `ret` can have an argument, so match only the first part.
+            let is_ret = matches!(parts.first().map(String::as_str), Some("ret" | "retq"));
+
             instructions.push(parts.join(" "));
-            if matches!(&**instructions.last().unwrap(), "ret" | "retq") {
+            if is_ret {
                 cached_header = None;
                 break;
             }

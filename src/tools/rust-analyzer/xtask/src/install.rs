@@ -108,12 +108,8 @@ fn install_client(sh: &Shell, client_opt: ClientOpt) -> anyhow::Result<()> {
     };
 
     // Find the appropriate VS Code binary.
-    let lifetime_extender;
     let candidates: &[&str] = match client_opt.code_bin.as_deref() {
-        Some(it) => {
-            lifetime_extender = [it];
-            &lifetime_extender[..]
-        }
+        Some(it) => &[it],
         None => VS_CODES,
     };
     let code = candidates
@@ -179,7 +175,7 @@ fn install_proc_macro_server(sh: &Shell, opts: ProcMacroServerOpt) -> anyhow::Re
 
     let mut cmd = cmd!(
         sh,
-        "cargo install --path crates/proc-macro-srv-cli --profile={profile} --locked --force --features sysroot-abi"
+        "cargo install --path crates/proc-macro-srv-cli --profile={profile} --locked --force --features in-rust-tree"
     );
     if std::env::var_os("RUSTUP_TOOLCHAIN").is_none() {
         cmd = cmd.env("RUSTUP_TOOLCHAIN", "nightly");

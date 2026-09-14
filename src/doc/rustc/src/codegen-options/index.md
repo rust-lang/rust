@@ -3,10 +3,6 @@
 All of these options are passed to `rustc` via the `-C` flag, short for "codegen." You can see
 a version of this list for your exact compiler by running `rustc -C help`.
 
-## ar
-
-This option is deprecated and does nothing.
-
 ## code-model
 
 This option lets you choose which code model to use. \
@@ -16,7 +12,7 @@ may be able to use more compact addressing modes.
 
 The specific ranges depend on target architectures and addressing modes available to them. \
 For x86 more detailed description of its code models can be found in
-[System V Application Binary Interface](https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf)
+[System V Application Binary Interface](https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf?job=build)
 specification.
 
 Supported values for this option are:
@@ -193,12 +189,6 @@ crate, improving re-compile times. This takes a path to a directory where
 incremental files will be stored.
 
 Using incremental compilation inhibits certain optimizations (for example by increasing the amount of codegen units) and is therefore not recommended for release builds.
-
-## inline-threshold
-
-This option is deprecated and does nothing.
-
-Consider using `-Cllvm-args=--inline-threshold=...`.
 
 ## instrument-coverage
 
@@ -443,10 +433,6 @@ of the following values:
 
 The default behaviour, if the flag is not specified, depends on the target.
 
-## no-stack-check
-
-This option is deprecated and does nothing.
-
 ## no-vectorize-loops
 
 This flag disables [loop
@@ -538,6 +524,15 @@ profiling data for use with profile-guided optimization (PGO). The flag takes
 an optional argument which is the path to a directory into which the
 instrumented binary will emit the collected data. See the chapter on
 [profile-guided optimization] for more information.
+
+## profile-sample-use
+
+This flag specifies the profiling data file to be used for sample-based
+profile-guided optimization (SPGO). The flag takes a mandatory argument which
+is the path to a valid `.prof` file. See the chapter on
+[profile-guided optimization] for more information.
+The `-Zdebuginfo-for-profiling` can be used to improve the quality of the
+profiling data.
 
 ## profile-use
 
@@ -654,16 +649,6 @@ deleted once compilation finishes. It takes one of the following values:
 
 * `y`, `yes`, `on`, `true` or no value: save temporary files.
 * `n`, `no`, `off` or `false`: delete temporary files (the default).
-
-## soft-float
-
-This option controls whether `rustc` generates code that emulates floating
-point instructions in software. It takes one of the following values:
-
-* `y`, `yes`, `on`, `true` or no value: use soft floats.
-* `n`, `no`, `off` or `false`: use hardware floats (the default).
-
-This flag only works on `*eabihf` targets and **is unsound and deprecated**.
 
 ## split-debuginfo
 

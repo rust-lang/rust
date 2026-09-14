@@ -2,7 +2,9 @@ error[E0432]: unresolved import `a::x`
   --> $DIR/diagnostics-reexport.rs:12:9
    |
 LL | pub use a::x;
-   |         ^^^^ no `x` in `a`
+   |         ^^^-
+   |            |
+   |            no `x` in `a`
    |
 note: found an item that was configured out
   --> $DIR/diagnostics-reexport.rs:18:12

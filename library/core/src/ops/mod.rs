@@ -149,7 +149,6 @@ mod function;
 mod index;
 mod index_range;
 mod range;
-mod reborrow;
 mod try_trait;
 mod unsize;
 
@@ -157,7 +156,7 @@ mod unsize;
 pub use self::arith::{Add, Div, Mul, Neg, Rem, Sub};
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 pub use self::arith::{AddAssign, DivAssign, MulAssign, RemAssign, SubAssign};
-#[unstable(feature = "async_fn_traits", issue = "none")]
+#[stable(feature = "async_closure", since = "1.85.0")]
 pub use self::async_function::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::bit::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
@@ -177,6 +176,8 @@ pub use self::deref::Receiver;
 pub use self::deref::{Deref, DerefMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::drop::Drop;
+#[unstable(feature = "fn_static", issue = "148768")]
+pub use self::function::{Code, FnPtr};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::function::{Fn, FnMut, FnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -190,8 +191,6 @@ pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 pub use self::range::{OneSidedRange, OneSidedRangeBound};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
-#[unstable(feature = "reborrow", issue = "145612")]
-pub use self::reborrow::{CoerceShared, Reborrow};
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 pub use self::try_trait::Residual;
 #[unstable(feature = "try_trait_v2_yeet", issue = "96374")]

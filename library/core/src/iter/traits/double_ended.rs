@@ -1,3 +1,5 @@
+use crate::array;
+use crate::marker::Destruct;
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
 
@@ -38,7 +40,8 @@ use crate::ops::{ControlFlow, Try};
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "DoubleEndedIterator"]
-pub trait DoubleEndedIterator: Iterator {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+pub const trait DoubleEndedIterator: [const] Iterator {
     /// Removes and returns an element from the end of the iterator.
     ///
     /// Returns `None` when there are no more elements.
@@ -93,6 +96,53 @@ pub trait DoubleEndedIterator: Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
 
+    /// Advances from the back of the iterator and returns an array containing the next
+    /// `N` values in sequence.
+    ///
+    /// If there are not enough elements to fill the array then `Err` is returned
+    /// containing an iterator over the remaining elements.
+    ///
+    /// Note: This is not equivalent to doing `iter.rev().next_chunk()` as this method
+    /// takes elements from the back of the iterator and preserves the order that the
+    /// elements were seen in the original iterator.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_next_chunk)]
+    ///
+    /// let mut iter = "lorem".chars();
+    ///
+    /// assert_eq!(iter.next_chunk_back().unwrap(), ['e', 'm']);              // N is inferred as 2
+    /// assert_eq!(iter.next_chunk_back().unwrap(), ['l', 'o', 'r']);         // N is inferred as 3
+    /// assert_eq!(iter.next_chunk_back::<4>().unwrap_err().as_slice(), &[]); // N is explicitly 4
+    /// ```
+    ///
+    /// Split a string and get the last three items in sequence.
+    ///
+    /// ```
+    /// #![feature(iter_next_chunk)]
+    ///
+    /// let quote = "not all those who wander are lost";
+    /// let [first, second, third] = quote.split_whitespace().next_chunk_back().unwrap();
+    /// assert_eq!(first, "wander");
+    /// assert_eq!(second, "are");
+    /// assert_eq!(third, "lost");
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_next_chunk", issue = "98326")]
+    #[rustc_non_const_trait_method]
+    fn next_chunk_back<const N: usize>(
+        &mut self,
+    ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>>
+    where
+        Self: Sized,
+    {
+        crate::array::iter_next_chunk_back(self)
+    }
+
     /// Advances the iterator from the back by `n` elements.
     ///
     /// `advance_back_by` is the reverse version of [`advance_by`]. This method will
@@ -135,6 +185,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// [`Err(k)`]: Err
     #[inline]
     #[unstable(feature = "iter_advance_by", issue = "77404")]
+    #[rustc_non_const_trait_method]
     fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         for i in 0..n {
             if self.next_back().is_none() {
@@ -188,6 +239,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_nth_back", since = "1.37.0")]
+    #[rustc_non_const_trait_method]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         if self.advance_back_by(n).is_err() {
             return None;
@@ -230,8 +282,8 @@ pub trait DoubleEndedIterator: Iterator {
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>,
+        F: [const] FnMut(B, Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = B>,
     {
         let mut accum = init;
         while let Some(x) = self.next_back() {
@@ -300,8 +352,8 @@ pub trait DoubleEndedIterator: Iterator {
     #[stable(feature = "iter_rfold", since = "1.27.0")]
     fn rfold<B, F>(mut self, init: B, mut f: F) -> B
     where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
+        Self: Sized + [const] Destruct,
+        F: [const] FnMut(B, Self::Item) -> B + [const] Destruct,
     {
         let mut accum = init;
         while let Some(x) = self.next_back() {
@@ -366,11 +418,18 @@ pub trait DoubleEndedIterator: Iterator {
     fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
     where
         Self: Sized,
-        P: FnMut(&Self::Item) -> bool,
+        P: [const] FnMut(&Self::Item) -> bool + [const] Destruct,
+        Self::Item: [const] Destruct,
     {
         #[inline]
-        fn check<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut((), T) -> ControlFlow<T> {
-            move |(), x| {
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const fn check<T>(
+            mut predicate: impl [const] FnMut(&T) -> bool + [const] Destruct,
+        ) -> impl [const] FnMut((), T) -> ControlFlow<T> + [const] Destruct
+        where
+            T: [const] Destruct,
+        {
+            const move |(), x| {
                 if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::Continue(()) }
             }
         }

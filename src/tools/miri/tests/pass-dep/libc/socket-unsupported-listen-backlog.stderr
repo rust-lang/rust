@@ -1,8 +1,0 @@
-warning: called `listen` on socket with backlog value of 127 but only 128 is supported
-  --> tests/pass-dep/libc/socket-unsupported-listen-backlog.rs:LL:CC
-   |
-LL |         let errno = libc::listen(sockfd, backlog);
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to `listen` with unsupported backlog value
-   |
-   = note: the given value will be ignored and a backlog of 128 will be used instead
-

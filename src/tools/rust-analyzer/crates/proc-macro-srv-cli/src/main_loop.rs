@@ -1,4 +1,5 @@
 //! The main loop of the proc-macro server.
+use proc_macro_api::bidirectional_protocol::msg::{ApiVersionCheck, ListMacros};
 use proc_macro_api::{
     ProtocolFormat, bidirectional_protocol::msg as bidirectional, legacy_protocol::msg as legacy,
     version::CURRENT_API_VERSION,
@@ -72,7 +73,7 @@ fn run_new(
 
         match req {
             bidirectional::BidirectionalMessage::Request(request) => match request {
-                bidirectional::Request::ListMacros { dylib_path } => {
+                bidirectional::Request::ListMacros(ListMacros { dylib_path }) => {
                     let res = srv.list_macros(&dylib_path).map(|macros| {
                         macros
                             .into_iter()
@@ -83,7 +84,7 @@ fn run_new(
                     send_response(stdout, bidirectional::Response::ListMacros(res))?;
                 }
 
-                bidirectional::Request::ApiVersionCheck {} => {
+                bidirectional::Request::ApiVersionCheck(ApiVersionCheck {}) => {
                     send_response(
                         stdout,
                         bidirectional::Response::ApiVersionCheck(CURRENT_API_VERSION),
@@ -142,6 +143,7 @@ fn handle_expand_id(
     let attributes = attributes
         .map(|it| it.to_tokenstream_unresolved::<SpanTrans>(CURRENT_API_VERSION, |_, b| b));
 
+    let mut tracked_env = Default::default();
     let res = srv
         .expand(
             lib,
@@ -153,10 +155,17 @@ fn handle_expand_id(
             def_site,
             call_site,
             mixed_site,
+            &mut tracked_env,
             None,
         )
         .map(|it| {
             legacy::FlatTree::from_tokenstream_raw::<SpanTrans>(it, call_site, CURRENT_API_VERSION)
+        })
+        .map(|tree| bidirectional::ExpandMacroResponse {
+            tree,
+            span_data_table: vec![],
+            tracked_env_vars: tracked_env.env_vars,
+            tracked_paths: tracked_env.paths,
         })
         .map_err(|e| legacy::PanicMessage(e.into_string().unwrap_or_default()));
 
@@ -343,6 +352,46 @@ impl proc_macro_srv::ProcMacroClientInterface for ProcMacroClientHandle<'_> {
             other => handle_failure(other),
         }
     }
+
+    fn span_join(
+        &mut self,
+        first: proc_macro_srv::span::Span,
+        second: proc_macro_srv::span::Span,
+    ) -> Option<proc_macro_srv::span::Span> {
+        assert_eq!(first.anchor.file_id, second.anchor.file_id);
+        let response = self.roundtrip(bidirectional::SubRequest::SpanJoin {
+            file_id: first.anchor.file_id.as_u32(),
+            ast_id_first: first.anchor.ast_id.into_raw(),
+            start_first: first.range.start().into(),
+            end_first: first.range.end().into(),
+            ctx_first: first.ctx.into_u32(),
+            ast_id_second: second.anchor.ast_id.into_raw(),
+            start_second: second.range.start().into(),
+            end_second: second.range.end().into(),
+            ctx_second: second.ctx.into_u32(),
+        });
+
+        match response {
+            Ok(bidirectional::SubResponse::SpanJoinResult { span }) => {
+                span.map(|bidirectional::SpanJoin { ast_id, start, end, ctx }| {
+                    proc_macro_srv::span::Span {
+                        range: proc_macro_srv::span::TextRange::new(
+                            proc_macro_srv::span::TextSize::new(start),
+                            proc_macro_srv::span::TextSize::new(end),
+                        ),
+                        anchor: proc_macro_srv::span::SpanAnchor {
+                            file_id: first.anchor.file_id,
+                            ast_id: proc_macro_srv::span::ErasedFileAstId::from_raw(ast_id),
+                        },
+                        // SAFETY: spans originate from the server. If the protocol is violated,
+                        // undefined behavior is the caller’s responsibility.
+                        ctx: unsafe { proc_macro_srv::span::SyntaxContext::from_u32(ctx) },
+                    }
+                })
+            }
+            other => handle_failure(other),
+        }
+    }
 }
 
 fn handle_expand_ra(
@@ -383,6 +432,8 @@ fn handle_expand_ra(
         })
     });
 
+    let mut tracked_env = Default::default();
+
     let res = srv
         .expand(
             lib,
@@ -394,6 +445,7 @@ fn handle_expand_ra(
             def_site,
             call_site,
             mixed_site,
+            &mut tracked_env,
             Some(&mut ProcMacroClientHandle { stdin, stdout, buf }),
         )
         .map(|it| {
@@ -407,10 +459,15 @@ fn handle_expand_ra(
                 legacy::serialize_span_data_index_map(&span_data_table),
             )
         })
-        .map(|(tree, span_data_table)| bidirectional::ExpandMacroExtended { tree, span_data_table })
+        .map(|(tree, span_data_table)| bidirectional::ExpandMacroResponse {
+            tree,
+            span_data_table,
+            tracked_env_vars: tracked_env.env_vars,
+            tracked_paths: tracked_env.paths,
+        })
         .map_err(|e| legacy::PanicMessage(e.into_string().unwrap_or_default()));
 
-    send_response(stdout, bidirectional::Response::ExpandMacroExtended(res))
+    send_response(stdout, bidirectional::Response::ExpandMacro(res))
 }
 
 fn run_old(
@@ -480,6 +537,7 @@ fn run_old(
                             def_site,
                             call_site,
                             mixed_site,
+                            &mut Default::default(),
                             None,
                         )
                         .map(|it| {
@@ -522,6 +580,7 @@ fn run_old(
                             def_site,
                             call_site,
                             mixed_site,
+                            &mut Default::default(),
                             None,
                         )
                         .map(|it| {

@@ -7,7 +7,8 @@
 use crate::ffi::OsStr;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
-use crate::sealed::Sealed;
+#[cfg(doc)]
+use crate::process::{ExitStatus, ExitStatusError};
 use crate::sys::process::ChildPipe;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{io, process, sys};
@@ -17,10 +18,10 @@ cfg_select! {
         type UserId = u16;
         type GroupId = u16;
     }
-    target_os = "nto" => {
-        // Both IDs are signed, see `sys/target_nto.h` of the QNX Neutrino SDP.
+    any(target_os = "nto", target_os = "qnx") => {
+        // Both IDs are signed, see `sys/target_nto.h` of the QNX SDP.
         // Only positive values should be used, see e.g.
-        // https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/s/setuid.html
+        // https://www.qnx.com/developers/docs/7.1/com.qnx.doc.neutrino.lib_ref/topic/s/setuid.html
         type UserId = i32;
         type GroupId = i32;
     }
@@ -31,11 +32,8 @@ cfg_select! {
 }
 
 /// Unix-specific extensions to the [`process::Command`] builder.
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait CommandExt: Sealed {
+pub impl(self) trait CommandExt {
     /// Sets the child process's user ID. This translates to a
     /// `setuid` call in the child process. Failure in the `setuid`
     /// call will cause the spawn to fail.
@@ -104,10 +102,10 @@ pub trait CommandExt: Sealed {
     /// locations might not appear where intended.
     ///
     /// [POSIX fork() specification]:
-    ///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/fork.html
+    ///     https://pubs.opengroup.org/onlinepubs/9799919799/functions/fork.html
     /// [`std::env`]: mod@crate::env
-    /// [`Error::new`]: crate::io::Error::new
-    /// [`Error::other`]: crate::io::Error::other
+    /// [`Error::new`]: ../../../io/struct.Error.html#method.new
+    /// [`Error::other`]: ../../../io/struct.Error.html#method.other
     #[stable(feature = "process_pre_exec", since = "1.34.0")]
     unsafe fn pre_exec<F>(&mut self, f: F) -> &mut process::Command
     where
@@ -190,7 +188,8 @@ pub trait CommandExt: Sealed {
     ///
     /// A process group ID of 0 will use the process ID as the PGID.
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::process::Command;
     /// use std::os::unix::process::CommandExt;
     ///
@@ -276,38 +275,108 @@ impl CommandExt for process::Command {
     }
 }
 
-/// Unix-specific extensions to [`process::ExitStatus`] and
-/// [`ExitStatusError`](process::ExitStatusError).
+/// Unix-specific extensions to [`ExitStatus`] and [`ExitStatusError`].
 ///
-/// On Unix, `ExitStatus` **does not necessarily represent an exit status**, as
+/// On Unix, [`ExitStatus`] **does not necessarily represent an exit status**, as
 /// passed to the `_exit` system call or returned by
-/// [`ExitStatus::code()`](crate::process::ExitStatus::code).  It represents **any wait status**
-/// as returned by one of the `wait` family of system
+/// [`ExitStatus::code()`](ExitStatus::code).  It represents **any wait status**
+/// as returned by one of the [`wait`] family of system
 /// calls.
 ///
-/// A Unix wait status (a Rust `ExitStatus`) can represent a Unix exit status, but can also
+/// A Unix wait status (a Rust [`ExitStatus`]) can represent a Unix exit status, but can also
 /// represent other kinds of process event.
 ///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
+/// [`wait`]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait ExitStatusExt: Sealed {
-    /// Creates a new `ExitStatus` or `ExitStatusError` from the raw underlying integer status
-    /// value from `wait`
+pub impl(self) trait ExitStatusExt {
+    /// Creates a new [`ExitStatus`] or [`ExitStatusError`] from the raw underlying integer status
+    /// value from [`wait`].
     ///
     /// The value should be a **wait status, not an exit status**.
     ///
+    /// # Example
+    ///
+    /// A signal-terminated [`wait`] status carries the signal number, which [`ExitStatus::signal`]
+    /// recovers using the platform's [`WTERMSIG`][`wait`] macro. Note that the bit layout of a
+    /// wait status is **not** specified by POSIX and is platform-specific. By convention on most
+    /// Unix platforms, the signal number occupies the low 7 bits with the exit-code byte left
+    /// zero, so a bare signal number between 1 and 126 is treated as a signal-terminated wait
+    /// status. The following example relies on that convention and is therefore not guaranteed to
+    /// hold on every target:
+    ///
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+    /// # if cfg!(target_os = "fuchsia") { return; }
+    /// use std::os::unix::process::ExitStatusExt;
+    /// use std::process::ExitStatus;
+    ///
+    /// let signal = 15; // SIGTERM
+    /// assert!(signal > 0 && signal < 0x7f, "not a valid Unix termination signal: {signal}");
+    ///
+    /// let status = ExitStatus::from_raw(signal);
+    /// assert!(!status.success());
+    /// assert_eq!(status.code(), None);
+    /// assert_eq!(status.signal(), Some(15));
+    /// ```
+    ///
+    /// Generating an [`ExitStatus`] with a given exit code (0-255) is system-dependent.
+    /// The value returned by [`ExitStatus::code`] is specified to come from applying the
+    /// [`WEXITSTATUS`][`wait`] macro, but there is no POSIX-specified constructor and the bit
+    /// layout is left unspecified. By near-universal convention every Unix libc stores the
+    /// 8-bit exit code in bits 8..16, so a status built with `(code & 0xff) << 8` will usually
+    /// round-trip back to the original exit code:
+    ///
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+    /// # if cfg!(target_os = "fuchsia") { return; }
+    /// use std::os::unix::process::ExitStatusExt;
+    /// use std::process::ExitStatus;
+    ///
+    /// let code = 41;
+    /// let status = ExitStatus::from_raw((code & 0xff) << 8);
+    /// assert_eq!(status.code(), Some(41));
+    /// assert!(!status.success());
+    /// ```
+    ///
     /// # Panics
     ///
-    /// Panics on an attempt to make an `ExitStatusError` from a wait status of `0`.
+    /// - `ExitStatusError::from_raw` panics on an attempt to make an [`ExitStatusError`] from a
+    ///    [`wait`] status of `0`.
+    /// - `ExitStatus::from_raw` always succeeds and never panics.
     ///
-    /// Making an `ExitStatus` always succeeds and never panics.
+    /// [`wait`]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html
     #[stable(feature = "exit_status_from", since = "1.12.0")]
     fn from_raw(raw: i32) -> Self;
 
     /// If the process was terminated by a signal, returns that signal.
     ///
-    /// In other words, if `WIFSIGNALED`, this returns `WTERMSIG`.
+    /// In other words, if [`WIFSIGNALED`][`wait`], this returns [`WTERMSIG`][`wait`]. For such a status,
+    /// [`ExitStatus::code`] returns `None`:
+    ///
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+    /// # if cfg!(target_os = "fuchsia") { return; }
+    /// use std::os::unix::process::ExitStatusExt;
+    /// use std::process::ExitStatus;
+    ///
+    /// let sigterm = 15;
+    /// let status = ExitStatus::from_raw(sigterm);
+    /// assert_eq!(status.code(), None);
+    /// assert_eq!(status.signal(), Some(sigterm));
+    /// ```
+    ///
+    /// A process that receives a signal may catch and handle it, then exit normally with an
+    /// exit code. When that happens, `signal` returns `None`.
+    ///
+    /// Rust does not pass commands through a shell, such as `bash` and `sh`, but it
+    /// is possible to do so manually. When invoking a shell, the signal value indicates whether
+    /// the top-level shell itself received a terminating signal. If instead a command *within*
+    /// an invoked shell receives a terminating signal, many shells convert the signal number
+    /// into an exit code by adding 128. For example, a command run under `sh` that receives a
+    /// [`SIGTERM`] canonically causes the shell to report an exit code of `15 + 128`, i.e. `143`.
+    ///
+    /// [`SIGTERM`]: https://pubs.opengroup.org/onlinepubs/9799919799/utilities/kill.html
+    /// [`wait`]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html
     #[stable(feature = "rust1", since = "1.0.0")]
     fn signal(&self) -> Option<i32>;
 
@@ -317,21 +386,27 @@ pub trait ExitStatusExt: Sealed {
 
     /// If the process was stopped by a signal, returns that signal.
     ///
-    /// In other words, if `WIFSTOPPED`, this returns `WSTOPSIG`.  This is only possible if the status came from
-    /// a `wait` system call which was passed `WUNTRACED`, and was then converted into an `ExitStatus`.
+    /// In other words, if [`WIFSTOPPED`][`wait`], this returns [`WSTOPSIG`][`wait`].  This is only possible if the status came from
+    /// a [`wait`] system call which was passed [`WUNTRACED`][`wait`], and was then converted into an [`ExitStatus`].
+    ///
+    /// [`wait`]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html
     #[stable(feature = "unix_process_wait_more", since = "1.58.0")]
     fn stopped_signal(&self) -> Option<i32>;
 
     /// Whether the process was continued from a stopped status.
     ///
-    /// Ie, `WIFCONTINUED`.  This is only possible if the status came from a `wait` system call
-    /// which was passed `WCONTINUED`, and was then converted into an `ExitStatus`.
+    /// I.e. [`WIFCONTINUED`][`wait`].  This is only possible if the status came from a [`wait`] system call
+    /// which was passed [`WCONTINUED`][`wait`], and was then converted into an [`ExitStatus`].
+    ///
+    /// [`wait`]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html
     #[stable(feature = "unix_process_wait_more", since = "1.58.0")]
     fn continued(&self) -> bool;
 
-    /// Returns the underlying raw `wait` status.
+    /// Returns the underlying raw [`wait`] status.
     ///
     /// The returned integer is a **wait status, not an exit status**.
+    ///
+    /// [`wait`]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html
     #[stable(feature = "unix_process_wait_more", since = "1.58.0")]
     fn into_raw(self) -> i32;
 }
@@ -393,7 +468,7 @@ impl ExitStatusExt for process::ExitStatusError {
 }
 
 #[unstable(feature = "unix_send_signal", issue = "141975")]
-pub trait ChildExt: Sealed {
+pub impl(self) trait ChildExt {
     /// Sends a signal to a child process.
     ///
     /// # Errors
@@ -404,7 +479,8 @@ pub trait ChildExt: Sealed {
     ///
     /// # Examples
     ///
-    /// ```rust
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(unix_send_signal)]
     ///
     /// use std::{io, os::unix::process::ChildExt, process::{Command, Stdio}};
@@ -420,12 +496,93 @@ pub trait ChildExt: Sealed {
     /// }
     /// ```
     fn send_signal(&self, signal: i32) -> io::Result<()>;
+
+    /// Sends a signal to a child process's process group.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the signal is invalid or if the
+    /// child process does not have a process group. The integer values
+    /// associated with signals are implementation-specific, so it's encouraged
+    /// to use a crate that provides posix bindings.
+    ///
+    /// # Examples
+    ///
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+    /// #![feature(unix_send_signal)]
+    ///
+    /// use std::{io, os::unix::process::{ChildExt, CommandExt}, process::{Command, Stdio}};
+    ///
+    /// use libc::SIGTERM;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     # if cfg!(not(all(target_vendor = "apple", not(target_os = "macos")))) {
+    ///     let child = Command::new("cat")
+    ///         .stdin(Stdio::piped())
+    ///         .process_group(0)
+    ///         .spawn()?;
+    ///     child.send_process_group_signal(SIGTERM)?;
+    ///     # }
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_send_signal", issue = "141975")]
+    fn send_process_group_signal(&self, signal: i32) -> io::Result<()>;
+
+    /// Forces the child process's process group to exit.
+    ///
+    /// This is analogous to [`Child::kill`] but applies to every process in
+    /// the child process's process group.
+    ///
+    /// Use [`CommandExt::process_group`] to assign a child process to an
+    /// existing process group, or to make it the leader of a new process group.
+    /// By default spawned processes are in the parent's process group.
+    ///
+    /// # Examples
+    ///
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
+    /// #![feature(unix_kill_process_group)]
+    ///
+    /// use std::{os::unix::process::{ChildExt, CommandExt}, process::{Command, Stdio}};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut child = Command::new("cat")
+    ///         .stdin(Stdio::piped())
+    ///         .process_group(0)
+    ///         .spawn()?;
+    ///     child.kill_process_group()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// [`Child::kill`]: process::Child::kill
+    #[unstable(feature = "unix_kill_process_group", issue = "156537")]
+    fn kill_process_group(&mut self) -> io::Result<()>;
 }
 
 #[unstable(feature = "unix_send_signal", issue = "141975")]
 impl ChildExt for process::Child {
     fn send_signal(&self, signal: i32) -> io::Result<()> {
         self.handle.send_signal(signal)
+    }
+
+    fn send_process_group_signal(&self, signal: i32) -> io::Result<()> {
+        self.handle.send_process_group_signal(signal)
+    }
+
+    #[cfg(not(target_os = "espidf"))]
+    fn kill_process_group(&mut self) -> io::Result<()> {
+        self.handle.send_process_group_signal(libc::SIGKILL)
+    }
+
+    #[cfg(target_os = "espidf")]
+    fn kill_process_group(&mut self) -> io::Result<()> {
+        Err(io::Error::new(
+            io::ErrorKind::Unsupported,
+            "process groups are not supported on espidf",
+        ))
     }
 }
 

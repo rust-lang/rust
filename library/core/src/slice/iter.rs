@@ -5,9 +5,7 @@ mod macros;
 
 use super::{from_raw_parts, from_raw_parts_mut};
 use crate::hint::assert_unchecked;
-use crate::iter::{
-    FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, UncheckedIterator,
-};
+use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::marker::PhantomData;
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
@@ -426,7 +424,7 @@ impl<'a, T: 'a, P: FnMut(&T) -> bool> Split<'a, T, P> {
     /// ```
     #[unstable(feature = "split_as_slice", issue = "96137")]
     pub fn as_slice(&self) -> &'a [T] {
-        if self.finished { &[] } else { &self.v }
+        if self.finished { &[] } else { self.v }
     }
 }
 
@@ -1894,9 +1892,9 @@ impl<'a, T> Iterator for ChunksExact<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
-        self.v.split_at_checked(self.chunk_size).and_then(|(chunk, rest)| {
+        self.v.split_at_checked(self.chunk_size).map(|(chunk, rest)| {
             self.v = rest;
-            Some(chunk)
+            chunk
         })
     }
 
@@ -2050,9 +2048,9 @@ impl<'a, T> Iterator for ChunksExactMut<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
         // SAFETY: we have `&mut self`, so are allowed to temporarily materialize a mut slice
-        unsafe { &mut *self.v }.split_at_mut_checked(self.chunk_size).and_then(|(chunk, rest)| {
+        unsafe { &mut *self.v }.split_at_mut_checked(self.chunk_size).map(|(chunk, rest)| {
             self.v = rest;
-            Some(chunk)
+            chunk
         })
     }
 
@@ -3050,6 +3048,20 @@ where
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         if self.slice.is_empty() { (0, Some(0)) } else { (1, Some(self.slice.len())) }
+    }
+
+    #[inline]
+    fn count(mut self) -> usize {
+        let Some((mut previous, rest)) = self.slice.split_first() else {
+            return 0;
+        };
+
+        let mut count = 1;
+        for current in rest {
+            count += usize::from(!(self.predicate)(previous, current));
+            previous = current;
+        }
+        count
     }
 
     #[inline]

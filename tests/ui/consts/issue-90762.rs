@@ -27,5 +27,5 @@ fn main() {
     for (i, b) in FOO.iter().enumerate() {
         assert!(b.load(Ordering::Relaxed), "{} not set", i);
     }
-    assert_eq!(BAR.fetch_add(1, Ordering::Relaxed), usize::max_value());
+    assert_eq!(BAR.fetch_add(1, Ordering::Relaxed), usize::MAX);
 }

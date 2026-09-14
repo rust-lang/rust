@@ -1,4 +1,4 @@
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 
 fn main() {
 	let some_vec = vec!["hi"];

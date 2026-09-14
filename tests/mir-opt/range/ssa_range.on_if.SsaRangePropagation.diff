@@ -18,7 +18,7 @@
       }
   
       bb0: {
-          nop;
+          StorageLive(_3);
           StorageLive(_4);
           _4 = copy _1;
           nop;
@@ -56,7 +56,7 @@
       }
   
       bb4: {
-          nop;
+          StorageDead(_3);
           return;
       }
   }

@@ -1,4 +1,3 @@
-// run-pass
 use std::ptr::addr_of;
 
 // When the unsized tail is a `dyn Trait`, its alignments is only dynamically known. This means the

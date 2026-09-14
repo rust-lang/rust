@@ -18,18 +18,19 @@ macro_rules! tests {
     };
 }
 
-// 9 comparisons required:
-// start <= end
-// && (start == 0 || (start >= len && start == len) || bytes[start] >= -0x40)
-// && (end   == 0 || (end   >= len && end   == len) || bytes[end]   >= -0x40)
+// 7 comparisons required:
+// start <= end && end <= len
+// && (start == len ||
+// (  (start == 0   || bytes[start] >= -0x40)
+// && (end   == len || bytes[end] >= -0x40)))
 
 // CHECK-LABEL: @get_range
-// CHECK-COUNT-9: %{{.+}} = icmp
+// CHECK-COUNT-7: %{{.+}} = icmp
 // CHECK-NOT: %{{.+}} = icmp
 // CHECK: ret
 
 // CHECK-LABEL: @index_range
-// CHECK-COUNT-9: %{{.+}} = icmp
+// CHECK-COUNT-7: %{{.+}} = icmp
 // CHECK-NOT: %{{.+}} = icmp
 // CHECK: ret
 tests!(Range<usize>, get_range, index_range);

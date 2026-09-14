@@ -21,10 +21,10 @@ pub fn droppy() {
     // the regular function exit. We used to have problems with quadratic growths of drop calls in
     // such functions.
     // FIXME(eddyb) the `void @` forces a match on the instruction, instead of the
-    // comment, that's `; call core::ptr::drop_in_place::<drop::SomeUniqueName>`
+    // comment, that's `; call core::ptr::drop_glue::<drop::SomeUniqueName>`
     // for the `v0` mangling, should switch to matching on that once `legacy` is gone.
-    // CHECK-COUNT-6: {{(call|invoke) void @.*}}drop_in_place{{.*}}SomeUniqueName
-    // CHECK-NOT: {{(call|invoke) void @.*}}drop_in_place{{.*}}SomeUniqueName
+    // CHECK-COUNT-6: {{(call|invoke) void @.*}}drop_glue{{.*}}SomeUniqueName
+    // CHECK-NOT: {{(call|invoke) void @.*}}drop_glue{{.*}}SomeUniqueName
     // The next line checks for the } that ends the function definition
     // CHECK-LABEL: {{^[}]}}
     let _s = SomeUniqueName;

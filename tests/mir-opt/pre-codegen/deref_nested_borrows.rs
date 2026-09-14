@@ -4,7 +4,7 @@ fn src(x: &&u8) -> bool {
     // CHECK-LABEL: fn src(
     // CHECK: debug y => [[Y:_.*]];
     // CHECK: bb0:
-    // CHECK: [[BORROW_u8:_.*]] = copy (*_1);
+    // CHECK: [[BORROW_u8:_.*]] = no_retag copy (*_1);
     // CHECK: [[Y]] = copy (*[[BORROW_u8]]);
     // CHECK: bb1:
     // BORROW_u8 outside its lifetime in bb1.
@@ -29,4 +29,4 @@ fn main() {
 }
 
 // EMIT_MIR deref_nested_borrows.src.GVN.diff
-// EMIT_MIR deref_nested_borrows.src.PreCodegen.after.mir
+// EMIT_MIR deref_nested_borrows.src.runtime-optimized.after.mir

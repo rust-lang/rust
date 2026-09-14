@@ -1,5 +1,5 @@
 //@ compile-flags: -Zmir-opt-level=0
-// skip-filecheck
+//@ skip-filecheck
 
 // Can't emit `built.after` here as that contains user type annotations which contain DefId that
 // change all the time.

@@ -4,11 +4,10 @@ use clippy_utils::macros::macro_backtrace;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::qualify_min_const_fn::is_min_const_fn;
 use clippy_utils::source::snippet;
-use clippy_utils::{fn_has_unsatisfiable_preds, peel_blocks, sym};
+use clippy_utils::{fn_has_unsatisfiable_clauses, peel_blocks, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, intravisit};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -50,7 +49,7 @@ pub struct MissingConstForThreadLocal {
 
 impl MissingConstForThreadLocal {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -60,10 +59,11 @@ fn is_thread_local_initializer(
     fn_kind: intravisit::FnKind<'_>,
     span: rustc_span::Span,
 ) -> Option<bool> {
-    let macro_def_id = span.source_callee()?.macro_def_id?;
     Some(
-        cx.tcx.is_diagnostic_item(sym::thread_local_macro, macro_def_id)
-            && matches!(fn_kind, intravisit::FnKind::ItemFn(..)),
+        matches!(fn_kind, intravisit::FnKind::ItemFn(..))
+            && cx
+                .tcx
+                .is_diagnostic_item(sym::thread_local_macro, span.source_callee()?.macro_def_id?),
     )
 }
 
@@ -89,8 +89,8 @@ fn is_unreachable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 #[inline]
 fn initializer_can_be_made_const(cx: &LateContext<'_>, defid: rustc_span::def_id::DefId, msrv: Msrv) -> bool {
-    // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-    if !fn_has_unsatisfiable_preds(cx, defid)
+    // Building MIR for `fn`s with unsatisfiable clauses results in ICE.
+    if !fn_has_unsatisfiable_clauses(cx, defid)
         && let mir = cx.tcx.optimized_mir(defid)
         && let Ok(()) = is_min_const_fn(cx, mir, msrv)
     {

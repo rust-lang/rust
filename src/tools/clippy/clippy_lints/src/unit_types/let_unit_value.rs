@@ -8,7 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_body, walk_expr};
 use rustc_hir::{Expr, ExprKind, HirId, HirIdSet, LetStmt, MatchSource, Node, PatKind, QPath, TyKind};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty;
 use rustc_span::Span;
 
@@ -317,7 +317,7 @@ fn needs_inferred_result_ty(
         },
         _ => return false,
     };
-    let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_binder();
+    let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip().skip_binder();
     if let ty::Param(output_ty) = *sig.output().kind() {
         let args: Vec<&Expr<'_>> = if let Some(receiver) = receiver {
             std::iter::once(receiver).chain(args.iter()).collect()

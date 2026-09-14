@@ -87,12 +87,13 @@
 //! virtually impossible. Thus, symbol hash generation exclusively relies on
 //! DefPaths which are much more robust in the face of changes to the code base.
 
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
-use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
+use rustc_middle::mono::{InstantiationMode, MonoItem};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Instance, TyCtxt};
+use rustc_middle::ty::{self, Instance, InstanceKind, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
 use tracing::debug;
 
@@ -101,10 +102,16 @@ mod hashed;
 mod legacy;
 mod v0;
 
-pub mod errors;
 pub mod test;
 
-pub use v0::mangle_internal_symbol;
+pub use v0::{mangle_cgu, mangle_internal_symbol};
+
+/// Offload kernels need custom v0 symbol treatment because the host
+/// and device compilation passes run with different `stable_crate_id`s
+/// so they cannot rely on the regular export-hash path.
+pub fn is_offload_kernel(attrs: &CodegenFnAttrs) -> bool {
+    attrs.flags.intersects(CodegenFnAttrFlags::OFFLOAD_KERNEL)
+}
 
 /// This function computes the symbol name for the given `instance` and the
 /// given instantiating crate. That is, if you know that instance X is
@@ -119,6 +126,18 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers { symbol_name: symbol_name_provider, ..*providers };
+}
+
+/// Compute the v0 symbol name for an offload kernel instance. Forces
+/// `is_exportable: true` to omit the `stable_crate_id` disambiguator
+/// (which differs between host and device passes).
+pub fn mangle_offload_export<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> String {
+    let instantiating_crate = if is_generic(instance) {
+        Some(instance.upstream_monomorphization(tcx).unwrap_or(LOCAL_CRATE))
+    } else {
+        None
+    };
+    v0::mangle(tcx, instance, instantiating_crate, true)
 }
 
 // The `symbol_name` query provides the symbol name for calling a given
@@ -150,29 +169,22 @@ pub fn typeid_for_trait_ref<'tcx>(
     v0::mangle_typeid_for_trait_ref(tcx, trait_ref)
 }
 
-/// Computes the symbol name for the given instance. This function will call
-/// `compute_instantiating_crate` if it needs to factor the instantiating crate
-/// into the symbol name.
-fn compute_symbol_name<'tcx>(
+pub fn symbol_name_from_attrs<'tcx>(
     tcx: TyCtxt<'tcx>,
-    instance: Instance<'tcx>,
-    compute_instantiating_crate: impl FnOnce() -> CrateNum,
-) -> String {
-    let def_id = instance.def_id();
-    let args = instance.args;
-
-    debug!("symbol_name(def_id={:?}, args={:?})", def_id, args);
+    instance_kind: InstanceKind<'tcx>,
+) -> Option<String> {
+    let def_id = instance_kind.def_id();
 
     if let Some(def_id) = def_id.as_local() {
         if tcx.proc_macro_decls_static(()) == Some(def_id) {
             let stable_crate_id = tcx.stable_crate_id(LOCAL_CRATE);
-            return tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id);
+            return Some(rustc_session::generate_proc_macro_decls_symbol(stable_crate_id));
         }
     }
 
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
     let attrs = if tcx.def_kind(def_id).has_codegen_attrs() {
-        &tcx.codegen_instance_attrs(instance.def)
+        &tcx.codegen_instance_attrs(instance_kind)
     } else {
         CodegenFnAttrs::EMPTY
     };
@@ -198,7 +210,7 @@ fn compute_symbol_name<'tcx>(
         // legacy symbol mangling scheme.
         let name = if let Some(name) = attrs.symbol_name { name } else { tcx.item_name(def_id) };
 
-        return v0::mangle_internal_symbol(tcx, name.as_str());
+        return Some(v0::mangle_internal_symbol(tcx, name.as_str()));
     }
 
     let wasm_import_module_exception_force_mangling = {
@@ -220,19 +232,43 @@ fn compute_symbol_name<'tcx>(
         // However, we don't have the wasm import module map there yet.
         tcx.is_foreign_item(def_id)
             && tcx.sess.target.is_like_wasm
-            && tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id.into())
+            && tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id)
     };
 
     if !wasm_import_module_exception_force_mangling {
         if let Some(name) = attrs.symbol_name {
             // Use provided name
-            return name.to_string();
+            return Some(name.to_string());
         }
 
         if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
             // Don't mangle
-            return tcx.item_name(def_id).to_string();
+            return Some(tcx.item_name(def_id).to_string());
         }
+    }
+
+    None
+}
+
+/// Computes the symbol name for the given instance. This function will call
+/// `compute_instantiating_crate` if it needs to factor the instantiating crate
+/// into the symbol name.
+fn compute_symbol_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    compute_instantiating_crate: impl FnOnce() -> CrateNum,
+) -> String {
+    let def_id = instance.def_id();
+    let args = instance.args;
+    let def_kind = tcx.def_kind(instance.def_id());
+    if let DefKind::Fn | DefKind::AssocFn = def_kind {
+        debug_assert!(tcx.constness(instance.def_id()) != hir::Constness::Const { always: true });
+    }
+
+    debug!("symbol_name(def_id={:?}, args={:?})", def_id, args);
+
+    if let Some(symbol) = symbol_name_from_attrs(tcx, instance.def) {
+        return symbol;
     }
 
     // If we're dealing with an instance of a function that's inlined from
@@ -242,7 +278,7 @@ fn compute_symbol_name<'tcx>(
     // visibility) symbol. This means that multiple crates may do the same
     // and we want to be sure to avoid any symbol conflicts here.
     let is_globally_shared_function = matches!(
-        tcx.def_kind(instance.def_id()),
+        def_kind,
         DefKind::Fn
             | DefKind::AssocFn
             | DefKind::Closure
@@ -276,45 +312,54 @@ fn compute_symbol_name<'tcx>(
         tcx.symbol_mangling_version(mangling_version_crate)
     };
 
-    let symbol = match tcx.is_exportable(def_id) {
-        true => format!(
-            "{}.{}",
-            v0::mangle(tcx, instance, instantiating_crate, true),
-            export::compute_hash_of_export_fn(tcx, instance)
-        ),
-        false => match mangling_version {
-            SymbolManglingVersion::Legacy => {
-                let mangled_name = legacy::mangle(tcx, instance, instantiating_crate);
+    // Offload kernels must omit the stable_crate_id disambiguator because
+    // host and device passes have different stable_crate_ids.
+    let is_offload_kernel = tcx.def_kind(def_id).has_codegen_attrs()
+        && tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::OFFLOAD_KERNEL);
+    let symbol = if is_offload_kernel {
+        v0::mangle(tcx, instance, instantiating_crate, true)
+    } else {
+        match tcx.is_exportable(def_id) {
+            true => format!(
+                "{}.{}",
+                v0::mangle(tcx, instance, instantiating_crate, true),
+                export::compute_hash_of_export_fn(tcx, instance)
+            ),
+            false => match mangling_version {
+                SymbolManglingVersion::Legacy => {
+                    let mangled_name = legacy::mangle(tcx, instance, instantiating_crate);
 
-                let mangled_name_too_long = {
-                    // The PDB debug info format cannot store mangled symbol names for which its
-                    // internal record exceeds u16::MAX bytes, a limit multiple Rust projects have been
-                    // hitting due to the verbosity of legacy name mangling. Depending on the linker version
-                    // in use, such symbol names can lead to linker crashes or incomprehensible linker error
-                    // about a limit being hit.
-                    // Mangle those symbols with v0 mangling instead, which gives us more room to breathe
-                    // as v0 mangling is more compact.
-                    // Empirical testing has shown the limit for the symbol name to be 65521 bytes; use
-                    // 65000 bytes to leave some room for prefixes / suffixes as well as unknown scenarios
-                    // with a different limit.
-                    const MAX_SYMBOL_LENGTH: usize = 65000;
+                    let mangled_name_too_long = {
+                        // The PDB debug info format cannot store mangled symbol names for which its
+                        // internal record exceeds u16::MAX bytes, a limit multiple Rust projects have been
+                        // hitting due to the verbosity of legacy name mangling. Depending on the linker version
+                        // in use, such symbol names can lead to linker crashes or incomprehensible linker error
+                        // about a limit being hit.
+                        // Mangle those symbols with v0 mangling instead, which gives us more room to breathe
+                        // as v0 mangling is more compact.
+                        // Empirical testing has shown the limit for the symbol name to be 65521 bytes; use
+                        // 65000 bytes to leave some room for prefixes / suffixes as well as unknown scenarios
+                        // with a different limit.
+                        const MAX_SYMBOL_LENGTH: usize = 65000;
 
-                    tcx.sess.target.uses_pdb_debuginfo() && mangled_name.len() > MAX_SYMBOL_LENGTH
-                };
+                        tcx.sess.target.uses_pdb_debuginfo()
+                            && mangled_name.len() > MAX_SYMBOL_LENGTH
+                    };
 
-                if mangled_name_too_long {
-                    v0::mangle(tcx, instance, instantiating_crate, false)
-                } else {
-                    mangled_name
+                    if mangled_name_too_long {
+                        v0::mangle(tcx, instance, instantiating_crate, false)
+                    } else {
+                        mangled_name
+                    }
                 }
-            }
-            SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate, false),
-            SymbolManglingVersion::Hashed => {
-                hashed::mangle(tcx, instance, instantiating_crate, || {
-                    v0::mangle(tcx, instance, instantiating_crate, false)
-                })
-            }
-        },
+                SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate, false),
+                SymbolManglingVersion::Hashed => {
+                    hashed::mangle(tcx, instance, instantiating_crate, || {
+                        v0::mangle(tcx, instance, instantiating_crate, false)
+                    })
+                }
+            },
+        }
     };
 
     debug_assert!(

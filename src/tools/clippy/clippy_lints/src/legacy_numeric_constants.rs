@@ -1,14 +1,13 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt as _;
 use clippy_utils::{is_from_proc_macro, sym};
 use hir::def_id::DefId;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{ExprKind, Item, ItemKind, QPath, UseKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::Symbol;
 use rustc_span::symbol::kw;
 
@@ -43,7 +42,7 @@ pub struct LegacyNumericConstants {
 
 impl LegacyNumericConstants {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -121,7 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             && let QPath::TypeRelative(ty, last_segment) = qpath
             && let Some(def_id) = cx.qpath_res(qpath, func.hir_id).opt_def_id()
             && is_integer_method(cx, def_id)
-            && let Some(mod_name) = ty.span.get_source_text(cx)
+            && let Some(mod_name) = ty.span.get_text(cx)
             && ty.span.eq_ctxt(last_segment.ident.span)
         {
             let name = last_segment.ident.name.as_str()[..=2].to_ascii_uppercase();

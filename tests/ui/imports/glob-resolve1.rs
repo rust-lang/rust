@@ -26,7 +26,7 @@ fn foo<T>() {}
 fn main() {
     fpriv(); //~ ERROR cannot find function `fpriv` in this scope
     epriv(); //~ ERROR cannot find function `epriv` in this scope
-    B; //~ ERROR expected value, found enum `B`
+    B; //~ ERROR cannot find value `B` in this scope
     C; //~ ERROR cannot find value `C` in this scope
     import(); //~ ERROR: cannot find function `import` in this scope
 

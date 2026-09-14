@@ -118,6 +118,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     fn visit_stmt(&mut self, stmt: &Stmt<'_>, include_empty_semi: bool) {
         debug!("visit_stmt: {}", self.psess.span_to_debug_info(stmt.span()));
 
+        // Preserve original source snippet if the statement isn't in the selected file lines.
+        if out_of_file_lines_range!(self, stmt.span()) {
+            let stmt_span = source!(self, stmt.span());
+            self.push_str(self.snippet(mk_sp(self.last_pos, stmt_span.hi())));
+            self.last_pos = stmt_span.hi();
+            return;
+        }
+
         if stmt.is_empty() {
             // If the statement is empty, just skip over it. Before that, make sure any comment
             // snippet preceding the semicolon is picked up.
@@ -623,6 +631,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     // For now, leave the contents of the Span unformatted.
                     self.push_rewrite(item.span, None)
                 }
+                ast::ItemKind::TestBinderConstraints(..) => self.push_rewrite(item.span, None),
             };
         }
         self.skip_context = skip_context_saved;
@@ -665,11 +674,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         }
 
         // TODO(calebcartwright): consider enabling box_patterns feature gate
-        match (&ai.kind, visitor_kind) {
-            (ast::AssocItemKind::Const(c), AssocTraitItem) => {
+        match (&ai.kind, assoc_ctxt) {
+            (ast::AssocItemKind::Const(c), visit::AssocCtxt::Trait) => {
                 self.visit_static(&StaticParts::from_trait_item(ai, c.ident))
             }
-            (ast::AssocItemKind::Const(c), AssocImplItem) => {
+            (ast::AssocItemKind::Const(c), visit::AssocCtxt::Impl { .. }) => {
                 self.visit_static(&StaticParts::from_impl_item(ai, c.ident))
             }
             (ast::AssocItemKind::Fn(ref fn_kind), _) => {
@@ -714,7 +723,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             (ast::AssocItemKind::MacCall(ref mac), _) => {
                 self.visit_mac(mac, MacroPosition::Item);
             }
-            _ => unreachable!(),
+            (ast::AssocItemKind::Delegation(_) | ast::AssocItemKind::DelegationMac(_), _) => {
+                // TODO(ytmimi) #![feature(fn_delegation)]
+                // add formatting for `AssocItemKind::Delegation` and `AssocItemKind::DelegationMac`
+                self.push_rewrite(ai.span, None);
+            }
         }
     }
 
@@ -895,8 +908,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             return false;
         }
 
-        let rewrite = attrs.rewrite(&self.get_context(), self.shape());
         let span = mk_sp(attrs[0].span.lo(), attrs[attrs.len() - 1].span.hi());
+        if out_of_file_lines_range!(self, span) {
+            return false;
+        }
+
+        let rewrite = attrs.rewrite(&self.get_context(), self.shape());
         self.push_rewrite(span, rewrite);
 
         false
@@ -1028,12 +1045,16 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             .snippet_provider
             .opt_span_after(self.next_span(end_pos), "\n")
         {
+            let span = self.next_span(pos);
             if let Some(snippet) = self.opt_snippet(self.next_span(pos)) {
-                if snippet.trim().is_empty() {
-                    self.last_pos = pos;
-                } else {
+                if !snippet.trim().is_empty() {
                     return;
                 }
+
+                if out_of_file_lines_range!(self, span) {
+                    return;
+                }
+                self.last_pos = pos;
             }
         }
     }

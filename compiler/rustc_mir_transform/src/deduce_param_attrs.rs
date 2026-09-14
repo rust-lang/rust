@@ -9,6 +9,7 @@
 //! after `optimized_mir`! We check for things that are *not* guaranteed to be preserved by MIR
 //! transforms, such as which local variables happen to be mutated.
 
+use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
 use rustc_middle::middle::deduced_param_attrs::{DeducedParamAttrs, UsageSummary};
@@ -73,8 +74,7 @@ impl<'tcx> Visitor<'tcx> for DeduceParamAttrs {
                   MutatingUseContext::Store
                 | MutatingUseContext::SetDiscriminant
                 | MutatingUseContext::AsmOutput
-                | MutatingUseContext::Projection
-                | MutatingUseContext::Retag) => {
+                | MutatingUseContext::Projection) => {
                 self.usage[i] |= UsageSummary::MUTATE;
             }
             | PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) => {
@@ -188,7 +188,7 @@ pub(super) fn deduced_param_attrs<'tcx>(
 
     // Codegen won't use this information for anything if all the function parameters are passed
     // directly. Detect that and bail, for compilation speed.
-    let fn_ty = tcx.type_of(def_id).instantiate_identity();
+    let fn_ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
     if matches!(fn_ty.kind(), ty::FnDef(..))
         && fn_ty
             .fn_sig(tcx)
@@ -202,6 +202,12 @@ pub(super) fn deduced_param_attrs<'tcx>(
 
     // Don't deduce any attributes for functions that have no MIR.
     if !tcx.is_mir_available(def_id) {
+        return &[];
+    }
+
+    if let hir::Constness::Const { always: true } = tcx.constness(def_id) {
+        // Comptime functions only exist during const eval and can never be passed
+        // to codegen.
         return &[];
     }
 

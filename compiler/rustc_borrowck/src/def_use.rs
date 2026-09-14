@@ -59,9 +59,7 @@ pub(crate) fn categorize(context: PlaceContext) -> Option<DefUse> {
         PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
-        PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) |
-        PlaceContext::MutatingUse(MutatingUseContext::Retag) =>
-            Some(DefUse::Use),
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => Some(DefUse::Use),
 
         ///////////////////////////////////////////////////////////////////////////
         // DROP USES
@@ -70,9 +68,7 @@ pub(crate) fn categorize(context: PlaceContext) -> Option<DefUse> {
         // call to `std::mem::drop()`). For the purposes of NLL,
         // uses in drop are special because `#[may_dangle]`
         // attributes can affect whether lifetimes must be live.
-
-        PlaceContext::MutatingUse(MutatingUseContext::Drop) =>
-            Some(DefUse::Drop),
+        PlaceContext::MutatingUse(MutatingUseContext::Drop) => Some(DefUse::Drop),
 
         // Debug info is neither def nor use.
         PlaceContext::NonUse(NonUseContext::VarDebugInfo) => None,

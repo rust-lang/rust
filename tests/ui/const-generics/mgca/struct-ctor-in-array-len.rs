@@ -5,8 +5,7 @@
 // for const alias to resolve to: Ctor(Struct, Const)".
 // It should now produce a proper type error.
 
-#![feature(min_generic_const_args)]
-//~^ WARN the feature `min_generic_const_args` is incomplete
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 
 struct S;
 

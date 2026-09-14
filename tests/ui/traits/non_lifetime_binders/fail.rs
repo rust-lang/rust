@@ -1,7 +1,6 @@
 // Error reporting for where `for<T> T: Trait` doesn't hold
 
 #![feature(non_lifetime_binders)]
-//~^ WARN the feature `non_lifetime_binders` is incomplete
 
 trait Trait {}
 

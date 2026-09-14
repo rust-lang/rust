@@ -1,6 +1,3 @@
-// Make sure we catch this even without validation
-//@compile-flags: -Zmiri-disable-validation
-
 // Make sure that we cannot load from memory a `&mut` that got already invalidated.
 fn main() {
     let x = &mut 42;

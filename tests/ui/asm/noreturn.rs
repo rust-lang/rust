@@ -2,7 +2,6 @@
 //@ check-pass
 //@ reference: asm.options.supported-options.noreturn
 
-#![feature(never_type)]
 #![crate_type = "rlib"]
 
 use std::arch::asm;

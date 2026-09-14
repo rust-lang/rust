@@ -6,6 +6,7 @@ use crate::tests::check_diagnostics_with_disabled;
 fn tracing_infinite_repeat() {
     check_diagnostics_with_disabled(
         r#"
+//- minicore: fn
 //- /core.rs crate:core
 #[rustc_builtin_macro]
 #[macro_export]
@@ -2721,6 +2722,14 @@ fn foo() {
 tracing::error!();
 }
     "#,
-        &["E0432", "inactive-code", "unresolved-macro-call", "syntax-error", "macro-error"],
+        &[
+            "E0432",
+            "E0282",
+            "inactive-code",
+            "unresolved-macro-call",
+            "syntax-error",
+            "macro-error",
+            "inactive_code",
+        ],
     );
 }

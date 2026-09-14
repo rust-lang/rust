@@ -1,6 +1,6 @@
 //@ run-pass
 
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 pub trait Foo {
     fn foo();

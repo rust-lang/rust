@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //! Basic smoke tests for behavior of `-C split-debuginfo` and the combined behavior when used in
 //! conjunction with other flags such as:
 //!
@@ -54,6 +54,9 @@
 // FIXME(#135531): the `Makefile` version practically didn't test `-C split-debuginfo` on Windows
 // at all, and lumped windows-msvc and windows-gnu together at that.
 //@ ignore-windows-gnu
+
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 #![deny(warnings)]
 

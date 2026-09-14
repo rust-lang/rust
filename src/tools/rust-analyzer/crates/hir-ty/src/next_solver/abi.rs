@@ -1,7 +1,10 @@
 //! ABI-related things in the next-trait-solver.
-use rustc_type_ir::{error::TypeError, relate::Relate};
-
-use crate::FnAbi;
+use rustc_abi::ExternAbi;
+use rustc_ast_ir::visit::VisitorResult;
+use rustc_type_ir::{
+    FallibleTypeFolder, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, error::TypeError,
+    relate::Relate,
+};
 
 use super::interner::DbInterner;
 
@@ -40,9 +43,32 @@ impl<'db> rustc_type_ir::inherent::Safety<DbInterner<'db>> for Safety {
             Self::Safe => "",
         }
     }
+
+    fn unsafe_mode() -> Self {
+        Safety::Unsafe
+    }
 }
 
-impl<'db> Relate<DbInterner<'db>> for FnAbi {
+impl<'db> TypeVisitable<DbInterner<'db>> for ExternAbi {
+    fn visit_with<V: TypeVisitor<DbInterner<'db>>>(&self, _visitor: &mut V) -> V::Result {
+        V::Result::output()
+    }
+}
+
+impl<'db> TypeFoldable<DbInterner<'db>> for ExternAbi {
+    fn try_fold_with<F: FallibleTypeFolder<DbInterner<'db>>>(
+        self,
+        _folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        Ok(self)
+    }
+
+    fn fold_with<F: TypeFolder<DbInterner<'db>>>(self, _folder: &mut F) -> Self {
+        self
+    }
+}
+
+impl<'db> Relate<DbInterner<'db>> for ExternAbi {
     fn relate<R: rustc_type_ir::relate::TypeRelation<DbInterner<'db>>>(
         _relation: &mut R,
         a: Self,
@@ -53,15 +79,5 @@ impl<'db> Relate<DbInterner<'db>> for FnAbi {
         } else {
             Err(TypeError::AbiMismatch(rustc_type_ir::error::ExpectedFound::new(a, b)))
         }
-    }
-}
-
-impl<'db> rustc_type_ir::inherent::Abi<DbInterner<'db>> for FnAbi {
-    fn rust() -> Self {
-        FnAbi::Rust
-    }
-
-    fn is_rust(self) -> bool {
-        matches!(self, FnAbi::Rust)
     }
 }

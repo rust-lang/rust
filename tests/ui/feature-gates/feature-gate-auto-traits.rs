@@ -1,12 +1,5 @@
-// Test that default and negative trait implementations are gated by
-// `auto_traits` feature gate
+auto trait DummyAutoTrait {} //~ ERROR auto traits are experimental and possibly buggy
 
-struct DummyStruct;
-
-auto trait AutoDummyTrait {}
-//~^ ERROR auto traits are experimental and possibly buggy
-
-impl !AutoDummyTrait for DummyStruct {}
-//~^ ERROR negative trait bounds are not fully implemented; use marker types for now
+pub unsafe auto trait AnotherAutoTrait {} //~ ERROR auto traits are experimental and possibly buggy
 
 fn main() {}

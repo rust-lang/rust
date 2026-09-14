@@ -21,7 +21,7 @@ pub const trait CarryingMulAdd: Copy + 'static {
 macro_rules! impl_carrying_mul_add_by_widening {
     ($($t:ident $u:ident $w:ident,)+) => {$(
         #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
-        impl const CarryingMulAdd for $t {
+        const impl CarryingMulAdd for $t {
             type Unsigned = $u;
             #[inline]
             fn carrying_mul_add(self, a: Self, b: Self, c: Self) -> ($u, $t) {
@@ -80,7 +80,7 @@ const fn wide_mul_u128(a: u128, b: u128) -> (u128, u128) {
 }
 
 #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
-impl const CarryingMulAdd for u128 {
+const impl CarryingMulAdd for u128 {
     type Unsigned = u128;
     #[inline]
     fn carrying_mul_add(self, b: u128, c: u128, d: u128) -> (u128, u128) {
@@ -94,7 +94,7 @@ impl const CarryingMulAdd for u128 {
 }
 
 #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
-impl const CarryingMulAdd for i128 {
+const impl CarryingMulAdd for i128 {
     type Unsigned = u128;
     #[inline]
     fn carrying_mul_add(self, b: i128, c: i128, d: i128) -> (u128, i128) {
@@ -127,7 +127,7 @@ macro_rules! zero {
 macro_rules! impl_disjoint_bitor {
     ($($t:ident,)+) => {$(
         #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
-        impl const DisjointBitOr for $t {
+        const impl DisjointBitOr for $t {
             #[cfg_attr(miri, track_caller)]
             #[inline]
             unsafe fn disjoint_bitor(self, other: Self) -> Self {
@@ -151,20 +151,20 @@ impl_disjoint_bitor! {
 pub const trait FunnelShift: Copy + 'static {
     /// See [`super::unchecked_funnel_shl`]; we just need the trait indirection to handle
     /// different types since calling intrinsics with generics doesn't work.
-    unsafe fn unchecked_funnel_shl(self, rhs: Self, shift: u32) -> Self;
+    unsafe fn unchecked_funnel_shl(self, right: Self, shift: u32) -> Self;
 
     /// See [`super::unchecked_funnel_shr`]; we just need the trait indirection to handle
     /// different types since calling intrinsics with generics doesn't work.
-    unsafe fn unchecked_funnel_shr(self, rhs: Self, shift: u32) -> Self;
+    unsafe fn unchecked_funnel_shr(self, right: Self, shift: u32) -> Self;
 }
 
 macro_rules! impl_funnel_shifts {
     ($($type:ident),*) => {$(
         #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
-        impl const FunnelShift for $type {
+        const impl FunnelShift for $type {
             #[cfg_attr(miri, track_caller)]
             #[inline]
-            unsafe fn unchecked_funnel_shl(self, rhs: Self, shift: u32) -> Self {
+            unsafe fn unchecked_funnel_shl(self, right: Self, shift: u32) -> Self {
                 // This implementation is also used by Miri so we have to check the precondition.
                 // SAFETY: this is guaranteed by the caller
                 unsafe { super::assume(shift < $type::BITS) };
@@ -181,7 +181,7 @@ macro_rules! impl_funnel_shifts {
                     unsafe {
                         super::disjoint_bitor(
                             super::unchecked_shl(self, shift),
-                            super::unchecked_shr(rhs, $type::BITS - shift),
+                            super::unchecked_shr(right, $type::BITS - shift),
                         )
                     }
                 }
@@ -189,12 +189,12 @@ macro_rules! impl_funnel_shifts {
 
             #[cfg_attr(miri, track_caller)]
             #[inline]
-            unsafe fn unchecked_funnel_shr(self, rhs: Self, shift: u32) -> Self {
+            unsafe fn unchecked_funnel_shr(self, right: Self, shift: u32) -> Self {
                 // This implementation is also used by Miri so we have to check the precondition.
                 // SAFETY: this is guaranteed by the caller
                 unsafe { super::assume(shift < $type::BITS) };
                 if shift == 0 {
-                    rhs
+                    right
                 } else {
                     // SAFETY:
                     //  - `shift < T::BITS`, which satisfies `unchecked_shr`
@@ -206,7 +206,7 @@ macro_rules! impl_funnel_shifts {
                     unsafe {
                         super::disjoint_bitor(
                             super::unchecked_shl(self, $type::BITS - shift),
-                            super::unchecked_shr(rhs, shift),
+                            super::unchecked_shr(right, shift),
                         )
                     }
                 }
@@ -229,7 +229,7 @@ pub const trait CarrylessMul: Copy + 'static {
 macro_rules! impl_carryless_mul{
     ($($type:ident),*) => {$(
         #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
-        impl const CarrylessMul for $type {
+        const impl CarrylessMul for $type {
             #[inline]
             fn carryless_mul(self, rhs: Self) -> Self {
                 let mut result = 0;

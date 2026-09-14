@@ -12,18 +12,7 @@ LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
 
 error[E0277]: the trait bound `Bug: Foo` is not satisfied
-  --> $DIR/issue-59324.rs:13:13
-   |
-LL |     Service<AssocType = <Bug as Foo>::OnlyFoo>
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `Bug`
-   |
-help: consider further restricting type parameter `Bug` with trait `Foo`
-   |
-LL | pub trait ThriftService<Bug: NotFoo + Foo>:
-   |                                     +++++
-
-error[E0277]: the trait bound `Bug: Foo` is not satisfied
-  --> $DIR/issue-59324.rs:16:5
+  --> $DIR/issue-59324.rs:15:5
    |
 LL | /     fn get_service(
 LL | |
@@ -33,7 +22,7 @@ LL | |     ) -> Self::AssocType;
    | |_________________________^ the trait `Foo` is not implemented for `Bug`
 
 error[E0277]: the trait bound `(): Foo` is not satisfied
-  --> $DIR/issue-59324.rs:24:29
+  --> $DIR/issue-59324.rs:22:29
    |
 LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
    |                             ^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
@@ -45,7 +34,7 @@ LL | pub trait Foo: NotFoo {
    | ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `Bug: Foo` is not satisfied
-  --> $DIR/issue-59324.rs:16:5
+  --> $DIR/issue-59324.rs:15:5
    |
 LL | /     fn get_service(
 LL | |
@@ -59,19 +48,8 @@ help: consider further restricting type parameter `Bug` with trait `Foo`
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
 
-error[E0277]: the trait bound `Bug: Foo` is not satisfied
-  --> $DIR/issue-59324.rs:20:10
-   |
-LL |     ) -> Self::AssocType;
-   |          ^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `Bug`
-   |
-help: consider further restricting type parameter `Bug` with trait `Foo`
-   |
-LL | pub trait ThriftService<Bug: NotFoo + Foo>:
-   |                                     +++++
-
 error[E0277]: the trait bound `(): Foo` is not satisfied
-  --> $DIR/issue-59324.rs:24:29
+  --> $DIR/issue-59324.rs:22:29
    |
 LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
    |                             ^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
@@ -84,7 +62,7 @@ LL | pub trait Foo: NotFoo {
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the size for values of type `(dyn ThriftService<(), AssocType = _> + 'static)` cannot be known at compilation time
-  --> $DIR/issue-59324.rs:24:29
+  --> $DIR/issue-59324.rs:22:29
    |
 LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
    |                             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -101,6 +79,6 @@ help: function arguments must have a statically known size, borrowed types alway
 LL | fn with_factory<H>(factory: &dyn ThriftService<()>) {}
    |                             +
 
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

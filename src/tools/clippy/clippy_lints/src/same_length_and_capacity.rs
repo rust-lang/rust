@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::{eq_expr_value, sym};
-use rustc_hir::{Expr, ExprKind, LangItem, QPath};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{Expr, ExprKind, QPath};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::symbol::sym as rustc_sym;
 
 declare_clippy_lint! {
@@ -65,7 +65,7 @@ declare_clippy_lint! {
     /// // This time, leverage the previously saved capacity:
     /// let reconstructed = unsafe { Vec::from_raw_parts(ptr, len, cap) };
     /// ```
-    #[clippy::version = "1.93.0"]
+    #[clippy::version = "1.94.0"]
     pub SAME_LENGTH_AND_CAPACITY,
     pedantic,
     "`from_raw_parts` with same length and capacity"
@@ -79,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
             && let ExprKind::Path(QPath::TypeRelative(ty, fn_path)) = path_expr.kind
             && fn_path.ident.name == sym::from_raw_parts
             && args.len() >= 3
-            && eq_expr_value(cx, &args[1], &args[2])
+            && eq_expr_value(cx, expr.span.ctxt(), &args[1], &args[2])
         {
             let middle_ty = cx.typeck_results().node_type(ty.hir_id);
             if middle_ty.is_diag_item(cx, rustc_sym::Vec) {

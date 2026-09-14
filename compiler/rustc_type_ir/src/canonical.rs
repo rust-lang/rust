@@ -4,24 +4,25 @@ use std::ops::Index;
 use arrayvec::ArrayVec;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
+use thin_vec::ThinVec;
 
-use crate::data_structures::HashMap;
+use crate::data_structures::{DelayedMap, HashMap};
 use crate::inherent::*;
-use crate::{self as ty, Interner, TypingMode, UniverseIndex};
+use crate::{self as ty, Interner, Region, TypingModeEqWrapper, UniverseIndex};
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, V)]
 #[derive_where(Copy; I: Interner, V: Copy)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub struct CanonicalQueryInput<I: Interner, V> {
     pub canonical: Canonical<I, V>,
-    pub typing_mode: TypingMode<I>,
+    pub typing_mode: TypingModeEqWrapper<I>,
 }
 
 impl<I: Interner, V: Eq> Eq for CanonicalQueryInput<I, V> {}
@@ -33,7 +34,7 @@ impl<I: Interner, V: Eq> Eq for CanonicalQueryInput<I, V> {}
 #[derive_where(Copy; I: Interner, V: Copy)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub struct Canonical<I: Interner, V> {
     pub value: V,
@@ -91,7 +92,7 @@ impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
 #[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
 pub enum CanonicalVarKind<I: Interner> {
     /// General type variable `?T` that can be unified with arbitrary types.
@@ -220,7 +221,7 @@ impl<I: Interner> CanonicalVarKind<I> {
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct CanonicalVarValues<I: Interner> {
@@ -363,10 +364,51 @@ impl<I: Interner> Index<ty::BoundVar> for CanonicalVarValues<I> {
     }
 }
 
+#[derive_where(Default; I: Interner)]
+pub struct CanonicalParamEnvCache<I: Interner>(
+    pub HashMap<I::ParamEnv, CanonicalParamEnvCacheEntry<I>>,
+);
+
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct CanonicalParamEnvCacheEntry<I: Interner> {
+    // Note: this `param_env` is the canonicalized form of the key for this entry in the enclosing
+    // `CanonicalParamEnvCache`.
     pub param_env: I::ParamEnv,
-    pub variables: Vec<I::GenericArg>,
+    pub variables: ThinVec<I::GenericArg>,
     pub variable_lookup_table: HashMap<I::GenericArg, usize>,
     pub var_kinds: Vec<CanonicalVarKind<I>>,
+}
+
+/// State used and modified by a canonicalizer during canonicalization. To avoid many allocations,
+/// this state is reused by many canonicalizers from a single `InferCtxt`.
+#[derive_where(Default; I: Interner)]
+pub struct CanonicalizerState<I: Interner> {
+    pub variables: ThinVec<I::GenericArg>,
+    pub var_kinds: Vec<CanonicalVarKind<I>>,
+    pub variable_lookup_table: HashMap<I::GenericArg, usize>,
+
+    /// Maps each `sub_unification_table_root_var` to the index of the first
+    /// variable which used it.
+    ///
+    /// This means in case two type variables have the same sub relations root,
+    /// we set the `sub_root` of the second variable to the position of the first.
+    /// Otherwise the `sub_root` of each type variable is just its own position.
+    pub sub_root_lookup_table: HashMap<ty::TyVid, usize>,
+
+    /// We can simply cache based on the ty itself, because we use
+    /// `ty::BoundVarIndexKind::Canonical`.
+    pub cache: DelayedMap<I::Ty, I::Ty>,
+}
+
+impl<I: Interner> CanonicalizerState<I> {
+    pub fn clear(&mut self) {
+        // Deconstruct to ensure no fields are missed.
+        let Self { variables, var_kinds, variable_lookup_table, sub_root_lookup_table, cache } =
+            self;
+        variables.clear();
+        var_kinds.clear();
+        variable_lookup_table.clear();
+        sub_root_lookup_table.clear();
+        cache.clear();
+    }
 }

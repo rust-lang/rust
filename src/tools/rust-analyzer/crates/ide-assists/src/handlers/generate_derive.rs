@@ -1,7 +1,7 @@
 use syntax::{
-    SyntaxKind::{ATTR, COMMENT, WHITESPACE},
+    SyntaxKind::{ATTR, COMMENT, DOC_COMMENT, WHITESPACE},
     T,
-    ast::{self, AstNode, HasAttrs, edit::IndentLevel, syntax_factory::SyntaxFactory},
+    ast::{self, AstNode, HasAttrs, edit::IndentLevel},
     syntax_editor::{Element, Position},
 };
 
@@ -25,7 +25,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     y: u32,
 // }
 // ```
-pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let cap = ctx.config.snippet_cap?;
     let nominal = ctx.find_node_at_offset::<ast::Adt>()?;
     let target = nominal.syntax().text_range();
@@ -42,22 +42,20 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     };
 
     acc.add(AssistId::generate("generate_derive"), "Add `#[derive]`", target, |edit| {
-        let make = SyntaxFactory::without_mappings();
-
+        let editor = edit.make_editor(nominal.syntax());
         match derive_attr {
             None => {
+                let make = editor.make();
                 let derive =
                     make.attr_outer(make.meta_token_tree(
                         make.ident_path("derive"),
                         make.token_tree(T!['('], vec![]),
                     ));
-
-                let mut editor = edit.make_editor(nominal.syntax());
                 let indent = IndentLevel::from_node(nominal.syntax());
                 let after_attrs_and_comments = nominal
                     .syntax()
                     .children_with_tokens()
-                    .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
+                    .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | DOC_COMMENT | ATTR))
                     .map_or(Position::first_child_of(nominal.syntax()), Position::before);
 
                 editor.insert_all(
@@ -68,9 +66,11 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
                     ],
                 );
 
-                let delimiter = derive
-                    .meta()
-                    .expect("make::attr_outer was expected to have Meta")
+                let meta = derive.meta().expect("make::attr_outer was expected to have Meta");
+                let ast::Meta::TokenTreeMeta(meta) = meta else {
+                    unreachable!("make::attr_outer was passed a token tree meta");
+                };
+                let delimiter = meta
                     .token_tree()
                     .expect("failed to get token tree out of Meta")
                     .r_paren_token()
@@ -79,16 +79,15 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
                 let tabstop_before = edit.make_tabstop_before(cap);
 
                 editor.add_annotation(delimiter, tabstop_before);
-                edit.add_file_edits(ctx.vfs_file_id(), editor);
             }
             Some(_) => {
+                let delimiter = delimiter.expect("Right delim token could not be found.");
+                let tabstop_before = edit.make_tabstop_before(cap);
                 // Just move the cursor.
-                edit.add_tabstop_before_token(
-                    cap,
-                    delimiter.expect("Right delim token could not be found."),
-                );
+                editor.add_annotation(delimiter, tabstop_before);
             }
         };
+        edit.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
 

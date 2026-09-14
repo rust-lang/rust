@@ -6,6 +6,8 @@
 // See https://github.com/rust-lang/rust/issues/63349
 
 //@ ignore-cross-compile
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::rustc;
 

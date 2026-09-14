@@ -1,4 +1,5 @@
 use std::future::Future;
+use std::pin::Pin;
 
 async fn some_async_fn() {}
 
@@ -9,6 +10,10 @@ fn custom() -> impl Future<Output = ()> {
 }
 
 fn do_something_to_future(future: &mut impl Future<Output = ()>) {}
+
+fn boxed() -> Pin<Box<dyn Future<Output = ()>>> {
+    Box::pin(async {})
+}
 
 fn main() {
     let _ = some_async_fn();
@@ -21,4 +26,7 @@ fn main() {
     do_something_to_future(&mut future);
     let _ = future;
     //~^ let_underscore_future
+
+    // Typed bindings are an intentional discard, see also `let_underscore_untyped`.
+    let _: Pin<Box<dyn Future<Output = ()>>> = boxed();
 }

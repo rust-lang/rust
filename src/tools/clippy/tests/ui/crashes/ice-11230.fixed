@@ -1,6 +1,5 @@
 // Test for https://github.com/rust-lang/rust-clippy/issues/11230
-#![warn(clippy::explicit_iter_loop)]
-#![warn(clippy::needless_collect)]
+#![warn(clippy::explicit_iter_loop, clippy::needless_collect)]
 
 // explicit_iter_loop
 fn main() {

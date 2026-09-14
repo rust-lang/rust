@@ -1,4 +1,3 @@
-//~ NOTE not an `extern` block
 // This test enumerates as many compiler-builtin ungated attributes as
 // possible (that is, all the mutually compatible ones), and checks
 // that we get "expected" (*) warnings for each in the various weird
@@ -43,7 +42,10 @@
 #![allow(x5300)] //~ WARN unknown lint: `x5300`
 #![forbid(x5200)] //~ WARN unknown lint: `x5200`
 #![deny(x5100)] //~ WARN unknown lint: `x5100`
-#![macro_use] // (allowed if no argument; see issue-43160-gating-of-macro_use.rs)
+#![macro_use] //~ WARN attribute cannot be used on
+//~| WARN previously accepted
+//~| HELP can be applied to
+//~| HELP remove the attribute
 // skipping testing of cfg
 // skipping testing of cfg_attr
 #![should_panic] //~ WARN attribute cannot be used on
@@ -67,14 +69,16 @@
 //~| WARN previously accepted
 //~| HELP can only be applied to
 //~| HELP remove the attribute
-#![link(name = "x")] //~ WARN attribute should be applied to an `extern` block
-//~^ WARN this was previously accepted
+#![link(name = "x")] //~ WARN attribute cannot be used on
+//~| WARN this was previously accepted
+//~| HELP can only be applied to foreign modules
+//~| HELP remove the attribute
 #![link_name = "1900"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
 //~| HELP remove the attribute
-#![link_section = "1800"]
+#![link_section = ",1800"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
@@ -94,7 +98,6 @@
 #![crate_name = "0900"]
 #![crate_type = "bin"] // cannot pass "0800" here
 
-// FIXME(#44232) we should warn that this isn't used.
 #![feature(rust1)]
 //~^ WARN no longer requires an attribute to enable
 //~| NOTE `#[warn(stable_features)]` on by default
@@ -212,37 +215,37 @@ mod macro_use {
 }
 
 #[macro_export]
-//~^ WARN `#[macro_export]` attribute cannot be used on modules [unused_attributes]
+//~^ WARN the `macro_export` attribute cannot be used on modules [unused_attributes]
 //~| WARN previously accepted
 //~| HELP can only be applied to
 //~| HELP remove the attribute
 mod macro_export {
     mod inner { #![macro_export] }
-    //~^ WARN `#[macro_export]` attribute cannot be used on modules
+    //~^ WARN the `macro_export` attribute cannot be used on modules
     //~| WARN previously accepted
     //~| HELP can only be applied to
     //~| HELP remove the attribute
 
     #[macro_export] fn f() { }
-    //~^ WARN `#[macro_export]` attribute cannot be used on function
+    //~^ WARN the `macro_export` attribute cannot be used on function
     //~| WARN previously accepted
     //~| HELP can only be applied to
     //~| HELP remove the attribute
 
     #[macro_export] struct S;
-    //~^ WARN `#[macro_export]` attribute cannot be used on structs
+    //~^ WARN the `macro_export` attribute cannot be used on structs
     //~| WARN previously accepted
     //~| HELP can only be applied to
     //~| HELP remove the attribute
 
     #[macro_export] type T = S;
-    //~^ WARN `#[macro_export]` attribute cannot be used on type aliases
+    //~^ WARN the `macro_export` attribute cannot be used on type aliases
     //~| WARN previously accepted
     //~| HELP can only be applied to
     //~| HELP remove the attribute
 
     #[macro_export] impl S { }
-    //~^ WARN  `#[macro_export]` attribute cannot be used on inherent impl blocks
+    //~^ WARN  the `macro_export` attribute cannot be used on inherent impl blocks
     //~| WARN previously accepted
     //~| HELP can only be applied to
     //~| HELP remove the attribute
@@ -250,7 +253,12 @@ mod macro_export {
 
 #[path = "3800"]
 mod path {
-    mod inner { #![path="3800"] }
+    mod inner {
+        #![path="3800"]
+        //~^ WARN unused attribute
+        //~| NOTE `#[path]` is unused on this inline module
+        //~| HELP remove this attribute
+    }
 
     #[path = "3800"] fn f() { }
     //~^ WARN attribute cannot be used on
@@ -616,66 +624,66 @@ mod link_name {
     //~| HELP remove the attribute
 }
 
-#[link_section = "1800"]
+#[link_section = ",1800"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
 //~| HELP remove the attribute
 mod link_section {
-    mod inner { #![link_section="1800"] }
+    mod inner { #![link_section=",1800"] }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
-    #[link_section = "1800"] fn f() { }
+    #[link_section = ",1800"] fn f() { }
 
-    #[link_section = "1800"] struct S;
+    #[link_section = ",1800"] struct S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
-    #[link_section = "1800"] type T = S;
+    #[link_section = ",1800"] type T = S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
-    #[link_section = "1800"] impl S { }
+    #[link_section = ",1800"] impl S { }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
-    #[link_section = "1800"]
+    #[link_section = ",1800"]
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
     trait Tr {
-        #[link_section = "1800"]
+        #[link_section = ",1800"]
         //~^ WARN attribute cannot be used on
         //~| WARN previously accepted
         //~| HELP can be applied to
         //~| HELP remove the attribute
         fn inside_tr_no_default(&self);
 
-        #[link_section = "1800"]
+        #[link_section = ",1800"]
         fn inside_tr_default(&self) { }
     }
 
     impl S {
-        #[link_section = "1800"]
+        #[link_section = ",1800"]
         fn inside_abc_123(&self) { }
     }
 
     impl Tr for S {
-        #[link_section = "1800"]
+        #[link_section = ",1800"]
         fn inside_tr_no_default(&self) { }
     }
 
-    #[link_section = "1800"]
+    #[link_section = ",1800"]
     fn should_always_link() { }
 }
 
@@ -683,35 +691,40 @@ mod link_section {
 // Note that this is a `check-pass` test, so it will never invoke the linker.
 
 #[link(name = "x")]
-//~^ WARN attribute should be applied to an `extern` block
+//~^ WARN attribute cannot be used on
 //~| WARN this was previously accepted
+//~| HELP can only be applied to foreign modules
+//~| HELP remove the attribute
 mod link {
-    //~^ NOTE not an `extern` block
-
     mod inner { #![link(name = "x")] }
-    //~^ WARN attribute should be applied to an `extern` block
+    //~^ WARN attribute cannot be used on
     //~| WARN this was previously accepted
-    //~| NOTE not an `extern` block
+    //~| HELP can only be applied to foreign modules
+    //~| HELP remove the attribute
 
     #[link(name = "x")] fn f() { }
-    //~^ WARN attribute should be applied to an `extern` block
+    //~^ WARN attribute cannot be used on
     //~| WARN this was previously accepted
-    //~| NOTE not an `extern` block
+    //~| HELP can only be applied to foreign modules
+    //~| HELP remove the attribute
 
     #[link(name = "x")] struct S;
-    //~^ WARN attribute should be applied to an `extern` block
+    //~^ WARN attribute cannot be used on
     //~| WARN this was previously accepted
-    //~| NOTE not an `extern` block
+    //~| HELP can only be applied to foreign modules
+    //~| HELP remove the attribute
 
     #[link(name = "x")] type T = S;
-    //~^ WARN attribute should be applied to an `extern` block
+    //~^ WARN attribute cannot be used on
     //~| WARN this was previously accepted
-    //~| NOTE not an `extern` block
+    //~| HELP can only be applied to foreign modules
+    //~| HELP remove the attribute
 
     #[link(name = "x")] impl S { }
-    //~^ WARN attribute should be applied to an `extern` block
+    //~^ WARN attribute cannot be used on
     //~| WARN this was previously accepted
-    //~| NOTE not an `extern` block
+    //~| HELP can only be applied to foreign modules
+    //~| HELP remove the attribute
 
     #[link(name = "x")] extern "Rust" {}
     //~^ WARN attribute should be applied to an `extern` block

@@ -1,5 +1,5 @@
 #![warn(clippy::get_first)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
 struct Bar {

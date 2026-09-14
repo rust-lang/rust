@@ -1,7 +1,5 @@
 // Make sure we consider `!` to be a union read.
-
-#![feature(never_type, never_patterns)]
-//~^ WARN the feature `never_patterns` is incomplete
+#![feature(never_patterns)]
 
 union U {
     a: !,

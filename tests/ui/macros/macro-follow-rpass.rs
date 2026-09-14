@@ -1,15 +1,21 @@
 //@ edition:2015..2021
-//@ run-pass
+//@ check-pass
+//@ reference: macro.decl.follow-set.token-expr-stmt
+//@ reference: macro.decl.follow-set.token-pat
+//@ reference: macro.decl.follow-set.edition2021
+//@ reference: macro.decl.follow-set.token-path-ty
+//@ reference: macro.decl.follow-set.token-other
 #![allow(unused_macros)]
 // Check the macro follow sets (see corresponding cfail test).
 
-// FOLLOW(pat) = {FatArrow, Comma, Eq, Or, Ident(if), Ident(in)}
+// FOLLOW(pat) = {FatArrow, Comma, Eq, Or, Ident(if), MetaVarDecl(Guard), Ident(in)}
 macro_rules! follow_pat {
     ($p:pat =>) => {};
     ($p:pat ,) => {};
     ($p:pat =) => {};
     ($p:pat |) => {};
     ($p:pat if) => {};
+    ($p:pat if let) => {};
     ($p:pat in) => {};
 }
 // FOLLOW(expr) = {FatArrow, Comma, Semicolon}

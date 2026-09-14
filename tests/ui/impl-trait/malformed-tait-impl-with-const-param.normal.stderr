@@ -1,0 +1,27 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/malformed-tait-impl-with-const-param.rs:15:32
+   |
+LL | impl<const B: Word> Trait for &'a () {
+   |                                ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | impl<'a, const B: Word> Trait for &'a () {
+   |      +++
+
+error[E0407]: method `constrain` is not a member of trait `Trait`
+  --> $DIR/malformed-tait-impl-with-const-param.rs:20:5
+   |
+LL |     fn constrain(self) -> (Self::Opaque1,) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a member of trait `Trait`
+
+error[E0425]: cannot find type `Word` in this scope
+  --> $DIR/malformed-tait-impl-with-const-param.rs:15:15
+   |
+LL | impl<const B: Word> Trait for &'a () {
+   |               ^^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0261, E0407, E0425.
+For more information about an error, try `rustc --explain E0261`.

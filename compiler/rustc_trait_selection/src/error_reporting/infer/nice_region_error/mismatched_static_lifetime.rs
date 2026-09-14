@@ -4,16 +4,16 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::intravisit::Visitor;
 use rustc_middle::bug;
 use rustc_middle::ty::TypeVisitor;
 use tracing::debug;
 
-use crate::error_reporting::infer::nice_region_error::NiceRegionError;
-use crate::errors::{
+use crate::diagnostics::{
     DoesNotOutliveStaticFromImpl, ImplicitStaticLifetimeSubdiag,
     IntroducesStaticBecauseUnmetLifetimeReq, MismatchedStaticLifetime, note_and_explain,
 };
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::infer::{RegionResolutionError, SubregionOrigin, TypeTrace};
 use crate::traits::ObligationCauseCode;
 
@@ -28,7 +28,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         if !sub.is_static() {
             return None;
         }
-        let SubregionOrigin::Subtype(box TypeTrace { ref cause, .. }) = origin else {
+        let SubregionOrigin::Subtype(TypeTrace { ref cause, .. }) = origin else {
             return None;
         };
         // If we added a "points at argument expression" obligation, we remove it here, we care
@@ -76,7 +76,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             };
 
             // Next, let's figure out the set of trait objects with implicit static bounds
-            let ty = self.tcx().type_of(*impl_def_id).instantiate_identity();
+            let ty = self.tcx().type_of(*impl_def_id).instantiate_identity().skip_norm_wip();
             let mut v = super::static_impl_trait::TraitObjectVisitor(FxIndexSet::default());
             v.visit_ty(ty);
             let mut traits = vec![];

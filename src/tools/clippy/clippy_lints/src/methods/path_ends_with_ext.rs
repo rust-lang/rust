@@ -1,7 +1,7 @@
 use super::PATH_ENDS_WITH_EXT;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet;
 use clippy_utils::sym;
 use rustc_ast::{LitKind, StrStyle};
@@ -9,7 +9,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
-use std::fmt::Write;
+use std::fmt::Write as _;
 
 pub const DEFAULT_ALLOWED_DOTFILES: &[&str] = &[
     "git", "svn", "gem", "npm", "vim", "env", "rnd", "ssh", "vnc", "smb", "nvm", "bin",

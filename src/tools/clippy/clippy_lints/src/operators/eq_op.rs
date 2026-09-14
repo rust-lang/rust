@@ -14,7 +14,7 @@ pub(crate) fn check_assert<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
             Some(sym::assert_eq_macro | sym::assert_ne_macro | sym::debug_assert_eq_macro | sym::debug_assert_ne_macro)
         )
     }) && let Some((lhs, rhs, _)) = find_assert_eq_args(cx, e, macro_call.expn)
-        && eq_expr_value(cx, lhs, rhs)
+        && eq_expr_value(cx, macro_call.span.ctxt(), lhs, rhs)
         && macro_call.is_local()
         && !is_in_test_function(cx.tcx, e.hir_id)
     {
@@ -37,7 +37,10 @@ pub(crate) fn check<'tcx>(
     left: &'tcx Expr<'_>,
     right: &'tcx Expr<'_>,
 ) {
-    if is_useless_with_eq_exprs(op) && eq_expr_value(cx, left, right) && !is_in_test_function(cx.tcx, e.hir_id) {
+    if is_useless_with_eq_exprs(op)
+        && eq_expr_value(cx, e.span.ctxt(), left, right)
+        && !is_in_test_function(cx.tcx, e.hir_id)
+    {
         span_lint_and_then(
             cx,
             EQ_OP,

@@ -3,6 +3,11 @@ error: attribute value must be a literal
    |
 LL |     #[doc = MyTrait]
    |             ^^^^^^^
+   |
+help: you might have meant to write a string literal
+   |
+LL |     #[doc = "MyTrait"]
+   |             +       +
 
 error: aborting due to 1 previous error
 

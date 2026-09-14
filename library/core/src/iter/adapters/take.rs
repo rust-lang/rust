@@ -20,7 +20,7 @@ pub struct Take<I> {
 }
 
 impl<I> Take<I> {
-    pub(in crate::iter) fn new(iter: I, n: usize) -> Take<I> {
+    pub(in crate::iter) const fn new(iter: I, n: usize) -> Take<I> {
         Take { iter, n }
     }
 }
@@ -53,6 +53,19 @@ where
                 self.n = 0;
             }
             None
+        }
+    }
+
+    #[inline]
+    fn count(mut self) -> usize {
+        if self.n == 0 {
+            return 0;
+        }
+        // Advancing consumes the same elements `next` would have yielded,
+        // while benefiting from the inner iterator's `advance_by` fast path.
+        match self.iter.advance_by(self.n) {
+            Ok(()) => self.n,
+            Err(remaining) => self.n - remaining.get(),
         }
     }
 

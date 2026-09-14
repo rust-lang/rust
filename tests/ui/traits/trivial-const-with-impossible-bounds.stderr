@@ -1,0 +1,9 @@
+error[E0080]: entering unreachable code
+  --> $DIR/trivial-const-with-impossible-bounds.rs:5:5
+   |
+LL |     const C: usize = 1;
+   |     ^^^^^^^^^^^^^^^^^^^ evaluation of `Dummy::C` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

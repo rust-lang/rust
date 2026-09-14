@@ -8,12 +8,12 @@ use rustc_data_structures::unord::{ExtendUnord, UnordItems, UnordSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
-use rustc_hir::hir_id::OwnerId;
 use rustc_hir::{
     self as hir, BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
+    OwnerId,
 };
 use rustc_index::IndexVec;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::Session;
 use rustc_span::Span;
 
@@ -27,7 +27,7 @@ use crate::ty::{
     GenericArgsRef, Ty, UserArgs, tls,
 };
 
-#[derive(TyEncodable, TyDecodable, Debug, HashStable)]
+#[derive(TyEncodable, TyDecodable, Debug, StableHash)]
 pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.
     pub hir_owner: OwnerId,
@@ -35,6 +35,9 @@ pub struct TypeckResults<'tcx> {
     /// Resolved definitions for `<T>::X` associated paths and
     /// method calls, including those of overloaded operators.
     type_dependent_defs: ItemLocalMap<Result<(DefKind, DefId), ErrorGuaranteed>>,
+
+    /// Resolved definitions for splatted function calls.
+    splatted_defs: ItemLocalMap<Result<SplattedDef<'tcx>, ErrorGuaranteed>>,
 
     /// Resolved field indices for field accesses in expressions (`S { field }`, `obj.field`)
     /// or patterns (`S { field }`). The index is often useful by itself, but to learn more
@@ -98,7 +101,7 @@ pub struct TypeckResults<'tcx> {
     /// leads to a `vec![&Box<Option<i32>>, Box<Option<i32>>]`. Empty vectors are not stored.
     ///
     /// See:
-    /// <https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md#definitions>
+    /// <https://rust-lang.github.io/rfcs/2005-match-ergonomics.html#definitions>
     pat_adjustments: ItemLocalMap<Vec<ty::adjustment::PatAdjustment<'tcx>>>,
 
     /// Set of reference patterns that match against a match-ergonomics inserted reference
@@ -220,6 +223,9 @@ pub struct TypeckResults<'tcx> {
     /// computation.
     pub transmutes_to_check: Vec<(Ty<'tcx>, Ty<'tcx>, HirId)>,
 
+    /// Stores the types involved in calls to `offload` intrinsic.
+    pub offloads_to_check: Vec<(Ty<'tcx>, Ty<'tcx>, Ty<'tcx>, HirId)>,
+
     /// Container types and field indices of `offset_of!` expressions
     offset_of_data: ItemLocalMap<Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
 }
@@ -229,6 +235,7 @@ impl<'tcx> TypeckResults<'tcx> {
         TypeckResults {
             hir_owner,
             type_dependent_defs: Default::default(),
+            splatted_defs: Default::default(),
             field_indices: Default::default(),
             user_provided_types: Default::default(),
             user_provided_sigs: Default::default(),
@@ -252,6 +259,7 @@ impl<'tcx> TypeckResults<'tcx> {
             potentially_region_dependent_goals: Default::default(),
             closure_size_eval: Default::default(),
             transmutes_to_check: Default::default(),
+            offloads_to_check: Default::default(),
             offset_of_data: Default::default(),
         }
     }
@@ -285,6 +293,23 @@ impl<'tcx> TypeckResults<'tcx> {
         &mut self,
     ) -> LocalTableInContextMut<'_, Result<(DefKind, DefId), ErrorGuaranteed>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.type_dependent_defs }
+    }
+
+    pub fn splatted_defs(
+        &self,
+    ) -> LocalTableInContext<'_, Result<SplattedDef<'tcx>, ErrorGuaranteed>> {
+        LocalTableInContext { hir_owner: self.hir_owner, data: &self.splatted_defs }
+    }
+
+    pub fn splatted_def(&self, id: HirId) -> Option<SplattedDef<'tcx>> {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.splatted_defs.get(&id.local_id).cloned().and_then(|r| r.ok())
+    }
+
+    pub fn splatted_defs_mut(
+        &mut self,
+    ) -> LocalTableInContextMut<'_, Result<SplattedDef<'tcx>, ErrorGuaranteed>> {
+        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.splatted_defs }
     }
 
     pub fn field_indices(&self) -> LocalTableInContext<'_, FieldIdx> {
@@ -407,6 +432,10 @@ impl<'tcx> TypeckResults<'tcx> {
         matches!(self.type_dependent_defs().get(expr.hir_id), Some(Ok((DefKind::AssocFn, _))))
     }
 
+    pub fn is_splatted_call(&self, expr: &hir::Expr<'_>) -> bool {
+        matches!(self.splatted_defs().get(expr.hir_id), Some(Ok(_)))
+    }
+
     /// Returns the computed binding mode for a `PatKind::Binding` pattern
     /// (after match ergonomics adjustments).
     pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> BindingMode {
@@ -514,8 +543,8 @@ impl<'tcx> TypeckResults<'tcx> {
     ) -> impl Iterator<Item = &ty::CapturedPlace<'tcx>> {
         self.closure_min_captures
             .get(&closure_def_id)
-            .map(|closure_min_captures| closure_min_captures.values().flat_map(|v| v.iter()))
-            .into_iter()
+            .map(|closure_min_captures| closure_min_captures.values())
+            .into_flat_iter()
             .flatten()
     }
 
@@ -566,6 +595,66 @@ impl<'tcx> TypeckResults<'tcx> {
         &mut self,
     ) -> LocalTableInContextMut<'_, Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.offset_of_data }
+    }
+}
+
+/// A resolved splatted function call.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
+pub enum SplattedDef<'tcx> {
+    /// A resolved FnDef call.
+    FnDef {
+        /// The DefId of the FnDef (used to look up its type).
+        def_id: DefId,
+
+        /// The index of the first argument in the callee's splatted tuple, and the index of the
+        /// splatted tuple argument in the caller.
+        arg_index: u16,
+
+        /// The number of arguments in the splatted tuple.
+        arg_count: u16,
+    },
+
+    /// A resolved FnPtr Call.
+    FnPtr {
+        /// The resolved type of the FnPtr.
+        fn_ptr_type: Ty<'tcx>,
+
+        /// The index of the first argument in the callee's splatted tuple, and the index of the
+        /// splatted tuple argument in the caller.
+        arg_index: u16,
+
+        /// The number of arguments in the splatted tuple.
+        arg_count: u16,
+    },
+}
+
+impl<'tcx> SplattedDef<'tcx> {
+    pub fn def_id(&self) -> Option<DefId> {
+        match self {
+            SplattedDef::FnDef { def_id, .. } => Some(*def_id),
+            SplattedDef::FnPtr { .. } => None,
+        }
+    }
+
+    pub fn fn_ptr_type(&self) -> Option<Ty<'tcx>> {
+        match self {
+            SplattedDef::FnDef { .. } => None,
+            SplattedDef::FnPtr { fn_ptr_type, .. } => Some(*fn_ptr_type),
+        }
+    }
+
+    pub fn arg_index(&self) -> u16 {
+        match self {
+            SplattedDef::FnDef { arg_index, .. } => *arg_index,
+            SplattedDef::FnPtr { arg_index, .. } => *arg_index,
+        }
+    }
+
+    pub fn arg_count(&self) -> u16 {
+        match self {
+            SplattedDef::FnDef { arg_count, .. } => *arg_count,
+            SplattedDef::FnPtr { arg_count, .. } => *arg_count,
+        }
     }
 }
 
@@ -728,7 +817,7 @@ rustc_index::newtype_index! {
 pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
@@ -741,7 +830,7 @@ pub struct CanonicalUserTypeAnnotation<'tcx> {
 pub type CanonicalUserType<'tcx> = Canonical<'tcx, UserType<'tcx>>;
 
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Eq, Hash, StableHash, TypeFoldable, TypeVisitable)]
 pub struct UserType<'tcx> {
     pub kind: UserTypeKind<'tcx>,
     pub bounds: ty::Clauses<'tcx>,
@@ -763,7 +852,7 @@ impl<'tcx> UserType<'tcx> {
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Eq, Hash, StableHash, TypeFoldable, TypeVisitable, Lift)]
 pub enum UserTypeKind<'tcx> {
     Ty(Ty<'tcx>),
 
@@ -828,30 +917,18 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
 
 impl<'tcx> std::fmt::Display for UserType<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.bounds.is_empty() {
-            self.kind.fmt(f)
-        } else {
-            self.kind.fmt(f)?;
+        self.kind.fmt(f)?;
+        for b in self.bounds {
             write!(f, " + ")?;
-            std::fmt::Debug::fmt(&self.bounds, f)
+            b.fmt(f)?;
         }
-    }
-}
-
-impl<'tcx> std::fmt::Display for UserTypeKind<'tcx> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Ty(arg0) => {
-                ty::print::with_no_trimmed_paths!(write!(f, "Ty({})", arg0))
-            }
-            Self::TypeOf(arg0, arg1) => write!(f, "TypeOf({:?}, {:?})", arg0, arg1),
-        }
+        Ok(())
     }
 }
 
 /// Information on a pattern incompatible with Rust 2024, for use by the error/migration diagnostic
 /// emitted during THIR construction.
-#[derive(TyEncodable, TyDecodable, Debug, HashStable)]
+#[derive(TyEncodable, TyDecodable, Debug, StableHash)]
 pub struct Rust2024IncompatiblePatInfo {
     /// Labeled spans for `&`s, `&mut`s, and binding modifiers incompatible with Rust 2024.
     pub primary_labels: Vec<(Span, String)>,

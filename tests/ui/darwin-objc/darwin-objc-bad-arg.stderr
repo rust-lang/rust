@@ -3,12 +3,22 @@ error: attribute value must be a literal
    |
 LL |     objc::class!(s);
    |                  ^
+   |
+help: you might have meant to write a string literal
+   |
+LL |     objc::class!("s");
+   |                  + +
 
 error: attribute value must be a literal
   --> $DIR/darwin-objc-bad-arg.rs:15:18
    |
 LL |     objc::class!(NSObject);
    |                  ^^^^^^^^
+   |
+help: you might have meant to write a string literal
+   |
+LL |     objc::class!("NSObject");
+   |                  +        +
 
 error: `objc::class!` expected a string literal
   --> $DIR/darwin-objc-bad-arg.rs:18:18
@@ -27,12 +37,22 @@ error: attribute value must be a literal
    |
 LL |     objc::selector!(s);
    |                     ^
+   |
+help: you might have meant to write a string literal
+   |
+LL |     objc::selector!("s");
+   |                     + +
 
 error: attribute value must be a literal
   --> $DIR/darwin-objc-bad-arg.rs:28:21
    |
 LL |     objc::selector!(alloc);
    |                     ^^^^^
+   |
+help: you might have meant to write a string literal
+   |
+LL |     objc::selector!("alloc");
+   |                     +     +
 
 error: `objc::selector!` expected a string literal
   --> $DIR/darwin-objc-bad-arg.rs:31:21

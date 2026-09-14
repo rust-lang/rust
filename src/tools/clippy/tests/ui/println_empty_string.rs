@@ -1,4 +1,5 @@
-#![allow(clippy::match_single_binding, clippy::unnecessary_trailing_comma)]
+#![warn(clippy::println_empty_string)]
+#![expect(clippy::match_single_binding, clippy::nonstandard_macro_braces)]
 
 fn main() {
     println!();
@@ -40,6 +41,31 @@ fn issue_16167() {
 
     match "a" {
         _ => eprintln!(""	 ,), // tab and space between "" and comma
+        //~^ println_empty_string
+    }
+}
+
+#[rustfmt::skip]
+fn issue_16843() {
+    println!{""};
+    //~^ println_empty_string
+
+    println![""];
+    //~^ println_empty_string
+
+    eprintln!{""};
+    //~^ println_empty_string
+
+    eprintln![""];
+    //~^ println_empty_string
+
+    match "a" {
+        _ => println!{""},
+        //~^ println_empty_string
+    }
+
+    match "a" {
+        _ => println![""],
         //~^ println_empty_string
     }
 }

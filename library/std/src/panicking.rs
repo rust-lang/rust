@@ -9,7 +9,8 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use core::panic::{Location, PanicPayload};
+use alloc::panicking::PanicPayload;
+use core::panic::Location;
 
 // make sure to use the stderr output configured
 // by libtest in the real copy of std
@@ -53,17 +54,14 @@ pub static EMPTY_PANIC: fn(&'static str) -> ! =
 //
 // One day this may look a little less ad-hoc with the compiler helping out to
 // hook up these functions, but it is not this day!
-#[allow(improper_ctypes)]
-unsafe extern "C" {
-    #[rustc_std_internal_symbol]
-    fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
-}
-
 unsafe extern "Rust" {
+    #[rustc_std_internal_symbol]
+    fn __rust_panic_cleanup(payload: *mut u8) -> Box<dyn Any + Send + 'static>;
+
     /// `PanicPayload` lazily performs allocation only when needed (this avoids
     /// allocations when using the "abort" panic runtime).
     #[rustc_std_internal_symbol]
-    fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32;
+    safe fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32;
 }
 
 /// This function is called by the panic runtime if FFI code catches a Rust
@@ -71,7 +69,7 @@ unsafe extern "Rust" {
 /// with our panic count.
 #[cfg(not(test))]
 #[rustc_std_internal_symbol]
-extern "C" fn __rust_drop_panic() -> ! {
+fn __rust_drop_panic() -> ! {
     rtabort!("Rust panics must be rethrown");
 }
 
@@ -79,7 +77,7 @@ extern "C" fn __rust_drop_panic() -> ! {
 /// object which does not correspond to a Rust panic.
 #[cfg(not(test))]
 #[rustc_std_internal_symbol]
-extern "C" fn __rust_foreign_exception() -> ! {
+fn __rust_foreign_exception() -> ! {
     rtabort!("Rust cannot catch foreign exceptions");
 }
 
@@ -177,7 +175,6 @@ pub fn set_hook(hook: Box<dyn Fn(&PanicHookInfo<'_>) + 'static + Sync + Send>) {
 ///
 /// panic!("Normal panic");
 /// ```
-#[must_use]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub fn take_hook() -> Box<dyn Fn(&PanicHookInfo<'_>) + 'static + Sync + Send> {
     if thread::panicking() {
@@ -415,6 +412,7 @@ pub mod panic_count {
     //
     // This also updates thread-local state to keep track of whether a panic
     // hook is currently executing.
+    #[must_use = "MustAbort may not be ignored"]
     pub fn increase(run_panic_hook: bool) -> Option<MustAbort> {
         let global_count = GLOBAL_PANIC_COUNT.fetch_add(1, Ordering::Relaxed);
         if global_count & ALWAYS_ABORT_FLAG != 0 {
@@ -530,7 +528,6 @@ pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any +
     // method of calling a catch panic whilst juggling ownership.
     let mut data = Data { f: ManuallyDrop::new(f) };
 
-    let data_ptr = (&raw mut data) as *mut u8;
     // SAFETY:
     //
     // Access to the union's fields: this is `std` and we know that the `catch_unwind`
@@ -541,10 +538,10 @@ pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any +
     // - `do_catch`, the second argument, can be called with the `data_ptr` as well.
     // See their safety preconditions for more information
     unsafe {
-        return if intrinsics::catch_unwind(do_call::<F, R>, data_ptr, do_catch::<F, R>) == 0 {
-            Ok(ManuallyDrop::into_inner(data.r))
-        } else {
+        return if intrinsics::catch_unwind(do_call, &raw mut data, do_catch) {
             Err(ManuallyDrop::into_inner(data.p))
+        } else {
+            Ok(ManuallyDrop::into_inner(data.r))
         };
     }
 
@@ -559,7 +556,7 @@ pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any +
         // the panic handler `__rust_panic_cleanup`. As such we can only
         // assume it returns the correct thing for `Box::from_raw` to work
         // without undefined behavior.
-        let obj = unsafe { Box::from_raw(__rust_panic_cleanup(payload)) };
+        let obj = unsafe { __rust_panic_cleanup(payload) };
         panic_count::decrease();
         obj
     }
@@ -568,17 +565,12 @@ pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any +
     // data must be non-NUL, correctly aligned, and a pointer to a `Data<F, R>`
     // Its must contains a valid `f` (type: F) value that can be use to fill
     // `data.r`.
-    //
-    // This function cannot be marked as `unsafe` because `intrinsics::catch_unwind`
-    // expects normal function pointers.
     #[inline]
-    fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
+    unsafe fn do_call<F: FnOnce() -> R, R>(data: *mut Data<F, R>) {
         // SAFETY: this is the responsibility of the caller, see above.
         unsafe {
-            let data = data as *mut Data<F, R>;
-            let data = &mut (*data);
-            let f = ManuallyDrop::take(&mut data.f);
-            data.r = ManuallyDrop::new(f());
+            let f = ManuallyDrop::take(&mut (*data).f);
+            (*data).r = ManuallyDrop::new(f());
         }
     }
 
@@ -590,22 +582,17 @@ pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any +
     // data must be non-NUL, correctly aligned, and a pointer to a `Data<F, R>`
     // Since this uses `cleanup` it also hinges on a correct implementation of
     // `__rustc_panic_cleanup`.
-    //
-    // This function cannot be marked as `unsafe` because `intrinsics::catch_unwind`
-    // expects normal function pointers.
     #[inline]
     #[rustc_nounwind] // `intrinsic::catch_unwind` requires catch fn to be nounwind
-    fn do_catch<F: FnOnce() -> R, R>(data: *mut u8, payload: *mut u8) {
+    unsafe fn do_catch<F: FnOnce() -> R, R>(data: *mut Data<F, R>, payload: *mut u8) {
         // SAFETY: this is the responsibility of the caller, see above.
         //
         // When `__rustc_panic_cleaner` is correctly implemented we can rely
         // on `obj` being the correct thing to pass to `data.p` (after wrapping
         // in `ManuallyDrop`).
         unsafe {
-            let data = data as *mut Data<F, R>;
-            let data = &mut (*data);
             let obj = cleanup(payload);
-            data.p = ManuallyDrop::new(obj);
+            (*data).p = ManuallyDrop::new(obj);
         }
     }
 }
@@ -638,13 +625,13 @@ pub fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
         }
     }
 
-    unsafe impl PanicPayload for FormatStringPayload<'_> {
-        fn take_box(&mut self) -> *mut (dyn Any + Send) {
+    impl PanicPayload for FormatStringPayload<'_> {
+        fn take_box(&mut self) -> Box<dyn Any + Send> {
             // We do two allocations here, unfortunately. But (a) they're required with the current
             // scheme, and (b) we don't handle panic + OOM properly anyway (see comment in
             // begin_panic below).
             let contents = mem::take(self.fill());
-            Box::into_raw(Box::new(contents))
+            Box::new(contents)
         }
 
         fn get(&mut self) -> &(dyn Any + Send) {
@@ -664,9 +651,9 @@ pub fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
 
     struct StaticStrPayload(&'static str);
 
-    unsafe impl PanicPayload for StaticStrPayload {
-        fn take_box(&mut self) -> *mut (dyn Any + Send) {
-            Box::into_raw(Box::new(self.0))
+    impl PanicPayload for StaticStrPayload {
+        fn take_box(&mut self) -> Box<dyn Any + Send> {
+            Box::new(self.0)
         }
 
         fn get(&mut self) -> &(dyn Any + Send) {
@@ -726,18 +713,17 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
         inner: Option<A>,
     }
 
-    unsafe impl<A: Send + 'static> PanicPayload for Payload<A> {
-        fn take_box(&mut self) -> *mut (dyn Any + Send) {
+    impl<A: Send + 'static> PanicPayload for Payload<A> {
+        fn take_box(&mut self) -> Box<dyn Any + Send> {
             // Note that this should be the only allocation performed in this code path. Currently
             // this means that panic!() on OOM will invoke this code path, but then again we're not
             // really ready for panic on OOM anyway. If we do start doing this, then we should
             // propagate this allocation to be performed in the parent of this thread instead of the
             // thread that's panicking.
-            let data = match self.inner.take() {
+            match self.inner.take() {
                 Some(a) => Box::new(a) as Box<dyn Any + Send>,
                 None => process::abort(),
-            };
-            Box::into_raw(data)
+            }
         }
 
         fn get(&mut self) -> &(dyn Any + Send) {
@@ -786,7 +772,7 @@ fn payload_as_str(payload: &dyn Any) -> &str {
 #[optimize(size)]
 fn panic_with_hook(
     payload: &mut dyn PanicPayload,
-    location: &Location<'_>,
+    location: &'static Location<'static>,
     can_unwind: bool,
     force_no_backtrace: bool,
 ) -> ! {
@@ -854,13 +840,24 @@ fn panic_with_hook(
 /// It just forwards the payload to the panic runtime.
 #[cfg_attr(panic = "immediate-abort", inline)]
 pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
-    panic_count::increase(false);
+    if let Some(must_abort) = panic_count::increase(false) {
+        match must_abort {
+            panic_count::MustAbort::PanicInHook => {
+                rtprintpanic!("thread panicked while processing panic. aborting.\n");
+            }
+            panic_count::MustAbort::AlwaysAbort => {
+                rtprintpanic!("aborting due to panic\n");
+            }
+        }
+
+        crate::process::abort();
+    }
 
     struct RewrapBox(Box<dyn Any + Send>);
 
-    unsafe impl PanicPayload for RewrapBox {
-        fn take_box(&mut self) -> *mut (dyn Any + Send) {
-            Box::into_raw(mem::replace(&mut self.0, Box::new(())))
+    impl PanicPayload for RewrapBox {
+        fn take_box(&mut self) -> Box<dyn Any + Send> {
+            mem::replace(&mut self.0, Box::new(()))
         }
 
         fn get(&mut self) -> &(dyn Any + Send) {
@@ -883,7 +880,7 @@ pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
 #[cfg(not(panic = "immediate-abort"))]
 fn rust_panic(msg: &mut dyn PanicPayload) -> ! {
-    let code = unsafe { __rust_start_panic(msg) };
+    let code = __rust_start_panic(msg);
     rtabort!("failed to initiate panic, error {code}")
 }
 

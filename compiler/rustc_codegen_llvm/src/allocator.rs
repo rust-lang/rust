@@ -99,9 +99,9 @@ pub(crate) unsafe fn codegen(
     );
 
     if tcx.sess.opts.debuginfo != DebugInfo::None {
-        let dbg_cx = debuginfo::CodegenUnitDebugContext::new(cx.llmod);
+        let dbg_cx = debuginfo::CodegenUnitDebugContext::new(cx.llmod, tcx.sess);
         debuginfo::metadata::build_compile_unit_di_node(tcx, module_name, &dbg_cx);
-        dbg_cx.finalize(tcx.sess);
+        dbg_cx.finalize();
     }
 }
 
@@ -125,7 +125,7 @@ fn create_wrapper_function(
         ty,
     );
 
-    llfn_attrs_from_instance(cx, tcx, llfn, attrs, None);
+    llfn_attrs_from_instance(cx, tcx, llfn, attrs, None, None);
 
     let no_return = if no_return {
         // -> ! DIFlagNoReturn
@@ -135,6 +135,17 @@ fn create_wrapper_function(
     } else {
         None
     };
+
+    if tcx.sess.target.is_like_gpu {
+        // Conservatively apply convergent to all functions in case they may call
+        // a convergent function. Rely on LLVM to optimize away the unnecessary
+        // convergent attributes.
+        attributes::apply_to_llfn(
+            llfn,
+            llvm::AttributePlace::Function,
+            &[llvm::AttributeKind::Convergent.create_attr(cx.llcx)],
+        );
+    }
 
     let llbb = unsafe { llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, c"entry".as_ptr()) };
     let mut bx = SBuilder::build(&cx, llbb);

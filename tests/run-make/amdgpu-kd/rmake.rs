@@ -5,6 +5,7 @@
 
 //@ needs-llvm-components: amdgpu
 //@ needs-rust-lld
+//@ ignore-backends: gcc
 
 use run_make_support::targets::is_windows_gnu;
 use run_make_support::{llvm_readobj, rustc};

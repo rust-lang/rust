@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ test-mir-pass: SimplifyLocals-before-const-prop
 
 #![feature(thread_local)]

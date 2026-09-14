@@ -1,5 +1,4 @@
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 mod default_param {
     pub trait Trait<T = u32> {

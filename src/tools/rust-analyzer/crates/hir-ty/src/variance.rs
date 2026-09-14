@@ -13,20 +13,20 @@
 //! by the next salsa version. If not, we will likely have to adapt and go with the rustc approach
 //! while installing firewall per item queries to prevent invalidation issues.
 
-use hir_def::{AdtId, GenericDefId, GenericParamId, VariantId, signatures::StructFlags};
-use rustc_ast_ir::Mutability;
-use rustc_type_ir::{
-    Variance,
-    inherent::{AdtDef, IntoKind},
+use hir_def::{
+    AdtId, GenericDefId, GenericParamId, VariantId,
+    signatures::{StructFlags, StructSignature},
 };
+use rustc_ast_ir::Mutability;
+use rustc_type_ir::{Variance, inherent::IntoKind};
 use stdx::never;
 
 use crate::{
     db::HirDatabase,
     generics::{Generics, generics},
     next_solver::{
-        Const, ConstKind, DbInterner, ExistentialPredicate, GenericArgKind, GenericArgs, Region,
-        RegionKind, StoredVariancesOf, TermKind, Ty, TyKind, VariancesOf,
+        Const, ConstKind, DbInterner, ExistentialPredicate, GenericArgKind, GenericArgs, Pattern,
+        PatternKind, Region, RegionKind, StoredVariancesOf, TermKind, Ty, TyKind, VariancesOf,
     },
 };
 
@@ -45,22 +45,24 @@ fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariance
         GenericDefId::FunctionId(_) => (),
         GenericDefId::AdtId(adt) => {
             if let AdtId::StructId(id) = adt {
-                let flags = &db.struct_signature(id).flags;
-                let types = || crate::next_solver::default_types(db);
+                let flags = &StructSignature::of(db, id).flags;
+                let types = || crate::next_solver::default_types();
                 if flags.contains(StructFlags::IS_UNSAFE_CELL) {
                     return types().one_invariant.store();
-                } else if flags.contains(StructFlags::IS_PHANTOM_DATA) {
+                } else if flags.intersects(
+                    StructFlags::IS_PHANTOM_DATA | StructFlags::IS_COVARIANT_UNSAFE_CELL,
+                ) {
                     return types().one_covariant.store();
                 }
             }
         }
-        _ => return VariancesOf::empty(DbInterner::new_no_crate(db)).store(),
+        _ => return VariancesOf::empty().store(),
     }
 
     let generics = generics(db, def);
-    let count = generics.len();
+    let count = generics.len(true);
     if count == 0 {
-        return VariancesOf::empty(DbInterner::new_no_crate(db)).store();
+        return VariancesOf::empty().store();
     }
     let variances =
         Context { generics, variances: vec![Variance::Bivariant; count].into_boxed_slice(), db }
@@ -106,14 +108,14 @@ pub(crate) fn variances_of_cycle_initial(
 ) -> StoredVariancesOf {
     let interner = DbInterner::new_no_crate(db);
     let generics = generics(db, def);
-    let count = generics.len();
+    let count = generics.len(true);
 
     VariancesOf::new_from_iter(interner, std::iter::repeat_n(Variance::Bivariant, count)).store()
 }
 
 struct Context<'db> {
     db: &'db dyn HirDatabase,
-    generics: Generics,
+    generics: Generics<'db>,
     variances: Box<[Variance]>,
 }
 
@@ -126,7 +128,7 @@ impl<'db> Context<'db> {
                 let mut add_constraints_from_variant = |variant| {
                     for (_, field) in db.field_types(variant).iter() {
                         self.add_constraints_from_ty(
-                            field.get().instantiate_identity(),
+                            field.ty().instantiate_identity().skip_norm_wip(),
                             Variance::Covariant,
                         );
                     }
@@ -135,7 +137,7 @@ impl<'db> Context<'db> {
                     AdtId::StructId(s) => add_constraints_from_variant(VariantId::StructId(s)),
                     AdtId::UnionId(u) => add_constraints_from_variant(VariantId::UnionId(u)),
                     AdtId::EnumId(e) => {
-                        e.enum_variants(db).variants.iter().for_each(|&(variant, _, _)| {
+                        e.enum_variants(db).variants.values().for_each(|&(variant, _)| {
                             add_constraints_from_variant(VariantId::EnumVariantId(variant))
                         });
                     }
@@ -152,7 +154,7 @@ impl<'db> Context<'db> {
 
         // Const parameters are always invariant.
         // Make all const parameters invariant.
-        for (idx, param) in self.generics.iter_id().enumerate() {
+        for (idx, param) in self.generics.iter_id(false).enumerate() {
             if let GenericParamId::ConstParamId(_) = param {
                 variances[idx] = Variance::Invariant;
             }
@@ -211,9 +213,9 @@ impl<'db> Context<'db> {
                 }
             }
             TyKind::Adt(def, args) => {
-                self.add_constraints_from_args(def.def_id().0.into(), args, variance);
+                self.add_constraints_from_args(def.def_id().into(), args, variance);
             }
-            TyKind::Alias(_, alias) => {
+            TyKind::Alias(alias) => {
                 // FIXME: Probably not correct wrt. opaques.
                 self.add_constraints_from_invariant_args(alias.args);
             }
@@ -249,13 +251,31 @@ impl<'db> Context<'db> {
                 // we encounter this when walking the trait references for object
                 // types, where we use Error as the Self type
             }
+            TyKind::Pat(typ, pat) => {
+                self.add_constraints_from_pat(pat);
+                self.add_constraints_from_ty(typ, variance);
+            }
             TyKind::Bound(..) => {}
             TyKind::CoroutineWitness(..)
             | TyKind::Placeholder(..)
             | TyKind::Infer(..)
-            | TyKind::UnsafeBinder(..)
-            | TyKind::Pat(..) => {
+            | TyKind::UnsafeBinder(..) => {
                 never!("unexpected type encountered in variance inference: {:?}", ty)
+            }
+        }
+    }
+
+    fn add_constraints_from_pat(&mut self, pat: Pattern<'db>) {
+        match pat.kind() {
+            PatternKind::Range { start, end } => {
+                self.add_constraints_from_const(start);
+                self.add_constraints_from_const(end);
+            }
+            PatternKind::NotNull => {}
+            PatternKind::Or(patterns) => {
+                for pat in patterns {
+                    self.add_constraints_from_pat(pat)
+                }
             }
         }
     }
@@ -415,6 +435,7 @@ struct Covariant<A> {
         check(
             r#"
 //- minicore: cell
+#![feature(lang_items)]
 
 use core::cell::UnsafeCell;
 
@@ -443,6 +464,10 @@ enum Enum<A,B,C> { //~ ERROR [A: +, B: -, C: o]
     Bar(Contravariant<B>),`
     Zed(Covariant<C>,Contravariant<C>)
 }
+
+#[repr(transparent)]
+#[lang = "covariant_unsafe_cell"]
+pub struct CovariantUnsafeCell<T: ?Sized>(UnsafeCell<T>); //~ ERROR [T: +]
 "#,
             expect![[r#"
                 InvariantMut['a: covariant, A: invariant, B: invariant]
@@ -451,6 +476,7 @@ enum Enum<A,B,C> { //~ ERROR [A: +, B: -, C: o]
                 Covariant[A: covariant]
                 Contravariant[A: contravariant]
                 Enum[A: covariant, B: contravariant, C: invariant]
+                CovariantUnsafeCell[T: covariant]
             "#]],
         );
     }
@@ -476,7 +502,6 @@ struct Other<'a> {
 
     #[test]
     fn rustc_test_variance_associated_consts() {
-        // FIXME: Should be invariant
         check(
             r#"
 trait Trait {
@@ -488,7 +513,7 @@ struct Foo<T: Trait> { //~ ERROR [T: o]
 }
 "#,
             expect![[r#"
-                Foo[T: bivariant]
+                Foo[T: invariant]
             "#]],
         );
     }
@@ -923,7 +948,7 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
                     res,
                     "{name}[{}]\n",
                     generics(&db, def)
-                        .iter()
+                        .iter(false)
                         .map(|(_, param)| match param {
                             GenericParamDataRef::TypeParamData(type_param_data) => {
                                 type_param_data.name.as_ref().unwrap()

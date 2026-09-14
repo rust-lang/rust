@@ -106,8 +106,8 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
                 stack.push(ty.into());
                 stack.push(lt.into());
             }
-            ty::Alias(_, data) => {
-                stack.extend(data.args.iter().rev());
+            ty::Alias(_, alias) => {
+                stack.extend(alias.args.iter().rev());
             }
             ty::Dynamic(obj, lt) => {
                 stack.push(lt.into());
@@ -135,9 +135,11 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
             | ty::Closure(_, args)
             | ty::CoroutineClosure(_, args)
             | ty::Coroutine(_, args)
-            | ty::CoroutineWitness(_, args)
-            | ty::FnDef(_, args) => {
+            | ty::CoroutineWitness(_, args) => {
                 stack.extend(args.iter().rev());
+            }
+            ty::FnDef(_, args) => {
+                stack.extend(args.no_bound_vars().unwrap().iter().rev());
             }
             ty::Tuple(ts) => stack.extend(ts.iter().rev().map(|ty| ty.into())),
             ty::FnPtr(sig_tys, _hdr) => {
@@ -160,7 +162,7 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
             ty::ConstKind::Value(cv) => stack.push(cv.ty().into()),
 
             ty::ConstKind::Expr(expr) => stack.extend(expr.args().iter().rev()),
-            ty::ConstKind::Unevaluated(ct) => {
+            ty::ConstKind::Alias(_, ct) => {
                 stack.extend(ct.args.iter().rev());
             }
         },

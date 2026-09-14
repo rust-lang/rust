@@ -1,10 +1,46 @@
 use super::*;
 
 #[test]
+#[should_panic(expected = "bucket index out of range")]
+fn bucket_index_n_buckets() {
+    BucketIndex::from_raw(BUCKETS);
+}
+
+#[test]
+fn bucket_index_round_trip() {
+    for i in 0..BUCKETS {
+        assert_eq!(BucketIndex::from_raw(i).to_usize(), i);
+    }
+}
+
+#[test]
+fn bucket_index_iter_all_len() {
+    let len = BucketIndex::iter_all().len();
+    assert_eq!(len, BUCKETS);
+
+    let len = BucketIndex::iter_all().collect::<Vec<_>>().len();
+    assert_eq!(len, BUCKETS);
+
+    let len = BucketIndex::enumerate_buckets(&[(); BUCKETS]).len();
+    assert_eq!(len, BUCKETS);
+}
+
+#[test]
+fn bucket_index_capacity() {
+    // Check that the combined capacity of all buckets is 2^32 slots.
+    // That's 1 larger than `u32::MAX`, so store the total as a `u64`.
+    let mut total = 0u64;
+    for i in BucketIndex::iter_all() {
+        total += u64::try_from(i.capacity()).unwrap();
+    }
+    assert_eq!(total, 1 << 32);
+}
+
+#[test]
 #[cfg(not(miri))]
-fn vec_cache_empty() {
+fn vec_cache_empty_exhaustive() {
     let cache: VecCache<u32, u32, u32> = VecCache::default();
-    for key in 0..u32::MAX {
+    for key in 0..=u32::MAX {
         assert!(cache.lookup(&key).is_none());
     }
 }
@@ -70,8 +106,8 @@ fn slot_entries_table() {
 
 #[test]
 fn bucket_entries_matches() {
-    for i in 0..BUCKETS {
-        assert_eq!(SlotIndex { bucket_idx: i, index_in_bucket: 0 }.entries(), ENTRIES_BY_BUCKET[i]);
+    for i in BucketIndex::iter_all() {
+        assert_eq!(i.capacity(), ENTRIES_BY_BUCKET[i]);
     }
 }
 
@@ -84,13 +120,13 @@ fn slot_index_exhaustive() {
     }
     let slot_idx = SlotIndex::from_index(0);
     assert_eq!(slot_idx.index_in_bucket, 0);
-    assert_eq!(slot_idx.bucket_idx, 0);
+    assert_eq!(slot_idx.bucket_idx, BucketIndex::Bucket00);
     let mut prev = slot_idx;
     for idx in 1..=u32::MAX {
         let slot_idx = SlotIndex::from_index(idx);
 
         // SAFETY: Ensure indices don't go out of bounds of buckets.
-        assert!(slot_idx.index_in_bucket < slot_idx.entries());
+        assert!(slot_idx.index_in_bucket < slot_idx.bucket_idx.capacity());
 
         if prev.bucket_idx == slot_idx.bucket_idx {
             assert_eq!(prev.index_in_bucket + 1, slot_idx.index_in_bucket);
@@ -98,8 +134,8 @@ fn slot_index_exhaustive() {
             assert_eq!(slot_idx.index_in_bucket, 0);
         }
 
-        assert_eq!(buckets[slot_idx.bucket_idx], slot_idx.entries() as u32);
-        assert_eq!(ENTRIES_BY_BUCKET[slot_idx.bucket_idx], slot_idx.entries(), "{}", idx);
+        assert_eq!(buckets[slot_idx.bucket_idx], slot_idx.bucket_idx.capacity() as u32);
+        assert_eq!(ENTRIES_BY_BUCKET[slot_idx.bucket_idx], slot_idx.bucket_idx.capacity(), "{idx}",);
 
         prev = slot_idx;
     }

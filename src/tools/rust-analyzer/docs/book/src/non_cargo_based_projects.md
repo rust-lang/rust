@@ -237,8 +237,8 @@ There are four ways to feed `rust-project.json` to rust-analyzer:
 -   Use
     [`"rust-analyzer.workspace.discoverConfig": … }`](./configuration.md#workspace.discoverConfig)
     to specify a workspace discovery command to generate project descriptions
-    on-the-fly. Please note that the command output is message-oriented and must
-    output JSONL [as described in the configuration docs](./configuration.md#workspace.discoverConfig).
+    on-the-fly. Please note that the command's stdout is message-oriented and
+    must output JSONL [as described in the configuration docs](./configuration.md#workspace.discoverConfig).
 
 -   Place `rust-project.json` file at the root of the project, and
     rust-analyzer will discover it.

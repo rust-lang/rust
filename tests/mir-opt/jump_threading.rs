@@ -2,7 +2,7 @@
 //@ compile-flags: -Zmir-enable-passes=+Inline
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
-#![feature(try_trait_v2)]
+#![feature(try_trait_v2, pattern_type_macro, pattern_types)]
 #![feature(custom_mir, core_intrinsics, rustc_attrs)]
 
 use std::intrinsics::mir::*;
@@ -59,7 +59,7 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK:     _0 = Result::<i32, i32>::Ok(
     // CHECK:     goto -> bb4;
     // CHECK: bb3: {
-    // CHECK:     {{_.*}} = copy (([[controlflow]] as Break).0: std::result::Result<std::convert::Infallible, i32>);
+    // CHECK:     {{_.*}} = copy (([[controlflow]] as Break).0: std::result::Result<!, i32>);
     // CHECK:     _0 = Result::<i32, i32>::Err(
     // CHECK:     goto -> bb4;
     // CHECK: bb4: {
@@ -68,11 +68,11 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK:     switchInt(move _5) -> [0: bb2, 1: bb3, otherwise: bb1];
     // CHECK: bb6: {
     // CHECK:     {{_.*}} = move (([[x]] as Err).0: i32);
-    // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Break(
+    // CHECK:     [[controlflow]] = ControlFlow::<Result<!, i32>, i32>::Break(
     // CHECK:     goto -> bb8;
     // CHECK: bb7: {
     // CHECK:     {{_.*}} = move (([[x]] as Ok).0: i32);
-    // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Continue(
+    // CHECK:     [[controlflow]] = ControlFlow::<Result<!, i32>, i32>::Continue(
     // CHECK:     goto -> bb9;
     // CHECK: bb8: {
     // CHECK:     goto -> bb3;
@@ -311,9 +311,8 @@ fn duplicate_chain(x: bool) -> u8 {
     }
 }
 
-#[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
-struct NonZeroUsize(usize);
+struct NonZeroUsize(std::pat::pattern_type!(usize is 1..=usize::MAX));
 
 /// Verify that we correctly discard threads that may mutate a discriminant by aliasing.
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
@@ -326,8 +325,9 @@ fn mutate_discriminant() -> u8 {
         let x: Option<NonZeroUsize>;
         {
             SetDiscriminant(x, 1);
+            let y = CastTransmute::<_, std::pat::pattern_type!(usize is 1..=usize::MAX)>(0_usize);
             // This assignment overwrites the niche in which the discriminant is stored.
-            place!(Field(Field(Variant(x, 1), 0), 0)) = 0_usize;
+            place!(Field(Field(Variant(x, 1), 0), 0)) = y;
             // So we cannot know the value of this discriminant.
             let a = Discriminant(x);
             match a {

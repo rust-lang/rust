@@ -17,7 +17,6 @@ labels_blocking_approval = [
     "S-waiting-on-MCP",
     "S-waiting-on-t-lang",
     "S-waiting-on-t-compiler",
-    "S-waiting-on-t-libs-api",
     "S-waiting-on-t-libs",
     "S-waiting-on-t-types",
     "S-waiting-on-t-opsem",
@@ -26,6 +25,15 @@ labels_blocking_approval = [
     "S-waiting-on-t-clippy",
     # PR manually set to blocked
     "S-blocked",
+    # Needs a Crater run before being approved
+    "needs-crater",
+    # Needs a formal decision to be made
+    "needs-rfc",
+    "needs-fcp",
+    "needs-acp",
+    "needs-mcp",
+    # A PR in the Rust reference must be done first
+    "needs-reference-pr"
 ]
 
 # If CI runs quicker than this duration, consider it to be a failure
@@ -68,3 +76,32 @@ auto_build_failed = [
     "-S-waiting-on-crater",
     "-S-waiting-on-team",
 ]
+
+# Enable management of EC2 self-hosted runners
+[ec2_runners]
+runner_group_id = 8
+label_prefix = "ec2"
+region = "us-east-2"
+images = {
+    "x86_64ami" = "latest-gha-runner-ami",
+    "arm64ami" = "latest-gha-runner-ami-arm64",
+}
+jit_runner = "organization"
+# Prices per hour of on-demand compute in us-east-2 (as of Aug 2026)
+# See build speed estimates in https://github.com/rust-lang/simpleinfra/issues/1132
+allowed_instances = [
+    # AMD Zen 5 (x86_64)
+    "m8a.2xlarge",  # $0.48688/hr
+    "c8a.4xlarge",  # $0.86216/hr
+    "c8a.8xlarge",  # $1.72432/hr
+    "c8a.12xlarge", # $2.58648/hr
+
+    # Graviton (aarch64)
+    "m9g.2xlarge",  # $0.39136/hr
+    "c9g.4xlarge",  # $0.69312/hr
+    "c9g.8xlarge",  # $1.38624/hr
+    "c9g.12xlarge", # $2.07936/hr
+]
+
+# Enable unrolling of rollup member PRs after rollup merge
+[unroll]

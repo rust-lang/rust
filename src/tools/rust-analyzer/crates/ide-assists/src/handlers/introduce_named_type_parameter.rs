@@ -1,6 +1,6 @@
 use ide_db::syntax_helpers::suggest_name;
 use itertools::Itertools;
-use syntax::ast::{self, AstNode, HasGenericParams, HasName, syntax_factory::SyntaxFactory};
+use syntax::ast::{self, AstNode, HasGenericParams, HasName};
 
 use crate::{AssistContext, AssistId, Assists};
 
@@ -17,21 +17,21 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 pub(crate) fn introduce_named_type_parameter(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let impl_trait_type = ctx.find_node_at_offset::<ast::ImplTraitType>()?;
     let param = impl_trait_type.syntax().ancestors().find_map(ast::Param::cast)?;
     let fn_ = param.syntax().ancestors().nth(2).and_then(ast::Fn::cast)?;
     let type_bound_list = impl_trait_type.type_bound_list()?;
 
-    let make = SyntaxFactory::with_mappings();
     let target = fn_.syntax().text_range();
     acc.add(
         AssistId::refactor_rewrite("introduce_named_type_parameter"),
         "Replace impl trait with type parameter",
         target,
         |builder| {
-            let mut editor = builder.make_editor(fn_.syntax());
+            let editor = builder.make_editor(fn_.syntax());
+            let make = editor.make();
 
             let existing_names = match fn_.generic_param_list() {
                 Some(generic_param_list) => generic_param_list
@@ -48,7 +48,8 @@ pub(crate) fn introduce_named_type_parameter(
             )
             .for_impl_trait_as_generic(&impl_trait_type);
 
-            let type_param = make.type_param(make.name(&type_param_name), Some(type_bound_list));
+            let type_bound_list = non_default_bounds(&type_bound_list).then_some(type_bound_list);
+            let type_param = make.type_param(make.name(&type_param_name), type_bound_list);
             let new_ty = make.ty(&type_param_name);
 
             editor.replace(impl_trait_type.syntax(), new_ty.syntax());
@@ -58,10 +59,13 @@ pub(crate) fn introduce_named_type_parameter(
                 editor.add_annotation(type_param.syntax(), builder.make_tabstop_before(cap));
             }
 
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
+}
+
+fn non_default_bounds(bounds: &ast::TypeBoundList) -> bool {
+    bounds.bounds().collect_array().is_none_or(|[bound]| bound.syntax().text() != "Sized")
 }
 
 #[cfg(test)]
@@ -166,6 +170,24 @@ fn foo<
             introduce_named_type_parameter,
             r#"fn foo(bar: $0impl Foo + Bar) {}"#,
             r#"fn foo<$0F: Foo + Bar>(bar: F) {}"#,
+        );
+    }
+
+    #[test]
+    fn replace_impl_default_bounds() {
+        check_assist(
+            introduce_named_type_parameter,
+            r#"fn foo(bar: $0impl Sized) {}"#,
+            r#"fn foo<$0S>(bar: S) {}"#,
+        );
+    }
+
+    #[test]
+    fn replace_impl_question_bounds() {
+        check_assist(
+            introduce_named_type_parameter,
+            r#"fn foo(bar: &$0impl ?Sized) {}"#,
+            r#"fn foo<$0S: ?Sized>(bar: &S) {}"#,
         );
     }
 

@@ -5,7 +5,6 @@ use ide_db::{
     defs::Definition,
     search::{SearchScope, UsageSearchResult},
 };
-use syntax::ast::syntax_factory::SyntaxFactory;
 use syntax::{
     AstNode,
     ast::{self, HasGenericParams, HasName, HasTypeBounds, Name, NameLike, PathType},
@@ -27,7 +26,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 pub(crate) fn replace_named_generic_with_impl(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     // finds `<P: AsRef<Path>>`
     let type_param = ctx.find_node_at_offset::<ast::TypeParam>()?;
@@ -35,7 +34,7 @@ pub(crate) fn replace_named_generic_with_impl(
     let type_param_name = type_param.name()?;
 
     // The list of type bounds / traits: `AsRef<Path>`
-    let type_bound_list = type_param.type_bound_list()?;
+    let type_bound_list = type_param.type_bound_list();
 
     let fn_ = type_param.syntax().ancestors().find_map(ast::Fn::cast)?;
     let param_list_text_range = fn_.param_list()?.syntax().text_range();
@@ -72,8 +71,8 @@ pub(crate) fn replace_named_generic_with_impl(
         "Replace named generic with impl trait",
         target,
         |edit| {
-            let mut editor = edit.make_editor(type_param.syntax());
-            let make = SyntaxFactory::without_mappings();
+            let editor = edit.make_editor(type_param.syntax());
+            let make = editor.make();
 
             // remove trait from generic param list
             if let Some(generic_params) = fn_.generic_param_list() {
@@ -90,6 +89,8 @@ pub(crate) fn replace_named_generic_with_impl(
                 }
             }
 
+            let type_bound_list = type_bound_list
+                .unwrap_or_else(|| make.type_bound_list([make.type_bound_text("Sized")]).unwrap());
             let new_bounds = make.impl_trait_type(type_bound_list);
             for path_type in path_types_to_replace.iter().rev() {
                 editor.replace(path_type.syntax(), new_bounds.syntax());
@@ -154,10 +155,10 @@ fn find_path_type(
 }
 
 /// Returns all usage references for the given type parameter definition.
-fn find_usages(
-    sema: &Semantics<'_, RootDatabase>,
+fn find_usages<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     fn_: &ast::Fn,
-    type_param_def: Definition,
+    type_param_def: Definition<'db>,
     file_id: EditionedFileId,
 ) -> UsageSearchResult {
     let file_range = FileRange { file_id, range: fn_.syntax().text_range() };
@@ -310,6 +311,15 @@ mod tests {
             replace_named_generic_with_impl,
             r#"fn new<A: Send, B$0: ToString, C: Debug>(a: A, b: B, c: C) -> Self {}"#,
             r#"fn new<A: Send, C: Debug>(a: A, b: impl ToString, c: C) -> Self {}"#,
+        );
+    }
+
+    #[test]
+    fn replace_generic_without_bounds() {
+        check_assist(
+            replace_named_generic_with_impl,
+            r#"fn foo<T$0>(input: T) {}"#,
+            r#"fn foo(input: impl Sized) {}"#,
         );
     }
 

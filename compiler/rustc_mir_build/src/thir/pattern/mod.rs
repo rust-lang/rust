@@ -16,7 +16,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, RangeEnd};
 use rustc_index::Idx;
 use rustc_middle::thir::{
-    Ascription, DerefPatBorrowMode, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
+    Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
 use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
@@ -29,10 +29,12 @@ use tracing::{debug, instrument};
 
 pub(crate) use self::check_match::check_match;
 use self::migration::PatMigration;
-use crate::errors::*;
+use crate::diagnostics::*;
+use crate::thir::cx::ThirBuildCx;
 
 /// Context for lowering HIR patterns to THIR patterns.
-struct PatCtxt<'tcx> {
+struct PatCtxt<'tcx, 'ptcx> {
+    upper: &'ptcx mut ThirBuildCx<'tcx>,
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
@@ -41,8 +43,9 @@ struct PatCtxt<'tcx> {
     rust_2024_migration: Option<PatMigration<'tcx>>,
 }
 
-#[instrument(level = "debug", skip(tcx, typing_env, typeck_results), ret)]
-pub(super) fn pat_from_hir<'tcx>(
+#[instrument(level = "debug", skip(upper, tcx, typing_env, typeck_results), ret)]
+pub(super) fn pat_from_hir<'tcx, 'ptcx>(
+    upper: &'ptcx mut ThirBuildCx<'tcx>,
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
@@ -51,6 +54,7 @@ pub(super) fn pat_from_hir<'tcx>(
     let_stmt_type: Option<&hir::Ty<'tcx>>,
 ) -> Box<Pat<'tcx>> {
     let mut pcx = PatCtxt {
+        upper,
         tcx,
         typing_env,
         typeck_results,
@@ -87,7 +91,7 @@ pub(super) fn pat_from_hir<'tcx>(
     thir_pat
 }
 
-impl<'tcx> PatCtxt<'tcx> {
+impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
     fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
         let adjustments: &[PatAdjustment<'tcx>] =
             self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
@@ -173,7 +177,7 @@ impl<'tcx> PatCtxt<'tcx> {
         // Lower the endpoint into a temporary `thir::Pat` that will then be
         // deconstructed to obtain the constant value and other data.
         let endpoint_pat: Box<Pat<'tcx>> = self.lower_pat_expr(pat, expr);
-        let box Pat { ref kind, extra, .. } = endpoint_pat;
+        let Pat { ref kind, extra, .. } = endpoint_pat;
 
         // Preserve any ascriptions from endpoint constants.
         if let Some(extra) = extra {
@@ -348,11 +352,6 @@ impl<'tcx> PatCtxt<'tcx> {
                 }
                 PatKind::Deref { pin, subpattern }
             }
-            hir::PatKind::Box(subpattern) => PatKind::DerefPattern {
-                subpattern: self.lower_pattern(subpattern),
-                borrow: DerefPatBorrowMode::Box,
-            },
-
             hir::PatKind::Slice(prefix, slice, suffix) => {
                 return self.slice_or_array_pattern(pat, prefix, slice, suffix);
             }
@@ -443,8 +442,10 @@ impl<'tcx> PatCtxt<'tcx> {
 
             hir::PatKind::Or(pats) => PatKind::Or { pats: self.lower_patterns(pats) },
 
-            // FIXME(guard_patterns): implement guard pattern lowering
-            hir::PatKind::Guard(pat, _) => self.lower_pattern(pat).kind,
+            hir::PatKind::Guard(pat, condition) => PatKind::Guard {
+                subpattern: self.lower_pattern(pat),
+                condition: self.upper.mirror_expr(condition),
+            },
 
             hir::PatKind::Err(guar) => PatKind::Error(guar),
         };
@@ -542,7 +543,8 @@ impl<'tcx> PatCtxt<'tcx> {
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
                     let args = match ty.kind() {
-                        ty::Adt(_, args) | ty::FnDef(_, args) => args,
+                        ty::FnDef(_, args) => args.no_bound_vars().unwrap(),
+                        ty::Adt(_, args) => args,
                         ty::Error(e) => {
                             // Avoid ICE (#50585)
                             return Box::new(Pat {
@@ -635,8 +637,7 @@ impl<'tcx> PatCtxt<'tcx> {
         let res = self.typeck_results.qpath_res(qpath, id);
 
         let (def_id, user_ty) = match res {
-            Res::Def(DefKind::Const { .. }, def_id)
-            | Res::Def(DefKind::AssocConst { .. }, def_id) => {
+            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 (def_id, self.typeck_results.user_provided_types().get(id))
             }
 
@@ -651,7 +652,19 @@ impl<'tcx> PatCtxt<'tcx> {
         let args = self.typeck_results.node_args(id);
         // FIXME(mgca): we will need to special case IACs here to have type system compatible
         // generic args, instead of how we represent them in body expressions.
-        let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
+        let c = ty::Const::new_alias(
+            self.tcx,
+            ty::IsRigid::No,
+            ty::AliasConst::new(
+                self.tcx,
+                ty::AliasConstKind::new_from_def_id(
+                    self.tcx,
+                    def_id,
+                    ty::AliasConstInherentArgsKind::Impl,
+                ),
+                args,
+            ),
+        );
         let mut pattern = self.const_to_pat(c, ty, id, span);
 
         // If this is an associated constant with an explicit user-written
@@ -696,7 +709,7 @@ impl<'tcx> PatCtxt<'tcx> {
                 // patterns to `str`, and byte-string literal patterns to `[u8; N]` or `[u8]`.
 
                 let pat_ty = self.typeck_results.node_type(pat.hir_id);
-                let lit_input = LitToConstInput { lit: lit.node, ty: pat_ty, neg: *negated };
+                let lit_input = LitToConstInput { lit: lit.node, ty: Some(pat_ty), neg: *negated };
                 let constant = const_lit_matches_ty(self.tcx, &lit.node, pat_ty, *negated)
                     .then(|| self.tcx.at(expr.span).lit_to_const(lit_input))
                     .flatten()

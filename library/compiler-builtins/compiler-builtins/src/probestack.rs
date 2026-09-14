@@ -41,7 +41,7 @@
 //! probes on any other architecture like ARM or PowerPC64. LLVM I'm sure would
 //! be more than welcome to accept such a change!
 
-#![cfg(not(feature = "mangled-names"))]
+#![cfg(feature = "unmangled-names")]
 // Windows and Cygwin already has builtins to do this.
 #![cfg(not(any(windows, target_os = "cygwin")))]
 // We only define stack probing for these architectures today.

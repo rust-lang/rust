@@ -1,9 +1,8 @@
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, HasDataLayout, Primitive, Reg, RegKind, TyAbiInterface,
-    TyAndLayout,
+    AddressSpace, Align, BackendRepr, Float, HasDataLayout, Primitive, Reg, RegKind, TyAndLayout,
 };
 
-use crate::callconv::{ArgAttribute, FnAbi, PassMode};
+use crate::callconv::{ArgAttribute, FnAbi, PassMode, TyAbiInterface};
 use crate::spec::{HasTargetSpec, RustcAbi};
 
 #[derive(PartialEq)]
@@ -33,7 +32,14 @@ where
             // https://www.angelcode.com/dev/callconv/callconv.html
             // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
             let t = cx.target_spec();
-            if t.abi_return_struct_as_int || opts.reg_struct_return {
+            if let Some(Float::F16) = fn_abi.ret.layout.complex_float(cx) {
+                // `_Complex _Float16` is returned as `<2 x half>`.
+                let kind = RegKind::Vector { hint_vector_elem: Primitive::Float(Float::F16) };
+                fn_abi.ret.cast_to(Reg { kind, size: fn_abi.ret.layout.size });
+            } else if t.abi_return_struct_as_int
+                || opts.reg_struct_return
+                || fn_abi.ret.layout.is_complex_number(cx)
+            {
                 // According to Clang, everyone but MSVC returns single-element
                 // float aggregates directly in a floating-point register.
                 if fn_abi.ret.layout.is_single_fp_element(cx) {
@@ -93,7 +99,7 @@ where
                 Ty: TyAbiInterface<'a, C> + Copy,
             {
                 match layout.backend_repr {
-                    BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) => false,
+                    BackendRepr::Scalar(_) | BackendRepr::ScalarPair { .. } => false,
                     BackendRepr::SimdVector { .. } => true,
                     BackendRepr::Memory { .. } => {
                         for i in 0..layout.fields.count() {
@@ -175,7 +181,7 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
         // At this point we know this must be a primitive of sorts.
         let unit = arg.layout.homogeneous_aggregate(cx).unwrap().unit().unwrap();
         assert_eq!(unit.size, arg.layout.size);
-        if matches!(unit.kind, RegKind::Float | RegKind::Vector) {
+        if matches!(unit.kind, RegKind::Float | RegKind::Vector { .. }) {
             continue;
         }
 
@@ -212,7 +218,7 @@ where
     if !fn_abi.ret.is_ignore() {
         let has_float = match fn_abi.ret.layout.backend_repr {
             BackendRepr::Scalar(s) => matches!(s.primitive(), Primitive::Float(_)),
-            BackendRepr::ScalarPair(s1, s2) => {
+            BackendRepr::ScalarPair { a: s1, b: s2, b_offset: _ } => {
                 matches!(s1.primitive(), Primitive::Float(_))
                     || matches!(s2.primitive(), Primitive::Float(_))
             }
@@ -226,7 +232,7 @@ where
                 // This is a single scalar that fits into an SSE register, and the target uses the
                 // SSE ABI. We prefer this over integer registers as float scalars need to be in SSE
                 // registers for float operations, so that's the best place to pass them around.
-                fn_abi.ret.cast_to(Reg { kind: RegKind::Vector, size: fn_abi.ret.layout.size });
+                fn_abi.ret.cast_to(Reg::opaque_vector(fn_abi.ret.layout.size));
             } else if fn_abi.ret.layout.size <= Primitive::Pointer(AddressSpace::ZERO).size(cx) {
                 // Same size or smaller than pointer, return in an integer register.
                 fn_abi.ret.cast_to(Reg { kind: RegKind::Integer, size: fn_abi.ret.layout.size });

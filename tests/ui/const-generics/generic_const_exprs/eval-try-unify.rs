@@ -1,7 +1,6 @@
 //@ build-pass
 
 #![feature(generic_const_exprs)]
-//~^ WARNING the feature `generic_const_exprs` is incomplete
 
 trait Generic {
     const ASSOC: usize;

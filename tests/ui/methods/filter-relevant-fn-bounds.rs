@@ -16,5 +16,5 @@ impl Wrapper {
 fn main() {
     let mut wrapper = Wrapper;
     wrapper.do_something_wrapper(|value| ());
-    //~^ ERROR expected a `FnOnce
+    //~^ ERROR expected an `FnOnce
 }

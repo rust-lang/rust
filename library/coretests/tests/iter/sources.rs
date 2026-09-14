@@ -192,3 +192,19 @@ fn test_repeat_n_soundness() {
     let _z = y;
     assert_eq!(0, *x);
 }
+
+#[test]
+fn test_repeat_n_default() {
+    #[derive(Clone)]
+    pub struct PanicOnDrop;
+
+    impl Drop for PanicOnDrop {
+        fn drop(&mut self) {
+            unreachable!()
+        }
+    }
+
+    // The default is an empty iterator, so there's never any item to drop.
+    let iter = RepeatN::<PanicOnDrop>::default();
+    assert_eq!(iter.count(), 0);
+}

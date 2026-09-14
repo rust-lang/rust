@@ -1,6 +1,6 @@
 //@ dont-require-annotations: NOTE
 
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 trait Foo: Copy + ToString {}
 

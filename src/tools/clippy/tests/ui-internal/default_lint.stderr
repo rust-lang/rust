@@ -1,5 +1,5 @@
 error: the lint `TEST_LINT_DEFAULT` has the default lint description
-  --> tests/ui-internal/default_lint.rs:18:1
+  --> tests/ui-internal/default_lint.rs:17:1
    |
 LL | / declare_tool_lint! {
 LL | |

@@ -1,6 +1,5 @@
 #![feature(default_field_values)]
-#![deny(clippy::exhaustive_enums, clippy::exhaustive_structs)]
-#![allow(unused)]
+#![warn(clippy::exhaustive_enums, clippy::exhaustive_structs)]
 
 fn main() {
     // nop

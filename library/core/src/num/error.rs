@@ -1,41 +1,45 @@
 //! Error types for conversion to integral types.
 
-use crate::convert::Infallible;
 use crate::error::Error;
 use crate::fmt;
 
 /// The error type returned when a checked integral type conversion fails.
 #[stable(feature = "try_from", since = "1.34.0")]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct TryFromIntError(pub(crate) ());
+pub struct TryFromIntError(pub(crate) IntErrorKind);
+
+impl TryFromIntError {
+    /// Outputs the detailed cause of converting an integer failing.
+    #[must_use]
+    #[unstable(feature = "try_from_int_error_kind", issue = "153978")]
+    pub const fn kind(&self) -> &IntErrorKind {
+        &self.0
+    }
+}
 
 #[stable(feature = "try_from", since = "1.34.0")]
 impl fmt::Display for TryFromIntError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        "out of range integral type conversion attempted".fmt(f)
+        match self.0 {
+            IntErrorKind::Empty | IntErrorKind::InvalidDigit => unreachable!(),
+            IntErrorKind::PosOverflow => "number too large to fit in target type",
+            IntErrorKind::NegOverflow => "number too small to fit in target type",
+            IntErrorKind::Zero => "number would be zero for non-zero type",
+            IntErrorKind::NotAPowerOfTwo => "number is not a power of two",
+        }
+        .fmt(f)
     }
 }
 
 #[stable(feature = "try_from", since = "1.34.0")]
 impl Error for TryFromIntError {}
 
-#[stable(feature = "try_from", since = "1.34.0")]
+#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<Infallible> for TryFromIntError {
-    fn from(x: Infallible) -> TryFromIntError {
-        match x {}
-    }
-}
-
-#[unstable(feature = "never_type", issue = "35121")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const From<!> for TryFromIntError {
+const impl From<!> for TryFromIntError {
     #[inline]
     fn from(never: !) -> TryFromIntError {
-        // Match rather than coerce to make sure that code like
-        // `From<Infallible> for TryFromIntError` above will keep working
-        // when `Infallible` becomes an alias to `!`.
-        match never {}
+        never
     }
 }
 
@@ -66,7 +70,8 @@ pub struct ParseIntError {
     pub(super) kind: IntErrorKind,
 }
 
-/// Enum to store the various types of errors that can cause parsing an integer to fail.
+/// Enum to store the various types of errors that can cause parsing or converting an
+/// integer to fail.
 ///
 /// # Example
 ///
@@ -103,10 +108,19 @@ pub enum IntErrorKind {
     NegOverflow,
     /// Value was Zero
     ///
-    /// This variant will be emitted when the parsing string has a value of zero, which
-    /// would be illegal for non-zero types.
+    /// This variant will be emitted when the parsing string or the converting integer
+    /// has a value of zero, which would be illegal for non-zero types.
     #[stable(feature = "int_error_matching", since = "1.55.0")]
     Zero,
+    /// Value is not a power of two.
+    ///
+    /// This variant will be emitted when converting an integer that is not a power of
+    /// two. This is required in some cases such as constructing an [`Alignment`].
+    ///
+    /// [`Alignment`]: core::mem::Alignment "mem::Alignment"
+    #[unstable(feature = "try_from_int_error_kind", issue = "153978")]
+    // Also, #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    NotAPowerOfTwo,
 }
 
 impl ParseIntError {
@@ -128,6 +142,7 @@ impl fmt::Display for ParseIntError {
             IntErrorKind::PosOverflow => "number too large to fit in target type",
             IntErrorKind::NegOverflow => "number too small to fit in target type",
             IntErrorKind::Zero => "number would be zero for non-zero type",
+            IntErrorKind::NotAPowerOfTwo => "number is not a power of two",
         }
         .fmt(f)
     }

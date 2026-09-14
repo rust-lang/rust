@@ -1,4 +1,6 @@
 //@ aux-build:two_macros.rs
+//@ reference: macro.decl.scope.textual.shadow
+//@ reference: names.resolution.expansion.macros.ambiguity.more-expanded-vs-outer
 
 #![allow(unused_macros)]
 

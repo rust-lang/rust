@@ -1,4 +1,4 @@
-#![allow(unused_assignments, unused_mut, clippy::assign_op_pattern)]
+#![allow(clippy::assign_op_pattern)]
 #![warn(clippy::implicit_saturating_sub)]
 
 use std::cmp::PartialEq;
@@ -259,4 +259,42 @@ fn issue16307() {
     //~^ implicit_saturating_sub
 
     println!("{y}");
+}
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test_big {
+        ($val:expr) => {
+            ($val * 2 + 1)
+        };
+    }
+
+    macro_rules! test_little {
+        ($val:expr) => {
+            ($val * 2 + 0)
+        };
+    }
+
+    let a = 15u64;
+    let b = 20u64;
+    let _ = test_big!(a).saturating_sub(test_little!(b));
+}
+
+#[clippy::msrv = "1.46.0"]
+pub const fn const_msrv_too_low(mut x: u32) -> u32 {
+    if x != 0 {
+        x -= 1;
+    }
+    x
+}
+
+#[clippy::msrv = "1.47.0"]
+pub const fn const_msrv_ok(mut x: u32) -> u32 {
+    x = x.saturating_sub(1);
+    x
+}
+
+#[clippy::msrv = "1.46.0"]
+pub fn nonconst_msrv_low(mut x: u32) -> u32 {
+    x = x.saturating_sub(1);
+    x
 }

@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, Cc, CodeModel, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, SanitizerSet, Target,
-    TargetMetadata, TargetOptions, cvs,
+    Arch, Cc, CodeModel, LinkerFlavor, Lld, LlvmAbi, Os, PanicStrategy, RelocModel, SanitizerSet,
+    Target, TargetMetadata, TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -21,7 +21,7 @@ pub(crate) fn target() -> Target {
             os: Os::NuttX,
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
-            llvm_abiname: "lp64d".into(),
+            llvm_abiname: LlvmAbi::Lp64d,
             cpu: "generic-rv64".into(),
             max_atomic_width: Some(64),
             features: "+m,+a,+f,+d,+c,+zicsr,+zifencei".into(),

@@ -1,5 +1,5 @@
 #![feature(negative_impls)]
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 trait MyTrait {}
 

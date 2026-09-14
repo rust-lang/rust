@@ -2,9 +2,8 @@
 
 set -euo pipefail
 
-# https://github.com/rust-lang/rust/pull/151534
-# https://github.com/rust-lang/rust/pull/149389
-LINUX_VERSION=167ea5357eb7c3a39200627a36dfbfe249576192
+# https://github.com/rust-lang/rust/pull/157151
+LINUX_VERSION=40bc55834bc15896f4438b0936c679ef32e20df1
 
 # Build rustc, rustdoc, cargo, clippy-driver and rustfmt
 ../x.py build --stage 2 library rustdoc clippy rustfmt
@@ -30,6 +29,7 @@ git -C linux checkout FETCH_HEAD
 
 # Install bindgen
 "${BUILD_DIR}"/stage0/bin/cargo install \
+  --locked \
   --version $(linux/scripts/min-tool-version.sh bindgen) \
   --root ${BUILD_DIR}/bindgen \
   bindgen-cli

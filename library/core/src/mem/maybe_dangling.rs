@@ -1,5 +1,6 @@
 #![unstable(feature = "maybe_dangling", issue = "118166")]
 
+use crate::marker::StructuralPartialEq;
 use crate::{mem, ptr};
 
 /// Allows wrapped [references] and [boxes] to dangle.
@@ -12,7 +13,6 @@ use crate::{mem, ptr};
 /// executing (particularly in concurrent code). As a somewhat absurd example, consider this code:
 ///
 /// ```rust,no_run
-/// #![feature(box_as_ptr)]
 /// # use std::alloc::{dealloc, Layout};
 /// # use std::mem;
 ///
@@ -34,7 +34,7 @@ use crate::{mem, ptr};
 ///
 // FIXME: remove `no_run` once the semantics are actually implemented
 /// ```rust,no_run
-/// #![feature(maybe_dangling, box_as_ptr)]
+/// #![feature(maybe_dangling)]
 /// # use std::alloc::{dealloc, Layout};
 /// # use std::mem::{self, MaybeDangling};
 ///
@@ -74,6 +74,7 @@ pub struct MaybeDangling<P: ?Sized>(P);
 
 impl<P: ?Sized> MaybeDangling<P> {
     /// Wraps a value in a `MaybeDangling`, allowing it to dangle.
+    #[rustc_no_writable]
     pub const fn new(x: P) -> Self
     where
         P: Sized,
@@ -109,3 +110,5 @@ impl<P: ?Sized> MaybeDangling<P> {
         x
     }
 }
+
+impl<T: ?Sized> StructuralPartialEq for MaybeDangling<T> {}

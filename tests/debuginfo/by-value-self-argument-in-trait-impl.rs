@@ -1,3 +1,9 @@
+//@ revisions: msvc
+
+// On MSVC, this test requires LLDB to be able to read `S_DEFRANGE_REGISTER_REL_INDIR` PDB nodes,
+// which is only possible on lldb 23.1+
+//@ [msvc] only-msvc
+//@ [msvc] min-llvm-lldb-version: 23.1.0
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
@@ -28,11 +34,11 @@
 //@ lldb-command:continue
 
 //@ lldb-command:v self
-//@ lldb-check:[...] { x = 2222 y = 3333 }
+//@ lldb-check:[...] {x:2222, y:3333}
 //@ lldb-command:continue
 
 //@ lldb-command:v self
-//@ lldb-check:[...] { 0 = 4444.5 1 = 5555 2 = 6666 3 = 7777.5 }
+//@ lldb-check:[...] (4444.5, 5555, 6666, 7777.5)
 //@ lldb-command:continue
 
 trait Trait {

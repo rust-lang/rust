@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 // Test that the goto chain starting from bb0 is collapsed.
 //@ compile-flags: -Cpanic=abort
 //@ no-prefer-dynamic

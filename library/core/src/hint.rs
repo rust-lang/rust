@@ -778,6 +778,9 @@ pub const fn unlikely(b: bool) -> bool {
 #[stable(feature = "cold_path", since = "1.95.0")]
 #[rustc_const_stable(feature = "cold_path", since = "1.95.0")]
 #[inline(always)]
+// Even if for some reason the cold_path intrinsic is not visible to codegen, the coldness will
+// ensure that branches this is in are still known to be cold.
+#[cold]
 pub const fn cold_path() {
     crate::intrinsics::cold_path()
 }

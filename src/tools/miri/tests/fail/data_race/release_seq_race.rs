@@ -31,7 +31,7 @@ fn main() {
             let c = c; // avoid field capturing
             *c.0 = 1;
             SYNC.store(1, Ordering::Release);
-            sleep(Duration::from_millis(200));
+            sleep(Duration::from_millis(100));
             SYNC.store(3, Ordering::Relaxed);
         });
 

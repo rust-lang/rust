@@ -29,8 +29,9 @@ use expect_test::Expect;
 use hir::db::HirDatabase;
 use hir::{PrefixKind, setup_tracing};
 use ide_db::{
-    FilePosition, MiniCore, RootDatabase, SnippetCap,
+    FilePosition, RootDatabase, SnippetCap,
     imports::insert_use::{ImportGranularity, InsertUseConfig},
+    ra_fixture::RaFixtureConfig,
 };
 use itertools::Itertools;
 use stdx::{format_to, trim_indent};
@@ -71,6 +72,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig<'_> = CompletionConfig {
     term_search_fuel: 200,
     full_function_signatures: false,
     callable: Some(CallableSnippets::FillArguments),
+    add_colons_to_module: true,
     add_semicolon_to_unit: true,
     snippet_cap: SnippetCap::new(true),
     insert_use: InsertUseConfig {
@@ -90,7 +92,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig<'_> = CompletionConfig {
     exclude_traits: &[],
     enable_auto_await: true,
     enable_auto_iter: true,
-    minicore: MiniCore::default(),
+    ra_fixture: RaFixtureConfig::default(),
 };
 
 pub(crate) fn completion_list(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {

@@ -1,14 +1,14 @@
 use rustc_ast::util::{classify, parser};
-use rustc_ast::{self as ast, ExprKind, FnRetTy, HasAttrs as _, StmtKind};
+use rustc_ast::{self as ast, ExprKind, FnRetTy, ForLoop, HasAttrs as _, StmtKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
-use rustc_hir::{self as hir};
+use rustc_hir as hir;
+use rustc_lint_defs::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_middle::ty::{self, adjustment};
-use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition::Edition2015;
 use rustc_span::{BytePos, Span, kw, sym};
 
-use crate::lints::{
+use crate::diagnostics::{
     PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
     UnusedAllocationMutDiag, UnusedDelim, UnusedDelimSuggestion, UnusedImportBracesDiag,
 };
@@ -134,6 +134,88 @@ trait UnusedDelimLint {
         right_pos: Option<BytePos>,
         is_kw: bool,
     );
+
+    /// Returns whether the outer braces of a single-expression function/method
+    /// argument block can be removed.
+    ///
+    /// In Rust 2024, `{ expr }` can drop tail-expression temporaries before the
+    /// call starts. Removing the block may extend those temporaries, so lint only
+    /// expression forms that are harmless here.
+    fn expr_allows_remove_arg_block(expr: &ast::Expr) -> bool {
+        use ast::ExprKind::*;
+
+        match &expr.peel_parens().kind {
+            Lit(_) | IncludedBytes(_) | Path(..) => true,
+            Unary(_, expr)
+            | Cast(expr, _)
+            | Type(expr, _)
+            | Use(expr, _)
+            | Await(expr, _)
+            | Try(expr)
+            | Move(expr, _)
+            | AddrOf(_, _, expr)
+            | UnsafeBinderCast(_, expr, _) => Self::expr_allows_remove_arg_block(expr),
+            Array(exprs) | Tup(exprs) => {
+                exprs.iter().all(|expr| Self::expr_allows_remove_arg_block(expr))
+            }
+            Binary(_, lhs, rhs) | Assign(lhs, rhs, _) | AssignOp(_, lhs, rhs) => {
+                Self::expr_allows_remove_arg_block(lhs) && Self::expr_allows_remove_arg_block(rhs)
+            }
+            Index(base, index, _) => {
+                Self::expr_allows_remove_arg_block(base)
+                    && Self::expr_allows_remove_arg_block(index)
+            }
+            Range(start, end, _) => {
+                start.as_ref().is_none_or(|expr| Self::expr_allows_remove_arg_block(expr))
+                    && end.as_ref().is_none_or(|expr| Self::expr_allows_remove_arg_block(expr))
+            }
+            Struct(expr) => {
+                expr.fields.iter().all(|field| Self::expr_allows_remove_arg_block(&field.expr))
+                    && match &expr.rest {
+                        ast::StructRest::Base(expr) => Self::expr_allows_remove_arg_block(expr),
+                        ast::StructRest::Rest(_) | ast::StructRest::None => true,
+                        ast::StructRest::NoneWithError(_) => false,
+                    }
+            }
+            Repeat(expr, _) => Self::expr_allows_remove_arg_block(expr),
+            ConstBlock(_)
+            | If(..)
+            | While(..)
+            | ForLoop { .. }
+            | Loop(..)
+            | Match(..)
+            | Closure(_)
+            | Block(..)
+            | Gen(..)
+            | TryBlock(..)
+            | Break(..)
+            | Continue(_)
+            | Ret(_)
+            | InlineAsm(_)
+            | OffsetOf(..)
+            | Yield(_)
+            | Yeet(_)
+            | Paren(_)
+            | Become(_) => true,
+            Call(..) | MethodCall(_) | Let(..) | Field(..) | MacCall(_) | FormatArgs(_) => false,
+            // `direct_const_arg!()` is invalid in function/method argument position.
+            DirectConstArg(_) => false,
+            // don't lint for placeholder/error-recovery
+            Underscore | Err(_) | Dummy => false,
+        }
+    }
+
+    /// Returns whether `{ expr }` must be kept in function/method argument
+    /// position to avoid changing temporary lifetime semantics.
+    fn needs_arg_block_to_preserve_temporaries(
+        ctx: UnusedDelimsCtx,
+        arg_block: &ast::Expr,
+        expr: &ast::Expr,
+    ) -> bool {
+        matches!(ctx, UnusedDelimsCtx::FunctionArg | UnusedDelimsCtx::MethodArg)
+            && arg_block.span.edition().at_least_rust_2024()
+            && !Self::expr_allows_remove_arg_block(expr)
+    }
 
     fn is_expr_delims_necessary(
         inner: &ast::Expr,
@@ -338,7 +420,7 @@ trait UnusedDelimLint {
                 && !snip.starts_with(' ')
             {
                 " "
-            } else if let Ok(snip) = sm.span_to_prev_source(value_span)
+            } else if let Ok(snip) = sm.span_to_next_source(value_span)
                 && snip.starts_with(|c: char| c.is_alphanumeric())
             {
                 " "
@@ -381,7 +463,7 @@ trait UnusedDelimLint {
                 (cond, UnusedDelimsCtx::WhileCond, true, Some(left), Some(right), true)
             }
 
-            ForLoop { ref iter, ref body, .. } => {
+            ForLoop(ast::ForLoop { ref iter, ref body, .. }) => {
                 (iter, UnusedDelimsCtx::ForIterExpr, true, None, Some(body.span.lo()), true)
             }
 
@@ -417,13 +499,19 @@ trait UnusedDelimLint {
             }
             // either function/method call, or something this lint doesn't care about
             ref call_or_other => {
-                let (args_to_check, ctx) = match *call_or_other {
-                    Call(_, ref args) => (&args[..], UnusedDelimsCtx::FunctionArg),
-                    MethodCall(ref call) => (&call.args[..], UnusedDelimsCtx::MethodArg),
+                let (args_to_check, ctx, callee_from_expansion) = match *call_or_other {
+                    Call(ref callee, ref args) => {
+                        (&args[..], UnusedDelimsCtx::FunctionArg, callee.span.from_expansion())
+                    }
+                    MethodCall(ref call) => (
+                        &call.args[..],
+                        UnusedDelimsCtx::MethodArg,
+                        call.seg.ident.span.from_expansion(),
+                    ),
                     Closure(ref closure)
                         if matches!(closure.fn_decl.output, FnRetTy::Default(_)) =>
                     {
-                        (&[closure.body.clone()][..], UnusedDelimsCtx::ClosureBody)
+                        (&[closure.body.clone()][..], UnusedDelimsCtx::ClosureBody, false)
                     }
                     // actual catch-all arm
                     _ => {
@@ -438,6 +526,11 @@ trait UnusedDelimLint {
                     return;
                 }
                 for arg in args_to_check {
+                    // Whether an expression is wrapped in a block can change which `macro_rules!`
+                    // arm is taken. Don't report the braces as unused in that case. (Issue #158747)
+                    if callee_from_expansion && Self::block_wraps_expanded_expr(arg) {
+                        continue;
+                    }
                     self.check_unused_delims_expr(cx, arg, ctx, false, None, None, false);
                 }
                 return;
@@ -499,9 +592,9 @@ trait UnusedDelimLint {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         use ast::ItemKind::*;
 
-        let expr = if let Const(box ast::ConstItem { rhs_kind, .. }) = &item.kind {
-            if let Some(e) = rhs_kind.expr() { e } else { return }
-        } else if let Static(box ast::StaticItem { expr: Some(expr), .. }) = &item.kind {
+        let expr = if let Const(ast::ConstItem { body: Some(expr), .. }) = &item.kind {
+            expr
+        } else if let Static(ast::StaticItem { expr: Some(expr), .. }) = &item.kind {
             expr
         } else {
             return;
@@ -515,6 +608,20 @@ trait UnusedDelimLint {
             None,
             false,
         );
+    }
+
+    // Returns true for a user-written block whose only expression came from a macro expansion.
+    fn block_wraps_expanded_expr(value: &ast::Expr) -> bool {
+        if let ast::ExprKind::Block(ref block, None) = value.kind
+            && block.rules == ast::BlockCheckMode::Default
+            && !value.span.from_expansion()
+            && let [stmt] = block.stmts.as_slice()
+            && let ast::StmtKind::Expr(ref expr) = stmt.kind
+        {
+            expr.span.from_expansion()
+        } else {
+            false
+        }
     }
 }
 
@@ -636,7 +743,7 @@ impl UnusedParens {
         avoid_mut: bool,
         keep_space: (bool, bool),
     ) {
-        use ast::{BindingMode, PatKind};
+        use ast::{BindingMode, ByRef, Mutability, PatKind, Pinnedness};
 
         if let PatKind::Paren(inner) = &value.kind {
             match inner.kind {
@@ -649,8 +756,16 @@ impl UnusedParens {
                 PatKind::Guard(..) => return,
                 // Avoid `p0 | .. | pn` if we should.
                 PatKind::Or(..) if avoid_or => return,
-                // Avoid `mut x` and `mut x @ p` if we should:
-                PatKind::Ident(BindingMode::MUT, ..) if avoid_mut => {
+                // Avoid bindings whose own binding mutability is `mut`, like `mut x`,
+                // `mut x @ p`, and `mut ref pin const x`, if we should.
+                PatKind::Ident(BindingMode(_, Mutability::Mut), ..) if avoid_mut => {
+                    return;
+                }
+                PatKind::Ref(_, Pinnedness::Pinned, _)
+                | PatKind::Ident(BindingMode(ByRef::Yes(Pinnedness::Pinned, _), _), ..)
+                    // FIXME(pin_ergonomics): Remove this gate once pinned patterns are stable.
+                    if !cx.builder.features().pin_ergonomics() =>
+                {
                     return;
                 }
                 // Otherwise proceed with linting.
@@ -695,7 +810,7 @@ impl EarlyLintPass for UnusedParens {
         }
 
         match e.kind {
-            ExprKind::Let(ref pat, _, _, _) | ExprKind::ForLoop { ref pat, .. } => {
+            ExprKind::Let(ref pat, _, _, _) | ExprKind::ForLoop(ForLoop { ref pat, .. }) => {
                 self.check_unused_parens_pat(cx, pat, false, false, (true, true));
             }
             // We ignore parens in cases like `if (((let Some(0) = Some(1))))` because we already
@@ -756,28 +871,57 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat) {
-        use ast::Mutability;
         use ast::PatKind::*;
+        use ast::{Mutability, Pinnedness};
         let keep_space = (false, false);
         match &p.kind {
             // Do not lint on `(..)` as that will result in the other arms being useless.
-            Paren(_)
+            Paren(_) => {}
             // The other cases do not contain sub-patterns.
-            | Missing | Wild | Never | Rest | Expr(..) | MacCall(..) | Range(..) | Ident(.., None)
-            | Path(..) | Err(_) => {},
+            Missing
+            | Wild
+            | Never
+            | Rest
+            | Expr(..)
+            | MacCall(..)
+            | Range(..)
+            | Ident(.., None)
+            | Path(..)
+            | Err(_) => {}
             // These are list-like patterns; parens can always be removed.
-            TupleStruct(_, _, ps) | Tuple(ps) | Slice(ps) | Or(ps) => for p in ps {
-                self.check_unused_parens_pat(cx, p, false, false, keep_space);
-            },
-            Struct(_, _, fps, _) => for f in fps {
-                self.check_unused_parens_pat(cx, &f.pat, false, false, keep_space);
-            },
-            // Avoid linting on `i @ (p0 | .. | pn)` and `box (p0 | .. | pn)`, #64106.
-            Ident(.., Some(p)) | Box(p) | Deref(p) | Guard(p, _) => self.check_unused_parens_pat(cx, p, true, false, keep_space),
+            TupleStruct(_, _, ps) | Tuple(ps) | Slice(ps) | Or(ps) => {
+                for p in ps {
+                    self.check_unused_parens_pat(cx, p, false, false, keep_space);
+                }
+            }
+            Struct(_, _, fps, _) => {
+                for f in fps {
+                    self.check_unused_parens_pat(cx, &f.pat, false, false, keep_space);
+                }
+            }
+            // Avoid linting on `i @ (p0 | .. | pn)`, #64106.
+            Ident(.., Some(p)) | Deref(p) | Guard(p, _) => {
+                self.check_unused_parens_pat(cx, p, true, false, keep_space)
+            }
             // Avoid linting on `&(mut x)` as `&mut x` has a different meaning, #55342.
+            // This only applies to plain shared reference patterns. In `&pin const (mut x)`,
+            // `pin const` is consumed before parsing the subpattern, so removing the
+            // parentheses preserves `mut x` as a binding pattern.
             // Also avoid linting on `& mut? (p0 | .. | pn)`, #64106.
-            // FIXME(pin_ergonomics): check pinned patterns
-            Ref(p, _, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not, keep_space),
+            Ref(p, pinned, m)
+                if *pinned != Pinnedness::Pinned
+                    // FIXME(pin_ergonomics): Remove this gate once pinned patterns are stable.
+                    || cx.builder.features().pin_ergonomics() =>
+            {
+                self.check_unused_parens_pat(
+                    cx,
+                    p,
+                    true,
+                    *pinned == Pinnedness::Not && *m == Mutability::Not,
+                    keep_space,
+                );
+            }
+            Ref(..) => {}
         }
     }
 
@@ -900,21 +1044,28 @@ impl EarlyLintPass for UnusedParens {
                             && !dyn2015_exception
                         {
                             let s = poly_trait_ref.span;
-                            let spans = (!s.from_expansion()).then(|| {
-                                (
+                            // Check that the span really is wrapped in single-byte ASCII parens
+                            // before trimming a byte off each end, in case a macro does weird
+                            // things with spans or parser recovery produced multibyte parens.
+                            if !s.from_expansion()
+                                && let Ok(snippet) = cx.sess().source_map().span_to_snippet(s)
+                                && snippet.starts_with('(')
+                                && snippet.ends_with(')')
+                            {
+                                let spans = Some((
                                     s.with_hi(s.lo() + rustc_span::BytePos(1)),
                                     s.with_lo(s.hi() - rustc_span::BytePos(1)),
-                                )
-                            });
+                                ));
 
-                            self.emit_unused_delims(
-                                cx,
-                                poly_trait_ref.span,
-                                spans,
-                                "type",
-                                (false, false),
-                                false,
-                            );
+                                self.emit_unused_delims(
+                                    cx,
+                                    poly_trait_ref.span,
+                                    spans,
+                                    "type",
+                                    (false, false),
+                                    false,
+                                );
+                            }
                         }
                     }
                 }
@@ -931,7 +1082,7 @@ impl EarlyLintPass for UnusedParens {
         self.in_no_bounds_pos.clear();
     }
 
-    fn enter_where_predicate(&mut self, _: &EarlyContext<'_>, pred: &ast::WherePredicate) {
+    fn check_where_predicate(&mut self, _: &EarlyContext<'_>, pred: &ast::WherePredicate) {
         use rustc_ast::{WhereBoundPredicate, WherePredicateKind};
         if let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
             bounded_ty,
@@ -945,7 +1096,7 @@ impl EarlyLintPass for UnusedParens {
         }
     }
 
-    fn exit_where_predicate(&mut self, _: &EarlyContext<'_>, _: &ast::WherePredicate) {
+    fn check_where_predicate_post(&mut self, _: &EarlyContext<'_>, _: &ast::WherePredicate) {
         assert!(!self.with_self_ty_parens);
     }
 }
@@ -1025,6 +1176,11 @@ impl UnusedDelimLint for UnusedBraces {
                 if let [stmt] = inner.stmts.as_slice()
                     && let ast::StmtKind::Expr(ref expr) = stmt.kind
                     && !Self::is_expr_delims_necessary(expr, ctx, followed_by_block)
+                    // In Rust 2024, this block may drop tail-expression temporaries, such as a
+                    // lock guard, before the loop starts.
+                    && !(ctx == UnusedDelimsCtx::ForIterExpr
+                        && value.span.edition().at_least_rust_2024())
+                    && !Self::needs_arg_block_to_preserve_temporaries(ctx, value, expr)
                     && (ctx != UnusedDelimsCtx::AnonConst
                         || (matches!(expr.kind, ast::ExprKind::Lit(_))
                             && !expr.span.from_expansion()))
@@ -1178,7 +1334,7 @@ impl UnusedImportBraces {
                     }
                     rename.unwrap_or(orig_ident).name
                 }
-                ast::UseTreeKind::Glob => sym::asterisk,
+                ast::UseTreeKind::Glob(_) => sym::asterisk,
                 ast::UseTreeKind::Nested { .. } => return,
             };
 

@@ -40,9 +40,6 @@
 //! }
 //! ```
 //!
-//
-// FIXME: Show how `Option` is used in practice, with lots of methods
-//
 //! # Options and pointers ("nullable" pointers)
 //!
 //! Rust's pointer types must always point to a valid location; there are
@@ -468,7 +465,7 @@
 //! [`Option`] of a collection of each contained value of the original
 //! [`Option`] values, or [`None`] if any of the elements was [`None`].
 //!
-//! [impl-FromIterator]: Option#impl-FromIterator%3COption%3CA%3E%3E-for-Option%3CV%3E
+//! [impl-FromIterator]: Option#impl-FromIterator%3COption%3CT%3E%3E-for-Option%3CV%3E
 //!
 //! ```
 //! let v = [Some(2), Some(4), None, Some(8)];
@@ -584,10 +581,11 @@
 use crate::clone::TrivialClone;
 use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::marker::Destruct;
+use crate::num::NonZero;
 use crate::ops::{self, ControlFlow, Deref, DerefMut, Residual, Try};
 use crate::panicking::{panic, panic_display};
 use crate::pin::Pin;
-use crate::{cmp, convert, hint, mem, slice};
+use crate::{cmp, hint, mem, slice};
 
 /// The `Option` type. See [the module level documentation](self) for more.
 #[doc(search_unbox)]
@@ -739,6 +737,7 @@ impl<T> Option<T> {
     /// println!("still can print text: {text:?}");
     /// ```
     #[inline]
+    #[expect(clippy::match_as_ref, reason = "implements as_ref")]
     #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn as_ref(&self) -> Option<&T> {
@@ -761,6 +760,7 @@ impl<T> Option<T> {
     /// assert_eq!(x, Some(42));
     /// ```
     #[inline]
+    #[expect(clippy::match_as_ref, reason = "implements as_mut")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     pub const fn as_mut(&mut self) -> Option<&mut T> {
@@ -1286,8 +1286,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_option_map_or_default)]
-    ///
     /// let x: Option<&str> = Some("hi");
     /// let y: Option<&str> = None;
     ///
@@ -1297,7 +1295,7 @@ impl<T> Option<T> {
     ///
     /// [default value]: Default::default
     #[inline]
-    #[unstable(feature = "result_option_map_or_default", issue = "138099")]
+    #[stable(feature = "result_option_map_or_default", since = "1.98.0")]
     #[rustc_const_unstable(feature = "const_option_ops", issue = "143956")]
     pub const fn map_or_default<U, F>(self, f: F) -> U
     where
@@ -1751,8 +1749,12 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "option_entry", since = "1.20.0")]
-    pub fn get_or_insert(&mut self, value: T) -> &mut T {
-        self.get_or_insert_with(|| value)
+    #[rustc_const_unstable(feature = "const_option_ops", issue = "143956")]
+    pub const fn get_or_insert(&mut self, value: T) -> &mut T
+    where
+        T: [const] Destruct,
+    {
+        self.get_or_insert_with(const || value)
     }
 
     /// Inserts the default value into the option if it is [`None`], then
@@ -1823,7 +1825,7 @@ impl<T> Option<T> {
             // It could also be expressed as `unsafe { core::ptr::write(self, Some(f())) }`, but
             // no reason is currently known to use additional unsafe code here.
 
-            mem::forget(mem::replace(self, Some(f())));
+            mem::forget(self.replace(f()));
         }
 
         // SAFETY: a `None` variant for `self` would have been replaced by a `Some`
@@ -1896,6 +1898,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
+    #[expect(clippy::mem_replace_option_with_none, reason = "implements Option::take")]
     pub const fn take(&mut self) -> Option<T> {
         // FIXME(const-hack) replace `mem::replace` by `mem::take` when the latter is const ready
         mem::replace(self, None)
@@ -1932,7 +1935,7 @@ impl<T> Option<T> {
     where
         P: [const] FnOnce(&mut T) -> bool + [const] Destruct,
     {
-        if self.as_mut().map_or(false, predicate) { self.take() } else { None }
+        if self.as_mut().is_some_and(predicate) { self.take() } else { None }
     }
 
     /// Replaces the actual value in the option by the value given in parameter,
@@ -1955,11 +1958,12 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_replace", since = "1.31.0")]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
+    #[expect(clippy::mem_replace_option_with_some, reason = "implements Option::replace")]
     pub const fn replace(&mut self, value: T) -> Option<T> {
         mem::replace(self, Some(value))
     }
 
-    /// Zips `self` with another `Option`.
+    /// Makes a tuple of the value in `self` and the value in another `Option`.
     ///
     /// If `self` is `Some(s)` and `other` is `Some(o)`, this method returns `Some((s, o))`.
     /// Otherwise, `None` is returned.
@@ -1987,7 +1991,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Zips `self` and another `Option` with function `f`.
+    /// Combines the value in `self` with the value in another `Option`, using the function `f`.
     ///
     /// If `self` is `Some(s)` and `other` is `Some(o)`, this method returns `Some(f(s, o))`.
     /// Otherwise, `None` is returned.
@@ -2082,10 +2086,7 @@ impl<T: IntoIterator> Option<T> {
     /// assert_eq!(o2.into_flat_iter().collect::<Vec<_>>(), Vec::<&usize>::new());
     /// ```
     #[unstable(feature = "option_into_flat_iter", issue = "148441")]
-    pub fn into_flat_iter<A>(self) -> OptionFlatten<A>
-    where
-        T: IntoIterator<IntoIter = A>,
-    {
+    pub fn into_flat_iter(self) -> OptionFlatten<T::IntoIter> {
         OptionFlatten { iter: self.map(IntoIterator::into_iter) }
     }
 }
@@ -2157,6 +2158,7 @@ impl<T> Option<&T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[expect(clippy::map_clone, reason = "implements Option::cloned")]
     pub fn cloned(self) -> Option<T>
     where
         T: Clone,
@@ -2209,7 +2211,7 @@ impl<T> Option<&mut T> {
     where
         T: Clone,
     {
-        self.as_deref().map(T::clone)
+        self.as_deref().cloned()
     }
 }
 
@@ -2266,7 +2268,7 @@ const fn expect_failed(msg: &str) -> ! {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-impl<T> const Clone for Option<T>
+const impl<T> Clone for Option<T>
 where
     // FIXME(const_hack): the T: [const] Destruct should be inferred from the Self: [const] Destruct in clone_from.
     // See https://github.com/rust-lang/rust/issues/144207
@@ -2295,11 +2297,11 @@ impl<T> crate::clone::UseCloned for Option<T> where T: crate::clone::UseCloned {
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-unsafe impl<T> const TrivialClone for Option<T> where T: [const] TrivialClone + [const] Destruct {}
+const unsafe impl<T> TrivialClone for Option<T> where T: [const] TrivialClone + [const] Destruct {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T> const Default for Option<T> {
+const impl<T> Default for Option<T> {
     /// Returns [`None`][Option::None].
     ///
     /// # Examples
@@ -2316,7 +2318,7 @@ impl<T> const Default for Option<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-impl<T> const IntoIterator for Option<T> {
+const impl<T> IntoIterator for Option<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
@@ -2361,7 +2363,7 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
 
 #[stable(since = "1.12.0", feature = "option_from")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const From<T> for Option<T> {
+const impl<T> From<T> for Option<T> {
     /// Moves `val` into a new [`Some`].
     ///
     /// # Examples
@@ -2378,7 +2380,7 @@ impl<T> const From<T> for Option<T> {
 
 #[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<'a, T> const From<&'a Option<T>> for Option<&'a T> {
+const impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
     /// Converts from `&Option<T>` to `Option<&T>`.
     ///
     /// # Examples
@@ -2406,7 +2408,7 @@ impl<'a, T> const From<&'a Option<T>> for Option<&'a T> {
 
 #[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<'a, T> const From<&'a mut Option<T>> for Option<&'a mut T> {
+const impl<'a, T> From<&'a mut Option<T>> for Option<&'a mut T> {
     /// Converts from `&mut Option<T>` to `Option<&mut T>`
     ///
     /// # Examples
@@ -2434,7 +2436,7 @@ impl<'a, T> const From<&'a mut Option<T>> for Option<&'a mut T> {
 impl<T> crate::marker::StructuralPartialEq for Option<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<T: [const] PartialEq> const PartialEq for Option<T> {
+const impl<T: [const] PartialEq> PartialEq for Option<T> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         // Spelling out the cases explicitly optimizes better than
@@ -2453,7 +2455,9 @@ impl<T: [const] PartialEq> const PartialEq for Option<T> {
 // not optimal.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<T: [const] PartialOrd> const PartialOrd for Option<T> {
+const impl<T: [const] PartialOrd> PartialOrd for Option<T> {
+    /// See [the documentation](https://doc.rust-lang.org/std/option/#comparison-operators) for details.
+    /// [`None`] always compares less than any [`Some`]
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         match (self, other) {
@@ -2467,7 +2471,7 @@ impl<T: [const] PartialOrd> const PartialOrd for Option<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<T: [const] Ord> const Ord for Option<T> {
+const impl<T: [const] Ord> Ord for Option<T> {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         match (self, other) {
@@ -2489,7 +2493,7 @@ struct Item<A> {
 }
 
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-impl<A> const Iterator for Item<A> {
+const impl<A> Iterator for Item<A> {
     type Item = A;
 
     #[inline]
@@ -2624,7 +2628,7 @@ pub struct IntoIter<A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-impl<A> const Iterator for IntoIter<A> {
+const impl<A> Iterator for IntoIter<A> {
     type Item = A;
 
     #[inline]
@@ -2652,7 +2656,8 @@ impl<A> ExactSizeIterator for IntoIter<A> {}
 impl<A> FusedIterator for IntoIter<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<A> TrustedLen for IntoIter<A> {}
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const unsafe impl<A> TrustedLen for IntoIter<A> {}
 
 /// The iterator produced by [`Option::into_flat_iter`]. See its documentation for more.
 #[derive(Clone, Debug)]
@@ -2666,18 +2671,111 @@ impl<A: Iterator> Iterator for OptionFlatten<A> {
     type Item = A::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.as_mut()?.next()
+        match &mut self.iter {
+            Some(iter) => iter.next(),
+            None => None,
+        }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.as_ref().map(|i| i.size_hint()).unwrap_or((0, Some(0)))
+        match &self.iter {
+            Some(iter) => iter.size_hint(),
+            None => (0, Some(0)),
+        }
+    }
+
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        match &mut self.iter {
+            Some(iter) => iter.advance_by(n),
+            None => NonZero::new(n).map_or(Ok(()), Err),
+        }
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        match &mut self.iter {
+            Some(iter) => iter.nth(n),
+            None => None,
+        }
+    }
+
+    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        match self.iter {
+            Some(iter) => iter.fold(init, fold),
+            None => init,
+        }
+    }
+
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    where
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Output = Acc>,
+    {
+        match &mut self.iter {
+            Some(iter) => iter.try_fold(init, fold),
+            None => try { init },
+        }
+    }
+
+    fn count(self) -> usize {
+        match self.iter {
+            Some(iter) => iter.count(),
+            None => 0,
+        }
+    }
+
+    fn last(self) -> Option<Self::Item> {
+        match self.iter {
+            Some(iter) => iter.last(),
+            None => None,
+        }
     }
 }
 
 #[unstable(feature = "option_into_flat_iter", issue = "148441")]
 impl<A: DoubleEndedIterator> DoubleEndedIterator for OptionFlatten<A> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.iter.as_mut()?.next_back()
+        match &mut self.iter {
+            Some(iter) => iter.next_back(),
+            None => None,
+        }
+    }
+
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        match &mut self.iter {
+            Some(iter) => iter.advance_back_by(n),
+            None => NonZero::new(n).map_or(Ok(()), Err),
+        }
+    }
+
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        match &mut self.iter {
+            Some(iter) => iter.nth_back(n),
+            None => None,
+        }
+    }
+
+    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        match self.iter {
+            Some(iter) => iter.rfold(init, fold),
+            None => init,
+        }
+    }
+
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    where
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Output = Acc>,
+    {
+        match &mut self.iter {
+            Some(iter) => iter.try_rfold(init, fold),
+            None => try { init },
+        }
     }
 }
 
@@ -2695,7 +2793,7 @@ unsafe impl<A: TrustedLen> TrustedLen for OptionFlatten<A> {}
 /////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
+impl<T, V: FromIterator<T>> FromIterator<Option<T>> for Option<V> {
     /// Takes each element in the [`Iterator`]: if it is [`None`][Option::None],
     /// no further elements are taken, and the [`None`][Option::None] is
     /// returned. Should no [`None`][Option::None] occur, a container of type
@@ -2757,16 +2855,16 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// Since the third element caused an underflow, no further elements were taken,
     /// so the final value of `shared` is 6 (= `3 + 2 + 1`), not 16.
     #[inline]
-    fn from_iter<I: IntoIterator<Item = Option<A>>>(iter: I) -> Option<V> {
+    fn from_iter<I: IntoIterator<Item = Option<T>>>(iter: I) -> Option<V> {
         iter::try_process(iter.into_iter(), |i| i.collect())
     }
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-impl<T> const ops::Try for Option<T> {
+const impl<T> ops::Try for Option<T> {
     type Output = T;
-    type Residual = Option<convert::Infallible>;
+    type Residual = Option<!>;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -2786,9 +2884,9 @@ impl<T> const ops::Try for Option<T> {
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 // Note: manually specifying the residual type instead of using the default to work around
 // https://github.com/rust-lang/rust/issues/99940
-impl<T> const ops::FromResidual<Option<convert::Infallible>> for Option<T> {
+const impl<T> ops::FromResidual<Option<!>> for Option<T> {
     #[inline]
-    fn from_residual(residual: Option<convert::Infallible>) -> Self {
+    fn from_residual(residual: Option<!>) -> Self {
         match residual {
             None => None,
         }
@@ -2798,7 +2896,7 @@ impl<T> const ops::FromResidual<Option<convert::Infallible>> for Option<T> {
 #[diagnostic::do_not_recommend]
 #[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-impl<T> const ops::FromResidual<ops::Yeet<()>> for Option<T> {
+const impl<T> ops::FromResidual<ops::Yeet<()>> for Option<T> {
     #[inline]
     fn from_residual(ops::Yeet(()): ops::Yeet<()>) -> Self {
         None
@@ -2807,7 +2905,7 @@ impl<T> const ops::FromResidual<ops::Yeet<()>> for Option<T> {
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-impl<T> const ops::Residual<T> for Option<convert::Infallible> {
+const impl<T> ops::Residual<T> for Option<!> {
     type TryType = Option<T>;
 }
 

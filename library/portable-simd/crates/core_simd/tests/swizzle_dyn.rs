@@ -61,7 +61,7 @@ pub trait SwizzleStrategy {
 impl SwizzleStrategy for u8 {
     type Strategy = RangeInclusive<u8>;
     fn swizzled_strategy() -> Self::Strategy {
-        0..=64
+        0..=u8::MAX
     }
 }
 

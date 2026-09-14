@@ -6,55 +6,59 @@ use std::slice;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
-    self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, Safety,
+    self as ast, AttrArgs, AttrKind, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind,
+    Safety,
 };
-use rustc_errors::{Applicability, FatalError, PResult};
-use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
-use rustc_hir::AttrPath;
-use rustc_hir::lints::AttributeLintKind;
+use rustc_attr_ir::AttrPath;
+use rustc_errors::{Applicability, Diagnostic, PResult};
+use rustc_feature::BUILTIN_ATTRIBUTE_SET;
+use rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_parse::parse_in;
-use rustc_session::errors::report_lit_error;
-use rustc_session::lint::BuiltinLintDiag;
-use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
+use rustc_session::diagnostics::report_lit_error;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Span, Symbol, sym};
 
-use crate::{AttributeParser, Late, session_diagnostics as errors};
+use crate::{AttributeParser, AttributeTemplate, diagnostics as errors, template};
 
 pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
-    if attr.is_doc_comment() || attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace)
-    {
-        return;
+    use ast::SyntheticAttr::*;
+    match &attr.kind {
+        AttrKind::Normal(_) => {}
+        AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) | AttrKind::DocComment(..) => return,
     }
 
-    let builtin_attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));
+    let builtin_attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_SET.get(&name));
 
     // Check input tokens for built-in and key-value attributes.
-    match builtin_attr_info {
-        // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
-        Some(BuiltinAttribute { name, template, .. }) => {
-            if AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(&name)) {
-                return;
+    if let Some(name) = builtin_attr_info {
+        if AttributeParser::is_parsed_attribute(slice::from_ref(name)) {
+            return;
+        }
+        match parse_meta(psess, attr) {
+            // Don't check safety again, we just did that
+            Ok(meta) => {
+                // FIXME The only unparsed builtin attributes that are left are the lint attributes, so we can hardcode the template here
+                let lint_attrs = [sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
+                assert!(lint_attrs.contains(name));
+
+                let template = template!(
+                    List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#],
+                    "https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes"
+                );
+                check_builtin_meta_item(psess, &meta, attr.style, *name, template, false)
             }
-            match parse_meta(psess, attr) {
-                // Don't check safety again, we just did that
-                Ok(meta) => {
-                    check_builtin_meta_item(psess, &meta, attr.style, *name, *template, false)
-                }
-                Err(err) => {
-                    err.emit();
-                }
+            Err(err) => {
+                err.emit();
             }
         }
-        _ => {
-            let attr_item = attr.get_normal_item();
-            if let AttrArgs::Eq { .. } = attr_item.args.unparsed_ref().unwrap() {
-                // All key-value attributes are restricted to meta-item syntax.
-                match parse_meta(psess, attr) {
-                    Ok(_) => {}
-                    Err(err) => {
-                        err.emit();
-                    }
+    } else {
+        let attr_item = attr.get_normal_item();
+        if let AttrArgs::Eq { .. } = attr_item.args {
+            // All key-value attributes are restricted to meta-item syntax.
+            match parse_meta(psess, attr) {
+                Ok(_) => {}
+                Err(err) => {
+                    err.emit();
                 }
             }
         }
@@ -67,7 +71,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
         unsafety: item.unsafety,
         span: attr.span,
         path: item.path.clone(),
-        kind: match &item.args.unparsed_ref().unwrap() {
+        kind: match &item.args {
             AttrArgs::Empty => MetaItemKind::Word,
             AttrArgs::Delimited(DelimArgs { dspan, delim, tokens }) => {
                 check_meta_bad_delim(psess, *dspan, *delim);
@@ -78,7 +82,8 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
             AttrArgs::Eq { expr, .. } => {
                 if let ast::ExprKind::Lit(token_lit) = expr.kind {
                     let res = ast::MetaItemLit::from_token_lit(token_lit, expr.span);
-                    let res = match res {
+
+                    match res {
                         Ok(lit) => {
                             if token_lit.suffix.is_some() {
                                 let mut err = psess.dcx().struct_span_err(
@@ -90,9 +95,8 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                                     use an unsuffixed version (`1`, `1.0`, etc.)",
                                 );
                                 return Err(err);
-                            } else {
-                                MetaItemKind::NameValue(lit)
                             }
+                            MetaItemKind::NameValue(lit)
                         }
                         Err(err) => {
                             let guar = report_lit_error(psess, err, token_lit, expr.span);
@@ -104,8 +108,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                             };
                             MetaItemKind::NameValue(lit)
                         }
-                    };
-                    res
+                    }
                 } else {
                     // Example cases:
                     // - `#[foo = 1+1]`: results in `ast::ExprKind::Binary`.
@@ -170,7 +173,7 @@ pub fn check_builtin_meta_item(
     }
 }
 
-fn emit_malformed_attribute(
+pub fn emit_malformed_attribute(
     psess: &ParseSess,
     style: ast::AttrStyle,
     span: Span,
@@ -204,14 +207,15 @@ fn emit_malformed_attribute(
         suggestions.clear();
     }
     if should_warn(name) {
-        psess.buffer_lint(
+        let suggestions = suggestions.clone();
+        psess.dyn_buffer_lint(
             ILL_FORMED_ATTRIBUTE_INPUT,
             span,
             ast::CRATE_NODE_ID,
-            BuiltinLintDiag::AttributeLint(AttributeLintKind::IllFormedAttributeInput {
-                suggestions: suggestions.clone(),
-                docs: template.docs,
-            }),
+            move |dcx, level| {
+                crate::diagnostics::IllFormedAttributeInput::new(&suggestions, template.docs, None)
+                    .into_diag(dcx, level)
+            },
         );
     } else {
         suggestions.sort();
@@ -230,16 +234,4 @@ fn emit_malformed_attribute(
         }
         err.emit();
     }
-}
-
-pub fn emit_fatal_malformed_builtin_attribute(
-    psess: &ParseSess,
-    attr: &Attribute,
-    name: Symbol,
-) -> ! {
-    let template = BUILTIN_ATTRIBUTE_MAP.get(&name).expect("builtin attr defined").template;
-    emit_malformed_attribute(psess, attr.style, attr.span, name, template);
-    // This is fatal, otherwise it will likely cause a cascade of other errors
-    // (and an error here is expected to be very rare).
-    FatalError.raise()
 }

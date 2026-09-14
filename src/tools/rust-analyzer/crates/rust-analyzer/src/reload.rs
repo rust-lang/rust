@@ -13,12 +13,12 @@
 //! project is currently loading and we don't have a full project model, we
 //! still want to respond to various  requests.
 // FIXME: This is a mess that needs some untangling work
-use std::{iter, mem, sync::atomic::AtomicUsize};
+use std::{iter, mem, sync::atomic::AtomicUsize, time::Duration};
 
-use hir::{ChangeWithProcMacros, ProcMacrosBuilder, db::DefDatabase};
+use hir::{ChangeWithProcMacros, ProcMacrosBuilder};
 use ide_db::{
     FxHashMap,
-    base_db::{CrateGraphBuilder, ProcMacroLoadingError, ProcMacroPaths, salsa::Durability},
+    base_db::{CrateGraphBuilder, ProcMacroLoadingError, ProcMacroPaths},
 };
 use itertools::Itertools;
 use load_cargo::{ProjectFolders, load_proc_macro};
@@ -109,14 +109,10 @@ impl GlobalState {
             self.reload_flycheck();
         }
 
-        if self.analysis_host.raw_database().expand_proc_attr_macros()
-            != self.config.expand_proc_attr_macros()
-        {
-            self.analysis_host.raw_database_mut().set_expand_proc_attr_macros_with_durability(
-                self.config.expand_proc_attr_macros(),
-                Durability::HIGH,
-            );
-        }
+        hir::db::set_expand_proc_attr_macros(
+            self.analysis_host.raw_database_mut(),
+            self.config.expand_proc_attr_macros(),
+        );
 
         if self.config.cargo(None) != old_config.cargo(None) {
             let req = FetchWorkspaceRequest { path: None, force_crate_graph_reload: false };
@@ -390,7 +386,7 @@ impl GlobalState {
         info!(%cause, "will fetch build data");
         let workspaces = Arc::clone(&self.workspaces);
         let config = self.config.cargo(None);
-        let root_path = self.config.root_path().clone();
+        let root_path = self.config.default_root_path().clone();
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
             sender.send(Task::FetchBuildData(BuildDataProgress::Begin)).unwrap();
@@ -440,7 +436,7 @@ impl GlobalState {
                     let expansion_res = match client {
                         Some(Ok(client)) => match res {
                             Ok((crate_name, path)) => {
-                                progress(format!("loading proc-macros: {path}"));
+                                progress(path.to_string());
                                 let ignored_proc_macros = ignored_proc_macros
                                     .iter()
                                     .find_map(|(name, macros)| {
@@ -468,25 +464,22 @@ impl GlobalState {
         });
     }
 
-    pub(crate) fn switch_workspaces(&mut self, cause: Cause) {
+    pub(crate) fn switch_workspaces(&mut self, cause: Cause) -> Option<Duration> {
         let _p = tracing::info_span!("GlobalState::switch_workspaces").entered();
         tracing::info!(%cause, "will switch workspaces");
 
-        let Some(FetchWorkspaceResponse { workspaces, force_crate_graph_reload }) =
-            self.fetch_workspaces_queue.last_op_result()
-        else {
-            return;
-        };
+        let FetchWorkspaceResponse { workspaces, force_crate_graph_reload } =
+            self.fetch_workspaces_queue.last_op_result()?;
         let switching_from_empty_workspace = self.workspaces.is_empty();
 
         info!(%cause, ?force_crate_graph_reload, %switching_from_empty_workspace);
         if self.fetch_workspace_error().is_err() && !switching_from_empty_workspace {
             if *force_crate_graph_reload {
-                self.recreate_crate_graph(cause, false);
+                return self.recreate_crate_graph(cause, false);
             }
             // It only makes sense to switch to a partially broken workspace
             // if we don't have any workspace at all yet.
-            return;
+            return None;
         }
 
         let workspaces =
@@ -501,7 +494,7 @@ impl GlobalState {
         if same_workspaces {
             if switching_from_empty_workspace {
                 // Switching from empty to empty is a no-op
-                return;
+                return None;
             }
             if let Some(FetchBuildDataResponse { workspaces, build_scripts }) =
                 self.fetch_build_data_queue.last_op_result()
@@ -524,20 +517,20 @@ impl GlobalState {
                 } else {
                     info!("build scripts do not match the version of the active workspace");
                     if *force_crate_graph_reload {
-                        self.recreate_crate_graph(cause, switching_from_empty_workspace);
+                        return self.recreate_crate_graph(cause, switching_from_empty_workspace);
                     }
 
                     // Current build scripts do not match the version of the active
                     // workspace, so there's nothing for us to update.
-                    return;
+                    return None;
                 }
             } else {
                 if *force_crate_graph_reload {
-                    self.recreate_crate_graph(cause, switching_from_empty_workspace);
+                    return self.recreate_crate_graph(cause, switching_from_empty_workspace);
                 }
 
                 // No build scripts but unchanged workspaces, nothing to do here
-                return;
+                return None;
             }
         } else {
             info!("abandon build scripts for workspaces");
@@ -547,8 +540,8 @@ impl GlobalState {
             // FIXME: can we abort the build scripts here if they are already running?
             self.workspaces = Arc::new(workspaces);
             self.check_workspaces_msrv().for_each(|message| {
-                self.send_notification::<lsp_types::notification::ShowMessage>(
-                    lsp_types::ShowMessageParams { typ: lsp_types::MessageType::WARNING, message },
+                self.send_notification::<lsp_types::ShowMessageNotification>(
+                    lsp_types::ShowMessageParams { kind: lsp_types::MessageType::Warning, message },
                 );
             });
 
@@ -560,7 +553,7 @@ impl GlobalState {
                     // `switch_workspaces()` will be called again when build scripts already run, which should
                     // take a short time. If we update the workspace now we will invalidate proc macros and cfgs,
                     // and then when build scripts complete we will invalidate them again.
-                    return;
+                    return None;
                 }
             }
         }
@@ -582,15 +575,16 @@ impl GlobalState {
                                 [
                                     (base.clone(), "**/*.rs"),
                                     (base.clone(), "**/Cargo.{lock,toml}"),
-                                    (base, "**/rust-analyzer.toml"),
+                                    (base.clone(), "**/rust-analyzer.toml"),
+                                    (base, "**/*.md"),
                                 ]
                             })
                         })
                         .map(|(base, pat)| lsp_types::FileSystemWatcher {
-                            glob_pattern: lsp_types::GlobPattern::Relative(
+                            glob_pattern: lsp_types::GlobPattern::RelativePattern(
                                 lsp_types::RelativePattern {
-                                    base_uri: lsp_types::OneOf::Right(
-                                        lsp_types::Url::from_file_path(base).unwrap(),
+                                    base_uri: lsp_types::BaseUri::Uri(
+                                        lsp_types::Uri::from_file_path(base).unwrap(),
                                     ),
                                     pattern: pat.to_owned(),
                                 },
@@ -607,11 +601,12 @@ impl GlobalState {
                                     format!("{base}/**/*.rs"),
                                     format!("{base}/**/Cargo.{{toml,lock}}"),
                                     format!("{base}/**/rust-analyzer.toml"),
+                                    format!("{base}/**/*.md"),
                                 ]
                             })
                         })
                         .map(|glob_pattern| lsp_types::FileSystemWatcher {
-                            glob_pattern: lsp_types::GlobPattern::String(glob_pattern),
+                            glob_pattern: lsp_types::GlobPattern::Pattern(glob_pattern),
                             kind: None,
                         })
                         .collect()
@@ -625,7 +620,7 @@ impl GlobalState {
                             continue;
                         };
                         watchers.push(lsp_types::FileSystemWatcher {
-                            glob_pattern: lsp_types::GlobPattern::String(
+                            glob_pattern: lsp_types::GlobPattern::Pattern(
                                 build.build_file.to_string(),
                             ),
                             kind: None,
@@ -639,7 +634,7 @@ impl GlobalState {
                     .chain(self.workspaces.iter().map(|ws| ws.manifest().map(ManifestPath::as_ref)))
                     .flatten()
                     .map(|glob_pattern| lsp_types::FileSystemWatcher {
-                        glob_pattern: lsp_types::GlobPattern::String(glob_pattern.to_string()),
+                        glob_pattern: lsp_types::GlobPattern::Pattern(glob_pattern.to_string()),
                         kind: None,
                     }),
             );
@@ -651,7 +646,7 @@ impl GlobalState {
                 method: "workspace/didChangeWatchedFiles".to_owned(),
                 register_options: Some(serde_json::to_value(registration_options).unwrap()),
             };
-            self.send_request::<lsp_types::request::RegisterCapability>(
+            self.send_request::<lsp_types::RegistrationRequest>(
                 lsp_types::RegistrationParams { registrations: vec![registration] },
                 |_, _| (),
             );
@@ -669,6 +664,13 @@ impl GlobalState {
         {
             info!("Spawning proc-macro servers");
 
+            // Workspaces referring to the same proc-macro server executable (i.e. the same
+            // sysroot) with an identical spawn environment share a single client, and thereby
+            // a single set of server processes.
+            let mut clients: Vec<(
+                (AbsPathBuf, Option<semver::Version>, FxHashMap<String, Option<String>>),
+                ProcMacroClient,
+            )> = Vec::new();
             self.proc_macro_clients = Arc::from_iter(self.workspaces.iter().map(|ws| {
                 let path = match self.config.proc_macro_srv() {
                     Some(path) => path,
@@ -700,20 +702,30 @@ impl GlobalState {
 
                     _ => Default::default(),
                 };
-                info!("Using proc-macro server at {path}");
+
+                let key = (path, ws.toolchain.clone(), env);
+                if let Some((_, client)) = clients.iter().find(|(k, _)| *k == key) {
+                    return Some(Ok(client.clone()));
+                }
+
+                let (path, toolchain, env) = &key;
+                info!("Spawning proc-macro server at {path}");
                 let num_process = self.config.proc_macro_num_processes();
 
-                Some(
-                    ProcMacroClient::spawn(&path, &env, ws.toolchain.as_ref(), num_process)
-                        .map_err(|err| {
-                            tracing::error!(
-                                "Failed to run proc-macro server from path {path}, error: {err:?}",
-                            );
-                            anyhow::format_err!(
-                                "Failed to run proc-macro server from path {path}, error: {err:?}",
-                            )
-                        }),
-                )
+                Some(match ProcMacroClient::spawn(path, env, toolchain.as_ref(), num_process) {
+                    Ok(client) => {
+                        clients.push((key.clone(), client.clone()));
+                        Ok(client)
+                    }
+                    Err(err) => {
+                        tracing::error!(
+                            "Failed to run proc-macro server from path {path}, error: {err:?}",
+                        );
+                        Err(anyhow::format_err!(
+                            "Failed to run proc-macro server from path {path}, error: {err:?}",
+                        ))
+                    }
+                })
             }))
         }
 
@@ -731,13 +743,15 @@ impl GlobalState {
         self.local_roots_parent_map = Arc::new(self.source_root_config.source_root_parent_map());
 
         info!(?cause, "recreating the crate graph");
-        self.recreate_crate_graph(cause, switching_from_empty_workspace);
+        let cancellation_time = self.recreate_crate_graph(cause, switching_from_empty_workspace);
 
         info!("did switch workspaces");
+        cancellation_time
     }
 
-    fn recreate_crate_graph(&mut self, cause: String, initial_build: bool) {
+    fn recreate_crate_graph(&mut self, cause: String, initial_build: bool) -> Option<Duration> {
         info!(?cause, "Building Crate Graph");
+        let mut cancellation_time = None;
         self.report_progress(
             "Building CrateGraph",
             crate::lsp::utils::Progress::Begin,
@@ -793,9 +807,8 @@ impl GlobalState {
             }
 
             change.set_crate_graph(crate_graph);
-            self.analysis_host.apply_change(change);
-
-            self.finish_loading_crate_graph();
+            cancellation_time = Some(self.analysis_host.apply_change(change));
+            _ = self.finish_loading_crate_graph();
         } else {
             change.set_crate_graph(crate_graph);
             self.fetch_proc_macros_queue.request_op(cause, (change, proc_macro_paths));
@@ -808,11 +821,13 @@ impl GlobalState {
             None,
             None,
         );
+        cancellation_time
     }
 
-    pub(crate) fn finish_loading_crate_graph(&mut self) {
-        self.process_changes();
+    pub(crate) fn finish_loading_crate_graph(&mut self) -> Option<Duration> {
+        let (_, cancellation_time) = self.process_changes();
         self.reload_flycheck();
+        cancellation_time
     }
 
     pub(super) fn fetch_workspace_error(&self) -> Result<(), String> {
@@ -883,7 +898,9 @@ impl GlobalState {
                     config,
                     crate::flycheck::FlycheckConfigJson::default(),
                     None,
-                    self.config.root_path().clone(),
+                    self.config.default_root_path().clone(),
+                    None,
+                    None,
                     None,
                     None,
                 )]
@@ -905,6 +922,7 @@ impl GlobalState {
                                     cargo.workspace_root(),
                                     Some(cargo.manifest_path()),
                                     Some(cargo.target_directory()),
+                                    cargo.build_directory(),
                                 ),
                                 ProjectWorkspaceKind::Json(project) => {
                                     let config_json = crate::flycheck::FlycheckConfigJson {
@@ -916,10 +934,10 @@ impl GlobalState {
                                     // in the workspace configuration.
                                     match config {
                                         _ if config_json.any_configured() => {
-                                            (config_json, project.path(), None, None)
+                                            (config_json, project.path(), None, None, None)
                                         }
                                         FlycheckConfig::CustomCommand { .. } => {
-                                            (config_json, project.path(), None, None)
+                                            (config_json, project.path(), None, None, None)
                                         }
                                         _ => return None,
                                     }
@@ -927,21 +945,31 @@ impl GlobalState {
                                 ProjectWorkspaceKind::DetachedFile { .. } => return None,
                             },
                             ws.sysroot.root().map(ToOwned::to_owned),
+                            ws.toolchain.clone(),
                         ))
                     })
-                    .map(|(id, (config_json, root, manifest_path, target_dir), sysroot_root)| {
-                        FlycheckHandle::spawn(
+                    .map(
+                        |(
                             id,
-                            generation.clone(),
-                            sender.clone(),
-                            config.clone(),
-                            config_json,
+                            (config_json, root, manifest_path, target_dir, build_dir),
                             sysroot_root,
-                            root.to_path_buf(),
-                            manifest_path.map(|it| it.to_path_buf()),
-                            target_dir.map(|it| AsRef::<Utf8Path>::as_ref(it).to_path_buf()),
-                        )
-                    })
+                            toolchain,
+                        )| {
+                            FlycheckHandle::spawn(
+                                id,
+                                generation.clone(),
+                                sender.clone(),
+                                config.clone(),
+                                config_json,
+                                sysroot_root,
+                                root.to_path_buf(),
+                                manifest_path.map(|it| it.to_path_buf()),
+                                target_dir.map(|it| AsRef::<Utf8Path>::as_ref(it).to_path_buf()),
+                                build_dir.map(|it| AsRef::<Utf8Path>::as_ref(it).to_path_buf()),
+                                toolchain,
+                            )
+                        },
+                    )
                     .collect()
             }
         }
@@ -975,6 +1003,7 @@ pub(crate) fn should_refresh_for_change(
     change_kind: ChangeKind,
     additional_paths: &[&str],
 ) -> bool {
+    // Note: build scripts are retriggered on file save, no refresh is necessary
     const IMPLICIT_TARGET_FILES: &[&str] = &["build.rs", "src/main.rs", "src/lib.rs"];
     const IMPLICIT_TARGET_DIRS: &[&str] = &["src/bin", "examples", "tests", "benches"];
 
@@ -991,15 +1020,20 @@ pub(crate) fn should_refresh_for_change(
         return true;
     }
 
+    // .cargo/config{.toml}
+    if matches!(file_name, "config.toml" | "config")
+        && path.parent().map(|parent| parent.as_str().ends_with(".cargo")).unwrap_or(false)
+    {
+        return true;
+    }
+
+    // Everything below only matters when files are created or deleted
     if change_kind == ChangeKind::Modify {
         return false;
     }
 
-    // .cargo/config{.toml}
     if path.extension().unwrap_or_default() != "rs" {
-        let is_cargo_config = matches!(file_name, "config.toml" | "config")
-            && path.parent().map(|parent| parent.as_str().ends_with(".cargo")).unwrap_or(false);
-        return is_cargo_config;
+        return false;
     }
 
     if IMPLICIT_TARGET_FILES.iter().any(|it| path.as_str().ends_with(it)) {

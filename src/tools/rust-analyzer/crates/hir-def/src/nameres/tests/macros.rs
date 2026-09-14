@@ -1,3 +1,4 @@
+use base_db::all_crates;
 use expect_test::expect;
 
 use itertools::Itertools;
@@ -338,35 +339,18 @@ macro_rules! baz3 { () => { struct OkBaz3; } }
 }
 
 #[test]
-fn prelude_is_macro_use() {
-    cov_mark::check!(prelude_is_macro_use);
+fn prelude_is_not_macro_use() {
     check(
         r#"
 //- /main.rs edition:2018 crate:main deps:std
 structs!(Foo);
-structs_priv!(Bar);
-structs_outside!(Out);
-crate::structs!(MacroNotResolved2);
-
-mod bar;
-
-//- /bar.rs
-structs!(Baz);
-crate::structs!(MacroNotResolved3);
+structs_outside!(MacroNotResolved);
 
 //- /lib.rs crate:std
 pub mod prelude {
     pub mod rust_2018 {
-        #[macro_export]
-        macro_rules! structs {
+        pub macro structs {
             ($i:ident) => { struct $i; }
-        }
-
-        mod priv_mod {
-            #[macro_export]
-            macro_rules! structs_priv {
-                ($i:ident) => { struct $i; }
-            }
         }
     }
 }
@@ -378,13 +362,7 @@ macro_rules! structs_outside {
 "#,
         expect![[r#"
             crate
-            - Bar : type value
             - Foo : type value
-            - Out : type value
-            - bar : type
-
-            crate::bar
-            - Baz : type value
         "#]],
     );
 }
@@ -742,11 +720,10 @@ foo!();
 pub use core::foo;
 
 pub mod prelude {
-    pub mod rust_2018 {}
+    pub mod rust_2018 {
+        pub use crate::foo;
+    }
 }
-
-#[macro_use]
-mod std_macros;
 
 //- /core.rs crate:core
 #[macro_export]
@@ -1129,7 +1106,7 @@ pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
 }
 "#,
     );
-    let krate = *db.all_crates().last().expect("no crate graph present");
+    let krate = *all_crates(&db).last().expect("no crate graph present");
     let def_map = crate_def_map(&db, krate);
 
     assert_eq!(def_map.data.exported_derives.len(), 1);
@@ -1497,7 +1474,7 @@ struct TokenStream;
 fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
     "#,
     );
-    let krate = *db.all_crates().last().expect("no crate graph present");
+    let krate = *all_crates(&db).last().expect("no crate graph present");
     let def_map = crate_def_map(&db, krate);
 
     let root_module = &def_map[def_map.root].scope;
@@ -1777,4 +1754,19 @@ enum MyEnum {}
             - derived_fn : value
         "#]],
     );
+}
+
+#[test]
+fn regression_22806() {
+    compute_crate_def_map(
+        r#"
+#![crate_type = "proc-macro"]
+
+fn foo() {}
+
+#[proc_macro]
+fn foo() {}
+    "#,
+        |_| (),
+    )
 }

@@ -1,0 +1,29 @@
+error[E0107]: missing generics for struct `Test`
+  --> $DIR/private-tuple-struct-field-self-arg-issue-81447.rs:13:23
+   |
+LL |     fn build(self) -> Test {
+   |                       ^^^^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `T`
+  --> $DIR/private-tuple-struct-field-self-arg-issue-81447.rs:5:16
+   |
+LL |     pub struct Test<T: ?Sized>(T);
+   |                ^^^^ -
+help: add missing generic argument
+   |
+LL |     fn build(self) -> Test<T> {
+   |                           +++
+
+error[E0423]: cannot initialize a tuple struct which contains private fields
+  --> $DIR/private-tuple-struct-field-self-arg-issue-81447.rs:15:9
+   |
+LL |         Test(self)
+   |         ^^^^
+   |
+   = note: a struct named `Test` exists in another namespace
+   = note: constructor is not visible here due to private fields
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0423.
+For more information about an error, try `rustc --explain E0107`.

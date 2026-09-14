@@ -1,5 +1,5 @@
 error: manual implementation of `split_once`
-  --> tests/ui/manual_split_once.rs:11:13
+  --> tests/ui/manual_split_once.rs:10:13
    |
 LL |     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".split_once('=').unwrap().1`
@@ -8,79 +8,79 @@ LL |     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
    = help: to override `-D warnings` add `#[allow(clippy::manual_split_once)]`
 
 error: manual implementation of `split_once`
-  --> tests/ui/manual_split_once.rs:13:13
+  --> tests/ui/manual_split_once.rs:12:13
    |
 LL |     let _ = "key=value".splitn(2, '=').skip(1).next().unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".split_once('=').unwrap().1`
 
 error: manual implementation of `split_once`
-  --> tests/ui/manual_split_once.rs:15:18
+  --> tests/ui/manual_split_once.rs:14:18
    |
 LL |     let (_, _) = "key=value".splitn(2, '=').next_tuple().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".split_once('=')`
 
 error: manual implementation of `split_once`
-  --> tests/ui/manual_split_once.rs:19:13
+  --> tests/ui/manual_split_once.rs:18:13
    |
 LL |     let _ = s.splitn(2, '=').nth(1).unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.split_once('=').unwrap().1`
 
 error: manual implementation of `split_once`
-  --> tests/ui/manual_split_once.rs:23:13
+  --> tests/ui/manual_split_once.rs:22:13
    |
 LL |     let _ = s.splitn(2, '=').nth(1).unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.split_once('=').unwrap().1`
 
 error: manual implementation of `split_once`
-  --> tests/ui/manual_split_once.rs:27:13
+  --> tests/ui/manual_split_once.rs:26:13
    |
 LL |     let _ = s.splitn(2, '=').skip(1).next().unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.split_once('=').unwrap().1`
 
 error: manual implementation of `split_once`
-  --> tests/ui/manual_split_once.rs:31:17
+  --> tests/ui/manual_split_once.rs:30:17
    |
 LL |         let _ = s.splitn(2, '=').nth(1)?;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.split_once('=')?.1`
 
 error: manual implementation of `split_once`
-  --> tests/ui/manual_split_once.rs:33:17
+  --> tests/ui/manual_split_once.rs:32:17
    |
 LL |         let _ = s.splitn(2, '=').skip(1).next()?;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.split_once('=')?.1`
 
 error: manual implementation of `rsplit_once`
-  --> tests/ui/manual_split_once.rs:35:17
+  --> tests/ui/manual_split_once.rs:34:17
    |
 LL |         let _ = s.rsplitn(2, '=').nth(1)?;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.rsplit_once('=')?.0`
 
 error: manual implementation of `rsplit_once`
-  --> tests/ui/manual_split_once.rs:37:17
+  --> tests/ui/manual_split_once.rs:36:17
    |
 LL |         let _ = s.rsplitn(2, '=').skip(1).next()?;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.rsplit_once('=')?.0`
 
 error: manual implementation of `rsplit_once`
-  --> tests/ui/manual_split_once.rs:46:13
+  --> tests/ui/manual_split_once.rs:45:13
    |
 LL |     let _ = "key=value".rsplitn(2, '=').nth(1).unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".rsplit_once('=').unwrap().0`
 
 error: manual implementation of `rsplit_once`
-  --> tests/ui/manual_split_once.rs:48:18
+  --> tests/ui/manual_split_once.rs:47:18
    |
 LL |     let (_, _) = "key=value".rsplitn(2, '=').next_tuple().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".rsplit_once('=').map(|(x, y)| (y, x))`
 
 error: manual implementation of `rsplit_once`
-  --> tests/ui/manual_split_once.rs:50:13
+  --> tests/ui/manual_split_once.rs:49:13
    |
 LL |     let _ = s.rsplitn(2, '=').nth(1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.rsplit_once('=').map(|x| x.0)`
 
 error: manual implementation of `split_once`
-  --> tests/ui/manual_split_once.rs:55:5
+  --> tests/ui/manual_split_once.rs:54:5
    |
 LL |     let mut iter = "a.b.c".splitn(2, '.');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -99,7 +99,7 @@ LL ~
    |
 
 error: manual implementation of `split_once`
-  --> tests/ui/manual_split_once.rs:60:5
+  --> tests/ui/manual_split_once.rs:59:5
    |
 LL |     let mut iter = "a.b.c".splitn(2, '.');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -118,7 +118,7 @@ LL ~
    |
 
 error: manual implementation of `rsplit_once`
-  --> tests/ui/manual_split_once.rs:65:5
+  --> tests/ui/manual_split_once.rs:64:5
    |
 LL |     let mut iter = "a.b.c".rsplitn(2, '.');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -137,7 +137,7 @@ LL ~
    |
 
 error: manual implementation of `rsplit_once`
-  --> tests/ui/manual_split_once.rs:70:5
+  --> tests/ui/manual_split_once.rs:69:5
    |
 LL |     let mut iter = "a.b.c".rsplitn(2, '.');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -156,13 +156,13 @@ LL ~
    |
 
 error: manual implementation of `split_once`
-  --> tests/ui/manual_split_once.rs:156:13
+  --> tests/ui/manual_split_once.rs:155:13
    |
 LL |     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"key=value".split_once('=').unwrap().1`
 
 error: manual implementation of `split_once`
-  --> tests/ui/manual_split_once.rs:159:5
+  --> tests/ui/manual_split_once.rs:158:5
    |
 LL |     let mut iter = "a.b.c".splitn(2, '.');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

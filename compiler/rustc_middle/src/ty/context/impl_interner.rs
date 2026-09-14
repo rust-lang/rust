@@ -2,15 +2,19 @@
 
 use std::{debug_assert_matches, fmt};
 
-use rustc_abi::ExternAbi;
+use rustc_data_structures::intern::Interned;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items::LangItem;
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
-use rustc_type_ir::{CollectAndApply, Interner, TypeFoldable, search_graph};
+use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
+use rustc_type_ir::solve::CanonicalInputData;
+use rustc_type_ir::{
+    BoundVar, CollectAndApply, DebruijnIndex, Interner, RegionVid, TypeFoldable, Unnormalized,
+    VisitorResult, search_graph, try_visit,
+};
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
 use crate::infer::canonical::CanonicalVarKinds;
@@ -19,8 +23,8 @@ use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, QueryResult, inspect,
 };
 use crate::ty::{
-    self, Clause, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Predicate, Region, Ty,
-    TyCtxt,
+    self, BoundRegion, Clause, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Predicate,
+    Region, RegionKind, RequiredDepth, Ty, TyCtxt,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -39,7 +43,21 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type CoroutineId = DefId;
     type AdtId = DefId;
     type ImplId = DefId;
-    type UnevaluatedConstId = DefId;
+    type AnonConstId = DefId;
+    type TraitAssocTyId = DefId;
+    type TraitAssocConstId = DefId;
+    type TraitAssocTermId = DefId;
+    type OpaqueTyId = DefId;
+    type LocalOpaqueTyId = LocalDefId;
+    type FreeTyAliasId = DefId;
+    type FreeConstAliasId = DefId;
+    type FreeTermAliasId = DefId;
+    type ImplOrTraitAssocTyId = DefId;
+    type ImplOrTraitAssocConstId = DefId;
+    type ImplOrTraitAssocTermId = DefId;
+    type InherentAssocTyId = DefId;
+    type InherentAssocConstId = DefId;
+    type InherentAssocTermId = DefId;
     type Span = Span;
 
     type GenericArgs = ty::GenericArgsRef<'tcx>;
@@ -91,7 +109,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Pat = Pattern<'tcx>;
     type PatList = &'tcx List<Pattern<'tcx>>;
     type Safety = hir::Safety;
-    type Abi = ExternAbi;
     type Const = ty::Const<'tcx>;
     type Consts = &'tcx List<Self::Const>;
 
@@ -100,12 +117,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ExprConst = ty::Expr<'tcx>;
     type ValTree = ty::ValTree<'tcx>;
     type ScalarInt = ty::ScalarInt;
-
-    type Region = Region<'tcx>;
+    type InternedRegionKind = Interned<'tcx, ty::RegionKind<'tcx>>;
     type EarlyParamRegion = ty::EarlyParamRegion;
-    type LateParamRegion = ty::LateParamRegion;
+    type LateParamRegionKind = ty::LateParamRegionKind;
 
-    type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>;
+    type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesClause<'tcx>>;
 
     type ParamEnv = ty::ParamEnv<'tcx>;
     type Predicate = Predicate<'tcx>;
@@ -126,18 +142,14 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R {
-        f(&mut *self.new_solver_evaluation_cache.lock())
+        f(&mut *self.caches.new_solver_evaluation_cache.lock())
     }
 
-    fn canonical_param_env_cache_get_or_insert<R>(
+    fn with_canonical_param_env_cache<R>(
         self,
-        param_env: ty::ParamEnv<'tcx>,
-        f: impl FnOnce() -> ty::CanonicalParamEnvCacheEntry<Self>,
-        from_entry: impl FnOnce(&ty::CanonicalParamEnvCacheEntry<Self>) -> R,
+        f: impl FnOnce(&mut ty::CanonicalParamEnvCache<Self>) -> R,
     ) -> R {
-        let mut cache = self.new_solver_canonical_param_env_cache.lock();
-        let entry = cache.entry(param_env).or_insert_with(f);
-        from_entry(entry)
+        f(&mut *self.caches.new_solver_canonical_param_env_cache.lock())
     }
 
     fn assert_evaluation_is_concurrent(&self) {
@@ -163,10 +175,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn opt_alias_variances(
         self,
-        kind: impl Into<ty::AliasTermKind>,
-        def_id: DefId,
+        kind: impl Into<ty::AliasTermKind<'tcx>>,
     ) -> Option<&'tcx [ty::Variance]> {
-        self.opt_alias_variances(kind, def_id)
+        self.opt_alias_variances(kind)
     }
 
     fn type_of(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
@@ -175,11 +186,33 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn type_of_opaque_hir_typeck(self, def_id: LocalDefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         self.type_of_opaque_hir_typeck(def_id)
     }
-    fn const_of_item(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
-        self.const_of_item(def_id)
+    fn is_direct_const(self, alias: ty::AliasConstKind<'tcx>) -> bool {
+        match alias {
+            ty::AliasConstKind::Projection { def_id }
+            | ty::AliasConstKind::InherentSelf { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id }
+            | ty::AliasConstKind::Free { def_id } => self.is_direct_const(def_id),
+            ty::AliasConstKind::Anon { .. } => false,
+        }
+    }
+    fn const_of_item(
+        self,
+        alias: ty::AliasConstKind<'tcx>,
+    ) -> Option<ty::EarlyBinder<'tcx, Const<'tcx>>> {
+        match alias {
+            ty::AliasConstKind::Projection { def_id }
+            | ty::AliasConstKind::InherentSelf { def_id }
+            | ty::AliasConstKind::InherentImpl { def_id }
+            | ty::AliasConstKind::Free { def_id } => self.const_of_item(def_id),
+            ty::AliasConstKind::Anon { .. } => None,
+        }
     }
     fn anon_const_kind(self, def_id: DefId) -> ty::AnonConstKind {
         self.anon_const_kind(def_id)
+    }
+
+    fn def_span(self, def_id: DefId) -> Span {
+        self.def_span(def_id)
     }
 
     type AdtDef = ty::AdtDef<'tcx>;
@@ -187,45 +220,66 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.adt_def(adt_def_id)
     }
 
-    fn alias_ty_kind(self, alias: ty::AliasTy<'tcx>) -> ty::AliasTyKind {
-        match self.def_kind(alias.def_id) {
-            DefKind::AssocTy => {
-                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(alias.def_id))
-                {
-                    ty::Inherent
+    fn alias_const_kind_from_def_id(
+        self,
+        def_id: Self::DefId,
+        inherent_args: ty::AliasConstInherentArgsKind,
+    ) -> ty::AliasConstKind<'tcx> {
+        match self.def_kind(def_id) {
+            DefKind::AssocConst => {
+                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) {
+                    match inherent_args {
+                        ty::AliasConstInherentArgsKind::WithSelf => {
+                            ty::AliasConstKind::InherentSelf { def_id }
+                        }
+                        ty::AliasConstInherentArgsKind::Impl => {
+                            ty::AliasConstKind::InherentImpl { def_id }
+                        }
+                    }
                 } else {
-                    ty::Projection
+                    ty::AliasConstKind::Projection { def_id }
                 }
             }
-            DefKind::OpaqueTy => ty::Opaque,
-            DefKind::TyAlias => ty::Free,
-            kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
+            DefKind::Const => ty::AliasConstKind::Free { def_id },
+            DefKind::AnonConst | DefKind::Ctor(_, CtorKind::Const) => {
+                ty::AliasConstKind::Anon { def_id }
+            }
+            kind => bug!("unexpected DefKind in AliasConst: {kind:?}"),
         }
     }
 
-    fn alias_term_kind(self, alias: ty::AliasTerm<'tcx>) -> ty::AliasTermKind {
-        match self.def_kind(alias.def_id) {
+    fn alias_term_kind_from_def_id(
+        self,
+        def_id: DefId,
+        inherent_args: ty::AliasConstInherentArgsKind,
+    ) -> ty::AliasTermKind<'tcx> {
+        match self.def_kind(def_id) {
             DefKind::AssocTy => {
-                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(alias.def_id))
-                {
-                    ty::AliasTermKind::InherentTy
+                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) {
+                    ty::AliasTermKind::InherentTy { def_id }
                 } else {
-                    ty::AliasTermKind::ProjectionTy
+                    ty::AliasTermKind::ProjectionTy { def_id }
                 }
             }
-            DefKind::AssocConst { .. } => {
-                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(alias.def_id))
-                {
-                    ty::AliasTermKind::InherentConst
+            DefKind::AssocConst => {
+                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) {
+                    match inherent_args {
+                        ty::AliasConstInherentArgsKind::WithSelf => {
+                            ty::AliasTermKind::InherentConstSelf { def_id }
+                        }
+                        ty::AliasConstInherentArgsKind::Impl => {
+                            ty::AliasTermKind::InherentConstImpl { def_id }
+                        }
+                    }
                 } else {
-                    ty::AliasTermKind::ProjectionConst
+                    ty::AliasTermKind::ProjectionConst { def_id }
                 }
             }
-            DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy,
-            DefKind::TyAlias => ty::AliasTermKind::FreeTy,
-            DefKind::Const { .. } => ty::AliasTermKind::FreeConst,
+            DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy { def_id },
+            DefKind::TyAlias => ty::AliasTermKind::FreeTy { def_id },
+            DefKind::Const => ty::AliasTermKind::FreeConst { def_id },
             DefKind::AnonConst | DefKind::Ctor(_, CtorKind::Const) => {
-                ty::AliasTermKind::UnevaluatedConst
+                ty::AliasTermKind::AnonConst { def_id }
             }
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
         }
@@ -236,7 +290,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         def_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
     ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
-        debug_assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst { .. });
+        debug_assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst);
         let trait_def_id = self.parent(def_id);
         debug_assert_matches!(self.def_kind(trait_def_id), DefKind::Trait);
         let trait_ref = ty::TraitRef::from_assoc(self, trait_def_id, args);
@@ -255,12 +309,24 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.mk_args_from_iter(args)
     }
 
-    fn check_args_compatible(self, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> bool {
-        self.check_args_compatible(def_id, args)
+    fn check_alias_term_args_compatible(
+        self,
+        kind: ty::AliasTermKind<'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> bool {
+        self.check_alias_term_args_compatible(kind, args)
     }
 
     fn debug_assert_args_compatible(self, def_id: DefId, args: ty::GenericArgsRef<'tcx>) {
         self.debug_assert_args_compatible(def_id, args);
+    }
+
+    fn debug_assert_alias_term_args_compatible(
+        self,
+        kind: ty::AliasTermKind<'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
+    ) {
+        self.debug_assert_alias_term_args_compatible(kind, args);
     }
 
     /// Assert that the args from an `ExistentialTraitRef` or `ExistentialProjection`
@@ -291,7 +357,15 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.mk_type_list_from_iter(args)
     }
 
-    fn parent(self, def_id: DefId) -> DefId {
+    fn projection_parent(self, def_id: Self::TraitAssocTermId) -> Self::TraitId {
+        self.parent(def_id)
+    }
+
+    fn impl_or_trait_assoc_term_parent(self, def_id: Self::ImplOrTraitAssocTyId) -> DefId {
+        self.parent(def_id)
+    }
+
+    fn inherent_alias_term_parent(self, def_id: Self::InherentAssocTermId) -> Self::ImplId {
         self.parent(def_id)
     }
 
@@ -303,6 +377,14 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn features(self) -> Self::Features {
         self.features()
+    }
+
+    fn assumptions_on_binders(self) -> bool {
+        self.assumptions_on_binders()
+    }
+
+    fn renormalize_rigid_aliases(self) -> bool {
+        self.renormalize_rigid_aliases()
     }
 
     fn coroutine_hidden_types(
@@ -349,36 +431,42 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.item_non_self_bounds(def_id).map_bound(IntoIterator::into_iter)
     }
 
-    fn predicates_of(
+    fn clauses_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
-        ty::EarlyBinder::bind(
-            self.predicates_of(def_id).instantiate_identity(self).predicates.into_iter(),
+        ty::EarlyBinder::bind_iter(
+            self.clauses_of(def_id)
+                .instantiate_identity(self)
+                .clauses
+                .into_iter()
+                .map(Unnormalized::skip_normalization),
         )
     }
 
-    fn own_predicates_of(
+    fn own_clauses_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
-        ty::EarlyBinder::bind(
-            self.predicates_of(def_id).instantiate_own_identity().map(|(clause, _)| clause),
+        ty::EarlyBinder::bind_iter(
+            self.clauses_of(def_id)
+                .instantiate_own_identity()
+                .map(|(clause, _)| clause.skip_normalization()),
         )
     }
 
-    fn explicit_super_predicates_of(
+    fn explicit_super_clauses_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        self.explicit_super_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
+        self.explicit_super_clauses_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
-    fn explicit_implied_predicates_of(
+    fn explicit_implied_clauses_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
+        self.explicit_implied_clauses_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
     fn impl_super_outlives(
@@ -396,14 +484,14 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn fn_is_const(self, def_id: DefId) -> bool {
         debug_assert_matches!(
             self.def_kind(def_id),
-            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(CtorOf::Struct, CtorKind::Fn)
+            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn)
         );
         self.is_conditionally_const(def_id)
     }
 
     fn closure_is_const(self, def_id: DefId) -> bool {
         debug_assert_matches!(self.def_kind(def_id), DefKind::Closure);
-        self.constness(def_id) == hir::Constness::Const
+        matches!(self.constness(def_id), hir::Constness::Const { always: false })
     }
 
     fn alias_has_const_conditions(self, def_id: DefId) -> bool {
@@ -415,8 +503,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
-        ty::EarlyBinder::bind(
-            self.const_conditions(def_id).instantiate_identity(self).into_iter().map(|(c, _)| c),
+        ty::EarlyBinder::bind_iter(
+            self.const_conditions(def_id)
+                .instantiate_identity(self)
+                .into_iter()
+                .map(|(c, _)| c.skip_normalization()),
         )
     }
 
@@ -424,8 +515,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Binder<'tcx, ty::TraitRef<'tcx>>>> {
-        ty::EarlyBinder::bind(
-            self.explicit_implied_const_bounds(def_id).iter_identity_copied().map(|(c, _)| c),
+        ty::EarlyBinder::bind_iter(
+            self.explicit_implied_const_bounds(def_id)
+                .iter_identity_copied()
+                .map(Unnormalized::skip_normalization)
+                .map(|(c, _)| c),
         )
     }
 
@@ -437,7 +531,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         !self.codegen_fn_attrs(def_id).target_features.is_empty()
     }
 
-    fn require_lang_item(self, lang_item: SolverLangItem) -> DefId {
+    fn require_projection_lang_item(self, lang_item: SolverProjectionLangItem) -> DefId {
         self.require_lang_item(solver_lang_item_to_lang_item(lang_item), DUMMY_SP)
     }
 
@@ -449,7 +543,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.require_lang_item(solver_adt_lang_item_to_lang_item(lang_item), DUMMY_SP)
     }
 
-    fn is_lang_item(self, def_id: DefId, lang_item: SolverLangItem) -> bool {
+    fn is_projection_lang_item(self, def_id: DefId, lang_item: SolverProjectionLangItem) -> bool {
         self.is_lang_item(def_id, solver_lang_item_to_lang_item(lang_item))
     }
 
@@ -469,7 +563,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.is_sizedness_trait(def_id)
     }
 
-    fn as_lang_item(self, def_id: DefId) -> Option<SolverLangItem> {
+    fn as_projection_lang_item(self, def_id: DefId) -> Option<SolverProjectionLangItem> {
         lang_item_to_solver_lang_item(self.lang_items().from_def_id(def_id)?)
     }
 
@@ -488,126 +582,31 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             .map(|assoc_item| assoc_item.def_id)
     }
 
-    // This implementation is a bit different from `TyCtxt::for_each_relevant_impl`,
-    // since we want to skip over blanket impls for non-rigid aliases, and also we
-    // only want to consider types that *actually* unify with float/int vars.
-    fn for_each_relevant_impl(
+    // This signature is a bit different from `TyCtxt::for_each_relevant_impl`.
+    // While rustc only needs self_ty, rust-analyzer's impl needs to use all the args.
+    fn for_each_relevant_impl<R: VisitorResult>(
+        self,
+        trait_ref: ty::TraitRef<'tcx>,
+        f: impl FnMut(DefId) -> R,
+    ) -> R {
+        let self_ty = trait_ref.args.type_at(0);
+        debug_assert!(
+            !matches!(self_ty.kind(), ty::Infer(ty::TyVar(_)) | ty::Param(_) | ty::Bound(_, _)),
+            "we should not have them as self ty in the next solver"
+        );
+        TyCtxt::for_each_relevant_impl(self, trait_ref.def_id, self_ty, f)
+    }
+    fn for_each_blanket_impl<R: VisitorResult>(
         self,
         trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
-        mut f: impl FnMut(DefId),
-    ) {
-        let tcx = self;
-        let trait_impls = tcx.trait_impls_of(trait_def_id);
-        let mut consider_impls_for_simplified_type = |simp| {
-            if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
-                for &impl_def_id in impls_for_type {
-                    f(impl_def_id);
-                }
-            }
-        };
-
-        match self_ty.kind() {
-            ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Adt(_, _)
-            | ty::Foreign(_)
-            | ty::Str
-            | ty::Array(_, _)
-            | ty::Pat(_, _)
-            | ty::Slice(_)
-            | ty::RawPtr(_, _)
-            | ty::Ref(_, _, _)
-            | ty::FnDef(_, _)
-            | ty::FnPtr(..)
-            | ty::Dynamic(_, _)
-            | ty::Closure(..)
-            | ty::CoroutineClosure(..)
-            | ty::Coroutine(_, _)
-            | ty::Never
-            | ty::Tuple(_)
-            | ty::UnsafeBinder(_) => {
-                if let Some(simp) = ty::fast_reject::simplify_type(
-                    tcx,
-                    self_ty,
-                    ty::fast_reject::TreatParams::AsRigid,
-                ) {
-                    consider_impls_for_simplified_type(simp);
-                }
-            }
-
-            // HACK: For integer and float variables we have to manually look at all impls
-            // which have some integer or float as a self type.
-            ty::Infer(ty::IntVar(_)) => {
-                use ty::IntTy::*;
-                use ty::UintTy::*;
-                // This causes a compiler error if any new integer kinds are added.
-                let (I8 | I16 | I32 | I64 | I128 | Isize): ty::IntTy;
-                let (U8 | U16 | U32 | U64 | U128 | Usize): ty::UintTy;
-                let possible_integers = [
-                    // signed integers
-                    ty::SimplifiedType::Int(I8),
-                    ty::SimplifiedType::Int(I16),
-                    ty::SimplifiedType::Int(I32),
-                    ty::SimplifiedType::Int(I64),
-                    ty::SimplifiedType::Int(I128),
-                    ty::SimplifiedType::Int(Isize),
-                    // unsigned integers
-                    ty::SimplifiedType::Uint(U8),
-                    ty::SimplifiedType::Uint(U16),
-                    ty::SimplifiedType::Uint(U32),
-                    ty::SimplifiedType::Uint(U64),
-                    ty::SimplifiedType::Uint(U128),
-                    ty::SimplifiedType::Uint(Usize),
-                ];
-                for simp in possible_integers {
-                    consider_impls_for_simplified_type(simp);
-                }
-            }
-
-            ty::Infer(ty::FloatVar(_)) => {
-                // This causes a compiler error if any new float kinds are added.
-                let (ty::FloatTy::F16 | ty::FloatTy::F32 | ty::FloatTy::F64 | ty::FloatTy::F128);
-                let possible_floats = [
-                    ty::SimplifiedType::Float(ty::FloatTy::F16),
-                    ty::SimplifiedType::Float(ty::FloatTy::F32),
-                    ty::SimplifiedType::Float(ty::FloatTy::F64),
-                    ty::SimplifiedType::Float(ty::FloatTy::F128),
-                ];
-
-                for simp in possible_floats {
-                    consider_impls_for_simplified_type(simp);
-                }
-            }
-
-            // The only traits applying to aliases and placeholders are blanket impls.
-            //
-            // Impls which apply to an alias after normalization are handled by
-            // `assemble_candidates_after_normalizing_self_ty`.
-            ty::Alias(_, _) | ty::Placeholder(..) | ty::Error(_) => (),
-
-            // FIXME: These should ideally not exist as a self type. It would be nice for
-            // the builtin auto trait impls of coroutines to instead directly recurse
-            // into the witness.
-            ty::CoroutineWitness(..) => (),
-
-            // These variants should not exist as a self type.
-            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
-            | ty::Param(_)
-            | ty::Bound(_, _) => bug!("unexpected self type: {self_ty}"),
-        }
-
-        #[allow(rustc::usage_of_type_ir_traits)]
-        self.for_each_blanket_impl(trait_def_id, f)
-    }
-    fn for_each_blanket_impl(self, trait_def_id: DefId, mut f: impl FnMut(DefId)) {
+        mut f: impl FnMut(DefId) -> R,
+    ) -> R {
         let trait_impls = self.trait_impls_of(trait_def_id);
         for &impl_def_id in trait_impls.blanket_impls() {
-            f(impl_def_id);
+            try_visit!(f(impl_def_id));
         }
+
+        R::output()
     }
 
     fn has_item_definition(self, def_id: DefId) -> bool {
@@ -628,6 +627,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn impl_polarity(self, impl_def_id: DefId) -> ty::ImplPolarity {
         self.impl_polarity(impl_def_id)
+    }
+
+    fn is_fully_generic_for_reflection(self, impl_def_id: Self::ImplId) -> bool {
+        self.impl_is_fully_generic_for_reflection(impl_def_id)
     }
 
     fn trait_is_auto(self, trait_def_id: DefId) -> bool {
@@ -660,6 +663,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn delay_bug(self, msg: impl ToString) -> ErrorGuaranteed {
         self.dcx().span_delayed_bug(DUMMY_SP, msg.to_string())
+    }
+
+    fn span_delayed_bug(self, span: Self::Span, msg: impl ToString) -> ErrorGuaranteed {
+        self.dcx().span_delayed_bug(span, msg.to_string())
     }
 
     fn is_general_coroutine(self, coroutine_def_id: DefId) -> bool {
@@ -711,17 +718,88 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn mk_probe(self, probe: inspect::Probe<Self>) -> &'tcx inspect::Probe<TyCtxt<'tcx>> {
         self.arena.alloc(probe)
     }
+    type CanonicalInput = CanonicalInput<'tcx>;
+    fn mk_canonical_input(self, data: CanonicalInputData<Self>) -> CanonicalInput<'tcx> {
+        self.intern_canonical_input(data)
+    }
     fn evaluate_root_goal_for_proof_tree_raw(
         self,
         canonical_goal: CanonicalInput<'tcx>,
-    ) -> (QueryResult<'tcx>, &'tcx inspect::Probe<TyCtxt<'tcx>>) {
-        self.evaluate_root_goal_for_proof_tree_raw(canonical_goal)
+        root_depth: usize,
+    ) -> (QueryResult<'tcx>, &'tcx inspect::Probe<TyCtxt<'tcx>>, RequiredDepth) {
+        self.evaluate_root_goal_for_proof_tree_raw((canonical_goal, root_depth))
     }
 
     fn item_name(self, id: DefId) -> Symbol {
         self.opt_item_name(id).unwrap_or_else(|| {
             bug!("item_name: no name for {:?}", self.def_path(id));
         })
+    }
+
+    fn get_anon_re_bounds_lifetime(self, idx: usize, var_idx: usize) -> Option<Region<'tcx>> {
+        if let Some(inner) = self.lifetimes.anon_re_bounds.get(idx) {
+            inner.get(var_idx).copied()
+        } else {
+            None
+        }
+    }
+
+    fn get_anon_re_canonical_bounds_lifetime(self, idx: usize) -> Option<Region<'tcx>> {
+        self.lifetimes.anon_re_canonical_bounds.get(idx).copied()
+    }
+
+    fn get_re_static_lifetime(self) -> Region<'tcx> {
+        self.lifetimes.re_static
+    }
+
+    fn intern_re_var(self, rv: RegionVid) -> Region<'tcx> {
+        // Use a pre-interned one when possible.
+        self.lifetimes
+            .re_vars
+            .get(rv.as_usize())
+            .copied()
+            .unwrap_or_else(|| self.intern_region(ty::ReVar(rv)))
+    }
+
+    fn intern_region(self, region_kind: RegionKind<'tcx>) -> Region<'tcx> {
+        self.intern_region(region_kind)
+    }
+
+    fn intern_bound_region(
+        self,
+        debruijn: DebruijnIndex,
+        bound_region: BoundRegion<'tcx>,
+    ) -> Region<'tcx> {
+        // Use a pre-interned one when possible.
+        if let ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon } = bound_region
+            && let Some(inner) = self.lifetimes.anon_re_bounds.get(debruijn.as_usize())
+            && let Some(re) = inner.get(var.as_usize()).copied()
+        {
+            re
+        } else {
+            self.intern_region(ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), bound_region))
+        }
+    }
+
+    fn intern_canonical_bound(self, var: BoundVar) -> Region<'tcx> {
+        // Use a pre-interned one when possible.
+        if let Some(re) = self.lifetimes.anon_re_canonical_bounds.get(var.as_usize()).copied() {
+            re
+        } else {
+            self.intern_region(ty::ReBound(
+                ty::BoundVarIndexKind::Canonical,
+                BoundRegion { var, kind: ty::BoundRegionKind::Anon },
+            ))
+        }
+    }
+}
+
+impl<'tcx, T: std::fmt::Debug + Clone + Copy> rustc_type_ir::intern::Interned<TyCtxt<'tcx>>
+    for Interned<'tcx, T>
+{
+    type Value = T;
+    fn get(self) -> T {
+        *self.0
     }
 }
 
@@ -748,7 +826,7 @@ macro_rules! bidirectional_lang_item_map {
 }
 
 bidirectional_lang_item_map! {
-    SolverLangItem, fn lang_item_to_solver_lang_item, fn solver_lang_item_to_lang_item;
+    SolverProjectionLangItem, fn lang_item_to_solver_lang_item, fn solver_lang_item_to_lang_item;
 
 // tidy-alphabetical-start
     AsyncFnKindUpvars,
@@ -757,7 +835,6 @@ bidirectional_lang_item_map! {
     CallRefFuture,
     CoroutineReturn,
     CoroutineYield,
-    DynMetadata,
     FieldBase,
     FieldType,
     FutureOutput,
@@ -769,7 +846,9 @@ bidirectional_lang_item_map! {
     SolverAdtLangItem, fn lang_item_to_solver_adt_lang_item, fn solver_adt_lang_item_to_lang_item;
 
 // tidy-alphabetical-start
+    DynMetadata,
     Option,
+    OwnedBox,
     Poll,
 // tidy-alphabetical-end
 }
@@ -782,7 +861,6 @@ bidirectional_lang_item_map! {
     AsyncFnKindHelper,
     AsyncFnMut,
     AsyncFnOnce,
-    AsyncFnOnceOutput,
     AsyncIterator,
     BikeshedGuaranteedNoDrop,
     Clone,
@@ -805,6 +883,7 @@ bidirectional_lang_item_map! {
     Sized,
     TransmuteTrait,
     TrivialClone,
+    TryAsDyn,
     Tuple,
     Unpin,
     Unsize,

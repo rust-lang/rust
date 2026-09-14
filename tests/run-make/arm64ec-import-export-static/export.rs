@@ -17,8 +17,8 @@ impl Sync for i32 {}
 #[lang = "copy"]
 pub trait Copy {}
 impl Copy for i32 {}
-#[lang = "drop_in_place"]
-pub unsafe fn drop_in_place<T: ?Sized>(_: *mut T) {}
+#[lang = "drop_glue"]
+pub unsafe fn drop_glue<T: ?Sized>(_: &mut T) {}
 #[no_mangle]
 extern "system" fn _DllMainCRTStartup(_: *const u8, _: u32, _: *const u8) -> u32 {
     1

@@ -256,4 +256,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         })
     }
+
+    #[allow(non_snake_case)]
+    fn GetTempPathW(
+        &mut self,
+        buflen: &OpTy<'tcx>, // DWORD
+        buf: &OpTy<'tcx>,    // LPWSTR
+    ) -> InterpResult<'tcx, Scalar> // returns DWORD
+    {
+        let this = self.eval_context_mut();
+        this.assert_target_os(Os::Windows, "GetTempPathW");
+        this.check_no_isolation("`GetTempPathW`")?;
+
+        let buflen = this.read_scalar(buflen)?.to_u32()?;
+        let buf = this.read_pointer(buf)?;
+
+        let temp_dir = env::temp_dir();
+
+        return interp_ok(Scalar::from_u32(windows_check_buffer_size(
+            this.write_path_to_wide_str(&temp_dir, buf, buflen.into())?,
+        )));
+    }
 }

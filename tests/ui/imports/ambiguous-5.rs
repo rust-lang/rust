@@ -11,7 +11,6 @@ mod gpos {
     use super::*;
     struct MarkRecord(Class);
     //~^ ERROR`Class` is ambiguous
-    //~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }
 
 mod gsubgpos {

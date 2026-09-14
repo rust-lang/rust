@@ -34,6 +34,18 @@ pub(crate) fn resolve<'tcx>(
     var_infos: VarInfos<'tcx>,
     data: RegionConstraintData<'tcx>,
 ) -> (LexicalRegionResolutions<'tcx>, Vec<RegionResolutionError<'tcx>>) {
+    assert!(
+        data.constraints.iter().all(|(c, _)| match c.kind {
+            ConstraintKind::VarSubVar
+            | ConstraintKind::RegSubVar
+            | ConstraintKind::VarSubReg
+            | ConstraintKind::RegSubReg => true,
+
+            ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => false,
+        }),
+        "Every constraint should be decomposed into outlives here"
+    );
+
     let mut errors = vec![];
     let mut resolver = LexicalResolver { region_rels, var_infos, data };
     let values = resolver.infer_variable_values(&mut errors);
@@ -98,7 +110,7 @@ pub enum RegionResolutionError<'tcx> {
         Region<'tcx>,          // the placeholder `'b`
     ),
 
-    CannotNormalize(ty::PolyTypeOutlivesPredicate<'tcx>, SubregionOrigin<'tcx>),
+    CannotNormalize(ty::PolyTypeOutlivesClause<'tcx>, SubregionOrigin<'tcx>),
 }
 
 impl<'tcx> RegionResolutionError<'tcx> {
@@ -137,7 +149,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         // Deduplicating constraints is shown to have a positive perf impact.
         let mut seen = UnordSet::default();
-        self.data.constraints.retain(|(constraint, _)| seen.insert(*constraint));
+        self.data.constraints.retain_mut(|(constraint, _)| {
+            // We don't want to discern constraints by leak check visibility here
+            constraint.visible_for_leak_check = ty::VisibleForLeakCheck::Unreachable;
+            seen.insert(*constraint)
+        });
 
         if cfg!(debug_assertions) {
             self.dump_constraints();
@@ -278,6 +294,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // These constraints are checked after expansion
                     // is done, in `collect_errors`.
                     continue;
+                }
+
+                ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
+                    unreachable!()
                 }
             }
         }
@@ -575,6 +595,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         *sub_data = VarValue::ErrorValue;
                     }
                 }
+
+                ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
+                    unreachable!()
+                }
             }
         }
 
@@ -852,12 +876,12 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     }
 
                     ConstraintKind::RegSubVar => {
-                        let origin = origin.clone();
+                        let origin = (*origin).clone();
                         state.result.push(RegionAndOrigin { region: c.sub, origin });
                     }
 
                     ConstraintKind::VarSubReg => {
-                        let origin = origin.clone();
+                        let origin = (*origin).clone();
                         state.result.push(RegionAndOrigin { region: c.sup, origin });
                     }
 
@@ -865,6 +889,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         "cannot reach reg-sub-reg edge in region inference \
                          post-processing"
                     ),
+
+                    ConstraintKind::VarEqVar
+                    | ConstraintKind::VarEqReg
+                    | ConstraintKind::RegEqReg => unreachable!(),
                 }
             }
         }

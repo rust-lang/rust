@@ -73,10 +73,9 @@ impl TaggedArcPtr {
     ///
     /// You can only drop the `Arc` if the instance is dropped.
     #[inline]
-    pub(crate) unsafe fn try_as_arc_owned(self) -> Option<ManuallyDrop<Arc<Box<str>>>> {
+    unsafe fn try_as_arc_owned(self) -> Option<ManuallyDrop<Arc<Box<str>>>> {
         // Unpack the tag from the alignment niche
-        let tag = self.packed.as_ptr().addr() & Self::BOOL_BITS;
-        if tag != 0 {
+        if self.is_arc() {
             // Safety: We checked that the tag is non-zero -> true, so we are pointing to the data offset of an `Arc`
             Some(ManuallyDrop::new(unsafe {
                 Arc::from_raw(self.pointer().as_ptr().cast::<Box<str>>())
@@ -84,6 +83,11 @@ impl TaggedArcPtr {
         } else {
             None
         }
+    }
+
+    #[inline]
+    fn is_arc(&self) -> bool {
+        (self.packed.as_ptr().addr() & Self::BOOL_BITS) != 0
     }
 
     #[inline]
@@ -161,28 +165,6 @@ impl Symbol {
         unsafe { bucket.as_ref().0.clone() }
     }
 
-    pub fn integer(i: usize) -> Self {
-        match i {
-            0 => symbols::INTEGER_0,
-            1 => symbols::INTEGER_1,
-            2 => symbols::INTEGER_2,
-            3 => symbols::INTEGER_3,
-            4 => symbols::INTEGER_4,
-            5 => symbols::INTEGER_5,
-            6 => symbols::INTEGER_6,
-            7 => symbols::INTEGER_7,
-            8 => symbols::INTEGER_8,
-            9 => symbols::INTEGER_9,
-            10 => symbols::INTEGER_10,
-            11 => symbols::INTEGER_11,
-            12 => symbols::INTEGER_12,
-            13 => symbols::INTEGER_13,
-            14 => symbols::INTEGER_14,
-            15 => symbols::INTEGER_15,
-            i => Symbol::intern(&format!("{i}")),
-        }
-    }
-
     pub fn empty() -> Self {
         symbols::__empty
     }
@@ -235,11 +217,12 @@ impl Symbol {
             shard.shrink_to(len, |(x, _)| Self::hash(storage, x.as_str()));
         }
     }
-}
 
-impl Drop for Symbol {
+    /// # Safety
+    ///
+    /// You must know that you have a `Symbol` instance that won't be dropped, so decreasing the refcount is valid.
     #[inline]
-    fn drop(&mut self) {
+    pub unsafe fn decrease_refcount(&mut self) {
         // SAFETY: We're dropping, we have ownership.
         let Some(arc) = (unsafe { self.repr.try_as_arc_owned() }) else {
             return;
@@ -252,6 +235,15 @@ impl Drop for Symbol {
         }
         // decrement the ref count
         ManuallyDrop::into_inner(arc);
+    }
+}
+
+impl Drop for Symbol {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            self.decrease_refcount();
+        }
     }
 }
 

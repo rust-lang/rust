@@ -1,6 +1,6 @@
 //@ known-bug: #118603
 //@ compile-flags: -Copt-level=0
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 #![feature(generic_const_exprs)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

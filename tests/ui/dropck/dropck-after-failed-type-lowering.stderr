@@ -1,5 +1,5 @@
 error[E0107]: missing generics for associated type `B::C`
-  --> $DIR/dropck-after-failed-type-lowering.rs:10:25
+  --> $DIR/dropck-after-failed-type-lowering.rs:11:25
    |
 LL |     h: Option<<G as B>::C>,
    |                         ^ expected 1 lifetime argument
@@ -14,6 +14,24 @@ help: add missing lifetime argument
 LL |     h: Option<<G as B>::C<'a>>,
    |                          ++++
 
-error: aborting due to 1 previous error
+error[E0277]: the trait bound `G: B` is not satisfied
+  --> $DIR/dropck-after-failed-type-lowering.rs:11:8
+   |
+LL |     h: Option<<G as B>::C>,
+   |        ^^^^^^^^^^^^^^^^^^^ the trait `B` is not implemented for `G`
+   |
+help: consider restricting type parameter `G` with trait `B`
+   |
+LL | struct F<G: B> {
+   |           +++
 
-For more information about this error, try `rustc --explain E0107`.
+error[E0277]: the trait bound `E: B` is not satisfied
+  --> $DIR/dropck-after-failed-type-lowering.rs:5:18
+   |
+LL |     fn d<E>() -> F<E> {
+   |                  ^^^^ the trait `B` is not implemented for `E`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0277.
+For more information about an error, try `rustc --explain E0107`.

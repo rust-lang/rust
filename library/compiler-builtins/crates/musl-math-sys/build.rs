@@ -52,7 +52,7 @@ fn main() {
         println!(
             "cargo::warning=Musl doesn't compile with the current \
             target {}; skipping build",
-            &cfg.target_string
+            cfg.target_string
         );
         return;
     }

@@ -1,17 +1,20 @@
 use super::INLINE_ALWAYS;
+use super::utils::is_relevant_expr;
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir::attrs::InlineAttr;
-use rustc_hir::{Attribute, find_attr};
+use rustc_hir::{Attribute, BodyId, find_attr};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
 
-pub(super) fn check(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribute]) {
+pub(super) fn check(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribute], body: Option<BodyId>) {
     if span.from_expansion() {
         return;
     }
 
-    if let Some(span) = find_attr!(attrs, Inline(InlineAttr::Always, span) => *span) {
+    if let Some(span) = find_attr!(attrs, Inline(InlineAttr::Always, span) => *span)
+        && body.is_none_or(|body| is_relevant_expr(cx, cx.tcx.hir_body(body).value))
+    {
         span_lint(
             cx,
             INLINE_ALWAYS,

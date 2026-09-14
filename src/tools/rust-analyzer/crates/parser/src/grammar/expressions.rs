@@ -1,7 +1,5 @@
 mod atom;
 
-use crate::grammar::attributes::ATTRIBUTE_FIRST;
-
 use super::*;
 
 pub(super) use atom::{EXPR_RECOVERY_SET, LITERAL_FIRST, literal, parse_asm_expr};
@@ -38,8 +36,7 @@ fn expr_no_struct(p: &mut Parser<'_>) {
 /// It needs to be parsed with lower precedence than `&&`, so that
 /// `if let true = true && false` is parsed as `if (let true = true) && (true)`
 /// and not `if let true = (true && true)`.
-fn expr_let(p: &mut Parser<'_>) {
-    let r = Restrictions { forbid_structs: true, prefer_stmt: false };
+fn expr_let(p: &mut Parser<'_>, r: Restrictions) {
     expr_bp(p, None, r, 5);
 }
 
@@ -301,8 +298,16 @@ fn expr_bp(
             //     match 1.. { _ => () };
             //     match a.b()..S { _ => () };
             // }
+
+            // test closure_postfix_range_method_call
+            // fn foo() {
+            //     || 1.. .method();
+            //     || 1.. .field;
+            // }
+            let has_access_after = p.at(T![.]) && p.nth_at(1, SyntaxKind::IDENT);
+            let struct_forbidden = r.forbid_structs && p.at(T!['{']);
             let has_trailing_expression =
-                p.at_ts(EXPR_FIRST) && !(r.forbid_structs && p.at(T!['{']));
+                p.at_ts(EXPR_FIRST) && !has_access_after && !struct_forbidden;
             if !has_trailing_expression {
                 // no RHS
                 lhs = m.complete(p, RANGE_EXPR);
@@ -324,7 +329,7 @@ fn expr_bp(
 }
 
 const LHS_FIRST: TokenSet =
-    atom::ATOM_EXPR_FIRST.union(TokenSet::new(&[T![&], T![*], T![!], T![.], T![-], T![_]]));
+    atom::ATOM_EXPR_FIRST.union(TokenSet::new(&[T![&], T![*], T![!], T![.], T![-], T![_], T![#]]));
 
 fn lhs(p: &mut Parser<'_>, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
     let m;
@@ -384,6 +389,7 @@ fn lhs(p: &mut Parser<'_>, r: Restrictions) -> Option<(CompletedMarker, BlockLik
                     // }
                     let has_access_after = p.at(T![.]) && p.nth_at(1, SyntaxKind::IDENT);
                     let struct_forbidden = r.forbid_structs && p.at(T!['{']);
+                    // NOTE: Similar logic `is_range` flag in expr_bp()
                     if p.at_ts(EXPR_FIRST) && !has_access_after && !struct_forbidden {
                         expr_bp(p, None, r, 2);
                     }
@@ -653,7 +659,7 @@ fn arg_list(p: &mut Parser<'_>) {
         T![')'],
         T![,],
         || "expected expression".into(),
-        EXPR_FIRST.union(ATTRIBUTE_FIRST),
+        EXPR_FIRST,
         |p| expr(p).is_some(),
     );
     m.complete(p, ARG_LIST);

@@ -19,14 +19,6 @@ Default: `false`
 Prefer to use `Self` over the type name when inserting a type (e.g. in "fill match arms" assist).
 
 
-## rust-analyzer.assist.termSearch.borrowcheck {#assist.termSearch.borrowcheck}
-
-Default: `true`
-
-Enable borrow checking for term search code assists. If set to false, also there will be
-more suggestions, but some of them may not borrow-check.
-
-
 ## rust-analyzer.assist.termSearch.fuel {#assist.termSearch.fuel}
 
 Default: `1800`
@@ -142,6 +134,15 @@ To enable a name with a value, use `"key=value"`.
 To disable, prefix the entry with a `!`.
 
 
+## rust-analyzer.cargo.configPath {#cargo.configPath}
+
+Default: `null`
+
+Path to a `.cargo/config.toml` style file to pass to cargo via `--config`
+for every cargo invocation (metadata, build scripts, config discovery).
+Useful to give rust-analyzer a consistent view of the project configuration.
+
+
 ## rust-analyzer.cargo.extraArgs {#cargo.extraArgs}
 
 Default: `[]`
@@ -164,6 +165,14 @@ Default: `[]`
 List of features to activate.
 
 Set this to `"all"` to pass `--all-features` to cargo.
+
+
+## rust-analyzer.cargo.metadataExtraArgs {#cargo.metadataExtraArgs}
+
+Default: `[]`
+
+Extra arguments passed only to `cargo metadata`, not to other cargo invocations.
+Useful for flags like `--config` that `cargo metadata` supports.
 
 
 ## rust-analyzer.cargo.noDefaultFeatures {#cargo.noDefaultFeatures}
@@ -367,6 +376,15 @@ If false, `-p <package>` will be passed instead if applicable. In case it is not
 check will be performed.
 
 
+## rust-analyzer.completion.addColonsToModule {#completion.addColonsToModule}
+
+Default: `true`
+
+Automatically add `::` when completing the module.
+
+Will not be completed in `use`.
+
+
 ## rust-analyzer.completion.addSemicolonToUnit {#completion.addSemicolonToUnit}
 
 Default: `true`
@@ -427,6 +445,12 @@ You can either specify a string path which defaults to type "always" or use the 
 verbose form `{ "path": "path::to::item", type: "always" }`.
 
 For traits the type "methods" can be used to only exclude the methods but not the trait
+itself.
+
+For modules the type "sub_items" can be used to only exclude the all items in it but not the module
+itself. This does not include items defined in nested modules.
+
+For enums the type "variants" can be used to only exclude the all variants in it but not the enum
 itself.
 
 This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
@@ -616,6 +640,15 @@ List of warnings that should be displayed with info severity.
 
 The warnings will be indicated by a blue squiggly underline in code and a blue icon in
 the `Problems Panel`.
+
+
+## rust-analyzer.disableFixtureSupport {#disableFixtureSupport}
+
+Default: `false`
+
+Disable support for `#[rust_analyzer::rust_fixture]` snippets.
+
+If you are not working on rust-analyzer itself, you should ignore this config.
 
 
 ## rust-analyzer.document.symbol.search.excludeLocals {#document.symbol.search.excludeLocals}
@@ -950,7 +983,7 @@ to always show them).
 
 Default: `false`
 
-Show inlay hints for closure captures.
+Show inlay hints for closure and coroutine captures.
 
 
 ## rust-analyzer.inlayHints.closureReturnTypeHints.enable {#inlayHints.closureReturnTypeHints.enable}
@@ -1147,6 +1180,13 @@ Default: `false`
 Hide inlay type hints for constructors.
 
 
+## rust-analyzer.inlayHints.typeHints.location {#inlayHints.typeHints.location}
+
+Default: `"inline"`
+
+Where to render type hints relative to their binding pattern.
+
+
 ## rust-analyzer.interpret.tests {#interpret.tests}
 
 Default: `false`
@@ -1320,7 +1360,7 @@ This config takes a map of crate names with the exported proc-macro names to ign
 
 ## rust-analyzer.procMacro.processes {#procMacro.processes}
 
-Default: `1`
+Default: `2`
 
 Number of proc-macro server processes to spawn.
 
@@ -1380,9 +1420,15 @@ Default: `null`
 Override the command used for bench runnables.
 The first element of the array should be the program to execute (for example, `cargo`).
 
-Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
-replace the package name, target option (such as `--bin` or `--example`), the target name and
-the test name (name of test function or test mod path).
+Use the placeholders:
+- `${package}`: package name.
+- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.
+- `${target}`: target name (empty for `--lib`).
+- `${test_name}`: the test path filter, e.g. `module::bench_func`.
+- `${exact}`: `--exact` for single benchmarks, empty for modules.
+- `${include_ignored}`: always empty for benchmarks.
+- `${executable_args}`: all of the above binary args bundled together
+  (includes `rust-analyzer.runnables.extraTestBinaryArgs`).
 
 
 ## rust-analyzer.runnables.command {#runnables.command}
@@ -1396,12 +1442,18 @@ Command to be executed instead of 'cargo' for runnables.
 
 Default: `null`
 
-Override the command used for bench runnables.
+Override the command used for doc-test runnables.
 The first element of the array should be the program to execute (for example, `cargo`).
 
-Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
-replace the package name, target option (such as `--bin` or `--example`), the target name and
-the test name (name of test function or test mod path).
+Use the placeholders:
+- `${package}`: package name.
+- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.
+- `${target}`: target name (empty for `--lib`).
+- `${test_name}`: the test path filter, e.g. `module::func`.
+- `${exact}`: always empty for doc-tests.
+- `${include_ignored}`: always empty for doc-tests.
+- `${executable_args}`: all of the above binary args bundled together
+  (includes `rust-analyzer.runnables.extraTestBinaryArgs`).
 
 
 ## rust-analyzer.runnables.extraArgs {#runnables.extraArgs}
@@ -1444,9 +1496,15 @@ Default: `null`
 Override the command used for test runnables.
 The first element of the array should be the program to execute (for example, `cargo`).
 
-Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
-replace the package name, target option (such as `--bin` or `--example`), the target name and
-the test name (name of test function or test mod path).
+Available placeholders:
+- `${package}`: package name.
+- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.
+- `${target}`: target name (empty for `--lib`).
+- `${test_name}`: the test path filter, e.g. `module::test_func`.
+- `${exact}`: `--exact` for single tests, empty for modules.
+- `${include_ignored}`: `--include-ignored` for single tests, empty otherwise.
+- `${executable_args}`: all of the above binary args bundled together
+  (includes `rust-analyzer.runnables.extraTestBinaryArgs`).
 
 
 ## rust-analyzer.rustc.source {#rustc.source}
@@ -1703,9 +1761,9 @@ will likely be useful:
 
 **Warning**: This format is provisional and subject to change.
 
-The discover command should output JSON objects, one per
-line (JSONL format). These objects should correspond to
-this Rust data type:
+The discover command should output JSON objects to stdout,
+one per line (JSONL format). These objects should correspond
+to this Rust data type:
 
 ```norun
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -1745,6 +1803,9 @@ commented for readability):
 Only the finished event is required, but the other
 variants are encouraged to give users more feedback about
 progress or errors.
+
+Stderr is not parsed as JSONL. It is treated as command log
+output and forwarded to rust-analyzer's own logs.
 
 
 ## rust-analyzer.workspace.symbol.search.excludeImports {#workspace.symbol.search.excludeImports}

@@ -30,18 +30,18 @@ impl<'db> At<'_, 'db> {
     ) -> Result<Term<'db>, Vec<NextSolverError<'db>>> {
         assert!(!term.is_infer(), "should have resolved vars before calling");
 
-        if term.to_alias_term().is_none() {
+        if term.to_alias_term(self.infcx.interner).is_none() {
             return Ok(term);
         }
 
-        let new_infer = self.infcx.next_term_var_of_kind(term);
+        let new_infer = self.infcx.next_term_var_of_kind(term, self.cause.span());
 
         // We simply emit an `alias-eq` goal here, since that will take care of
         // normalizing the LHS of the projection until it is a rigid projection
         // (or a not-yet-defined opaque in scope).
         let obligation = Obligation::new(
             self.infcx.interner,
-            self.cause.clone(),
+            *self.cause,
             self.param_env,
             PredicateKind::AliasRelate(term, new_infer, AliasRelationDirection::Equate),
         );

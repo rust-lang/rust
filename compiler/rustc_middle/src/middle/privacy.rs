@@ -2,21 +2,22 @@
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
 
+use std::cmp::Ordering;
 use std::hash::Hash;
 
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_hir::def::DefKind;
-use rustc_macros::HashStable;
+use rustc_hir::{ItemKind, Node, UseKind};
+use rustc_macros::StableHash;
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 
-use crate::ich::StableHashingContext;
 use crate::ty::{TyCtxt, Visibility};
 
 /// Represents the levels of effective visibility an item can have.
 ///
 /// The variants are sorted in ascending order of directness.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, StableHash)]
 pub enum Level {
     /// Superset of `Reachable` including items leaked through return position `impl Trait`.
     ReachableThroughImplTrait,
@@ -37,7 +38,7 @@ impl Level {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, StableHash)]
 pub struct EffectiveVisibility {
     direct: Visibility,
     reexported: Visibility,
@@ -64,6 +65,10 @@ impl EffectiveVisibility {
         }
     }
 
+    pub fn public_at_level(&self) -> Option<Level> {
+        Level::all_levels().into_iter().find(|&level| self.is_public_at_level(level))
+    }
+
     pub fn is_public_at_level(&self, level: Level) -> bool {
         self.at_level(level).is_public()
     }
@@ -82,7 +87,9 @@ impl EffectiveVisibility {
         for l in Level::all_levels() {
             let rhs_vis = self.at_level_mut(l);
             let lhs_vis = *lhs.at_level(l);
-            if rhs_vis.is_at_least(lhs_vis, tcx) {
+            // FIXME: figure out why unordered visibilities occur here,
+            // and what the behavior for them should be.
+            if rhs_vis.partial_cmp(lhs_vis, tcx) == Some(Ordering::Greater) {
                 *rhs_vis = lhs_vis;
             };
         }
@@ -117,9 +124,7 @@ impl EffectiveVisibilities {
     }
 
     pub fn public_at_level(&self, id: LocalDefId) -> Option<Level> {
-        self.effective_vis(id).and_then(|effective_vis| {
-            Level::all_levels().into_iter().find(|&level| effective_vis.is_public_at_level(level))
-        })
+        self.effective_vis(id).and_then(|effective_vis| effective_vis.public_at_level())
     }
 
     pub fn update_root(&mut self) {
@@ -139,9 +144,7 @@ impl EffectiveVisibilities {
                 for l in Level::all_levels() {
                     let vis_at_level = eff_vis.at_level(l);
                     let old_vis_at_level = old_eff_vis.at_level_mut(l);
-                    if vis_at_level != old_vis_at_level
-                        && vis_at_level.is_at_least(*old_vis_at_level, tcx)
-                    {
+                    if vis_at_level.greater_than(*old_vis_at_level, tcx) {
                         *old_vis_at_level = *vis_at_level
                     }
                 }
@@ -160,16 +163,16 @@ impl EffectiveVisibilities {
             // and all effective visibilities are larger or equal than private visibility.
             let private_vis = Visibility::Restricted(tcx.parent_module_from_def_id(def_id));
             let span = tcx.def_span(def_id.to_def_id());
-            if !ev.direct.is_at_least(private_vis, tcx) {
+            if private_vis.greater_than(ev.direct, tcx) {
                 span_bug!(span, "private {:?} > direct {:?}", private_vis, ev.direct);
             }
-            if !ev.reexported.is_at_least(ev.direct, tcx) {
+            if ev.direct.greater_than(ev.reexported, tcx) {
                 span_bug!(span, "direct {:?} > reexported {:?}", ev.direct, ev.reexported);
             }
-            if !ev.reachable.is_at_least(ev.reexported, tcx) {
+            if ev.reexported.greater_than(ev.reachable, tcx) {
                 span_bug!(span, "reexported {:?} > reachable {:?}", ev.reexported, ev.reachable);
             }
-            if !ev.reachable_through_impl_trait.is_at_least(ev.reachable, tcx) {
+            if ev.reachable.greater_than(ev.reachable_through_impl_trait, tcx) {
                 span_bug!(
                     span,
                     "reachable {:?} > reachable_through_impl_trait {:?}",
@@ -183,14 +186,21 @@ impl EffectiveVisibilities {
             let is_impl = matches!(tcx.def_kind(def_id), DefKind::Impl { .. });
             if !is_impl && tcx.trait_impl_of_assoc(def_id.to_def_id()).is_none() {
                 let nominal_vis = tcx.visibility(def_id);
-                if !nominal_vis.is_at_least(ev.reachable, tcx) {
-                    span_bug!(
-                        span,
-                        "{:?}: reachable {:?} > nominal {:?}",
-                        def_id,
-                        ev.reachable,
-                        nominal_vis,
-                    );
+                if ev.reachable.greater_than(nominal_vis, tcx) {
+                    if let Node::Item(item) = tcx.hir_node_by_def_id(def_id)
+                        && let ItemKind::Use(_, UseKind::Glob) = item.kind
+                    {
+                        // Glob import visibilities can be increased by other
+                        // more public glob imports in cases of ambiguity.
+                    } else {
+                        span_bug!(
+                            span,
+                            "{:?}: reachable {:?} > nominal {:?}",
+                            def_id,
+                            ev.reachable,
+                            nominal_vis,
+                        );
+                    }
                 }
             }
         }
@@ -206,12 +216,11 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
         self.map.get(&id)
     }
 
-    // FIXME: Share code with `fn update`.
     pub fn effective_vis_or_private(
         &mut self,
         id: Id,
         lazy_private_vis: impl FnOnce() -> Visibility,
-    ) -> &EffectiveVisibility {
+    ) -> &mut EffectiveVisibility {
         self.map.entry(id).or_insert_with(|| EffectiveVisibility::from_vis(lazy_private_vis()))
     }
 
@@ -219,17 +228,13 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
         &mut self,
         id: Id,
         max_vis: Option<Visibility>,
-        lazy_private_vis: impl FnOnce() -> Visibility,
+        private_vis: Visibility,
         inherited_effective_vis: EffectiveVisibility,
         level: Level,
         tcx: TyCtxt<'_>,
     ) -> bool {
         let mut changed = false;
-        let mut current_effective_vis = self
-            .map
-            .get(&id)
-            .copied()
-            .unwrap_or_else(|| EffectiveVisibility::from_vis(lazy_private_vis()));
+        let current_effective_vis = self.effective_vis_or_private(id, || private_vis);
 
         let mut inherited_effective_vis_at_prev_level = *inherited_effective_vis.at_level(level);
         let mut calculated_effective_vis = inherited_effective_vis_at_prev_level;
@@ -242,8 +247,11 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
                 if !(inherited_effective_vis_at_prev_level == inherited_effective_vis_at_level
                     && level != l)
                 {
+                    // FIXME: figure out why unordered visibilities occur here,
+                    // and what the behavior for them should be.
                     calculated_effective_vis = if let Some(max_vis) = max_vis
-                        && !max_vis.is_at_least(inherited_effective_vis_at_level, tcx)
+                        && inherited_effective_vis_at_level.partial_cmp(max_vis, tcx)
+                            == Some(Ordering::Greater)
                     {
                         max_vis
                     } else {
@@ -252,8 +260,10 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
                 }
                 // effective visibility can't be decreased at next update call for the
                 // same id
-                if *current_effective_vis_at_level != calculated_effective_vis
-                    && calculated_effective_vis.is_at_least(*current_effective_vis_at_level, tcx)
+                // FIXME: figure out why unordered visibilities occur here,
+                // and what the behavior for them should be.
+                if calculated_effective_vis.partial_cmp(*current_effective_vis_at_level, tcx)
+                    == Some(Ordering::Greater)
                 {
                     changed = true;
                     *current_effective_vis_at_level = calculated_effective_vis;
@@ -262,7 +272,6 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
             }
         }
 
-        self.map.insert(id, current_effective_vis);
         changed
     }
 }
@@ -273,9 +282,9 @@ impl<Id> Default for EffectiveVisibilities<Id> {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for EffectiveVisibilities {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+impl StableHash for EffectiveVisibilities {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         let EffectiveVisibilities { ref map } = *self;
-        map.hash_stable(hcx, hasher);
+        map.stable_hash(hcx, hasher);
     }
 }

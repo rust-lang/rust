@@ -1,5 +1,4 @@
 #![feature(unsafe_binders)]
-//~^ WARN the feature `unsafe_binders` is incomplete
 
 use std::mem::{ManuallyDrop, drop};
 use std::unsafe_binder::{unwrap_binder, wrap_binder};

@@ -1,11 +1,14 @@
-error[E0275]: overflow evaluating the requirement `(): Trait<<T as Proj<'static>>::Assoc>`
+error[E0277]: the trait bound `(): Trait<fn(for<'b> fn(<T as Proj<'b>>::Assoc))>` is not satisfied
   --> $DIR/find-param-recursion-issue-152716.rs:16:9
    |
 LL |     (): Trait<<T as Proj<'static>>::Assoc>
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<fn(for<'b> fn(<T as Proj<'b>>::Assoc))>` is not implemented for `()`
    |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`find_param_recursion_issue_152716`)
+help: consider extending the `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL |     (): Trait<<T as Proj<'static>>::Assoc>, (): Trait<fn(for<'b> fn(<T as Proj<'b>>::Assoc))>
+   |                                           +++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0275`.
+For more information about this error, try `rustc --explain E0277`.

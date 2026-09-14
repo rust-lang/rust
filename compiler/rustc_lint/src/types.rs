@@ -3,18 +3,19 @@ use std::iter;
 use rustc_abi::{BackendRepr, TagEncoding, Variants, WrappingRange};
 use rustc_ast as ast;
 use rustc_hir as hir;
-use rustc_hir::{Expr, ExprKind, HirId, LangItem, find_attr};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{Expr, ExprKind, HirId, find_attr};
+use rustc_lint_defs::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
-use rustc_span::{Span, Symbol, sym};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use tracing::debug;
 
 mod improper_ctypes; // these files do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
 pub(crate) use improper_ctypes::ImproperCTypesLint;
 
-use crate::lints::{
+use crate::diagnostics::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
     AmbiguousWidePointerComparisonsAddrSuggestion, AmbiguousWidePointerComparisonsCastSuggestion,
     AmbiguousWidePointerComparisonsExpectSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
@@ -194,10 +195,15 @@ declare_lint! {
 
 #[derive(Copy, Clone, Default)]
 pub(crate) struct TypeLimits {
-    /// Id of the last visited negated expression
-    negated_expr_id: Option<hir::HirId>,
-    /// Span of the last visited negated expression
-    negated_expr_span: Option<Span>,
+    last_visited_negation: Option<NegationInfo>,
+}
+
+#[derive(Copy, Clone)]
+struct NegationInfo {
+    /// A negation expression (a `rustc_hir::ExprKind::Unary`)
+    negation_span: Span,
+    /// The operand of the negation expression.
+    negated_id: hir::HirId,
 }
 
 impl_lint_pass!(TypeLimits => [
@@ -210,7 +216,7 @@ impl_lint_pass!(TypeLimits => [
 
 impl TypeLimits {
     pub(crate) fn new() -> TypeLimits {
-        TypeLimits { negated_expr_id: None, negated_expr_span: None }
+        TypeLimits { last_visited_negation: None }
     }
 }
 
@@ -312,7 +318,7 @@ fn lint_wide_pointer<'tcx>(
         let mut modifiers = String::new();
         ty = match ty.kind() {
             ty::RawPtr(ty, _) => *ty,
-            ty::Adt(def, args) if cx.tcx.is_diagnostic_item(sym::NonNull, def.did()) => {
+            ty::Adt(def, args) if cx.tcx.is_lang_item(def.did(), LangItem::NonNull) => {
                 modifiers.push_str(".as_ptr()");
                 args.type_at(0)
             }
@@ -539,22 +545,32 @@ fn lint_fn_pointer<'tcx>(
 }
 
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
-    fn check_lit(&mut self, cx: &LateContext<'tcx>, hir_id: HirId, lit: hir::Lit, negated: bool) {
-        if negated {
-            self.negated_expr_id = Some(hir_id);
-            self.negated_expr_span = Some(lit.span);
-        }
-        lint_literal(cx, self, hir_id, lit.span, &lit, negated);
+    fn check_lit(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        hir_id: HirId,
+        lit: hir::Lit,
+        is_negated_pat: bool,
+    ) {
+        let surrounding_negation = if is_negated_pat {
+            // In this case, lit.span refers to a `rustc_hir::hir::PatExprKind::Lit`,
+            // which includes the minus sign in front.
+            Some(lit.span)
+        } else if let Some(negation_info) = self.last_visited_negation
+            && negation_info.negated_id == hir_id
+        {
+            Some(negation_info.negation_span)
+        } else {
+            None
+        };
+        lint_literal(cx, hir_id, lit.span, &lit, surrounding_negation);
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
             hir::ExprKind::Unary(hir::UnOp::Neg, expr) => {
-                // Propagate negation, if the negation itself isn't negated
-                if self.negated_expr_id != Some(e.hir_id) {
-                    self.negated_expr_id = Some(expr.hir_id);
-                    self.negated_expr_span = Some(e.span);
-                }
+                self.last_visited_negation =
+                    Some(NegationInfo { negation_span: e.span, negated_id: expr.hir_id });
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop.node) {
@@ -698,7 +714,7 @@ pub(crate) fn transparent_newtype_field<'a, 'tcx>(
 ) -> Option<&'a ty::FieldDef> {
     let typing_env = ty::TypingEnv::non_body_analysis(tcx, variant.def_id);
     variant.fields.iter().find(|field| {
-        let field_ty = tcx.type_of(field.did).instantiate_identity();
+        let field_ty = tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
         let is_1zst =
             tcx.layout_of(typing_env.as_query_input(field_ty)).is_ok_and(|layout| layout.is_1zst());
         !is_1zst
@@ -711,7 +727,7 @@ fn ty_is_known_nonnull<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> bool {
-    let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+    let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
 
     match ty.kind() {
         ty::FnPtr(..) => true,
@@ -729,10 +745,9 @@ fn ty_is_known_nonnull<'tcx>(
                 return false;
             }
 
-            def.variants()
-                .iter()
-                .filter_map(|variant| transparent_newtype_field(tcx, variant))
-                .any(|field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, args)))
+            def.variants().iter().filter_map(|variant| transparent_newtype_field(tcx, variant)).any(
+                |field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, args).skip_norm_wip()),
+            )
         }
         ty::Pat(base, pat) => {
             ty_is_known_nonnull(tcx, typing_env, *base)
@@ -773,7 +788,7 @@ fn get_nullable_type<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<Ty<'tcx>> {
-    let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+    let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
 
     Some(match *ty.kind() {
         ty::Adt(field_def, field_args) => {
@@ -789,11 +804,12 @@ fn get_nullable_type<'tcx>(
                     .next_back()
                     .expect("No non-zst fields in transparent type.")
                     .ty(tcx, field_args)
+                    .skip_norm_wip()
             };
             return get_nullable_type(tcx, typing_env, inner_field_ty);
         }
         ty::Pat(base, ..) => return get_nullable_type(tcx, typing_env, base),
-        ty::Int(_) | ty::Uint(_) | ty::RawPtr(..) => ty,
+        ty::Int(_) | ty::Uint(_) | ty::Char | ty::RawPtr(..) => ty,
         // As these types are always non-null, the nullable equivalent of
         // `Option<T>` of these types are their raw pointer counterparts.
         ty::Ref(_region, ty, mutbl) => Ty::new_ptr(tcx, ty, mutbl),
@@ -852,10 +868,10 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
         ty::Adt(ty_def, args) => {
             let field_ty = match &ty_def.variants().raw[..] {
                 [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
-                    ([], [field]) | ([field], []) => field.ty(tcx, args),
+                    ([], [field]) | ([field], []) => field.ty(tcx, args).skip_norm_wip(),
                     ([field1], [field2]) => {
-                        let ty1 = field1.ty(tcx, args);
-                        let ty2 = field2.ty(tcx, args);
+                        let ty1 = field1.ty(tcx, args).skip_norm_wip();
+                        let ty2 = field2.ty(tcx, args).skip_norm_wip();
 
                         if is_niche_optimization_candidate(tcx, typing_env, ty1) {
                             ty2
@@ -877,7 +893,8 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             // At this point, the field's type is known to be nonnull and the parent enum is Option-like.
             // If the computed size for the field and the enum are different, the nonnull optimization isn't
             // being applied (and we've got a problem somewhere).
-            let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, typing_env).ok();
+            let compute_size_skeleton =
+                |t| SizeSkeleton::compute(t, tcx, typing_env, DUMMY_SP).ok();
             if !compute_size_skeleton(ty)?.same_size(compute_size_skeleton(field_ty)?) {
                 bug!("improper_ctypes: Option nonnull optimization not applied?");
             }
@@ -894,10 +911,14 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
                     WrappingRange { start: 0, end }
                         if end == field_ty_scalar.size(&tcx).unsigned_int_max() - 1 =>
                     {
-                        return Some(get_nullable_type(tcx, typing_env, field_ty).unwrap());
+                        return Some(get_nullable_type(tcx, typing_env, field_ty).expect(
+                            "known non-null scalar type should have a nullable representation",
+                        ));
                     }
                     WrappingRange { start: 1, .. } => {
-                        return Some(get_nullable_type(tcx, typing_env, field_ty).unwrap());
+                        return Some(get_nullable_type(tcx, typing_env, field_ty).expect(
+                            "known non-null scalar type should have a nullable representation",
+                        ));
                     }
                     WrappingRange { start, end } => {
                         unreachable!("Unhandled start and end range: ({}, {})", start, end)
@@ -936,7 +957,7 @@ declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Enum(_, _, ref enum_definition) = it.kind {
-            let t = cx.tcx.type_of(it.owner_id).instantiate_identity();
+            let t = cx.tcx.type_of(it.owner_id).instantiate_identity().skip_norm_wip();
             let ty = cx.tcx.erase_and_anonymize_regions(t);
             let Ok(layout) = cx.layout_of(ty) else { return };
             let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag, variants, .. } =
@@ -1042,7 +1063,7 @@ impl InvalidAtomicOrdering {
             && let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
             // skip extension traits, only lint functions from the standard library
             && let Some(impl_did) = cx.tcx.inherent_impl_of_assoc(m_def_id)
-            && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
+            && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().skip_norm_wip().ty_adt_def()
             && cx.tcx.is_diagnostic_item(sym::Atomic, adt.did())
         {
             return Some((method_path.ident.name, args));

@@ -7,16 +7,16 @@ LL | struct Fail<T>;
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
-error[E0599]: no associated item named `C` found for struct `Fail<()>` in the current scope
+error[E0599]: no associated function or constant named `C` found for struct `Fail<()>` in the current scope
   --> $DIR/wrong-projection-self-ty-invalid-bivariant-arg.rs:9:17
    |
 LL | struct Fail<T>;
-   | -------------- associated item `C` not found for this struct
+   | -------------- associated function or constant `C` not found for this struct
 ...
 LL |     Fail::<()>::C
-   |                 ^ associated item not found in `Fail<()>`
+   |                 ^ associated function or constant not found in `Fail<()>`
    |
-   = note: the associated item was found for `Fail<i32>`
+   = note: the associated function or constant was found for `Fail<i32>`
 
 error: aborting due to 2 previous errors
 

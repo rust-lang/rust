@@ -1,6 +1,6 @@
+use crate::arch::x86_64::_rdrand64_step;
 use crate::cmp;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::random::random;
 use crate::time::{Duration, Instant};
 
 pub(crate) mod alloc;
@@ -39,12 +39,12 @@ pub fn read(fd: Fd, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
 /// Usercall `read` with an uninitialized buffer. See the ABI documentation for
 /// more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn read_buf(fd: Fd, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+pub fn read_buf(fd: Fd, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
     unsafe {
         let mut userbuf = alloc::User::<[u8]>::uninitialized(buf.capacity());
         let len = raw::read(fd, userbuf.as_mut_ptr().cast(), userbuf.len()).from_sgx_result()?;
         userbuf[..len].copy_to_enclave(&mut buf.as_mut()[..len]);
-        buf.advance_unchecked(len);
+        buf.advance(len);
         Ok(())
     }
 }
@@ -167,6 +167,12 @@ pub fn exit(panic: bool) -> ! {
 /// Usercall `wait`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn wait(event_mask: u64, mut timeout: u64) -> io::Result<u64> {
+    fn try_rdrand() -> Option<u64> {
+        let mut val: u64 = 0;
+        // SAFETY: the rdrand feature is enabled on SGX targets
+        if unsafe { _rdrand64_step(&mut val) } == 1 { Some(val) } else { None }
+    }
+
     if timeout != WAIT_NO && timeout != WAIT_INDEFINITE {
         // We don't want people to rely on accuracy of timeouts to make
         // security decisions in an SGX enclave. That's why we add a random
@@ -175,9 +181,14 @@ pub fn wait(event_mask: u64, mut timeout: u64) -> io::Result<u64> {
         // to make things work in other cases. Note that in the SGX threat
         // model the enclave runner which is serving the wait usercall is not
         // trusted to ensure accurate timeouts.
+        //
+        // Since the random timeout is only intended as defense-in-depth
+        // protection at development/testing time, it's ok to continue if
+        // randomness generation fails.
         if let Ok(timeout_signed) = i64::try_from(timeout) {
             let tenth = timeout_signed / 10;
-            let deviation = random::<i64>(..).checked_rem(tenth).unwrap_or(0);
+            let deviation =
+                try_rdrand().and_then(|rnd| (rnd as i64).checked_rem(tenth)).unwrap_or(0);
             timeout = timeout_signed.saturating_add(deviation) as _;
         }
     }

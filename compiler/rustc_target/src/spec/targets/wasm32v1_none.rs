@@ -10,7 +10,7 @@
 //! those target flags doesn't automatically rebuild libcore / liballoc with
 //! them, and in order to get those libraries rebuilt you need to use the
 //! nightly Rust feature `-Zbuild-std`. This target is for people who want to
-//! use stable Rust, and target a stable set pf WebAssembly features.
+//! use stable Rust, and target a stable set of WebAssembly features.
 
 use crate::spec::{Arch, Cc, LinkerFlavor, Os, Target, TargetMetadata, base};
 

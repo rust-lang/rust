@@ -46,10 +46,13 @@ error[E0425]: cannot find value `C` in this scope
   --> $DIR/missing-const-parameter.rs:19:37
    |
 LL | struct Image<const R: usize>([[u32; C]; R]);
-   |                    -                ^
-   |                    |
-   |                    similarly named const parameter `R` defined here
+   |                                     ^ not found in this scope
    |
+note: similarly named const parameter `R` defined here
+  --> $DIR/missing-const-parameter.rs:19:20
+   |
+LL | struct Image<const R: usize>([[u32; C]; R]);
+   |                    ^
 help: a const parameter with a similar name exists
    |
 LL - struct Image<const R: usize>([[u32; C]; R]);

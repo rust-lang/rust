@@ -5,15 +5,15 @@ LL |     String::from("Girls Band Cry") == T(String::from("Girls Band Cry"));
    |                                    ^^ no implementation for `String == T`
    |
    = help: the trait `PartialEq<T>` is not implemented for `String`
-   = help: the following other types implement trait `PartialEq<Rhs>`:
-             `String` implements `PartialEq<&str>`
-             `String` implements `PartialEq<ByteStr>`
-             `String` implements `PartialEq<ByteString>`
-             `String` implements `PartialEq<Cow<'_, str>>`
-             `String` implements `PartialEq<Path>`
-             `String` implements `PartialEq<PathBuf>`
-             `String` implements `PartialEq<str>`
-             `String` implements `PartialEq`
+   = help: `String` implements trait `PartialEq<Rhs>`:
+             PartialEq<&str>
+             PartialEq<ByteStr>
+             PartialEq<ByteString>
+             PartialEq<Cow<'_, str>>
+             PartialEq<Path>
+             PartialEq<PathBuf>
+             PartialEq<str>
+             PartialEq
    = note: `T` implements `PartialEq<String>`
 help: consider swapping the equality
    |

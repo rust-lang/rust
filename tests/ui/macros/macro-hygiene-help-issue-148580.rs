@@ -1,3 +1,4 @@
+//@ reference: macro.decl.hygiene.intro
 macro_rules! print_it { {} => { println!("{:?}", it); } }
 //~^ ERROR cannot find value `it` in this scope
 

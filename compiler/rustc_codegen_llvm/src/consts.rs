@@ -1,10 +1,10 @@
 use std::ops::Range;
 
-use rustc_abi::{Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange};
+use rustc_abi::{Align, ExternAbi, HasDataLayout, Primitive, Scalar, Size, WrappingRange};
 use rustc_codegen_ssa::common;
 use rustc_codegen_ssa::traits::*;
-use rustc_hir::LangItem;
 use rustc_hir::attrs::Linkage;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -12,7 +12,7 @@ use rustc_middle::mir::interpret::{
     Allocation, ConstAllocation, ErrorHandled, InitChunk, Pointer, Scalar as InterpScalar,
     read_target_uint,
 };
-use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
@@ -21,15 +21,27 @@ use rustc_target::spec::Arch;
 use tracing::{debug, instrument, trace};
 
 use crate::common::CodegenCx;
-use crate::errors::SymbolAlreadyDefined;
-use crate::llvm::{self, Type, Value};
+use crate::diagnostics::SymbolAlreadyDefined;
+use crate::llvm::{self, Type, Value, const_ptr_auth};
 use crate::type_of::LayoutLlvmExt;
 use crate::{base, debuginfo};
 
+/// Indicates whether a value originates from a `static`.
+pub(crate) enum IsStatic {
+    Yes,
+    No,
+}
+/// Indicates whether a symbol is part of `.init_array` or `.fini_array`.
+#[derive(PartialEq)]
+pub(crate) enum IsInitOrFini {
+    Yes,
+    No,
+}
 pub(crate) fn const_alloc_to_llvm<'ll>(
     cx: &CodegenCx<'ll, '_>,
     alloc: &Allocation,
-    is_static: bool,
+    is_static: IsStatic,
+    is_init_fini: IsInitOrFini,
 ) -> &'ll Value {
     // We expect that callers of const_alloc_to_llvm will instead directly codegen a pointer or
     // integer for any &ZST where the ZST is a constant (i.e. not a static). We should never be
@@ -38,7 +50,7 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
     //
     // Statics have a guaranteed meaningful address so it's less clear that we want to do
     // something like this; it's also harder.
-    if !is_static {
+    if matches!(is_static, IsStatic::No) {
         assert!(alloc.len() != 0);
     }
     let mut llvals = Vec::with_capacity(alloc.provenance().ptrs().len() + 1);
@@ -109,14 +121,22 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
             as u64;
 
         let address_space = cx.tcx.global_alloc(prov.alloc_id()).address_space(cx);
-
-        llvals.push(cx.scalar_to_backend(
+        let schema = if cx.sess().pointer_authentication() {
+            match is_init_fini {
+                IsInitOrFini::Yes => cx.sess().pointer_authentication_init_fini(),
+                IsInitOrFini::No => cx.sess().pointer_authentication_functions(),
+            }
+        } else {
+            None
+        };
+        llvals.push(cx.scalar_to_backend_with_pac(
             InterpScalar::from_pointer(Pointer::new(prov, Size::from_bytes(ptr_offset)), &cx.tcx),
             Scalar::Initialized {
                 value: Primitive::Pointer(address_space),
                 valid_range: WrappingRange::full(pointer_size),
             },
             cx.type_ptr_ext(address_space),
+            schema,
         ));
         next_offset = offset + pointer_size_bytes;
     }
@@ -141,7 +161,21 @@ fn codegen_static_initializer<'ll, 'tcx>(
     def_id: DefId,
 ) -> Result<(&'ll Value, ConstAllocation<'tcx>), ErrorHandled> {
     let alloc = cx.tcx.eval_static_initializer(def_id)?;
-    Ok((const_alloc_to_llvm(cx, alloc.inner(), /*static*/ true), alloc))
+    let attrs = cx.tcx.codegen_fn_attrs(def_id);
+    // FIXME(jchlanda) Decide if this could be better served by `ctor` crate. See the discussion
+    // here: <https://github.com/rust-lang/rust/pull/155722#discussion_r3320477047>
+    let is_in_init_fini: IsInitOrFini = attrs
+        .link_section
+        .map(|link_section| {
+            let s = link_section.as_str();
+            if s.starts_with(".init_array") || s.starts_with(".fini_array") {
+                IsInitOrFini::Yes
+            } else {
+                IsInitOrFini::No
+            }
+        })
+        .unwrap_or(IsInitOrFini::No);
+    Ok((const_alloc_to_llvm(cx, alloc.inner(), IsStatic::Yes, is_in_init_fini), alloc))
 }
 
 fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align: Align) {
@@ -164,6 +198,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     if let Some(linkage) = attrs.import_linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
+        let mut should_sign = false;
         // Declare a symbol `foo`. If `foo` is an extern_weak symbol, we declare
         // an extern_weak function, otherwise a global with the desired linkage.
         let g1 = if matches!(attrs.import_linkage, Some(Linkage::ExternalWeak)) {
@@ -176,8 +211,13 @@ fn check_and_apply_linkage<'ll, 'tcx>(
                 && let ty::FnPtr(sig, header) = args.type_at(0).kind()
             {
                 let fn_sig = sig.with(*header);
-
                 let fn_abi = cx.fn_abi_of_fn_ptr(fn_sig, ty::List::empty());
+                // Decide if the initializer needs to be signed
+                if cx.sess().pointer_authentication()
+                    && matches!(fn_sig.abi(), ExternAbi::C { .. } | ExternAbi::System { .. })
+                {
+                    should_sign = true;
+                }
                 cx.declare_fn(sym, &fn_abi, None)
             } else {
                 cx.declare_global(sym, cx.type_i8())
@@ -206,10 +246,28 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             })
         });
         llvm::set_linkage(g2, llvm::Linkage::InternalLinkage);
-        llvm::set_initializer(g2, g1);
+        llvm::set_unnamed_address(g2, llvm::UnnamedAddr::Global);
+
+        // Sign the function pointer that is used to initialize the global
+        let initializer = if should_sign {
+            let key: u32 = 0;
+            let discriminator: u64 = 0;
+
+            const_ptr_auth(
+                cx.const_bitcast(g1, llty),
+                key,
+                discriminator,
+                None, /* address_diversity */
+            )
+        } else {
+            g1
+        };
+
+        llvm::set_initializer(g2, initializer);
+
         g2
     } else if cx.tcx.sess.target.arch == Arch::X86
-        && common::is_mingw_gnu_toolchain(&cx.tcx.sess.target)
+        && common::is_using_dlltool(&cx.tcx.sess.target)
         && let Some(dllimport) = crate::common::get_dllimport(cx.tcx, def_id, sym)
     {
         cx.declare_global(&common::i686_decorated_name(dllimport, true, true, false), llty)
@@ -359,8 +417,11 @@ impl<'ll> CodegenCx<'ll, '_> {
         let dso_local = self.assume_dso_local(g, true);
 
         if !def_id.is_local() {
+            let is_eii = fn_attrs.flags.contains(CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM);
             let needs_dll_storage_attr = self.use_dll_storage_attrs
-                && !self.tcx.is_foreign_item(def_id)
+                // EII static declarations are encoded as foreign items, but their symbols are
+                // resolved by Rust crates, not native libraries.
+                && (!self.tcx.is_foreign_item(def_id) || is_eii)
                 // Local definitions can never be imported, so we must not apply
                 // the DLLImport annotation.
                 && !dso_local
@@ -380,10 +441,11 @@ impl<'ll> CodegenCx<'ll, '_> {
 
             if needs_dll_storage_attr {
                 // This item is external but not foreign, i.e., it originates from an external Rust
-                // crate. Since we don't know whether this crate will be linked dynamically or
-                // statically in the final application, we always mark such symbols as 'dllimport'.
-                // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs
-                // to make things work.
+                // crate. EII static declarations are handled the same way, even though they are
+                // represented as foreign items. Since we don't know whether this crate will be
+                // linked dynamically or statically in the final application, we always mark such
+                // symbols as 'dllimport'. If final linkage happens to be static, we rely on
+                // compiler-emitted __imp_ stubs to make things work.
                 //
                 // However, in some scenarios we defer emission of statics to downstream
                 // crates, so there are cases where a static with an upstream DefId
@@ -482,8 +544,9 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
 
         // Wasm statics with custom link sections get special treatment as they
-        // go into custom sections of the wasm executable. The exception to this
-        // is the `.init_array` section which are treated specially by the wasm linker.
+        // also go into custom sections of the wasm executable. The exception to
+        // this is the `.init_array` section for which we can't emit a custom
+        // section as it contains relocations.
         if self.tcx.sess.target.is_like_wasm
             && attrs
                 .link_section
@@ -502,11 +565,85 @@ impl<'ll> CodegenCx<'ll, '_> {
                 let data = [section, alloc];
                 self.module_add_named_metadata_node(self.llmod(), c"wasm.custom_sections", &data);
             }
-        } else {
-            base::set_link_section(g, attrs);
         }
 
+        base::set_link_section(g, attrs);
         base::set_variable_sanitizer_attrs(g, attrs);
+
+        if let Some(ignorelist) = &self.sanitizer_ignorelist {
+            let instance = ty::Instance::mono(self.tcx, def_id);
+            let sym_name = self.tcx.symbol_name(instance).name;
+            let span = self.tcx.def_span(def_id);
+            let source_map = self.tcx.sess.source_map();
+            let filename =
+                source_map.span_to_filename(span).prefer_local_unconditionally().to_string();
+            let ty_name = rustc_middle::ty::print::with_no_trimmed_paths!(
+                self.tcx.type_of(def_id).skip_binder().to_string()
+            );
+            let mainfile = self
+                .tcx
+                .sess
+                .local_crate_source_file()
+                .and_then(|path| path.local_path().map(|p| p.display().to_string()))
+                .unwrap_or_default();
+
+            let demangled =
+                rustc_middle::ty::print::with_no_trimmed_paths!(self.tcx.def_path_str(def_id));
+
+            let global_blame = |section| -> (
+                rustc_sanitizers::ignorelist::Blame,
+                rustc_sanitizers::ignorelist::Blame,
+            ) {
+                let mut no_san = rustc_sanitizers::ignorelist::Blame::NONE;
+                let mut san = rustc_sanitizers::ignorelist::Blame::NONE;
+                let mut update = |prefix, query| {
+                    let (ns, s) = ignorelist.in_section_blame(section, prefix, query);
+                    no_san = no_san.max(ns);
+                    san = san.max(s);
+                };
+                update(c"global", sym_name);
+                update(c"global", &demangled);
+                update(c"src", &filename);
+                if !mainfile.is_empty() {
+                    update(c"mainfile", &mainfile);
+                }
+                update(c"type", &ty_name);
+                (no_san, san)
+            };
+
+            let sanitizers = self.tcx.sess.sanitizers();
+            let (address_nosan, address_san) = global_blame(c"address");
+            let (kaddress_nosan, kaddress_san) = global_blame(c"kernel-address");
+            let (hwaddress_nosan, hwaddress_san) = global_blame(c"hwaddress");
+            let (khwaddress_nosan, khwaddress_san) = global_blame(c"kernel-hwaddress");
+
+            let ignore_address =
+                rustc_sanitizers::ignorelist::is_blame_ignored(address_nosan, address_san);
+            let ignore_kernel_address = rustc_sanitizers::ignorelist::is_blame_ignored(
+                address_nosan.max(kaddress_nosan),
+                address_san.max(kaddress_san),
+            );
+            let ignore_hwaddress =
+                rustc_sanitizers::ignorelist::is_blame_ignored(hwaddress_nosan, hwaddress_san);
+            let ignore_kernel_hwaddress = rustc_sanitizers::ignorelist::is_blame_ignored(
+                hwaddress_nosan.max(khwaddress_nosan),
+                hwaddress_san.max(khwaddress_san),
+            );
+
+            if (sanitizers.contains(rustc_target::spec::SanitizerSet::ADDRESS) && ignore_address)
+                || (sanitizers.contains(rustc_target::spec::SanitizerSet::KERNELADDRESS)
+                    && ignore_kernel_address)
+            {
+                unsafe { llvm::LLVMRustSetNoSanitizeAddress(g) };
+            }
+            if (sanitizers.contains(rustc_target::spec::SanitizerSet::HWADDRESS)
+                && ignore_hwaddress)
+                || (sanitizers.contains(rustc_target::spec::SanitizerSet::KERNELHWADDRESS)
+                    && ignore_kernel_hwaddress)
+            {
+                unsafe { llvm::LLVMRustSetNoSanitizeHWAddress(g) };
+            }
+        }
 
         if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER) {
             // `USED` and `USED_LINKER` can't be used together.
@@ -775,7 +912,7 @@ impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
     fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> &'ll Value {
         // FIXME: should we cache `const_alloc_to_llvm` to avoid repeating this for the
         // same `ConstAllocation`?
-        let cv = const_alloc_to_llvm(self, alloc.inner(), /*static*/ false);
+        let cv = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No);
 
         let gv = self.static_addr_of_impl(cv, alloc.inner().align, kind);
         // static_addr_of_impl returns the bare global variable, which might not be in the default

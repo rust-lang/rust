@@ -20,11 +20,26 @@ the count includes all combinations of "stage" x "target" x "CI job where the te
         </div>
     </div>
 
-    <ul>
+    <ul class="tests">
     {% for suite in suites.suites %}
         {{ suite.group|safe }}
     {% endfor %}
     </ul>
+    <div class="jobsets">
+        <h2>Job sets</h2>
+        <div>
+        {% for (id, jobs) in jobsets.sets %}
+            {% if !jobs.is_empty() %}
+            <div id="job-{{ id }}"><b>J{{ id }}</b></div>
+            <ul style="margin: 0">
+            {% for job in jobs %}
+                <li>{{ job }}</li>
+            {% endfor %}
+            </ul>
+            {% endif %}
+        {% endfor %}
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -33,6 +48,9 @@ h1 {
     text-align: center;
     color: #333333;
     margin-bottom: 30px;
+}
+a:visited {
+  color: blue;
 }
 
 .summary {
@@ -55,10 +73,14 @@ ul {
     padding-left: 0;
 }
 
-li {
+.tests li {
     list-style: none;
     padding-left: 20px;
 }
+.jobsets li {
+    margin-left: 30px;
+}
+
 summary {
     margin-bottom: 5px;
     padding: 6px;

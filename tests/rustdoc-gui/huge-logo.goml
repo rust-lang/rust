@@ -7,4 +7,4 @@ set-window-size: (1280, 1024)
 assert-property: (".sidebar-crate .logo-container", {"offsetWidth": "96", "offsetHeight": 48})
 // offsetWidth = width of sidebar, offsetHeight = height + top padding
 assert-property: (".sidebar-crate .logo-container img", {"offsetWidth": "48", "offsetHeight": 64})
-assert-css: (".sidebar-crate .logo-container img", {"border-top-width": "16px", "margin-top": "-16px"})
+assert-css: (".sidebar-crate .logo-container img", {"padding-top": "16px", "margin-top": "-16px"})

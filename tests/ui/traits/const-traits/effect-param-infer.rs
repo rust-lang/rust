@@ -9,6 +9,6 @@ pub const trait Foo<Rhs: ?Sized = Self> {
     /* stuff */
 }
 
-impl const Foo for () {}
+const impl Foo for () {}
 
 fn main() {}

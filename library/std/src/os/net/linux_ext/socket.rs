@@ -2,7 +2,6 @@
 
 use crate::io;
 use crate::os::unix::net;
-use crate::sealed::Sealed;
 use crate::sys::AsInner;
 
 /// Linux-specific functionality for `AF_UNIX` sockets [`UnixDatagram`]
@@ -11,7 +10,7 @@ use crate::sys::AsInner;
 /// [`UnixDatagram`]: net::UnixDatagram
 /// [`UnixStream`]: net::UnixStream
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-pub trait UnixSocketExt: Sealed {
+pub impl(self) trait UnixSocketExt {
     /// Query the current setting of socket option `SO_PASSCRED`.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     fn passcred(&self) -> io::Result<bool>;
@@ -25,7 +24,14 @@ pub trait UnixSocketExt: Sealed {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "android", target_os = "cygwin")),
+        doc = "```ignore (needs linux)"
+    )]
     /// #![feature(unix_socket_ancillary_data)]
     /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::UnixSocketExt;

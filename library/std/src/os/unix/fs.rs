@@ -14,11 +14,11 @@ use crate::fs::{self, OpenOptions, Permissions};
 use crate::io::BorrowedCursor;
 use crate::os::unix::io::{AsFd, AsRawFd};
 use crate::path::Path;
-use crate::sealed::Sealed;
 use crate::sys::{AsInner, AsInnerMut, FromInner};
 use crate::{io, sys};
 
 // Tests for this module
+#[cfg(not(target_os = "l4re"))]
 #[cfg(test)]
 mod tests;
 
@@ -41,7 +41,8 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::io;
     /// use std::fs::File;
     /// use std::os::unix::prelude::FileExt;
@@ -99,7 +100,8 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::io;
     /// use std::fs::File;
     /// use std::os::unix::prelude::FileExt;
@@ -139,7 +141,8 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(core_io_borrowed_buf)]
     /// #![feature(read_buf_at)]
     ///
@@ -163,7 +166,7 @@ pub trait FileExt {
     /// }
     /// ```
     #[unstable(feature = "read_buf_at", issue = "140771")]
-    fn read_buf_at(&self, buf: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+    fn read_buf_at(&self, buf: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         io::default_read_buf(|b| self.read_at(b, offset), buf)
     }
 
@@ -175,7 +178,8 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(core_io_borrowed_buf)]
     /// #![feature(read_buf_at)]
     ///
@@ -199,7 +203,12 @@ pub trait FileExt {
     /// }
     /// ```
     #[unstable(feature = "read_buf_at", issue = "140771")]
-    fn read_buf_exact_at(&self, mut buf: BorrowedCursor<'_>, mut offset: u64) -> io::Result<()> {
+    #[doc(alias("read_exact_buf_at"))]
+    fn read_buf_exact_at(
+        &self,
+        mut buf: BorrowedCursor<'_, u8>,
+        mut offset: u64,
+    ) -> io::Result<()> {
         while buf.capacity() > 0 {
             let prev_written = buf.written();
             match self.read_buf_at(buf.reborrow(), offset) {
@@ -241,7 +250,8 @@ pub trait FileExt {
     /// Therefore, it is important to be vigilant while changing options to mitigate
     /// unexpected behavior.
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs::File;
     /// use std::io;
     /// use std::os::unix::prelude::FileExt;
@@ -264,7 +274,8 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs::File;
     /// use std::io;
     /// use std::os::unix::prelude::FileExt;
@@ -313,7 +324,8 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs::File;
     /// use std::io;
     /// use std::os::unix::prelude::FileExt;
@@ -350,7 +362,7 @@ impl FileExt for fs::File {
     fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.as_inner().read_at(buf, offset)
     }
-    fn read_buf_at(&self, buf: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+    fn read_buf_at(&self, buf: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         self.as_inner().read_buf_at(buf, offset)
     }
     fn read_vectored_at(&self, bufs: &mut [io::IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
@@ -368,7 +380,8 @@ impl FileExt for fs::File {
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(target_family = "unix", doc = "```no_run")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 /// use std::fs::{File, Permissions};
 /// use std::io::{ErrorKind, Result as IoResult};
 /// use std::os::unix::fs::PermissionsExt;
@@ -423,7 +436,8 @@ impl FileExt for fs::File {
 /// }
 /// ```
 ///
-/// ```no_run
+#[cfg_attr(target_family = "unix", doc = "```no_run")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 /// use std::fs::Permissions;
 /// use std::os::unix::fs::PermissionsExt;
 ///
@@ -481,7 +495,8 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs::OpenOptions;
     /// use std::os::unix::fs::OpenOptionsExt;
     ///
@@ -504,7 +519,8 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// # mod libc { pub const O_NOFOLLOW: i32 = 0; }
     /// use std::fs::OpenOptions;
     /// use std::os::unix::fs::OpenOptionsExt;
@@ -540,7 +556,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::io;
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
@@ -557,7 +574,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -574,7 +592,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -595,7 +614,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -612,7 +632,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -629,7 +650,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -646,7 +668,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -663,7 +686,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -680,7 +704,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -699,7 +724,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -716,7 +742,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -735,7 +762,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -752,7 +780,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -771,7 +800,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -788,7 +818,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -807,7 +838,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
@@ -891,7 +923,8 @@ pub trait FileTypeExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::FileTypeExt;
     /// use std::io;
@@ -909,7 +942,8 @@ pub trait FileTypeExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::FileTypeExt;
     /// use std::io;
@@ -927,7 +961,8 @@ pub trait FileTypeExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::FileTypeExt;
     /// use std::io;
@@ -945,7 +980,8 @@ pub trait FileTypeExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::FileTypeExt;
     /// use std::io;
@@ -985,7 +1021,8 @@ pub trait DirEntryExt {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs;
     /// use std::os::unix::fs::DirEntryExt;
     ///
@@ -1009,14 +1046,15 @@ impl DirEntryExt for fs::DirEntry {
     }
 }
 
-/// Sealed Unix-specific extension methods for [`fs::DirEntry`].
+/// Unix-specific extension methods for [`fs::DirEntry`].
 #[unstable(feature = "dir_entry_ext2", issue = "85573")]
-pub trait DirEntryExt2: Sealed {
+pub impl(self) trait DirEntryExt2 {
     /// Returns a reference to the underlying `OsStr` of this entry's filename.
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(dir_entry_ext2)]
     /// use std::os::unix::fs::DirEntryExt2;
     /// use std::{fs, io};
@@ -1035,10 +1073,6 @@ pub trait DirEntryExt2: Sealed {
     fn file_name_ref(&self) -> &OsStr;
 }
 
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl Sealed for fs::DirEntry {}
-
 #[unstable(feature = "dir_entry_ext2", issue = "85573")]
 impl DirEntryExt2 for fs::DirEntry {
     fn file_name_ref(&self) -> &OsStr {
@@ -1052,7 +1086,8 @@ impl DirEntryExt2 for fs::DirEntry {
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(target_family = "unix", doc = "```no_run")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 /// use std::os::unix::fs;
 ///
 /// fn main() -> std::io::Result<()> {
@@ -1061,6 +1096,7 @@ impl DirEntryExt2 for fs::DirEntry {
 /// }
 /// ```
 #[stable(feature = "symlink", since = "1.1.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "fs_symlink")]
 pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     sys::fs::symlink(original.as_ref(), link.as_ref())
 }
@@ -1073,7 +1109,8 @@ pub trait DirBuilderExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// use std::fs::DirBuilder;
     /// use std::os::unix::fs::DirBuilderExt;
     ///
@@ -1110,7 +1147,8 @@ impl DirBuilderExt for fs::DirBuilder {
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(target_family = "unix", doc = "```no_run")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 /// use std::os::unix::fs;
 ///
 /// fn main() -> std::io::Result<()> {
@@ -1129,7 +1167,8 @@ pub fn chown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(target_family = "unix", doc = "```no_run")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 /// use std::os::unix::fs;
 ///
 /// fn main() -> std::io::Result<()> {
@@ -1150,7 +1189,8 @@ pub fn fchown<F: AsFd>(fd: F, uid: Option<u32>, gid: Option<u32>) -> io::Result<
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(target_family = "unix", doc = "```no_run")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 /// use std::os::unix::fs;
 ///
 /// fn main() -> std::io::Result<()> {
@@ -1172,7 +1212,8 @@ pub fn lchown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io:
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(target_family = "unix", doc = "```no_run")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 /// use std::os::unix::fs;
 ///
 /// fn main() -> std::io::Result<()> {
@@ -1192,7 +1233,8 @@ pub fn chroot<P: AsRef<Path>>(dir: P) -> io::Result<()> {
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(target_family = "unix", doc = "```no_run")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 /// # #![feature(unix_mkfifo)]
 /// # #[cfg(not(unix))]
 /// # fn main() {}

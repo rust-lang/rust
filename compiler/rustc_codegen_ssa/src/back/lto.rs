@@ -1,4 +1,6 @@
 use std::ffi::CString;
+use std::fs;
+use std::path::Path;
 use std::sync::Arc;
 
 use rustc_data_structures::memmap::Mmap;
@@ -6,13 +8,14 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{CrateType, Lto};
+use rustc_session::config::Lto;
+use rustc_structures::CrateType;
 use tracing::info;
 
 use crate::back::symbol_export::{self, allocator_shim_symbols, symbol_name_for_instance_in_crate};
 use crate::back::write::CodegenContext;
 use crate::base::allocator_kind_for_codegen;
-use crate::errors::{DynamicLinkingWithLTO, LtoDisallowed, LtoDylib, LtoProcMacro};
+use crate::diagnostics::{DynamicLinkingWithLTO, LtoDisallowed, LtoDylib, LtoProcMacro};
 use crate::traits::*;
 
 pub struct ThinModule<B: WriteBackendMethods> {
@@ -32,18 +35,13 @@ impl<B: WriteBackendMethods> ThinModule<B> {
     }
 
     pub fn data(&self) -> &[u8] {
-        let a = self.shared.thin_buffers.get(self.idx).map(|b| b.data());
-        a.unwrap_or_else(|| {
-            let len = self.shared.thin_buffers.len();
-            self.shared.serialized_modules[self.idx - len].data()
-        })
+        self.shared.modules[self.idx].data()
     }
 }
 
 pub struct ThinShared<B: WriteBackendMethods> {
     pub data: B::ThinData,
-    pub thin_buffers: Vec<B::ModuleBuffer>,
-    pub serialized_modules: Vec<SerializedModule<B::ModuleBuffer>>,
+    pub modules: Vec<SerializedModule<B::ModuleBuffer>>,
     pub module_names: Vec<CString>,
 }
 
@@ -54,6 +52,19 @@ pub enum SerializedModule<M: ModuleBufferMethods> {
 }
 
 impl<M: ModuleBufferMethods> SerializedModule<M> {
+    pub fn from_file(bc_path: &Path) -> Self {
+        let file = fs::File::open(&bc_path).unwrap_or_else(|e| {
+            panic!("failed to open LTO bitcode file `{}`: {}", bc_path.display(), e)
+        });
+
+        let mmap = unsafe {
+            Mmap::map(file).unwrap_or_else(|e| {
+                panic!("failed to mmap LTO bitcode file `{}`: {}", bc_path.display(), e)
+            })
+        };
+        SerializedModule::FromUncompressedFile(mmap)
+    }
+
     pub fn data(&self) -> &[u8] {
         match *self {
             SerializedModule::Local(ref m) => m.data(),
@@ -75,7 +86,7 @@ fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     }
 }
 
-pub(super) fn exported_symbols_for_lto(
+pub(crate) fn exported_symbols_for_lto(
     tcx: TyCtxt<'_>,
     each_linked_rlib_for_lto: &[CrateNum],
 ) -> Vec<String> {
@@ -110,11 +121,9 @@ pub(super) fn exported_symbols_for_lto(
 
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, include their exported symbols.
-    if tcx.sess.lto() != Lto::ThinLocal {
-        for &cnum in each_linked_rlib_for_lto {
-            let _timer = tcx.prof.generic_activity("lto_generate_symbols_below_threshold");
-            symbols_below_threshold.extend(copy_symbols(cnum));
-        }
+    for &cnum in each_linked_rlib_for_lto {
+        let _timer = tcx.prof.generic_activity("lto_generate_symbols_below_threshold");
+        symbols_below_threshold.extend(copy_symbols(cnum));
     }
 
     // Mark allocator shim symbols as exported only if they were generated.
@@ -136,17 +145,17 @@ pub(super) fn check_lto_allowed(cgcx: &CodegenContext, dcx: DiagCtxtHandle<'_>) 
     // Make sure we actually can run LTO
     for crate_type in cgcx.crate_types.iter() {
         if !crate_type_allows_lto(*crate_type) {
-            dcx.handle().emit_fatal(LtoDisallowed);
+            dcx.emit_fatal(LtoDisallowed);
         } else if *crate_type == CrateType::Dylib {
             if !cgcx.dylib_lto {
-                dcx.handle().emit_fatal(LtoDylib);
+                dcx.emit_fatal(LtoDylib);
             }
         } else if *crate_type == CrateType::ProcMacro && !cgcx.dylib_lto {
-            dcx.handle().emit_fatal(LtoProcMacro);
+            dcx.emit_fatal(LtoProcMacro);
         }
     }
 
     if cgcx.prefer_dynamic && !cgcx.dylib_lto {
-        dcx.handle().emit_fatal(DynamicLinkingWithLTO);
+        dcx.emit_fatal(DynamicLinkingWithLTO);
     }
 }

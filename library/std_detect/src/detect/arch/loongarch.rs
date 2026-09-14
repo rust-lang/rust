@@ -35,19 +35,19 @@ features! {
     /// D
     @FEATURE: #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")] frecipe: "frecipe";
     /// Frecipe
-    @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] div32: "div32";
+    @FEATURE: #[stable(feature = "stdarch_loongarch_div32", since = "1.97.0")] div32: "div32";
     /// Div32
     @FEATURE: #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")] lsx: "lsx";
     /// LSX
     @FEATURE: #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")] lasx: "lasx";
     /// LASX
-    @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] lam_bh: "lam-bh";
+    @FEATURE: #[stable(feature = "stdarch_loongarch_lam_bh", since = "1.97.0")] lam_bh: "lam-bh";
     /// LAM-BH
-    @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] lamcas: "lamcas";
+    @FEATURE: #[stable(feature = "stdarch_loongarch_lamcas", since = "1.97.0")] lamcas: "lamcas";
     /// LAM-CAS
-    @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] ld_seq_sa: "ld-seq-sa";
+    @FEATURE: #[stable(feature = "stdarch_loongarch_ld_seq_sa", since = "1.97.0")] ld_seq_sa: "ld-seq-sa";
     /// LD-SEQ-SA
-    @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] scq: "scq";
+    @FEATURE: #[stable(feature = "stdarch_loongarch_scq", since = "1.97.0")] scq: "scq";
     /// SCQ
     @FEATURE: #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")] lbt: "lbt";
     /// LBT

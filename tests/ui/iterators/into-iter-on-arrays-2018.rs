@@ -5,6 +5,7 @@ use std::array::IntoIter;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::slice::Iter;
+use std::boxed::BoxedArrayIntoIter;
 
 fn main() {
     let array = [0; 10];
@@ -15,9 +16,7 @@ fn main() {
     //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
     //~| WARNING this changes meaning
 
-    let _: Iter<'_, i32> = Box::new(array).into_iter();
-    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this changes meaning
+    let _: BoxedArrayIntoIter<i32, 10> = Box::new(array).into_iter();
 
     let _: Iter<'_, i32> = Rc::new(array).into_iter();
     //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`

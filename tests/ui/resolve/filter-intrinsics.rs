@@ -3,8 +3,8 @@ fn main() {
     let _ = transmute::<usize>();
     //~^ ERROR cannot find
 
-    // Should suggest `std::intrinsics::fabsf64`,
+    // Should suggest `std::intrinsics::fabs`,
     // since there is no non-intrinsic to suggest.
-    let _ = fabsf64(1.0);
+    let _ = fabs(1.0);
     //~^ ERROR cannot find
 }

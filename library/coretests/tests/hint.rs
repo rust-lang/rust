@@ -3,7 +3,7 @@ fn select_unpredictable_drop() {
     use core::cell::Cell;
 
     struct X<'a>(&'a Cell<bool>);
-    impl const Drop for X<'_> {
+    const impl Drop for X<'_> {
         fn drop(&mut self) {
             self.0.set(true);
         }

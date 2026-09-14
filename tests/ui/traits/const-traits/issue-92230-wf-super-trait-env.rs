@@ -8,7 +8,7 @@
 pub const trait Super {}
 pub const trait Sub: Super {}
 
-impl<A> const Super for &A where A: [const] Super {}
-impl<A> const Sub for &A where A: [const] Sub {}
+const impl<A> Super for &A where A: [const] Super {}
+const impl<A> Sub for &A where A: [const] Sub {}
 
 fn main() {}

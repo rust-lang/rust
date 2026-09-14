@@ -3,51 +3,68 @@
 use hir_def::{
     AdtId, AssocItemId, GenericDefId, ItemContainerId, Lookup,
     expr_store::path::{Path, PathSegment},
+    hir::ExprOrPatIdPacked,
     resolver::{ResolveValueResult, TypeNs, ValueNs},
+    signatures::{ConstSignature, FunctionSignature},
 };
 use hir_expand::name::Name;
 use rustc_type_ir::inherent::{SliceLike, Ty as _};
 use stdx::never;
 
 use crate::{
-    InferenceDiagnostic, ValueTyDefId,
-    generics::generics,
-    infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext,
-    lower::{GenericPredicates, LifetimeElisionKind},
+    ExplicitDropMethodUseKind, InferenceDiagnostic, Span, ValueTyDefId,
+    infer::{
+        InferenceTyLoweringVarsCtx, diagnostics::InferenceTyLoweringContext as TyLoweringContext,
+    },
+    lower::{GenericPredicates, LifetimeElisionKind, LifetimeLoweringMode},
     method_resolution::{self, CandidateId, MethodError},
     next_solver::{
-        GenericArg, GenericArgs, TraitRef, Ty,
-        infer::traits::{Obligation, ObligationCause},
+        GenericArg, GenericArgs, TraitRef, Ty, Unnormalized, infer::traits::ObligationCause,
         util::clauses_as_obligations,
     },
 };
 
-use super::{ExprOrPatId, InferenceContext, InferenceTyDiagnosticSource};
+use super::InferenceContext;
 
-impl<'db> InferenceContext<'_, 'db> {
-    pub(super) fn infer_path(&mut self, path: &Path, id: ExprOrPatId) -> Option<Ty<'db>> {
-        let (value_def, generic_def, substs) = match self.resolve_value_path(path, id)? {
-            ValuePathResolution::GenericDef(value_def, generic_def, substs) => {
-                (value_def, generic_def, substs)
-            }
-            ValuePathResolution::NonGeneric(ty) => return Some(ty),
-        };
+impl<'db> InferenceContext<'db> {
+    pub(super) fn infer_path(
+        &mut self,
+        path: &Path,
+        id: ExprOrPatIdPacked,
+    ) -> Option<(ValueNs, Ty<'db>)> {
+        let (value, self_subst) = self.resolve_value_path_inner(path, id, false)?;
+
+        if let ValueNs::FunctionId(f) = value
+            && self.lang_items.Drop_drop.is_some_and(|drop_fn| drop_fn == f)
+        {
+            self.push_diagnostic(InferenceDiagnostic::ExplicitDropMethodUse {
+                kind: ExplicitDropMethodUseKind::Path(id),
+            });
+        }
+
+        let (value_def, generic_def, substs) =
+            match self.resolve_value_path(path, id, value, self_subst)? {
+                ValuePathResolution::GenericDef(value_def, generic_def, substs) => {
+                    (value_def, generic_def, substs)
+                }
+                ValuePathResolution::NonGeneric(ty) => return Some((value, ty)),
+            };
         let args = self.insert_type_vars(substs);
 
-        self.add_required_obligations_for_value_path(generic_def, args);
+        self.add_required_obligations_for_value_path(id, generic_def, args);
 
-        let ty = self.db.value_ty(value_def)?.instantiate(self.interner(), args);
+        let ty = self.db.value_ty(value_def)?.instantiate(self.interner(), args).skip_norm_wip();
         let ty = self.process_remote_user_written_ty(ty);
-        Some(ty)
+        Some((value, ty))
     }
 
     fn resolve_value_path(
         &mut self,
         path: &Path,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
+        value: ValueNs,
+        self_subst: Option<GenericArgs<'db>>,
     ) -> Option<ValuePathResolution<'db>> {
-        let (value, self_subst) = self.resolve_value_path_inner(path, id, false)?;
-
         let value_def: ValueTyDefId = match value {
             ValueNs::FunctionId(it) => it.into(),
             ValueNs::ConstId(it) => it.into(),
@@ -72,7 +89,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 };
             }
             ValueNs::ImplSelf(impl_id) => {
-                let ty = self.db.impl_self_ty(impl_id).instantiate_identity();
+                let ty = self.db.impl_self_ty(impl_id).instantiate_identity().skip_norm_wip();
                 return if let Some((AdtId::StructId(struct_id), substs)) = ty.as_adt() {
                     Some(ValuePathResolution::GenericDef(
                         struct_id.into(),
@@ -85,7 +102,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 };
             }
             ValueNs::GenericParam(it) => {
-                return Some(ValuePathResolution::NonGeneric(self.db.const_param_ty_ns(it)));
+                return Some(ValuePathResolution::NonGeneric(self.db.const_param_ty(it)));
             }
         };
 
@@ -105,13 +122,13 @@ impl<'db> InferenceContext<'_, 'db> {
             // to the type alias and they may have different generics.
             self.types.empty.generic_args
         } else {
-            self.with_body_ty_lowering(|ctx| {
+            self.with_ty_lowering(|ctx| {
                 let mut path_ctx = ctx.at_path(path, id);
                 let last_segment = path.segments().len().checked_sub(1);
                 if let Some(last_segment) = last_segment {
                     path_ctx.set_current_segment(last_segment)
                 }
-                path_ctx.substs_from_path(value_def, true, false)
+                path_ctx.substs_from_path(value_def, true, false, id.into())
             })
         };
 
@@ -129,18 +146,27 @@ impl<'db> InferenceContext<'_, 'db> {
     pub(super) fn resolve_value_path_inner(
         &mut self,
         path: &Path,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
         no_diagnostics: bool,
     ) -> Option<(ValueNs, Option<GenericArgs<'db>>)> {
         // Don't use `self.make_ty()` here as we need `orig_ns`.
+        let mut vars_ctx = InferenceTyLoweringVarsCtx {
+            table: &mut self.table,
+            type_of_type_placeholder: &mut self.result.type_of_type_placeholder,
+        };
         let mut ctx = TyLoweringContext::new(
             self.db,
             &self.resolver,
-            self.body,
+            self.store,
             &self.diagnostics,
-            InferenceTyDiagnosticSource::Body,
+            self.store_owner,
             self.generic_def,
+            &self.generics,
             LifetimeElisionKind::Infer,
+            self.allow_using_generic_params,
+            &mut vars_ctx,
+            &self.defined_anon_consts,
+            LifetimeLoweringMode::LateParam,
         );
         let mut path_ctx = if no_diagnostics {
             ctx.at_path_forget_diagnostics(path)
@@ -151,22 +177,45 @@ impl<'db> InferenceContext<'_, 'db> {
             let last = path.segments().last()?;
 
             let (ty, orig_ns) = path_ctx.ty_ctx().lower_ty_ext(type_ref);
-            let ty = self.table.process_user_written_ty(ty);
+            let ty = path_ctx.expect_table().process_user_written_ty(ty);
 
             path_ctx.ignore_last_segment();
-            let (ty, _) = path_ctx.lower_ty_relative_path(ty, orig_ns, true);
+            let (ty, _) = path_ctx.lower_ty_relative_path(ty, orig_ns, true, id.into());
             drop_ctx(ctx, no_diagnostics);
             let ty = self.table.process_user_written_ty(ty);
             self.resolve_ty_assoc_item(ty, last.name, id).map(|(it, substs)| (it, Some(substs)))?
         } else {
-            let hygiene = self.body.expr_or_pat_path_hygiene(id);
+            let hygiene = self.store.expr_or_pat_path_hygiene(id.unpack());
             // FIXME: report error, unresolved first path segment
             let value_or_partial = path_ctx.resolve_path_in_value_ns(hygiene)?;
 
             match value_or_partial {
                 ResolveValueResult::ValueNs(it) => {
                     drop_ctx(ctx, no_diagnostics);
-                    (it, None)
+
+                    let args = if let Path::LangItem(..) = path {
+                        let def_and_container = match it {
+                            ValueNs::ConstId(it) => Some((it.into(), it.loc(self.db).container)),
+                            ValueNs::FunctionId(it) => Some((it.into(), it.loc(self.db).container)),
+                            _ => None,
+                        };
+                        let def_and_container =
+                            def_and_container.and_then(|(def, container)| match container {
+                                ItemContainerId::ImplId(it) => Some((def, it.into())),
+                                ItemContainerId::TraitId(it) => Some((def, it.into())),
+                                ItemContainerId::ExternBlockId(_)
+                                | ItemContainerId::ModuleId(_) => None,
+                            });
+                        def_and_container.map(|(def, container)| {
+                            let args = self.infcx().fresh_args_for_item(id.into(), container);
+                            self.write_assoc_resolution(id, def, args);
+                            args
+                        })
+                    } else {
+                        None
+                    };
+
+                    (it, args)
                 }
                 ResolveValueResult::Partial(def, remaining_index) => {
                     // there may be more intermediate segments between the resolved one and
@@ -181,9 +230,13 @@ impl<'db> InferenceContext<'_, 'db> {
 
                     let (resolution, substs) = match (def, is_before_last) {
                         (TypeNs::TraitId(trait_), true) => {
-                            let self_ty = self.table.next_ty_var();
-                            let trait_ref =
-                                path_ctx.lower_trait_ref_from_resolved_path(trait_, self_ty, true);
+                            let self_ty = path_ctx.expect_table().next_ty_var(id.into());
+                            let trait_ref = path_ctx.lower_trait_ref_from_resolved_path(
+                                trait_,
+                                self_ty,
+                                true,
+                                id.into(),
+                            );
                             drop_ctx(ctx, no_diagnostics);
                             self.resolve_trait_assoc_item(trait_ref, last_segment, id)
                         }
@@ -193,7 +246,7 @@ impl<'db> InferenceContext<'_, 'db> {
                             // should resolve to an associated type of that trait (e.g. `<T
                             // as Iterator>::Item::default`)
                             path_ctx.ignore_last_segment();
-                            let (ty, _) = path_ctx.lower_partly_resolved_path(def, true);
+                            let (ty, _) = path_ctx.lower_partly_resolved_path(def, true, id.into());
                             drop_ctx(ctx, no_diagnostics);
                             if ty.is_ty_error() {
                                 return None;
@@ -218,8 +271,9 @@ impl<'db> InferenceContext<'_, 'db> {
         }
     }
 
-    fn add_required_obligations_for_value_path(
+    pub(super) fn add_required_obligations_for_value_path(
         &mut self,
+        node: ExprOrPatIdPacked,
         def: GenericDefId,
         subst: GenericArgs<'db>,
     ) {
@@ -227,43 +281,26 @@ impl<'db> InferenceContext<'_, 'db> {
         let predicates = GenericPredicates::query_all(self.db, def);
         let param_env = self.table.param_env;
         self.table.register_predicates(clauses_as_obligations(
-            predicates.iter_instantiated_copied(interner, subst.as_slice()),
-            ObligationCause::new(),
+            predicates
+                .iter_instantiated(interner, subst.as_slice())
+                .map(Unnormalized::skip_norm_wip),
+            ObligationCause::new(node),
             param_env,
         ));
-
-        // We need to add `Self: Trait` obligation when `def` is a trait assoc item.
-        let container = match def {
-            GenericDefId::FunctionId(id) => id.lookup(self.db).container,
-            GenericDefId::ConstId(id) => id.lookup(self.db).container,
-            _ => return,
-        };
-
-        if let ItemContainerId::TraitId(trait_) = container {
-            let parent_len = generics(self.db, def).parent_generics().map_or(0, |g| g.len_self());
-            let parent_subst = GenericArgs::new_from_slice(&subst.as_slice()[..parent_len]);
-            let trait_ref = TraitRef::new_from_args(interner, trait_.into(), parent_subst);
-            self.table.register_predicate(Obligation::new(
-                interner,
-                ObligationCause::new(),
-                param_env,
-                trait_ref,
-            ));
-        }
     }
 
     fn resolve_trait_assoc_item(
         &mut self,
         trait_ref: TraitRef<'db>,
         segment: PathSegment<'_>,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
     ) -> Option<(ValueNs, GenericArgs<'db>)> {
         let trait_ = trait_ref.def_id.0;
         let item =
             trait_.trait_items(self.db).items.iter().map(|(_name, id)| *id).find_map(|item| {
                 match item {
                     AssocItemId::FunctionId(func) => {
-                        if segment.name == &self.db.function_signature(func).name {
+                        if segment.name == &FunctionSignature::of(self.db, func).name {
                             Some(CandidateId::FunctionId(func))
                         } else {
                             None
@@ -271,7 +308,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     }
 
                     AssocItemId::ConstId(konst) => {
-                        if self.db.const_signature(konst).name.as_ref() == Some(segment.name) {
+                        if ConstSignature::of(self.db, konst).name.as_ref() == Some(segment.name) {
                             Some(CandidateId::ConstId(konst))
                         } else {
                             None
@@ -293,7 +330,7 @@ impl<'db> InferenceContext<'_, 'db> {
         &mut self,
         ty: Ty<'db>,
         name: &Name,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
     ) -> Option<(ValueNs, GenericArgs<'db>)> {
         if ty.is_ty_error() {
             return None;
@@ -303,7 +340,7 @@ impl<'db> InferenceContext<'_, 'db> {
             return Some(result);
         }
 
-        let res = self.with_method_resolution(|ctx| {
+        let res = self.with_method_resolution(Span::Dummy, Span::Dummy, |ctx| {
             ctx.probe_for_name(method_resolution::Mode::Path, name.clone(), ty)
         });
         let (item, visible) = match res {
@@ -323,28 +360,23 @@ impl<'db> InferenceContext<'_, 'db> {
         };
         let substs = match container {
             ItemContainerId::ImplId(impl_id) => {
-                let impl_substs = self.table.fresh_args_for_item(impl_id.into());
-                let impl_self_ty =
-                    self.db.impl_self_ty(impl_id).instantiate(self.interner(), impl_substs);
-                self.unify(impl_self_ty, ty);
+                let impl_substs = self.table.fresh_args_for_item(id.into(), impl_id.into());
+                let impl_self_ty = self
+                    .db
+                    .impl_self_ty(impl_id)
+                    .instantiate(self.interner(), impl_substs)
+                    .skip_norm_wip();
+                _ = self.demand_eqtype(id, impl_self_ty, ty);
                 impl_substs
             }
             ItemContainerId::TraitId(trait_) => {
                 // we're picking this method
-                let args = GenericArgs::fill_rest(
+                GenericArgs::fill_rest(
                     self.interner(),
                     trait_.into(),
                     [ty.into()],
-                    |_, id, _| self.table.next_var_for_param(id),
-                );
-                let trait_ref = TraitRef::new_from_args(self.interner(), trait_.into(), args);
-                self.table.register_predicate(Obligation::new(
-                    self.interner(),
-                    ObligationCause::new(),
-                    self.table.param_env,
-                    trait_ref,
-                ));
-                args
+                    |_, param, _| self.table.var_for_def(param, id.into()),
+                )
             }
             ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
                 never!("assoc item contained in module/extern block");
@@ -367,9 +399,9 @@ impl<'db> InferenceContext<'_, 'db> {
         &mut self,
         ty: Ty<'db>,
         name: &Name,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
     ) -> Option<(ValueNs, GenericArgs<'db>)> {
-        let ty = self.table.try_structurally_resolve_type(ty);
+        let ty = self.table.try_structurally_resolve_type(id.into(), ty);
         let (enum_id, subst) = match ty.as_adt() {
             Some((AdtId::EnumId(e), subst)) => (e, subst),
             _ => return None,

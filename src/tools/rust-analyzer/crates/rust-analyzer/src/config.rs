@@ -12,7 +12,8 @@ use ide::{
     CompletionFieldsToResolve, DiagnosticsConfig, GenericParameterHints, GotoDefinitionConfig,
     GotoImplementationConfig, HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat,
     InlayFieldsToResolve, InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig,
-    MemoryLayoutHoverRenderKind, RenameConfig, Snippet, SnippetScope, SourceRootId,
+    MemoryLayoutHoverRenderKind, RaFixtureConfig, RenameConfig, Snippet, SnippetScope,
+    SourceRootId,
 };
 use ide_db::{
     MiniCore, SnippetCap,
@@ -215,7 +216,7 @@ config_data! {
         /// to always show them).
         inlayHints_closingBraceHints_minLines: usize = 25,
 
-        /// Show inlay hints for closure captures.
+        /// Show inlay hints for closure and coroutine captures.
         inlayHints_closureCaptureHints_enable: bool = false,
 
         /// Show inlay type hints for return types of closures.
@@ -313,6 +314,9 @@ config_data! {
         /// Hide inlay type hints for constructors.
         inlayHints_typeHints_hideNamedConstructor: bool = false,
 
+        /// Where to render type hints relative to their binding pattern.
+        inlayHints_typeHints_location: TypeHintsLocation = TypeHintsLocation::Inline,
+
         /// Enable the experimental support for interpreting tests.
         interpret_tests: bool = false,
 
@@ -391,7 +395,7 @@ config_data! {
         ///
         /// Controls how many independent `proc-macro-srv` processes rust-analyzer
         /// runs in parallel to handle macro expansion.
-        procMacro_processes: NumProcesses = NumProcesses::Concrete(1),
+        procMacro_processes: NumProcesses = NumProcesses::Concrete(2),
 
         /// Internal config, path to proc-macro server executable.
         procMacro_server: Option<Utf8PathBuf> = None,
@@ -558,9 +562,9 @@ config_data! {
         ///
         /// **Warning**: This format is provisional and subject to change.
         ///
-        /// The discover command should output JSON objects, one per
-        /// line (JSONL format). These objects should correspond to
-        /// this Rust data type:
+        /// The discover command should output JSON objects to stdout,
+        /// one per line (JSONL format). These objects should correspond
+        /// to this Rust data type:
         ///
         /// ```norun
         /// #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -600,6 +604,9 @@ config_data! {
         /// Only the finished event is required, but the other
         /// variants are encouraged to give users more feedback about
         /// progress or errors.
+        ///
+        /// Stderr is not parsed as JSONL. It is treated as command log
+        /// output and forwarded to rust-analyzer's own logs.
         workspace_discoverConfig: Option<DiscoverWorkspaceConfig> = None,
     }
 }
@@ -616,12 +623,13 @@ config_data! {
         /// Prefer to use `Self` over the type name when inserting a type (e.g. in "fill match arms" assist).
         assist_preferSelf: bool = false,
 
-        /// Enable borrow checking for term search code assists. If set to false, also there will be
-        /// more suggestions, but some of them may not borrow-check.
-        assist_termSearch_borrowcheck: bool = true,
-
         /// Term search fuel in "units of work" for assists (Defaults to 1800).
         assist_termSearch_fuel: usize = 1800,
+
+        /// Automatically add `::` when completing the module.
+        ///
+        /// Will not be completed in `use`.
+        completion_addColonsToModule: bool = true,
 
         /// Automatically add a semicolon when completing unit-returning functions.
         ///
@@ -651,6 +659,12 @@ config_data! {
         /// verbose form `{ "path": "path::to::item", type: "always" }`.
         ///
         /// For traits the type "methods" can be used to only exclude the methods but not the trait
+        /// itself.
+        ///
+        /// For modules the type "sub_items" can be used to only exclude the all items in it but not the module
+        /// itself. This does not include items defined in nested modules.
+        ///
+        /// For enums the type "variants" can be used to only exclude the all variants in it but not the enum
         /// itself.
         ///
         /// This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
@@ -726,6 +740,11 @@ config_data! {
         /// The warnings will be indicated by a blue squiggly underline in code and a blue icon in
         /// the `Problems Panel`.
         diagnostics_warningsAsInfo: Vec<String> = vec![],
+
+        /// Disable support for `#[rust_analyzer::rust_fixture]` snippets.
+        ///
+        /// If you are not working on rust-analyzer itself, you should ignore this config.
+        disableFixtureSupport: bool = false,
 
         /// Enforce the import granularity setting for all files. If set to false rust-analyzer will
         /// try to keep import styles consistent per file.
@@ -813,6 +832,10 @@ config_data! {
         cargo_cfgs: Vec<String> = {
             vec!["debug_assertions".into(), "miri".into()]
         },
+        /// Path to a `.cargo/config.toml` style file to pass to cargo via `--config`
+        /// for every cargo invocation (metadata, build scripts, config discovery).
+        /// Useful to give rust-analyzer a consistent view of the project configuration.
+        cargo_configPath: Option<Utf8PathBuf> = None,
         /// Extra arguments that are passed to every cargo invocation.
         cargo_extraArgs: Vec<String> = vec![],
         /// Extra environment variables that will be set when running cargo, rustc
@@ -822,6 +845,9 @@ config_data! {
         ///
         /// Set this to `"all"` to pass `--all-features` to cargo.
         cargo_features: CargoFeaturesDef      = CargoFeaturesDef::Selected(vec![]),
+        /// Extra arguments passed only to `cargo metadata`, not to other cargo invocations.
+        /// Useful for flags like `--config` that `cargo metadata` supports.
+        cargo_metadataExtraArgs: Vec<String> = vec![],
         /// Whether to pass `--no-default-features` to cargo.
         cargo_noDefaultFeatures: bool    = false,
         /// Whether to skip fetching dependencies. If set to "true", the analysis is performed
@@ -948,18 +974,30 @@ config_data! {
         /// Override the command used for bench runnables.
         /// The first element of the array should be the program to execute (for example, `cargo`).
         ///
-        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
-        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
-        /// the test name (name of test function or test mod path).
+        /// Use the placeholders:
+        /// - `${package}`: package name.
+        /// - `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.
+        /// - `${target}`: target name (empty for `--lib`).
+        /// - `${test_name}`: the test path filter, e.g. `module::bench_func`.
+        /// - `${exact}`: `--exact` for single benchmarks, empty for modules.
+        /// - `${include_ignored}`: always empty for benchmarks.
+        /// - `${executable_args}`: all of the above binary args bundled together
+        ///   (includes `rust-analyzer.runnables.extraTestBinaryArgs`).
         runnables_bench_overrideCommand: Option<Vec<String>> = None,
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = None,
-        /// Override the command used for bench runnables.
+        /// Override the command used for doc-test runnables.
         /// The first element of the array should be the program to execute (for example, `cargo`).
         ///
-        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
-        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
-        /// the test name (name of test function or test mod path).
+        /// Use the placeholders:
+        /// - `${package}`: package name.
+        /// - `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.
+        /// - `${target}`: target name (empty for `--lib`).
+        /// - `${test_name}`: the test path filter, e.g. `module::func`.
+        /// - `${exact}`: always empty for doc-tests.
+        /// - `${include_ignored}`: always empty for doc-tests.
+        /// - `${executable_args}`: all of the above binary args bundled together
+        ///   (includes `rust-analyzer.runnables.extraTestBinaryArgs`).
         runnables_doctest_overrideCommand: Option<Vec<String>> = None,
         /// Additional arguments to be passed to cargo for runnables such as
         /// tests or binaries. For example, it may be `--release`.
@@ -977,9 +1015,15 @@ config_data! {
         /// Override the command used for test runnables.
         /// The first element of the array should be the program to execute (for example, `cargo`).
         ///
-        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
-        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
-        /// the test name (name of test function or test mod path).
+        /// Available placeholders:
+        /// - `${package}`: package name.
+        /// - `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.
+        /// - `${target}`: target name (empty for `--lib`).
+        /// - `${test_name}`: the test path filter, e.g. `module::test_func`.
+        /// - `${exact}`: `--exact` for single tests, empty for modules.
+        /// - `${include_ignored}`: `--include-ignored` for single tests, empty otherwise.
+        /// - `${executable_args}`: all of the above binary args bundled together
+        ///   (includes `rust-analyzer.runnables.extraTestBinaryArgs`).
         runnables_test_overrideCommand: Option<Vec<String>> = None,
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
@@ -1061,6 +1105,7 @@ struct ClientInfo {
     version: Option<Version>,
 }
 
+/// The configuration of this rust-analyzer instance.
 #[derive(Clone)]
 pub struct Config {
     /// Projects that have a Cargo.toml or a rust-project.json in a
@@ -1070,17 +1115,22 @@ pub struct Config {
     /// Projects whose configuration was generated by a command
     /// configured in discoverConfig.
     discovered_projects_from_command: Vec<ProjectJsonFromCommand>,
-    /// The workspace roots as registered by the LSP client
+    /// The workspace roots as registered by the LSP client.
     workspace_roots: Vec<AbsPathBuf>,
     caps: ClientCapabilities,
-    /// The LSP root path, deprecated in favor of `workspace_roots`
+
+    /// The root of the first project encountered. This is deprecated
+    /// because rust-analyzer might be handling multiple projects.
+    ///
+    /// Prefer `workspace_roots` and `workspace_root_for()`.
     root_path: AbsPathBuf,
+
     snippets: Vec<Snippet>,
     client_info: Option<ClientInfo>,
 
     default_config: &'static DefaultConfigData,
     /// Config node that obtains its initial value during the server initialization and
-    /// by receiving a `lsp_types::notification::DidChangeConfiguration`.
+    /// by receiving a [`lsp_types::DidChangeConfigurationNotification`].
     client_config: (FullConfigInput, ConfigErrors),
 
     /// Config node whose values apply to **every** Rust project.
@@ -1501,9 +1551,14 @@ pub struct LensConfig {
     pub refs_trait: bool, // for Struct, Enum, Union and Trait
     pub enum_variant_refs: bool,
 
+    pub refs_exclude_imports: bool,
+    pub refs_exclude_tests: bool,
+
     // annotations
     pub location: AnnotationLocation,
     pub filter_adjacent_derive_implementations: bool,
+
+    disable_ra_fixture: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -1542,10 +1597,6 @@ impl LensConfig {
         self.run || self.debug || self.update_test
     }
 
-    pub fn references(&self) -> bool {
-        self.method_refs || self.refs_adt || self.refs_trait || self.enum_variant_refs
-    }
-
     pub fn into_annotation_config<'a>(
         self,
         binary_target: bool,
@@ -1558,8 +1609,10 @@ impl LensConfig {
             annotate_references: self.refs_adt,
             annotate_method_references: self.method_refs,
             annotate_enum_variant_references: self.enum_variant_refs,
+            references_exclude_imports: self.refs_exclude_imports,
+            references_exclude_tests: self.refs_exclude_tests,
             location: self.location.into(),
-            minicore,
+            ra_fixture: RaFixtureConfig { minicore, disable_ra_fixture: self.disable_ra_fixture },
             filter_adjacent_derive_implementations: self.filter_adjacent_derive_implementations,
         }
     }
@@ -1635,6 +1688,8 @@ pub struct RunnablesConfig {
     pub override_cargo: Option<String>,
     /// Additional arguments for the `cargo`, e.g. `--release`.
     pub cargo_extra_args: Vec<String>,
+    /// Path to an extra config file passed to cargo via `--config`.
+    pub config_path: Option<AbsPathBuf>,
     /// Additional arguments for the binary being run, if it is a test or benchmark.
     pub extra_test_binary_args: Vec<String>,
     /// Subcommand used for doctest runnables instead of `test`.
@@ -1776,9 +1831,23 @@ impl Config {
         s
     }
 
-    pub fn root_path(&self) -> &AbsPathBuf {
-        // We should probably use `workspace_roots` here if set
-        &self.root_path
+    /// Find the workspace root that contains the given path, using the
+    /// longest prefix match.
+    pub fn workspace_root_for(&self, path: &AbsPath) -> &AbsPathBuf {
+        self.workspace_roots
+            .iter()
+            .filter(|root| path.starts_with(root.as_path()))
+            .max_by_key(|root| root.as_str().len())
+            .unwrap_or(self.default_root_path())
+    }
+
+    /// Best-effort root path for the current project.
+    ///
+    /// Use `workspace_root_for` where possible, because
+    /// `default_root_path` may return the wrong path when a user has
+    /// multiple workspaces.
+    pub fn default_root_path(&self) -> &AbsPathBuf {
+        self.workspace_roots.first().unwrap_or(&self.root_path)
     }
 
     pub fn caps(&self) -> &ClientCapabilities {
@@ -1795,7 +1864,6 @@ impl Config {
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
-            term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
             code_action_grouping: self.code_action_group(),
             expr_fill_default: match self.assist_expressionFillDefault(source_root) {
                 ExprFillDefaultDef::Todo => ExprFillDefaultMode::Todo,
@@ -1816,8 +1884,15 @@ impl Config {
         }
     }
 
+    pub fn ra_fixture<'a>(&self, minicore: MiniCore<'a>) -> RaFixtureConfig<'a> {
+        RaFixtureConfig { minicore, disable_ra_fixture: *self.disableFixtureSupport(None) }
+    }
+
     pub fn call_hierarchy<'a>(&self, minicore: MiniCore<'a>) -> CallHierarchyConfig<'a> {
-        CallHierarchyConfig { exclude_tests: self.references_excludeTests().to_owned(), minicore }
+        CallHierarchyConfig {
+            exclude_tests: self.references_excludeTests().to_owned(),
+            ra_fixture: self.ra_fixture(minicore),
+        }
     }
 
     pub fn completion<'a>(
@@ -1842,6 +1917,7 @@ impl Config {
                 CallableCompletionDef::AddParentheses => Some(CallableSnippets::AddParentheses),
                 CallableCompletionDef::None => None,
             },
+            add_colons_to_module: *self.completion_addColonsToModule(source_root),
             add_semicolon_to_unit: *self.completion_addSemicolonToUnit(source_root),
             snippet_cap: SnippetCap::new(self.completion_snippet()),
             insert_use: self.insert_use_config(source_root),
@@ -1873,12 +1949,18 @@ impl Config {
                             AutoImportExclusionType::Methods => {
                                 ide_completion::AutoImportExclusionType::Methods
                             }
+                            AutoImportExclusionType::SubItems => {
+                                ide_completion::AutoImportExclusionType::SubItems
+                            }
+                            AutoImportExclusionType::Variants => {
+                                ide_completion::AutoImportExclusionType::Variants
+                            }
                         },
                     ),
                 })
                 .collect(),
             exclude_traits: self.completion_excludeTraits(source_root),
-            minicore,
+            ra_fixture: self.ra_fixture(minicore),
         }
     }
 
@@ -1911,7 +1993,6 @@ impl Config {
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
             style_lints: self.diagnostics_styleLints_enable(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
-            term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
             show_rename_conflicts: *self.rename_showConflicts(source_root),
         }
     }
@@ -1987,12 +2068,12 @@ impl Config {
                 None => ide::SubstTyLen::Unlimited,
             },
             show_drop_glue: *self.hover_dropGlue_enable(),
-            minicore,
+            ra_fixture: self.ra_fixture(minicore),
         }
     }
 
     pub fn goto_definition<'a>(&self, minicore: MiniCore<'a>) -> GotoDefinitionConfig<'a> {
-        GotoDefinitionConfig { minicore }
+        GotoDefinitionConfig { ra_fixture: self.ra_fixture(minicore) }
     }
 
     pub fn inlay_hints<'a>(&self, minicore: MiniCore<'a>) -> InlayHintsConfig<'a> {
@@ -2001,6 +2082,10 @@ impl Config {
         InlayHintsConfig {
             render_colons: self.inlayHints_renderColons().to_owned(),
             type_hints: self.inlayHints_typeHints_enable().to_owned(),
+            type_hints_placement: match self.inlayHints_typeHints_location() {
+                TypeHintsLocation::Inline => ide::TypeHintsPlacement::Inline,
+                TypeHintsLocation::EndOfLine => ide::TypeHintsPlacement::EndOfLine,
+            },
             sized_bound: self.inlayHints_implicitSizedBoundHints_enable().to_owned(),
             parameter_hints: self.inlayHints_parameterHints_enable().to_owned(),
             parameter_hints_for_missing_arguments: self
@@ -2082,7 +2167,7 @@ impl Config {
             implicit_drop_hints: self.inlayHints_implicitDrops_enable().to_owned(),
             implied_dyn_trait_hints: self.inlayHints_impliedDynTraitHints_enable().to_owned(),
             range_exclusive_hints: self.inlayHints_rangeExclusiveHints_enable().to_owned(),
-            minicore,
+            ra_fixture: self.ra_fixture(minicore),
         }
     }
 
@@ -2135,7 +2220,7 @@ impl Config {
                 .to_owned(),
             inject_doc_comment: self.semanticHighlighting_doc_comment_inject_enable().to_owned(),
             syntactic_name_ref_highlighting: false,
-            minicore,
+            ra_fixture: self.ra_fixture(minicore),
         }
     }
 
@@ -2337,6 +2422,7 @@ impl Config {
         });
         let sysroot_src =
             self.cargo_sysrootSrc(source_root).as_ref().map(|sysroot| self.root_path.join(sysroot));
+        let config_path = self.cargo_config_path(source_root);
         let extra_includes = self
             .vfs_extraIncludes(source_root)
             .iter()
@@ -2402,6 +2488,8 @@ impl Config {
             target_dir_config: self.target_dir_from_config(source_root),
             set_test: *self.cfg_setTest(source_root),
             no_deps: *self.cargo_noDeps(source_root),
+            metadata_extra_args: self.cargo_metadataExtraArgs(source_root).clone(),
+            config_path,
         }
     }
 
@@ -2491,6 +2579,7 @@ impl Config {
             extra_env: self.extra_env(source_root).clone(),
             target_dir_config: self.target_dir_from_config(source_root),
             set_test: true,
+            config_path: self.cargo_config_path(source_root),
         }
     }
 
@@ -2547,12 +2636,17 @@ impl Config {
                     extra_args: self.check_extra_args(source_root),
                     extra_test_bin_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
                     extra_env: self.check_extra_env(source_root),
+                    config_path: self.cargo_config_path(source_root),
                     target_dir_config: self.target_dir_from_config(source_root),
                     set_test: *self.cfg_setTest(source_root),
                 },
                 ansi_color_output: self.color_diagnostic_output(),
             },
         }
+    }
+
+    fn cargo_config_path(&self, source_root: Option<SourceRootId>) -> Option<AbsPathBuf> {
+        self.cargo_configPath(source_root).as_ref().map(|path| self.root_path.join(path))
     }
 
     fn target_dir_from_config(&self, source_root: Option<SourceRootId>) -> TargetDirectoryConfig {
@@ -2575,6 +2669,7 @@ impl Config {
         RunnablesConfig {
             override_cargo: self.runnables_command(source_root).clone(),
             cargo_extra_args: self.runnables_extraArgs(source_root).clone(),
+            config_path: self.cargo_config_path(source_root),
             extra_test_binary_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
             test_command: self.runnables_test_command(source_root).clone(),
             test_override_command: self.runnables_test_overrideCommand(source_root).clone(),
@@ -2606,21 +2701,23 @@ impl Config {
     }
 
     pub fn lens(&self) -> LensConfig {
+        let enable = *self.lens_enable();
         LensConfig {
-            run: *self.lens_enable() && *self.lens_run_enable(),
-            debug: *self.lens_enable() && *self.lens_debug_enable(),
-            update_test: *self.lens_enable()
-                && *self.lens_updateTest_enable()
-                && *self.lens_run_enable(),
-            interpret: *self.lens_enable() && *self.lens_run_enable() && *self.interpret_tests(),
-            implementations: *self.lens_enable() && *self.lens_implementations_enable(),
-            method_refs: *self.lens_enable() && *self.lens_references_method_enable(),
-            refs_adt: *self.lens_enable() && *self.lens_references_adt_enable(),
-            refs_trait: *self.lens_enable() && *self.lens_references_trait_enable(),
-            enum_variant_refs: *self.lens_enable() && *self.lens_references_enumVariant_enable(),
+            run: enable && *self.lens_run_enable(),
+            debug: enable && *self.lens_debug_enable(),
+            update_test: enable && *self.lens_updateTest_enable() && *self.lens_run_enable(),
+            interpret: enable && *self.lens_run_enable() && *self.interpret_tests(),
+            implementations: enable && *self.lens_implementations_enable(),
+            method_refs: enable && *self.lens_references_method_enable(),
+            refs_adt: enable && *self.lens_references_adt_enable(),
+            refs_trait: enable && *self.lens_references_trait_enable(),
+            enum_variant_refs: enable && *self.lens_references_enumVariant_enable(),
+            refs_exclude_imports: *self.references_excludeImports(),
+            refs_exclude_tests: *self.references_excludeTests(),
             location: *self.lens_location(),
             filter_adjacent_derive_implementations: *self
                 .gotoImplementations_filterAdjacentDerives(),
+            disable_ra_fixture: *self.disableFixtureSupport(None),
         }
     }
 
@@ -2805,6 +2902,7 @@ enum SnippetScopeDef {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(default)]
+#[serde(try_from = "SnippetDefRepr")]
 pub(crate) struct SnippetDef {
     #[serde(with = "single_or_array")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -2826,6 +2924,46 @@ pub(crate) struct SnippetDef {
     description: Option<String>,
 
     scope: SnippetScopeDef,
+}
+
+/// Plain deserialization target for [`SnippetDef`]. Both the client JSON
+/// config and `rust-analyzer.toml` configs deserialize a `SnippetDef` per
+/// map entry, so validating the field combination here (via `TryFrom`)
+/// covers both config sources instead of only one.
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct SnippetDefRepr {
+    #[serde(with = "single_or_array")]
+    prefix: Vec<String>,
+    #[serde(with = "single_or_array")]
+    postfix: Vec<String>,
+    #[serde(with = "single_or_array")]
+    body: Vec<String>,
+    #[serde(with = "single_or_array")]
+    requires: Vec<String>,
+    description: Option<String>,
+    scope: SnippetScopeDef,
+}
+
+impl TryFrom<SnippetDefRepr> for SnippetDef {
+    type Error = String;
+
+    fn try_from(repr: SnippetDefRepr) -> Result<Self, Self::Error> {
+        if repr.scope == SnippetScopeDef::Item && !repr.postfix.is_empty() {
+            return Err(
+                "'postfix' is not supported together with '\"scope\": \"item\"'; postfix snippets are not supported in item scope"
+                    .to_owned(),
+            );
+        }
+        Ok(SnippetDef {
+            prefix: repr.prefix,
+            postfix: repr.postfix,
+            body: repr.body,
+            requires: repr.requires,
+            description: repr.description,
+            scope: repr.scope,
+        })
+    }
 }
 
 mod single_or_array {
@@ -2926,6 +3064,8 @@ pub enum AutoImportExclusion {
 pub enum AutoImportExclusionType {
     Always,
     Methods,
+    SubItems,
+    Variants,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -2995,6 +3135,13 @@ enum ClosureStyle {
     RustAnalyzer,
     WithId,
     Hide,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum TypeHintsLocation {
+    Inline,
+    EndOfLine,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -3409,8 +3556,8 @@ impl FullConfigInput {
         fields.sort_by_key(|&(x, ..)| x);
         fields
             .iter()
-            .tuple_windows()
-            .for_each(|(a, b)| assert!(a.0 != b.0, "{a:?} duplicate field"));
+            .array_windows()
+            .for_each(|[a, b]| assert!(a.0 != b.0, "{a:?} duplicate field"));
         fields
     }
 
@@ -3881,7 +4028,9 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enum": ["per_workspace", "once"],
             "enumDescriptions": [
                 "The command will be executed for each Rust workspace with the workspace as the working directory.",
-                "The command will be executed once with the opened project as the working directory."
+                "The command will be executed once with the opened project as the working directory.\
+                \n\n**Warning:** This can cause errors when the Cargo configuration of the opened workspaces is different \
+                or even only different than the default. Enabling this is not recommended."
             ],
         },
         "Option<CheckOnSaveTargets>" => set! {
@@ -3906,6 +4055,14 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "`rust_analyzer`: `|i32, u64| -> i8`",
                 "`with_id`: `{closure#14352}`, where that id is the unique number of the closure in r-a internals",
                 "`hide`: Shows `...` for every closure type",
+            ],
+        },
+        "TypeHintsLocation" => set! {
+            "type": "string",
+            "enum": ["inline", "end_of_line"],
+            "enumDescriptions": [
+                "Render type hints directly after the binding identifier.",
+                "Render type hints after the end of the containing `let` statement when possible.",
             ],
         },
         "Option<MemoryLayoutHoverRenderKindDef>" => set! {
@@ -4042,10 +4199,12 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                             },
                             "type": {
                                 "type": "string",
-                                "enum": ["always", "methods"],
+                                "enum": ["always", "methods", "sub_items", "variants"],
                                 "enumDescriptions": [
                                     "Do not show this item or its methods (if it is a trait) in auto-import completions.",
-                                    "Do not show this traits methods in auto-import completions."
+                                    "Do not show this trait's methods in auto-import completions.",
+                                    "Do not show this module's all items in it in auto-import completions.",
+                                    "Do not show this enum's variants in auto-import completions."
                                 ],
                             },
                         }
@@ -4305,5 +4464,31 @@ mod tests {
             } if target_dir_config.target_dir(None).map(Cow::into_owned)
                 == Some(Utf8PathBuf::from("other_folder"))
         ));
+    }
+    #[test]
+    fn postfix_snippet_item_scope_is_invalid() {
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
+        let mut change = ConfigChange::default();
+        change.change_client_config(serde_json::json!({
+            "completion":{
+                "snippets": {
+                    "custom":{
+                        "foo": {
+                            "postfix": "foo",
+                            "body": "foo",
+                            "scope": "item"
+                        }
+                    }
+                }
+            }
+        }));
+        let errors;
+        (config, errors, _) = config.apply_change(change);
+        assert!(!errors.0.is_empty(), "expected a config error for postfix+item scope");
+        assert!(
+            config.snippets.iter().all(|s| s.postfix_triggers.iter().all(|t| &**t != "foo")),
+            "invalid snippet should not have been registered"
+        );
     }
 }

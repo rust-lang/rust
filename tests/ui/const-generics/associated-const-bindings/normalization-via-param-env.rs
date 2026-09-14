@@ -1,12 +1,13 @@
 //@ check-pass
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![allow(incomplete_features)]
 
 // Regression test for normalizing const projections
 // with associated const equality bounds.
 
 trait Trait {
-    type const C: usize;
+    #[rustc_always_gca]
+    const C: usize;
 }
 
 fn f<T: Trait<C = 1>>() {

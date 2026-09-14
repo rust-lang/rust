@@ -236,7 +236,7 @@ impl File {
         self.0
     }
 
-    pub fn read_buf(&self, _cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, _cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.0
     }
 
@@ -310,6 +310,10 @@ pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
 }
 
 pub fn set_perm(_p: &Path, perm: FilePermissions) -> io::Result<()> {
+    match perm.0 {}
+}
+
+pub fn set_perm_nofollow(_p: &Path, perm: FilePermissions) -> io::Result<()> {
     match perm.0 {}
 }
 

@@ -1,4 +1,4 @@
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 // Regression test for #52050: when inserting the blanket impl `I`
 // into the tree, we had to replace the child node for `Foo`, which

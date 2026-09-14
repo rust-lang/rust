@@ -9,7 +9,7 @@
 //! Consider the following code, operating on some global static variables:
 //!
 //! ```rust
-//! // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+//! // FIXME(static_mut_refs): use raw pointers instead of references
 //! #![allow(static_mut_refs)]
 //!
 //! static mut A: u32 = 0;
@@ -164,6 +164,14 @@
 //! [`Once`]: crate::sync::Once
 //! [`OnceLock`]: crate::sync::OnceLock
 //! [`RwLock`]: crate::sync::RwLock
+//!
+//! ## Blocking guarantees
+//!
+//! Methods that are documented not to block will never block for an unbounded length of time.
+//! That is, they may internally block through platform primitives but still "behave" like they are non-blocking. This difference is invisible to most programs.
+//!
+//! This is only of note to platforms which disallow blocking, such as multithreaded WebAssembly on the main thread.
+//! None of the implementations in `std::sync` are guaranteed to be (or remain) non-blocking in this regard.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -172,7 +180,7 @@
 
 // These come from `core` & `alloc` and only in one flavor: no poisoning.
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-pub use core::sync::Exclusive;
+pub use core::sync::SyncView;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::sync::atomic;
 

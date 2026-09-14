@@ -8,18 +8,6 @@ use rustc_middle::mir::{PlaceRef, ProjectionElem};
 
 use super::MirBorrowckCtxt;
 
-pub(crate) trait IsPrefixOf<'tcx> {
-    fn is_prefix_of(&self, other: PlaceRef<'tcx>) -> bool;
-}
-
-impl<'tcx> IsPrefixOf<'tcx> for PlaceRef<'tcx> {
-    fn is_prefix_of(&self, other: PlaceRef<'tcx>) -> bool {
-        self.local == other.local
-            && self.projection.len() <= other.projection.len()
-            && self.projection == &other.projection[..self.projection.len()]
-    }
-}
-
 pub(super) struct Prefixes<'tcx> {
     kind: PrefixSet,
     next: Option<PlaceRef<'tcx>>,
@@ -76,6 +64,9 @@ impl<'tcx> Iterator for Prefixes<'tcx> {
                         | ProjectionElem::ConstantIndex { .. }
                         | ProjectionElem::Index(_) => {
                             cursor = cursor_base;
+                        }
+                        ProjectionElem::PhantomDeref => {
+                            unreachable!("PhantomDeref should not be present in prefixes")
                         }
                         ProjectionElem::Deref => {
                             match self.kind {

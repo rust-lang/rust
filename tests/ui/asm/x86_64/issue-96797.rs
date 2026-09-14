@@ -1,12 +1,16 @@
+//@ add-minicore
 //@ build-pass
-//@ compile-flags: -O
-//@ needs-asm-support
-//@ only-x86_64
-//@ only-linux
+//@ compile-flags: --target x86_64-unknown-linux-gnu -O
+//@ needs-llvm-components: x86
+//@ ignore-backends: gcc
+#![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
+
+extern crate minicore;
+use minicore::*;
 
 // regression test for #96797
-
-use std::arch::global_asm;
 
 #[no_mangle]
 fn my_func() {}

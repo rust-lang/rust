@@ -3,8 +3,9 @@
 use std::fmt::{self, Debug, Formatter};
 
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_hir::HirId;
 use rustc_index::{Idx, IndexVec};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_span::Span;
 
 rustc_index::newtype_index! {
@@ -53,7 +54,7 @@ rustc_index::newtype_index! {
 /// Enum that can hold a constant zero value, the ID of an physical coverage
 /// counter, or the ID of a coverage-counter expression.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, Hash, StableHash)]
 pub enum CovTerm {
     Zero,
     Counter(CounterId),
@@ -70,16 +71,27 @@ impl Debug for CovTerm {
     }
 }
 
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+/// The specific relationship between [`CoverageKind::Point`] and its [`HirId`].
+#[derive(Clone, Copy, Debug, PartialEq, TyEncodable, TyDecodable, StableHash)]
+pub enum PointKind {
+    /// Inserted just before evaluating an expression.
+    Expr,
+    /// Inserted when a one-sided `if` expression generates its synthetic `else {}`.
+    /// The absent `else` has no node, so [`HirId`] is the `if` expression.
+    ImplicitElse,
+    /// Inserted at the end of a function's body. [`HirId`] is the function itself.
+    FunctionEnd,
+}
+
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, StableHash)]
 pub enum CoverageKind {
-    /// Marks a span that might otherwise not be represented in MIR, so that
-    /// coverage instrumentation can associate it with its enclosing block/BCB.
-    ///
-    /// Should be erased before codegen (at some point after `InstrumentCoverage`).
-    SpanMarker,
+    /// Associates a HIR node (such as an expression) with a particular point in
+    /// MIR control-flow. The relationship between the node and the point is
+    /// indicated by [`PointKind`]. Injected during MIR building.
+    Point { point_kind: PointKind, hir_id: HirId },
 
     /// Marks its enclosing basic block with an ID that can be referred to by
-    /// side data in [`CoverageInfoHi`].
+    /// side data in [`CoverageEarlyInfo`].
     ///
     /// Should be erased before codegen (at some point after `InstrumentCoverage`).
     BlockMarker { id: BlockMarkerId },
@@ -94,16 +106,29 @@ pub enum CoverageKind {
 
 impl Debug for CoverageKind {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        use CoverageKind::*;
         match self {
-            SpanMarker => write!(fmt, "SpanMarker"),
-            BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
-            VirtualCounter { bcb } => write!(fmt, "VirtualCounter({bcb:?})"),
+            CoverageKind::Point { point_kind, hir_id } => {
+                write!(fmt, "Point({point_kind:?}, {hir_id:?}")
+            }
+            CoverageKind::BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
+            CoverageKind::VirtualCounter { bcb } => write!(fmt, "VirtualCounter({bcb:?})"),
         }
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+impl CoverageKind {
+    /// Returns true if this kind of coverage statement is a marker inserted during
+    /// MIR building, for use by analysis in the `InstrumentCoverage` pass, and is
+    /// no longer needed after that pass.
+    pub fn is_removed_after_analysis(&self) -> bool {
+        match self {
+            CoverageKind::Point { .. } | CoverageKind::BlockMarker { .. } => true,
+            CoverageKind::VirtualCounter { .. } => false,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, StableHash)]
 #[derive(TyEncodable, TyDecodable)]
 pub enum Op {
     Subtract,
@@ -121,7 +146,7 @@ impl Op {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, Hash, StableHash)]
 pub struct Expression {
     pub lhs: CovTerm,
     pub op: Op,
@@ -129,7 +154,7 @@ pub struct Expression {
 }
 
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, Hash, StableHash)]
 pub enum MappingKind {
     /// Associates a normal region of code with a counter/expression/zero.
     Code { bcb: BasicCoverageBlock },
@@ -138,18 +163,17 @@ pub enum MappingKind {
 }
 
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, Hash, StableHash)]
 pub struct Mapping {
     pub kind: MappingKind,
     pub span: Span,
 }
 
-/// Stores per-function coverage information attached to a `mir::Body`,
-/// to be used in conjunction with the individual coverage statements injected
-/// into the function's basic blocks.
+/// Coverage information for a function, collected during the `InstrumentCoverage`
+/// MIR pass and stored in the `mir::Body` for later use by coverage codegen.
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
-pub struct FunctionCoverageInfo {
+#[derive(TyEncodable, TyDecodable, Hash, StableHash)]
+pub struct CoverageMirInfo {
     pub function_source_hash: u64,
 
     /// Used in conjunction with `priority_list` to create physical counters
@@ -160,15 +184,17 @@ pub struct FunctionCoverageInfo {
     pub mappings: Vec<Mapping>,
 }
 
-/// Coverage information for a function, recorded during MIR building and
-/// attached to the corresponding `mir::Body`. Used by the `InstrumentCoverage`
-/// MIR pass.
+/// Coverage information for a function, collected in advance at the THIR/MIR
+/// boundary during MIR building, and attached to the corresponding `mir::Body`.
 ///
-/// ("Hi" indicates that this is "high-level" information collected at the
-/// THIR/MIR boundary, before the MIR-based coverage instrumentation pass.)
+/// This side-data is "early" in that it must be collected prior to the main
+/// instrumentation step, in contrast to the main [`CoverageMirInfo`] produced
+/// by instrumentation itself.
+///
+/// Used by the `InstrumentCoverage` MIR pass.
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
-pub struct CoverageInfoHi {
+#[derive(TyEncodable, TyDecodable, Hash, StableHash)]
+pub struct CoverageEarlyInfo {
     /// 1 more than the highest-numbered [`CoverageKind::BlockMarker`] that was
     /// injected into the MIR body. This makes it possible to allocate per-ID
     /// data structures without having to scan the entire body first.
@@ -177,7 +203,7 @@ pub struct CoverageInfoHi {
 }
 
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, Hash, StableHash)]
 pub struct BranchSpan {
     pub span: Span,
     pub true_marker: BlockMarkerId,
@@ -187,9 +213,9 @@ pub struct BranchSpan {
 /// Contains information needed during codegen, obtained by inspecting the
 /// function's MIR after MIR optimizations.
 ///
-/// Returned by the `coverage_ids_info` query.
-#[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable)]
-pub struct CoverageIdsInfo {
+/// Returned by the [`coverage_codegen_info`](crate::ty::TyCtxt::coverage_codegen_info) query.
+#[derive(Clone, TyEncodable, TyDecodable, Debug, StableHash)]
+pub struct CoverageCodegenInfo {
     pub num_counters: u32,
     pub phys_counter_for_node: FxIndexMap<BasicCoverageBlock, CounterId>,
     pub term_for_bcb: IndexVec<BasicCoverageBlock, Option<CovTerm>>,
@@ -224,7 +250,7 @@ rustc_index::newtype_index! {
 /// in the merged graph, it becomes possible to analyze the original node flows
 /// using techniques for analyzing edge flows.
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, Hash, StableHash)]
 pub struct NodeFlowData<Node: Idx> {
     /// Maps each node to the supernode that contains it, indicated by some
     /// arbitrary "root" node that is part of that supernode.

@@ -10,7 +10,19 @@ fn foo(x: i32) -> u32 {
     0
 }
 
+extern "C" fn extern_foo(_: &i32) {}
+
+unsafe extern "C" fn unsafe_extern_foo(_: &i32) {}
+
+fn rust_foo(_: &i32) {}
+
 fn main() {
     let b: fn() -> u32 = bar; //~ ERROR mismatched types [E0308]
     let f: fn(i32) = foo; //~ ERROR mismatched types [E0308]
+
+    // See https://github.com/rust-lang/rust/issues/151393
+    let _: for<'a> fn(&'a i32) = extern_foo; //~ ERROR mismatched types [E0308]
+    let _: for<'a> fn(&'a i32) = unsafe_extern_foo; //~ ERROR mismatched types [E0308]
+    let _: for<'a> extern "C" fn(&'a i32) = rust_foo; //~ ERROR mismatched types [E0308]
+    let _: for<'a> unsafe extern "C" fn(&'a i32) = rust_foo; //~ ERROR mismatched types [E0308]
 }

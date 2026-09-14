@@ -40,7 +40,7 @@ note: rustc $VERSION running on $TARGET
 note: compiler flags: ... -Z ui-testing ... -Z track-diagnostics
 
 query stack during panic:
-#0 [typeck] type-checking `main`
+#0 [typeck_root] type-checking `main`
 #1 [analysis] running analysis passes on crate `track`
 end of query stack
 error: aborting due to 3 previous errors

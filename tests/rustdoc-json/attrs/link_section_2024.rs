@@ -5,6 +5,6 @@
 // However, the unsafe qualification is not shown by rustdoc.
 
 //@ count "$.index[?(@.name=='example')].attrs[*]" 1
-//@ is "$.index[?(@.name=='example')].attrs[*].link_section" '".text"'
-#[unsafe(link_section = ".text")]
+//@ is "$.index[?(@.name=='example')].attrs[*].link_section" '"__TEXT,__text"'
+#[unsafe(link_section = "__TEXT,__text")]
 pub extern "C" fn example() {}

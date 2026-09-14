@@ -1,6 +1,4 @@
-#![allow(dead_code)]
 #![allow(clippy::single_match)]
-#![allow(unused_variables)]
 #![warn(clippy::disallowed_names)]
 
 fn test(toto: ()) {}

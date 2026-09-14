@@ -14,6 +14,11 @@ note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; 
    |
 LL | impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a condition to the match arm checking for equality
+   |
+LL -     match Derive::Some(NoDerive) { ENUM => dbg!(ENUM), _ => panic!("whoops"), };
+LL +     match Derive::Some(NoDerive) { binding if binding == ENUM => dbg!(ENUM), _ => panic!("whoops"), };
+   |
 
 error: constant of non-structural type `NoDerive` in a pattern
   --> $DIR/reject_non_structural.rs:65:28
@@ -31,6 +36,11 @@ note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; 
    |
 LL | impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a condition to the match arm checking for equality
+   |
+LL -     match Some(NoDerive) { FIELD => dbg!(FIELD), _ => panic!("whoops"), };
+LL +     match Some(NoDerive) { binding if binding == FIELD => dbg!(FIELD), _ => panic!("whoops"), };
+   |
 
 error: constant of non-structural type `NoDerive` in a pattern
   --> $DIR/reject_non_structural.rs:71:27
@@ -48,6 +58,11 @@ note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; 
    |
 LL | impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a condition to the match arm checking for equality
+   |
+LL -     match Some(NoDerive) {INDIRECT => dbg!(INDIRECT), _ => panic!("whoops"), };
+LL +     match Some(NoDerive) {binding if binding == INDIRECT => dbg!(INDIRECT), _ => panic!("whoops"), };
+   |
 
 error: constant of non-structural type `NoDerive` in a pattern
   --> $DIR/reject_non_structural.rs:76:36
@@ -65,6 +80,11 @@ note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; 
    |
 LL | impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a condition to the match arm checking for equality
+   |
+LL -     match (None, Some(NoDerive)) { TUPLE => dbg!(TUPLE), _ => panic!("whoops"), };
+LL +     match (None, Some(NoDerive)) { binding if binding == TUPLE => dbg!(TUPLE), _ => panic!("whoops"), };
+   |
 
 error: constant of non-structural type `NoDerive` in a pattern
   --> $DIR/reject_non_structural.rs:81:28
@@ -82,6 +102,11 @@ note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; 
    |
 LL | impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a condition to the match arm checking for equality
+   |
+LL -     match Some(NoDerive) { TYPE_ASCRIPTION => dbg!(TYPE_ASCRIPTION), _ => panic!("whoops"), };
+LL +     match Some(NoDerive) { binding if binding == TYPE_ASCRIPTION => dbg!(TYPE_ASCRIPTION), _ => panic!("whoops"), };
+   |
 
 error: constant of non-structural type `NoDerive` in a pattern
   --> $DIR/reject_non_structural.rs:86:36
@@ -99,6 +124,11 @@ note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; 
    |
 LL | impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a condition to the match arm checking for equality
+   |
+LL -     match [None, Some(NoDerive)] { ARRAY => dbg!(ARRAY), _ => panic!("whoops"), };
+LL +     match [None, Some(NoDerive)] { binding if binding == ARRAY => dbg!(ARRAY), _ => panic!("whoops"), };
+   |
 
 error: constant of non-structural type `NoDerive` in a pattern
   --> $DIR/reject_non_structural.rs:91:33
@@ -116,6 +146,11 @@ note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; 
    |
 LL | impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a condition to the match arm checking for equality
+   |
+LL -     match [Some(NoDerive); 2] { REPEAT => dbg!(REPEAT), _ => panic!("whoops"), };
+LL +     match [Some(NoDerive); 2] { binding if binding == REPEAT => dbg!(REPEAT), _ => panic!("whoops"), };
+   |
 
 error: constant of non-structural type `NoDerive` in a pattern
   --> $DIR/reject_non_structural.rs:97:28
@@ -134,6 +169,11 @@ note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; 
    |
 LL | impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a condition to the match arm checking for equality
+   |
+LL -     match Some(NoDerive) { NoDerive::ASSOC => dbg!(NoDerive::ASSOC), _ => panic!("whoops"), };
+LL +     match Some(NoDerive) { binding if binding == NoDerive::ASSOC => dbg!(NoDerive::ASSOC), _ => panic!("whoops"), };
+   |
 
 error: constant of non-structural type `NoDerive` in a pattern
   --> $DIR/reject_non_structural.rs:102:28
@@ -151,6 +191,11 @@ note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; 
    |
 LL | impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a condition to the match arm checking for equality
+   |
+LL -     match Some(NoDerive) { BLOCK => dbg!(BLOCK), _ => panic!("whoops"), };
+LL +     match Some(NoDerive) { binding if binding == BLOCK => dbg!(BLOCK), _ => panic!("whoops"), };
+   |
 
 error: constant of non-structural type `NoDerive` in a pattern
   --> $DIR/reject_non_structural.rs:107:29
@@ -168,6 +213,11 @@ note: the `PartialEq` trait must be derived, manual `impl`s are not sufficient; 
    |
 LL | impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a condition to the match arm checking for equality
+   |
+LL -     match &Some(NoDerive) { ADDR_OF => dbg!(ADDR_OF), _ => panic!("whoops"), };
+LL +     match &Some(NoDerive) { binding if binding == ADDR_OF => dbg!(ADDR_OF), _ => panic!("whoops"), };
+   |
 
 error: aborting due to 10 previous errors
 

@@ -1,9 +1,7 @@
 //@ aux-crate:fn_header_aux=fn-header-aux.rs
 //@ ignore-backends: gcc
 
-#![feature(c_variadic)]
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 mod to_reuse {
     pub unsafe extern "C" fn variadic_fn(n: usize, mut args: ...) {}

@@ -1,0 +1,26 @@
+error: Undefined Behavior: calling a function whose parameter #1 has type {closure@tests/fail/function_pointers/abi_mismatch_closure_non_capturing.rs:LL:CC} passing argument of type Zst
+  --> tests/fail/function_pointers/abi_mismatch_closure_non_capturing.rs:LL:CC
+   |
+LL |       foo(move || {
+   |  _________^
+LL | |
+LL | |         println!("non-capturing closure");
+LL | |     });
+   | |_____^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = help: this means these two types are not *guaranteed* to be ABI-compatible across all targets
+   = help: if you think this code should be accepted anyway, please report an issue with Miri
+   = note: stack backtrace:
+           0: main::{closure#0}
+               at tests/fail/function_pointers/abi_mismatch_closure_non_capturing.rs:LL:CC
+           1: foo::<{closure@tests/fail/function_pointers/abi_mismatch_closure_non_capturing.rs:LL:CC}>
+               at tests/fail/function_pointers/abi_mismatch_closure_non_capturing.rs:LL:CC
+           2: main
+               at tests/fail/function_pointers/abi_mismatch_closure_non_capturing.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

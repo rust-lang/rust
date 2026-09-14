@@ -8,13 +8,14 @@ SOURCE_FILE
     EXTERN_ITEM_LIST
       L_CURLY "{"
       WHITESPACE "\n    "
-      COMMENT "//! This is a doc comment"
+      DOC_COMMENT
+        INNER_DOC_COMMENT "//! This is a doc comment"
       WHITESPACE "\n    "
       ATTR
         POUND "#"
         BANG "!"
         L_BRACK "["
-        META
+        TOKEN_TREE_META
           PATH
             PATH_SEGMENT
               NAME_REF

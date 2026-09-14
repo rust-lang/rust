@@ -93,11 +93,6 @@ pub fn function_enum(
                     #( #base_arms, )*
                 }
             }
-
-            /// Return information about this operation.
-            pub fn math_op(self) -> &'static crate::op::MathOpInfo {
-                crate::op::ALL_OPERATIONS.iter().find(|op| op.name == self.as_str()).unwrap()
-            }
         }
     };
 

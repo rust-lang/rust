@@ -1,4 +1,4 @@
-#![allow(nonstandard_style, unused)]
+#![allow(nonstandard_style)]
 
 pub struct Aaa;
 pub struct Bbb;

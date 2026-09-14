@@ -22,7 +22,7 @@ use crate::{
 /// Also complete parameters for closure or local functions from the surrounding defined locals.
 pub(crate) fn complete_fn_param(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     pattern_ctx: &PatternContext,
 ) -> Option<()> {
     let (ParamContext { param_list, kind, param, .. }, impl_or_trait) = match pattern_ctx {
@@ -30,14 +30,27 @@ pub(crate) fn complete_fn_param(
         _ => return None,
     };
 
+    let qualifier = param_qualifier(param);
     let comma_wrapper = comma_wrapper(ctx);
     let mut add_new_item_to_acc = |label: &str| {
-        let mk_item = |label: &str, range: TextRange| {
-            CompletionItem::new(CompletionItemKind::Binding, range, label, ctx.edition)
+        let label = label.strip_prefix(qualifier.as_str()).unwrap_or(label);
+        let insert = if label.starts_with('#') {
+            // FIXME: `#[attr] it: i32` -> `#[attr] mut it: i32`
+            label.to_smolstr()
+        } else {
+            format_smolstr!("{qualifier}{label}")
+        };
+        let mk_item = |insert_text: &str, range: TextRange| {
+            let mut item =
+                CompletionItem::new(CompletionItemKind::Binding, range, label, ctx.edition);
+            if insert_text != label {
+                item.insert_text(insert_text);
+            }
+            item
         };
         let item = match &comma_wrapper {
-            Some((fmt, range)) => mk_item(&fmt(label), *range),
-            None => mk_item(label, ctx.source_range()),
+            Some((fmt, range)) => mk_item(&fmt(&insert), *range),
+            None => mk_item(&insert, ctx.source_range()),
         };
         // Completion lookup is omitted intentionally here.
         // See the full discussion: https://github.com/rust-lang/rust-analyzer/issues/12073
@@ -65,7 +78,7 @@ pub(crate) fn complete_fn_param(
 }
 
 fn fill_fn_params(
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     function: &ast::Fn,
     param_list: &ast::ParamList,
     current_param: &ast::Param,
@@ -75,9 +88,6 @@ fn fill_fn_params(
     let mut file_params = FxHashMap::default();
 
     let mut extract_params = |f: ast::Fn| {
-        if !is_simple_param(current_param) {
-            return;
-        }
         f.param_list().into_iter().flat_map(|it| it.params()).for_each(|param| {
             if let Some(pat) = param.pat() {
                 let whole_param = param.to_smolstr();
@@ -88,6 +98,9 @@ fn fill_fn_params(
     };
 
     for node in ctx.token.parent_ancestors() {
+        if !is_simple_param(current_param) {
+            break;
+        }
         match_ast! {
             match node {
                 ast::SourceFile(it) => it.items().filter_map(|item| match item {
@@ -126,7 +139,7 @@ fn fill_fn_params(
 }
 
 fn params_from_stmt_list_scope(
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     stmt_list: ast::StmtList,
     mut cb: impl FnMut(hir::Name, String),
 ) {
@@ -183,7 +196,7 @@ fn should_add_self_completions(
     }
 }
 
-fn comma_wrapper(ctx: &CompletionContext<'_>) -> Option<(impl Fn(&str) -> SmolStr, TextRange)> {
+fn comma_wrapper(ctx: &CompletionContext<'_, '_>) -> Option<(impl Fn(&str) -> SmolStr, TextRange)> {
     let param =
         ctx.original_token.parent_ancestors().find(|node| node.kind() == SyntaxKind::PARAM)?;
 
@@ -213,4 +226,17 @@ fn is_simple_param(param: &ast::Param) -> bool {
     param
         .pat()
         .is_none_or(|pat| matches!(pat, ast::Pat::IdentPat(ident_pat) if ident_pat.pat().is_none()))
+}
+
+fn param_qualifier(param: &ast::Param) -> SmolStr {
+    let mut b = syntax::SmolStrBuilder::new();
+    if let Some(ast::Pat::IdentPat(pat)) = param.pat() {
+        if pat.ref_token().is_some() {
+            b.push_str("ref ");
+        }
+        if pat.mut_token().is_some() {
+            b.push_str("mut ");
+        }
+    }
+    b.finish()
 }

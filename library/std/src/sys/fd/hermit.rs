@@ -22,7 +22,7 @@ impl FileDesc {
         Ok(result as usize)
     }
 
-    pub fn read_buf(&self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         // SAFETY: The `read` syscall does not read from the buffer, so it is
         // safe to use `&mut [MaybeUninit<u8>]`.
         let result = cvt(unsafe {
@@ -33,7 +33,7 @@ impl FileDesc {
             )
         })?;
         // SAFETY: Exactly `result` bytes have been filled.
-        unsafe { buf.advance_unchecked(result as usize) };
+        unsafe { buf.advance(result as usize) };
         Ok(())
     }
 

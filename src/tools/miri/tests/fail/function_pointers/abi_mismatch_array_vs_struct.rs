@@ -12,10 +12,10 @@ struct S(
 type A = [i32; 4];
 
 fn main() {
-    fn f(_: S) {}
+    fn f(_: S) {} //~ ERROR: type S passing argument of type [i32; 4]
 
     // These two types have the same size but are still not compatible.
     let g = unsafe { std::mem::transmute::<fn(S), fn(A)>(f) };
 
-    g(Default::default()) //~ ERROR: type S passing argument of type [i32; 4]
+    g(Default::default())
 }

@@ -16,10 +16,10 @@ impl io::Read for Stdin {
         Ok(unsafe { abi::sys_read(fileno::STDIN, buf.as_mut_ptr(), buf.len()) })
     }
 
-    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         unsafe {
             let n = abi::sys_read(fileno::STDIN, buf.as_mut().as_mut_ptr().cast(), buf.capacity());
-            buf.advance_unchecked(n);
+            buf.advance(n);
         }
         Ok(())
     }

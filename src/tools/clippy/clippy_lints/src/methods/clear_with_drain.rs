@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
-use clippy_utils::{is_range_full, sym};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
+use clippy_utils::{is_full_collection_range, sym};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem, QPath};
+use rustc_hir::Expr;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
@@ -16,8 +17,7 @@ const ACCEPTABLE_TYPES_WITHOUT_ARG: [rustc_span::Symbol; 3] = [sym::BinaryHeap, 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span, arg: Option<&Expr<'_>>) {
     if let Some(arg) = arg {
         if match_acceptable_type(cx, recv, &ACCEPTABLE_TYPES_WITH_ARG)
-            && let ExprKind::Path(QPath::Resolved(None, container_path)) = recv.kind
-            && is_range_full(cx, arg, Some(container_path))
+            && is_full_collection_range(cx, recv.res_local_id(), arg)
         {
             suggest(cx, expr, recv, span);
         }

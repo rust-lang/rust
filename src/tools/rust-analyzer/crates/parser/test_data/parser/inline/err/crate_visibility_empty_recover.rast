@@ -2,8 +2,9 @@ SOURCE_FILE
   STRUCT
     VISIBILITY
       PUB_KW "pub"
-      L_PAREN "("
-      R_PAREN ")"
+      VISIBILITY_INNER
+        L_PAREN "("
+        R_PAREN ")"
     WHITESPACE " "
     STRUCT_KW "struct"
     WHITESPACE " "

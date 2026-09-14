@@ -13,15 +13,17 @@ impl TestCx<'_> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        let proc_res = self.verify_with_filecheck(&output_path);
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("verification with 'FileCheck' failed", &proc_res);
+        if !self.props.skip_filecheck {
+            let proc_res = self.verify_with_filecheck(&output_path);
+            if !proc_res.status.success() {
+                self.fatal_proc_rec("verification with 'FileCheck' failed", &proc_res);
+            }
         }
     }
 
     fn compile_test_and_save_assembly(&self) -> (ProcRes, Utf8PathBuf) {
         // This works with both `--emit asm` (as default output name for the assembly)
-        // and `ptx-linker` because the latter can write output at requested location.
+        // and `llvm-bitcode-linker` because the latter can write output at requested location.
         let output_path = self.output_base_name().with_extension("s");
         let input_file = &self.testpaths.file;
 
@@ -29,7 +31,6 @@ impl TestCx<'_> {
         let emit = match self.props.assembly_output.as_deref() {
             Some("emit-asm") => Emit::Asm,
             Some("bpf-linker") => Emit::LinkArgsAsm,
-            Some("ptx-linker") => Emit::None, // No extra flags needed.
             Some(other) => self.fatal(&format!("unknown 'assembly-output' directive: {other}")),
             None => self.fatal("missing 'assembly-output' directive"),
         };

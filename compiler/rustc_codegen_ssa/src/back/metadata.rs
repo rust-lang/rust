@@ -20,10 +20,11 @@ use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_span::sym;
-use rustc_target::spec::{Abi, Os, RelocModel, Target, ef_avr_arch};
+use rustc_target::spec::{CfgAbi, LlvmAbi, Os, RelocModel, Target, ef_avr_arch};
 use tracing::debug;
 
 use super::apple;
+use crate::diagnostics;
 
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///
@@ -36,7 +37,7 @@ use super::apple;
 /// <dd>The metadata can be found in the `.rustc` section of the shared library.</dd>
 /// </dl>
 #[derive(Debug)]
-pub(crate) struct DefaultMetadataLoader;
+pub struct DefaultMetadataLoader;
 
 static AIX_METADATA_SYMBOL_NAME: &'static str = "__aix_rust_metadata";
 
@@ -128,13 +129,10 @@ pub(super) fn search_for_section<'a>(
 fn add_gnu_property_note(
     file: &mut write::Object<'static>,
     architecture: Architecture,
-    binary_format: BinaryFormat,
     endianness: Endianness,
 ) {
-    // check bti protection
-    if binary_format != BinaryFormat::Elf
-        || !matches!(architecture, Architecture::X86_64 | Architecture::Aarch64)
-    {
+    // Only X86_64 and Aarch64 require a GNU property note.
+    if !matches!(architecture, Architecture::X86_64 | Architecture::Aarch64) {
         return;
     }
 
@@ -206,7 +204,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         Endian::Big => Endianness::Big,
     };
     let Some((architecture, sub_architecture)) =
-        sess.target.object_architecture(&sess.unstable_target_features)
+        sess.target.object_architecture(&sess.internal_target_features)
     else {
         return None;
     };
@@ -216,7 +214,9 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
     file.set_sub_architecture(sub_architecture);
     if sess.target.is_like_darwin {
         if macho_is_arm64e(&sess.target) {
-            file.set_macho_cpu_subtype(object::macho::CPU_SUBTYPE_ARM64E);
+            file.set_macho_cpu_subtype(
+                object::macho::CPU_SUBTYPE_ARM64E | object::macho::CPU_SUBTYPE_PTRAUTH_ABI,
+            );
         }
 
         file.set_macho_build_version(macho_object_build_version_for_target(sess))
@@ -250,12 +250,14 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 
         file.set_mangling(original_mangling);
     }
-    let e_flags = elf_e_flags(architecture, sess);
-    // adapted from LLVM's `MCELFObjectTargetWriter::getOSABI`
-    let os_abi = elf_os_abi(sess);
-    let abi_version = 0;
-    add_gnu_property_note(&mut file, architecture, binary_format, endianness);
-    file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
+    if binary_format == BinaryFormat::Elf {
+        let e_flags = elf_e_flags(architecture, sess);
+        // adapted from LLVM's `MCELFObjectTargetWriter::getOSABI`
+        let os_abi = elf_os_abi(sess);
+        let abi_version = 0;
+        add_gnu_property_note(&mut file, architecture, endianness);
+        file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
+    }
     Some(file)
 }
 
@@ -295,10 +297,10 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             };
 
             // Use the explicitly given ABI.
-            match sess.target.options.llvm_abiname.as_ref() {
-                "o32" if is_32bit => e_flags |= elf::EF_MIPS_ABI_O32,
-                "n32" if !is_32bit => e_flags |= elf::EF_MIPS_ABI2,
-                "n64" if !is_32bit => {}
+            match &sess.target.options.llvm_abiname {
+                LlvmAbi::O32 if is_32bit => e_flags |= elf::EF_MIPS_ABI_O32,
+                LlvmAbi::N32 if !is_32bit => e_flags |= elf::EF_MIPS_ABI2,
+                LlvmAbi::N64 if !is_32bit => {}
                 // The rest is invalid (which is already ensured by the target spec check).
                 s => bug!("invalid LLVM ABI `{}` for MIPS target", s),
             };
@@ -325,23 +327,23 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             let mut e_flags: u32 = 0x0;
 
             // Check if compression is enabled
-            if sess.target_features.contains(&sym::zca) {
+            if sess.internal_target_features.contains(&sym::zca) {
                 e_flags |= elf::EF_RISCV_RVC;
             }
 
             // Check if RVTSO is enabled
-            if sess.target_features.contains(&sym::ztso) {
+            if sess.internal_target_features.contains(&sym::ztso) {
                 e_flags |= elf::EF_RISCV_TSO;
             }
 
             // Set the appropriate flag based on ABI
             // This needs to match LLVM `RISCVELFStreamer.cpp`
-            match &*sess.target.llvm_abiname {
-                "ilp32" | "lp64" => (),
-                "ilp32f" | "lp64f" => e_flags |= elf::EF_RISCV_FLOAT_ABI_SINGLE,
-                "ilp32d" | "lp64d" => e_flags |= elf::EF_RISCV_FLOAT_ABI_DOUBLE,
+            match &sess.target.llvm_abiname {
+                LlvmAbi::Ilp32 | LlvmAbi::Lp64 => (),
+                LlvmAbi::Ilp32f | LlvmAbi::Lp64f => e_flags |= elf::EF_RISCV_FLOAT_ABI_SINGLE,
+                LlvmAbi::Ilp32d | LlvmAbi::Lp64d => e_flags |= elf::EF_RISCV_FLOAT_ABI_DOUBLE,
                 // Note that the `lp64e` is still unstable as it's not (yet) part of the ELF psABI.
-                "ilp32e" | "lp64e" => e_flags |= elf::EF_RISCV_RVE,
+                LlvmAbi::Ilp32e | LlvmAbi::Lp64e => e_flags |= elf::EF_RISCV_RVE,
                 _ => bug!("unknown RISC-V ABI name"),
             }
 
@@ -353,10 +355,10 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
 
             // Set the appropriate flag based on ABI
             // This needs to match LLVM `LoongArchELFStreamer.cpp`
-            match &*sess.target.llvm_abiname {
-                "ilp32s" | "lp64s" => e_flags |= elf::EF_LARCH_ABI_SOFT_FLOAT,
-                "ilp32f" | "lp64f" => e_flags |= elf::EF_LARCH_ABI_SINGLE_FLOAT,
-                "ilp32d" | "lp64d" => e_flags |= elf::EF_LARCH_ABI_DOUBLE_FLOAT,
+            match &sess.target.llvm_abiname {
+                LlvmAbi::Ilp32s | LlvmAbi::Lp64s => e_flags |= elf::EF_LARCH_ABI_SOFT_FLOAT,
+                LlvmAbi::Ilp32f | LlvmAbi::Lp64f => e_flags |= elf::EF_LARCH_ABI_SINGLE_FLOAT,
+                LlvmAbi::Ilp32d | LlvmAbi::Lp64d => e_flags |= elf::EF_LARCH_ABI_DOUBLE_FLOAT,
                 _ => bug!("unknown LoongArch ABI name"),
             }
 
@@ -368,34 +370,30 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             if let Some(ref cpu) = sess.opts.cg.target_cpu {
                 ef_avr_arch(cpu)
             } else {
-                bug!("AVR CPU not explicitly specified")
+                sess.dcx().emit_fatal(diagnostics::CpuRequired)
             }
         }
         Architecture::Csky => {
-            if matches!(sess.target.options.abi, Abi::AbiV2) {
+            if matches!(sess.target.options.cfg_abi, CfgAbi::AbiV2) {
                 elf::EF_CSKY_ABIV2
             } else {
                 elf::EF_CSKY_ABIV1
             }
         }
         Architecture::PowerPc64 => {
-            const EF_PPC64_ABI_UNKNOWN: u32 = 0;
             const EF_PPC64_ABI_ELF_V1: u32 = 1;
             const EF_PPC64_ABI_ELF_V2: u32 = 2;
 
-            match sess.target.options.llvm_abiname.as_ref() {
+            match sess.target.options.llvm_abiname {
                 // If the flags do not correctly indicate the ABI,
                 // linkers such as ld.lld assume that the ppc64 object files are always ELFv2
                 // which leads to broken binaries if ELFv1 is used for the object files.
-                "elfv1" => EF_PPC64_ABI_ELF_V1,
-                "elfv2" => EF_PPC64_ABI_ELF_V2,
-                "" if sess.target.options.binary_format.to_object() == BinaryFormat::Elf => {
-                    bug!("No ABI specified for this PPC64 ELF target");
-                }
-                // Fall back
-                _ => EF_PPC64_ABI_UNKNOWN,
+                LlvmAbi::ElfV1 => EF_PPC64_ABI_ELF_V1,
+                LlvmAbi::ElfV2 => EF_PPC64_ABI_ELF_V2,
+                _ => bug!("invalid ABI specified for this PPC64 ELF target"),
             }
         }
+        Architecture::Sparc32Plus => elf::EF_SPARC_32PLUS,
         _ => 0,
     }
 }

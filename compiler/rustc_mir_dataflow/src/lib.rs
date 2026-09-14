@@ -1,9 +1,9 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(associated_type_defaults)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(exact_size_is_empty)]
 #![feature(file_buffered)]
-#![feature(never_type)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
@@ -17,14 +17,14 @@ pub use self::drop_flag_effects::{
 };
 pub use self::framework::{
     Analysis, Backward, Direction, EntryStates, Forward, GenKill, JoinSemiLattice, MaybeReachable,
-    Results, ResultsCursor, ResultsVisitor, fmt, graphviz, lattice, visit_reachable_results,
+    Results, ResultsCursor, ResultsVisitor, SwitchTargetIndex, fmt, graphviz, lattice,
     visit_results,
 };
 use self::move_paths::MoveData;
 
 pub mod debuginfo;
+mod diagnostics;
 mod drop_flag_effects;
-mod errors;
 mod framework;
 pub mod impls;
 pub mod move_paths;

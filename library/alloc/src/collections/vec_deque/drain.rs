@@ -5,6 +5,7 @@ use core::ptr::NonNull;
 use core::{fmt, ptr};
 
 use super::VecDeque;
+use super::index::WrappedIndex;
 use crate::alloc::{Allocator, Global};
 
 /// A draining iterator over the elements of a `VecDeque`.
@@ -54,6 +55,7 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
     // Only returns pointers to the slices, as that's all we need
     // to drop them. May only be called if `self.remaining != 0`.
     pub(super) unsafe fn as_slices(&self) -> (*mut [T], *mut [T]) {
+        // ignore-tidy-undocumented-unsafe
         unsafe {
             let deque = self.deque.as_ref();
 
@@ -97,16 +99,17 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
         let guard = DropGuard(self);
 
         if mem::needs_drop::<T>() && guard.0.remaining != 0 {
-            unsafe {
-                // SAFETY: We just checked that `self.remaining != 0`.
-                let (front, back) = guard.0.as_slices();
-                // since idx is a logical index, we don't need to worry about wrapping.
-                guard.0.idx += front.len();
-                guard.0.remaining -= front.len();
-                ptr::drop_in_place(front);
-                guard.0.remaining = 0;
-                ptr::drop_in_place(back);
-            }
+            // SAFETY: We just checked that `self.remaining != 0`.
+            let (front, back) = unsafe { guard.0.as_slices() };
+            // since idx is a logical index, we don't need to worry about wrapping.
+            guard.0.idx += front.len();
+            guard.0.remaining -= front.len();
+            // SAFETY: This can't have been dropped before since
+            // `idx` & `remaining` track what's been dropped.
+            unsafe { ptr::drop_in_place(front) };
+            guard.0.remaining = 0;
+            // SAFETY: Ditto.
+            unsafe { ptr::drop_in_place(back) };
         }
 
         // Dropping `guard` handles moving the remaining elements into place.
@@ -114,14 +117,15 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
             #[inline]
             fn drop(&mut self) {
                 if mem::needs_drop::<T>() && self.0.remaining != 0 {
+                    // SAFETY: We just checked that `self.remaining != 0`.
                     unsafe {
-                        // SAFETY: We just checked that `self.remaining != 0`.
                         let (front, back) = self.0.as_slices();
                         ptr::drop_in_place(front);
                         ptr::drop_in_place(back);
                     }
                 }
 
+                // ignore-tidy-undocumented-unsafe
                 let source_deque = unsafe { self.0.deque.as_mut() };
 
                 let drain_len = self.0.drain_len;
@@ -203,14 +207,15 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                         let (src, dst, len);
                         if head_len < tail_len {
                             src = source_deque.head;
-                            dst = source_deque.to_physical_idx(drain_len);
+                            dst = source_deque.to_wrapped_index(drain_len);
                             len = head_len;
                         } else {
-                            src = source_deque.to_physical_idx(head_len + drain_len);
-                            dst = source_deque.to_physical_idx(head_len);
+                            src = source_deque.to_wrapped_index(head_len + drain_len);
+                            dst = source_deque.to_wrapped_index(head_len);
                             len = tail_len;
                         };
 
+                        // ignore-tidy-undocumented-unsafe
                         unsafe {
                             source_deque.wrap_copy(src, dst, len);
                         }
@@ -220,10 +225,10 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                 if new_len == 0 {
                     // Special case: If the entire deque was drained, reset the head back to 0,
                     // like `.clear()` does.
-                    source_deque.head = 0;
+                    source_deque.head = WrappedIndex::zero();
                 } else if head_len < tail_len {
                     // If we moved the head above, then we need to adjust the head index here.
-                    source_deque.head = source_deque.to_physical_idx(drain_len);
+                    source_deque.head = source_deque.to_wrapped_index(drain_len);
                 }
                 source_deque.len = new_len;
             }
@@ -240,9 +245,11 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
         if self.remaining == 0 {
             return None;
         }
-        let wrapped_idx = unsafe { self.deque.as_ref().to_physical_idx(self.idx) };
+        // ignore-tidy-undocumented-unsafe
+        let wrapped_idx = unsafe { self.deque.as_ref().to_wrapped_index(self.idx) };
         self.idx += 1;
         self.remaining -= 1;
+        // ignore-tidy-undocumented-unsafe
         Some(unsafe { self.deque.as_mut().buffer_read(wrapped_idx) })
     }
 
@@ -261,7 +268,10 @@ impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
             return None;
         }
         self.remaining -= 1;
-        let wrapped_idx = unsafe { self.deque.as_ref().to_physical_idx(self.idx + self.remaining) };
+        let wrapped_idx =
+            // ignore-tidy-undocumented-unsafe
+            unsafe { self.deque.as_ref().to_wrapped_index(self.idx + self.remaining) };
+        // ignore-tidy-undocumented-unsafe
         Some(unsafe { self.deque.as_mut().buffer_read(wrapped_idx) })
     }
 }

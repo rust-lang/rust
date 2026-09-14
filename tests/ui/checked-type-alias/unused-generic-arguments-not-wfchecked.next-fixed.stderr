@@ -1,0 +1,9 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/unused-generic-arguments-not-wfchecked.rs:28:43
+   |
+LL | #[cfg(not(next_bugged))] type A2 = A<[(); panic!()]>; // FIXME: `panic!()` diverging
+   |                                           ^^^^^^^^ evaluation of `A2::{constant#0}` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

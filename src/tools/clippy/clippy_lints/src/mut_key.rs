@@ -3,10 +3,9 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::InteriorMut;
 use clippy_utils::{sym, trait_ref_of_method};
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use std::iter;
@@ -110,7 +109,7 @@ impl<'tcx> MutableKeyType<'tcx> {
     }
 
     fn check_sig(&mut self, cx: &LateContext<'tcx>, fn_def_id: LocalDefId, decl: &hir::FnDecl<'tcx>) {
-        let fn_sig = cx.tcx.fn_sig(fn_def_id).instantiate_identity();
+        let fn_sig = cx.tcx.fn_sig(fn_def_id).instantiate_identity().skip_norm_wip();
         for (hir_ty, ty) in iter::zip(decl.inputs, fn_sig.inputs().skip_binder()) {
             self.check_ty_(cx, hir_ty.span, *ty);
         }

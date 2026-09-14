@@ -70,8 +70,7 @@
     on(all(Self = "{integer}", Rhs = "{float}"), message = "cannot add a float to an integer",),
     on(all(Self = "{float}", Rhs = "{integer}"), message = "cannot add an integer to a float",),
     message = "cannot add `{Rhs}` to `{Self}`",
-    label = "no implementation for `{Self} + {Rhs}`",
-    append_const_msg
+    label = "no implementation for `{Self} + {Rhs}`"
 )]
 #[doc(alias = "+")]
 pub const trait Add<Rhs = Self> {
@@ -96,7 +95,7 @@ macro_rules! add_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const Add for $t {
+        const impl Add for $t {
             type Output = $t;
 
             #[inline]
@@ -181,10 +180,9 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
 #[lang = "sub"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot subtract `{Rhs}` from `{Self}`",
-    label = "no implementation for `{Self} - {Rhs}`",
-    append_const_msg
+    label = "no implementation for `{Self} - {Rhs}`"
 )]
 #[doc(alias = "-")]
 pub const trait Sub<Rhs = Self> {
@@ -209,7 +207,7 @@ macro_rules! sub_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const Sub for $t {
+        const impl Sub for $t {
             type Output = $t;
 
             #[inline]
@@ -343,7 +341,7 @@ macro_rules! mul_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const Mul for $t {
+        const impl Mul for $t {
             type Output = $t;
 
             #[inline]
@@ -487,7 +485,7 @@ macro_rules! div_impl_integer {
         #[doc = $panic]
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const Div for $t {
+        const impl Div for $t {
             type Output = $t;
 
             #[inline]
@@ -510,7 +508,7 @@ macro_rules! div_impl_float {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const Div for $t {
+        const impl Div for $t {
             type Output = $t;
 
             #[inline]
@@ -596,7 +594,7 @@ macro_rules! rem_impl_integer {
         #[doc = $panic]
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const Rem for $t {
+        const impl Rem for $t {
             type Output = $t;
 
             #[inline]
@@ -634,7 +632,7 @@ macro_rules! rem_impl_float {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const Rem for $t {
+        const impl Rem for $t {
             type Output = $t;
 
             #[inline]
@@ -712,10 +710,11 @@ macro_rules! neg_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const Neg for $t {
+        const impl Neg for $t {
             type Output = $t;
 
             #[inline]
+            #[track_caller]
             #[rustc_inherit_overflow_checks]
             fn neg(self) -> $t { -self }
         }
@@ -784,7 +783,7 @@ macro_rules! add_assign_impl {
     ($($t:ty)+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const AddAssign for $t {
+        const impl AddAssign for $t {
             #[inline]
             #[track_caller]
             #[rustc_inherit_overflow_checks]
@@ -855,7 +854,7 @@ macro_rules! sub_assign_impl {
     ($($t:ty)+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const SubAssign for $t {
+        const impl SubAssign for $t {
             #[inline]
             #[track_caller]
             #[rustc_inherit_overflow_checks]
@@ -917,7 +916,7 @@ macro_rules! mul_assign_impl {
     ($($t:ty)+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const MulAssign for $t {
+        const impl MulAssign for $t {
             #[inline]
             #[track_caller]
             #[rustc_inherit_overflow_checks]
@@ -979,7 +978,7 @@ macro_rules! div_assign_impl {
     ($($t:ty)+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const DivAssign for $t {
+        const impl DivAssign for $t {
             #[inline]
             #[track_caller]
             fn div_assign(&mut self, other: $t) { *self /= other }
@@ -1044,7 +1043,7 @@ macro_rules! rem_assign_impl {
     ($($t:ty)+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-        impl const RemAssign for $t {
+        const impl RemAssign for $t {
             #[inline]
             #[track_caller]
             fn rem_assign(&mut self, other: $t) { *self %= other }

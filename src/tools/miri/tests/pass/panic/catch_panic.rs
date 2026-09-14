@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![allow(unconditional_panic, non_fmt_panics)]
 
 use std::cell::Cell;

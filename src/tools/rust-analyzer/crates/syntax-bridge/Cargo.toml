@@ -20,11 +20,11 @@ syntax.workspace = true
 parser.workspace = true
 tt.workspace = true
 stdx.workspace = true
-# span = {workspace = true, default-features = false} does not work
-span = { path = "../span", version = "0.0.0", default-features = false}
+span.workspace = true
 intern.workspace = true
 
 [dev-dependencies]
+expect-test = "1.5.1"
 test-utils.workspace = true
 
 [features]

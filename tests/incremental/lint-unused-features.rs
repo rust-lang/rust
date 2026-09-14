@@ -1,23 +1,17 @@
-//@ revisions: rpass cfail
+//@ revisions: rpass bfail
 //@ ignore-backends: gcc
 
 #![deny(unused_features)]
 
 // Used language features
-#![feature(box_patterns)]
 #![feature(decl_macro)]
 #![cfg_attr(all(), feature(rustc_attrs))]
 
 // Used library features
 #![feature(error_iter)]
-//[cfail]~^ ERROR feature `error_iter` is declared but not used
+//[bfail]~^ ERROR feature `error_iter` is declared but not used
 #![cfg_attr(all(), feature(allocator_api))]
-//[cfail]~^ ERROR feature `allocator_api` is declared but not used
-
-pub fn use_box_patterns(b: Box<i32>) -> i32 {
-    let box x = b;
-    x
-}
+//[bfail]~^ ERROR feature `allocator_api` is declared but not used
 
 macro m() {}
 pub fn use_decl_macro() {

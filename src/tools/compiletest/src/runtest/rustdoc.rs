@@ -1,11 +1,22 @@
-use std::process::Command;
-
 use super::{DocKind, TestCx, remove_and_create_dir_all};
+use crate::util::ArgFileCommand;
+
+fn has_test_flag(flags: &[String]) -> bool {
+    flags.iter().any(|s| s == "--test")
+}
 
 impl TestCx<'_> {
     pub(super) fn run_rustdoc_html_test(&self) {
-        assert!(self.revision.is_none(), "revisions not supported in this test suite");
+        assert!(self.variant.revision.is_none(), "revisions not supported in this test suite");
 
+        if has_test_flag(&self.props.compile_flags) || has_test_flag(&self.props.doc_flags) {
+            panic!(
+                "If you want to check `--test`, put this test into `rustdoc-ui` testsuite instead",
+            );
+        }
+        if self.props.should_fail {
+            panic!("`should-fail` should not be used in `rustdoc-html` testsuite");
+        }
         let out_dir = self.output_base_dir();
         remove_and_create_dir_all(&out_dir).unwrap_or_else(|e| {
             panic!("failed to remove and recreate output directory `{out_dir}`: {e}")
@@ -19,14 +30,14 @@ impl TestCx<'_> {
         if self.props.check_test_line_numbers_match {
             self.check_rustdoc_test_option(proc_res);
         } else {
-            let mut cmd = Command::new(&self.config.python);
+            let mut cmd = ArgFileCommand::new(&self.config.python);
             cmd.arg(self.config.src_root.join("src/etc/htmldocck.py"))
                 .arg(&out_dir)
                 .arg(&self.testpaths.file);
             if self.config.bless {
                 cmd.arg("--bless");
             }
-            let res = self.run_command_to_procres(&mut cmd);
+            let res = self.run_command_to_procres(cmd);
             if !res.status.success() {
                 self.fatal_proc_rec("htmldocck failed!", &res);
             }

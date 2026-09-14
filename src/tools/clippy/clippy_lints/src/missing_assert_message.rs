@@ -2,8 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_in_test;
 use clippy_utils::macros::{find_assert_args, find_assert_eq_args, root_macro_call_first_node};
 use rustc_hir::Expr;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::sym;
 
 declare_clippy_lint! {

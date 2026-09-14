@@ -1,5 +1,5 @@
 use crate::concurrency::sync::{FutexRef, SyncObj};
-use crate::shims::sig::check_min_vararg_count;
+use crate::shims::sig::Varargs;
 use crate::*;
 
 struct LinuxFutex {
@@ -12,10 +12,11 @@ impl SyncObj for LinuxFutex {}
 /// `args` is the arguments *including* the syscall number.
 pub fn futex<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    varargs: &[OpTy<'tcx>],
+    varargs: Varargs<'tcx, '_>,
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
-    let [addr, op, val] = check_min_vararg_count("`syscall(SYS_futex, ...)`", varargs)?;
+    let ([addr, op, val], varargs) =
+        ecx.check_varargs(shim_varargs![*u32, i32, u32], varargs, "syscall(SYS_futex, ...)")?;
 
     // See <https://man7.org/linux/man-pages/man2/futex.2.html> for docs.
     // The first three arguments (after the syscall number itself) are the same to all futex operations:
@@ -50,29 +51,35 @@ pub fn futex<'tcx>(
             let wait_bitset = op & !futex_realtime == futex_wait_bitset;
 
             let (timeout, bitset) = if wait_bitset {
-                let [_, _, _, timeout, uaddr2, bitset] = check_min_vararg_count(
-                    "`syscall(SYS_futex, FUTEX_WAIT_BITSET, ...)`",
+                let ([timeout, uaddr2, bitset], _) = ecx.check_varargs(
+                    shim_varargs![*libc::timespec, *u32, u32],
                     varargs,
+                    "syscall(SYS_futex, ...)",
                 )?;
-                let _timeout = ecx.read_pointer(timeout)?;
-                let _uaddr2 = ecx.read_pointer(uaddr2)?;
+                let uaddr2 = ecx.read_pointer(uaddr2)?;
+                if !ecx.ptr_is_null(uaddr2)? {
+                    throw_ub_format!("`uaddr2` pointer must be null for `FUTEX_WAIT_BITSET`");
+                }
                 (timeout, ecx.read_scalar(bitset)?.to_u32()?)
             } else {
-                let [_, _, _, timeout] =
-                    check_min_vararg_count("`syscall(SYS_futex, FUTEX_WAIT, ...)`", varargs)?;
+                let ([timeout], _) = ecx.check_varargs(
+                    shim_varargs![*libc::timespec],
+                    varargs,
+                    "syscall(SYS_futex, ...)",
+                )?;
                 (timeout, u32::MAX)
             };
 
             if bitset == 0 {
-                return ecx.set_last_error_and_return(LibcError("EINVAL"), dest);
+                return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
             }
 
             let timeout = ecx.deref_pointer_as(timeout, ecx.libc_ty_layout("timespec"))?;
-            let timeout = if ecx.ptr_is_null(timeout.ptr())? {
+            let deadline = if ecx.ptr_is_null(timeout.ptr())? {
                 None
             } else {
                 let Some(duration) = ecx.read_timespec(&timeout)? else {
-                    return ecx.set_last_error_and_return(LibcError("EINVAL"), dest);
+                    return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
                 };
                 let timeout_clock = if op & futex_realtime == futex_realtime {
                     ecx.check_no_isolation(
@@ -82,14 +89,14 @@ pub fn futex<'tcx>(
                 } else {
                     TimeoutClock::Monotonic
                 };
-                let timeout_anchor = if wait_bitset {
+                let timeout_style = if wait_bitset {
                     // FUTEX_WAIT_BITSET uses an absolute timestamp.
-                    TimeoutAnchor::Absolute
+                    TimeoutStyle::Absolute
                 } else {
                     // FUTEX_WAIT uses a relative timestamp.
-                    TimeoutAnchor::Relative
+                    TimeoutStyle::Relative
                 };
-                Some((timeout_clock, timeout_anchor, duration))
+                Some(ecx.machine.timeout(timeout_clock, timeout_style, duration))
             };
             // There may be a concurrent thread changing the value of addr
             // and then invoking the FUTEX_WAKE syscall. It is critical that the
@@ -154,7 +161,7 @@ pub fn futex<'tcx>(
                 ecx.futex_wait(
                     futex_ref,
                     bitset,
-                    timeout,
+                    deadline,
                     callback!(
                         @capture<'tcx> {
                             dest: MPlaceTy<'tcx>,
@@ -164,7 +171,7 @@ pub fn futex<'tcx>(
                                 ecx.write_int(0, &dest)
                             }
                             UnblockKind::TimedOut => {
-                                ecx.set_last_error_and_return(LibcError("ETIMEDOUT"), &dest)
+                                ecx.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest)
                             }
                         }
                     ),
@@ -172,7 +179,7 @@ pub fn futex<'tcx>(
             } else {
                 // The futex value doesn't match the expected value, so we return failure
                 // right away without sleeping: -1 and errno set to EAGAIN.
-                return ecx.set_last_error_and_return(LibcError("EAGAIN"), dest);
+                return ecx.set_errno_and_return_neg1(LibcError("EAGAIN"), dest);
             }
         }
         // FUTEX_WAKE: (int *addr, int op = FUTEX_WAKE, int val)
@@ -189,23 +196,30 @@ pub fn futex<'tcx>(
                 // Return an error code. (That seems nicer than silently doing something non-intuitive.)
                 // This means that if an address gets reused by a new allocation,
                 // we'll use an independent futex queue for this... that seems acceptable.
-                return ecx.set_last_error_and_return(LibcError("EFAULT"), dest);
+                return ecx.set_errno_and_return_neg1(LibcError("EFAULT"), dest);
             };
             let futex_ref = futex_ref.futex.clone();
 
             let bitset = if op == futex_wake_bitset {
-                let [_, _, _, timeout, uaddr2, bitset] = check_min_vararg_count(
-                    "`syscall(SYS_futex, FUTEX_WAKE_BITSET, ...)`",
+                let ([timeout, uaddr2, bitset], _) = ecx.check_varargs(
+                    shim_varargs![*libc::timespec, *u32, u32],
                     varargs,
+                    "syscall(SYS_futex, ...)",
                 )?;
-                let _timeout = ecx.read_pointer(timeout)?;
-                let _uaddr2 = ecx.read_pointer(uaddr2)?;
+                let timeout = ecx.read_pointer(timeout)?;
+                if !ecx.ptr_is_null(timeout)? {
+                    throw_ub_format!("`timeout` pointer must be null for `FUTEX_WAKE_BITSET`");
+                }
+                let uaddr2 = ecx.read_pointer(uaddr2)?;
+                if !ecx.ptr_is_null(uaddr2)? {
+                    throw_ub_format!("`uaddr2` pointer must be null for `FUTEX_WAKE_BITSET`");
+                }
                 ecx.read_scalar(bitset)?.to_u32()?
             } else {
                 u32::MAX
             };
             if bitset == 0 {
-                return ecx.set_last_error_and_return(LibcError("EINVAL"), dest);
+                return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
             }
             // Together with the SeqCst fence in futex_wait, this makes sure that futex_wait
             // will see the latest value on addr which could be changed by our caller

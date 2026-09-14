@@ -6,15 +6,13 @@ use crate::{errors, fatal};
 
 impl TestCx<'_> {
     pub(super) fn run_codegen_units_test(&self) {
-        assert!(self.revision.is_none(), "revisions not relevant here");
+        assert!(self.variant.revision.is_none(), "revisions not relevant here");
 
         let proc_res = self.compile_test(WillExecute::No, Emit::None);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
-
-        self.check_no_compiler_crash(&proc_res, self.props.should_ice);
 
         const PREFIX: &str = "MONO_ITEM ";
         const CGU_MARKER: &str = "@@";

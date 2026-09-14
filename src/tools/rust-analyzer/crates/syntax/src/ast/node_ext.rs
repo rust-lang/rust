@@ -3,58 +3,39 @@
 //!
 //! These methods should only do simple, shallow tasks related to the syntax of the node itself.
 
-use std::{borrow::Cow, fmt, iter::successors};
+use std::{fmt, iter::successors};
 
 use itertools::Itertools;
 use parser::SyntaxKind;
-use rowan::{GreenNodeData, GreenTokenData};
+use rowan::{GreenNodeData, GreenTokenData, TextSize};
+use smallvec::{SmallVec, smallvec};
 
 use crate::{
-    NodeOrToken, SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxToken, T, TokenText,
+    NodeOrToken, SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxToken, T,
     ast::{
-        self, AstNode, AstToken, HasAttrs, HasGenericArgs, HasGenericParams, HasName,
-        HasTypeBounds, SyntaxNode, support,
+        self, AnyComment, AstNode, AstToken, CommentShape, HasAttrs, HasGenericArgs,
+        HasGenericParams, HasName, HasTypeBounds, SyntaxNode, support,
     },
-    ted,
+    syntax_editor::SyntaxEditor,
 };
 
 use super::{GenericParam, RangeItem, RangeOp};
 
 impl ast::Lifetime {
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         text_of_first_token(self.syntax())
     }
 }
 
 impl ast::Name {
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         text_of_first_token(self.syntax())
-    }
-    pub fn text_non_mutable(&self) -> &str {
-        fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
-            green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
-        }
-
-        match self.syntax().green() {
-            Cow::Borrowed(green_ref) => first_token(green_ref).text(),
-            Cow::Owned(_) => unreachable!(),
-        }
     }
 }
 
 impl ast::NameRef {
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         text_of_first_token(self.syntax())
-    }
-    pub fn text_non_mutable(&self) -> &str {
-        fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
-            green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
-        }
-
-        match self.syntax().green() {
-            Cow::Borrowed(green_ref) => first_token(green_ref).text(),
-            Cow::Owned(_) => unreachable!(),
-        }
     }
 
     pub fn as_tuple_field(&self) -> Option<usize> {
@@ -66,15 +47,21 @@ impl ast::NameRef {
     }
 }
 
-fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
+fn text_of_first_token(node: &SyntaxNode) -> &str {
     fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
         green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
     }
 
-    match node.green() {
-        Cow::Borrowed(green_ref) => TokenText::borrowed(first_token(green_ref).text()),
-        Cow::Owned(green) => TokenText::owned(first_token(&green).to_owned()),
-    }
+    first_token(node.green()).text()
+}
+
+fn into_comma(it: NodeOrToken<SyntaxNode, SyntaxToken>) -> Option<SyntaxToken> {
+    let token = match it {
+        NodeOrToken::Token(it) => it,
+        NodeOrToken::Node(node) if node.kind() == SyntaxKind::ERROR => node.first_token()?,
+        NodeOrToken::Node(_) => return None,
+    };
+    (token.kind() == T![,]).then_some(token)
 }
 
 impl ast::Abi {
@@ -192,34 +179,80 @@ impl AttrKind {
     }
 }
 
-impl ast::Attr {
+impl ast::Meta {
     pub fn as_simple_atom(&self) -> Option<SmolStr> {
-        let meta = self.meta()?;
-        if meta.eq_token().is_some() || meta.token_tree().is_some() {
-            return None;
-        }
-        self.simple_name()
+        Some(self.as_simple_path()?.as_single_name_ref()?.text().into())
     }
 
     pub fn as_simple_call(&self) -> Option<(SmolStr, ast::TokenTree)> {
-        let tt = self.meta()?.token_tree()?;
-        Some((self.simple_name()?, tt))
+        let ast::Meta::TokenTreeMeta(meta) = self else { return None };
+        Some((meta.path()?.as_single_name_ref()?.text().into(), meta.token_tree()?))
     }
 
     pub fn as_simple_path(&self) -> Option<ast::Path> {
-        let meta = self.meta()?;
-        if meta.eq_token().is_some() || meta.token_tree().is_some() {
-            return None;
-        }
-        self.path()
+        let ast::Meta::PathMeta(meta) = self else { return None };
+        meta.path()
     }
 
     pub fn simple_name(&self) -> Option<SmolStr> {
-        let path = self.meta()?.path()?;
-        match (path.segment(), path.qualifier()) {
-            (Some(segment), None) => Some(segment.syntax().first_token()?.text().into()),
-            _ => None,
+        match self {
+            ast::Meta::CfgAttrMeta(_) => Some(SmolStr::new_static("cfg_attr")),
+            ast::Meta::CfgMeta(_) => Some(SmolStr::new_static("cfg")),
+            _ => {
+                let path = self.path()?;
+                match (path.segment(), path.qualifier()) {
+                    (Some(segment), None) => Some(segment.syntax().first_token()?.text().into()),
+                    _ => None,
+                }
+            }
         }
+    }
+
+    pub fn path(&self) -> Option<ast::Path> {
+        match self {
+            ast::Meta::CfgAttrMeta(_) | ast::Meta::CfgMeta(_) => None,
+            ast::Meta::KeyValueMeta(it) => it.path(),
+            ast::Meta::PathMeta(it) => it.path(),
+            ast::Meta::TokenTreeMeta(it) => it.path(),
+            ast::Meta::UnsafeMeta(it) => it.meta()?.path(),
+        }
+    }
+
+    /// Includes `cfg_attr()` inner metas (without considering the predicate).
+    pub fn skip_cfg_attrs(self) -> SmallVec<[ast::Meta; 1]> {
+        match self {
+            ast::Meta::CfgAttrMeta(meta) => {
+                meta.metas().flat_map(|meta| meta.skip_cfg_attrs()).collect()
+            }
+            _ => smallvec![self],
+        }
+    }
+
+    /// FIXME: Calling this is almost always incorrect, as `cfg_attr` can contains multiple `Meta`s.
+    pub fn parent_attr(&self) -> Option<ast::Attr> {
+        self.syntax().ancestors().find_map(ast::Attr::cast)
+    }
+}
+
+impl ast::Attr {
+    pub fn as_simple_atom(&self) -> Option<SmolStr> {
+        self.meta().and_then(|meta| meta.as_simple_atom())
+    }
+
+    pub fn as_simple_call(&self) -> Option<(SmolStr, ast::TokenTree)> {
+        self.meta().and_then(|meta| meta.as_simple_call())
+    }
+
+    pub fn as_simple_path(&self) -> Option<ast::Path> {
+        self.meta().and_then(|meta| meta.as_simple_path())
+    }
+
+    pub fn simple_name(&self) -> Option<SmolStr> {
+        self.meta().and_then(|meta| meta.simple_name())
+    }
+
+    pub fn path(&self) -> Option<ast::Path> {
+        self.meta().and_then(|meta| meta.path())
     }
 
     pub fn kind(&self) -> AttrKind {
@@ -229,16 +262,61 @@ impl ast::Attr {
         }
     }
 
-    pub fn path(&self) -> Option<ast::Path> {
-        self.meta()?.path()
+    /// Includes `cfg_attr()` inner metas (without considering the predicate).
+    pub fn skip_cfg_attrs(&self) -> SmallVec<[ast::Meta; 1]> {
+        match self.meta() {
+            Some(meta) => meta.skip_cfg_attrs(),
+            None => SmallVec::new(),
+        }
+    }
+}
+
+impl ast::DocComment {
+    // `///` or `/**` or `//!` or `/*!`, all are 3 chars.
+    pub const PREFIX_LEN: TextSize = TextSize::new(3);
+
+    pub fn kind(&self) -> AttrKind {
+        match self.inner_doc_comment_token() {
+            Some(_) => AttrKind::Inner,
+            None => AttrKind::Outer,
+        }
     }
 
-    pub fn expr(&self) -> Option<ast::Expr> {
-        self.meta()?.expr()
+    pub fn token(&self) -> AnyComment {
+        self.syntax
+            .first_token()
+            .and_then(ast::AnyComment::cast)
+            .expect("`ast::DocComment` must have a comment token")
     }
 
-    pub fn token_tree(&self) -> Option<ast::TokenTree> {
-        self.meta()?.token_tree()
+    pub fn shape(&self) -> CommentShape {
+        CommentShape::from_text(self.text_with_markers())
+    }
+
+    /// Returns the text with the `/**...*/` or `/*!...*/` or `///...` or `//!...` markers.
+    pub fn text_with_markers(&self) -> &str {
+        text_of_first_token(&self.syntax)
+    }
+
+    /// Returns the textual content of a doc comment node as a single string with prefix and suffix removed.
+    pub fn text(&self) -> &str {
+        let shape = self.shape();
+        let text = &self.text_with_markers()[Self::PREFIX_LEN.into()..];
+        if shape == CommentShape::Block {
+            // The `*/` may not exist because of recovery.
+            text.strip_suffix("*/").unwrap_or(text)
+        } else {
+            text
+        }
+    }
+}
+
+impl ast::AnyAttr {
+    pub fn kind(&self) -> AttrKind {
+        match self {
+            ast::AnyAttr::Attr(it) => it.kind(),
+            ast::AnyAttr::DocComment(it) => it.kind(),
+        }
     }
 }
 
@@ -402,11 +480,12 @@ impl ast::UseTreeList {
     }
 
     /// Remove the unnecessary braces in current `UseTreeList`
-    pub fn remove_unnecessary_braces(mut self) {
+    pub fn remove_unnecessary_braces(mut self, editor: &SyntaxEditor) {
         // Returns true iff there is a single subtree and it is not the self keyword. The braces in
         // `use x::{self};` are necessary and so we should not remove them.
         let has_single_subtree_that_is_not_self = |u: &ast::UseTreeList| {
-            if let Some((single_subtree,)) = u.use_trees().collect_tuple() {
+            let use_trees = u.use_trees().filter(|use_tree| !editor.deleted(use_tree.syntax()));
+            if let Some((single_subtree,)) = use_trees.collect_tuple() {
                 // We have a single subtree, check whether it is self.
 
                 let is_self = single_subtree.path().as_ref().is_some_and(|path| {
@@ -424,12 +503,12 @@ impl ast::UseTreeList {
         let remove_brace_in_use_tree_list = |u: &ast::UseTreeList| {
             if has_single_subtree_that_is_not_self(u) {
                 if let Some(a) = u.l_curly_token() {
-                    ted::remove(a)
+                    editor.delete(a)
                 }
                 if let Some(a) = u.r_curly_token() {
-                    ted::remove(a)
+                    editor.delete(a)
                 }
-                u.comma().for_each(ted::remove);
+                u.comma().for_each(|u| editor.delete(u));
             }
         };
 
@@ -566,7 +645,7 @@ impl NameLike {
             _ => None,
         }
     }
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         match self {
             NameLike::NameRef(name_ref) => name_ref.text(),
             NameLike::Name(name) => name.text(),
@@ -638,7 +717,7 @@ impl ast::AstNode for NameOrNameRef {
 }
 
 impl NameOrNameRef {
-    pub fn text(&self) -> TokenText<'_> {
+    pub fn text(&self) -> &str {
         match self {
             NameOrNameRef::Name(name) => name.text(),
             NameOrNameRef::NameRef(name_ref) => name_ref.text(),
@@ -716,6 +795,10 @@ impl ast::Type {
         } else {
             None
         }
+    }
+
+    pub fn needs_angles_in_path(&self) -> bool {
+        !matches!(self, ast::Type::PathType(_)) || self.generic_arg_list().is_some()
     }
 }
 
@@ -892,6 +975,15 @@ pub enum VisibilityKind {
 
 impl ast::Visibility {
     pub fn kind(&self) -> VisibilityKind {
+        match self.visibility_inner() {
+            Some(inner) => inner.kind(),
+            None => VisibilityKind::Pub,
+        }
+    }
+}
+
+impl ast::VisibilityInner {
+    pub fn kind(&self) -> VisibilityKind {
         match self.path() {
             Some(path) => {
                 if let Some(segment) =
@@ -1002,12 +1094,6 @@ impl ast::TokenTree {
     }
 }
 
-impl ast::Meta {
-    pub fn parent_attr(&self) -> Option<ast::Attr> {
-        self.syntax().parent().and_then(ast::Attr::cast)
-    }
-}
-
 impl ast::GenericArgList {
     pub fn lifetime_args(&self) -> impl Iterator<Item = ast::LifetimeArg> {
         self.generic_args().filter_map(|arg| match arg {
@@ -1029,6 +1115,21 @@ impl ast::GenericParamList {
             ast::GenericParam::TypeParam(it) => Some(ast::TypeOrConstParam::Type(it)),
             ast::GenericParam::LifetimeParam(_) => None,
             ast::GenericParam::ConstParam(it) => Some(ast::TypeOrConstParam::Const(it)),
+        })
+    }
+}
+
+impl ast::ArgList {
+    /// Comma separated args, argument may be empty
+    pub fn args_maybe_empty(&self) -> impl Iterator<Item = Option<ast::Expr>> {
+        // (Expr? ','?)*
+        let mut after_arg = false;
+        self.syntax().children_with_tokens().filter_map(move |it| {
+            if into_comma(it.clone()).is_some() {
+                if std::mem::take(&mut after_arg) { None } else { Some(None) }
+            } else {
+                Some(ast::Expr::cast(it.into_node()?).inspect(|_| after_arg = true))
+            }
         })
     }
 }
@@ -1077,8 +1178,6 @@ impl ast::HasLoopBody for ast::WhileExpr {
     }
 }
 
-impl ast::HasAttrs for ast::AnyHasDocComments {}
-
 impl From<ast::Adt> for ast::Item {
     fn from(it: ast::Adt) -> Self {
         match it {
@@ -1117,15 +1216,6 @@ impl From<ast::AssocItem> for ast::AnyHasAttrs {
     }
 }
 
-impl ast::FormatArgsArgName {
-    /// This is not a [`ast::Name`], because the name may be a keyword.
-    pub fn name(&self) -> SyntaxToken {
-        let name = self.syntax.first_token().unwrap();
-        assert!(name.kind().is_any_identifier());
-        name
-    }
-}
-
 impl ast::OrPat {
     pub fn leading_pipe(&self) -> Option<SyntaxToken> {
         self.syntax
@@ -1133,6 +1223,25 @@ impl ast::OrPat {
             .find(|it| !it.kind().is_trivia())
             .and_then(NodeOrToken::into_token)
             .filter(|it| it.kind() == T![|])
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum CfgAtomKey {
+    True,
+    False,
+    Ident(SyntaxToken),
+}
+
+impl ast::CfgAtom {
+    pub fn key(&self) -> Option<CfgAtomKey> {
+        if self.true_token().is_some() {
+            Some(CfgAtomKey::True)
+        } else if self.false_token().is_some() {
+            Some(CfgAtomKey::False)
+        } else {
+            self.ident_token().map(CfgAtomKey::Ident)
+        }
     }
 }
 

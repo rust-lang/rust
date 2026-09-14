@@ -121,20 +121,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // discriminants are int-like.
                 let discr_val = self.int_to_int_or_float(&tag_val, discr_layout).unwrap();
                 let discr_bits = discr_val.to_scalar().to_bits(discr_layout.size)?;
-                // Convert discriminant to variant index. Since we validated the tag against the
-                // layout range above, this cannot fail.
+                // Convert discriminant to variant index. The tag may pass the layout range
+                // check above but still not match any actual variant discriminant (e.g.,
+                // non-contiguous discriminants with a wrapping valid_range).
                 let index = match *ty.kind() {
                     ty::Adt(adt, _) => {
-                        adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits).unwrap()
+                        adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
                     }
                     ty::Coroutine(def_id, args) => {
                         let args = args.as_coroutine();
-                        args.discriminants(def_id, *self.tcx)
-                            .find(|(_, var)| var.val == discr_bits)
-                            .unwrap()
+                        args.discriminants(def_id, *self.tcx).find(|(_, var)| var.val == discr_bits)
                     }
                     _ => span_bug!(self.cur_span(), "tagged layout for non-adt non-coroutine"),
-                };
+                }
+                .ok_or_else(|| err_ub!(InvalidTag(Scalar::from_uint(tag_bits, tag_layout.size))))?;
                 // Return the cast value, and the index.
                 index.0
             }
@@ -142,8 +142,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let tag_val = tag_val.to_scalar();
                 // Compute the variant this niche value/"tag" corresponds to. With niche layout,
                 // discriminant (encoded in niche/tag) and variant index are the same.
-                let variants_start = niche_variants.start().as_u32();
-                let variants_end = niche_variants.end().as_u32();
+                let variants_start = niche_variants.start.as_u32();
+                let variants_last = niche_variants.last.as_u32();
                 let variant = match tag_val.try_to_scalar_int() {
                     Err(dbg_val) => {
                         // So this is a pointer then, and casting to an int failed.
@@ -151,7 +151,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         // The niche must be just 0, and the ptr not null, then we know this is
                         // okay. Everything else, we conservatively reject.
                         let ptr_valid = niche_start == 0
-                            && variants_start == variants_end
+                            && variants_start == variants_last
                             && !self.scalar_may_be_null(tag_val)?;
                         if !ptr_valid {
                             throw_ub!(InvalidTag(dbg_val))
@@ -169,7 +169,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         let variant_index_relative =
                             variant_index_relative_val.to_scalar().to_bits(tag_val.layout.size)?;
                         // Check if this is in the range that indicates an actual discriminant.
-                        if variant_index_relative <= u128::from(variants_end - variants_start) {
+                        if variant_index_relative <= u128::from(variants_last - variants_start) {
                             let variant_index_relative = u32::try_from(variant_index_relative)
                                 .expect("we checked that this fits into a u32");
                             // Then computing the absolute variant idx should not overflow any more.
@@ -210,7 +210,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Reading the discriminant of an uninhabited variant is UB. This is the basis for the
         // `uninhabited_enum_branching` MIR pass. It also ensures consistency with
         // `write_discriminant`.
-        if op.layout().for_variant(self, index).is_uninhabited() {
+        if op.layout().is_variant_uninhabited(index) {
             throw_ub!(UninhabitedEnumVariantRead(Some(index)))
         }
         interp_ok(index)
@@ -252,7 +252,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Therefore, there's no way to represent those variants in the given layout.
         // Essentially, uninhabited variants do not have a tag that corresponds to their
         // discriminant, so we have to bail out here.
-        if layout.for_variant(self, variant_index).is_uninhabited() {
+        if layout.is_variant_uninhabited(variant_index) {
             throw_ub!(UninhabitedEnumVariantWritten(variant_index))
         }
 
@@ -309,7 +309,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     niche_variants.contains(&variant_index),
                     "invalid variant index for this enum"
                 );
-                let variants_start = niche_variants.start().as_u32();
+                let variants_start = niche_variants.start.as_u32();
                 let variant_index_relative = variant_index.as_u32().strict_sub(variants_start);
                 // We need to use machine arithmetic when taking into account `niche_start`:
                 // tag_val = variant_index_relative + niche_start_val

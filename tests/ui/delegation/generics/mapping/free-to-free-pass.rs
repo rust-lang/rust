@@ -1,8 +1,6 @@
 //@ run-pass
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
-#![allow(late_bound_lifetime_arguments)]
 
 //! This is one of the mapping tests, which tests mapping of delegee parent and child
 //! generic params, whose main goal is to create cases with
@@ -10,14 +8,32 @@
 //! delegation parent if applicable. At some tests predicates are
 //! added. At some tests user-specified args are specified in reuse statement.
 
-// Testing lifetimes + types + consts, reusing without
-// user args, checking predicates inheritance
+// Testing lifetimes + types + consts, reusing with(out)
+// user args, checking predicates inheritance, testing with impl Traits
 mod test_1 {
-    fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
+    trait Bound1 {}
+    trait Bound2 {}
+    trait Bound3 {}
+
+    struct X {}
+
+    impl Bound1 for X {}
+    impl Bound2 for X {}
+    impl Bound3 for X {}
+
+    fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>(
+        _x: impl Bound1 + Bound2 + Bound3,
+        _f: impl FnOnce(T) -> U,
+    ) {
+    }
 
     pub fn check() {
         reuse foo as bar;
-        bar::<i32, i32, 1>();
+        bar::<i32, i32, 1>(X {}, |x| x);
+
+        reuse foo::<'static, 'static, usize, String, 132> as bar1;
+
+        bar1(X {}, |x| x.to_string());
     }
 }
 
@@ -78,18 +94,16 @@ mod test_6 {
     }
 }
 
-// FIXME(fn_delegation): Uncomment this test when impl Traits in function params are supported
+mod test_7 {
+    fn foo<T, U>(t: T, u: U, f: impl FnOnce(T, U) -> U) -> U {
+        f(t, u)
+    }
 
-// mod test_7 {
-//     fn foo<T, U>(t: T, u: U, f: impl FnOnce(T, U) -> U) -> U {
-//         f(t, u)
-//     }
-
-//     pub fn check() {
-//         reuse foo as bar;
-//         assert_eq!(bar::<i32, i32>(1, 2, |x, y| y), 2);
-//     }
-// }
+    pub fn check() {
+        reuse foo as bar;
+        assert_eq!(bar::<i32, i32>(1, 2, |_, y| y), 2);
+    }
+}
 
 // Testing reuse of local fn with delegation parent generic params specified,
 // late-bound lifetimes + types + consts, reusing with user args,
@@ -126,7 +140,7 @@ pub fn main() {
     test_4::check::<i32, String>();
     test_5::check::<i32, String>();
     test_6::check::<i32, String>();
-    // test_7::check();
+    test_7::check();
     test_8::check::<i32, String>();
     test_9::check::<String, i32>();
 }

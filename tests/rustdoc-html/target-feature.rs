@@ -28,13 +28,13 @@ pub unsafe fn f2_not_safe() {}
 
 //@ has 'foo/fn.f3_multifeatures_in_attr.html'
 //@ has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-//        'Available on target features popcnt and avx2 only.'
+//        'Available on target features avx2 and popcnt only.'
 #[target_feature(enable = "popcnt", enable = "avx2")]
 pub fn f3_multifeatures_in_attr() {}
 
 //@ has 'foo/fn.f4_multi_attrs.html'
 //@ has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-//        'Available on target features popcnt and avx2 only.'
+//        'Available on target features avx2 and popcnt only.'
 #[target_feature(enable = "popcnt")]
 #[target_feature(enable = "avx2")]
 pub fn f4_multi_attrs() {}

@@ -4,7 +4,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // This diagnostic is triggered when a lifetime argument is missing.
 pub(crate) fn missing_lifetime(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::MissingLifetime,
 ) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(
@@ -113,6 +113,22 @@ struct A<'a, T> {
     a: &'a T,
 }
         "#,
+        );
+    }
+
+    // FIXME: Ideally, should emit generic default forbidden as well
+    #[test]
+    fn regression_16280() {
+        check_diagnostics(
+            r#"
+trait Traitor<'a, const M: Traitor = Traitor> {
+    fn crash<const Traitor: Traitor = Traitor, const M: Traitor = Traitor>(&self) -> Traitor {
+                         // ^^^^^^^ error: missing lifetime specifier
+                                                     // ^^^^^^^ error: missing lifetime specifier
+        Traitor
+    }
+}
+"#,
         );
     }
 }

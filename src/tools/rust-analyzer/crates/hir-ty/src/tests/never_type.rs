@@ -115,6 +115,21 @@ fn test() {
 }
 
 #[test]
+fn array_repeat_never_can_be_reinferred() {
+    check_no_mismatches(
+        r#"
+fn test() {
+    let y = [return; 2];
+    match y {
+        [(1, _), (_, false)] => {}
+        [_, _] => {}
+    }
+}
+"#,
+    );
+}
+
+#[test]
 fn match_no_arm() {
     check_types(
         r#"
@@ -262,42 +277,42 @@ fn diverging_expression_1() {
             let x: u32 = { let y: u32 = { loop {}; }; };
         }
         ",
-        expect![[r"
-            11..39 '{     ...urn; }': ()
+        expect![[r#"
+            11..39 '{     ...urn; }': !
             21..22 'x': u32
             30..36 'return': !
-            51..84 '{     ...; }; }': ()
+            51..84 '{     ...; }; }': !
             61..62 'x': u32
-            70..81 '{ return; }': u32
+            70..81 '{ return; }': !
             72..78 'return': !
-            96..125 '{     ... {}; }': ()
+            96..125 '{     ... {}; }': !
             106..107 'x': u32
             115..122 'loop {}': !
             120..122 '{}': ()
-            137..170 '{     ...} }; }': ()
+            137..170 '{     ...} }; }': !
             147..148 'x': u32
             156..167 '{ loop {} }': u32
             158..165 'loop {}': !
             163..165 '{}': ()
-            182..246 '{     ...} }; }': ()
+            182..246 '{     ...} }; }': !
             192..193 'x': u32
             201..243 '{ if t...}; } }': u32
             203..241 'if tru... {}; }': u32
             206..210 'true': bool
-            211..223 '{ loop {}; }': u32
+            211..223 '{ loop {}; }': !
             213..220 'loop {}': !
             218..220 '{}': ()
-            229..241 '{ loop {}; }': u32
+            229..241 '{ loop {}; }': !
             231..238 'loop {}': !
             236..238 '{}': ()
-            258..310 '{     ...; }; }': ()
+            258..310 '{     ...; }; }': !
             268..269 'x': u32
-            277..307 '{ let ...; }; }': u32
+            277..307 '{ let ...; }; }': !
             283..284 'y': u32
-            292..304 '{ loop {}; }': u32
+            292..304 '{ loop {}; }': !
             294..301 'loop {}': !
             299..301 '{}': ()
-        "]],
+        "#]],
     );
 }
 
@@ -312,7 +327,7 @@ fn diverging_expression_2() {
         }
         "#,
         expect![[r#"
-            11..84 '{     ..." }; }': ()
+            11..84 '{     ..." }; }': !
             54..55 'x': u32
             63..81 '{ loop...foo" }': u32
             65..72 'loop {}': !
@@ -354,15 +369,13 @@ fn diverging_expression_3_break() {
             11..85 '{     ...} }; }': ()
             54..55 'x': u32
             63..82 '{ loop...k; } }': u32
-            65..80 'loop { break; }': ()
-            70..80 '{ break; }': ()
+            65..80 'loop { break; }': u32
+            70..80 '{ break; }': !
             72..77 'break': !
-            65..80: expected u32, got ()
+            72..77: expected u32, got ()
             97..343 '{     ...; }; }': ()
             140..141 'x': u32
             149..175 '{ for ...; }; }': u32
-            151..172 'for a ...eak; }': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
-            151..172 'for a ...eak; }': <{unknown} as IntoIterator>::IntoIter
             151..172 'for a ...eak; }': !
             151..172 'for a ...eak; }': {unknown}
             151..172 'for a ...eak; }': &'? mut {unknown}
@@ -374,12 +387,12 @@ fn diverging_expression_3_break() {
             151..172 'for a ...eak; }': ()
             155..156 'a': {unknown}
             160..161 'b': {unknown}
-            162..172 '{ break; }': ()
+            160..161 'b': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
+            160..161 'b': <{unknown} as IntoIterator>::IntoIter
+            162..172 '{ break; }': !
             164..169 'break': !
             226..227 'x': u32
             235..253 '{ for ... {}; }': u32
-            237..250 'for a in b {}': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
-            237..250 'for a in b {}': <{unknown} as IntoIterator>::IntoIter
             237..250 'for a in b {}': !
             237..250 'for a in b {}': {unknown}
             237..250 'for a in b {}': &'? mut {unknown}
@@ -391,11 +404,11 @@ fn diverging_expression_3_break() {
             237..250 'for a in b {}': ()
             241..242 'a': {unknown}
             246..247 'b': {unknown}
+            246..247 'b': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
+            246..247 'b': <{unknown} as IntoIterator>::IntoIter
             248..250 '{}': ()
             304..305 'x': u32
             313..340 '{ for ...; }; }': u32
-            315..337 'for a ...urn; }': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
-            315..337 'for a ...urn; }': <{unknown} as IntoIterator>::IntoIter
             315..337 'for a ...urn; }': !
             315..337 'for a ...urn; }': {unknown}
             315..337 'for a ...urn; }': &'? mut {unknown}
@@ -407,7 +420,9 @@ fn diverging_expression_3_break() {
             315..337 'for a ...urn; }': ()
             319..320 'a': {unknown}
             324..325 'b': {unknown}
-            326..337 '{ return; }': ()
+            324..325 'b': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
+            324..325 'b': <{unknown} as IntoIterator>::IntoIter
+            326..337 '{ return; }': !
             328..334 'return': !
             149..175: expected u32, got ()
             235..253: expected u32, got ()
@@ -419,7 +434,7 @@ fn diverging_expression_3_break() {
             409..430 'while ...eak; }': ()
             409..430 'while ...eak; }': ()
             415..419 'true': bool
-            420..430 '{ break; }': ()
+            420..430 '{ break; }': !
             422..427 'break': !
             537..538 'x': u32
             546..564 '{ whil... {}; }': u32
@@ -434,7 +449,7 @@ fn diverging_expression_3_break() {
             626..648 'while ...urn; }': ()
             626..648 'while ...urn; }': ()
             632..636 'true': bool
-            637..648 '{ return; }': ()
+            637..648 '{ return; }': !
             639..645 'return': !
             407..433: expected u32, got ()
             546..564: expected u32, got ()
@@ -888,6 +903,17 @@ fn foo() {
 }
 
 #[test]
+fn diverging_destructuring_assignment_coerces_rhs() {
+    check_no_mismatches(
+        r#"
+fn main() {
+    if (() = return) {}
+}
+"#,
+    );
+}
+
+#[test]
 fn never_coercion_in_struct_update_syntax() {
     check_no_mismatches(
         r#"
@@ -897,6 +923,33 @@ struct Struct {
 
 fn example() -> Struct {
     Struct { ..loop {} }
+}
+    "#,
+    );
+}
+
+#[test]
+fn never_await() {
+    check_no_mismatches(
+        r#"
+//- minicore: future
+async fn test() -> ! {
+    loop {}
+}
+
+pub async fn test1() -> ! {
+    test().await;
+}
+    "#,
+    );
+}
+
+#[test]
+fn break_diverge() {
+    check_no_mismatches(
+        r#"
+fn test() -> i32 {
+    let loop_value = loop { break (return 5); };
 }
     "#,
     );

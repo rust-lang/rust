@@ -185,7 +185,7 @@ float_bench! {
     crate_fn_ppc: cmp::__gtkf2,
     sys_fn: __gttf2,
     sys_fn_ppc: __gtkf2,
-    sys_available: not(feature = "no-sys-f128"),
+    sys_available: not(no_sys_f128),
     output_eq: gt_res_eq,
     asm: []
 }
@@ -198,7 +198,7 @@ float_bench! {
     crate_fn_ppc: cmp::__unordkf2,
     sys_fn: __unordtf2,
     sys_fn_ppc: __unordkf2,
-    sys_available: not(feature = "no-sys-f128"),
+    sys_available: not(no_sys_f128),
     asm: []
 }
 

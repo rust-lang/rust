@@ -1,12 +1,12 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, LifetimeSource};
-use rustc_session::{declare_lint, declare_lint_pass};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use tracing::instrument;
 
-use crate::{LateContext, LateLintPass, LintContext, lints};
+use crate::{LateContext, LateLintPass, LintContext, diagnostics};
 
 declare_lint! {
     /// The `mismatched_lifetime_syntaxes` lint detects when the same
@@ -169,28 +169,19 @@ impl LifetimeSyntaxCategory {
             // E.g. `ContainsLifetime<'_>`.
             (ExplicitAnonymous, Path { .. }) |
             // E.g. `+ '_`, `+ use<'_>`.
-            (ExplicitAnonymous, OutlivesBound | PreciseCapturing) => {
-                Some(Self::Elided)
-            }
+            (ExplicitAnonymous, OutlivesBound | PreciseCapturing) => Some(Self::Elided),
 
             // E.g. `ContainsLifetime`.
-            (Implicit, Path { .. }) => {
-                Some(Self::Hidden)
-            }
+            (Implicit, Path { .. }) => Some(Self::Hidden),
 
             // E.g. `&'a T`.
             (ExplicitBound, Reference) |
             // E.g. `ContainsLifetime<'a>`.
             (ExplicitBound, Path { .. }) |
             // E.g. `+ 'a`, `+ use<'a>`.
-            (ExplicitBound, OutlivesBound | PreciseCapturing) => {
-                Some(Self::Named)
-            }
+            (ExplicitBound, OutlivesBound | PreciseCapturing) => Some(Self::Named),
 
-            (Implicit, OutlivesBound | PreciseCapturing) |
-            (_, Other) => {
-                None
-            }
+            (Implicit, OutlivesBound | PreciseCapturing) | (_, Other) => None,
         }
     }
 }
@@ -387,9 +378,7 @@ fn emit_mismatch_diagnostic<'tcx>(
         build_mismatch_suggestion(info.lifetime.ident.as_str(), &suggest_change_to_explicit_bound)
     });
 
-    let is_bound_static = bound_lifetime.is_some_and(|info| info.lifetime.is_static());
-
-    tracing::debug!(?bound_lifetime, ?explicit_bound_suggestion, ?is_bound_static);
+    tracing::debug!(?bound_lifetime, ?explicit_bound_suggestion);
 
     let should_suggest_mixed =
         // Do we have a mixed case?
@@ -397,18 +386,18 @@ fn emit_mismatch_diagnostic<'tcx>(
         // Is there anything to change?
         (!suggest_change_to_mixed_implicit.is_empty() ||
          !suggest_change_to_mixed_explicit_anonymous.is_empty()) &&
-        // If we have `'static`, we don't want to remove it.
-        !is_bound_static;
+        // If we have a named lifetime, prefer consistent naming.
+        bound_lifetime.is_none();
 
     let mixed_suggestion = should_suggest_mixed.then(|| {
         let implicit_suggestions = make_implicit_suggestions(&suggest_change_to_mixed_implicit);
 
-        let explicit_anonymous_suggestions = suggest_change_to_mixed_explicit_anonymous
-            .iter()
-            .map(|info| info.suggestion("'_"))
-            .collect();
+        let explicit_anonymous_suggestions = build_mismatch_suggestions_for_lifetime(
+            "'_",
+            &suggest_change_to_mixed_explicit_anonymous,
+        );
 
-        lints::MismatchedLifetimeSyntaxesSuggestion::Mixed {
+        diagnostics::MismatchedLifetimeSyntaxesSuggestion::Mixed {
             implicit_suggestions,
             explicit_anonymous_suggestions,
             optional_alternative: false,
@@ -426,13 +415,13 @@ fn emit_mismatch_diagnostic<'tcx>(
         !suggest_change_to_implicit.is_empty() &&
         // We never want to hide the lifetime in a path (or similar).
         allow_suggesting_implicit &&
-        // If we have `'static`, we don't want to remove it.
-        !is_bound_static;
+        // If we have a named lifetime, prefer consistent naming.
+        bound_lifetime.is_none();
 
     let implicit_suggestion = should_suggest_implicit.then(|| {
         let suggestions = make_implicit_suggestions(&suggest_change_to_implicit);
 
-        lints::MismatchedLifetimeSyntaxesSuggestion::Implicit {
+        diagnostics::MismatchedLifetimeSyntaxesSuggestion::Implicit {
             suggestions,
             optional_alternative: false,
         }
@@ -448,8 +437,10 @@ fn emit_mismatch_diagnostic<'tcx>(
     let should_suggest_explicit_anonymous =
         // Is there anything to change?
         !suggest_change_to_explicit_anonymous.is_empty() &&
-        // If we have `'static`, we don't want to remove it.
-        !is_bound_static;
+        // If we already have a mixed suggestion, avoid overlapping alternatives.
+        mixed_suggestion.is_none() &&
+        // If we have a named lifetime, prefer consistent naming.
+        bound_lifetime.is_none();
 
     let explicit_anonymous_suggestion = should_suggest_explicit_anonymous
         .then(|| build_mismatch_suggestion("'_", &suggest_change_to_explicit_anonymous));
@@ -473,23 +464,74 @@ fn emit_mismatch_diagnostic<'tcx>(
     cx.emit_span_lint(
         MISMATCHED_LIFETIME_SYNTAXES,
         inputs.iter_unnamed().chain(outputs.iter_unnamed()).copied().collect::<Vec<_>>(),
-        lints::MismatchedLifetimeSyntaxes { inputs, outputs, suggestions },
+        diagnostics::MismatchedLifetimeSyntaxes { inputs, outputs, suggestions },
     );
 }
 
 fn build_mismatch_suggestion(
     lifetime_name: &str,
     infos: &[&Info<'_>],
-) -> lints::MismatchedLifetimeSyntaxesSuggestion {
+) -> diagnostics::MismatchedLifetimeSyntaxesSuggestion {
     let lifetime_name = lifetime_name.to_owned();
 
-    let suggestions = infos.iter().map(|info| info.suggestion(&lifetime_name)).collect();
+    let suggestions = build_mismatch_suggestions_for_lifetime(&lifetime_name, infos);
 
-    lints::MismatchedLifetimeSyntaxesSuggestion::Explicit {
+    diagnostics::MismatchedLifetimeSyntaxesSuggestion::Explicit {
         lifetime_name,
         suggestions,
         optional_alternative: false,
     }
+}
+
+fn build_mismatch_suggestions_for_lifetime(
+    lifetime_name: &str,
+    infos: &[&Info<'_>],
+) -> Vec<(Span, String)> {
+    use hir::{AngleBrackets, LifetimeSource, LifetimeSyntax};
+
+    #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+    enum PathSuggestionKind {
+        Missing,
+        Empty,
+        Full,
+    }
+
+    let mut suggestions = Vec::new();
+    let mut path_counts: FxIndexMap<(hir::HirId, PathSuggestionKind), (Span, usize)> =
+        FxIndexMap::default();
+
+    for info in infos {
+        let lifetime = info.lifetime;
+        if matches!(lifetime.syntax, LifetimeSyntax::Implicit) {
+            if let LifetimeSource::Path { angle_brackets } = lifetime.source {
+                let (span, kind) = match angle_brackets {
+                    AngleBrackets::Missing => {
+                        (lifetime.ident.span.shrink_to_hi(), PathSuggestionKind::Missing)
+                    }
+                    AngleBrackets::Empty => (lifetime.ident.span, PathSuggestionKind::Empty),
+                    AngleBrackets::Full => (lifetime.ident.span, PathSuggestionKind::Full),
+                };
+                let entry = path_counts.entry((info.ty.hir_id, kind)).or_insert((span, 0));
+                entry.1 += 1;
+                continue;
+            }
+        }
+        suggestions.push(info.suggestion(lifetime_name));
+    }
+
+    for ((_ty_hir_id, kind), (span, count)) in path_counts {
+        let repeated = std::iter::repeat(lifetime_name).take(count).collect::<Vec<_>>().join(", ");
+
+        let suggestion = match kind {
+            PathSuggestionKind::Missing => format!("<{repeated}>"),
+            PathSuggestionKind::Empty => repeated,
+            PathSuggestionKind::Full => format!("{repeated}, "),
+        };
+
+        suggestions.push((span, suggestion));
+    }
+
+    suggestions
 }
 
 #[derive(Debug)]

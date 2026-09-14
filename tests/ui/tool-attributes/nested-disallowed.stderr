@@ -1,12 +1,17 @@
-error[E0539]: malformed `register_tool` attribute input
-  --> $DIR/nested-disallowed.rs:2:1
+error[E0565]: malformed `register_tool` attribute input
+  --> $DIR/nested-disallowed.rs:2:4
    |
 LL | #![register_tool(foo::bar)]
-   | ^^^^^^^^^^^^^^^^^--------^^
-   | |                |
-   | |                expected a valid identifier here
-   | help: must be of the form: `#![register_tool(tool1, tool2, ...)]`
+   |    ^^^^^^^^^^^^^^--------^
+   |                  |
+   |                  expected a valid identifier here
+   |
+help: must be of the form
+   |
+LL - #![register_tool(foo::bar)]
+LL + #![register_tool(tool1, tool2, ...)]
+   |
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0539`.
+For more information about this error, try `rustc --explain E0565`.

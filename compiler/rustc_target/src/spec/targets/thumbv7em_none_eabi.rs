@@ -9,7 +9,7 @@
 // To opt-in to hardware accelerated floating point operations, you can use, for example,
 // `-C target-feature=+vfp4` or `-C target-cpu=cortex-m4`.
 
-use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, CfgAbi, FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -25,7 +25,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::Arm,
 
         options: TargetOptions {
-            abi: Abi::Eabi,
+            cfg_abi: CfgAbi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
             max_atomic_width: Some(32),
             ..base::arm_none::opts()

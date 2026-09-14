@@ -1,6 +1,7 @@
 // Code that generates a test runner to run all the tests in a crate
 
 use std::mem;
+use std::sync::atomic::Ordering;
 
 use rustc_ast as ast;
 use rustc_ast::attr::contains_name;
@@ -8,13 +9,13 @@ use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::*;
 use rustc_ast::visit::Visitor;
 use rustc_ast::{ModKind, attr};
+use rustc_attr_ir::AttributeKind;
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
-use rustc_hir::attrs::AttributeKind;
+use rustc_lint_defs::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_session::Session;
-use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_target::spec::PanicStrategy;
@@ -22,7 +23,7 @@ use smallvec::smallvec;
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
-use crate::errors;
+use crate::diagnostics;
 
 #[derive(Clone)]
 struct Test {
@@ -61,7 +62,7 @@ pub fn inject(
 
     // Do this here so that the test_runner crate attribute gets marked as used
     // even in non-test builds
-    let test_runner = get_test_runner(sess, features, krate);
+    let test_runner = get_test_runner(sess, krate);
 
     if sess.is_test_crate() {
         let panic_strategy = match (panic_strategy, sess.opts.unstable_opts.panic_abort_tests) {
@@ -71,7 +72,7 @@ pub fn inject(
                     // Silently allow compiling with panic=abort on these platforms,
                     // but with old behavior (abort if a test fails).
                 } else {
-                    dcx.emit_err(errors::TestsNotSupport {});
+                    dcx.emit_err(diagnostics::TestsNotSupport {});
                 }
                 PanicStrategy::Unwind
             }
@@ -129,7 +130,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
     }
 
     fn visit_item(&mut self, item: &mut ast::Item) {
-        if let Some(name) = get_test_name(&item) {
+        if let Some(name) = get_test_name(item) {
             debug!("this is a test item");
 
             // `unwrap` is ok because only functions, consts, and static should reach here.
@@ -150,7 +151,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
             self.add_test_cases(item.id, span, prev_tests);
         } else {
             // But in those cases, we emit a lint to warn the user of these missing tests.
-            ast::visit::walk_item(&mut InnerItemLinter { sess: self.cx.ext_cx.sess }, &item);
+            ast::visit::walk_item(&mut InnerItemLinter { sess: self.cx.ext_cx.sess }, item);
         }
     }
 }
@@ -166,7 +167,7 @@ impl<'a> Visitor<'a> for InnerItemLinter<'_> {
                 UNNAMEABLE_TEST_ITEMS,
                 attr.span,
                 i.id,
-                errors::UnnameableTestItems,
+                diagnostics::UnnameableTestItems,
             );
         }
     }
@@ -201,20 +202,20 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         // Remove any #[rustc_main] from the AST so it doesn't
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
-        match entry_point_type(&item, self.depth == 0) {
-            EntryPointType::MainNamed | EntryPointType::RustcMainAttr => {
+        match entry_point_type(item, self.depth == 0) {
+            EntryPointType::RustcMainAttr => {
                 let allow_dead_code = attr::mk_attr_nested_word(
                     &self.sess.psess.attr_id_generator,
                     ast::AttrStyle::Outer,
-                    ast::Safety::Default,
                     sym::allow,
                     sym::dead_code,
                     self.def_site,
                 );
                 item.attrs.retain(|attr| !attr.has_name(sym::rustc_main));
                 item.attrs.push(allow_dead_code);
+                self.sess.removed_rustc_main_attr.store(true, Ordering::Relaxed);
             }
-            EntryPointType::None | EntryPointType::OtherMain => {}
+            EntryPointType::None | EntryPointType::MainNamed | EntryPointType::OtherMain => {}
         };
     }
 }
@@ -346,14 +347,14 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
         contract: None,
         body: Some(main_body),
         define_opaque: None,
-        eii_impls: ThinVec::new(),
+        eii_impl: None,
     }));
 
     let main = Box::new(ast::Item {
         attrs: thin_vec![main_attr, coverage_attr, doc_hidden_attr],
         id: ast::DUMMY_NODE_ID,
         kind: main,
-        vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public, tokens: None },
+        vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public },
         span: sp,
         tokens: None,
     });
@@ -370,6 +371,8 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> Box<ast::Expr> {
     let ecx = &cx.ext_cx;
 
     let mut tests = cx.test_cases.clone();
+    // Note that this sort is load-bearing: the libtest harness uses binary search to find tests by
+    // name.
     tests.sort_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
 
     ecx.expr_array_ref(
@@ -387,16 +390,9 @@ fn get_test_name(i: &ast::Item) -> Option<Symbol> {
     attr::first_attr_value_str_by_name(&i.attrs, sym::rustc_test_marker)
 }
 
-fn get_test_runner(sess: &Session, features: &Features, krate: &ast::Crate) -> Option<ast::Path> {
-    match AttributeParser::parse_limited(
-        sess,
-        &krate.attrs,
-        sym::test_runner,
-        krate.spans.inner_span,
-        krate.id,
-        Some(features),
-    ) {
-        Some(rustc_hir::Attribute::Parsed(AttributeKind::TestRunner(path))) => Some(path),
+fn get_test_runner(sess: &Session, krate: &ast::Crate) -> Option<ast::Path> {
+    match AttributeParser::parse_limited_sym(sess, &krate.attrs, &[sym::test_runner]) {
+        Some(rustc_attr_ir::Attribute::Parsed(AttributeKind::TestRunner(path))) => Some(path),
         _ => None,
     }
 }

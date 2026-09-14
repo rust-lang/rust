@@ -13,7 +13,7 @@
 #![allow(missing_docs)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::f32::{
     DIGITS, EPSILON, INFINITY, MANTISSA_DIGITS, MAX, MAX_10_EXP, MAX_EXP, MIN, MIN_10_EXP, MIN_EXP,
     MIN_POSITIVE, NAN, NEG_INFINITY, RADIX, consts,
@@ -26,7 +26,7 @@ use crate::sys::cmath;
 
 #[cfg(not(test))]
 impl f32 {
-    /// Returns the largest integer less than or equal to `self`.
+    /// Returns the largest integer that is less than or equal to `self`.
     ///
     /// This function always returns the precise result.
     ///
@@ -50,7 +50,7 @@ impl f32 {
         core::f32::math::floor(self)
     }
 
-    /// Returns the smallest integer greater than or equal to `self`.
+    /// Returns the smallest integer that is greater than or equal to `self`.
     ///
     /// This function always returns the precise result.
     ///
@@ -59,9 +59,11 @@ impl f32 {
     /// ```
     /// let f = 3.01_f32;
     /// let g = 4.0_f32;
+    /// let h = -3.01_f32;
     ///
     /// assert_eq!(f.ceil(), 4.0);
     /// assert_eq!(g.ceil(), 4.0);
+    /// assert_eq!(h.ceil(), -3.0);
     /// ```
     #[doc(alias = "ceiling")]
     #[rustc_allow_incoherent_impl]
@@ -409,7 +411,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp(self) -> f32 {
-        intrinsics::expf32(self)
+        intrinsics::exp(self)
     }
 
     /// Returns `2^(self)`.
@@ -434,7 +436,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp2(self) -> f32 {
-        intrinsics::exp2f32(self)
+        intrinsics::exp2(self)
     }
 
     /// Returns the natural logarithm of the number.
@@ -469,7 +471,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f32 {
-        intrinsics::logf32(self)
+        intrinsics::log(self)
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -539,7 +541,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f32 {
-        intrinsics::log2f32(self)
+        intrinsics::log2(self)
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -572,7 +574,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f32 {
-        intrinsics::log10f32(self)
+        intrinsics::log10(self)
     }
 
     /// The positive difference of two numbers.
@@ -697,7 +699,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin(self) -> f32 {
-        intrinsics::sinf32(self)
+        intrinsics::sin(self)
     }
 
     /// Computes the cosine of a number (in radians).
@@ -721,7 +723,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cos(self) -> f32 {
-        intrinsics::cosf32(self)
+        intrinsics::cos(self)
     }
 
     /// Computes the tangent of a number (in radians).
@@ -907,6 +909,7 @@ impl f32 {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn sin_cos(self) -> (f32, f32) {
         (self.sin(), self.cos())
     }
@@ -1091,9 +1094,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f32 {
-        let ax = self.abs();
-        let ix = 1.0 / ax;
-        (ax + (ax / (Self::hypot(1.0, ix) + ix))).ln_1p().copysign(self)
+        cmath::asinhf(self)
     }
 
     /// Inverse hyperbolic cosine function.
@@ -1119,11 +1120,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f32 {
-        if self < 1.0 {
-            Self::NAN
-        } else {
-            (self + ((self - 1.0).sqrt() * (self + 1.0).sqrt())).ln()
-        }
+        cmath::acoshf(self)
     }
 
     /// Inverse hyperbolic tangent function.

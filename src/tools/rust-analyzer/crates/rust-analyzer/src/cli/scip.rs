@@ -7,7 +7,7 @@ use ide::{
     RootDatabase, StaticIndex, StaticIndexedFile, SymbolInformationKind, TextRange, TokenId,
     TokenStaticData, VendoredLibrariesConfig,
 };
-use ide_db::LineIndexDatabase;
+use ide_db::line_index;
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 use rustc_hash::{FxHashMap, FxHashSet};
 use scip::types::{self as scip_types, SymbolInformation};
@@ -52,6 +52,7 @@ impl flags::Scip {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: true,
+            num_worker_threads: self.num_threads.unwrap_or_else(num_cpus::get_physical),
             proc_macro_processes: config.proc_macro_num_processes(),
         };
         let cargo_config = config.cargo(None);
@@ -236,7 +237,7 @@ impl flags::Scip {
             let token = si.tokens.get(id).unwrap();
 
             let Some(definition) = token.definition else {
-                break;
+                continue;
             };
 
             let file_id = definition.file_id;
@@ -347,7 +348,7 @@ fn get_relative_filepath(
 
 fn get_line_index(db: &RootDatabase, file_id: FileId) -> LineIndex {
     LineIndex {
-        index: db.line_index(file_id),
+        index: line_index(db, file_id).clone(),
         encoding: PositionEncoding::Utf8,
         endings: LineEndings::Unix,
     }
@@ -946,5 +947,69 @@ pub mod example_mod {
         };
 
         assert_eq!(token.definition_body, Some(expected_range));
+    }
+
+    #[test]
+    fn function_enclosing_range_trivia() {
+        let s = "fn first() {}\n// belongs to first\n/// second docs\nfn second() {}";
+
+        let mut host = AnalysisHost::default();
+        let change_fixture = ChangeFixture::parse(s);
+        host.raw_database_mut().apply_change(change_fixture.change);
+
+        let analysis = host.analysis();
+        let si = StaticIndex::compute(
+            &analysis,
+            VendoredLibrariesConfig::Included {
+                workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
+            },
+        );
+
+        let file = si.files.first().unwrap();
+        let token = file
+            .tokens
+            .iter()
+            .filter_map(|(_, token_id)| si.tokens.get(*token_id))
+            .find(|token| token.display_name.as_deref() == Some("second"))
+            .unwrap();
+
+        let definition_body = token.definition_body.unwrap();
+        assert_eq!(
+            definition_body.range.start(),
+            TextSize::new(s.find("/// second docs").unwrap() as u32)
+        );
+        assert_eq!(definition_body.range.end(), TextSize::of(s));
+    }
+
+    #[test]
+    fn const_enclosing_range_trivia() {
+        let s = "const FOO_ONE: i32 = 123; // one\nconst FOO_TWO: i32 = 123; // two";
+
+        let mut host = AnalysisHost::default();
+        let change_fixture = ChangeFixture::parse(s);
+        host.raw_database_mut().apply_change(change_fixture.change);
+
+        let analysis = host.analysis();
+        let si = StaticIndex::compute(
+            &analysis,
+            VendoredLibrariesConfig::Included {
+                workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
+            },
+        );
+
+        let file = si.files.first().unwrap();
+        let token = file
+            .tokens
+            .iter()
+            .filter_map(|(_, token_id)| si.tokens.get(*token_id))
+            .find(|token| token.display_name.as_deref() == Some("FOO_TWO"))
+            .unwrap();
+
+        let definition_body = token.definition_body.unwrap();
+        assert_eq!(
+            definition_body.range.start(),
+            TextSize::new(s.find("const FOO_TWO").unwrap() as u32)
+        );
+        assert_eq!(definition_body.range.end(), TextSize::new(s.find(" // two").unwrap() as u32));
     }
 }

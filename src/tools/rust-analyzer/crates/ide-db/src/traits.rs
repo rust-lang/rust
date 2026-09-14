@@ -1,8 +1,8 @@
 //! Functionality for obtaining data related to traits from the DB.
 
 use crate::{RootDatabase, defs::Definition};
-use hir::{AsAssocItem, Semantics, db::HirDatabase};
-use rustc_hash::FxHashSet;
+use base_db::FxIndexMap;
+use hir::{AsAssocItem, HasAttrs, HasCrate, Semantics, db::HirDatabase, sym};
 use syntax::{AstNode, ast};
 
 /// Given the `impl` block, attempts to find the trait this `impl` corresponds to.
@@ -19,60 +19,150 @@ pub fn resolve_target_trait(
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct IsRequiredAssocItem(pub bool);
+
+/// Names must be unique between constants and functions. However, type aliases
+/// may share the same name as a function or constant.
+#[derive(PartialEq, Eq, Hash)]
+enum AssocItemKind {
+    FnOrConst,
+    Type,
+}
+
+pub fn trait_items_with_required(
+    db: &RootDatabase,
+    trait_: hir::Trait,
+) -> Vec<(hir::AssocItem, IsRequiredAssocItem)> {
+    diff_assoc_items(db, trait_, Vec::new(), trait_.krate(db))
+}
+
 /// Given the `impl` block, returns the list of associated items (e.g. functions or types) that are
 /// missing in this `impl` block.
 pub fn get_missing_assoc_items(
     sema: &Semantics<'_, RootDatabase>,
     impl_def: &ast::Impl,
-) -> Vec<hir::AssocItem> {
+) -> Vec<(hir::AssocItem, IsRequiredAssocItem)> {
     let imp = match sema.to_def(impl_def) {
         Some(it) => it,
         None => return vec![],
     };
 
-    // Names must be unique between constants and functions. However, type aliases
-    // may share the same name as a function or constant.
-    let mut impl_fns_consts = FxHashSet::default();
-    let mut impl_type = FxHashSet::default();
-    let edition = imp.module(sema.db).krate(sema.db).edition(sema.db);
+    let Some(target_trait) = imp.trait_(sema.db) else { return Vec::new() };
 
-    for item in imp.items(sema.db) {
-        match item {
-            hir::AssocItem::Function(it) => {
-                impl_fns_consts.insert(it.name(sema.db).display(sema.db, edition).to_string());
+    diff_assoc_items(sema.db, target_trait, imp.items(sema.db), imp.krate(sema.db))
+}
+
+fn diff_assoc_items(
+    db: &RootDatabase,
+    target_trait: hir::Trait,
+    impl_items: Vec<hir::AssocItem>,
+    impl_crate: hir::Crate,
+) -> Vec<(hir::AssocItem, IsRequiredAssocItem)> {
+    // `Drop` has two methods, `drop()` and `pin_drop()`, and you can only implement one of them, so
+    // we consider `pin_drop()` to not exist, unless you already implement it.
+    let drop_trait = hir::Trait::lang(db, impl_crate, hir::LangItem::Drop);
+    if let Some(drop_trait) = drop_trait
+        && target_trait == drop_trait
+    {
+        return if impl_items.is_empty() {
+            // No method implemented, return `drop()`.
+            let drop_drop = drop_trait.function(db, sym::drop);
+            match drop_drop {
+                Some(drop_drop) => {
+                    vec![(hir::AssocItem::Function(drop_drop), IsRequiredAssocItem(true))]
+                }
+                None => Vec::new(),
             }
-            hir::AssocItem::Const(it) => {
-                if let Some(name) = it.name(sema.db) {
-                    impl_fns_consts.insert(name.display(sema.db, edition).to_string());
+        } else {
+            // Some method is already implemented, leave it.
+            Vec::new()
+        };
+    }
+
+    let must_implement_one_of = target_trait.must_implement_one_of(db).unwrap_or_default();
+
+    // We keep one map because we want to keep the trait's order.
+    let mut trait_items = FxIndexMap::default();
+
+    for i in target_trait.items(db) {
+        match i {
+            hir::AssocItem::Function(f) => {
+                let is_required = !f.has_body(db);
+                trait_items.insert(
+                    (f.name(db), AssocItemKind::FnOrConst),
+                    (i, IsRequiredAssocItem(is_required)),
+                );
+            }
+            hir::AssocItem::Const(c) => {
+                if let Some(name) = c.name(db) {
+                    let is_required = !c.has_body(db);
+                    trait_items.insert(
+                        (name, AssocItemKind::FnOrConst),
+                        (i, IsRequiredAssocItem(is_required)),
+                    );
                 }
             }
-            hir::AssocItem::TypeAlias(it) => {
-                impl_type.insert(it.name(sema.db).display(sema.db, edition).to_string());
+            hir::AssocItem::TypeAlias(t) => {
+                let is_required = !t.has_type(db);
+                trait_items.insert(
+                    (t.name(db), AssocItemKind::Type),
+                    (i, IsRequiredAssocItem(is_required)),
+                );
             }
         }
     }
 
-    resolve_target_trait(sema, impl_def).map_or(vec![], |target_trait| {
-        target_trait
-            .items(sema.db)
-            .into_iter()
-            .filter(|i| match i {
-                hir::AssocItem::Function(f) => !impl_fns_consts
-                    .contains(&f.name(sema.db).display(sema.db, edition).to_string()),
-                hir::AssocItem::TypeAlias(t) => {
-                    !impl_type.contains(&t.name(sema.db).display(sema.db, edition).to_string())
+    let mut abides_must_implement_one_of = must_implement_one_of.is_empty();
+    for item in impl_items {
+        match item {
+            hir::AssocItem::Function(it) => {
+                let name = it.name(db);
+                if !abides_must_implement_one_of && must_implement_one_of.contains(&name) {
+                    abides_must_implement_one_of = true;
                 }
-                hir::AssocItem::Const(c) => c
-                    .name(sema.db)
-                    .map(|n| !impl_fns_consts.contains(&n.display(sema.db, edition).to_string()))
-                    .unwrap_or_default(),
-            })
-            .collect()
-    })
+                trait_items.shift_remove(&(name, AssocItemKind::FnOrConst));
+            }
+            hir::AssocItem::Const(it) => {
+                if let Some(name) = it.name(db) {
+                    trait_items.shift_remove(&(name, AssocItemKind::FnOrConst));
+                }
+            }
+            hir::AssocItem::TypeAlias(it) => {
+                trait_items.shift_remove(&(it.name(db), AssocItemKind::Type));
+            }
+        }
+    }
+
+    if !abides_must_implement_one_of {
+        for name in must_implement_one_of {
+            let Some((item, is_required)) =
+                trait_items.get_mut(&(name.clone(), AssocItemKind::FnOrConst))
+            else {
+                continue;
+            };
+            if item
+                .attrs(db)
+                .unstable_feature(db)
+                .is_none_or(|feature| impl_crate.is_unstable_feature_enabled(db, &feature))
+            {
+                // `#[rustc_must_implement_one_of]` always has all its methods with default body.
+                // If it isn't followed, mark one as required.
+                // We mark the first, see https://github.com/rust-lang/rust/pull/106643#issuecomment-5187934543.
+                is_required.0 = true;
+                break;
+            }
+        }
+    }
+
+    trait_items.into_values().collect()
 }
 
 /// Converts associated trait impl items to their trait definition counterpart
-pub(crate) fn convert_to_def_in_trait(db: &dyn HirDatabase, def: Definition) -> Definition {
+pub(crate) fn convert_to_def_in_trait<'db>(
+    db: &'db dyn HirDatabase,
+    def: Definition<'db>,
+) -> Definition<'db> {
     (|| {
         let assoc = def.as_assoc_item(db)?;
         let trait_ = assoc.implemented_trait(db)?;
@@ -82,7 +172,10 @@ pub(crate) fn convert_to_def_in_trait(db: &dyn HirDatabase, def: Definition) -> 
 }
 
 /// If this is an trait (impl) assoc item, returns the assoc item of the corresponding trait definition.
-pub(crate) fn as_trait_assoc_def(db: &dyn HirDatabase, def: Definition) -> Option<Definition> {
+pub(crate) fn as_trait_assoc_def<'db>(
+    db: &dyn HirDatabase,
+    def: Definition<'db>,
+) -> Option<Definition<'db>> {
     let assoc = def.as_assoc_item(db)?;
     let trait_ = match assoc.container(db) {
         hir::AssocItemContainer::Trait(_) => return Some(def),
@@ -91,11 +184,11 @@ pub(crate) fn as_trait_assoc_def(db: &dyn HirDatabase, def: Definition) -> Optio
     assoc_item_of_trait(db, assoc, trait_)
 }
 
-fn assoc_item_of_trait(
+fn assoc_item_of_trait<'db>(
     db: &dyn HirDatabase,
     assoc: hir::AssocItem,
     trait_: hir::Trait,
-) -> Option<Definition> {
+) -> Option<Definition<'db>> {
     use hir::AssocItem::*;
     let name = match assoc {
         Function(it) => it.name(db),
@@ -158,10 +251,11 @@ mod tests {
         let file = sema.parse(position.file_id);
         let impl_block: ast::Impl =
             sema.find_node_at_offset_with_descend(file.syntax(), position.offset).unwrap();
-        let items = crate::traits::get_missing_assoc_items(&sema, &impl_block);
+        let items =
+            hir::attach_db(&db, || crate::traits::get_missing_assoc_items(&sema, &impl_block));
         let actual = items
             .into_iter()
-            .map(|item| item.name(&db).unwrap().display(&db, Edition::CURRENT).to_string())
+            .map(|(item, _)| item.name(&db).unwrap().display(&db, Edition::CURRENT).to_string())
             .collect::<Vec<_>>()
             .join("\n");
         expect.assert_eq(&actual);

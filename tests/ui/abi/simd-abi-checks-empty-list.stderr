@@ -1,8 +1,8 @@
-error: this function definition uses SIMD vector type `SimdVec` which is not currently supported with the chosen ABI
-  --> $DIR/simd-abi-checks-empty-list.rs:18:1
+error: this function definition uses SIMD vector type `Simd<i32, 4>` which is not currently supported with the chosen ABI
+  --> $DIR/simd-abi-checks-empty-list.rs:15:1
    |
-LL | pub extern "C" fn pass_by_vec(_: SimdVec) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+LL | pub extern "C" fn pass_by_vec(_: Simd<i32, 4>) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
 
 error: aborting due to 1 previous error
 

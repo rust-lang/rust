@@ -4,9 +4,7 @@
 
 #![crate_type = "lib"]
 #![no_std]
-#![allow(clippy::if_same_then_else)]
-#![allow(clippy::redundant_pattern_matching)]
-#![allow(clippy::needless_else)]
+#![expect(clippy::needless_else, clippy::redundant_pattern_matching)]
 
 use core::panic::PanicInfo;
 

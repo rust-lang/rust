@@ -1,12 +1,11 @@
 // FIXME(f16_f128): const casting is not yet supported for these types. Add when available.
 
 #![warn(clippy::float_cmp)]
-#![allow(
-    unused,
+#![expect(
+    clippy::cast_lossless,
     clippy::no_effect,
     clippy::op_ref,
-    clippy::unnecessary_operation,
-    clippy::cast_lossless
+    clippy::unnecessary_operation
 )]
 //@no-rustfix: suggestions have an error margin placeholder
 use std::ops::Add;

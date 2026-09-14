@@ -5,7 +5,7 @@ LL | impl Remote1<u32> for f64 {
    | ^^^^^------------^^^^^---
    |      |                |
    |      |                `f64` is not defined in the current crate
-   |      `u32` is not defined in the current crate
+   |      this is not defined in the current crate because this is a foreign trait
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules

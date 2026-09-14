@@ -7,10 +7,10 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{Region, TyCtxt};
 use tracing::debug;
 
+use crate::diagnostics::{AddLifetimeParamsSuggestion, LifetimeMismatch, LifetimeMismatchLabels};
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::error_reporting::infer::nice_region_error::find_anon_type::find_anon_type;
 use crate::error_reporting::infer::nice_region_error::util::AnonymousParamInfo;
-use crate::errors::{AddLifetimeParamsSuggestion, LifetimeMismatch, LifetimeMismatchLabels};
 use crate::infer::{RegionResolutionError, SubregionOrigin};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {

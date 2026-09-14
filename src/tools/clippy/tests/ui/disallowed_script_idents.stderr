@@ -1,5 +1,5 @@
 error: identifier `счётчик` has a Unicode script that is not allowed by configuration: Cyrillic
-  --> tests/ui/disallowed_script_idents.rs:11:9
+  --> tests/ui/disallowed_script_idents.rs:10:9
    |
 LL |     let счётчик = 10;
    |         ^^^^^^^
@@ -11,7 +11,7 @@ LL | #![deny(clippy::disallowed_script_idents)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: identifier `カウンタ` has a Unicode script that is not allowed by configuration: Katakana
-  --> tests/ui/disallowed_script_idents.rs:15:9
+  --> tests/ui/disallowed_script_idents.rs:14:9
    |
 LL |     let カウンタ = 10;
    |         ^^^^^^^^

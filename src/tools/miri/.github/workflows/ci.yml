@@ -6,11 +6,14 @@ on:
     branches:
       - 'master'
   schedule:
-    - cron: '44 4 * * *' # At 4:44 UTC every day.
+    - cron: '14 4 * * *' # At 4:14 UTC every day.
 
 defaults:
   run:
     shell: bash
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -58,17 +61,18 @@ jobs:
     env:
       HOST_TARGET: ${{ matrix.host_target }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: install multiarch
         if: ${{ matrix.multiarch != '' }}
         run: |
+          set -x
           # armhf, s390x, ppc64el, riscv64 need Ubuntu Ports to be in the mirror list
           sudo bash -c "echo 'https://ports.ubuntu.com/	priority:4' >> /etc/apt/apt-mirrors.txt"
           # Add architecture
           sudo dpkg --add-architecture ${{ matrix.multiarch }}
           # Ubuntu Ports often has outdated mirrors so try a few times to get the apt repo
           for TRY in $(seq 3); do
-            { sudo apt update && break; } || sleep 60
+            { sudo apt update -o APT::Update::Error-Mode=any && break; } || sleep 60
           done
           # Install needed packages
           sudo apt install $(echo "libatomic1: zlib1g-dev:" | sed 's/:/:${{ matrix.multiarch }}/g')
@@ -89,6 +93,8 @@ jobs:
           echo "CC_${{ matrix.host_target }}=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
           TARGET_UPPERCASE=$(echo ${{ matrix.host_target }} | tr '[:lower:]-' '[:upper:]_')
           echo "CARGO_TARGET_${TARGET_UPPERCASE}_LINKER=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
+          echo "CARGO_HOST_${TARGET_UPPERCASE}_LINKER=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
+          echo "MIRI_TESTS_CROSS_COMPILED=1" | tee -a $GITHUB_ENV
 
       # The main test job! We don't run this in qemu as that is quite slow,
       # so those targets only get the clippy check below.
@@ -105,7 +111,7 @@ jobs:
     name: style checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/workflows/setup
 
       - name: rustfmt
@@ -121,11 +127,11 @@ jobs:
     name: bootstrap build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       # Deliberately skipping `./.github/workflows/setup` as we do our own setup
       - name: Add cache for cargo
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
@@ -150,13 +156,36 @@ jobs:
       - name: check build
         run: |
           cd ../rust # ./x does not seem to like being invoked from elsewhere
-          ./x check miri
+          # checks every tool in that folder (including priroda)
+          ./x check src/tools/miri
+
+  # This job is intentionally separate from `test` so that Priroda can be
+  # developed as a separate crate inside the Miri repository for now.
+  priroda:
+    name: Priroda
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/workflows/setup
+      - name: install Miri driver
+        run: ./miri install
+      - name: build Priroda
+        working-directory: priroda
+        run: cargo build --locked
+      - name: clippy Priroda
+        working-directory: priroda
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: test Priroda
+        working-directory: priroda
+        run: |
+          sysroot="$(cargo miri setup --print-sysroot)"
+          MIRI_SYSROOT="$sysroot" cargo test --locked
 
   coverage:
     name: coverage report
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/workflows/setup
       - name: coverage
         run: ./miri test --coverage
@@ -165,7 +194,7 @@ jobs:
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
   # And they should be added below in `cron-fail-notify` as well.
   conclusion:
-    needs: [test, style, bootstrap, coverage]
+    needs: [test, style, bootstrap, coverage, priroda]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
@@ -191,7 +220,7 @@ jobs:
         pull-requests: write
     if: ${{ github.event_name == 'schedule' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 256 # get a bit more of the history
       - name: install josh-sync
@@ -203,9 +232,9 @@ jobs:
       - name: Install nightly toolchain
         run: rustup toolchain install nightly --profile minimal
       - name: Install rustup-toolchain-install-master
-        run: cargo install -f rustup-toolchain-install-master
+        run: cargo install --locked -f rustup-toolchain-install-master
       # Create a token for the next step so it can create a PR that actually runs CI.
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: app-token
         with:
           app-id: ${{ vars.APP_CLIENT_ID }}
@@ -231,7 +260,7 @@ jobs:
             exit ${exitcode}
           fi
 
-          # Store merge commit message          
+          # Store merge commit message
           git log -1 --pretty=%B > message.txt
 
           # Format changes
@@ -249,7 +278,7 @@ jobs:
   cron-fail-notify:
     name: cronjob failure notification
     runs-on: ubuntu-latest
-    needs: [test, style, bootstrap, coverage]
+    needs: [test, style, bootstrap, coverage, priroda]
     if: ${{ github.event_name == 'schedule' && failure() }}
     steps:
       # Send a Zulip notification

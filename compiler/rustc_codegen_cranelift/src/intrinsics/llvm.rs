@@ -19,7 +19,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
     }
 
     match intrinsic {
-        "llvm.prefetch" => {
+        "llvm.prefetch.p0" => {
             // Nothing to do. This is merely a perf hint.
         }
 

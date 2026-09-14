@@ -51,8 +51,7 @@
       }
   
       bb3: {
--         StorageLive(_7);
-+         nop;
+          StorageLive(_7);
           _7 = copy (((*_3) as V0).0: i32);
           goto -> bb4;
       }
@@ -73,8 +72,7 @@
           _0 = move _11;
           StorageDead(_14);
           StorageDead(_11);
--         StorageDead(_7);
-+         nop;
+          StorageDead(_7);
           StorageDead(_5);
           return;
       }

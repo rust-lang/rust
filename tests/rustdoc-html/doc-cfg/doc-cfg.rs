@@ -3,7 +3,7 @@
 //@ has doc_cfg/struct.Portable.html
 //@ !has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' ''
 //@ has - '//*[@id="method.unix_and_arm_only_function"]' 'fn unix_and_arm_only_function()'
-//@ has - '//*[@class="stab portability"]' 'Available on Unix and ARM only.'
+//@ has - '//*[@class="stab portability"]' 'Available on ARM and Unix only.'
 //@ has - '//*[@id="method.wasi_and_wasm32_only_function"]' 'fn wasi_and_wasm32_only_function()'
 //@ has - '//*[@class="stab portability"]' 'Available on WASI and WebAssembly only.'
 pub struct Portable;
@@ -25,7 +25,7 @@ pub mod unix_only {
 
     //@ has doc_cfg/unix_only/trait.ArmOnly.html \
     //  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-    //  'Available on Unix and ARM only.'
+    //  'Available on ARM and Unix only.'
     //@ count - '//*[@class="stab portability"]' 1
     #[doc(cfg(target_arch = "arm"))]
     pub trait ArmOnly {

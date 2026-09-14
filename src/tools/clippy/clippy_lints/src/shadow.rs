@@ -1,18 +1,17 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::{Descend, Visitable, for_each_expr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::hir_id::ItemLocalId;
 use rustc_hir::{
-    Block, Body, BodyOwnerKind, Expr, ExprKind, HirId, LetExpr, LocalSource, Node, Pat, PatKind, QPath, UnOp,
+    Block, Body, BodyOwnerKind, Expr, ExprKind, HirId, ItemLocalId, LetExpr, LocalSource, Node, Pat, PatKind, QPath,
+    UnOp,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
@@ -179,7 +178,7 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
 }
 
 fn is_shadow(cx: &LateContext<'_>, owner: LocalDefId, first: ItemLocalId, second: ItemLocalId) -> bool {
-    let scope_tree = cx.tcx.region_scope_tree(owner.to_def_id());
+    let scope_tree = cx.tcx.region_scope_tree(owner);
     if let Some(first_scope) = scope_tree.var_scope(first)
         && let Some(second_scope) = scope_tree.var_scope(second)
     {
@@ -199,7 +198,7 @@ pub fn is_local_used_except<'tcx>(
     id: HirId,
     except: Option<HirId>,
 ) -> bool {
-    for_each_expr(cx, visitable, |e| {
+    for_each_expr(cx.tcx, visitable, |e| {
         if except.is_some_and(|it| it == e.hir_id) {
             ControlFlow::Continue(Descend::No)
         } else if e.res_local_id() == Some(id) {

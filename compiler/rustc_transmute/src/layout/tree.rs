@@ -7,6 +7,14 @@ mod tests;
 
 /// A tree-based representation of a type layout.
 ///
+/// A `Seq` concatenates layouts, while an `Alt` chooses among them. An empty
+/// `Seq` represents an inhabited, zero-sized layout; an empty `Alt` represents
+/// an uninhabited layout.
+///
+/// `Def` nodes are zero-width annotations used by [`Tree::prune`] to decide
+/// which branches to retain. Pruning removes these annotations and produces
+/// a `Tree<!, R, T>` for conversion with [`super::Dfa::from_tree`].
+///
 /// Invariants:
 /// 1. All paths through the layout have the same length (in bytes).
 ///
@@ -25,7 +33,7 @@ where
     Seq(Vec<Self>),
     /// A choice between alternative layouts.
     Alt(Vec<Self>),
-    /// A definition node.
+    /// A zero-width definition annotation used during pruning.
     Def(D),
     /// A reference node.
     Ref(Reference<R, T>),
@@ -70,7 +78,7 @@ where
         Self::Seq(Vec::new())
     }
 
-    /// A `Tree` containing a single, uninitialized byte.
+    /// A `Tree` containing one byte that may be initialized to any value or uninitialized.
     pub(crate) fn uninit() -> Self {
         Self::Byte(Byte::uninit())
     }
@@ -134,12 +142,18 @@ where
     }
 
     /// A `Tree` whose layout is entirely padding of the given width.
+    ///
+    /// Each padding byte may be initialized to any value or uninitialized.
     pub(crate) fn padding(width_in_bytes: usize) -> Self {
         Self::Seq(vec![Self::uninit(); width_in_bytes])
     }
 
-    /// Remove all `Def` nodes, and all branches of the layout for which `f`
-    /// produces `true`.
+    /// Removes all `Def` nodes and rejects branches whose definitions make `f` return `true`.
+    ///
+    /// A sequence becomes uninhabited if any of its elements becomes uninhabited;
+    /// alternatives retain their surviving branches. Retained definitions become
+    /// empty sequences, so the result contains no definition nodes, as expressed
+    /// by its `Tree<!, R, T>` type.
     pub(crate) fn prune<F>(self, f: &F) -> Tree<!, R, T>
     where
         F: Fn(D) -> bool,
@@ -282,7 +296,6 @@ pub(crate) mod rustc {
                 | LayoutError::InvalidSimd { .. }
                 | LayoutError::NormalizationFailure(..) => Self::UnknownLayout,
                 LayoutError::SizeOverflow(..) => Self::SizeOverflow,
-                LayoutError::Cycle(err) => Self::TypeError(*err),
             }
         }
     }
@@ -330,33 +343,11 @@ pub(crate) mod rustc {
                         .fold(Tree::unit(), |tree, elt| tree.then(elt)))
                 }
 
-                ty::Adt(adt_def, _args_ref) if !ty.is_box() => {
-                    let (lo, hi) = cx.tcx().layout_scalar_valid_range(adt_def.did());
-
-                    use core::ops::Bound::*;
-                    let is_transparent = adt_def.repr().transparent();
-                    match (adt_def.adt_kind(), lo, hi) {
-                        (AdtKind::Struct, Unbounded, Unbounded) => {
-                            Self::from_struct((ty, layout), *adt_def, cx)
-                        }
-                        (AdtKind::Struct, Included(1), Included(_hi)) if is_transparent => {
-                            // FIXME(@joshlf): Support `NonZero` types:
-                            // - Check to make sure that the first field is
-                            //   numerical
-                            // - Check to make sure that the upper bound is the
-                            //   maximum value for the field's type
-                            // - Construct `Self::nonzero`
-                            Err(Err::NotYetSupported)
-                        }
-                        (AdtKind::Enum, Unbounded, Unbounded) => {
-                            Self::from_enum((ty, layout), *adt_def, cx)
-                        }
-                        (AdtKind::Union, Unbounded, Unbounded) => {
-                            Self::from_union((ty, layout), *adt_def, cx)
-                        }
-                        _ => Err(Err::NotYetSupported),
-                    }
-                }
+                ty::Adt(adt_def, _args_ref) if !ty.is_box() => match adt_def.adt_kind() {
+                    AdtKind::Struct => Self::from_struct((ty, layout), *adt_def, cx),
+                    AdtKind::Enum => Self::from_enum((ty, layout), *adt_def, cx),
+                    AdtKind::Union => Self::from_union((ty, layout), *adt_def, cx),
+                },
 
                 ty::Ref(region, ty, mutability) => {
                     let layout = layout_of(cx, *ty)?;
@@ -444,12 +435,12 @@ pub(crate) mod rustc {
                 )
             };
 
-            match layout.variants() {
+            match *layout.variants() {
                 Variants::Empty => Ok(Self::uninhabited()),
                 Variants::Single { index } => {
                     // `Variants::Single` on enums with variants denotes that
                     // the enum delegates its layout to the variant at `index`.
-                    layout_of_variant(*index, None)
+                    layout_of_variant(index, None)
                 }
                 Variants::Multiple { tag: _, tag_encoding, tag_field, .. } => {
                     // `Variants::Multiple` denotes an enum with multiple
@@ -458,12 +449,12 @@ pub(crate) mod rustc {
 
                     // For enums (but not coroutines), the tag field is
                     // currently always the first field of the layout.
-                    assert_eq!(*tag_field, FieldIdx::ZERO);
+                    assert_eq!(tag_field, FieldIdx::ZERO);
 
                     let variants = def.discriminants(cx.tcx()).try_fold(
                         Self::uninhabited(),
                         |variants, (idx, _discriminant)| {
-                            let variant = layout_of_variant(idx, Some(tag_encoding.clone()))?;
+                            let variant = layout_of_variant(idx, Some(tag_encoding))?;
                             Result::<Self, Err>::Ok(variants.or(variant))
                         },
                     )?;
@@ -496,7 +487,7 @@ pub(crate) mod rustc {
             };
 
             // When this function is invoked with enum variants,
-            // `ty_and_layout.size` does not encompass the entire size of the
+            // `layout.size` does not encompass the entire size of the
             // enum. We rely on `total_size` for this.
             assert!(layout.size <= total_size);
 
@@ -609,7 +600,7 @@ pub(crate) mod rustc {
                 match layout.variants {
                     Variants::Single { index } => {
                         let field = &def.variant(index).fields[i];
-                        field.ty(cx.tcx(), args)
+                        field.ty(cx.tcx(), args).skip_norm_wip()
                     }
                     Variants::Empty => panic!("there is no field in Variants::Empty types"),
                     // Discriminant field for enums (where applicable).

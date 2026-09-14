@@ -41,12 +41,10 @@ fn yawning_void_struct() {
         assert!(false); //~ ERROR: evaluation panicked: assertion failed: false
     };
 
-    // This transmutation is vacuously acceptable; since one cannot construct a
-    // `Void`, unsoundness cannot directly arise from transmuting a void into
-    // anything else.
+    // No value of `YawningVoid` exists, so transmutation from it is vacuously acceptable.
     assert::is_maybe_transmutable::<YawningVoid, u128>();
 
-    assert::is_maybe_transmutable::<(), Void>(); //~ ERROR: cannot be safely transmuted
+    assert::is_maybe_transmutable::<u128, YawningVoid>(); //~ ERROR: cannot be safely transmuted
 }
 
 // Non-ZST uninhabited types are, nonetheless, uninhabited.
@@ -63,12 +61,10 @@ fn yawning_void_enum() {
         assert!(false); //~ ERROR: evaluation panicked: assertion failed: false
     };
 
-    // This transmutation is vacuously acceptable; since one cannot construct a
-    // `Void`, unsoundness cannot directly arise from transmuting a void into
-    // anything else.
+    // No value of `YawningVoid` exists, so transmutation from it is vacuously acceptable.
     assert::is_maybe_transmutable::<YawningVoid, u128>();
 
-    assert::is_maybe_transmutable::<(), Void>(); //~ ERROR: cannot be safely transmuted
+    assert::is_maybe_transmutable::<u128, YawningVoid>(); //~ ERROR: cannot be safely transmuted
 }
 
 // References to uninhabited types are, logically, uninhabited, but for layout

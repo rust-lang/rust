@@ -1,5 +1,4 @@
 //! A simplified version of quote-crate like quasi quote macro
-#![allow(clippy::crate_in_macro_def)]
 
 use intern::{Symbol, sym};
 use span::Span;
@@ -185,7 +184,7 @@ macro_rules! impl_to_to_tokentrees {
         $(
             impl ToTokenTree for $ty {
                 fn to_tokens($this, $span: Span, builder: &mut TopSubtreeBuilder) {
-                    let leaf: crate::tt::Leaf = $im.into();
+                    let leaf: $crate::tt::Leaf = $im.into();
                     builder.push(leaf);
                 }
             }
@@ -199,9 +198,9 @@ impl<T: ToTokenTree + Clone> ToTokenTree for &T {
 }
 
 impl_to_to_tokentrees! {
-    span: u32 => self { crate::tt::Literal{text_and_suffix: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
-    span: usize => self { crate::tt::Literal{text_and_suffix: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
-    span: i32 => self { crate::tt::Literal{text_and_suffix: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
+    span: u32 => self { crate::tt::Literal{text_and_suffix: sym::Integer::get(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
+    span: usize => self { crate::tt::Literal{text_and_suffix: sym::Integer::get(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
+    span: i32 => self { crate::tt::Literal{text_and_suffix: sym::Integer::get(self as _), span, kind: tt::LitKind::Integer, suffix_len: 0 } };
     span: bool => self { crate::tt::Ident{sym: if self { sym::true_ } else { sym::false_ }, span, is_raw: tt::IdentIsRaw::No } };
     _span: crate::tt::Leaf => self { self };
     _span: crate::tt::Literal => self { self };

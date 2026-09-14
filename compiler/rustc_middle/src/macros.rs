@@ -46,8 +46,8 @@ macro_rules! TrivialLiftImpls {
         $(
             impl<'tcx> $crate::ty::Lift<$crate::ty::TyCtxt<'tcx>> for $ty {
                 type Lifted = Self;
-                fn lift_to_interner(self, _: $crate::ty::TyCtxt<'tcx>) -> Option<Self> {
-                    Some(self)
+                fn lift_to_interner(self, _: $crate::ty::TyCtxt<'tcx>) -> Self {
+                    self
                 }
             }
         )+

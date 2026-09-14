@@ -10,6 +10,6 @@ fn main() {
     let _unimported = Blah { field: u8 };
     //~^ ERROR cannot find struct, variant or union type `Blah` in this scope
     //~| NOTE created at
-    //~| ERROR expected value, found builtin type `u8`
+    //~| ERROR cannot find value `u8` in this scope
     //~| NOTE created at
 }

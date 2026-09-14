@@ -2,6 +2,9 @@ use crate::sys::sync::Mutex;
 use crate::thread::sleep;
 use crate::time::Duration;
 
+#[cfg(target_has_threads)]
+compile_error!("Using no_threads implementation on a target with threads");
+
 pub struct Condvar {}
 
 impl Condvar {

@@ -5,26 +5,30 @@
 
 use std::mem;
 use std::ops::ControlFlow;
+use std::sync::atomic::Ordering;
 
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, Node, PatKind, QPath, find_attr};
+use rustc_hir::{self as hir, ForeignItemId, ItemId, Node, PatKind, QPath, find_attr};
+use rustc_lint_defs::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
+use rustc_lint_defs::{self as lint, Lint, StableLintExpectationId};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::dead_code::{DeadCodeLivenessSnapshot, DeadCodeLivenessSummary};
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint::builtin::DEAD_CODE;
-use rustc_session::lint::{self, LintExpectationId};
 use rustc_span::{Symbol, kw};
+use rustc_structures::CrateType;
 
-use crate::errors::{
-    ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UselessAssignment,
+use crate::diagnostics::{
+    ChangeFields, DeadCodePubInBinaryNote, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo,
+    UselessAssignment,
 };
 
 /// Any local definition that may call something in its body block should be explored. For example,
@@ -43,16 +47,15 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         | DefKind::TraitAlias
         | DefKind::AssocTy
         | DefKind::Fn
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::Static { .. }
         | DefKind::AssocFn
-        | DefKind::AssocConst { .. }
+        | DefKind::AssocConst
         | DefKind::Macro(_)
         | DefKind::GlobalAsm
         | DefKind::Impl { .. }
         | DefKind::OpaqueTy
         | DefKind::AnonConst
-        | DefKind::InlineConst
         | DefKind::ExternCrate
         | DefKind::Use
         | DefKind::Ctor(..)
@@ -63,7 +66,8 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::Closure
-        | DefKind::SyntheticCoroutineBody => false,
+        | DefKind::SyntheticCoroutineBody
+        | DefKind::TestBinderConstraints => false,
     }
 }
 
@@ -75,20 +79,62 @@ enum ComesFromAllowExpect {
     No,
 }
 
+/// Carries both the propagated `allow/expect` context and the current item's
+/// own `allow/expect` status.
+///
+/// For example:
+///
+/// ```rust
+/// #[expect(dead_code)]
+/// fn root() { middle() }
+///
+/// fn middle() { leaf() }
+///
+/// #[expect(dead_code)]
+/// fn leaf() {}
+/// ```
+///
+/// The seed for `root` starts as `propagated = Yes, own = Yes`.
+///
+/// When `root` reaches `middle`, the propagated context stays `Yes`, but
+/// `middle` itself does not have `#[allow(dead_code)]` or `#[expect(dead_code)]`,
+/// so its work item becomes `propagated = Yes, own = No`.
+///
+/// When `middle` reaches `leaf`, that same propagated `Yes` context is preserved,
+/// and since `leaf` itself has `#[expect(dead_code)]`, its work item becomes
+/// `propagated = Yes, own = Yes`.
+///
+/// In general, `propagated` controls whether descendants are still explored
+/// under an `allow/expect` context, while `own` controls whether the current
+/// item itself should be excluded from `live_symbols`.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+struct WorkItem {
+    id: LocalDefId,
+    propagated: ComesFromAllowExpect,
+    own: ComesFromAllowExpect,
+}
+
+enum ImplItemCheckResult {
+    Live(ComesFromAllowExpect),
+    Dead { require: LocalDefId },
+}
+
 struct MarkSymbolVisitor<'tcx> {
-    worklist: Vec<(LocalDefId, ComesFromAllowExpect)>,
+    worklist: Vec<WorkItem>,
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    scanned: LocalDefIdSet,
+    scanned: FxHashSet<(LocalDefId, ComesFromAllowExpect)>,
     live_symbols: LocalDefIdSet,
     repr_unconditionally_treats_fields_as_live: bool,
-    repr_has_repr_simd: bool,
+    repr_has_repr_simd_or_scalable: bool,
     in_pat: bool,
     ignore_variant_stack: Vec<DefId>,
     // maps from ADTs to ignored derived traits (e.g. Debug and Clone)
     // and the span of their respective impl (i.e., part of the derive
     // macro)
     ignored_derived_traits: LocalDefIdMap<FxIndexSet<DefId>>,
+    propagated_comes_from_allow_expect: ComesFromAllowExpect,
+    unsolved_items: Vec<LocalDefId>,
 }
 
 impl<'tcx> MarkSymbolVisitor<'tcx> {
@@ -101,33 +147,50 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             .expect("`MarkSymbolVisitor::typeck_results` called outside of body")
     }
 
+    /// Returns whether `def_id` itself should be treated as coming from
+    /// `#[allow(dead_code)]` or `#[expect(dead_code)]` in the current
+    /// propagated work-item context.
+    fn own_comes_from_allow_expect(&self, def_id: LocalDefId) -> ComesFromAllowExpect {
+        if self.propagated_comes_from_allow_expect == ComesFromAllowExpect::Yes
+            && let Some(ComesFromAllowExpect::Yes) =
+                has_allow_dead_code_or_lang_attr(self.tcx, def_id)
+        {
+            ComesFromAllowExpect::Yes
+        } else {
+            ComesFromAllowExpect::No
+        }
+    }
+
     fn check_def_id(&mut self, def_id: DefId) {
         if let Some(def_id) = def_id.as_local() {
+            let own_comes_from_allow_expect = self.own_comes_from_allow_expect(def_id);
+
             if should_explore(self.tcx, def_id) {
-                self.worklist.push((def_id, ComesFromAllowExpect::No));
+                self.worklist.push(WorkItem {
+                    id: def_id,
+                    propagated: self.propagated_comes_from_allow_expect,
+                    own: own_comes_from_allow_expect,
+                });
             }
-            self.live_symbols.insert(def_id);
+
+            if own_comes_from_allow_expect == ComesFromAllowExpect::No {
+                self.live_symbols.insert(def_id);
+            }
         }
     }
 
     fn insert_def_id(&mut self, def_id: DefId) {
         if let Some(def_id) = def_id.as_local() {
             debug_assert!(!should_explore(self.tcx, def_id));
-            self.live_symbols.insert(def_id);
+
+            if self.own_comes_from_allow_expect(def_id) == ComesFromAllowExpect::No {
+                self.live_symbols.insert(def_id);
+            }
         }
     }
 
     fn handle_res(&mut self, res: Res) {
         match res {
-            Res::Def(
-                DefKind::Const { .. }
-                | DefKind::AssocConst { .. }
-                | DefKind::AssocTy
-                | DefKind::TyAlias,
-                def_id,
-            ) => {
-                self.check_def_id(def_id);
-            }
             Res::PrimTy(..) | Res::SelfCtor(..) | Res::Local(..) => {}
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), ctor_def_id) => {
                 // Using a variant in patterns should not make the variant live,
@@ -157,7 +220,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             Res::Def(_, def_id) => self.check_def_id(def_id),
             Res::SelfTyParam { trait_: t } => self.check_def_id(t),
             Res::SelfTyAlias { alias_to: i, .. } => self.check_def_id(i),
-            Res::ToolMod | Res::NonMacroAttr(..) | Res::Err => {}
+            Res::ToolMod | Res::NonMacroAttr(..) | Res::OpenMod(..) | Res::Err => {}
         }
     }
 
@@ -236,7 +299,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         {
             let is_field_assign = matches!(lhs.kind, hir::ExprKind::Field(..));
             self.tcx.emit_node_span_lint(
-                lint::builtin::DEAD_CODE,
+                DEAD_CODE,
                 assign.hir_id,
                 assign.span,
                 UselessAssignment { is_field_assign, ty: self.typeck_results().expr_ty(lhs) },
@@ -323,7 +386,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn mark_live_symbols(&mut self) -> <MarkSymbolVisitor<'tcx> as Visitor<'tcx>>::Result {
         while let Some(work) = self.worklist.pop() {
-            let (mut id, comes_from_allow_expect) = work;
+            let WorkItem { mut id, propagated, own } = work;
+            self.propagated_comes_from_allow_expect = propagated;
 
             // in the case of tuple struct constructors we want to check the item,
             // not the generated tuple struct constructor function
@@ -352,15 +416,20 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             // this "duplication" is essential as otherwise a function with `#[expect]`
             // called from a `pub fn` may be falsely reported as not live, falsely
             // triggering the `unfulfilled_lint_expectations` lint.
-            match comes_from_allow_expect {
+            match own {
                 ComesFromAllowExpect::Yes => {}
                 ComesFromAllowExpect::No => {
                     self.live_symbols.insert(id);
                 }
             }
 
-            if !self.scanned.insert(id) {
+            if !self.scanned.insert((id, propagated)) {
                 continue;
+            } else if propagated == ComesFromAllowExpect::No {
+                // If the item is not coming from an `#[allow]` or `#[expect]`,
+                // we also mark it as scanned with `ComesFromAllowExpect::Yes`
+                // to avoid re-scanning it in the future.
+                self.scanned.insert((id, ComesFromAllowExpect::Yes));
             }
 
             // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
@@ -380,9 +449,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// for discussion).
     fn should_ignore_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) -> bool {
         if let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
-            && let impl_of = self.tcx.parent(impl_item.owner_id.to_def_id())
-            && self.tcx.is_automatically_derived(impl_of)
-            && let trait_ref = self.tcx.impl_trait_ref(impl_of).instantiate_identity()
+            && let impl_of = self.tcx.local_parent(impl_item.owner_id.def_id)
+            && self.tcx.is_automatically_derived(impl_of.to_def_id())
+            && let trait_ref =
+                self.tcx.impl_trait_ref(impl_of).instantiate_identity().skip_norm_wip()
             && find_attr!(self.tcx, trait_ref.def_id, RustcTrivialFieldReads)
         {
             if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
@@ -408,21 +478,22 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
         let unconditionally_treated_fields_as_live =
             self.repr_unconditionally_treats_fields_as_live;
-        let had_repr_simd = self.repr_has_repr_simd;
+        let had_repr_simd_or_scalable = self.repr_has_repr_simd_or_scalable;
         self.repr_unconditionally_treats_fields_as_live = false;
-        self.repr_has_repr_simd = false;
+        self.repr_has_repr_simd_or_scalable = false;
         let walk_result = match node {
             Node::Item(item) => match item.kind {
                 hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
                     let def = self.tcx.adt_def(item.owner_id);
                     self.repr_unconditionally_treats_fields_as_live =
                         def.repr().c() || def.repr().transparent();
-                    self.repr_has_repr_simd = def.repr().simd();
+                    self.repr_has_repr_simd_or_scalable =
+                        def.repr().simd() || def.repr().scalable();
 
                     intravisit::walk_item(self, item)
                 }
                 hir::ItemKind::ForeignMod { .. } => ControlFlow::Continue(()),
-                hir::ItemKind::Trait(.., trait_item_refs) => {
+                hir::ItemKind::Trait { items: trait_item_refs, .. } => {
                     // mark assoc ty live if the trait is live
                     for trait_item in trait_item_refs {
                         if self.tcx.def_kind(trait_item.owner_id) == DefKind::AssocTy {
@@ -448,7 +519,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     //// This is done to handle the case where, for example, the static
                     //// method of a private type is used, but the type itself is never
                     //// called directly.
-                    let self_ty = self.tcx.type_of(item).instantiate_identity();
+                    let self_ty = self.tcx.type_of(item).instantiate_identity().skip_norm_wip();
                     match *self_ty.kind() {
                         ty::Adt(def, _) => self.check_def_id(def.did()),
                         ty::Foreign(did) => self.check_def_id(did),
@@ -466,7 +537,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             Node::OpaqueTy(opaq) => intravisit::walk_opaque_ty(self, opaq),
             _ => ControlFlow::Continue(()),
         };
-        self.repr_has_repr_simd = had_repr_simd;
+        self.repr_has_repr_simd_or_scalable = had_repr_simd_or_scalable;
         self.repr_unconditionally_treats_fields_as_live = unconditionally_treated_fields_as_live;
 
         walk_result
@@ -485,13 +556,17 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// `local_def_id` points to an impl or an impl item,
     /// both impl and impl item that may be passed to this function are of a trait,
     /// and added into the unsolved_items during `create_and_seed_worklist`
-    fn check_impl_or_impl_item_live(&mut self, local_def_id: LocalDefId) -> bool {
+    fn check_impl_or_impl_item_live(
+        &self,
+        local_def_id: LocalDefId,
+        defer_seeds_come_from_allow: bool,
+    ) -> ImplItemCheckResult {
         let (impl_block_id, trait_def_id) = match self.tcx.def_kind(local_def_id) {
             // assoc impl items of traits are live if the corresponding trait items are live
-            DefKind::AssocConst { .. } | DefKind::AssocTy | DefKind::AssocFn => {
-                let trait_item_id =
+            DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => {
+                let trait_def_id =
                     self.tcx.trait_item_of(local_def_id).and_then(|def_id| def_id.as_local());
-                (self.tcx.local_parent(local_def_id), trait_item_id)
+                (self.tcx.local_parent(local_def_id), trait_def_id)
             }
             // impl items are live if the corresponding traits are live
             DefKind::Impl { of_trait: true } => {
@@ -500,21 +575,116 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             _ => bug!(),
         };
 
-        if let Some(trait_def_id) = trait_def_id
-            && !self.live_symbols.contains(&trait_def_id)
-        {
-            return false;
+        let mut trait_comes_from_allow = None;
+        if let Some(trait_def_id) = trait_def_id {
+            if defer_seeds_come_from_allow {
+                if !self.live_symbols.contains(&trait_def_id) {
+                    return ImplItemCheckResult::Dead { require: trait_def_id };
+                }
+            } else {
+                trait_comes_from_allow = has_allow_dead_code_or_lang_attr(self.tcx, trait_def_id);
+
+                if !self.live_symbols.contains(&trait_def_id) {
+                    return match trait_comes_from_allow {
+                        Some(comes_from_allow) => ImplItemCheckResult::Live(comes_from_allow),
+                        None => ImplItemCheckResult::Dead { require: trait_def_id },
+                    };
+                }
+            }
         }
 
         // The impl or impl item is used if the corresponding trait or trait item is used and the ty is used.
-        if let ty::Adt(adt, _) = self.tcx.type_of(impl_block_id).instantiate_identity().kind()
+        if let ty::Adt(adt, _) =
+            self.tcx.type_of(impl_block_id).instantiate_identity().skip_norm_wip().kind()
             && let Some(adt_def_id) = adt.did().as_local()
             && !self.live_symbols.contains(&adt_def_id)
         {
-            return false;
+            if defer_seeds_come_from_allow {
+                return ImplItemCheckResult::Dead { require: adt_def_id };
+            }
+
+            return match trait_comes_from_allow {
+                Some(comes_from_allow) => ImplItemCheckResult::Live(comes_from_allow),
+                None => ImplItemCheckResult::Dead { require: adt_def_id },
+            };
         }
 
-        true
+        ImplItemCheckResult::Live(ComesFromAllowExpect::No)
+    }
+
+    fn collect_live_items_from_unsolved_items(
+        &mut self,
+        defer_seeds_come_from_allow: bool,
+        unsolved_items: Vec<LocalDefId>,
+        unsolved_map: &mut FxHashMap<LocalDefId, Vec<LocalDefId>>,
+    ) -> Vec<(LocalDefId, ComesFromAllowExpect)> {
+        let mut items_to_check = vec![];
+
+        for def_id in unsolved_items {
+            match self.check_impl_or_impl_item_live(def_id, defer_seeds_come_from_allow) {
+                ImplItemCheckResult::Live(comes_from_allow) => {
+                    items_to_check.push((def_id, comes_from_allow));
+                }
+                ImplItemCheckResult::Dead { require } => {
+                    unsolved_map.entry(require).or_default().push(def_id);
+                }
+            }
+        }
+        items_to_check
+    }
+
+    #[expect(
+        rustc::potential_query_instability,
+        reason = "The order of the unsolved items is not important, so we can just collect them into a vector."
+    )]
+    fn mark_live_symbols_and_ignored_derived_traits(
+        &mut self,
+        defer_seeds_come_from_allow: bool,
+    ) -> Result<(), ErrorGuaranteed> {
+        if let ControlFlow::Break(guar) = self.mark_live_symbols() {
+            return Err(guar);
+        }
+
+        // We have marked the primary seeds as live. We now need to process unsolved items from traits
+        // and trait impls: add them to the work list if the trait or the implemented type is live.
+        let unsolved_items = std::mem::take(&mut self.unsolved_items);
+        let mut unsolved_map = FxHashMap::default();
+        let mut items_to_check = self.collect_live_items_from_unsolved_items(
+            defer_seeds_come_from_allow,
+            unsolved_items,
+            &mut unsolved_map,
+        );
+
+        while !items_to_check.is_empty() {
+            self.worklist.extend(items_to_check.into_iter().map(|(id, comes_from_allow)| {
+                let own = if defer_seeds_come_from_allow {
+                    ComesFromAllowExpect::No
+                } else {
+                    has_allow_dead_code_or_lang_attr(self.tcx, id)
+                        .unwrap_or(ComesFromAllowExpect::No)
+                };
+
+                WorkItem { id, propagated: comes_from_allow, own }
+            }));
+            if let ControlFlow::Break(guar) = self.mark_live_symbols() {
+                return Err(guar);
+            }
+
+            let unsolved_items = unsolved_map
+                .extract_if(|require, _| self.live_symbols.contains(require))
+                .flat_map(|(_, items)| items)
+                .collect();
+
+            items_to_check = self.collect_live_items_from_unsolved_items(
+                defer_seeds_come_from_allow,
+                unsolved_items,
+                &mut unsolved_map,
+            );
+        }
+
+        self.unsolved_items = unsolved_map.into_values().flatten().collect();
+
+        Ok(())
     }
 }
 
@@ -540,11 +710,13 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     fn visit_variant_data(&mut self, def: &'tcx hir::VariantData<'tcx>) -> Self::Result {
         let tcx = self.tcx;
         let unconditionally_treat_fields_as_live = self.repr_unconditionally_treats_fields_as_live;
-        let has_repr_simd = self.repr_has_repr_simd;
+        let has_repr_simd_or_scalable = self.repr_has_repr_simd_or_scalable;
         let effective_visibilities = &tcx.effective_visibilities(());
         let live_fields = def.fields().iter().filter_map(|f| {
             let def_id = f.def_id;
-            if unconditionally_treat_fields_as_live || (f.is_positional() && has_repr_simd) {
+            if unconditionally_treat_fields_as_live
+                || (f.is_positional() && has_repr_simd_or_scalable)
+            {
                 return Some(def_id);
             }
             if !effective_visibilities.is_reachable(f.hir_id.owner.def_id) {
@@ -692,7 +864,11 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                     )
                     .and_then(|item| item.def_id.as_local())
                 {
-                    self.worklist.push((local_def_id, ComesFromAllowExpect::No));
+                    self.worklist.push(WorkItem {
+                        id: local_def_id,
+                        propagated: ComesFromAllowExpect::No,
+                        own: ComesFromAllowExpect::No,
+                    });
                 }
             }
         }
@@ -707,7 +883,7 @@ fn has_allow_dead_code_or_lang_attr(
 ) -> Option<ComesFromAllowExpect> {
     fn has_allow_expect_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        let lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).level;
+        let lint_level = tcx.lint_level_spec_at_node(DEAD_CODE, hir_id).level();
         matches!(lint_level, lint::Allow | lint::Expect)
     }
 
@@ -725,7 +901,9 @@ fn has_allow_dead_code_or_lang_attr(
 
     if has_allow_expect_dead_code(tcx, def_id) {
         Some(ComesFromAllowExpect::Yes)
-    } else if has_used_like_attr(tcx, def_id) || find_attr!(tcx, def_id, Lang(..)) {
+    } else if has_used_like_attr(tcx, def_id)
+        || find_attr!(tcx, def_id, Lang(..) | RustcCanonicalSymbol)
+    {
         Some(ComesFromAllowExpect::No)
     } else {
         None
@@ -750,40 +928,37 @@ fn has_allow_dead_code_or_lang_attr(
 fn maybe_record_as_seed<'tcx>(
     tcx: TyCtxt<'tcx>,
     owner_id: hir::OwnerId,
-    worklist: &mut Vec<(LocalDefId, ComesFromAllowExpect)>,
+    push_into_worklist: &mut impl FnMut(WorkItem),
     unsolved_items: &mut Vec<LocalDefId>,
 ) {
     let allow_dead_code = has_allow_dead_code_or_lang_attr(tcx, owner_id.def_id);
     if let Some(comes_from_allow) = allow_dead_code {
-        worklist.push((owner_id.def_id, comes_from_allow));
+        push_into_worklist(WorkItem {
+            id: owner_id.def_id,
+            propagated: comes_from_allow,
+            own: comes_from_allow,
+        });
     }
 
     match tcx.def_kind(owner_id) {
         DefKind::Enum => {
             if let Some(comes_from_allow) = allow_dead_code {
                 let adt = tcx.adt_def(owner_id);
-                worklist.extend(
-                    adt.variants()
-                        .iter()
-                        .map(|variant| (variant.def_id.expect_local(), comes_from_allow)),
-                );
+                for variant in adt.variants().iter() {
+                    push_into_worklist(WorkItem {
+                        id: variant.def_id.expect_local(),
+                        propagated: comes_from_allow,
+                        own: comes_from_allow,
+                    });
+                }
             }
         }
-        DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::AssocTy => {
+        DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy => {
             if allow_dead_code.is_none() {
                 let parent = tcx.local_parent(owner_id.def_id);
                 match tcx.def_kind(parent) {
                     DefKind::Impl { of_trait: false } | DefKind::Trait => {}
                     DefKind::Impl { of_trait: true } => {
-                        if let Some(trait_item_def_id) =
-                            tcx.associated_item(owner_id.def_id).trait_item_def_id()
-                            && let Some(trait_item_local_def_id) = trait_item_def_id.as_local()
-                            && let Some(comes_from_allow) =
-                                has_allow_dead_code_or_lang_attr(tcx, trait_item_local_def_id)
-                        {
-                            worklist.push((owner_id.def_id, comes_from_allow));
-                        }
-
                         // We only care about associated items of traits,
                         // because they cannot be visited directly,
                         // so we later mark them as live if their corresponding traits
@@ -795,68 +970,102 @@ fn maybe_record_as_seed<'tcx>(
                 }
             }
         }
-        DefKind::Impl { of_trait: true } => {
-            if allow_dead_code.is_none() {
-                if let Some(trait_def_id) =
-                    tcx.impl_trait_ref(owner_id.def_id).skip_binder().def_id.as_local()
-                    && let Some(comes_from_allow) =
-                        has_allow_dead_code_or_lang_attr(tcx, trait_def_id)
-                {
-                    worklist.push((owner_id.def_id, comes_from_allow));
-                }
-
-                unsolved_items.push(owner_id.def_id);
-            }
+        DefKind::Impl { of_trait: true } if allow_dead_code.is_none() => {
+            unsolved_items.push(owner_id.def_id);
         }
         DefKind::GlobalAsm => {
             // global_asm! is always live.
-            worklist.push((owner_id.def_id, ComesFromAllowExpect::No));
+            push_into_worklist(WorkItem {
+                id: owner_id.def_id,
+                propagated: ComesFromAllowExpect::No,
+                own: ComesFromAllowExpect::No,
+            });
         }
-        DefKind::Const { .. } => {
+        DefKind::Const => {
             if tcx.item_name(owner_id.def_id) == kw::Underscore {
                 // `const _` is always live, as that syntax only exists for the side effects
                 // of type checking and evaluating the constant expression, and marking them
                 // as dead code would defeat that purpose.
-                worklist.push((owner_id.def_id, ComesFromAllowExpect::No));
+                push_into_worklist(WorkItem {
+                    id: owner_id.def_id,
+                    propagated: ComesFromAllowExpect::No,
+                    own: ComesFromAllowExpect::No,
+                });
             }
         }
         _ => {}
     }
 }
 
-fn create_and_seed_worklist(
-    tcx: TyCtxt<'_>,
-) -> (Vec<(LocalDefId, ComesFromAllowExpect)>, Vec<LocalDefId>) {
-    let effective_visibilities = &tcx.effective_visibilities(());
-    let mut unsolved_impl_item = Vec::new();
-    let mut worklist = effective_visibilities
-        .iter()
-        .filter_map(|(&id, effective_vis)| {
-            effective_vis
-                .is_public_at_level(Level::Reachable)
-                .then_some(id)
-                .map(|id| (id, ComesFromAllowExpect::No))
-        })
-        // Seed entry point
-        .chain(
-            tcx.entry_fn(())
-                .and_then(|(def_id, _)| def_id.as_local().map(|id| (id, ComesFromAllowExpect::No))),
-        )
-        .collect::<Vec<_>>();
+#[derive(Default)]
+struct DeferredSeeds {
+    pub_reachables: Vec<WorkItem>,
+    come_from_allow: Vec<WorkItem>,
+}
 
-    let crate_items = tcx.hir_crate_items(());
-    for id in crate_items.owners() {
-        maybe_record_as_seed(tcx, id, &mut worklist, &mut unsolved_impl_item);
+struct SeedWorklists {
+    worklist: Vec<WorkItem>,
+    deferred_seeds: DeferredSeeds,
+    unsolved_items: Vec<LocalDefId>,
+}
+
+fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
+    let mut unsolved_items = Vec::new();
+    let mut deferred_seeds = DeferredSeeds::default();
+    let mut worklist = Vec::new();
+
+    if let Some((def_id, _)) = tcx.entry_fn(())
+        && let Some(local_def_id) = def_id.as_local()
+    {
+        worklist.push(WorkItem {
+            id: local_def_id,
+            propagated: ComesFromAllowExpect::No,
+            own: ComesFromAllowExpect::No,
+        });
     }
 
-    (worklist, unsolved_impl_item)
+    // Under `--test`, what `main` resolves to is the would-be entry point of a normal build,
+    // so keep it live, unless a stripped user `#[rustc_main]` would have been the entry instead.
+    if tcx.sess.is_test_crate()
+        && !tcx.sess.removed_rustc_main_attr.load(Ordering::Relaxed)
+        && let Some(main_def) = tcx.resolutions(()).main_def
+        && let Some(def_id) = main_def.opt_fn_def_id()
+        && let Some(local_def_id) = def_id.as_local()
+    {
+        worklist.push(WorkItem {
+            id: local_def_id,
+            propagated: ComesFromAllowExpect::No,
+            own: ComesFromAllowExpect::No,
+        });
+    }
+
+    for (id, effective_vis) in tcx.effective_visibilities(()).iter() {
+        if effective_vis.is_public_at_level(Level::Reachable) {
+            deferred_seeds.pub_reachables.push(WorkItem {
+                id: *id,
+                propagated: ComesFromAllowExpect::No,
+                own: ComesFromAllowExpect::No,
+            });
+        }
+    }
+
+    let mut push_into_worklist = |work_item: WorkItem| match work_item.own {
+        ComesFromAllowExpect::Yes => deferred_seeds.come_from_allow.push(work_item),
+        ComesFromAllowExpect::No => worklist.push(work_item),
+    };
+    let crate_items = tcx.hir_crate_items(());
+    for id in crate_items.owners() {
+        maybe_record_as_seed(tcx, id, &mut push_into_worklist, &mut unsolved_items);
+    }
+
+    SeedWorklists { worklist, deferred_seeds, unsolved_items }
 }
 
 fn live_symbols_and_ignored_derived_traits(
     tcx: TyCtxt<'_>,
     (): (),
-) -> Result<(LocalDefIdSet, LocalDefIdMap<FxIndexSet<DefId>>), ErrorGuaranteed> {
-    let (worklist, mut unsolved_items) = create_and_seed_worklist(tcx);
+) -> Result<DeadCodeLivenessSummary, ErrorGuaranteed> {
+    let SeedWorklists { worklist, deferred_seeds, unsolved_items } = create_and_seed_worklist(tcx);
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
         tcx,
@@ -864,47 +1073,47 @@ fn live_symbols_and_ignored_derived_traits(
         scanned: Default::default(),
         live_symbols: Default::default(),
         repr_unconditionally_treats_fields_as_live: false,
-        repr_has_repr_simd: false,
+        repr_has_repr_simd_or_scalable: false,
         in_pat: false,
         ignore_variant_stack: vec![],
         ignored_derived_traits: Default::default(),
+        propagated_comes_from_allow_expect: ComesFromAllowExpect::No,
+        unsolved_items,
     };
-    if let ControlFlow::Break(guar) = symbol_visitor.mark_live_symbols() {
-        return Err(guar);
+    symbol_visitor.mark_live_symbols_and_ignored_derived_traits(true)?;
+    let pre_deferred_seeding = DeadCodeLivenessSnapshot {
+        live_symbols: symbol_visitor.live_symbols.clone(),
+        ignored_derived_traits: symbol_visitor.ignored_derived_traits.clone(),
+    };
+
+    if !deferred_seeds.pub_reachables.is_empty() {
+        symbol_visitor.worklist.extend(deferred_seeds.pub_reachables);
+        symbol_visitor.mark_live_symbols_and_ignored_derived_traits(true)?;
     }
 
-    // We have marked the primary seeds as live. We now need to process unsolved items from traits
-    // and trait impls: add them to the work list if the trait or the implemented type is live.
-    let mut items_to_check: Vec<_> = unsolved_items
-        .extract_if(.., |&mut local_def_id| {
-            symbol_visitor.check_impl_or_impl_item_live(local_def_id)
-        })
-        .collect();
-
-    while !items_to_check.is_empty() {
-        symbol_visitor
-            .worklist
-            .extend(items_to_check.drain(..).map(|id| (id, ComesFromAllowExpect::No)));
-        if let ControlFlow::Break(guar) = symbol_visitor.mark_live_symbols() {
-            return Err(guar);
-        }
-
-        items_to_check.extend(unsolved_items.extract_if(.., |&mut local_def_id| {
-            symbol_visitor.check_impl_or_impl_item_live(local_def_id)
-        }));
+    if !deferred_seeds.come_from_allow.is_empty() {
+        symbol_visitor.worklist.extend(deferred_seeds.come_from_allow);
+        symbol_visitor.mark_live_symbols_and_ignored_derived_traits(false)?;
     }
 
-    Ok((symbol_visitor.live_symbols, symbol_visitor.ignored_derived_traits))
+    Ok(DeadCodeLivenessSummary {
+        pre_deferred_seeding,
+        final_result: DeadCodeLivenessSnapshot {
+            live_symbols: symbol_visitor.live_symbols,
+            ignored_derived_traits: symbol_visitor.ignored_derived_traits,
+        },
+    })
 }
 
 struct DeadItem {
     def_id: LocalDefId,
     name: Symbol,
-    level: (lint::Level, Option<LintExpectationId>),
+    level_plus: (lint::Level, Option<StableLintExpectationId>),
 }
 
 struct DeadVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
+    target_lint: &'static Lint,
     live_symbols: &'tcx LocalDefIdSet,
     ignored_derived_traits: &'tcx LocalDefIdMap<FxIndexSet<DefId>>,
 }
@@ -927,7 +1136,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         if self.live_symbols.contains(&field.did.expect_local()) {
             return ShouldWarnAboutField::No;
         }
-        let field_type = self.tcx.type_of(field.did).instantiate_identity();
+        let field_type = self.tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
         if field_type.is_phantom_data() {
             return ShouldWarnAboutField::No;
         }
@@ -946,10 +1155,17 @@ impl<'tcx> DeadVisitor<'tcx> {
         ShouldWarnAboutField::Yes
     }
 
-    fn def_lint_level(&self, id: LocalDefId) -> (lint::Level, Option<LintExpectationId>) {
+    fn def_lint_level_plus(
+        &self,
+        id: LocalDefId,
+    ) -> (lint::Level, Option<StableLintExpectationId>) {
         let hir_id = self.tcx.local_def_id_to_hir_id(id);
-        let level = self.tcx.lint_level_at_node(DEAD_CODE, hir_id);
-        (level.level, level.lint_id)
+        let level_spec = self.tcx.lint_level_spec_at_node(self.target_lint, hir_id);
+        (level_spec.level(), level_spec.lint_id())
+    }
+
+    fn dead_code_pub_in_binary_note(&self) -> Option<DeadCodePubInBinaryNote> {
+        self.target_lint.name.eq(DEAD_CODE_PUB_IN_BINARY.name).then_some(DeadCodePubInBinaryNote)
     }
 
     // # Panics
@@ -968,8 +1184,8 @@ impl<'tcx> DeadVisitor<'tcx> {
         let Some(&first_item) = dead_codes.first() else { return };
         let tcx = self.tcx;
 
-        let first_lint_level = first_item.level;
-        assert!(dead_codes.iter().skip(1).all(|item| item.level == first_lint_level));
+        let first_lint_level_plus = first_item.level_plus;
+        assert!(dead_codes.iter().skip(1).all(|item| item.level_plus == first_lint_level_plus));
 
         let names: Vec<_> = dead_codes.iter().map(|item| item.name).collect();
         let spans: Vec<_> = dead_codes
@@ -1063,6 +1279,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                     descr,
                     participle,
                     name_list,
+                    dead_code_pub_in_binary_note: self.dead_code_pub_in_binary_note(),
                     change_fields_suggestion: fields_suggestion,
                     parent_info,
                     ignored_derived_impls,
@@ -1072,17 +1289,17 @@ impl<'tcx> DeadVisitor<'tcx> {
                 let enum_variants_with_same_name = dead_codes
                     .iter()
                     .filter_map(|dead_item| {
-                        if let DefKind::AssocFn | DefKind::AssocConst { .. } =
+                        if let DefKind::AssocFn | DefKind::AssocConst =
                             tcx.def_kind(dead_item.def_id)
                             && let impl_did = tcx.local_parent(dead_item.def_id)
                             && let DefKind::Impl { of_trait: false } = tcx.def_kind(impl_did)
                             && let ty::Adt(maybe_enum, _) =
-                                tcx.type_of(impl_did).instantiate_identity().kind()
+                                tcx.type_of(impl_did).instantiate_identity().skip_norm_wip().kind()
                             && maybe_enum.is_enum()
                             && let Some(variant) =
                                 maybe_enum.variants().iter().find(|i| i.name == dead_item.name)
                         {
-                            Some(crate::errors::EnumVariantSameName {
+                            Some(crate::diagnostics::EnumVariantSameName {
                                 dead_descr: tcx.def_descr(dead_item.def_id.to_def_id()),
                                 dead_name: dead_item.name,
                                 variant_span: tcx.def_span(variant.def_id),
@@ -1099,6 +1316,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                     descr,
                     participle,
                     name_list,
+                    dead_code_pub_in_binary_note: self.dead_code_pub_in_binary_note(),
                     parent_info,
                     ignored_derived_impls,
                     enum_variants_with_same_name,
@@ -1107,7 +1325,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         };
 
         let hir_id = tcx.local_def_id_to_hir_id(first_item.def_id);
-        self.tcx.emit_node_span_lint(DEAD_CODE, hir_id, MultiSpan::from_spans(spans), diag);
+        self.tcx.emit_node_span_lint(self.target_lint, hir_id, MultiSpan::from_spans(spans), diag);
     }
 
     fn warn_multiple(
@@ -1124,9 +1342,10 @@ impl<'tcx> DeadVisitor<'tcx> {
         if dead_codes.is_empty() {
             return;
         }
-        // FIXME: `dead_codes` should probably be morally equivalent to `IndexMap<(Level, LintExpectationId), (DefId, Symbol)>`
-        dead_codes.sort_by_key(|v| v.level.0);
-        for group in dead_codes.chunk_by(|a, b| a.level == b.level) {
+        // FIXME: `dead_codes` should probably be morally equivalent to
+        // `IndexMap<(Level, StableLintExpectationId), (DefId, Symbol)>`
+        dead_codes.sort_by_key(|v| v.level_plus.0);
+        for group in dead_codes.chunk_by(|a, b| a.level_plus == b.level_plus) {
             self.lint_at_single_level(&group, participle, Some(def_id), report_on);
         }
     }
@@ -1135,7 +1354,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         let item = DeadItem {
             def_id: id,
             name: self.tcx.item_name(id.to_def_id()),
-            level: self.def_lint_level(id),
+            level_plus: self.def_lint_level_plus(id),
         };
         self.lint_at_single_level(&[&item], participle, None, ReportOn::NamedField);
     }
@@ -1145,12 +1364,12 @@ impl<'tcx> DeadVisitor<'tcx> {
             return;
         }
         match self.tcx.def_kind(def_id) {
-            DefKind::AssocConst { .. }
+            DefKind::AssocConst
             | DefKind::AssocTy
             | DefKind::AssocFn
             | DefKind::Fn
             | DefKind::Static { .. }
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::TyAlias
             | DefKind::Enum
             | DefKind::Union
@@ -1173,18 +1392,56 @@ impl<'tcx> DeadVisitor<'tcx> {
     }
 }
 
-fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
-    let Ok((live_symbols, ignored_derived_traits)) =
+fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModId) {
+    let Ok(DeadCodeLivenessSummary { pre_deferred_seeding, final_result }) =
         tcx.live_symbols_and_ignored_derived_traits(()).as_ref()
     else {
         return;
     };
 
-    let mut visitor = DeadVisitor { tcx, live_symbols, ignored_derived_traits };
-
     let module_items = tcx.hir_module_items(module);
 
-    for item in module_items.free_items() {
+    if tcx.crate_types().contains(&CrateType::Executable) {
+        let is_unused_pub = |def_id: LocalDefId| {
+            tcx.effective_visibilities(()).is_public_at_level(def_id, Level::Reachable)
+                && !pre_deferred_seeding.live_symbols.contains(&def_id)
+        };
+
+        lint_dead_codes(
+            tcx,
+            DEAD_CODE_PUB_IN_BINARY,
+            module,
+            &pre_deferred_seeding.live_symbols,
+            &pre_deferred_seeding.ignored_derived_traits,
+            module_items.free_items().filter(|free_item| is_unused_pub(free_item.owner_id.def_id)),
+            module_items
+                .foreign_items()
+                .filter(|foreign_item| is_unused_pub(foreign_item.owner_id.def_id)),
+        );
+    }
+
+    lint_dead_codes(
+        tcx,
+        DEAD_CODE,
+        module,
+        &final_result.live_symbols,
+        &final_result.ignored_derived_traits,
+        module_items.free_items(),
+        module_items.foreign_items(),
+    );
+}
+
+fn lint_dead_codes<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    target_lint: &'static Lint,
+    module: LocalModId,
+    live_symbols: &'tcx LocalDefIdSet,
+    ignored_derived_traits: &'tcx LocalDefIdMap<FxIndexSet<DefId>>,
+    free_items: impl Iterator<Item = ItemId>,
+    foreign_items: impl Iterator<Item = ForeignItemId>,
+) {
+    let mut visitor = DeadVisitor { tcx, target_lint, live_symbols, ignored_derived_traits };
+    for item in free_items {
         let def_kind = tcx.def_kind(item.owner_id);
 
         let mut dead_codes = Vec::new();
@@ -1201,8 +1458,8 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                     && !visitor.is_live_code(local_def_id)
                 {
                     let name = tcx.item_name(def_id);
-                    let level = visitor.def_lint_level(local_def_id);
-                    dead_codes.push(DeadItem { def_id: local_def_id, name, level });
+                    let level_plus = visitor.def_lint_level_plus(local_def_id);
+                    dead_codes.push(DeadItem { def_id: local_def_id, name, level_plus });
                 }
             }
         }
@@ -1228,8 +1485,8 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                 let def_id = variant.def_id.expect_local();
                 if !live_symbols.contains(&def_id) {
                     // Record to group diagnostics.
-                    let level = visitor.def_lint_level(def_id);
-                    dead_variants.push(DeadItem { def_id, name: variant.name, level });
+                    let level_plus = visitor.def_lint_level_plus(def_id);
+                    dead_variants.push(DeadItem { def_id, name: variant.name, level_plus });
                     continue;
                 }
 
@@ -1244,8 +1501,8 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                     .filter_map(|field| {
                         let def_id = field.did.expect_local();
                         if let ShouldWarnAboutField::Yes = visitor.should_warn_about_field(field) {
-                            let level = visitor.def_lint_level(def_id);
-                            Some(DeadItem { def_id, name: field.name, level })
+                            let level_plus = visitor.def_lint_level_plus(def_id);
+                            Some(DeadItem { def_id, name: field.name, level_plus })
                         } else {
                             None
                         }
@@ -1263,7 +1520,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
         }
     }
 
-    for foreign_item in module_items.foreign_items() {
+    for foreign_item in foreign_items {
         visitor.check_definition(foreign_item.owner_id.def_id);
     }
 }

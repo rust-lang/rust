@@ -15,14 +15,14 @@ help: consider relaxing the implicit `Sized` restriction
 LL |     type Pointer<T>: Deref<Target = T> + ?Sized;
    |                                        ++++++++
 
-error[E0599]: the variant or associated item `new` exists for enum `Node<i32, RcFamily>`, but its trait bounds were not satisfied
+error[E0599]: the variant, associated function, or constant `new` exists for enum `Node<i32, RcFamily>`, but its trait bounds were not satisfied
   --> $DIR/issue-119942-unsatisified-gat-bound-during-assoc-ty-selection.rs:31:35
    |
 LL | enum Node<T, P: PointerFamily> {
-   | ------------------------------ variant or associated item `new` not found for this enum
+   | ------------------------------ variant, associated function, or constant `new` not found for this enum
 ...
 LL |     let mut list = RcNode::<i32>::new();
-   |                                   ^^^ variant or associated item cannot be called on `Node<i32, RcFamily>` due to unsatisfied trait bounds
+   |                                   ^^^ variant, associated function, or constant cannot be called on `Node<i32, RcFamily>` due to unsatisfied trait bounds
    |
 note: trait bound `(dyn Deref<Target = Node<i32, RcFamily>> + 'static): Sized` was not satisfied
   --> $DIR/issue-119942-unsatisified-gat-bound-during-assoc-ty-selection.rs:23:29

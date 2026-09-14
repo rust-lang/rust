@@ -1,4 +1,4 @@
-//@ compile-flags: -Zautodiff=Enable,NoTT,NoPostopt -C opt-level=3  -Clto=fat
+//@ compile-flags: -Zautodiff=Enable,NoTT -Zautodiff_post_passes=function(mem2reg,instsimplify,simplifycfg) -C opt-level=3  -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-enzyme
 
@@ -20,21 +20,27 @@ fn square(x: &f32) -> f32 {
     x * x
 }
 
+// CHECK: ; batched::d_square2
+// CHECK: define internal fastcc void
+// CHECK-SAME: (ptr {{.*}}, ptr {{.*}}, ptr {{.*}}, ptr {{.*}}, ptr {{.*}})
+// CHECK:   ret void
+// CHECK-NEXT:   }
+
+// CHECK: ; batched::d_square1
+// CHECK: define internal fastcc void
+// CHECK-SAME: (ptr {{.*}}, ptr {{.*}}, ptr {{.*}}, ptr {{.*}}, ptr {{.*}}, ptr {{.*}})
+// CHECK:   ret void
+// CHECK-NEXT:   }
+
 // The base ("scalar") case d_square3, without batching.
-// CHECK: define internal fastcc float @fwddiffesquare(float %x.0.val, float %"x'.0.val")
-// CHECK:   %0 = fadd fast float %"x'.0.val", %"x'.0.val"
-// CHECK-NEXT:   %1 = fmul fast float %0, %x.0.val
-// CHECK-NEXT:   ret float %1
+// CHECK: define internal float @fwddiffesquare(ptr {{.*}}, ptr {{.*}})
+// CHECK:  [[SHADOW_X:%"_[0-9]+'ipl"]] = load float, ptr %"x'"
+// CHECK-NEXT:  [[PRIMAL_X:%_[0-9]+]] = load float, ptr %x
+// CHECK-NEXT:  [[MUL1:%[0-9]+]] = fmul fast float [[SHADOW_X]], [[PRIMAL_X]]
+// CHECK-NEXT:  [[MUL2:%[0-9]+]] = fmul fast float [[SHADOW_X]], [[PRIMAL_X]]
+// CHECK-NEXT:  [[ADD1:%[0-9]+]] = fadd fast float [[MUL1]], [[MUL2]]
+// CHECK-NEXT:  ret float [[ADD1]]
 // CHECK-NEXT: }
-
-// d_square2
-// CHECK: define internal fastcc [4 x float] @fwddiffe4square(float %x.0.val, [4 x ptr] %"x'")
-// CHECK:   ret [4 x float]
-// CHECK-NEXT:   }
-
-// CHECK: define internal fastcc { float, [4 x float] } @fwddiffe4square.{{.*}}(float %x.0.val, [4 x ptr] %"x'")
-// CHECK:   ret { float, [4 x float] }
-// CHECK-NEXT:   }
 
 fn main() {
     let x = std::hint::black_box(3.0);

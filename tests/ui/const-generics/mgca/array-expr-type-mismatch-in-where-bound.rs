@@ -1,5 +1,5 @@
 //! regression test for <https://github.com/rust-lang/rust/issues/151024>
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![feature(adt_const_params)]
 #![expect(incomplete_features)]
 

@@ -1,7 +1,7 @@
-#![feature(powerpc_target_feature)]
+#![feature(f16)]
 #![cfg_attr(
     any(target_arch = "powerpc", target_arch = "powerpc64"),
-    feature(stdarch_powerpc)
+    feature(powerpc_target_feature, stdarch_powerpc)
 )]
 
 pub mod array;
@@ -47,6 +47,7 @@ impl_num! { u16 }
 impl_num! { u32 }
 impl_num! { u64 }
 impl_num! { usize }
+impl_num! { f16 }
 impl_num! { f32 }
 impl_num! { f64 }
 
@@ -121,12 +122,23 @@ pub fn make_runner() -> proptest::test_runner::TestRunner {
     proptest::test_runner::TestRunner::new(proptest::test_runner::Config::with_cases(4))
 }
 
+#[track_caller]
+fn unwrap_test_error<T, U: std::fmt::Debug>(
+    x: Result<T, proptest::test_runner::TestError<U>>,
+) -> T {
+    // Using the `Display` instance of the error is much more readable.
+    match x {
+        Ok(v) => v,
+        Err(e) => panic!("{e}"),
+    }
+}
+
 /// Test a function that takes a single value.
 pub fn test_1<A: core::fmt::Debug + DefaultStrategy>(
     f: &dyn Fn(A) -> proptest::test_runner::TestCaseResult,
 ) {
     let mut runner = make_runner();
-    runner.run(&A::default_strategy(), f).unwrap();
+    unwrap_test_error(runner.run(&A::default_strategy(), f))
 }
 
 /// Test a function that takes two values.
@@ -134,11 +146,11 @@ pub fn test_2<A: core::fmt::Debug + DefaultStrategy, B: core::fmt::Debug + Defau
     f: &dyn Fn(A, B) -> proptest::test_runner::TestCaseResult,
 ) {
     let mut runner = make_runner();
-    runner
-        .run(&(A::default_strategy(), B::default_strategy()), |(a, b)| {
+    unwrap_test_error(
+        runner.run(&(A::default_strategy(), B::default_strategy()), |(a, b)| {
             f(a, b)
-        })
-        .unwrap();
+        }),
+    )
 }
 
 /// Test a function that takes two values.
@@ -150,16 +162,14 @@ pub fn test_3<
     f: &dyn Fn(A, B, C) -> proptest::test_runner::TestCaseResult,
 ) {
     let mut runner = make_runner();
-    runner
-        .run(
-            &(
-                A::default_strategy(),
-                B::default_strategy(),
-                C::default_strategy(),
-            ),
-            |(a, b, c)| f(a, b, c),
-        )
-        .unwrap();
+    unwrap_test_error(runner.run(
+        &(
+            A::default_strategy(),
+            B::default_strategy(),
+            C::default_strategy(),
+        ),
+        |(a, b, c)| f(a, b, c),
+    ));
 }
 
 /// Test a unary vector function against a unary scalar function, applied elementwise.
@@ -668,7 +678,7 @@ macro_rules! test_lanes {
                     //lanes_45 45;
                     //lanes_46 46;
                     lanes_47 47;
-                    //lanes_48 48;
+                    lanes_48 48;
                     //lanes_49 49;
                     //lanes_50 50;
                     //lanes_51 51;

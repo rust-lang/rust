@@ -173,14 +173,13 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(isolate_most_least_significant_one)]
-        ///
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b_01100100;")]
         ///
         /// assert_eq!(n.isolate_highest_one(), 0b_01000000);
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_highest_one(), 0);")]
         /// ```
-        #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+        #[stable(feature = "isolate_most_least_significant_one", since = "1.97.0")]
+        #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "1.97.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -194,14 +193,13 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(isolate_most_least_significant_one)]
-        ///
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b_01100100;")]
         ///
         /// assert_eq!(n.isolate_lowest_one(), 0b_00000100);
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_lowest_one(), 0);")]
         /// ```
-        #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+        #[stable(feature = "isolate_most_least_significant_one", since = "1.97.0")]
+        #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "1.97.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -212,17 +210,19 @@ macro_rules! int_impl {
         /// Returns the index of the highest bit set to one in `self`, or `None`
         /// if `self` is `0`.
         ///
+        /// Note that for non-negative numbers, this is equivalent to
+        /// [`checked_ilog2`](Self::checked_ilog2).
+        ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_lowest_highest_one)]
-        ///
         #[doc = concat!("assert_eq!(0b0_", stringify!($SelfT), ".highest_one(), None);")]
         #[doc = concat!("assert_eq!(0b1_", stringify!($SelfT), ".highest_one(), Some(0));")]
         #[doc = concat!("assert_eq!(0b1_0000_", stringify!($SelfT), ".highest_one(), Some(4));")]
         #[doc = concat!("assert_eq!(0b1_1111_", stringify!($SelfT), ".highest_one(), Some(4));")]
         /// ```
-        #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+        #[stable(feature = "int_lowest_highest_one", since = "1.97.0")]
+        #[rustc_const_stable(feature = "int_lowest_highest_one", since = "1.97.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -236,14 +236,13 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_lowest_highest_one)]
-        ///
         #[doc = concat!("assert_eq!(0b0_", stringify!($SelfT), ".lowest_one(), None);")]
         #[doc = concat!("assert_eq!(0b1_", stringify!($SelfT), ".lowest_one(), Some(0));")]
         #[doc = concat!("assert_eq!(0b1_0000_", stringify!($SelfT), ".lowest_one(), Some(4));")]
         #[doc = concat!("assert_eq!(0b1_1111_", stringify!($SelfT), ".lowest_one(), Some(0));")]
         /// ```
-        #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+        #[stable(feature = "int_lowest_highest_one", since = "1.97.0")]
+        #[rustc_const_stable(feature = "int_lowest_highest_one", since = "1.97.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -270,6 +269,94 @@ macro_rules! int_impl {
         #[inline(always)]
         pub const fn cast_unsigned(self) -> $UnsignedT {
             self as $UnsignedT
+        }
+
+        /// Saturating conversion of `self` to an unsigned integer of the same size.
+        ///
+        /// Negative values are clamped to `0`.
+        ///
+        /// For other kinds of unsigned integer casts, see
+        /// [`cast_unsigned`](Self::cast_unsigned),
+        /// [`checked_cast_unsigned`](Self::checked_cast_unsigned),
+        /// or [`strict_cast_unsigned`](Self::strict_cast_unsigned).
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_cast_extras)]
+        #[doc = concat!("let n = ", stringify!($SelfT), "::MIN;")]
+        ///
+        #[doc = concat!("assert_eq!(n.saturating_cast_unsigned(), 0", stringify!($UnsignedT), ");")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".saturating_cast_unsigned(), 64", stringify!($UnsignedT), ");")]
+        /// ```
+        #[rustc_const_unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn saturating_cast_unsigned(self) -> $UnsignedT {
+            if self >= 0 {
+                self.cast_unsigned()
+            } else {
+                0
+            }
+        }
+
+        /// Checked conversion of `self` to an unsigned integer of the same size,
+        /// returning `None` if `self` is negative.
+        ///
+        /// For other kinds of unsigned integer casts, see
+        /// [`cast_unsigned`](Self::cast_unsigned),
+        /// [`saturating_cast_unsigned`](Self::saturating_cast_unsigned),
+        /// or [`strict_cast_unsigned`](Self::strict_cast_unsigned).
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_cast_extras)]
+        #[doc = concat!("let n = ", stringify!($SelfT), "::MIN;")]
+        ///
+        #[doc = concat!("assert_eq!(n.checked_cast_unsigned(), None);")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_cast_unsigned(), Some(64", stringify!($UnsignedT), "));")]
+        /// ```
+        #[rustc_const_unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn checked_cast_unsigned(self) -> Option<$UnsignedT> {
+            if self >= 0 {
+                Some(self.cast_unsigned())
+            } else {
+                None
+            }
+        }
+
+        /// Strict conversion of `self` to an unsigned integer of the same size,
+        /// which panics if `self` is negative.
+        ///
+        /// For other kinds of unsigned integer casts, see
+        /// [`cast_unsigned`](Self::cast_unsigned),
+        /// [`checked_cast_unsigned`](Self::checked_cast_unsigned),
+        /// or [`saturating_cast_unsigned`](Self::saturating_cast_unsigned).
+        ///
+        /// # Examples
+        ///
+        /// ```should_panic
+        /// #![feature(integer_cast_extras)]
+        #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_cast_unsigned();")]
+        /// ```
+        #[rustc_const_unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[track_caller]
+        pub const fn strict_cast_unsigned(self) -> $UnsignedT {
+            match self.checked_cast_unsigned() {
+                Some(n) => n,
+                None => imp::overflow_panic::cast_integer(),
+            }
         }
 
         /// Shifts the bits to the left by a specified amount, `n`,
@@ -390,13 +477,9 @@ macro_rules! int_impl {
         #[must_use]
         #[inline]
         pub const fn from_be(x: Self) -> Self {
-            #[cfg(target_endian = "big")]
-            {
-                x
-            }
-            #[cfg(not(target_endian = "big"))]
-            {
-                x.swap_bytes()
+            cfg_select! {
+                target_endian = "big" => x,
+                _ => x.swap_bytes(),
             }
         }
 
@@ -422,13 +505,9 @@ macro_rules! int_impl {
         #[must_use]
         #[inline]
         pub const fn from_le(x: Self) -> Self {
-            #[cfg(target_endian = "little")]
-            {
-                x
-            }
-            #[cfg(not(target_endian = "little"))]
-            {
-                x.swap_bytes()
+            cfg_select! {
+                target_endian = "little" => x,
+                _ => x.swap_bytes(),
             }
         }
 
@@ -459,13 +538,9 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn to_be(self) -> Self { // or not to be?
-            #[cfg(target_endian = "big")]
-            {
-                self
-            }
-            #[cfg(not(target_endian = "big"))]
-            {
-                self.swap_bytes()
+            cfg_select! {
+                target_endian = "big" => self,
+                _ => self.swap_bytes(),
             }
         }
 
@@ -496,13 +571,9 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn to_le(self) -> Self {
-            #[cfg(target_endian = "little")]
-            {
-                self
-            }
-            #[cfg(not(target_endian = "little"))]
-            {
-                self.swap_bytes()
+            cfg_select! {
+                target_endian = "little" => self,
+                _ => self.swap_bytes(),
             }
         }
 
@@ -912,8 +983,11 @@ macro_rules! int_impl {
         /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// The only case where such an overflow can occur is when one divides `MIN / -1` on a signed type (where
-        /// `MIN` is the negative minimal value for the type); this is equivalent to `-MIN`, a positive value
+        /// [`MIN`](Self::MIN) is the negative minimal value for the type); the result of this is `-MIN`, a positive value
         /// that is too large to represent in the type.
+        ///
+        /// Note that this is equivalent to normal division: `MIN / -1` will also panic both in
+        /// debug and release builds.
         ///
         /// # Examples
         ///
@@ -939,8 +1013,8 @@ macro_rules! int_impl {
         #[inline]
         #[track_caller]
         pub const fn strict_div(self, rhs: Self) -> Self {
-            let (a, b) = self.overflowing_div(rhs);
-            if b { imp::overflow_panic::div() } else { a }
+            // Normal division already checks for "div-by-minus-1".
+            self / rhs
         }
 
         /// Checked Euclidean division. Computes `self.div_euclid(rhs)`,
@@ -979,8 +1053,11 @@ macro_rules! int_impl {
         /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// The only case where such an overflow can occur is when one divides `MIN / -1` on a signed type (where
-        /// `MIN` is the negative minimal value for the type); this is equivalent to `-MIN`, a positive value
+        /// [`MIN`](Self::MIN) is the negative minimal value for the type); the result of this is `-MIN`, a positive value
         /// that is too large to represent in the type.
+        ///
+        /// Note that this is equivalent to `div_euclid`: `MIN.div_euclid(-1)` will also panic both
+        /// in debug and release builds.
         ///
         /// # Examples
         ///
@@ -1006,8 +1083,8 @@ macro_rules! int_impl {
         #[inline]
         #[track_caller]
         pub const fn strict_div_euclid(self, rhs: Self) -> Self {
-            let (a, b) = self.overflowing_div_euclid(rhs);
-            if b { imp::overflow_panic::div() } else { a }
+            // Normal `div_euclid` already checks for "div-by-minus-1".
+            self.div_euclid(rhs)
         }
 
         /// Checked integer division without remainder. Computes `self / rhs`,
@@ -1110,7 +1187,7 @@ macro_rules! int_impl {
                 (
                     lhs: $SelfT = self,
                     rhs: $SelfT = rhs,
-                ) => rhs > 0 && lhs % rhs == 0 && (lhs != <$SelfT>::MIN || rhs != -1),
+                ) => rhs != 0 && lhs % rhs == 0 && (lhs != <$SelfT>::MIN || rhs != -1),
             );
             // SAFETY: Same precondition
             unsafe { intrinsics::exact_div(self, rhs) }
@@ -1152,7 +1229,7 @@ macro_rules! int_impl {
         /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// The only case where such an overflow can occur is `x % y` for `MIN / -1` on a
-        /// signed type (where `MIN` is the negative minimal value), which is invalid due to implementation artifacts.
+        /// signed type (where [`MIN`](Self::MIN) is the negative minimal value), which is invalid due to implementation artifacts.
         ///
         /// # Examples
         ///
@@ -1218,7 +1295,7 @@ macro_rules! int_impl {
         /// This function will always panic on overflow, regardless of whether overflow checks are enabled.
         ///
         /// The only case where such an overflow can occur is `x % y` for `MIN / -1` on a
-        /// signed type (where `MIN` is the negative minimal value), which is invalid due to implementation artifacts.
+        /// signed type (where [`MIN`](Self::MIN) is the negative minimal value), which is invalid due to implementation artifacts.
         ///
         /// # Examples
         ///
@@ -1761,11 +1838,38 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
+            let mut base = self;
+            let mut acc: Self = 1;
+
+            if intrinsics::is_val_statically_known(base) && base.unsigned_abs().is_power_of_two() {
+                let k = base.unsigned_abs().ilog2();
+                let shift = try_opt!(k.checked_mul(exp));
+                return if base < 0 && (exp % 2) == 1 {
+                    (-1 as Self).shl_exact(shift)
+                } else {
+                    (1 as Self).shl_exact(shift)
+                }
+            }
+
             if exp == 0 {
                 return Some(1);
             }
-            let mut base = self;
-            let mut acc: Self = 1;
+
+            if intrinsics::is_val_statically_known(exp) {
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = try_opt!(acc.checked_mul(base));
+                    }
+                    exp /= 2;
+                    base = try_opt!(base.checked_mul(base));
+                }
+
+                // since exp!=0, finally the exp must be 1.
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                return acc.checked_mul(base);
+            }
 
             loop {
                 if (exp & 1) == 1 {
@@ -1807,27 +1911,18 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        pub const fn strict_pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
-            let mut base = self;
-            let mut acc: Self = 1;
-
-            loop {
-                if (exp & 1) == 1 {
-                    acc = acc.strict_mul(base);
-                    // since exp!=0, finally the exp must be 1.
-                    if exp == 1 {
-                        return acc;
-                    }
-                }
-                exp /= 2;
-                base = base.strict_mul(base);
+        pub const fn strict_pow(self, exp: u32) -> Self {
+            match self.checked_pow(exp) {
+                Some(x) => x,
+                None => imp::overflow_panic::pow(),
             }
         }
 
-        /// Returns the square root of the number, rounded down.
+        /// Returns the integer square root of the number, rounded down.
+        ///
+        /// This function returns the **principal (non-negative) square root**.
+        /// For a given number `n`, although both `x` and `-x` satisfy x<sup>2</sup> = n,
+        /// this function always returns the non-negative value.
         ///
         /// Returns `None` if `self` is negative.
         ///
@@ -1845,10 +1940,9 @@ macro_rules! int_impl {
             if self < 0 {
                 None
             } else {
-                // SAFETY: Input is nonnegative in this `else` branch.
-                let result = unsafe {
-                    imp::int_sqrt::$ActualT(self as $ActualT) as $SelfT
-                };
+                // The upper bound of `$UnsignedT::MAX.isqrt()` told to the compiler
+                // in the unsigned function also tells it that `result >= 0`
+                let result = self.cast_unsigned().isqrt().cast_signed();
 
                 // Inform the optimizer what the range of outputs is. If
                 // testing `core` crashes with no panic message and a
@@ -1862,15 +1956,9 @@ macro_rules! int_impl {
                 // `[0, <$ActualT>::MAX]`, sqrt(n) will be bounded by
                 // `[sqrt(0), sqrt(<$ActualT>::MAX)]`.
                 unsafe {
-                    // SAFETY: `<$ActualT>::MAX` is nonnegative.
-                    const MAX_RESULT: $SelfT = unsafe {
-                        imp::int_sqrt::$ActualT(<$ActualT>::MAX) as $SelfT
-                    };
-
-                    crate::hint::assert_unchecked(result >= 0);
+                    const MAX_RESULT: $SelfT = <$SelfT>::MAX.cast_unsigned().isqrt().cast_signed();
                     crate::hint::assert_unchecked(result <= MAX_RESULT);
                 }
-
                 Some(result)
             }
         }
@@ -2052,6 +2140,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn saturating_div(self, rhs: Self) -> Self {
             match self.overflowing_div(rhs) {
                 (result, false) => result,
@@ -2177,8 +2266,8 @@ macro_rules! int_impl {
         /// boundary of the type.
         ///
         /// The only case where such wrapping can occur is when one divides `MIN / -1` on a signed type (where
-        /// `MIN` is the negative minimal value for the type); this is equivalent to `-MIN`, a positive value
-        /// that is too large to represent in the type. In such a case, this function returns `MIN` itself.
+        /// [`MIN`](Self::MIN) is the negative minimal value for the type); this is equivalent to `-MIN`, a positive value
+        /// that is too large to represent in the type. In such a case, this function returns [`MIN`](Self::MIN) itself.
         ///
         /// # Panics
         ///
@@ -2195,6 +2284,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn wrapping_div(self, rhs: Self) -> Self {
             self.overflowing_div(rhs).0
         }
@@ -2202,9 +2292,9 @@ macro_rules! int_impl {
         /// Wrapping Euclidean division. Computes `self.div_euclid(rhs)`,
         /// wrapping around at the boundary of the type.
         ///
-        /// Wrapping will only occur in `MIN / -1` on a signed type (where `MIN` is the negative minimal value
+        /// Wrapping will only occur in `MIN / -1` on a signed type (where [`MIN`](Self::MIN) is the negative minimal value
         /// for the type). This is equivalent to `-MIN`, a positive value that is too large to represent in the
-        /// type. In this case, this method returns `MIN` itself.
+        /// type. In this case, this method returns [`MIN`](Self::MIN) itself.
         ///
         /// # Panics
         ///
@@ -2221,6 +2311,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
             self.overflowing_div_euclid(rhs).0
         }
@@ -2229,7 +2320,7 @@ macro_rules! int_impl {
         /// boundary of the type.
         ///
         /// Such wrap-around never actually occurs mathematically; implementation artifacts make `x % y`
-        /// invalid for `MIN / -1` on a signed type (where `MIN` is the negative minimal value). In such a case,
+        /// invalid for `MIN / -1` on a signed type (where [`MIN`](Self::MIN) is the negative minimal value). In such a case,
         /// this function returns `0`.
         ///
         /// # Panics
@@ -2247,6 +2338,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn wrapping_rem(self, rhs: Self) -> Self {
             self.overflowing_rem(rhs).0
         }
@@ -2254,8 +2346,8 @@ macro_rules! int_impl {
         /// Wrapping Euclidean remainder. Computes `self.rem_euclid(rhs)`, wrapping around
         /// at the boundary of the type.
         ///
-        /// Wrapping will only occur in `MIN % -1` on a signed type (where `MIN` is the negative minimal value
-        /// for the type). In this case, this method returns 0.
+        /// Wrapping will only occur in `MIN % -1` on a signed type (where [`MIN`](Self::MIN) is
+        /// the negative minimal value for the type). In this case, this method returns 0.
         ///
         /// # Panics
         ///
@@ -2272,6 +2364,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
             self.overflowing_rem_euclid(rhs).0
         }
@@ -2279,9 +2372,9 @@ macro_rules! int_impl {
         /// Wrapping (modular) negation. Computes `-self`, wrapping around at the boundary
         /// of the type.
         ///
-        /// The only case where such wrapping can occur is when one negates `MIN` on a signed type (where `MIN`
+        /// The only case where such wrapping can occur is when one negates [`MIN`](Self::MIN) on a signed type (where [`MIN`](Self::MIN)
         /// is the negative minimal value for the type); this is a positive value that is too large to represent
-        /// in the type. In such a case, this function returns `MIN` itself.
+        /// in the type. In such a case, this function returns [`MIN`](Self::MIN) itself.
         ///
         /// # Examples
         ///
@@ -2304,7 +2397,7 @@ macro_rules! int_impl {
         ///
         /// Beware that, unlike most other `wrapping_*` methods on integers, this
         /// does *not* give the same result as doing the shift in infinite precision
-        /// then truncating as needed.  The behaviour matches what shift instructions
+        /// then truncating as needed. Instead, the behaviour of this method matches what shift instructions
         /// do on many processors, and is what the `<<` operator does when overflow
         /// checks are disabled, but numerically it's weird.  Consider, instead,
         /// using [`Self::unbounded_shl`] which has nicer behaviour.
@@ -2341,7 +2434,7 @@ macro_rules! int_impl {
         ///
         /// Beware that, unlike most other `wrapping_*` methods on integers, this
         /// does *not* give the same result as doing the shift in infinite precision
-        /// then truncating as needed.  The behaviour matches what shift instructions
+        /// then truncating as needed. Instead, the behaviour of this method matches what shift instructions
         /// do on many processors, and is what the `>>` operator does when overflow
         /// checks are disabled, but numerically it's weird.  Consider, instead,
         /// using [`Self::unbounded_shr`] which has nicer behaviour.
@@ -2378,7 +2471,7 @@ macro_rules! int_impl {
         ///
         /// The only case where such wrapping can occur is when one takes the absolute value of the negative
         /// minimal value for the type; this is a positive value that is too large to represent in the type. In
-        /// such a case, this function returns `MIN` itself.
+        /// such a case, this function returns [`MIN`](Self::MIN) itself.
         ///
         /// # Examples
         ///
@@ -2438,43 +2531,9 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn wrapping_pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
-            let mut base = self;
-            let mut acc: Self = 1;
-
-            if intrinsics::is_val_statically_known(exp) {
-                while exp > 1 {
-                    if (exp & 1) == 1 {
-                        acc = acc.wrapping_mul(base);
-                    }
-                    exp /= 2;
-                    base = base.wrapping_mul(base);
-                }
-
-                // since exp!=0, finally the exp must be 1.
-                // Deal with the final bit of the exponent separately, since
-                // squaring the base afterwards is not necessary.
-                acc.wrapping_mul(base)
-            } else {
-                // This is faster than the above when the exponent is not known
-                // at compile time. We can't use the same code for the constant
-                // exponent case because LLVM is currently unable to unroll
-                // this loop.
-                loop {
-                    if (exp & 1) == 1 {
-                        acc = acc.wrapping_mul(base);
-                        // since exp!=0, finally the exp must be 1.
-                        if exp == 1 {
-                            return acc;
-                        }
-                    }
-                    exp /= 2;
-                    base = base.wrapping_mul(base);
-                }
-            }
+        pub const fn wrapping_pow(self, exp: u32) -> Self {
+            let (a, _) = self.overflowing_pow(exp);
+            a
         }
 
         /// Calculates `self` + `rhs`.
@@ -2712,32 +2771,6 @@ macro_rules! int_impl {
             (a as Self, b)
         }
 
-        /// Calculates the complete product `self * rhs` without the possibility to overflow.
-        ///
-        /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
-        /// of the result as two separate values, in that order.
-        ///
-        /// If you also need to add a carry to the wide result, then you want
-        /// [`Self::carrying_mul`] instead.
-        ///
-        /// # Examples
-        ///
-        /// Please note that this example is shared among integer types, which is why `i32` is used.
-        ///
-        /// ```
-        /// #![feature(widening_mul)]
-        /// assert_eq!(5i32.widening_mul(-2), (4294967286, -1));
-        /// assert_eq!(1_000_000_000i32.widening_mul(-10), (2884901888, -3));
-        /// ```
-        #[unstable(feature = "widening_mul", issue = "152016")]
-        #[rustc_const_unstable(feature = "widening_mul", issue = "152016")]
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        pub const fn widening_mul(self, rhs: Self) -> ($UnsignedT, Self) {
-            Self::carrying_mul_add(self, rhs, 0, 0)
-        }
-
         /// Calculates the "full multiplication" `self * rhs + carry`
         /// without the possibility to overflow.
         ///
@@ -2748,11 +2781,9 @@ macro_rules! int_impl {
         /// additional amount of overflow. This allows for chaining together multiple
         /// multiplications to create "big integers" which represent larger values.
         ///
-        /// If you don't need the `carry`, then you can use [`Self::widening_mul`] instead.
-        ///
         /// # Examples
         ///
-        /// Please note that this example is shared among integer types, which is why `i32` is used.
+        /// Please note that this example is shared among integer types, which is why [`i32`] is used.
         ///
         /// ```
         /// #![feature(signed_bigint_helpers)]
@@ -2784,8 +2815,7 @@ macro_rules! int_impl {
         /// additional amount of overflow. This allows for chaining together multiple
         /// multiplications to create "big integers" which represent larger values.
         ///
-        /// If you don't need either `carry`, then you can use [`Self::widening_mul`] instead,
-        /// and if you only need one `carry`, then you can use [`Self::carrying_mul`] instead.
+        /// If you only need one `carry`, then you can use [`Self::carrying_mul`] instead.
         ///
         /// # Examples
         ///
@@ -2831,6 +2861,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_overflowing_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[track_caller]
         pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
             // Using `&` helps LLVM see that it is the same check made in division.
             if intrinsics::unlikely((self == Self::MIN) & (rhs == -1)) {
@@ -2860,6 +2891,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[track_caller]
         pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
             // Using `&` helps LLVM see that it is the same check made in division.
             if intrinsics::unlikely((self == Self::MIN) & (rhs == -1)) {
@@ -2889,6 +2921,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_overflowing_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[track_caller]
         pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
             if intrinsics::unlikely(rhs == -1) {
                 (0, self == Self::MIN)
@@ -2931,7 +2964,7 @@ macro_rules! int_impl {
         /// Negates self, overflowing if this is equal to the minimum value.
         ///
         /// Returns a tuple of the negated version of self along with a boolean indicating whether an overflow
-        /// happened. If `self` is the minimum value (e.g., `i32::MIN` for values of type `i32`), then the
+        /// happened. If `self` is the minimum value (e.g., [`i32::MIN`] for values of type [`i32`]), then the
         /// minimum value will be returned again and `true` will be returned for an overflow happening.
         ///
         /// # Examples
@@ -3001,7 +3034,7 @@ macro_rules! int_impl {
         ///
         /// Returns a tuple of the absolute version of self along with a boolean indicating whether an overflow
         /// happened. If self is the minimum value
-        #[doc = concat!("(e.g., ", stringify!($SelfT), "::MIN for values of type ", stringify!($SelfT), "),")]
+        #[doc = concat!("(e.g., [`", stringify!($SelfT), "::MIN`] for values of type [`", stringify!($SelfT), "`]),")]
         /// then the minimum value will be returned again and true will be returned
         /// for an overflow happening.
         ///
@@ -3039,30 +3072,56 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
-            if exp == 0 {
-                return (1,false);
-            }
             let mut base = self;
             let mut acc: Self = 1;
-            let mut overflown = false;
-            // Scratch space for storing results of overflowing_mul.
-            let mut r;
+            let mut overflow = false;
+            let mut tmp_overflow;
+
+            if intrinsics::is_val_statically_known(base) && base.unsigned_abs().is_power_of_two() {
+                let k = base.unsigned_abs().ilog2();
+                let Some(shift) = k.checked_mul(exp) else {
+                    return (0, true)
+                };
+                let base: Self = if base < 0 && (exp % 2) != 0 { -1 } else { 1 };
+                return (base.unbounded_shl(shift), base.shl_exact(shift).is_none());
+            }
+
+            if exp == 0 {
+                return (1, false);
+            }
+
+            if intrinsics::is_val_statically_known(exp) {
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        (acc, tmp_overflow) = acc.overflowing_mul(base);
+                        overflow |= tmp_overflow;
+                    }
+                    exp /= 2;
+                    (base, tmp_overflow) = base.overflowing_mul(base);
+                    overflow |= tmp_overflow;
+                }
+
+                // since exp!=0, finally the exp must be 1.
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                (acc, tmp_overflow) = acc.overflowing_mul(base);
+                overflow |= tmp_overflow;
+                return (acc, overflow);
+            }
 
             loop {
                 if (exp & 1) == 1 {
-                    r = acc.overflowing_mul(base);
+                    (acc, tmp_overflow) = acc.overflowing_mul(base);
+                    overflow |= tmp_overflow;
                     // since exp!=0, finally the exp must be 1.
                     if exp == 1 {
-                        r.1 |= overflown;
-                        return r;
+                        return (acc, overflow);
                     }
-                    acc = r.0;
-                    overflown |= r.1;
                 }
                 exp /= 2;
-                r = base.overflowing_mul(base);
-                base = r.0;
-                overflown |= r.1;
+                (base, tmp_overflow) = base.overflowing_mul(base);
+                overflow |= tmp_overflow;
             }
         }
 
@@ -3082,47 +3141,19 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        pub const fn pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
-            let mut base = self;
-            let mut acc = 1;
-
-            if intrinsics::is_val_statically_known(exp) {
-                while exp > 1 {
-                    if (exp & 1) == 1 {
-                        acc = acc * base;
-                    }
-                    exp /= 2;
-                    base = base * base;
-                }
-
-                // since exp!=0, finally the exp must be 1.
-                // Deal with the final bit of the exponent separately, since
-                // squaring the base afterwards is not necessary and may cause a
-                // needless overflow.
-                acc * base
+        pub const fn pow(self, exp: u32) -> Self {
+            if intrinsics::overflow_checks() {
+                self.strict_pow(exp)
             } else {
-                // This is faster than the above when the exponent is not known
-                // at compile time. We can't use the same code for the constant
-                // exponent case because LLVM is currently unable to unroll
-                // this loop.
-                loop {
-                    if (exp & 1) == 1 {
-                        acc = acc * base;
-                        // since exp!=0, finally the exp must be 1.
-                        if exp == 1 {
-                            return acc;
-                        }
-                    }
-                    exp /= 2;
-                    base = base * base;
-                }
+                self.wrapping_pow(exp)
             }
         }
 
-        /// Returns the square root of the number, rounded down.
+        /// Returns the integer square root of the number, rounded down.
+        ///
+        /// This function returns the **principal (non-negative) square root**.
+        /// For a given number `n`, although both `x` and `-x` satisfy x<sup>2</sup> = n,
+        /// this function always returns the non-negative value.
         ///
         /// # Panics
         ///
@@ -3160,7 +3191,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is zero or if `self` is `Self::MIN`
+        /// This function will panic if `rhs` is zero or if `self` is [`Self::MIN`]
         /// and `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
@@ -3198,7 +3229,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is zero or if `self` is `Self::MIN` and
+        /// This function will panic if `rhs` is zero or if `self` is [`Self::MIN`] and
         /// `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
@@ -3245,7 +3276,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is zero or if `self` is `Self::MIN`
+        /// This function will panic if `rhs` is zero or if `self` is [`Self::MIN`]
         /// and `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
@@ -3287,7 +3318,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is zero or if `self` is `Self::MIN`
+        /// This function will panic if `rhs` is zero or if `self` is [`Self::MIN`]
         /// and `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
@@ -3424,8 +3455,8 @@ macro_rules! int_impl {
         /// rounded down.
         ///
         /// This method might not be optimized owing to implementation details;
-        /// `ilog2` can produce results more efficiently for base 2, and `ilog10`
-        /// can produce results more efficiently for base 10.
+        /// [`ilog2`][Self::ilog2] can produce results more efficiently for base 2,
+        /// and [`ilog10`](Self::ilog10) can produce results more efficiently for base 10.
         ///
         /// # Panics
         ///
@@ -3534,6 +3565,9 @@ macro_rules! int_impl {
         /// Returns the base 2 logarithm of the number, rounded down.
         ///
         /// Returns `None` if the number is negative or zero.
+        ///
+        /// Note that for non-negative numbers, this is equivalent to
+        /// [`highest_one`](Self::highest_one).
         ///
         /// # Examples
         ///
@@ -3898,7 +3932,7 @@ macro_rules! int_impl {
         #[inline(always)]
         #[rustc_promotable]
         #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
-        #[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on this type")]
+        #[deprecated(since = "1.99.0", note = "replaced by the `MIN` associated constant on this type")]
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_min_value")]
         pub const fn min_value() -> Self {
             Self::MIN
@@ -3912,7 +3946,7 @@ macro_rules! int_impl {
         #[inline(always)]
         #[rustc_promotable]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
-        #[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on this type")]
+        #[deprecated(since = "1.99.0", note = "replaced by the `MAX` associated constant on this type")]
         #[rustc_diagnostic_item = concat!(stringify!($SelfT), "_legacy_fn_max_value")]
         pub const fn max_value() -> Self {
             Self::MAX
@@ -3943,6 +3977,208 @@ macro_rules! int_impl {
             } else {
                 self
             }
+        }
+
+        /// Truncate an integer to an integer of the same size or smaller, preserving the least
+        /// significant bits.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_widen_truncate)]
+        #[doc = concat!("assert_eq!(120i8, 120", stringify!($SelfT), ".truncate());")]
+        #[doc = concat!("assert_eq!(-120i8, (-120", stringify!($SelfT), ").truncate());")]
+        /// assert_eq!(120i8, 376i32.truncate());
+        /// ```
+        #[must_use = "this returns the truncated value and does not modify the original"]
+        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[inline]
+        pub const fn truncate<Target>(self) -> Target
+            where Self: [const] traits::TruncateTarget<Target>
+        {
+            traits::TruncateTarget::internal_truncate(self)
+        }
+
+        /// Truncate an integer to an integer of the same size or smaller, saturating at numeric bounds
+        /// instead of truncating.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_widen_truncate)]
+        #[doc = concat!("assert_eq!(120i8, 120", stringify!($SelfT), ".saturating_truncate());")]
+        #[doc = concat!("assert_eq!(-120i8, (-120", stringify!($SelfT), ").saturating_truncate());")]
+        /// assert_eq!(127i8, 376i32.saturating_truncate());
+        /// assert_eq!(-128i8, (-1000i32).saturating_truncate());
+        /// ```
+        #[must_use = "this returns the truncated value and does not modify the original"]
+        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[inline]
+        pub const fn saturating_truncate<Target>(self) -> Target
+            where Self: [const] traits::TruncateTarget<Target>
+        {
+            traits::TruncateTarget::internal_saturating_truncate(self)
+        }
+
+        /// Truncate an integer to an integer of the same size or smaller, returning `None` if the value
+        /// is outside the bounds of the smaller type.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_widen_truncate)]
+        #[doc = concat!("assert_eq!(Some(120i8), 120", stringify!($SelfT), ".checked_truncate());")]
+        #[doc = concat!("assert_eq!(Some(-120i8), (-120", stringify!($SelfT), ").checked_truncate());")]
+        /// assert_eq!(None, 376i32.checked_truncate::<i8>());
+        /// assert_eq!(None, (-1000i32).checked_truncate::<i8>());
+        /// ```
+        #[must_use = "this returns the truncated value and does not modify the original"]
+        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[inline]
+        pub const fn checked_truncate<Target>(self) -> Option<Target>
+            where Self: [const] traits::TruncateTarget<Target>
+        {
+            traits::TruncateTarget::internal_checked_truncate(self)
+        }
+
+        /// Widen to an integer of the same size or larger, preserving its value.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_widen_truncate)]
+        #[doc = concat!("assert_eq!(120i128, 120i8.widen());")]
+        #[doc = concat!("assert_eq!(-120i128, (-120i8).widen());")]
+        /// ```
+        #[must_use = "this returns the widened value and does not modify the original"]
+        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[inline]
+        pub const fn widen<Target>(self) -> Target
+            where Self: [const] traits::WidenTarget<Target>
+        {
+            traits::WidenTarget::internal_widen(self)
+        }
+
+
+        /// Converts `self` to the target integer type, saturating at the numeric
+        /// bounds instead of overflowing.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_casts)]
+        #[doc = concat!("assert_eq!(i8::MAX, ", stringify!($SelfT), "::MAX.saturating_cast());")]
+        #[doc = concat!("assert_eq!(i8::MIN, ", stringify!($SelfT), "::MIN.saturating_cast());")]
+        #[doc = concat!("assert_eq!(42u8, 42", stringify!($SelfT), ".saturating_cast());")]
+        #[doc = concat!("assert_eq!(0u8, (-42", stringify!($SelfT), ").saturating_cast());")]
+        /// ```
+        #[must_use = "this returns the cast result and does not modify the original"]
+        #[unstable(feature = "integer_casts", issue = "157388")]
+        #[rustc_const_unstable(feature = "integer_casts", issue = "157388")]
+        #[inline(always)]
+        pub const fn saturating_cast<T: [const] BoundedCastFromInt<Self>>(self) -> T {
+            T::saturating_cast_from(self)
+        }
+
+        /// Converts `self` to the target integer type, wrapping around at the
+        /// boundary of the target type.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_casts)]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX as i8, ", stringify!($SelfT), "::MAX.wrapping_cast());")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN as i8, ", stringify!($SelfT), "::MIN.wrapping_cast());")]
+        #[doc = concat!("assert_eq!(42u8, 42", stringify!($SelfT), ".wrapping_cast());")]
+        #[doc = concat!("assert_eq!(u8::MAX - 41, (-42", stringify!($SelfT), ").wrapping_cast());")]
+        /// ```
+        #[must_use = "this returns the cast result and does not modify the original"]
+        #[unstable(feature = "integer_casts", issue = "157388")]
+        #[rustc_const_unstable(feature = "integer_casts", issue = "157388")]
+        #[inline(always)]
+        pub const fn wrapping_cast<T: [const] BoundedCastFromInt<Self>>(self) -> T {
+            T::wrapping_cast_from(self)
+        }
+
+        /// Converts `self` to the target integer type, returning `None` if the value
+        /// is not representable by the target type.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_casts)]
+        #[doc = concat!("assert_eq!(Some(42u8), 42", stringify!($SelfT), ".checked_cast());")]
+        #[doc = concat!("assert_eq!((-42", stringify!($SelfT), ").checked_cast::<u8>(), None);")]
+        /// ```
+        #[must_use = "this returns the cast result and does not modify the original"]
+        #[unstable(feature = "integer_casts", issue = "157388")]
+        #[rustc_const_unstable(feature = "integer_casts", issue = "157388")]
+        #[inline(always)]
+        pub const fn checked_cast<T: [const] CheckedCastFromInt<Self>>(self) -> Option<T> {
+            T::checked_cast_from(self)
+        }
+
+        /// Converts `self` to the target integer type, panicking if the value
+        /// is not representable by the target type.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if the value is not representable by the target type.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_casts)]
+        #[doc = concat!("assert_eq!(42u8, 42", stringify!($SelfT), ".strict_cast());")]
+        /// ```
+        ///
+        /// The following will panic:
+        ///
+        /// ```should_panic
+        /// #![feature(integer_casts)]
+        #[doc = concat!("let _ = (-42", stringify!($SelfT), ").strict_cast::<u8>();")]
+        /// ```
+        #[must_use = "this returns the cast result and does not modify the original"]
+        #[unstable(feature = "integer_casts", issue = "157388")]
+        #[rustc_const_unstable(feature = "integer_casts", issue = "157388")]
+        #[inline(always)]
+        #[track_caller]
+        pub const fn strict_cast<T: [const] CheckedCastFromInt<Self>>(self) -> T {
+            T::strict_cast_from(self)
+        }
+
+        /// Converts `self` to the target integer type, assuming the value is
+        /// representable by the target type.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior if the integer value of `self` is bigger than `T::MAX`,
+        /// or smaller than `T::MIN`, where `T` is the target type.
+        #[must_use = "this returns the cast result and does not modify the original"]
+        #[unstable(feature = "integer_casts", issue = "157388")]
+        #[rustc_const_unstable(feature = "integer_casts", issue = "157388")]
+        #[inline(always)]
+        pub const unsafe fn unchecked_cast<T: [const] CheckedCastFromInt<Self>>(self) -> T {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_cast must fit in the target type"),
+                (
+                    // Check has to be performed up-front because it depends on generic T.
+                    in_bounds: bool = {
+                        let cast_val = self.checked_cast::<T>();
+                        let ret = cast_val.is_some();
+                        core::mem::forget(cast_val); // We don't have const Drop, but we know it's an int.
+                        ret
+                    },
+                ) => in_bounds,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe { T::unchecked_cast_from(self) }
         }
     }
 }

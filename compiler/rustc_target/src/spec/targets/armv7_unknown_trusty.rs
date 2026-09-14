@@ -1,5 +1,5 @@
 use crate::spec::{
-    Abi, Arch, FloatAbi, LinkSelfContainedDefault, Os, PanicStrategy, RelroLevel, Target,
+    Arch, CfgAbi, FloatAbi, LinkSelfContainedDefault, Os, PanicStrategy, RelroLevel, Target,
     TargetMetadata, TargetOptions,
 };
 
@@ -19,7 +19,7 @@ pub(crate) fn target() -> Target {
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
         arch: Arch::Arm,
         options: TargetOptions {
-            abi: Abi::Eabi,
+            cfg_abi: CfgAbi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
             features: "+v7,+thumb2,+soft-float,-neon".into(),
             max_atomic_width: Some(64),

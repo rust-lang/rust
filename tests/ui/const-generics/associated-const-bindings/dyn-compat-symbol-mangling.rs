@@ -15,10 +15,11 @@
 #![crate_name = "sym"]
 
 trait Trait {
-    type const N: usize;
+    #[rustc_always_gca]
+    const N: usize;
 }
 
-#[rustc_symbol_name]
+#[rustc_dump_symbol_name]
 //~^ ERROR symbol-name(_RMCs
 //~| ERROR demangling(<dyn sym[
 //~| ERROR demangling-alt(<dyn sym::Trait<N = 0>>)

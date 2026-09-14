@@ -1,5 +1,4 @@
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 mod bounds {
     trait Trait0 {}
@@ -37,7 +36,6 @@ mod unconstrained_parameter {
     struct S(F);
     impl S {
         reuse Trait::foo { &self.0 }
-        //~^ ERROR type annotations needed
     }
 }
 

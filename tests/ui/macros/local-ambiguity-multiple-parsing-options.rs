@@ -1,3 +1,4 @@
+//@ reference: macro.decl.transcription.lookahead
 fn main() {}
 
 macro_rules! ambiguity {

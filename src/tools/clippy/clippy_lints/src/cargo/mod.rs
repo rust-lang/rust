@@ -9,15 +9,14 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_lint_allowed;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::hir_id::CRATE_HIR_ID;
-use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_session::impl_lint_pass;
+use rustc_hir::CRATE_HIR_ID;
+use rustc_lint::{LateContext, LateLintPass, Lint, impl_lint_pass};
 use rustc_span::DUMMY_SP;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks to see if all common metadata is defined in
-    /// `Cargo.toml`. See: https://rust-lang-nursery.github.io/api-guidelines/documentation.html#cargotoml-includes-all-common-metadata-c-metadata
+    /// Checks to see if common metadata is defined in
+    /// `Cargo.toml`. See: <https://rust-lang.github.io/api-guidelines/documentation.html#cargotoml-includes-all-common-metadata-c-metadata>
     ///
     /// ### Why is this bad?
     /// It will be more difficult for users to discover the
@@ -30,7 +29,6 @@ declare_clippy_lint! {
     /// name = "clippy"
     /// version = "0.0.212"
     /// repository = "https://github.com/rust-lang/rust-clippy"
-    /// readme = "README.md"
     /// license = "MIT OR Apache-2.0"
     /// keywords = ["clippy", "lint", "plugin"]
     /// categories = ["development-tools", "development-tools::cargo-plugins"]
@@ -45,7 +43,6 @@ declare_clippy_lint! {
     /// version = "0.0.212"
     /// description = "A bunch of helpful lints to avoid common pitfalls in Rust"
     /// repository = "https://github.com/rust-lang/rust-clippy"
-    /// readme = "README.md"
     /// license = "MIT OR Apache-2.0"
     /// keywords = ["clippy", "lint", "plugin"]
     /// categories = ["development-tools", "development-tools::cargo-plugins"]
@@ -223,14 +220,14 @@ impl_lint_pass!(Cargo => [
 ]);
 
 pub struct Cargo {
-    allowed_duplicate_crates: FxHashSet<String>,
+    allowed_duplicate_crates: &'static FxHashSet<String>,
     ignore_publish: bool,
 }
 
 impl Cargo {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            allowed_duplicate_crates: conf.allowed_duplicate_crates.iter().cloned().collect(),
+            allowed_duplicate_crates: &conf.allowed_duplicate_crates,
             ignore_publish: conf.cargo_ignore_publish,
         }
     }
@@ -272,7 +269,7 @@ impl LateLintPass<'_> for Cargo {
         {
             match MetadataCommand::new().exec() {
                 Ok(metadata) => {
-                    multiple_crate_versions::check(cx, &metadata, &self.allowed_duplicate_crates);
+                    multiple_crate_versions::check(cx, &metadata, self.allowed_duplicate_crates);
                 },
                 Err(e) => {
                     for lint in WITH_DEPS_LINTS {

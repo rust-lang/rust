@@ -1,0 +1,29 @@
+error[E0507]: cannot move out of dereference of `Wrap<Struct>`
+  --> $DIR/deref-field-pattern-ref-suggestion-issue-146995.rs:7:28
+   |
+LL |     if let Some(mut val) = wrap.field {
+   |                 -------    ^^^^^^^^^^
+   |                 |
+   |                 data moved here because `val` has type `NonCopy`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     if let Some(ref mut val) = wrap.field {
+   |                 +++
+
+error[E0507]: cannot move out of dereference of `Wrap<Struct>`
+  --> $DIR/deref-field-pattern-ref-suggestion-issue-146995.rs:14:28
+   |
+LL |     if let Some(mut val) = (&mut wrap).field {
+   |                 -------    ^^^^^^^^^^^^^^^^^
+   |                 |
+   |                 data moved here because `val` has type `NonCopy`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     if let Some(ref mut val) = (&mut wrap).field {
+   |                 +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

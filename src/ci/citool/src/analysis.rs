@@ -237,17 +237,13 @@ pub fn output_largest_job_duration_changes(
     let mut changes: Vec<Entry> = vec![];
     for (job, metrics) in job_metrics {
         if let Some(parent) = &metrics.parent {
-            let duration_before = parent
-                .invocations
-                .iter()
-                .map(|i| BuildStep::from_invocation(i).duration)
-                .sum::<Duration>();
-            let duration_after = metrics
-                .current
-                .invocations
-                .iter()
-                .map(|i| BuildStep::from_invocation(i).duration)
-                .sum::<Duration>();
+            // Try to get duration from GitHub.
+            // If it fails, treat the duration as zero - it should be obvious in the post-merge
+            // report that something failed in that case.
+            let duration_before =
+                job_info_resolver.get_job_duration(job, parent).unwrap_or(Duration::ZERO);
+            let duration_after =
+                job_info_resolver.get_job_duration(job, &metrics.current).unwrap_or(Duration::ZERO);
             let pct_change = duration_after.as_secs_f64() / duration_before.as_secs_f64();
             let pct_change = pct_change * 100.0;
             // Normalize around 100, to get + for regression and - for improvements

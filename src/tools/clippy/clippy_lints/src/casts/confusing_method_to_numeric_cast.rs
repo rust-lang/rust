@@ -38,7 +38,7 @@ fn get_const_name_and_ty_name(
             return None;
         }
     } else if let Some(impl_id) = cx.tcx.impl_of_assoc(method_def_id)
-        && let Some(ty_name) = get_primitive_ty_name(cx.tcx.type_of(impl_id).instantiate_identity())
+        && let Some(ty_name) = get_primitive_ty_name(cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip())
         && matches!(
             method_name,
             sym::min | sym::max | sym::minimum | sym::maximum | sym::min_value | sym::max_value
@@ -65,7 +65,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
 
     if let ty::FnDef(def_id, generics) = cast_from.kind()
         && let Some(method_name) = cx.tcx.opt_item_name(*def_id)
-        && let Some((const_name, ty_name)) = get_const_name_and_ty_name(cx, method_name, *def_id, generics.as_slice())
+        && let Some((const_name, ty_name)) =
+            get_const_name_and_ty_name(cx, method_name, *def_id, generics.no_bound_vars().unwrap().as_slice())
     {
         let mut applicability = Applicability::MaybeIncorrect;
         let from_snippet = snippet_with_applicability(cx, cast_expr.span, "..", &mut applicability);

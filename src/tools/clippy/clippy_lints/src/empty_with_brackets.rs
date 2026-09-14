@@ -1,6 +1,6 @@
 use clippy_utils::attrs::span_contains_cfg;
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use clippy_utils::span_contains_non_whitespace;
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_errors::Applicability;
@@ -9,9 +9,8 @@ use rustc_hir::def::Res::Def;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node, Pat, PatKind, Path, QPath, Variant, VariantData};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
@@ -192,7 +191,7 @@ impl LateLintPass<'_> for EmptyWithBrackets {
             // Span of the parentheses in variant definition
             let span = variant.span.with_lo(variant.ident.span.hi());
             let span_inner = span
-                .with_lo(SpanRangeExt::trim_start(span, cx).start + BytePos(1))
+                .with_lo(SpanExt::trim_start(span, cx).start + BytePos(1))
                 .with_hi(span.hi() - BytePos(1));
             if span_contains_non_whitespace(cx, span_inner, false) {
                 continue;
@@ -303,7 +302,7 @@ fn check_expr_for_enum_as_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> Opt
         ExprKind::Struct(qpath, ..)
             if let Def(DefKind::Variant, mut def_id) = cx.typeck_results().qpath_res(qpath, expr.hir_id) =>
         {
-            let ty = cx.tcx.type_of(def_id).instantiate_identity();
+            let ty = cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
             if let ty::FnDef(ctor_def_id, _) = ty.kind() {
                 def_id = *ctor_def_id;
             }
@@ -324,7 +323,7 @@ fn check_pat_for_enum_as_function(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option
         PatKind::Struct(qpath, ..)
             if let Def(DefKind::Variant, mut def_id) = cx.typeck_results().qpath_res(&qpath, pat.hir_id) =>
         {
-            let ty = cx.tcx.type_of(def_id).instantiate_identity();
+            let ty = cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
             if let ty::FnDef(ctor_def_id, _) = ty.kind() {
                 def_id = *ctor_def_id;
             }

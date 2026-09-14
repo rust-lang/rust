@@ -174,8 +174,14 @@ fn signature_help_for_call(
     match callable.kind() {
         hir::CallableKind::Function(func) => {
             res.doc = func.docs(db).map(Documentation::into_owned);
+            if func.is_const(db) {
+                format_to!(res.signature, "const ");
+            }
             if func.is_async(db) {
                 format_to!(res.signature, "async ");
+            }
+            if func.is_unsafe(db) {
+                format_to!(res.signature, "unsafe ");
             }
             format_to!(res.signature, "fn {}", func.name(db).display(db, edition));
 
@@ -381,8 +387,7 @@ fn signature_help_for_generics(
                 }
             }
             GenericParam::ConstParam(param) => {
-                if let Some(expr) = param.default(db, display_target).and_then(|konst| konst.expr())
-                {
+                if let Some(expr) = param.default(db, display_target) {
                     format_to!(buf, " = {}", expr);
                 }
             }
@@ -497,7 +502,7 @@ fn signature_help_for_tuple_struct_pat(
     };
     let db = sema.db;
 
-    let fields: Vec<_> = if let PathResolution::Def(ModuleDef::Variant(variant)) = path_res {
+    let fields: Vec<_> = if let PathResolution::Def(ModuleDef::EnumVariant(variant)) = path_res {
         let en = variant.parent_enum(db);
 
         res.doc = en.docs(db).map(Documentation::into_owned);
@@ -530,7 +535,7 @@ fn signature_help_for_tuple_struct_pat(
         pat.syntax(),
         token,
         pat.fields(),
-        fields.into_iter().map(|it| it.ty(db).to_type(db)),
+        fields.into_iter().map(|it| it.ty(db)),
         display_target,
     ))
 }
@@ -623,7 +628,7 @@ fn signature_help_for_record_<'db>(
 
     let db = sema.db;
     let path_res = sema.resolve_path(path)?;
-    if let PathResolution::Def(ModuleDef::Variant(variant)) = path_res {
+    if let PathResolution::Def(ModuleDef::EnumVariant(variant)) = path_res {
         fields = variant.fields(db);
         let en = variant.parent_enum(db);
 
@@ -1975,8 +1980,8 @@ trait Sub: Super + Super {
 fn f() -> impl Sub<$0
             "#,
             expect![[r#"
-                trait Sub<SuperTy = …, SubTy = …>
-                          ^^^^^^^^^^^  ---------
+                trait Sub<SubTy = …, SuperTy = …>
+                          ^^^^^^^^^  -----------
             "#]],
         );
     }
@@ -2662,6 +2667,78 @@ fn main() {
             expect![[r#"
                 async fn conn_mut<F: FnOnce() -> T, T>(f: F) -> Result<T, i32>
                                                        ^^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_const_function() {
+        check(
+            r#"
+//- minicore: sized, fn
+pub const fn foo(x: u32, y: u32) -> u32 { x + y }
+
+fn main() {
+    foo($0)
+}
+            "#,
+            expect![[r#"
+                const fn foo(x: u32, y: u32) -> u32
+                             ^^^^^^  ------
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_unsafe_function() {
+        check(
+            r#"
+//- minicore: sized, fn
+pub unsafe fn foo(x: u32, y: u32) -> u32 { x + y }
+
+fn main() {
+    unsafe { foo($0) }
+}
+            "#,
+            expect![[r#"
+                unsafe fn foo(x: u32, y: u32) -> u32
+                              ^^^^^^  ------
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_const_unsafe_function() {
+        check(
+            r#"
+//- minicore: sized, fn
+pub const unsafe fn foo(x: u32, y: u32) -> u32 { x + y }
+
+fn main() {
+    unsafe { foo($0) }
+}
+            "#,
+            expect![[r#"
+                const unsafe fn foo(x: u32, y: u32) -> u32
+                                    ^^^^^^  ------
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_async_unsafe_function() {
+        check(
+            r#"
+//- minicore: sized, fn, future
+pub async unsafe fn foo(x: u32, y: u32) -> u32 { x + y }
+
+fn main() {
+    unsafe { foo($0) }
+}
+            "#,
+            expect![[r#"
+                async unsafe fn foo(x: u32, y: u32) -> u32
+                                    ^^^^^^  ------
             "#]],
         );
     }

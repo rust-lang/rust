@@ -1,4 +1,3 @@
-tests/ui/lto/all-crates.rs
 tests/ui/lto/debuginfo-lto-alloc.rs
 tests/ui/panic-runtime/lto-unwind.rs
 tests/ui/uninhabited/uninhabited-transparent-return-abi.rs

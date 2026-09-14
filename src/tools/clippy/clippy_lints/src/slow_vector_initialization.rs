@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::matching_root_macro_call;
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{SpanlessEq, get_enclosing_block, is_integer_literal, span_contains_comment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
+use rustc_span::SyntaxContext;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -208,7 +208,7 @@ impl SlowVectorInit {
             .with_lo(vec_alloc.allocation_expr.span.source_callsite().lo());
 
         // If there is no comment in `span_to_replace`, Clippy can automatically fix the code.
-        let app = if span_contains_comment(cx.tcx.sess.source_map(), span_to_replace) {
+        let app = if span_contains_comment(cx, span_to_replace) {
             Applicability::Unspecified
         } else {
             Applicability::MachineApplicable
@@ -265,7 +265,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
         {
             let is_matching_resize = if let InitializedSize::Initialized(size_expr) = self.vec_alloc.size_expr {
                 // If we have a size expression, check that it is equal to what's passed to `resize`
-                SpanlessEq::new(self.cx).eq_expr(len_arg, size_expr)
+                SpanlessEq::new(self.cx).eq_expr(SyntaxContext::root(), len_arg, size_expr)
                     || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.name == sym::capacity)
             } else {
                 self.vec_alloc.size_expr = InitializedSize::Initialized(len_arg);
@@ -287,7 +287,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
         {
             if let InitializedSize::Initialized(size_expr) = self.vec_alloc.size_expr {
                 // Check that len expression is equals to `with_capacity` expression
-                return SpanlessEq::new(self.cx).eq_expr(len_arg, size_expr)
+                return SpanlessEq::new(self.cx).eq_expr(SyntaxContext::root(), len_arg, size_expr)
                     || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.name == sym::capacity);
             }
 

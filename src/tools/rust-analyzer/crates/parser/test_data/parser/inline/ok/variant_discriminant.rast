@@ -23,8 +23,9 @@ SOURCE_FILE
         WHITESPACE " "
         EQ "="
         WHITESPACE " "
-        LITERAL
-          INT_NUMBER "10"
+        CONST_ARG
+          LITERAL
+            INT_NUMBER "10"
       WHITESPACE " "
       R_CURLY "}"
   WHITESPACE "\n"

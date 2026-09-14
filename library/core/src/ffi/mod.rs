@@ -23,19 +23,9 @@ use crate::fmt;
 #[stable(feature = "c_str_module", since = "1.88.0")]
 pub mod c_str;
 
-#[unstable(
-    feature = "c_variadic",
-    issue = "44930",
-    reason = "the `c_variadic` feature has not been properly tested on all supported platforms"
-)]
+mod va_list;
+#[stable(feature = "c_variadic", since = "1.99.0")]
 pub use self::va_list::{VaArgSafe, VaList};
-
-#[unstable(
-    feature = "c_variadic",
-    issue = "44930",
-    reason = "the `c_variadic` feature has not been properly tested on all supported platforms"
-)]
-pub mod va_list;
 
 mod primitives;
 #[stable(feature = "core_ffi_c", since = "1.64.0")]
@@ -91,3 +81,30 @@ impl fmt::Debug for c_void {
 )]
 #[link(name = "/defaultlib:libcmt", modifiers = "+verbatim", cfg(target_feature = "crt-static"))]
 unsafe extern "C" {}
+
+// Used by rustc for checking the definitions of other function with the same symbol names
+//
+// See the `invalid_runtime_symbols_definitions` lint.
+mod runtime_symbols {
+    use crate::ffi::{c_char, c_int, c_void};
+
+    unsafe extern "C" {
+        #[rustc_canonical_symbol]
+        fn memcpy(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void;
+
+        #[rustc_canonical_symbol]
+        fn memmove(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void;
+
+        #[rustc_canonical_symbol]
+        fn memset(s: *mut c_void, c: c_int, n: usize) -> *mut c_void;
+
+        #[rustc_canonical_symbol]
+        fn memcmp(s1: *const c_void, s2: *const c_void, n: usize) -> c_int;
+
+        #[rustc_canonical_symbol]
+        fn bcmp(s1: *const c_void, s2: *const c_void, n: usize) -> c_int;
+
+        #[rustc_canonical_symbol]
+        fn strlen(s: *const c_char) -> usize;
+    }
+}

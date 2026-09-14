@@ -72,6 +72,7 @@ LL |     offset_of!((u8, u8), +1);
    |
 note: while trying to match meta-variable `$fields:expr`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   = note: this macro expects a container type and a (nested) field path, like `offset_of!(Type, field)`
 
 error: offset_of expects dot-separated field and variant names
   --> $DIR/offset-of-tuple.rs:7:26

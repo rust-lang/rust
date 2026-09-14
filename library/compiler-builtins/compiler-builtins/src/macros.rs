@@ -38,15 +38,12 @@
 ///
 /// A quick overview of attributes supported right now are:
 ///
+// FIXME: Add missing attributes.
 /// * `maybe_use_optimized_c_shim` - indicates that the Rust implementation is
 ///   ignored if an optimized C version was compiled.
-/// * `aapcs_on_arm` - forces the ABI of the function to be `"aapcs"` on ARM and
-///   the specified ABI everywhere else.
-/// * `unadjusted_on_win64` - like `aapcs_on_arm` this switches to the
-///   `"unadjusted"` abi on Win64 and the specified abi elsewhere.
 /// * `arm_aeabi_alias` - handles the "aliasing" of various intrinsics on ARM
 ///   their otherwise typical names to other prefixed ones.
-/// * `ppc_alias` - changes the name of the symbol on PowerPC platforms without
+/// * `ppc_name` - changes the name of the symbol on PowerPC platforms without
 ///   changing any other behavior. This is mostly for `f128`, which is `tf` on
 ///   most platforms but `kf` on PowerPC.
 macro_rules! intrinsics {
@@ -108,6 +105,25 @@ macro_rules! intrinsics {
 
         intrinsics!($($rest)*);
     );
+    // Support cfg:
+    (
+        #[cfg($e:meta)]
+        $(#[$($attrs:tt)*])*
+        pub extern $abi:tt fn $name:ident( $($argname:ident: $ty:ty),* ) $(-> $ret:ty)? {
+            $($body:tt)*
+        }
+        $($rest:tt)*
+    ) => (
+        #[cfg($e)]
+        intrinsics! {
+            $(#[$($attrs)*])*
+            pub extern $abi fn $name($($argname: $ty),*) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
 
     // Right now there's a bunch of architecture-optimized intrinsics in the
     // stock compiler-rt implementation. Not all of these have been ported over
@@ -151,68 +167,7 @@ macro_rules! intrinsics {
         intrinsics!($($rest)*);
     );
 
-    // We recognize the `#[aapcs_on_arm]` attribute here and generate the
-    // same intrinsic but force it to have the `"aapcs"` calling convention on
-    // ARM and `"C"` elsewhere.
-    (
-        #[aapcs_on_arm]
-        $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
-            $($body:tt)*
-        }
-
-        $($rest:tt)*
-    ) => (
-        #[cfg(target_arch = "arm")]
-        intrinsics! {
-            $(#[$($attr)*])*
-            pub extern "aapcs" fn $name( $($argname: $ty),* ) $(-> $ret)? {
-                $($body)*
-            }
-        }
-
-        #[cfg(not(target_arch = "arm"))]
-        intrinsics! {
-            $(#[$($attr)*])*
-            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
-                $($body)*
-            }
-        }
-
-        intrinsics!($($rest)*);
-    );
-
-    // Like aapcs above we recognize an attribute for the "unadjusted" abi on
-    // win64 for some methods.
-    (
-        #[unadjusted_on_win64]
-        $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
-            $($body:tt)*
-        }
-
-        $($rest:tt)*
-    ) => (
-        #[cfg(all(any(windows, target_os = "cygwin", all(target_os = "uefi", target_arch = "x86_64")), target_pointer_width = "64"))]
-        intrinsics! {
-            $(#[$($attr)*])*
-            pub extern "unadjusted" fn $name( $($argname: $ty),* ) $(-> $ret)? {
-                $($body)*
-            }
-        }
-
-        #[cfg(not(all(any(windows, target_os = "cygwin", all(target_os = "uefi", target_arch = "x86_64")), target_pointer_width = "64")))]
-        intrinsics! {
-            $(#[$($attr)*])*
-            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
-                $($body)*
-            }
-        }
-
-        intrinsics!($($rest)*);
-    );
-
-    // `arm_aeabi_alias` would conflict with `f16_apple_{arg,ret}_abi` not handled here. Avoid macro ambiguity by combining in a
+    // `arm_aeabi_alias` would conflict with `apple_f16_{arg,ret}_abi` not handled here. Avoid macro ambiguity by combining in a
     // single `#[]`.
     (
         #[apple_f16_arg_abi]
@@ -254,7 +209,7 @@ macro_rules! intrinsics {
             $($body)*
         }
 
-        #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"), not(feature = "mangled-names")))]
+        #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"), feature = "unmangled-names"))]
         mod $name {
             #[unsafe(no_mangle)]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
@@ -290,7 +245,7 @@ macro_rules! intrinsics {
             $($body)*
         }
 
-        #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"), not(feature = "mangled-names")))]
+        #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"), feature = "unmangled-names"))]
         mod $name {
             #[unsafe(no_mangle)]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
@@ -331,7 +286,7 @@ macro_rules! intrinsics {
             $($body)*
         }
 
-        #[cfg(all(target_arch = "arm", not(feature = "mangled-names")))]
+        #[cfg(all(target_arch = "arm", feature = "unmangled-names"))]
         mod $name {
             #[unsafe(no_mangle)]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
@@ -341,7 +296,7 @@ macro_rules! intrinsics {
             }
         }
 
-        #[cfg(all(target_arch = "arm", not(feature = "mangled-names")))]
+        #[cfg(all(target_arch = "arm", feature = "unmangled-names"))]
         mod $alias {
             #[unsafe(no_mangle)]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
@@ -363,9 +318,9 @@ macro_rules! intrinsics {
     );
 
     // PowerPC usually uses `kf` rather than `tf` for `f128`. This is just an easy
-    // way to add an alias on those targets.
+    // way to change the name on those targets.
     (
-        #[ppc_alias = $alias:ident]
+        #[ppc_name = $ppc_name:ident]
         $(#[$($attr:tt)*])*
         pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
             $($body:tt)*
@@ -384,7 +339,7 @@ macro_rules! intrinsics {
         #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
         intrinsics! {
             $(#[$($attr)*])*
-            pub extern $abi fn $alias( $($argname: $ty),* ) $(-> $ret)? {
+            pub extern $abi fn $ppc_name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
             }
         }
@@ -392,7 +347,7 @@ macro_rules! intrinsics {
         intrinsics!($($rest)*);
     );
 
-    // C mem* functions are only generated when the "mem" feature is enabled.
+    // C mem* functions are only exposed via `no_mangle` when the "mem" feature is enabled.
     (
         #[mem_builtin]
         $(#[$($attr:tt)*])*
@@ -407,7 +362,7 @@ macro_rules! intrinsics {
             $($body)*
         }
 
-        #[cfg(all(feature = "mem", not(feature = "mangled-names")))]
+        #[cfg(all(feature = "mem", feature = "unmangled-names"))]
         mod $name {
             $(#[$($attr)*])*
             #[unsafe(no_mangle)]
@@ -435,7 +390,7 @@ macro_rules! intrinsics {
         pub mod $name {
             #[unsafe(naked)]
             $(#[$($attr)*])*
-            #[cfg_attr(not(feature = "mangled-names"), unsafe(no_mangle))]
+            #[cfg_attr(feature = "unmangled-names", unsafe(no_mangle))]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
@@ -470,7 +425,7 @@ macro_rules! intrinsics {
             $($body)*
         }
 
-        #[cfg(not(feature = "mangled-names"))]
+        #[cfg(feature = "unmangled-names")]
         mod $name {
             $(#[$($attr)*])*
             #[unsafe(no_mangle)]

@@ -13,14 +13,16 @@
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_data_structures::unord::UnordSet;
+use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::{TyCtxt, Unnormalized};
 
 use crate::clean;
 use crate::clean::{GenericArgs as PP, WherePredicate as WP};
 use crate::core::DocContext;
 
-pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: ThinVec<WP>) -> ThinVec<WP> {
+pub(crate) fn where_clauses(tcx: TyCtxt<'_>, clauses: ThinVec<WP>) -> ThinVec<WP> {
     // First, partition the where clause into its separate components.
     //
     // We use `FxIndexMap` so that the insertion order is preserved to prevent messing up to
@@ -39,7 +41,7 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: ThinVec<WP>) -> ThinVe
             WP::RegionPredicate { lifetime, bounds } => {
                 lifetimes.push((lifetime, bounds));
             }
-            WP::EqPredicate { lhs, rhs } => equalities.push((lhs, rhs)),
+            WP::ProjectionPredicate { lhs, rhs } => equalities.push((lhs, rhs)),
         }
     }
 
@@ -47,7 +49,7 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: ThinVec<WP>) -> ThinVe
     // general bound predicates.
     equalities.retain(|(lhs, rhs)| {
         let Some((bounds, _)) = tybounds.get_mut(&lhs.self_type) else { return true };
-        merge_bounds(cx, bounds, lhs.trait_.as_ref().unwrap().def_id(), lhs.assoc.clone(), rhs)
+        merge_bounds(tcx, bounds, lhs.trait_.as_ref().unwrap().def_id(), lhs.assoc.clone(), rhs)
     });
 
     // And finally, let's reassemble everything
@@ -60,12 +62,12 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: ThinVec<WP>) -> ThinVe
         bounds,
         bound_params,
     }));
-    clauses.extend(equalities.into_iter().map(|(lhs, rhs)| WP::EqPredicate { lhs, rhs }));
+    clauses.extend(equalities.into_iter().map(|(lhs, rhs)| WP::ProjectionPredicate { lhs, rhs }));
     clauses
 }
 
 pub(crate) fn merge_bounds(
-    cx: &clean::DocContext<'_>,
+    tcx: TyCtxt<'_>,
     bounds: &mut [clean::GenericBound],
     trait_did: DefId,
     assoc: clean::PathSegment,
@@ -79,7 +81,7 @@ pub(crate) fn merge_bounds(
         // If this QPath's trait `trait_did` is the same as, or a supertrait
         // of, the bound's trait `did` then we can keep going, otherwise
         // this is just a plain old equality bound.
-        if !trait_is_same_or_supertrait(cx, trait_ref.trait_.def_id(), trait_did) {
+        if !trait_is_same_or_supertrait(tcx, trait_ref.trait_.def_id(), trait_did) {
             return false;
         }
         let last = trait_ref.trait_.segments.last_mut().expect("segments were empty");
@@ -108,61 +110,84 @@ pub(crate) fn merge_bounds(
     })
 }
 
-fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId, trait_: DefId) -> bool {
+fn trait_is_same_or_supertrait(tcx: TyCtxt<'_>, child: DefId, trait_: DefId) -> bool {
     if child == trait_ {
         return true;
     }
-    let predicates = cx.tcx.explicit_super_predicates_of(child);
-    predicates
+    let clauses = tcx.explicit_super_clauses_of(child);
+    clauses
         .iter_identity_copied()
-        .filter_map(|(pred, _)| Some(pred.as_trait_clause()?.def_id()))
-        .any(|did| trait_is_same_or_supertrait(cx, did, trait_))
+        .map(Unnormalized::skip_norm_wip)
+        .filter_map(|(clause, _)| Some(clause.as_trait_clause()?.def_id()))
+        .any(|did| trait_is_same_or_supertrait(tcx, did, trait_))
 }
 
-pub(crate) fn sized_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Generics) {
-    let mut sized_params = UnordSet::new();
+/// Reconstruct all sizedness bounds on non-`Self` type parameters as they appear in the surface
+/// language given generics that were cleaned from the middle::ty IR.
+///
+/// For example, assuming `T` is a type parameter of the owner of `generics`,
+/// `T: Sized` gets dropped and `T: MetaSized` gets rewritten to `T: ?Sized`.
+pub(crate) fn sizedness_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Generics) {
+    #[derive(PartialEq, Eq, PartialOrd, Ord)]
+    enum Sizedness {
+        PointeeSized,
+        MetaSized,
+        Sized,
+    }
 
-    // In the surface language, all type parameters except `Self` have an
-    // implicit `Sized` bound unless removed with `?Sized`.
-    // However, in the list of where-predicates below, `Sized` appears like a
-    // normal bound: It's either present (the type is sized) or
-    // absent (the type might be unsized) but never *maybe* (i.e. `?Sized`).
-    //
-    // This is unsuitable for rendering.
-    // Thus, as a first step remove all `Sized` bounds that should be implicit.
-    //
-    // Note that associated types also have an implicit `Sized` bound but we
-    // don't actually know the set of associated types right here so that
-    // should be handled when cleaning associated types.
+    let mut type_params: FxIndexMap<_, _> = generics
+        .params
+        .iter()
+        .filter(|param| matches!(param.kind, clean::GenericParamDefKind::Type { .. }))
+        .map(|param| (param.name, Sizedness::PointeeSized))
+        .collect();
+
     generics.where_predicates.retain(|pred| {
         let WP::BoundPredicate { ty: clean::Generic(param), bounds, .. } = pred else {
             return true;
         };
 
-        if bounds.iter().any(|b| b.is_sized_bound(cx)) {
-            sized_params.insert(*param);
-            false
-        } else if bounds.iter().any(|b| b.is_meta_sized_bound(cx)) {
-            // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
-            // is shown and none of the new sizedness traits leak into documentation.
-            false
-        } else {
-            true
+        // We require the caller to pass generics that were cleaned from the middle::ty IR.
+        // We know that that cleaning process never generates more than one bound per predicate.
+        let [bound] = &*bounds else { unreachable!() };
+
+        let clean::GenericBound::TraitBound(trait_ref, hir::TraitBoundModifiers::NONE) = bound
+        else {
+            return true;
+        };
+
+        // This transformation is only valid on type parameters defined on the closest item.
+        // If the parameter was defined by the parent item we know that the sizedness bound
+        // *has* to be user-written in which case we have to preserve it as is.
+        let Some(param_sizedness) = type_params.get_mut(param) else { return true };
+
+        let sizedness = match cx.tcx.as_lang_item(trait_ref.trait_.def_id()) {
+            Some(LangItem::Sized) => Sizedness::Sized,
+            Some(LangItem::MetaSized) => Sizedness::MetaSized,
+            _ => return true,
+        };
+
+        if sizedness > *param_sizedness {
+            *param_sizedness = sizedness;
         }
+
+        false
     });
 
-    // As a final step, go through the type parameters again and insert a
-    // `?Sized` bound for each one we didn't find to be `Sized`.
-    for param in &generics.params {
-        if let clean::GenericParamDefKind::Type { .. } = param.kind
-            && !sized_params.contains(&param.name)
-        {
-            generics.where_predicates.push(WP::BoundPredicate {
-                ty: clean::Type::Generic(param.name),
-                bounds: vec![clean::GenericBound::maybe_sized(cx)],
-                bound_params: Vec::new(),
-            })
-        }
+    for (param, sizedness) in type_params {
+        generics.where_predicates.push(WP::BoundPredicate {
+            ty: clean::Type::Generic(param),
+            bounds: vec![match sizedness {
+                // FIXME(sized-hierarchy, #157247): Actually render `MetaSized` as `MetaSized` and
+                // `PointeeSized` as `PointeeSized` instead of `?Sized` if the crate enables
+                // `sized_hierarchy` and doesn't set `#![doc(dont_leak…)]`.
+                Sizedness::MetaSized | Sizedness::PointeeSized => {
+                    clean::GenericBound::maybe_sized(cx)
+                }
+                Sizedness::Sized => continue,
+            }],
+            bound_params: Vec::new(),
+        });
     }
 }
 

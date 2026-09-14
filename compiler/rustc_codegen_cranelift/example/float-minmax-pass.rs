@@ -33,24 +33,24 @@ fn main() {
     let n = f32x4([nan, nan, nan, nan]);
 
     unsafe {
-        let min0 = simd_fmin(x, y);
-        let min1 = simd_fmin(y, x);
+        let min0 = simd_minimum_number_nsz(x, y);
+        let min1 = simd_minimum_number_nsz(y, x);
         assert_eq!(min0.into_array(), min1.into_array());
         let e = f32x4([1.0, 1.0, 3.0, 3.0]);
         assert_eq!(min0.into_array(), e.into_array());
-        let minn = simd_fmin(x, n);
+        let minn = simd_minimum_number_nsz(x, n);
         assert_eq!(minn.into_array(), x.into_array());
-        let minn = simd_fmin(y, n);
+        let minn = simd_minimum_number_nsz(y, n);
         assert_eq!(minn.into_array(), y.into_array());
 
-        let max0 = simd_fmax(x, y);
-        let max1 = simd_fmax(y, x);
+        let max0 = simd_maximum_number_nsz(x, y);
+        let max1 = simd_maximum_number_nsz(y, x);
         assert_eq!(max0.into_array(), max1.into_array());
         let e = f32x4([2.0, 2.0, 4.0, 4.0]);
         assert_eq!(max0.into_array(), e.into_array());
-        let maxn = simd_fmax(x, n);
+        let maxn = simd_maximum_number_nsz(x, n);
         assert_eq!(maxn.into_array(), x.into_array());
-        let maxn = simd_fmax(y, n);
+        let maxn = simd_maximum_number_nsz(y, n);
         assert_eq!(maxn.into_array(), y.into_array());
     }
 }

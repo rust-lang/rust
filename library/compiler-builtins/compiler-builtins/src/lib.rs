@@ -1,10 +1,12 @@
 #![cfg_attr(feature = "compiler-builtins", compiler_builtins)]
-#![cfg_attr(all(target_family = "wasm"), feature(wasm_numeric_instr))]
+#![no_builtins]
+#![no_std]
+//
 #![feature(abi_custom)]
-#![feature(abi_unadjusted)]
 #![feature(asm_experimental_arch)]
 #![feature(cfg_target_has_atomic)]
 #![feature(compiler_builtins)]
+#![feature(complex_numbers)]
 #![feature(core_intrinsics)]
 #![feature(linkage)]
 #![feature(repr_simd)]
@@ -12,17 +14,13 @@
 #![feature(rustc_attrs)]
 #![cfg_attr(f16_enabled, feature(f16))]
 #![cfg_attr(f128_enabled, feature(f128))]
-#![no_builtins]
-#![no_std]
+#![cfg_attr(all(target_family = "wasm"), feature(wasm_numeric_instr))]
 #![allow(unused_features)]
 #![allow(internal_features)]
 // `mem::swap` cannot be used because it may generate references to memcpy in unoptimized code.
 #![allow(clippy::manual_swap)]
 // Support compiling on both stage0 and stage1 which may differ in supported stable features.
 #![allow(stable_features)]
-// By default, disallow this as it is forbidden in edition 2024. There is a lot of unsafe code to
-// be migrated, however, so exceptions exist.
-#![warn(unsafe_op_in_unsafe_fn)]
 
 // We disable #[no_mangle] for tests so that we can verify the test results
 // against the native compiler-rt implementations of the builtins.
@@ -47,6 +45,9 @@ pub mod mem;
 pub mod sync;
 
 // `libm` expects its `support` module to be available in the crate root.
+#[cfg(feature = "unstable-public-internals")]
+pub use math::libm_math::support;
+#[cfg(not(feature = "unstable-public-internals"))]
 use math::libm_math::support;
 
 #[cfg(target_arch = "arm")]
@@ -59,7 +60,10 @@ pub mod aarch64;
 // in the builtins-test tests. So this is a way of enabling the module during testing.
 #[cfg(all(
     target_arch = "aarch64",
-    any(target_feature = "outline-atomics", feature = "mangled-names")
+    any(
+        target_feature = "outline-atomics",
+        feature = "unstable-public-internals"
+    )
 ))]
 pub mod aarch64_outline_atomics;
 
@@ -68,9 +72,6 @@ pub mod avr;
 
 #[cfg(target_arch = "hexagon")]
 pub mod hexagon;
-
-#[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
-pub mod riscv;
 
 #[cfg(target_arch = "x86")]
 pub mod x86;

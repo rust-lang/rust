@@ -1,18 +1,15 @@
 //! Checks the licenses of third-party dependencies.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::{Display, Formatter};
-use std::fs::{File, read_dir};
-use std::io::Write;
+use std::fs::{self, read_dir};
+use std::io;
 use std::path::Path;
 
 use cargo_metadata::semver::Version;
 use cargo_metadata::{Metadata, Package, PackageId};
 
 use crate::diagnostics::{RunningCheck, TidyCtx};
-
-#[path = "../../../bootstrap/src/utils/proc_macro_deps.rs"]
-mod proc_macro_deps;
 
 #[derive(Clone, Copy)]
 struct ListLocation {
@@ -38,6 +35,7 @@ macro_rules! location {
 #[rustfmt::skip]
 const LICENSES: &[&str] = &[
     // tidy-alphabetical-start
+    "(MIT OR Apache-2.0) AND MIT",
     "0BSD OR MIT OR Apache-2.0",                           // adler2 license
     "Apache-2.0 / MIT",
     "Apache-2.0 OR ISC OR MIT",
@@ -130,6 +128,12 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
             PERMITTED_STDLIB_DEPENDENCIES,
             PERMITTED_STDLIB_DEPS_LOCATION,
         )),
+        submodules: &[],
+    },
+    WorkspaceInfo {
+        path: "library/stdarch",
+        exceptions: EXCEPTIONS_STDARCH,
+        crates_and_deps: None,
         submodules: &[],
     },
     WorkspaceInfo {
@@ -236,8 +240,18 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
 
 const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
     // tidy-alphabetical-start
+    ("aws-lc-rs", "ISC AND (Apache-2.0 OR ISC)"),
+    (
+        "aws-lc-sys",
+        "ISC AND (Apache-2.0 OR ISC) AND Apache-2.0 AND MIT AND BSD-3-Clause AND (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0)",
+    ),
+    ("brotli", "BSD-3-Clause AND MIT"),
+    ("fast-srgb8", "MIT OR Apache-2.0 OR CC0-1.0"),
     ("inferno", "CDDL-1.0"),
     ("option-ext", "MPL-2.0"),
+    ("wasite", "Apache-2.0 OR BSL-1.0 OR MIT"),
+    ("webpki-root-certs", "CDLA-Permissive-2.0"),
+    ("whoami", "Apache-2.0 OR BSL-1.0 OR MIT"),
     // tidy-alphabetical-end
 ];
 
@@ -253,6 +267,8 @@ const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
     ("mdbook-summary", "MPL-2.0"),
     // tidy-alphabetical-end
 ];
+
+const EXCEPTIONS_STDARCH: ExceptionList = &[];
 
 const EXCEPTIONS_CRANELIFT: ExceptionList = &[];
 
@@ -321,7 +337,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "equivalent",
     "errno",
     "expect-test",
-    "fallible-iterator", // dependency of `thorin`
     "fastrand",
     "find-msvc-tools",
     "flate2",
@@ -336,11 +351,10 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "gimli",
     "gsgdt",
     "hashbrown",
-    "icu_collections",
     "icu_list",
-    "icu_locale",
     "icu_locale_core",
-    "icu_locale_data",
+    "icu_locale_fallback",
+    "icu_locale_fallback_data",
     "icu_provider",
     "ident_case",
     "indexmap",
@@ -351,9 +365,11 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "itoa",
     "jiff",
     "jiff-static",
+    "jiff-tzdb",
+    "jiff-tzdb-platform",
     "jobserver",
     "lazy_static",
-    "leb128",
+    "leb128fmt",
     "libc",
     "libloading",
     "linux-raw-sys",
@@ -386,7 +402,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "ppv-lite86",
     "proc-macro-hack",
     "proc-macro2",
-    "psm",
     "pulldown-cmark",
     "pulldown-cmark-escape",
     "punycode",
@@ -416,6 +431,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "scoped-tls",
     "scopeguard",
     "self_cell",
+    "semver",
     "serde",
     "serde_core",
     "serde_derive",
@@ -429,7 +445,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "simd-adler32",
     "smallvec",
     "stable_deref_trait",
-    "stacker",
     "static_assertions",
     "strsim",
     "syn",
@@ -483,16 +498,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "windows-result",
     "windows-strings",
     "windows-sys",
-    "windows-targets",
     "windows-threading",
-    "windows_aarch64_gnullvm",
-    "windows_aarch64_msvc",
-    "windows_i686_gnu",
-    "windows_i686_gnullvm",
-    "windows_i686_msvc",
-    "windows_x86_64_gnu",
-    "windows_x86_64_gnullvm",
-    "windows_x86_64_msvc",
     "wit-bindgen-rt@0.39.0", // pinned to a specific version due to using a binary blob: <https://github.com/rust-lang/rust/pull/136395#issuecomment-2692769062>
     "writeable",
     "yoke",
@@ -504,6 +510,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "zerotrie",
     "zerovec",
     "zerovec-derive",
+    "zlib-rs",
     // tidy-alphabetical-end
 ];
 
@@ -517,6 +524,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "cfg-if",
     "compiler_builtins",
     "dlmalloc",
+    "find-msvc-tools", // via cc
     "foldhash", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "fortanix-sgx-abi",
     "getopts",
@@ -538,18 +546,11 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "shlex",
     "unwinding",
     "vex-sdk",
-    "wasi",
+    "wasip1",
+    "wasip2",
+    "wasip3",
     "windows-link",
-    "windows-sys",
-    "windows-targets",
-    "windows_aarch64_gnullvm",
-    "windows_aarch64_msvc",
-    "windows_i686_gnu",
-    "windows_i686_gnullvm",
-    "windows_i686_msvc",
-    "windows_x86_64_gnu",
-    "windows_x86_64_gnullvm",
-    "windows_x86_64_msvc",
+    "windows-sys@0.61.100", // Enforce the usage of our dummy windows-sys patch. Keep version in sync.
     "wit-bindgen",
     // tidy-alphabetical-end
 ];
@@ -582,7 +583,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-srcgen",
     "crc32fast",
     "equivalent",
-    "fallible-iterator",
+    "fnv",
     "foldhash",
     "gimli",
     "hashbrown",
@@ -594,6 +595,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "log",
     "mach2",
     "memchr",
+    "memmap2",
     "object",
     "proc-macro2",
     "quote",
@@ -608,8 +610,8 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "syn",
     "target-lexicon",
     "unicode-ident",
+    "wasmtime-internal-core",
     "wasmtime-internal-jit-icache-coherence",
-    "wasmtime-internal-math",
     "windows-link",
     "windows-sys",
     "windows-targets",
@@ -688,6 +690,9 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
 
 /// Ensure the list of proc-macro crate transitive dependencies is up to date
 fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, check: &mut RunningCheck) {
+    if std::env::var("RUSTC").is_err() {
+        panic!("tidy must be run under bootstrap (./x test tidy), not as a standalone command");
+    }
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.cargo_path(cargo)
         .manifest_path(root.join("Cargo.toml"))
@@ -702,53 +707,65 @@ fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, check: &mut
     }
     // Remove the proc-macro crates themselves
     proc_macro_deps.retain(|pkg| !is_proc_macro_pkg(&metadata[pkg]));
+    // Sort and deduplicate the crate names.
+    // Cargo package names may contain `-`, but will normalize these to `_` before passing to rustc.
+    // As bootstrap parses the `--crate-name` flag, use the name of the actual lib target which has
+    // been normalized.
+    let proc_macro_deps = proc_macro_deps
+        .into_iter()
+        .filter_map(|dep| {
+            metadata[dep].targets.iter().find_map(|target| target.is_lib().then_some(&target.name))
+        })
+        .collect::<BTreeSet<_>>();
 
-    let proc_macro_deps: HashSet<_> =
-        proc_macro_deps.into_iter().map(|dep| metadata[dep].name.as_ref()).collect();
-    let expected = proc_macro_deps::CRATES.iter().copied().collect::<HashSet<_>>();
+    let expected = {
+        use std::fmt::Write;
 
-    let needs_blessing = proc_macro_deps.difference(&expected).next().is_some()
-        || expected.difference(&proc_macro_deps).next().is_some();
-
-    if needs_blessing && bless {
-        let mut proc_macro_deps: Vec<_> = proc_macro_deps.into_iter().collect();
-        proc_macro_deps.sort();
-        let mut file = File::create(root.join("src/bootstrap/src/utils/proc_macro_deps.rs"))
-            .expect("`proc_macro_deps` should exist");
-        writeln!(
-            &mut file,
-            "/// Do not update manually - use `./x.py test tidy --bless`
+        const HEADER: &str = "\
+/// Do not update manually - use `./x.py test tidy --bless`
 /// Holds all direct and indirect dependencies of proc-macro crates in tree.
 /// See <https://github.com/rust-lang/rust/issues/134863>
 pub static CRATES: &[&str] = &[
-    // tidy-alphabetical-start"
-        )
-        .unwrap();
-        for dep in proc_macro_deps {
-            writeln!(&mut file, "    {dep:?},").unwrap();
-        }
-        writeln!(
-            &mut file,
-            "    // tidy-alphabetical-end
-];"
-        )
-        .unwrap();
-    } else {
-        let mut error_found = false;
+    // tidy-alphabetical-start
+";
+        const FOOTER: &str = "    // tidy-alphabetical-end
+];
+";
 
-        for missing in proc_macro_deps.difference(&expected) {
-            error_found = true;
-            check.error(format!(
-                "proc-macro crate dependency `{missing}` is not registered in `src/bootstrap/src/utils/proc_macro_deps.rs`",
-            ));
+        let mut buf = String::with_capacity(4096);
+        buf.push_str(HEADER);
+        for dep in proc_macro_deps {
+            writeln!(buf, "    {dep:?},").unwrap();
         }
-        for extra in expected.difference(&proc_macro_deps) {
-            error_found = true;
-            check.error(format!(
-                "`{extra}` is registered in `src/bootstrap/src/utils/proc_macro_deps.rs`, but is not a proc-macro crate dependency",
-            ));
+        buf.push_str(FOOTER);
+        buf
+    };
+
+    const PROC_MACRO_DEPS_RS: &str = "src/bootstrap/src/utils/proc_macro_deps.rs";
+    let proc_macro_deps_rs_path = &root.join(PROC_MACRO_DEPS_RS);
+    let actual = match fs::read_to_string(proc_macro_deps_rs_path) {
+        Ok(actual) => actual,
+        Err(e) => {
+            if e.kind() == io::ErrorKind::NotFound {
+                check.error(format!(
+                    "`{PROC_MACRO_DEPS_RS}` not found; has it been moved or renamed?"
+                ));
+            } else {
+                check.error(format!("`{PROC_MACRO_DEPS_RS}` could not be read: {e:?}"));
+            }
+            return;
         }
-        if error_found {
+    };
+
+    if actual != expected {
+        if bless {
+            fs::write(proc_macro_deps_rs_path, &expected).unwrap();
+        } else {
+            let diff = similar::TextDiff::from_lines(&actual, &expected);
+            let mut unified = diff.unified_diff();
+            unified.header(PROC_MACRO_DEPS_RS, "(expected)");
+
+            check.error(format!("`{PROC_MACRO_DEPS_RS}` is not up-to-date:\n{unified}"));
             check.message("Run `./x.py test tidy --bless` to regenerate the list");
         }
     }
@@ -880,10 +897,7 @@ fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, check: &mut Runn
             continue;
         }
 
-        // Skip the `wasi` crate here which the standard library explicitly
-        // depends on two version of (one for the `wasm32-wasip1` target and
-        // another for the `wasm32-wasip2` target).
-        if pkg.name.to_string() != "wasi" && !seen_pkgs.insert(&*pkg.name) {
+        if !seen_pkgs.insert(&*pkg.name) {
             check.error(format!(
                 "duplicate package `{}` is not allowed for the standard library",
                 pkg.name

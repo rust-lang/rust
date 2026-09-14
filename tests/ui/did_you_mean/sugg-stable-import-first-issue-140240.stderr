@@ -10,9 +10,9 @@ LL + use std::collections::btree_map::Range;
    |
 LL + use std::collections::btree_set::Range;
    |
-LL + use std::ops::Range;
-   |
 LL + use std::range::Range;
+   |
+LL + use std::range::legacy::Range;
    |
 
 error: aborting due to 1 previous error

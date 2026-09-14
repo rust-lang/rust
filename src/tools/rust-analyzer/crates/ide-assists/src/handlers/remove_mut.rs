@@ -17,12 +17,12 @@ use crate::{AssistContext, AssistId, Assists};
 //     fn feed(&self, amount: u32) {}
 // }
 // ```
-pub(crate) fn remove_mut(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn remove_mut(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let mut_token = ctx.find_token_syntax_at_offset(T![mut])?;
 
     let target = mut_token.text_range();
     acc.add(AssistId::refactor("remove_mut"), "Remove `mut` keyword", target, |builder| {
-        let mut editor = builder.make_editor(&mut_token.parent().unwrap());
+        let editor = builder.make_editor(&mut_token.parent().unwrap());
         match mut_token.next_token() {
             Some(it) if it.kind() == SyntaxKind::WHITESPACE => editor.delete(it),
             _ => (),

@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 #![warn(clippy::cast_lossless)]
 
 type U8 = u8;

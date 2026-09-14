@@ -1,8 +1,8 @@
 // tidy-alphabetical-start
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(file_buffered)]
 #![feature(negative_impls)]
-#![feature(string_from_utf8_lossy_owned)]
+#![feature(option_into_flat_iter)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
@@ -17,16 +17,18 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use rustc_abi::Size;
+use rustc_crate_store::{self as cstore, CrateSource};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::CRATE_HIR_ID;
-use rustc_hir::attrs::{CfgEntry, NativeLibKind, WindowsSubsystemKind};
+use rustc_hir::attrs::{CfgEntry, WindowsSubsystemKind};
 use rustc_hir::def_id::CrateNum;
-use rustc_lint_defs::builtin::LINKER_INFO;
+use rustc_lint_defs::builtin::{LINKER_INFO, LINKER_MESSAGES};
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_middle::lint::LevelAndSource;
+use rustc_middle::lint::StableLevelSpec;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -35,10 +37,9 @@ use rustc_middle::util::Providers;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
-use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
-use rustc_session::cstore::{self, CrateSource};
-use rustc_session::lint::builtin::LINKER_MESSAGES;
-use rustc_span::Symbol;
+use rustc_session::config::{OutputFilenames, OutputType};
+use rustc_span::{Span, Symbol};
+use rustc_structures::{CrateType, NativeLibKind};
 
 pub mod assert_module_sources;
 pub mod back;
@@ -46,7 +47,7 @@ pub mod base;
 pub mod codegen_attrs;
 pub mod common;
 pub mod debuginfo;
-pub mod errors;
+pub mod diagnostics;
 pub mod meth;
 pub mod mir;
 pub mod mono_item;
@@ -95,24 +96,20 @@ impl<M> ModuleCodegen<M> {
         emit_asm: bool,
         emit_ir: bool,
         outputs: &OutputFilenames,
-        invocation_temp: Option<&str>,
     ) -> CompiledModule {
-        let object = emit_obj
-            .then(|| outputs.temp_path_for_cgu(OutputType::Object, &self.name, invocation_temp));
-        let dwarf_object =
-            emit_dwarf_obj.then(|| outputs.temp_path_dwo_for_cgu(&self.name, invocation_temp));
-        let bytecode = emit_bc
-            .then(|| outputs.temp_path_for_cgu(OutputType::Bitcode, &self.name, invocation_temp));
-        let assembly = emit_asm
-            .then(|| outputs.temp_path_for_cgu(OutputType::Assembly, &self.name, invocation_temp));
-        let llvm_ir = emit_ir.then(|| {
-            outputs.temp_path_for_cgu(OutputType::LlvmAssembly, &self.name, invocation_temp)
-        });
+        let object = emit_obj.then(|| outputs.temp_path_for_cgu(OutputType::Object, &self.name));
+        let dwarf_object = emit_dwarf_obj.then(|| outputs.temp_path_dwo_for_cgu(&self.name));
+        let bytecode = emit_bc.then(|| outputs.temp_path_for_cgu(OutputType::Bitcode, &self.name));
+        let assembly =
+            emit_asm.then(|| outputs.temp_path_for_cgu(OutputType::Assembly, &self.name));
+        let llvm_ir =
+            emit_ir.then(|| outputs.temp_path_for_cgu(OutputType::LlvmAssembly, &self.name));
 
         CompiledModule {
             name: self.name,
             kind: self.kind,
             object,
+            global_asm_object: None,
             dwarf_object,
             bytecode,
             assembly,
@@ -127,6 +124,7 @@ pub struct CompiledModule {
     pub name: String,
     pub kind: ModuleKind,
     pub object: Option<PathBuf>,
+    pub global_asm_object: Option<PathBuf>,
     pub dwarf_object: Option<PathBuf>,
     pub bytecode: Option<PathBuf>,
     pub assembly: Option<PathBuf>, // --emit=asm
@@ -164,15 +162,51 @@ pub enum ModuleKind {
 }
 
 bitflags::bitflags! {
+    /// This previously had an `UNALIGNED` variant, but that should never be done via flags.
+    /// If you want something to be unaligned, see [`mir::place::PlaceRef::unaligned`].
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct MemFlags: u8 {
         const VOLATILE = 1 << 0;
         const NONTEMPORAL = 1 << 1;
-        const UNALIGNED = 1 << 2;
+        /// Indicates that writing through the stored pointer is undefined behavior.
+        /// Only valid on stores of pointers, or pairs where the first element is a pointer.
+        /// In the latter case, the flag only applies to the first element of the pair.
+        const CAPTURES_READ_ONLY = 1 << 3;
     }
 }
 
-// This is the same as `rustc_session::cstore::NativeLib`, except:
+#[derive(Debug, Copy, Clone)]
+pub struct RetagInfo<V> {
+    /// The size of the initial range within the allocation that is
+    /// associated with the permission created by the retag.
+    pub size: Size,
+    /// Encoded type information used to determine the kind of permission
+    /// created by the retag.
+    pub flags: RetagFlags,
+    /// A pointer to a constant array of (offset, size) pairs describing
+    /// the ranges covered by `UnsafeCell` within the pointee type.
+    pub im_layout: V,
+    /// A pointer to a constant array of (offset, size) pairs describing
+    /// the ranges covered by `UnsafePinned` within the pointee type.
+    pub pin_layout: V,
+}
+
+bitflags::bitflags! {
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub struct RetagFlags: u8 {
+        /// If this is a function-entry retag.
+        const IS_PROTECTED = 1 << 0;
+        /// If this is a mutable reference or a `Box`.
+        const IS_MUTABLE = 1 << 1;
+        /// If this is a `Box`.
+        const IS_BOX = 1 << 2;
+        /// If the pointee type is `Freeze`
+        const IS_FREEZE = 1 << 3;
+    }
+}
+
+// This is the same as `rustc_crate_store::NativeLib`, except:
 // - (important) the `foreign_module` field is missing, because it contains a `DefId`, which can't
 //   be encoded with `FileEncoder`.
 // - (less important) the `verbatim` field is a `bool` rather than an `Option<bool>`, because here
@@ -181,7 +215,6 @@ bitflags::bitflags! {
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Symbol,
-    pub filename: Option<Symbol>,
     pub cfg: Option<CfgEntry>,
     pub verbatim: bool,
     pub dll_imports: Vec<cstore::DllImport>,
@@ -191,13 +224,47 @@ impl From<&cstore::NativeLib> for NativeLib {
     fn from(lib: &cstore::NativeLib) -> Self {
         NativeLib {
             kind: lib.kind,
-            filename: lib.filename,
             name: lib.name,
             cfg: lib.cfg.clone(),
             verbatim: lib.verbatim.unwrap_or(false),
             dll_imports: lib.dll_imports.clone(),
         }
     }
+}
+
+/// A symbol to make visible from a linked artifact.
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct SymbolExport {
+    /// Name to make visible from the linked artifact.
+    pub name: String,
+    /// Kind of symbol, used for target-specific export directives and name decoration.
+    pub kind: SymbolExportKind,
+    /// Name of the symbol as seen by the linker, when it differs from `name`.
+    pub link_name: Option<String>,
+}
+
+impl SymbolExport {
+    pub fn new(name: String, kind: SymbolExportKind) -> SymbolExport {
+        SymbolExport { name, kind, link_name: None }
+    }
+
+    pub fn with_link_name(name: String, kind: SymbolExportKind, link_name: String) -> SymbolExport {
+        let link_name = if link_name == name { None } else { Some(link_name) };
+        SymbolExport { name, kind, link_name }
+    }
+}
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct EiiLinkageImplInfo {
+    pub span: Span,
+    pub impl_crate: CrateNum,
+}
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct EiiLinkageInfo {
+    pub name: Symbol,
+    pub impls: Vec<EiiLinkageImplInfo>,
+    pub default_impl: Option<EiiLinkageImplInfo>,
 }
 
 /// Misc info we load from metadata to persist beyond the tcx.
@@ -214,7 +281,7 @@ pub struct CrateInfo {
     pub target_cpu: String,
     pub target_features: Vec<String>,
     pub crate_types: Vec<CrateType>,
-    pub exported_symbols: UnordMap<CrateType, Vec<(String, SymbolExportKind)>>,
+    pub exported_symbols: UnordMap<CrateType, Vec<SymbolExport>>,
     pub linked_symbols: FxIndexMap<CrateType, Vec<(String, SymbolExportKind)>>,
     pub local_crate_name: Symbol,
     pub compiler_builtins: Option<CrateNum>,
@@ -226,20 +293,24 @@ pub struct CrateInfo {
     pub used_crate_source: UnordMap<CrateNum, Arc<CrateSource>>,
     pub used_crates: Vec<CrateNum>,
     pub dependency_formats: Arc<Dependencies>,
+    /// EII implementations used by the link-time duplicate check, so `-Zno-link` can serialize the data needed by a
+    /// later `-Zlink-only` invocation.
+    pub eii_linkage: Vec<EiiLinkageInfo>,
     pub windows_subsystem: Option<WindowsSubsystemKind>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
-    pub lint_levels: CodegenLintLevels,
+    pub lint_level_specs: CodegenLintLevelSpecs,
     pub metadata_symbol: String,
+    pub symbol_rename_suffix: String,
+    pub each_linked_rlib_file_for_lto: Vec<PathBuf>,
+    pub exported_symbols_for_lto: Vec<String>,
 }
 
-/// Target-specific options that get set in `cfg(...)`.
+/// Target-specific options that get set in `sess`/`cfg(...)`.
 ///
 /// RUSTC_SPECIFIC_FEATURES should be skipped here, those are handled outside codegen.
 pub struct TargetConfig {
-    /// Options to be set in `cfg(target_features)`.
-    pub target_features: Vec<Symbol>,
-    /// Options to be set in `cfg(target_features)`, but including unstable features.
-    pub unstable_target_features: Vec<Symbol>,
+    /// Options to be set in `sess.internal_target_features`.
+    pub internal_target_features: UnordSet<Symbol>,
     /// Option for `cfg(target_has_reliable_f16)`, true if `f16` basic arithmetic works.
     pub has_reliable_f16: bool,
     /// Option for `cfg(target_has_reliable_f16_math)`, true if `f16` math calls work.
@@ -256,7 +327,7 @@ pub struct CompiledModules {
     pub allocator_module: Option<CompiledModule>,
 }
 
-pub enum CodegenErrors {
+pub enum CodegenError {
     WrongFileType,
     EmptyVersionNumber,
     EncodingVersionMismatch { version_array: String, rlink_version: u32 },
@@ -270,23 +341,6 @@ pub fn provide(providers: &mut Providers) {
     crate::target_features::provide(&mut providers.queries);
     crate::codegen_attrs::provide(&mut providers.queries);
     providers.queries.global_backend_features = |_tcx: TyCtxt<'_>, ()| vec![];
-}
-
-/// Checks if the given filename ends with the `.rcgu.o` extension that `rustc`
-/// uses for the object files it generates.
-pub fn looks_like_rust_object_file(filename: &str) -> bool {
-    let path = Path::new(filename);
-    let ext = path.extension().and_then(|s| s.to_str());
-    if ext != Some(OutputType::Object.extension()) {
-        // The file name does not end with ".o", so it can't be an object file.
-        return false;
-    }
-
-    // Strip the ".o" at the end
-    let ext2 = path.file_stem().and_then(|s| Path::new(s).extension()).and_then(|s| s.to_str());
-
-    // Check if the "inner" extension
-    ext2 == Some(RUST_CGU_EXT)
 }
 
 const RLINK_VERSION: u32 = 1;
@@ -317,32 +371,32 @@ impl CompiledModules {
     pub fn deserialize_rlink(
         sess: &Session,
         data: Vec<u8>,
-    ) -> Result<(Self, CrateInfo, EncodedMetadata, OutputFilenames), CodegenErrors> {
+    ) -> Result<(Self, CrateInfo, EncodedMetadata, OutputFilenames), CodegenError> {
         // The Decodable machinery is not used here because it panics if the input data is invalid
         // and because its internal representation may change.
         if !data.starts_with(RLINK_MAGIC) {
-            return Err(CodegenErrors::WrongFileType);
+            return Err(CodegenError::WrongFileType);
         }
         let data = &data[RLINK_MAGIC.len()..];
         if data.len() < 4 {
-            return Err(CodegenErrors::EmptyVersionNumber);
+            return Err(CodegenError::EmptyVersionNumber);
         }
 
         let mut version_array: [u8; 4] = Default::default();
         version_array.copy_from_slice(&data[..4]);
         if u32::from_be_bytes(version_array) != RLINK_VERSION {
-            return Err(CodegenErrors::EncodingVersionMismatch {
+            return Err(CodegenError::EncodingVersionMismatch {
                 version_array: String::from_utf8_lossy(&version_array).to_string(),
                 rlink_version: RLINK_VERSION,
             });
         }
 
         let Ok(mut decoder) = MemDecoder::new(&data[4..], 0) else {
-            return Err(CodegenErrors::CorruptFile);
+            return Err(CodegenError::CorruptFile);
         };
         let rustc_version = decoder.read_str();
         if rustc_version != sess.cfg_version {
-            return Err(CodegenErrors::RustcVersionMismatch {
+            return Err(CodegenError::RustcVersionMismatch {
                 rustc_version: rustc_version.to_string(),
             });
         }
@@ -361,16 +415,16 @@ impl CompiledModules {
 /// solely from the `.rlink` file. `Lint`s are defined too early to be encodeable.
 /// Instead, encode exactly the information we need.
 #[derive(Copy, Clone, Debug, Encodable, Decodable)]
-pub struct CodegenLintLevels {
-    linker_messages: LevelAndSource,
-    linker_info: LevelAndSource,
+pub struct CodegenLintLevelSpecs {
+    linker_messages: StableLevelSpec,
+    linker_info: StableLevelSpec,
 }
 
-impl CodegenLintLevels {
+impl CodegenLintLevelSpecs {
     pub fn from_tcx(tcx: TyCtxt<'_>) -> Self {
         Self {
-            linker_messages: tcx.lint_level_at_node(LINKER_MESSAGES, CRATE_HIR_ID),
-            linker_info: tcx.lint_level_at_node(LINKER_INFO, CRATE_HIR_ID),
+            linker_messages: tcx.lint_level_spec_at_node(LINKER_MESSAGES, CRATE_HIR_ID),
+            linker_info: tcx.lint_level_spec_at_node(LINKER_INFO, CRATE_HIR_ID),
         }
     }
 }

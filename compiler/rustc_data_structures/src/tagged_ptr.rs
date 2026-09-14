@@ -12,7 +12,7 @@ use std::ops::Deref;
 use std::ptr::NonNull;
 
 use crate::aligned::Aligned;
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 
 /// This describes tags that the [`TaggedRef`] struct can hold.
 ///
@@ -55,7 +55,9 @@ pub unsafe trait Tag: Copy {
 /// Returns the number of bits available for use for tags in a pointer to `T`
 /// (this is based on `T`'s alignment).
 pub const fn bits_for<T: ?Sized + Aligned>() -> u32 {
-    crate::aligned::align_of::<T>().as_nonzero().trailing_zeros()
+    let alignment = crate::aligned::align_of::<T>();
+    let alignment = alignment.as_nonzero_usize();
+    alignment.trailing_zeros()
 }
 
 /// Returns the correct [`Tag::BITS`] constant for a set of tag values.
@@ -257,14 +259,14 @@ impl<P, T: Tag> Hash for TaggedRef<'_, P, T> {
     }
 }
 
-impl<'a, P, T, HCX> HashStable<HCX> for TaggedRef<'a, P, T>
+impl<'a, P, T> StableHash for TaggedRef<'a, P, T>
 where
-    P: HashStable<HCX> + Aligned + ?Sized,
-    T: Tag + HashStable<HCX>,
+    P: StableHash + Aligned + ?Sized,
+    T: Tag + StableHash,
 {
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        self.pointer().hash_stable(hcx, hasher);
-        self.tag().hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.pointer().stable_hash(hcx, hasher);
+        self.tag().stable_hash(hcx, hasher);
     }
 }
 

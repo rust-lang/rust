@@ -1,14 +1,18 @@
-use rustc_hir::attrs::{CollapseMacroDebuginfo, MacroUseArgs};
-use rustc_session::lint::builtin::INVALID_MACRO_EXPORT_ARGUMENTS;
+use rustc_attr_ir::{MacroUseArgs, find_attr};
+use rustc_feature::AttributeStability;
+use rustc_lint_defs::builtin::INVALID_MACRO_EXPORT_ARGUMENTS;
+use rustc_structures::CollapseMacroDebuginfo;
 
 use super::prelude::*;
+use crate::diagnostics::MacroOnlyAttribute;
 
 pub(crate) struct MacroEscapeParser;
-impl<S: Stage> NoArgsAttributeParser<S> for MacroEscapeParser {
+impl NoArgsAttributeParser for MacroEscapeParser {
     const PATH: &[Symbol] = &[sym::macro_escape];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = MACRO_USE_ALLOWED_TARGETS;
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::MacroEscape;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = MACRO_USE_ALLOWED_TARGETS;
+    const STABILITY: AttributeStability = AttributeStability::Stable;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::MacroEscape;
 }
 
 /// `#[macro_use]` attributes can either:
@@ -30,18 +34,18 @@ const MACRO_USE_TEMPLATE: AttributeTemplate = template!(
     Word, List: &["name1, name2, ..."],
     "https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute"
 );
-const MACRO_USE_ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+const MACRO_USE_ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
     Allow(Target::Mod),
     Allow(Target::ExternCrate),
-    Allow(Target::Crate),
     Error(Target::WherePredicate),
 ]);
 
-impl<S: Stage> AttributeParser<S> for MacroUseParser {
-    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
+impl AttributeParser for MacroUseParser {
+    const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::macro_use],
         MACRO_USE_TEMPLATE,
-        |group: &mut Self, cx: &mut AcceptContext<'_, '_, S>, args| {
+        AttributeStability::Stable,
+        |group: &mut Self, cx: &mut AcceptContext<'_, '_>, args| {
             let span = cx.attr_span;
             group.first_span.get_or_insert(span);
             match args {
@@ -66,7 +70,7 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
                 }
                 ArgParser::List(list) => {
                     if list.is_empty() {
-                        cx.warn_empty_attribute(list.span);
+                        cx.adcx().warn_empty_attribute(list.span);
                         return;
                     }
 
@@ -83,15 +87,14 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
 
                             for item in list.mixed() {
                                 let Some(item) = item.meta_item() else {
-                                    cx.expected_identifier(item.span());
+                                    cx.adcx().expected_identifier(item.span());
                                     continue;
                                 };
-                                if let Err(err_span) = item.args().no_args() {
-                                    cx.expected_no_args(err_span);
+                                let Some(()) = cx.expect_no_args(item.args()) else {
                                     continue;
-                                }
+                                };
                                 let Some(item) = item.path().word() else {
-                                    cx.expected_identifier(item.span());
+                                    cx.adcx().expected_identifier(item.span());
                                     continue;
                                 };
                                 arguments.push(item);
@@ -100,63 +103,79 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
                     }
                 }
                 ArgParser::NameValue(nv) => {
-                    cx.expected_list_or_no_args(nv.args_span());
+                    cx.adcx().expected_list_or_no_args(nv.args_span());
                 }
             }
         },
     )];
-    const ALLOWED_TARGETS: AllowedTargets = MACRO_USE_ALLOWED_TARGETS;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = MACRO_USE_ALLOWED_TARGETS;
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         Some(AttributeKind::MacroUse { span: self.first_span?, arguments: self.state })
+    }
+}
+
+/// `#[allow_internal_unsafe]` and `#[allow_internal_unstable]` may only be applied to macros.
+/// Applying them to a function is only allowed if that function is a procedural macro, i.e. it
+/// also carries `#[proc_macro]`, `#[proc_macro_attribute]`, or `#[proc_macro_derive]`.
+pub(crate) fn check_macro_only(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    if cx.target == Target::Fn
+        && !find_attr!(cx.parsed_attrs, ProcMacro | ProcMacroAttribute | ProcMacroDerive { .. })
+    {
+        cx.emit_err(MacroOnlyAttribute { attr_span, span: cx.target_span });
     }
 }
 
 pub(crate) struct AllowInternalUnsafeParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for AllowInternalUnsafeParser {
+impl NoArgsAttributeParser for AllowInternalUnsafeParser {
     const PATH: &[Symbol] = &[sym::allow_internal_unsafe];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Ignore;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::MacroDef),
         Warn(Target::Field),
         Warn(Target::Arm),
     ]);
+    const STABILITY: AttributeStability = unstable!(allow_internal_unsafe);
     const CREATE: fn(Span) -> AttributeKind = |span| AttributeKind::AllowInternalUnsafe(span);
+
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        check_macro_only(cx, attr_span);
+    }
 }
 
 pub(crate) struct MacroExportParser;
 
-impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
+impl SingleAttributeParser for MacroExportParser {
     const PATH: &[Symbol] = &[sym::macro_export];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["local_inner_macros"]);
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::MacroDef),
         Error(Target::WherePredicate),
         Error(Target::Crate),
     ]);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let local_inner_macros = match args {
             ArgParser::NoArgs => false,
             ArgParser::List(list) => {
-                let Some(l) = list.single() else {
-                    cx.warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
+                let Some(l) = list.as_single() else {
+                    cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
                     return None;
                 };
-                match l.meta_item().and_then(|i| i.path().word_sym()) {
-                    Some(sym::local_inner_macros) => true,
-                    _ => {
-                        cx.warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
-                        return None;
-                    }
+                if l.meta_item_no_args().is_some_and(|m| m.path().word_is(sym::local_inner_macros))
+                {
+                    true
+                } else {
+                    cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
+                    return None;
                 }
             }
             ArgParser::NameValue(nv) => {
-                cx.expected_list_or_no_args(nv.args_span());
+                cx.adcx().expected_list_or_no_args(nv.args_span());
                 return None;
             }
         };
@@ -166,39 +185,31 @@ impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
 
 pub(crate) struct CollapseDebugInfoParser;
 
-impl<S: Stage> SingleAttributeParser<S> for CollapseDebugInfoParser {
+impl SingleAttributeParser for CollapseDebugInfoParser {
     const PATH: &[Symbol] = &[sym::collapse_debuginfo];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(
         List: &["no", "external", "yes"],
         "https://doc.rust-lang.org/reference/attributes/debugger.html#the-collapse_debuginfo-attribute"
     );
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span, args);
-            return None;
-        };
-        let Some(single) = list.single() else {
-            cx.expected_single_argument(list.span);
-            return None;
-        };
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let single = cx.expect_single_element_list(args, cx.attr_span)?;
         let Some(mi) = single.meta_item() else {
-            cx.unexpected_literal(single.span());
+            cx.adcx().expected_not_literal(single.span());
             return None;
         };
-        if let Err(err) = mi.args().no_args() {
-            cx.expected_no_args(err);
-        }
+        let _ = cx.expect_no_args(mi.args());
         let path = mi.path().word_sym();
         let info = match path {
             Some(sym::yes) => CollapseMacroDebuginfo::Yes,
             Some(sym::no) => CollapseMacroDebuginfo::No,
             Some(sym::external) => CollapseMacroDebuginfo::External,
             _ => {
-                cx.expected_specific_argument(mi.span(), &[sym::yes, sym::no, sym::external]);
+                cx.adcx()
+                    .expected_specific_argument(mi.span(), &[sym::yes, sym::no, sym::external]);
                 return None;
             }
         };
@@ -209,9 +220,9 @@ impl<S: Stage> SingleAttributeParser<S> for CollapseDebugInfoParser {
 
 pub(crate) struct RustcProcMacroDeclsParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for RustcProcMacroDeclsParser {
+impl NoArgsAttributeParser for RustcProcMacroDeclsParser {
     const PATH: &[Symbol] = &[sym::rustc_proc_macro_decls];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Static)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Static)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcProcMacroDecls;
 }

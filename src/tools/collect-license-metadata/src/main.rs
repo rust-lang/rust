@@ -1,6 +1,7 @@
 mod licenses;
 mod path_tree;
 mod reuse;
+mod spdx;
 
 use std::path::PathBuf;
 

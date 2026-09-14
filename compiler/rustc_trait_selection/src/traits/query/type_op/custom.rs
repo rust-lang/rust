@@ -128,7 +128,7 @@ where
             )
         })?;
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if errors.is_empty() {
+        if errors.no_errors() {
             Ok(value)
         } else if let Err(guar) = infcx.tcx.check_potentially_region_dependent_goals(root_def_id) {
             Err(guar)
@@ -140,7 +140,7 @@ where
     })?;
 
     // Next trait solver performs operations locally, and normalize goals should resolve vars.
-    let value = infcx.resolve_vars_if_possible(value);
+    let value = infcx.deeply_resolve_ignoring_regions(value);
 
     let region_obligations = infcx.take_registered_region_obligations();
     let region_assumptions = infcx.take_registered_region_assumptions();

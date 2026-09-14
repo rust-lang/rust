@@ -11,8 +11,9 @@
 
 ## Requirements
 
-The `x86_64-unknown-freebsd` target is Tier 2 with host tools.
-`i686-unknown-freebsd` is Tier 2 without host tools.  Other targets are Tier 3.
+The `x86_64-unknown-freebsd` and `aarch64-unknown-freebsd` targets are Tier 2
+with host tools. `i686-unknown-freebsd` is Tier 2 without host tools.
+Other targets are Tier 3.
 See [platform-support.md](../platform-support.md) for the full list.
 
 We commit that rustc will run on all currently supported releases of
@@ -34,9 +35,10 @@ FreeBSD OS binaries use the ELF file format.
 
 ## Building Rust programs
 
-The `x86_64-unknown-freebsd` and `i686-unknown-freebsd` artifacts are
-distributed by the rust project and may be installed with rustup.  Other
-targets are built by the ports system and may be installed with
+The `x86_64-unknown-freebsd`, `aarch64-unknown-freebsd` and
+`i686-unknown-freebsd` artifacts are distributed by the rust
+project and may be installed with rustup.  Other targets are
+built by the ports system and may be installed with
 [pkg(7)][pkg] or [ports(7)][ports].
 
 By default the `i686-unknown-freebsd` target uses SSE2 instructions.  To build

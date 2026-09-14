@@ -1,5 +1,4 @@
 //@no-rustfix: overlapping suggestions
-#![allow(dead_code, unused_variables)]
 
 fn main() {}
 

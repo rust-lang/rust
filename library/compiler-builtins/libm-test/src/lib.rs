@@ -2,6 +2,7 @@
 #![cfg_attr(f128_enabled, feature(f128))]
 #![allow(clippy::unusual_byte_groupings)] // sometimes we group by sign_exp_sig
 
+pub mod builtins_wrapper;
 pub mod domain;
 mod f8_impl;
 pub mod generate;
@@ -24,8 +25,8 @@ pub use f8_impl::{f8, hf8};
 pub use libm::support::{Float, Int, IntTy, MinInt};
 pub use num::{FloatExt, linear_ints, logspace};
 pub use op::{
-    BaseName, FloatTy, Identifier, MathOp, OpCFn, OpCRet, OpFTy, OpRustArgs, OpRustFn, OpRustRet,
-    Ty,
+    Arg0, Arg1, Arg2, BaseName, Group, Identifier, MathOp, OpCFn, OpCRet, OpRustArgs, OpRustFn,
+    OpRustRet, Ret0, Ret1, Ty,
 };
 pub use precision::{MaybeOverride, SpecialCase, default_ulp};
 use run_cfg::extensive_max_iterations;
@@ -33,7 +34,7 @@ pub use run_cfg::{
     CheckBasis, CheckCtx, EXTENSIVE_ENV, GeneratorKind, bigint_fuzz_iteration_count,
     skip_extensive_test,
 };
-pub use test_traits::{CheckOutput, Hex, TupleCall};
+pub use test_traits::{CheckOutput, Tuple, TupleCall};
 
 /// Result type for tests is usually from `anyhow`. Most times there is no success value to
 /// propagate.

@@ -1,6 +1,6 @@
 use hir::Semantics;
 use ide_db::{
-    FileId, LineIndexDatabase, RootDatabase,
+    FileId, RootDatabase, line_index,
     line_index::{LineCol, LineIndex},
 };
 use span::{TextRange, TextSize};
@@ -20,7 +20,7 @@ use triomphe::Arc;
 // | VS Code | **Rust Syntax Tree** |
 pub(crate) fn view_syntax_tree(db: &RootDatabase, file_id: FileId) -> String {
     let sema = Semantics::new(db);
-    let line_index = db.line_index(file_id);
+    let line_index = line_index(db, file_id).clone();
     let parse = sema.parse_guess_edition(file_id);
 
     let ctx = SyntaxTreeCtx { line_index, in_string: None };

@@ -1,6 +1,8 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![feature(associated_type_defaults)]
+#![feature(default_field_values)]
+#![feature(deref_patterns)]
 #![feature(macro_metavar_expr)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
@@ -9,7 +11,7 @@
 // tidy-alphabetical-end
 
 mod build;
-mod errors;
+mod diagnostics;
 mod mbe;
 mod placeholders;
 mod proc_macro_server;
@@ -21,7 +23,3 @@ pub mod config;
 pub mod expand;
 pub mod module;
 pub mod proc_macro;
-
-pub fn provide(providers: &mut rustc_middle::query::Providers) {
-    providers.derive_macro_expansion = proc_macro::provide_derive_macro_expansion;
-}

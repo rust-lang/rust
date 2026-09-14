@@ -1,0 +1,46 @@
+error[E0428]: the name `bar` is defined multiple times
+  --> $DIR/iterator-item-suggest-no-ice.rs:9:5
+   |
+LL | /     fn bar<I>(&self, _: I)
+LL | |     where
+LL | |         for<'b> &'b I: Iterator<Item = &'b ()>;
+   | |_______________________________________________- previous definition of the value `bar` here
+LL |
+LL | /     fn bar<I>(&self, _: I)
+LL | |
+LL | |     where
+LL | |         I: Iterator,
+...  |
+LL | |     }
+   | |_____^ `bar` redefined here
+   |
+   = note: `bar` must be defined only once in the value namespace of this trait
+
+error[E0425]: cannot find value `_I` in this scope
+  --> $DIR/iterator-item-suggest-no-ice.rs:14:31
+   |
+LL |         let collection = vec![_I].iter().map(|x| ());
+   |                               ^^ not found in this scope
+
+error[E0277]: `&'b _` is not an iterator
+  --> $DIR/iterator-item-suggest-no-ice.rs:16:18
+   |
+LL |         self.bar(collection);
+   |              --- ^^^^^^^^^^ `&'b _` is not an iterator
+   |              |
+   |              required by a bound introduced by this call
+   |
+   = help: the trait `for<'b> Iterator` is not implemented for `&'b _`
+note: required by a bound in `FooMut::bar`
+  --> $DIR/iterator-item-suggest-no-ice.rs:7:24
+   |
+LL |     fn bar<I>(&self, _: I)
+   |        --- required by a bound in this associated function
+LL |     where
+LL |         for<'b> &'b I: Iterator<Item = &'b ()>;
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `FooMut::bar`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0425, E0428.
+For more information about an error, try `rustc --explain E0277`.

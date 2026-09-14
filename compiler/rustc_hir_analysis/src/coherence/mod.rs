@@ -7,16 +7,16 @@
 
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, elaborate};
-use rustc_session::parse::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{ErrorGuaranteed, sym};
 use tracing::debug;
 
 use crate::check::always_applicable;
-use crate::errors;
+use crate::diagnostics;
 
 mod builtin;
 mod inherent_impls;
@@ -97,8 +97,18 @@ fn enforce_trait_manually_implementable(
             && !impl_header_span.allows_unstable(sym::specialization)
             && !impl_header_span.allows_unstable(sym::min_specialization)
         {
-            return Err(tcx.dcx().emit_err(errors::SpecializationTrait { span: impl_header_span }));
+            return Err(tcx
+                .dcx()
+                .emit_err(diagnostics::SpecializationTrait { span: impl_header_span }));
         }
+    }
+
+    if !trait_def.impl_restriction.is_allowed_in(impl_def_id.to_def_id(), tcx) {
+        return Err(tcx.dcx().emit_err(diagnostics::ImplOfRestrictedTrait {
+            impl_span: impl_header_span,
+            restriction_span: trait_def.impl_restriction.expect_span(),
+            restriction_path: trait_def.impl_restriction.restriction_path(tcx),
+        }));
     }
     Ok(())
 }
@@ -164,7 +174,7 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed>
 
     for &impl_def_id in impls {
         let impl_header = tcx.impl_trait_header(impl_def_id);
-        let trait_ref = impl_header.trait_ref.instantiate_identity();
+        let trait_ref = impl_header.trait_ref.instantiate_identity().skip_norm_wip();
         let trait_def = tcx.trait_def(trait_ref.def_id);
 
         res = res

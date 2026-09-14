@@ -2,9 +2,8 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
-use rustc_session::impl_lint_pass;
-use unicode_script::{Script, UnicodeScript};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, impl_lint_pass};
+use unicode_script::{Script, UnicodeScript as _};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -69,7 +68,7 @@ impl EarlyLintPass for DisallowedScriptIdents {
         // Implementation is heavily inspired by the implementation of [`non_ascii_idents`] lint:
         // https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_lint/src/non_ascii_idents.rs
 
-        let check_disallowed_script_idents = cx.builder.lint_level(DISALLOWED_SCRIPT_IDENTS).level != Level::Allow;
+        let check_disallowed_script_idents = !cx.builder.lint_level_spec(DISALLOWED_SCRIPT_IDENTS).is_allow();
         if !check_disallowed_script_idents {
             return;
         }

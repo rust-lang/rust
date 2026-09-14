@@ -172,3 +172,38 @@ extern "Rust" {
     /// As far as Miri is concerned, this is equivalent to `yield_now`.
     pub fn miri_spin_loop();
 }
+
+// Stubs so we can run things without Miri.
+#[cfg(not(miri))]
+mod stubs {
+    use std::ffi::CStr;
+    use std::io::Write;
+
+    pub unsafe fn miri_write_to_stdout(bytes: &[u8]) {
+        std::io::stdout().write_all(bytes).unwrap()
+    }
+
+    pub unsafe fn miri_write_to_stderr(bytes: &[u8]) {
+        std::io::stderr().write_all(bytes).unwrap()
+    }
+
+    pub unsafe fn miri_host_to_target_path(
+        path: *const core::ffi::c_char,
+        out: *mut core::ffi::c_char,
+        out_size: usize,
+    ) -> usize {
+        let path = CStr::from_ptr(path);
+        let len = path.count_bytes() + 1;
+        if out_size >= len {
+            out.copy_from(path.as_ptr(), len);
+            0
+        } else {
+            len
+        }
+    }
+
+    pub unsafe fn miri_run_provenance_gc() {}
+}
+
+#[cfg(not(miri))]
+pub use stubs::*;

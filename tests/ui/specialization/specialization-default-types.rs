@@ -6,7 +6,7 @@
 // associated type in the impl defining it -- otherwise, what happens
 // if it's overridden?
 
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 trait Example {
     type Output;

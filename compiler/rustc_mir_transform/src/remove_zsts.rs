@@ -4,16 +4,18 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
+use crate::PassPolicy;
+
 pub(super) struct RemoveZsts;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveZsts {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 1)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // Avoid query cycles (coroutines require optimized MIR for layout).
-        if tcx.type_of(body.source.def_id()).instantiate_identity().is_coroutine() {
+        if tcx.type_of(body.source.def_id()).instantiate_identity().skip_norm_wip().is_coroutine() {
             return;
         }
 
@@ -26,10 +28,6 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveZsts {
         for (bb, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
             replacer.visit_basic_block_data(bb, data);
         }
-    }
-
-    fn is_required(&self) -> bool {
-        true
     }
 }
 
@@ -119,14 +117,14 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, loc: Location) {
         let place_for_ty = match statement.kind {
-            StatementKind::Assign(box (place, ref rvalue)) => {
+            StatementKind::Assign((place, ref rvalue)) => {
                 rvalue.is_safe_to_remove().then_some(place)
             }
-            StatementKind::SetDiscriminant { box place, variant_index: _ }
-            | StatementKind::AscribeUserType(box (place, _), _)
-            | StatementKind::Retag(_, box place)
-            | StatementKind::PlaceMention(box place)
-            | StatementKind::FakeRead(box (_, place)) => Some(place),
+            StatementKind::SetDiscriminant { ref place, variant_index: _ }
+            | StatementKind::PlaceMention(ref place) => Some(**place),
+            StatementKind::AscribeUserType((place, _), _) | StatementKind::FakeRead((_, place)) => {
+                Some(place)
+            }
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                 Some(local.into())
             }

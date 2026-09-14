@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{return_ty, trait_ref_of_method};
 use rustc_abi::ExternAbi;
-use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind, LangItem};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             && header.abi == ExternAbi::Rust
             && impl_item.ident.name == sym::to_string
             && let decl = signature.decl
-            && decl.implicit_self.has_implicit_self()
+            && decl.implicit_self().has_implicit_self()
             && decl.inputs.len() == 1
             && impl_item.generics.params.iter().all(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
             && !impl_item.span.from_expansion()

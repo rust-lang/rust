@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: Copyright (c) 2019 Carl Lerche
 

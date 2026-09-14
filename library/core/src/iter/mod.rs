@@ -458,7 +458,6 @@ pub use self::traits::TrustedFused;
 pub use self::traits::TrustedLen;
 #[unstable(feature = "trusted_step", issue = "85731")]
 pub use self::traits::TrustedStep;
-pub(crate) use self::traits::UncheckedIterator;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{
     DoubleEndedIterator, ExactSizeIterator, Extend, FromIterator, IntoIterator, Product, Sum,

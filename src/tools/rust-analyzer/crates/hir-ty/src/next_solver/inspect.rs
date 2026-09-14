@@ -1,5 +1,3 @@
-pub(crate) use rustc_next_trait_solver::solve::inspect::*;
-
 use rustc_ast_ir::try_visit;
 use rustc_next_trait_solver::{
     canonical::instantiate_canonical_state,
@@ -8,20 +6,25 @@ use rustc_next_trait_solver::{
 };
 use rustc_type_ir::{
     VisitorResult,
-    inherent::{IntoKind, Span as _},
-    solve::{Certainty, GoalSource, MaybeCause, NoSolution},
+    inherent::IntoKind,
+    solve::{Certainty, GoalSource, MaybeCause, MaybeInfo, NoSolution},
 };
 
-use crate::next_solver::{
-    DbInterner, GenericArg, GenericArgs, Goal, NormalizesTo, ParamEnv, Predicate, PredicateKind,
-    QueryResult, SolverContext, Span, Term,
-    fulfill::NextSolverError,
-    infer::{
-        InferCtxt,
-        traits::{Obligation, ObligationCause},
+use crate::{
+    Span,
+    next_solver::{
+        DbInterner, GenericArg, GenericArgs, Goal, NormalizesTo, ParamEnv, Predicate,
+        PredicateKind, QueryResult, SolverContext, Term,
+        fulfill::NextSolverError,
+        infer::{
+            InferCtxt,
+            traits::{Obligation, ObligationCause},
+        },
+        obligation_ctxt::ObligationCtxt,
     },
-    obligation_ctxt::ObligationCtxt,
 };
+
+pub(crate) use rustc_next_trait_solver::solve::inspect::*;
 
 pub(crate) struct InspectConfig {
     pub(crate) max_depth: usize,
@@ -128,7 +131,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
     /// Certainty passed into `evaluate_added_goals_and_make_canonical_response`.
     ///
     /// If this certainty is `Yes`, then we must be confident that the candidate
-    /// must hold iff it's nested goals hold. This is not true if the certainty is
+    /// must hold iff its nested goals hold. This is not true if the certainty is
     /// `Maybe(..)`, which suggests we forced ambiguity instead.
     ///
     /// This is *not* the certainty of the candidate's full nested evaluation, which
@@ -144,7 +147,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
         &self,
         visitor: &mut V,
     ) -> V::Result {
-        for goal in self.instantiate_nested_goals() {
+        for goal in self.instantiate_nested_goals(visitor.span()) {
             try_visit!(goal.visit_with(visitor));
         }
 
@@ -155,7 +158,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
     /// inference constraints. This function modifies the state of the `infcx`.
     ///
     /// See [`Self::instantiate_impl_args`] if you need the impl args too.
-    pub(crate) fn instantiate_nested_goals(&self) -> Vec<InspectGoal<'a, 'db>> {
+    pub(crate) fn instantiate_nested_goals(&self, span: Span) -> Vec<InspectGoal<'a, 'db>> {
         let infcx = self.goal.infcx;
         let param_env = self.goal.goal.param_env;
         let mut orig_values = self.goal.orig_values.to_vec();
@@ -165,13 +168,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
             match **step {
                 inspect::ProbeStep::AddGoal(source, goal) => instantiated_goals.push((
                     source,
-                    instantiate_canonical_state(
-                        infcx,
-                        Span::dummy(),
-                        param_env,
-                        &mut orig_values,
-                        goal,
-                    ),
+                    instantiate_canonical_state(infcx, span, param_env, &mut orig_values, goal),
                 )),
                 inspect::ProbeStep::RecordImplArgs { .. } => {}
                 inspect::ProbeStep::MakeCanonicalResponse { .. }
@@ -179,13 +176,8 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
             }
         }
 
-        let () = instantiate_canonical_state(
-            infcx,
-            Span::dummy(),
-            param_env,
-            &mut orig_values,
-            self.final_state,
-        );
+        let () =
+            instantiate_canonical_state(infcx, span, param_env, &mut orig_values, self.final_state);
 
         if let Some(term_hack) = &self.goal.normalizes_to_term_hack {
             // FIXME: We ignore the expected term of `NormalizesTo` goals
@@ -196,14 +188,14 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
 
         instantiated_goals
             .into_iter()
-            .map(|(source, goal)| self.instantiate_proof_tree_for_nested_goal(source, goal))
+            .map(|(source, goal)| self.instantiate_proof_tree_for_nested_goal(source, goal, span))
             .collect()
     }
 
     /// Instantiate the args of an impl if this candidate came from a
     /// `CandidateSource::Impl`. This function modifies the state of the
     /// `infcx`.
-    pub(crate) fn instantiate_impl_args(&self) -> GenericArgs<'db> {
+    pub(crate) fn instantiate_impl_args(&self, span: Span) -> GenericArgs<'db> {
         let infcx = self.goal.infcx;
         let param_env = self.goal.goal.param_env;
         let mut orig_values = self.goal.orig_values.to_vec();
@@ -213,7 +205,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
                 inspect::ProbeStep::RecordImplArgs { impl_args } => {
                     let impl_args = instantiate_canonical_state(
                         infcx,
-                        Span::dummy(),
+                        span,
                         param_env,
                         &mut orig_values,
                         impl_args,
@@ -221,7 +213,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
 
                     let () = instantiate_canonical_state(
                         infcx,
-                        Span::dummy(),
+                        span,
                         param_env,
                         &mut orig_values,
                         self.final_state,
@@ -248,11 +240,12 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
         &self,
         source: GoalSource,
         goal: Goal<'db, Predicate<'db>>,
+        span: Span,
     ) -> InspectGoal<'a, 'db> {
         let infcx = self.goal.infcx;
         match goal.predicate.kind().no_bound_vars() {
             Some(PredicateKind::NormalizesTo(NormalizesTo { alias, term })) => {
-                let unconstrained_term = infcx.next_term_var_of_kind(term);
+                let unconstrained_term = infcx.next_term_var_of_kind(term, span);
                 let goal =
                     goal.with(infcx.interner, NormalizesTo { alias, term: unconstrained_term });
                 // We have to use a `probe` here as evaluating a `NormalizesTo` can constrain the
@@ -267,8 +260,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
                     // considering the constrained RHS, and pass the resulting certainty to
                     // `InspectGoal::new` so that the goal has the right result (and maintains
                     // the impression that we don't do this normalizes-to infer hack at all).
-                    let (nested, proof_tree) =
-                        infcx.evaluate_root_goal_for_proof_tree(goal, Span::dummy());
+                    let (nested, proof_tree) = infcx.evaluate_root_goal_for_proof_tree(goal, span);
                     let nested_goals_result = nested.and_then(|nested| {
                         normalizes_to_term_hack.constrain_and(
                             infcx,
@@ -302,7 +294,7 @@ impl<'a, 'db> InspectCandidate<'a, 'db> {
                 // constraints, we get an ICE if we already applied the constraints
                 // from the chosen candidate.
                 let proof_tree =
-                    infcx.probe(|_| infcx.evaluate_root_goal_for_proof_tree(goal, Span::dummy()).1);
+                    infcx.probe(|_| infcx.evaluate_root_goal_for_proof_tree(goal, span).1);
                 InspectGoal::new(infcx, self.goal.depth + 1, proof_tree, None, source)
             }
         }
@@ -352,7 +344,10 @@ impl<'a, 'db> InspectGoal<'a, 'db> {
                 inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty: c } => {
                     assert!(matches!(
                         shallow_certainty.replace(c),
-                        None | Some(Certainty::Maybe { cause: MaybeCause::Ambiguity, .. })
+                        None | Some(Certainty::Maybe(MaybeInfo {
+                            cause: MaybeCause::Ambiguity,
+                            ..
+                        }))
                     ));
                 }
                 inspect::ProbeStep::NestedProbe(ref probe) => {
@@ -464,9 +459,10 @@ impl<'a, 'db> InspectGoal<'a, 'db> {
     pub(crate) fn visit_with<V: ProofTreeVisitor<'db>>(&self, visitor: &mut V) -> V::Result {
         if self.depth < visitor.config().max_depth {
             try_visit!(visitor.visit_goal(self));
+            V::Result::output()
+        } else {
+            visitor.on_recursion_limit()
         }
-
-        V::Result::output()
     }
 }
 
@@ -474,11 +470,17 @@ impl<'a, 'db> InspectGoal<'a, 'db> {
 pub(crate) trait ProofTreeVisitor<'db> {
     type Result: VisitorResult;
 
+    fn span(&self) -> Span;
+
     fn config(&self) -> InspectConfig {
         InspectConfig { max_depth: 10 }
     }
 
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'db>) -> Self::Result;
+
+    fn on_recursion_limit(&mut self) -> Self::Result {
+        Self::Result::output()
+    }
 }
 
 impl<'db> InferCtxt<'db> {
@@ -497,7 +499,7 @@ impl<'db> InferCtxt<'db> {
         visitor: &mut V,
     ) -> V::Result {
         let (_, proof_tree) = <&SolverContext<'db>>::from(self)
-            .evaluate_root_goal_for_proof_tree(goal, Span::dummy());
+            .evaluate_root_goal_for_proof_tree(goal, visitor.span());
         visitor.visit_goal(&InspectGoal::new(self, depth, proof_tree, None, GoalSource::Misc))
     }
 }

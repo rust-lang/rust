@@ -1,5 +1,4 @@
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 mod to_reuse {
     pub fn consts<const N: i32>() -> i32 {
@@ -16,8 +15,8 @@ reuse to_reuse::late;
 reuse to_reuse::bounds;
 
 fn main() {
-    // FIXME(fn_delegation): proper support for late bound lifetimes.
     late::<'static>(&0u8);
+    //~^ ERROR: function takes 0 lifetime arguments but 1 lifetime argument was supplied
 
     struct S;
     bounds(S);

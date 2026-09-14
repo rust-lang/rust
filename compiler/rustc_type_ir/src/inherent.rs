@@ -14,9 +14,10 @@ use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind, UpcastFrom,
+    self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind, Region, UpcastFrom,
 };
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Ty<I: Interner<Ty = Self>>:
     Copy
     + Debug
@@ -52,25 +53,31 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_canonical_bound(interner: I, var: ty::BoundVar) -> Self;
 
-    fn new_alias(interner: I, kind: ty::AliasTyKind, alias_ty: ty::AliasTy<I>) -> Self;
+    fn new_alias(interner: I, is_rigid: ty::IsRigid, alias_ty: ty::AliasTy<I>) -> Self;
 
-    fn new_projection_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self {
-        Ty::new_alias(
+    fn new_projection_from_args(
+        interner: I,
+        is_rigid: ty::IsRigid,
+        def_id: I::TraitAssocTyId,
+        args: I::GenericArgs,
+    ) -> Self {
+        Self::new_alias(
             interner,
-            ty::AliasTyKind::Projection,
-            ty::AliasTy::new_from_args(interner, def_id, args),
+            is_rigid,
+            ty::AliasTy::new_from_args(interner, ty::AliasTyKind::Projection { def_id }, args),
         )
     }
 
     fn new_projection(
         interner: I,
-        def_id: I::DefId,
+        is_rigid: ty::IsRigid,
+        def_id: I::TraitAssocTyId,
         args: impl IntoIterator<Item: Into<I::GenericArg>>,
     ) -> Self {
-        Ty::new_alias(
+        Self::new_alias(
             interner,
-            ty::AliasTyKind::Projection,
-            ty::AliasTy::new(interner, def_id, args),
+            is_rigid,
+            ty::AliasTy::new(interner, ty::AliasTyKind::Projection { def_id }, args),
         )
     }
 
@@ -80,7 +87,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_foreign(interner: I, def_id: I::ForeignId) -> Self;
 
-    fn new_dynamic(interner: I, preds: I::BoundExistentialPredicates, region: I::Region) -> Self;
+    fn new_dynamic(interner: I, preds: I::BoundExistentialPredicates, region: Region<I>) -> Self;
 
     fn new_coroutine(interner: I, def_id: I::CoroutineId, args: I::GenericArgs) -> Self;
 
@@ -102,7 +109,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_ptr(interner: I, ty: Self, mutbl: Mutability) -> Self;
 
-    fn new_ref(interner: I, region: I::Region, ty: Self, mutbl: Mutability) -> Self;
+    fn new_ref(interner: I, region: Region<I>, ty: Self, mutbl: Mutability) -> Self;
 
     fn new_array_with_const_len(interner: I, ty: Self, len: I::Const) -> Self;
 
@@ -115,7 +122,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
         It: Iterator<Item = T>,
         T: CollectAndApply<Self, Self>;
 
-    fn new_fn_def(interner: I, def_id: I::FunctionId, args: I::GenericArgs) -> Self;
+    fn new_fn_def(interner: I, def_id: I::FunctionId, args: ty::Binder<I, I::GenericArgs>) -> Self;
 
     fn new_fn_ptr(interner: I, sig: ty::Binder<I, ty::FnSig<I>>) -> Self;
 
@@ -197,6 +204,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Tys<I: Interner<Tys = Self>>:
     Copy + Debug + Hash + Eq + SliceLike<Item = I::Ty> + TypeFoldable<I> + Default
 {
@@ -205,44 +213,19 @@ pub trait Tys<I: Interner<Tys = Self>>:
     fn output(self) -> I::Ty;
 }
 
-pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
-    fn rust() -> Self;
-
-    /// Whether this ABI is `extern "Rust"`.
-    fn is_rust(self) -> bool;
-}
-
+#[rust_analyzer::prefer_underscore_import]
 pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
+    /// The `safe` safety mode.
     fn safe() -> Self;
 
+    /// The `unsafe` safety mode.
+    fn unsafe_mode() -> Self;
+
+    /// Is the safety mode `Safe`?
     fn is_safe(self) -> bool;
 
+    /// The string prefix for this safety mode.
     fn prefix_str(self) -> &'static str;
-}
-
-pub trait Region<I: Interner<Region = Self>>:
-    Copy
-    + Debug
-    + Hash
-    + Eq
-    + Into<I::GenericArg>
-    + IntoKind<Kind = ty::RegionKind<I>>
-    + Flags
-    + Relate<I>
-{
-    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundRegion<I>) -> Self;
-
-    fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
-
-    fn new_canonical_bound(interner: I, var: ty::BoundVar) -> Self;
-
-    fn new_static(interner: I) -> Self;
-
-    fn new_placeholder(interner: I, var: ty::PlaceholderRegion<I>) -> Self;
-
-    fn is_bound(self) -> bool {
-        matches!(self.kind(), ty::ReBound(..))
-    }
 }
 
 pub trait Const<I: Interner<Const = Self>>:
@@ -270,7 +253,7 @@ pub trait Const<I: Interner<Const = Self>>:
 
     fn new_placeholder(interner: I, param: ty::PlaceholderConst<I>) -> Self;
 
-    fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
+    fn new_alias(interner: I, is_rigid: ty::IsRigid, alias_const: ty::AliasConst<I>) -> Self;
 
     fn new_expr(interner: I, expr: I::ExprConst) -> Self;
 
@@ -289,19 +272,24 @@ pub trait Const<I: Interner<Const = Self>>:
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait ValueConst<I: Interner<ValueConst = Self>>: Copy + Debug + Hash + Eq {
     fn ty(self) -> I::Ty;
     fn valtree(self) -> I::ValTree;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait ExprConst<I: Interner<ExprConst = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
     fn args(self) -> I::GenericArgs;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait GenericsOf<I: Interner<GenericsOf = Self>> {
     fn count(&self) -> usize;
+    fn param_region_def_id(self, interner: I, ebr: I::EarlyParamRegion) -> I::DefId;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait GenericArg<I: Interner<GenericArg = Self>>:
     Copy
     + Debug
@@ -311,7 +299,7 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
     + TypeVisitable<I>
     + Relate<I>
     + From<I::Ty>
-    + From<I::Region>
+    + From<Region<I>>
     + From<I::Const>
     + From<I::Term>
 {
@@ -339,11 +327,11 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
         self.as_const().expect("expected a const")
     }
 
-    fn as_region(&self) -> Option<I::Region> {
+    fn as_region(&self) -> Option<Region<I>> {
         if let ty::GenericArgKind::Lifetime(c) = self.kind() { Some(c) } else { None }
     }
 
-    fn expect_region(&self) -> I::Region {
+    fn expect_region(&self) -> Region<I> {
         self.as_region().expect("expected a const")
     }
 
@@ -356,6 +344,7 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Term<I: Interner<Term = Self>>:
     Copy + Debug + Hash + Eq + IntoKind<Kind = ty::TermKind<I>> + TypeFoldable<I> + Relate<I>
 {
@@ -392,17 +381,31 @@ pub trait Term<I: Interner<Term = Self>>:
     fn to_alias_term(self) -> Option<ty::AliasTerm<I>> {
         match self.kind() {
             ty::TermKind::Ty(ty) => match ty.kind() {
-                ty::Alias(_kind, alias_ty) => Some(alias_ty.into()),
+                ty::Alias(_, alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             ty::TermKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => Some(uv.into()),
+                ty::ConstKind::Alias(_, alias_const) => Some(alias_const.into()),
                 _ => None,
+            },
+        }
+    }
+
+    fn is_non_rigid_alias(self) -> bool {
+        match self.kind() {
+            ty::TermKind::Ty(ty) => match ty.kind() {
+                ty::Alias(is_rigid, _) => is_rigid == ty::IsRigid::No,
+                _ => false,
+            },
+            ty::TermKind::Const(ct) => match ct.kind() {
+                ty::ConstKind::Alias(is_rigid, _) => is_rigid == ty::IsRigid::No,
+                _ => false,
             },
         }
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
     Copy + Debug + Hash + Eq + SliceLike<Item = I::GenericArg> + Default + Relate<I>
 {
@@ -415,7 +418,7 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
 
     fn type_at(self, i: usize) -> I::Ty;
 
-    fn region_at(self, i: usize) -> I::Region;
+    fn region_at(self, i: usize) -> Region<I>;
 
     fn const_at(self, i: usize) -> I::Const;
 
@@ -442,6 +445,7 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Predicate<I: Interner<Predicate = Self>>:
     Copy
     + Debug
@@ -458,27 +462,18 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::NormalizesTo<I>>
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
-    + UpcastFrom<I, ty::TraitPredicate<I>>
-    + UpcastFrom<I, ty::OutlivesPredicate<I, I::Ty>>
-    + UpcastFrom<I, ty::OutlivesPredicate<I, I::Region>>
+    + UpcastFrom<I, ty::TraitClause<I>>
+    + UpcastFrom<I, ty::ProjectionClause<I>>
+    + UpcastFrom<I, ty::OutlivesClause<I, I::Ty>>
+    + UpcastFrom<I, ty::OutlivesClause<I, Region<I>>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
     + Elaboratable<I>
 {
     fn as_clause(self) -> Option<I::Clause>;
 
-    fn as_normalizes_to(self) -> Option<ty::Binder<I, ty::NormalizesTo<I>>> {
-        let kind = self.kind();
-        match kind.skip_binder() {
-            ty::PredicateKind::NormalizesTo(pred) => Some(kind.rebind(pred)),
-            _ => None,
-        }
-    }
-
     fn allow_normalization(self) -> bool {
         match self.kind().skip_binder() {
-            PredicateKind::Clause(ClauseKind::WellFormed(_)) | PredicateKind::AliasRelate(..) => {
-                false
-            }
+            PredicateKind::Clause(ClauseKind::WellFormed(_)) => false,
             PredicateKind::Clause(ClauseKind::Trait(_))
             | PredicateKind::Clause(ClauseKind::HostEffect(..))
             | PredicateKind::Clause(ClauseKind::RegionOutlives(_))
@@ -497,31 +492,45 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Clause<I: Interner<Clause = Self>>:
     Copy
     + Debug
     + Hash
     + Eq
     + TypeFoldable<I>
+    + Flags
     + UpcastFrom<I, ty::Binder<I, ty::ClauseKind<I>>>
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
-    + UpcastFrom<I, ty::TraitPredicate<I>>
-    + UpcastFrom<I, ty::Binder<I, ty::TraitPredicate<I>>>
-    + UpcastFrom<I, ty::ProjectionPredicate<I>>
-    + UpcastFrom<I, ty::Binder<I, ty::ProjectionPredicate<I>>>
+    + UpcastFrom<I, ty::TraitClause<I>>
+    + UpcastFrom<I, ty::Binder<I, ty::TraitClause<I>>>
+    + UpcastFrom<I, ty::ProjectionClause<I>>
+    + UpcastFrom<I, ty::Binder<I, ty::ProjectionClause<I>>>
     + IntoKind<Kind = ty::Binder<I, ty::ClauseKind<I>>>
     + Elaboratable<I>
 {
     fn as_predicate(self) -> I::Predicate;
 
-    fn as_trait_clause(self) -> Option<ty::Binder<I, ty::TraitPredicate<I>>> {
+    fn as_type_outlives_clause(self) -> Option<ty::Binder<I, ty::OutlivesClause<I, I::Ty>>> {
+        self.kind()
+            .map_bound(|clause| {
+                if let ty::ClauseKind::TypeOutlives(outlives) = clause {
+                    Some(outlives)
+                } else {
+                    None
+                }
+            })
+            .transpose()
+    }
+
+    fn as_trait_clause(self) -> Option<ty::Binder<I, ty::TraitClause<I>>> {
         self.kind()
             .map_bound(|clause| if let ty::ClauseKind::Trait(t) = clause { Some(t) } else { None })
             .transpose()
     }
 
-    fn as_host_effect_clause(self) -> Option<ty::Binder<I, ty::HostEffectPredicate<I>>> {
+    fn as_host_effect_clause(self) -> Option<ty::Binder<I, ty::HostEffectClause<I>>> {
         self.kind()
             .map_bound(
                 |clause| if let ty::ClauseKind::HostEffect(t) = clause { Some(t) } else { None },
@@ -529,7 +538,7 @@ pub trait Clause<I: Interner<Clause = Self>>:
             .transpose()
     }
 
-    fn as_projection_clause(self) -> Option<ty::Binder<I, ty::ProjectionPredicate<I>>> {
+    fn as_projection_clause(self) -> Option<ty::Binder<I, ty::ProjectionClause<I>>> {
         self.kind()
             .map_bound(
                 |clause| {
@@ -546,6 +555,7 @@ pub trait Clause<I: Interner<Clause = Self>>:
     fn instantiate_supertrait(self, cx: I, trait_ref: ty::Binder<I, ty::TraitRef<I>>) -> Self;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Clauses<I: Interner<Clauses = Self>>:
     Copy
     + Debug
@@ -558,16 +568,19 @@ pub trait Clauses<I: Interner<Clauses = Self>>:
 {
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait IntoKind {
     type Kind;
 
     fn kind(self) -> Self::Kind;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait ParamLike: Copy + Debug + Hash + Eq {
     fn index(self) -> u32;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn def_id(self) -> I::AdtId;
 
@@ -604,34 +617,45 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn destructor(self, interner: I) -> Option<AdtDestructorKind>;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
-    fn caller_bounds(self) -> impl SliceLike<Item = I::Clause>;
+    fn caller_bounds(self) -> impl Iterator<Item = I::Clause>;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Features<I: Interner>: Copy {
     fn generic_const_exprs(self) -> bool;
+
+    fn generic_const_args(self) -> bool;
 
     fn coroutine_clone(self) -> bool;
 
     fn feature_bound_holds_in_crate(self, symbol: I::Symbol) -> bool;
 }
 
-pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
+#[rust_analyzer::prefer_underscore_import]
+pub trait DefId<I: Interner, Local = <I as Interner>::LocalDefId>:
+    Copy + Debug + Hash + Eq + TypeFoldable<I>
+{
     fn is_local(self) -> bool;
 
-    fn as_local(self) -> Option<I::LocalDefId>;
+    fn as_local(self) -> Option<Local>;
 }
 
-pub trait SpecificDefId<I: Interner>:
-    DefId<I> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>
+pub trait SpecificDefId<I: Interner, Local = <I as Interner>::LocalDefId>:
+    DefId<I, Local> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>
 {
 }
 
-impl<I: Interner, T: DefId<I> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>>
-    SpecificDefId<I> for T
+impl<
+    I: Interner,
+    T: DefId<I, Local> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>,
+    Local,
+> SpecificDefId<I, Local> for T
 {
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait BoundExistentialPredicates<I: Interner>:
     Copy + Debug + Hash + Eq + Relate<I> + SliceLike<Item = ty::Binder<I, ty::ExistentialPredicate<I>>>
 {
@@ -646,15 +670,23 @@ pub trait BoundExistentialPredicates<I: Interner>:
     ) -> impl IntoIterator<Item = ty::Binder<I, ty::ExistentialProjection<I>>>;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Span<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     fn dummy() -> Self;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait OpaqueTypeStorageEntries: Debug + Copy + Default {
     /// Whether the number of opaques has changed in a way that necessitates
     /// reevaluating a goal. For now, this is only when the number of non-duplicated
     /// entries changed.
     fn needs_reevaluation(self, canonicalized: usize) -> bool;
+}
+
+pub trait BoundVarKinds<I: Interner>:
+    Copy + Debug + Hash + Eq + SliceLike<Item = ty::BoundVariableKind<I>> + Default
+{
+    fn from_vars(cx: I, iter: impl IntoIterator<Item = ty::BoundVariableKind<I>>) -> Self;
 }
 
 pub trait SliceLike: Sized + Copy {
@@ -736,6 +768,18 @@ impl<'a, S: SliceLike> SliceLike for &'a S {
     }
 }
 
-pub trait Symbol<I>: Copy + Hash + PartialEq + Eq + Debug {
-    fn is_kw_underscore_lifetime(self) -> bool;
+#[rust_analyzer::prefer_underscore_import]
+pub trait Symbol<I: Interner>: Copy + Hash + PartialEq + Eq + Debug {
+    const KW_UNDERSCORE_LIFETIME: Self;
+    const KW_STATIC_LIFETIME: Self;
+    const SYM_ANON: Self;
+}
+
+pub trait RegionName<I: Interner>: Copy + Hash + PartialEq + Eq + Debug {
+    fn get_name(&self, interner: I) -> Option<I::Symbol>;
+    fn is_named(&self, interner: I) -> bool;
+}
+
+pub trait DefIdGetter<I: Interner>: Copy + Hash + PartialEq + Eq + Debug {
+    fn get_def_id(self) -> Option<I::DefId>;
 }

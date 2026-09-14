@@ -12,7 +12,7 @@ float_bench! {
     sig: (a: f16) -> f32,
     crate_fn: extend::__extendhfsf2,
     sys_fn: __extendhfsf2,
-    sys_available: not(feature = "no-sys-f16"),
+    sys_available: not(no_sys_f16),
     asm: [
         #[cfg(target_arch = "aarch64")] {
             let ret: f32;
@@ -34,7 +34,7 @@ float_bench! {
     sig: (a: f16) -> f64,
     crate_fn: extend::__extendhfdf2,
     sys_fn: __extendhfdf2,
-    sys_available: not(feature = "no-sys-f16-f64-convert"),
+    sys_available: not(no_sys_f16_f64_convert),
     asm: [
         #[cfg(target_arch = "aarch64")] {
             let ret: f64;
@@ -58,7 +58,7 @@ float_bench! {
     crate_fn_ppc: extend::__extendhfkf2,
     sys_fn: __extendhftf2,
     sys_fn_ppc: __extendhfkf2,
-    sys_available: not(feature = "no-sys-f16-f128-convert"),
+    sys_available: not(no_sys_f16_f128_convert),
     asm: [],
 }
 
@@ -91,7 +91,7 @@ float_bench! {
     crate_fn_ppc: extend::__extendsfkf2,
     sys_fn: __extendsftf2,
     sys_fn_ppc: __extendsfkf2,
-    sys_available: not(feature = "no-sys-f128"),
+    sys_available: not(no_sys_f128),
     asm: [],
 }
 
@@ -103,7 +103,7 @@ float_bench! {
     crate_fn_ppc: extend::__extenddfkf2,
     sys_fn: __extenddftf2,
     sys_fn_ppc: __extenddfkf2,
-    sys_available: not(feature = "no-sys-f128"),
+    sys_available: not(no_sys_f128),
     asm: [],
 }
 

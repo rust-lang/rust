@@ -1,13 +1,17 @@
-error[E0423]: expected value, found struct `remapped_dep::SomeStruct`
-  --> $DIR/remap-path-prefix-reverse.rs:15:13
+error[E0423]: cannot find value `SomeStruct` in crate `remapped_dep`
+  --> $DIR/remap-path-prefix-reverse.rs:15:27
    |
 LL |     let _ = remapped_dep::SomeStruct;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: use struct literal syntax instead: `remapped_dep::SomeStruct {}`
+   |             --------------^^^^^^^^^^
+   |             |
+   |             help: use struct literal syntax instead: `remapped_dep::SomeStruct {}`
    |
   ::: remapped-aux/remapped_dep.rs:4:1
    |
 LL | pub struct SomeStruct {} // This line should be show as part of the error.
    | --------------------- `remapped_dep::SomeStruct` defined here
+   |
+   = note: a struct named `remapped_dep::SomeStruct` exists in another namespace
 
 error: aborting due to 1 previous error
 

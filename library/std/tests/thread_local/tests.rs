@@ -21,6 +21,12 @@ impl Signal {
             set = cvar.wait(set).unwrap();
         }
     }
+
+    fn is_set(&self) -> bool {
+        let (set, _cvar) = &*self.0;
+        let set = set.lock().unwrap();
+        *set
+    }
 }
 
 struct NotifyOnDrop(Signal);
@@ -97,13 +103,14 @@ fn smoke_dtor() {
             });
         });
         signal.wait();
+        assert!(signal.is_set());
         t.join().unwrap();
     }
 }
 
 #[test]
 fn circular() {
-    // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+    // FIXME(static_mut_refs): use raw pointers instead of references
     #![allow(static_mut_refs)]
 
     struct S1(&'static LocalKey<UnsafeCell<Option<S1>>>, &'static LocalKey<UnsafeCell<Option<S2>>>);
@@ -392,4 +399,97 @@ fn thread_current_in_dtor() {
     let name = NAME.lock().unwrap();
     let name = name.as_ref().unwrap();
     assert_eq!(name, "test");
+}
+
+// Test that if a thread uses fibers while the dtors callback is running,
+// we do NOT trigger dtors.
+// This prevents a UAF if a fiber is the first to use Tls and is deleted,
+// like in the example here:
+// https://github.com/rust-lang/rust/pull/148799#issuecomment-3731806901
+#[cfg(target_os = "windows")]
+#[test]
+#[cfg_attr(miri, ignore)] // Miri does not support fibers
+fn fiber_does_not_trigger_dtor() {
+    use core::ffi::c_void;
+    use std::ptr;
+
+    unsafe extern "system" {
+        fn ConvertFiberToThread() -> i32;
+        fn ConvertThreadToFiber(lpParameter: *const c_void) -> *mut c_void;
+        fn CreateFiber(
+            dwStackSize: usize,
+            lpStartAddress: unsafe extern "system" fn(*mut c_void),
+            lpParameter: *mut c_void,
+        ) -> *mut c_void;
+        fn DeleteFiber(lpFiber: *mut c_void);
+        fn SwitchToFiber(lpFiber: *mut c_void);
+    }
+
+    thread_local!(static FOO: UnsafeCell<Option<NotifyOnDrop>> = UnsafeCell::new(None));
+
+    let signal = Signal::default();
+
+    let signal2 = signal.clone();
+    let t = thread::spawn(move || unsafe {
+        let mut signal = Some(signal2);
+        FOO.with(|f| {
+            *f.get() = Some(NotifyOnDrop(signal.take().unwrap()));
+        });
+        let _main = ConvertThreadToFiber(ptr::null());
+        // A user can then switch to a new fiber and delete the main fiber.
+        // If destructors are triggered when the fiber is deleted,
+        // the new fiber will be able to observe already-destructed values.
+    });
+    t.join().unwrap();
+    assert!(!signal.is_set());
+
+    // As long as we stop using fibers before thread teardown, everything works as expected.
+    let signal2 = signal.clone();
+    let t = thread::spawn(move || unsafe {
+        struct FiberData {
+            main: *mut c_void,
+            signal: Signal,
+        }
+
+        unsafe extern "system" fn fiber_start(data: *mut c_void) {
+            let data = unsafe { &mut *data.cast::<FiberData>() };
+
+            // Set the value while this fiber is current.
+            // This must NOT arm the FLS cleanup guard for the fiber.
+            FOO.with(|f| unsafe {
+                *f.get() = Some(NotifyOnDrop(data.signal.clone()));
+            });
+
+            unsafe {
+                SwitchToFiber(data.main);
+            }
+        }
+
+        let main = ConvertThreadToFiber(ptr::null());
+        assert!(!main.is_null());
+
+        let mut data = FiberData { main, signal: signal2.clone() };
+        let foo = CreateFiber(0, fiber_start, ptr::from_mut(&mut data).cast());
+        assert!(!foo.is_null());
+
+        // Run `foo`, which sets FOO while `foo` is the current fiber,
+        // then switches back to main.
+        SwitchToFiber(foo);
+
+        // Convert main back to a thread before deleting `foo`.
+        assert_ne!(ConvertFiberToThread(), 0);
+
+        // Deleting `foo` must not trigger dtors like a thread teardown.
+        DeleteFiber(foo);
+        assert!(!signal2.is_set());
+
+        // Arm the guard now from the normal thread.
+        // `FOO`'s destructor is already registered, so it will run when the thread exits.
+        thread_local!(static BAR: UnsafeCell<Option<NotifyOnDrop>> = UnsafeCell::new(None));
+        BAR.with(|_| {});
+    });
+
+    signal.wait();
+    assert!(signal.is_set());
+    t.join().unwrap();
 }

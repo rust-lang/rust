@@ -1,7 +1,6 @@
 //@no-rustfix
 
 #![warn(clippy::mut_mut)]
-#![allow(unused)]
 #![expect(clippy::no_effect)]
 
 //! removing the extra `&mut`s will break the derefs

@@ -3,14 +3,13 @@
 
 #![feature(const_trait_impl)]
 #![cfg_attr(spec, feature(specialization))]
-//[spec]~^ WARN the feature `specialization` is incomplete
 #![cfg_attr(min_spec, feature(min_specialization))]
 
 const trait Value {
     fn value() -> u32;
 }
 
-impl<T> const Value for T {
+const impl<T> Value for T {
     default fn value() -> u32 {
         0
     }

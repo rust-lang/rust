@@ -5,11 +5,12 @@
 
 const trait Foo {
     #[rustc_do_not_const_check]
-    fn into_iter(&self) { println!("FEAR ME!") }
+    fn into_iter(&self) {
+        println!("FEAR ME!")
+    }
 }
 
-
-impl const Foo for () {
+const impl Foo for () {
     fn into_iter(&self) {
         // ^_^
     }

@@ -1,0 +1,13 @@
+error: `#[unstable]` does not make this re-exported path unstable
+  --> $DIR/ineffective-unstable-reexports-grouped.rs:14:5
+   |
+LL |     stable as grouped_stable_a,
+   |     ^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/ineffective-unstable-reexports-grouped.rs:6:9
+   |
+LL | #![deny(ineffective_unstable_reexports)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error

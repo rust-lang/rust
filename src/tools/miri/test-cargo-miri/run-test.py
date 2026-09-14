@@ -170,10 +170,19 @@ def test_cargo_miri_test():
         "test.empty.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
-    test("`cargo miri test` (proc-macro crate)",
-        cargo_miri("test") + ["-p", "proc_macro_crate"],
-        "test.empty.ref", "test.proc-macro.stderr.ref",
+    test("`cargo miri test` (entire workspace, no isolation)",
+        cargo_miri("test") + ["--workspace"],
+        "test.workspace.stdout.ref", "test.workspace.stderr.ref",
+        env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
+    # FIXME: test is disabled for cross-compiled targets because it fails to link.
+    # Related to <https://github.com/rust-lang/cargo/issues/17200>.
+    if not os.environ.get('MIRI_TESTS_CROSS_COMPILED'):
+        test("`cargo miri test` (entire workspace, no isolation, host-config)",
+            cargo_miri("test") + ["--workspace", "-Ztarget-applies-to-host", "-Zhost-config"],
+            "test.workspace.stdout.ref", "test.workspace.stderr.ref",
+            env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
+        )
     test("`cargo miri test` (custom target dir)",
         cargo_miri("test") + ["--target-dir=custom-test"],
         "test.default.stdout.ref", "test.empty.ref",
@@ -215,7 +224,7 @@ for target_dir in ["target", "custom-run", "custom-test", "config-cli"]:
     if os.listdir(target_dir) != ["miri"]:
         fail(f"`{target_dir}` contains unexpected files")
     # Ensure something exists inside that target dir.
-    os.access(os.path.join(target_dir, "miri", "debug", "deps"), os.F_OK)
+    os.access(os.path.join(target_dir, "miri", "debug"), os.F_OK)
 
 print("\nTEST SUCCESSFUL!")
 sys.exit(0)

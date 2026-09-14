@@ -6,6 +6,7 @@ use std::num::NonZero;
 use std::ptr;
 
 fn f(c: u32) {
+    //~^ERROR: expected something greater or equal to 1
     println!("{c}");
 }
 
@@ -20,7 +21,7 @@ fn call(f: fn(NonZero<u32>)) {
             let tmp = ptr::addr_of!(c);
             let ptr = tmp as *const NonZero<u32>;
             // The call site now is a `NonZero<u32>` to `u32` transmute.
-            Call(_res = f(*ptr), ReturnTo(retblock), UnwindContinue()) //~ERROR: expected something greater or equal to 1
+            Call(_res = f(*ptr), ReturnTo(retblock), UnwindContinue())
         }
         retblock = {
             Return()

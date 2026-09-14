@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::borrow_as_ptr)]
-#![allow(clippy::useless_vec, clippy::ptr_offset_by_literal)]
+#![expect(clippy::ptr_offset_by_literal, clippy::useless_vec)]
 
 extern crate proc_macros;
 
@@ -64,4 +64,10 @@ fn issue15389() {
         // Don't lint in proc-macros
         let _ = &var as *const u32;
     };
+}
+
+fn issue17197() {
+    let x = 0u32;
+    // implicit cast doesn't lint in proc-macros
+    proc_macros::with_span!(span let _: *const _ = &x;);
 }

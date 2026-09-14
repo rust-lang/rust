@@ -1,7 +1,7 @@
 //@aux-build:proc_macro_derive.rs
 
 #![warn(clippy::std_instead_of_core)]
-#![allow(unused_imports, deprecated)]
+#![expect(deprecated)]
 
 extern crate alloc;
 
@@ -69,7 +69,6 @@ fn alloc_instead_of_core() {
 
 mod std_in_proc_macro_derive {
     #[warn(clippy::alloc_instead_of_core)]
-    #[allow(unused)]
     #[derive(ImplStructWithStdDisplay)]
     struct B {}
 }
@@ -96,3 +95,23 @@ fn issue15579() {
 
     let layout = alloc::Layout::new::<u8>();
 }
+
+#[warn(clippy::std_instead_of_core)]
+fn issue13158_core_io() {
+    // items moved from std::io into core::io are stable in an unstable module.
+    use std::io::ErrorKind;
+}
+
+#[clippy::msrv = "1.40"]
+fn issue13158_msrv_1_40(_: &dyn std::panic::UnwindSafe) {}
+
+#[clippy::msrv = "1.41"]
+fn issue13158_msrv_1_41(_: &dyn std::panic::UnwindSafe) {}
+//~^ std_instead_of_core
+
+#[clippy::msrv = "1.80"]
+fn issue13158_msrv_1_80(_: &dyn std::error::Error) {}
+
+#[clippy::msrv = "1.81"]
+fn issue13158_msrv_1_81(_: &dyn std::error::Error) {}
+//~^ std_instead_of_core

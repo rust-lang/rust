@@ -13,7 +13,9 @@ error[E0432]: unresolved import `bar::Baz`
   --> $DIR/unresolved-import.rs:8:5
    |
 LL | use bar::Baz as x;
-   |     ^^^^^^^^^^^^^ no `Baz` in `bar`
+   |     ^^^^^---^^^^^
+   |          |
+   |          no `Baz` in `bar`
    |
 help: a similar name exists in the module
    |
@@ -25,7 +27,9 @@ error[E0432]: unresolved import `food::baz`
   --> $DIR/unresolved-import.rs:14:5
    |
 LL | use food::baz;
-   |     ^^^^^^^^^ no `baz` in `food`
+   |     ^^^^^^---
+   |           |
+   |           no `baz` in `food`
    |
 note: module `food::zug::baz` exists but is inaccessible
   --> $DIR/unresolved-import.rs:34:9
@@ -42,7 +46,9 @@ error[E0432]: unresolved import `food::beens`
   --> $DIR/unresolved-import.rs:20:12
    |
 LL | use food::{beens as Foo};
-   |            ^^^^^^^^^^^^ no `beens` in `food`
+   |            -----^^^^^^^
+   |            |
+   |            no `beens` in `food`
    |
 help: a similar name exists in the module
    |

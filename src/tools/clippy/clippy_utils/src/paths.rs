@@ -54,8 +54,7 @@ impl PathNS {
 ///
 /// Typically it will contain one [`DefId`] or none, but in some situations there can be multiple:
 /// - `memchr::memchr` could return the functions from both memchr 1.0 and memchr 2.0
-/// - `alloc::boxed::Box::downcast` would return a function for each of the different inherent impls
-///   ([1], [2], [3])
+/// - `alloc::boxed::Box::downcast` would return a function for each of the different inherent impls ([1], [2], [3])
 ///
 /// [1]: https://doc.rust-lang.org/std/boxed/struct.Box.html#method.downcast
 /// [2]: https://doc.rust-lang.org/std/boxed/struct.Box.html#method.downcast-1
@@ -133,6 +132,8 @@ path_macros! {
     macro_path: PathNS::Macro,
 }
 
+// Paths in the standard library missing a diagnostic item
+
 // Paths in external crates
 pub static FUTURES_IO_ASYNCREADEXT: PathLookup = type_path!(futures_util::AsyncReadExt);
 pub static FUTURES_IO_ASYNCWRITEEXT: PathLookup = type_path!(futures_util::AsyncWriteExt);
@@ -173,8 +174,7 @@ pub fn lookup_path_str(tcx: TyCtxt<'_>, ns: PathNS, path: &str) -> Vec<DefId> {
 ///
 /// Typically it will return one [`DefId`] or none, but in some situations there can be multiple:
 /// - `memchr::memchr` could return the functions from both memchr 1.0 and memchr 2.0
-/// - `alloc::boxed::Box::downcast` would return a function for each of the different inherent impls
-///   ([1], [2], [3])
+/// - `alloc::boxed::Box::downcast` would return a function for each of the different inherent impls ([1], [2], [3])
 ///
 /// This function is expensive and should be used sparingly.
 ///
@@ -330,7 +330,7 @@ fn local_item_child_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, ns: PathNS, n
                 None
             }
         }),
-        ItemKind::Impl(..) | ItemKind::Trait(..) => tcx
+        ItemKind::Impl(..) | ItemKind::Trait { .. } => tcx
             .associated_items(local_id)
             .filter_by_name_unhygienic(name)
             .find(|assoc_item| ns.matches(Some(assoc_item.namespace())))

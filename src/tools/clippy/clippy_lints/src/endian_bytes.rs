@@ -1,12 +1,11 @@
-use crate::Lint;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::{is_lint_allowed, sym};
-use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::Ty;
-use rustc_session::declare_lint_pass;
-use rustc_span::Symbol;
-use std::fmt::Write;
+use core::ptr;
+use rustc_errors::Applicability;
+use rustc_hir::{Expr, ExprKind, QPath};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
+use rustc_middle::ty;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -69,133 +68,67 @@ declare_lint_pass!(EndianBytes => [
     LITTLE_ENDIAN_BYTES,
 ]);
 
-const HOST_NAMES: [Symbol; 2] = [sym::from_ne_bytes, sym::to_ne_bytes];
-const LITTLE_NAMES: [Symbol; 2] = [sym::from_le_bytes, sym::to_le_bytes];
-const BIG_NAMES: [Symbol; 2] = [sym::from_be_bytes, sym::to_be_bytes];
-
-#[derive(Clone, Debug)]
-enum LintKind {
-    Host,
-    Little,
-    Big,
-}
-
-#[derive(Clone, Copy, PartialEq)]
-enum Prefix {
+#[derive(Clone, Copy)]
+enum Direction {
     From,
     To,
 }
 
-impl LintKind {
-    fn allowed(&self, cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-        is_lint_allowed(cx, self.as_lint(), expr.hir_id)
-    }
-
-    fn as_lint(&self) -> &'static Lint {
-        match self {
-            LintKind::Host => HOST_ENDIAN_BYTES,
-            LintKind::Little => LITTLE_ENDIAN_BYTES,
-            LintKind::Big => BIG_ENDIAN_BYTES,
-        }
-    }
-
-    fn as_name(&self, prefix: Prefix) -> Symbol {
-        let index = usize::from(prefix == Prefix::To);
-
-        match self {
-            LintKind::Host => HOST_NAMES[index],
-            LintKind::Little => LITTLE_NAMES[index],
-            LintKind::Big => BIG_NAMES[index],
-        }
-    }
-}
-
 impl LateLintPass<'_> for EndianBytes {
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let (prefix, name, ty_expr) = match expr.kind {
-            ExprKind::MethodCall(method_name, receiver, [], ..) => (Prefix::To, method_name.ident.name, receiver),
-            ExprKind::Call(function, ..)
-                if let ExprKind::Path(qpath) = function.kind
-                    && let Some(def_id) = cx.qpath_res(&qpath, function.hir_id).opt_def_id()
-                    && let Some(function_name) = cx.get_def_path(def_id).last() =>
-            {
-                (Prefix::From, *function_name, expr)
+    fn check_expr(&mut self, cx: &LateContext<'_>, e: &Expr<'_>) {
+        let (sp, direction, lint, msg) = match e.kind {
+            // rustfmt wants to break each arm into one line per tuple element which
+            // really hurts readability.
+            #[rustfmt::skip]
+            ExprKind::MethodCall(seg, _, [], _) => match seg.ident.name {
+                sym::to_ne_bytes => (seg.ident.span, Direction::To, HOST_ENDIAN_BYTES, "use of `to_ne_bytes`"),
+                sym::to_le_bytes => (seg.ident.span, Direction::To, LITTLE_ENDIAN_BYTES, "use of `to_le_bytes`"),
+                sym::to_be_bytes => (seg.ident.span, Direction::To, BIG_ENDIAN_BYTES, "use of `to_be_bytes`"),
+                _ => return,
+            },
+            #[rustfmt::skip]
+            ExprKind::Path(QPath::TypeRelative(_, seg)) => match seg.ident.name {
+                sym::from_ne_bytes => (seg.ident.span, Direction::From, HOST_ENDIAN_BYTES, "use of `from_ne_bytes`"),
+                sym::from_le_bytes => (seg.ident.span, Direction::From, LITTLE_ENDIAN_BYTES, "use of `from_le_bytes`"),
+                sym::from_be_bytes => (seg.ident.span, Direction::From, BIG_ENDIAN_BYTES, "use of `from_be_bytes`"),
+                sym::to_ne_bytes => (seg.ident.span, Direction::To, HOST_ENDIAN_BYTES, "use of `to_ne_bytes`"),
+                sym::to_le_bytes => (seg.ident.span, Direction::To, LITTLE_ENDIAN_BYTES, "use of `to_le_bytes`"),
+                sym::to_be_bytes => (seg.ident.span, Direction::To, BIG_ENDIAN_BYTES, "use of `to_be_bytes`"),
+                _ => return,
             },
             _ => return,
         };
-        if !expr.span.in_external_macro(cx.sess().source_map())
-            && let ty = cx.typeck_results().expr_ty(ty_expr)
-            && ty.is_primitive_ty()
+        if let Some(ty) = cx.ty_based_def(e.hir_id).opt_parent(cx).opt_impl_ty(cx)
+            && let ty::Uint(_) | ty::Int(_) | ty::Float(_) = *ty.instantiate_identity().skip_normalization().kind()
+            // Only check where the name itself comes from. The point of the lints is to
+            // catch when the wrong byte order is used so we only care if the current crate
+            // decided on the byte order. Which crate actually assembled the path/call
+            // isn't relevant for these lints.
+            && !sp.in_external_macro(cx.tcx.sess.source_map())
         {
-            maybe_lint_endian_bytes(cx, expr, prefix, name, ty);
+            span_lint_and_then(cx, lint, sp, msg, |diag| {
+                if !ptr::addr_eq(lint, HOST_ENDIAN_BYTES) && is_lint_allowed(cx, HOST_ENDIAN_BYTES, e.hir_id) {
+                    let (msg, sugg) = match direction {
+                        Direction::From => ("convert from native endian", "from_ne_bytes"),
+                        Direction::To => ("convert to native endian", "to_ne_bytes"),
+                    };
+                    diag.span_suggestion(sp, msg, sugg, Applicability::MaybeIncorrect);
+                }
+                if !ptr::addr_eq(lint, LITTLE_ENDIAN_BYTES) && is_lint_allowed(cx, LITTLE_ENDIAN_BYTES, e.hir_id) {
+                    let (msg, sugg) = match direction {
+                        Direction::From => ("convert from little endian", "from_le_bytes"),
+                        Direction::To => ("convert to little endian", "to_le_bytes"),
+                    };
+                    diag.span_suggestion(sp, msg, sugg, Applicability::MaybeIncorrect);
+                }
+                if !ptr::addr_eq(lint, BIG_ENDIAN_BYTES) && is_lint_allowed(cx, BIG_ENDIAN_BYTES, e.hir_id) {
+                    let (msg, sugg) = match direction {
+                        Direction::From => ("convert from big endian", "from_be_bytes"),
+                        Direction::To => ("convert to big endian", "to_be_bytes"),
+                    };
+                    diag.span_suggestion(sp, msg, sugg, Applicability::MaybeIncorrect);
+                }
+            });
         }
     }
-}
-
-fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: Prefix, name: Symbol, ty: Ty<'_>) {
-    let ne = LintKind::Host.as_name(prefix);
-    let le = LintKind::Little.as_name(prefix);
-    let be = LintKind::Big.as_name(prefix);
-
-    let (lint, other_lints) = match name {
-        name if name == ne => ((&LintKind::Host), [(&LintKind::Little), (&LintKind::Big)]),
-        name if name == le => ((&LintKind::Little), [(&LintKind::Host), (&LintKind::Big)]),
-        name if name == be => ((&LintKind::Big), [(&LintKind::Host), (&LintKind::Little)]),
-        _ => return,
-    };
-
-    span_lint_and_then(
-        cx,
-        lint.as_lint(),
-        expr.span,
-        format!(
-            "usage of the {}`{ty}::{}`{}",
-            if prefix == Prefix::From { "function " } else { "" },
-            lint.as_name(prefix),
-            if prefix == Prefix::To { " method" } else { "" },
-        ),
-        move |diag| {
-            // all lints disallowed, don't give help here
-            if [&[lint], other_lints.as_slice()]
-                .concat()
-                .iter()
-                .all(|lint| !lint.allowed(cx, expr))
-            {
-                return;
-            }
-
-            // ne_bytes and all other lints allowed
-            if lint.as_name(prefix) == ne && other_lints.iter().all(|lint| lint.allowed(cx, expr)) {
-                diag.help("specify the desired endianness explicitly");
-                return;
-            }
-
-            // le_bytes where ne_bytes allowed but be_bytes is not, or le_bytes where ne_bytes allowed but
-            // le_bytes is not
-            if (lint.as_name(prefix) == le || lint.as_name(prefix) == be) && LintKind::Host.allowed(cx, expr) {
-                diag.help("use the native endianness instead");
-                return;
-            }
-
-            let allowed_lints = other_lints.iter().filter(|lint| lint.allowed(cx, expr));
-            let len = allowed_lints.clone().count();
-
-            let mut help_str = "use ".to_owned();
-
-            for (i, lint) in allowed_lints.enumerate() {
-                let only_one = len == 1;
-                if !only_one {
-                    help_str.push_str("either of ");
-                }
-
-                write!(help_str, "`{ty}::{}` ", lint.as_name(prefix)).unwrap();
-
-                if i != len && !only_one {
-                    help_str.push_str("or ");
-                }
-            }
-            help_str.push_str("instead");
-            diag.help(help_str);
-        },
-    );
 }

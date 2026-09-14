@@ -1,0 +1,35 @@
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "Foo"
+    WHITESPACE " "
+    RECORD_FIELD_LIST
+      L_CURLY "{"
+      WHITESPACE " "
+      RECORD_FIELD
+        UNSAFE_KW "unsafe"
+        WHITESPACE " "
+        MUT_RESTRICTION
+          MUT_KW "mut"
+          VISIBILITY_INNER
+            L_PAREN "("
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  SUPER_KW "super"
+            R_PAREN ")"
+        WHITESPACE " "
+        NAME
+          IDENT "i"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "i32"
+      WHITESPACE " "
+      R_CURLY "}"
+  WHITESPACE "\n"

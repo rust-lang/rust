@@ -31,6 +31,9 @@
         "vscode": "^1.93.0"
     },
     "enabledApiProposals": [],
+    "extensionKind": [
+        "workspace"
+    ],
     "scripts": {
         "vscode:prepublish": "npm run build-base -- --minify",
         "package": "vsce package -o rust-analyzer.vsix",
@@ -54,8 +57,8 @@
         "vscode-languageclient": "^9.0.1"
     },
     "devDependencies": {
-        "@eslint/js": "^9.21.0",
-        "@stylistic/eslint-plugin": "^4.1.0",
+        "@eslint/js": "^10.0.1",
+        "@stylistic/eslint-plugin": "^5.10.0",
         "@stylistic/eslint-plugin-js": "^4.1.0",
         "@tsconfig/strictest": "^2.0.5",
         "@types/lodash": "^4.17.20",
@@ -64,16 +67,16 @@
         "@typescript-eslint/eslint-plugin": "^8.25.0",
         "@typescript-eslint/parser": "^8.25.0",
         "@vscode/test-electron": "^2.4.1",
-        "@vscode/vsce": "^3.6.0",
+        "@vscode/vsce": "^3.7.1",
         "esbuild": "^0.25.0",
-        "eslint": "^9.21.0",
-        "eslint-config-prettier": "^10.0.2",
+        "eslint": "^10.2.0",
+        "eslint-config-prettier": "^10.1.8",
         "eslint-define-config": "^2.1.0",
-        "ovsx": "0.10.1",
-        "prettier": "^3.5.2",
+        "ovsx": "0.10.10",
+        "prettier": "^3.8.1",
         "tslib": "^2.8.1",
-        "typescript": "^5.7.3",
-        "typescript-eslint": "^8.25.0"
+        "typescript": "^6.0.2",
+        "typescript-eslint": "^8.58.0"
     },
     "activationEvents": [
         "workspaceContains:Cargo.toml",
@@ -212,6 +215,11 @@
                 "category": "rust-analyzer"
             },
             {
+                "command": "rust-analyzer.newProject",
+                "title": "Create New Project...",
+                "category": "rust-analyzer"
+            },
+            {
                 "command": "rust-analyzer.rebuildProcMacros",
                 "title": "Rebuild proc macros and build scripts",
                 "category": "rust-analyzer"
@@ -344,6 +352,11 @@
                 "command": "rust-analyzer.getFailedObligations",
                 "title": "Get Failed Obligations",
                 "category": "rust-analyzer (debug command)"
+            },
+            {
+                "command": "rust-analyzer.evaluatePredicate",
+                "title": "Evaluate Predicate",
+                "category": "rust-analyzer"
             }
         ],
         "keybindings": [
@@ -483,6 +496,23 @@
                         "markdownDescription": "Do not start rust-analyzer server when the extension is activated.",
                         "default": false,
                         "type": "boolean"
+                    },
+                    "rust-analyzer.projectCreation.openAfterCreate": {
+                        "markdownDescription": "Control what happens after `rust-analyzer: Create New Project...` finishes creating a Cargo project.",
+                        "default": "ask",
+                        "enum": [
+                            "ask",
+                            "open",
+                            "openNewWindow",
+                            "addToWorkspace"
+                        ],
+                        "enumDescriptions": [
+                            "Prompt for how to open the new project.",
+                            "Open the new project in the current window.",
+                            "Open the new project in a new window.",
+                            "Add the new project to the current workspace, or open it if no workspace is open."
+                        ],
+                        "type": "string"
                     }
                 }
             },
@@ -786,16 +816,6 @@
             {
                 "title": "Assist",
                 "properties": {
-                    "rust-analyzer.assist.termSearch.borrowcheck": {
-                        "markdownDescription": "Enable borrow checking for term search code assists. If set to false, also there will be\nmore suggestions, but some of them may not borrow-check.",
-                        "default": true,
-                        "type": "boolean"
-                    }
-                }
-            },
-            {
-                "title": "Assist",
-                "properties": {
                     "rust-analyzer.assist.termSearch.fuel": {
                         "markdownDescription": "Term search fuel in \"units of work\" for assists (Defaults to 1800).",
                         "default": 1800,
@@ -884,7 +904,7 @@
                         ],
                         "enumDescriptions": [
                             "The command will be executed for each Rust workspace with the workspace as the working directory.",
-                            "The command will be executed once with the opened project as the working directory."
+                            "The command will be executed once with the opened project as the working directory.\n\n**Warning:** This can cause errors when the Cargo configuration of the opened workspaces is different or even only different than the default. Enabling this is not recommended."
                         ]
                     }
                 }
@@ -944,6 +964,19 @@
             {
                 "title": "Cargo",
                 "properties": {
+                    "rust-analyzer.cargo.configPath": {
+                        "markdownDescription": "Path to a `.cargo/config.toml` style file to pass to cargo via `--config`\nfor every cargo invocation (metadata, build scripts, config discovery).\nUseful to give rust-analyzer a consistent view of the project configuration.",
+                        "default": null,
+                        "type": [
+                            "null",
+                            "string"
+                        ]
+                    }
+                }
+            },
+            {
+                "title": "Cargo",
+                "properties": {
                     "rust-analyzer.cargo.extraArgs": {
                         "markdownDescription": "Extra arguments that are passed to every cargo invocation.",
                         "default": [],
@@ -987,6 +1020,19 @@
                                 }
                             }
                         ]
+                    }
+                }
+            },
+            {
+                "title": "Cargo",
+                "properties": {
+                    "rust-analyzer.cargo.metadataExtraArgs": {
+                        "markdownDescription": "Extra arguments passed only to `cargo metadata`, not to other cargo invocations.\nUseful for flags like `--config` that `cargo metadata` supports.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
@@ -1191,7 +1237,7 @@
                         ],
                         "enumDescriptions": [
                             "The command will be executed for each Rust workspace with the workspace as the working directory.",
-                            "The command will be executed once with the opened project as the working directory."
+                            "The command will be executed once with the opened project as the working directory.\n\n**Warning:** This can cause errors when the Cargo configuration of the opened workspaces is different or even only different than the default. Enabling this is not recommended."
                         ]
                     }
                 }
@@ -1261,6 +1307,16 @@
             {
                 "title": "Completion",
                 "properties": {
+                    "rust-analyzer.completion.addColonsToModule": {
+                        "markdownDescription": "Automatically add `::` when completing the module.\n\nWill not be completed in `use`.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "Completion",
+                "properties": {
                     "rust-analyzer.completion.addSemicolonToUnit": {
                         "markdownDescription": "Automatically add a semicolon when completing unit-returning functions.\n\nIn `match` arms it completes a comma instead.",
                         "default": true,
@@ -1302,7 +1358,7 @@
                 "title": "Completion",
                 "properties": {
                     "rust-analyzer.completion.autoimport.exclude": {
-                        "markdownDescription": "A list of full paths to items to exclude from auto-importing completions.\n\nTraits in this list won't have their methods suggested in completions unless the trait\nis in scope.\n\nYou can either specify a string path which defaults to type \"always\" or use the more\nverbose form `{ \"path\": \"path::to::item\", type: \"always\" }`.\n\nFor traits the type \"methods\" can be used to only exclude the methods but not the trait\nitself.\n\nThis setting also inherits `#rust-analyzer.completion.excludeTraits#`.",
+                        "markdownDescription": "A list of full paths to items to exclude from auto-importing completions.\n\nTraits in this list won't have their methods suggested in completions unless the trait\nis in scope.\n\nYou can either specify a string path which defaults to type \"always\" or use the more\nverbose form `{ \"path\": \"path::to::item\", type: \"always\" }`.\n\nFor traits the type \"methods\" can be used to only exclude the methods but not the trait\nitself.\n\nFor modules the type \"sub_items\" can be used to only exclude the all items in it but not the module\nitself. This does not include items defined in nested modules.\n\nFor enums the type \"variants\" can be used to only exclude the all variants in it but not the enum\nitself.\n\nThis setting also inherits `#rust-analyzer.completion.excludeTraits#`.",
                         "default": [
                             {
                                 "path": "core::borrow::Borrow",
@@ -1329,11 +1385,15 @@
                                             "type": "string",
                                             "enum": [
                                                 "always",
-                                                "methods"
+                                                "methods",
+                                                "sub_items",
+                                                "variants"
                                             ],
                                             "enumDescriptions": [
                                                 "Do not show this item or its methods (if it is a trait) in auto-import completions.",
-                                                "Do not show this traits methods in auto-import completions."
+                                                "Do not show this trait's methods in auto-import completions.",
+                                                "Do not show this module's all items in it in auto-import completions.",
+                                                "Do not show this enum's variants in auto-import completions."
                                             ]
                                         }
                                     }
@@ -1588,6 +1648,16 @@
                         "items": {
                             "type": "string"
                         }
+                    }
+                }
+            },
+            {
+                "title": "rust-analyzer",
+                "properties": {
+                    "rust-analyzer.disableFixtureSupport": {
+                        "markdownDescription": "Disable support for `#[rust_analyzer::rust_fixture]` snippets.\n\nIf you are not working on rust-analyzer itself, you should ignore this config.",
+                        "default": false,
+                        "type": "boolean"
                     }
                 }
             },
@@ -2157,7 +2227,7 @@
                 "title": "Inlay Hints",
                 "properties": {
                     "rust-analyzer.inlayHints.closureCaptureHints.enable": {
-                        "markdownDescription": "Show inlay hints for closure captures.",
+                        "markdownDescription": "Show inlay hints for closure and coroutine captures.",
                         "default": false,
                         "type": "boolean"
                     }
@@ -2502,6 +2572,24 @@
                 }
             },
             {
+                "title": "Inlay Hints",
+                "properties": {
+                    "rust-analyzer.inlayHints.typeHints.location": {
+                        "markdownDescription": "Where to render type hints relative to their binding pattern.",
+                        "default": "inline",
+                        "type": "string",
+                        "enum": [
+                            "inline",
+                            "end_of_line"
+                        ],
+                        "enumDescriptions": [
+                            "Render type hints directly after the binding identifier.",
+                            "Render type hints after the end of the containing `let` statement when possible."
+                        ]
+                    }
+                }
+            },
+            {
                 "title": "Interpret",
                 "properties": {
                     "rust-analyzer.interpret.tests": {
@@ -2775,7 +2863,7 @@
                 "properties": {
                     "rust-analyzer.procMacro.processes": {
                         "markdownDescription": "Number of proc-macro server processes to spawn.\n\nControls how many independent `proc-macro-srv` processes rust-analyzer\nruns in parallel to handle macro expansion.",
-                        "default": 1,
+                        "default": 2,
                         "anyOf": [
                             {
                                 "type": "number",
@@ -2865,7 +2953,7 @@
                 "title": "Runnables",
                 "properties": {
                     "rust-analyzer.runnables.bench.overrideCommand": {
-                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically\nreplace the package name, target option (such as `--bin` or `--example`), the target name and\nthe test name (name of test function or test mod path).",
+                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders:\n- `${package}`: package name.\n- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.\n- `${target}`: target name (empty for `--lib`).\n- `${test_name}`: the test path filter, e.g. `module::bench_func`.\n- `${exact}`: `--exact` for single benchmarks, empty for modules.\n- `${include_ignored}`: always empty for benchmarks.\n- `${executable_args}`: all of the above binary args bundled together\n    (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
                         "default": null,
                         "type": [
                             "null",
@@ -2894,7 +2982,7 @@
                 "title": "Runnables",
                 "properties": {
                     "rust-analyzer.runnables.doctest.overrideCommand": {
-                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically\nreplace the package name, target option (such as `--bin` or `--example`), the target name and\nthe test name (name of test function or test mod path).",
+                        "markdownDescription": "Override the command used for doc-test runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders:\n- `${package}`: package name.\n- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.\n- `${target}`: target name (empty for `--lib`).\n- `${test_name}`: the test path filter, e.g. `module::func`.\n- `${exact}`: always empty for doc-tests.\n- `${include_ignored}`: always empty for doc-tests.\n- `${executable_args}`: all of the above binary args bundled together\n    (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
                         "default": null,
                         "type": [
                             "null",
@@ -2948,7 +3036,7 @@
                 "title": "Runnables",
                 "properties": {
                     "rust-analyzer.runnables.test.overrideCommand": {
-                        "markdownDescription": "Override the command used for test runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically\nreplace the package name, target option (such as `--bin` or `--example`), the target name and\nthe test name (name of test function or test mod path).",
+                        "markdownDescription": "Override the command used for test runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nAvailable placeholders:\n- `${package}`: package name.\n- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.\n- `${target}`: target name (empty for `--lib`).\n- `${test_name}`: the test path filter, e.g. `module::test_func`.\n- `${exact}`: `--exact` for single tests, empty for modules.\n- `${include_ignored}`: `--include-ignored` for single tests, empty otherwise.\n- `${executable_args}`: all of the above binary args bundled together\n    (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
                         "default": null,
                         "type": [
                             "null",
@@ -3160,7 +3248,7 @@
                 "title": "Workspace",
                 "properties": {
                     "rust-analyzer.workspace.discoverConfig": {
-                        "markdownDescription": "Configure a command that rust-analyzer can invoke to\nobtain configuration.\n\nThis is an alternative to manually generating\n`rust-project.json`: it enables rust-analyzer to generate\nrust-project.json on the fly, and regenerate it when\nswitching or modifying projects.\n\nThis is an object with three fields:\n\n* `command`: the shell command to invoke\n\n* `filesToWatch`: which build system-specific files should\nbe watched to trigger regenerating the configuration\n\n* `progressLabel`: the name of the command, used in\nprogress indicators in the IDE\n\nHere's an example of a valid configuration:\n\n```json\n\"rust-analyzer.workspace.discoverConfig\": {\n        \"command\": [\n                \"rust-project\",\n                \"develop-json\",\n                \"{arg}\"\n        ],\n        \"progressLabel\": \"buck2/rust-project\",\n        \"filesToWatch\": [\n                \"BUCK\"\n        ]\n}\n```\n\n## Argument Substitutions\n\nIf `command` includes the argument `{arg}`, that argument will be substituted\nwith the JSON-serialized form of the following enum:\n\n```norun\n#[derive(PartialEq, Clone, Debug, Serialize)]\n#[serde(rename_all = \"camelCase\")]\npub enum DiscoverArgument {\n     Path(AbsPathBuf),\n     Buildfile(AbsPathBuf),\n}\n```\n\nrust-analyzer will use the path invocation to find and\ngenerate a `rust-project.json` and therefore a\nworkspace. Example:\n\n\n```norun\nrust-project develop-json '{ \"path\": \"myproject/src/main.rs\" }'\n```\n\nrust-analyzer will use build file invocations to update an\nexisting workspace. Example:\n\nOr with a build file and the configuration above:\n\n```norun\nrust-project develop-json '{ \"buildfile\": \"myproject/BUCK\" }'\n```\n\nAs a reference for implementors, buck2's `rust-project`\nwill likely be useful:\n<https://github.com/facebook/buck2/tree/main/integrations/rust-project>.\n\n## Discover Command Output\n\n**Warning**: This format is provisional and subject to change.\n\nThe discover command should output JSON objects, one per\nline (JSONL format). These objects should correspond to\nthis Rust data type:\n\n```norun\n#[derive(Debug, Clone, Deserialize, Serialize)]\n#[serde(tag = \"kind\")]\n#[serde(rename_all = \"snake_case\")]\nenum DiscoverProjectData {\n        Finished { buildfile: Utf8PathBuf, project: ProjectJsonData },\n        Error { error: String, source: Option<String> },\n        Progress { message: String },\n}\n```\n\nFor example, a progress event:\n\n```json\n{\"kind\":\"progress\",\"message\":\"generating rust-project.json\"}\n```\n\nA finished event can look like this (expanded and\ncommented for readability):\n\n```json\n{\n        // the internally-tagged representation of the enum.\n        \"kind\": \"finished\",\n        // the file used by a non-Cargo build system to define\n        // a package or target.\n        \"buildfile\": \"rust-analyzer/BUCK\",\n        // the contents of a rust-project.json, elided for brevity\n        \"project\": {\n                \"sysroot\": \"foo\",\n                \"crates\": []\n        }\n}\n```\n\nOnly the finished event is required, but the other\nvariants are encouraged to give users more feedback about\nprogress or errors.",
+                        "markdownDescription": "Configure a command that rust-analyzer can invoke to\nobtain configuration.\n\nThis is an alternative to manually generating\n`rust-project.json`: it enables rust-analyzer to generate\nrust-project.json on the fly, and regenerate it when\nswitching or modifying projects.\n\nThis is an object with three fields:\n\n* `command`: the shell command to invoke\n\n* `filesToWatch`: which build system-specific files should\nbe watched to trigger regenerating the configuration\n\n* `progressLabel`: the name of the command, used in\nprogress indicators in the IDE\n\nHere's an example of a valid configuration:\n\n```json\n\"rust-analyzer.workspace.discoverConfig\": {\n        \"command\": [\n                \"rust-project\",\n                \"develop-json\",\n                \"{arg}\"\n        ],\n        \"progressLabel\": \"buck2/rust-project\",\n        \"filesToWatch\": [\n                \"BUCK\"\n        ]\n}\n```\n\n## Argument Substitutions\n\nIf `command` includes the argument `{arg}`, that argument will be substituted\nwith the JSON-serialized form of the following enum:\n\n```norun\n#[derive(PartialEq, Clone, Debug, Serialize)]\n#[serde(rename_all = \"camelCase\")]\npub enum DiscoverArgument {\n     Path(AbsPathBuf),\n     Buildfile(AbsPathBuf),\n}\n```\n\nrust-analyzer will use the path invocation to find and\ngenerate a `rust-project.json` and therefore a\nworkspace. Example:\n\n\n```norun\nrust-project develop-json '{ \"path\": \"myproject/src/main.rs\" }'\n```\n\nrust-analyzer will use build file invocations to update an\nexisting workspace. Example:\n\nOr with a build file and the configuration above:\n\n```norun\nrust-project develop-json '{ \"buildfile\": \"myproject/BUCK\" }'\n```\n\nAs a reference for implementors, buck2's `rust-project`\nwill likely be useful:\n<https://github.com/facebook/buck2/tree/main/integrations/rust-project>.\n\n## Discover Command Output\n\n**Warning**: This format is provisional and subject to change.\n\nThe discover command should output JSON objects to stdout,\none per line (JSONL format). These objects should correspond\nto this Rust data type:\n\n```norun\n#[derive(Debug, Clone, Deserialize, Serialize)]\n#[serde(tag = \"kind\")]\n#[serde(rename_all = \"snake_case\")]\nenum DiscoverProjectData {\n        Finished { buildfile: Utf8PathBuf, project: ProjectJsonData },\n        Error { error: String, source: Option<String> },\n        Progress { message: String },\n}\n```\n\nFor example, a progress event:\n\n```json\n{\"kind\":\"progress\",\"message\":\"generating rust-project.json\"}\n```\n\nA finished event can look like this (expanded and\ncommented for readability):\n\n```json\n{\n        // the internally-tagged representation of the enum.\n        \"kind\": \"finished\",\n        // the file used by a non-Cargo build system to define\n        // a package or target.\n        \"buildfile\": \"rust-analyzer/BUCK\",\n        // the contents of a rust-project.json, elided for brevity\n        \"project\": {\n                \"sysroot\": \"foo\",\n                \"crates\": []\n        }\n}\n```\n\nOnly the finished event is required, but the other\nvariants are encouraged to give users more feedback about\nprogress or errors.\n\nStderr is not parsed as JSONL. It is treated as command log\noutput and forwarded to rust-analyzer's own logs.",
                         "default": null,
                         "anyOf": [
                             {
@@ -3252,6 +3340,13 @@
             }
         ],
         "configurationDefaults": {
+            "[rust]": {
+                "editor.quickSuggestions": {
+                    "other": true,
+                    "comments": false,
+                    "strings": true
+                }
+            },
             "explorer.fileNesting.patterns": {
                 "Cargo.toml": "Cargo.lock"
             }
@@ -3744,6 +3839,9 @@
                     "when": "inRustProject"
                 },
                 {
+                    "command": "rust-analyzer.newProject"
+                },
+                {
                     "command": "rust-analyzer.reloadWorkspace",
                     "when": "inRustProject"
                 },
@@ -3800,6 +3898,10 @@
                 },
                 {
                     "command": "rust-analyzer.getFailedObligations",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.evaluatePredicate",
                     "when": "inRustProject"
                 }
             ],
@@ -3858,6 +3960,13 @@
                 }
             ]
         },
+        "viewsWelcome": [
+            {
+                "view": "explorer",
+                "contents": "Create a new Rust project.\n[Create Rust Project](command:rust-analyzer.newProject)",
+                "when": "workspaceFolderCount == 0"
+            }
+        ],
         "viewsContainers": {
             "activitybar": [
                 {
@@ -3883,6 +3992,14 @@
                 "title": "Learn about rust-analyzer",
                 "description": "A brief introduction to get started with rust-analyzer. Learn about key features and resources to help you get the most out of the extension.",
                 "steps": [
+                    {
+                        "id": "create-project",
+                        "title": "Create a Rust project",
+                        "description": "Start a new Cargo binary or library project from VS Code.\n\n[Create a Rust Project](command:rust-analyzer.newProject)",
+                        "media": {
+                            "markdown": "./walkthrough-create-project.md"
+                        }
+                    },
                     {
                         "id": "setup",
                         "title": "Useful Setup Tips",

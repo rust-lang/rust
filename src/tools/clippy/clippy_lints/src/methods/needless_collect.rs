@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{has_non_owning_mutable_access, make_normalized_projection, make_projection};
@@ -16,7 +16,7 @@ use rustc_hir::{
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, AssocTag, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty};
+use rustc_middle::ty::{self, AssocTag, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty, Unnormalized};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
@@ -33,6 +33,10 @@ pub(super) fn check<'tcx>(
     let iter_ty = cx.typeck_results().expr_ty(iter_expr);
     if has_non_owning_mutable_access(cx, iter_ty) {
         return; // don't lint if the iterator has side effects
+    }
+
+    if collect_turbofish_is_fully_concrete(collect_expr) {
+        return; // don't lint if turbofish on collect maybe the only thing anchoring the type
     }
 
     match cx.tcx.parent_hir_node(collect_expr.hir_id) {
@@ -194,7 +198,7 @@ fn check_collect_into_intoiterator<'tcx>(
             // that contains `collect_expr`
             let inputs = cx
                 .tcx
-                .liberate_late_bound_regions(id, cx.tcx.fn_sig(id).instantiate_identity())
+                .liberate_late_bound_regions(id, cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip())
                 .inputs();
 
             // map IntoIterator generic bounds to their signature
@@ -204,9 +208,8 @@ fn check_collect_into_intoiterator<'tcx>(
                 .tcx
                 .param_env(id)
                 .caller_bounds()
-                .into_iter()
-                .filter_map(|p| {
-                    if let ClauseKind::Trait(t) = p.kind().skip_binder()
+                .filter_map(|c| {
+                    if let ClauseKind::Trait(t) = c.kind().skip_binder()
                         && cx.tcx.is_diagnostic_item(sym::IntoIterator, t.trait_ref.def_id)
                     {
                         Some(t.self_ty())
@@ -230,10 +233,45 @@ fn check_collect_into_intoiterator<'tcx>(
     }
 }
 
+/// Returns `true` if `collect_expr`'s turbofish is fully concrete (has
+/// generic arguments and none of them are inference placeholders)
+fn collect_turbofish_is_fully_concrete(collect_expr: &Expr<'_>) -> bool {
+    if let ExprKind::MethodCall(segment, ..) = collect_expr.kind
+        && let Some(args) = segment.args
+        && let [a] = args.args
+    {
+        generic_arg_is_fully_concrete(a)
+    } else {
+        false
+    }
+}
+
+fn generic_arg_is_fully_concrete(arg: &rustc_hir::GenericArg<'_>) -> bool {
+    match arg {
+        rustc_hir::GenericArg::Infer(_) => false,
+        rustc_hir::GenericArg::Type(ty) => ty_is_fully_concrete(ty.as_unambig_ty()),
+        rustc_hir::GenericArg::Const(ct) => !matches!(ct.as_unambig_ct().kind, rustc_hir::ConstArgKind::Infer(..)),
+        rustc_hir::GenericArg::Lifetime(_) => true,
+    }
+}
+
+fn ty_is_fully_concrete(ty: &rustc_hir::Ty<'_>) -> bool {
+    match &ty.kind {
+        rustc_hir::TyKind::Infer(..) => false,
+        rustc_hir::TyKind::Path(rustc_hir::QPath::Resolved(_, path)) => path.segments.iter().all(|seg| {
+            seg.args
+                .is_none_or(|a| a.args.iter().all(generic_arg_is_fully_concrete))
+        }),
+        rustc_hir::TyKind::Ref(_, mut_ty) => ty_is_fully_concrete(mut_ty.ty),
+        rustc_hir::TyKind::Slice(ty) | rustc_hir::TyKind::Array(ty, _) => ty_is_fully_concrete(ty),
+        rustc_hir::TyKind::Tup(tys) => tys.iter().all(ty_is_fully_concrete),
+        _ => true,
+    }
+}
 /// Checks if the given method call matches the expected signature of `([&[mut]] self) -> bool`
 fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
     cx.typeck_results().type_dependent_def_id(call_id).is_some_and(|id| {
-        let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_binder();
+        let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip().skip_binder();
         sig.inputs().len() == 1 && sig.output().is_bool()
     })
 }
@@ -247,7 +285,7 @@ fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty:
         && let Some(into_iter_item_proj) = make_projection(cx.tcx, into_iter_trait, sym::Item, [collect_ty])
         && let Ok(into_iter_item_ty) = cx.tcx.try_normalize_erasing_regions(
             cx.typing_env(),
-            Ty::new_projection_from_args(cx.tcx, into_iter_item_proj.def_id, into_iter_item_proj.args),
+            Unnormalized::new_wip(Ty::new_alias(cx.tcx, ty::IsRigid::No, into_iter_item_proj)),
         )
     {
         iter_item_ty == into_iter_item_ty
@@ -261,7 +299,7 @@ fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty:
 fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -> bool {
     let typeck = cx.typeck_results();
     if let Some(id) = typeck.type_dependent_def_id(call_id)
-        && let sig = cx.tcx.fn_sig(id).instantiate_identity()
+        && let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip()
         && sig.skip_binder().output().is_bool()
         && let [_, search_ty] = *sig.skip_binder().inputs()
         && let ty::Ref(_, search_ty, Mutability::Not) = *cx
@@ -276,10 +314,15 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
             iter_trait,
         )
         && let args = cx.tcx.mk_args(&[GenericArg::from(typeck.expr_ty_adjusted(iter_expr))])
-        && let proj_ty = Ty::new_projection_from_args(cx.tcx, iter_item.def_id, args)
-        && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), proj_ty)
+        && let proj_ty = Ty::new_projection_from_args(cx.tcx, ty::IsRigid::No, iter_item.def_id, args)
+        && let Ok(item_ty) = cx
+            .tcx
+            .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(proj_ty))
     {
-        item_ty == EarlyBinder::bind(search_ty).instantiate(cx.tcx, cx.typeck_results().node_args(call_id))
+        item_ty
+            == EarlyBinder::bind(cx.tcx, search_ty)
+                .instantiate(cx.tcx, cx.typeck_results().node_args(call_id))
+                .skip_norm_wip()
     } else {
         false
     }

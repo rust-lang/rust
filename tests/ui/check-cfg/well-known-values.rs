@@ -13,8 +13,9 @@
 #![feature(cfg_relocation_model)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
-#![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_target_thread_local)]
+#![feature(cfg_target_object_format)]
+#![feature(cfg_target_has_threads)]
 #![feature(cfg_ub_checks)]
 #![feature(fmt_debug)]
 
@@ -46,6 +47,8 @@
     //~^ WARN unexpected `cfg` condition value
     relocation_model = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
+    rust_analyzer = "_UNEXPECTED_VALUE",
+    //~^ WARN unexpected `cfg` condition value
     rustfmt = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     sanitize = "_UNEXPECTED_VALUE",
@@ -64,9 +67,13 @@
     // ^ tested in target_feature.rs
     target_has_atomic = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
-    target_has_atomic_equal_alignment = "_UNEXPECTED_VALUE",
-    //~^ WARN unexpected `cfg` condition value
     target_has_atomic_load_store = "_UNEXPECTED_VALUE",
+    //~^ WARN unexpected `cfg` condition value
+    target_has_atomic_primitive_alignment = "_UNEXPECTED_VALUE",
+    //~^ WARN unexpected `cfg` condition value
+    target_has_threads = "_UNEXPECTED_VALUE",
+    //~^ WARN unexpected `cfg` condition value
+    target_object_format = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     target_os = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value

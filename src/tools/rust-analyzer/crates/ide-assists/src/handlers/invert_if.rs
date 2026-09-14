@@ -1,13 +1,13 @@
 use ide_db::syntax_helpers::node_ext::is_pattern_cond;
 use syntax::{
     T,
-    ast::{self, AstNode},
+    ast::{self, AstNode, syntax_factory::SyntaxFactory},
 };
 
 use crate::{
     AssistId,
     assist_context::{AssistContext, Assists},
-    utils::invert_boolean_expression_legacy,
+    utils::invert_boolean_expression,
 };
 
 // Assist: invert_if
@@ -26,7 +26,7 @@ use crate::{
 //     if y { B } else { A }
 // }
 // ```
-pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let if_keyword = ctx
         .find_token_syntax_at_offset(T![if])
         .or_else(|| ctx.find_token_syntax_at_offset(T![else]))?;
@@ -50,7 +50,8 @@ pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
     };
 
     acc.add(AssistId::refactor_rewrite("invert_if"), "Invert if", if_range, |edit| {
-        let flip_cond = invert_boolean_expression_legacy(cond.clone());
+        let make = SyntaxFactory::without_mappings();
+        let flip_cond = invert_boolean_expression(&make, cond.clone());
         edit.replace_ast(cond, flip_cond);
 
         let else_node = else_block.syntax();
@@ -110,6 +111,15 @@ mod tests {
             invert_if,
             "fn f() { i$0f cond { 3 * 2 } else { 1 } }",
             "fn f() { if !cond { 1 } else { 3 * 2 } }",
+        )
+    }
+
+    #[test]
+    fn invert_if_general_case_needs_paren() {
+        check_assist(
+            invert_if,
+            "fn f() { i$0f cond as bool { 3 * 2 } else { 1 } }",
+            "fn f() { if !(cond as bool) { 1 } else { 3 * 2 } }",
         )
     }
 

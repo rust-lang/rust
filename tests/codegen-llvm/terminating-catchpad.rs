@@ -1,5 +1,5 @@
 //@ revisions: emscripten wasi seh
-//@[emscripten] compile-flags: --target wasm32-unknown-emscripten -Z emscripten-wasm-eh
+//@[emscripten] compile-flags: --target wasm32-unknown-emscripten
 //@[wasi] compile-flags: --target wasm32-wasip1 -C panic=unwind
 //@[seh] compile-flags: --target x86_64-pc-windows-msvc
 //@[emscripten] needs-llvm-components: webassembly

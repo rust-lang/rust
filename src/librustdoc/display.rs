@@ -130,3 +130,13 @@ impl WithOpts {
         })
     }
 }
+
+/// Creates a [`Display`] implementation that repeats `t` `count` times.
+pub(crate) fn repeat(t: impl Display, count: usize) -> impl Display {
+    fmt::from_fn(move |f| {
+        for _ in 0..count {
+            t.fmt(f)?;
+        }
+        Ok(())
+    })
+}

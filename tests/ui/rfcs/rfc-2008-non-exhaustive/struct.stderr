@@ -1,8 +1,10 @@
-error[E0423]: expected value, found struct `UnitStruct`
+error[E0423]: cannot find value `UnitStruct` in this scope
   --> $DIR/struct.rs:29:14
    |
 LL |     let us = UnitStruct;
    |              ^^^^^^^^^^ constructor is not visible here due to private fields
+   |
+   = note: a struct named `UnitStruct` exists in another namespace
 
 error[E0603]: tuple struct constructor `TupleStruct` is private
   --> $DIR/struct.rs:23:32
@@ -66,6 +68,8 @@ error[E0423]: cannot initialize a tuple struct which contains private fields
    |
 LL |     let ts = TupleStruct(640, 480);
    |              ^^^^^^^^^^^
+   |
+   = note: a struct named `TupleStruct` exists in another namespace
 
 error[E0638]: `..` required with struct marked as non-exhaustive
   --> $DIR/struct.rs:26:9

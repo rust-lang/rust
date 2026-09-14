@@ -1,5 +1,5 @@
-#![allow(unused, clippy::deref_by_slicing)]
 #![warn(clippy::redundant_slicing)]
+#![expect(clippy::deref_by_slicing)]
 
 use std::io::Read;
 

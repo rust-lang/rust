@@ -1,9 +1,8 @@
-//! Strip all doc(hidden) items from the output.
+//! Strip all `#[doc(hidden)]` items from the output.
 
 use std::mem;
 
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_hir::find_attr;
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
@@ -11,16 +10,13 @@ use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::{self, Item, ItemIdSet, reexport_chain};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, strip_item};
-use crate::passes::{ImplStripper, Pass};
+use crate::passes::ImplStripper;
 
-pub(crate) const STRIP_HIDDEN: Pass = Pass {
-    name: "strip-hidden",
-    run: Some(strip_hidden),
-    description: "strips all `#[doc(hidden)]` items from the output",
-};
+pub(super) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
+    if cx.document_hidden() {
+        return krate;
+    }
 
-/// Strip items marked `#[doc(hidden)]`
-pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
     let mut retained = ItemIdSet::default();
     let is_json_output = cx.is_json_output();
 
@@ -113,9 +109,7 @@ impl DocFolder for Stripper<'_, '_> {
             clean::ImplItem(..) => true,
             // If the macro has the `#[macro_export]` attribute, it means it's accessible at the
             // crate level so it should be handled differently.
-            clean::MacroItem(..) => {
-                find_attr!(&i.attrs.other_attrs, MacroExport { .. })
-            }
+            clean::MacroItem(..) => i.is_exported_macro(),
             _ => false,
         };
         let mut is_hidden = has_doc_hidden;

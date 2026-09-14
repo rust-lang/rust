@@ -218,18 +218,15 @@ fn ipv6_to_ipv4() {
 
 #[test]
 fn ip_properties() {
-    macro_rules! ip {
-        ($s:expr) => {
-            IpAddr::from_str($s).unwrap()
-        };
-    }
-
     macro_rules! check {
         ($s:expr) => {
             check!($s, 0);
         };
 
         ($s:expr, $mask:expr) => {{
+            let ip = IpAddr::from_str($s).unwrap();
+            assert_eq!($s, ip.to_string());
+
             let unspec: u8 = 1 << 0;
             let loopback: u8 = 1 << 1;
             let global: u8 = 1 << 2;
@@ -238,39 +235,39 @@ fn ip_properties() {
             let benchmarking: u8 = 1 << 5;
 
             if ($mask & unspec) == unspec {
-                assert!(ip!($s).is_unspecified());
+                assert!(ip.is_unspecified());
             } else {
-                assert!(!ip!($s).is_unspecified());
+                assert!(!ip.is_unspecified());
             }
 
             if ($mask & loopback) == loopback {
-                assert!(ip!($s).is_loopback());
+                assert!(ip.is_loopback());
             } else {
-                assert!(!ip!($s).is_loopback());
+                assert!(!ip.is_loopback());
             }
 
             if ($mask & global) == global {
-                assert!(ip!($s).is_global());
+                assert!(ip.is_global());
             } else {
-                assert!(!ip!($s).is_global());
+                assert!(!ip.is_global());
             }
 
             if ($mask & multicast) == multicast {
-                assert!(ip!($s).is_multicast());
+                assert!(ip.is_multicast());
             } else {
-                assert!(!ip!($s).is_multicast());
+                assert!(!ip.is_multicast());
             }
 
             if ($mask & doc) == doc {
-                assert!(ip!($s).is_documentation());
+                assert!(ip.is_documentation());
             } else {
-                assert!(!ip!($s).is_documentation());
+                assert!(!ip.is_documentation());
             }
 
             if ($mask & benchmarking) == benchmarking {
-                assert!(ip!($s).is_benchmarking());
+                assert!(ip.is_benchmarking());
             } else {
-                assert!(!ip!($s).is_benchmarking());
+                assert!(!ip.is_benchmarking());
             }
         }};
     }
@@ -339,18 +336,15 @@ fn ip_properties() {
 
 #[test]
 fn ipv4_properties() {
-    macro_rules! ip {
-        ($s:expr) => {
-            Ipv4Addr::from_str($s).unwrap()
-        };
-    }
-
     macro_rules! check {
         ($s:expr) => {
             check!($s, 0);
         };
 
         ($s:expr, $mask:expr) => {{
+            let ip = Ipv4Addr::from_str($s).unwrap();
+            assert_eq!($s, ip.to_string());
+
             let unspec: u16 = 1 << 0;
             let loopback: u16 = 1 << 1;
             let private: u16 = 1 << 2;
@@ -364,69 +358,69 @@ fn ipv4_properties() {
             let shared: u16 = 1 << 11;
 
             if ($mask & unspec) == unspec {
-                assert!(ip!($s).is_unspecified());
+                assert!(ip.is_unspecified());
             } else {
-                assert!(!ip!($s).is_unspecified());
+                assert!(!ip.is_unspecified());
             }
 
             if ($mask & loopback) == loopback {
-                assert!(ip!($s).is_loopback());
+                assert!(ip.is_loopback());
             } else {
-                assert!(!ip!($s).is_loopback());
+                assert!(!ip.is_loopback());
             }
 
             if ($mask & private) == private {
-                assert!(ip!($s).is_private());
+                assert!(ip.is_private());
             } else {
-                assert!(!ip!($s).is_private());
+                assert!(!ip.is_private());
             }
 
             if ($mask & link_local) == link_local {
-                assert!(ip!($s).is_link_local());
+                assert!(ip.is_link_local());
             } else {
-                assert!(!ip!($s).is_link_local());
+                assert!(!ip.is_link_local());
             }
 
             if ($mask & global) == global {
-                assert!(ip!($s).is_global());
+                assert!(ip.is_global());
             } else {
-                assert!(!ip!($s).is_global());
+                assert!(!ip.is_global());
             }
 
             if ($mask & multicast) == multicast {
-                assert!(ip!($s).is_multicast());
+                assert!(ip.is_multicast());
             } else {
-                assert!(!ip!($s).is_multicast());
+                assert!(!ip.is_multicast());
             }
 
             if ($mask & broadcast) == broadcast {
-                assert!(ip!($s).is_broadcast());
+                assert!(ip.is_broadcast());
             } else {
-                assert!(!ip!($s).is_broadcast());
+                assert!(!ip.is_broadcast());
             }
 
             if ($mask & documentation) == documentation {
-                assert!(ip!($s).is_documentation());
+                assert!(ip.is_documentation());
             } else {
-                assert!(!ip!($s).is_documentation());
+                assert!(!ip.is_documentation());
             }
 
             if ($mask & benchmarking) == benchmarking {
-                assert!(ip!($s).is_benchmarking());
+                assert!(ip.is_benchmarking());
             } else {
-                assert!(!ip!($s).is_benchmarking());
+                assert!(!ip.is_benchmarking());
             }
 
             if ($mask & reserved) == reserved {
-                assert!(ip!($s).is_reserved());
+                assert!(ip.is_reserved());
             } else {
-                assert!(!ip!($s).is_reserved());
+                assert!(!ip.is_reserved());
             }
 
             if ($mask & shared) == shared {
-                assert!(ip!($s).is_shared());
+                assert!(ip.is_shared());
             } else {
-                assert!(!ip!($s).is_shared());
+                assert!(!ip.is_shared());
             }
         }};
     }
@@ -479,23 +473,19 @@ fn ipv4_properties() {
 
 #[test]
 fn ipv6_properties() {
-    macro_rules! ip {
-        ($s:expr) => {
-            Ipv6Addr::from_str($s).unwrap()
-        };
-    }
-
     macro_rules! check {
         ($s:expr, &[$($octet:expr),*]) => {
             check!($s, &[$($octet),*], 0);
         };
 
         ($s:expr, &[$($octet:expr),*], $mask:expr) => {
-            assert_eq!($s, ip!($s).to_string());
+            let ip = Ipv6Addr::from_str($s).unwrap();
+            assert_eq!($s, ip.to_string());
+
             let octets = &[$($octet),*];
-            assert_eq!(&ip!($s).octets(), octets);
-            assert_eq!(Ipv6Addr::from(*octets), ip!($s));
-            assert_eq!(Ipv6Addr::from_octets(*octets), ip!($s));
+            assert_eq!(&ip.octets(), octets);
+            assert_eq!(Ipv6Addr::from(*octets), ip);
+            assert_eq!(Ipv6Addr::from_octets(*octets), ip);
 
             let unspecified: u32 = 1 << 0;
             let loopback: u32 = 1 << 1;
@@ -522,84 +512,84 @@ fn ipv6_properties() {
             let ipv4_mapped: u32 = 1 << 17;
 
             if ($mask & unspecified) == unspecified {
-                assert!(ip!($s).is_unspecified());
+                assert!(ip.is_unspecified());
             } else {
-                assert!(!ip!($s).is_unspecified());
+                assert!(!ip.is_unspecified());
             }
             if ($mask & loopback) == loopback {
-                assert!(ip!($s).is_loopback());
+                assert!(ip.is_loopback());
             } else {
-                assert!(!ip!($s).is_loopback());
+                assert!(!ip.is_loopback());
             }
             if ($mask & unique_local) == unique_local {
-                assert!(ip!($s).is_unique_local());
+                assert!(ip.is_unique_local());
             } else {
-                assert!(!ip!($s).is_unique_local());
+                assert!(!ip.is_unique_local());
             }
             if ($mask & global) == global {
-                assert!(ip!($s).is_global());
+                assert!(ip.is_global());
             } else {
-                assert!(!ip!($s).is_global());
+                assert!(!ip.is_global());
             }
             if ($mask & unicast_link_local) == unicast_link_local {
-                assert!(ip!($s).is_unicast_link_local());
+                assert!(ip.is_unicast_link_local());
             } else {
-                assert!(!ip!($s).is_unicast_link_local());
+                assert!(!ip.is_unicast_link_local());
             }
             if ($mask & unicast_global) == unicast_global {
-                assert!(ip!($s).is_unicast_global());
+                assert!(ip.is_unicast_global());
             } else {
-                assert!(!ip!($s).is_unicast_global());
+                assert!(!ip.is_unicast_global());
             }
             if ($mask & documentation) == documentation {
-                assert!(ip!($s).is_documentation());
+                assert!(ip.is_documentation());
             } else {
-                assert!(!ip!($s).is_documentation());
+                assert!(!ip.is_documentation());
             }
             if ($mask & benchmarking) == benchmarking {
-                assert!(ip!($s).is_benchmarking());
+                assert!(ip.is_benchmarking());
             } else {
-                assert!(!ip!($s).is_benchmarking());
+                assert!(!ip.is_benchmarking());
             }
             if ($mask & multicast) != 0 {
-                assert!(ip!($s).multicast_scope().is_some());
-                assert!(ip!($s).is_multicast());
+                assert!(ip.multicast_scope().is_some());
+                assert!(ip.is_multicast());
             } else {
-                assert!(ip!($s).multicast_scope().is_none());
-                assert!(!ip!($s).is_multicast());
+                assert!(ip.multicast_scope().is_none());
+                assert!(!ip.is_multicast());
             }
             if ($mask & multicast_interface_local) == multicast_interface_local {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
+                assert_eq!(ip.multicast_scope().unwrap(),
                            Ipv6MulticastScope::InterfaceLocal);
             }
             if ($mask & multicast_link_local) == multicast_link_local {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
+                assert_eq!(ip.multicast_scope().unwrap(),
                            Ipv6MulticastScope::LinkLocal);
             }
             if ($mask & multicast_realm_local) == multicast_realm_local {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
+                assert_eq!(ip.multicast_scope().unwrap(),
                            Ipv6MulticastScope::RealmLocal);
             }
             if ($mask & multicast_admin_local) == multicast_admin_local {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
+                assert_eq!(ip.multicast_scope().unwrap(),
                            Ipv6MulticastScope::AdminLocal);
             }
             if ($mask & multicast_site_local) == multicast_site_local {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
+                assert_eq!(ip.multicast_scope().unwrap(),
                            Ipv6MulticastScope::SiteLocal);
             }
             if ($mask & multicast_organization_local) == multicast_organization_local {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
+                assert_eq!(ip.multicast_scope().unwrap(),
                            Ipv6MulticastScope::OrganizationLocal);
             }
             if ($mask & multicast_global) == multicast_global {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
+                assert_eq!(ip.multicast_scope().unwrap(),
                            Ipv6MulticastScope::Global);
             }
             if ($mask & ipv4_mapped) == ipv4_mapped {
-                assert!(ip!($s).is_ipv4_mapped());
+                assert!(ip.is_ipv4_mapped());
             } else {
-                assert!(!ip!($s).is_ipv4_mapped());
+                assert!(!ip.is_ipv4_mapped());
             }
         }
     }

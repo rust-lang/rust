@@ -22,7 +22,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         let (adt_ty, adt_def) = adt;
         let variant_idx = match adt_def.adt_kind() {
             AdtKind::Struct => {
-                let (variant, variant_place) = self.downcast(place, sym::Struct)?;
+                let (variant, variant_place) = self.project_downcast_named(place, sym::Struct)?;
                 let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                 self.write_struct_type_info(
                     place,
@@ -32,7 +32,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 variant
             }
             AdtKind::Union => {
-                let (variant, variant_place) = self.downcast(place, sym::Union)?;
+                let (variant, variant_place) = self.project_downcast_named(place, sym::Union)?;
                 let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                 self.write_union_type_info(
                     place,
@@ -42,7 +42,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 variant
             }
             AdtKind::Enum => {
-                let (variant, variant_place) = self.downcast(place, sym::Enum)?;
+                let (variant, variant_place) = self.project_downcast_named(place, sym::Enum)?;
                 let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                 self.write_enum_type_info(place, adt, generics)?;
                 variant
@@ -66,7 +66,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             let field_place = self.project_field(&place, field_idx)?;
 
             match field.name {
-                sym::generics => self.write_generics(field_place, generics)?,
+                sym::generics => self.write_generics(&field_place, generics)?,
                 sym::fields => {
                     self.write_variant_fields(field_place, struct_def, struct_layout, generics)?
                 }
@@ -96,7 +96,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             let field_place = self.project_field(&place, field_idx)?;
 
             match field.name {
-                sym::generics => self.write_generics(field_place, generics)?,
+                sym::generics => self.write_generics(&field_place, generics)?,
                 sym::fields => {
                     self.write_variant_fields(field_place, union_def, union_layout, generics)?
                 }
@@ -126,10 +126,10 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             let field_place = self.project_field(&place, field_idx)?;
 
             match field.name {
-                sym::generics => self.write_generics(field_place, generics)?,
+                sym::generics => self.write_generics(&field_place, generics)?,
                 sym::variants => {
                     self.allocate_fill_and_write_slice_ptr(
-                        field_place,
+                        &field_place,
                         enum_def.variants().len() as u64,
                         |this, i, place| {
                             let variant_idx = VariantIdx::from_usize(i as usize);
@@ -165,7 +165,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             match field_def.name {
                 sym::name => {
                     let name_place = self.allocate_str_dedup(variant_def.name.as_str())?;
-                    let ptr = self.mplace_to_ref(&name_place)?;
+                    let ptr = self.mplace_to_imm_ptr(&name_place, None)?;
                     self.write_immediate(*ptr, &field_place)?
                 }
                 sym::fields => {
@@ -190,19 +190,19 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         generics: &'tcx GenericArgs<'tcx>,
     ) -> InterpResult<'tcx> {
         self.allocate_fill_and_write_slice_ptr(
-            place,
+            &place,
             variant_def.fields.len() as u64,
             |this, i, place| {
                 let field_def = &variant_def.fields[FieldIdx::from_usize(i as usize)];
-                let field_ty = field_def.ty(*this.tcx, generics);
+                let field_ty = field_def.ty(*this.tcx, generics).skip_norm_wip();
                 this.write_field(field_ty, place, variant_layout, Some(field_def.name), i)
             },
         )
     }
 
-    fn write_generics(
+    pub(super) fn write_generics(
         &mut self,
-        place: impl Writeable<'tcx, CtfeProvenance>,
+        place: &impl Writeable<'tcx, CtfeProvenance>,
         generics: &'tcx GenericArgs<'tcx>,
     ) -> InterpResult<'tcx> {
         self.allocate_fill_and_write_slice_ptr(place, generics.len() as u64, |this, i, place| {
@@ -219,13 +219,13 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         _region: Region<'tcx>,
         place: MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let (variant_idx, _) = self.downcast(&place, sym::Lifetime)?;
+        let (variant_idx, _) = self.project_downcast_named(&place, sym::Lifetime)?;
         self.write_discriminant(variant_idx, &place)?;
         interp_ok(())
     }
 
     fn write_generic_type(&mut self, ty: Ty<'tcx>, place: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
-        let (variant_idx, variant_place) = self.downcast(&place, sym::Type)?;
+        let (variant_idx, variant_place) = self.project_downcast_named(&place, sym::Type)?;
         let generic_type_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
 
         for (field_idx, field_def) in generic_type_place
@@ -251,7 +251,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
     fn write_generic_const(&mut self, c: Const<'tcx>, place: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
         let ConstKind::Value(c) = c.kind() else { bug!("expected a computed const, got {c:?}") };
 
-        let (variant_idx, variant_place) = self.downcast(&place, sym::Const)?;
+        let (variant_idx, variant_place) = self.project_downcast_named(&place, sym::Const)?;
         let const_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
 
         for (field_idx, field_def) in const_place

@@ -1,5 +1,4 @@
-use crate::float::Float;
-use crate::int::{CastFrom, CastInto, Int, MinInt};
+use crate::support::{CastFrom, CastInto, Float, Int, MinInt};
 
 /// Returns `a + b`
 fn add<F: Float>(a: F, b: F) -> F
@@ -196,19 +195,17 @@ intrinsics! {
         add(a, b)
     }
 
-    #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_fadd]
     pub extern "C" fn __addsf3(a: f32, b: f32) -> f32 {
         add(a, b)
     }
 
-    #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_dadd]
     pub extern "C" fn __adddf3(a: f64, b: f64) -> f64 {
         add(a, b)
     }
 
-    #[ppc_alias = __addkf3]
+    #[ppc_name = __addkf3]
     #[cfg(f128_enabled)]
     pub extern "C" fn __addtf3(a: f128, b: f128) -> f128 {
         add(a, b)

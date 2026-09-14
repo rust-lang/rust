@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at [1]: encountered uninitialized memory, but expected an integer
+error: Undefined Behavior: constructing invalid value of type [u8; 4]: at [1], encountered uninitialized memory, but expected an integer
   --> tests/fail/uninit/uninit-after-aggregate-assign.rs:LL:CC
    |
 LL |             _val = *sptr2; // should hence be UB

@@ -1,17 +1,7 @@
 //@revisions: edition2015 edition2021
 //@[edition2015] edition:2015
 //@[edition2021] edition:2021
-#![allow(
-    clippy::missing_errors_doc,
-    clippy::needless_pass_by_value,
-    clippy::must_use_candidate,
-    clippy::unused_self,
-    clippy::needless_lifetimes,
-    clippy::missing_safety_doc,
-    clippy::wrong_self_convention,
-    clippy::missing_panics_doc,
-    clippy::return_self_not_must_use
-)]
+#![warn(clippy::should_implement_trait)]
 
 use std::ops::Mul;
 use std::rc::{self, Rc};

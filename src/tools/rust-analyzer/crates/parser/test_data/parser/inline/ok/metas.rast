@@ -3,7 +3,7 @@ SOURCE_FILE
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
+    PATH_META
       PATH
         PATH_SEGMENT
           NAME_REF
@@ -14,7 +14,7 @@ SOURCE_FILE
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
+    PATH_META
       PATH
         PATH
           PATH_SEGMENT
@@ -30,7 +30,7 @@ SOURCE_FILE
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
+    KEY_VALUE_META
       PATH
         PATH_SEGMENT
           NAME_REF
@@ -46,7 +46,7 @@ SOURCE_FILE
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
+    KEY_VALUE_META
       PATH
         PATH
           PATH
@@ -72,7 +72,7 @@ SOURCE_FILE
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
+    TOKEN_TREE_META
       PATH
         PATH_SEGMENT
           NAME_REF
@@ -91,7 +91,7 @@ SOURCE_FILE
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
+    TOKEN_TREE_META
       PATH
         PATH_SEGMENT
           NAME_REF
@@ -110,7 +110,7 @@ SOURCE_FILE
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
+    TOKEN_TREE_META
       PATH
         PATH_SEGMENT
           NAME_REF
@@ -129,243 +129,7 @@ SOURCE_FILE
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
-      PATH
-        PATH
-          PATH
-            PATH_SEGMENT
-              NAME_REF
-                IDENT "simple"
-          COLON2 "::"
-          PATH_SEGMENT
-            NAME_REF
-              IDENT "path"
-        COLON2 "::"
-        PATH_SEGMENT
-          NAME_REF
-            IDENT "tt"
-      TOKEN_TREE
-        L_PAREN "("
-        IDENT "a"
-        WHITESPACE " "
-        IDENT "b"
-        WHITESPACE " "
-        IDENT "c"
-        R_PAREN ")"
-    R_BRACK "]"
-  WHITESPACE "\n"
-  ATTR
-    POUND "#"
-    BANG "!"
-    L_BRACK "["
-    META
-      PATH
-        PATH
-          PATH
-            PATH_SEGMENT
-              NAME_REF
-                IDENT "simple"
-          COLON2 "::"
-          PATH_SEGMENT
-            NAME_REF
-              IDENT "path"
-        COLON2 "::"
-        PATH_SEGMENT
-          NAME_REF
-            IDENT "tt"
-      TOKEN_TREE
-        L_BRACK "["
-        IDENT "a"
-        WHITESPACE " "
-        IDENT "b"
-        WHITESPACE " "
-        IDENT "c"
-        R_BRACK "]"
-    R_BRACK "]"
-  WHITESPACE "\n"
-  ATTR
-    POUND "#"
-    BANG "!"
-    L_BRACK "["
-    META
-      PATH
-        PATH
-          PATH
-            PATH_SEGMENT
-              NAME_REF
-                IDENT "simple"
-          COLON2 "::"
-          PATH_SEGMENT
-            NAME_REF
-              IDENT "path"
-        COLON2 "::"
-        PATH_SEGMENT
-          NAME_REF
-            IDENT "tt"
-      TOKEN_TREE
-        L_CURLY "{"
-        IDENT "a"
-        WHITESPACE " "
-        IDENT "b"
-        WHITESPACE " "
-        IDENT "c"
-        R_CURLY "}"
-    R_BRACK "]"
-  WHITESPACE "\n"
-  ATTR
-    POUND "#"
-    BANG "!"
-    L_BRACK "["
-    META
-      UNSAFE_KW "unsafe"
-      L_PAREN "("
-      PATH
-        PATH_SEGMENT
-          NAME_REF
-            IDENT "simple_ident"
-      R_PAREN ")"
-    R_BRACK "]"
-  WHITESPACE "\n"
-  ATTR
-    POUND "#"
-    BANG "!"
-    L_BRACK "["
-    META
-      UNSAFE_KW "unsafe"
-      L_PAREN "("
-      PATH
-        PATH
-          PATH_SEGMENT
-            NAME_REF
-              IDENT "simple"
-        COLON2 "::"
-        PATH_SEGMENT
-          NAME_REF
-            IDENT "path"
-      R_PAREN ")"
-    R_BRACK "]"
-  WHITESPACE "\n"
-  ATTR
-    POUND "#"
-    BANG "!"
-    L_BRACK "["
-    META
-      UNSAFE_KW "unsafe"
-      L_PAREN "("
-      PATH
-        PATH_SEGMENT
-          NAME_REF
-            IDENT "simple_ident_expr"
-      WHITESPACE " "
-      EQ "="
-      WHITESPACE " "
-      LITERAL
-        STRING "\"\""
-      R_PAREN ")"
-    R_BRACK "]"
-  WHITESPACE "\n"
-  ATTR
-    POUND "#"
-    BANG "!"
-    L_BRACK "["
-    META
-      UNSAFE_KW "unsafe"
-      L_PAREN "("
-      PATH
-        PATH
-          PATH
-            PATH_SEGMENT
-              NAME_REF
-                IDENT "simple"
-          COLON2 "::"
-          PATH_SEGMENT
-            NAME_REF
-              IDENT "path"
-        COLON2 "::"
-        PATH_SEGMENT
-          NAME_REF
-            IDENT "Expr"
-      WHITESPACE " "
-      EQ "="
-      WHITESPACE " "
-      LITERAL
-        STRING "\"\""
-      R_PAREN ")"
-    R_BRACK "]"
-  WHITESPACE "\n"
-  ATTR
-    POUND "#"
-    BANG "!"
-    L_BRACK "["
-    META
-      UNSAFE_KW "unsafe"
-      L_PAREN "("
-      PATH
-        PATH_SEGMENT
-          NAME_REF
-            IDENT "simple_ident_tt"
-      TOKEN_TREE
-        L_PAREN "("
-        IDENT "a"
-        WHITESPACE " "
-        IDENT "b"
-        WHITESPACE " "
-        IDENT "c"
-        R_PAREN ")"
-      R_PAREN ")"
-    R_BRACK "]"
-  WHITESPACE "\n"
-  ATTR
-    POUND "#"
-    BANG "!"
-    L_BRACK "["
-    META
-      UNSAFE_KW "unsafe"
-      L_PAREN "("
-      PATH
-        PATH_SEGMENT
-          NAME_REF
-            IDENT "simple_ident_tt"
-      TOKEN_TREE
-        L_BRACK "["
-        IDENT "a"
-        WHITESPACE " "
-        IDENT "b"
-        WHITESPACE " "
-        IDENT "c"
-        R_BRACK "]"
-      R_PAREN ")"
-    R_BRACK "]"
-  WHITESPACE "\n"
-  ATTR
-    POUND "#"
-    BANG "!"
-    L_BRACK "["
-    META
-      UNSAFE_KW "unsafe"
-      L_PAREN "("
-      PATH
-        PATH_SEGMENT
-          NAME_REF
-            IDENT "simple_ident_tt"
-      TOKEN_TREE
-        L_CURLY "{"
-        IDENT "a"
-        WHITESPACE " "
-        IDENT "b"
-        WHITESPACE " "
-        IDENT "c"
-        R_CURLY "}"
-      R_PAREN ")"
-    R_BRACK "]"
-  WHITESPACE "\n"
-  ATTR
-    POUND "#"
-    BANG "!"
-    L_BRACK "["
-    META
-      UNSAFE_KW "unsafe"
-      L_PAREN "("
+    TOKEN_TREE_META
       PATH
         PATH
           PATH
@@ -388,16 +152,13 @@ SOURCE_FILE
         WHITESPACE " "
         IDENT "c"
         R_PAREN ")"
-      R_PAREN ")"
     R_BRACK "]"
   WHITESPACE "\n"
   ATTR
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
-      UNSAFE_KW "unsafe"
-      L_PAREN "("
+    TOKEN_TREE_META
       PATH
         PATH
           PATH
@@ -420,16 +181,13 @@ SOURCE_FILE
         WHITESPACE " "
         IDENT "c"
         R_BRACK "]"
-      R_PAREN ")"
     R_BRACK "]"
   WHITESPACE "\n"
   ATTR
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
-      UNSAFE_KW "unsafe"
-      L_PAREN "("
+    TOKEN_TREE_META
       PATH
         PATH
           PATH
@@ -452,6 +210,258 @@ SOURCE_FILE
         WHITESPACE " "
         IDENT "c"
         R_CURLY "}"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    UNSAFE_META
+      UNSAFE_KW "unsafe"
+      L_PAREN "("
+      PATH_META
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "simple_ident"
+      R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    UNSAFE_META
+      UNSAFE_KW "unsafe"
+      L_PAREN "("
+      PATH_META
+        PATH
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "simple"
+          COLON2 "::"
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "path"
+      R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    UNSAFE_META
+      UNSAFE_KW "unsafe"
+      L_PAREN "("
+      KEY_VALUE_META
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "simple_ident_expr"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        LITERAL
+          STRING "\"\""
+      R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    UNSAFE_META
+      UNSAFE_KW "unsafe"
+      L_PAREN "("
+      KEY_VALUE_META
+        PATH
+          PATH
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "simple"
+            COLON2 "::"
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "path"
+          COLON2 "::"
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "Expr"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        LITERAL
+          STRING "\"\""
+      R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    UNSAFE_META
+      UNSAFE_KW "unsafe"
+      L_PAREN "("
+      TOKEN_TREE_META
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "simple_ident_tt"
+        TOKEN_TREE
+          L_PAREN "("
+          IDENT "a"
+          WHITESPACE " "
+          IDENT "b"
+          WHITESPACE " "
+          IDENT "c"
+          R_PAREN ")"
+      R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    UNSAFE_META
+      UNSAFE_KW "unsafe"
+      L_PAREN "("
+      TOKEN_TREE_META
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "simple_ident_tt"
+        TOKEN_TREE
+          L_BRACK "["
+          IDENT "a"
+          WHITESPACE " "
+          IDENT "b"
+          WHITESPACE " "
+          IDENT "c"
+          R_BRACK "]"
+      R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    UNSAFE_META
+      UNSAFE_KW "unsafe"
+      L_PAREN "("
+      TOKEN_TREE_META
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "simple_ident_tt"
+        TOKEN_TREE
+          L_CURLY "{"
+          IDENT "a"
+          WHITESPACE " "
+          IDENT "b"
+          WHITESPACE " "
+          IDENT "c"
+          R_CURLY "}"
+      R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    UNSAFE_META
+      UNSAFE_KW "unsafe"
+      L_PAREN "("
+      TOKEN_TREE_META
+        PATH
+          PATH
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "simple"
+            COLON2 "::"
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "path"
+          COLON2 "::"
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "tt"
+        TOKEN_TREE
+          L_PAREN "("
+          IDENT "a"
+          WHITESPACE " "
+          IDENT "b"
+          WHITESPACE " "
+          IDENT "c"
+          R_PAREN ")"
+      R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    UNSAFE_META
+      UNSAFE_KW "unsafe"
+      L_PAREN "("
+      TOKEN_TREE_META
+        PATH
+          PATH
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "simple"
+            COLON2 "::"
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "path"
+          COLON2 "::"
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "tt"
+        TOKEN_TREE
+          L_BRACK "["
+          IDENT "a"
+          WHITESPACE " "
+          IDENT "b"
+          WHITESPACE " "
+          IDENT "c"
+          R_BRACK "]"
+      R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    UNSAFE_META
+      UNSAFE_KW "unsafe"
+      L_PAREN "("
+      TOKEN_TREE_META
+        PATH
+          PATH
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "simple"
+            COLON2 "::"
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "path"
+          COLON2 "::"
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "tt"
+        TOKEN_TREE
+          L_CURLY "{"
+          IDENT "a"
+          WHITESPACE " "
+          IDENT "b"
+          WHITESPACE " "
+          IDENT "c"
+          R_CURLY "}"
       R_PAREN ")"
     R_BRACK "]"
   WHITESPACE "\n"

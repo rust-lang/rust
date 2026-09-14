@@ -13,12 +13,12 @@ use crate::{fmt, mem};
 
 #[derive(Hash)]
 #[repr(transparent)]
-pub struct Buf {
+pub(crate) struct Buf {
     pub inner: Wtf8Buf,
 }
 
 #[repr(transparent)]
-pub struct Slice {
+pub(crate) struct Slice {
     pub inner: Wtf8,
 }
 
@@ -238,6 +238,11 @@ impl Slice {
     #[inline]
     pub unsafe fn from_encoded_bytes_unchecked(s: &[u8]) -> &Slice {
         unsafe { mem::transmute(Wtf8::from_bytes_unchecked(s)) }
+    }
+
+    #[inline]
+    pub fn try_check_public_boundary(&self, index: usize) -> Option<()> {
+        self.inner.try_check_utf8_boundary(index).ok()
     }
 
     #[track_caller]

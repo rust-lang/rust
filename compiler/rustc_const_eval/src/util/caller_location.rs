@@ -1,5 +1,5 @@
 use rustc_abi::FieldIdx;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Symbol;
@@ -37,7 +37,8 @@ fn alloc_caller_location<'tcx>(
     let loc_ty = ecx
         .tcx
         .type_of(ecx.tcx.require_lang_item(LangItem::PanicLocation, ecx.tcx.span))
-        .instantiate(*ecx.tcx, ecx.tcx.mk_args(&[ecx.tcx.lifetimes.re_erased.into()]));
+        .instantiate(*ecx.tcx, ecx.tcx.mk_args(&[ecx.tcx.lifetimes.re_erased.into()]))
+        .skip_norm_wip();
     let loc_layout = ecx.layout_of(loc_ty).unwrap();
     let location = ecx.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
 

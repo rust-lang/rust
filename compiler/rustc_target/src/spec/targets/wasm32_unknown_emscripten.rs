@@ -28,9 +28,20 @@ pub(crate) fn target() -> Target {
         crt_static_respected: true,
         crt_static_default: true,
         crt_static_allows_dylibs: true,
+        main_needs_argc_argv: true,
+        // Use the wasm C-ABI entry name from the tool-conventions BasicCABI
+        // spec rather than a raw `main`, as referenced by emscripten's crt/libc.
+        // Required for entry paths like `-sPROXY_TO_PTHREAD`, whose
+        // `crt1_proxy_main` links against `__main_argc_argv`.
+        entry_name: "__main_argc_argv".into(),
         panic_strategy: PanicStrategy::Unwind,
         no_default_libraries: false,
         families: cvs!["unix", "wasm"],
+        // Explicitly override the `base::wasm`'s `llvm_args` back to empty. The
+        // base is to force using the most standard exception-handling
+        // instructions, when enabled, but this target is intended to follow
+        // Emscripten, which is whatever LLVM defaults to.
+        llvm_args: cvs![],
         ..base::wasm::options()
     };
     Target {

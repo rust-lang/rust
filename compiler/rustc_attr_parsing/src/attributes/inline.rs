@@ -1,19 +1,16 @@
-// FIXME(jdonszelmann): merge these two parsers and error when both attributes are present here.
-//                      note: need to model better how duplicate attr errors work when not using
-//                      SingleAttributeParser which is what we have two of here.
-
-use rustc_hir::attrs::{AttributeKind, InlineAttr};
-use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
+use rustc_attr_ir::{AttributeKind, InlineAttr, find_attr};
+use rustc_feature::AttributeStability;
+use rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 
 use super::prelude::*;
+use crate::diagnostics::InlineForceInlineConflict;
 
 pub(crate) struct InlineParser;
 
-impl<S: Stage> SingleAttributeParser<S> for InlineParser {
+impl SingleAttributeParser for InlineParser {
     const PATH: &[Symbol] = &[sym::inline];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
@@ -25,7 +22,9 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
         Warn(Target::Field),
         Warn(Target::MacroDef),
         Warn(Target::Arm),
-        Warn(Target::AssocConst),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Warn(Target::AssocConst(AssocCtxt::Trait)),
+        Warn(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
         Warn(Target::MacroCall),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
@@ -33,17 +32,15 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
         List: &["always", "never"],
         "https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute"
     );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         match args {
             ArgParser::NoArgs => Some(AttributeKind::Inline(InlineAttr::Hint, cx.attr_span)),
             ArgParser::List(list) => {
-                let Some(l) = list.single() else {
-                    cx.expected_single_argument(list.span);
-                    return None;
-                };
+                let l = cx.expect_single(list)?;
 
-                match l.meta_item().and_then(|i| i.path().word_sym()) {
+                match l.meta_item_no_args().and_then(|i| i.path().word_sym()) {
                     Some(sym::always) => {
                         Some(AttributeKind::Inline(InlineAttr::Always, cx.attr_span))
                     }
@@ -51,14 +48,14 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
                         Some(AttributeKind::Inline(InlineAttr::Never, cx.attr_span))
                     }
                     _ => {
-                        cx.expected_specific_argument(l.span(), &[sym::always, sym::never]);
-                        return None;
+                        cx.adcx().expected_specific_argument(l.span(), &[sym::always, sym::never]);
+                        None
                     }
                 }
             }
             ArgParser::NameValue(_) => {
-                cx.warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
-                return None;
+                cx.adcx().warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
+                None
             }
         }
     }
@@ -66,46 +63,46 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
 
 pub(crate) struct RustcForceInlineParser;
 
-impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
+impl SingleAttributeParser for RustcForceInlineParser {
     const PATH: &[Symbol] = &[sym::rustc_force_inline];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
     ]);
-
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "the `rustc_force_inline` attribute forces a free function to be inlined"
+    );
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["reason"], NameValueStr: "reason");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let reason = match args {
             ArgParser::NoArgs => None,
             ArgParser::List(list) => {
-                let Some(l) = list.single() else {
-                    cx.expected_single_argument(list.span);
-                    return None;
-                };
+                let l = cx.expect_single(list)?;
 
-                let Some(reason) = l.lit().and_then(|i| i.kind.str()) else {
-                    cx.expected_string_literal(l.span(), l.lit());
-                    return None;
-                };
+                let reason = cx.expect_string_literal(l)?;
 
                 Some(reason)
             }
-            ArgParser::NameValue(v) => {
-                let Some(reason) = v.value_as_str() else {
-                    cx.expected_string_literal(v.value_span, Some(v.value_as_lit()));
-                    return None;
-                };
-
-                Some(reason)
-            }
+            ArgParser::NameValue(v) => cx.expect_string_literal(v),
         };
 
         Some(AttributeKind::Inline(
             InlineAttr::Force { attr_span: cx.attr_span, reason },
             cx.attr_span,
         ))
+    }
+
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        let Some(inline_span) = find_attr!(cx.parsed_attrs, Inline(attr, span) if !matches!(attr, InlineAttr::Force { .. }) => span)
+        else {
+            return;
+        };
+
+        cx.emit_err(InlineForceInlineConflict {
+            inline_span: *inline_span,
+            force_inline_span: attr_span,
+        });
     }
 }

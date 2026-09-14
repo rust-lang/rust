@@ -1,7 +1,6 @@
 # `armv7r-none-eabi*` and `thumbv7r-none-eabi*`
 
-* **Tier: 2** (`armv7r-none-eabi` and `armv7r-none-eabihf`)
-* **Tier: 3** (`thumbv7r-none-eabi` and `thumbv7r-none-eabihf`)
+* **Tier: 2**
 * **Library Support:** core and alloc (bare-metal, `#![no_std]`)
 
 Bare-metal target for CPUs in the Armv7-R architecture family, supporting dual
@@ -21,7 +20,7 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 
 - [@chrisnc](https://github.com/chrisnc)
 - [Rust Embedded Devices Working Group Arm Team]
-- [@rust-lang/arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
+- [arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
     - Use `@rustbot ping arm-maintainers` to ping us
 
 [Rust Embedded Devices Working Group Arm Team]: https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team

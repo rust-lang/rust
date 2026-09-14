@@ -7,12 +7,12 @@
 use std::mem;
 use std::{cell::LazyCell, cmp::Reverse};
 
-use base_db::{RootQueryDb, SourceDatabase};
+use base_db::{SourceDatabase, all_crates};
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, DefWithBody, EditionedFileId, FileRange, FileRangeWrapper, HasAttrs,
-    HasContainer, HasSource, InFile, InFileWrapper, InRealFile, InlineAsmOperand, ItemContainer,
-    ModuleSource, PathResolution, Semantics, Visibility,
+    Adt, AsAssocItem, DefWithBody, EditionedFileId, ExpressionStoreOwner, FileRange,
+    FileRangeWrapper, HasContainer, HasSource, InFile, InFileWrapper, InRealFile, InlineAsmOperand,
+    ItemContainer, ModuleSource, PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
@@ -119,13 +119,13 @@ impl FileReferenceNode {
             _ => None,
         }
     }
-    pub fn text(&self) -> syntax::TokenText<'_> {
+    pub fn text(&self) -> &str {
         match self {
             FileReferenceNode::NameRef(name_ref) => name_ref.text(),
             FileReferenceNode::Name(name) => name.text(),
             FileReferenceNode::Lifetime(lifetime) => lifetime.text(),
             FileReferenceNode::FormatStringEntry(it, range) => {
-                syntax::TokenText::borrowed(&it.text()[*range - it.syntax().text_range().start()])
+                &it.text()[*range - it.syntax().text_range().start()]
             }
         }
     }
@@ -161,7 +161,7 @@ impl SearchScope {
     fn crate_graph(db: &RootDatabase) -> SearchScope {
         let mut entries = FxHashMap::default();
 
-        let all_crates = db.all_crates();
+        let all_crates = all_crates(db);
         for &krate in all_crates.iter() {
             let crate_data = krate.data(db);
             let source_root = db.file_source_root(crate_data.root_file_id).source_root_id(db);
@@ -286,7 +286,7 @@ impl IntoIterator for SearchScope {
     }
 }
 
-impl Definition {
+impl<'db> Definition<'db> {
     fn search_scope(&self, db: &RootDatabase) -> SearchScope {
         let _p = tracing::info_span!("search_scope").entered();
 
@@ -310,10 +310,26 @@ impl Definition {
 
         if let Definition::Local(var) = self {
             let def = match var.parent(db) {
-                DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                ExpressionStoreOwner::Body(def) => match def {
+                    DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::EnumVariant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                },
+                ExpressionStoreOwner::Signature(def) => match def {
+                    hir::GenericDef::Function(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Adt(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Trait(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::TypeAlias(it) => {
+                        it.source(db).map(|src| src.syntax().cloned())
+                    }
+                    hir::GenericDef::Impl(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Static(it) => it.source(db).map(|src| src.syntax().cloned()),
+                },
+                ExpressionStoreOwner::VariantFields(it) => {
+                    it.source(db).map(|src| src.syntax().cloned())
+                }
             };
             return match def {
                 Some(def) => SearchScope::file_range(
@@ -325,10 +341,26 @@ impl Definition {
 
         if let Definition::InlineAsmOperand(op) = self {
             let def = match op.parent(db) {
-                DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
-                DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                ExpressionStoreOwner::Body(def) => match def {
+                    DefWithBody::Function(f) => f.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
+                    DefWithBody::EnumVariant(v) => v.source(db).map(|src| src.syntax().cloned()),
+                },
+                ExpressionStoreOwner::Signature(def) => match def {
+                    hir::GenericDef::Function(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Adt(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Trait(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::TypeAlias(it) => {
+                        it.source(db).map(|src| src.syntax().cloned())
+                    }
+                    hir::GenericDef::Impl(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
+                    hir::GenericDef::Static(it) => it.source(db).map(|src| src.syntax().cloned()),
+                },
+                ExpressionStoreOwner::VariantFields(it) => {
+                    it.source(db).map(|src| src.syntax().cloned())
+                }
             };
             return match def {
                 Some(def) => SearchScope::file_range(
@@ -365,24 +397,6 @@ impl Definition {
             };
         }
 
-        if let Definition::Macro(macro_def) = self {
-            return match macro_def.kind(db) {
-                hir::MacroKind::Declarative => {
-                    if macro_def.attrs(db).is_macro_export() {
-                        SearchScope::reverse_dependencies(db, module.krate(db))
-                    } else {
-                        SearchScope::krate(db, module.krate(db))
-                    }
-                }
-                hir::MacroKind::AttrBuiltIn
-                | hir::MacroKind::DeriveBuiltIn
-                | hir::MacroKind::DeclarativeBuiltIn => SearchScope::crate_graph(db),
-                hir::MacroKind::Derive | hir::MacroKind::Attr | hir::MacroKind::ProcMacro => {
-                    SearchScope::reverse_dependencies(db, module.krate(db))
-                }
-            };
-        }
-
         if let Definition::DeriveHelper(_) = self {
             return SearchScope::reverse_dependencies(db, module.krate(db));
         }
@@ -408,7 +422,7 @@ impl Definition {
         }
     }
 
-    pub fn usages<'a>(self, sema: &'a Semantics<'_, RootDatabase>) -> FindUsages<'a> {
+    pub fn usages<'a>(self, sema: &'a Semantics<'db, RootDatabase>) -> FindUsages<'a, 'db> {
         FindUsages {
             def: self,
             rename: None,
@@ -417,15 +431,17 @@ impl Definition {
             scope: None,
             include_self_kw_refs: None,
             search_self_mod: false,
+            included_categories: ReferenceCategory::all(),
+            exclude_library_files: false,
         }
     }
 }
 
 #[derive(Clone)]
-pub struct FindUsages<'a> {
-    def: Definition,
+pub struct FindUsages<'a, 'db> {
+    def: Definition<'db>,
     rename: Option<&'a Rename>,
-    sema: &'a Semantics<'a, RootDatabase>,
+    sema: &'a Semantics<'db, RootDatabase>,
     scope: Option<&'a SearchScope>,
     /// The container of our definition should it be an assoc item
     assoc_item_container: Option<hir::AssocItemContainer>,
@@ -433,9 +449,13 @@ pub struct FindUsages<'a> {
     include_self_kw_refs: Option<hir::Type<'a>>,
     /// whether to search for the `self` module
     search_self_mod: bool,
+    /// categories to include while collecting usages
+    included_categories: ReferenceCategory,
+    /// whether to skip files from library source roots
+    exclude_library_files: bool,
 }
 
-impl<'a> FindUsages<'a> {
+impl<'a, 'db> FindUsages<'a, 'db> {
     /// Enable searching for `Self` when the definition is a type or `self` for modules.
     pub fn include_self_refs(mut self) -> Self {
         self.include_self_kw_refs = def_to_ty(self.sema, &self.def);
@@ -463,6 +483,16 @@ impl<'a> FindUsages<'a> {
         self
     }
 
+    pub fn set_included_categories(mut self, categories: ReferenceCategory) -> Self {
+        self.included_categories = categories;
+        self
+    }
+
+    pub fn set_exclude_library_files(mut self, exclude_library_files: bool) -> Self {
+        self.exclude_library_files = exclude_library_files;
+        self
+    }
+
     pub fn at_least_one(&self) -> bool {
         let mut found = false;
         self.search(&mut |_, _| {
@@ -484,14 +514,21 @@ impl<'a> FindUsages<'a> {
     fn scope_files<'b>(
         db: &'b RootDatabase,
         scope: &'b SearchScope,
+        exclude_library_files: bool,
     ) -> impl Iterator<Item = (Arc<str>, EditionedFileId, TextRange)> + 'b {
-        scope.entries.iter().map(|(&file_id, &search_range)| {
-            let text = db.file_text(file_id.file_id(db)).text(db);
-            let search_range =
-                search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&**text)));
+        scope
+            .entries
+            .iter()
+            .filter(move |(file_id, _)| {
+                !exclude_library_files || !is_library_file(db, file_id.file_id(db))
+            })
+            .map(|(&file_id, &search_range)| {
+                let text = db.file_text(file_id.file_id(db)).text(db);
+                let search_range =
+                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&**text)));
 
-            (text.clone(), file_id, search_range)
-        })
+                (text.clone(), file_id, search_range)
+            })
     }
 
     fn match_indices<'b>(
@@ -617,12 +654,13 @@ impl<'a> FindUsages<'a> {
         fn collect_possible_aliases(
             sema: &Semantics<'_, RootDatabase>,
             container: Adt,
+            exclude_library_files: bool,
         ) -> Option<(FxHashSet<SmolStr>, Vec<FileRangeWrapper<EditionedFileId>>)> {
             fn insert_type_alias(
                 db: &RootDatabase,
                 to_process: &mut Vec<(SmolStr, SearchScope)>,
                 alias_name: &str,
-                def: Definition,
+                def: Definition<'_>,
             ) {
                 let alias = alias_name.trim_start_matches("r#").to_smolstr();
                 tracing::debug!("found alias: {alias}");
@@ -650,9 +688,11 @@ impl<'a> FindUsages<'a> {
                 };
 
                 let finder = Finder::new(current_to_process.as_bytes());
-                for (file_text, file_id, search_range) in
-                    FindUsages::scope_files(db, &current_to_process_search_scope)
-                {
+                for (file_text, file_id, search_range) in FindUsages::scope_files(
+                    db,
+                    &current_to_process_search_scope,
+                    exclude_library_files,
+                ) {
                     let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
                     for offset in FindUsages::match_indices(&file_text, &finder, search_range) {
@@ -693,7 +733,7 @@ impl<'a> FindUsages<'a> {
                                     insert_type_alias(
                                         sema.db,
                                         &mut to_process,
-                                        name.text().as_str(),
+                                        name.text(),
                                         def.into(),
                                     );
                                 } else {
@@ -756,7 +796,7 @@ impl<'a> FindUsages<'a> {
                                             insert_type_alias(
                                                 sema.db,
                                                 &mut to_process,
-                                                name.text().as_str(),
+                                                name.text(),
                                                 def.into(),
                                             );
                                         } else {
@@ -800,7 +840,7 @@ impl<'a> FindUsages<'a> {
         }
 
         fn search(
-            this: &FindUsages<'_>,
+            this: &FindUsages<'_, '_>,
             finder: &Finder<'_>,
             name: &str,
             files: impl Iterator<Item = (Arc<str>, EditionedFileId, TextRange)>,
@@ -837,7 +877,7 @@ impl<'a> FindUsages<'a> {
         }
 
         let Some((container_possible_aliases, is_possibly_self)) =
-            collect_possible_aliases(self.sema, container)
+            collect_possible_aliases(self.sema, container, self.exclude_library_files)
         else {
             return false;
         };
@@ -874,7 +914,7 @@ impl<'a> FindUsages<'a> {
                 self,
                 &finder,
                 name,
-                FindUsages::scope_files(self.sema.db, search_scope),
+                FindUsages::scope_files(self.sema.db, search_scope, self.exclude_library_files),
                 |path, name_position| {
                     has_any_name(path, |name| container_possible_aliases.contains(name))
                         && !self_positions.contains(&name_position)
@@ -899,6 +939,9 @@ impl<'a> FindUsages<'a> {
                 Some(scope) => base.intersection(scope),
             }
         };
+        if search_scope.entries.is_empty() {
+            return;
+        }
 
         let name = match (self.rename, self.def) {
             (Some(rename), _) => {
@@ -950,7 +993,9 @@ impl<'a> FindUsages<'a> {
         let finder = &Finder::new(name);
         let include_self_kw_refs =
             self.include_self_kw_refs.as_ref().map(|ty| (ty, Finder::new("Self")));
-        for (text, file_id, search_range) in Self::scope_files(sema.db, &search_scope) {
+        for (text, file_id, search_range) in
+            Self::scope_files(sema.db, &search_scope, self.exclude_library_files)
+        {
             let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
             // Search for occurrences of the items name
@@ -1007,7 +1052,9 @@ impl<'a> FindUsages<'a> {
             let is_crate_root = module.is_crate_root(self.sema.db).then(|| Finder::new("crate"));
             let finder = &Finder::new("super");
 
-            for (text, file_id, search_range) in Self::scope_files(sema.db, &scope) {
+            for (text, file_id, search_range) in
+                Self::scope_files(sema.db, &scope, self.exclude_library_files)
+            {
                 self.sema.db.unwind_if_revision_cancelled();
 
                 let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
@@ -1086,6 +1133,10 @@ impl<'a> FindUsages<'a> {
         name_ref: &ast::NameRef,
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
+        if self.is_excluded_name_ref(name_ref) {
+            return false;
+        }
+
         // See https://github.com/rust-lang/rust-analyzer/pull/15864/files/e0276dc5ddc38c65240edb408522bb869f15afb4#r1389848845
         let ty_eq = |ty: hir::Type<'_>| match (ty.as_adt(), self_ty.as_adt()) {
             (Some(ty), Some(self_ty)) => ty == self_ty,
@@ -1114,6 +1165,10 @@ impl<'a> FindUsages<'a> {
         name_ref: &ast::NameRef,
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
+        if self.is_excluded_name_ref(name_ref) {
+            return false;
+        }
+
         match NameRefClass::classify(self.sema, name_ref) {
             Some(NameRefClass::Definition(def @ Definition::Module(_), _)) if def == self.def => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
@@ -1138,7 +1193,7 @@ impl<'a> FindUsages<'a> {
         file_id: EditionedFileId,
         range: TextRange,
         token: ast::String,
-        res: Either<PathResolution, InlineAsmOperand>,
+        res: Either<PathResolution<'db>, InlineAsmOperand>,
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         let def = res.either(Definition::from, Definition::from);
@@ -1178,6 +1233,10 @@ impl<'a> FindUsages<'a> {
         name_ref: &ast::NameRef,
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
+        if self.is_excluded_name_ref(name_ref) {
+            return false;
+        }
+
         match NameRefClass::classify(self.sema, name_ref) {
             Some(NameRefClass::Definition(def, _))
                 if self.def == def
@@ -1209,18 +1268,17 @@ impl<'a> FindUsages<'a> {
                 };
                 sink(file_id, reference)
             }
-            Some(NameRefClass::Definition(def, _)) if self.include_self_kw_refs.is_some() => {
-                if self.include_self_kw_refs == def_to_ty(self.sema, &def) {
-                    let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
-                    let reference = FileReference {
-                        range,
-                        name: FileReferenceNode::NameRef(name_ref.clone()),
-                        category: ReferenceCategory::new(self.sema, &def, name_ref),
-                    };
-                    sink(file_id, reference)
-                } else {
-                    false
-                }
+            Some(NameRefClass::Definition(def, _))
+                if self.include_self_kw_refs.is_some()
+                    && self.include_self_kw_refs == def_to_ty(self.sema, &def) =>
+            {
+                let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
+                let reference = FileReference {
+                    range,
+                    name: FileReferenceNode::NameRef(name_ref.clone()),
+                    category: ReferenceCategory::new(self.sema, &def, name_ref),
+                };
+                sink(file_id, reference)
             }
             Some(NameRefClass::FieldShorthand {
                 local_ref: local,
@@ -1249,6 +1307,13 @@ impl<'a> FindUsages<'a> {
             }
             _ => false,
         }
+    }
+
+    fn is_excluded_name_ref(&self, name_ref: &ast::NameRef) -> bool {
+        (!self.included_categories.contains(ReferenceCategory::TEST)
+            && is_name_ref_in_test(self.sema, name_ref))
+            || (!self.included_categories.contains(ReferenceCategory::IMPORT)
+                && is_name_ref_in_import(name_ref))
     }
 
     fn found_name(
@@ -1310,7 +1375,10 @@ impl<'a> FindUsages<'a> {
     }
 }
 
-fn def_to_ty<'db>(sema: &Semantics<'db, RootDatabase>, def: &Definition) -> Option<hir::Type<'db>> {
+fn def_to_ty<'db>(
+    sema: &Semantics<'db, RootDatabase>,
+    def: &Definition<'db>,
+) -> Option<hir::Type<'db>> {
     match def {
         Definition::Adt(adt) => Some(adt.ty(sema.db)),
         Definition::TypeAlias(it) => Some(it.ty(sema.db)),
@@ -1323,7 +1391,7 @@ fn def_to_ty<'db>(sema: &Semantics<'db, RootDatabase>, def: &Definition) -> Opti
 impl ReferenceCategory {
     fn new(
         sema: &Semantics<'_, RootDatabase>,
-        def: &Definition,
+        def: &Definition<'_>,
         r: &ast::NameRef,
     ) -> ReferenceCategory {
         let mut result = ReferenceCategory::empty();
@@ -1376,4 +1444,9 @@ fn is_name_ref_in_test(sema: &Semantics<'_, RootDatabase>, name_ref: &ast::NameR
         Some(it) => sema.to_def(&it).is_some_and(|func| func.is_test(sema.db)),
         None => false,
     })
+}
+
+fn is_library_file(db: &RootDatabase, file_id: span::FileId) -> bool {
+    let source_root = db.file_source_root(file_id).source_root_id(db);
+    db.source_root(source_root).source_root(db).is_library
 }

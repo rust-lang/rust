@@ -1,6 +1,72 @@
 use expect_test::expect;
+use hir_def::{AdtId, ModuleDefId};
+use rustc_type_ir::inherent::IntoKind as _;
+use test_fixture::WithFixture;
 
-use crate::tests::{check_infer, check_no_mismatches, check_types};
+use crate::{
+    db::HirDatabase,
+    next_solver::{DbInterner, RegionKind, TyKind},
+    test_db::TestDB,
+    tests::{check_infer, check_no_mismatches, check_types},
+};
+
+#[test]
+fn nested_argument_position_impl_trait_captures_lifetime() {
+    check_no_mismatches(
+        r#"
+//- minicore: iterator
+trait Trait<'a> {}
+
+fn f<'a>(_values: impl IntoIterator<Item = impl Trait<'a>>) {}
+
+fn crash<'a>(expr: &'a (), values: impl IntoIterator<Item = impl Trait<'a>>) -> &'a () {
+    f(values);
+    expr
+}
+"#,
+    );
+}
+
+#[test]
+fn liberating_distinct_late_bound_lifetimes_preserves_identity() {
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+fn f<'a, 'b>(x: &'a u8, y: &'b u8) {}
+"#,
+    );
+
+    crate::attach_db(&db, || {
+        let module_id = db.module_for_file(file_id.file_id(&db));
+        let def_map = module_id.def_map(&db);
+        let scope = &def_map[module_id].scope;
+        let func = scope
+            .declarations()
+            .find_map(
+                |decl| {
+                    if let ModuleDefId::FunctionId(func) = decl { Some(func) } else { None }
+                },
+            )
+            .unwrap();
+        let interner = DbInterner::new_with(&db, module_id.krate(&db));
+        let sig = db.callable_item_signature(func.into()).instantiate_identity().skip_norm_wip();
+        let sig = interner.liberate_late_bound_regions(func.into(), sig);
+        let inputs = sig.inputs();
+        let TyKind::Ref(first_region, _first_ty, _first_mutability) = inputs[0].kind() else {
+            panic!("expected reference input, got {:?}", inputs[0]);
+        };
+        let TyKind::Ref(second_region, _second_ty, _second_mutability) = inputs[1].kind() else {
+            panic!("expected reference input, got {:?}", inputs[1]);
+        };
+        let RegionKind::ReLateParam(_first_late_param) = first_region.kind() else {
+            panic!("expected late parameter region, got {first_region:?}");
+        };
+        let RegionKind::ReLateParam(_second_late_param) = second_region.kind() else {
+            panic!("expected late parameter region, got {second_region:?}");
+        };
+
+        assert_ne!(first_region, second_region);
+    });
+}
 
 #[test]
 fn regression_20365() {
@@ -230,63 +296,6 @@ fn main() {
     debug(&1);
 }"#,
     );
-
-    // toolchains <= 1.88.0, before sized-hierarchy.
-    check_no_mismatches(
-        r#"
-#![feature(lang_items)]
-#[lang = "sized"]
-pub trait Sized {}
-
-#[lang = "unsize"]
-pub trait Unsize<T: ?Sized> {}
-
-#[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T: ?Sized> {}
-
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
-
-impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b mut T {}
-
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for &'a mut T {}
-
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a mut T {}
-
-impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a T {}
-
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
-
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
-
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
-
-#[lang = "dispatch_from_dyn"]
-pub trait DispatchFromDyn<T> {}
-
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
-
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut T {}
-
-impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
-
-impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
-
-trait Foo {
-    fn bar(&self) -> u32 {
-        0xCAFE
-    }
-}
-
-fn debug(_: &dyn Foo) {}
-
-impl Foo for i32 {}
-
-fn main() {
-    debug(&1);
-}"#,
-    );
 }
 
 #[test]
@@ -357,7 +366,7 @@ where
 "#,
         expect![[r#"
             182..183 't': T
-            230..280 '{     ... {}; }': ()
+            230..280 '{     ... {}; }': !
             240..241 't': <T as DimMax<U>>::Output
             270..277 'loop {}': !
             275..277 '{}': ()
@@ -392,6 +401,61 @@ fn main() {
 }
     "#,
     );
+}
+
+#[test]
+fn static_as_array_len_does_not_panic() {
+    check_no_mismatches(
+        r#"
+static S: usize = 8;
+const A: [u8; S] = [0; 8];
+    "#,
+    );
+}
+
+#[test]
+fn oversized_array_len_does_not_panic() {
+    // The array length literal does not fit in `usize`; interning it must not panic.
+    check_no_mismatches(
+        r#"
+fn f(_: [u8; 18446744073709551616]) {}
+    "#,
+    );
+}
+
+#[test]
+fn invalid_string_array_len_is_error() {
+    let (db, file_id) = TestDB::with_single_file(
+        r#"
+pub union U {
+    foo: [usize; ""],
+}
+"#,
+    );
+
+    crate::attach_db(&db, || {
+        let module_id = db.module_for_file(file_id.file_id(&db));
+        let def_map = module_id.def_map(&db);
+        let union_id = def_map[module_id]
+            .scope
+            .declarations()
+            .find_map(|decl| match decl {
+                ModuleDefId::AdtId(AdtId::UnionId(id)) => Some(id),
+                _ => None,
+            })
+            .unwrap();
+        let field_ty = db
+            .field_types(union_id.into())
+            .iter()
+            .next()
+            .unwrap()
+            .1
+            .ty()
+            .instantiate_identity()
+            .skip_norm_wip();
+        let TyKind::Array(_, len) = field_ty.kind() else { unreachable!() };
+        assert!(len.is_error());
+    });
 }
 
 #[test]
@@ -513,15 +577,15 @@ fn test_at_most() {
     "#,
         expect![[r#"
             48..49 '0': usize
-            182..186 'self': Between<M, _, T>
+            182..186 'self': Between<M, 0, T>
             188..192 '_sep': &'? str
-            200..206 '_other': Between<M, _, T>
-            222..242 '{     ...     }': Between<M, _, T>
-            232..236 'self': Between<M, _, T>
+            200..206 '_other': Between<M, 0, T>
+            222..242 '{     ...     }': Between<M, 0, T>
+            232..236 'self': Between<M, 0, T>
             300..304 'self': Self
-            343..372 '{     ...     }': Between<M, _, Self>
-            353..360 'Between': fn Between<M, _, Self>(Self) -> Between<M, _, Self>
-            353..366 'Between(self)': Between<M, _, Self>
+            343..372 '{     ...     }': Between<M, 0, Self>
+            353..360 'Between': fn Between<M, 0, Self>(Self) -> Between<M, 0, Self>
+            353..366 'Between(self)': Between<M, 0, Self>
             361..365 'self': Self
             404..408 'self': Self
             433..462 '{     ...     }': Between<0, N, Self>
@@ -529,18 +593,24 @@ fn test_at_most() {
             443..456 'Between(self)': Between<0, N, Self>
             451..455 'self': Self
             510..587 '{     ...um); }': ()
-            520..523 'num': Between<1, _, char>
+            520..523 'num': Between<1, 0, char>
             526..529 ''9'': char
-            526..545 ''9'.at...:<1>()': Between<1, _, char>
-            555..559 '_ver': Between<1, _, char>
-            562..565 'num': Between<1, _, char>
-            562..584 'num.se..., num)': Between<1, _, char>
+            526..545 ''9'.at...:<1>()': Between<1, 0, char>
+            541..542 '1': usize
+            555..559 '_ver': Between<1, 0, char>
+            562..565 'num': Between<1, 0, char>
+            562..584 'num.se..., num)': Between<1, 0, char>
             575..578 '"."': &'static str
-            580..583 'num': Between<1, _, char>
+            580..583 'num': Between<1, 0, char>
             607..644 '{     ...>(); }': ()
             617..620 'num': Between<0, 1, char>
             623..626 ''9'': char
             623..641 ''9'.at...:<1>()': Between<0, 1, char>
+            637..638 '1': usize
+            320..335 '{ Consts::MAX }': usize
+            322..333 'Consts::MAX': usize
+            144..159 '{ Consts::MAX }': usize
+            146..157 'Consts::MAX': usize
         "#]],
     );
 }
@@ -672,9 +742,9 @@ where
         expect![[r#"
             43..47 'self': &'? Self
             168..172 'self': &'? F
-            205..227 '{     ...     }': <F as AsyncFnMut<()>>::CallRefFuture<'<erased>>
+            205..227 '{     ...     }': <F as AsyncFnMut<()>>::CallRefFuture<'?>
             215..219 'self': &'? F
-            215..221 'self()': <F as AsyncFnMut<()>>::CallRefFuture<'<erased>>
+            215..221 'self()': <F as AsyncFnMut<()>>::CallRefFuture<'?>
         "#]],
     );
 }
@@ -877,5 +947,33 @@ fn test2<T: FooFactory>(factory: T) {
             454..478 'factor....bar()': <impl Foo + Bar<Baz = u8> + ?Sized as Foo>::Bar
             454..484 'factor....baz()': u8
         "#]],
+    );
+}
+
+#[test]
+fn infer_method_call_recovery_hrtb_does_not_panic() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized, dispatch_from_dyn, fn, option, phantom_data, sized
+use core::marker::PhantomData;
+
+trait Any {}
+
+impl<T: 'static> Any for T {}
+
+struct Bar<'a>(PhantomData<&'a ()>);
+
+type FooFn = for<'a> fn(&'a dyn Any) -> Option<Bar<'a>>;
+
+struct Foo {
+    bar: FooFn,
+}
+
+impl Foo {
+    fn baz<'a, T: 'static>(&self, x: &'a T) -> Option<Bar<'a>> {
+        self.bar(x)
+    }
+}
+"#,
     );
 }

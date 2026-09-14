@@ -140,3 +140,35 @@ fn main() {
         _ => false,
     };
 }
+
+fn issue16678() {
+    // ICE in Rust 1.94.0
+    match true {
+        true => {
+            fn wrapper(_arg: ()) {
+                _arg;
+            }
+        },
+        false => {
+            fn wrapper(_arg: ()) {
+                _arg;
+            }
+        },
+    }
+}
+
+fn issue16698() {
+    trait Foo {
+        const X: u8;
+    }
+    impl Foo for u8 {
+        const X: u8 = 2;
+    }
+    impl Foo for i8 {
+        const X: u8 = 2;
+    }
+    match true {
+        false => u8::X,
+        true => i8::X,
+    };
+}

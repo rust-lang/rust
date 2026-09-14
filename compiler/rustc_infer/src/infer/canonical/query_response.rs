@@ -13,7 +13,7 @@ use std::iter;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::bug;
-use rustc_middle::infer::canonical::CanonicalVarKind;
+use rustc_middle::infer::canonical::{CanonicalVarKind, QueryRegionConstraint};
 use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 use tracing::{debug, instrument};
 
@@ -22,13 +22,15 @@ use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, Certainty, OriginalQueryValues,
     QueryRegionConstraints, QueryResponse,
 };
-use crate::infer::region_constraints::RegionConstraintData;
+use crate::infer::region_constraints::{ConstraintKind, RegionConstraintData};
 use crate::infer::{
     DefineOpaqueTypes, InferCtxt, InferOk, InferResult, OpaqueTypeStorageEntries, SubregionOrigin,
     TypeOutlivesConstraint,
 };
 use crate::traits::query::NoSolution;
-use crate::traits::{ObligationCause, PredicateObligations, ScrubbedTraitError, TraitEngine};
+use crate::traits::{
+    ObligationCause, PredicateObligations, ScrubbedTraitError, TraitEngine, TraitErrors,
+};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
@@ -129,10 +131,17 @@ impl<'tcx> InferCtxt<'tcx> {
         // Select everything, returning errors.
         let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self);
 
-        // True error!
-        if errors.iter().any(|e| e.is_true_error()) {
-            return Err(NoSolution);
-        }
+        let certainty = match errors {
+            TraitErrors::HasErrors(errors) => {
+                if errors.iter().any(|e| e.is_true_error()) {
+                    // True error!
+                    return Err(NoSolution);
+                } else {
+                    Certainty::Ambiguous
+                }
+            }
+            TraitErrors::NoErrors => Certainty::Proven,
+        };
 
         let region_obligations = self.take_registered_region_obligations();
         let region_assumptions = self.take_registered_region_assumptions();
@@ -145,8 +154,6 @@ impl<'tcx> InferCtxt<'tcx> {
             )
         });
         debug!(?region_constraints);
-
-        let certainty = if errors.is_empty() { Certainty::Proven } else { Certainty::Ambiguous };
 
         let opaque_types = self
             .inner
@@ -188,9 +195,18 @@ impl<'tcx> InferCtxt<'tcx> {
         let InferOk { value: result_args, obligations } =
             self.query_response_instantiation(cause, param_env, original_values, query_response)?;
 
-        for (predicate, _category) in &query_response.value.region_constraints.outlives {
-            let predicate = instantiate_value(self.tcx, &result_args, *predicate);
-            self.register_outlives_constraint(predicate, cause);
+        for QueryRegionConstraint { constraint, visible_for_leak_check: vis, .. } in
+            &query_response.value.region_constraints.constraints
+        {
+            let constraint = instantiate_value(self.tcx, &result_args, *constraint);
+            match constraint {
+                ty::RegionConstraint::Outlives(clause) => {
+                    self.register_outlives_constraint(clause, *vis, cause);
+                }
+                ty::RegionConstraint::Eq(clause) => {
+                    self.register_region_eq_constraint(clause, *vis, cause);
+                }
+            }
         }
 
         for assumption in &query_response.value.region_constraints.assumptions {
@@ -277,14 +293,13 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
 
                 (GenericArgKind::Lifetime(v_o), GenericArgKind::Lifetime(v_r)) => {
-                    // To make `v_o = v_r`, we emit `v_o: v_r` and `v_r: v_o`.
                     if v_o != v_r {
-                        output_query_region_constraints
-                            .outlives
-                            .push((ty::OutlivesPredicate(v_o.into(), v_r), constraint_category));
-                        output_query_region_constraints
-                            .outlives
-                            .push((ty::OutlivesPredicate(v_r.into(), v_o), constraint_category));
+                        let constraint = QueryRegionConstraint {
+                            constraint: ty::RegionEqPredicate(v_o, v_r).into(),
+                            category: constraint_category,
+                            visible_for_leak_check: ty::VisibleForLeakCheck::Yes,
+                        };
+                        output_query_region_constraints.constraints.push(constraint);
                     }
                 }
 
@@ -311,13 +326,12 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         // ...also include the other query region constraints from the query.
-        output_query_region_constraints.outlives.extend(
-            query_response.value.region_constraints.outlives.iter().filter_map(|&r_c| {
+        output_query_region_constraints.constraints.extend(
+            query_response.value.region_constraints.constraints.iter().filter_map(|&r_c| {
                 let r_c = instantiate_value(self.tcx, &result_args, r_c);
 
-                // Screen out `'a: 'a` cases.
-                let ty::OutlivesPredicate(k1, r2) = r_c.0;
-                if k1 != r2.into() { Some(r_c) } else { None }
+                // Screen out `'a: 'a` or `'a == 'a` cases.
+                if r_c.constraint.is_trivial() { None } else { Some(r_c) }
             }),
         );
 
@@ -512,7 +526,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.at(cause, param_env)
                     .eq(
                         DefineOpaqueTypes::Yes,
-                        Ty::new_opaque(self.tcx, a.def_id.to_def_id(), a.args),
+                        Ty::new_opaque(self.tcx, ty::IsRigid::No, a.def_id.to_def_id(), a.args),
                         b,
                     )?
                     .obligations,
@@ -583,6 +597,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         SubregionOrigin::RelateRegionParamBound(cause.span, None),
                         v1,
                         v2,
+                        ty::VisibleForLeakCheck::Yes,
                     );
                 }
                 (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
@@ -603,7 +618,7 @@ impl<'tcx> InferCtxt<'tcx> {
 pub fn make_query_region_constraints<'tcx>(
     outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
-    assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
+    assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
 ) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData { constraints, verifys } = region_constraints;
 
@@ -611,20 +626,42 @@ pub fn make_query_region_constraints<'tcx>(
 
     debug!(?constraints);
 
-    let outlives: Vec<_> = constraints
+    let constraints: Vec<QueryRegionConstraint<'tcx>> = constraints
         .iter()
-        .map(|(c, origin)| {
-            // Swap regions because we are going from sub (<=) to outlives (>=).
-            let constraint = ty::OutlivesPredicate(c.sup.into(), c.sub);
-            (constraint, origin.to_constraint_category())
+        .map(|(c, origin)| match c.kind {
+            ConstraintKind::VarSubVar
+            | ConstraintKind::RegSubVar
+            | ConstraintKind::VarSubReg
+            | ConstraintKind::RegSubReg => {
+                // Swap regions because we are going from sub (<=) to outlives (>=).
+                let constraint = ty::OutlivesClause(c.sup.into(), c.sub).into();
+                QueryRegionConstraint {
+                    constraint,
+                    category: origin.to_constraint_category(),
+                    visible_for_leak_check: c.visible_for_leak_check,
+                }
+            }
+
+            ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
+                let constraint = ty::RegionEqPredicate(c.sup, c.sub).into();
+                QueryRegionConstraint {
+                    constraint,
+                    category: origin.to_constraint_category(),
+                    visible_for_leak_check: c.visible_for_leak_check,
+                }
+            }
         })
-        .chain(outlives_obligations.into_iter().map(|obl| {
-            (
-                ty::OutlivesPredicate(obl.sup_type.into(), obl.sub_region),
-                obl.origin.to_constraint_category(),
-            )
-        }))
+        .chain(outlives_obligations.into_iter().map(
+            |TypeOutlivesConstraint { sub_region, sup_type, origin }| {
+                QueryRegionConstraint {
+                    constraint: ty::OutlivesClause(sup_type.into(), sub_region).into(),
+                    category: origin.to_constraint_category(),
+                    // We don't do leak checks for type outlives
+                    visible_for_leak_check: ty::VisibleForLeakCheck::Unreachable,
+                }
+            },
+        ))
         .collect();
 
-    QueryRegionConstraints { outlives, assumptions }
+    QueryRegionConstraints { constraints, assumptions }
 }

@@ -345,6 +345,8 @@ impl Duration {
 
     /// Creates a new `Duration` from the specified number of weeks.
     ///
+    /// For this function, one week is defined as 7 days, or 604,800 seconds.
+    ///
     /// # Panics
     ///
     /// Panics if the given number of weeks overflows the `Duration` size.
@@ -372,6 +374,8 @@ impl Duration {
     }
 
     /// Creates a new `Duration` from the specified number of days.
+    ///
+    /// For this function, one day is defined as 24 hours, or 86,400 seconds.
     ///
     /// # Panics
     ///
@@ -401,6 +405,8 @@ impl Duration {
 
     /// Creates a new `Duration` from the specified number of hours.
     ///
+    /// For this function, one hour is defined as 60 minutes, or 3,600 seconds.
+    ///
     /// # Panics
     ///
     /// Panics if the given number of hours overflows the `Duration` size.
@@ -428,6 +434,8 @@ impl Duration {
     }
 
     /// Creates a new `Duration` from the specified number of minutes.
+    ///
+    /// For this function, one minute is defined as 60 seconds.
     ///
     /// # Panics
     ///
@@ -1006,12 +1014,44 @@ impl Duration {
     /// This method will panic if result is negative, overflows `Duration` or not finite.
     ///
     /// # Examples
+    ///
     /// ```
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.mul_f64(3.14), Duration::new(8, 478_000_000));
     /// assert_eq!(dur.mul_f64(3.14e5), Duration::new(847_800, 0));
+    /// ```
+    ///
+    /// Note that `f64` does not have enough bits ([`f64::MANTISSA_DIGITS`]) to represent the full
+    /// range of possible `Duration` with nanosecond precision, so rounding may occur even for
+    /// trivial operations like multiplying by 1.
+    ///
+    /// ```
+    /// # #![feature(float_exact_integer_constants)]
+    /// use std::time::Duration;
+    ///
+    /// // This is about 14.9 weeks, remaining precise to the nanosecond:
+    /// let weeks = Duration::from_nanos(f64::MAX_EXACT_INTEGER as u64);
+    /// assert_eq!(weeks, weeks.mul_f64(1.0));
+    ///
+    /// // A larger value incurs rounding in the floating-point operation:
+    /// let weeks = Duration::from_nanos(u64::MAX);
+    /// assert_ne!(weeks, weeks.mul_f64(1.0));
+    ///
+    /// // This is over 285 million years, remaining precise to the second:
+    /// let years = Duration::from_secs(f64::MAX_EXACT_INTEGER as u64);
+    /// assert_eq!(years, years.mul_f64(1.0));
+    ///
+    /// // And again larger values incur rounding:
+    /// let years = Duration::from_secs(u64::MAX / 2);
+    /// assert_ne!(years, years.mul_f64(1.0));
+    /// ```
+    ///
+    /// ```should_panic
+    /// # use std::time::Duration;
+    /// // In the extreme, rounding can even overflow `Duration`, which panics.
+    /// let _ = Duration::from_secs(u64::MAX).mul_f64(1.0);
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use = "this returns the result of the operation, \
@@ -1023,6 +1063,10 @@ impl Duration {
 
     /// Multiplies `Duration` by `f32`.
     ///
+    /// Since the significand of `f32` is quite limited compared to the range of `Duration`
+    /// -- only about 16.8ms of exact nanosecond precision -- this method currently forwards
+    /// to [`mul_f64`][Self::mul_f64] for greater accuracy.
+    ///
     /// # Panics
     /// This method will panic if result is negative, overflows `Duration` or not finite.
     ///
@@ -1031,7 +1075,10 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
-    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_641));
+    /// // Note that this `3.14_f32` argument already has more floating-point
+    /// // representation error than a direct `3.14_f64` would, so the result
+    /// // is slightly different from the ideal 8.478s.
+    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_283));
     /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847_800, 0));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
@@ -1039,7 +1086,7 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn mul_f32(self, rhs: f32) -> Duration {
-        Duration::from_secs_f32(rhs * self.as_secs_f32())
+        self.mul_f64(rhs.into())
     }
 
     /// Divides `Duration` by `f64`.
@@ -1048,12 +1095,44 @@ impl Duration {
     /// This method will panic if result is negative, overflows `Duration` or not finite.
     ///
     /// # Examples
+    ///
     /// ```
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.div_f64(3.14), Duration::new(0, 859_872_611));
     /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_599));
+    /// ```
+    ///
+    /// Note that `f64` does not have enough bits ([`f64::MANTISSA_DIGITS`]) to represent the full
+    /// range of possible `Duration` with nanosecond precision, so rounding may occur even for
+    /// trivial operations like dividing by 1.
+    ///
+    /// ```
+    /// # #![feature(float_exact_integer_constants)]
+    /// use std::time::Duration;
+    ///
+    /// // This is about 14.9 weeks, remaining precise to the nanosecond:
+    /// let weeks = Duration::from_nanos(f64::MAX_EXACT_INTEGER as u64);
+    /// assert_eq!(weeks, weeks.div_f64(1.0));
+    ///
+    /// // A larger value incurs rounding in the floating-point operation:
+    /// let weeks = Duration::from_nanos(u64::MAX);
+    /// assert_ne!(weeks, weeks.div_f64(1.0));
+    ///
+    /// // This is over 285 million years, remaining precise to the second:
+    /// let years = Duration::from_secs(f64::MAX_EXACT_INTEGER as u64);
+    /// assert_eq!(years, years.div_f64(1.0));
+    ///
+    /// // And again larger values incur rounding:
+    /// let years = Duration::from_secs(u64::MAX / 2);
+    /// assert_ne!(years, years.div_f64(1.0));
+    /// ```
+    ///
+    /// ```should_panic
+    /// # use std::time::Duration;
+    /// // In the extreme, rounding can even overflow `Duration`, which panics.
+    /// let _ = Duration::from_secs(u64::MAX).div_f64(1.0);
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use = "this returns the result of the operation, \
@@ -1065,6 +1144,10 @@ impl Duration {
 
     /// Divides `Duration` by `f32`.
     ///
+    /// Since the significand of `f32` is quite limited compared to the range of `Duration`
+    /// -- only about 16.8ms of exact nanosecond precision -- this method currently forwards
+    /// to [`div_f64`][Self::div_f64] for greater accuracy.
+    ///
     /// # Panics
     /// This method will panic if result is negative, overflows `Duration` or not finite.
     ///
@@ -1073,9 +1156,10 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
-    /// // note that due to rounding errors result is slightly
-    /// // different from 0.859_872_611
-    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_580));
+    /// // Note that this `3.14_f32` argument already has more floating-point
+    /// // representation error than a direct `3.14_f64` would, so the result
+    /// // is slightly different from the ideally rounded 0.859_872_611.
+    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_583));
     /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_599));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
@@ -1083,7 +1167,7 @@ impl Duration {
                   without modifying the original"]
     #[inline]
     pub fn div_f32(self, rhs: f32) -> Duration {
-        Duration::from_secs_f32(self.as_secs_f32() / rhs)
+        self.div_f64(rhs.into())
     }
 
     /// Divides `Duration` by `Duration` and returns `f64`.
@@ -1173,7 +1257,7 @@ impl Duration {
 
 #[stable(feature = "duration", since = "1.3.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const Add for Duration {
+const impl Add for Duration {
     type Output = Duration;
 
     #[inline]
@@ -1184,7 +1268,7 @@ impl const Add for Duration {
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const AddAssign for Duration {
+const impl AddAssign for Duration {
     #[inline]
     fn add_assign(&mut self, rhs: Duration) {
         *self = *self + rhs;
@@ -1193,7 +1277,7 @@ impl const AddAssign for Duration {
 
 #[stable(feature = "duration", since = "1.3.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const Sub for Duration {
+const impl Sub for Duration {
     type Output = Duration;
 
     #[inline]
@@ -1204,7 +1288,7 @@ impl const Sub for Duration {
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const SubAssign for Duration {
+const impl SubAssign for Duration {
     #[inline]
     fn sub_assign(&mut self, rhs: Duration) {
         *self = *self - rhs;
@@ -1213,7 +1297,7 @@ impl const SubAssign for Duration {
 
 #[stable(feature = "duration", since = "1.3.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const Mul<u32> for Duration {
+const impl Mul<u32> for Duration {
     type Output = Duration;
 
     #[inline]
@@ -1224,7 +1308,7 @@ impl const Mul<u32> for Duration {
 
 #[stable(feature = "symmetric_u32_duration_mul", since = "1.31.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const Mul<Duration> for u32 {
+const impl Mul<Duration> for u32 {
     type Output = Duration;
 
     #[inline]
@@ -1235,7 +1319,7 @@ impl const Mul<Duration> for u32 {
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const MulAssign<u32> for Duration {
+const impl MulAssign<u32> for Duration {
     #[inline]
     fn mul_assign(&mut self, rhs: u32) {
         *self = *self * rhs;
@@ -1244,7 +1328,7 @@ impl const MulAssign<u32> for Duration {
 
 #[stable(feature = "duration", since = "1.3.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const Div<u32> for Duration {
+const impl Div<u32> for Duration {
     type Output = Duration;
 
     #[inline]
@@ -1256,7 +1340,7 @@ impl const Div<u32> for Duration {
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-impl const DivAssign<u32> for Duration {
+const impl DivAssign<u32> for Duration {
     #[inline]
     #[track_caller]
     fn div_assign(&mut self, rhs: u32) {
@@ -1285,7 +1369,7 @@ macro_rules! sum_durations {
         total_secs = total_secs
             .checked_add(total_nanos / NANOS_PER_SEC as u64)
             .expect("overflow in iter::sum over durations");
-        total_nanos = total_nanos % NANOS_PER_SEC as u64;
+        total_nanos %= NANOS_PER_SEC as u64;
         Duration::new(total_secs, total_nanos as u32)
     }};
 }

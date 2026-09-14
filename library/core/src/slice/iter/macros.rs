@@ -192,25 +192,20 @@ macro_rules! iterator {
             }
 
             fn next_chunk<const N:usize>(&mut self) -> Result<[$elem; N], crate::array::IntoIter<$elem, N>> {
-                if T::IS_ZST {
+                if T::IS_ZST || len!(self) < N {
                     return crate::array::iter_next_chunk(self);
                 }
-                let len = len!(self);
-                if len >= N {
-                    // SAFETY: we are just getting an array of [T; N] and moving the pointer over a little
-                    let r = unsafe { self.post_inc_start(N).cast_array().$into_ref() }
-                        .$array_ref(); // must convert &[T; N] to [&T; N]
+
+                // SAFETY: the check above ensures len >= N
+                unsafe {
+                    let r = self
+                        .post_inc_start(N)
+                        .cast_array() // NonNull<T> -> NonNull<[T; N]>
+                        // SAFETY: post_inc_start(N) insures we don't return overlapping `&mut`s
+                        .$into_ref() // NonNull<[T; N]> -> &{mut} [T; N]
+                        .$array_ref(); // must convert &{mut} [T; N] to [&{mut} T; N]
+
                     Ok(r)
-                } else {
-                    // cant use $array_ref because theres no builtin for &mut [MU<T>; N] -> [&mut MU<T>; N]
-                    // cant use copy_nonoverlapping as the $elem is of type &{mut} T instead of T
-                    let mut a = [const { crate::mem::MaybeUninit::<$elem>::uninit() }; N];
-                    for into in (&mut a).into_iter().take(len) {
-                        // SAFETY: take(n) limits to remainder (slice produces worse codegen)
-                        into.write(unsafe { self.post_inc_start(1).$into_ref() });
-                    }
-                    // SAFETY: we just initialized elements 0..len
-                    unsafe { Err(crate::array::IntoIter::new_unchecked(a, 0..len)) }
                 }
             }
 
@@ -238,7 +233,7 @@ macro_rules! iterator {
                 // SAFETY: We are in bounds. `post_inc_start` does the right thing even for ZSTs.
                 unsafe {
                     self.post_inc_start(n);
-                    Some(self.next_unchecked())
+                    Some(self.post_inc_start(1).$into_ref())
                 }
             }
 
@@ -480,16 +475,6 @@ macro_rules! iterator {
 
         #[unstable(feature = "trusted_len", issue = "37572")]
         unsafe impl<T> TrustedLen for $name<'_, T> {}
-
-        impl<'a, T> UncheckedIterator for $name<'a, T> {
-            #[inline]
-            unsafe fn next_unchecked(&mut self) -> $elem {
-                // SAFETY: The caller promised there's at least one more item.
-                unsafe {
-                    self.post_inc_start(1).$into_ref()
-                }
-            }
-        }
 
         #[stable(feature = "default_iters", since = "1.70.0")]
         impl<T> Default for $name<'_, T> {

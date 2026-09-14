@@ -66,8 +66,8 @@ kinds of builds (sets of jobs).
 ### Pull Request builds
 
 After each push to a pull request, a set of `pr` jobs are executed.
-Currently, these execute the `x86_64-gnu-llvm-X`, `x86_64-gnu-tools`, `pr-check-1`, `pr-check-2`
-and `tidy` jobs, all running on Linux.
+Currently, these execute the `test-x86_64-gnu-llvm-X`, `test-x86_64-gnu-tools`, `test-pr-check-1`, `test-pr-check-2`
+and `test-tidy` jobs, all running on Linux.
 These execute a relatively short
 (~40 minutes) and lightweight test suite that should catch common issues.
 More specifically, they run a set of lints, they try to perform a cross-compile check
@@ -109,11 +109,13 @@ The live results can be seen on [the GitHub Actions workflows page].
 At any given time, at most a single `auto` build is being executed.
 Find out more in [Merging PRs serially with bors](#merging-prs-serially-with-bors).
 
-Normally, when an auto job fails, the whole CI workflow immediately ends. However, it can be useful to
+Normally, when an auto job fails, the whole CI workflow immediately ends.
+However, it can be useful to
 create auto jobs that are "non-blocking", or optional, to test them on CI for some time before blocking
-merges on them. This can be useful if those jobs can be flaky.
+merges on them.
+This can be useful if those jobs can be flaky.
 
-To do that, prefix such a job with `optional-`, and set `continue_on_error: true` for it in [`jobs.yml`]. 
+To do that, prefix such a job with `optional-`, and set `continue_on_error: true` for it in [`jobs.yml`].
 
 [platform tiers]: https://forge.rust-lang.org/release/platform-support.html#rust-platform-support
 [auto]: https://github.com/rust-lang/rust/tree/automation/bors/auto
@@ -148,7 +150,10 @@ Such a try build will not execute any tests, and it will allow compilation warni
 It is useful when you want to
 get an optimized toolchain as fast as possible, for a Crater run or performance benchmarks,
 even if it might not be working fully correctly.
-If you want to do a full build for the default try job,
+
+The CI job executed in fast try builds has a special suffix (`-quick`),
+to distinguish it from a full build of the default try job.
+If you want to do the full build instead,
 specify its job name in a job pattern (explained below).
 
 If you want to run custom CI jobs in a try build and make sure that they pass all tests and do
@@ -204,7 +209,7 @@ to help make the perf comparison as fair as possible.
 >
 > 3. Run the prescribed try jobs with `@bors try`. As aforementioned, this
 >    requires the user to either (1) have `try` permissions or (2) be delegated
->    with `try` permissions by `@bors delegate=try` by someone who has `try`
+>    with `try` permissions by `@bors delegate try` by someone who has `try`
 >    permissions.
 >
 > Note that this is usually easier to do than manually edit [`jobs.yml`].
@@ -248,11 +253,11 @@ to your PR, like this:
 ```yaml
 pr:
   ...
-  - image: x86_64-gnu-tools
+  - image: test-x86_64-gnu-tools
     <<: *job-linux-16c
   # this item was copied from the `auto` section
   # vvvvvvvvvvvvvvvvvv
-  - image: x86_64-msvc
+  - image: test-x86_64-msvc
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
       SCRIPT: make ci-msvc
@@ -448,6 +453,23 @@ More information is available in the [toolstate documentation].
 
 [rust-toolstate]: https://rust-lang-nursery.github.io/rust-toolstate
 [toolstate documentation]: https://forge.rust-lang.org/infra/toolstate.html
+
+## Public CI dashboard
+
+To monitor the Rust CI, you can have a look at the [public dashboard] maintained by the infra team.
+
+These are some useful panels from the dashboard:
+
+- Pipeline duration: check how long the auto builds take to run.
+- Top slowest jobs: check which jobs are taking the longest to run.
+- Change in median job duration: check what jobs are slowest than before.
+  This is useful for detecting regressions.
+- Top failed jobs: check which jobs are failing the most.
+
+To learn more about the dashboard, see the [Datadog CI docs].
+
+[Datadog CI docs]: https://docs.datadoghq.com/continuous_integration/
+[public dashboard]: https://p.datadoghq.com/sb/3a172e20-e9e1-11ed-80e3-da7ad0900002-b5f7bb7e08b664a06b08527da85f7e30
 
 ## Determining the CI configuration
 

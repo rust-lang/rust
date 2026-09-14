@@ -1,0 +1,32 @@
+error: size: Size(16 bytes)
+  --> $DIR/layout.rs:12:1
+   |
+LL | struct ScalableFloat(f32);
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(8 bytes)
+  --> $DIR/layout.rs:16:1
+   |
+LL | struct ScalableU8WithFewerCount(u8);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(16 bytes)
+  --> $DIR/layout.rs:20:1
+   |
+LL | struct ScalableU8(u8);
+   | ^^^^^^^^^^^^^^^^^
+
+error: size: Size(16 bytes)
+  --> $DIR/layout.rs:24:1
+   |
+LL | struct ScalableBool(bool);
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: size: Size(48 bytes)
+  --> $DIR/layout.rs:28:1
+   |
+LL | struct ScalableTuple(ScalableU8, ScalableU8, ScalableU8);
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

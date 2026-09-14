@@ -19,7 +19,7 @@ use rustc_data_structures::sharded::ShardedHashMap;
 use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Encodable};
 use tracing::{debug, trace};
 // Also make the error macros available from this module.
@@ -37,8 +37,8 @@ pub use self::error::{
     BadBytesAccess, CheckAlignMsg, CheckInAllocMsg, ErrorHandled, EvalStaticInitializerRawResult,
     EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult, InterpErrorInfo,
     InterpErrorKind, InterpResult, InvalidMetaKind, InvalidProgramInfo, MachineStopType,
-    Misalignment, ReportedErrorInfo, ResourceExhaustionInfo, ScalarSizeMismatch,
-    UndefinedBehaviorInfo, UnsupportedOpInfo, ValTreeCreationError, interp_ok,
+    Misalignment, ReportedErrorInfo, ResourceExhaustionInfo, UndefinedBehaviorInfo,
+    UnsupportedOpInfo, ValTreeCreationError, interp_ok,
 };
 pub use self::pointer::{CtfeProvenance, Pointer, PointerArithmetic, Provenance};
 pub use self::value::Scalar;
@@ -51,7 +51,7 @@ use crate::ty::{self, Instance, Ty, TyCtxt};
 /// - A constant
 /// - A static
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
+#[derive(StableHash, TypeFoldable, TypeVisitable)]
 pub struct GlobalId<'tcx> {
     /// For a constant or static, the `Instance` of the item itself.
     /// For a promoted global, the `Instance` of the function they belong to.
@@ -250,7 +250,7 @@ impl<'s> AllocDecodingSession<'s> {
 
 /// An allocation in the global (tcx-managed) memory can be either a function pointer,
 /// a static, or a "real" allocation with some data in it.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, TyDecodable, TyEncodable, HashStable)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, TyDecodable, TyEncodable, StableHash)]
 pub enum GlobalAlloc<'tcx> {
     /// The alloc ID is used as a function pointer.
     Function { instance: Instance<'tcx> },
@@ -473,9 +473,8 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         let id = self.alloc_map.reserve();
         debug!("creating alloc {:?} with id {id:?}", alloc_salt.0);
-        let had_previous = self.alloc_map.to_alloc.insert(id, alloc_salt.0.clone()).is_some();
         // We just reserved, so should always be unique.
-        assert!(!had_previous);
+        self.alloc_map.to_alloc.insert_unique(id, alloc_salt.0.clone());
         dedup.insert(alloc_salt, id);
         id
     }
@@ -548,21 +547,17 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
-    /// call this function twice, even with the same `Allocation` will ICE the compiler.
+    /// call this function twice, even with the same `Allocation` will ICE the compiler if
+    /// debug_assertions are enabled.
     pub fn set_alloc_id_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
-        if let Some(old) = self.alloc_map.to_alloc.insert(id, GlobalAlloc::Memory(mem)) {
-            bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
-        }
+        self.alloc_map.to_alloc.insert_unique(id, GlobalAlloc::Memory(mem))
     }
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at a static item. Trying to
-    /// call this function twice, even with the same `DefId` will ICE the compiler.
+    /// call this function twice, even with the same `DefId` will ICE the compiler if
+    /// debug_assertions are enabled.
     pub fn set_nested_alloc_id_static(self, id: AllocId, def_id: LocalDefId) {
-        if let Some(old) =
-            self.alloc_map.to_alloc.insert(id, GlobalAlloc::Static(def_id.to_def_id()))
-        {
-            bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
-        }
+        self.alloc_map.to_alloc.insert_unique(id, GlobalAlloc::Static(def_id.to_def_id()))
     }
 }
 

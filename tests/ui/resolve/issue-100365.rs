@@ -1,29 +1,29 @@
 fn main() {
     let addr = Into::<std::net::IpAddr>.into([127, 0, 0, 1]);
-    //~^ ERROR expected value, found trait `Into`
+    //~^ ERROR cannot find value `Into` in this scope
     //~| HELP use the path separator
 
     let _ = Into.into(());
-    //~^ ERROR expected value, found trait `Into`
+    //~^ ERROR cannot find value `Into` in this scope
     //~| HELP use the path separator
 
     let _ = Into::<()>.into;
-    //~^ ERROR expected value, found trait `Into`
+    //~^ ERROR cannot find value `Into` in this scope
     //~| HELP use the path separator
 }
 
 macro_rules! Trait {
     () => {
         ::std::iter::Iterator
-        //~^ ERROR expected value, found trait `::std::iter::Iterator`
-        //~| ERROR expected value, found trait `::std::iter::Iterator`
+        //~^ ERROR cannot find value `Iterator` in module `::std::iter`
+        //~| ERROR cannot find value `Iterator` in module `::std::iter`
     };
 }
 
 macro_rules! create {
     () => {
         Into::<String>.into("")
-        //~^ ERROR expected value, found trait `Into`
+        //~^ ERROR cannot find value `Into` in this scope
         //~| HELP use the path separator
     };
 }

@@ -1,29 +1,29 @@
 error: associated type constraints not allowed on negative bounds
-  --> $DIR/associated-constraints.rs:7:19
+  --> $DIR/associated-constraints.rs:8:19
    |
 LL | fn test<T: !Trait<Assoc = i32>>() {}
    |                   ^^^^^^^^^^^
 
 error: associated type constraints not allowed on negative bounds
-  --> $DIR/associated-constraints.rs:10:31
+  --> $DIR/associated-constraints.rs:11:31
    |
 LL | fn test2<T>() where T: !Trait<Assoc = i32> {}
    |                               ^^^^^^^^^^^
 
 error: associated type constraints not allowed on negative bounds
-  --> $DIR/associated-constraints.rs:13:20
+  --> $DIR/associated-constraints.rs:14:20
    |
 LL | fn test3<T: !Trait<Assoc: Send>>() {}
    |                    ^^^^^^^^^^^
 
 error: associated type constraints not allowed on negative bounds
-  --> $DIR/associated-constraints.rs:16:31
+  --> $DIR/associated-constraints.rs:17:31
    |
 LL | fn test4<T>() where T: !Trait<Assoc: Send> {}
    |                               ^^^^^^^^^^^
 
 error: parenthetical notation may not be used for negative bounds
-  --> $DIR/associated-constraints.rs:19:25
+  --> $DIR/associated-constraints.rs:20:25
    |
 LL | fn test5<T>() where T: !Fn() -> i32 {}
    |                         ^^^^^^^^^^^

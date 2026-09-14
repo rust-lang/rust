@@ -1,4 +1,3 @@
-use hir::db::ExpandDatabase;
 use ide_db::{assists::Assist, base_db::AnchoredPathBuf, source_change::FileSystemEdit};
 use itertools::Itertools;
 use syntax::AstNode;
@@ -9,7 +8,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 //
 // This diagnostic is triggered if rust-analyzer is unable to discover referred module.
 pub(crate) fn unresolved_module(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::UnresolvedModule,
 ) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(
@@ -32,8 +31,8 @@ pub(crate) fn unresolved_module(
     .with_fixes(fixes(ctx, d))
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedModule) -> Option<Vec<Assist>> {
-    let root = ctx.sema.db.parse_or_expand(d.decl.file_id);
+fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::UnresolvedModule) -> Option<Vec<Assist>> {
+    let root = d.decl.file_id.parse_or_expand(ctx.sema.db);
     let unresolved_module = d.decl.value.to_node(&root);
     Some(
         d.candidates

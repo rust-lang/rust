@@ -23,7 +23,7 @@
 //!     assert!(false);
 //! }
 //! ```
-//~v WARN the `main` function of this doctest won't be run
+//~vvv WARN the `main` function of this doctest won't be run
 //!
 //! ```
 //! let x = 2;

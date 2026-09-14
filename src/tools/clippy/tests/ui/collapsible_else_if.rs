@@ -1,4 +1,3 @@
-#![allow(clippy::assertions_on_constants, clippy::equatable_if_let, clippy::needless_ifs)]
 #![warn(clippy::collapsible_else_if)]
 
 #[rustfmt::skip]
@@ -180,4 +179,37 @@ fn in_brackets() {
     } else {
         { if y == "world" { println!("world") } else { println!("!") } }
     }
+}
+
+#[rustfmt::skip]
+fn ends_with_zero_width_whitespace() {
+    // Test out snippets ending with the 2 zero-width characters recognized as whitespaces by the lexer,
+    // but not by char::is_whitespace
+    // Behaviour shows a whitespace is inserted between else and if here which is desirable in this case
+
+    let x = "hello";
+    let y = "world";
+
+
+    // LRM (U+200E)
+    if x == "hello" {
+        println!("hello LRM");
+    } else‎{
+        if y == "world" {
+            println!("LRM world");
+        }
+    }
+    //~^^^^^ collapsible_else_if
+
+    // RLM (U+200F)
+    if x == "hello" {
+        println!("hello RLM");
+    } else‏{
+        if y == "world" {
+            println!("RLM world");
+        }
+    }
+    //~^^^^^ collapsible_else_if
+
+
 }

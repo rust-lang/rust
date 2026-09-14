@@ -433,8 +433,8 @@ uninstall_components() {
             local _directive
             while read _directive; do
 
-            local _command=`echo $_directive | cut -f1 -d:`
-            local _file=`echo $_directive | cut -f2 -d:`
+            local _command="${_directive%%:*}"
+            local _file="${_directive#*:}"
 
             # Sanity checks
             if [ ! -n "$_command" ]; then critical_err "malformed installation directive"; fi
@@ -541,8 +541,8 @@ install_components() {
     local _directive
     while read _directive; do
 
-        local _command=`echo $_directive | cut -f1 -d:`
-        local _file=`echo $_directive | cut -f2 -d:`
+        local _command="${_directive%%:*}"
+        local _file="${_directive#*:}"
 
         # Sanity checks
         if [ ! -n "$_command" ]; then critical_err "malformed installation directive"; fi
@@ -611,6 +611,8 @@ install_components() {
             maybe_backup_path "$_file_install_path"
 
             run cp "$_src_dir/$_component/$_file" "$_file_install_path"
+            critical_need_ok "failed to copy file"
+
             if $_is_bin || test -x "$_src_dir/$_component/$_file"; then
                 run chmod 755 "$_file_install_path"
             else

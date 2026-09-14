@@ -1,6 +1,5 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-pub mod os;
 pub mod params;
 
 #[path = "../unsupported/common.rs"]

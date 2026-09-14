@@ -1,15 +1,15 @@
 use expect_test::{Expect, expect};
-use ide_db::{FileRange, MiniCore, base_db::SourceDatabase};
+use ide_db::{FileRange, base_db::SourceDatabase, ra_fixture::RaFixtureConfig};
+use span::FileId;
 use syntax::TextRange;
 
 use crate::{
-    HoverConfig, HoverDocFormat, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind, fixture,
+    HoverAction, HoverConfig, HoverDocFormat, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
+    fixture,
 };
 
-use hir::setup_tracing;
-
 const HOVER_BASE_CONFIG: HoverConfig<'_> = HoverConfig {
-    links_in_hover: false,
+    links_in_hover: true,
     memory_layout: Some(MemoryLayoutHoverConfig {
         size: Some(MemoryLayoutHoverRenderKind::Both),
         offset: Some(MemoryLayoutHoverRenderKind::Both),
@@ -25,14 +25,14 @@ const HOVER_BASE_CONFIG: HoverConfig<'_> = HoverConfig {
     max_enum_variants_count: Some(5),
     max_subst_ty_len: super::SubstTyLen::Unlimited,
     show_drop_glue: true,
-    minicore: MiniCore::default(),
+    ra_fixture: RaFixtureConfig::default(),
 };
 
 fn check_hover_no_result(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
-            &HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG },
+            &HOVER_BASE_CONFIG,
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
         .unwrap();
@@ -41,11 +41,19 @@ fn check_hover_no_result(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
 
 #[track_caller]
 fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
-    let _tracing = setup_tracing();
+    check_with_config(ra_fixture, expect, &HOVER_BASE_CONFIG);
+}
+
+#[track_caller]
+fn check_with_config(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expect: Expect,
+    config: &HoverConfig<'_>,
+) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
-            &HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG },
+            config,
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
         .unwrap()
@@ -64,24 +72,11 @@ fn check_hover_fields_limit(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expect: Expect,
 ) {
-    let (analysis, position) = fixture::position(ra_fixture);
-    let hover = analysis
-        .hover(
-            &HoverConfig {
-                links_in_hover: true,
-                max_fields_count: fields_count.into(),
-                ..HOVER_BASE_CONFIG
-            },
-            FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
-        )
-        .unwrap()
-        .unwrap();
-
-    let content = analysis.db.file_text(position.file_id).text(&analysis.db);
-    let hovered_element = &content[hover.range];
-
-    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
-    expect.assert_eq(&actual)
+    check_with_config(
+        ra_fixture,
+        expect,
+        &HoverConfig { max_fields_count: fields_count.into(), ..HOVER_BASE_CONFIG },
+    );
 }
 
 #[track_caller]
@@ -90,24 +85,11 @@ fn check_hover_enum_variants_limit(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expect: Expect,
 ) {
-    let (analysis, position) = fixture::position(ra_fixture);
-    let hover = analysis
-        .hover(
-            &HoverConfig {
-                links_in_hover: true,
-                max_enum_variants_count: variants_count.into(),
-                ..HOVER_BASE_CONFIG
-            },
-            FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
-        )
-        .unwrap()
-        .unwrap();
-
-    let content = analysis.db.file_text(position.file_id).text(&analysis.db);
-    let hovered_element = &content[hover.range];
-
-    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
-    expect.assert_eq(&actual)
+    check_with_config(
+        ra_fixture,
+        expect,
+        &HoverConfig { max_enum_variants_count: variants_count.into(), ..HOVER_BASE_CONFIG },
+    );
 }
 
 #[track_caller]
@@ -116,92 +98,41 @@ fn check_assoc_count(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expect: Expect,
 ) {
-    let (analysis, position) = fixture::position(ra_fixture);
-    let hover = analysis
-        .hover(
-            &HoverConfig {
-                links_in_hover: true,
-                max_trait_assoc_items_count: Some(count),
-                ..HOVER_BASE_CONFIG
-            },
-            FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
-        )
-        .unwrap()
-        .unwrap();
-
-    let content = analysis.db.file_text(position.file_id).text(&analysis.db);
-    let hovered_element = &content[hover.range];
-
-    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
-    expect.assert_eq(&actual)
+    check_with_config(
+        ra_fixture,
+        expect,
+        &HoverConfig { max_trait_assoc_items_count: Some(count), ..HOVER_BASE_CONFIG },
+    );
 }
 
 fn check_hover_no_links(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
-    let (analysis, position) = fixture::position(ra_fixture);
-    let hover = analysis
-        .hover(
-            &HOVER_BASE_CONFIG,
-            FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
-        )
-        .unwrap()
-        .unwrap();
-
-    let content = analysis.db.file_text(position.file_id).text(&analysis.db);
-    let hovered_element = &content[hover.range];
-
-    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
-    expect.assert_eq(&actual)
+    check_with_config(
+        ra_fixture,
+        expect,
+        &HoverConfig { links_in_hover: false, ..HOVER_BASE_CONFIG },
+    );
 }
 
 fn check_hover_no_memory_layout(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
-    let (analysis, position) = fixture::position(ra_fixture);
-    let hover = analysis
-        .hover(
-            &HoverConfig { memory_layout: None, ..HOVER_BASE_CONFIG },
-            FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
-        )
-        .unwrap()
-        .unwrap();
-
-    let content = analysis.db.file_text(position.file_id).text(&analysis.db);
-    let hovered_element = &content[hover.range];
-
-    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
-    expect.assert_eq(&actual)
+    check_with_config(
+        ra_fixture,
+        expect,
+        &HoverConfig { memory_layout: None, ..HOVER_BASE_CONFIG },
+    );
 }
 
 fn check_hover_no_markdown(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
-    let (analysis, position) = fixture::position(ra_fixture);
-    let hover = analysis
-        .hover(
-            &HoverConfig {
-                links_in_hover: true,
-                format: HoverDocFormat::PlainText,
-                ..HOVER_BASE_CONFIG
-            },
-            FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
-        )
-        .unwrap()
-        .unwrap();
-
-    let content = analysis.db.file_text(position.file_id).text(&analysis.db);
-    let hovered_element = &content[hover.range];
-
-    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
-    expect.assert_eq(&actual)
+    check_with_config(
+        ra_fixture,
+        expect,
+        &HoverConfig { format: HoverDocFormat::PlainText, ..HOVER_BASE_CONFIG },
+    );
 }
 
-fn check_actions(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
-    let (analysis, file_id, position) = fixture::range_or_position(ra_fixture);
-    let mut hover = analysis
-        .hover(
-            &HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG },
-            FileRange { file_id, range: position.range_or_empty() },
-        )
-        .unwrap()
-        .unwrap();
+#[track_caller]
+fn assert_actions(mut actions: Vec<HoverAction>, file_id: FileId, expect: Expect) {
     // stub out ranges into minicore as they can change every now and then
-    hover.info.actions.iter_mut().for_each(|action| match action {
+    actions.iter_mut().for_each(|action| match action {
         super::HoverAction::GoToType(act) => act.iter_mut().for_each(|data| {
             if data.nav.file_id == file_id {
                 return;
@@ -213,7 +144,16 @@ fn check_actions(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect
         }),
         _ => (),
     });
-    expect.assert_debug_eq(&hover.info.actions)
+    expect.assert_debug_eq(&actions)
+}
+
+fn check_actions(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
+    let (analysis, file_id, position) = fixture::range_or_position(ra_fixture);
+    let hover = analysis
+        .hover(&HOVER_BASE_CONFIG, FileRange { file_id, range: position.range_or_empty() })
+        .unwrap()
+        .unwrap();
+    assert_actions(hover.info.actions, file_id, expect);
 }
 
 fn check_hover_range(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
@@ -224,24 +164,8 @@ fn check_hover_range(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Ex
 
 fn check_hover_range_actions(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, range) = fixture::range(ra_fixture);
-    let mut hover = analysis
-        .hover(&HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG }, range)
-        .unwrap()
-        .unwrap();
-    // stub out ranges into minicore as they can change every now and then
-    hover.info.actions.iter_mut().for_each(|action| match action {
-        super::HoverAction::GoToType(act) => act.iter_mut().for_each(|data| {
-            if data.nav.file_id == range.file_id {
-                return;
-            }
-            data.nav.full_range = TextRange::empty(span::TextSize::new(!0));
-            if let Some(range) = &mut data.nav.focus_range {
-                *range = TextRange::empty(span::TextSize::new(!0));
-            }
-        }),
-        _ => (),
-    });
-    expect.assert_debug_eq(&hover.info.actions);
+    let hover = analysis.hover(&HOVER_BASE_CONFIG, range).unwrap().unwrap();
+    assert_actions(hover.info.actions, range.file_id, expect);
 }
 
 fn check_hover_range_no_results(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
@@ -423,7 +347,7 @@ fn main() {
 
             ## Captures
             * `x.f1` by move
-            * `(*x.f2.0.0).f` by mutable borrow
+            * `x.f2.0.0.f` by mutable borrow
         "#]],
     );
     check(
@@ -990,6 +914,158 @@ struct Foo$0 where u32: Copy { field: u32 }
             ---
 
             size = 4, align = 4, largest padding = 0, no Drop
+        "#]],
+    );
+}
+
+#[test]
+fn hover_filters_private_struct_fields_by_hover_context() {
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    let _: dep::Foo$0;
+}
+
+//- /dep.rs crate:dep library
+pub struct Foo {
+    pub visible: i32,
+    hidden: i32,
+    pub(crate) crate_visible: i32,
+}
+"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            dep
+            ```
+
+            ```rust
+            pub struct Foo {
+                pub visible: i32,
+                /* … */
+            }
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+//- /dep.rs crate:dep library
+pub struct Foo {
+    pub visible: i32,
+    hidden: i32,
+    pub(crate) crate_visible: i32,
+}
+
+fn main() {
+    let _: Foo$0;
+}
+"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            dep
+            ```
+
+            ```rust
+            pub struct Foo {
+                pub visible: i32,
+                hidden: i32,
+                pub(crate) crate_visible: i32,
+            }
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    let _: dep::Foo$0;
+}
+
+//- /dep.rs crate:dep
+pub struct Foo {
+    pub visible: i32,
+    hidden: i32,
+    pub(crate) crate_visible: i32,
+}
+"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            dep
+            ```
+
+            ```rust
+            pub struct Foo {
+                pub visible: i32,
+                hidden: i32,
+                pub(crate) crate_visible: i32,
+            }
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_filters_private_tuple_struct_fields_by_hover_context() {
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    let _: dep::Foo$0;
+}
+
+//- /dep.rs crate:dep library
+pub struct Foo(pub i32, i32, pub(crate) i32);
+"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            dep
+            ```
+
+            ```rust
+            pub struct Foo(pub i32, /* … */)
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_filters_private_union_fields_by_hover_context() {
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    let _: dep::U$0;
+}
+
+//- /dep.rs crate:dep library
+pub union U {
+    pub visible: i32,
+    hidden: u32,
+}
+"#,
+        expect![[r#"
+            *U*
+
+            ```rust
+            dep
+            ```
+
+            ```rust
+            pub union U {
+                pub visible: i32,
+                /* … */
+            }
+            ```
         "#]],
     );
 }
@@ -2550,7 +2626,7 @@ fn bar() { fo$0o(); }
 
             ---
 
-            \<- `　` here
+            　\<- `　` here
         "#]],
     );
 }
@@ -3153,6 +3229,35 @@ fn test_hover_layout_of_enum() {
 }
 
 #[test]
+fn test_hover_layout_nonzero_type_alias() {
+    check(
+        r#"//- minicore: non_zero
+use core::num;
+trait Trait { type Inner; }
+impl Trait for u8 { type Inner = num::NonZeroU8; }
+#[repr(transparent)]
+struct NonZero<T: Trait>(T::Inner);
+type NonZeroU8$0 = NonZero<u8>;
+"#,
+        expect![[r#"
+            *NonZeroU8*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type NonZeroU8 = NonZero<u8>
+            ```
+
+            ---
+
+            size = 1, align = 1, niches = 1, no Drop
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_layout_padding_info() {
     check(
         r#"struct $0Foo {
@@ -3392,7 +3497,7 @@ fn main() { let foo_test = unsafe { fo$0o(1, 2, 3); } }
             ```
 
             ```rust
-            pub unsafe fn foo(bar: i32, ...) -> i32
+            pub unsafe extern "C" fn foo(bar: i32, ...) -> i32
             ```
         "#]],
     );
@@ -3526,9 +3631,6 @@ fn foo_$0test() {}
                             test_id: Path(
                                 "foo_test",
                             ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
                         },
                         cfg: None,
                         update_test: UpdateTest {
@@ -3727,7 +3829,7 @@ fn test_hover_tuple_has_goto_type_actions() {
 struct A(u32);
 struct B(u32);
 mod M {
-    pub struct C(u32);
+    pub struct C(pub u32);
 }
 
 fn main() { let s$0t = (A(1), B(2), M::C(3) ); }
@@ -3768,12 +3870,12 @@ fn main() { let s$0t = (A(1), B(2), M::C(3) ); }
                                 file_id: FileId(
                                     0,
                                 ),
-                                full_range: 42..60,
+                                full_range: 42..64,
                                 focus_range: 53..54,
                                 name: "C",
                                 kind: Struct,
                                 container_name: "M",
-                                description: "pub struct C(u32)",
+                                description: "pub struct C(pub u32)",
                             },
                         },
                     ],
@@ -4984,6 +5086,33 @@ fn foo$0() {}
 }
 
 #[test]
+fn hover_doc_block_style_leading_asterisks() {
+    check(
+        r#"
+/**
+ * Some docs, *not a bullet*.
+ */
+fn foo$0() {}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn foo()
+            ```
+
+            ---
+
+            Some docs, *not a bullet*.
+        "#]],
+    );
+}
+
+#[test]
 fn hover_comments_dont_highlight_parent() {
     cov_mark::check!(no_highlight_on_comment_hover);
     check_hover_no_result(
@@ -5518,6 +5647,30 @@ enum E {
             This is a doc
         "#]],
     );
+    // const eval failed test
+    check(
+        r#"
+#[repr(u8)]
+enum E {
+    A$0 = {},
+}
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            ra_test_fixture::E
+            ```
+
+            ```rust
+            A = {}
+            ```
+
+            ---
+
+            size = 1, align = 1, no Drop
+        "#]],
+    );
 }
 
 #[test]
@@ -5975,9 +6128,8 @@ const FOO$0: f64 = 1.0f64;
 fn hover_const_eval_floating_point() {
     check(
         r#"
-extern "rust-intrinsic" {
-    pub fn expf64(x: f64) -> f64;
-}
+#[rustc_intrinsic]
+pub fn expf64(x: f64) -> f64;
 
 const FOO$0: f64 = expf64(1.2);
 "#,
@@ -6866,7 +7018,7 @@ fn hover_feature() {
     let (analysis, position) = fixture::position(r#"#![feature(intrinsics$0)]"#);
     analysis
         .hover(
-            &HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG },
+            &HOVER_BASE_CONFIG,
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
         .unwrap()
@@ -7155,6 +7307,7 @@ fn f() { let expr = [1, 2, $03$0, 4] }
 fn hover_range_functions() {
     check_hover_range(
         r#"
+//- minicore: unsize, coerce_unsized
 fn f<T>(a: &[T]) { }
 fn b() { $0f$0(&[1, 2, 3, 4, 5]); }
 "#,
@@ -8987,6 +9140,22 @@ fn main() {
     check(
         r#"
 fn main() {
+    $01f64;
+}
+"#,
+        expect![[r#"
+            *1f64*
+            ```rust
+            f64
+            ```
+            ---
+
+            value of literal: ` 1 (bits: 0x3FF0000000000000) `
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
     $00.1ea123;
 }
 "#,
@@ -9200,7 +9369,7 @@ extern "C" {
             ```
 
             ```rust
-            unsafe fn fun()
+            unsafe extern "C" fn fun()
             ```
         "#]],
     );
@@ -9386,6 +9555,27 @@ fn main(a$0: impl T) {}
 
             ```rust
             a: impl T + ?Sized
+            ```
+
+            ---
+
+            type param may need Drop
+        "#]],
+    );
+}
+
+#[test]
+fn hover_impl_trait_arg_with_anon_const_arg_does_not_recurse() {
+    check(
+        r#"
+trait Tr<const N: usize> {}
+pub fn f(x$0: impl Tr<{ 0 }>) {}
+"#,
+        expect![[r#"
+            *x*
+
+            ```rust
+            x: impl Tr<0> + ?Sized
             ```
 
             ---
@@ -10707,9 +10897,6 @@ macro_rules! str {
                             test_id: Path(
                                 "test",
                             ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
                         },
                         cfg: None,
                         update_test: UpdateTest {
@@ -10778,9 +10965,6 @@ pub use expect_test;
                             test_id: Path(
                                 "test",
                             ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
                         },
                         cfg: None,
                         update_test: UpdateTest {
@@ -11082,6 +11266,58 @@ impl PublicFlags for NoteDialects {
 
             ```rust
             pub const CLAP: Self = NoteDialects(InternalBitFlags)
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_recursive_const_fn() {
+    check(
+        r#"
+//- minicore: option
+enum Child {
+    Static { child: &'static MyEnum },
+}
+
+enum MyEnum {
+    Unit,
+    Array(Child),
+}
+
+impl MyEnum {
+    pub const fn static_array(child: &'static MyEnum) -> Self {
+        MyEnum::Array(Child::Static { child })
+    }
+}
+
+pub trait MyTrait {
+    const MY_CONST: &'static MyEnum;
+}
+
+impl<T> MyTrait for Option<T> where T: MyTrait {
+    const MY_CONST: &'static MyEnum = &MyEnum::static_array(T::MY_CONST);
+}
+
+impl MyTrait for () {
+    const MY_CONST: &'static MyEnum = &MyEnum::Unit;
+}
+
+pub struct Address;
+
+impl MyTrait for Address {
+    const MY_CONST$0: &'static MyEnum = (<Option<()> as MyTrait>::MY_CONST);
+}
+    "#,
+        expect![[r#"
+            *MY_CONST*
+
+            ```rust
+            ra_test_fixture::Address
+            ```
+
+            ```rust
+            const MY_CONST: &'static MyEnum = &Array(Static { child: &Unit })
             ```
         "#]],
     );
@@ -11401,6 +11637,431 @@ pub trait MyTrait {
             ---
 
             * [`do_something`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/trait.MyTrait.html#tymethod.do_something)
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_macro_generated_method_stringify_self_ty() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+#[rustc_builtin_macro]
+macro_rules! stringify {}
+
+macro_rules! bar {
+    ($SelfT:ident) => {
+        struct $SelfT;
+        impl $SelfT {
+            #[doc = concat!("Do the foo for ", stringify!($SelfT))]
+            fn foo(&self) {}
+        }
+    }
+}
+
+bar!(Bar);
+
+fn foo() { let bar = Bar; bar.fo$0o(); }
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture::Bar
+            ```
+
+            ```rust
+            fn foo(&self)
+            ```
+
+            ---
+
+            Do the foo for Bar
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_macro_argument_expr_issue_7688() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+macro_rules! doc_comment {
+    ($x:expr, $($tt:tt)*) => {
+        #[doc = $x]
+        $($tt)*
+    };
+}
+
+doc_comment! {
+    concat!("Hello", " world"),
+    struct Ba$0r;
+}
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            Hello world
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_concat_macro() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+#[doc = concat!("Hello", " ", "World")]
+struct Ba$0r;
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            Hello World
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_include_str_macro() {
+    check(
+        r#"
+//- /main.rs
+#[rustc_builtin_macro]
+macro_rules! include_str {}
+
+#[doc = include_str!("docs.md")]
+struct Ba$0r;
+
+//- /docs.md
+Included docs from file.
+Multiple lines of docs.
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            Included docs from file.
+            Multiple lines of docs.
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_user_macro_returning_string() {
+    check(
+        r#"
+macro_rules! doc_str {
+    () => { "Documentation from macro" };
+}
+
+#[doc = doc_str!()]
+struct Ba$0r;
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            Documentation from macro
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_mixed_literal_and_macro() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+/// First line
+#[doc = concat!("Second", " line")]
+struct Ba$0r;
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            First line
+            Second line
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_field_with_macro() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+struct Bar {
+    #[doc = concat!("field", " docs")]
+    ba$0z: i32,
+}
+"#,
+        expect![[r#"
+            *baz*
+
+            ```rust
+            ra_test_fixture::Bar
+            ```
+
+            ```rust
+            baz: i32
+            ```
+
+            ---
+
+            size = 4, align = 4, offset = 0, no Drop
+
+            ---
+
+            field docs
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_macro_on_outlined_mod() {
+    // Outer doc-macro on `mod foo;` resolves from inside the module's scope
+    // (matching rustc behavior), and combines with inner `//!` docs from the module file.
+    check(
+        r#"
+//- /main.rs
+mod mac {
+    macro_rules! doc_str {
+        () => { "expanded from macro" };
+    }
+    pub(crate) use doc_str;
+}
+
+/// plain outer doc
+#[doc = super::mac::doc_str!()]
+mod foo$0;
+
+//- /foo.rs
+//! inner module docs
+pub struct Bar;
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            mod foo
+            ```
+
+            ---
+
+            plain outer doc
+            expanded from macro
+            inner module docs
+        "#]],
+    );
+}
+
+#[test]
+fn respects_the_documentation_config() {
+    check_with_config(
+        r#"
+/// Blah blah some docs.
+fn foo() { foo$0(); }
+        "#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn foo()
+            ```
+        "#]],
+        &HoverConfig { documentation: false, ..HOVER_BASE_CONFIG },
+    );
+}
+
+#[test]
+fn doc_attr_macro() {
+    check(
+        r#"
+//- minicore: concat
+/// Comment A
+#[macro_export]
+macro_rules! A {
+    () => {
+        "Comment B"
+    };
+}
+#[doc = concat!(A$0!())]
+fn main() {}
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            macro_rules! A
+            ```
+
+            ---
+
+            Comment A
+        "#]],
+    );
+}
+
+#[test]
+fn resolve_array_type_with_anon_const_panic() {
+    use syntax::AstNode;
+    let (analysis, position) = crate::fixture::position(
+        r#"
+fn main() {
+    let x: [u8; 2 + 2$0] = [0; 4];
+}
+"#,
+    );
+    let db = &analysis.db;
+    hir::attach_db(db, || {
+        let sema = hir::Semantics::new(db);
+        let file = sema.parse_guess_edition(position.file_id);
+        let token = file.syntax().token_at_offset(position.offset).right_biased().unwrap();
+        let type_node = token.parent_ancestors().find_map(syntax::ast::Type::cast).unwrap();
+
+        let resolved = sema.resolve_type(&type_node).unwrap();
+        let _ = resolved.as_array(db);
+    });
+}
+
+#[test]
+fn extern_c_fn_ptr_display() {
+    check(
+        r#"
+extern "C" fn foo() {}
+
+fn bar() {
+    let v$0 = foo as extern "C" fn();
+}
+    "#,
+        expect![[r#"
+            *v*
+
+            ```rust
+            let v: extern "C" fn()
+            ```
+
+            ---
+
+            size = 8, align = 8, niches = 1, no Drop
+        "#]],
+    );
+}
+
+#[test]
+fn subst_impl_trait_arg_with_const_generic() {
+    check(
+        r#"
+fn main() {
+    generic$0_tn([()], 1);
+}
+
+fn generic_tn<T, const N: usize>(_: [T; N], _: impl Sized) {}
+"#,
+        expect![[r#"
+            *generic_tn*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn generic_tn<T, const N: usize>(_: [T; {const}], _: impl Sized)
+            ```
+
+            ---
+
+            `T` = `()`
         "#]],
     );
 }

@@ -1,7 +1,8 @@
 //@no-rustfix: multiple suggestions add `-> !` to the same fn
 //@aux-build:proc_macros.rs
 
-#![allow(clippy::never_loop, clippy::while_let_loop)]
+#![feature(gen_blocks)]
+#![expect(clippy::never_loop, clippy::while_let_loop)]
 #![warn(clippy::infinite_loop)]
 
 extern crate proc_macros;
@@ -295,7 +296,7 @@ fn panic_like_macros_1() {
 }
 
 fn panic_like_macros_2() {
-    let mut x = 0;
+    let mut x: i32 = 0;
 
     loop {
         do_something();
@@ -310,7 +311,7 @@ fn panic_like_macros_2() {
     }
     loop {
         do_something();
-        assert!(x % 2 == 0);
+        assert!(x.is_positive());
     }
     loop {
         do_something();
@@ -586,6 +587,12 @@ mod issue16155 {
             Some(_) => loop {}, //~ infinite_loop
             None => loop {},    //~ infinite_loop
         }
+    }
+}
+
+gen fn repeat_zeroes() -> u32 {
+    loop {
+        yield 0;
     }
 }
 

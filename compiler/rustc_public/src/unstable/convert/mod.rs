@@ -6,7 +6,7 @@
 //! For contributors, please make sure to avoid calling rustc's internal functions and queries.
 //! These should be done via `rustc_public_bridge` APIs, but it's possible to access ADT fields directly.
 
-use std::ops::RangeInclusive;
+use std::{ops, range};
 
 use rustc_public_bridge::Tables;
 use rustc_public_bridge::context::CompilerCtxt;
@@ -95,16 +95,16 @@ where
     }
 }
 
-impl<'tcx, T> Stable<'tcx> for RangeInclusive<T>
+impl<'tcx, T> Stable<'tcx> for range::RangeInclusive<T>
 where
     T: Stable<'tcx>,
 {
-    type T = RangeInclusive<T::T>;
+    type T = ops::RangeInclusive<T::T>;
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        RangeInclusive::new(self.start().stable(tables, cx), self.end().stable(tables, cx))
+        ops::RangeInclusive::new(self.start.stable(tables, cx), self.last.stable(tables, cx))
     }
 }

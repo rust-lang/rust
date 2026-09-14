@@ -4,7 +4,7 @@ use crate::spec::targets::{
     aarch64_apple_watchos_sim, i686_apple_darwin, x86_64_apple_darwin, x86_64_apple_ios,
     x86_64_apple_tvos, x86_64_apple_watchos_sim,
 };
-use crate::spec::{Abi, Env};
+use crate::spec::{CfgAbi, Env};
 
 #[test]
 fn simulator_targets_set_env() {
@@ -21,7 +21,7 @@ fn simulator_targets_set_env() {
     for target in &all_sim_targets {
         assert_eq!(target.env, Env::Sim);
         // Ensure backwards compat
-        assert_eq!(target.abi, Abi::Sim);
+        assert_eq!(target.cfg_abi, CfgAbi::Sim);
     }
 }
 

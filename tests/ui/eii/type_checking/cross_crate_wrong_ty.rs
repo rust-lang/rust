@@ -8,7 +8,7 @@
 
 extern crate cross_crate_eii_declaration;
 
-#[unsafe(cross_crate_eii_declaration::foo)]
+#[cross_crate_eii_declaration::foo]
 fn other() -> u64 {
 //~^ ERROR `other` has 0 parameters but #[foo] requires it to have 1
     0

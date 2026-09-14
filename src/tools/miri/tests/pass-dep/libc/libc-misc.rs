@@ -1,15 +1,13 @@
 //@ignore-target: windows # only very limited libc on Windows
 //@compile-flags: -Zmiri-disable-isolation
-#![feature(io_error_more)]
-#![feature(pointer_is_aligned_to)]
 
 use std::mem::transmute;
 
-/// Tests whether each thread has its own `__errno_location`.
-fn test_thread_local_errno() {
+/// Ensure errno can be written and read.
+fn test_errno() {
     #[cfg(any(target_os = "illumos", target_os = "solaris"))]
     use libc::___errno as __errno_location;
-    #[cfg(target_os = "android")]
+    #[cfg(any(target_os = "android", target_os = "netbsd"))]
     use libc::__errno as __errno_location;
     #[cfg(target_os = "linux")]
     use libc::__errno_location;
@@ -18,13 +16,6 @@ fn test_thread_local_errno() {
 
     unsafe {
         *__errno_location() = 0xBEEF;
-        std::thread::spawn(|| {
-            assert_eq!(*__errno_location(), 0);
-            *__errno_location() = 0xBAD1DEA;
-            assert_eq!(*__errno_location(), 0xBAD1DEA);
-        })
-        .join()
-        .unwrap();
         assert_eq!(*__errno_location(), 0xBEEF);
     }
 }
@@ -63,15 +54,20 @@ fn test_sigrt() {
 }
 
 fn test_dlsym() {
-    let addr = unsafe { libc::dlsym(libc::RTLD_DEFAULT, b"notasymbol\0".as_ptr().cast()) };
+    let addr = unsafe { libc::dlsym(libc::RTLD_DEFAULT, c"notasymbol".as_ptr()) };
     assert!(addr as usize == 0);
 
-    let addr = unsafe { libc::dlsym(libc::RTLD_DEFAULT, b"isatty\0".as_ptr().cast()) };
+    let addr = unsafe { libc::dlsym(libc::RTLD_DEFAULT, c"strlen".as_ptr()) };
     assert!(addr as usize != 0);
-    let isatty: extern "C" fn(i32) -> i32 = unsafe { transmute(addr) };
-    assert_eq!(isatty(999), 0);
-    let errno = std::io::Error::last_os_error().raw_os_error().unwrap();
-    assert_eq!(errno, libc::EBADF);
+    let strlen: extern "C" fn(*const libc::c_char) -> libc::size_t = unsafe { transmute(addr) };
+    assert_eq!(strlen(c"1234".as_ptr()), 4);
+
+    let addr = unsafe { libc::dlsym(libc::RTLD_DEFAULT, c"environ".as_ptr()) };
+    assert!(addr as usize != 0);
+    extern "C" {
+        static mut environ: *const *const u8;
+    }
+    assert!(addr as usize == &raw const environ as usize);
 }
 
 fn test_getuid() {
@@ -83,7 +79,7 @@ fn test_geteuid() {
 }
 
 fn main() {
-    test_thread_local_errno();
+    test_errno();
     test_environ();
     test_dlsym();
     test_getuid();

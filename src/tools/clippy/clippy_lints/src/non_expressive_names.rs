@@ -4,8 +4,7 @@ use rustc_ast::ast::{
     self, Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Item, ItemKind, Local, Pat, PatKind,
 };
 use rustc_ast::visit::{Visitor, walk_block, walk_expr, walk_pat};
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, sym};
 use std::cmp::Ordering;
@@ -52,7 +51,11 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for names that are very similar and thus confusing.
+    /// Checks for names that are very similar and thus confusing. In particular,
+    /// the lint checks for names with a single character change.
+    ///
+    /// It does not warn about names that have a single additional character at
+    /// the beginning nor the end; only insertions in the middle are considered.
     ///
     /// Note: this lint looks for similar names throughout each
     /// scope. To allow it, you need to allow it on the scope
@@ -65,7 +68,13 @@ declare_clippy_lint! {
     /// ### Example
     /// ```ignore
     /// let checked_exp = something;
-    /// let checked_expr = something_else;
+    /// let checked_eap = something_else;
+    /// ```
+    ///
+    /// ### Example 2
+    /// ```ignore
+    /// let orange = val;
+    /// let ornange = val2;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub SIMILAR_NAMES,
@@ -394,7 +403,7 @@ impl EarlyLintPass for NonExpressiveNames {
             return;
         }
 
-        if let ItemKind::Fn(box ast::Fn {
+        if let ItemKind::Fn(ast::Fn {
             ref sig,
             body: Some(ref blk),
             ..
@@ -409,7 +418,7 @@ impl EarlyLintPass for NonExpressiveNames {
             return;
         }
 
-        if let AssocItemKind::Fn(box ast::Fn {
+        if let AssocItemKind::Fn(ast::Fn {
             ref sig,
             body: Some(ref blk),
             ..

@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 enum Empty {}
 
 enum S {

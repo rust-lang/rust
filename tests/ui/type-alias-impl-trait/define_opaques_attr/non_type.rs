@@ -3,5 +3,5 @@
 fn foo() {}
 
 #[define_opaque(foo)]
-//~^ ERROR: expected type alias or associated type with opaqaue types
+//~^ ERROR: cannot find type alias or associated type with opaqaue types `foo` in this scope
 fn main() {}

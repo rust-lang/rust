@@ -6,7 +6,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // This diagnostic is triggered if a call is made on something that is not callable.
 pub(crate) fn expected_function(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::ExpectedFunction<'_>,
 ) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(

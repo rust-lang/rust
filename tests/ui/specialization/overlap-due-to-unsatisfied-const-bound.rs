@@ -1,15 +1,13 @@
 // Regression test for #140571. The compiler used to ICE
 
 #![feature(min_generic_const_args, specialization)]
-//~^ WARN the feature `specialization` is incomplete
-//~| WARN the feature `min_generic_const_args` is incomplete
 
 pub trait IsVoid {
-
-    type const IS_VOID: bool;
+    #[rustc_always_gca]
+    const IS_VOID: bool;
 }
 impl<T> IsVoid for T {
-    default type const IS_VOID: bool = false;
+    default const IS_VOID: bool = core::direct_const_arg!(false);
 }
 
 pub trait NotVoid {}

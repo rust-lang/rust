@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(non_snake_case)]
 
 macro_rules! doc {

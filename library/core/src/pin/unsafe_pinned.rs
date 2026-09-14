@@ -149,7 +149,7 @@ impl<T: Default> Default for UnsafePinned<T> {
 
 #[unstable(feature = "unsafe_pinned", issue = "125735")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const From<T> for UnsafePinned<T> {
+const impl<T> From<T> for UnsafePinned<T> {
     /// Creates a new `UnsafePinned<T>` containing the given value.
     fn from(value: T) -> Self {
         UnsafePinned::new(value)
@@ -178,5 +178,3 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafePinned<U>> for UnsafePinned<T> 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 // #[unstable(feature = "unsafe_pinned", issue = "125735")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafePinned<U>> for UnsafePinned<T> {}
-
-// FIXME(unsafe_pinned): impl PinCoerceUnsized for UnsafePinned<T>?

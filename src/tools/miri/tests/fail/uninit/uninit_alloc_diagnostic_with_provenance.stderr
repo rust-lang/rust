@@ -9,7 +9,7 @@ LL |         let mut order = unsafe { compare_bytes(left, right, len) as isize }
    = note: stack backtrace:
            0: <u8 as core::slice::cmp::SliceOrd>::compare
                at RUSTLIB/core/src/slice/cmp.rs:LL:CC
-           1: core::slice::cmp::cmp
+           1: core::slice::cmp::<impl std::cmp::Ord for [u8]>::cmp
                at RUSTLIB/core/src/slice/cmp.rs:LL:CC
            2: main
                at tests/fail/uninit/uninit_alloc_diagnostic_with_provenance.rs:LL:CC
@@ -18,10 +18,10 @@ Uninitialized memory occurred at ALLOC[0x4..0x8], in this allocation:
 ALLOC (Rust heap, size: 16, align: 8) {
     ╾42[ALLOC]<TAG> (ptr fragment 0)╼ 12 13 ╾43[ALLOC]<TAG> (ptr fragment 1)╼ __ __ __ __ __ __ __ __ __ __ __ __ │ ━..━░░░░░░░░░░░░
 }
-ALLOC (global (static or const), size: 1, align: 1) {
+ALLOC (unchanged global, size: 1, align: 1) {
     2a                                              │ *
 }
-ALLOC (global (static or const), size: 1, align: 1) {
+ALLOC (unchanged global, size: 1, align: 1) {
     00                                              │ .
 }
 

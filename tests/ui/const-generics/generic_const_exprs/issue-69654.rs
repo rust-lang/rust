@@ -3,7 +3,7 @@
 
 trait Bar<T> {}
 impl<T> Bar<T> for [u8; T] {}
-//~^ ERROR expected value, found type parameter `T`
+//~^ ERROR cannot find value `T` in this scope
 
 struct Foo<const N: usize> {}
 impl<const N: usize> Foo<N>
@@ -15,5 +15,5 @@ where
 
 fn main() {
     Foo::foo();
-    //~^ ERROR the function or associated item
+    //~^ ERROR the associated function or constant
 }

@@ -1,4 +1,4 @@
-use crate::spec::{Arch, CodeModel, Target, TargetOptions, base};
+use crate::spec::{Arch, CodeModel, LlvmAbi, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -16,7 +16,7 @@ pub(crate) fn target() -> Target {
             code_model: Some(CodeModel::Medium),
             cpu: "generic-rv64".into(),
             features: "+m,+a,+f,+d,+c".into(),
-            llvm_abiname: "lp64d".into(),
+            llvm_abiname: LlvmAbi::Lp64d,
             max_atomic_width: Some(64),
             ..base::managarm_mlibc::opts()
         },

@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use hir_def::db::DefDatabase;
+use hir_def::signatures::TraitSignature;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ToSmolStr;
 use test_fixture::WithFixture;
@@ -14,14 +14,13 @@ use super::{
 
 use DynCompatibilityViolationKind::*;
 
-#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum DynCompatibilityViolationKind {
     SizedSelf,
     SelfReferential,
     Method(MethodViolationCode),
     AssocConst,
-    GAT,
+    Gat,
     HasNonCompatibleSuperTrait,
 }
 
@@ -40,8 +39,7 @@ fn check_dyn_compatibility<'a>(
             .declarations()
             .filter_map(|def| {
                 if let hir_def::ModuleDefId::TraitId(trait_id) = def {
-                    let name = db
-                        .trait_signature(trait_id)
+                    let name = TraitSignature::of(&db, trait_id)
                         .name
                         .display_no_db(file_id.edition(&db))
                         .to_smolstr();
@@ -64,7 +62,7 @@ fn check_dyn_compatibility<'a>(
                     DynCompatibilityViolation::SelfReferential => SelfReferential,
                     DynCompatibilityViolation::Method(_, mvc) => Method(mvc),
                     DynCompatibilityViolation::AssocConst(_) => AssocConst,
-                    DynCompatibilityViolation::GAT(_) => GAT,
+                    DynCompatibilityViolation::GAT(_) => Gat,
                     DynCompatibilityViolation::HasNonCompatibleSuperTrait(_) => {
                         HasNonCompatibleSuperTrait
                     }
@@ -237,7 +235,7 @@ trait GatTrait {
 
 trait SuperTrait<T>: GatTrait {}
 "#,
-        [("GatTrait", vec![GAT]), ("SuperTrait", vec![HasNonCompatibleSuperTrait])],
+        [("GatTrait", vec![Gat]), ("SuperTrait", vec![HasNonCompatibleSuperTrait])],
     );
 }
 
@@ -397,6 +395,6 @@ trait Foo {
     type Bar<'a>;
 }
 "#,
-        [("Foo", vec![DynCompatibilityViolationKind::GAT])],
+        [("Foo", vec![DynCompatibilityViolationKind::Gat])],
     );
 }

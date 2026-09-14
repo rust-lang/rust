@@ -15,6 +15,17 @@ fn test_new_filled() {
     }
 }
 
+/// [`DenseBitSet::contains_loose`] should not panic when given an out-of-domain value.
+#[test]
+fn contains_loose() {
+    let mut bitset = DenseBitSet::new_empty(100);
+    bitset.insert(77u32);
+
+    for i in 0..256 {
+        assert_eq!(bitset.contains_loose(i), i == 77);
+    }
+}
+
 #[test]
 fn bitset_iter_works() {
     let mut bitset: DenseBitSet<usize> = DenseBitSet::new_empty(100);
@@ -120,9 +131,12 @@ fn chunked_bitset() {
     let mut b1 = ChunkedBitSet::<usize>::new_empty(1);
     assert_eq!(
         b1,
-        ChunkedBitSet { domain_size: 1, chunks: Box::new([Zeros]), marker: PhantomData }
+        ChunkedBitSet {
+            domain_size: 1,
+            chunks: Box::new([Zeros { chunk_domain_size: 1 }]),
+            marker: PhantomData
+        }
     );
-    assert_eq!(b1.chunk_domain_size(0), 1);
 
     b1.assert_valid();
     assert!(!b1.contains(0));
@@ -130,12 +144,12 @@ fn chunked_bitset() {
     assert!(b1.insert(0));
     assert!(b1.contains(0));
     assert_eq!(b1.count(), 1);
-    assert_eq!(b1.chunks(), [Ones]);
+    assert_eq!(b1.chunks(), [Ones { chunk_domain_size: 1 }]);
     assert!(!b1.insert(0));
     assert!(b1.remove(0));
     assert!(!b1.contains(0));
     assert_eq!(b1.count(), 0);
-    assert_eq!(b1.chunks(), [Zeros]);
+    assert_eq!(b1.chunks(), [Zeros { chunk_domain_size: 1 }]);
     b1.assert_valid();
 
     //-----------------------------------------------------------------------
@@ -143,9 +157,12 @@ fn chunked_bitset() {
     let mut b100 = ChunkedBitSet::<usize>::new_filled(100);
     assert_eq!(
         b100,
-        ChunkedBitSet { domain_size: 100, chunks: Box::new([Ones]), marker: PhantomData }
+        ChunkedBitSet {
+            domain_size: 100,
+            chunks: Box::new([Ones { chunk_domain_size: 100 }]),
+            marker: PhantomData
+        }
     );
-    assert_eq!(b100.chunk_domain_size(0), 100);
 
     b100.assert_valid();
     for i in 0..100 {
@@ -154,7 +171,7 @@ fn chunked_bitset() {
     assert_eq!(b100.count(), 100);
     assert!(b100.remove(3));
     assert!(b100.insert(3));
-    assert_eq!(b100.chunks(), vec![Ones]);
+    assert_eq!(b100.chunks(), vec![Ones { chunk_domain_size: 100 }]);
     assert!(
         b100.remove(20) && b100.remove(30) && b100.remove(40) && b100.remove(99) && b100.insert(30)
     );
@@ -162,9 +179,10 @@ fn chunked_bitset() {
     assert!(!b100.contains(20) && b100.contains(30) && !b100.contains(99) && b100.contains(50));
     assert_eq!(
         b100.chunks(),
+        #[rustfmt::skip]
         vec![Mixed {
+            chunk_domain_size: 100,
             ones_count: 97,
-            #[rustfmt::skip]
             words: Rc::new([
                 0b11111111_11111111_11111110_11111111_11111111_11101111_11111111_11111111,
                 0b00000000_00000000_00000000_00000111_11111111_11111111_11111111_11111111,
@@ -181,7 +199,7 @@ fn chunked_bitset() {
         }
     }
     assert_eq!(num_removed, 97);
-    assert_eq!(b100.chunks(), vec![Zeros]);
+    assert_eq!(b100.chunks(), vec![Zeros { chunk_domain_size: 100 }]);
     b100.assert_valid();
 
     //-----------------------------------------------------------------------
@@ -189,21 +207,29 @@ fn chunked_bitset() {
     let mut b2548 = ChunkedBitSet::<usize>::new_empty(2548);
     assert_eq!(
         b2548,
-        ChunkedBitSet { domain_size: 2548, chunks: Box::new([Zeros, Zeros]), marker: PhantomData }
+        ChunkedBitSet {
+            domain_size: 2548,
+            chunks: Box::new([Zeros { chunk_domain_size: 2048 }, Zeros { chunk_domain_size: 500 }]),
+            marker: PhantomData
+        }
     );
-    assert_eq!(b2548.chunk_domain_size(0), 2048);
-    assert_eq!(b2548.chunk_domain_size(1), 500);
 
     b2548.assert_valid();
     b2548.insert(14);
     b2548.remove(14);
-    assert_eq!(b2548.chunks(), vec![Zeros, Zeros]);
+    assert_eq!(
+        b2548.chunks(),
+        vec![Zeros { chunk_domain_size: 2048 }, Zeros { chunk_domain_size: 500 }]
+    );
     b2548.insert_all();
     for i in 0..2548 {
         assert!(b2548.contains(i));
     }
     assert_eq!(b2548.count(), 2548);
-    assert_eq!(b2548.chunks(), vec![Ones, Ones]);
+    assert_eq!(
+        b2548.chunks(),
+        vec![Ones { chunk_domain_size: 2048 }, Ones { chunk_domain_size: 500 }]
+    );
     b2548.assert_valid();
 
     //-----------------------------------------------------------------------
@@ -211,10 +237,15 @@ fn chunked_bitset() {
     let mut b4096 = ChunkedBitSet::<usize>::new_empty(4096);
     assert_eq!(
         b4096,
-        ChunkedBitSet { domain_size: 4096, chunks: Box::new([Zeros, Zeros]), marker: PhantomData }
+        ChunkedBitSet {
+            domain_size: 4096,
+            chunks: Box::new([
+                Zeros { chunk_domain_size: 2048 },
+                Zeros { chunk_domain_size: 2048 }
+            ]),
+            marker: PhantomData
+        }
     );
-    assert_eq!(b4096.chunk_domain_size(0), 2048);
-    assert_eq!(b4096.chunk_domain_size(1), 2048);
 
     b4096.assert_valid();
     for i in 0..4096 {
@@ -228,14 +259,22 @@ fn chunked_bitset() {
         b4096.chunks(),
         #[rustfmt::skip]
         vec![
-            Mixed { ones_count: 1, words:Rc::new([
-                1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-            ])},
-            Mixed { ones_count: 1, words: Rc::new([
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x8000_0000_0000_0000
-            ])},
+            Mixed {
+                chunk_domain_size: 2048,
+                ones_count: 1,
+                words: Rc::new([
+                    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                ])
+            },
+            Mixed {
+                chunk_domain_size: 2048,
+                ones_count: 1,
+                words: Rc::new([
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x8000_0000_0000_0000
+                ])
+            },
         ],
     );
     assert_eq!(b4096.count(), 2);
@@ -248,15 +287,16 @@ fn chunked_bitset() {
         b10000,
         ChunkedBitSet {
             domain_size: 10000,
-            chunks: Box::new([Zeros, Zeros, Zeros, Zeros, Zeros,]),
+            chunks: Box::new([
+                Zeros { chunk_domain_size: 2048 },
+                Zeros { chunk_domain_size: 2048 },
+                Zeros { chunk_domain_size: 2048 },
+                Zeros { chunk_domain_size: 2048 },
+                Zeros { chunk_domain_size: 1808 }
+            ]),
             marker: PhantomData,
         }
     );
-    assert_eq!(b10000.chunk_domain_size(0), 2048);
-    assert_eq!(b10000.chunk_domain_size(1), 2048);
-    assert_eq!(b10000.chunk_domain_size(2), 2048);
-    assert_eq!(b10000.chunk_domain_size(3), 2048);
-    assert_eq!(b10000.chunk_domain_size(4), 1808);
 
     b10000.assert_valid();
     assert!(b10000.insert(3000) && b10000.insert(5000));
@@ -264,17 +304,25 @@ fn chunked_bitset() {
         b10000.chunks(),
         #[rustfmt::skip]
         vec![
-            Zeros,
-            Mixed { ones_count: 1, words: Rc::new([
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0100_0000_0000_0000, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            ])},
-            Mixed { ones_count: 1, words: Rc::new([
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0100, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            ])},
-            Zeros,
-            Zeros,
+            Zeros { chunk_domain_size: 2048 },
+            Mixed {
+                chunk_domain_size: 2048,
+                ones_count: 1,
+                words: Rc::new([
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0100_0000_0000_0000, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ])
+            },
+            Mixed {
+                chunk_domain_size: 2048,
+                ones_count: 1,
+                words: Rc::new([
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0100, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ])
+            },
+            Zeros { chunk_domain_size: 2048 },
+            Zeros { chunk_domain_size: 1808 },
         ],
     );
     let mut b10000b = ChunkedBitSet::<usize>::new_empty(10000);
@@ -296,6 +344,138 @@ fn chunked_bitset() {
     assert_eq!(b10000.count(), 6000);
     b10000.assert_valid();
     b10000b.assert_valid();
+
+    //-----------------------------------------------------------------------
+
+    let mut b64 = ChunkedBitSet::<usize>::new_filled(64);
+
+    let mut b64b = ChunkedBitSet::<usize>::new_empty(64);
+    b64b.insert(0);
+
+    b64.subtract(&b64b);
+    assert!(!b64.contains(0));
+    assert!(b64.contains(10));
+    assert!(b64.contains(50));
+    assert!(b64.contains(63));
+    assert_eq!(
+        b64.chunks(),
+        #[rustfmt::skip]
+        vec![
+            Mixed {
+                chunk_domain_size: 64,
+                ones_count: 63,
+                words: Rc::new([
+                    0xfffffffffffffffe, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ])
+            },
+        ],
+    );
+}
+
+/// Additional helper methods for testing.
+impl ChunkedBitSet<usize> {
+    /// Creates a new `ChunkedBitSet` containing all `i` for which `fill_fn(i)` is true.
+    fn fill_with(domain_size: usize, fill_fn: impl Fn(usize) -> bool) -> Self {
+        let mut this = ChunkedBitSet::new_empty(domain_size);
+        for i in 0..domain_size {
+            if fill_fn(i) {
+                this.insert(i);
+            }
+        }
+        this
+    }
+
+    /// Asserts that for each `i` in `0..self.domain_size()`, `self.contains(i) == expected_fn(i)`.
+    #[track_caller]
+    fn assert_filled_with(&self, expected_fn: impl Fn(usize) -> bool) {
+        for i in 0..self.domain_size() {
+            let expected = expected_fn(i);
+            assert_eq!(self.contains(i), expected, "i = {i}");
+        }
+    }
+}
+
+#[test]
+fn chunked_bulk_ops() {
+    struct ChunkedBulkOp {
+        name: &'static str,
+        op_fn: fn(&mut ChunkedBitSet<usize>, &ChunkedBitSet<usize>) -> bool,
+        spec_fn: fn(fn(usize) -> bool, fn(usize) -> bool, usize) -> bool,
+    }
+    let ops = &[
+        ChunkedBulkOp {
+            name: "union",
+            op_fn: ChunkedBitSet::union,
+            spec_fn: |fizz, buzz, i| fizz(i) || buzz(i),
+        },
+        ChunkedBulkOp {
+            name: "subtract",
+            op_fn: ChunkedBitSet::subtract,
+            spec_fn: |fizz, buzz, i| fizz(i) && !buzz(i),
+        },
+    ];
+
+    let domain_sizes = [
+        CHUNK_BITS / 7, // Smaller than a full chunk.
+        CHUNK_BITS,
+        (CHUNK_BITS + CHUNK_BITS / 7), // Larger than a full chunk.
+    ];
+
+    for ChunkedBulkOp { name, op_fn, spec_fn } in ops {
+        for domain_size in domain_sizes {
+            // If false, use different values for LHS and RHS, to test "fizz op buzz".
+            // If true, use identical values, to test "fizz op fizz".
+            for identical in [false, true] {
+                // If false, make a clone of LHS before doing the op.
+                // This covers optimizations that depend on whether chunk words are shared or not.
+                for unique in [false, true] {
+                    // Print the current test case, so that we can see which one failed.
+                    println!(
+                        "Testing op={name}, domain_size={domain_size}, identical={identical}, unique={unique} ..."
+                    );
+
+                    let fizz_fn = |i| i % 3 == 0;
+                    let buzz_fn = if identical { fizz_fn } else { |i| i % 5 == 0 };
+
+                    // Check that `fizz op buzz` gives the expected results.
+                    chunked_bulk_ops_test_inner(
+                        domain_size,
+                        unique,
+                        fizz_fn,
+                        buzz_fn,
+                        op_fn,
+                        |i| spec_fn(fizz_fn, buzz_fn, i),
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn chunked_bulk_ops_test_inner(
+    domain_size: usize,
+    unique: bool,
+    fizz_fn: impl Fn(usize) -> bool + Copy,
+    buzz_fn: impl Fn(usize) -> bool + Copy,
+    op_fn: impl Fn(&mut ChunkedBitSet<usize>, &ChunkedBitSet<usize>) -> bool,
+    expected_fn: impl Fn(usize) -> bool + Copy,
+) {
+    // Create two bitsets, "fizz" (LHS) and "buzz" (RHS).
+    let mut fizz = ChunkedBitSet::fill_with(domain_size, fizz_fn);
+    let buzz = ChunkedBitSet::fill_with(domain_size, buzz_fn);
+
+    // If requested, clone `fizz` so that its word Rcs are not uniquely-owned.
+    let _cloned = (!unique).then(|| fizz.clone());
+
+    // Perform the op (e.g. union/subtract/intersect), and verify that the
+    // mutated LHS contains exactly the expected values.
+    let changed = op_fn(&mut fizz, &buzz);
+    fizz.assert_filled_with(expected_fn);
+
+    // Verify that the "changed" return value is correct.
+    let should_change = (0..domain_size).any(|i| fizz_fn(i) != expected_fn(i));
+    assert_eq!(changed, should_change);
 }
 
 fn with_elements_chunked(elements: &[usize], domain_size: usize) -> ChunkedBitSet<usize> {
@@ -371,6 +551,35 @@ fn grow() {
     for index in 65..128 {
         assert!(set.insert(index));
         assert!(!set.insert(index));
+    }
+}
+
+#[test]
+fn growable_union() {
+    // Create two input sets with partly-overlapping values, and different sizes.
+    let mut twos = GrowableBitSet::<usize>::new_empty();
+    for i in (0usize..100).map(|x| x * 2) {
+        twos.insert(i);
+    }
+
+    let mut threes = GrowableBitSet::<usize>::new_empty();
+    for i in (0usize..100).map(|x| x * 3) {
+        threes.insert(i);
+    }
+
+    // Double-check that we did end up with input sets of different sizes.
+    assert_ne!(twos.words.len(), threes.words.len());
+
+    // Perform a union in both directions, and check that the resulting contents are correct.
+    for (mut lhs, rhs) in [(twos.clone(), threes.clone()), (threes.clone(), twos.clone())] {
+        lhs.union(&rhs);
+
+        for i in 0..400 {
+            assert_eq!(
+                lhs.contains(i),
+                (i.is_multiple_of(2) && i < 200) || (i.is_multiple_of(3) && i < 300)
+            );
+        }
     }
 }
 
@@ -513,17 +722,6 @@ fn sparse_matrix_operations() {
     matrix.insert(2, 99);
     matrix.insert(4, 0);
 
-    let mut disjoint: DenseBitSet<usize> = DenseBitSet::new_empty(100);
-    disjoint.insert(33);
-
-    let mut superset = DenseBitSet::new_empty(100);
-    superset.insert(22);
-    superset.insert(75);
-    superset.insert(33);
-
-    let mut subset = DenseBitSet::new_empty(100);
-    subset.insert(22);
-
     // SparseBitMatrix::remove
     {
         let mut matrix = matrix.clone();
@@ -540,34 +738,6 @@ fn sparse_matrix_operations() {
         assert!(!matrix.row(3).unwrap().contains(75));
         matrix.clear(0);
         assert!(matrix.row(0).is_none());
-    }
-
-    // SparseBitMatrix::intersect_row
-    {
-        let mut matrix = matrix.clone();
-        assert!(!matrix.intersect_row(3, &superset));
-        assert!(matrix.intersect_row(3, &subset));
-        matrix.intersect_row(0, &disjoint);
-        assert!(matrix.row(0).is_none());
-    }
-
-    // SparseBitMatrix::subtract_row
-    {
-        let mut matrix = matrix.clone();
-        assert!(!matrix.subtract_row(3, &disjoint));
-        assert!(matrix.subtract_row(3, &subset));
-        assert!(matrix.subtract_row(3, &superset));
-        matrix.intersect_row(0, &disjoint);
-        assert!(matrix.row(0).is_none());
-    }
-
-    // SparseBitMatrix::union_row
-    {
-        let mut matrix = matrix.clone();
-        assert!(!matrix.union_row(3, &subset));
-        assert!(matrix.union_row(3, &disjoint));
-        matrix.union_row(0, &disjoint);
-        assert!(matrix.row(0).is_some());
     }
 }
 

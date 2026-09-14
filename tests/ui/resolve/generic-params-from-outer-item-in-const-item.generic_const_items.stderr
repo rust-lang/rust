@@ -10,13 +10,18 @@ LL |     const K: u32 = T::C;
    |
    = note: nested items are independent from their parent item for everything except for privacy and name resolution
    = note: a `const` is a separate item from the item that contains it
+help: try using a local `let` binding instead
+   |
+LL -     const K: u32 = T::C;
+LL +     let K: u32 = T::C;
+   |
 help: try introducing a local generic parameter here
    |
 LL |     const K<T>: u32 = T::C;
    |            +++
 
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/generic-params-from-outer-item-in-const-item.rs:19:24
+  --> $DIR/generic-params-from-outer-item-in-const-item.rs:20:24
    |
 LL | impl<T> Tr for T { // outer impl block
    |      - type parameter from outer item
@@ -28,13 +33,18 @@ LL |         const I: u32 = T::C;
    |
    = note: nested items are independent from their parent item for everything except for privacy and name resolution
    = note: a `const` is a separate item from the item that contains it
+help: try using a local `let` binding instead
+   |
+LL -         const I: u32 = T::C;
+LL +         let I: u32 = T::C;
+   |
 help: try introducing a local generic parameter here
    |
 LL |         const I<T>: u32 = T::C;
    |                +++
 
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/generic-params-from-outer-item-in-const-item.rs:27:20
+  --> $DIR/generic-params-from-outer-item-in-const-item.rs:29:20
    |
 LL | struct S<T: Tr>(U32<{ // outer struct
    |          - type parameter from outer item
@@ -45,6 +55,11 @@ LL |     const _: u32 = T::C;
    |
    = note: nested items are independent from their parent item for everything except for privacy and name resolution
    = note: a `const` is a separate item from the item that contains it
+help: try using a local `let` binding instead
+   |
+LL -     const _: u32 = T::C;
+LL +     let _: u32 = T::C;
+   |
 help: try introducing a local generic parameter here
    |
 LL |     const _<T>: u32 = T::C;

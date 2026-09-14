@@ -5,7 +5,7 @@
 #include "rust/cxx.h"
 
 // GenMC headers:
-#include "Verification/VerificationError.hpp"
+#include "genmc/Verification/VerificationError.hpp"
 
 #include <format>
 #include <memory>
@@ -19,5 +19,11 @@ static auto format_error(VerificationError err) -> std::unique_ptr<std::string> 
     s << std::format("{}", err);
     return std::make_unique<std::string>(s.str());
 }
+
+/** Standard overloaded-lambda helper for std::visit;
+ * see https://en.cppreference.com/w/cpp/utility/variant/visit2.html. */
+template <class... Ts> struct overloaded : Ts... {
+    using Ts::operator()...;
+};
 
 #endif /* GENMC_RESULT_HANDLING_HPP */

@@ -1,18 +1,14 @@
 use std::borrow::Cow;
 use std::fmt::Display;
 
-use rustc_ast::AttrId;
-use rustc_ast::attr::AttributeExt;
+use rustc_ast::attr::version::RustcVersion;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::stable_hasher::{
-    HashStable, StableCompare, StableHasher, ToStableHashKey,
-};
-use rustc_error_messages::{DiagArgValue, IntoDiagArg, MultiSpan};
-use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::def_id::DefPathHash;
-pub use rustc_span::edition::Edition;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
+use rustc_hir_id::HirId;
+use rustc_macros::{Decodable, Encodable, StableHash};
+use rustc_span::edition::Edition;
+use rustc_span::{AttrId, Ident, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -105,90 +101,56 @@ pub enum Applicability {
 /// have that amount of lints listed. `u16` values should therefore suffice.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
 pub enum LintExpectationId {
-    /// Used for lints emitted during the `EarlyLintPass`. This id is not
-    /// hash stable and should not be cached.
-    Unstable { attr_id: AttrId, lint_index: Option<u16> },
-    /// The [`HirId`] that the lint expectation is attached to. This id is
-    /// stable and can be cached. The additional index ensures that nodes with
-    /// several expectations can correctly match diagnostics to the individual
-    /// expectation.
-    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16> },
+    Unstable(UnstableLintExpectationId),
+    Stable(StableLintExpectationId),
 }
 
-impl LintExpectationId {
-    pub fn is_stable(&self) -> bool {
-        match self {
-            LintExpectationId::Unstable { .. } => false,
-            LintExpectationId::Stable { .. } => true,
-        }
-    }
+/// Used for lints emitted during the `EarlyLintPass`. This id is not hash
+/// stable and should not be cached.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
+pub struct UnstableLintExpectationId {
+    pub attr_id: AttrId,
+    pub lint_index: u16,
+}
 
-    pub fn get_lint_index(&self) -> Option<u16> {
-        let (LintExpectationId::Unstable { lint_index, .. }
-        | LintExpectationId::Stable { lint_index, .. }) = self;
-
-        *lint_index
-    }
-
-    pub fn set_lint_index(&mut self, new_lint_index: Option<u16>) {
-        let (LintExpectationId::Unstable { lint_index, .. }
-        | LintExpectationId::Stable { lint_index, .. }) = self;
-
-        *lint_index = new_lint_index
+impl From<UnstableLintExpectationId> for LintExpectationId {
+    fn from(id: UnstableLintExpectationId) -> LintExpectationId {
+        LintExpectationId::Unstable(id)
     }
 }
 
-impl<HCX: HashStableContext> HashStable<HCX> for LintExpectationId {
+/// The [`HirId`] that the lint expectation is attached to. This id is stable
+/// and can be cached. The additional index ensures that nodes with several
+/// expectations can correctly match diagnostics to the individual expectation.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
+pub struct StableLintExpectationId {
+    pub hir_id: HirId,
+    pub attr_index: u16,
+    pub lint_index: u16,
+}
+
+impl StableHash for StableLintExpectationId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                hir_id.hash_stable(hcx, hasher);
-                attr_index.hash_stable(hcx, hasher);
-                lint_index.hash_stable(hcx, hasher);
-            }
-            _ => {
-                unreachable!(
-                    "HashStable should only be called for filled and stable `LintExpectationId`"
-                )
-            }
-        }
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        let StableLintExpectationId { hir_id, attr_index, lint_index } = self;
+
+        hir_id.stable_hash(hcx, hasher);
+        attr_index.stable_hash(hcx, hasher);
+        lint_index.stable_hash(hcx, hasher);
     }
 }
 
-impl<HCX: HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
-    type KeyType = (DefPathHash, ItemLocalId, u16, u16);
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &HCX) -> Self::KeyType {
-        match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                let (def_path_hash, lint_idx) = hir_id.to_stable_hash_key(hcx);
-                (def_path_hash, lint_idx, *attr_index, *lint_index)
-            }
-            _ => {
-                unreachable!("HashStable should only be called for a filled `LintExpectationId`")
-            }
-        }
+impl From<StableLintExpectationId> for LintExpectationId {
+    fn from(id: StableLintExpectationId) -> LintExpectationId {
+        LintExpectationId::Stable(id)
     }
 }
 
 /// Setting for how to handle a lint.
 ///
 /// See: <https://doc.rust-lang.org/rustc/lints/levels.html>
-#[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    PartialOrd,
-    Eq,
-    Ord,
-    Debug,
-    Hash,
-    Encodable,
-    Decodable,
-    HashStable_Generic
-)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Encodable, Decodable, StableHash)]
 pub enum Level {
     /// The `allow` level will not issue any message.
     Allow,
@@ -247,31 +209,19 @@ impl Level {
         }
     }
 
-    /// Converts an `Attribute` to a level.
-    pub fn from_attr(attr: &impl AttributeExt) -> Option<(Self, Option<LintExpectationId>)> {
-        attr.name().and_then(|name| Self::from_symbol(name, || Some(attr.id())))
+    /// Converts an `Option<Symbol>` to a level.
+    pub fn from_opt_symbol(s: Option<Symbol>) -> Option<Self> {
+        s.and_then(Self::from_symbol)
     }
 
     /// Converts a `Symbol` to a level.
-    pub fn from_symbol(
-        s: Symbol,
-        id: impl FnOnce() -> Option<AttrId>,
-    ) -> Option<(Self, Option<LintExpectationId>)> {
+    pub fn from_symbol(s: Symbol) -> Option<Self> {
         match s {
-            sym::allow => Some((Level::Allow, None)),
-            sym::expect => {
-                if let Some(attr_id) = id() {
-                    Some((
-                        Level::Expect,
-                        Some(LintExpectationId::Unstable { attr_id, lint_index: None }),
-                    ))
-                } else {
-                    None
-                }
-            }
-            sym::warn => Some((Level::Warn, None)),
-            sym::deny => Some((Level::Deny, None)),
-            sym::forbid => Some((Level::Forbid, None)),
+            sym::allow => Some(Level::Allow),
+            sym::expect => Some(Level::Expect),
+            sym::warn => Some(Level::Warn),
+            sym::deny => Some(Level::Deny),
+            sym::forbid => Some(Level::Forbid),
             _ => None,
         }
     }
@@ -352,6 +302,12 @@ pub struct Lint {
     /// `true` if this lint should not be filtered out under any circustamces
     /// (e.g. the unknown_attributes lint)
     pub eval_always: bool,
+
+    /// `true` if this lint is unaffected by `-D warnings`
+    pub ignore_deny_warnings: bool,
+
+    /// Used to avoid lints which would affect MSRV
+    pub rust_version: Option<RustcVersion>,
 }
 
 /// Extra information for a future incompatibility lint.
@@ -567,7 +523,41 @@ impl Lint {
             feature_gate: None,
             crate_level_only: false,
             eval_always: false,
+            ignore_deny_warnings: false,
+            rust_version: None,
         }
+    }
+
+    // FIXME(const-hack): This is used so that `declare_lint` can declare an MSRV statically.
+    // `RustcVersion::parse_str_strict` should ideally be used instead.
+    pub const fn parse_rust_version(version: &str) -> RustcVersion {
+        const fn parse_part(input: &mut &[u8]) -> u16 {
+            let mut val = 0;
+            let mut idx = 0;
+            while idx < input.len() {
+                let v = input[idx];
+                match v {
+                    b'0'..=b'9' => {
+                        val = val * 10 + (v - b'0') as u16;
+                    }
+                    b'.' => {
+                        idx += 1;
+                        break;
+                    }
+                    _ => panic!("invalid character in version"),
+                }
+                idx += 1;
+            }
+            *input = input.split_at(idx).1;
+            val
+        }
+
+        let mut bytes = version.as_bytes();
+        let major = parse_part(&mut bytes);
+        let minor = parse_part(&mut bytes);
+        let patch = parse_part(&mut bytes);
+        assert!(bytes.is_empty());
+        RustcVersion { major, minor, patch }
     }
 
     /// Gets the lint's name, with ASCII letters converted to lowercase.
@@ -621,19 +611,10 @@ impl LintId {
     }
 }
 
-impl<HCX> HashStable<HCX> for LintId {
+impl StableHash for LintId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        self.lint_name_raw().hash_stable(hcx, hasher);
-    }
-}
-
-impl<HCX> ToStableHashKey<HCX> for LintId {
-    type KeyType = &'static str;
-
-    #[inline]
-    fn to_stable_hash_key(&self, _: &HCX) -> &'static str {
-        self.lint_name_raw()
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.lint_name_raw().stable_hash(hcx, hasher);
     }
 }
 
@@ -650,217 +631,6 @@ pub enum DeprecatedSinceKind {
     InEffect,
     InFuture,
     InVersion(String),
-}
-
-// This could be a closure, but then implementing derive trait
-// becomes hacky (and it gets allocated).
-#[derive(Debug)]
-pub enum BuiltinLintDiag {
-    AbsPathWithModule(Span),
-    ElidedLifetimesInPaths(usize, Span, bool, Span),
-    UnusedImports {
-        remove_whole_use: bool,
-        num_to_remove: usize,
-        remove_spans: Vec<Span>,
-        test_module_span: Option<Span>,
-        span_snippets: Vec<String>,
-    },
-    RedundantImport(Vec<(Span, bool)>, Ident),
-    DeprecatedMacro {
-        suggestion: Option<Symbol>,
-        suggestion_span: Span,
-        note: Option<Symbol>,
-        path: String,
-        since_kind: DeprecatedSinceKind,
-    },
-    PatternsInFnsWithoutBody {
-        span: Span,
-        ident: Ident,
-        is_foreign: bool,
-    },
-    ReservedPrefix(Span, String),
-    /// `'r#` in edition < 2021.
-    RawPrefix(Span),
-    /// `##` or `#"` in edition < 2024.
-    ReservedString {
-        is_string: bool,
-        suggestion: Span,
-    },
-    BreakWithLabelAndLoop(Span),
-    UnicodeTextFlow(Span, String),
-    DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
-    SingleUseLifetime {
-        /// Span of the parameter which declares this lifetime.
-        param_span: Span,
-        /// Span of the code that should be removed when eliding this lifetime.
-        /// This span should include leading or trailing comma.
-        deletion_span: Option<Span>,
-        /// Span of the single use, or None if the lifetime is never used.
-        /// If true, the lifetime will be fully elided.
-        use_span: Option<(Span, bool)>,
-        ident: Ident,
-    },
-    NamedArgumentUsedPositionally {
-        /// Span where the named argument is used by position and will be replaced with the named
-        /// argument name
-        position_sp_to_replace: Option<Span>,
-        /// Span where the named argument is used by position and is used for lint messages
-        position_sp_for_msg: Option<Span>,
-        /// Span where the named argument's name is (so we know where to put the warning message)
-        named_arg_sp: Span,
-        /// String containing the named arguments name
-        named_arg_name: String,
-        /// Indicates if the named argument is used as a width/precision for formatting
-        is_formatting_arg: bool,
-    },
-    AmbiguousGlobReexports {
-        /// The name for which collision(s) have occurred.
-        name: String,
-        /// The name space for which the collision(s) occurred in.
-        namespace: String,
-        /// Span where the name is first re-exported.
-        first_reexport_span: Span,
-        /// Span where the same name is also re-exported.
-        duplicate_reexport_span: Span,
-    },
-    HiddenGlobReexports {
-        /// The name of the local binding which shadows the glob re-export.
-        name: String,
-        /// The namespace for which the shadowing occurred in.
-        namespace: String,
-        /// The glob reexport that is shadowed by the local binding.
-        glob_reexport_span: Span,
-        /// The local binding that shadows the glob reexport.
-        private_item_span: Span,
-    },
-    UnusedQualifications {
-        /// The span of the unnecessarily-qualified path to remove.
-        removal_span: Span,
-    },
-    AssociatedConstElidedLifetime {
-        elided: bool,
-        span: Span,
-        lifetimes_in_scope: MultiSpan,
-    },
-    UnusedCrateDependency {
-        extern_crate: Symbol,
-        local_crate: Symbol,
-    },
-    UnusedVisibility(Span),
-    AttributeLint(AttributeLintKind),
-    UnreachableCfg {
-        span: Span,
-        wildcard_span: Option<Span>,
-    },
-}
-
-#[derive(Debug, HashStable_Generic)]
-pub enum AttributeLintKind {
-    UnusedDuplicate {
-        this: Span,
-        other: Span,
-        warning: bool,
-    },
-    IllFormedAttributeInput {
-        suggestions: Vec<String>,
-        docs: Option<&'static str>,
-    },
-    EmptyAttribute {
-        first_span: Span,
-        attr_path: String,
-        valid_without_list: bool,
-    },
-    InvalidTarget {
-        name: String,
-        target: &'static str,
-        applied: Vec<String>,
-        only: &'static str,
-        attr_span: Span,
-    },
-    InvalidStyle {
-        name: String,
-        is_used_as_inner: bool,
-        target: &'static str,
-        target_span: Span,
-    },
-    UnsafeAttrOutsideUnsafe {
-        attribute_name_span: Span,
-        sugg_spans: Option<(Span, Span)>,
-    },
-    UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
-    UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
-    DuplicateDocAlias {
-        first_definition: Span,
-    },
-    DocAutoCfgExpectsHideOrShow,
-    DocAutoCfgHideShowUnexpectedItem {
-        attr_name: Symbol,
-    },
-    DocAutoCfgHideShowExpectsList {
-        attr_name: Symbol,
-    },
-    DocInvalid,
-    AmbiguousDeriveHelpers,
-    DocUnknownInclude {
-        span: Span,
-        inner: &'static str,
-        value: Symbol,
-    },
-    DocUnknownSpotlight {
-        span: Span,
-    },
-    DocUnknownPasses {
-        name: Symbol,
-        span: Span,
-    },
-    DocUnknownPlugins {
-        span: Span,
-    },
-    DocUnknownAny {
-        name: Symbol,
-    },
-    DocAutoCfgWrongLiteral,
-    DocTestTakesList,
-    DocTestUnknown {
-        name: Symbol,
-    },
-    DocTestLiteral,
-    AttrCrateLevelOnly,
-    DoNotRecommendDoesNotExpectArgs,
-    CrateTypeUnknown {
-        span: Span,
-        suggested: Option<Symbol>,
-    },
-    MalformedDoc,
-    ExpectedNoArgs,
-    ExpectedNameValue,
-    MalformedOnUnimplementedAttr {
-        span: Span,
-    },
-    MalformedOnConstAttr {
-        span: Span,
-    },
-    MalformedDiagnosticFormat {
-        warning: FormatWarning,
-    },
-    DiagnosticWrappedParserError {
-        description: String,
-        label: String,
-        span: Span,
-    },
-    IgnoredDiagnosticOption {
-        option_name: Symbol,
-        first_span: Span,
-        later_span: Span,
-    },
-    MissingOptionsForOnUnimplemented,
-    MissingOptionsForOnConst,
-}
-
-#[derive(Debug, Clone, HashStable_Generic)]
-pub enum FormatWarning {
-    PositionalArgument { span: Span, help: String },
-    InvalidSpecifier { name: String, span: Span },
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;
@@ -937,6 +707,7 @@ macro_rules! declare_lint {
         $($field:ident : $val:expr),* $(,)*
      }; )?
      $(@edition $lint_edition:ident => $edition_level:ident;)?
+     $(@msrv = $msrv:literal;)?
      $($v:ident),*) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
@@ -951,8 +722,9 @@ macro_rules! declare_lint {
                 $($field: $val,)*
                 ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
             }),)?
-            $(edition_lint_opts: Some(($crate::Edition::$lint_edition, $crate::$edition_level)),)?
+            $(edition_lint_opts: Some((::rustc_span::edition::Edition::$lint_edition, $crate::$edition_level)),)?
             $(eval_always: $eval_always,)?
+            $(rust_version: Some($crate::Lint::parse_rust_version($msrv)),)?
             ..$crate::Lint::default_fields_for_macro()
         };
     );

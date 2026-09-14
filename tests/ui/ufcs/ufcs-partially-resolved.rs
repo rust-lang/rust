@@ -35,7 +35,7 @@ fn main() {
     <u8 as A>::N::NN; //~ ERROR expected trait, found type alias `A`
     let _: <u8 as Tr>::Y::NN; //~ ERROR ambiguous associated type
     let _: <u8 as E>::Y::NN; //~ ERROR expected trait, found enum `E`
-    <u8 as Tr>::Y::NN; //~ ERROR no associated item named `NN` found for type `u16`
+    <u8 as Tr>::Y::NN; //~ ERROR no associated function or constant named `NN` found for type `u16`
     <u8 as E>::Y::NN; //~ ERROR expected trait, found enum `E`
 
     let _: <u8 as Tr::N>::NN; //~ ERROR cannot find trait `N` in trait `Tr`
@@ -49,8 +49,8 @@ fn main() {
     <u8 as Tr::Y>::NN; //~ ERROR expected trait, found associated type `Tr::Y`
     <u8 as E::Y>::NN; //~ ERROR expected trait, found variant `E::Y`
 
-    let _: <u8 as Dr>::Z; //~ ERROR expected associated type, found associated function `Dr::Z`
-    <u8 as Dr>::X; //~ ERROR expected method or associated constant, found associated type `Dr::X`
-    let _: <u8 as Dr>::Z::N; //~ ERROR expected associated type, found associated function `Dr::Z`
-    <u8 as Dr>::X::N; //~ ERROR no associated item named `N` found for type `u16`
+    let _: <u8 as Dr>::Z; //~ ERROR cannot find associated type `Z` in trait `Dr`
+    <u8 as Dr>::X; //~ ERROR cannot find method or associated constant `X` in trait `Dr`
+    let _: <u8 as Dr>::Z::N; //~ ERROR cannot find associated type `Z` in trait `Dr`
+    <u8 as Dr>::X::N; //~ ERROR no associated function or constant named `N` found for type `u16`
 }

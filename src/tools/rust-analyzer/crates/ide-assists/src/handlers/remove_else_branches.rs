@@ -35,7 +35,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     let _x = 2;
 // }
 // ```
-pub(crate) fn remove_else_branches(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn remove_else_branches(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let else_token = ctx.find_token_syntax_at_offset(T![else])?;
     let else_branches = ctx
         .find_node_at_range::<ast::IfExpr>()
@@ -55,7 +55,7 @@ pub(crate) fn remove_else_branches(acc: &mut Assists, ctx: &AssistContext<'_>) -
         "Remove `else` branches",
         target,
         |builder| {
-            let mut editor = builder.make_editor(&else_token.parent().unwrap());
+            let editor = builder.make_editor(&else_token.parent().unwrap());
             match else_token.prev_token() {
                 Some(it) if it.kind() == SyntaxKind::WHITESPACE => editor.delete(it),
                 _ => (),

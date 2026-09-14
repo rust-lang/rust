@@ -1,5 +1,4 @@
 #![feature(generic_const_exprs)]
-//~^ WARN: the feature `generic_const_exprs` is incomplete
 
 // Regression test for #125770 which would ICE under the old effects desugaring that
 // created a const generic parameter for constness on `Add`.

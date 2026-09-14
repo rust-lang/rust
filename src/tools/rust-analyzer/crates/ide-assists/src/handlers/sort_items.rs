@@ -81,7 +81,7 @@ use crate::{AssistContext, AssistId, Assists, utils::get_methods};
 //   Cat { name: String, weight: f64 },
 // }
 // ```
-pub(crate) fn sort_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn sort_items(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     if ctx.has_empty_selection() {
         cov_mark::hit!(not_applicable_if_no_selection);
         return None;
@@ -127,7 +127,7 @@ impl AddRewrite for Assists {
         target: &SyntaxNode,
     ) -> Option<()> {
         self.add(AssistId::refactor_rewrite("sort_items"), label, target.text_range(), |builder| {
-            let mut editor = builder.make_editor(target);
+            let editor = builder.make_editor(target);
 
             old.into_iter()
                 .zip(new)
@@ -150,7 +150,7 @@ fn add_sort_field_list_assist(acc: &mut Assists, field_list: Option<ast::FieldLi
 
 fn add_sort_methods_assist(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     item_list: ast::AssocItemList,
 ) -> Option<()> {
     let selection = ctx.selection_trimmed();

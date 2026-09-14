@@ -25,7 +25,7 @@ fn check_overalign_requests<T: Allocator>(allocator: T) {
                     .collect();
                 for &ptr in &pointers {
                     assert_eq!(
-                        (ptr.as_non_null_ptr().as_ptr() as usize) % align,
+                        ptr.as_non_null_ptr().as_ptr().addr() % align,
                         0,
                         "Got a pointer less aligned than requested"
                     )

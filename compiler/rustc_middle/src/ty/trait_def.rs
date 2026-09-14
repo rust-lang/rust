@@ -5,19 +5,22 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{self as hir, find_attr};
-use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Span;
 use tracing::debug;
 
 use crate::query::LocalCrate;
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use crate::ty::{Ident, Ty, TyCtxt};
+use crate::ty::{self, Ident, Interner, RestrictionKind, Ty, TyCtxt, VisitorResult, try_visit};
 
 /// A trait's definition with type information.
-#[derive(HashStable, Encodable, Decodable)]
+#[derive(StableHash, Encodable, Decodable)]
 pub struct TraitDef {
     pub def_id: DefId,
+
+    /// Restrictions on trait implementations.
+    pub impl_restriction: RestrictionKind,
 
     pub safety: hir::Safety,
 
@@ -81,13 +84,13 @@ pub struct TraitDef {
 
 /// Whether this trait is treated specially by the standard library
 /// specialization lint.
-#[derive(HashStable, PartialEq, Clone, Copy, Encodable, Decodable)]
+#[derive(StableHash, PartialEq, Clone, Copy, Encodable, Decodable)]
 pub enum TraitSpecializationKind {
     /// The default. Specializing on this trait is not allowed.
     None,
     /// Specializing on this trait is allowed because it doesn't have any
     /// methods. For example `Sized` or `FusedIterator`.
-    /// Applies to traits with the `rustc_unsafe_specialization_marker`
+    /// Applies to traits with the `rustc_allow_lifetime_dependent_specialization`
     /// attribute.
     Marker,
     /// Specializing on this trait is allowed because all of the impls of this
@@ -97,7 +100,7 @@ pub enum TraitSpecializationKind {
     AlwaysApplicable,
 }
 
-#[derive(Default, Debug, HashStable)]
+#[derive(Default, Debug, StableHash)]
 pub struct TraitImpls {
     blanket_impls: Vec<DefId>,
     /// Impls indexed by their simplified self type, for fast lookup.
@@ -132,40 +135,142 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Iterate over every impl that could possibly match the self type `self_ty`.
     ///
     /// `trait_def_id` MUST BE the `DefId` of a trait.
-    pub fn for_each_relevant_impl(
+    pub fn for_each_relevant_impl<R: VisitorResult>(
         self,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        mut f: impl FnMut(DefId),
-    ) {
-        // FIXME: This depends on the set of all impls for the trait. That is
-        // unfortunate wrt. incremental compilation.
-        //
-        // If we want to be faster, we could have separate queries for
-        // blanket and non-blanket impls, and compare them separately.
-        let impls = self.trait_impls_of(trait_def_id);
-
-        for &impl_def_id in impls.blanket_impls.iter() {
-            f(impl_def_id);
-        }
-
-        // This way, when searching for some impl for `T: Trait`, we do not look at any impls
-        // whose outer level is not a parameter or projection. Especially for things like
-        // `T: Clone` this is incredibly useful as we would otherwise look at all the impls
-        // of `Clone` for `Option<T>`, `Vec<T>`, `ConcreteType` and so on.
-        // Note that we're using `TreatParams::AsRigid` to query `non_blanket_impls` while using
-        // `TreatParams::InstantiateWithInfer` while actually adding them.
-        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::AsRigid) {
-            if let Some(impls) = impls.non_blanket_impls.get(&simp) {
-                for &impl_def_id in impls {
-                    f(impl_def_id);
+        mut f: impl FnMut(DefId) -> R,
+    ) -> R {
+        let tcx = self;
+        let trait_impls = tcx.trait_impls_of(trait_def_id);
+        let mut consider_impls_for_simplified_type = |simp| {
+            if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
+                for &impl_def_id in impls_for_type {
+                    try_visit!(f(impl_def_id))
                 }
             }
-        } else {
-            for &impl_def_id in impls.non_blanket_impls.values().flatten() {
-                f(impl_def_id);
+
+            R::output()
+        };
+
+        match self_ty.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_, _)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(..)
+            | ty::Dynamic(_, _)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(_, _)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::UnsafeBinder(_) => {
+                let simp = ty::fast_reject::simplify_type(
+                    tcx,
+                    self_ty,
+                    ty::fast_reject::TreatParams::AsRigid,
+                )
+                .unwrap();
+                try_visit!(consider_impls_for_simplified_type(simp));
+            }
+
+            // HACK: For integer and float variables we have to manually look at all impls
+            // which have some integer or float as a self type.
+            ty::Infer(ty::IntVar(_)) => {
+                use ty::IntTy::*;
+                use ty::UintTy::*;
+                // This causes a compiler error if any new integer kinds are added.
+                let (I8 | I16 | I32 | I64 | I128 | Isize): ty::IntTy;
+                let (U8 | U16 | U32 | U64 | U128 | Usize): ty::UintTy;
+                let possible_integers = [
+                    // signed integers
+                    ty::SimplifiedType::Int(I8),
+                    ty::SimplifiedType::Int(I16),
+                    ty::SimplifiedType::Int(I32),
+                    ty::SimplifiedType::Int(I64),
+                    ty::SimplifiedType::Int(I128),
+                    ty::SimplifiedType::Int(Isize),
+                    // unsigned integers
+                    ty::SimplifiedType::Uint(U8),
+                    ty::SimplifiedType::Uint(U16),
+                    ty::SimplifiedType::Uint(U32),
+                    ty::SimplifiedType::Uint(U64),
+                    ty::SimplifiedType::Uint(U128),
+                    ty::SimplifiedType::Uint(Usize),
+                ];
+                for simp in possible_integers {
+                    try_visit!(consider_impls_for_simplified_type(simp));
+                }
+            }
+
+            ty::Infer(ty::FloatVar(_)) => {
+                // This causes a compiler error if any new float kinds are added.
+                let (ty::FloatTy::F16 | ty::FloatTy::F32 | ty::FloatTy::F64 | ty::FloatTy::F128);
+                let possible_floats = [
+                    ty::SimplifiedType::Float(ty::FloatTy::F16),
+                    ty::SimplifiedType::Float(ty::FloatTy::F32),
+                    ty::SimplifiedType::Float(ty::FloatTy::F64),
+                    ty::SimplifiedType::Float(ty::FloatTy::F128),
+                ];
+
+                for simp in possible_floats {
+                    try_visit!(consider_impls_for_simplified_type(simp));
+                }
+            }
+
+            // Pattern type might not have a simplified type.
+            ty::Pat(_, _) => {
+                if let Some(simp) = ty::fast_reject::simplify_type(
+                    tcx,
+                    self_ty,
+                    ty::fast_reject::TreatParams::AsRigid,
+                ) {
+                    try_visit!(consider_impls_for_simplified_type(simp));
+                }
+            }
+
+            // This is only for diagnostics and normally ty vars should be handled by the callers.
+            ty::Infer(ty::TyVar(_)) => {
+                for &impl_def_id in trait_impls.non_blanket_impls().values().flatten() {
+                    try_visit!(f(impl_def_id));
+                }
+            }
+
+            // The only traits applying to aliases and placeholders are blanket impls.
+            //
+            // Impls which apply to an alias after normalization are handled by
+            // `assemble_candidates_after_normalizing_self_ty`.
+            ty::Alias(ty::IsRigid::Yes, _) | ty::Placeholder(..) | ty::Error(_) => (),
+            // FIXME(-Znext-solver=no): Need to support aliases not marked as
+            // rigid for the old solver.
+            ty::Alias(ty::IsRigid::No, _) => (),
+
+            // FIXME: These should ideally not exist as a self type. It would be nice for
+            // the builtin auto trait impls of coroutines to instead directly recurse
+            // into the witness.
+            ty::CoroutineWitness(..) => (),
+
+            // These are used in diagnostics or in the old solver.
+            ty::Param(_) | ty::Bound(_, _) => (),
+
+            // These variants should not exist as a self type.
+            ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("unexpected self type: {self_ty:?}");
             }
         }
+
+        #[allow(rustc::usage_of_type_ir_traits)]
+        self.for_each_blanket_impl(trait_def_id, f)
     }
 
     /// `trait_def_id` MUST BE the `DefId` of a trait.
@@ -223,7 +328,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
     for &impl_def_id in tcx.local_trait_impls(trait_id) {
         let impl_def_id = impl_def_id.to_def_id();
 
-        let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
+        let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
 
         if let Some(simplified_self_ty) =
             fast_reject::simplify_type(tcx, impl_self_ty, TreatParams::InstantiateWithInfer)

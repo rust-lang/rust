@@ -43,9 +43,8 @@ impl Iterator for LookupHost {
                     return None;
                 }
                 let mut new_addr = [0u8; 16];
-                for (src, octet) in self.data.0[(self.offset + 1)..(self.offset + 16 + 1)]
-                    .iter()
-                    .zip(new_addr.iter_mut())
+                for (src, octet) in
+                    self.data.0[self.offset..(self.offset + 16)].iter().zip(new_addr.iter_mut())
                 {
                     *octet = *src;
                 }

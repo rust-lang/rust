@@ -51,6 +51,7 @@ pub(crate) struct CargoOptions {
     pub(crate) extra_args: Vec<String>,
     pub(crate) extra_test_bin_args: Vec<String>,
     pub(crate) extra_env: FxHashMap<String, Option<String>>,
+    pub(crate) config_path: Option<AbsPathBuf>,
     pub(crate) target_dir_config: TargetDirectoryConfig,
 }
 
@@ -63,10 +64,14 @@ pub(crate) enum Target {
 }
 
 impl CargoOptions {
-    pub(crate) fn apply_on_command(&self, cmd: &mut Command, ws_target_dir: Option<&Utf8Path>) {
-        for target in &self.target_tuples {
-            cmd.args(["--target", target.as_str()]);
-        }
+    pub(crate) fn apply_on_command(
+        &self,
+        cmd: &mut Command,
+        ws_target_dir: Option<&Utf8Path>,
+        package_repr: Option<&str>,
+        toolchain_version: Option<&semver::Version>,
+    ) {
+        toolchain::cargo_use_targets(toolchain_version, cmd, &self.target_tuples);
         if self.all_targets {
             if self.set_test {
                 cmd.arg("--all-targets");
@@ -83,9 +88,28 @@ impl CargoOptions {
                 cmd.arg("--no-default-features");
             }
             if !self.features.is_empty() {
+                // If we are scoped to a particular package, filter any features of the form
+                // `crate/feature` which target other packages.
+                let features = if let Some(name) = package_repr {
+                    let filtered = self
+                        .features
+                        .iter()
+                        .filter(|f| match f.split_once('/') {
+                            Some((c, _)) => c == name,
+                            None => true,
+                        })
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>();
+                    filtered.join(" ")
+                } else {
+                    self.features.join(" ")
+                };
                 cmd.arg("--features");
-                cmd.arg(self.features.join(" "));
+                cmd.arg(features);
             }
+        }
+        if let Some(config_path) = &self.config_path {
+            cmd.arg("--config").arg(config_path);
         }
         if let Some(target_dir) = self.target_dir_config.target_dir(ws_target_dir) {
             cmd.arg("--target-dir").arg(target_dir.as_ref());
@@ -202,6 +226,8 @@ impl FlycheckHandle {
         workspace_root: AbsPathBuf,
         manifest_path: Option<AbsPathBuf>,
         ws_target_dir: Option<Utf8PathBuf>,
+        ws_build_dir: Option<Utf8PathBuf>,
+        toolchain_version: Option<semver::Version>,
     ) -> FlycheckHandle {
         let actor = FlycheckActor::new(
             id,
@@ -213,6 +239,8 @@ impl FlycheckHandle {
             workspace_root,
             manifest_path,
             ws_target_dir,
+            ws_build_dir,
+            toolchain_version,
         );
         let (sender, receiver) = unbounded::<StateChange>();
         let thread =
@@ -405,6 +433,7 @@ struct FlycheckActor {
 
     manifest_path: Option<AbsPathBuf>,
     ws_target_dir: Option<Utf8PathBuf>,
+    ws_build_dir: Option<Utf8PathBuf>,
     /// Either the workspace root of the workspace we are flychecking,
     /// or the project root of the project.
     root: Arc<AbsPathBuf>,
@@ -420,6 +449,7 @@ struct FlycheckActor {
     command_receiver: Option<Receiver<CheckMessage>>,
     diagnostics_cleared_for: FxHashSet<PackageSpecifier>,
     diagnostics_received: DiagnosticsReceived,
+    toolchain_version: Option<semver::Version>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -460,7 +490,7 @@ impl<'a> Substitutions<'a> {
     ///
     /// Same for {saved_file}.
     ///
-    #[allow(clippy::disallowed_types)] /* generic parameter allows for FxHashMap */
+    #[expect(clippy::disallowed_types, reason = "generic parameter allows for `FxHashMap`")]
     fn substitute<H>(
         self,
         template: &project_json::Runnable,
@@ -469,33 +499,24 @@ impl<'a> Substitutions<'a> {
         let mut cmd = toolchain::command(&template.program, &template.cwd, extra_env);
         for arg in &template.args {
             if let Some(ix) = arg.find(LABEL_INLINE) {
-                if let Some(label) = self.label {
-                    let mut arg = arg.to_string();
-                    arg.replace_range(ix..ix + LABEL_INLINE.len(), label);
-                    cmd.arg(arg);
-                    continue;
-                } else {
-                    return None;
-                }
+                let label = self.label?;
+                let mut arg = arg.to_string();
+                arg.replace_range(ix..ix + LABEL_INLINE.len(), label);
+                cmd.arg(arg);
+                continue;
             }
             if let Some(ix) = arg.find(SAVED_FILE_INLINE) {
-                if let Some(saved_file) = self.saved_file {
-                    let mut arg = arg.to_string();
-                    arg.replace_range(ix..ix + SAVED_FILE_INLINE.len(), saved_file);
-                    cmd.arg(arg);
-                    continue;
-                } else {
-                    return None;
-                }
+                let saved_file = self.saved_file?;
+                let mut arg = arg.to_string();
+                arg.replace_range(ix..ix + SAVED_FILE_INLINE.len(), saved_file);
+                cmd.arg(arg);
+                continue;
             }
             // Legacy syntax: full argument match
             if arg == SAVED_FILE_PLACEHOLDER_DOLLAR {
-                if let Some(saved_file) = self.saved_file {
-                    cmd.arg(saved_file);
-                    continue;
-                } else {
-                    return None;
-                }
+                let saved_file = self.saved_file?;
+                cmd.arg(saved_file);
+                continue;
             }
             cmd.arg(arg);
         }
@@ -515,6 +536,8 @@ impl FlycheckActor {
         workspace_root: AbsPathBuf,
         manifest_path: Option<AbsPathBuf>,
         ws_target_dir: Option<Utf8PathBuf>,
+        ws_build_dir: Option<Utf8PathBuf>,
+        toolchain_version: Option<semver::Version>,
     ) -> FlycheckActor {
         tracing::info!(%id, ?workspace_root, "Spawning flycheck");
         FlycheckActor {
@@ -528,10 +551,12 @@ impl FlycheckActor {
             scope: FlycheckScope::Workspace,
             manifest_path,
             ws_target_dir,
+            ws_build_dir,
             command_handle: None,
             command_receiver: None,
             diagnostics_cleared_for: Default::default(),
             diagnostics_received: DiagnosticsReceived::NotYet,
+            toolchain_version,
         }
     }
 
@@ -613,14 +638,14 @@ impl FlycheckActor {
                         sender,
                         match &self.config {
                             FlycheckConfig::Automatic { cargo_options, .. } => {
-                                let ws_target_dir =
-                                    self.ws_target_dir.as_ref().map(Utf8PathBuf::as_path);
-                                let target_dir =
-                                    cargo_options.target_dir_config.target_dir(ws_target_dir);
+                                let target_dir = cargo_options
+                                    .target_dir_config
+                                    .target_dir(self.ws_target_dir.as_deref());
 
-                                // If `"rust-analyzer.cargo.targetDir": null`, we should use
-                                // workspace's target dir instead of hard-coded fallback.
-                                let target_dir = target_dir.as_deref().or(ws_target_dir);
+                                let output_dir = target_dir
+                                    .as_deref()
+                                    .or(self.ws_build_dir.as_deref())
+                                    .or(self.ws_target_dir.as_deref());
 
                                 Some(
                                     // As `CommandHandle::spawn`'s working directory is
@@ -628,10 +653,10 @@ impl FlycheckActor {
                                     // from the flycheck's working directory, we should canonicalize
                                     // the output directory, otherwise we might write it into the
                                     // wrong target dir.
-                                    // If `target_dir` is an absolute path, it will replace
+                                    // If `output_dir` is an absolute path, it will replace
                                     // `self.root` and that's an intended behavior.
                                     self.root
-                                        .join(target_dir.unwrap_or(
+                                        .join(output_dir.unwrap_or(
                                             Utf8Path::new("target").join("rust-analyzer").as_path(),
                                         ))
                                         .join(format!("flycheck{}", self.id))
@@ -673,27 +698,31 @@ impl FlycheckActor {
                     if self.diagnostics_received == DiagnosticsReceived::NotYet {
                         tracing::trace!(flycheck_id = self.id, "clearing diagnostics");
                         // We finished without receiving any diagnostics.
-                        // Clear everything for good measure
-                        match &self.scope {
-                            FlycheckScope::Workspace => {
-                                self.send(FlycheckMessage::ClearDiagnostics {
-                                    id: self.id,
-                                    kind: ClearDiagnosticsKind::All(ClearScope::Workspace),
-                                });
-                            }
-                            FlycheckScope::Package { package, workspace_deps } => {
-                                for pkg in
-                                    std::iter::once(package).chain(workspace_deps.iter().flatten())
-                                {
-                                    self.send(FlycheckMessage::ClearDiagnostics {
-                                        id: self.id,
-                                        kind: ClearDiagnosticsKind::All(ClearScope::Package(
-                                            pkg.clone(),
-                                        )),
-                                    });
-                                }
-                            }
-                        }
+                        //
+                        // `cargo check` generally outputs something, even if there are no
+                        // warnings/errors, so we always know which package was checked.
+                        //
+                        // ```text
+                        // $ cargo check --message-format=json 2>/dev/null
+                        // {"reason":"compiler-artifact","package_id":"path+file:///Users/wilfred/tmp/scratch#0.1.0",...}
+                        // ```
+                        //
+                        // However, rustc only returns JSON if there are diagnostics present, so a
+                        // build without warnings or errors has an empty output.
+                        //
+                        // ```
+                        // $ rustc --error-format=json bad.rs
+                        // {"$message_type":"diagnostic","message":"mismatched types","...}
+                        //
+                        // $ rustc --error-format=json good.rs
+                        // ```
+                        //
+                        // So if we got zero diagnostics, it was almost certainly a check that
+                        // wasn't specific to a package.
+                        self.send(FlycheckMessage::ClearDiagnostics {
+                            id: self.id,
+                            kind: ClearDiagnosticsKind::All(ClearScope::Workspace),
+                        });
                     } else if res.is_ok() {
                         // We clear diagnostics for packages on
                         // `[CargoCheckMessage::CompilerArtifact]` but there seem to be setups where
@@ -886,12 +915,18 @@ impl FlycheckActor {
                 cmd.env("CARGO_LOG", "cargo::core::compiler::fingerprint=info");
                 cmd.arg(&cargo_options.subcommand);
 
-                match scope {
-                    FlycheckScope::Workspace => cmd.arg("--workspace"),
+                let package_repr = match scope {
+                    FlycheckScope::Workspace => {
+                        cmd.arg("--workspace");
+                        None
+                    }
                     FlycheckScope::Package {
                         package: PackageSpecifier::Cargo { package_id },
                         ..
-                    } => cmd.arg("-p").arg(&package_id.repr),
+                    } => {
+                        cmd.arg("-p").arg(&package_id.repr);
+                        Some(package_id.repr.as_str())
+                    }
                     FlycheckScope::Package {
                         package: PackageSpecifier::BuildInfo { .. }, ..
                     } => {
@@ -931,6 +966,8 @@ impl FlycheckActor {
                 cargo_options.apply_on_command(
                     &mut cmd,
                     self.ws_target_dir.as_ref().map(Utf8PathBuf::as_path),
+                    package_repr,
+                    self.toolchain_version.as_ref(),
                 );
                 cmd.args(&cargo_options.extra_args);
                 Some((cmd, FlycheckCommandOrigin::Cargo))
@@ -984,8 +1021,8 @@ enum CheckMessage {
 
 struct CheckParser;
 
-impl JsonLinesParser<CheckMessage> for CheckParser {
-    fn from_line(&self, line: &str, error: &mut String) -> Option<CheckMessage> {
+impl CheckParser {
+    fn parse_line(&self, line: &str, error: &mut String) -> Option<CheckMessage> {
         let mut deserializer = serde_json::Deserializer::from_str(line);
         deserializer.disable_recursion_limit();
         if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
@@ -1015,13 +1052,23 @@ impl JsonLinesParser<CheckMessage> for CheckParser {
         error.push('\n');
         None
     }
+}
+
+impl JsonLinesParser<CheckMessage> for CheckParser {
+    fn from_line(&self, line: &str, error: &mut String) -> Option<CheckMessage> {
+        self.parse_line(line, error)
+    }
+
+    fn from_stderr_line(&self, line: &str, error: &mut String) -> Option<CheckMessage> {
+        self.parse_line(line, error)
+    }
 
     fn from_eof(&self) -> Option<CheckMessage> {
         None
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(untagged)]
 enum JsonMessage {
     Cargo(cargo_metadata::Message),
@@ -1137,6 +1184,7 @@ mod tests {
                 extra_args: vec![],
                 extra_test_bin_args: vec![],
                 extra_env: FxHashMap::default(),
+                config_path: None,
                 target_dir_config: TargetDirectoryConfig::default(),
             },
             ansi_color_output: true,

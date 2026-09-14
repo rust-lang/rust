@@ -1,10 +1,11 @@
 //! Builtin derives.
 
+use base_db::SourceDatabase;
 use either::Either;
 use intern::sym;
 use itertools::{Itertools, izip};
 use parser::SyntaxKind;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use span::{Edition, Span};
 use stdx::never;
 use syntax_bridge::DocCommentDesugarMode;
@@ -13,7 +14,6 @@ use tracing::debug;
 use crate::{
     ExpandError, ExpandResult, MacroCallId,
     builtin::quote::dollar_crate,
-    db::ExpandDatabase,
     hygiene::span_with_def_site_ctxt,
     name::{self, AsName, Name},
     span_map::ExpansionSpanMap,
@@ -22,9 +22,9 @@ use crate::{
 use syntax::{
     ast::{
         self, AstNode, FieldList, HasAttrs, HasGenericArgs, HasGenericParams, HasModuleItem,
-        HasName, HasTypeBounds, edit_in_place::GenericParamsOwnerEdit, make,
+        HasName, HasTypeBounds,
     },
-    ted,
+    syntax_editor::{GetOrCreateWhereClause, SyntaxEditor},
 };
 
 macro_rules! register_builtin {
@@ -35,7 +35,7 @@ macro_rules! register_builtin {
         }
 
         impl BuiltinDeriveExpander {
-            pub fn expander(&self) -> fn(&dyn ExpandDatabase, Span, &tt::TopSubtree) -> ExpandResult<tt::TopSubtree>  {
+            pub fn expander(&self) -> fn(&dyn SourceDatabase, Span, &tt::TopSubtree) -> ExpandResult<tt::TopSubtree>  {
                 match *self {
                     $( BuiltinDeriveExpander::$trait => $expand, )*
                 }
@@ -54,7 +54,7 @@ macro_rules! register_builtin {
 impl BuiltinDeriveExpander {
     pub fn expand(
         &self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         id: MacroCallId,
         tt: &tt::TopSubtree,
         span: Span,
@@ -75,6 +75,8 @@ register_builtin! {
     Eq => eq_expand,
     PartialEq => partial_eq_expand,
     CoercePointee => coerce_pointee_expand,
+    Reborrow => reborrow_expand,
+    CoerceShared => coerce_shared_expand,
 }
 
 pub fn find_builtin_derive(ident: &name::Name) -> Option<BuiltinDeriveExpander> {
@@ -228,7 +230,7 @@ struct AdtParam {
 
 // FIXME: This whole thing needs a refactor. Each derive requires its special values, and the result is a mess.
 fn parse_adt(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     tt: &tt::TopSubtree,
     call_site: Span,
 ) -> Result<BasicAdtInfo, ExpandError> {
@@ -387,11 +389,11 @@ fn parse_adt_from_syntax(
 }
 
 fn to_adt_syntax(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     tt: &tt::TopSubtree,
     call_site: Span,
 ) -> Result<(ast::Adt, span::SpanMap), ExpandError> {
-    let (parsed, tm) = crate::db::token_tree_to_syntax_node(db, tt, crate::ExpandTo::Items);
+    let (parsed, tm) = crate::token_tree_to_syntax_node(db, tt, crate::ExpandTo::Items);
     let macro_items = ast::MacroItems::cast(parsed.syntax_node())
         .ok_or_else(|| ExpandError::other(call_site, "invalid item definition"))?;
     let item =
@@ -412,7 +414,7 @@ fn name_to_token(
     })?;
     let span = token_map.span_at(name.syntax().text_range().start());
 
-    let name_token = tt::Ident::new(name.text().as_ref(), span);
+    let name_token = tt::Ident::new(name.text(), span);
     Ok(name_token)
 }
 
@@ -448,7 +450,7 @@ fn name_to_token(
 /// where B1, ..., BN are the bounds given by `bounds_paths`. Z is a phantom type, and
 /// therefore does not get bound by the derived trait.
 fn expand_simple_derive(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     invoc_span: Span,
     tt: &tt::TopSubtree,
     trait_path: tt::TopSubtree,
@@ -531,7 +533,7 @@ fn expand_simple_derive_with_parsed(
 }
 
 fn copy_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -546,8 +548,136 @@ fn copy_expand(
     )
 }
 
+fn reborrow_expand(
+    db: &dyn SourceDatabase,
+    span: Span,
+    tt: &tt::TopSubtree,
+) -> ExpandResult<tt::TopSubtree> {
+    let krate = dollar_crate(span);
+    expand_reborrow_marker_derive(
+        db,
+        span,
+        tt,
+        quote! {span => #krate::marker::Reborrow },
+        "Reborrow",
+    )
+}
+
+fn coerce_shared_expand(
+    db: &dyn SourceDatabase,
+    span: Span,
+    tt: &tt::TopSubtree,
+) -> ExpandResult<tt::TopSubtree> {
+    let (adt, span_map) = match to_adt_syntax(db, tt, span) {
+        Ok(it) => it,
+        Err(err) => {
+            return ExpandResult::new(tt::TopSubtree::empty(tt::DelimSpan::from_single(span)), err);
+        }
+    };
+    let ast::Adt::Struct(strukt) = &adt else {
+        return ExpandResult::new(
+            tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+            ExpandError::other(span, "`CoerceShared` can only be derived on `struct`s"),
+        );
+    };
+    let Some(target) = coerce_shared_target(db, span, strukt) else {
+        return ExpandResult::new(
+            tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+            ExpandError::other(
+                span,
+                "`derive(CoerceShared)` requires exactly one `#[coerce_shared(Target)]` attribute",
+            ),
+        );
+    };
+    let info = match parse_adt_from_syntax(&adt, &span_map, span) {
+        Ok(it) => it,
+        Err(err) => {
+            return ExpandResult::new(tt::TopSubtree::empty(tt::DelimSpan::from_single(span)), err);
+        }
+    };
+
+    let krate = dollar_crate(span);
+    ExpandResult::ok(expand_simple_derive_with_parsed(
+        span,
+        info,
+        quote! {span => #krate::marker::CoerceShared<#target> },
+        |_| quote! {span => },
+        false,
+        tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+    ))
+}
+
+fn expand_reborrow_marker_derive(
+    db: &dyn SourceDatabase,
+    span: Span,
+    tt: &tt::TopSubtree,
+    trait_path: tt::TopSubtree,
+    trait_name: &'static str,
+) -> ExpandResult<tt::TopSubtree> {
+    let info = match parse_adt(db, tt, span) {
+        Ok(info) => info,
+        Err(err) => {
+            return ExpandResult::new(tt::TopSubtree::empty(tt::DelimSpan::from_single(span)), err);
+        }
+    };
+    if !matches!(info.shape, AdtShape::Struct(_)) {
+        return ExpandResult::new(
+            tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+            ExpandError::other(span, format!("`{trait_name}` can only be derived on `struct`s")),
+        );
+    }
+
+    ExpandResult::ok(expand_simple_derive_with_parsed(
+        span,
+        info,
+        trait_path,
+        |_| quote! {span => },
+        false,
+        tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+    ))
+}
+
+fn coerce_shared_target(
+    db: &dyn SourceDatabase,
+    span: Span,
+    strukt: &ast::Struct,
+) -> Option<tt::TopSubtree> {
+    let mut attrs = strukt
+        .attrs()
+        .filter(|attr| attr.as_simple_call().is_some_and(|(name, _)| name == "coerce_shared"));
+    let attr = attrs.next()?;
+    if attrs.next().is_some() {
+        return None;
+    }
+    let (_, target_tokens) = attr.as_simple_call()?;
+    let l_paren = target_tokens.l_paren_token()?;
+    let r_paren = target_tokens.r_paren_token()?;
+
+    let mut span_map = span::SpanMap::empty();
+    span_map.push(target_tokens.syntax().text_range().start(), span);
+    span_map.push(target_tokens.syntax().text_range().end(), span);
+
+    let remove = FxHashSet::from_iter([l_paren.into(), r_paren.into()]);
+    let target = syntax_bridge::syntax_node_to_token_tree_modified(
+        target_tokens.syntax(),
+        &span_map,
+        FxHashMap::default(),
+        remove,
+        span,
+        DocCommentDesugarMode::ProcMacro,
+        |_, _| (true, Vec::new()),
+    );
+
+    let (parse, _) = crate::token_tree_to_syntax_node(db, &target, crate::ExpandTo::Type);
+    if !parse.errors().is_empty() {
+        return None;
+    }
+    ast::Type::cast(parse.syntax_node())?;
+    Some(target)
+}
+
 fn clone_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -602,7 +732,7 @@ fn and_and(span: Span) -> tt::TopSubtree {
 }
 
 fn default_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -667,7 +797,7 @@ fn default_expand(
 }
 
 fn debug_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -740,7 +870,7 @@ fn debug_expand(
 }
 
 fn hash_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -787,7 +917,7 @@ fn hash_expand(
 }
 
 fn eq_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -803,7 +933,7 @@ fn eq_expand(
 }
 
 fn partial_eq_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -875,7 +1005,7 @@ fn self_and_other_patterns(
 }
 
 fn ord_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -933,7 +1063,7 @@ fn ord_expand(
 }
 
 fn partial_ord_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -996,7 +1126,7 @@ fn partial_ord_expand(
 }
 
 fn coerce_pointee_expand(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     span: Span,
     tt: &tt::TopSubtree,
 ) -> ExpandResult<tt::TopSubtree> {
@@ -1006,7 +1136,8 @@ fn coerce_pointee_expand(
             return ExpandResult::new(tt::TopSubtree::empty(tt::DelimSpan::from_single(span)), err);
         }
     };
-    let adt = adt.clone_for_update();
+    let (editor, adt) = SyntaxEditor::with_ast_node(&adt);
+    let make = editor.make();
     let ast::Adt::Struct(strukt) = &adt else {
         return ExpandResult::new(
             tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
@@ -1077,7 +1208,7 @@ fn coerce_pointee_expand(
                 if is_pointee {
                     // Remove the `#[pointee]` attribute so it won't be present in the generated
                     // impls (where we cannot resolve it).
-                    ted::remove(attr.syntax());
+                    editor.delete(attr.syntax());
                 }
                 is_pointee
             })
@@ -1150,11 +1281,9 @@ fn coerce_pointee_expand(
 
     const ADDED_PARAM: &str = "__S";
 
-    let where_clause = strukt.get_or_create_where_clause();
+    let mut new_predicates: Vec<ast::WherePred> = Vec::new();
 
     {
-        let mut new_predicates = Vec::new();
-
         // # Rewrite generic parameter bounds
         // For each bound `U: ..` in `struct<U: ..>`, make a new bound with `__S` in place of `#[pointee]`
         // Example:
@@ -1182,30 +1311,30 @@ fn coerce_pointee_expand(
                 // If the target type is the pointee, duplicate the bound as whole.
                 // Otherwise, duplicate only bounds that mention the pointee.
                 let is_pointee = param_name.text() == pointee_param_name.text();
-                let new_bounds = bounds
-                    .bounds()
-                    .map(|bound| bound.clone_subtree().clone_for_update())
-                    .filter(|bound| {
-                        bound.ty().is_some_and(|ty| {
-                            substitute_type_in_bound(ty, &pointee_param_name.text(), ADDED_PARAM)
-                                || is_pointee
-                        })
-                    });
+                let new_bounds = bounds.bounds().filter_map(|bound| {
+                    let new_bound = substitute_type_bound(
+                        bound.clone(),
+                        pointee_param_name.text(),
+                        ADDED_PARAM,
+                    );
+
+                    if is_pointee {
+                        return new_bound.or(Some(bound));
+                    }
+                    new_bound
+                });
+
                 let new_bounds_target = if is_pointee {
-                    make::name_ref(ADDED_PARAM)
+                    make.name_ref(ADDED_PARAM)
                 } else {
-                    make::name_ref(&param_name.text())
+                    make.name_ref(param_name.text())
                 };
-                new_predicates.push(
-                    make::where_pred(
-                        Either::Right(make::ty_path(make::path_from_segments(
-                            [make::path_segment(new_bounds_target)],
-                            false,
-                        ))),
-                        new_bounds,
-                    )
-                    .clone_for_update(),
-                );
+                new_predicates.push(make.where_pred(
+                    Either::Right(
+                        make.ty_path_from_segments([make.path_segment(new_bounds_target)], false),
+                    ),
+                    new_bounds,
+                ));
             }
         }
 
@@ -1235,43 +1364,21 @@ fn coerce_pointee_expand(
         //
         // We should also write a few new `where` bounds from `#[pointee] T` to `__S`
         // as well as any bound that indirectly involves the `#[pointee] T` type.
-        for predicate in where_clause.predicates() {
-            let predicate = predicate.clone_subtree().clone_for_update();
+        for predicate in strukt.where_clause().into_iter().flat_map(|wc| wc.predicates()) {
             let Some(pred_target) = predicate.ty() else { continue };
 
             // If the target type references the pointee, duplicate the bound as whole.
             // Otherwise, duplicate only bounds that mention the pointee.
-            if substitute_type_in_bound(
-                pred_target.clone(),
-                &pointee_param_name.text(),
-                ADDED_PARAM,
-            ) {
-                if let Some(bounds) = predicate.type_bound_list() {
-                    for bound in bounds.bounds() {
-                        if let Some(ty) = bound.ty() {
-                            substitute_type_in_bound(ty, &pointee_param_name.text(), ADDED_PARAM);
-                        }
-                    }
-                }
-
-                new_predicates.push(predicate);
+            if let Some(predicate_with_substituted_target) =
+                substitute_where_pred(&predicate, pointee_param_name.text(), ADDED_PARAM)
+            {
+                new_predicates.push(predicate_with_substituted_target);
             } else if let Some(bounds) = predicate.type_bound_list() {
-                let new_bounds = bounds
-                    .bounds()
-                    .map(|bound| bound.clone_subtree().clone_for_update())
-                    .filter(|bound| {
-                        bound.ty().is_some_and(|ty| {
-                            substitute_type_in_bound(ty, &pointee_param_name.text(), ADDED_PARAM)
-                        })
-                    });
-                new_predicates.push(
-                    make::where_pred(Either::Right(pred_target), new_bounds).clone_for_update(),
-                );
+                let new_bounds = bounds.bounds().filter_map(|bound| {
+                    substitute_type_bound(bound, pointee_param_name.text(), ADDED_PARAM)
+                });
+                new_predicates.push(make.where_pred(Either::Right(pred_target), new_bounds));
             }
-        }
-
-        for new_predicate in new_predicates {
-            where_clause.add_predicate(new_predicate);
         }
     }
 
@@ -1279,29 +1386,31 @@ fn coerce_pointee_expand(
         // # Add `Unsize<__S>` bound to `#[pointee]` at the generic parameter location
         //
         // Find the `#[pointee]` parameter and add an `Unsize<__S>` bound to it.
-        where_clause.add_predicate(
-            make::where_pred(
-                Either::Right(make::ty_path(make::path_from_segments(
-                    [make::path_segment(make::name_ref(&pointee_param_name.text()))],
+        new_predicates.push(
+            make.where_pred(
+                Either::Right(make.ty_path_from_segments(
+                    [make.path_segment(make.name_ref(pointee_param_name.text()))],
                     false,
-                ))),
-                [make::type_bound(make::ty_path(make::path_from_segments(
-                    [
-                        make::path_segment(make::name_ref("core")),
-                        make::path_segment(make::name_ref("marker")),
-                        make::generic_ty_path_segment(
-                            make::name_ref("Unsize"),
-                            [make::type_arg(make::ty_path(make::path_from_segments(
-                                [make::path_segment(make::name_ref(ADDED_PARAM))],
-                                false,
-                            )))
-                            .into()],
-                        ),
-                    ],
-                    true,
-                )))],
-            )
-            .clone_for_update(),
+                )),
+                [make.type_bound(
+                    make.ty_path_from_segments(
+                        [
+                            make.path_segment(make.name_ref("core")),
+                            make.path_segment(make.name_ref("marker")),
+                            make.generic_ty_path_segment(
+                                make.name_ref("Unsize"),
+                                [make
+                                    .type_arg(make.ty_path_from_segments(
+                                        [make.path_segment(make.name_ref(ADDED_PARAM))],
+                                        false,
+                                    ))
+                                    .into()],
+                            ),
+                        ],
+                        true,
+                    ),
+                )],
+            ),
         );
     }
 
@@ -1315,36 +1424,37 @@ fn coerce_pointee_expand(
             .filter_map(|param| {
                 Some(match param {
                     ast::GenericParam::ConstParam(param) => {
-                        ast::GenericArg::ConstArg(make::expr_const_value(&param.name()?.text()))
+                        ast::GenericArg::ConstArg(make.expr_const_value(param.name()?.text()))
                     }
                     ast::GenericParam::LifetimeParam(param) => {
-                        make::lifetime_arg(param.lifetime()?).into()
+                        make.lifetime_arg(param.lifetime()?).into()
                     }
                     ast::GenericParam::TypeParam(param) => {
                         let name = if pointee_param_idx == type_param_idx {
-                            make::name_ref(ADDED_PARAM)
+                            make.name_ref(ADDED_PARAM)
                         } else {
-                            make::name_ref(&param.name()?.text())
+                            make.name_ref(param.name()?.text())
                         };
                         type_param_idx += 1;
-                        make::type_arg(make::ty_path(make::path_from_segments(
-                            [make::path_segment(name)],
-                            false,
-                        )))
-                        .into()
+                        make.type_arg(make.ty_path_from_segments([make.path_segment(name)], false))
+                            .into()
                     }
                 })
             });
 
-        make::path_from_segments(
-            [make::generic_ty_path_segment(
-                make::name_ref(&struct_name.text()),
+        make.path_from_segments(
+            [make.generic_ty_path_segment(
+                make.name_ref(struct_name.text()),
                 self_params_for_traits,
             )],
             false,
         )
-        .clone_for_update()
     };
+
+    strukt.get_or_create_where_clause(&editor, new_predicates.into_iter());
+    let edit = editor.finish();
+    let strukt = ast::Struct::cast(edit.new_root().clone()).unwrap();
+    let adt = ast::Adt::Struct(strukt.clone());
 
     let mut span_map = span::SpanMap::empty();
     // One span for them all.
@@ -1408,37 +1518,85 @@ fn coerce_pointee_expand(
     }
 
     /// Returns true if any substitution was performed.
-    fn substitute_type_in_bound(ty: ast::Type, param_name: &str, replacement: &str) -> bool {
-        return match ty {
-            ast::Type::ArrayType(ty) => {
-                ty.ty().is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
+    fn substitute_type_bound(
+        bound: ast::TypeBound,
+        param_name: &str,
+        replacement: &str,
+    ) -> Option<ast::TypeBound> {
+        let (editor, bound) = SyntaxEditor::with_ast_node(&bound);
+        let substituted = bound
+            .ty()
+            .is_some_and(|ty| substitute_type_in_bound(&editor, ty, param_name, replacement));
+        if !substituted {
+            return None;
+        }
+
+        let edit = editor.finish();
+        Some(ast::TypeBound::cast(edit.new_root().clone()).unwrap())
+    }
+
+    fn substitute_where_pred(
+        predicate: &ast::WherePred,
+        param_name: &str,
+        replacement: &str,
+    ) -> Option<ast::WherePred> {
+        let (editor, predicate) = SyntaxEditor::with_ast_node(predicate);
+        let substituted = predicate
+            .ty()
+            .is_some_and(|ty| substitute_type_in_bound(&editor, ty, param_name, replacement));
+        if substituted && let Some(bounds) = predicate.type_bound_list() {
+            for bound in bounds.bounds() {
+                if let Some(ty) = bound.ty() {
+                    substitute_type_in_bound(&editor, ty, param_name, replacement);
+                }
             }
-            ast::Type::DynTraitType(ty) => go_bounds(ty.type_bound_list(), param_name, replacement),
+        }
+        if !substituted {
+            return None;
+        }
+
+        let edit = editor.finish();
+        Some(ast::WherePred::cast(edit.new_root().clone()).unwrap())
+    }
+
+    fn substitute_type_in_bound(
+        editor: &SyntaxEditor,
+        ty: ast::Type,
+        param_name: &str,
+        replacement: &str,
+    ) -> bool {
+        let make = editor.make();
+        return match ty {
+            ast::Type::ArrayType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
+            ast::Type::DynTraitType(ty) => {
+                go_bounds(editor, ty.type_bound_list(), param_name, replacement)
+            }
             ast::Type::FnPtrType(ty) => any_long(
                 ty.param_list()
                     .into_iter()
                     .flat_map(|params| params.params().filter_map(|param| param.ty()))
                     .chain(ty.ret_type().and_then(|it| it.ty())),
-                |ty| substitute_type_in_bound(ty, param_name, replacement),
+                |ty| substitute_type_in_bound(editor, ty, param_name, replacement),
             ),
-            ast::Type::ForType(ty) => {
-                ty.ty().is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
-            }
+            ast::Type::ForType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
             ast::Type::ImplTraitType(ty) => {
-                go_bounds(ty.type_bound_list(), param_name, replacement)
+                go_bounds(editor, ty.type_bound_list(), param_name, replacement)
             }
-            ast::Type::ParenType(ty) => {
-                ty.ty().is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
-            }
+            ast::Type::ParenType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
             ast::Type::PathType(ty) => ty.path().is_some_and(|path| {
                 if path.as_single_name_ref().is_some_and(|name| name.text() == param_name) {
-                    ted::replace(
+                    editor.replace(
                         path.syntax(),
-                        make::path_from_segments(
-                            [make::path_segment(make::name_ref(replacement))],
+                        make.path_from_segments(
+                            [make.path_segment(make.name_ref(replacement))],
                             false,
                         )
-                        .clone_for_update()
                         .syntax(),
                     );
                     return true;
@@ -1452,34 +1610,38 @@ fn coerce_pointee_expand(
                             ast::GenericArg::TypeArg(ty) => ty.ty(),
                             _ => None,
                         }),
-                    |ty| substitute_type_in_bound(ty, param_name, replacement),
+                    |ty| substitute_type_in_bound(editor, ty, param_name, replacement),
                 )
             }),
-            ast::Type::PtrType(ty) => {
-                ty.ty().is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
-            }
-            ast::Type::RefType(ty) => {
-                ty.ty().is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
-            }
-            ast::Type::SliceType(ty) => {
-                ty.ty().is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
-            }
-            ast::Type::TupleType(ty) => {
-                any_long(ty.fields(), |ty| substitute_type_in_bound(ty, param_name, replacement))
-            }
+            ast::Type::PtrType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
+            ast::Type::RefType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
+            ast::Type::SliceType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
+            ast::Type::TupleType(ty) => any_long(ty.fields(), |ty| {
+                substitute_type_in_bound(editor, ty, param_name, replacement)
+            }),
+            ast::Type::PatternType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
             ast::Type::InferType(_) | ast::Type::MacroType(_) | ast::Type::NeverType(_) => false,
         };
 
         fn go_bounds(
+            editor: &SyntaxEditor,
             bounds: Option<ast::TypeBoundList>,
             param_name: &str,
             replacement: &str,
         ) -> bool {
             bounds.is_some_and(|bounds| {
                 any_long(bounds.bounds(), |bound| {
-                    bound
-                        .ty()
-                        .is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
+                    bound.ty().is_some_and(|ty| {
+                        substitute_type_in_bound(editor, ty, param_name, replacement)
+                    })
                 })
             })
         }

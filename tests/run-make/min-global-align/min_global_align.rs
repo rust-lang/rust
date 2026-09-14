@@ -34,5 +34,5 @@ trait Sync {}
 impl Sync for bool {}
 impl Sync for &'static bool {}
 
-#[lang = "drop_in_place"]
-pub unsafe fn drop_in_place<T: ?Sized>(_: *mut T) {}
+#[lang = "drop_glue"]
+pub unsafe fn drop_glue<T: ?Sized>(_: &mut T) {}

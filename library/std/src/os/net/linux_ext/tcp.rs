@@ -2,7 +2,6 @@
 //!
 //! [`std::net`]: crate::net
 
-use crate::sealed::Sealed;
 use crate::sys::AsInner;
 #[cfg(target_os = "linux")]
 use crate::time::Duration;
@@ -12,7 +11,7 @@ use crate::{io, net};
 ///
 /// [`TcpStream`]: net::TcpStream
 #[stable(feature = "tcp_quickack", since = "1.89.0")]
-pub trait TcpStreamExt: Sealed {
+pub impl(self) trait TcpStreamExt {
     /// Enable or disable `TCP_QUICKACK`.
     ///
     /// This flag causes Linux to eagerly send ACKs rather than delaying them.
@@ -24,7 +23,14 @@ pub trait TcpStreamExt: Sealed {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "android", target_os = "cygwin")),
+        doc = "```ignore (needs linux)"
+    )]
     /// use std::net::TcpStream;
     /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::TcpStreamExt;
@@ -44,7 +50,14 @@ pub trait TcpStreamExt: Sealed {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "android", target_os = "cygwin")),
+        doc = "```ignore (needs linux)"
+    )]
     /// use std::net::TcpStream;
     /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::TcpStreamExt;
@@ -93,7 +106,14 @@ pub trait TcpStreamExt: Sealed {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "android", target_os = "cygwin")),
+        doc = "```ignore (needs linux)"
+    )]
     /// #![feature(tcp_deferaccept)]
     /// use std::net::TcpStream;
     /// use std::os::linux::net::TcpStreamExt;
@@ -108,9 +128,6 @@ pub trait TcpStreamExt: Sealed {
     #[cfg(target_os = "linux")]
     fn deferaccept(&self) -> io::Result<Duration>;
 }
-
-#[stable(feature = "tcp_quickack", since = "1.89.0")]
-impl Sealed for net::TcpStream {}
 
 #[stable(feature = "tcp_quickack", since = "1.89.0")]
 impl TcpStreamExt for net::TcpStream {

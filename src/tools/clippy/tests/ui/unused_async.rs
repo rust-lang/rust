@@ -1,11 +1,10 @@
 #![warn(clippy::unused_async)]
-#![allow(incomplete_features)]
 
 use std::future::Future;
 use std::pin::Pin;
 
 mod issue10800 {
-    #![allow(dead_code, unused_must_use, clippy::no_effect)]
+    #![allow(clippy::no_effect)]
 
     use std::future::ready;
 
@@ -132,5 +131,16 @@ mod issue15305 {
 
     async fn unimplemented_task() -> Result<(), String> {
         unimplemented!("Implement task");
+    }
+}
+
+mod issue16835 {
+    async fn todo_task(_arg: i32) {
+        todo!()
+    }
+
+    async fn unimplemented_task(_arg: i32) {
+        let a = 1;
+        unimplemented!()
     }
 }

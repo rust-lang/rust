@@ -1,12 +1,13 @@
-//@revisions: stack tree
+//@revisions: stack tree tree_implicit_writes
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-strict-provenance
 
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 
 use std::sync::atomic::Ordering::*;
-use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicPtr, AtomicUsize, compiler_fence, fence};
+use std::sync::atomic::*;
 
 fn main() {
     atomic_bool();
@@ -26,13 +27,13 @@ fn atomic_bool() {
         assert_eq!(*ATOMIC.get_mut(), false);
         ATOMIC.store(true, SeqCst);
         assert_eq!(*ATOMIC.get_mut(), true);
-        ATOMIC.fetch_or(false, SeqCst);
+        assert_eq!(ATOMIC.fetch_or(false, SeqCst), true);
         assert_eq!(*ATOMIC.get_mut(), true);
-        ATOMIC.fetch_and(false, SeqCst);
+        assert_eq!(ATOMIC.fetch_and(false, SeqCst), true);
         assert_eq!(*ATOMIC.get_mut(), false);
-        ATOMIC.fetch_nand(true, SeqCst);
+        assert_eq!(ATOMIC.fetch_nand(true, SeqCst), false);
         assert_eq!(*ATOMIC.get_mut(), true);
-        ATOMIC.fetch_xor(true, SeqCst);
+        assert_eq!(ATOMIC.fetch_xor(true, SeqCst), true);
         assert_eq!(*ATOMIC.get_mut(), false);
     }
 }
@@ -123,6 +124,19 @@ fn atomic_u64() {
     assert_eq!(ATOMIC.fetch_min(0x1000, SeqCst), 0x1000);
     assert_eq!(ATOMIC.fetch_min(0x100, SeqCst), 0x1000);
     assert_eq!(ATOMIC.fetch_min(0x10, SeqCst), 0x100);
+
+    assert_eq!(ATOMIC.swap(1, SeqCst), 0x10);
+    assert_eq!(ATOMIC.load(Relaxed), 1);
+
+    let atomic_signed = AtomicI64::new(0);
+    assert_eq!(atomic_signed.fetch_min(-1, SeqCst), 0);
+    assert_eq!(atomic_signed.load(SeqCst), -1);
+    assert_eq!(atomic_signed.fetch_min(1, SeqCst), -1);
+    assert_eq!(atomic_signed.load(SeqCst), -1);
+    assert_eq!(atomic_signed.fetch_max(1, SeqCst), -1);
+    assert_eq!(atomic_signed.load(SeqCst), 1);
+    assert_eq!(atomic_signed.fetch_max(-1, SeqCst), 1);
+    assert_eq!(atomic_signed.load(SeqCst), 1);
 }
 
 fn atomic_fences() {
@@ -185,12 +199,12 @@ fn atomic_ptr() {
 }
 
 fn weak_sometimes_fails() {
-    let atomic = AtomicBool::new(false);
+    let atomic = AtomicUsize::new(0);
     let tries = 100;
     for _ in 0..tries {
         let cur = atomic.load(Relaxed);
-        // Try (weakly) to flip the flag.
-        if atomic.compare_exchange_weak(cur, !cur, Relaxed, Relaxed).is_err() {
+        // Try (weakly) to modify the flag.
+        if atomic.compare_exchange_weak(cur, cur + 1, Relaxed, Relaxed).is_err() {
             // We failed, so return and skip the panic.
             return;
         }

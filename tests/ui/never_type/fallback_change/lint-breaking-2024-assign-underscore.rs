@@ -1,4 +1,3 @@
-//@ run-rustfix
 #![allow(unused)]
 
 fn foo<T: Default>() -> Result<T, ()> {
@@ -6,9 +5,8 @@ fn foo<T: Default>() -> Result<T, ()> {
 }
 
 fn test() -> Result<(), ()> {
-    //~^ ERROR this function depends on never type fallback being `()`
-    //~| WARN this was previously accepted by the compiler but is being phased out
     _ = foo()?;
+    //~^ error: the trait bound `!: Default` is not satisfied
     Ok(())
 }
 

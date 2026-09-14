@@ -2,7 +2,7 @@
 name: Library Tracking Issue
 about: A tracking issue for an unstable library feature.
 title: Tracking Issue for XXX
-labels: C-tracking-issue, T-libs-api, S-tracking-unimplemented
+labels: C-tracking-issue, T-libs, S-tracking-unimplemented
 ---
 <!--
 Thank you for creating a tracking issue!
@@ -83,6 +83,6 @@ It's useful to link any relevant discussions and conclusions (whether on GitHub,
 Zulip, or the internals forum) here.
 -->
 
-- None yet.
+- [ ] None yet.
 
 [^1]: https://std-dev-guide.rust-lang.org/feature-lifecycle/stabilization.html

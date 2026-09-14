@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use rustc_data_structures::intern::Interned;
-use rustc_error_messages::MultiSpan;
-use rustc_macros::HashStable;
+use rustc_macros::StableHash;
+use rustc_span::Span;
 use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 
@@ -21,12 +21,13 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed};
 pub use valtree::*;
 
 pub type ConstKind<'tcx> = ir::ConstKind<TyCtxt<'tcx>>;
-pub type UnevaluatedConst<'tcx> = ir::UnevaluatedConst<TyCtxt<'tcx>>;
+pub type AliasConst<'tcx> = ir::AliasConst<TyCtxt<'tcx>>;
+pub type AliasConstKind<'tcx> = ir::AliasConstKind<TyCtxt<'tcx>>;
 
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(ConstKind<'_>, 24);
+rustc_data_structures::static_assert_size!(ConstKind<'_>, 32);
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
 #[rustc_pass_by_value]
 pub struct Const<'tcx>(pub(super) Interned<'tcx, WithCachedTypeInfo<ConstKind<'tcx>>>);
 
@@ -53,18 +54,6 @@ impl<'tcx> Const<'tcx> {
     pub fn kind(self) -> ConstKind<'tcx> {
         let a: &ConstKind<'tcx> = self.0.0;
         *a
-    }
-
-    // FIXME(compiler-errors): Think about removing this.
-    #[inline]
-    pub fn flags(self) -> TypeFlags {
-        self.0.flags
-    }
-
-    // FIXME(compiler-errors): Think about removing this.
-    #[inline]
-    pub fn outer_exclusive_binder(self) -> ty::DebruijnIndex {
-        self.0.outer_exclusive_binder
     }
 
     #[inline]
@@ -118,9 +107,12 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn new_unevaluated(tcx: TyCtxt<'tcx>, uv: ty::UnevaluatedConst<'tcx>) -> Const<'tcx> {
-        tcx.debug_assert_args_compatible(uv.def, uv.args);
-        Const::new(tcx, ty::ConstKind::Unevaluated(uv))
+    pub fn new_alias(
+        tcx: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
+        alias_const: ty::AliasConst<'tcx>,
+    ) -> Const<'tcx> {
+        Const::new(tcx, ty::ConstKind::Alias(is_rigid, alias_const))
     }
 
     #[inline]
@@ -150,9 +142,9 @@ impl<'tcx> Const<'tcx> {
 
     /// Like [Ty::new_error_with_message] but for constants.
     #[track_caller]
-    pub fn new_error_with_message<S: Into<MultiSpan>>(
+    pub fn new_error_with_message(
         tcx: TyCtxt<'tcx>,
-        span: S,
+        span: Span,
         msg: impl Into<Cow<'static, str>>,
     ) -> Const<'tcx> {
         let reported = tcx.dcx().span_delayed_bug(span, msg);
@@ -165,7 +157,7 @@ impl<'tcx> Const<'tcx> {
                 true
             }
             ty::ConstKind::Infer(_)
-            | ty::ConstKind::Unevaluated(..)
+            | ty::ConstKind::Alias(..)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
             | ty::ConstKind::Expr(_) => false,
@@ -202,8 +194,12 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
         Const::new_placeholder(tcx, placeholder)
     }
 
-    fn new_unevaluated(interner: TyCtxt<'tcx>, uv: ty::UnevaluatedConst<'tcx>) -> Self {
-        Const::new_unevaluated(interner, uv)
+    fn new_alias(
+        interner: TyCtxt<'tcx>,
+        is_rigid: ty::IsRigid,
+        alias_const: ty::AliasConst<'tcx>,
+    ) -> Self {
+        Const::new_alias(interner, is_rigid, alias_const)
     }
 
     fn new_expr(interner: TyCtxt<'tcx>, expr: ty::Expr<'tcx>) -> Self {
@@ -321,6 +317,13 @@ impl<'tcx> Const<'tcx> {
 
     pub fn is_ct_infer(self) -> bool {
         matches!(self.kind(), ty::ConstKind::Infer(_))
+    }
+
+    pub fn ct_vid(self) -> Option<ty::ConstVid> {
+        match self.kind() {
+            ConstKind::Infer(ty::InferConst::Var(vid)) => Some(vid),
+            _ => None,
+        }
     }
 
     /// Iterator that walks `self` and any types reachable from

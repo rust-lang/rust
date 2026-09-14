@@ -64,6 +64,7 @@ already_send!(
         [std::io::Error][std::fs::File][std::panic::Location<'_>][rustc_arena::DroplessArena]
         [jobserver_crate::Client][jobserver_crate::HelperThread][crate::memmap::Mmap]
         [crate::profiling::SelfProfiler][crate::owned_slice::OwnedSlice]
+        [rustc_serialize::opaque::FileEncoder<'_>]
 );
 
 #[cfg(target_has_atomic = "64")]
@@ -84,7 +85,7 @@ impl_dyn_send!(
     [std::sync::LazyLock<T, F> where T: DynSend, F: DynSend]
     [std::collections::HashSet<K, S> where K: DynSend, S: DynSend]
     [std::collections::HashMap<K, V, S> where K: DynSend, V: DynSend, S: DynSend]
-    [std::collections::BTreeMap<K, V, A> where K: DynSend, V: DynSend, A: std::alloc::Allocator + Clone + DynSend]
+    [std::collections::BTreeMap<K, V, A> where K: DynSend, V: DynSend, A: std::alloc::AllocatorClone + DynSend]
     [Vec<T, A> where T: DynSend, A: std::alloc::Allocator + DynSend]
     [Box<T, A> where T: ?Sized + DynSend, A: std::alloc::Allocator + DynSend]
     [crate::sync::RwLock<T> where T: DynSend]
@@ -167,7 +168,7 @@ impl_dyn_sync!(
     [std::sync::LazyLock<T, F> where T: DynSend + DynSync, F: DynSend]
     [std::collections::HashSet<K, S> where K: DynSync, S: DynSync]
     [std::collections::HashMap<K, V, S> where K: DynSync, V: DynSync, S: DynSync]
-    [std::collections::BTreeMap<K, V, A> where K: DynSync, V: DynSync, A: std::alloc::Allocator + Clone + DynSync]
+    [std::collections::BTreeMap<K, V, A> where K: DynSync, V: DynSync, A: std::alloc::AllocatorClone + DynSync]
     [Vec<T, A> where T: DynSync, A: std::alloc::Allocator + DynSync]
     [Box<T, A> where T: ?Sized + DynSync, A: std::alloc::Allocator + DynSync]
     [crate::sync::RwLock<T> where T: DynSend + DynSync]
@@ -187,53 +188,6 @@ pub fn assert_dyn_sync<T: ?Sized + PointeeSized + DynSync>() {}
 pub fn assert_dyn_send<T: ?Sized + PointeeSized + DynSend>() {}
 pub fn assert_dyn_send_val<T: ?Sized + PointeeSized + DynSend>(_t: &T) {}
 pub fn assert_dyn_send_sync_val<T: ?Sized + PointeeSized + DynSync + DynSend>(_t: &T) {}
-
-#[derive(Copy, Clone)]
-pub struct FromDyn<T>(T);
-
-impl<T> FromDyn<T> {
-    #[inline(always)]
-    pub fn from(val: T) -> Self {
-        // Check that `sync::is_dyn_thread_safe()` is true on creation so we can
-        // implement `Send` and `Sync` for this structure when `T`
-        // implements `DynSend` and `DynSync` respectively.
-        assert!(crate::sync::is_dyn_thread_safe());
-        FromDyn(val)
-    }
-
-    #[inline(always)]
-    pub fn derive<O>(&self, val: O) -> FromDyn<O> {
-        // We already did the check for `sync::is_dyn_thread_safe()` when creating `Self`
-        FromDyn(val)
-    }
-
-    #[inline(always)]
-    pub fn into_inner(self) -> T {
-        self.0
-    }
-}
-
-// `FromDyn` is `Send` if `T` is `DynSend`, since it ensures that sync::is_dyn_thread_safe() is true.
-unsafe impl<T: DynSend> Send for FromDyn<T> {}
-
-// `FromDyn` is `Sync` if `T` is `DynSync`, since it ensures that sync::is_dyn_thread_safe() is true.
-unsafe impl<T: DynSync> Sync for FromDyn<T> {}
-
-impl<T> std::ops::Deref for FromDyn<T> {
-    type Target = T;
-
-    #[inline(always)]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T> std::ops::DerefMut for FromDyn<T> {
-    #[inline(always)]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
 
 // A wrapper to convert a struct that is already a `Send` or `Sync` into
 // an instance of `DynSend` and `DynSync`, since the compiler cannot infer

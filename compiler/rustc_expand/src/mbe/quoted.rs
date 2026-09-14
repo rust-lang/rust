@@ -2,13 +2,14 @@ use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, Token};
 use rustc_ast::tokenstream::TokenStreamIter;
 use rustc_ast::{NodeId, tokenstream};
 use rustc_ast_pretty::pprust;
+use rustc_errors::Applicability;
 use rustc_feature::Features;
 use rustc_session::Session;
-use rustc_session::parse::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::{Ident, Span, kw, sym};
 
-use crate::errors;
+use crate::diagnostics;
 use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
@@ -88,16 +89,17 @@ fn parse(
             continue;
         };
 
-        // Push a metavariable with no fragment specifier at the given span
-        let mut missing_fragment_specifier = |span| {
-            sess.dcx().emit_err(errors::MissingFragmentSpecifier {
+        let fallback_metavar_decl =
+            |span| TokenTree::MetaVarDecl { span, name: ident, kind: NonterminalKind::TT };
+        // Emit a missing-fragment diagnostic and return a `TokenTree` fallback so parsing can
+        // continue.
+        let missing_fragment_specifier = |span, add_span| {
+            sess.dcx().emit_err(diagnostics::MissingFragmentSpecifier {
                 span,
-                add_span: span.shrink_to_hi(),
+                add_span,
                 valid: VALID_FRAGMENT_NAMES_MSG,
             });
-
-            // Fall back to a `TokenTree` since that will match anything if we continue expanding.
-            result.push(TokenTree::MetaVarDecl { span, name: ident, kind: NonterminalKind::TT });
+            fallback_metavar_decl(span)
         };
 
         // Not consuming the next token immediately, as it may not be a colon
@@ -112,13 +114,39 @@ fn parse(
             // since if it's not a token then it will be an invalid declaration.
             let Some(tokenstream::TokenTree::Token(token, _)) = iter.next() else {
                 // Invalid, return a nice source location as `var:`
-                missing_fragment_specifier(colon_span.with_lo(start_sp.lo()));
+                result.push(missing_fragment_specifier(
+                    colon_span.with_lo(start_sp.lo()),
+                    colon_span.shrink_to_hi(),
+                ));
                 continue;
             };
 
             let Some((fragment, _)) = token.ident() else {
                 // No identifier for the fragment specifier;
-                missing_fragment_specifier(token.span);
+                if token.kind == token::Dollar
+                    && iter.peek().is_some_and(|next| {
+                        matches!(
+                            next,
+                            tokenstream::TokenTree::Token(next_token, _)
+                                if next_token.ident().is_some()
+                        )
+                    })
+                {
+                    let mut err =
+                        sess.dcx().struct_span_err(token.span, "missing fragment specifier");
+                    err.note("fragment specifiers must be provided");
+                    err.help(VALID_FRAGMENT_NAMES_MSG);
+                    err.span_suggestion_verbose(
+                        token.span,
+                        "fragment specifiers should not be prefixed with `$`",
+                        "",
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.emit();
+                    result.push(fallback_metavar_decl(token.span));
+                } else {
+                    result.push(missing_fragment_specifier(token.span, token.span.shrink_to_hi()));
+                }
                 continue;
             };
 
@@ -135,7 +163,7 @@ fn parse(
                 if !span.from_expansion() { edition } else { span.edition() }
             };
             let kind = NonterminalKind::from_symbol(fragment.name, edition).unwrap_or_else(|| {
-                sess.dcx().emit_err(errors::InvalidFragmentSpecifier {
+                sess.dcx().emit_err(diagnostics::InvalidFragmentSpecifier {
                     span,
                     fragment,
                     help: VALID_FRAGMENT_NAMES_MSG,
@@ -146,7 +174,7 @@ fn parse(
         } else {
             // Whether it's none or some other tree, it doesn't belong to
             // the current meta variable, returning the original span.
-            missing_fragment_specifier(start_sp);
+            result.push(missing_fragment_specifier(start_sp, start_sp.shrink_to_hi()));
         }
     }
     result
@@ -214,7 +242,7 @@ fn parse_tree<'a>(
             // during parsing.
             let mut next = outer_iter.next();
             let mut iter_storage;
-            let mut iter: &mut TokenStreamIter<'_> = match next {
+            let iter: &mut TokenStreamIter<'_> = match next {
                 Some(tokenstream::TokenTree::Delimited(.., delim, tts)) if delim.skip() => {
                     iter_storage = tts.iter();
                     next = iter_storage.next();
@@ -271,7 +299,7 @@ fn parse_tree<'a>(
                             _ => {
                                 let token =
                                     pprust::token_kind_to_string(&delim.as_open_token_kind());
-                                sess.dcx().emit_err(errors::ExpectedParenOrBrace {
+                                sess.dcx().emit_err(diagnostics::ExpectedParenOrBrace {
                                     span: delim_span.entire(),
                                     token,
                                 });
@@ -284,7 +312,7 @@ fn parse_tree<'a>(
                     let sequence = parse(tts, part, sess, node_id, features, edition);
                     // Get the Kleene operator and optional separator
                     let (separator, kleene) =
-                        parse_sep_and_kleene_op(&mut iter, delim_span.entire(), sess);
+                        parse_sep_and_kleene_op(iter, delim_span.entire(), sess);
                     // Count the number of captured "names" (i.e., named metavars)
                     let num_captures =
                         if part.is_pattern() { count_metavar_decls(&sequence) } else { 0 };

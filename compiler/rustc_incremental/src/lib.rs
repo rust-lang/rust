@@ -6,13 +6,12 @@
 // tidy-alphabetical-end
 
 mod assert_dep_graph;
-mod errors;
+mod diagnostics;
 mod persist;
 
 pub use persist::{
-    LoadResult, copy_cgu_workproduct_to_incr_comp_cache_dir, finalize_session_directory,
-    in_incr_comp_dir, in_incr_comp_dir_sess, load_query_result_cache, save_work_product_index,
-    setup_dep_graph,
+    copy_cgu_workproduct_to_incr_comp_cache_dir, finalize_session_directory, in_incr_comp_dir_sess,
+    load_query_result_cache, save_work_product_index, setup_dep_graph,
 };
 use rustc_middle::util::Providers;
 

@@ -17,7 +17,7 @@ error: missing type for `const` item
   --> $DIR/in-macro.rs:4:20
    |
 LL |               const A = "A".$fn();
-   |                      ^ help: provide a type for the constant: `: usize`
+   |                      ^
 ...
 LL | / suite! {
 LL | |     len;
@@ -26,6 +26,10 @@ LL | | }
    | |_- in this macro invocation
    |
    = note: this error originates in the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: provide a type for the item
+   |
+LL |             const A: <type> = "A".$fn();
+   |                    ++++++++
 
 error[E0121]: missing type for item
   --> $DIR/in-macro.rs:4:20

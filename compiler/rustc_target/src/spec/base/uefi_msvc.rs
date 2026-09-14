@@ -39,7 +39,6 @@ pub(crate) fn opts() -> TargetOptions {
         linker_flavor: LinkerFlavor::Msvc(Lld::Yes),
         disable_redzone: true,
         exe_suffix: ".efi".into(),
-        allows_weak_linkage: false,
         panic_strategy: PanicStrategy::Abort,
         // LLVM does not emit inline assembly because the LLVM target does not get considered as…
         // "Windows".

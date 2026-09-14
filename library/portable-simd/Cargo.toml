@@ -11,3 +11,8 @@ opt-level = 2
 
 [profile.test.package.test_helpers]
 opt-level = 2
+
+[workspace.dependencies.proptest]
+version = "1.11"
+default-features = false
+features = ["alloc", "f16"]

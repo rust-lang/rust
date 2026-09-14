@@ -340,7 +340,7 @@ impl<S: Sip> Clone for Hasher<S> {
 }
 
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<S: Sip> const Default for Hasher<S> {
+const impl<S: Sip> Default for Hasher<S> {
     /// Creates a `Hasher<S>` with the two initial keys set to 0.
     #[inline]
     fn default() -> Hasher<S> {

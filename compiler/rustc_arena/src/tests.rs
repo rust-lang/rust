@@ -22,7 +22,6 @@ impl<T> TypedArena<T> {
             if let Some(last_chunk) = chunks_borrow.last_mut() {
                 self.clear_last_chunk(last_chunk);
                 let len = chunks_borrow.len();
-                // If `T` is ZST, code below has no effect.
                 for mut chunk in chunks_borrow.drain(..len - 1) {
                     chunk.destroy(chunk.entries);
                 }
@@ -118,18 +117,6 @@ fn test_noncopy() {
 }
 
 #[test]
-fn test_typed_arena_zero_sized() {
-    let arena = TypedArena::default();
-    #[cfg(not(miri))]
-    const N: usize = 100000;
-    #[cfg(miri)]
-    const N: usize = 1000;
-    for _ in 0..N {
-        arena.alloc(());
-    }
-}
-
-#[test]
 fn test_typed_arena_clear() {
     let mut arena = TypedArena::default();
     for _ in 0..10 {
@@ -207,7 +194,8 @@ thread_local! {
     static DROP_COUNTER: Cell<u32> = Cell::new(0)
 }
 
-struct SmallDroppable;
+#[allow(unused)]
+struct SmallDroppable(u8);
 
 impl Drop for SmallDroppable {
     fn drop(&mut self) {
@@ -222,7 +210,7 @@ fn test_typed_arena_drop_small_count() {
         let arena: TypedArena<SmallDroppable> = TypedArena::default();
         for _ in 0..100 {
             // Allocate something with drop glue to make sure it doesn't leak.
-            arena.alloc(SmallDroppable);
+            arena.alloc(SmallDroppable(0));
         }
         // dropping
     };

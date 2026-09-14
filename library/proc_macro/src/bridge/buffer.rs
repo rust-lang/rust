@@ -1,8 +1,7 @@
 //! Buffer management for same-process client<->server communication.
 
-use std::io::{self, Write};
 use std::mem::{self, ManuallyDrop};
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::slice;
 
 #[repr(C)]
@@ -29,13 +28,6 @@ impl Deref for Buffer {
     #[inline]
     fn deref(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self.data as *const u8, self.len) }
-    }
-}
-
-impl DerefMut for Buffer {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut [u8] {
-        unsafe { slice::from_raw_parts_mut(self.data, self.len) }
     }
 }
 
@@ -99,25 +91,6 @@ impl Buffer {
     }
 }
 
-impl Write for Buffer {
-    #[inline]
-    fn write(&mut self, xs: &[u8]) -> io::Result<usize> {
-        self.extend_from_slice(xs);
-        Ok(xs.len())
-    }
-
-    #[inline]
-    fn write_all(&mut self, xs: &[u8]) -> io::Result<()> {
-        self.extend_from_slice(xs);
-        Ok(())
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
 impl Drop for Buffer {
     #[inline]
     fn drop(&mut self) {
@@ -128,8 +101,7 @@ impl Drop for Buffer {
 
 impl From<Vec<u8>> for Buffer {
     fn from(v: Vec<u8>) -> Self {
-        let mut v = ManuallyDrop::new(v);
-        let (data, len, capacity) = (v.as_mut_ptr(), v.len(), v.capacity());
+        let (data, len, capacity) = v.into_raw_parts();
 
         // This utility function is nested in here because it can *only*
         // be safely called on `Buffer`s created by *this* `proc_macro`.

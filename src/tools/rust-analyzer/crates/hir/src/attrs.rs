@@ -7,6 +7,7 @@ use hir_def::{
     TraitId, TypeOrConstParamId,
     attrs::{AttrFlags, Docs, IsInnerDoc},
     expr_store::path::Path,
+    hir::generics::GenericParams,
     item_scope::ItemInNs,
     per_ns::Namespace,
     resolver::{HasResolver, Resolver, TypeNs},
@@ -17,18 +18,16 @@ use hir_expand::{
 };
 use hir_ty::{
     db::HirDatabase,
-    method_resolution::{
-        self, CandidateId, MethodError, MethodResolutionContext, MethodResolutionUnstableFeatures,
-    },
+    method_resolution::{self, CandidateId, MethodError, MethodResolutionContext},
     next_solver::{DbInterner, TypingMode, infer::DbInternerInferExt},
 };
 use intern::Symbol;
 use stdx::never;
 
 use crate::{
-    Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, ExternCrateDecl,
-    Field, Function, GenericParam, HasCrate, Impl, LangItem, LifetimeParam, Macro, Module,
-    ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
+    Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, EnumVariant,
+    ExternCrateDecl, Field, Function, GenericParam, Impl, LangItem, LifetimeParam, Macro, Module,
+    ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, Variant,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -37,7 +36,11 @@ pub enum AttrsOwner {
     Field(FieldId),
     LifetimeParam(LifetimeParamId),
     TypeOrConstParam(TypeOrConstParamId),
-    /// Things that do not have attributes. Used for builtin derives.
+    /// Things that do not have attributes.
+    ///
+    /// Used for:
+    /// - builtin derives
+    /// - builtin types (as those do not have attributes)
     Dummy,
 }
 
@@ -84,6 +87,21 @@ impl AttrsWithOwner {
         self.attrs.contains(AttrFlags::IS_UNSTABLE)
     }
 
+    /// Currently, it could be that `is_unstable() == true` but `unstable_feature == None`
+    /// (due to unstable features not being retrieved for fields etc.).
+    #[inline]
+    pub fn unstable_feature(&self, db: &dyn HirDatabase) -> Option<Symbol> {
+        match self.owner {
+            AttrsOwner::AttrDef(owner) => self.attrs.unstable_feature(db, owner),
+            AttrsOwner::Field(_)
+            | AttrsOwner::LifetimeParam(_)
+            | AttrsOwner::TypeOrConstParam(_)
+            | AttrsOwner::Dummy => None,
+        }
+    }
+
+    /// **Do not** use this to detect visibility of the macro, this does not account for macros 2.0.
+    /// Use this only if you're interested in `#[macro_export]` literally (for example, because it exports under the crate root).
     #[inline]
     pub fn is_macro_export(&self) -> bool {
         self.attrs.contains(AttrFlags::IS_MACRO_EXPORT)
@@ -149,7 +167,7 @@ impl AttrsWithOwner {
     #[inline]
     pub fn hir_docs<'db>(&self, db: &'db dyn HirDatabase) -> Option<&'db Docs> {
         match self.owner {
-            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it).as_deref(),
+            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it),
             AttrsOwner::Field(it) => AttrFlags::field_docs(db, it),
             AttrsOwner::LifetimeParam(_) | AttrsOwner::TypeOrConstParam(_) | AttrsOwner::Dummy => {
                 None
@@ -178,7 +196,7 @@ pub trait HasAttrs: Sized {
     #[inline]
     fn hir_docs(self, db: &dyn HirDatabase) -> Option<&Docs> {
         match self.attr_id(db) {
-            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it).as_deref(),
+            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it),
             AttrsOwner::Field(it) => AttrFlags::field_docs(db, it),
             AttrsOwner::LifetimeParam(_) | AttrsOwner::TypeOrConstParam(_) | AttrsOwner::Dummy => {
                 None
@@ -199,7 +217,7 @@ macro_rules! impl_has_attrs {
 }
 
 impl_has_attrs![
-    (Variant, EnumVariantId),
+    (EnumVariant, EnumVariantId),
     (Static, StaticId),
     (Const, ConstId),
     (Trait, TraitId),
@@ -377,7 +395,7 @@ fn resolve_assoc_or_field(
     let ty = match base_def {
         TypeNs::SelfType(id) => Impl::from(id).self_ty(db),
         TypeNs::GenericParam(param) => {
-            let generic_params = db.generic_params(param.parent());
+            let generic_params = GenericParams::of(db, param.parent());
             if generic_params[param.local_id()].is_trait_self() {
                 // `Self::assoc` in traits should refer to the trait itself.
                 let parent_trait = |container| match container {
@@ -406,7 +424,7 @@ fn resolve_assoc_or_field(
         TypeNs::AdtId(id) | TypeNs::AdtSelfType(id) => Adt::from(id).ty(db),
         TypeNs::EnumVariantId(id) => {
             // Enum variants don't have path candidates.
-            let variant = Variant::from(id);
+            let variant = EnumVariant::from(id);
             return resolve_field(db, variant.into(), name, ns);
         }
         TypeNs::TypeAliasId(id) => {
@@ -443,7 +461,7 @@ fn resolve_assoc_or_field(
                 .id
                 .enum_variants(db)
                 .variant(&name)
-                .map(|variant| DocLinkDef::ModuleDef(ModuleDef::Variant(variant.into())));
+                .map(|variant| DocLinkDef::ModuleDef(ModuleDef::EnumVariant(variant.into())));
         }
     };
     resolve_field(db, variant_def, name, ns)
@@ -471,26 +489,28 @@ fn resolve_impl_trait_item<'db>(
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
     let krate = ty.krate(db);
-    let environment = crate::param_env_from_resolver(db, &resolver);
+    let param_env = ty.param_env(db);
     let traits_in_scope = resolver.traits_in_scope(db);
 
     // `ty.iterate_path_candidates()` require a scope, which is not available when resolving
     // attributes here. Use path resolution directly instead.
     //
     // FIXME: resolve type aliases (which are not yielded by iterate_path_candidates)
-    let interner = DbInterner::new_with(db, environment.krate);
+    let interner = DbInterner::new_with(db, param_env.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
-    let unstable_features =
-        MethodResolutionUnstableFeatures::from_def_map(resolver.top_level_def_map());
+    let features = resolver.top_level_def_map().features();
     let ctx = MethodResolutionContext {
         infcx: &infcx,
         resolver: &resolver,
-        param_env: environment.param_env,
+        param_env: param_env.param_env,
         traits_in_scope: &traits_in_scope,
-        edition: krate.edition(db),
-        unstable_features: &unstable_features,
+        edition: krate.data(db).edition,
+        features,
+        call_span: hir_ty::Span::Dummy,
+        receiver_span: hir_ty::Span::Dummy,
     };
-    let resolution = ctx.probe_for_name(method_resolution::Mode::Path, name.clone(), ty.ty);
+    let resolution =
+        ctx.probe_for_name(method_resolution::Mode::Path, name.clone(), ty.ty.skip_binder());
     let resolution = match resolution {
         Ok(resolution) => resolution.item,
         Err(MethodError::PrivateMatch(resolution)) => resolution.item,
@@ -505,7 +525,7 @@ fn resolve_impl_trait_item<'db>(
 
 fn resolve_field(
     db: &dyn HirDatabase,
-    def: VariantDef,
+    def: Variant,
     name: Name,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {

@@ -3,11 +3,11 @@
 use std::collections::VecDeque;
 
 use base_db::SourceDatabase;
-use hir::{Crate, ItemInNs, ModuleDef, Name, Semantics};
+use hir::{Crate, HasAttrs, ItemInNs, ModuleDef, Name, Semantics};
 use span::{Edition, FileId};
 use syntax::{
     AstToken, SyntaxKind, SyntaxToken, ToSmolStr, TokenAtOffset,
-    ast::{self, make},
+    ast::{self, make, syntax_factory::SyntaxFactory},
 };
 
 use crate::{
@@ -57,11 +57,36 @@ pub fn mod_path_to_ast(path: &hir::ModPath, edition: Edition) -> ast::Path {
     make::path_from_segments(segments, is_abs)
 }
 
+pub fn mod_path_to_ast_with_factory(
+    make: &SyntaxFactory,
+    path: &hir::ModPath,
+    edition: Edition,
+) -> ast::Path {
+    let _p = tracing::info_span!("mod_path_to_ast").entered();
+
+    let mut segments = Vec::new();
+    let mut is_abs = false;
+    match path.kind {
+        hir::PathKind::Plain => {}
+        hir::PathKind::SELF => segments.push(make.path_segment_self()),
+        hir::PathKind::Super(n) => segments.extend((0..n).map(|_| make.path_segment_super())),
+        hir::PathKind::DollarCrate(_) | hir::PathKind::Crate => {
+            segments.push(make.path_segment_crate())
+        }
+        hir::PathKind::Abs => is_abs = true,
+    }
+
+    segments.extend(path.segments().iter().map(|segment| {
+        make.path_segment(make.name_ref(&segment.display_no_db(edition).to_smolstr()))
+    }));
+    make.path_from_segments(segments, is_abs)
+}
+
 /// Iterates all `ModuleDef`s and `Impl` blocks of the given file.
-pub fn visit_file_defs(
-    sema: &Semantics<'_, RootDatabase>,
+pub fn visit_file_defs<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     file_id: FileId,
-    cb: &mut dyn FnMut(Definition),
+    cb: &mut dyn FnMut(Definition<'db>),
 ) {
     let db = sema.db;
     let module = match sema.file_to_module_def(file_id) {
@@ -85,7 +110,7 @@ pub fn visit_file_defs(
         .legacy_macros(db)
         .into_iter()
         // don't show legacy macros declared in the crate-root that were already covered in declarations earlier
-        .filter(|it| !(is_root && it.is_macro_export(db)))
+        .filter(|it| !(is_root && it.attrs(db).is_macro_export()))
         .for_each(|mac| cb(mac.into()));
 }
 
@@ -114,10 +139,10 @@ pub fn is_editable_crate(krate: Crate, db: &RootDatabase) -> bool {
 }
 
 // FIXME: This is a weird function
-pub fn get_definition(
-    sema: &Semantics<'_, RootDatabase>,
+pub fn get_definition<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     token: SyntaxToken,
-) -> Option<Definition> {
+) -> Option<Definition<'db>> {
     for token in sema.descend_into_macros_exact(token) {
         let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
         if let Some(&[x]) = def.as_deref() {

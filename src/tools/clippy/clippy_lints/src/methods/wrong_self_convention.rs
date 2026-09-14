@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::is_copy;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol};
@@ -121,7 +121,7 @@ pub(super) fn check<'tcx>(
 
                     format!("methods with the following characteristics: ({s})")
                 } else {
-                    format!("methods called {}", &conventions[0])
+                    format!("methods called {}", conventions[0])
                 }
             };
 

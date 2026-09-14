@@ -19,8 +19,8 @@ LL | |     }
 help: <TAG> is this argument
   --> tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
    |
-LL |     x.0 = 0;
-   |     ^^^^^^^
+LL | fn change_arg(mut x: S, ptr: *mut S) {
+   |               ^^^^^
    = note: stack backtrace:
            0: change_arg
                at tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC

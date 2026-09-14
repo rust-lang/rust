@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 use core::cell::RefCell;
 
-use compiler_builtins::float::Float;
+use compiler_builtins::support::Float;
 
 /// Fuzz with these many items to ensure equal functions
 pub const CHECK_ITER_ITEMS: u32 = 10_000;
@@ -43,7 +43,7 @@ pub fn skip_sys_checks(test_name: &str) -> bool {
         return true;
     }
 
-    if cfg!(x86_no_sse) && X86_NO_SSE_SKIPPED.contains(&test_name) {
+    if cfg!(x86_no_sse2) && X86_NO_SSE_SKIPPED.contains(&test_name) {
         return true;
     }
 
@@ -76,11 +76,11 @@ macro_rules! float_bench {
         sig: ($($arg:ident: $arg_ty:ty),*) -> $ret_ty:ty,
         // Path to the crate in compiler_builtins
         crate_fn: $crate_fn:path,
-        // Optional alias on ppc
+        // Optional name on ppc
         $( crate_fn_ppc: $crate_fn_ppc:path, )?
         // Name of the system symbol
         sys_fn: $sys_fn:ident,
-        // Optional alias on ppc
+        // Optional name on ppc
         $( sys_fn_ppc: $sys_fn_ppc:path, )?
         // Meta saying whether the system symbol is available
         sys_available: $sys_available:meta,
@@ -122,7 +122,7 @@ macro_rules! float_bench {
                 #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
                 let target_crate_fn = $crate_fn;
 
-                // On PPC, use an alias if specified
+                // On PPC, use the PPC name if specified
                 #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
                 let target_crate_fn = float_bench!(@coalesce $($crate_fn_ppc)?, $crate_fn);
 
@@ -135,7 +135,7 @@ macro_rules! float_bench {
                 #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
                 let target_sys_fn = $sys_fn;
 
-                // On PPC, use an alias if specified
+                // On PPC, use the PPC name if specified
                 #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
                 let target_sys_fn = float_bench!(@coalesce $($sys_fn_ppc)?, $sys_fn);
 

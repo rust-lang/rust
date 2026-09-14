@@ -1,0 +1,8 @@
+error: `#[eii]` requires the name as an explicit argument when used on a static
+  --> $DIR/argument_required.rs:7:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: aborting due to 1 previous error
+

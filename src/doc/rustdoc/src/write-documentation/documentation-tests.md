@@ -1,7 +1,7 @@
 # Documentation tests
 
-`rustdoc` supports executing your documentation examples as tests. This makes sure
-that examples within your documentation are up to date and working.
+`rustdoc` supports executing your documentation examples as tests.
+This makes sure that examples within your documentation are up to date and working.
 
 The basic idea is this:
 
@@ -14,11 +14,13 @@ The basic idea is this:
 # fn f() {}
 ```
 
-The triple backticks start and end code blocks. If this were in a file named `foo.rs`,
-running `rustdoc --test foo.rs` will extract this example, and then run it as a test.
+Here, the triple backticks start and end the code block.
+If this were in a file named `foo.rs`, running `rustdoc --test foo.rs` will extract this example,
+and then run it as a test.
 
-Please note that by default, if no language is set for the block code, rustdoc
-assumes it is Rust code. So the following:
+Please note that by default,
+if no language is set for the block code, rustdoc assumes it is Rust code.
+So the following:
 
 ``````markdown
 ```rust
@@ -321,20 +323,42 @@ we can add the `#[macro_use]` attribute. Second, we’ll need to add our own
 
 ## Attributes
 
-Code blocks can be annotated with attributes that help `rustdoc` do the right
-thing when testing your code:
+Code blocks can be annotated with attributes that tell `rustdoc` how to build and interpret the test.
+They follow the [code fence] in the opening line.
+As such, they share the place with language strings like `rust` or `text`.
+Multiple attributes can be provided by separating them with commas, spaces or tabs.
+You can also write comments which are enclosed in parentheses `(…)`.
 
-The `ignore` attribute tells Rust to ignore your code. This is almost never
-what you want as it's the most generic. Instead, consider annotating it
-with `text` if it's not code or using `#`s to get a working example that
-only shows the part you care about.
+As alluded to in the introduction at the very top,
+unless you specify `rust` or something that isn't an attribute (except for `custom`),
+the code block is assumed to be Rust source code (and is syntax highlighted as such).
+
+You can of course add `rust` explicitly (like `rust,ignore`) if the Markdown is also consumed by
+other tools (e.g., if it's contained inside of a `README.md` that's included via `include_str`).
+
+### `ignore`
+
+The `ignore` attribute tells `rustdoc` to ignore your code. This is useful if you would like to
+have Rust syntax highlighting but the snippet is incomplete or pseudocode.
+It is customary to add the reason why it should be ignored in a `(…)` comment.
 
 ```rust
 /// ```ignore
 /// fn foo() {
 /// ```
+///
+/// ```ignore (needs extra dependency)
+/// use dependency::functionality;
+/// functionality();
+/// ```
 # fn foo() {}
 ```
+
+Do note that this is almost never what you want as it's the most generic.
+Instead, consider annotating it with `text` if it's not code or
+using `#`s to get a working example that only shows the part you care about.
+
+### `should_panic`
 
 `should_panic` tells `rustdoc` that the code should compile correctly but
 panic during execution. If the code doesn't panic, the test will fail.
@@ -345,6 +369,8 @@ panic during execution. If the code doesn't panic, the test will fail.
 /// ```
 # fn foo() {}
 ```
+
+### `no_run`
 
 The `no_run` attribute will compile your code but not run it. This is
 important for examples such as "Here's how to retrieve a web page,"
@@ -361,10 +387,10 @@ used to demonstrate code snippets that can cause Undefined Behavior.
 # fn foo() {}
 ```
 
+### `compile_fail`
+
 `compile_fail` tells `rustdoc` that the compilation should fail. If it
-compiles, then the test will fail. However, please note that code failing
-with the current Rust release may work in a future release, as new features
-are added.
+compiles, then the test will fail.
 
 ```rust
 /// ```compile_fail
@@ -373,6 +399,13 @@ are added.
 /// ```
 # fn foo() {}
 ```
+
+<div class="warning">
+However, please note that code failing with the current Rust release may work in a future release,
+as new features are added!
+</div>
+
+### `edition…`
 
 `edition2015`, `edition2018`, `edition2021`, and `edition2024` tell `rustdoc`
 that the code sample should be compiled using the respective edition of Rust.
@@ -389,6 +422,8 @@ that the code sample should be compiled using the respective edition of Rust.
 /// ```
 # fn foo() {}
 ```
+
+### `standalone_crate`
 
 Starting in the 2024 edition[^edition-note], compatible doctests are merged as one before being
 run. We combine doctests for performance reasons: the slowest part of doctests is to compile them.
@@ -441,7 +476,7 @@ should not be merged with the others. So the previous code should use it:
 In this case, it means that the line information will not change if you add/remove other
 doctests.
 
-### Ignoring targets
+### `ignore-…`: Ignoring targets
 
 Attributes starting with `ignore-` can be used to ignore doctests for specific
 targets. For example, `ignore-x86_64` will avoid building doctests when the
@@ -478,7 +513,7 @@ struct Foo;
 In older versions, this will be ignored on all targets, but starting with
 version 1.88.0, `ignore-x86_64` will override `ignore`.
 
-### Custom CSS classes for code blocks
+### `{…}` & `custom`: Custom CSS classes for code blocks
 
 ```rust
 /// ```custom,{class=language-c}
@@ -504,8 +539,9 @@ To be noted that you can replace `class=` with `.` to achieve the same result:
 pub struct Bar;
 ```
 
-To be noted, `rust` and `.rust`/`class=rust` have different effects: `rust` indicates that this is
-a Rust code block whereas the two others add a "rust" CSS class on the code block.
+To be noted, `rust` and `{.rust}` / `{class=rust}` have different effects:
+`rust` indicates that this is a Rust code block whereas
+the two others add a "rust" CSS class on the code block in the generated HTML.
 
 You can also use double quotes:
 
@@ -516,24 +552,42 @@ You can also use double quotes:
 pub struct Bar;
 ```
 
+### `test_harness`
+
+With `test_harness` applied, `rustdoc` will run any contained *test functions*
+instead of the (potentially implicit) `main` function.
+
+```rust
+//! ```test_harness
+//! #[test]
+//! #[should_panic]
+//! fn abc() { assert!(false); }
+//!
+//! #[test]
+//! fn xyz() { assert!(true); }
+//! ```
+```
+
+You can read more about *test functions* in [the Book][testing-book] or in [the Rust Reference][testing-ref].
+
+[testing-book]: ../../book/ch11-01-writing-tests.html
+[testing-ref]: ../../reference/attributes/testing.html
+
 ## Syntax reference
 
-The *exact* syntax for code blocks, including the edge cases, can be found
-in the [Fenced Code Blocks](https://spec.commonmark.org/0.29/#fenced-code-blocks)
-section of the CommonMark specification.
+The *exact* syntax for code blocks, including the edge cases,
+can be found in the [Fenced Code Blocks] section of the CommonMark specification.
 
-Rustdoc also accepts *indented* code blocks as an alternative to fenced
-code blocks: instead of surrounding your code with three backticks, you
-can indent each line by four or more spaces.
+Rustdoc also accepts *indented* code blocks as an alternative to fenced code blocks:
+Instead of surrounding your code with a [code fence] (e.g., three backticks),
+you can indent each line by four or more spaces.
 
 ``````markdown
     let foo = "foo";
     assert_eq!(foo, "foo");
 ``````
 
-These, too, are documented in the CommonMark specification, in the
-[Indented Code Blocks](https://spec.commonmark.org/0.29/#indented-code-blocks)
-section.
+These, too, are documented in the CommonMark specification, in the [Indented Code Blocks] section.
 
 However, it's preferable to use fenced code blocks over indented code blocks.
 Not only are fenced code blocks considered more idiomatic for Rust code,
@@ -595,3 +649,8 @@ operations within documentation test examples, such as `std::fs::read_to_string`
 The `--test-run-directory` flag allows controlling the run directory separately from the compilation directory.
 This is particularly useful in workspaces, where compiler invocations and thus diagnostics should be
 relative to the workspace directory, but documentation test examples should run relative to the crate directory.
+
+
+[code fence]: https://spec.commonmark.org/0.29/#code-fence
+[Fenced Code Blocks]: https://spec.commonmark.org/0.29/#fenced-code-blocks
+[Indented Code Blocks]: https://spec.commonmark.org/0.29/#indented-code-blocks

@@ -1,6 +1,6 @@
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
-use rustc_hir::LangItem;
-use rustc_middle::ty::{AssocTag, GenericArg};
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_middle::ty::{AssocTag, GenericArg, Unnormalized};
 use rustc_session::config::EntryFnType;
 use rustc_span::{DUMMY_SP, Ident};
 
@@ -50,7 +50,7 @@ pub(crate) fn maybe_create_entry_wrapper(
         // listing.
         let main_ret_ty = tcx.normalize_erasing_regions(
             ty::TypingEnv::fully_monomorphized(),
-            main_ret_ty.no_bound_vars().unwrap(),
+            Unnormalized::new_wip(main_ret_ty.no_bound_vars().unwrap()),
         );
 
         let cmain_sig = Signature {
@@ -156,7 +156,7 @@ pub(crate) fn maybe_create_entry_wrapper(
 
             bcx.ins().return_(&[result]);
             bcx.seal_all_blocks();
-            bcx.finalize();
+            bcx.finalize(m.target_config());
         }
 
         if let Err(err) = m.define_function(cmain_func_id, &mut ctx) {

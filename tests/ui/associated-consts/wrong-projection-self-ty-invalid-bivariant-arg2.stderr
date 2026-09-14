@@ -15,16 +15,16 @@ note: required by a bound in `Fail`
 LL | struct Fail<T: Proj<Assoc = U>, U>(T);
    |                     ^^^^^^^^^ required by this bound in `Fail`
 
-error[E0599]: no associated item named `C` found for struct `Fail<i32, u32>` in the current scope
+error[E0599]: no associated function or constant named `C` found for struct `Fail<i32, u32>` in the current scope
   --> $DIR/wrong-projection-self-ty-invalid-bivariant-arg2.rs:15:23
    |
 LL | struct Fail<T: Proj<Assoc = U>, U>(T);
-   | ---------------------------------- associated item `C` not found for this struct
+   | ---------------------------------- associated function or constant `C` not found for this struct
 ...
 LL |     Fail::<i32, u32>::C
-   |                       ^ associated item not found in `Fail<i32, u32>`
+   |                       ^ associated function or constant not found in `Fail<i32, u32>`
    |
-   = note: the associated item was found for `Fail<i32, i32>`
+   = note: the associated function or constant was found for `Fail<i32, i32>`
 
 error: aborting due to 2 previous errors
 

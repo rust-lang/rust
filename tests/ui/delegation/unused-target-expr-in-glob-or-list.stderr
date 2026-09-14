@@ -1,0 +1,569 @@
+error[E0433]: cannot find type `UnresolvedTrait` in this scope
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:55:11
+   |
+LL |     reuse UnresolvedTrait::* { self.0 }
+   |           ^^^^^^^^^^^^^^^ use of undeclared type `UnresolvedTrait`
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:107:49
+   |
+LL |                 reuse <F as Trait>::static_self { self.0 }
+   |                                                 ^^^^^^^^^^
+...
+LL |     delegation!();
+   |     ------------- in this macro invocation
+   |
+   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:127:45
+   |
+LL |             reuse <F as Trait>::static_self { self.0 }
+   |                                             ^^^^^^^^^^
+...
+LL |         delegation2!();
+   |         -------------- in this macro invocation
+   |
+   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:154:45
+   |
+LL |     reuse to_reuse::{value, mut_ref, r#ref} { () }
+   |                                             ^^^^^^
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:154:45
+   |
+LL |     reuse to_reuse::{value, mut_ref, r#ref} { () }
+   |                                             ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:154:45
+   |
+LL |     reuse to_reuse::{value, mut_ref, r#ref} { () }
+   |                                             ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:165:39
+   |
+LL |     reuse to_reuse::{value as value2} { }
+   |                                       ^^^
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:195:49
+   |
+LL |         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+   |                                                 ^^^^^^^^^
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:195:49
+   |
+LL |         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+   |                                                 ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: delegation's target expression is specified for function with no params
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:195:49
+   |
+LL |         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+   |                                                 ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:18:25
+   |
+LL |     reuse <F as Trait>::* { self.0 }
+   |                         ^
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:24:25
+   |
+LL |     reuse <F as Trait>::* { self.0 }
+   |                         ^
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:30:26
+   |
+LL |     reuse <F as Trait>::{static_self} { self.0 }
+   |                          ^^^^^^^^^^^
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:36:26
+   |
+LL |     reuse <F as Trait>::{static_self, static_value} { self.0 }
+   |                          ^^^^^^^^^^^
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:42:26
+   |
+LL |     reuse <F as Trait>::{static_self, static_value, static_mut_ref, static_ref} { self.0 }
+   |                          ^^^^^^^^^^^
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:48:26
+   |
+LL |     reuse <F as Trait>::{static_self, static_value, static_mut_ref, static_ref} { }
+   |                          ^^^^^^^^^^^
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:66:26
+   |
+LL |     reuse <F as Trait>::{static_self, static_self2} { { F } }
+   |                          ^^^^^^^^^^^
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:72:26
+   |
+LL |     reuse <F as Trait>::{static_self, static_self2} { { F } }
+   |                          ^^^^^^^^^^^
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:75:26
+   |
+LL |     reuse <F as Trait>::{static_value, static_mut_ref, static_ref} { }
+   |                          ^^^^^^^^^^^^
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:80:26
+   |
+LL |     reuse <F as Trait>::{static_self, static_self2} { { F } }
+   |                          ^^^^^^^^^^^
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:83:26
+   |
+LL |     reuse <F as Trait>::{static_value, static_mut_ref} { }
+   |                          ^^^^^^^^^^^^
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:92:26
+   |
+LL |     reuse <F as Trait>::{static_self, static_self2} { { F } }
+   |                          ^^^^^^^^^^^
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:95:26
+   |
+LL |     reuse <F as Trait>::{static_value, static_mut_ref} { }
+   |                          ^^^^^^^^^^^^
+
+error: unused target expression is specified for glob or list delegation
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:189:26
+   |
+LL |         reuse to_reuse::{value, mut_ref, r#ref} { () }
+   |                          ^^^^^
+
+error[E0053]: method `static_self` has an incompatible type for trait
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:107:37
+   |
+LL |                 reuse <F as Trait>::static_self { self.0 }
+   |                                     ^^^^^^^^^^^ expected `F`, found `()`
+...
+LL |     delegation!();
+   |     ------------- in this macro invocation
+   |
+note: type in trait
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:4:25
+   |
+LL |     fn static_self() -> F { F }
+   |                         ^
+   = note: expected signature `fn() -> F`
+              found signature `fn() -> ()`
+   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: change the output type to match the trait
+   |
+LL -                 reuse <F as Trait>::static_self { self.0 }
+LL +                 reuse <F as Trait>:: -> F { self.0 }
+   |
+
+error[E0053]: method `static_self` has an incompatible type for trait
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:127:33
+   |
+LL |             reuse <F as Trait>::static_self { self.0 }
+   |                                 ^^^^^^^^^^^ expected `F`, found `()`
+...
+LL |         delegation2!();
+   |         -------------- in this macro invocation
+   |
+note: type in trait
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:4:25
+   |
+LL |     fn static_self() -> F { F }
+   |                         ^
+   = note: expected signature `fn() -> F`
+              found signature `fn() -> ()`
+   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: change the output type to match the trait
+   |
+LL -             reuse <F as Trait>::static_self { self.0 }
+LL +             reuse <F as Trait>:: -> F { self.0 }
+   |
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:107:37
+   |
+LL |                 reuse <F as Trait>::static_self { self.0 }
+   |                                     ^^^^^^^^^^^ ---------- unexpected argument
+...
+LL |     delegation!();
+   |     ------------- in this macro invocation
+   |
+note: associated function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:4:8
+   |
+LL |     fn static_self() -> F { F }
+   |        ^^^^^^^^^^^
+   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:107:37
+   |
+LL |                 reuse <F as Trait>::static_self { self.0 }
+   |                                     ^^^^^^^^^^^- help: consider using a semicolon here: `;`
+   |                                     |
+   |                                     expected `()`, found `F`
+   |                                     expected `()` because of default return type
+...
+LL |     delegation!();
+   |     ------------- in this macro invocation
+   |
+   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0609]: no field `0` on type `F`
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:112:57
+   |
+LL |                 reuse <F as Trait>::static_value { self.0 }
+   |                                                         ^ unknown field
+...
+LL |     delegation!();
+   |     ------------- in this macro invocation
+   |
+   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0609]: no field `0` on type `&mut F`
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:114:59
+   |
+LL |                 reuse <F as Trait>::static_mut_ref { self.0 }
+   |                                                           ^ unknown field
+...
+LL |     delegation!();
+   |     ------------- in this macro invocation
+   |
+   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0609]: no field `0` on type `&F`
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:116:55
+   |
+LL |                 reuse <F as Trait>::static_ref { self.0 }
+   |                                                       ^ unknown field
+...
+LL |     delegation!();
+   |     ------------- in this macro invocation
+   |
+   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:127:33
+   |
+LL |             reuse <F as Trait>::static_self { self.0 }
+   |                                 ^^^^^^^^^^^ ---------- unexpected argument
+...
+LL |         delegation2!();
+   |         -------------- in this macro invocation
+   |
+note: associated function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:4:8
+   |
+LL |     fn static_self() -> F { F }
+   |        ^^^^^^^^^^^
+   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:127:33
+   |
+LL |             reuse <F as Trait>::static_self { self.0 }
+   |                                 ^^^^^^^^^^^- help: consider using a semicolon here: `;`
+   |                                 |
+   |                                 expected `()`, found `F`
+   |                                 expected `()` because of default return type
+...
+LL |         delegation2!();
+   |         -------------- in this macro invocation
+   |
+   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0609]: no field `0` on type `F`
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:132:53
+   |
+LL |             reuse <F as Trait>::static_value { self.0 }
+   |                                                     ^ unknown field
+...
+LL |         delegation2!();
+   |         -------------- in this macro invocation
+   |
+   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0609]: no field `0` on type `&mut F`
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:134:55
+   |
+LL |             reuse <F as Trait>::static_mut_ref { self.0 }
+   |                                                       ^ unknown field
+...
+LL |         delegation2!();
+   |         -------------- in this macro invocation
+   |
+   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0609]: no field `0` on type `&F`
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:136:51
+   |
+LL |             reuse <F as Trait>::static_ref { self.0 }
+   |                                                   ^ unknown field
+...
+LL |         delegation2!();
+   |         -------------- in this macro invocation
+   |
+   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:154:22
+   |
+LL |     reuse to_reuse::{value, mut_ref, r#ref} { () }
+   |                      ^^^^^                  ------ unexpected argument of type `()`
+   |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:149:16
+   |
+LL |         pub fn value() -> i32 { 1 }
+   |                ^^^^^
+help: remove the extra argument
+   |
+LL -     reuse to_reuse::{value, mut_ref, r#ref} { () }
+LL +     reuse to_reuse::{valu{ () }
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:154:22
+   |
+LL |     reuse to_reuse::{value, mut_ref, r#ref} { () }
+   |                      ^^^^^ expected `()`, found `i32`
+   |
+help: consider using a semicolon here
+   |
+LL |     reuse to_reuse::{value;, mut_ref, r#ref} { () }
+   |                           +
+help: try adding a return type
+   |
+LL -     reuse to_reuse::{value, mut_ref, r#ref} { () }
+LL +     reuse to_reuse::{ -> i32, mut_ref, r#ref} { () }
+   |
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:154:29
+   |
+LL |     reuse to_reuse::{value, mut_ref, r#ref} { () }
+   |                             ^^^^^^^         ------ unexpected argument of type `()`
+   |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:150:16
+   |
+LL |         pub fn mut_ref() -> i32 { 2 }
+   |                ^^^^^^^
+help: remove the extra argument
+   |
+LL -     reuse to_reuse::{value, mut_ref, r#ref} { () }
+LL +     reuse to_reuse::{value, mut_re{ () }
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:154:29
+   |
+LL |     reuse to_reuse::{value, mut_ref, r#ref} { () }
+   |                             ^^^^^^^ expected `()`, found `i32`
+   |
+help: consider using a semicolon here
+   |
+LL |     reuse to_reuse::{value, mut_ref;, r#ref} { () }
+   |                                    +
+help: try adding a return type
+   |
+LL -     reuse to_reuse::{value, mut_ref, r#ref} { () }
+LL +     reuse to_reuse::{value,  -> i32, r#ref} { () }
+   |
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:154:38
+   |
+LL |     reuse to_reuse::{value, mut_ref, r#ref} { () }
+   |                                      ^^^^^  ------ unexpected argument of type `()`
+   |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:151:16
+   |
+LL |         pub fn r#ref() -> i32 { 3 }
+   |                ^^^^^
+help: remove the extra argument
+   |
+LL -     reuse to_reuse::{value, mut_ref, r#ref} { () }
+LL +     reuse to_reuse::{value, mut_ref, r#re{ () }
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:154:38
+   |
+LL |     reuse to_reuse::{value, mut_ref, r#ref} { () }
+   |                                      ^^^^^ expected `()`, found `i32`
+   |
+help: consider using a semicolon here
+   |
+LL |     reuse to_reuse::{value, mut_ref, r#ref;} { () }
+   |                                           +
+help: try adding a return type
+   |
+LL -     reuse to_reuse::{value, mut_ref, r#ref} { () }
+LL +     reuse to_reuse::{value, mut_ref,  -> i32} { () }
+   |
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:165:22
+   |
+LL |     reuse to_reuse::{value as value2} { }
+   |                      ^^^^^            --- unexpected argument of type `()`
+   |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:149:16
+   |
+LL |         pub fn value() -> i32 { 1 }
+   |                ^^^^^
+help: remove the extra argument
+   |
+LL -     reuse to_reuse::{value as value2} { }
+LL +     reuse to_reuse::{valu{ }
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:165:22
+   |
+LL |     reuse to_reuse::{value as value2} { }
+   |                      ^^^^^ expected `()`, found `i32`
+   |
+help: consider using a semicolon here
+   |
+LL |     reuse to_reuse::{value; as value2} { }
+   |                           +
+help: try adding a return type
+   |
+LL -     reuse to_reuse::{value as value2} { }
+LL +     reuse to_reuse::{ -> i32 as value2} { }
+   |
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:195:26
+   |
+LL |         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+   |                          ^^^^^                  --------- unexpected argument of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:179:16
+   |
+LL |         pub fn value() -> i32 { 1 }
+   |                ^^^^^
+help: remove the extra argument
+   |
+LL -         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+LL +         reuse to_reuse::{valu{ 1 + 1 }
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:195:26
+   |
+LL |         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+   |                          ^^^^^ expected `()`, found `i32`
+   |
+help: consider using a semicolon here
+   |
+LL |         reuse to_reuse::{value;, mut_ref, r#ref} { 1 + 1 }
+   |                               +
+help: try adding a return type
+   |
+LL -         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+LL +         reuse to_reuse::{ -> i32, mut_ref, r#ref} { 1 + 1 }
+   |
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:195:33
+   |
+LL |         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+   |                                 ^^^^^^^         --------- unexpected argument of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:180:16
+   |
+LL |         pub fn mut_ref() -> i32 { 2 }
+   |                ^^^^^^^
+help: remove the extra argument
+   |
+LL -         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+LL +         reuse to_reuse::{value, mut_re{ 1 + 1 }
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:195:33
+   |
+LL |         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+   |                                 ^^^^^^^ expected `()`, found `i32`
+   |
+help: consider using a semicolon here
+   |
+LL |         reuse to_reuse::{value, mut_ref;, r#ref} { 1 + 1 }
+   |                                        +
+help: try adding a return type
+   |
+LL -         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+LL +         reuse to_reuse::{value,  -> i32, r#ref} { 1 + 1 }
+   |
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:195:42
+   |
+LL |         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+   |                                          ^^^^^  --------- unexpected argument of type `{integer}`
+   |
+note: function defined here
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:181:16
+   |
+LL |         pub fn r#ref() -> i32 { 3 }
+   |                ^^^^^
+help: remove the extra argument
+   |
+LL -         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+LL +         reuse to_reuse::{value, mut_ref, r#re{ 1 + 1 }
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:195:42
+   |
+LL |         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+   |                                          ^^^^^ expected `()`, found `i32`
+   |
+help: consider using a semicolon here
+   |
+LL |         reuse to_reuse::{value, mut_ref, r#ref;} { 1 + 1 }
+   |                                               +
+help: try adding a return type
+   |
+LL -         reuse to_reuse::{value, mut_ref, r#ref} { 1 + 1 }
+LL +         reuse to_reuse::{value, mut_ref,  -> i32} { 1 + 1 }
+   |
+
+error: aborting due to 50 previous errors
+
+Some errors have detailed explanations: E0053, E0061, E0308, E0433, E0609.
+For more information about an error, try `rustc --explain E0053`.

@@ -45,6 +45,8 @@ use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
 use tracing::{debug, trace};
 
+use crate::PassPolicy;
+
 pub(super) enum SimplifyCfg {
     Initial,
     PromoteConsts,
@@ -93,13 +95,13 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyCfg {
         self.name()
     }
 
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(true)
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.name(), body.source);
         simplify_cfg(tcx, body);
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 
@@ -427,8 +429,8 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
         }
     }
 
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 1)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -456,10 +458,6 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
 
             body.local_decls.shrink_to_fit();
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 
@@ -568,7 +566,6 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::Intrinsic(..)
-            | StatementKind::Retag(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)
             | StatementKind::PlaceMention(..)
@@ -580,7 +577,7 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             | StatementKind::Nop
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..) => {}
-            StatementKind::Assign(box (ref place, ref rvalue)) => {
+            StatementKind::Assign((ref place, ref rvalue)) => {
                 if rvalue.is_safe_to_remove() {
                     self.visit_lhs(place, location);
                     self.visit_rvalue(rvalue, location);
@@ -627,9 +624,9 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
                     StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                         used_locals.is_used(*local)
                     }
-                    StatementKind::Assign(box (place, _))
-                    | StatementKind::SetDiscriminant { box place, .. }
-                    | StatementKind::BackwardIncompatibleDropHint { box place, .. } => {
+                    StatementKind::Assign((place, _)) => used_locals.is_used(place.local),
+                    StatementKind::SetDiscriminant { place, .. }
+                    | StatementKind::BackwardIncompatibleDropHint { place, .. } => {
                         used_locals.is_used(place.local)
                     }
                     _ => continue,

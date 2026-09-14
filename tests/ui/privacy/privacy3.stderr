@@ -2,7 +2,9 @@ error[E0432]: unresolved import `bar::gpriv`
   --> $DIR/privacy3.rs:23:9
    |
 LL |     use bar::gpriv;
-   |         ^^^^^^^^^^ no `gpriv` in `bar`
+   |         ^^^^^-----
+   |              |
+   |              no `gpriv` in `bar`
 
 error: requires `sized` lang_item
   --> $DIR/privacy3.rs:13:20

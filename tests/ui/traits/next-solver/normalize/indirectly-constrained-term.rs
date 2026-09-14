@@ -17,7 +17,7 @@
 // We prove `Projection(<W<?0> as Unconstrained>::Assoc, ())`. This normalizes
 // `<W<?0> as Unconstrained>::Assoc` to `?1` and eagerly computes the nested
 // goals `[Projection(<?0 as Unconstrained>::Assoc, ?1), Trait(?1: NoImpl)]`.
-// These goals are both ambiguous. `NormalizesTo`` then returns `?1` as the
+// These goals are both ambiguous. `NormalizesTo` then returns `?1` as the
 // normalized-to type. It discards the nested goals, forcing the certainty of
 // the normalization to `Maybe`. Unifying `?1` with `()` succeeds¹. However,
 // this is never propagated to the `?1: NoImpl` goal, as it only exists inside
@@ -36,7 +36,6 @@ trait Unconstrained {
 impl<T: Unconstrained<Assoc = U>, U: NoImpl> Unconstrained for W<T> {
     type Assoc = U;
 }
-
 
 trait Overlap {}
 impl<T: Unconstrained<Assoc = ()>> Overlap for T {}

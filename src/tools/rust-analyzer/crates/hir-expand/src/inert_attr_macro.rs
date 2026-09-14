@@ -702,6 +702,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_dump_program_clauses, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_dump_env_program_clauses, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_object_lifetime_default, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(TEST, rustc_dyn_incompatible_trait, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_dump_vtable, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_dummy, Normal, template!(Word /* doesn't matter*/), DuplicatesOk),
     gated!(

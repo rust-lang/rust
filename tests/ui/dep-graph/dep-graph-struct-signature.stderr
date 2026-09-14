@@ -25,8 +25,8 @@ LL |     #[rustc_then_this_would_need(fn_sig)]
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:37:34
    |
-LL |     #[rustc_then_this_would_need(typeck)]
-   |                                  ^^^^^^
+LL |     #[rustc_then_this_would_need(typeck_root)]
+   |                                  ^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:40:34
@@ -37,8 +37,8 @@ LL |     #[rustc_then_this_would_need(fn_sig)]
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:41:34
    |
-LL |     #[rustc_then_this_would_need(typeck)]
-   |                                  ^^^^^^
+LL |     #[rustc_then_this_would_need(typeck_root)]
+   |                                  ^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:46:34
@@ -88,11 +88,11 @@ error: no path from `WillChange` to `fn_sig`
 LL |     #[rustc_then_this_would_need(fn_sig)]
    |                                  ^^^^^^
 
-error: no path from `WillChange` to `typeck`
+error: no path from `WillChange` to `typeck_root`
   --> $DIR/dep-graph-struct-signature.rs:85:34
    |
-LL |     #[rustc_then_this_would_need(typeck)]
-   |                                  ^^^^^^
+LL |     #[rustc_then_this_would_need(typeck_root)]
+   |                                  ^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:32:38
@@ -115,8 +115,8 @@ LL |         #[rustc_then_this_would_need(fn_sig)]
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:49:38
    |
-LL |         #[rustc_then_this_would_need(typeck)]
-   |                                      ^^^^^^
+LL |         #[rustc_then_this_would_need(typeck_root)]
+   |                                      ^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:55:38
@@ -127,8 +127,8 @@ LL |         #[rustc_then_this_would_need(fn_sig)]
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:56:38
    |
-LL |         #[rustc_then_this_would_need(typeck)]
-   |                                      ^^^^^^
+LL |         #[rustc_then_this_would_need(typeck_root)]
+   |                                      ^^^^^^^^^^^
 
 error: aborting due to 22 previous errors
 

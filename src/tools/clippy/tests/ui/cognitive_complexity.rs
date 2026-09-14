@@ -1,5 +1,5 @@
 #![warn(clippy::cognitive_complexity)]
-#![allow(
+#![expect(
     clippy::eq_op,
     clippy::needless_borrows_for_generic_args,
     clippy::needless_return,

@@ -1,16 +1,16 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::sym;
 use clippy_utils::visitors::{Visitable, for_each_expr};
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Block, Expr, ExprKind, Impl, Item, ItemKind, LangItem, Node, QPath, TyKind, VariantData};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::{Block, Expr, ExprKind, Impl, Item, ItemKind, Node, QPath, TyKind, VariantData};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::{Ty, TypeckResults};
-use rustc_session::declare_lint_pass;
 use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
@@ -109,7 +109,7 @@ fn should_lint<'tcx>(
     // Is there a call to `DebugStruct::debug_struct`? Do lint if there is.
     let mut has_debug_struct = false;
 
-    for_each_expr(cx, block, |expr| {
+    for_each_expr(cx.tcx, block, |expr| {
         if let ExprKind::MethodCall(path, recv, ..) = &expr.kind {
             let recv_ty = typeck_results.expr_ty(recv).peel_refs();
 
@@ -166,7 +166,7 @@ fn check_struct<'tcx>(
     let mut has_direct_field_access = false;
     let mut field_accesses = FxHashSet::default();
 
-    for_each_expr(cx, block, |expr| {
+    for_each_expr(cx.tcx, block, |expr| {
         if let ExprKind::Field(target, ident) = expr.kind
             && let target_ty = typeck_results.expr_ty_adjusted(target).peel_refs()
             && target_ty == self_ty
@@ -185,6 +185,7 @@ fn check_struct<'tcx>(
         .filter_map(|field| {
             if field_accesses.contains(&field.ident.name)
                 || field.ty.basic_res().is_lang_item(cx, LangItem::PhantomData)
+                || field.ty.basic_res().is_diag_item(cx, sym::PhantomPinned)
             {
                 None
             } else {

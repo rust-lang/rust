@@ -109,7 +109,7 @@ impl Handle {
         }
     }
 
-    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         let res =
             unsafe { self.synchronous_read(cursor.as_mut().as_mut_ptr(), cursor.capacity(), None) };
 
@@ -117,7 +117,7 @@ impl Handle {
             Ok(read) => {
                 // Safety: `read` bytes were written to the initialized portion of the buffer
                 unsafe {
-                    cursor.advance_unchecked(read);
+                    cursor.advance(read);
                 }
                 Ok(())
             }
@@ -132,7 +132,7 @@ impl Handle {
         }
     }
 
-    pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+    pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         // SAFETY: `cursor.as_mut()` starts with `cursor.capacity()` writable bytes
         let read = unsafe {
             self.synchronous_read(cursor.as_mut().as_mut_ptr(), cursor.capacity(), Some(offset))
@@ -140,7 +140,7 @@ impl Handle {
 
         // SAFETY: `read` bytes were written to the initialized portion of the buffer
         unsafe {
-            cursor.advance_unchecked(read);
+            cursor.advance(read);
         }
         Ok(())
     }
@@ -163,7 +163,7 @@ impl Handle {
             let mut amt = 0;
             let res = cvt(c::ReadFile(
                 self.as_raw_handle(),
-                buf.as_mut_ptr().cast::<u8>(),
+                buf.as_mut_ptr().cast::<c_void>(),
                 len,
                 &mut amt,
                 overlapped,
@@ -347,7 +347,7 @@ impl<'a> Read for &'a Handle {
         (**self).read(buf)
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         (**self).read_buf(buf)
     }
 

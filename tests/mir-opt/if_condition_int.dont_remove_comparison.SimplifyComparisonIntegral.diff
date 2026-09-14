@@ -15,7 +15,7 @@
       }
   
       bb0: {
-          nop;
+          StorageLive(_2);
           StorageLive(_3);
           _3 = copy _1;
           _2 = Eq(copy _1, const 17_i8);
@@ -47,7 +47,7 @@
       }
   
       bb3: {
-          nop;
+          StorageDead(_2);
           return;
       }
   }

@@ -1,7 +1,7 @@
 use hir::{HasSource, InFile, InRealFile, Semantics};
 use ide_db::{
-    FileId, FilePosition, FileRange, FxIndexSet, MiniCore, RootDatabase, defs::Definition,
-    helpers::visit_file_defs,
+    FileId, FilePosition, FileRange, FxIndexSet, RootDatabase, defs::Definition,
+    helpers::visit_file_defs, ra_fixture::RaFixtureConfig,
 };
 use itertools::Itertools;
 use syntax::{AstNode, TextRange, ast::HasName};
@@ -43,9 +43,11 @@ pub struct AnnotationConfig<'a> {
     pub annotate_references: bool,
     pub annotate_method_references: bool,
     pub annotate_enum_variant_references: bool,
+    pub references_exclude_imports: bool,
+    pub references_exclude_tests: bool,
     pub location: AnnotationLocation,
     pub filter_adjacent_derive_implementations: bool,
-    pub minicore: MiniCore<'a>,
+    pub ra_fixture: RaFixtureConfig<'a>,
 }
 
 pub enum AnnotationLocation {
@@ -216,7 +218,12 @@ pub(crate) fn resolve_annotation(
             *data = find_all_refs(
                 &Semantics::new(db),
                 pos,
-                &FindAllRefsConfig { search_scope: None, minicore: config.minicore },
+                &FindAllRefsConfig {
+                    search_scope: None,
+                    ra_fixture: config.ra_fixture,
+                    exclude_imports: config.references_exclude_imports,
+                    exclude_tests: config.references_exclude_tests,
+                },
             )
             .map(|result| {
                 result
@@ -244,7 +251,7 @@ fn should_skip_runnable(kind: &RunnableKind, binary_target: bool) -> bool {
 #[cfg(test)]
 mod tests {
     use expect_test::{Expect, expect};
-    use ide_db::MiniCore;
+    use ide_db::ra_fixture::RaFixtureConfig;
 
     use crate::{Annotation, AnnotationConfig, fixture};
 
@@ -257,8 +264,10 @@ mod tests {
         annotate_references: true,
         annotate_method_references: true,
         annotate_enum_variant_references: true,
+        references_exclude_imports: false,
+        references_exclude_tests: false,
         location: AnnotationLocation::AboveName,
-        minicore: MiniCore::default(),
+        ra_fixture: RaFixtureConfig::default(),
         filter_adjacent_derive_implementations: false,
     };
 
@@ -273,7 +282,7 @@ mod tests {
             .annotations(config, file_id)
             .unwrap()
             .into_iter()
-            .map(|annotation| analysis.resolve_annotation(&DEFAULT_CONFIG, annotation).unwrap())
+            .map(|annotation| analysis.resolve_annotation(config, annotation).unwrap())
             .collect();
 
         expect.assert_debug_eq(&annotations);
@@ -898,9 +907,6 @@ mod tests {
                                     test_id: Path(
                                         "tests::my_cool_test",
                                     ),
-                                    attr: TestAttr {
-                                        ignore: false,
-                                    },
                                 },
                                 cfg: None,
                                 update_test: UpdateTest {
@@ -1041,6 +1047,41 @@ struct Foo;
                 ]
             "#]],
             &AnnotationConfig { location: AnnotationLocation::AboveWholeItem, ..DEFAULT_CONFIG },
+        );
+    }
+
+    #[test]
+    fn refs_exclude_tests() {
+        check_with_config(
+            r#"
+fn foo() {}
+
+#[test]
+fn bar() { foo() }
+            "#,
+            expect![[r#"
+                [
+                    Annotation {
+                        range: 3..6,
+                        kind: HasReferences {
+                            pos: FilePositionWrapper {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 3,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                ]
+            "#]],
+            &AnnotationConfig {
+                references_exclude_tests: true,
+                annotate_runnables: false,
+                ..DEFAULT_CONFIG
+            },
         );
     }
 }

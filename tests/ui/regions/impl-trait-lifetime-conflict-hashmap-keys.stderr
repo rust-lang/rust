@@ -1,0 +1,43 @@
+error[E0803]: cannot infer an appropriate lifetime for lifetime parameter '_ in generic type due to conflicting requirements
+  --> $DIR/impl-trait-lifetime-conflict-hashmap-keys.rs:13:5
+   |
+LL |     fn key_set(&self) -> Subject<'static, Keys<K, V>, (), R> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
+  --> $DIR/impl-trait-lifetime-conflict-hashmap-keys.rs:12:6
+   |
+LL | impl<'a, K, V, R> MapAssertion<'a, K, V, R> for Subject<'a, HashMap<K, V>, (), R> {
+   |      ^^
+note: ...so that the reference type `&Subject<'a, HashMap<K, V>, (), R>` does not outlive the data it points at
+  --> $DIR/impl-trait-lifetime-conflict-hashmap-keys.rs:13:5
+   |
+LL |     fn key_set(&self) -> Subject<'static, Keys<K, V>, (), R> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: but, the lifetime must be valid for the static lifetime...
+note: ...so that the type `std::collections::hash_map::Keys<'_, K, V>` will meet its required lifetime bounds...
+  --> $DIR/impl-trait-lifetime-conflict-hashmap-keys.rs:13:5
+   |
+LL |     fn key_set(&self) -> Subject<'static, Keys<K, V>, (), R> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...that is required by this bound
+  --> $DIR/impl-trait-lifetime-conflict-hashmap-keys.rs:10:29
+   |
+LL | struct Subject<'a, T, V, R>(PhantomData<(&'a T, V, R)>);
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/impl-trait-lifetime-conflict-hashmap-keys.rs:13:26
+   |
+LL |     fn key_set(&self) -> Subject<'static, Keys<K, V>, (), R> {
+   |        -------           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Subject<'_, Keys<'_, K, V>, (), R>`, found `()`
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note: expected struct `Subject<'static, std::collections::hash_map::Keys<'_, K, V>, (), R>`
+           found unit type `()`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0803.
+For more information about an error, try `rustc --explain E0308`.

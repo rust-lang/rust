@@ -62,7 +62,7 @@ fn wait_timeout() {
 
     let futex: i32 = 123;
 
-    // Wait for 200ms, with nobody waking us up early.
+    // Wait for 100ms, with nobody waking us up early.
     unsafe {
         assert_eq!(
             libc::os_sync_wait_on_address_with_timeout(
@@ -71,14 +71,14 @@ fn wait_timeout() {
                 size_of::<i32>(),
                 libc::OS_SYNC_WAIT_ON_ADDRESS_NONE,
                 libc::OS_CLOCK_MACH_ABSOLUTE_TIME,
-                200_000_000,
+                100_000_000,
             ),
             -1,
         );
         assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::ETIMEDOUT);
     }
 
-    assert!((200..1000).contains(&start.elapsed().as_millis()));
+    assert!((100..1000).contains(&start.elapsed().as_millis()));
 }
 
 fn wait_absolute_timeout() {
@@ -88,15 +88,15 @@ fn wait_absolute_timeout() {
     #[allow(deprecated)]
     let mut deadline = unsafe { libc::mach_absolute_time() };
 
-    // Add 200ms.
+    // Add 100ms.
     // What we should be doing here is call `mach_timebase_info` to determine the
     // unit used for `deadline`, but we know what Miri returns for that function:
     // the unit is nanoseconds.
-    deadline += 200_000_000;
+    deadline += 100_000_000;
 
     let futex: i32 = 123;
 
-    // Wait for 200ms from now, with nobody waking us up early.
+    // Wait for 100ms from now, with nobody waking us up early.
     unsafe {
         assert_eq!(
             libc::os_sync_wait_on_address_with_deadline(
@@ -112,16 +112,14 @@ fn wait_absolute_timeout() {
         assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::ETIMEDOUT);
     }
 
-    assert!((200..1000).contains(&start.elapsed().as_millis()));
+    assert!((100..1000).contains(&start.elapsed().as_millis()));
 }
 
 fn wait_wake() {
-    let start = Instant::now();
-
     static mut FUTEX: i32 = 0;
 
     let t = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(200));
+        thread::sleep(Duration::from_millis(100));
         unsafe {
             assert_eq!(
                 libc::os_sync_wake_by_address_any(
@@ -133,6 +131,8 @@ fn wait_wake() {
             );
         }
     });
+
+    let start = Instant::now();
 
     unsafe {
         assert_eq!(
@@ -146,9 +146,7 @@ fn wait_wake() {
         );
     }
 
-    // When running this in stress-gc mode, things can take quite long.
-    // So the timeout is 3000 ms.
-    assert!((200..3000).contains(&start.elapsed().as_millis()));
+    assert!((100..1000).contains(&start.elapsed().as_millis()));
     t.join().unwrap();
 }
 

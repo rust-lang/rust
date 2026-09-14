@@ -10,12 +10,15 @@ use clap_complete::Generator;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
+use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::perf::PerfArgs;
 use crate::core::build_steps::setup::Profile;
+use crate::core::build_steps::test::TestTarget;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::Config;
 use crate::core::config::target_selection::{TargetSelectionList, target_selection_list};
-use crate::{Build, CodegenBackendKind, TestTarget};
+use crate::core::session::Session;
+use crate::utils::helpers;
 
 #[derive(Copy, Clone, Default, Debug, ValueEnum)]
 pub enum Color {
@@ -46,9 +49,12 @@ pub struct Flags {
     #[command(subcommand)]
     pub cmd: Subcommand,
 
-    #[arg(global = true, short, long, action = clap::ArgAction::Count)]
+    #[arg(global = true, short, long, action = clap::ArgAction::Count, conflicts_with = "quiet")]
     /// use verbose output (-vv for very verbose)
     pub verbose: u8, // each extra -v after the first is passed to Cargo
+    #[arg(global = true, short, long, conflicts_with = "verbose")]
+    /// use quiet output
+    pub quiet: bool,
     #[arg(global = true, short, long)]
     /// use incremental compilation
     pub incremental: bool,
@@ -150,18 +156,22 @@ pub struct Flags {
 
     /// generate PGO profile with rustc build
     #[arg(global = true, value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
-    pub rust_profile_generate: Option<String>,
+    // FIXME: Remove this option at the end of 2026
+    pub rust_profile_generate: Option<PathBuf>,
     /// use PGO profile for rustc build
+    // FIXME: Remove this option at the end of 2026
     #[arg(global = true, value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
-    pub rust_profile_use: Option<String>,
+    pub rust_profile_use: Option<PathBuf>,
     /// use PGO profile for LLVM build
+    // FIXME: Remove this option at the end of 2026
     #[arg(global = true, value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
-    pub llvm_profile_use: Option<String>,
+    pub llvm_profile_use: Option<PathBuf>,
     // LLVM doesn't support a custom location for generating profile
     // information.
     //
     // llvm_out/build/profiles/ is the location this writes to.
     /// generate PGO profile with llvm built for rustc
+    // FIXME: Remove this option at the end of 2026
     #[arg(global = true, long)]
     pub llvm_profile_generate: bool,
     /// Enable BOLT link flags
@@ -213,8 +223,8 @@ impl Flags {
             println!("NOTE: updating submodules before printing available paths");
             let flags = Self::parse(&[String::from("build")]);
             let config = Config::parse(flags);
-            let build = Build::new(config);
-            let paths = Builder::get_help(&build, subcommand);
+            let sess = Session::new(config);
+            let paths = Builder::get_help(&sess, subcommand);
             if let Some(s) = paths {
                 println!("{s}");
             } else {
@@ -243,7 +253,7 @@ fn normalize_args(args: &[String]) -> Vec<String> {
 
 #[derive(Debug, Clone, clap::Subcommand)]
 pub enum Subcommand {
-    #[command(aliases = ["b"], long_about = "\n
+    #[command(visible_aliases = ["b"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to directories to the crates
         and/or artifacts to compile. For example, for a quick build of a usable
@@ -261,7 +271,7 @@ pub enum Subcommand {
         /// Pass `--timings` to Cargo to get crate build timings
         timings: bool,
     },
-    #[command(aliases = ["c"], long_about = "\n
+    #[command(visible_aliases = ["c"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to directories to the crates
         and/or artifacts to compile. For example:
@@ -303,6 +313,7 @@ pub enum Subcommand {
         #[arg(global = true, short = 'F', action = clap::ArgAction::Append, value_name = "LINT")]
         forbid: Vec<String>,
     },
+
     /// Run cargo fix
     #[command(long_about = "\n
     Arguments:
@@ -310,7 +321,14 @@ pub enum Subcommand {
         and/or artifacts to run `cargo fix` against. For example:
             ./x.py fix library/core
             ./x.py fix library/core library/proc_macro")]
-    Fix,
+    Fix {
+        /// Pass `--allow-dirty` to `cargo fix`, allowing it to run even if the
+        /// current git checkout has uncommitted changes.
+        #[arg(long)]
+        allow_dirty: bool,
+    },
+
+    /// Run rustfmt
     #[command(
         name = "fmt",
         long_about = "\n
@@ -320,7 +338,6 @@ pub enum Subcommand {
             ./x.py fmt
             ./x.py fmt --check"
     )]
-    /// Run rustfmt
     Format {
         /// check formatting instead of applying
         #[arg(long)]
@@ -330,7 +347,7 @@ pub enum Subcommand {
         #[arg(long)]
         all: bool,
     },
-    #[command(aliases = ["d"], long_about = "\n
+    #[command(visible_aliases = ["d"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to directories of documentation
         to build. For example:
@@ -351,7 +368,7 @@ pub enum Subcommand {
         /// render the documentation in JSON format in addition to the usual HTML format
         json: bool,
     },
-    #[command(aliases = ["t"], long_about = "\n
+    #[command(visible_aliases = ["t"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to test directories that
         should be compiled and run. For example:
@@ -422,6 +439,10 @@ pub enum Subcommand {
         #[arg(long)]
         /// don't capture stdout/stderr of tests
         no_capture: bool,
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set, default_missing_value = "true", num_args = 0..=1, require_equals = true)]
+        /// whether to show verbose subprocess output for run-make tests;
+        /// set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture)
+        verbose_run_make_subprocess_output: bool,
         #[arg(long)]
         /// Use a different codegen backend when running tests.
         test_codegen_backend: Option<CodegenBackendKind>,
@@ -433,6 +454,15 @@ pub enum Subcommand {
         #[arg(long)]
         #[doc(hidden)]
         no_doc: bool,
+
+        /// Record all the failed tests in a file in the build directory.
+        ///
+        /// On subsequent invocations, this set of tests can be rerun by passing `--rerun`
+        #[arg(long)]
+        record: bool,
+        /// Rerun tests that previously failed, and stored with `--record`.
+        #[arg(long)]
+        rerun: bool,
     },
     /// Build and run some test suites *in Miri*
     Miri {
@@ -476,7 +506,7 @@ pub enum Subcommand {
     Dist,
     /// Install distribution artifacts
     Install,
-    #[command(aliases = ["r"], long_about = "\n
+    #[command(visible_aliases = ["r"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to tools to build and run. For
         example:
@@ -529,27 +559,6 @@ impl Default for Subcommand {
 }
 
 impl Subcommand {
-    pub fn kind(&self) -> Kind {
-        match self {
-            Subcommand::Bench { .. } => Kind::Bench,
-            Subcommand::Build { .. } => Kind::Build,
-            Subcommand::Check { .. } => Kind::Check,
-            Subcommand::Clippy { .. } => Kind::Clippy,
-            Subcommand::Doc { .. } => Kind::Doc,
-            Subcommand::Fix => Kind::Fix,
-            Subcommand::Format { .. } => Kind::Format,
-            Subcommand::Test { .. } => Kind::Test,
-            Subcommand::Miri { .. } => Kind::Miri,
-            Subcommand::Clean { .. } => Kind::Clean,
-            Subcommand::Dist => Kind::Dist,
-            Subcommand::Install => Kind::Install,
-            Subcommand::Run { .. } => Kind::Run,
-            Subcommand::Setup { .. } => Kind::Setup,
-            Subcommand::Vendor { .. } => Kind::Vendor,
-            Subcommand::Perf { .. } => Kind::Perf,
-        }
-    }
-
     pub fn compiletest_rustc_args(&self) -> Vec<&str> {
         match *self {
             Subcommand::Test { ref compiletest_rustc_args, .. } => {
@@ -631,6 +640,15 @@ impl Subcommand {
         }
     }
 
+    pub fn verbose_run_make_subprocess_output(&self) -> bool {
+        match *self {
+            Subcommand::Test { verbose_run_make_subprocess_output, .. } => {
+                verbose_run_make_subprocess_output
+            }
+            _ => true,
+        }
+    }
+
     pub fn rustfix_coverage(&self) -> bool {
         match *self {
             Subcommand::Test { rustfix_coverage, .. } => rustfix_coverage,
@@ -707,6 +725,25 @@ impl Subcommand {
             _ => false,
         }
     }
+
+    pub fn record(&self) -> bool {
+        match self {
+            Subcommand::Test { record, .. } => *record,
+            _ => false,
+        }
+    }
+
+    pub fn rerun(&self) -> bool {
+        match self {
+            Subcommand::Test { rerun, .. } => *rerun,
+            _ => false,
+        }
+    }
+
+    /// Are we executing a `check --all-targets` command?
+    pub(crate) fn check_all_targets(&self) -> bool {
+        matches!(self, Subcommand::Check { all_targets: true, .. })
+    }
 }
 
 /// Returns the shell completion for a given shell, if the result differs from the current
@@ -718,7 +755,7 @@ pub fn get_completion(shell: &dyn Generator, path: &Path) -> Option<String> {
     } else {
         std::fs::read_to_string(path).unwrap_or_else(|_| {
             eprintln!("couldn't read {}", path.display());
-            crate::exit!(1)
+            helpers::exit_process(1);
         })
     };
     let mut buf = Vec::new();

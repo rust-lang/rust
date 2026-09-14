@@ -11,13 +11,13 @@ help: the trait `Foo<usize>` is not implemented for `Bar`
    |
 LL | struct Bar;
    | ^^^^^^^^^^
-   = help: the following other types implement trait `Foo<A>`:
-             `Bar` implements `Foo<i16>`
-             `Bar` implements `Foo<i32>`
-             `Bar` implements `Foo<i8>`
-             `Bar` implements `Foo<u16>`
-             `Bar` implements `Foo<u32>`
-             `Bar` implements `Foo<u8>`
+   = help: `Bar` implements trait `Foo<A>`:
+             Foo<i16>
+             Foo<i32>
+             Foo<i8>
+             Foo<u16>
+             Foo<u32>
+             Foo<u8>
 
 error: aborting due to 1 previous error
 

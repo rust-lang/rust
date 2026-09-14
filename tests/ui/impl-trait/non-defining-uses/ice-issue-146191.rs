@@ -5,9 +5,9 @@
 
 fn create_complex_future() -> impl Future<Output = impl ReturnsSend> {
     //[current]~^ ERROR the trait bound `(): ReturnsSend` is not satisfied
+    //[next]~^^ ERROR type annotations needed
     async { create_complex_future().await }
     //[current]~^ ERROR recursion in an async block requires
-    //[next]~^^ ERROR type annotations needed
 }
 
 trait ReturnsSend {}

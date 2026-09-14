@@ -29,11 +29,9 @@
           _3 = copy ((*_1).0: i32);
           _2 = move _3;
           StorageDead(_3);
--         StorageLive(_4);
-+         nop;
+          StorageLive(_4);
           _4 = copy ((*_1).1: u64);
--         StorageLive(_5);
-+         nop;
+          StorageLive(_5);
           _5 = copy ((*_1).2: [i8; 3]);
           StorageLive(_6);
           _6 = copy _2;
@@ -46,10 +44,8 @@
           StorageDead(_8);
           StorageDead(_7);
           StorageDead(_6);
--         StorageDead(_5);
--         StorageDead(_4);
-+         nop;
-+         nop;
+          StorageDead(_5);
+          StorageDead(_4);
           StorageDead(_2);
           return;
       }

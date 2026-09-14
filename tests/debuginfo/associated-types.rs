@@ -39,7 +39,7 @@
 //@ lldb-command:run
 
 //@ lldb-command:v arg
-//@ lldb-check:[...] { b = -1 b1 = 0 }
+//@ lldb-check:[...] {b:-1, b1:0}
 //@ lldb-command:continue
 
 //@ lldb-command:v inferred
@@ -53,7 +53,7 @@
 //@ lldb-command:continue
 
 //@ lldb-command:v arg
-//@ lldb-check:[...] { 0 = 4 1 = 5 }
+//@ lldb-check:[...] (4, 5)
 //@ lldb-command:continue
 
 //@ lldb-command:v a
@@ -82,6 +82,7 @@ impl TraitWithAssocType for i32 {
     fn get_value(&self) -> i64 { *self as i64 }
 }
 
+#[repr(C)]
 struct Struct<T: TraitWithAssocType> {
     b: T,
     b1: T::Type,

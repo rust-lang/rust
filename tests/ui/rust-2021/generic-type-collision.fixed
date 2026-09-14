@@ -1,7 +1,6 @@
-//@ edition:2015
 //@ check-pass
 //@ run-rustfix
-//@ edition 2018
+//@ edition: 2018
 #![warn(rust_2021_prelude_collisions)]
 
 trait MyTrait<A> {

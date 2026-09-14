@@ -11,8 +11,9 @@ use super::DOUBLE_COMPARISONS;
 pub(super) fn check(cx: &LateContext<'_>, op: BinOpKind, lhs: &Expr<'_>, rhs: &Expr<'_>, span: Span) {
     if let ExprKind::Binary(lop, llhs, lrhs) = lhs.kind
         && let ExprKind::Binary(rop, rlhs, rrhs) = rhs.kind
-        && eq_expr_value(cx, llhs, rlhs)
-        && eq_expr_value(cx, lrhs, rrhs)
+        && let ctxt = span.ctxt()
+        && eq_expr_value(cx, ctxt, llhs, rlhs)
+        && eq_expr_value(cx, ctxt, lrhs, rrhs)
     {
         let op = match (op, lop.node, rop.node) {
             // x == y || x < y => x <= y

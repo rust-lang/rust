@@ -4,21 +4,21 @@ error: unions cannot have zero fields
 LL | union EmptyUnion {}
    | ^^^^^^^^^^^^^^^^^^^
 
-error: `#[rustc_layout]` attribute cannot be used on constants
-  --> $DIR/debug.rs:71:1
+error: the `rustc_dump_layout` attribute cannot be used on constants
+  --> $DIR/debug.rs:71:3
    |
-LL | #[rustc_layout(debug)]
-   | ^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_dump_layout(debug)]
+   |   ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_layout]` can be applied to data types and type aliases
+   = help: the `rustc_dump_layout` attribute can be applied to data types and type aliases
 
-error: `#[rustc_layout]` attribute cannot be used on associated consts
-  --> $DIR/debug.rs:75:5
+error: the `rustc_dump_layout` attribute cannot be used on associated consts
+  --> $DIR/debug.rs:75:7
    |
-LL |     #[rustc_layout(debug)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_dump_layout(debug)]
+   |       ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_layout]` can be applied to data types and type aliases
+   = help: the `rustc_dump_layout` attribute can be applied to data types and type aliases
 
 error: layout_of(E) = Layout {
            size: Size(12 bytes),
@@ -39,74 +39,43 @@ error: layout_of(E) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I32,
-                       false,
-                   ),
+                   value: u32,
                    valid_range: 0..=0,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 0..=0,
-               },
+               tag: u32 is 0..=0,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(12 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(4 bytes),
-                               Size(4 bytes),
-                               Size(8 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                               1,
-                               2,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(4 bytes),
+                           Size(4 bytes),
+                           Size(8 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                           1,
+                           2,
+                       ],
                        largest_niche: None,
                        uninhabited: true,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -124,22 +93,11 @@ error: layout_of(S) = Layout {
            align: AbiAlign {
                abi: Align(4 bytes),
            },
-           backend_repr: ScalarPair(
-               Initialized {
-                   value: Int(
-                       I32,
-                       true,
-                   ),
-                   valid_range: 0..=4294967295,
-               },
-               Initialized {
-                   value: Int(
-                       I32,
-                       true,
-                   ),
-                   valid_range: 0..=4294967295,
-               },
-           ),
+           backend_repr: ScalarPair {
+               a: i32 is ..,
+               b: i32 is ..,
+               b_offset: Size(4 bytes),
+           },
            fields: Arbitrary {
                offsets: [
                    Size(0 bytes),
@@ -196,22 +154,11 @@ error: layout_of(Result<i32, i32>) = Layout {
            align: AbiAlign {
                abi: Align(4 bytes),
            },
-           backend_repr: ScalarPair(
-               Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
-               Initialized {
-                   value: Int(
-                       I32,
-                       true,
-                   ),
-                   valid_range: 0..=4294967295,
-               },
-           ),
+           backend_repr: ScalarPair {
+               a: u32 is 0..=1,
+               b: i32 is ..,
+               b_offset: Size(4 bytes),
+           },
            fields: Arbitrary {
                offsets: [
                    Size(0 bytes),
@@ -223,100 +170,47 @@ error: layout_of(Result<i32, i32>) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I32,
-                       false,
-                   ),
+                   value: u32,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
+               tag: u32 is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(8 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
+                       backend_repr: ScalarPair {
+                           a: u32 is 0..=1,
+                           b: i32 is ..,
+                           b_offset: Size(4 bytes),
                        },
-                       backend_repr: ScalarPair(
-                           Initialized {
-                               value: Int(
-                                   I32,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           Initialized {
-                               value: Int(
-                                   I32,
-                                   true,
-                               ),
-                               valid_range: 0..=4294967295,
-                           },
-                       ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(4 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(4 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(8 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
+                       backend_repr: ScalarPair {
+                           a: u32 is 0..=1,
+                           b: i32 is ..,
+                           b_offset: Size(4 bytes),
                        },
-                       backend_repr: ScalarPair(
-                           Initialized {
-                               value: Int(
-                                   I32,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           Initialized {
-                               value: Int(
-                                   I32,
-                                   true,
-                               ),
-                               valid_range: 0..=4294967295,
-                           },
-                       ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(4 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
+                       field_offsets: [
+                           Size(4 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        largest_niche: None,
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -335,13 +229,7 @@ error: layout_of(i32) = Layout {
                abi: Align(4 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I32,
-                       true,
-                   ),
-                   valid_range: 0..=4294967295,
-               },
+               i32 is ..,
            ),
            fields: Primitive,
            largest_niche: None,
@@ -539,12 +427,7 @@ error: layout_of(P5) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: Scalar(
-               Union {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-               },
+               union u8,
            ),
            fields: Union(
                2,
@@ -569,12 +452,7 @@ error: layout_of(MaybeUninit<u8>) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: Scalar(
-               Union {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-               },
+               union u8,
            ),
            fields: Union(
                2,
@@ -614,6 +492,154 @@ error: the type `T` does not have a fixed layout
 LL | type TooGeneric<T> = T;
    | ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 20 previous errors
+error: layout_of(Option<bool>) = Layout {
+           size: Size(1 bytes),
+           align: AbiAlign {
+               abi: Align(1 bytes),
+           },
+           backend_repr: Scalar(
+               u8 is 0..=2,
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: u8,
+                   valid_range: 0..=2,
+               },
+           ),
+           uninhabited: false,
+           variants: Multiple {
+               tag: u8 is 0..=2,
+               tag_encoding: Niche {
+                   untagged_variant: 1,
+                   niche_variants: 0..=0,
+                   niche_start: 2,
+               },
+               tag_field: 0,
+               variants: [
+                   VariantLayout {
+                       size: Size(0 bytes),
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
+                       largest_niche: None,
+                       uninhabited: false,
+                   },
+                   VariantLayout {
+                       size: Size(1 bytes),
+                       backend_repr: Scalar(
+                           u8 is 0..=1,
+                       ),
+                       field_offsets: [
+                           Size(0 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
+                       largest_niche: Some(
+                           Niche {
+                               offset: Size(0 bytes),
+                               value: u8,
+                               valid_range: 0..=1,
+                           },
+                       ),
+                       uninhabited: false,
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/debug.rs:93:1
+   |
+LL | type OptBool = Option<bool>;
+   | ^^^^^^^^^^^^
+
+error: layout_of(Option<char>) = Layout {
+           size: Size(4 bytes),
+           align: AbiAlign {
+               abi: Align(4 bytes),
+           },
+           backend_repr: Scalar(
+               u32 is (..=1114111) | (4294967295..),
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: u32,
+                   valid_range: (..=1114111) | (4294967295..),
+               },
+           ),
+           uninhabited: false,
+           variants: Multiple {
+               tag: u32 is (..=1114111) | (4294967295..),
+               tag_encoding: Niche {
+                   untagged_variant: 1,
+                   niche_variants: 0..=0,
+                   niche_start: 4294967295,
+               },
+               tag_field: 0,
+               variants: [
+                   VariantLayout {
+                       size: Size(0 bytes),
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       field_offsets: [],
+                       fields_in_memory_order: [],
+                       largest_niche: None,
+                       uninhabited: false,
+                   },
+                   VariantLayout {
+                       size: Size(4 bytes),
+                       backend_repr: Scalar(
+                           u32 is 0..=1114111,
+                       ),
+                       field_offsets: [
+                           Size(0 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
+                       largest_niche: Some(
+                           Niche {
+                               offset: Size(0 bytes),
+                               value: u32,
+                               valid_range: 0..=1114111,
+                           },
+                       ),
+                       uninhabited: false,
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/debug.rs:96:1
+   |
+LL | type OptChar = Option<char>;
+   | ^^^^^^^^^^^^
+
+error: aborting due to 22 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

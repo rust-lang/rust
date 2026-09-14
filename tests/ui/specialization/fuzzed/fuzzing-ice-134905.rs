@@ -1,7 +1,7 @@
 // This test previously tried to use a tainted `EvalCtxt` when emitting
 // an error during coherence.
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete
+
 trait Iterate<'a> {
     type Ty: Valid;
 }
@@ -15,7 +15,7 @@ where
 
 trait Check {}
 impl<'a, T> Eq for T where <T as Iterate<'a>>::Ty: Valid {}
-//~^ ERROR type parameter `T` must be used as the type parameter for some local type
+//~^ ERROR type parameter `T` must be used as an argument to some local type
 
 trait Valid {}
 

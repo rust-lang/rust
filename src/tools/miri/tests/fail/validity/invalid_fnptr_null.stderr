@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a null function pointer
+error: Undefined Behavior: constructing invalid value of type fn(): encountered a null function pointer
   --> tests/fail/validity/invalid_fnptr_null.rs:LL:CC
    |
 LL |     let _b: fn() = unsafe { std::mem::transmute(0usize) };

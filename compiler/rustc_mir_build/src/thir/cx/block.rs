@@ -83,6 +83,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             }
                             Some(_) | None => local.span,
                         };
+                        let initializer = local.init.map(|init| self.mirror_expr(init));
                         let stmt = Stmt {
                             kind: StmtKind::Let {
                                 remainder_scope,
@@ -91,7 +92,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                                     data: region::ScopeData::Node,
                                 },
                                 pattern,
-                                initializer: local.init.map(|init| self.mirror_expr(init)),
+                                initializer,
                                 else_block,
                                 hir_id: local.hir_id,
                                 span,

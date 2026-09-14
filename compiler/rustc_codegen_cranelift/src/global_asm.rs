@@ -1,18 +1,19 @@
 //! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
 //! standalone executable.
 
+use std::fmt::Write as _;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::Arc;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::traits::{AsmCodegenMethods, GlobalAsmOperandRef};
+use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar as ConstScalar};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
 };
-use rustc_session::config::{OutputFilenames, OutputType};
+use rustc_session::Session;
 use rustc_target::asm::InlineAsmArch;
 
 use crate::prelude::*;
@@ -29,6 +30,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for GlobalAsmContext<'_, 'tcx> {
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         _line_spans: &[Span],
+        _extra_rust_target_features: &[String],
     ) {
         codegen_global_asm_inner(self.tcx, self.global_asm, template, operands, options);
     }
@@ -108,23 +110,57 @@ fn codegen_global_asm_inner<'tcx>(
             InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span } => {
                 use rustc_codegen_ssa::back::symbol_export::escape_symbol_name;
                 match operands[operand_idx] {
-                    GlobalAsmOperandRef::Const { ref string } => {
-                        global_asm.push_str(string);
-                    }
-                    GlobalAsmOperandRef::SymFn { instance } => {
-                        if cfg!(not(feature = "inline_asm_sym")) {
-                            tcx.dcx().span_err(
-                                span,
-                                "asm! and global_asm! sym operands are not yet supported",
-                            );
-                        }
+                    GlobalAsmOperandRef::Const { value, ty } => {
+                        match value {
+                            ConstScalar::Int(int) => {
+                                let string = rustc_codegen_ssa::common::asm_const_to_str(
+                                    tcx,
+                                    span,
+                                    int,
+                                    FullyMonomorphizedLayoutCx(tcx).layout_of(ty),
+                                );
+                                global_asm.push_str(&string);
+                            }
 
-                        let symbol = tcx.symbol_name(instance);
-                        // FIXME handle the case where the function was made private to the
-                        // current codegen unit
-                        global_asm.push_str(&escape_symbol_name(tcx, symbol.name, span));
+                            ConstScalar::Ptr(ptr, _) => {
+                                if cfg!(not(feature = "inline_asm_sym")) {
+                                    tcx.dcx().span_err(
+                                        span,
+                                        "asm! and global_asm! sym operands are not yet supported",
+                                    );
+                                }
+
+                                let (prov, offset) = ptr.prov_and_relative_offset();
+                                let global_alloc = tcx.global_alloc(prov.alloc_id());
+                                let symbol = match global_alloc {
+                                    GlobalAlloc::Function { instance } => {
+                                        // FIXME handle the case where the function was made private to the
+                                        // current codegen unit
+                                        tcx.symbol_name(instance)
+                                    }
+                                    GlobalAlloc::Static(def_id) => {
+                                        let instance = Instance::mono(tcx, def_id);
+                                        tcx.symbol_name(instance)
+                                    }
+                                    GlobalAlloc::Memory(_)
+                                    | GlobalAlloc::VTable(..)
+                                    | GlobalAlloc::TypeId { .. } => unreachable!(),
+                                };
+                                let symbol_name = if tcx.sess.target.is_like_darwin {
+                                    format!("_{}", symbol.name)
+                                } else {
+                                    symbol.name.to_owned()
+                                };
+                                global_asm.push_str(&escape_symbol_name(tcx, &symbol_name, span));
+
+                                if offset != Size::ZERO {
+                                    let offset = tcx.sign_extend_to_target_isize(offset.bytes());
+                                    write!(global_asm, "{offset:+}").unwrap();
+                                }
+                            }
+                        }
                     }
-                    GlobalAsmOperandRef::SymStatic { def_id } => {
+                    GlobalAsmOperandRef::SymThreadLocalStatic { def_id } => {
                         if cfg!(not(feature = "inline_asm_sym")) {
                             tcx.dcx().span_err(
                                 span,
@@ -134,7 +170,13 @@ fn codegen_global_asm_inner<'tcx>(
 
                         let instance = Instance::mono(tcx, def_id);
                         let symbol = tcx.symbol_name(instance);
-                        global_asm.push_str(&escape_symbol_name(tcx, symbol.name, span));
+                        let symbol_name = if tcx.sess.target.is_like_darwin {
+                            format!("_{}", symbol.name)
+                        } else {
+                            symbol.name.to_owned()
+                        };
+
+                        global_asm.push_str(&escape_symbol_name(tcx, &symbol_name, span));
                     }
                 }
             }
@@ -151,33 +193,28 @@ fn codegen_global_asm_inner<'tcx>(
 pub(crate) struct GlobalAsmConfig {
     assembler: PathBuf,
     target: String,
-    pub(crate) output_filenames: Arc<OutputFilenames>,
 }
 
 impl GlobalAsmConfig {
-    pub(crate) fn new(tcx: TyCtxt<'_>) -> Self {
+    pub(crate) fn new(sess: &Session) -> Self {
         GlobalAsmConfig {
-            assembler: crate::toolchain::get_toolchain_binary(tcx.sess, "as"),
-            target: match &tcx.sess.opts.target_triple {
-                rustc_target::spec::TargetTuple::TargetTuple(triple) => triple.clone(),
+            assembler: crate::toolchain::get_toolchain_binary(sess, "as"),
+            target: match &sess.opts.target_triple {
+                rustc_target::spec::TargetTuple::TargetTuple(tuple) => tuple.clone(),
                 rustc_target::spec::TargetTuple::TargetJson { path_for_rustdoc, .. } => {
                     path_for_rustdoc.to_str().unwrap().to_owned()
                 }
             },
-            output_filenames: tcx.output_filenames(()).clone(),
         }
     }
 }
 
 pub(crate) fn compile_global_asm(
     config: &GlobalAsmConfig,
-    cgu_name: &str,
     global_asm: String,
-    invocation_temp: Option<&str>,
-) -> Result<Option<PathBuf>, String> {
-    if global_asm.is_empty() {
-        return Ok(None);
-    }
+    global_asm_object_file: &Path,
+) -> Result<(), String> {
+    assert!(!global_asm.is_empty());
 
     // Remove all LLVM style comments
     let mut global_asm = global_asm
@@ -186,11 +223,6 @@ pub(crate) fn compile_global_asm(
         .collect::<Vec<_>>()
         .join("\n");
     global_asm.push('\n');
-
-    let global_asm_object_file = add_file_stem_postfix(
-        config.output_filenames.temp_path_for_cgu(OutputType::Object, cgu_name, invocation_temp),
-        ".asm",
-    );
 
     // Assemble `global_asm`
     if option_env!("CG_CLIF_FORCE_GNU_AS").is_some() {
@@ -223,6 +255,9 @@ pub(crate) fn compile_global_asm(
             .arg("-")
             .arg("-Abad_asm_style")
             .arg("-Zcodegen-backend=llvm")
+            // JSON targets currently require `-Zunstable-options`
+            // Tracking issue: https://github.com/rust-lang/rust/issues/151528
+            .arg("-Zunstable-options")
             .stdin(Stdio::piped())
             .spawn()
             .expect("Failed to spawn `as`.");
@@ -255,16 +290,5 @@ pub(crate) fn compile_global_asm(
         }
     }
 
-    Ok(Some(global_asm_object_file))
-}
-
-pub(crate) fn add_file_stem_postfix(mut path: PathBuf, postfix: &str) -> PathBuf {
-    let mut new_filename = path.file_stem().unwrap().to_owned();
-    new_filename.push(postfix);
-    if let Some(extension) = path.extension() {
-        new_filename.push(".");
-        new_filename.push(extension);
-    }
-    path.set_file_name(new_filename);
-    path
+    Ok(())
 }

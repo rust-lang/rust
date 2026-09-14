@@ -7,7 +7,7 @@ LL |   whiskers: isize,
 LL |     whiskers -= other;
    |     ^^^^^^^^
 
-error[E0424]: expected value, found module `self`
+error[E0424]: cannot find value `self` in this scope
   --> $DIR/issue-2356.rs:65:8
    |
 LL |   fn meow() {
@@ -15,6 +15,7 @@ LL |   fn meow() {
 LL |     if self.whiskers > 3 {
    |        ^^^^ `self` value is a keyword only available in methods with a `self` parameter
    |
+   = note: a module named `self` exists in another namespace
 help: add a `self` receiver parameter to make the associated `fn` a method
    |
 LL |   fn meow(&self) {
@@ -40,13 +41,15 @@ LL |   whiskers: isize,
 LL |     whiskers = 4;
    |     ^^^^^^^^
 
-error[E0424]: expected value, found module `self`
+error[E0424]: cannot find value `self` in this scope
   --> $DIR/issue-2356.rs:92:5
    |
 LL | fn main() {
    |    ---- this function can't have a `self` parameter
 LL |     self += 1;
    |     ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+   = note: a module named `self` exists in another namespace
 
 error[E0425]: cannot find function `shave` in this scope
   --> $DIR/issue-2356.rs:17:5

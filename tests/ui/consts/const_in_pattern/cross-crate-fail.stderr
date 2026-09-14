@@ -7,28 +7,38 @@ LL |         consts::SOME => panic!(),
   ::: $DIR/auxiliary/consts.rs:1:1
    |
 LL | pub struct CustomEq;
-   | ------------------- `CustomEq` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+   | ------------------- `CustomEq` is not usable in patterns
 ...
 LL | pub const SOME: Option<CustomEq> = Some(CustomEq);
    | -------------------------------- constant defined here
    |
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+help: add a condition to the match arm checking for equality
+   |
+LL -         consts::SOME => panic!(),
+LL +         binding if binding == consts::SOME => panic!(),
+   |
 
 error: constant of non-structural type `CustomEq` in a pattern
   --> $DIR/cross-crate-fail.rs:17:9
    |
-LL |         <Defaulted as consts::AssocConst>::SOME  => panic!(),
+LL |         <Defaulted as consts::AssocConst>::SOME => panic!(),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant of non-structural type
    |
   ::: $DIR/auxiliary/consts.rs:1:1
    |
 LL | pub struct CustomEq;
-   | ------------------- `CustomEq` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+   | ------------------- `CustomEq` is not usable in patterns
 ...
 LL |     const SOME: Option<CustomEq> = Some(CustomEq);
    |     ---------------------------- constant defined here
    |
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+help: add a condition to the match arm checking for equality
+   |
+LL -         <Defaulted as consts::AssocConst>::SOME => panic!(),
+LL +         binding if binding == <Defaulted as consts::AssocConst>::SOME => panic!(),
+   |
 
 error: aborting due to 2 previous errors
 

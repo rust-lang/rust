@@ -20,10 +20,10 @@ use crate::{
 };
 
 pub(crate) fn render_variant_lit(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     local_name: Option<hir::Name>,
-    variant: hir::Variant,
+    variant: hir::EnumVariant,
     path: Option<hir::ModPath>,
 ) -> Option<Builder> {
     let _p = tracing::info_span!("render_variant_lit").entered();
@@ -34,7 +34,7 @@ pub(crate) fn render_variant_lit(
 }
 
 pub(crate) fn render_struct_literal(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     strukt: hir::Struct,
     path: Option<hir::ModPath>,
@@ -48,7 +48,7 @@ pub(crate) fn render_struct_literal(
 }
 
 fn render(
-    ctx @ RenderContext { completion, .. }: RenderContext<'_>,
+    ctx @ RenderContext { completion, .. }: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     thing: Variant,
     name: hir::Name,
@@ -127,7 +127,7 @@ fn render(
 
     item.set_documentation(thing.docs(db)).set_deprecated(thing.is_deprecated(&ctx));
 
-    let ty = thing.ty(db);
+    let ty = ctx.completion.rebase_ty(&thing.ty(db));
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, &ty),
         // function is a misnomer here, this is more about constructor information
@@ -150,11 +150,11 @@ fn render(
 #[derive(Clone, Copy)]
 enum Variant {
     Struct(hir::Struct),
-    EnumVariant(hir::Variant),
+    EnumVariant(hir::EnumVariant),
 }
 
 impl Variant {
-    fn fields(self, ctx: &CompletionContext<'_>) -> Option<Vec<hir::Field>> {
+    fn fields(self, ctx: &CompletionContext<'_, '_>) -> Option<Vec<hir::Field>> {
         let fields = match self {
             Variant::Struct(it) => it.fields(ctx.db),
             Variant::EnumVariant(it) => it.fields(ctx.db),
@@ -187,10 +187,12 @@ impl Variant {
         }
     }
 
-    fn is_deprecated(self, ctx: &RenderContext<'_>) -> bool {
+    fn is_deprecated(self, ctx: &RenderContext<'_, '_>) -> bool {
         match self {
-            Variant::Struct(it) => ctx.is_deprecated(it),
-            Variant::EnumVariant(it) => ctx.is_deprecated(it),
+            Variant::Struct(it) => {
+                ctx.is_deprecated(it, None /* structs can't be assoc items */)
+            }
+            Variant::EnumVariant(it) => ctx.is_variant_deprecated(it),
         }
     }
 

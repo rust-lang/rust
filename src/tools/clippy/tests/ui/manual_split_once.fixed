@@ -1,9 +1,8 @@
 #![warn(clippy::manual_split_once)]
-#![allow(unused, clippy::iter_skip_next, clippy::iter_nth_zero)]
+#![allow(clippy::iter_skip_next)]
 
 extern crate itertools;
 
-#[allow(unused_imports)]
 use itertools::Itertools;
 
 fn main() {

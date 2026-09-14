@@ -39,22 +39,24 @@ error: expected identifier, found keyword `Self`
   --> $DIR/self_type_keyword.rs:22:15
    |
 LL |         Foo { Self } => (),
-   |               ^^^^ expected identifier, found keyword
+   |         ---   ^^^^ expected identifier, found keyword
+   |         |
+   |         while parsing the fields for this pattern
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:30:26
+  --> $DIR/self_type_keyword.rs:29:26
    |
 LL |     extern crate core as Self;
    |                          ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:35:32
+  --> $DIR/self_type_keyword.rs:34:32
    |
 LL |     use std::option::Option as Self;
    |                                ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:40:11
+  --> $DIR/self_type_keyword.rs:39:11
    |
 LL |     trait Self {}
    |           ^^^^ expected identifier, found keyword
@@ -88,13 +90,7 @@ LL |     match 15 {
 LL |         Foo { Self } => (),
    |         ^^^^^^^^^^^^ expected integer, found `Foo`
 
-error[E0026]: struct `Foo` does not have a field named `Self`
-  --> $DIR/self_type_keyword.rs:22:15
-   |
-LL |         Foo { Self } => (),
-   |               ^^^^ struct `Foo` does not have this field
+error: aborting due to 12 previous errors
 
-error: aborting due to 13 previous errors
-
-Some errors have detailed explanations: E0026, E0308, E0392, E0531.
-For more information about an error, try `rustc --explain E0026`.
+Some errors have detailed explanations: E0308, E0392, E0531.
+For more information about an error, try `rustc --explain E0308`.

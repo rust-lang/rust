@@ -17,7 +17,7 @@ mod on_enter;
 
 use either::Either;
 use hir::EditionedFileId;
-use ide_db::{FilePosition, RootDatabase, base_db::RootQueryDb};
+use ide_db::{FilePosition, RootDatabase, base_db::relevant_crates};
 use span::Edition;
 use std::iter;
 
@@ -70,13 +70,12 @@ pub(crate) fn on_char_typed(
     if !TRIGGER_CHARS.contains(&char_typed) {
         return None;
     }
-    let edition = db
-        .relevant_crates(position.file_id)
+    let edition = relevant_crates(db, position.file_id)
         .first()
         .copied()
         .map_or(Edition::CURRENT, |krate| krate.data(db).edition);
     let editioned_file_id_wrapper = EditionedFileId::new(db, position.file_id, edition);
-    let file = &db.parse(editioned_file_id_wrapper);
+    let file = &editioned_file_id_wrapper.parse(db);
     let char_matches_position =
         file.tree().syntax().text().char_at(position.offset) == Some(char_typed);
     if !stdx::always!(char_matches_position) {
@@ -327,10 +326,8 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     // Make sure dot is a part of call chain
     let receiver = if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
         field_expr.expr()?
-    } else if let Some(method_call_expr) = ast::MethodCallExpr::cast(parent.clone()) {
-        method_call_expr.receiver()?
     } else {
-        return None;
+        ast::MethodCallExpr::cast(parent.clone())?.receiver()?
     };
 
     let receiver_is_multiline = receiver.syntax().text().find_char('\n').is_some();
@@ -368,7 +365,7 @@ fn on_left_angle_typed(
 ) -> Option<TextEdit> {
     let file_text = reparsed.syntax().text();
 
-    // Find the next non-whitespace char in the line, check if its a `>`
+    // Find the next non-whitespace char in the line, check if it's a `>`
     let mut next_offset = offset;
     while file_text.char_at(next_offset) == Some(' ') {
         next_offset += TextSize::of(' ')
@@ -1240,12 +1237,6 @@ sdasdasdasdasd
     #[test]
     fn parenthesis_noop_in_item_position_with_macro() {
         type_char_noop('(', r#"$0println!();"#);
-        type_char_noop(
-            '(',
-            r#"
-fn main() $0println!("hello");
-}"#,
-        );
     }
 
     #[test]

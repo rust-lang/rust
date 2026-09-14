@@ -1,5 +1,5 @@
 use crate::marker::Destruct;
-use crate::{convert, ops};
+use crate::ops;
 
 /// Used to tell an operation whether it should exit early or go on as usual.
 ///
@@ -102,9 +102,9 @@ pub enum ControlFlow<B, C = ()> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-impl<B, C> const ops::Try for ControlFlow<B, C> {
+const impl<B, C> ops::Try for ControlFlow<B, C> {
     type Output = C;
-    type Residual = ControlFlow<B, convert::Infallible>;
+    type Residual = ControlFlow<B, !>;
 
     #[inline]
     fn from_output(output: Self::Output) -> Self {
@@ -124,9 +124,9 @@ impl<B, C> const ops::Try for ControlFlow<B, C> {
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 // Note: manually specifying the residual type instead of using the default to work around
 // https://github.com/rust-lang/rust/issues/99940
-impl<B, C> const ops::FromResidual<ControlFlow<B, convert::Infallible>> for ControlFlow<B, C> {
+const impl<B, C> ops::FromResidual<ControlFlow<B, !>> for ControlFlow<B, C> {
     #[inline]
-    fn from_residual(residual: ControlFlow<B, convert::Infallible>) -> Self {
+    fn from_residual(residual: ControlFlow<B, !>) -> Self {
         match residual {
             ControlFlow::Break(b) => ControlFlow::Break(b),
         }
@@ -134,7 +134,8 @@ impl<B, C> const ops::FromResidual<ControlFlow<B, convert::Infallible>> for Cont
 }
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-impl<B, C> ops::Residual<C> for ControlFlow<B, convert::Infallible> {
+#[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
+const impl<B, C> ops::Residual<C> for ControlFlow<B, !> {
     type TryType = ControlFlow<B, C>;
 }
 
@@ -261,8 +262,8 @@ impl<B, C> ControlFlow<B, C> {
     /// assert_eq!(res, Ok(&5));
     /// ```
     #[inline]
-    #[stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "control_flow_ok", since = "1.96.0")]
+    #[rustc_const_stable(feature = "control_flow_ok", since = "1.96.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn break_ok(self) -> Result<B, C> {
         match self {
@@ -373,8 +374,8 @@ impl<B, C> ControlFlow<B, C> {
     /// assert_eq!(res, Err("too big value detected"));
     /// ```
     #[inline]
-    #[stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "control_flow_ok", since = "1.96.0")]
+    #[rustc_const_stable(feature = "control_flow_ok", since = "1.96.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn continue_ok(self) -> Result<C, B> {
         match self {
@@ -426,7 +427,11 @@ impl<T> ControlFlow<T, T> {
 impl<R: ops::Try> ControlFlow<R, R::Output> {
     /// Creates a `ControlFlow` from any type implementing `Try`.
     #[inline]
-    pub(crate) fn from_try(r: R) -> Self {
+    #[rustc_const_unstable(feature = "const_control_flow", issue = "148739")]
+    pub(crate) const fn from_try(r: R) -> Self
+    where
+        R: [const] ops::Try,
+    {
         match R::branch(r) {
             ControlFlow::Continue(v) => ControlFlow::Continue(v),
             ControlFlow::Break(v) => ControlFlow::Break(R::from_residual(v)),
@@ -435,7 +440,11 @@ impl<R: ops::Try> ControlFlow<R, R::Output> {
 
     /// Converts a `ControlFlow` into any type implementing `Try`.
     #[inline]
-    pub(crate) fn into_try(self) -> R {
+    #[rustc_const_unstable(feature = "const_control_flow", issue = "148739")]
+    pub(crate) const fn into_try(self) -> R
+    where
+        R: [const] ops::Try,
+    {
         match self {
             ControlFlow::Continue(v) => R::from_output(v),
             ControlFlow::Break(v) => v,

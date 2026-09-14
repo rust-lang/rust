@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // Translated from GenMC's "litmus/IRIWish" test.
 // This test prints the values read by the different threads to check that we get all the values we expect.
 

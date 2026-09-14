@@ -12,8 +12,8 @@ const trait Baz {
     fn baz(&self) {}
 }
 
-impl const Bar for () {}
-impl const Baz for () {}
+const impl Bar for () {}
+const impl Baz for () {}
 
 const trait Foo = [const] Bar + Baz;
 

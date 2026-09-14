@@ -239,5 +239,5 @@ fn evens_squared(n: usize) -> _ {
 
 const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
 //~^ ERROR the placeholder
-//~| ERROR cannot call non-const
-//~| ERROR cannot call non-const
+//~| ERROR cannot call
+//~| ERROR cannot call

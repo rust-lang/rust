@@ -55,11 +55,12 @@ for larger features an implementation could be broken up into multiple PRs.
 ### Unresolved Questions
 <!--
 Include any open questions that need to be answered before the feature can be
-stabilised.
+stabilised. It is useful to link related discussions and conculsions as they
+develop.
 -->
 
-XXX --- list all the "unresolved questions" found in the RFC to ensure they are
-not forgotten
+- [ ] list all the "unresolved questions" found in the RFC to ensure they are
+  not forgotten.
 
 ### Implementation history
 

@@ -1,31 +1,32 @@
 use std::convert::identity;
 
 use rustc_ast::token::Delimiter;
-use rustc_ast::tokenstream::DelimSpan;
-use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, ast, token};
-use rustc_errors::{Applicability, PResult, msg};
-use rustc_feature::{
-    AttrSuggestionStyle, AttributeTemplate, Features, GatedCfg, find_gated_cfg, template,
-};
-use rustc_hir::attrs::CfgEntry;
-use rustc_hir::lints::AttributeLintKind;
-use rustc_hir::{AttrPath, RustcVersion, Target};
+use rustc_ast::tokenstream::{DelimSpan, WithTokens};
+use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttrPath, CfgEntry, RustcVersion};
+use rustc_errors::{Applicability, Diagnostic, PResult, msg};
+use rustc_feature::{Features, GatedCfg, find_gated_cfg};
+use rustc_lint_defs::builtin::UNEXPECTED_CFGS;
 use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
-use rustc_session::lint::builtin::UNEXPECTED_CFGS;
-use rustc_session::parse::{ParseSess, feature_err};
+use rustc_session::diagnostics::feature_err;
+use rustc_session::parse::ParseSess;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
-use crate::context::{AcceptContext, ShouldEmit, Stage};
-use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser};
-use crate::session_diagnostics::{
+use crate::attributes::AttributeSafety;
+use crate::context::{AcceptContext, ShouldEmit};
+use crate::diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
     ParsedDescription,
 };
-use crate::{AttributeParser, parse_version, session_diagnostics};
+use crate::parser::{
+    AllowExprMetavar, ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser,
+};
+use crate::{AttributeParser, AttributeTemplate, check_cfg, diagnostics, parse_version, template};
 
 pub const CFG_TEMPLATE: AttributeTemplate = template!(
     List: &["predicate"],
@@ -37,31 +38,54 @@ const CFG_ATTR_TEMPLATE: AttributeTemplate = template!(
     "https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute"
 );
 
-pub fn parse_cfg<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
-    args: &ArgParser,
-) -> Option<CfgEntry> {
-    let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span, args);
-        return None;
-    };
-    let Some(single) = list.single() else {
-        cx.expected_single_argument(list.span);
+pub fn parse_cfg(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<CfgEntry> {
+    let list = cx.expect_list(args, cx.attr_span)?;
+
+    let Some(single) = list.as_single() else {
+        let target = cx.target;
+        let mut adcx = cx.adcx();
+        if list.is_empty() {
+            // `#[cfg()]`
+            let message = format!("if the {target} should be disabled, use `#[cfg(false)]`");
+            adcx.push_suggestion(message, list.span, "(false)".to_string());
+        } else {
+            // `#[cfg(foo, bar)]`
+            if let Ok(args) = adcx
+                .sess()
+                .source_map()
+                .span_to_source(list.span, |src, start, end| Ok(src[start..end].to_string()))
+            {
+                let all = format!("(all{args})");
+                let any = format!("(any{args})");
+
+                let all_msg = format!(
+                    "if the {target} should be enabled when all these predicates are, wrap them in `all`"
+                );
+                let any_msg = format!(
+                    "alternately, if the {target} should be enabled when any of these predicates are, wrap them in `any`"
+                );
+
+                adcx.push_suggestion(all_msg, list.span, all);
+                adcx.push_suggestion(any_msg, list.span, any);
+            }
+        }
+
+        adcx.expected_single_argument(list.span, list.len());
         return None;
     };
     parse_cfg_entry(cx, single).ok()
 }
 
-pub fn parse_cfg_entry<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+pub fn parse_cfg_entry(
+    cx: &mut AcceptContext<'_, '_>,
     item: &MetaItemOrLitParser,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
     Ok(match item {
         MetaItemOrLitParser::MetaItemParser(meta) => match meta.args() {
             ArgParser::List(list) => match meta.path().word_sym() {
                 Some(sym::not) => {
-                    let Some(single) = list.single() else {
-                        return Err(cx.expected_single_argument(list.span));
+                    let Some(single) = list.as_single() else {
+                        return Err(cx.adcx().expected_single_argument(list.span, list.len()));
                     };
                     CfgEntry::Not(Box::new(parse_cfg_entry(cx, single)?), list.span)
                 }
@@ -76,61 +100,54 @@ pub fn parse_cfg_entry<S: Stage>(
                 Some(sym::target) => parse_cfg_entry_target(cx, list, meta.span())?,
                 Some(sym::version) => parse_cfg_entry_version(cx, list, meta.span())?,
                 _ => {
-                    return Err(cx.emit_err(session_diagnostics::InvalidPredicate {
-                        span: meta.span(),
-                        predicate: meta.path().to_string(),
-                    }));
+                    let mut possibilities = vec![sym::any, sym::all, sym::not, sym::target];
+                    if cx.features_option().is_some_and(Features::cfg_version) {
+                        possibilities.push(sym::version);
+                    }
+                    return Err(cx.adcx().expected_specific_argument(meta.span(), &possibilities));
                 }
             },
             a @ (ArgParser::NoArgs | ArgParser::NameValue(_)) => {
                 let Some(name) = meta.path().word_sym().filter(|s| !s.is_path_segment_keyword())
                 else {
-                    return Err(cx.expected_identifier(meta.path().span()));
+                    return Err(cx.adcx().expected_identifier(meta.path().span()));
                 };
-                parse_name_value(name, meta.path().span(), a.name_value(), meta.span(), cx)?
+                parse_name_value(name, meta.path().span(), a.as_name_value(), meta.span(), cx)?
             }
         },
         MetaItemOrLitParser::Lit(lit) => match lit.kind {
             LitKind::Bool(b) => CfgEntry::Bool(b, lit.span),
-            _ => return Err(cx.expected_identifier(lit.span)),
+            _ => return Err(cx.adcx().expected_identifier(lit.span)),
         },
     })
 }
 
-fn parse_cfg_entry_version<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn parse_cfg_entry_version(
+    cx: &mut AcceptContext<'_, '_>,
     list: &MetaItemListParser,
     meta_span: Span,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
     try_gate_cfg(sym::version, meta_span, cx.sess(), cx.features_option());
-    let Some(version) = list.single() else {
-        return Err(
-            cx.emit_err(session_diagnostics::ExpectedSingleVersionLiteral { span: list.span })
-        );
+    let Some(version) = list.as_single() else {
+        return Err(cx.emit_err(diagnostics::ExpectedSingleVersionLiteral { span: list.span }));
     };
-    let Some(version_lit) = version.lit() else {
-        return Err(
-            cx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: version.span() })
-        );
+    let Some(version_lit) = version.as_lit() else {
+        return Err(cx.emit_err(diagnostics::ExpectedVersionLiteral { span: version.span() }));
     };
-    let Some(version_str) = version_lit.value_str() else {
-        return Err(
-            cx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: version_lit.span })
-        );
+    let Some(version_str) = version_lit.value_as_str() else {
+        return Err(cx.emit_err(diagnostics::ExpectedVersionLiteral { span: version_lit.span }));
     };
 
     let min_version = parse_version(version_str).or_else(|| {
-        cx.sess()
-            .dcx()
-            .emit_warn(session_diagnostics::UnknownVersionLiteral { span: version_lit.span });
+        cx.sess().dcx().emit_warn(diagnostics::UnknownVersionLiteral { span: version_lit.span });
         None
     });
 
     Ok(CfgEntry::Version(min_version, list.span))
 }
 
-fn parse_cfg_entry_target<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn parse_cfg_entry_target(
+    cx: &mut AcceptContext<'_, '_>,
     list: &MetaItemListParser,
     meta_span: Span,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
@@ -149,35 +166,28 @@ fn parse_cfg_entry_target<S: Stage>(
     let mut result = ThinVec::new();
     for sub_item in list.mixed() {
         // First, validate that this is a NameValue item
-        let Some(sub_item) = sub_item.meta_item() else {
-            cx.expected_name_value(sub_item.span(), None);
-            continue;
-        };
-        let Some(nv) = sub_item.args().name_value() else {
-            cx.expected_name_value(sub_item.span(), None);
+        let Some((name, value)) = cx.expect_name_value(sub_item, sub_item.span(), None) else {
             continue;
         };
 
         // Then, parse it as a name-value item
-        let Some(name) = sub_item.path().word_sym().filter(|s| !s.is_path_segment_keyword()) else {
-            return Err(cx.expected_identifier(sub_item.path().span()));
-        };
+        if name.is_path_segment_keyword() {
+            return Err(cx.adcx().expected_identifier(name.span));
+        }
         let name = Symbol::intern(&format!("target_{name}"));
-        if let Ok(cfg) =
-            parse_name_value(name, sub_item.path().span(), Some(nv), sub_item.span(), cx)
-        {
+        if let Ok(cfg) = parse_name_value(name, sub_item.span(), Some(value), sub_item.span(), cx) {
             result.push(cfg);
         }
     }
     Ok(CfgEntry::All(result, list.span))
 }
 
-pub(crate) fn parse_name_value<S: Stage>(
+pub(crate) fn parse_name_value(
     name: Symbol,
     name_span: Span,
     value: Option<&NameValueParser>,
     span: Span,
-    cx: &mut AcceptContext<'_, '_, S>,
+    cx: &mut AcceptContext<'_, '_>,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
     try_gate_cfg(name, span, cx.sess(), cx.features_option());
 
@@ -185,24 +195,29 @@ pub(crate) fn parse_name_value<S: Stage>(
         None => None,
         Some(value) => {
             let Some(value_str) = value.value_as_str() else {
-                return Err(
-                    cx.expected_string_literal(value.value_span, Some(value.value_as_lit()))
-                );
+                return Err(cx
+                    .adcx()
+                    .expected_string_literal(value.value_span, Some(value.value_as_lit())));
             };
             Some((value_str, value.value_span))
         }
     };
 
-    match cx.sess.psess.check_config.expecteds.get(&name) {
+    match cx.sess.check_config.expecteds.get(&name) {
         Some(ExpectedValues::Some(values)) if !values.contains(&value.map(|(v, _)| v)) => cx
-            .emit_lint(
+            .emit_lint_with_sess(
                 UNEXPECTED_CFGS,
-                AttributeLintKind::UnexpectedCfgValue((name, name_span), value),
+                move |dcx, level, sess| {
+                    check_cfg::unexpected_cfg_value(sess, (name, name_span), value)
+                        .into_diag(dcx, level)
+                },
                 span,
             ),
-        None if cx.sess.psess.check_config.exhaustive_names => cx.emit_lint(
+        None if cx.sess.check_config.exhaustive_names => cx.emit_lint_with_sess(
             UNEXPECTED_CFGS,
-            AttributeLintKind::UnexpectedCfgName((name, name_span), value),
+            move |dcx, level, sess| {
+                check_cfg::unexpected_cfg_name(sess, (name, name_span), value).into_diag(dcx, level)
+            },
             span,
         ),
         _ => { /* not unexpected */ }
@@ -222,45 +237,42 @@ pub fn eval_config_entry(sess: &Session, cfg_entry: &CfgEntry) -> EvalConfigResu
             }
             EvalConfigResult::True
         }
-        CfgEntry::Any(subs, span) => {
+        CfgEntry::Any(subs, _) => {
             for sub in subs {
                 let res = eval_config_entry(sess, sub);
                 if res.as_bool() {
                     return res;
                 }
             }
-            EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
+            EvalConfigResult::False { reason: cfg_entry.clone() }
         }
-        CfgEntry::Not(sub, span) => {
+        CfgEntry::Not(sub, _) => {
             if eval_config_entry(sess, sub).as_bool() {
-                EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
+                EvalConfigResult::False { reason: cfg_entry.clone() }
             } else {
                 EvalConfigResult::True
             }
         }
-        CfgEntry::Bool(b, span) => {
+        CfgEntry::Bool(b, _) => {
             if *b {
                 EvalConfigResult::True
             } else {
-                EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
+                EvalConfigResult::False { reason: cfg_entry.clone() }
             }
         }
-        CfgEntry::NameValue { name, value, span } => {
-            if sess.psess.config.contains(&(*name, *value)) {
+        CfgEntry::NameValue { name, value, span: _ } => {
+            if sess.config.contains(&(*name, *value)) {
                 EvalConfigResult::True
             } else {
-                EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
+                EvalConfigResult::False { reason: cfg_entry.clone() }
             }
         }
-        CfgEntry::Version(min_version, version_span) => {
+        CfgEntry::Version(min_version, _) => {
             let Some(min_version) = min_version else {
-                return EvalConfigResult::False {
-                    reason: cfg_entry.clone(),
-                    reason_span: *version_span,
-                };
+                return EvalConfigResult::False { reason: cfg_entry.clone() };
             };
             // See https://github.com/rust-lang/rust/issues/64796#issuecomment-640851454 for details
-            let min_version_ok = if sess.psess.assume_incomplete_release {
+            let min_version_ok = if sess.opts.unstable_opts.assume_incomplete_release {
                 RustcVersion::current_overridable() > *min_version
             } else {
                 RustcVersion::current_overridable() >= *min_version
@@ -268,7 +280,7 @@ pub fn eval_config_entry(sess: &Session, cfg_entry: &CfgEntry) -> EvalConfigResu
             if min_version_ok {
                 EvalConfigResult::True
             } else {
-                EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *version_span }
+                EvalConfigResult::False { reason: cfg_entry.clone() }
             }
         }
     }
@@ -276,7 +288,7 @@ pub fn eval_config_entry(sess: &Session, cfg_entry: &CfgEntry) -> EvalConfigResu
 
 pub enum EvalConfigResult {
     True,
-    False { reason: CfgEntry, reason_span: Span },
+    False { reason: CfgEntry },
 }
 
 impl EvalConfigResult {
@@ -292,19 +304,23 @@ pub fn parse_cfg_attr(
     cfg_attr: &Attribute,
     sess: &Session,
     features: Option<&Features>,
-) -> Option<(CfgEntry, Vec<(AttrItem, Span)>)> {
-    match cfg_attr.get_normal_item().args.unparsed_ref().unwrap() {
+    lint_node_id: ast::NodeId,
+) -> Option<(CfgEntry, Vec<(WithTokens<AttrItem>, Span)>)> {
+    match &cfg_attr.get_normal_item().args {
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
             check_cfg_attr_bad_delim(&sess.psess, *dspan, *delim);
             match parse_in(&sess.psess, tokens.clone(), "`cfg_attr` input", |p| {
-                parse_cfg_attr_internal(p, sess, features, cfg_attr)
+                parse_cfg_attr_internal(p, sess, features, lint_node_id, cfg_attr)
             }) {
                 Ok(r) => return Some(r),
                 Err(e) => {
-                    let suggestions = CFG_ATTR_TEMPLATE
-                        .suggestions(AttrSuggestionStyle::Attribute(cfg_attr.style), sym::cfg_attr);
+                    let suggestions = CFG_ATTR_TEMPLATE.suggestions(
+                        ParsedDescription::Attribute,
+                        cfg_attr.get_normal_item().unsafety,
+                        sym::cfg_attr,
+                    );
                     e.with_span_suggestions(
-                        cfg_attr.span,
+                        cfg_attr.get_normal_item().span,
                         "must be of the form",
                         suggestions,
                         Applicability::HasPlaceholders,
@@ -319,22 +335,27 @@ pub fn parse_cfg_attr(
         }
         _ => {
             let (span, reason) = if let ast::AttrArgs::Delimited(ast::DelimArgs { dspan, .. }) =
-                cfg_attr.get_normal_item().args.unparsed_ref()?
+                cfg_attr.get_normal_item().args
             {
                 (dspan.entire(), AttributeParseErrorReason::ExpectedAtLeastOneArgument)
             } else {
-                (cfg_attr.span, AttributeParseErrorReason::ExpectedList)
+                (cfg_attr.get_normal_item().span, AttributeParseErrorReason::ExpectedList)
             };
 
             sess.dcx().emit_err(AttributeParseError {
                 span,
-                attr_span: cfg_attr.span,
+                inner_span: cfg_attr.get_normal_item().span,
                 template: CFG_ATTR_TEMPLATE,
                 path: AttrPath::from_ast(&cfg_attr.get_normal_item().path, identity),
                 description: ParsedDescription::Attribute,
                 reason,
-                suggestions: CFG_ATTR_TEMPLATE
-                    .suggestions(AttrSuggestionStyle::Attribute(cfg_attr.style), sym::cfg_attr),
+                suggestions: diagnostics::AttributeParseErrorSuggestions::CreatedByTemplate(
+                    CFG_ATTR_TEMPLATE.suggestions(
+                        ParsedDescription::Attribute,
+                        cfg_attr.get_normal_item().unsafety,
+                        sym::cfg_attr,
+                    ),
+                ),
             });
         }
     }
@@ -356,26 +377,29 @@ fn parse_cfg_attr_internal<'a>(
     parser: &mut Parser<'a>,
     sess: &'a Session,
     features: Option<&Features>,
+    lint_node_id: ast::NodeId,
     attribute: &Attribute,
-) -> PResult<'a, (CfgEntry, Vec<(ast::AttrItem, Span)>)> {
+) -> PResult<'a, (CfgEntry, Vec<(WithTokens<ast::AttrItem>, Span)>)> {
     // Parse cfg predicate
     let pred_start = parser.token.span;
     let meta = MetaItemOrLitParser::parse_single(
         parser,
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+        AllowExprMetavar::Yes,
     )?;
     let pred_span = pred_start.with_hi(parser.token.span.hi());
 
     let cfg_predicate = AttributeParser::parse_single_args(
         sess,
         attribute.span,
-        attribute.get_normal_item().span(),
+        attribute.get_normal_item().span,
         attribute.style,
         AttrPath { segments: attribute.path().into_boxed_slice(), span: attribute.span },
         Some(attribute.get_normal_item().unsafety),
+        AttributeSafety::Normal,
         ParsedDescription::Attribute,
         pred_span,
-        CRATE_NODE_ID,
+        lint_node_id,
         Target::Crate,
         features,
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
@@ -409,7 +433,7 @@ fn parse_cfg_attr_internal<'a>(
 }
 
 fn try_gate_cfg(name: Symbol, span: Span, sess: &Session, features: Option<&Features>) {
-    let gate = find_gated_cfg(|sym| sym == name);
+    let gate = find_gated_cfg(name);
     if let (Some(feats), Some(gated_cfg)) = (features, gate) {
         gate_cfg(gated_cfg, span, sess, feats);
     }

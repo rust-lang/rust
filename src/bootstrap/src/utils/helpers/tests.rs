@@ -3,11 +3,10 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use crate::utils::helpers::{
-    check_cfg_arg, extract_beta_rev, hex_encode, make, set_file_times, submodule_path_of,
-    symlink_dir,
+    check_cfg_arg, envify, extract_beta_rev, hex_encode, make, set_file_times,
+    submodule_path_of_paths, symlink_dir,
 };
 use crate::utils::tests::TestCtx;
-use crate::{Config, Flags};
 
 #[test]
 fn test_make() {
@@ -101,19 +100,40 @@ fn test_set_file_times_sanity_check() {
 
 #[test]
 fn test_submodule_path_of() {
-    let config = TestCtx::new().config("build").create_config();
+    let submodules = vec!["src/tools/cargo".to_string(), "src/llvm-project".to_string()];
 
-    let build = crate::Build::new(config.clone());
-    let builder = crate::core::builder::Builder::new(&build);
-    assert_eq!(submodule_path_of(&builder, "invalid/path"), None);
-    assert_eq!(submodule_path_of(&builder, "src/tools/cargo"), Some("src/tools/cargo".to_string()));
+    assert_eq!(submodule_path_of_paths(&submodules, "invalid/path"), None);
     assert_eq!(
-        submodule_path_of(&builder, "src/llvm-project"),
+        submodule_path_of_paths(&submodules, "src/tools/cargo"),
+        Some("src/tools/cargo".to_string())
+    );
+    assert_eq!(
+        submodule_path_of_paths(&submodules, "src/llvm-project"),
         Some("src/llvm-project".to_string())
     );
     // Make sure subdirs are handled properly
     assert_eq!(
-        submodule_path_of(&builder, "src/tools/cargo/random-subdir"),
+        submodule_path_of_paths(&submodules, "src/tools/cargo/random-subdir"),
         Some("src/tools/cargo".to_string())
     );
+    // Make sure paths that only share a string prefix with a submodule are not matched.
+    assert_eq!(submodule_path_of_paths(&submodules, "src/tools/cargo-vendor"), None);
+}
+
+#[test]
+fn test_envify() {
+    struct Case {
+        input: &'static str,
+        expected: &'static str,
+    }
+    let cases = &[
+        Case { input: "x86_64-unknown-linux-gnu", expected: "X86_64_UNKNOWN_LINUX_GNU" },
+        // Arbitrary target containing `.` from the tier-3 target list.
+        Case { input: "thumbv8m.base-none-eabi", expected: "THUMBV8M_BASE_NONE_EABI" },
+    ];
+
+    for &Case { input, expected } in cases {
+        let actual = envify(input);
+        assert_eq!(actual, expected, "input = {input:?}");
+    }
 }

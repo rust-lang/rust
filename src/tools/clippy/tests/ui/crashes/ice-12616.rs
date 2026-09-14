@@ -1,5 +1,5 @@
 #![warn(clippy::ptr_as_ptr)]
-#![allow(clippy::unnecessary_operation, clippy::unnecessary_cast)]
+#![allow(clippy::unnecessary_cast, clippy::unnecessary_operation)]
 
 fn main() {
     let s = std::ptr::null::<()>;

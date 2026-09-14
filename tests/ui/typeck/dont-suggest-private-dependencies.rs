@@ -31,7 +31,7 @@ use public_dep::B;
 
 fn main() {
     let _ = u8::cast_from_lossy(9);
-    //~^ ERROR no function or associated item named `cast_from_lossy` found for type `u8`
+    //~^ ERROR no associated function or constant named `cast_from_lossy` found for type `u8`
     let _ = B::foo();
-    //~^ ERROR no function or associated item named `foo` found for struct `B`
+    //~^ ERROR no associated function or constant named `foo` found for struct `B`
 }

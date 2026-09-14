@@ -19,6 +19,8 @@ macro_rules! neg {
 }
 
 neg! {
+    impl<const N: usize> Neg for Simd<f16, N>
+
     impl<const N: usize> Neg for Simd<f32, N>
 
     impl<const N: usize> Neg for Simd<f64, N>

@@ -1,0 +1,26 @@
+// Tests that calling `.cloned()` or `.copied()` on `Option<T>` where `T` is an
+// owned (non-reference) type gives a targeted diagnostic instead of the
+// misleading "not an iterator / call .into_iter() first" suggestion.
+// See https://github.com/rust-lang/rust/issues/151147
+
+//@ run-rustfix
+
+pub fn cloned_on_owned(x: Option<i32>) -> i32 {
+    x.cloned().unwrap()
+    //~^ ERROR no method named `cloned` found for enum `Option<i32>` in the current scope
+    //~| HELP consider removing the `.cloned()` call
+}
+
+pub fn copied_on_owned(x: Option<i32>) -> i32 {
+    x.copied().unwrap()
+    //~^ ERROR no method named `copied` found for enum `Option<i32>` in the current scope
+    //~| HELP consider removing the `.copied()` call
+}
+
+pub fn cloned_on_string(x: Option<String>) -> String {
+    x.cloned().unwrap()
+    //~^ ERROR no method named `cloned` found for enum `Option<String>` in the current scope
+    //~| HELP consider removing the `.cloned()` call
+}
+
+fn main() {}

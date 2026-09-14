@@ -1,9 +1,9 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir as hir;
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
@@ -67,7 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
             // We don't care about what `#[derive(Default)]` produces in this lint.
             return;
         }
-        let ty = cx.tcx.type_of(impl_id).instantiate_identity();
+        let ty = cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip();
         let ty::Adt(def, _) = ty.kind() else { return };
 
         // We now know we have a manually written definition of a `<Type as Default>::default()`.
@@ -156,15 +156,15 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
     }
 }
 
-struct WrongDefaultImpl<'a, 'hir, 'tcx> {
+struct WrongDefaultImpl<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     type_def_id: DefId,
-    orig_fields: FxHashMap<Symbol, &'a hir::FieldDef<'hir>>,
-    fields: &'a [hir::ExprField<'hir>],
+    orig_fields: FxHashMap<Symbol, &'a hir::FieldDef<'tcx>>,
+    fields: &'a [hir::ExprField<'tcx>],
     impl_span: Span,
 }
 
-impl<'a, 'b, 'hir, 'tcx> Diagnostic<'a, ()> for WrongDefaultImpl<'b, 'hir, 'tcx> {
+impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for WrongDefaultImpl<'b, 'tcx> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         let Self { tcx, type_def_id, orig_fields, fields, impl_span } = self;
         let mut diag =

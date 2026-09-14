@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::MaybeQPath as _;
 use clippy_utils::{expr_or_init, fn_def_id_with_node_args, sym};
 use rustc_ast::BinOpKind;
 use rustc_data_structures::fx::FxHashMap;
@@ -9,10 +9,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{FnKind, Visitor, walk_body, walk_expr};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Node, QPath, TyKind};
 use rustc_hir_analysis::lower_ty;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::{Ident, kw};
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
@@ -100,9 +99,13 @@ fn get_hir_ty_def_id<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: rustc_hir::Ty<'tcx>) -> Op
             let ty = lower_ty(tcx, &hir_ty);
 
             match ty.kind() {
-                ty::Alias(ty::Projection, proj) => {
-                    Res::<HirId>::Def(DefKind::Trait, proj.trait_ref(tcx).def_id).opt_def_id()
-                },
+                ty::Alias(
+                    _,
+                    proj @ ty::AliasTy {
+                        kind: ty::Projection { .. },
+                        ..
+                    },
+                ) => Res::<HirId>::Def(DefKind::Trait, proj.trait_ref(tcx).def_id).opt_def_id(),
                 _ => None,
             }
         },
@@ -373,7 +376,7 @@ impl UnconditionalRecursion {
         method_def_id: LocalDefId,
     ) {
         // We're only interested into static methods.
-        if decl.implicit_self.has_implicit_self() {
+        if decl.implicit_self().has_implicit_self() {
             return;
         }
         // We don't check trait implementations.

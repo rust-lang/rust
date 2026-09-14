@@ -9,7 +9,6 @@ use crate::mem::MaybeUninit;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
 };
-use crate::sealed::Sealed;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{io, marker, process, ptr, sys};
 
@@ -149,11 +148,8 @@ impl From<OwnedHandle> for process::ChildStderr {
 }
 
 /// Windows-specific extensions to [`process::ExitStatus`].
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "exit_status_from", since = "1.12.0")]
-pub trait ExitStatusExt: Sealed {
+pub impl(self) trait ExitStatusExt {
     /// Creates a new `ExitStatus` from the raw underlying `u32` return value of
     /// a process.
     #[stable(feature = "exit_status_from", since = "1.12.0")]
@@ -168,11 +164,8 @@ impl ExitStatusExt for process::ExitStatus {
 }
 
 /// Windows-specific extensions to the [`process::Command`] builder.
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
-pub trait CommandExt: Sealed {
+pub impl(self) trait CommandExt {
     /// Sets the [process creation flags][1] to be passed to `CreateProcess`.
     ///
     /// These will always be ORed with `CREATE_UNICODE_ENVIRONMENT`.
@@ -180,6 +173,15 @@ pub trait CommandExt: Sealed {
     /// [1]: https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
     #[stable(feature = "windows_process_extensions", since = "1.16.0")]
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command;
+
+    /// Places the child process on the desktop named `desktop` by setting the
+    /// `lpDesktop` field of the [STARTUPINFO][1] passed to `CreateProcess`.
+    ///
+    /// The name may be a desktop or a `window-station\desktop` path.
+    ///
+    /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/ns-processthreadsapi-startupinfow>
+    #[unstable(feature = "windows_process_extensions_desktop", issue = "158852")]
+    fn desktop<S: AsRef<OsStr>>(&mut self, desktop: S) -> &mut process::Command;
 
     /// Sets the field `wShowWindow` of [STARTUPINFO][1] that is passed to `CreateProcess`.
     /// Allowed values are the ones listed in
@@ -280,7 +282,8 @@ pub trait CommandExt: Sealed {
     ///
     /// # Example
     ///
-    /// ```
+    #[cfg_attr(windows, doc = "```")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_process_extensions_async_pipes)]
     /// use std::os::windows::process::CommandExt;
     /// use std::process::{Command, Stdio};
@@ -311,7 +314,8 @@ pub trait CommandExt: Sealed {
     ///
     /// # Example
     ///
-    /// ```
+    #[cfg_attr(windows, doc = "```")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_process_extensions_raw_attribute)]
     /// use std::os::windows::io::AsRawHandle;
     /// use std::os::windows::process::{CommandExt, ProcThreadAttributeList};
@@ -388,6 +392,11 @@ impl CommandExt for process::Command {
         self
     }
 
+    fn desktop<S: AsRef<OsStr>>(&mut self, desktop: S) -> &mut process::Command {
+        self.as_inner_mut().desktop(desktop.as_ref());
+        self
+    }
+
     fn show_window(&mut self, cmd_show: u16) -> &mut process::Command {
         self.as_inner_mut().show_window(Some(cmd_show));
         self
@@ -443,7 +452,7 @@ impl CommandExt for process::Command {
 }
 
 #[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
-pub trait ChildExt: Sealed {
+pub impl(self) trait ChildExt {
     /// Extracts the main thread raw handle, without taking ownership
     #[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
     fn main_thread_handle(&self) -> BorrowedHandle<'_>;
@@ -457,11 +466,8 @@ impl ChildExt for process::Child {
 }
 
 /// Windows-specific extensions to [`process::ExitCode`].
-///
-/// This trait is sealed: it cannot be implemented outside the standard library.
-/// This is so that future additional methods are not breaking changes.
 #[unstable(feature = "windows_process_exit_code_from", issue = "111688")]
-pub trait ExitCodeExt: Sealed {
+pub impl(self) trait ExitCodeExt {
     /// Creates a new `ExitCode` from the raw underlying `u32` return value of
     /// a process.
     ///
@@ -512,7 +518,8 @@ impl<'a> Drop for ProcThreadAttributeList<'a> {
     ///
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-deleteprocthreadattributelist>
     fn drop(&mut self) {
-        let lp_attribute_list = self.attribute_list.as_mut_ptr().cast::<c_void>();
+        let lp_attribute_list =
+            self.attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>();
         unsafe { sys::c::DeleteProcThreadAttributeList(lp_attribute_list) }
     }
 }
@@ -573,8 +580,9 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     ///
     /// # Example
     ///
-    #[cfg_attr(target_vendor = "win7", doc = "```no_run")]
-    #[cfg_attr(not(target_vendor = "win7"), doc = "```")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
+    #[cfg_attr(all(windows, target_vendor = "win7"), doc = "```no_run")]
+    #[cfg_attr(all(windows, not(target_vendor = "win7")), doc = "```")]
     /// #![feature(windows_process_extensions_raw_attribute)]
     /// use std::ffi::c_void;
     /// use std::os::windows::process::{CommandExt, ProcThreadAttributeList};
@@ -682,7 +690,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
         // `InitializeProcThreadAttributeList` to properly initialize the list.
         sys::cvt(unsafe {
             sys::c::InitializeProcThreadAttributeList(
-                attribute_list.as_mut_ptr().cast::<c_void>(),
+                attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>(),
                 attribute_count,
                 0,
                 &mut required_size,
@@ -696,7 +704,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
         for (&attribute, value) in self.attributes.iter().take(attribute_count as usize) {
             sys::cvt(unsafe {
                 sys::c::UpdateProcThreadAttribute(
-                    attribute_list.as_mut_ptr().cast::<c_void>(),
+                    attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>(),
                     0,
                     attribute,
                     value.ptr,

@@ -1,5 +1,6 @@
 //@ revisions: empty unprefixed all_unknown all_known mixed
 //@ revisions: enum_not_in_pass_names enum_in_pass_names
+//@ normalize-stderr: "note: valid MIR pass names are: .*" -> "note: valid MIR pass names are: $$PASS_NAMES"
 
 //@[empty] compile-flags: -Zmir-enable-passes=
 

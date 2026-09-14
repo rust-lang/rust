@@ -48,5 +48,23 @@ error: offset calculation on zero-sized value
 LL |         c.wrapping_sub(0);
    |         ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: offset calculation on zero-sized value
+  --> tests/ui/zero_offset.rs:34:9
+   |
+LL |         nn.add(0);
+   |         ^^^^^^^^^
+
+error: offset calculation on zero-sized value
+  --> tests/ui/zero_offset.rs:37:9
+   |
+LL |         nn.offset(0);
+   |         ^^^^^^^^^^^^
+
+error: offset calculation on zero-sized value
+  --> tests/ui/zero_offset.rs:40:9
+   |
+LL |         nn.sub(0);
+   |         ^^^^^^^^^
+
+error: aborting due to 11 previous errors
 

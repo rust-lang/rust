@@ -1,5 +1,4 @@
 #![feature(specialization)]
-//~^ WARN the feature `specialization` is incomplete
 
 trait SpaceLlama {
     fn fly(&self);

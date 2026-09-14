@@ -1,0 +1,22 @@
+error[E0308]: mismatched types
+  --> $DIR/anon-const-type-of-defaulted-param-issue-158818.rs:8:11
+   |
+LL |     f::<{ async || {} }>();
+   |           ^^^^^^^^^^^ expected `u8`, found `{async closure@...}`
+   |
+   = note: expected type `u8`
+           found closure `{async closure@$DIR/anon-const-type-of-defaulted-param-issue-158818.rs:8:11: 8:19}`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.
+Future incompatibility report: Future breakage diagnostic:
+warning: defaults for generic parameters are not allowed here
+  --> $DIR/anon-const-type-of-defaulted-param-issue-158818.rs:7:19
+   |
+LL | fn f<const N: u8, T = ()>() {
+   |                   ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
+

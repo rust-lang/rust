@@ -8,7 +8,7 @@ use ide_db::text_edit::TextRange;
 use ide_db::{
     FxHashMap, RootDatabase,
     defs::Definition,
-    search::{FileReference, ReferenceCategory, SearchScope},
+    search::{ReferenceCategory, SearchScope},
 };
 use syntax::{
     AstNode,
@@ -33,7 +33,7 @@ use crate::{AssistContext, AssistId, Assists};
 // mod foo {
 // }
 // ```
-pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     // First, grab the uses that intersect with the current selection.
     let selected_el = match ctx.covering_element() {
         syntax::NodeOrToken::Node(n) => n,
@@ -111,19 +111,24 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 is_path_per_ns_unused_in_scope(ctx, &u, scope, &res).then_some(u)
             }
         })
-        .peekable();
+        .collect::<Vec<_>>();
 
-    // Peek so we terminate early if an unused use is found. Only do the rest of the work if the user selects the assist.
-    if unused.peek().is_some() {
+    // Terminate early unless an unused use is found. Only do the rest of the work if the user selects the assist.
+    if !unused.is_empty() {
         acc.add(
             AssistId::quick_fix("remove_unused_imports"),
             "Remove all unused imports",
             selected_el.text_range(),
             |builder| {
-                let unused: Vec<ast::UseTree> = unused.map(|x| builder.make_mut(x)).collect();
-                for node in unused {
-                    node.remove_recursive();
+                let editor = builder.make_editor(&selected_el);
+                unused.sort_by_key(|use_tree| use_tree.syntax().text_range().start());
+                for node in &unused {
+                    editor.delete(node.syntax());
                 }
+                for node in unused.iter().cloned() {
+                    node.remove_recursive(&editor);
+                }
+                builder.add_file_edits(ctx.vfs_file_id(), editor);
             },
         )
     } else {
@@ -132,10 +137,10 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
 }
 
 fn is_path_per_ns_unused_in_scope(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     u: &ast::UseTree,
-    scope: &mut Vec<SearchScope>,
-    path: &PathResolutionPerNs,
+    scope: &[SearchScope],
+    path: &PathResolutionPerNs<'_>,
 ) -> bool {
     if let Some(PathResolution::Def(ModuleDef::Trait(ref t))) = path.type_ns {
         if is_trait_unused_in_scope(ctx, u, scope, t) {
@@ -151,10 +156,10 @@ fn is_path_per_ns_unused_in_scope(
 }
 
 fn is_path_unused_in_scope(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     u: &ast::UseTree,
-    scope: &mut Vec<SearchScope>,
-    path: &[Option<PathResolution>],
+    scope: &[SearchScope],
+    path: &[Option<PathResolution<'_>>],
 ) -> bool {
     !path
         .iter()
@@ -167,9 +172,9 @@ fn is_path_unused_in_scope(
 }
 
 fn is_trait_unused_in_scope(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     u: &ast::UseTree,
-    scope: &mut Vec<SearchScope>,
+    scope: &[SearchScope],
     t: &hir::Trait,
 ) -> bool {
     !std::iter::once((Definition::Trait(*t), u.rename()))
@@ -177,34 +182,20 @@ fn is_trait_unused_in_scope(
         .any(|(d, rename)| used_once_in_scope(ctx, d, rename, scope))
 }
 
-fn used_once_in_scope(
-    ctx: &AssistContext<'_>,
-    def: Definition,
+fn used_once_in_scope<'db>(
+    ctx: &AssistContext<'_, 'db>,
+    def: Definition<'db>,
     rename: Option<Rename>,
-    scopes: &Vec<SearchScope>,
+    scopes: &[SearchScope],
 ) -> bool {
-    let mut found = false;
-
-    for scope in scopes {
-        let mut search_non_import = |_, r: FileReference| {
-            // The import itself is a use; we must skip that.
-            if !r.category.contains(ReferenceCategory::IMPORT) {
-                found = true;
-                true
-            } else {
-                false
-            }
-        };
+    scopes.iter().any(|scope| {
+        // The import itself is a use; we must skip that.
         def.usages(&ctx.sema)
+            .set_included_categories(ReferenceCategory::IMPORT.complement())
             .in_scope(scope)
             .with_rename(rename.as_ref())
-            .search(&mut search_non_import);
-        if found {
-            break;
-        }
-    }
-
-    found
+            .at_least_one()
+    })
 }
 
 /// Build a search scope spanning the given module but none of its submodules.

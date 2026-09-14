@@ -1,5 +1,5 @@
 error: this parameter is a mutable reference but is not used mutably
-  --> tests/ui/needless_pass_by_ref_mut2.rs:8:26
+  --> tests/ui/needless_pass_by_ref_mut2.rs:7:26
    |
 LL | async fn inner_async3(x: &mut i32, y: &mut u32) {
    |                          ^----^^^
@@ -10,7 +10,7 @@ LL | async fn inner_async3(x: &mut i32, y: &mut u32) {
    = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_ref_mut)]`
 
 error: this parameter is a mutable reference but is not used mutably
-  --> tests/ui/needless_pass_by_ref_mut2.rs:17:39
+  --> tests/ui/needless_pass_by_ref_mut2.rs:16:39
    |
 LL | async fn inner_async4(u: &mut i32, v: &mut u32) {
    |                                       ^----^^^
@@ -18,7 +18,7 @@ LL | async fn inner_async4(u: &mut i32, v: &mut u32) {
    |                                        help: consider removing this `mut`
 
 error: this parameter is a mutable reference but is not used mutably
-  --> tests/ui/needless_pass_by_ref_mut2.rs:29:37
+  --> tests/ui/needless_pass_by_ref_mut2.rs:28:37
    |
 LL | fn issue16267<'a>(msg: &str, slice: &'a mut [i32]) -> &'a [i32] {
    |                                     ^^^^----^^^^^

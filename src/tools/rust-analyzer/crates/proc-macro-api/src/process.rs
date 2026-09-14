@@ -240,8 +240,9 @@ impl ProcMacroServerProcess {
     /// Enable support for rust-analyzer span mode if the server supports it.
     pub(crate) fn rust_analyzer_spans(&self) -> bool {
         match self.protocol {
-            Protocol::LegacyJson { mode } => mode == SpanMode::RustAnalyzer,
-            Protocol::BidirectionalPostcardPrototype { mode } => mode == SpanMode::RustAnalyzer,
+            Protocol::LegacyJson { mode } | Protocol::BidirectionalPostcardPrototype { mode } => {
+                mode == SpanMode::RustAnalyzer
+            }
         }
     }
 

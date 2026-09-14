@@ -8,7 +8,9 @@ pub(crate) fn target() -> Target {
         // based off the aarch64-unknown-none target at time of addition
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
-        supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
+        supported_sanitizers: SanitizerSet::KCFI
+            | SanitizerSet::KERNELADDRESS
+            | SanitizerSet::KERNELHWADDRESS,
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(128),

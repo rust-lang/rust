@@ -18,7 +18,10 @@ macro_rules! format_ty {
 // Diagnostic: invalid-cast
 //
 // This diagnostic is triggered if the code contains an illegal cast
-pub(crate) fn invalid_cast(ctx: &DiagnosticsContext<'_>, d: &hir::InvalidCast<'_>) -> Diagnostic {
+pub(crate) fn invalid_cast(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::InvalidCast<'_>,
+) -> Diagnostic {
     let display_range = ctx.sema.diagnostics_display_range(d.expr.map(|it| it.into()));
     let (code, message) = match d.error {
         CastError::CastToBool => (
@@ -111,7 +114,7 @@ pub(crate) fn invalid_cast(ctx: &DiagnosticsContext<'_>, d: &hir::InvalidCast<'_
 //
 // This diagnostic is triggered when casting to an unsized type
 pub(crate) fn cast_to_unsized(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::CastToUnsized<'_>,
 ) -> Diagnostic {
     let display_range = ctx.sema.diagnostics_display_range(d.expr.map(|it| it.into()));
@@ -227,7 +230,7 @@ fn foo(_x: isize) { }
 fn main() {
     let v: u64 = 5;
     let x = foo as extern "C" fn() -> isize;
-          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: non-primitive cast: `fn foo(isize)` as `fn() -> isize`
+          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: non-primitive cast: `fn foo(isize)` as `extern "C" fn() -> isize`
     let y = v as extern "Rust" fn(isize) -> (isize, isize);
           //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: non-primitive cast: `u64` as `fn(isize) -> (isize, isize)`
     y(x());
@@ -387,7 +390,7 @@ struct Bar;
 
 impl Foo for Bar {}
 
-fn to_raw<T>(_: *mut T) -> *mut () {
+fn to_raw<T: ?Sized>(_: *mut T) -> *mut () {
     loop {}
 }
 
@@ -462,7 +465,7 @@ fn foo<T: ?Sized>() {
           //^^^^^^^^^^^^^ error: cannot cast `usize` to a fat pointer `*const T`
 }
 "#,
-            &["E0308", "unused_variables"],
+            &["E0308"],
         );
     }
 
@@ -987,7 +990,7 @@ fn main() {
     fn rustc_issue_106883() {
         check_diagnostics_with_disabled(
             r#"
-//- minicore: sized, deref
+//- minicore: sized, deref, coerce_unsized, unsize
 use core::ops::Deref;
 
 struct Foo;
@@ -1022,7 +1025,6 @@ fn _slice(bar: &[i32]) -> bool {
         check_diagnostics(
             r#"
 //- minicore: coerce_unsized, dispatch_from_dyn
-#![feature(trait_upcasting)]
 trait Foo {}
 trait Bar: Foo {}
 

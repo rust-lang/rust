@@ -2,7 +2,7 @@
 
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-use crate::sys::{AsInner, FromInner, IntoInner, map_motor_error};
+use crate::sys::{AsInner, FromInner, IntoInner, io_slices, io_slices_mut, map_motor_error};
 
 #[derive(Debug)]
 pub struct FileDesc(OwnedFd);
@@ -12,12 +12,13 @@ impl FileDesc {
         moto_rt::fs::read(self.as_raw_fd(), buf).map_err(map_motor_error)
     }
 
-    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         crate::io::default_read_buf(|buf| self.read(buf), cursor)
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        io::default_read_vectored(|b| self.read(b), bufs)
+        moto_rt::fs::read_vectored(self.as_raw_fd(), &mut io_slices_mut(bufs))
+            .map_err(map_motor_error)
     }
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
@@ -30,16 +31,16 @@ impl FileDesc {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        crate::io::default_write_vectored(|b| self.write(b), bufs)
+        moto_rt::fs::write_vectored(self.as_raw_fd(), &io_slices(bufs)).map_err(map_motor_error)
     }
 
     pub fn is_write_vectored(&self) -> bool {
-        false
+        true
     }
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        false
+        true
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
@@ -64,7 +65,7 @@ impl<'a> Read for &'a FileDesc {
         (**self).read(buf)
     }
 
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         (**self).read_buf(cursor)
     }
 

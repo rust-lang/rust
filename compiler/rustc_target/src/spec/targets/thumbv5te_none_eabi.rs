@@ -1,6 +1,6 @@
 //! Targets the ARMv5TE architecture, with `t32` code by default.
 
-use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base, cvs};
+use crate::spec::{Arch, CfgAbi, FloatAbi, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::Arm,
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
         options: TargetOptions {
-            abi: Abi::Eabi,
+            cfg_abi: CfgAbi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
             asm_args: cvs!["-mthumb-interwork", "-march=armv5te", "-mlittle-endian",],
             features: "+soft-float,+strict-align".into(),

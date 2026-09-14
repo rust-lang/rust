@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![feature(decl_macro, rustc_attrs)]
 #![deny(single_use_lifetimes)]
 
@@ -35,7 +37,7 @@ mod type_params {
 
 mod lifetime_params {
     macro m($a:lifetime) {
-        fn f<'b, 'c, $a: 'b, 'a: 'c>(t1: &$a(), t2: &'a ()) -> (&'b (), &'c ()) { //~ ERROR lifetime parameter `'a` only used once
+        fn f<'b, 'c, $a: 'b, 'a: 'c>(t1: &$a(), t2: &'a ()) -> (&'b (), &'c ()) {
             (t1, t2)
         }
     }
@@ -60,7 +62,7 @@ mod lifetime_params {
         }
     }
 
-    m!('a); //~ ERROR lifetime parameter `'a` only used once
+    m!('a);
     n!('a);
     p!('a);
 }

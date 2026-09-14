@@ -12,8 +12,8 @@ LL |     const fn fun();
 error[E0379]: functions in trait impls cannot be declared const
   --> $DIR/trait-fn-const.rs:9:5
    |
-LL | impl const Trait for () {
-   |      ----- this declares all associated functions implicitly const
+LL | const impl Trait for () {
+   | ----- this declares all associated functions implicitly const
 LL |     const fn fun() {}
    |     ^^^^^-
    |     |

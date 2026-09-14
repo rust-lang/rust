@@ -16,7 +16,7 @@ use std::marker::ConstParamTy;
 struct S;
 
 impl S {
-    type const N: S = S;
+    const N: S = core::direct_const_arg!(S);
 }
 
 #[derive(ConstParamTy, PartialEq, Eq)]
@@ -25,7 +25,7 @@ enum E {
 }
 
 impl E {
-    type const M: E = { E::V };
+    const M: E = core::direct_const_arg!({ E::V });
 }
 
 fn main() {}

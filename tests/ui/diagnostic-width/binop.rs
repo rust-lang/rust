@@ -5,11 +5,11 @@ type C = (B, B, B, B);
 type D = (C, C, C, C);
 
 fn foo(x: D) {
-    x + x; //~ ERROR cannot add `(...
+    x + x; //~ ERROR cannot add `((_
 }
 
 fn bar(x: D) {
-    !x; //~ ERROR cannot apply unary operator `!` to type `(...
+    !x; //~ ERROR cannot apply unary operator `!` to type `((_
 }
 
 fn main() {}

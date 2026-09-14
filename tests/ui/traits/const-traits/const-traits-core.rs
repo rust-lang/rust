@@ -36,8 +36,8 @@ const PHANTOM: std::marker::PhantomData<()> = Default::default();
 const OPT: Option<i32> = Default::default();
 // core::iter::sources::empty
 const EMPTY: std::iter::Empty<()> = Default::default();
-// core::ptr::alignment
-const ALIGNMENT: std::ptr::Alignment = Default::default();
+// core::mem::alignment
+const ALIGNMENT: std::mem::Alignment = Default::default();
 // core::slice
 const SLICE: &[()] = Default::default();
 const MUT_SLICE: &mut [()] = Default::default();

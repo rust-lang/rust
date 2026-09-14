@@ -145,7 +145,7 @@ impl<'db> LookupTable<'db> {
                 self.data
                     .iter()
                     .find(|(t, _)| {
-                        t.add_reference(Mutability::Shared).could_unify_with_deeply(db, ty)
+                        t.add_reference(db, Mutability::Shared).could_unify_with_deeply(db, ty)
                     })
                     .map(|(t, it)| {
                         it.exprs(t)
@@ -175,6 +175,7 @@ impl<'db> LookupTable<'db> {
     /// transitive. For example `Vec<i32>` and `FxHashSet<i32>` both unify with `Iterator<Item = i32>`,
     /// but they clearly do not unify themselves.
     fn insert(&mut self, ty: Type<'db>, exprs: impl Iterator<Item = Expr<'db>>) {
+        let ty = ty.instantiate_with_errors();
         match self.data.get_mut(&ty) {
             Some(it) => {
                 it.extend_with_threshold(self.many_threshold, exprs);
@@ -214,11 +215,11 @@ impl<'db> LookupTable<'db> {
 
 /// Context for the `term_search` function
 #[derive(Debug)]
-pub struct TermSearchCtx<'db, DB: HirDatabase> {
+pub struct TermSearchCtx<'a, 'db, DB: HirDatabase> {
     /// Semantics for the program
-    pub sema: &'db Semantics<'db, DB>,
+    pub sema: &'a Semantics<'db, DB>,
     /// Semantic scope, captures context for the term search
-    pub scope: &'db SemanticsScope<'db>,
+    pub scope: &'a SemanticsScope<'db>,
     /// Target / expected output type
     pub goal: Type<'db>,
     /// Configuration for term search
@@ -228,8 +229,6 @@ pub struct TermSearchCtx<'db, DB: HirDatabase> {
 /// Configuration options for the term search
 #[derive(Debug, Clone, Copy)]
 pub struct TermSearchConfig {
-    /// Enable borrow checking, this guarantees the outputs of the `term_search` to borrow-check
-    pub enable_borrowcheck: bool,
     /// Indicate when to squash multiple trees to `Many` as there are too many to keep track
     pub many_alternatives_threshold: usize,
     /// Fuel for term search in "units of work"
@@ -238,7 +237,7 @@ pub struct TermSearchConfig {
 
 impl Default for TermSearchConfig {
     fn default() -> Self {
-        Self { enable_borrowcheck: true, many_alternatives_threshold: 1, fuel: 1200 }
+        Self { many_alternatives_threshold: 1, fuel: 1200 }
     }
 }
 
@@ -263,7 +262,7 @@ impl Default for TermSearchConfig {
 /// Note that there are usually more ways we can get to the `goal` type but some are discarded to
 /// reduce the memory consumption. It is also unlikely anyone is willing ti browse through
 /// thousands of possible responses so we currently take first 10 from every tactic.
-pub fn term_search<'db, DB: HirDatabase>(ctx: &'db TermSearchCtx<'db, DB>) -> Vec<Expr<'db>> {
+pub fn term_search<'db, DB: HirDatabase>(ctx: &TermSearchCtx<'_, 'db, DB>) -> Vec<Expr<'db>> {
     let module = ctx.scope.module();
     let mut defs = FxHashSet::default();
     defs.insert(ScopeDef::ModuleDef(ModuleDef::Module(module)));

@@ -12,25 +12,18 @@
 //! its value. This way, queries are only called on items that have the attribute, which is
 //! usually only a few.
 //!
-//! An exception to this model that is also defined in this module is documentation (doc
-//! comments and `#[doc = "..."]` attributes). But it also has a more compact form than
-//! the attribute: a concatenated string of the full docs as well as a source map
-//! to map it back to AST (which is needed for things like resolving links in doc comments
-//! and highlight injection). The lowering and upmapping of doc comments is a bit complicated,
-//! but it is encapsulated in the [`Docs`] struct.
+//! Documentation (doc comments and `#[doc = "..."]` attributes) is handled by the [`docs`]
+//! submodule.
 
-use std::{
-    convert::Infallible,
-    iter::Peekable,
-    ops::{ControlFlow, Range},
-};
+use std::{convert::Infallible, iter::Peekable, ops::ControlFlow};
 
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
-    HirFileId, InFile, Lookup,
-    attrs::{Meta, expand_cfg_attr, expand_cfg_attr_with_doc_comments},
+    InFile, Lookup,
+    attrs::{AstKeyValueMetaExt, AstPathExt, expand_cfg_attr},
+    name::Name,
 };
 use intern::Symbol;
 use itertools::Itertools;
@@ -39,24 +32,28 @@ use rustc_abi::ReprOptions;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use syntax::{
-    AstNode, AstToken, NodeOrToken, SmolStr, SourceFile, SyntaxNode, SyntaxToken, T,
-    ast::{self, AttrDocCommentIter, HasAttrs, IsString, TokenTreeChildren},
+    AstNode, AstToken, NodeOrToken, SmolStr, SourceFile, T,
+    ast::{self, HasAttrs, TokenTreeChildren},
 };
-use tt::{TextRange, TextSize};
+use tt::TextSize;
 
 use crate::{
     AdtId, AstIdLoc, AttrDefId, FieldId, FunctionId, GenericDefId, HasModule, LifetimeParamId,
-    LocalFieldId, MacroId, ModuleId, TypeOrConstParamId, VariantId,
-    db::DefDatabase,
+    LocalFieldId, MacroId, ModuleId, TraitId, TypeOrConstParamId, VariantId,
     hir::generics::{GenericParams, LocalLifetimeParamId, LocalTypeOrConstParamId},
     nameres::ModuleOrigin,
+    resolver::{HasResolver, Resolver},
     src::{HasChildSource, HasSource},
 };
 
+pub mod docs;
+
+pub use self::docs::{Docs, IsInnerDoc};
+
 #[inline]
 fn attrs_from_ast_id_loc<N: AstNode + Into<ast::AnyHasAttrs>>(
-    db: &dyn DefDatabase,
-    lookup: impl Lookup<Database = dyn DefDatabase, Data = impl AstIdLoc<Ast = N> + HasModule>,
+    db: &dyn SourceDatabase,
+    lookup: impl Lookup<Data = impl AstIdLoc<Ast = N> + HasModule>,
 ) -> (InFile<ast::AnyHasAttrs>, Crate) {
     let loc = lookup.lookup(db);
     let source = loc.source(db);
@@ -131,69 +128,101 @@ fn extract_rustc_skip_during_method_dispatch(attr_flags: &mut AttrFlags, tt: ast
 }
 
 #[inline]
-fn match_attr_flags(attr_flags: &mut AttrFlags, attr: Meta) -> ControlFlow<Infallible> {
+fn match_attr_flags(attr_flags: &mut AttrFlags, attr: ast::Meta) -> ControlFlow<Infallible> {
     match attr {
-        Meta::NamedKeyValue { name: Some(name), value, .. } => match name.text() {
-            "deprecated" => attr_flags.insert(AttrFlags::IS_DEPRECATED),
-            "ignore" => attr_flags.insert(AttrFlags::IS_IGNORE),
-            "lang" => attr_flags.insert(AttrFlags::LANG_ITEM),
-            "path" => attr_flags.insert(AttrFlags::HAS_PATH),
-            "unstable" => attr_flags.insert(AttrFlags::IS_UNSTABLE),
-            "export_name" => {
-                if let Some(value) = value
-                    && let Some(value) = ast::String::cast(value)
-                    && let Ok(value) = value.value()
-                    && *value == *"main"
-                {
-                    attr_flags.insert(AttrFlags::IS_EXPORT_NAME_MAIN);
-                }
-            }
-            _ => {}
-        },
-        Meta::TokenTree { path, tt } => match path.segments.len() {
-            1 => match path.segments[0].text() {
+        ast::Meta::CfgMeta(_) => attr_flags.insert(AttrFlags::HAS_CFG),
+        ast::Meta::KeyValueMeta(attr) => {
+            let Some(key) = attr.path().as_one_segment() else { return ControlFlow::Continue(()) };
+            match &*key {
                 "deprecated" => attr_flags.insert(AttrFlags::IS_DEPRECATED),
-                "cfg" => attr_flags.insert(AttrFlags::HAS_CFG),
-                "doc" => extract_doc_tt_attr(attr_flags, tt),
-                "repr" => attr_flags.insert(AttrFlags::HAS_REPR),
-                "target_feature" => attr_flags.insert(AttrFlags::HAS_TARGET_FEATURE),
-                "proc_macro_derive" | "rustc_builtin_macro" => {
-                    attr_flags.insert(AttrFlags::IS_DERIVE_OR_BUILTIN_MACRO)
-                }
+                "ignore" => attr_flags.insert(AttrFlags::IS_IGNORE),
+                "lang" => attr_flags.insert(AttrFlags::LANG_ITEM),
+                "must_use" => attr_flags.insert(AttrFlags::IS_MUST_USE),
+                "path" => attr_flags.insert(AttrFlags::HAS_PATH),
                 "unstable" => attr_flags.insert(AttrFlags::IS_UNSTABLE),
-                "rustc_layout_scalar_valid_range_start" | "rustc_layout_scalar_valid_range_end" => {
-                    attr_flags.insert(AttrFlags::RUSTC_LAYOUT_SCALAR_VALID_RANGE)
-                }
-                "rustc_legacy_const_generics" => {
-                    attr_flags.insert(AttrFlags::HAS_LEGACY_CONST_GENERICS)
-                }
-                "rustc_skip_during_method_dispatch" => {
-                    extract_rustc_skip_during_method_dispatch(attr_flags, tt)
-                }
-                "rustc_deprecated_safe_2024" => {
-                    attr_flags.insert(AttrFlags::RUSTC_DEPRECATED_SAFE_2024)
+                "rustc_reservation_impl" => attr_flags.insert(AttrFlags::RUSTC_RESERVATION_IMPL),
+                "export_name" => {
+                    if let Some(value) = attr.value_string()
+                        && *value == *"main"
+                    {
+                        attr_flags.insert(AttrFlags::IS_EXPORT_NAME_MAIN);
+                    }
                 }
                 _ => {}
-            },
-            2 => match path.segments[0].text() {
-                "rust_analyzer" => match path.segments[1].text() {
-                    "completions" => extract_ra_completions(attr_flags, tt),
-                    "macro_style" => extract_ra_macro_style(attr_flags, tt),
+            }
+        }
+        ast::Meta::TokenTreeMeta(attr) => {
+            let (Some((first_segment, second_segment)), Some(tt)) =
+                (attr.path().as_up_to_two_segment(), attr.token_tree())
+            else {
+                return ControlFlow::Continue(());
+            };
+            match second_segment {
+                None => match &*first_segment {
+                    "deprecated" => attr_flags.insert(AttrFlags::IS_DEPRECATED),
+                    "doc" => extract_doc_tt_attr(attr_flags, tt),
+                    "repr" | "rustc_scalable_vector" => attr_flags.insert(AttrFlags::HAS_REPR),
+                    "target_feature" => attr_flags.insert(AttrFlags::HAS_TARGET_FEATURE),
+                    "proc_macro_derive" | "rustc_builtin_macro" => {
+                        attr_flags.insert(AttrFlags::IS_DERIVE_OR_BUILTIN_MACRO)
+                    }
+                    "unstable" => attr_flags.insert(AttrFlags::IS_UNSTABLE),
+                    "rustc_layout_scalar_valid_range_start"
+                    | "rustc_layout_scalar_valid_range_end" => {
+                        attr_flags.insert(AttrFlags::RUSTC_LAYOUT_SCALAR_VALID_RANGE)
+                    }
+                    "rustc_legacy_const_generics" => {
+                        attr_flags.insert(AttrFlags::HAS_LEGACY_CONST_GENERICS)
+                    }
+                    "rustc_skip_during_method_dispatch" => {
+                        extract_rustc_skip_during_method_dispatch(attr_flags, tt)
+                    }
+                    "rustc_deprecated_safe_2024" => {
+                        attr_flags.insert(AttrFlags::RUSTC_DEPRECATED_SAFE_2024)
+                    }
+                    "rustc_must_implement_one_of" => {
+                        attr_flags.insert(AttrFlags::HAS_RUSTC_MUST_IMPLEMENT_ONE_OF)
+                    }
                     _ => {}
                 },
-                _ => {}
-            },
-            _ => {}
-        },
-        Meta::Path { path } => {
-            match path.segments.len() {
-                1 => match path.segments[0].text() {
+                Some(second_segment) => match &*first_segment {
+                    "rust_analyzer" => match &*second_segment {
+                        "completions" => extract_ra_completions(attr_flags, tt),
+                        "macro_style" => extract_ra_macro_style(attr_flags, tt),
+                        _ => {}
+                    },
+                    _ => {}
+                },
+            }
+        }
+        ast::Meta::PathMeta(attr) => {
+            let is_test = attr.path().is_some_and(|path| {
+                let Some(segment1) = (|| path.segment()?.name_ref())() else { return false };
+                let segment2 = path.qualifier();
+                let segment3 = segment2.as_ref().and_then(|it| it.qualifier());
+                let segment4 = segment3.as_ref().and_then(|it| it.qualifier());
+                let segment3 = segment3.and_then(|it| it.segment()?.name_ref());
+                let segment4 = segment4.and_then(|it| it.segment()?.name_ref());
+                segment1.text() == "test"
+                    && segment3.is_none_or(|it| it.text() == "prelude")
+                    && segment4.is_none_or(|it| matches!(it.text(), "core" | "std"))
+            });
+            if is_test {
+                attr_flags.insert(AttrFlags::IS_TEST);
+            }
+
+            let Some((first_segment, second_segment)) = attr.path().as_up_to_two_segment() else {
+                return ControlFlow::Continue(());
+            };
+            match second_segment {
+                None => match &*first_segment {
                     "rustc_has_incoherent_inherent_impls" => {
                         attr_flags.insert(AttrFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS)
                     }
                     "rustc_allow_incoherent_impl" => {
                         attr_flags.insert(AttrFlags::RUSTC_ALLOW_INCOHERENT_IMPL)
                     }
+                    "rustc_scalable_vector" => attr_flags.insert(AttrFlags::HAS_REPR),
                     "fundamental" => attr_flags.insert(AttrFlags::FUNDAMENTAL),
                     "no_std" => attr_flags.insert(AttrFlags::IS_NO_STD),
                     "may_dangle" => attr_flags.insert(AttrFlags::MAY_DANGLE),
@@ -203,6 +232,7 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: Meta) -> ControlFlow<Infal
                     "unstable" => attr_flags.insert(AttrFlags::IS_UNSTABLE),
                     "deprecated" => attr_flags.insert(AttrFlags::IS_DEPRECATED),
                     "macro_export" => attr_flags.insert(AttrFlags::IS_MACRO_EXPORT),
+                    "must_use" => attr_flags.insert(AttrFlags::IS_MUST_USE),
                     "no_mangle" => attr_flags.insert(AttrFlags::NO_MANGLE),
                     "pointee" => attr_flags.insert(AttrFlags::IS_POINTEE),
                     "non_exhaustive" => attr_flags.insert(AttrFlags::NON_EXHAUSTIVE),
@@ -231,18 +261,22 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: Meta) -> ControlFlow<Infal
                     }
                     _ => {}
                 },
-                2 => match path.segments[0].text() {
-                    "rust_analyzer" => match path.segments[1].text() {
+                Some(second_segment) => match &*first_segment {
+                    "rust_analyzer" => match &*second_segment {
                         "skip" => attr_flags.insert(AttrFlags::RUST_ANALYZER_SKIP),
+                        "prefer_underscore_import" => {
+                            attr_flags.insert(AttrFlags::PREFER_UNDERSCORE_IMPORT)
+                        }
+                        _ => {}
+                    },
+                    "diagnostic" => match &*second_segment {
+                        "do_not_recommend" => {
+                            attr_flags.insert(AttrFlags::DIAGNOSTIC_DO_NOT_RECOMMEND)
+                        }
                         _ => {}
                     },
                     _ => {}
                 },
-                _ => {}
-            }
-
-            if path.is_test {
-                attr_flags.insert(AttrFlags::IS_TEST);
             }
         }
         _ => {}
@@ -311,10 +345,18 @@ bitflags::bitflags! {
         const MACRO_STYLE_BRACES = 1 << 46;
         const MACRO_STYLE_BRACKETS = 1 << 47;
         const MACRO_STYLE_PARENTHESES = 1 << 48;
+
+        const PREFER_UNDERSCORE_IMPORT = 1 << 49;
+
+        const IS_MUST_USE = 1 << 50;
+
+        const DIAGNOSTIC_DO_NOT_RECOMMEND = 1 << 51;
+
+        const HAS_RUSTC_MUST_IMPLEMENT_ONE_OF = 1 << 52;
     }
 }
 
-pub fn parse_extra_crate_attrs(db: &dyn DefDatabase, krate: Crate) -> Option<SourceFile> {
+pub fn parse_extra_crate_attrs(db: &dyn SourceDatabase, krate: Crate) -> Option<SourceFile> {
     let crate_data = krate.data(db);
     let crate_attrs = &crate_data.crate_attrs;
     if crate_attrs.is_empty() {
@@ -344,8 +386,31 @@ pub fn parse_extra_crate_attrs(db: &dyn DefDatabase, krate: Crate) -> Option<Sou
     Some(p.tree())
 }
 
+/// Whether the crate root declares `#![no_std]`, looking through `cfg_attr` gating.
+#[salsa::tracked(returns(copy))]
+pub(crate) fn crate_supports_no_std(db: &dyn SourceDatabase, krate: Crate) -> bool {
+    fn contains_no_std(meta: ast::Meta) -> bool {
+        match meta {
+            ast::Meta::PathMeta(meta) => meta.path().is1("no_std"),
+            ast::Meta::CfgAttrMeta(meta) => meta.metas().any(contains_no_std),
+            ast::Meta::UnsafeMeta(meta) => meta.meta().is_some_and(contains_no_std),
+            ast::Meta::CfgMeta(_) | ast::Meta::KeyValueMeta(_) | ast::Meta::TokenTreeMeta(_) => {
+                false
+            }
+        }
+    }
+
+    let root_file = krate.root_file_id(db).parse(db).tree();
+    parse_extra_crate_attrs(db, krate)
+        .into_iter()
+        .flat_map(|extra| extra.attrs())
+        .chain(root_file.attrs())
+        .filter_map(|attr| attr.meta())
+        .any(contains_no_std)
+}
+
 fn attrs_source(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     owner: AttrDefId,
 ) -> (InFile<ast::AnyHasAttrs>, Option<InFile<ast::Module>>, Option<SourceFile>, Crate) {
     let (owner, krate) = match owner {
@@ -354,13 +419,13 @@ fn attrs_source(
             let krate = def_map.krate();
             let (definition, declaration, extra_crate_attrs) = match def_map[id].origin {
                 ModuleOrigin::CrateRoot { definition } => {
-                    let definition_source = db.parse(definition).tree();
+                    let definition_source = definition.parse(db).tree();
                     let definition = InFile::new(definition.into(), definition_source.into());
                     let extra_crate_attrs = parse_extra_crate_attrs(db, krate);
                     (definition, None, extra_crate_attrs)
                 }
                 ModuleOrigin::File { declaration, declaration_tree_id, definition, .. } => {
-                    let definition_source = db.parse(definition).tree();
+                    let definition_source = definition.parse(db).tree();
                     let definition = InFile::new(definition.into(), definition_source.into());
                     let declaration = InFile::new(declaration_tree_id.file_id(), declaration);
                     let declaration = declaration.with_value(declaration.to_node(db));
@@ -398,10 +463,32 @@ fn attrs_source(
     (owner, None, None, krate)
 }
 
+fn resolver_for_attr_def_id(db: &dyn SourceDatabase, owner: AttrDefId) -> Resolver<'_> {
+    match owner {
+        AttrDefId::ModuleId(id) => id.resolver(db),
+        AttrDefId::AdtId(AdtId::StructId(id)) => id.resolver(db),
+        AttrDefId::AdtId(AdtId::UnionId(id)) => id.resolver(db),
+        AttrDefId::AdtId(AdtId::EnumId(id)) => id.resolver(db),
+        AttrDefId::FunctionId(id) => id.resolver(db),
+        AttrDefId::EnumVariantId(id) => id.resolver(db),
+        AttrDefId::StaticId(id) => id.resolver(db),
+        AttrDefId::ConstId(id) => id.resolver(db),
+        AttrDefId::TraitId(id) => id.resolver(db),
+        AttrDefId::TypeAliasId(id) => id.resolver(db),
+        AttrDefId::MacroId(MacroId::Macro2Id(id)) => id.resolver(db),
+        AttrDefId::MacroId(MacroId::MacroRulesId(id)) => id.resolver(db),
+        AttrDefId::MacroId(MacroId::ProcMacroId(id)) => id.resolver(db),
+        AttrDefId::ImplId(id) => id.resolver(db),
+        AttrDefId::ExternBlockId(id) => id.resolver(db),
+        AttrDefId::ExternCrateId(id) => id.resolver(db),
+        AttrDefId::UseId(id) => id.resolver(db),
+    }
+}
+
 fn collect_attrs<BreakValue>(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     owner: AttrDefId,
-    mut callback: impl FnMut(Meta) -> ControlFlow<BreakValue>,
+    mut callback: impl FnMut(ast::Meta) -> ControlFlow<BreakValue>,
 ) -> Option<BreakValue> {
     let (source, outer_mod_decl, extra_crate_attrs, krate) = attrs_source(db, owner);
     let extra_attrs = extra_crate_attrs
@@ -413,12 +500,12 @@ fn collect_attrs<BreakValue>(
     expand_cfg_attr(
         extra_attrs.chain(ast::attrs_including_inner(&source.value)),
         || cfg_options.get_or_insert_with(|| krate.cfg_options(db)),
-        move |meta, _, _, _| callback(meta),
+        move |meta, _| callback(meta),
     )
 }
 
 fn collect_field_attrs<T>(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     variant: VariantId,
     mut field_attrs: impl FnMut(&CfgOptions, InFile<ast::AnyHasAttrs>) -> T,
 ) -> ArenaMap<LocalFieldId, T> {
@@ -475,291 +562,16 @@ pub struct RustcLayoutScalarValidRange {
     pub end: Option<u128>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct DocsSourceMapLine {
-    /// The offset in [`Docs::docs`].
-    string_offset: TextSize,
-    /// The offset in the AST of the text.
-    ast_offset: TextSize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Docs {
-    /// The concatenated string of all `#[doc = "..."]` attributes and documentation comments.
-    docs: String,
-    /// A sorted map from an offset in `docs` to an offset in the source code.
-    docs_source_map: Vec<DocsSourceMapLine>,
-    /// If the item is an outlined module (`mod foo;`), `docs_source_map` store the concatenated
-    /// list of the outline and inline docs (outline first). Then, this field contains the [`HirFileId`]
-    /// of the outline declaration, and the index in `docs` from which the inline docs
-    /// begin.
-    outline_mod: Option<(HirFileId, usize)>,
-    inline_file: HirFileId,
-    /// The size the prepended prefix, which does not map to real doc comments.
-    prefix_len: TextSize,
-    /// The offset in `docs` from which the docs are inner attributes/comments.
-    inline_inner_docs_start: Option<TextSize>,
-    /// Like `inline_inner_docs_start`, but for `outline_mod`. This can happen only when merging `Docs`
-    /// (as outline modules don't have inner attributes).
-    outline_inner_docs_start: Option<TextSize>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IsInnerDoc {
-    No,
-    Yes,
-}
-
-impl IsInnerDoc {
-    #[inline]
-    pub fn yes(self) -> bool {
-        self == IsInnerDoc::Yes
-    }
-}
-
-impl Docs {
-    #[inline]
-    pub fn docs(&self) -> &str {
-        &self.docs
-    }
-
-    #[inline]
-    pub fn into_docs(self) -> String {
-        self.docs
-    }
-
-    pub fn find_ast_range(
-        &self,
-        mut string_range: TextRange,
-    ) -> Option<(InFile<TextRange>, IsInnerDoc)> {
-        if string_range.start() < self.prefix_len {
-            return None;
-        }
-        string_range -= self.prefix_len;
-
-        let mut file = self.inline_file;
-        let mut inner_docs_start = self.inline_inner_docs_start;
-        // Check whether the range is from the outline, the inline, or both.
-        let source_map = if let Some((outline_mod_file, outline_mod_end)) = self.outline_mod {
-            if let Some(first_inline) = self.docs_source_map.get(outline_mod_end) {
-                if string_range.end() <= first_inline.string_offset {
-                    // The range is completely in the outline.
-                    file = outline_mod_file;
-                    inner_docs_start = self.outline_inner_docs_start;
-                    &self.docs_source_map[..outline_mod_end]
-                } else if string_range.start() >= first_inline.string_offset {
-                    // The range is completely in the inline.
-                    &self.docs_source_map[outline_mod_end..]
-                } else {
-                    // The range is combined from the outline and the inline - cannot map it back.
-                    return None;
-                }
-            } else {
-                // There is no inline.
-                file = outline_mod_file;
-                inner_docs_start = self.outline_inner_docs_start;
-                &self.docs_source_map
-            }
-        } else {
-            // There is no outline.
-            &self.docs_source_map
-        };
-
-        let after_range =
-            source_map.partition_point(|line| line.string_offset <= string_range.start()) - 1;
-        let after_range = &source_map[after_range..];
-        let line = after_range.first()?;
-        if after_range.get(1).is_some_and(|next_line| next_line.string_offset < string_range.end())
-        {
-            // The range is combined from two lines - cannot map it back.
-            return None;
-        }
-        let ast_range = string_range - line.string_offset + line.ast_offset;
-        let is_inner = if inner_docs_start
-            .is_some_and(|inner_docs_start| string_range.start() >= inner_docs_start)
-        {
-            IsInnerDoc::Yes
-        } else {
-            IsInnerDoc::No
-        };
-        Some((InFile::new(file, ast_range), is_inner))
-    }
-
-    #[inline]
-    pub fn shift_by(&mut self, offset: TextSize) {
-        self.prefix_len += offset;
-    }
-
-    pub fn prepend_str(&mut self, s: &str) {
-        self.prefix_len += TextSize::of(s);
-        self.docs.insert_str(0, s);
-    }
-
-    pub fn append_str(&mut self, s: &str) {
-        self.docs.push_str(s);
-    }
-
-    pub fn append(&mut self, other: &Docs) {
-        let other_offset = TextSize::of(&self.docs);
-
-        assert!(
-            self.outline_mod.is_none() && other.outline_mod.is_none(),
-            "cannot merge `Docs` that have `outline_mod` set"
-        );
-        self.outline_mod = Some((self.inline_file, self.docs_source_map.len()));
-        self.inline_file = other.inline_file;
-        self.outline_inner_docs_start = self.inline_inner_docs_start;
-        self.inline_inner_docs_start = other.inline_inner_docs_start.map(|it| it + other_offset);
-
-        self.docs.push_str(&other.docs);
-        self.docs_source_map.extend(other.docs_source_map.iter().map(
-            |&DocsSourceMapLine { string_offset, ast_offset }| DocsSourceMapLine {
-                ast_offset,
-                string_offset: string_offset + other_offset,
-            },
-        ));
-    }
-
-    fn extend_with_doc_comment(&mut self, comment: ast::Comment, indent: &mut usize) {
-        let Some((doc, offset)) = comment.doc_comment() else { return };
-        self.extend_with_doc_str(doc, comment.syntax().text_range().start() + offset, indent);
-    }
-
-    fn extend_with_doc_attr(&mut self, value: SyntaxToken, indent: &mut usize) {
-        let Some(value) = ast::String::cast(value) else { return };
-        let Some(value_offset) = value.text_range_between_quotes() else { return };
-        let value_offset = value_offset.start();
-        let Ok(value) = value.value() else { return };
-        // FIXME: Handle source maps for escaped text.
-        self.extend_with_doc_str(&value, value_offset, indent);
-    }
-
-    fn extend_with_doc_str(&mut self, doc: &str, mut offset_in_ast: TextSize, indent: &mut usize) {
-        for line in doc.split('\n') {
-            self.docs_source_map.push(DocsSourceMapLine {
-                string_offset: TextSize::of(&self.docs),
-                ast_offset: offset_in_ast,
-            });
-            offset_in_ast += TextSize::of(line) + TextSize::of("\n");
-
-            let line = line.trim_end();
-            if let Some(line_indent) = line.chars().position(|ch| !ch.is_whitespace()) {
-                // Empty lines are handled because `position()` returns `None` for them.
-                *indent = std::cmp::min(*indent, line_indent);
-            }
-            self.docs.push_str(line);
-            self.docs.push('\n');
-        }
-    }
-
-    fn remove_indent(&mut self, indent: usize, start_source_map_index: usize) {
-        /// In case of panics, we want to avoid corrupted UTF-8 in `self.docs`, so we clear it.
-        struct Guard<'a>(&'a mut Docs);
-        impl Drop for Guard<'_> {
-            fn drop(&mut self) {
-                let Docs {
-                    docs,
-                    docs_source_map,
-                    outline_mod,
-                    inline_file: _,
-                    prefix_len: _,
-                    inline_inner_docs_start: _,
-                    outline_inner_docs_start: _,
-                } = self.0;
-                // Don't use `String::clear()` here because it's not guaranteed to not do UTF-8-dependent things,
-                // and we may have temporarily broken the string's encoding.
-                unsafe { docs.as_mut_vec() }.clear();
-                // This is just to avoid panics down the road.
-                docs_source_map.clear();
-                *outline_mod = None;
-            }
-        }
-
-        if self.docs.is_empty() {
-            return;
-        }
-
-        let guard = Guard(self);
-        let source_map = &mut guard.0.docs_source_map[start_source_map_index..];
-        let Some(&DocsSourceMapLine { string_offset: mut copy_into, .. }) = source_map.first()
-        else {
-            return;
-        };
-        // We basically want to remove multiple ranges from a string. Doing this efficiently (without O(N^2)
-        // or allocations) requires unsafe. Basically, for each line, we copy the line minus the indent into
-        // consecutive to the previous line (which may have moved). Then at the end we truncate.
-        let mut accumulated_offset = TextSize::new(0);
-        for idx in 0..source_map.len() {
-            let string_end_offset = source_map
-                .get(idx + 1)
-                .map_or_else(|| TextSize::of(&guard.0.docs), |next_attr| next_attr.string_offset);
-            let line_source = &mut source_map[idx];
-            let line_docs =
-                &guard.0.docs[TextRange::new(line_source.string_offset, string_end_offset)];
-            let line_docs_len = TextSize::of(line_docs);
-            let indent_size = line_docs.char_indices().nth(indent).map_or_else(
-                || TextSize::of(line_docs) - TextSize::of("\n"),
-                |(offset, _)| TextSize::new(offset as u32),
-            );
-            unsafe { guard.0.docs.as_bytes_mut() }.copy_within(
-                Range::<usize>::from(TextRange::new(
-                    line_source.string_offset + indent_size,
-                    string_end_offset,
-                )),
-                copy_into.into(),
-            );
-            copy_into += line_docs_len - indent_size;
-
-            if let Some(inner_attrs_start) = &mut guard.0.inline_inner_docs_start
-                && *inner_attrs_start == line_source.string_offset
-            {
-                *inner_attrs_start -= accumulated_offset;
-            }
-            // The removals in the string accumulate, but in the AST not, because it already points
-            // to the beginning of each attribute.
-            // Also, we need to shift the AST offset of every line, but the string offset of the first
-            // line should not get shifted (in general, the shift for the string offset is by the
-            // number of lines until the current one, excluding the current one).
-            line_source.string_offset -= accumulated_offset;
-            line_source.ast_offset += indent_size;
-
-            accumulated_offset += indent_size;
-        }
-        // Don't use `String::truncate()` here because it's not guaranteed to not do UTF-8-dependent things,
-        // and we may have temporarily broken the string's encoding.
-        unsafe { guard.0.docs.as_mut_vec() }.truncate(copy_into.into());
-
-        std::mem::forget(guard);
-    }
-
-    fn remove_last_newline(&mut self) {
-        self.docs.truncate(self.docs.len().saturating_sub(1));
-    }
-
-    fn shrink_to_fit(&mut self) {
-        let Docs {
-            docs,
-            docs_source_map,
-            outline_mod: _,
-            inline_file: _,
-            prefix_len: _,
-            inline_inner_docs_start: _,
-            outline_inner_docs_start: _,
-        } = self;
-        docs.shrink_to_fit();
-        docs_source_map.shrink_to_fit();
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct DeriveInfo {
     pub trait_name: Symbol,
     pub helpers: Box<[Symbol]>,
 }
 
-fn extract_doc_aliases(result: &mut Vec<Symbol>, attr: Meta) -> ControlFlow<Infallible> {
-    if let Meta::TokenTree { path, tt } = attr
-        && path.is1("doc")
+fn extract_doc_aliases(result: &mut Vec<Symbol>, attr: ast::Meta) -> ControlFlow<Infallible> {
+    if let ast::Meta::TokenTreeMeta(attr) = attr
+        && attr.path().is1("doc")
+        && let Some(tt) = attr.token_tree()
     {
         for atom in DocAtom::parse(tt) {
             match atom {
@@ -776,96 +588,26 @@ fn extract_doc_aliases(result: &mut Vec<Symbol>, attr: Meta) -> ControlFlow<Infa
     ControlFlow::Continue(())
 }
 
-fn extract_cfgs(result: &mut Vec<CfgExpr>, attr: Meta) -> ControlFlow<Infallible> {
-    if let Meta::TokenTree { path, tt } = attr
-        && path.is1("cfg")
+fn extract_cfgs(result: &mut Vec<CfgExpr>, attr: ast::Meta) -> ControlFlow<Infallible> {
+    if let ast::Meta::CfgMeta(attr) = attr
+        && let Some(cfg_predicate) = attr.cfg_predicate()
     {
-        result.push(CfgExpr::parse_from_ast(&mut TokenTreeChildren::new(&tt).peekable()));
+        result.push(CfgExpr::parse_from_ast(cfg_predicate));
     }
     ControlFlow::Continue(())
 }
 
-fn extract_docs<'a>(
-    get_cfg_options: &dyn Fn() -> &'a CfgOptions,
-    source: InFile<ast::AnyHasAttrs>,
-    outer_mod_decl: Option<InFile<ast::Module>>,
-    inner_attrs_node: Option<SyntaxNode>,
-) -> Option<Box<Docs>> {
-    let mut result = Docs {
-        docs: String::new(),
-        docs_source_map: Vec::new(),
-        outline_mod: None,
-        inline_file: source.file_id,
-        prefix_len: TextSize::new(0),
-        inline_inner_docs_start: None,
-        outline_inner_docs_start: None,
-    };
-
-    let mut cfg_options = None;
-    let mut extend_with_attrs =
-        |result: &mut Docs, node: &SyntaxNode, expect_inner_attrs, indent: &mut usize| {
-            expand_cfg_attr_with_doc_comments::<_, Infallible>(
-                AttrDocCommentIter::from_syntax_node(node).filter(|attr| match attr {
-                    Either::Left(attr) => attr.kind().is_inner() == expect_inner_attrs,
-                    Either::Right(comment) => comment.kind().doc.is_some_and(|kind| {
-                        (kind == ast::CommentPlacement::Inner) == expect_inner_attrs
-                    }),
-                }),
-                || cfg_options.get_or_insert_with(get_cfg_options),
-                |attr| {
-                    match attr {
-                        Either::Right(doc_comment) => {
-                            result.extend_with_doc_comment(doc_comment, indent)
-                        }
-                        Either::Left((attr, _, _, _)) => match attr {
-                            // FIXME: Handle macros: `#[doc = concat!("foo", "bar")]`.
-                            Meta::NamedKeyValue {
-                                name: Some(name), value: Some(value), ..
-                            } if name.text() == "doc" => {
-                                result.extend_with_doc_attr(value, indent);
-                            }
-                            _ => {}
-                        },
-                    }
-                    ControlFlow::Continue(())
-                },
-            );
-        };
-
-    if let Some(outer_mod_decl) = outer_mod_decl {
-        let mut indent = usize::MAX;
-        extend_with_attrs(&mut result, outer_mod_decl.value.syntax(), false, &mut indent);
-        result.remove_indent(indent, 0);
-        result.outline_mod = Some((outer_mod_decl.file_id, result.docs_source_map.len()));
-    }
-
-    let inline_source_map_start = result.docs_source_map.len();
-    let mut indent = usize::MAX;
-    extend_with_attrs(&mut result, source.value.syntax(), false, &mut indent);
-    if let Some(inner_attrs_node) = &inner_attrs_node {
-        result.inline_inner_docs_start = Some(TextSize::of(&result.docs));
-        extend_with_attrs(&mut result, inner_attrs_node, true, &mut indent);
-    }
-    result.remove_indent(indent, inline_source_map_start);
-
-    result.remove_last_newline();
-
-    result.shrink_to_fit();
-
-    if result.docs.is_empty() { None } else { Some(Box::new(result)) }
-}
-
 #[salsa::tracked]
 impl AttrFlags {
-    #[salsa::tracked]
-    pub fn query(db: &dyn DefDatabase, owner: AttrDefId) -> AttrFlags {
+    #[salsa::tracked(returns(copy))]
+    pub fn query(db: &dyn SourceDatabase, owner: AttrDefId) -> AttrFlags {
         let mut attr_flags = AttrFlags::empty();
         collect_attrs(db, owner, |attr| match_attr_flags(&mut attr_flags, attr));
         attr_flags
     }
 
     #[inline]
-    pub fn query_field(db: &dyn DefDatabase, field: FieldId) -> AttrFlags {
+    pub fn query_field(db: &dyn SourceDatabase, field: FieldId) -> AttrFlags {
         return field_attr_flags(db, field.parent)
             .get(field.local_id)
             .copied()
@@ -873,7 +615,7 @@ impl AttrFlags {
 
         #[salsa::tracked(returns(ref))]
         fn field_attr_flags(
-            db: &dyn DefDatabase,
+            db: &dyn SourceDatabase,
             variant: VariantId,
         ) -> ArenaMap<LocalFieldId, AttrFlags> {
             collect_field_attrs(db, variant, |cfg_options, field| {
@@ -881,7 +623,7 @@ impl AttrFlags {
                 expand_cfg_attr(
                     field.value.attrs(),
                     || cfg_options,
-                    |attr, _, _, _| match_attr_flags(&mut attr_flags, attr),
+                    |attr, _| match_attr_flags(&mut attr_flags, attr),
                 );
                 attr_flags
             })
@@ -890,11 +632,11 @@ impl AttrFlags {
 
     #[inline]
     pub fn query_generic_params(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         def: GenericDefId,
     ) -> &(ArenaMap<LocalLifetimeParamId, AttrFlags>, ArenaMap<LocalTypeOrConstParamId, AttrFlags>)
     {
-        let generic_params = GenericParams::new(db, def);
+        let generic_params = GenericParams::of(db, def);
         let params_count_excluding_self =
             generic_params.len() - usize::from(generic_params.trait_self_param().is_some());
         if params_count_excluding_self == 0 {
@@ -904,7 +646,7 @@ impl AttrFlags {
 
         #[salsa::tracked(returns(ref))]
         fn generic_params_attr_flags(
-            db: &dyn DefDatabase,
+            db: &dyn SourceDatabase,
             def: GenericDefId,
         ) -> (ArenaMap<LocalLifetimeParamId, AttrFlags>, ArenaMap<LocalTypeOrConstParamId, AttrFlags>)
         {
@@ -918,7 +660,7 @@ impl AttrFlags {
             let lifetimes_source = HasChildSource::<LocalLifetimeParamId>::child_source(&def, db);
             for (lifetime_id, lifetime) in lifetimes_source.value.iter() {
                 let mut attr_flags = AttrFlags::empty();
-                expand_cfg_attr(lifetime.attrs(), &mut cfg_options, |attr, _, _, _| {
+                expand_cfg_attr(lifetime.attrs(), &mut cfg_options, |attr, _| {
                     match_attr_flags(&mut attr_flags, attr)
                 });
                 if !attr_flags.is_empty() {
@@ -930,7 +672,7 @@ impl AttrFlags {
                 HasChildSource::<LocalTypeOrConstParamId>::child_source(&def, db);
             for (type_or_const_id, type_or_const) in type_and_consts_source.value.iter() {
                 let mut attr_flags = AttrFlags::empty();
-                expand_cfg_attr(type_or_const.attrs(), &mut cfg_options, |attr, _, _, _| {
+                expand_cfg_attr(type_or_const.attrs(), &mut cfg_options, |attr, _| {
                     match_attr_flags(&mut attr_flags, attr)
                 });
                 if !attr_flags.is_empty() {
@@ -945,7 +687,7 @@ impl AttrFlags {
     }
 
     #[inline]
-    pub fn query_lifetime_param(db: &dyn DefDatabase, owner: LifetimeParamId) -> AttrFlags {
+    pub fn query_lifetime_param(db: &dyn SourceDatabase, owner: LifetimeParamId) -> AttrFlags {
         AttrFlags::query_generic_params(db, owner.parent)
             .0
             .get(owner.local_id)
@@ -953,7 +695,10 @@ impl AttrFlags {
             .unwrap_or_else(AttrFlags::empty)
     }
     #[inline]
-    pub fn query_type_or_const_param(db: &dyn DefDatabase, owner: TypeOrConstParamId) -> AttrFlags {
+    pub fn query_type_or_const_param(
+        db: &dyn SourceDatabase,
+        owner: TypeOrConstParamId,
+    ) -> AttrFlags {
         AttrFlags::query_generic_params(db, owner.parent)
             .1
             .get(owner.local_id)
@@ -969,11 +714,10 @@ impl AttrFlags {
         let result = expand_cfg_attr(
             attrs,
             || cfg_options,
-            |attr, _, _, _| {
-                if let Meta::TokenTree { path, tt } = attr
-                    && path.is1("cfg")
-                    && let cfg =
-                        CfgExpr::parse_from_ast(&mut TokenTreeChildren::new(&tt).peekable())
+            |attr, _| {
+                if let ast::Meta::CfgMeta(attr) = attr
+                    && let Some(cfg_predicate) = attr.cfg_predicate()
+                    && let cfg = CfgExpr::parse_from_ast(cfg_predicate)
                     && cfg_options.check(&cfg) == Some(false)
                 {
                     ControlFlow::Break(cfg)
@@ -989,12 +733,12 @@ impl AttrFlags {
     }
 
     #[inline]
-    pub fn lang_item(db: &dyn DefDatabase, owner: AttrDefId) -> Option<Symbol> {
+    pub fn lang_item(db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Symbol> {
         AttrFlags::query(db, owner).lang_item_with_attrs(db, owner)
     }
 
     #[inline]
-    pub fn lang_item_with_attrs(self, db: &dyn DefDatabase, owner: AttrDefId) -> Option<Symbol> {
+    pub fn lang_item_with_attrs(self, db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Symbol> {
         if !self.contains(AttrFlags::LANG_ITEM) {
             // Don't create the query in case this is not a lang item, this wastes memory.
             return None;
@@ -1002,13 +746,12 @@ impl AttrFlags {
 
         return lang_item(db, owner);
 
-        #[salsa::tracked]
-        fn lang_item(db: &dyn DefDatabase, owner: AttrDefId) -> Option<Symbol> {
+        #[salsa::tracked(returns(clone))]
+        fn lang_item(db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Symbol> {
             collect_attrs(db, owner, |attr| {
-                if let Meta::NamedKeyValue { name: Some(name), value: Some(value), .. } = attr
-                    && name.text() == "lang"
-                    && let Some(value) = ast::String::cast(value)
-                    && let Ok(value) = value.value()
+                if let ast::Meta::KeyValueMeta(attr) = attr
+                    && attr.path().is1("lang")
+                    && let Some(value) = attr.value_string()
                 {
                     ControlFlow::Break(Symbol::intern(&value))
                 } else {
@@ -1019,42 +762,74 @@ impl AttrFlags {
     }
 
     #[inline]
-    pub fn repr(db: &dyn DefDatabase, owner: AdtId) -> Option<ReprOptions> {
+    pub fn repr(db: &dyn SourceDatabase, owner: AdtId) -> Option<ReprOptions> {
         if !AttrFlags::query(db, owner.into()).contains(AttrFlags::HAS_REPR) {
             // Don't create the query in case this has no repr, this wastes memory.
             return None;
         }
 
-        return repr(db, owner);
+        Self::repr_assume_has(db, owner)
+    }
 
-        #[salsa::tracked]
-        fn repr(db: &dyn DefDatabase, owner: AdtId) -> Option<ReprOptions> {
-            let mut result = None;
-            collect_attrs::<Infallible>(db, owner.into(), |attr| {
-                if let Meta::TokenTree { path, tt } = attr
-                    && path.is1("repr")
+    /// Only call this when you've verified the type indeed has a `#[repr]` attribute!
+    ///
+    /// Prefer [`AttrFlags::repr()`] in non-perf-sensitive places as it also has a check that
+    /// that the ADT has repr.
+    #[salsa::tracked(returns(copy))]
+    pub fn repr_assume_has(db: &dyn SourceDatabase, owner: AdtId) -> Option<ReprOptions> {
+        let mut result = None;
+        collect_attrs::<Infallible>(db, owner.into(), |attr| {
+            let mut current = None;
+            if let ast::Meta::TokenTreeMeta(attr) = &attr
+                && let Some(path) = attr.path()
+                && let Some(tt) = attr.token_tree()
+            {
+                if path.is1("repr")
                     && let Some(repr) = parse_repr_tt(&tt)
                 {
-                    match &mut result {
-                        Some(existing) => merge_repr(existing, repr),
-                        None => result = Some(repr),
-                    }
+                    current = Some(repr);
+                } else if path.is1("rustc_scalable_vector")
+                    && let mut tt = TokenTreeChildren::new(&tt)
+                    && let Some(NodeOrToken::Token(scalable)) = tt.next()
+                    && let Some(scalable) = ast::IntNumber::cast(scalable)
+                    && let Ok(scalable) = scalable.value()
+                    && let Ok(scalable) = scalable.try_into()
+                {
+                    current = Some(ReprOptions {
+                        scalable: Some(rustc_abi::ScalableElt::ElementCount(scalable)),
+                        ..ReprOptions::default()
+                    });
                 }
-                ControlFlow::Continue(())
-            });
-            result
-        }
+            } else if let ast::Meta::PathMeta(attr) = &attr
+                && attr.path().is1("rustc_scalable_vector")
+            {
+                current = Some(ReprOptions {
+                    scalable: Some(rustc_abi::ScalableElt::Container),
+                    ..ReprOptions::default()
+                });
+            }
+
+            if let Some(current) = current {
+                match &mut result {
+                    Some(existing) => merge_repr(existing, current),
+                    None => result = Some(current),
+                }
+            }
+            ControlFlow::Continue(())
+        });
+        result
     }
 
     /// Call this only if there are legacy const generics, to save memory.
     #[salsa::tracked(returns(ref))]
     pub(crate) fn legacy_const_generic_indices(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         owner: FunctionId,
     ) -> Option<Box<[u32]>> {
         let result = collect_attrs(db, owner.into(), |attr| {
-            if let Meta::TokenTree { path, tt } = attr
-                && path.is1("rustc_legacy_const_generics")
+            if let ast::Meta::TokenTreeMeta(attr) = attr
+                && attr.path().is1("rustc_legacy_const_generics")
+                && let Some(tt) = attr.token_tree()
             {
                 let result = parse_rustc_legacy_const_generics(tt);
                 ControlFlow::Break(result)
@@ -1067,9 +842,9 @@ impl AttrFlags {
 
     // There aren't typically many crates, so it's okay to always make this a query without a flag.
     #[salsa::tracked(returns(ref))]
-    pub fn doc_html_root_url(db: &dyn DefDatabase, krate: Crate) -> Option<SmolStr> {
+    pub fn doc_html_root_url(db: &dyn SourceDatabase, krate: Crate) -> Option<SmolStr> {
         let root_file_id = krate.root_file_id(db);
-        let syntax = db.parse(root_file_id).tree();
+        let syntax = root_file_id.parse(db).tree();
         let extra_crate_attrs =
             parse_extra_crate_attrs(db, krate).into_iter().flat_map(|src| src.attrs());
 
@@ -1077,9 +852,10 @@ impl AttrFlags {
         expand_cfg_attr(
             extra_crate_attrs.chain(syntax.attrs()),
             || cfg_options.get_or_insert(krate.cfg_options(db)),
-            |attr, _, _, _| {
-                if let Meta::TokenTree { path, tt } = attr
-                    && path.is1("doc")
+            |attr, _| {
+                if let ast::Meta::TokenTreeMeta(attr) = attr
+                    && attr.path().is1("doc")
+                    && let Some(tt) = attr.token_tree()
                     && let Some(result) = DocAtom::parse(tt).into_iter().find_map(|atom| {
                         if let DocAtom::KeyValue { key, value } = atom
                             && key == "html_root_url"
@@ -1099,7 +875,7 @@ impl AttrFlags {
     }
 
     #[inline]
-    pub fn target_features(db: &dyn DefDatabase, owner: FunctionId) -> &FxHashSet<Symbol> {
+    pub fn target_features(db: &dyn SourceDatabase, owner: FunctionId) -> &FxHashSet<Symbol> {
         if !AttrFlags::query(db, owner.into()).contains(AttrFlags::HAS_TARGET_FEATURE) {
             return const { &FxHashSet::with_hasher(rustc_hash::FxBuildHasher) };
         }
@@ -1107,11 +883,12 @@ impl AttrFlags {
         return target_features(db, owner);
 
         #[salsa::tracked(returns(ref))]
-        fn target_features(db: &dyn DefDatabase, owner: FunctionId) -> FxHashSet<Symbol> {
+        fn target_features(db: &dyn SourceDatabase, owner: FunctionId) -> FxHashSet<Symbol> {
             let mut result = FxHashSet::default();
             collect_attrs::<Infallible>(db, owner.into(), |attr| {
-                if let Meta::TokenTree { path, tt } = attr
-                    && path.is1("target_feature")
+                if let ast::Meta::TokenTreeMeta(attr) = attr
+                    && attr.path().is1("target_feature")
+                    && let Some(tt) = attr.token_tree()
                 {
                     let mut tt = TokenTreeChildren::new(&tt);
                     while let Some(NodeOrToken::Token(enable_ident)) = tt.next()
@@ -1141,7 +918,7 @@ impl AttrFlags {
 
     #[inline]
     pub fn rustc_layout_scalar_valid_range(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         owner: AdtId,
     ) -> RustcLayoutScalarValidRange {
         if !AttrFlags::query(db, owner.into()).contains(AttrFlags::RUSTC_LAYOUT_SCALAR_VALID_RANGE)
@@ -1151,16 +928,18 @@ impl AttrFlags {
 
         return rustc_layout_scalar_valid_range(db, owner);
 
-        #[salsa::tracked]
+        #[salsa::tracked(returns(copy))]
         fn rustc_layout_scalar_valid_range(
-            db: &dyn DefDatabase,
+            db: &dyn SourceDatabase,
             owner: AdtId,
         ) -> RustcLayoutScalarValidRange {
             let mut result = RustcLayoutScalarValidRange::default();
             collect_attrs::<Infallible>(db, owner.into(), |attr| {
-                if let Meta::TokenTree { path, tt } = attr
+                if let ast::Meta::TokenTreeMeta(attr) = attr
+                    && let path = attr.path()
                     && (path.is1("rustc_layout_scalar_valid_range_start")
                         || path.is1("rustc_layout_scalar_valid_range_end"))
+                    && let Some(tt) = attr.token_tree()
                     && let tt = TokenTreeChildren::new(&tt)
                     && let Ok(NodeOrToken::Token(value)) = Itertools::exactly_one(tt)
                     && let Some(value) = ast::IntNumber::cast(value)
@@ -1179,7 +958,11 @@ impl AttrFlags {
     }
 
     #[inline]
-    pub fn doc_aliases(self, db: &dyn DefDatabase, owner: Either<AttrDefId, FieldId>) -> &[Symbol] {
+    pub fn doc_aliases(
+        self,
+        db: &dyn SourceDatabase,
+        owner: Either<AttrDefId, FieldId>,
+    ) -> &[Symbol] {
         if !self.contains(AttrFlags::HAS_DOC_ALIASES) {
             return &[];
         }
@@ -1192,7 +975,7 @@ impl AttrFlags {
         };
 
         #[salsa::tracked(returns(ref))]
-        fn doc_aliases(db: &dyn DefDatabase, owner: AttrDefId) -> Box<[Symbol]> {
+        fn doc_aliases(db: &dyn SourceDatabase, owner: AttrDefId) -> Box<[Symbol]> {
             let mut result = Vec::new();
             collect_attrs::<Infallible>(db, owner, |attr| extract_doc_aliases(&mut result, attr));
             result.into_boxed_slice()
@@ -1200,7 +983,7 @@ impl AttrFlags {
 
         #[salsa::tracked(returns(ref))]
         fn fields_doc_aliases(
-            db: &dyn DefDatabase,
+            db: &dyn SourceDatabase,
             variant: VariantId,
         ) -> ArenaMap<LocalFieldId, Box<[Symbol]>> {
             collect_field_attrs(db, variant, |cfg_options, field| {
@@ -1208,7 +991,7 @@ impl AttrFlags {
                 expand_cfg_attr(
                     field.value.attrs(),
                     || cfg_options,
-                    |attr, _, _, _| extract_doc_aliases(&mut result, attr),
+                    |attr, _| extract_doc_aliases(&mut result, attr),
                 );
                 result.into_boxed_slice()
             })
@@ -1216,7 +999,11 @@ impl AttrFlags {
     }
 
     #[inline]
-    pub fn cfgs(self, db: &dyn DefDatabase, owner: Either<AttrDefId, FieldId>) -> Option<&CfgExpr> {
+    pub fn cfgs(
+        self,
+        db: &dyn SourceDatabase,
+        owner: Either<AttrDefId, FieldId>,
+    ) -> Option<&CfgExpr> {
         if !self.contains(AttrFlags::HAS_CFG) {
             return None;
         }
@@ -1229,7 +1016,7 @@ impl AttrFlags {
 
         // We LRU this query because it is only used by IDE.
         #[salsa::tracked(returns(ref), lru = 250)]
-        fn cfgs(db: &dyn DefDatabase, owner: AttrDefId) -> Option<CfgExpr> {
+        fn cfgs(db: &dyn SourceDatabase, owner: AttrDefId) -> Option<CfgExpr> {
             let mut result = Vec::new();
             collect_attrs::<Infallible>(db, owner, |attr| extract_cfgs(&mut result, attr));
             match result.len() {
@@ -1242,7 +1029,7 @@ impl AttrFlags {
         // We LRU this query because it is only used by IDE.
         #[salsa::tracked(returns(ref), lru = 50)]
         fn fields_cfgs(
-            db: &dyn DefDatabase,
+            db: &dyn SourceDatabase,
             variant: VariantId,
         ) -> ArenaMap<LocalFieldId, Option<CfgExpr>> {
             collect_field_attrs(db, variant, |cfg_options, field| {
@@ -1250,7 +1037,7 @@ impl AttrFlags {
                 expand_cfg_attr(
                     field.value.attrs(),
                     || cfg_options,
-                    |attr, _, _, _| extract_cfgs(&mut result, attr),
+                    |attr, _| extract_cfgs(&mut result, attr),
                 );
                 match result.len() {
                     0 => None,
@@ -1262,17 +1049,18 @@ impl AttrFlags {
     }
 
     #[inline]
-    pub fn doc_keyword(db: &dyn DefDatabase, owner: ModuleId) -> Option<Symbol> {
+    pub fn doc_keyword(db: &dyn SourceDatabase, owner: ModuleId) -> Option<Symbol> {
         if !AttrFlags::query(db, AttrDefId::ModuleId(owner)).contains(AttrFlags::HAS_DOC_KEYWORD) {
             return None;
         }
         return doc_keyword(db, owner);
 
-        #[salsa::tracked]
-        fn doc_keyword(db: &dyn DefDatabase, owner: ModuleId) -> Option<Symbol> {
+        #[salsa::tracked(returns(clone))]
+        fn doc_keyword(db: &dyn SourceDatabase, owner: ModuleId) -> Option<Symbol> {
             collect_attrs(db, AttrDefId::ModuleId(owner), |attr| {
-                if let Meta::TokenTree { path, tt } = attr
-                    && path.is1("doc")
+                if let ast::Meta::TokenTreeMeta(attr) = attr
+                    && attr.path().is1("doc")
+                    && let Some(tt) = attr.token_tree()
                 {
                     for atom in DocAtom::parse(tt) {
                         if let DocAtom::KeyValue { key, value } = atom
@@ -1288,34 +1076,51 @@ impl AttrFlags {
     }
 
     // We LRU this query because it is only used by IDE.
-    #[salsa::tracked(returns(ref), lru = 250)]
-    pub fn docs(db: &dyn DefDatabase, owner: AttrDefId) -> Option<Box<Docs>> {
+    #[salsa::tracked(returns(as_deref), lru = 250)]
+    pub fn docs(db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Box<Docs>> {
         let (source, outer_mod_decl, _extra_crate_attrs, krate) = attrs_source(db, owner);
         let inner_attrs_node = source.value.inner_attributes_node();
         // Note: we don't have to pass down `_extra_crate_attrs` here, since `extract_docs`
         // does not handle crate-level attributes related to docs.
         // See: https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html#at-the-crate-level
-        extract_docs(&|| krate.cfg_options(db), source, outer_mod_decl, inner_attrs_node)
+        self::docs::extract_docs(
+            db,
+            krate,
+            &|| resolver_for_attr_def_id(db, owner),
+            &|| krate.cfg_options(db),
+            source,
+            outer_mod_decl,
+            inner_attrs_node,
+        )
     }
 
     #[inline]
-    pub fn field_docs(db: &dyn DefDatabase, field: FieldId) -> Option<&Docs> {
-        return fields_docs(db, field.parent).get(field.local_id).and_then(|it| it.as_deref());
+    pub fn field_docs(db: &dyn SourceDatabase, field: FieldId) -> Option<&Docs> {
+        Self::fields_docs(db, field.parent).get(field.local_id).and_then(|it| it.as_deref())
+    }
 
-        // We LRU this query because it is only used by IDE.
-        #[salsa::tracked(returns(ref), lru = 50)]
-        pub fn fields_docs(
-            db: &dyn DefDatabase,
-            variant: VariantId,
-        ) -> ArenaMap<LocalFieldId, Option<Box<Docs>>> {
-            collect_field_attrs(db, variant, |cfg_options, field| {
-                extract_docs(&|| cfg_options, field, None, None)
-            })
-        }
+    // We LRU this query because it is only used by IDE.
+    #[salsa::tracked(returns(ref), lru = 50)]
+    pub fn fields_docs(
+        db: &dyn SourceDatabase,
+        variant: VariantId,
+    ) -> ArenaMap<LocalFieldId, Option<Box<Docs>>> {
+        let krate = variant.module(db).krate(db);
+        collect_field_attrs(db, variant, |cfg_options, field| {
+            self::docs::extract_docs(
+                db,
+                krate,
+                &|| variant.resolver(db),
+                &|| cfg_options,
+                field,
+                None,
+                None,
+            )
+        })
     }
 
     #[inline]
-    pub fn derive_info(db: &dyn DefDatabase, owner: MacroId) -> Option<&DeriveInfo> {
+    pub fn derive_info(db: &dyn SourceDatabase, owner: MacroId) -> Option<&DeriveInfo> {
         if !AttrFlags::query(db, owner.into()).contains(AttrFlags::IS_DERIVE_OR_BUILTIN_MACRO) {
             return None;
         }
@@ -1323,14 +1128,12 @@ impl AttrFlags {
         return derive_info(db, owner).as_ref();
 
         #[salsa::tracked(returns(ref))]
-        fn derive_info(db: &dyn DefDatabase, owner: MacroId) -> Option<DeriveInfo> {
+        fn derive_info(db: &dyn SourceDatabase, owner: MacroId) -> Option<DeriveInfo> {
             collect_attrs(db, owner.into(), |attr| {
-                if let Meta::TokenTree { path, tt } = attr
-                    && path.segments.len() == 1
-                    && matches!(
-                        path.segments[0].text(),
-                        "proc_macro_derive" | "rustc_builtin_macro"
-                    )
+                if let ast::Meta::TokenTreeMeta(attr) = attr
+                    && (attr.path().is1("proc_macro_derive")
+                        || attr.path().is1("rustc_builtin_macro"))
+                    && let Some(tt) = attr.token_tree()
                     && let mut tt = TokenTreeChildren::new(&tt)
                     && let Some(NodeOrToken::Token(trait_name)) = tt.next()
                     && trait_name.kind().is_any_identifier()
@@ -1361,10 +1164,97 @@ impl AttrFlags {
             })
         }
     }
+
+    pub fn unstable_feature(self, db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Symbol> {
+        if !self.contains(AttrFlags::IS_UNSTABLE) {
+            return None;
+        }
+
+        return unstable_feature(db, owner);
+
+        #[salsa::tracked(returns(clone))]
+        fn unstable_feature(db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Symbol> {
+            collect_attrs(db, owner, |attr| {
+                if let ast::Meta::TokenTreeMeta(attr) = attr
+                    && let path = attr.path()
+                    && path.is1("unstable")
+                    && let Some(tt) = attr.token_tree()
+                {
+                    let mut tt = TokenTreeChildren::new(&tt);
+                    // Technically the `feature = "..."` always comes first, but it's not a requirement.
+                    while let Some(token) = tt.next() {
+                        if let NodeOrToken::Token(token) = token
+                            && token.text() == "feature"
+                            && let Some(NodeOrToken::Token(eq)) = tt.next()
+                            && eq.kind() == T![=]
+                            && let Some(NodeOrToken::Token(feature)) = tt.next()
+                            && let Some(feature) = ast::String::cast(feature)
+                            && let Ok(feature) = feature.value()
+                        {
+                            return ControlFlow::Break(Symbol::intern(&feature));
+                        }
+                    }
+                }
+                ControlFlow::Continue(())
+            })
+        }
+    }
+
+    /// Returns `None` if there is no `#[must_use]`, `Some(None)` if there is a `#[must_use]` without a message,
+    /// and `Some(Some(message))` if there is a `#[must_use]` with a message.
+    pub fn must_use_message(db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Option<&str>> {
+        if !AttrFlags::query(db, owner).contains(AttrFlags::IS_MUST_USE) {
+            return None;
+        }
+        return Some(must_use_message(db, owner));
+
+        #[salsa::tracked(returns(as_deref))]
+        fn must_use_message(db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Box<str>> {
+            collect_attrs(db, owner, |attr| {
+                if let ast::Meta::KeyValueMeta(attr) = attr
+                    && attr.path().is1("must_use")
+                    && let Some(message) = attr.value_string()
+                {
+                    return ControlFlow::Break(Box::from(&*message));
+                }
+                ControlFlow::Continue(())
+            })
+        }
+    }
+
+    pub fn must_implement_one_of(db: &dyn SourceDatabase, owner: TraitId) -> Option<&[Name]> {
+        if !AttrFlags::query(db, owner.into()).contains(AttrFlags::HAS_RUSTC_MUST_IMPLEMENT_ONE_OF)
+        {
+            return None;
+        }
+        return must_implement_one_of(db, owner);
+
+        #[salsa::tracked(returns(as_deref))]
+        pub fn must_implement_one_of(
+            db: &dyn SourceDatabase,
+            owner: TraitId,
+        ) -> Option<Box<[Name]>> {
+            collect_attrs(db, owner.into(), |attr| {
+                if let ast::Meta::TokenTreeMeta(attr) = attr
+                    && attr.path().is1("rustc_must_implement_one_of")
+                    && let Some(tt) = attr.token_tree()
+                    && let names = tt
+                        .token_trees_and_tokens()
+                        .filter_map(|it| ast::Ident::cast(it.into_token()?))
+                        .map(|name| Name::new_symbol_root(Symbol::intern(name.text())))
+                        .collect::<Box<[_]>>()
+                    && !names.is_empty()
+                {
+                    return ControlFlow::Break(names);
+                }
+                ControlFlow::Continue(())
+            })
+        }
+    }
 }
 
 fn merge_repr(this: &mut ReprOptions, other: ReprOptions) {
-    let ReprOptions { int, align, pack, flags, field_shuffle_seed: _ } = this;
+    let ReprOptions { int, align, pack, flags, scalable, field_shuffle_seed: _ } = this;
     flags.insert(other.flags);
     *align = (*align).max(other.align);
     *pack = match (*pack, other.pack) {
@@ -1373,6 +1263,9 @@ fn merge_repr(this: &mut ReprOptions, other: ReprOptions) {
     };
     if other.int.is_some() {
         *int = other.int;
+    }
+    if other.scalable.is_some() {
+        *scalable = other.scalable;
     }
 }
 
@@ -1537,149 +1430,11 @@ fn next_doc_expr(it: &mut Peekable<TokenTreeChildren>) -> Option<DocAtom> {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::expect;
-    use hir_expand::InFile;
     use test_fixture::WithFixture;
-    use tt::{TextRange, TextSize};
 
     use crate::AttrDefId;
-    use crate::attrs::{AttrFlags, Docs, IsInnerDoc};
+    use crate::attrs::AttrFlags;
     use crate::test_db::TestDB;
-
-    #[test]
-    fn docs() {
-        let (_db, file_id) = TestDB::with_single_file("");
-        let mut docs = Docs {
-            docs: String::new(),
-            docs_source_map: Vec::new(),
-            outline_mod: None,
-            inline_file: file_id.into(),
-            prefix_len: TextSize::new(0),
-            inline_inner_docs_start: None,
-            outline_inner_docs_start: None,
-        };
-        let mut indent = usize::MAX;
-
-        let outer = " foo\n\tbar  baz";
-        let mut ast_offset = TextSize::new(123);
-        for line in outer.split('\n') {
-            docs.extend_with_doc_str(line, ast_offset, &mut indent);
-            ast_offset += TextSize::of(line) + TextSize::of("\n");
-        }
-
-        docs.inline_inner_docs_start = Some(TextSize::of(&docs.docs));
-        ast_offset += TextSize::new(123);
-        let inner = " bar \n baz";
-        for line in inner.split('\n') {
-            docs.extend_with_doc_str(line, ast_offset, &mut indent);
-            ast_offset += TextSize::of(line) + TextSize::of("\n");
-        }
-
-        assert_eq!(indent, 1);
-        expect![[r#"
-            [
-                DocsSourceMapLine {
-                    string_offset: 0,
-                    ast_offset: 123,
-                },
-                DocsSourceMapLine {
-                    string_offset: 5,
-                    ast_offset: 128,
-                },
-                DocsSourceMapLine {
-                    string_offset: 15,
-                    ast_offset: 261,
-                },
-                DocsSourceMapLine {
-                    string_offset: 20,
-                    ast_offset: 267,
-                },
-            ]
-        "#]]
-        .assert_debug_eq(&docs.docs_source_map);
-
-        docs.remove_indent(indent, 0);
-
-        assert_eq!(docs.inline_inner_docs_start, Some(TextSize::new(13)));
-
-        assert_eq!(docs.docs, "foo\nbar  baz\nbar\nbaz\n");
-        expect![[r#"
-            [
-                DocsSourceMapLine {
-                    string_offset: 0,
-                    ast_offset: 124,
-                },
-                DocsSourceMapLine {
-                    string_offset: 4,
-                    ast_offset: 129,
-                },
-                DocsSourceMapLine {
-                    string_offset: 13,
-                    ast_offset: 262,
-                },
-                DocsSourceMapLine {
-                    string_offset: 17,
-                    ast_offset: 268,
-                },
-            ]
-        "#]]
-        .assert_debug_eq(&docs.docs_source_map);
-
-        docs.append(&docs.clone());
-        docs.prepend_str("prefix---");
-        assert_eq!(docs.docs, "prefix---foo\nbar  baz\nbar\nbaz\nfoo\nbar  baz\nbar\nbaz\n");
-        expect![[r#"
-            [
-                DocsSourceMapLine {
-                    string_offset: 0,
-                    ast_offset: 124,
-                },
-                DocsSourceMapLine {
-                    string_offset: 4,
-                    ast_offset: 129,
-                },
-                DocsSourceMapLine {
-                    string_offset: 13,
-                    ast_offset: 262,
-                },
-                DocsSourceMapLine {
-                    string_offset: 17,
-                    ast_offset: 268,
-                },
-                DocsSourceMapLine {
-                    string_offset: 21,
-                    ast_offset: 124,
-                },
-                DocsSourceMapLine {
-                    string_offset: 25,
-                    ast_offset: 129,
-                },
-                DocsSourceMapLine {
-                    string_offset: 34,
-                    ast_offset: 262,
-                },
-                DocsSourceMapLine {
-                    string_offset: 38,
-                    ast_offset: 268,
-                },
-            ]
-        "#]]
-        .assert_debug_eq(&docs.docs_source_map);
-
-        let range = |start, end| TextRange::new(TextSize::new(start), TextSize::new(end));
-        let in_file = |range| InFile::new(file_id.into(), range);
-        assert_eq!(docs.find_ast_range(range(0, 2)), None);
-        assert_eq!(docs.find_ast_range(range(8, 10)), None);
-        assert_eq!(
-            docs.find_ast_range(range(9, 10)),
-            Some((in_file(range(124, 125)), IsInnerDoc::No))
-        );
-        assert_eq!(docs.find_ast_range(range(20, 23)), None);
-        assert_eq!(
-            docs.find_ast_range(range(23, 25)),
-            Some((in_file(range(263, 265)), IsInnerDoc::Yes))
-        );
-    }
 
     #[test]
     fn crate_attrs() {

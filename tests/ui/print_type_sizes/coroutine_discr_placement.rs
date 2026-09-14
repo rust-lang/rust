@@ -1,6 +1,6 @@
 //@ compile-flags: -Z print-type-sizes --crate-type lib
 //@ build-pass
-//@ ignore-pass
+//@ no-pass-override (codegen affects -Zprint-type-sizes)
 
 // Tests a coroutine that has its discriminant as the *final* field.
 

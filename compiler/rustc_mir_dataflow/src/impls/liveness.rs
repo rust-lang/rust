@@ -1,8 +1,6 @@
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{
-    self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdges,
-};
+use rustc_middle::mir::{self, CallReturnPlaces, Local, Location, Place, StatementKind};
 
 use crate::{Analysis, Backward, GenKill};
 
@@ -46,17 +44,16 @@ impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        TransferFunction(state).visit_statement(statement, location);
+        LivenessTransferFunction(state).visit_statement(statement, location);
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
+        terminator: &mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        TransferFunction(state).visit_terminator(terminator, location);
-        terminator.edges()
+    ) {
+        LivenessTransferFunction(state).visit_terminator(terminator, location);
     }
 
     fn apply_call_return_effect(
@@ -81,9 +78,12 @@ impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
     }
 }
 
-pub struct TransferFunction<'a>(pub &'a mut DenseBitSet<Local>);
+pub struct LivenessTransferFunction<'a, I>(pub &'a mut I);
 
-impl<'tcx> Visitor<'tcx> for TransferFunction<'_> {
+impl<'tcx, I> Visitor<'tcx> for LivenessTransferFunction<'_, I>
+where
+    I: GenKill<Local>,
+{
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
         if let PlaceContext::MutatingUse(MutatingUseContext::Yield) = context {
             // The resume place is evaluated and assigned to only after coroutine resumes, so its
@@ -130,7 +130,6 @@ impl<'tcx> Visitor<'tcx> for YieldResumeEffect<'_> {
     }
 }
 
-#[derive(Eq, PartialEq, Clone)]
 pub enum DefUse {
     /// Full write to the local.
     Def,
@@ -143,7 +142,7 @@ pub enum DefUse {
 }
 
 impl DefUse {
-    fn apply(state: &mut DenseBitSet<Local>, place: Place<'_>, context: PlaceContext) {
+    fn apply(state: &mut impl GenKill<Local>, place: Place<'_>, context: PlaceContext) {
         match DefUse::for_place(place, context) {
             DefUse::Def => state.kill(place.local),
             DefUse::Use => state.gen_(place.local),
@@ -181,8 +180,7 @@ impl DefUse {
             PlaceContext::MutatingUse(
                 MutatingUseContext::RawBorrow
                 | MutatingUseContext::Borrow
-                | MutatingUseContext::Drop
-                | MutatingUseContext::Retag,
+                | MutatingUseContext::Drop,
             )
             | PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::RawBorrow
@@ -202,7 +200,8 @@ impl DefUse {
     }
 }
 
-/// Like `MaybeLiveLocals`, but does not mark locals as live if they are used in a dead assignment.
+/// Like `MaybeLiveLocals` (and layered on top of `MaybeLiveLocals`), but does not mark locals as
+/// live if they are used in a dead assignment.
 ///
 /// This is basically written for dead store elimination and nothing else.
 ///
@@ -213,7 +212,7 @@ pub struct MaybeTransitiveLiveLocals<'a> {
 }
 
 impl<'a> MaybeTransitiveLiveLocals<'a> {
-    /// The `always_alive` set is the set of locals to which all stores should unconditionally be
+    /// The `always_live` set is the set of locals to which all stores should unconditionally be
     /// considered live.
     ///
     /// This should include at least all locals that are ever borrowed.
@@ -227,11 +226,11 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
     pub fn can_be_removed_if_dead<'tcx>(
         stmt_kind: &StatementKind<'tcx>,
         always_live: &DenseBitSet<Local>,
-        debuginfo_locals: &'a DenseBitSet<Local>,
+        debuginfo_locals: &DenseBitSet<Local>,
     ) -> Option<Place<'tcx>> {
         // Compute the place that we are storing to, if any
         let destination = match stmt_kind {
-            StatementKind::Assign(box (place, rvalue)) => (rvalue.is_safe_to_remove()
+            StatementKind::Assign((place, rvalue)) => (rvalue.is_safe_to_remove()
                 // FIXME: We are not sure how we should represent this debugging information for some statements,
                 // keep it for now.
                 && (!debuginfo_locals.contains(place.local)
@@ -243,7 +242,6 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
             StatementKind::FakeRead(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::Retag(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
@@ -269,12 +267,11 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     const NAME: &'static str = "transitive liveness";
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
-        // bottom = not live
-        DenseBitSet::new_empty(body.local_decls.len())
+        MaybeLiveLocals.bottom_value(body)
     }
 
-    fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
-        // No variables are live until we observe a use
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain) {
+        MaybeLiveLocals.initialize_start_block(body, state)
     }
 
     fn apply_primary_statement_effect(
@@ -283,44 +280,33 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
+        // This is the one part of `MaybeTransitiveLiveLocals` that differs from `MaybeLiveLocals`.
         if let Some(destination) =
-            Self::can_be_removed_if_dead(&statement.kind, &self.always_live, &self.debuginfo_locals)
+            Self::can_be_removed_if_dead(&statement.kind, self.always_live, self.debuginfo_locals)
             && !state.contains(destination.local)
         {
             // This store is dead
             return;
         }
-        TransferFunction(state).visit_statement(statement, location);
+
+        MaybeLiveLocals.apply_primary_statement_effect(state, statement, location);
     }
 
-    fn apply_primary_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect(
         &self,
         state: &mut Self::Domain,
-        terminator: &'mir mir::Terminator<'tcx>,
+        terminator: &mir::Terminator<'tcx>,
         location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        TransferFunction(state).visit_terminator(terminator, location);
-        terminator.edges()
+    ) {
+        MaybeLiveLocals.apply_primary_terminator_effect(state, terminator, location)
     }
 
     fn apply_call_return_effect(
         &self,
         state: &mut Self::Domain,
-        _block: mir::BasicBlock,
+        block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
-        if let CallReturnPlaces::Yield(resume_place) = return_places {
-            YieldResumeEffect(state).visit_place(
-                &resume_place,
-                PlaceContext::MutatingUse(MutatingUseContext::Yield),
-                Location::START,
-            )
-        } else {
-            return_places.for_each(|place| {
-                if let Some(local) = place.as_local() {
-                    state.remove(local);
-                }
-            });
-        }
+        MaybeLiveLocals.apply_call_return_effect(state, block, return_places);
     }
 }

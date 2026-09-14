@@ -1,5 +1,6 @@
 #![warn(clippy::manual_non_exhaustive)]
-#![allow(unused)]
+// One half of the fix is emitted as a suggestion, but the other is only a help message -- see the
+// lint file for the reasons. Since the fix is therefore incomplete, rustfix will end up complaining
 //@no-rustfix
 pub enum E {
     //~^ manual_non_exhaustive

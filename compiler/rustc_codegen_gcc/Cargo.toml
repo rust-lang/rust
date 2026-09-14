@@ -9,12 +9,8 @@ license = "MIT OR Apache-2.0"
 crate-type = ["dylib"]
 
 [[test]]
-name = "lang_tests_debug"
-path = "tests/lang_tests_debug.rs"
-harness = false
-[[test]]
-name = "lang_tests_release"
-path = "tests/lang_tests_release.rs"
+name = "lang_tests"
+path = "tests/lang_tests.rs"
 harness = false
 
 [features]
@@ -22,7 +18,7 @@ master = ["gccjit/master"]
 default = ["master"]
 
 [dependencies]
-object = { version = "0.37.0", default-features = false, features = ["std", "read"] }
+object = { version = "0.39.0", default-features = false, features = ["std", "read"] }
 tempfile = "3.20"
 gccjit = { version = "3.3.0", features = ["dlopen"] }
 #gccjit = { git = "https://github.com/rust-lang/gccjit.rs", branch = "error-dlopen", features = ["dlopen"] }

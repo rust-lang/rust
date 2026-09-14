@@ -6,6 +6,8 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{Analysis, MaybeReachable, move_path_children_matching};
 
+use crate::PassPolicy;
+
 /// Removes `Drop` terminators whose target is known to be uninitialized at
 /// that point.
 ///
@@ -64,8 +66,9 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUninitDrops {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // Const checking relies on uninitialized drops being removed before drop elaboration.
+        PassPolicy::Required
     }
 }
 
@@ -127,7 +130,9 @@ fn is_needs_drop_and_init<'tcx>(
                     .fields
                     .iter()
                     .enumerate()
-                    .map(|(f, field)| (FieldIdx::from_usize(f), field.ty(tcx, args), mpi))
+                    .map(|(f, field)| {
+                        (FieldIdx::from_usize(f), field.ty(tcx, args).skip_norm_wip(), mpi)
+                    })
                     .any(field_needs_drop_and_init)
             })
         }
@@ -149,7 +154,7 @@ fn variant_needs_drop<'tcx>(
     variant: &VariantDef,
 ) -> bool {
     variant.fields.iter().any(|field| {
-        let f_ty = field.ty(tcx, args);
+        let f_ty = field.ty(tcx, args).skip_norm_wip();
         f_ty.needs_drop(tcx, typing_env)
     })
 }

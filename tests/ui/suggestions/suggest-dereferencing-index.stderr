@@ -5,13 +5,13 @@ LL |     let one_item_please: i32 = [1, 2, 3][i];
    |                                          ^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `SliceIndex<[{integer}]>` is not implemented for `&usize`
-help: the following other types implement trait `SliceIndex<T>`
+help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
-   = note: `usize` implements `SliceIndex<[T]>`
+   = note: `SliceIndex<[T]>`
   --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
    |
-   = note: `usize` implements `SliceIndex<ByteStr>`
+   = note: `SliceIndex<ByteStr>`
    = note: required for `[{integer}]` to implement `Index<&usize>`
 help: dereference this index
    |

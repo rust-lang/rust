@@ -13,9 +13,9 @@ use crate::{
     lower::lower_mutability,
 };
 
-impl<'db> InferenceContext<'_, 'db> {
-    pub(crate) fn infer_mut_body(&mut self) {
-        self.infer_mut_expr(self.body.body_expr, Mutability::Not);
+impl<'db> InferenceContext<'db> {
+    pub(crate) fn infer_mut_body(&mut self, body_expr: ExprId) {
+        self.infer_mut_expr(body_expr, Mutability::Not);
     }
 
     fn infer_mut_expr(&mut self, tgt_expr: ExprId, mut mutability: Mutability) {
@@ -32,13 +32,14 @@ impl<'db> InferenceContext<'_, 'db> {
                             };
                             if let Some(infer_ok) = Self::try_mutable_overloaded_place_op(
                                 &self.table,
+                                tgt_expr,
                                 source_ty,
                                 None,
                                 PlaceOp::Deref,
                             ) {
                                 self.table.register_predicates(infer_ok.obligations);
                             }
-                            *d = OverloadedDeref(Some(mutability));
+                            *d = OverloadedDeref(mutability);
                         }
                     }
                     Adjust::Borrow(b) => match b {
@@ -52,7 +53,7 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     fn infer_mut_expr_without_adjust(&mut self, tgt_expr: ExprId, mutability: Mutability) {
-        match &self.body[tgt_expr] {
+        match &self.store[tgt_expr] {
             Expr::Missing => (),
             Expr::InlineAsm(e) => {
                 e.operands.iter().for_each(|(_, op)| match op {
@@ -85,9 +86,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.infer_mut_expr(*id, Mutability::Not);
             }
             Expr::Let { pat, expr } => self.infer_mut_expr(*expr, self.pat_bound_mutability(*pat)),
-            Expr::Block { id: _, statements, tail, label: _ }
-            | Expr::Async { id: _, statements, tail }
-            | Expr::Unsafe { id: _, statements, tail } => {
+            Expr::Block { id: _, statements, tail, label: _, unsafe_: _ } => {
                 for st in statements.iter() {
                     match st {
                         Statement::Let { pat, type_ref: _, initializer, else_branch } => {
@@ -156,11 +155,8 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.infer_mut_expr(*expr, mutability);
             }
             Expr::UnaryOp { expr, op: _ }
-            | Expr::Range { lhs: Some(expr), rhs: None, range_type: _ }
-            | Expr::Range { rhs: Some(expr), lhs: None, range_type: _ }
             | Expr::Await { expr }
-            | Expr::Box { expr }
-            | Expr::Loop { body: expr, label: _ }
+            | Expr::Loop { body: expr, label: _, source: _ }
             | Expr::Cast { expr, type_ref: _ } => {
                 self.infer_mut_expr(*expr, Mutability::Not);
             }
@@ -173,16 +169,14 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.infer_mut_expr(*rhs, Mutability::Not);
             }
             &Expr::Assignment { target, value } => {
-                self.body.walk_pats(target, &mut |pat| match self.body[pat] {
+                self.store.walk_pats(target, &mut |pat| match self.store[pat] {
                     Pat::Expr(expr) => self.infer_mut_expr(expr, Mutability::Mut),
-                    Pat::ConstBlock(block) => self.infer_mut_expr(block, Mutability::Not),
                     _ => {}
                 });
                 self.infer_mut_expr(value, Mutability::Not);
             }
             Expr::Array(Array::Repeat { initializer: lhs, repeat: rhs })
-            | Expr::BinaryOp { lhs, rhs, op: _ }
-            | Expr::Range { lhs: Some(lhs), rhs: Some(rhs), range_type: _ } => {
+            | Expr::BinaryOp { lhs, rhs, op: _ } => {
                 self.infer_mut_expr(*lhs, Mutability::Not);
                 self.infer_mut_expr(*rhs, Mutability::Not);
             }
@@ -193,11 +187,11 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.infer_mut_not_expr_iter(exprs.iter().copied());
             }
             // These don't need any action, as they don't have sub expressions
-            Expr::Range { lhs: None, rhs: None, range_type: _ }
-            | Expr::Literal(_)
+            Expr::Literal(_)
             | Expr::Path(_)
             | Expr::Continue { .. }
-            | Expr::Underscore => (),
+            | Expr::Underscore
+            | Expr::IncludeBytes => (),
         }
     }
 
@@ -220,8 +214,8 @@ impl<'db> InferenceContext<'_, 'db> {
     /// `let (ref x0, ref x1) = *it;` we should use `Deref`.
     fn pat_bound_mutability(&self, pat: PatId) -> Mutability {
         let mut r = Mutability::Not;
-        self.body.walk_bindings_in_pat(pat, |b| {
-            if self.body[b].mode == BindingAnnotation::RefMut {
+        self.store.walk_bindings_in_pat(pat, |b| {
+            if self.store[b].mode == BindingAnnotation::RefMut {
                 r = Mutability::Mut;
             }
         });

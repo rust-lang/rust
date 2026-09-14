@@ -19,6 +19,7 @@
 #![allow(internal_features)]
 #![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
 #![feature(core_io_borrowed_buf)]
+#![feature(diagnostic_on_unknown)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
@@ -31,8 +32,10 @@
 extern crate self as rustc_span;
 
 use derive_where::derive_where;
+use rustc_data_structures::stable_hash::StableHashCtxt;
 use rustc_data_structures::{AtomicRef, outline};
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, StableHash};
+use rustc_serialize::opaque::mem_encoder::MemEncoder;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::debug;
@@ -53,7 +56,7 @@ pub use hygiene::{
     DesugaringKind, ExpnData, ExpnHash, ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext,
 };
 pub mod def_id;
-use def_id::{CrateNum, DefId, DefIndex, DefPathHash, LOCAL_CRATE, LocalDefId, StableCrateId};
+use def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId};
 pub mod edit_distance;
 mod span_encoding;
 pub use span_encoding::{DUMMY_SP, Span};
@@ -80,7 +83,7 @@ use std::sync::Arc;
 use std::{fmt, iter};
 
 use md5::{Digest, Md5};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::{Hash64, Hash128};
@@ -90,7 +93,7 @@ use sha2::Sha256;
 #[cfg(test)]
 mod tests;
 
-#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, StableHash)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
@@ -736,7 +739,7 @@ impl Default for SpanData {
 
 impl PartialOrd for Span {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
-        PartialOrd::partial_cmp(&self.data(), &rhs.data())
+        Some(self.cmp(rhs))
     }
 }
 impl Ord for Span {
@@ -1236,20 +1239,25 @@ impl Span {
     /// If "self" is the span of the outer_ident, and "within" is the span of the `($ident,)`
     /// expr, then this will return the span of the `$ident` macro variable.
     pub fn within_macro(self, within: Span, sm: &SourceMap) -> Option<Span> {
-        match Span::prepare_to_combine(self, within) {
-            // Only return something if it doesn't overlap with the original span,
-            // and the span isn't "imported" (i.e. from unavailable sources).
-            // FIXME: This does limit the usefulness of the error when the macro is
-            // from a foreign crate; we could also take into account `-Zmacro-backtrace`,
-            // which doesn't redact this span (but that would mean passing in even more
-            // args to this function, lol).
-            Ok((self_, _, parent))
-                if self_.hi < self.lo() || self.hi() < self_.lo && !sm.is_imported(within) =>
-            {
-                Some(Span::new(self_.lo, self_.hi, self_.ctxt, parent))
-            }
-            _ => None,
+        let (self_, _, parent) = Span::prepare_to_combine(self, within).ok()?;
+
+        // Only return something if it doesn't overlap with the original span
+        // and the span isn't "imported" (i.e. from unavailable sources).
+        // FIXME: This does limit the usefulness of the error when the macro is
+        // from a foreign crate; we could also take into account `-Zmacro-backtrace`,
+        // which doesn't redact this span (but that would mean passing in even more
+        // args to this function, lol).
+        if self.data().contains(self_) || sm.is_imported(within) {
+            return None;
         }
+
+        // Don't return something if it's marked with `#[diagnostic::opaque]`.
+        // This already accounts for `-Zmacro-backtrace`.
+        if within.data().ctxt.outer_expn_data().diagnostic_opaque {
+            return None;
+        }
+
+        Some(Span::new(self_.lo, self_.hi, self_.ctxt, parent))
     }
 
     pub fn from_inner(self, inner: InnerSpan) -> Span {
@@ -1360,7 +1368,44 @@ pub trait SpanEncoder: Encoder {
     fn encode_def_id(&mut self, def_id: DefId);
 }
 
-impl SpanEncoder for FileEncoder {
+impl SpanEncoder for FileEncoder<'_> {
+    fn encode_span(&mut self, span: Span) {
+        let span = span.data();
+        span.lo.encode(self);
+        span.hi.encode(self);
+    }
+
+    fn encode_symbol(&mut self, sym: Symbol) {
+        self.emit_str(sym.as_str());
+    }
+
+    fn encode_byte_symbol(&mut self, byte_sym: ByteSymbol) {
+        self.emit_byte_str(byte_sym.as_byte_str());
+    }
+
+    fn encode_expn_id(&mut self, _expn_id: ExpnId) {
+        panic!("cannot encode `ExpnId` with `FileEncoder`");
+    }
+
+    fn encode_syntax_context(&mut self, _syntax_context: SyntaxContext) {
+        panic!("cannot encode `SyntaxContext` with `FileEncoder`");
+    }
+
+    fn encode_crate_num(&mut self, crate_num: CrateNum) {
+        self.emit_u32(crate_num.as_u32());
+    }
+
+    fn encode_def_index(&mut self, _def_index: DefIndex) {
+        panic!("cannot encode `DefIndex` with `FileEncoder`");
+    }
+
+    fn encode_def_id(&mut self, def_id: DefId) {
+        def_id.krate.encode(self);
+        def_id.index.encode(self);
+    }
+}
+
+impl SpanEncoder for MemEncoder {
     fn encode_span(&mut self, span: Span) {
         let span = span.data();
         span.lo.encode(self);
@@ -1613,7 +1658,7 @@ impl fmt::Debug for SpanData {
 }
 
 /// Identifies an offset of a multi-byte character in a `SourceFile`.
-#[derive(Copy, Clone, Encodable, Decodable, Eq, PartialEq, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Encodable, Decodable, Eq, PartialEq, Debug, StableHash)]
 pub struct MultiByteChar {
     /// The relative offset of the character in the `SourceFile`.
     pub pos: RelativeBytePos,
@@ -1622,7 +1667,7 @@ pub struct MultiByteChar {
 }
 
 /// Identifies an offset of a character that was normalized away from `SourceFile`.
-#[derive(Copy, Clone, Encodable, Decodable, Eq, PartialEq, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Encodable, Decodable, Eq, PartialEq, Debug, StableHash)]
 pub struct NormalizedPos {
     /// The relative offset of the character in the `SourceFile`.
     pub pos: RelativeBytePos,
@@ -1665,7 +1710,7 @@ impl ExternalSource {
 pub struct OffsetOverflowError;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
-#[derive(HashStable_Generic)]
+#[derive(StableHash)]
 pub enum SourceFileHashAlgorithm {
     Md5,
     Sha1,
@@ -1700,7 +1745,7 @@ impl FromStr for SourceFileHashAlgorithm {
 
 /// The hash of the on-disk source file used for debug info and cargo freshness checks.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[derive(StableHash, Encodable, Decodable)]
 pub struct SourceFileHash {
     pub kind: SourceFileHashAlgorithm,
     value: [u8; 32],
@@ -2082,20 +2127,8 @@ impl fmt::Debug for SourceFile {
 ///
 /// When `SourceFile`s are exported in crate metadata, the `StableSourceFileId`
 /// is updated to incorporate the `StableCrateId` of the exporting crate.
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    Hash,
-    PartialEq,
-    Eq,
-    HashStable_Generic,
-    Encodable,
-    Decodable,
-    Default,
-    PartialOrd,
-    Ord
-)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Default, Ord)]
+#[derive(StableHash, Encodable, Decodable)]
 pub struct StableSourceFileId(Hash128);
 
 impl StableSourceFileId {
@@ -2544,7 +2577,7 @@ fn normalize_newlines(src: &mut String, normalized_pos: &mut Vec<NormalizedPos>)
     // directly, let's rather steal the contents of `src`. This makes the code
     // safe even if a panic occurs.
 
-    let mut buf = std::mem::replace(src, String::new()).into_bytes();
+    let mut buf = std::mem::take(src).into_bytes();
     let mut gap_len = 0;
     let mut tail = buf.as_mut_slice();
     let mut cursor = 0;
@@ -2665,7 +2698,7 @@ impl_pos! {
     pub struct BytePos(pub u32);
 
     /// A byte offset relative to file beginning.
-    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, HashStable_Generic)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, StableHash)]
     pub struct RelativeBytePos(pub u32);
 
     /// A character offset.
@@ -2796,29 +2829,10 @@ impl InnerSpan {
     }
 }
 
-/// Requirements for a `StableHashingContext` to be used in this crate.
-///
-/// This is a hack to allow using the [`HashStable_Generic`] derive macro
-/// instead of implementing everything in rustc_middle.
-pub trait HashStableContext {
-    /// The main event: stable hashing of a span.
-    fn span_hash_stable(&mut self, span: Span, hasher: &mut StableHasher);
-
-    /// Compute a `DefPathHash`.
-    fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
-
-    /// Assert that the provided `HashStableContext` is configured with the default
-    /// `HashingControls`. We should always have bailed out before getting to here with a
-    fn assert_default_hashing_controls(&self, msg: &str);
-}
-
-impl<CTX> HashStable<CTX> for Span
-where
-    CTX: HashStableContext,
-{
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        // `span_hash_stable` does all the work.
-        ctx.span_hash_stable(*self, hasher)
+impl StableHash for Span {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        // `stable_hash_span` does all the work.
+        hcx.stable_hash_span(self.to_raw_span(), hasher)
     }
 }
 
@@ -2828,7 +2842,7 @@ where
 /// The `()` field is necessary: it is non-`pub`, which means values of this
 /// type cannot be constructed outside of this crate.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(HashStable_Generic)]
+#[derive(StableHash)]
 pub struct ErrorGuaranteed(());
 
 impl ErrorGuaranteed {

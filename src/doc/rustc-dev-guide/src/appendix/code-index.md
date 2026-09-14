@@ -1,15 +1,15 @@
 # Code Index
 
-rustc has a lot of important data structures. This is an attempt to give some
-guidance on where to learn more about some of the key data structures of the
-compiler.
+rustc has a lot of important data structures.
+This is an attempt to give some guidance on where to learn more
+about some of the key data structures of the compiler.
 
 Item            |  Kind    | Short description           | Chapter            | Declaration
 ----------------|----------|-----------------------------|--------------------|-------------------
 `BodyId` | struct | One of four types of HIR node identifiers | [Identifiers in the HIR] | [compiler/rustc_hir/src/hir.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.BodyId.html)
 `Compiler` | struct | Represents a compiler session and can be used to drive a compilation. | [The Rustc Driver and Interface] | [compiler/rustc_interface/src/interface.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Compiler.html)
 `ast::Crate` | struct | A syntax-level representation of a parsed crate | [The parser] | [compiler/rustc_ast/src/ast.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/struct.Crate.html)
-`rustc_hir::Crate` | struct | A more abstract, compiler-friendly form of a crate's AST | [The Hir] | [compiler/rustc_hir/src/hir.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Crate.html)
+`hir::Crate` | struct | A more abstract, compiler-friendly form of a crate's AST | [The Hir] | [compiler/rustc_middle/src/hir/mod.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/struct.Crate.html)
 `DefId` | struct | One of four types of HIR node identifiers | [Identifiers in the HIR] | [compiler/rustc_hir/src/def_id.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html)
 `Diag` | struct | A struct for a compiler diagnostic, such as an error or lint | [Emitting Diagnostics] | [compiler/rustc_errors/src/diagnostic.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diag.html)
 `DocContext` | struct | A state container used by rustdoc when crawling through a crate to gather its documentation | [Rustdoc] | [src/librustdoc/core.rs](https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/core.rs)
@@ -29,15 +29,15 @@ Item            |  Kind    | Short description           | Chapter            | 
 `Ty<'tcx>` | struct | This is the internal representation of a type used for type checking | [Type checking] | [compiler/rustc_middle/src/ty/mod.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html)
 `TyCtxt<'tcx>` | struct | The "typing context". This is the central data structure in the compiler. It is the context that you use to perform all manner of queries | [The `ty` modules] | [compiler/rustc_middle/src/ty/context.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html)
 
-[The HIR]: ../hir.html
-[Identifiers in the HIR]: ../hir.html#hir-id
-[The parser]: ../the-parser.html
-[The Rustc Driver and Interface]: ../rustc-driver/intro.html
-[Type checking]: ../hir-typeck/summary.html
-[The `ty` modules]: ../ty.html
-[Rustdoc]: ../rustdoc.html
-[Emitting Diagnostics]: ../diagnostics.html
-[Macro expansion]: ../macro-expansion.html
-[Name resolution]: ../name-resolution.html
-[Parameter Environment]: ../typing-parameter-envs.html
-[Trait Solving: Goals and Clauses]: ../traits/goals-and-clauses.html#domain-goals
+[The HIR]: ../hir.md
+[Identifiers in the HIR]: ../hir.md#hir-id
+[The parser]: ../the-parser.md
+[The Rustc Driver and Interface]: ../rustc-driver/intro.md
+[Type checking]: ../hir-typeck/summary.md
+[The `ty` modules]: ../ty.md
+[Rustdoc]: ../rustdoc.md
+[Emitting Diagnostics]: ../diagnostics.md
+[Macro expansion]: ../macro-expansion.md
+[Name resolution]: ../name-resolution.md
+[Parameter Environment]: ../typing-parameter-envs.md
+[Trait Solving: Goals and Clauses]: ../traits/goals-and-clauses.md#domain-goals

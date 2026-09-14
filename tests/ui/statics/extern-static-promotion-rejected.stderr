@@ -1,0 +1,8 @@
+error: encountered dangling pointer in final value of mutable static
+  --> $DIR/extern-static-promotion-rejected.rs:8:1
+   |
+LL | static mut FOO: *const &i32 = [unsafe { &X }].as_ptr();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

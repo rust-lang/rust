@@ -691,6 +691,7 @@ pub trait BuildHasher {
     /// );
     /// ```
     #[stable(feature = "build_hasher_simple_hash_one", since = "1.71.0")]
+    #[expect(clippy::manual_hash_one, reason = "implements hash_one")]
     fn hash_one<T: Hash>(&self, x: T) -> u64
     where
         Self: Sized,
@@ -784,7 +785,7 @@ impl<H> Clone for BuildHasherDefault<H> {
 
 #[stable(since = "1.7.0", feature = "build_hasher")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<H> const Default for BuildHasherDefault<H> {
+const impl<H> Default for BuildHasherDefault<H> {
     fn default() -> BuildHasherDefault<H> {
         Self::new()
     }

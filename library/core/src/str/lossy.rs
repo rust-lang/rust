@@ -98,7 +98,7 @@ impl<'a> Utf8Chunk<'a> {
     /// CHARACTER`].
     ///
     /// [`valid`]: Self::valid
-    /// [`U+FFFD REPLACEMENT CHARACTER`]: crate::char::REPLACEMENT_CHARACTER
+    /// [`U+FFFD REPLACEMENT CHARACTER`]: char::REPLACEMENT_CHARACTER
     #[must_use]
     #[stable(feature = "utf8_chunks", since = "1.79.0")]
     pub fn invalid(&self) -> &'a [u8] {
@@ -123,7 +123,6 @@ impl fmt::Debug for Debug<'_> {
                 let mut from = 0;
                 for (i, c) in valid.char_indices() {
                     let esc = c.escape_debug_ext(EscapeDebugExtArgs {
-                        escape_grapheme_extended: true,
                         escape_single_quote: false,
                         escape_double_quote: true,
                     });
@@ -211,12 +210,7 @@ impl<'a> Iterator for Utf8Chunks<'a> {
 
         let mut i = 0;
         let mut valid_up_to = 0;
-        while i < self.source.len() {
-            // SAFETY: `i < self.source.len()` per previous line.
-            // For some reason the following are both significantly slower:
-            // while let Some(&byte) = self.source.get(i) {
-            // while let Some(byte) = self.source.get(i).copied() {
-            let byte = unsafe { *self.source.get_unchecked(i) };
+        while let Some(byte) = self.source.get(i).copied() {
             i += 1;
 
             if byte < 128 {

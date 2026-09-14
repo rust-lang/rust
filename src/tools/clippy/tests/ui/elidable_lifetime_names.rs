@@ -1,4 +1,5 @@
-#![warn(clippy::needless_lifetimes, clippy::elidable_lifetime_names)]
+#![warn(clippy::elidable_lifetime_names)]
+#![deny(clippy::needless_lifetimes)]
 
 type Ref<'r> = &'r u8;
 

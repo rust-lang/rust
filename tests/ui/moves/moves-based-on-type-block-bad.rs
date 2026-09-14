@@ -1,4 +1,6 @@
-#![feature(box_patterns)]
+//@ run-rustfix
+#![feature(deref_patterns)]
+#![allow(dead_code)]
 
 
 struct S {
@@ -20,9 +22,9 @@ fn main() {
     loop {
         f(&s, |hellothere| {
             match hellothere.x { //~ ERROR cannot move out
-                box E::Foo(_) => {}
-                box E::Bar(x) => println!("{}", x.to_string()),
-                box E::Baz => {}
+                deref!(E::Foo(_)) => {}
+                deref!(E::Bar(x)) => println!("{}", x.to_string()),
+                E::Baz => {}
             }
         })
     }

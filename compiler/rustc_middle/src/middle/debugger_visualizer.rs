@@ -2,10 +2,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use rustc_hir::attrs::DebuggerVisualizerType;
-use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_macros::{Decodable, Encodable, StableHash};
 
 /// A single debugger visualizer file.
-#[derive(HashStable)]
+#[derive(StableHash)]
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable)]
 pub struct DebuggerVisualizerFile {
     /// The complete debugger visualizer source.

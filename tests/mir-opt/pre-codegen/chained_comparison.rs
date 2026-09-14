@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ compile-flags: -O -Zmir-opt-level=2 -Cdebuginfo=2
 
 #![crate_type = "lib"]
@@ -46,6 +46,6 @@ pub fn returning(a: &Blueprint, b: &Blueprint) -> bool {
     true
 }
 
-// EMIT_MIR chained_comparison.naive.PreCodegen.after.mir
-// EMIT_MIR chained_comparison.bitand.PreCodegen.after.mir
-// EMIT_MIR chained_comparison.returning.PreCodegen.after.mir
+// EMIT_MIR chained_comparison.naive.runtime-optimized.after.mir
+// EMIT_MIR chained_comparison.bitand.runtime-optimized.after.mir
+// EMIT_MIR chained_comparison.returning.runtime-optimized.after.mir

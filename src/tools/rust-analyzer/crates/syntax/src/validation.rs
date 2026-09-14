@@ -240,8 +240,16 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
 }
 
 fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
-    let path_without_in_token = vis.in_token().is_none()
-        && vis.path().and_then(|p| p.as_single_name_ref()).and_then(|n| n.ident_token()).is_some();
+    let path_without_in_token = if let Some(inner) = vis.visibility_inner() {
+        inner.in_token().is_none()
+            && inner
+                .path()
+                .and_then(|p| p.as_single_name_ref())
+                .and_then(|n| n.ident_token())
+                .is_some()
+    } else {
+        false
+    };
     if path_without_in_token {
         errors.push(SyntaxError::new("incorrect visibility restriction", vis.syntax.text_range()));
     }
@@ -277,11 +285,11 @@ fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxError>) {
 fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxError>) {
     let path = segment.parent_path();
     let is_path_start = segment.coloncolon_token().is_none() && path.qualifier().is_none();
-
     if let Some(token) = segment.self_token() {
-        if !is_path_start {
+        let is_last_segment = path.parent_path().is_none();
+        if !is_path_start && !is_last_segment {
             errors.push(SyntaxError::new(
-                "The `self` keyword is only allowed as the first segment of a path",
+                "The `self` keyword is only allowed at the start or at the end of a path",
                 token.text_range(),
             ));
         }

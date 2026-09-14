@@ -47,6 +47,11 @@ pub struct LazyKey {
     once: UnsafeCell<c::INIT_ONCE>,
 }
 
+#[cold]
+fn fail() -> ! {
+    rtabort!("Unexpected TLS failure")
+}
+
 impl LazyKey {
     #[inline]
     pub const fn new(dtor: Option<Dtor>) -> LazyKey {
@@ -60,9 +65,15 @@ impl LazyKey {
 
     #[inline]
     pub fn force(&'static self) -> Key {
-        match self.key.load(Acquire) {
-            0 => unsafe { self.init() },
-            key => key - 1,
+        if self.dtor.is_some() {
+            // Needs to be called on all threads where the key might have a non-null value!
+            // Otherwise, `run_dtors` might not be called on this thread.
+            guard::enable();
+        }
+
+        match self.key.load(Acquire).checked_sub(1) {
+            None => unsafe { self.init() },
+            Some(dec) => dec,
         }
     }
 
@@ -73,11 +84,13 @@ impl LazyKey {
             let r = unsafe {
                 c::InitOnceBeginInitialize(self.once.get(), 0, &mut pending, ptr::null_mut())
             };
-            assert_eq!(r, c::TRUE);
+            if r != c::TRUE {
+                fail()
+            }
 
             if pending == c::FALSE {
                 // Some other thread initialized the key, load it.
-                self.key.load(Relaxed) - 1
+                self.key.load(Relaxed).wrapping_sub(1)
             } else {
                 let key = unsafe { c::TlsAlloc() };
                 if key == c::TLS_OUT_OF_INDEXES {
@@ -88,6 +101,8 @@ impl LazyKey {
                 }
 
                 unsafe {
+                    // Add ourselves to the `DTORS` list, so that when `run_dtors` gets called,
+                    // our dtor is invoked.
                     register_dtor(self);
                 }
 
@@ -96,10 +111,12 @@ impl LazyKey {
                 // and if that sees this write then it will entirely bypass the `InitOnce`. We thus
                 // need to establish synchronization through `key`. In particular that acquire load
                 // must happen-after the register_dtor above, to ensure the dtor actually runs!
-                self.key.store(key + 1, Release);
+                self.key.store(key.wrapping_add(1), Release);
 
                 let r = unsafe { c::InitOnceComplete(self.once.get(), 0, ptr::null_mut()) };
-                debug_assert_eq!(r, c::TRUE);
+                if r != c::TRUE {
+                    fail()
+                }
 
                 key
             }
@@ -111,14 +128,16 @@ impl LazyKey {
                 rtabort!("out of TLS indexes");
             }
 
-            match self.key.compare_exchange(0, key + 1, AcqRel, Acquire) {
+            match self.key.compare_exchange(0, key.wrapping_add(1), AcqRel, Acquire) {
                 Ok(_) => key,
                 Err(new) => unsafe {
                     // Some other thread completed initialization first, so destroy
                     // our key and use theirs.
                     let r = c::TlsFree(key);
-                    debug_assert_eq!(r, c::TRUE);
-                    new - 1
+                    if r != c::TRUE {
+                        fail()
+                    }
+                    new.wrapping_sub(1)
                 },
             }
         }
@@ -131,7 +150,10 @@ unsafe impl Sync for LazyKey {}
 #[inline]
 pub unsafe fn set(key: Key, val: *mut u8) {
     let r = unsafe { c::TlsSetValue(key, val.cast()) };
-    debug_assert_eq!(r, c::TRUE);
+    // According to MS documentation, `TlsSetValue` returns zero "if it fails"
+    if r != c::TRUE {
+        fail()
+    }
 }
 
 #[inline]
@@ -144,8 +166,6 @@ static DTORS: Atomic<*mut LazyKey> = AtomicPtr::new(ptr::null_mut());
 /// Should only be called once per key, otherwise loops or breaks may occur in
 /// the linked list.
 unsafe fn register_dtor(key: &'static LazyKey) {
-    guard::enable();
-
     let this = <*const LazyKey>::cast_mut(key);
     // Use acquire ordering to pass along the changes done by the previously
     // registered keys when we store the new head with release ordering.
@@ -168,22 +188,21 @@ pub unsafe fn run_dtors() {
         let mut cur = DTORS.load(Acquire);
         while !cur.is_null() {
             let pre_key = unsafe { (*cur).key.load(Acquire) };
-            let dtor = unsafe { (*cur).dtor.unwrap() };
+            let dtor = unsafe { rtunwrap!(Some, (*cur).dtor) };
             cur = unsafe { (*cur).next.load(Relaxed) };
 
             // In LazyKey::init, we register the dtor before setting `key`.
             // So if one thread's `run_dtors` races with another thread executing `init` on the same
             // `LazyKey`, we can encounter a key of 0 here. That means this key was never
             // initialized in this thread so we can safely skip it.
-            if pre_key == 0 {
+            let Some(key) = pre_key.checked_sub(1) else {
                 continue;
-            }
+            };
+
             // If this is non-zero, then via the `Acquire` load above we synchronized with
             // everything relevant for this key. (It's not clear that this is needed, since the
             // release-acquire pair on DTORS also establishes synchronization, but better safe than
             // sorry.)
-            let key = pre_key - 1;
-
             let ptr = unsafe { c::TlsGetValue(key) };
             if !ptr.is_null() {
                 unsafe {

@@ -28,8 +28,8 @@ LL |     type E = Ty<>;
    |
 help: consider introducing a named lifetime parameter
    |
-LL |     type E<'a> = Ty<'a, >;
-   |           ++++      +++
+LL |     type E<'a> = Ty<'a>;
+   |           ++++      ++
 
 error[E0106]: missing lifetime specifier
   --> $DIR/wrong-number-of-args.rs:120:22
@@ -55,12 +55,12 @@ LL |     type F = Box<dyn GenericLifetime<>>;
    |
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
-LL |     type F = Box<dyn for<'a> GenericLifetime<'a, >>;
-   |                      +++++++                 +++
+LL |     type F = Box<dyn for<'a> GenericLifetime<'a>>;
+   |                      +++++++                 ++
 help: consider introducing a named lifetime parameter
    |
-LL |     type F<'a> = Box<dyn GenericLifetime<'a, >>;
-   |           ++++                           +++
+LL |     type F<'a> = Box<dyn GenericLifetime<'a>>;
+   |           ++++                           ++
 
 error[E0106]: missing lifetime specifier
   --> $DIR/wrong-number-of-args.rs:163:43

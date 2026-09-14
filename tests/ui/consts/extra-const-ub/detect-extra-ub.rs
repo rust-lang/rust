@@ -1,7 +1,6 @@
 //@ revisions: no_flag with_flag
 //@ [no_flag] check-pass
 //@ [with_flag] compile-flags: -Zextra-const-ub-checks
-#![feature(never_type)]
 #![allow(unnecessary_transmutes)]
 
 use std::mem::transmute;

@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_non_aggregate_primitive_type;
@@ -10,8 +10,7 @@ use clippy_utils::{
 };
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -145,7 +144,7 @@ fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &E
             MEM_REPLACE_OPTION_WITH_NONE,
             expr_span,
             "replacing an `Option` with `None`",
-            "consider `Option::take()` instead",
+            "consider using `Option::take()` instead",
             format!(
                 "{}.take()",
                 Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "", &mut applicability).maybe_paren()
@@ -177,7 +176,7 @@ fn check_replace_option_with_some(
             MEM_REPLACE_OPTION_WITH_SOME,
             expr_span,
             "replacing an `Option` with `Some(..)`",
-            "consider `Option::replace()` instead",
+            "consider using `Option::replace()` instead",
             format!(
                 "{}.replace({})",
                 Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "_", &mut applicability).maybe_paren(),
@@ -203,7 +202,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
             MEM_REPLACE_WITH_UNINIT,
             expr_span,
             "replacing with `mem::MaybeUninit::uninit().assume_init()`",
-            "consider using",
+            format!("consider using `{top_crate}::ptr::read` instead"),
             format!(
                 "{top_crate}::ptr::read({})",
                 snippet_with_applicability(cx, dest.span, "", &mut applicability)
@@ -226,7 +225,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
                 MEM_REPLACE_WITH_UNINIT,
                 expr_span,
                 "replacing with `mem::uninitialized()`",
-                "consider using",
+                format!("consider using `{top_crate}::ptr::read` instead"),
                 format!(
                     "{top_crate}::ptr::read({})",
                     snippet_with_applicability(cx, dest.span, "", &mut applicability)
@@ -266,17 +265,18 @@ fn check_replace_with_default(
             cx,
             MEM_REPLACE_WITH_DEFAULT,
             expr.span,
-            format!(
-                "replacing a value of type `T` with `T::default()` is better expressed using `{top_crate}::mem::take`"
-            ),
+            "replacing a value of type `T` with `T::default()`",
             |diag| {
-                if !expr.span.from_expansion() {
-                    let mut applicability = Applicability::MachineApplicable;
-                    let (dest_snip, _) = snippet_with_context(cx, dest.span, expr.span.ctxt(), "", &mut applicability);
-                    let suggestion = format!("{top_crate}::mem::take({dest_snip})");
+                let mut applicability = Applicability::MachineApplicable;
+                let (dest_snip, _) = snippet_with_context(cx, dest.span, expr.span.ctxt(), "", &mut applicability);
+                let suggestion = format!("{top_crate}::mem::take({dest_snip})");
 
-                    diag.span_suggestion(expr.span, "consider using", suggestion, applicability);
-                }
+                diag.span_suggestion(
+                    expr.span,
+                    format!("consider using `{top_crate}::mem::take` instead"),
+                    suggestion,
+                    applicability,
+                );
             },
         );
         true
@@ -291,7 +291,7 @@ pub struct MemReplace {
 
 impl MemReplace {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 

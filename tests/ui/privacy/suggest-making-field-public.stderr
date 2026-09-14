@@ -24,6 +24,7 @@ error[E0423]: cannot initialize a tuple struct which contains private fields
 LL |         A("".into());
    |         ^
    |
+   = note: a struct named `A` exists in another namespace
 note: constructor is not visible here due to private fields
   --> $DIR/suggest-making-field-public.rs:3:18
    |

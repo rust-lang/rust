@@ -53,7 +53,7 @@ macro_rules! impl_float_biteq {
     };
 }
 
-impl_float_biteq! { f32, f64 }
+impl_float_biteq! { f16, f32, f64 }
 
 impl<T> BitEq for *const T {
     fn biteq(&self, other: &Self) -> bool {

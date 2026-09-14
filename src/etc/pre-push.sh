@@ -21,13 +21,19 @@ if $SKIP; then
     exit 0
 fi
 
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+    echo "error: working tree is dirty, refusing to push"
+    echo "       commit, stash, or discard changes first."
+    echo "You may use \`git push --no-verify\` to skip this check."
+    exit 1
+fi
+
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 
 echo "Running pre-push script $ROOT_DIR/x test tidy"
 
 cd "$ROOT_DIR"
-# The env var is necessary for printing diffs in py (fmt/lint) and cpp.
-TIDY_PRINT_DIFF=1 ./x test tidy \
+./x test tidy \
     --set build.locked-deps=true \
     --extra-checks auto:py,auto:cpp,auto:js
 if [ $? -ne 0 ]; then

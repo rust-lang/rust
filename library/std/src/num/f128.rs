@@ -34,7 +34,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 2.0_f128;
@@ -65,7 +64,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let one = 1.0f128;
@@ -83,7 +81,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp(self) -> f128 {
-        intrinsics::expf128(self)
+        intrinsics::exp(self)
     }
 
     /// Returns `2^(self)`.
@@ -97,7 +95,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let f = 2.0f128;
@@ -113,7 +110,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp2(self) -> f128 {
-        intrinsics::exp2f128(self)
+        intrinsics::exp2(self)
     }
 
     /// Returns the natural logarithm of the number.
@@ -129,7 +126,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let one = 1.0f128;
@@ -146,7 +142,6 @@ impl f128 {
     /// Non-positive values:
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// assert_eq!(0_f128.ln(), f128::NEG_INFINITY);
@@ -158,7 +153,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn ln(self) -> f128 {
-        intrinsics::logf128(self)
+        intrinsics::log(self)
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -178,7 +173,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let five = 5.0f128;
@@ -193,7 +187,6 @@ impl f128 {
     /// Non-positive values:
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// assert_eq!(0_f128.log(10.0), f128::NEG_INFINITY);
@@ -221,7 +214,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let two = 2.0f128;
@@ -236,7 +228,6 @@ impl f128 {
     /// Non-positive values:
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// assert_eq!(0_f128.log2(), f128::NEG_INFINITY);
@@ -248,7 +239,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log2(self) -> f128 {
-        intrinsics::log2f128(self)
+        intrinsics::log2(self)
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -264,7 +255,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let ten = 10.0f128;
@@ -279,7 +269,6 @@ impl f128 {
     /// Non-positive values:
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// assert_eq!(0_f128.log10(), f128::NEG_INFINITY);
@@ -291,7 +280,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn log10(self) -> f128 {
-        intrinsics::log10f128(self)
+        intrinsics::log10(self)
     }
 
     /// Returns the cube root of a number.
@@ -309,7 +298,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 8.0f128;
@@ -346,7 +334,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 2.0f128;
@@ -377,7 +364,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = std::f128::consts::FRAC_PI_2;
@@ -392,7 +378,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sin(self) -> f128 {
-        intrinsics::sinf128(self)
+        intrinsics::sin(self)
     }
 
     /// Computes the cosine of a number (in radians).
@@ -406,7 +392,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 2.0 * std::f128::consts::PI;
@@ -421,7 +406,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn cos(self) -> f128 {
-        intrinsics::cosf128(self)
+        intrinsics::cos(self)
     }
 
     /// Computes the tangent of a number (in radians).
@@ -438,7 +423,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = std::f128::consts::FRAC_PI_4;
@@ -471,7 +455,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let f = std::f128::consts::FRAC_PI_4;
@@ -507,7 +490,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let f = std::f128::consts::FRAC_PI_4;
@@ -542,7 +524,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let f = 1.0f128;
@@ -583,7 +564,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// // Positive angles measured counter-clockwise
@@ -626,7 +606,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = std::f128::consts::FRAC_PI_4;
@@ -643,6 +622,7 @@ impl f128 {
     #[doc(alias = "sincos")]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn sin_cos(self) -> (f128, f128) {
         (self.sin(), self.cos())
     }
@@ -662,7 +642,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 1e-8_f128;
@@ -699,7 +678,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 1e-8_f128;
@@ -715,7 +693,6 @@ impl f128 {
     /// Out-of-range values:
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// assert_eq!((-1.0_f128).ln_1p(), f128::NEG_INFINITY);
@@ -745,7 +722,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let e = std::f128::consts::E;
@@ -781,7 +757,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let e = std::f128::consts::E;
@@ -817,7 +792,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let e = std::f128::consts::E;
@@ -850,7 +824,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 1.0f128;
@@ -867,9 +840,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn asinh(self) -> f128 {
-        let ax = self.abs();
-        let ix = 1.0 / ax;
-        (ax + (ax / (Self::hypot(1.0, ix) + ix))).ln_1p().copysign(self)
+        cmath::asinhf128(self)
     }
 
     /// Inverse hyperbolic cosine function.
@@ -883,7 +854,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 1.0f128;
@@ -900,11 +870,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn acosh(self) -> f128 {
-        if self < 1.0 {
-            Self::NAN
-        } else {
-            (self + ((self - 1.0).sqrt() * (self + 1.0).sqrt())).ln()
-        }
+        cmath::acoshf128(self)
     }
 
     /// Inverse hyperbolic tangent function.
@@ -918,7 +884,6 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = std::f128::consts::FRAC_PI_6;
@@ -953,7 +918,6 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_gamma)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 5.0f128;
@@ -989,7 +953,6 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_gamma)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 2.0f128;
@@ -1025,7 +988,6 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_erf)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     /// /// The error function relates what percent of a normal distribution lies
     /// /// within `x` standard deviations (scaled by `1/sqrt(2)`).
@@ -1065,7 +1027,6 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_erf)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     /// let x: f128 = 0.123;
     ///

@@ -34,7 +34,6 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     prefer_absolute: false,
     assist_emit_must_use: false,
     term_search_fuel: 400,
-    term_search_borrowck: true,
     code_action_grouping: true,
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
@@ -56,7 +55,6 @@ pub(crate) const TEST_CONFIG_NO_GROUPING: AssistConfig = AssistConfig {
     prefer_absolute: false,
     assist_emit_must_use: false,
     term_search_fuel: 400,
-    term_search_borrowck: true,
     code_action_grouping: false,
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
@@ -78,7 +76,6 @@ pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
     prefer_absolute: false,
     assist_emit_must_use: false,
     term_search_fuel: 400,
-    term_search_borrowck: true,
     code_action_grouping: true,
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
@@ -100,7 +97,6 @@ pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
     prefer_absolute: false,
     assist_emit_must_use: false,
     term_search_fuel: 400,
-    term_search_borrowck: true,
     code_action_grouping: true,
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
@@ -208,6 +204,15 @@ pub(crate) fn check_assist_target(
 }
 
 #[track_caller]
+pub(crate) fn check_assist_with_label(
+    assist: Handler,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    label: &str,
+) {
+    check(assist, ra_fixture, ExpectedResult::Label(label), None);
+}
+
+#[track_caller]
 pub(crate) fn check_assist_not_applicable(
     assist: Handler,
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
@@ -307,6 +312,7 @@ enum ExpectedResult<'a> {
     Unresolved,
     After(&'a str),
     Target(&'a str),
+    Label(&'a str),
 }
 
 #[track_caller]
@@ -335,7 +341,7 @@ fn check_with_config(
 
     let ctx = AssistContext::new(sema, &config, frange);
     let resolve = match expected {
-        ExpectedResult::Unresolved => AssistResolveStrategy::None,
+        ExpectedResult::Unresolved | ExpectedResult::Label(_) => AssistResolveStrategy::None,
         _ => AssistResolveStrategy::All,
     };
     let mut acc = Assists::new(&ctx, resolve);
@@ -344,7 +350,6 @@ fn check_with_config(
         handler(&mut acc, &ctx);
     });
     let mut res = acc.finish();
-
     let assist = match assist_label {
         Some(label) => res.into_iter().find(|resolved| resolved.label == label),
         None if res.is_empty() => None,
@@ -404,6 +409,9 @@ fn check_with_config(
             let range = assist.target;
             assert_eq_text!(&text_without_caret[range], target);
         }
+        (Some(assist), ExpectedResult::Label(label)) => {
+            assert_eq!(assist.label.to_string(), label);
+        }
         (Some(assist), ExpectedResult::Unresolved) => assert!(
             assist.source_change.is_none(),
             "unresolved assist should not contain source changes"
@@ -411,7 +419,10 @@ fn check_with_config(
         (Some(_), ExpectedResult::NotApplicable) => panic!("assist should not be applicable!"),
         (
             None,
-            ExpectedResult::After(_) | ExpectedResult::Target(_) | ExpectedResult::Unresolved,
+            ExpectedResult::After(_)
+            | ExpectedResult::Target(_)
+            | ExpectedResult::Label(_)
+            | ExpectedResult::Unresolved,
         ) => {
             panic!("code action is not applicable")
         }
@@ -479,6 +490,36 @@ pub fn test_some_range(a: int) -> bool {
     expect![[r#"
         Extract into...
         Replace if let with match
+        Convert to guarded return
+    "#]]
+    .assert_eq(&expected);
+}
+
+#[test]
+fn assist_order_term_search_unknown_type() {
+    let (db, frange) = RootDatabase::with_range(
+        r#"
+//- minicore: todo, unimplemented
+fn foo(_: u32) -> i32 { 2 }
+fn main() {
+    let unknown;
+    let _: i32 = $0todo!()$0;
+}
+"#,
+    );
+
+    let assists = assists(
+        &db,
+        &TEST_CONFIG,
+        AssistResolveStrategy::None,
+        FileRange { file_id: frange.file_id.file_id(&db), range: frange.range },
+    );
+    let expected = labels(&assists);
+
+    expect![[r#"
+        Inline macro
+        Extract into...
+        Extract Module
     "#]]
     .assert_eq(&expected);
 }
@@ -511,6 +552,7 @@ pub fn test_some_range(a: int) -> bool {
         expect![[r#"
             Extract into...
             Replace if let with match
+            Convert to guarded return
         "#]]
         .assert_eq(&expected);
     }

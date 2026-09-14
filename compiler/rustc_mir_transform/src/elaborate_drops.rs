@@ -14,6 +14,7 @@ use rustc_mir_dataflow::{
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
+use crate::PassPolicy;
 use crate::elaborate_drop::{DropElaborator, DropFlagMode, DropStyle, Unwind, elaborate_drop};
 use crate::patch::MirPatch;
 
@@ -68,7 +69,6 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
             let dead_unwinds = compute_dead_unwinds(body, &mut inits);
 
             let uninits = MaybeUninitializedPlaces::new(tcx, body, &env.move_data)
-                .include_inactive_in_otherwise()
                 .mark_inactive_variants_as_uninit()
                 .skipping_unreachable_unwind(dead_unwinds)
                 .iterate_to_fixpoint(tcx, body, Some("elaborate_drops"))
@@ -88,8 +88,9 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
         elaborate_patch.apply(body);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // Implements MIR drop semantics.
+        PassPolicy::Required
     }
 }
 
@@ -162,10 +163,6 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
         true
     }
 
-    fn terminator_loc(&self, bb: BasicBlock) -> Location {
-        self.patch.terminator_loc(self.body, bb)
-    }
-
     #[instrument(level = "debug", skip(self), ret)]
     fn drop_style(&self, path: Self::Path, mode: DropFlagMode) -> DropStyle {
         let ((maybe_init, maybe_uninit), multipart) = match mode {
@@ -192,17 +189,23 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
         }
     }
 
-    fn clear_drop_flag(&mut self, loc: Location, path: Self::Path, mode: DropFlagMode) {
+    fn drop_flags_for(&mut self, path: Self::Path, mode: DropFlagMode) -> Vec<Place<'tcx>> {
+        let mut flags = vec![];
         match mode {
             DropFlagMode::Shallow => {
-                self.set_drop_flag(loc, path, DropFlagState::Absent);
+                if let Some(flag) = self.drop_flags[path] {
+                    flags.push(flag.into());
+                }
             }
             DropFlagMode::Deep => {
                 on_all_children_bits(self.move_data(), path, |child| {
-                    self.set_drop_flag(loc, child, DropFlagState::Absent)
+                    if let Some(flag) = self.drop_flags[child] {
+                        flags.push(flag.into());
+                    }
                 });
             }
         }
+        flags
     }
 
     fn field_subpath(&self, path: Self::Path, field: FieldIdx) -> Option<Self::Path> {
@@ -336,8 +339,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
         // This function should mirror what `collect_drop_flags` does.
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
             let terminator = data.terminator();
-            let TerminatorKind::Drop { place, target, unwind, replace, drop, async_fut: _ } =
-                terminator.kind
+            let TerminatorKind::Drop { place, target, unwind, replace, drop } = terminator.kind
             else {
                 continue;
             };
@@ -403,11 +405,14 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
     }
 
     fn constant_bool(&self, span: Span, val: bool) -> Rvalue<'tcx> {
-        Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
-            span,
-            user_ty: None,
-            const_: Const::from_bool(self.tcx, val),
-        })))
+        Rvalue::Use(
+            Operand::Constant(Box::new(ConstOperand {
+                span,
+                user_ty: None,
+                const_: Const::from_bool(self.tcx, val),
+            })),
+            WithRetag::Yes,
+        )
     }
 
     fn set_drop_flag(&mut self, loc: Location, path: MovePathIndex, val: DropFlagState) {

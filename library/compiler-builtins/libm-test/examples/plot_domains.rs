@@ -52,7 +52,7 @@ fn main() {
 /// Run multiple generators for a single operator.
 fn plot_one_operator<Op>(out_dir: &Path, config: &mut String)
 where
-    Op: MathOp<FTy = f32, RustArgs = (f32,)>,
+    Op: MathOp<RustArgs = (f32,)>,
     Op::RustArgs: SpacedInput<Op>,
 {
     let mut ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Mpfr, GeneratorKind::Spaced);

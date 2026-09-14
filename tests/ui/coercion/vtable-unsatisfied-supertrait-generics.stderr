@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `(): Supertrait<()>` is not satisfied
+  --> $DIR/vtable-unsatisfied-supertrait-generics.rs:14:22
+   |
+LL | impl<P> Trait<P> for () {}
+   |                      ^^ the trait `Supertrait<()>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/vtable-unsatisfied-supertrait-generics.rs:8:1
+   |
+LL | trait Supertrait<T> {
+   | ^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `Trait`
+  --> $DIR/vtable-unsatisfied-supertrait-generics.rs:12:17
+   |
+LL | trait Trait<P>: Supertrait<()> {}
+   |                 ^^^^^^^^^^^^^^ required by this bound in `Trait`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

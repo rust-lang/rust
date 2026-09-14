@@ -17,7 +17,7 @@
 //        'impl<A, B> Foo<&A> for &B'
 #[rustc_doc_primitive = "reference"]
 /// this is a test!
-mod reference {}
+const _: () = ();
 
 pub struct Bar;
 

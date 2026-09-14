@@ -2,7 +2,7 @@
 
 #![feature(auto_traits)]
 #![feature(negative_impls)]
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 auto trait Foo {}
 

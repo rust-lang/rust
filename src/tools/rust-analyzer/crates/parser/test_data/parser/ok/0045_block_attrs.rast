@@ -16,7 +16,7 @@ SOURCE_FILE
           POUND "#"
           BANG "!"
           L_BRACK "["
-          META
+          TOKEN_TREE_META
             PATH
               PATH_SEGMENT
                 NAME_REF
@@ -27,7 +27,8 @@ SOURCE_FILE
               R_PAREN ")"
           R_BRACK "]"
         WHITESPACE "\n    "
-        COMMENT "//! As are ModuleDoc style comments"
+        DOC_COMMENT
+          INNER_DOC_COMMENT "//! As are ModuleDoc style comments"
         WHITESPACE "\n    "
         EXPR_STMT
           BLOCK_EXPR
@@ -38,7 +39,7 @@ SOURCE_FILE
                 POUND "#"
                 BANG "!"
                 L_BRACK "["
-                META
+                TOKEN_TREE_META
                   PATH
                     PATH_SEGMENT
                       NAME_REF
@@ -53,7 +54,7 @@ SOURCE_FILE
                 POUND "#"
                 BANG "!"
                 L_BRACK "["
-                META
+                TOKEN_TREE_META
                   PATH
                     PATH_SEGMENT
                       NAME_REF
@@ -64,7 +65,8 @@ SOURCE_FILE
                     R_PAREN ")"
                 R_BRACK "]"
               WHITESPACE "\n        "
-              COMMENT "//! As are ModuleDoc style comments"
+              DOC_COMMENT
+                INNER_DOC_COMMENT "//! As are ModuleDoc style comments"
               WHITESPACE "\n    "
               R_CURLY "}"
           SEMICOLON ";"
@@ -77,7 +79,7 @@ SOURCE_FILE
               POUND "#"
               BANG "!"
               L_BRACK "["
-              META
+              TOKEN_TREE_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF
@@ -88,7 +90,8 @@ SOURCE_FILE
                   R_PAREN ")"
               R_BRACK "]"
             WHITESPACE "\n        "
-            COMMENT "//! As are ModuleDoc style comments"
+            DOC_COMMENT
+              INNER_DOC_COMMENT "//! As are ModuleDoc style comments"
             WHITESPACE "\n    "
             R_CURLY "}"
         WHITESPACE "\n"
@@ -119,7 +122,7 @@ SOURCE_FILE
             ATTR
               POUND "#"
               L_BRACK "["
-              META
+              TOKEN_TREE_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF
@@ -211,7 +214,7 @@ SOURCE_FILE
               POUND "#"
               BANG "!"
               L_BRACK "["
-              META
+              TOKEN_TREE_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF

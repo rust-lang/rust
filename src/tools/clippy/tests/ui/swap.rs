@@ -1,12 +1,11 @@
 //@aux-build: macro_rules.rs
 
-#![allow(
+#![warn(clippy::almost_swapped, clippy::manual_swap)]
+#![expect(
     clippy::disallowed_names,
-    clippy::no_effect,
-    clippy::redundant_clone,
     clippy::let_and_return,
-    clippy::useless_vec,
-    clippy::redundant_locals
+    clippy::redundant_locals,
+    clippy::useless_vec
 )]
 
 struct Foo(u32);
@@ -240,4 +239,18 @@ const fn issue_10421(x: u32) -> u32 {
     let a = a;
     let a = a;
     a
+}
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test_slice {
+        ($val:expr) => {
+            *&mut $val
+        };
+    }
+
+    let mut foo = [1, 2];
+    let temp = test_slice!(foo)[0];
+    //~^ manual_swap
+    test_slice!(foo)[0] = test_slice!(foo)[1];
+    test_slice!(foo)[1] = temp;
 }

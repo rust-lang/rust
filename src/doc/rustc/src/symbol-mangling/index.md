@@ -17,13 +17,16 @@ The [`#[export_name]`attribute][reference-export_name] can be used to specify th
 Items listed in an [`extern` block][reference-extern-block] use the identifier of the item without mangling to refer to the item.
 The [`#[link_name]` attribute][reference-link_name] can be used to change that name.
 
-<!--
-FIXME: This is incomplete for wasm, per https://github.com/rust-lang/rust/blob/d4c364347ce65cf083d4419195b8232440928d4d/compiler/rustc_symbol_mangling/src/lib.rs#L191-L210
--->
+### WebAssembly import modules
+
+On WebAssembly targets, foreign items in `extern` blocks can use the same import name without
+conflicting when they use different [`#[link(wasm_import_module = "...")]`][reference-link-attribute]
+values.
 
 [reference-no_mangle]: ../../reference/abi.html#the-no_mangle-attribute
 [reference-export_name]: ../../reference/abi.html#the-export_name-attribute
 [reference-link_name]: ../../reference/items/external-blocks.html#the-link_name-attribute
+[reference-link-attribute]: ../../reference/items/external-blocks.html#the-link-attribute
 [reference-extern-block]: ../../reference/items/external-blocks.html
 
 ## Decoding
@@ -46,7 +49,6 @@ foo::example_function
 
 ## Mangling versions
 
-`rustc` supports different mangling versions which encode the names in different ways.
-The legacy version (which is currently the default on beta/stable) is not described here.
-The "v0" mangling scheme addresses several limitations of the legacy format,
-and is described in the [v0 Symbol Format](v0.md) chapter.
+There is currently one stable mangling scheme version - `v0`. On nightly builds, rustc supports
+switching back to the `legacy` mangling scheme using [`-C symbol-mangling-version`]. The `v0`
+mangling scheme is described in the [v0 Symbol Format](v0.md) chapter.

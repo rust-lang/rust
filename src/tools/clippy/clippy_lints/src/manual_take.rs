@@ -1,12 +1,12 @@
 use clippy_config::Conf;
+use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{MEM_TAKE, Msrv};
 use clippy_utils::source::snippet_with_context;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, StmtKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -33,7 +33,7 @@ declare_clippy_lint! {
     /// let mut x = true;
     /// let _ = std::mem::take(&mut x);
     /// ```
-    #[clippy::version = "1.94.0"]
+    #[clippy::version = "1.95.0"]
     pub MANUAL_TAKE,
     complexity,
     "manual `mem::take` implementation"
@@ -47,7 +47,7 @@ pub struct ManualTake {
 
 impl ManualTake {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -74,10 +74,11 @@ impl LateLintPass<'_> for ManualTake {
             && let StmtKind::Semi(assignment) = stmt.kind
             && let ExprKind::Assign(mut_c, possible_false, _) = assignment.kind
             && let ExprKind::Path(_) = mut_c.kind
-            && !expr.span.in_external_macro(cx.sess().source_map())
+            && let ctxt = expr.span.ctxt()
+            && !ctxt.in_external_macro(cx.sess().source_map())
             && let Some(std_or_core) = clippy_utils::std_or_core(cx)
             && self.msrv.meets(cx, MEM_TAKE)
-            && clippy_utils::SpanlessEq::new(cx).eq_expr(cond, mut_c)
+            && SpanlessEq::new(cx).eq_expr(ctxt, cond, mut_c)
             && Some(false) == as_const_bool(possible_false)
             && let Some(then_bool) = as_const_bool(then_expr)
             && let Some(else_bool) = as_const_bool(else_expr)

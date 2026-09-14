@@ -1,4 +1,4 @@
-#![feature(c_variadic)]
+//@run-native
 
 use std::ffi::{CStr, VaList, c_char, c_double, c_int, c_long};
 
@@ -11,7 +11,7 @@ fn ignores_arguments() {
 
 fn echo() {
     unsafe extern "C" fn variadic(mut ap: ...) -> i32 {
-        ap.arg()
+        ap.next_arg()
     }
 
     assert_eq!(unsafe { variadic(1) }, 1);
@@ -20,7 +20,7 @@ fn echo() {
 
 fn forward_by_val() {
     unsafe fn helper(mut ap: VaList) -> i32 {
-        ap.arg()
+        ap.next_arg()
     }
 
     unsafe extern "C" fn variadic(ap: ...) -> i32 {
@@ -33,7 +33,7 @@ fn forward_by_val() {
 
 fn forward_by_ref() {
     unsafe fn helper(ap: &mut VaList) -> i32 {
-        ap.arg()
+        ap.next_arg()
     }
 
     unsafe extern "C" fn variadic(mut ap: ...) -> i32 {
@@ -47,7 +47,7 @@ fn forward_by_ref() {
 #[allow(improper_ctypes_definitions)]
 fn nested() {
     unsafe fn helper(mut ap1: VaList, mut ap2: VaList) -> (i32, i32) {
-        (ap1.arg(), ap2.arg())
+        (ap1.next_arg(), ap2.next_arg())
     }
 
     unsafe extern "C" fn variadic2(ap1: VaList, ap2: ...) -> (i32, i32) {
@@ -83,13 +83,13 @@ fn various_types() {
             }
         }
 
-        continue_if!(ap.arg::<c_double>().floor() == 3.14f64.floor());
-        continue_if!(ap.arg::<c_long>() == 12);
-        continue_if!(ap.arg::<c_int>() == 'a' as c_int);
-        continue_if!(ap.arg::<c_double>().floor() == 6.18f64.floor());
-        continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Hello"));
-        continue_if!(ap.arg::<c_int>() == 42);
-        continue_if!(compare_c_str(ap.arg::<*const c_char>(), "World"));
+        continue_if!(ap.next_arg::<c_double>().floor() == 3.14f64.floor());
+        continue_if!(ap.next_arg::<c_long>() == 12);
+        continue_if!(ap.next_arg::<c_int>() == 'a' as c_int);
+        continue_if!(ap.next_arg::<c_double>().floor() == 6.18f64.floor());
+        continue_if!(compare_c_str(ap.next_arg::<*const c_char>(), "Hello"));
+        continue_if!(ap.next_arg::<c_int>() == 42);
+        continue_if!(compare_c_str(ap.next_arg::<*const c_char>(), "World"));
     }
 
     unsafe {
@@ -105,6 +105,63 @@ fn various_types() {
     }
 }
 
+fn equal_up_to_free_lifetime() {
+    // Types are considered equal up to free lifetimes: `*const &'static str`
+    // is the same as `*const &'a str`.
+    // Bound lifetimes (using e.g. `for<'_>`) are different.
+    #[expect(improper_ctypes_definitions)]
+    pub unsafe extern "C" fn foo(mut args: ...) -> &'static str {
+        unsafe { *args.next_arg::<*const &'static str>() }
+    }
+
+    let data = String::from("abc");
+    let x: &str = data.as_str();
+    assert_eq!(unsafe { foo(&raw const x) }, "abc");
+}
+
+fn clone() {
+    unsafe extern "C" fn clone_the_va_list(args: ...) {
+        // The implicit `drop` will catch a `VaList` that isn't properly initialized.
+        let _ = args.clone();
+    }
+
+    unsafe { clone_the_va_list(1i32, 2i32) }
+}
+
+fn clone_and_advance() {
+    unsafe extern "C" fn variadic(mut a: ...) {
+        unsafe {
+            let mut b = a.clone();
+            assert_eq!(a.next_arg::<i32>(), 1i32);
+            assert_eq!(b.next_arg::<i32>(), 1i32);
+
+            assert_eq!(a.next_arg::<i32>(), 2i32);
+
+            let mut c = a.clone();
+            let mut d = b.clone();
+
+            assert_eq!(a.next_arg::<i32>(), 3i32);
+            assert_eq!(b.next_arg::<i32>(), 2i32);
+            assert_eq!(c.next_arg::<i32>(), 3i32);
+            assert_eq!(d.next_arg::<i32>(), 2i32);
+
+            assert_eq!(c.next_arg::<i32>(), 4i32);
+            assert_eq!(a.next_arg::<i32>(), 4i32);
+
+            drop(c);
+            drop(a);
+
+            assert_eq!(d.next_arg::<i32>(), 3i32);
+            assert_eq!(d.next_arg::<i32>(), 4i32);
+
+            assert_eq!(b.next_arg::<i32>(), 3i32);
+            assert_eq!(b.next_arg::<i32>(), 4i32);
+        }
+    }
+
+    unsafe { variadic(1i32, 2i32, 3i32, 4i32) }
+}
+
 fn main() {
     ignores_arguments();
     echo();
@@ -112,4 +169,7 @@ fn main() {
     forward_by_ref();
     nested();
     various_types();
+    equal_up_to_free_lifetime();
+    clone();
+    clone_and_advance();
 }

@@ -1,4 +1,3 @@
-use hir::db::ExpandDatabase;
 use hir::{UnsafeLint, UnsafetyReason};
 use ide_db::text_edit::TextEdit;
 use ide_db::{assists::Assist, source_change::SourceChange};
@@ -10,7 +9,10 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 // Diagnostic: missing-unsafe
 //
 // This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
-pub(crate) fn missing_unsafe(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Diagnostic {
+pub(crate) fn missing_unsafe(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::MissingUnsafe,
+) -> Diagnostic {
     let code = match d.lint {
         UnsafeLint::HardError => DiagnosticCode::RustcHardError("E0133"),
         UnsafeLint::UnsafeOpInUnsafeFn => DiagnosticCode::RustcLint("unsafe_op_in_unsafe_fn"),
@@ -38,13 +40,13 @@ fn display_unsafety_reason(reason: UnsafetyReason) -> &'static str {
     }
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Option<Vec<Assist>> {
+fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::MissingUnsafe) -> Option<Vec<Assist>> {
     // The fixit will not work correctly for macro expansions, so we don't offer it in that case.
     if d.node.file_id.is_macro() {
         return None;
     }
 
-    let root = ctx.sema.db.parse_or_expand(d.node.file_id);
+    let root = d.node.file_id.parse_or_expand(ctx.sema.db);
     let node = d.node.value.to_node(&root);
     let expr = node.syntax().ancestors().find_map(ast::Expr::cast)?;
 
@@ -271,25 +273,6 @@ fn main() {
     }
 
     #[test]
-    fn no_missing_unsafe_diagnostic_with_legacy_safe_intrinsic() {
-        check_diagnostics(
-            r#"
-extern "rust-intrinsic" {
-    #[rustc_safe_intrinsic]
-    pub fn bitreverse(x: u32) -> u32; // Safe intrinsic
-    pub fn floorf32(x: f32) -> f32; // Unsafe intrinsic
-}
-
-fn main() {
-    let _ = bitreverse(12);
-    let _ = floorf32(12.0);
-          //^^^^^^^^^^^^^^💡 error: call to unsafe function is unsafe and requires an unsafe function or block
-}
-"#,
-        );
-    }
-
-    #[test]
     fn no_missing_unsafe_diagnostic_with_deprecated_safe_2024() {
         check_diagnostics(
             r#"
@@ -414,30 +397,6 @@ fn main() {
     }
 
     #[test]
-    fn add_unsafe_block_when_calling_unsafe_intrinsic() {
-        check_fix(
-            r#"
-extern "rust-intrinsic" {
-    pub fn floorf32(x: f32) -> f32;
-}
-
-fn main() {
-    let _ = floorf32$0(12.0);
-}
-"#,
-            r#"
-extern "rust-intrinsic" {
-    pub fn floorf32(x: f32) -> f32;
-}
-
-fn main() {
-    let _ = unsafe { floorf32(12.0) };
-}
-"#,
-        )
-    }
-
-    #[test]
     fn unsafe_expr_as_a_receiver_of_a_method_call() {
         check_fix(
             r#"
@@ -465,17 +424,19 @@ fn main() {
     fn raw_deref_on_union_field() {
         check_diagnostics(
             r#"
+//- minicore: index, slice
+
 fn main() {
 
     union U {
         a: u8
     }
-    let x = U { a: 3 };
+    let mut x = U { a: 3 };
 
     let a = &raw mut x.a;
 
     union U1 {
-        a: u8
+        a: usize
     }
     let x = U1 { a: 3 };
 
@@ -485,7 +446,7 @@ fn main() {
 
     let b = &raw const x.a;
 
-    let tmp = Vec::from([1, 2, 3]);
+    let tmp = [1, 2, 3];
 
     let c = &raw const tmp[x.a];
                         // ^^^ 💡 error: access to union field is unsafe and requires an unsafe function or block
@@ -714,17 +675,6 @@ fn main() {
         // Checks that we don't place orphan arguments for formatting under an unsafe block.
         check_diagnostics(
             r#"
-//- minicore: fmt_before_1_89_0
-fn foo() {
-    let p = 0xDEADBEEF as *const i32;
-    format_args!("", *p);
-                  // ^^ error: dereference of raw pointer is unsafe and requires an unsafe function or block
-}
-        "#,
-        );
-
-        check_diagnostics(
-            r#"
 //- minicore: fmt
 fn foo() {
     let p = 0xDEADBEEF as *const i32;
@@ -845,6 +795,7 @@ fn foo(v: &Union) {
     fn union_destructuring() {
         check_diagnostics(
             r#"
+//- minicore: fn
 union Union { field: u8 }
 fn foo(v @ Union { field: _field }: &Union) {
                        // ^^^^^^ error: access to union field is unsafe and requires an unsafe function or block
@@ -1058,7 +1009,7 @@ impl FooTrait for S2 {
     fn no_false_positive_on_format_args_since_1_89_0() {
         check_diagnostics(
             r#"
-//- minicore: fmt
+//- minicore: fmt, builtin_impls
 fn test() {
     let foo = 10;
     let bar = true;
@@ -1109,6 +1060,17 @@ fn foo() {}
 #[target_feature(enable = "avx2", enable = "fma")]
 fn bar() {
     foo();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn raw_ref_deref_raw_ref_deref() {
+        check_diagnostics(
+            r#"
+fn foo() {
+    &raw const *&raw const *&raw const *&2;
 }
         "#,
         );

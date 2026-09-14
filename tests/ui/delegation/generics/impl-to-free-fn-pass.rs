@@ -1,6 +1,5 @@
 //@ run-pass
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 mod to_reuse {
     pub fn foo<T, U>(_: T, y: U) -> U { y }

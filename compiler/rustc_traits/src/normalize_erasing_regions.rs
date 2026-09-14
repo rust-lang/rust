@@ -22,7 +22,7 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Par
     goal: PseudoCanonicalInput<'tcx, T>,
 ) -> Result<T, NoSolution> {
     let PseudoCanonicalInput { typing_env, value } = goal;
-    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+    let (infcx, param_env) = tcx.infer_ctxt().ignoring_regions().build_with_typing_env(typing_env);
     let cause = ObligationCause::dummy();
     match infcx.at(&cause, param_env).query_normalize(value) {
         Ok(Normalized { value: normalized_value, obligations: normalized_obligations }) => {
@@ -36,7 +36,7 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Par
                 None,
             );
 
-            let resolved_value = infcx.resolve_vars_if_possible(normalized_value);
+            let resolved_value = infcx.deeply_resolve_ignoring_regions(normalized_value);
             // It's unclear when `resolve_vars` would have an effect in a
             // fresh `InferCtxt`. If this assert does trigger, it will give
             // us a test case.
@@ -70,7 +70,6 @@ fn not_outlives_predicate(p: ty::Predicate<'_>) -> bool {
         | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
         | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_))
         | ty::PredicateKind::NormalizesTo(..)
-        | ty::PredicateKind::AliasRelate(..)
         | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
         | ty::PredicateKind::DynCompatible(..)
         | ty::PredicateKind::Subtype(..)

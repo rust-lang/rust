@@ -1,6 +1,6 @@
 use crate::map_unit_fn::OPTION_MAP_UNIT_FN;
 use crate::matches::MATCH_AS_REF;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_unsafe_fn, peel_and_count_ty_refs};
@@ -87,28 +87,24 @@ where
         None => "",
     };
 
-    match can_move_expr_to_closure(cx, some_expr.expr) {
-        Some(captures) => {
-            // Check if captures the closure will need conflict with borrows made in the scrutinee.
-            // TODO: check all the references made in the scrutinee expression. This will require interacting
-            // with the borrow checker. Currently only `<local>[.<field>]*` is checked for.
-            if let Some(binding_ref_mutability) = binding_ref {
-                let e = peel_hir_expr_while(scrutinee, |e| match e.kind {
-                    ExprKind::Field(e, _) | ExprKind::AddrOf(_, _, e) => Some(e),
-                    _ => None,
-                });
-                if let ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(l), .. })) = e.kind {
-                    match captures.get(l) {
-                        Some(CaptureKind::Value | CaptureKind::Use | CaptureKind::Ref(Mutability::Mut)) => return None,
-                        Some(CaptureKind::Ref(Mutability::Not)) if binding_ref_mutability == Mutability::Mut => {
-                            return None;
-                        },
-                        Some(CaptureKind::Ref(Mutability::Not)) | None => (),
-                    }
-                }
+    let captures = can_move_expr_to_closure(cx, some_expr.expr)?;
+    // Check if captures the closure will need conflict with borrows made in the scrutinee.
+    // TODO: check all the references made in the scrutinee expression. This will require interacting
+    // with the borrow checker. Currently only `<local>[.<field>]*` is checked for.
+    if let Some(binding_ref_mutability) = binding_ref {
+        let e = peel_hir_expr_while(scrutinee, |e| match e.kind {
+            ExprKind::Field(e, _) | ExprKind::AddrOf(_, _, e) => Some(e),
+            _ => None,
+        });
+        if let ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(l), .. })) = e.kind {
+            match captures.get(l) {
+                Some(CaptureKind::Value | CaptureKind::Use | CaptureKind::Ref(Mutability::Mut)) => return None,
+                Some(CaptureKind::Ref(Mutability::Not)) if binding_ref_mutability == Mutability::Mut => {
+                    return None;
+                },
+                Some(CaptureKind::Ref(Mutability::Not)) | None => (),
             }
-        },
-        None => return None,
+        }
     }
 
     let mut app = Applicability::MachineApplicable;

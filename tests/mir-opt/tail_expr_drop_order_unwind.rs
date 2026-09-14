@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // EMIT_MIR tail_expr_drop_order_unwind.method_1.ElaborateDrops.after.mir
 

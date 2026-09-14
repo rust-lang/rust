@@ -23,7 +23,7 @@ fn f2() {}
 #[rustc_align(0)] //~ ERROR invalid alignment value: not a power of two
 fn f3() {}
 
-#[repr(align(16))] //~ ERROR `#[repr(align(...))]` is not supported on functions
+#[repr(align(16))] //~ ERROR attribute cannot be used on
 fn f4() {}
 
 #[rustc_align(-1)] //~ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found

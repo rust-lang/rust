@@ -2,11 +2,15 @@
 
 **⚠️ This documentation page is a stub, you can help improving it by sending a PR. ⚠️**
 
-**Tier: 1/2 (with host tools)**
+**Tier: 1 (with host tools)**
 
-Target triples available:
-- `i686-pc-windows-gnu`: Tier 2
-- `x86_64-pc-windows-gnu`: Tier 1
+Target tuples available:
+- `x86_64-pc-windows-gnu`
+
+**Tier: 2 (without host tools)**
+
+Target tuples available:
+- `i686-pc-windows-gnu`
 
 ## Target maintainers
 
@@ -25,6 +29,19 @@ Unlike their MSVC counterparts, windows-gnu targets support cross-compilation an
 They follow Windows calling convention for `extern "C"`.
 
 Like with any other Windows target, created binaries are in PE format.
+
+### C toolchain
+
+The targets are built and tested using a reasonably modern C toolchain, and it should be considered as the oldest supported version:
+
+* GNU Binutils 2.44
+* GCC 14.2
+* mingw-w64 12.0.0
+* MSVCRT library as the default
+* Libgcc with DWARF-2 exception handling for i686 and SEH for x86_64
+
+Using older tools (especially Binutils) may not work properly, due to the number of issues plaguing older versions of Binutils.
+The supported toolchain versions are subject to change.
 
 ## Building Rust programs
 

@@ -1,15 +1,3 @@
-error[E0521]: borrowed data escapes outside of closure
-  --> $DIR/regions-nested-fns.rs:12:9
-   |
-LL |     let mut ay = &y;
-   |         ------ `ay` declared here, outside of the closure body
-...
-LL |     ignore::<Box<dyn for<'z> FnMut(&'z isize)>>(Box::new(|z| {
-   |                                                           - `z` is a reference that is only valid in the closure body
-...
-LL |         ay = z;
-   |         ^^^^^^ `z` escapes the closure body here
-
 error[E0597]: `y` does not live long enough
   --> $DIR/regions-nested-fns.rs:5:18
    |
@@ -41,6 +29,18 @@ LL |         if false { return ay; }
 ...
 LL | }
    | - `y` dropped here while still borrowed
+
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/regions-nested-fns.rs:12:9
+   |
+LL |     let mut ay = &y;
+   |         ------ `ay` declared here, outside of the closure body
+...
+LL |     ignore::<Box<dyn for<'z> FnMut(&'z isize)>>(Box::new(|z| {
+   |                                                           - `z` is a reference that is only valid in the closure body
+...
+LL |         ay = z;
+   |         ^^^^^^ `z` escapes the closure body here
 
 error: lifetime may not live long enough
   --> $DIR/regions-nested-fns.rs:17:27

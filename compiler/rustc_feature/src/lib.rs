@@ -70,8 +70,7 @@ impl UnstableFeatures {
         let is_unstable_crate =
             |var: &str| krate.is_some_and(|name| var.split(',').any(|new_krate| new_krate == name));
 
-        let bootstrap = env_var_rustc_bootstrap.ok();
-        if let Some(val) = bootstrap.as_deref() {
+        if let Ok(val) = env_var_rustc_bootstrap.as_deref() {
             match val {
                 val if val == "1" || is_unstable_crate(val) => return UnstableFeatures::Cheat,
                 // Hypnotize ourselves so that we think we are a stable compiler and thus don't
@@ -129,10 +128,8 @@ pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZero<u
 
 pub use accepted::ACCEPTED_LANG_FEATURES;
 pub use builtin_attrs::{
-    AttrSuggestionStyle, AttributeDuplicates, AttributeGate, AttributeSafety, AttributeTemplate,
-    AttributeType, BUILTIN_ATTRIBUTE_MAP, BUILTIN_ATTRIBUTES, BuiltinAttribute, GatedCfg,
-    encode_cross_crate, find_gated_cfg, is_builtin_attr_name, is_stable_diagnostic_attribute,
-    is_valid_for_get_attr,
+    AttributeStability, BUILTIN_ATTRIBUTE_SET, BUILTIN_ATTRIBUTES, GatedCfg, find_gated_cfg,
+    is_builtin_attr_name,
 };
 pub use removed::REMOVED_LANG_FEATURES;
 pub use unstable::{

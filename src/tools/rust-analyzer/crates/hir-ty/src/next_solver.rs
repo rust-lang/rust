@@ -5,6 +5,7 @@
 // incorrect lifetime here.
 
 pub mod abi;
+mod allocation;
 mod binder;
 mod consts;
 mod def_id;
@@ -29,6 +30,7 @@ pub mod util;
 
 use std::{mem::ManuallyDrop, sync::OnceLock};
 
+pub use allocation::*;
 pub use binder::*;
 pub use consts::*;
 pub use def_id::*;
@@ -37,15 +39,16 @@ pub use interner::*;
 pub use opaques::*;
 pub use predicate::*;
 pub use region::*;
+use rustc_type_ir::MayBeErased;
 pub use solver::*;
 pub use ty::*;
 
-use crate::db::HirDatabase;
 pub use crate::lower::ImplTraitIdx;
 pub use rustc_ast_ir::Mutability;
 
 pub type Binder<'db, T> = rustc_type_ir::Binder<DbInterner<'db>, T>;
 pub type EarlyBinder<'db, T> = rustc_type_ir::EarlyBinder<DbInterner<'db>, T>;
+pub type Unnormalized<'db, T> = rustc_type_ir::Unnormalized<DbInterner<'db>, T>;
 pub type Canonical<'db, T> = rustc_type_ir::Canonical<DbInterner<'db>, T>;
 pub type CanonicalVarValues<'db> = rustc_type_ir::CanonicalVarValues<DbInterner<'db>>;
 pub type CanonicalVarKind<'db> = rustc_type_ir::CanonicalVarKind<DbInterner<'db>>;
@@ -53,7 +56,7 @@ pub type CanonicalQueryInput<'db, V> = rustc_type_ir::CanonicalQueryInput<DbInte
 pub type AliasTy<'db> = rustc_type_ir::AliasTy<DbInterner<'db>>;
 pub type FnSig<'db> = rustc_type_ir::FnSig<DbInterner<'db>>;
 pub type PolyFnSig<'db> = Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>;
-pub type TypingMode<'db> = rustc_type_ir::TypingMode<DbInterner<'db>>;
+pub type TypingMode<'db, S = MayBeErased> = rustc_type_ir::TypingMode<DbInterner<'db>, S>;
 pub type TypeError<'db> = rustc_type_ir::error::TypeError<DbInterner<'db>>;
 pub type QueryResult<'db> = rustc_type_ir::solve::QueryResult<DbInterner<'db>>;
 pub type FxIndexMap<K, V> = rustc_type_ir::data_structures::IndexMap<K, V>;
@@ -83,12 +86,18 @@ pub struct DefaultTypes<'db> {
     pub error: Ty<'db>,
     /// `&'static str`
     pub static_str_ref: Ty<'db>,
+    /// `[u8]`
+    pub u8_slice: Ty<'db>,
+    /// `&'static [u8]`
+    pub static_u8_slice: Ty<'db>,
     /// `*mut ()`
     pub mut_unit_ptr: Ty<'db>,
+    pub dyn_trait_dummy_self: Ty<'db>,
 }
 
 pub struct DefaultConsts<'db> {
     pub error: Const<'db>,
+    pub u8_values: [Const<'db>; 256],
 }
 
 pub struct DefaultRegions<'db> {
@@ -101,7 +110,7 @@ pub struct DefaultEmpty<'db> {
     pub tys: Tys<'db>,
     pub generic_args: GenericArgs<'db>,
     pub bound_var_kinds: BoundVarKinds<'db>,
-    pub canonical_vars: CanonicalVars<'db>,
+    pub canonical_vars: CanonicalVarKinds<'db>,
     pub variances: VariancesOf<'db>,
     pub pat_list: PatList<'db>,
     pub predefined_opaques: PredefinedOpaques<'db>,
@@ -109,6 +118,8 @@ pub struct DefaultEmpty<'db> {
     pub bound_existential_predicates: BoundExistentialPredicates<'db>,
     pub clauses: Clauses<'db>,
     pub region_assumptions: RegionAssumptions<'db>,
+    pub consts: Consts<'db>,
+    pub projection: crate::mir::Projection<'db>,
 }
 
 pub struct DefaultAny<'db> {
@@ -131,25 +142,24 @@ impl std::fmt::Debug for DefaultAny<'_> {
 }
 
 #[inline]
-pub fn default_types<'a, 'db>(db: &'db dyn HirDatabase) -> &'a DefaultAny<'db> {
+pub fn default_types<'db>() -> &'db DefaultAny<'db> {
     static TYPES: OnceLock<DefaultAny<'static>> = OnceLock::new();
 
-    let interner = DbInterner::new_no_crate(db);
     TYPES.get_or_init(|| {
         let create_ty = |kind| {
-            let ty = Ty::new(interner, kind);
+            let ty = Ty::new_without_interner(kind);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_const = |kind| {
-            let ty = Const::new(interner, kind);
+            let ty = Const::new_without_interner(kind);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_region = |kind| {
-            let ty = Region::new(interner, kind);
+            let ty = Region::new_without_interner(kind);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
@@ -167,7 +177,7 @@ pub fn default_types<'a, 'db>(db: &'db dyn HirDatabase) -> &'a DefaultAny<'db> {
             ty.as_ref()
         };
         let create_canonical_vars = |slice| {
-            let ty = CanonicalVars::new_from_slice(slice);
+            let ty = CanonicalVarKinds::new_from_slice(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
@@ -220,15 +230,30 @@ pub fn default_types<'a, 'db>(db: &'db dyn HirDatabase) -> &'a DefaultAny<'db> {
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
+        let create_consts = |slice| {
+            let ty = Consts::new_from_slice(slice);
+            // We need to increase the refcount (forever), so that the types won't be freed.
+            let ty = ManuallyDrop::new(ty.store());
+            ty.as_ref()
+        };
+        let create_projection = |slice| {
+            let it = crate::mir::Projection::new_from_slice(slice);
+            // We need to increase the refcount (forever), so that the types won't be freed.
+            let it = ManuallyDrop::new(it.store());
+            it.as_ref()
+        };
 
         let str = create_ty(TyKind::Str);
         let statik = create_region(RegionKind::ReStatic);
         let empty_tys = create_tys(&[]);
         let unit = create_ty(TyKind::Tuple(empty_tys));
+        let u8 = create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U8));
+        let u8_slice = create_ty(TyKind::Slice(u8));
+        let static_u8_slice = create_ty(TyKind::Ref(statik, u8_slice, Mutability::Not));
         DefaultAny {
             types: DefaultTypes {
                 usize: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::Usize)),
-                u8: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U8)),
+                u8,
                 u16: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U16)),
                 u32: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U32)),
                 u64: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U64)),
@@ -250,9 +275,21 @@ pub fn default_types<'a, 'db>(db: &'db dyn HirDatabase) -> &'a DefaultAny<'db> {
                 never: create_ty(TyKind::Never),
                 error: create_ty(TyKind::Error(ErrorGuaranteed)),
                 static_str_ref: create_ty(TyKind::Ref(statik, str, rustc_ast_ir::Mutability::Not)),
+                u8_slice,
+                static_u8_slice,
                 mut_unit_ptr: create_ty(TyKind::RawPtr(unit, rustc_ast_ir::Mutability::Mut)),
+                // This type must not appear anywhere except here.
+                dyn_trait_dummy_self: create_ty(TyKind::Infer(rustc_type_ir::InferTy::FreshTy(0))),
             },
-            consts: DefaultConsts { error: create_const(ConstKind::Error(ErrorGuaranteed)) },
+            consts: DefaultConsts {
+                error: create_const(ConstKind::Error(ErrorGuaranteed)),
+                u8_values: std::array::from_fn(|u8_value| {
+                    create_const(ConstKind::Value(ValueConst {
+                        ty: u8,
+                        value: ValTree::new(ValTreeKind::Leaf(ScalarInt::from(u8_value as u8))),
+                    }))
+                }),
+            },
             regions: DefaultRegions {
                 error: create_region(RegionKind::ReError(ErrorGuaranteed)),
                 statik,
@@ -270,11 +307,13 @@ pub fn default_types<'a, 'db>(db: &'db dyn HirDatabase) -> &'a DefaultAny<'db> {
                 bound_existential_predicates: create_bound_existential_predicates(&[]),
                 clauses: create_clauses(&[]),
                 region_assumptions: create_region_assumptions(&[]),
+                consts: create_consts(&[]),
+                projection: create_projection(&[]),
             },
             one_invariant: create_variances_of(&[rustc_type_ir::Variance::Invariant]),
             one_covariant: create_variances_of(&[rustc_type_ir::Variance::Covariant]),
             coroutine_captures_by_ref_bound_var_kinds: create_bound_var_kinds(&[
-                BoundVarKind::Region(BoundRegionKind::ClosureEnv),
+                BoundVariableKind::Region(BoundRegionKind::ClosureEnv),
             ]),
         }
     })

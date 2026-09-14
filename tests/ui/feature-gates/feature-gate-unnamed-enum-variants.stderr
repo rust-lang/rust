@@ -1,0 +1,21 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/feature-gate-unnamed-enum-variants.rs:10:5
+   |
+LL | struct Foo {
+   |        --- while parsing this struct
+LL |     _: i32,
+   |     ^ expected identifier, found reserved identifier
+
+error[E0658]: unnamed enum variants are experimental
+  --> $DIR/feature-gate-unnamed-enum-variants.rs:4:5
+   |
+LL |     _ = 1,
+   |     ^^^^^
+   |
+   = note: see issue #156628 <https://github.com/rust-lang/rust/issues/156628> for more information
+   = help: add `#![feature(unnamed_enum_variants)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

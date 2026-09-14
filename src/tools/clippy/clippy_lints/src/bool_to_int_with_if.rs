@@ -1,12 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::HasSession;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{higher, is_else_clause, is_in_const_context, span_contains_comment};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -60,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for BoolToIntWithIf {
             && !is_in_const_context(cx)
         {
             let ty = cx.typeck_results().expr_ty(then);
-            let mut applicability = if span_contains_comment(cx.sess().source_map(), expr.span) {
+            let mut applicability = if span_contains_comment(cx, expr.span) {
                 Applicability::MaybeIncorrect
             } else {
                 Applicability::MachineApplicable

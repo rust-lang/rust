@@ -1,5 +1,6 @@
 use rustc_abi::ExternAbi;
 
+use crate::concurrency::thread::ThreadLookupError;
 use crate::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,9 +52,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let thread = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
-        let Ok(thread) = this.thread_id_try_from(thread) else {
-            this.write_scalar(this.eval_libc("ESRCH"), return_dest)?;
-            return interp_ok(());
+        // Joining a terminated thread is valid.
+        let thread = match this.thread_id_try_from(thread) {
+            Ok(id) | Err(ThreadLookupError::Terminated(id)) => id,
+            Err(ThreadLookupError::InvalidId) => {
+                this.write_scalar(this.eval_libc("ESRCH"), return_dest)?;
+                return interp_ok(());
+            }
         };
 
         this.join_thread_exclusive(
@@ -67,8 +72,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let thread = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
-        let Ok(thread) = this.thread_id_try_from(thread) else {
-            return interp_ok(this.eval_libc("ESRCH"));
+        // Detaching a terminated thread is valid.
+        let thread = match this.thread_id_try_from(thread) {
+            Ok(id) | Err(ThreadLookupError::Terminated(id)) => id,
+            Err(ThreadLookupError::InvalidId) => return interp_ok(this.eval_libc("ESRCH")),
         };
         this.detach_thread(thread, /*allow_terminated_joined*/ false)?;
 
@@ -99,7 +106,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Ok(thread) = this.thread_id_try_from(thread) else {
             return interp_ok(ThreadNameResult::ThreadNotFound);
         };
-        let name = name.to_pointer(this)?;
+        let name = name.to_pointer(this);
         let mut name = this.read_c_str(name)?.to_owned();
 
         // Comparing with `>=` to account for null terminator.
@@ -133,7 +140,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Ok(thread) = this.thread_id_try_from(thread) else {
             return interp_ok(ThreadNameResult::ThreadNotFound);
         };
-        let name_out = name_out.to_pointer(this)?;
+        let name_out = name_out.to_pointer(this);
         let len = len.to_target_usize(this)?;
 
         // FIXME: we should use the program name if the thread name is not set

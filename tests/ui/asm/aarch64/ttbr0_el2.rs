@@ -1,7 +1,15 @@
 //! Regression test for #97724, recognising ttbr0_el2 as a valid armv8 system register
-//@ only-aarch64
+//@ add-minicore
 //@ build-pass
-use std::arch::asm;
+//@ compile-flags: --target aarch64-unknown-linux-gnu
+//@ needs-llvm-components: aarch64
+//@ ignore-backends: gcc
+#![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
+
+extern crate minicore;
+use minicore::*;
 
 static PT: [u64; 512] = [0; 512];
 fn main() {

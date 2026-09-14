@@ -78,8 +78,9 @@ SOURCE_FILE
         WHITESPACE " "
         EQ "="
         WHITESPACE " "
-        LITERAL
-          INT_NUMBER "92"
+        CONST_ARG
+          LITERAL
+            INT_NUMBER "92"
       COMMA ","
       WHITESPACE "\n    "
       VARIANT
@@ -149,6 +150,16 @@ SOURCE_FILE
         TUPLE_FIELD_LIST
           L_PAREN "("
           R_PAREN ")"
+      COMMA ","
+      WHITESPACE "\n    "
+      VARIANT
+        UNDERSCORE "_"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        CONST_ARG
+          RANGE_EXPR
+            DOT2 ".."
       COMMA ","
       WHITESPACE "\n"
       R_CURLY "}"

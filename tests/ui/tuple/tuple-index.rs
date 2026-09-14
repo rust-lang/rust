@@ -1,4 +1,9 @@
 //@ run-pass
+//@ reference: expr.tuple.fields
+//@ reference: expr.tuple-index.result
+//@ reference: type.struct.tuple
+//@ reference: type.tuple.access
+//@ reference: type.tuple.field-name
 
 struct Point(isize, isize);
 

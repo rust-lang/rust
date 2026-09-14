@@ -4,11 +4,10 @@ use crate::{DefWithBodyId, ModuleDefId, hir::MatchArm, nameres::crate_def_map, t
 use expect_test::{Expect, expect};
 use la_arena::RawIdx;
 use test_fixture::WithFixture;
-use triomphe::Arc;
 
 use super::super::*;
 
-fn lower(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (TestDB, Arc<Body>, DefWithBodyId) {
+fn lower(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (TestDB, DefWithBodyId) {
     let db = TestDB::with_files(ra_fixture);
 
     let krate = db.fetch_test_crate();
@@ -24,8 +23,27 @@ fn lower(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (TestDB, Arc<Body>,
     }
     let fn_def = fn_def.unwrap().into();
 
-    let body = db.body(fn_def);
-    (db, body, fn_def)
+    Body::of(&db, fn_def);
+    (db, fn_def)
+}
+
+fn pretty_print(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
+    let db = TestDB::with_files(ra_fixture);
+
+    let krate = db.fetch_test_crate();
+    let def_map = crate_def_map(&db, krate);
+    let mut fn_def = None;
+    'outer: for (_, module) in def_map.modules() {
+        for decl in module.scope.declarations() {
+            if let ModuleDefId::FunctionId(it) = decl {
+                fn_def = Some(it);
+                break 'outer;
+            }
+        }
+    }
+    let fn_def = fn_def.unwrap().into();
+
+    expect.assert_eq(&Body::of(&db, fn_def).pretty_print(&db, fn_def, Edition::CURRENT));
 }
 
 fn def_map_at(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
@@ -144,9 +162,9 @@ mod m {
 
 #[test]
 fn desugar_for_loop() {
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
-//- minicore: iterator
+//- minicore: iterator, range
 fn main() {
     for ident in 0..10 {
         foo();
@@ -154,198 +172,33 @@ fn main() {
     }
 }
 "#,
-    );
-
-    expect![[r#"
-        fn main() {
-            match builtin#lang(into_iter)(
-                0..10,
-            ) {
-                mut <ra@gennew>0 => loop {
-                    match builtin#lang(next)(
-                        &mut <ra@gennew>0,
-                    ) {
-                        builtin#lang(None) => break,
-                        builtin#lang(Some)(ident) => {
-                            foo();
-                            bar()
-                        },
-                    }
-                },
-            }
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
-}
-
-#[test]
-fn desugar_builtin_format_args_before_1_89_0() {
-    let (db, body, def) = lower(
-        r#"
-//- minicore: fmt_before_1_89_0
-fn main() {
-    let are = "are";
-    let count = 10;
-    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
-}
-"#,
-    );
-
-    expect![[r#"
-        fn main() {
-            let are = "are";
-            let count = 10;
-            builtin#lang(Arguments::new_v1_formatted)(
-                &[
-                    "\u{1b}hello ", " ", " friends, we ", " ", "",
-                ],
-                &[
-                    builtin#lang(Argument::new_display)(
-                        &count,
-                    ), builtin#lang(Argument::new_display)(
-                        &"fancy",
-                    ), builtin#lang(Argument::new_debug)(
-                        &are,
-                    ), builtin#lang(Argument::new_display)(
-                        &"!",
-                    ),
-                ],
-                &[
-                    builtin#lang(Placeholder::new)(
-                        0usize,
-                        ' ',
-                        builtin#lang(Alignment::Unknown),
-                        8u32,
-                        builtin#lang(Count::Implied),
-                        builtin#lang(Count::Is)(
-                            2,
-                        ),
-                    ), builtin#lang(Placeholder::new)(
-                        1usize,
-                        ' ',
-                        builtin#lang(Alignment::Unknown),
-                        0u32,
-                        builtin#lang(Count::Implied),
-                        builtin#lang(Count::Implied),
-                    ), builtin#lang(Placeholder::new)(
-                        2usize,
-                        ' ',
-                        builtin#lang(Alignment::Unknown),
-                        0u32,
-                        builtin#lang(Count::Implied),
-                        builtin#lang(Count::Implied),
-                    ), builtin#lang(Placeholder::new)(
-                        1usize,
-                        ' ',
-                        builtin#lang(Alignment::Unknown),
-                        0u32,
-                        builtin#lang(Count::Implied),
-                        builtin#lang(Count::Implied),
-                    ), builtin#lang(Placeholder::new)(
-                        3usize,
-                        ' ',
-                        builtin#lang(Alignment::Unknown),
-                        0u32,
-                        builtin#lang(Count::Implied),
-                        builtin#lang(Count::Implied),
-                    ),
-                ],
-                {
-                    ();
-                    unsafe {
-                        builtin#lang(UnsafeArg::new)()
-                    }
-                },
-            );
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
-}
-
-#[test]
-fn desugar_builtin_format_args_before_1_93_0() {
-    let (db, body, def) = lower(
-        r#"
-//- minicore: fmt_before_1_93_0
-fn main() {
-    let are = "are";
-    let count = 10;
-    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
-}
-"#,
-    );
-
-    expect![[r#"
-        fn main() {
-            let are = "are";
-            let count = 10;
-            {
-                let <ra@gennew>0 = (&"fancy", &(), &"!", &count, &are, );
-                let <ra@gennew>0 = [
-                    builtin#lang(Argument::new_display)(
-                        <ra@gennew>0.3,
-                    ), builtin#lang(Argument::new_display)(
-                        <ra@gennew>0.0,
-                    ), builtin#lang(Argument::new_debug)(
-                        <ra@gennew>0.4,
-                    ), builtin#lang(Argument::new_display)(
-                        <ra@gennew>0.2,
-                    ),
-                ];
-                unsafe {
-                    builtin#lang(Arguments::new_v1_formatted)(
-                        &[
-                            "\u{1b}hello ", " ", " friends, we ", " ", "",
-                        ],
-                        &<ra@gennew>0,
-                        &[
-                            builtin#lang(Placeholder::new)(
-                                0usize,
-                                ' ',
-                                builtin#lang(Alignment::Unknown),
-                                8u32,
-                                builtin#lang(Count::Implied),
-                                builtin#lang(Count::Is)(
-                                    2,
-                                ),
-                            ), builtin#lang(Placeholder::new)(
-                                1usize,
-                                ' ',
-                                builtin#lang(Alignment::Unknown),
-                                0u32,
-                                builtin#lang(Count::Implied),
-                                builtin#lang(Count::Implied),
-                            ), builtin#lang(Placeholder::new)(
-                                2usize,
-                                ' ',
-                                builtin#lang(Alignment::Unknown),
-                                0u32,
-                                builtin#lang(Count::Implied),
-                                builtin#lang(Count::Implied),
-                            ), builtin#lang(Placeholder::new)(
-                                1usize,
-                                ' ',
-                                builtin#lang(Alignment::Unknown),
-                                0u32,
-                                builtin#lang(Count::Implied),
-                                builtin#lang(Count::Implied),
-                            ), builtin#lang(Placeholder::new)(
-                                3usize,
-                                ' ',
-                                builtin#lang(Alignment::Unknown),
-                                0u32,
-                                builtin#lang(Count::Implied),
-                                builtin#lang(Count::Implied),
-                            ),
-                        ],
-                    )
+        expect![[r#"
+            fn main() {
+                match builtin#lang(into_iter)(
+                    builtin#lang(Range){
+                        start: 0,
+                        end: 10,
+                    },
+                ) {
+                    mut <ra@gennew>0 => loop {
+                        match builtin#lang(next)(
+                            &mut <ra@gennew>0,
+                        ) {
+                            builtin#lang(None) => break,
+                            builtin#lang(Some)(ident) => {
+                                foo();
+                                bar()
+                            },
+                        }
+                    },
                 }
-            };
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+            }"#]],
+    );
 }
 
 #[test]
 fn desugar_builtin_format_args() {
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
 //- minicore: fmt
 fn main() {
@@ -356,9 +209,7 @@ fn main() {
     builtin#format_args("hello world", orphan = ());
 }
 "#,
-    );
-
-    expect![[r#"
+        expect![[r#"
         fn main() {
             let are = "are";
             let count = 10;
@@ -392,13 +243,13 @@ fn main() {
                     "hello world",
                 )
             };
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+        }"#]],
+    )
 }
 
 #[test]
 fn test_macro_hygiene() {
-    let (db, body, def) = lower(
+    pretty_print(
         r##"
 //- minicore: fmt, from
 //- /main.rs
@@ -428,10 +279,7 @@ impl SsrError {
     }
 }
 "##,
-    );
-
-    assert_eq!(db.body_with_source_map(def).1.diagnostics(), &[]);
-    expect![[r#"
+        expect![[r#"
         fn main() {
             _ = ra_test_fixture::error::SsrError::new(
                 {
@@ -449,15 +297,15 @@ impl SsrError {
                     }
                 },
             );
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+        }"#]],
+    )
 }
 
 #[test]
 fn regression_10300() {
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
-//- minicore: concat, panic, fmt_before_1_89_0
+//- minicore: concat, panic, fmt
 mod private {
     pub use core::concat;
 }
@@ -472,33 +320,17 @@ fn f(a: i32, b: u32) -> String {
     m!();
 }
 "#,
-    );
-
-    let (_, source_map) = db.body_with_source_map(def);
-    assert_eq!(source_map.diagnostics(), &[]);
-
-    for (_, def_map) in body.blocks(&db) {
-        assert_eq!(def_map.diagnostics(), &[]);
-    }
-
-    expect![[r#"
-        fn f(a, b) {
-            {
-                core::panicking::panic_fmt(
-                    builtin#lang(Arguments::new_v1_formatted)(
-                        &[
+        expect![[r#"
+            fn f(a, b) {
+                {
+                    core::panicking::panic_fmt(
+                        builtin#lang(Arguments::from_str)(
                             "cc",
-                        ],
-                        &[],
-                        &[],
-                        unsafe {
-                            builtin#lang(UnsafeArg::new)()
-                        },
-                    ),
-                );
-            };
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+                        ),
+                    );
+                };
+            }"#]],
+    )
 }
 
 #[test]
@@ -507,7 +339,7 @@ fn destructuring_assignment_tuple_macro() {
     // but in destructuring assignment it is valid, because `m!()()` is a valid expression, and destructuring
     // assignments start their lives as expressions. So we have to do the same.
 
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
 struct Bar();
 
@@ -519,25 +351,16 @@ fn foo() {
     m!()() = Bar();
 }
 "#,
-    );
-
-    let (_, source_map) = db.body_with_source_map(def);
-    assert_eq!(source_map.diagnostics(), &[]);
-
-    for (_, def_map) in body.blocks(&db) {
-        assert_eq!(def_map.diagnostics(), &[]);
-    }
-
-    expect![[r#"
+        expect![[r#"
         fn foo() {
             Bar() = Bar();
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+        }"#]],
+    )
 }
 
 #[test]
 fn shadowing_record_variant() {
-    let (_, body, _) = lower(
+    let (db, def) = lower(
         r#"
 enum A {
     B { field: i32 },
@@ -550,6 +373,7 @@ fn f() {
 }
     "#,
     );
+    let body = Body::of(&db, def);
     assert_eq!(body.assert_expr_only().bindings.len(), 1, "should have a binding for `B`");
     assert_eq!(
         body[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
@@ -559,40 +383,62 @@ fn f() {
 }
 
 #[test]
+fn shadowing_tuple_struct_with_invisible_ctor() {
+    let (db, def) = lower(
+        r#"
+mod x {
+    pub struct CrateNum(u32);
+}
+
+use x::CrateNum;
+
+pub struct CrateNumVal(CrateNum);
+
+fn main() {
+    let CrateNumVal(CrateNum) = loop {};
+}
+    "#,
+    );
+    let body = Body::of(&db, def);
+    assert_eq!(body.assert_expr_only().bindings.len(), 1, "should have a binding for `CrateNum`");
+    assert_eq!(
+        body[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
+        "CrateNum",
+        "should have a binding for `CrateNum`",
+    );
+}
+
+#[test]
 fn regression_pretty_print_bind_pat() {
-    let (db, body, owner) = lower(
+    pretty_print(
         r#"
 fn foo() {
     let v @ u = 123;
 }
 "#,
-    );
-    let printed = body.pretty_print(&db, owner, Edition::CURRENT);
-
-    expect![[r#"
+        expect![[r#"
         fn foo() {
             let v @ u = 123;
-        }"#]]
-    .assert_eq(&printed);
+        }"#]],
+    );
 }
 
 #[test]
 fn skip_skips_body() {
-    let (db, body, owner) = lower(
+    pretty_print(
         r#"
 #[rust_analyzer::skip]
 async fn foo(a: (), b: i32) -> u32 {
     0 + 1 + b()
 }
 "#,
+        expect!["fn foo(�, �) �"],
     );
-    let printed = body.pretty_print(&db, owner, Edition::CURRENT);
-    expect!["fn foo(�, �) �"].assert_eq(&printed);
 }
 
 #[test]
 fn range_bounds_are_hir_exprs() {
-    let (_, body, _) = lower(
+    let (db, body) = lower(
         r#"
 pub const L: i32 = 6;
 mod x {
@@ -607,6 +453,7 @@ const fn f(x: i32) -> i32 {
 }"#,
     );
 
+    let body = Body::of(&db, body);
     let mtch_arms = body
         .assert_expr_only()
         .exprs
@@ -635,7 +482,7 @@ const fn f(x: i32) -> i32 {
 
 #[test]
 fn print_hir_precedences() {
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
 fn main() {
     _ = &(1 - (2 - 3) + 4 * 5 * (6 + 7));
@@ -646,9 +493,7 @@ fn main() {
     let _ = &mut (*r as i32)
 }
 "#,
-    );
-
-    expect![[r#"
+        expect![[r#"
         fn main() {
             _ = &((1 - (2 - 3)) + (4 * 5) * (6 + 7));
             _ = 1 + 2 < 3 && true && 4 < 5 && (a || b || c) || d && e;
@@ -656,24 +501,168 @@ fn main() {
             break a && b || (return) || (return 2);
             let r = &2;
             let _ = &mut (*r as i32);
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+        }"#]],
+    )
 }
 
 #[test]
 fn async_fn_weird_param_patterns() {
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
 async fn main(&self, param1: i32, ref mut param2: i32, _: i32, param4 @ _: i32, 123: i32) {}
 "#,
-    );
+        expect![[r#"
+            fn main(self, mut param1, mut param2, mut <ra@gennew>0, mut param4, mut <ra@gennew>1) async {
+                let self = self;
+                let param1 = param1;
+                let mut param2 = param2;
+                let ref mut param2 = param2;
+                let mut <ra@gennew>0 = <ra@gennew>0;
+                let _ = <ra@gennew>0;
+                let mut param4 = param4;
+                let param4 @ _ = param4;
+                let mut <ra@gennew>1 = <ra@gennew>1;
+                let 123 = <ra@gennew>1;
+                {}
+            }"#]],
+    )
+}
 
-    expect![[r#"
-        fn main(self, param1, mut param2, mut <ra@gennew>0, param4 @ _, mut <ra@gennew>1) async {
-            let ref mut param2 = param2;
-            let _ = <ra@gennew>0;
-            let 123 = <ra@gennew>1;
-            {}
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+#[test]
+fn array_element_cfg() {
+    pretty_print(
+        r#"
+fn foo() {
+    [
+        (),
+        #[cfg(false)]
+        ()
+    ];
+}
+    "#,
+        expect![[r#"
+        fn foo() {
+            [
+                (),
+            ];
+        }"#]],
+    );
+}
+
+#[test]
+fn block_tail_cfg() {
+    pretty_print(
+        r#"
+macro_rules! foo {
+    () => {
+        1
+    };
+}
+
+fn foo() -> i64 {
+    #[cfg(true)]
+    {
+        5
+    }
+    #[cfg(false)]
+    foo!()
+}
+    "#,
+        expect![[r#"
+            fn foo() {
+                {
+                    5
+                }
+            }"#]],
+    );
+    pretty_print(
+        r#"
+fn foo() -> i64 {
+    #[cfg(true)]
+    {
+        5
+    }
+    #[cfg(false)]
+    {
+        4
+    }
+    #[cfg(false)]
+    {
+        3
+    }
+}
+    "#,
+        expect![[r#"
+            fn foo() {
+                {
+                    5
+                }
+            }"#]],
+    );
+    pretty_print(
+        r#"
+macro_rules! m {
+    () => {
+        { 5 }
+        #[cfg(false)]
+        { 4 }
+    };
+}
+
+fn foo() -> i64 {
+    m!()
+}
+    "#,
+        expect![[r#"
+            fn foo() {
+                {
+                    5
+                }
+            }"#]],
+    );
+}
+
+#[test]
+fn weird_cfgs() {
+    pretty_print(
+        r#"
+macro_rules! falsify {
+    ( $($t:tt)* ) => { #[cfg(false)] $($t)* };
+}
+
+struct Foo();
+
+fn foo() {
+    foo(falsify!(1));
+    (falsify!(1),);
+    [falsify!(1)];
+    Foo(falsify!(1));
+    foo(#[cfg(false)] 1);
+    (#[cfg(false)] 1,);
+    [#[cfg(false)] 1];
+    Foo(#[cfg(false)] 1);
+    (|#[cfg(false)] a| {})();
+
+    builtin # asm(
+        "",
+        #[cfg(false)] x = const 4,
+        #[cfg(false)] options(),
+        #[cfg(false)] clobber_abi("C"),
+    );
+}
+    "#,
+        expect![[r#"
+            fn foo() {
+                foo();
+                ();
+                [];
+                Foo();
+                foo();
+                ();
+                [];
+                Foo();
+                (|| {})();
+                builtin#asm(_);
+            }"#]],
+    );
 }

@@ -8,18 +8,18 @@
 mod minisimd;
 use minisimd::*;
 
-use std::intrinsics::simd::{simd_fmax, simd_fmin};
+use std::intrinsics::simd::*;
 
 // CHECK-LABEL: @fmin
 #[no_mangle]
 pub unsafe fn fmin(a: f32x4, b: f32x4) -> f32x4 {
-    // CHECK: call <4 x float> @llvm.minnum.v4f32
-    simd_fmin(a, b)
+    // CHECK: call nsz <4 x float> @llvm.minimumnum.v4f32
+    simd_minimum_number_nsz(a, b)
 }
 
 // CHECK-LABEL: @fmax
 #[no_mangle]
 pub unsafe fn fmax(a: f32x4, b: f32x4) -> f32x4 {
-    // CHECK: call <4 x float> @llvm.maxnum.v4f32
-    simd_fmax(a, b)
+    // CHECK: call nsz <4 x float> @llvm.maximumnum.v4f32
+    simd_maximum_number_nsz(a, b)
 }

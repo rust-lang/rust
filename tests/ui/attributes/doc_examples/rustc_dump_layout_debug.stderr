@@ -1,0 +1,27 @@
+error: layout_of(Union) = Layout {
+           size: Size(4 bytes),
+           align: AbiAlign {
+               abi: Align(4 bytes),
+           },
+           backend_repr: Memory {
+               sized: true,
+           },
+           fields: Union(
+               2,
+           ),
+           largest_niche: None,
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
+       }
+ --> $DIR/rustc_dump_layout_debug.rs:8:1
+  |
+8 | pub union Union {
+  | ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

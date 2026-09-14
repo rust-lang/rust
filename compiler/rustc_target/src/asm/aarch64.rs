@@ -1,9 +1,10 @@
+use core::convert::Into;
 use std::fmt;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_span::{Symbol, sym};
 
-use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
+use super::{InlineAsmArch, InlineAsmSize, InlineAsmType, ModifierInfo};
 use crate::spec::{Env, Os, RelocModel, Target};
 
 def_reg_class! {
@@ -12,6 +13,7 @@ def_reg_class! {
         vreg,
         vreg_low16,
         preg,
+        ffr,
     }
 }
 
@@ -19,8 +21,8 @@ impl AArch64InlineAsmRegClass {
     pub fn valid_modifiers(self, _arch: super::InlineAsmArch) -> &'static [char] {
         match self {
             Self::reg => &['w', 'x'],
-            Self::vreg | Self::vreg_low16 => &['b', 'h', 's', 'd', 'q', 'v'],
-            Self::preg => &[],
+            Self::vreg | Self::vreg_low16 => &['b', 'h', 's', 'd', 'q', 'v', 'z'],
+            Self::preg | Self::ffr => &[],
         }
     }
 
@@ -30,43 +32,67 @@ impl AArch64InlineAsmRegClass {
 
     pub fn suggest_modifier(self, _arch: InlineAsmArch, ty: InlineAsmType) -> Option<ModifierInfo> {
         match self {
-            Self::reg => match ty.size().bits() {
-                64 => None,
-                _ => Some(('w', "w0", 32).into()),
+            Self::reg => match ty.size() {
+                InlineAsmSize::FixedBytes(8) => None,
+                _ => Some(('w', "w0", InlineAsmSize::FixedBytes(4)).into()),
             },
-            Self::vreg | Self::vreg_low16 => match ty.size().bits() {
-                8 => Some(('b', "b0", 8).into()),
-                16 => Some(('h', "h0", 16).into()),
-                32 => Some(('s', "s0", 32).into()),
-                64 => Some(('d', "d0", 64).into()),
-                128 => Some(('q', "q0", 128).into()),
+            Self::vreg | Self::vreg_low16 => match ty.size() {
+                InlineAsmSize::FixedBytes(1) => Some(('b', "b0", ty.size()).into()),
+                InlineAsmSize::FixedBytes(2) => Some(('h', "h0", ty.size()).into()),
+                InlineAsmSize::FixedBytes(4) => Some(('s', "s0", ty.size()).into()),
+                InlineAsmSize::FixedBytes(8) => Some(('d', "d0", ty.size()).into()),
+                InlineAsmSize::FixedBytes(16) => Some(('q', "q0", ty.size()).into()),
+                InlineAsmSize::Scalable => Some(('z', "z0", InlineAsmSize::Scalable).into()),
                 _ => None,
             },
-            Self::preg => None,
+            Self::preg | Self::ffr => None,
         }
     }
 
     pub fn default_modifier(self, _arch: InlineAsmArch) -> Option<ModifierInfo> {
         match self {
-            Self::reg => Some(('x', "x0", 64).into()),
-            Self::vreg | Self::vreg_low16 => Some(('v', "v0", 128).into()),
-            Self::preg => None,
+            Self::reg => Some(('x', "x0", InlineAsmSize::FixedBytes(8)).into()),
+            Self::vreg | Self::vreg_low16 => {
+                Some(('v', "v0", InlineAsmSize::FixedBytes(16)).into())
+            }
+            Self::preg | Self::ffr => None,
         }
     }
 
     pub fn supported_types(
         self,
         _arch: InlineAsmArch,
+        allow_experimental_reg: bool,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::reg => types! { _: I8, I16, I32, I64, F16, F32, F64; },
-            Self::vreg | Self::vreg_low16 => types! {
-                neon: I8, I16, I32, I64, F16, F32, F64, F128,
-                    VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF16(4), VecF32(2), VecF64(1),
-                    VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2);
-                // Note: When adding support for SVE vector types, they must be rejected for Arm64EC.
-            },
-            Self::preg => &[],
+            Self::vreg | Self::vreg_low16 => {
+                if allow_experimental_reg {
+                    types! {
+                        neon: I8, I16, I32, I64, F16, F32, F64, F128,
+                            VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF16(4), VecF32(2), VecF64(1),
+                            VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2);
+                        sve: SveVecI8, SveVecI16, SveVecI32, SveVecI64, SveVecI128, SveVecF16, SveVecF32,
+                            SveVecF64, SveVecI128, SveVecF128;
+                    }
+                } else {
+                    types! {
+                        neon: I8, I16, I32, I64, F16, F32, F64, F128,
+                            VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF16(4), VecF32(2), VecF64(1),
+                            VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2);
+                    }
+                }
+            }
+            Self::preg => {
+                if allow_experimental_reg {
+                    types! {
+                        sve: SveVecBool;
+                    }
+                } else {
+                    &[]
+                }
+            }
+            Self::ffr => &[],
         }
     }
 }
@@ -190,7 +216,7 @@ def_regs! {
         p13: preg = ["p13"] % restricted_for_arm64ec,
         p14: preg = ["p14"] % restricted_for_arm64ec,
         p15: preg = ["p15"] % restricted_for_arm64ec,
-        ffr: preg = ["ffr"] % restricted_for_arm64ec,
+        ffr: ffr = ["ffr"] % restricted_for_arm64ec,
         #error = ["x19", "w19"] =>
             "x19 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["x29", "w29", "fp", "wfp"] =>

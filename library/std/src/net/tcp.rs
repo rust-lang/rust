@@ -7,6 +7,7 @@
         all(target_os = "wasi", target_env = "p1"),
         target_os = "xous",
         target_os = "trusty",
+        target_os = "l4re",
     ))
 ))]
 mod tests;
@@ -239,7 +240,7 @@ impl TcpStream {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// stream.shutdown(Shutdown::Both).expect("shutdown call failed");
+    /// stream.shutdown(Shutdown::Both).expect("shutdown should succeed");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
@@ -260,7 +261,7 @@ impl TcpStream {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// let stream_clone = stream.try_clone().expect("clone failed...");
+    /// let stream_clone = stream.try_clone().expect("clone should succeed");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_clone(&self) -> io::Result<TcpStream> {
@@ -290,7 +291,7 @@ impl TcpStream {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// stream.set_read_timeout(None).expect("set_read_timeout call failed");
+    /// stream.set_read_timeout(None).expect("set_read_timeout should succeed");
     /// ```
     ///
     /// An [`Err`] is returned if the zero [`Duration`] is passed to this
@@ -334,7 +335,7 @@ impl TcpStream {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// stream.set_write_timeout(None).expect("set_write_timeout call failed");
+    /// stream.set_write_timeout(None).expect("set_write_timeout should succeed");
     /// ```
     ///
     /// An [`Err`] is returned if the zero [`Duration`] is passed to this
@@ -372,7 +373,7 @@ impl TcpStream {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// stream.set_read_timeout(None).expect("set_read_timeout call failed");
+    /// stream.set_read_timeout(None).expect("set_read_timeout should succeed");
     /// assert_eq!(stream.read_timeout().unwrap(), None);
     /// ```
     #[stable(feature = "socket_timeout", since = "1.4.0")]
@@ -397,7 +398,7 @@ impl TcpStream {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// stream.set_write_timeout(None).expect("set_write_timeout call failed");
+    /// stream.set_write_timeout(None).expect("set_write_timeout should succeed");
     /// assert_eq!(stream.write_timeout().unwrap(), None);
     /// ```
     #[stable(feature = "socket_timeout", since = "1.4.0")]
@@ -420,7 +421,7 @@ impl TcpStream {
     /// let stream = TcpStream::connect("127.0.0.1:8000")
     ///                        .expect("Couldn't connect to the server...");
     /// let mut buf = [0; 10];
-    /// let len = stream.peek(&mut buf).expect("peek failed");
+    /// let len = stream.peek(&mut buf).expect("peek should succeed");
     /// ```
     #[stable(feature = "peek", since = "1.18.0")]
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -445,7 +446,7 @@ impl TcpStream {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// stream.set_linger(Some(Duration::from_secs(0))).expect("set_linger call failed");
+    /// stream.set_linger(Some(Duration::from_secs(0))).expect("set_linger should succeed");
     /// ```
     #[unstable(feature = "tcp_linger", issue = "88494")]
     pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
@@ -466,12 +467,63 @@ impl TcpStream {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// stream.set_linger(Some(Duration::from_secs(0))).expect("set_linger call failed");
+    /// stream.set_linger(Some(Duration::from_secs(0))).expect("set_linger should succeed");
     /// assert_eq!(stream.linger().unwrap(), Some(Duration::from_secs(0)));
     /// ```
     #[unstable(feature = "tcp_linger", issue = "88494")]
     pub fn linger(&self) -> io::Result<Option<Duration>> {
         self.0.linger()
+    }
+
+    /// Sets the value of the `SO_KEEPALIVE` option on this socket.
+    ///
+    /// If set to `true`, the operating system will periodically send keepalive
+    /// probes on an idle connection to verify that the remote peer is still
+    /// reachable. If the peer fails to respond after a system-determined number
+    /// of probes, the connection is considered broken and subsequent I/O calls
+    /// will return an error.
+    ///
+    /// This is useful for detecting dead peers on long-lived connections where
+    /// no application-level traffic is exchanged, such as database or SSH
+    /// connections.
+    ///
+    /// The timing and frequency of keepalive probes are controlled by
+    /// system-level settings and are not configured by this method alone.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(tcp_keepalive)]
+    ///
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_keepalive(true).expect("set_keepalive should succeed");
+    #[unstable(feature = "tcp_keepalive", issue = "155889")]
+    pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
+        self.0.set_keepalive(keepalive)
+    }
+
+    /// Gets the value of the `SO_KEEPALIVE` option on this socket.
+    ///
+    /// For more information about this option, see [`TcpStream::set_keepalive`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(tcp_keepalive)]
+    ///
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_keepalive(true).expect("set_keepalive should succeed");
+    /// assert_eq!(stream.keepalive().unwrap_or(false), true);
+    /// ```
+    #[unstable(feature = "tcp_keepalive", issue = "155889")]
+    pub fn keepalive(&self) -> io::Result<bool> {
+        self.0.keepalive()
     }
 
     /// Sets the value of the `TCP_NODELAY` option on this socket.
@@ -489,7 +541,7 @@ impl TcpStream {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// stream.set_nodelay(true).expect("set_nodelay call failed");
+    /// stream.set_nodelay(true).expect("set_nodelay should succeed");
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
@@ -507,7 +559,7 @@ impl TcpStream {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// stream.set_nodelay(true).expect("set_nodelay call failed");
+    /// stream.set_nodelay(true).expect("set_nodelay should succeed");
     /// assert_eq!(stream.nodelay().unwrap_or(false), true);
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
@@ -527,7 +579,7 @@ impl TcpStream {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// stream.set_ttl(100).expect("set_ttl call failed");
+    /// stream.set_ttl(100).expect("set_ttl should succeed");
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
@@ -545,7 +597,7 @@ impl TcpStream {
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// stream.set_ttl(100).expect("set_ttl call failed");
+    /// stream.set_ttl(100).expect("set_ttl should succeed");
     /// assert_eq!(stream.ttl().unwrap_or(0), 100);
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
@@ -582,8 +634,8 @@ impl TcpStream {
     /// to be retried, an error with kind [`io::ErrorKind::WouldBlock`] is
     /// returned.
     ///
-    /// On Unix platforms, calling this method corresponds to calling `fcntl`
-    /// `FIONBIO`. On Windows calling this method corresponds to calling
+    /// On most Unix platforms, calling this method corresponds to calling `ioctl`
+    /// `FIONBIO`. On Windows, calling this method corresponds to calling
     /// `ioctlsocket` `FIONBIO`.
     ///
     /// # Examples
@@ -596,7 +648,7 @@ impl TcpStream {
     ///
     /// let mut stream = TcpStream::connect("127.0.0.1:7878")
     ///     .expect("Couldn't connect to the server...");
-    /// stream.set_nonblocking(true).expect("set_nonblocking call failed");
+    /// stream.set_nonblocking(true).expect("set_nonblocking should succeed");
     ///
     /// # fn wait_for_fd() { unimplemented!() }
     /// let mut buf = vec![];
@@ -631,7 +683,7 @@ impl Read for TcpStream {
         self.0.read(buf)
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.0.read_buf(buf)
     }
 
@@ -670,7 +722,7 @@ impl Read for &TcpStream {
         self.0.read(buf)
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.0.read_buf(buf)
     }
 
@@ -825,6 +877,29 @@ impl TcpListener {
     /// is established. When established, the corresponding [`TcpStream`] and the
     /// remote peer's address will be returned.
     ///
+    /// # Errors
+    ///
+    /// Some errors this function returns do not indicate a problem with the
+    /// listener itself, and a program serving a long-lived listener will
+    /// usually want to handle them and keep accepting connections rather than
+    /// treat them as fatal. These include, but are not limited to:
+    ///
+    /// - An error specific to a single incoming connection that failed before
+    ///   it could be accepted, such as one aborted by the peer
+    ///   ([`ConnectionAborted`]). A later call may succeed immediately.
+    /// - An error from reaching the per-process or system-wide open file
+    ///   descriptor limit. The call can be retried once other file descriptors
+    ///   have been closed, typically after a short delay.
+    /// - An error from failing to allocate memory while accepting a connection
+    ///   ([`OutOfMemory`]).
+    ///
+    /// Which errors can occur is platform-specific. On Unix, [`Interrupted`]
+    /// errors are retried internally rather than being returned.
+    ///
+    /// [`ConnectionAborted`]: io::ErrorKind::ConnectionAborted
+    /// [`OutOfMemory`]: io::ErrorKind::OutOfMemory
+    /// [`Interrupted`]: io::ErrorKind::Interrupted
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -850,6 +925,11 @@ impl TcpListener {
     /// The returned iterator will never return [`None`] and will also not yield
     /// the peer's [`SocketAddr`] structure. Iterating over it is equivalent to
     /// calling [`TcpListener::accept`] in a loop.
+    ///
+    /// # Errors
+    ///
+    /// Each connection yielded by the iterator can fail for the same reasons as
+    /// [`TcpListener::accept`]; see its documentation for details.
     ///
     /// # Examples
     ///
@@ -885,6 +965,11 @@ impl TcpListener {
     /// The returned iterator will never return [`None`] and will also not yield
     /// the peer's [`SocketAddr`] structure. Iterating over it is equivalent to
     /// calling [`TcpListener::accept`] in a loop.
+    ///
+    /// # Errors
+    ///
+    /// Each connection yielded by the iterator can fail for the same reasons as
+    /// [`TcpListener::accept`]; see its documentation for details.
     ///
     /// # Examples
     ///
@@ -922,7 +1007,7 @@ impl TcpListener {
     /// use std::net::TcpListener;
     ///
     /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
-    /// listener.set_ttl(100).expect("could not set TTL");
+    /// listener.set_ttl(100).expect("set_ttl should succeed");
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
@@ -939,7 +1024,7 @@ impl TcpListener {
     /// use std::net::TcpListener;
     ///
     /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
-    /// listener.set_ttl(100).expect("could not set TTL");
+    /// listener.set_ttl(100).expect("set_ttl should succeed");
     /// assert_eq!(listener.ttl().unwrap_or(0), 100);
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
@@ -973,7 +1058,7 @@ impl TcpListener {
     /// use std::net::TcpListener;
     ///
     /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
-    /// listener.take_error().expect("No error was expected");
+    /// listener.take_error().expect("`take_error` should succeed");
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
@@ -988,8 +1073,8 @@ impl TcpListener {
     /// IO operation could not be completed and needs to be retried, an error
     /// with kind [`io::ErrorKind::WouldBlock`] is returned.
     ///
-    /// On Unix platforms, calling this method corresponds to calling `fcntl`
-    /// `FIONBIO`. On Windows calling this method corresponds to calling
+    /// On most Unix platforms, calling this method corresponds to calling `ioctl`
+    /// `FIONBIO`. On Windows, calling this method corresponds to calling
     /// `ioctlsocket` `FIONBIO`.
     ///
     /// # Examples
@@ -1002,7 +1087,7 @@ impl TcpListener {
     /// use std::net::TcpListener;
     ///
     /// let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-    /// listener.set_nonblocking(true).expect("Cannot set non-blocking");
+    /// listener.set_nonblocking(true).expect("set_nonblocking should succeed");
     ///
     /// # fn wait_for_fd() { unimplemented!() }
     /// # fn handle_connection(stream: std::net::TcpStream) { unimplemented!() }

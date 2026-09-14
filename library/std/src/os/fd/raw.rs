@@ -9,6 +9,7 @@ use moto_rt::libc;
 
 #[cfg(target_os = "motor")]
 use super::owned::OwnedFd;
+use crate::alloc::Allocator;
 #[cfg(not(target_os = "trusty"))]
 use crate::fs;
 use crate::io;
@@ -16,7 +17,7 @@ use crate::io;
 use crate::os::hermit::io::OwnedFd;
 #[cfg(all(not(target_os = "hermit"), not(target_os = "motor")))]
 use crate::os::raw;
-#[cfg(all(doc, not(any(target_arch = "wasm32", target_env = "sgx"))))]
+#[cfg(all(doc, not(any(target_arch = "wasm32", target_env = "sgx", target_os = "l4re"))))]
 use crate::os::unix::io::AsFd;
 #[cfg(unix)]
 use crate::os::unix::io::OwnedFd;
@@ -282,7 +283,7 @@ impl<T: AsRawFd + ?Sized> AsRawFd for crate::rc::UniqueRc<T> {
 }
 
 #[stable(feature = "asrawfd_ptrs", since = "1.63.0")]
-impl<T: AsRawFd> AsRawFd for Box<T> {
+impl<T: AsRawFd, A: Allocator> AsRawFd for Box<T, A> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
         (**self).as_raw_fd()

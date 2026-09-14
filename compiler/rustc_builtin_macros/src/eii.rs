@@ -1,17 +1,19 @@
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{
-    Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Path, StmtKind, Visibility, ast,
+    AttrKind, Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Mutability, Path,
+    StmtKind, SyntheticAttr, Visibility, ast,
 };
 use rustc_ast_pretty::pprust::path_to_string;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::errors::{
-    EiiExternTargetExpectedList, EiiExternTargetExpectedMacro, EiiExternTargetExpectedUnsafe,
-    EiiMacroExpectedMaxOneArgument, EiiOnlyOnce, EiiSharedMacroExpectedFunction,
-    EiiSharedMacroInStatementPosition,
+use crate::diagnostics::{
+    EiiAttributeNotSupported, EiiBothDeclAndImpl, EiiExternTargetExpectedList,
+    EiiExternTargetExpectedMacro, EiiExternTargetExpectedUnsafe, EiiMacroExpectedMaxOneArgument,
+    EiiMultipleImplementations, EiiOnlyOnce, EiiSharedMacroInStatementPosition,
+    EiiSharedMacroTarget, EiiStaticArgumentRequired, EiiStaticDefaultApple, EiiStaticMutable,
 };
 
 /// ```rust
@@ -73,61 +75,107 @@ fn eii_(
         });
         return vec![orig_item];
     } else {
-        ecx.dcx().emit_err(EiiSharedMacroExpectedFunction {
+        ecx.dcx().emit_err(EiiSharedMacroTarget {
             span: eii_attr_span,
             name: path_to_string(&meta_item.path),
         });
         return vec![orig_item];
     };
 
-    let ast::Item { attrs, id: _, span: _, vis, kind: ItemKind::Fn(func), tokens: _ } =
-        item.as_ref()
-    else {
-        ecx.dcx().emit_err(EiiSharedMacroExpectedFunction {
-            span: eii_attr_span,
-            name: path_to_string(&meta_item.path),
-        });
-        return vec![Annotatable::Item(item)];
+    let ast::Item { attrs, id: _, span: _, vis, kind, tokens: _ } = item.as_ref();
+    let (item_span, foreign_item_name) = match kind {
+        ItemKind::Fn(func) => (func.sig.span, func.ident),
+        ItemKind::Static(stat) => {
+            // See https://github.com/rust-lang/rust/issues/157649
+            if let Some(expr) = &stat.expr
+                && ecx.sess.target.is_like_darwin
+            {
+                ecx.dcx().emit_err(EiiStaticDefaultApple {
+                    span: expr.span,
+                    name: path_to_string(&meta_item.path),
+                });
+                return vec![];
+            }
+
+            // Statics must have an explicit name for the eii
+            if meta_item.is_word() {
+                ecx.dcx().emit_err(EiiStaticArgumentRequired {
+                    span: eii_attr_span,
+                    name: path_to_string(&meta_item.path),
+                });
+                return vec![];
+            }
+
+            // Mut statics are currently not supported
+            if stat.mutability == Mutability::Mut {
+                ecx.dcx().emit_err(EiiStaticMutable {
+                    span: eii_attr_span,
+                    name: path_to_string(&meta_item.path),
+                });
+            }
+
+            (item.span, stat.ident)
+        }
+        _ => {
+            ecx.dcx().emit_err(EiiSharedMacroTarget {
+                span: eii_attr_span,
+                name: path_to_string(&meta_item.path),
+            });
+            return vec![Annotatable::Item(item)];
+        }
     };
+
+    match kind {
+        ItemKind::Fn(func) => {
+            if func.eii_impl.is_some() {
+                ecx.dcx().emit_err(EiiBothDeclAndImpl { span: eii_attr_span });
+                return vec![Annotatable::Item(item)];
+            }
+        }
+        ItemKind::Static(stat) => {
+            if stat.eii_impl.is_some() {
+                ecx.dcx().emit_err(EiiBothDeclAndImpl { span: eii_attr_span });
+                return vec![Annotatable::Item(item)];
+            }
+        }
+        _ => unreachable!("Target was checked earlier"),
+    };
+
     // only clone what we need
     let attrs = attrs.clone();
-    let func = (**func).clone();
     let vis = vis.clone();
 
     let attrs_from_decl =
         filter_attrs_for_multiple_eii_attr(ecx, attrs, eii_attr_span, &meta_item.path);
+    let (macro_attrs, foreign_item_attrs) = split_attrs(ecx, item_span, attrs_from_decl);
 
-    let Ok(macro_name) = name_for_impl_macro(ecx, &func, &meta_item) else {
+    let Ok(macro_name) = name_for_impl_macro(ecx, foreign_item_name, meta_item) else {
         // we don't need to wrap in Annotatable::Stmt conditionally since
         // EII can't be used on items in statement position
         return vec![Annotatable::Item(item)];
     };
 
-    // span of the declaring item without attributes
-    let item_span = func.sig.span;
-    let foreign_item_name = func.ident;
-
     let mut module_items = Vec::new();
 
-    if func.body.is_some() {
-        module_items.push(generate_default_impl(
-            ecx,
-            &func,
-            impl_unsafe,
-            macro_name,
-            eii_attr_span,
-            item_span,
-            foreign_item_name,
-        ))
+    if let Some(default_impl) = generate_default_impl(
+        ecx,
+        kind,
+        impl_unsafe,
+        macro_name,
+        eii_attr_span,
+        item_span,
+        foreign_item_name,
+    ) {
+        module_items.push(default_impl);
     }
 
     module_items.push(generate_foreign_item(
         ecx,
         eii_attr_span,
         item_span,
-        func,
+        kind,
         vis,
-        &attrs_from_decl,
+        foreign_item_attrs,
     ));
     module_items.push(generate_attribute_macro_to_implement(
         ecx,
@@ -135,7 +183,7 @@ fn eii_(
         macro_name,
         foreign_item_name,
         impl_unsafe,
-        &attrs_from_decl,
+        macro_attrs,
     ));
 
     // we don't need to wrap in Annotatable::Stmt conditionally since
@@ -143,16 +191,73 @@ fn eii_(
     module_items.into_iter().map(Annotatable::Item).collect()
 }
 
+fn split_attrs(
+    ecx: &mut ExtCtxt<'_>,
+    span: Span,
+    attrs: ThinVec<Attribute>,
+) -> (ThinVec<Attribute>, ThinVec<Attribute>) {
+    let mut macro_attributes = ThinVec::new();
+    let mut foreign_item_attributes = ThinVec::new();
+
+    for attr in attrs {
+        match &attr.kind {
+            // Forward synthetic CfgTrace and CfgAttrTrace, these are applicable to both foreign item and macro.
+            AttrKind::Synthetic(SyntheticAttr::CfgTrace(_) | SyntheticAttr::CfgAttrTrace(_)) => {
+                foreign_item_attributes.push(attr.clone());
+                macro_attributes.push(attr);
+            }
+            // Doc attributes should be forwarded to the macro and the foreign item, since those are
+            // the two items you interact with as a user.
+            // FIXME: idk yet how EIIs show up in docs, might want to customize
+            AttrKind::DocComment(_, _) => {
+                foreign_item_attributes.push(attr.clone());
+                macro_attributes.push(attr);
+            }
+            AttrKind::Normal(normal) => {
+                match normal.item.name() {
+                    // If an eii is marked a lang item, that's because we want to call its declaration, so
+                    // mark the foreign item as the lang item
+                    Some(sym::lang) => foreign_item_attributes.push(attr),
+                    // Deprecating an eii means deprecating the macro and the foreign item
+                    Some(sym::deprecated) => {
+                        foreign_item_attributes.push(attr.clone());
+                        macro_attributes.push(attr);
+                    }
+                    // The stability of an EII affects the usage of the macro and calling the foreign item
+                    Some(sym::stable) | Some(sym::unstable) => {
+                        foreign_item_attributes.push(attr.clone());
+                        macro_attributes.push(attr);
+                    }
+                    // `#[track_caller]` goes on the foreign item only: it's the symbol callers link
+                    // against, so it must carry the flag for call sites to pass the caller location.
+                    // Implementations derive it during codegen (see `EiiImpls` in `codegen_attrs.rs`),
+                    // so it must not be routed onto the default impl here.
+                    Some(sym::track_caller) => {
+                        foreign_item_attributes.push(attr);
+                    }
+                    Some(sym::eii) => unreachable!("should already be filtered out"),
+                    _ => {
+                        ecx.dcx()
+                            .emit_err(EiiAttributeNotSupported { span, attr_span: attr.span() });
+                    }
+                }
+            }
+        }
+    }
+
+    (macro_attributes, foreign_item_attributes)
+}
+
 /// Decide on the name of the macro that can be used to implement the EII.
 /// This is either an explicitly given name, or the name of the item in the
 /// declaration of the EII.
 fn name_for_impl_macro(
     ecx: &mut ExtCtxt<'_>,
-    func: &ast::Fn,
+    item_ident: Ident,
     meta_item: &MetaItem,
 ) -> Result<Ident, ErrorGuaranteed> {
     if meta_item.is_word() {
-        Ok(func.ident)
+        Ok(item_ident)
     } else if let Some([first]) = meta_item.meta_item_list()
         && let Some(m) = first.meta_item()
         && m.path.segments.len() == 1
@@ -192,18 +297,26 @@ fn filter_attrs_for_multiple_eii_attr(
 
 fn generate_default_impl(
     ecx: &mut ExtCtxt<'_>,
-    func: &ast::Fn,
+    item_kind: &ItemKind,
     impl_unsafe: bool,
     macro_name: Ident,
     eii_attr_span: Span,
     item_span: Span,
     foreign_item_name: Ident,
-) -> Box<ast::Item> {
-    // FIXME: re-add some original attrs
+) -> Option<Box<ast::Item>> {
     let attrs = ThinVec::new();
 
-    let mut default_func = func.clone();
-    default_func.eii_impls.push(EiiImpl {
+    match item_kind {
+        ItemKind::Fn(func) => {
+            func.body.as_ref()?;
+        }
+        ItemKind::Static(stat) => {
+            stat.expr.as_ref()?;
+        }
+        _ => unreachable!("Target was checked earlier"),
+    };
+
+    let eii_impl = Box::new(EiiImpl {
         node_id: DUMMY_NODE_ID,
         inner_span: macro_name.span,
         eii_macro_path: ast::Path::from_ident(macro_name),
@@ -214,38 +327,40 @@ fn generate_default_impl(
         },
         span: eii_attr_span,
         is_default: true,
-        known_eii_macro_resolution: Some(ast::EiiDecl {
-            foreign_item: ecx.path(
-                foreign_item_name.span,
-                // prefix self to explicitly escape the const block generated below
-                // NOTE: this is why EIIs can't be used on statements
-                vec![Ident::from_str_and_span("self", foreign_item_name.span), foreign_item_name],
-            ),
-            impl_unsafe,
-        }),
+        known_eii_macro_resolution: Some(ecx.path(
+            foreign_item_name.span,
+            // prefix self to explicitly escape the const block generated below
+            // NOTE: this is why EIIs can't be used on statements
+            vec![Ident::from_str_and_span("self", foreign_item_name.span), foreign_item_name],
+        )),
     });
+
+    let mut item_kind = item_kind.clone();
+    match &mut item_kind {
+        ItemKind::Fn(func) => {
+            assert!(func.eii_impl.is_none());
+            func.eii_impl = Some(eii_impl);
+        }
+        ItemKind::Static(stat) => {
+            assert!(stat.eii_impl.is_none());
+            stat.eii_impl = Some(eii_impl);
+        }
+        _ => unreachable!("Target was checked earlier"),
+    };
 
     let anon_mod = |span: Span, stmts: ThinVec<ast::Stmt>| {
         let unit = ecx.ty(item_span, ast::TyKind::Tup(ThinVec::new()));
         let underscore = Ident::new(kw::Underscore, item_span);
-        ecx.item_const(
-            span,
-            underscore,
-            unit,
-            ast::ConstItemRhsKind::new_body(ecx.expr_block(ecx.block(span, stmts))),
-        )
+        ecx.item_const(span, underscore, unit, Some(ecx.expr_block(ecx.block(span, stmts))))
     };
 
     // const _: () = {
-    //     <orig fn>
+    //     <orig item>
     // }
-    anon_mod(
+    Some(anon_mod(
         item_span,
-        thin_vec![ecx.stmt_item(
-            item_span,
-            ecx.item(item_span, attrs, ItemKind::Fn(Box::new(default_func)))
-        ),],
-    )
+        thin_vec![ecx.stmt_item(item_span, ecx.item(item_span, attrs, item_kind))],
+    ))
 }
 
 /// Generates a foreign item, like
@@ -257,40 +372,30 @@ fn generate_foreign_item(
     ecx: &mut ExtCtxt<'_>,
     eii_attr_span: Span,
     item_span: Span,
-    mut func: ast::Fn,
+    item_kind: &ItemKind,
     vis: Visibility,
-    attrs_from_decl: &[Attribute],
+    attrs_from_decl: ThinVec<Attribute>,
 ) -> Box<ast::Item> {
-    let mut foreign_item_attrs = ThinVec::new();
-    foreign_item_attrs.extend_from_slice(attrs_from_decl);
+    let mut foreign_item_attrs = attrs_from_decl;
 
     // Add the rustc_eii_foreign_item on the foreign item. Usually, foreign items are mangled.
     // This attribute makes sure that we later know that this foreign item's symbol should not be.
     foreign_item_attrs.push(ecx.attr_word(sym::rustc_eii_foreign_item, eii_attr_span));
 
-    let abi = match func.sig.header.ext {
-        // extern "X" fn  =>  extern "X" {}
-        ast::Extern::Explicit(lit, _) => Some(lit),
-        // extern fn  =>  extern {}
-        ast::Extern::Implicit(_) => None,
-        // fn  =>  extern "Rust" {}
-        ast::Extern::None => Some(ast::StrLit {
-            symbol: sym::Rust,
-            suffix: None,
-            symbol_unescaped: sym::Rust,
-            style: ast::StrStyle::Cooked,
-            span: eii_attr_span,
-        }),
+    // We set the abi to the default "rust" abi, which can be overridden by `generate_foreign_func`,
+    // if a specific abi was specified on the EII function
+    let mut abi = Some(ast::StrLit {
+        symbol: sym::Rust,
+        suffix: None,
+        symbol_unescaped: sym::Rust,
+        style: ast::StrStyle::Cooked,
+        span: eii_attr_span,
+    });
+    let foreign_kind = match item_kind {
+        ItemKind::Fn(func) => generate_foreign_func(func.clone(), &mut abi),
+        ItemKind::Static(stat) => generate_foreign_static(stat.clone()),
+        _ => unreachable!("Target was checked earlier"),
     };
-
-    // ABI has been moved to the extern {} block, so we remove it from the fn item.
-    func.sig.header.ext = ast::Extern::None;
-    func.body = None;
-
-    // And mark safe functions explicitly as `safe fn`.
-    if func.sig.header.safety == ast::Safety::Default {
-        func.sig.header.safety = ast::Safety::Safe(func.sig.span);
-    }
 
     ecx.item(
         eii_attr_span,
@@ -304,11 +409,46 @@ fn generate_foreign_item(
                 id: ast::DUMMY_NODE_ID,
                 span: item_span,
                 vis,
-                kind: ast::ForeignItemKind::Fn(Box::new(func.clone())),
+                kind: foreign_kind,
                 tokens: None,
             })]),
         }),
     )
+}
+
+fn generate_foreign_func(
+    mut func: Box<ast::Fn>,
+    abi: &mut Option<ast::StrLit>,
+) -> ast::ForeignItemKind {
+    match func.sig.header.ext {
+        // extern "X" fn  =>  extern "X" {}
+        ast::Extern::Explicit(lit, _) => *abi = Some(lit),
+        // extern fn  =>  extern {}
+        ast::Extern::Implicit(_) => *abi = None,
+        // no abi was specified, so we keep the default
+        ast::Extern::None => {}
+    };
+
+    // ABI has been moved to the extern {} block, so we remove it from the fn item.
+    func.sig.header.ext = ast::Extern::None;
+    func.body = None;
+
+    // And mark safe functions explicitly as `safe fn`.
+    if func.sig.header.safety == ast::Safety::Default {
+        func.sig.header.safety = ast::Safety::Safe(func.sig.span);
+    }
+
+    ast::ForeignItemKind::Fn(func)
+}
+
+fn generate_foreign_static(mut stat: Box<ast::StaticItem>) -> ast::ForeignItemKind {
+    if stat.safety == ast::Safety::Default {
+        stat.safety = ast::Safety::Safe(stat.ident.span);
+    }
+
+    stat.expr = None;
+
+    ast::ForeignItemKind::Static(stat)
 }
 
 /// Generate a stub macro (a bit like in core) that will roughly look like:
@@ -327,13 +467,9 @@ fn generate_attribute_macro_to_implement(
     macro_name: Ident,
     foreign_item_name: Ident,
     impl_unsafe: bool,
-    attrs_from_decl: &[Attribute],
+    attrs_from_decl: ThinVec<Attribute>,
 ) -> Box<ast::Item> {
-    let mut macro_attrs = ThinVec::new();
-
-    // To avoid e.g. `error: attribute macro has missing stability attribute`
-    // errors for eii's in std.
-    macro_attrs.extend_from_slice(attrs_from_decl);
+    let mut macro_attrs = attrs_from_decl;
 
     // Avoid "missing stability attribute" errors for eiis in std. See #146993.
     macro_attrs.push(ecx.attr_name_value_str(sym::rustc_macro_transparency, sym::semiopaque, span));
@@ -347,7 +483,7 @@ fn generate_attribute_macro_to_implement(
         id: ast::DUMMY_NODE_ID,
         span,
         // pub
-        vis: ast::Visibility { span, kind: ast::VisibilityKind::Public, tokens: None },
+        vis: ast::Visibility { span, kind: ast::VisibilityKind::Public },
         kind: ast::ItemKind::MacroDef(
             // macro macro_name
             macro_name,
@@ -453,19 +589,18 @@ pub(crate) fn eii_shared_macro(
     {
         item
     } else {
-        ecx.dcx().emit_err(EiiSharedMacroExpectedFunction {
-            span,
-            name: path_to_string(&meta_item.path),
-        });
+        ecx.dcx().emit_err(EiiSharedMacroTarget { span, name: path_to_string(&meta_item.path) });
         return vec![item];
     };
 
-    let ItemKind::Fn(f) = &mut i.kind else {
-        ecx.dcx().emit_err(EiiSharedMacroExpectedFunction {
-            span,
-            name: path_to_string(&meta_item.path),
-        });
-        return vec![item];
+    let eii_impl = match &mut i.kind {
+        ItemKind::Fn(func) => &mut func.eii_impl,
+        ItemKind::Static(stat) => &mut stat.eii_impl,
+        _ => {
+            ecx.dcx()
+                .emit_err(EiiSharedMacroTarget { span, name: path_to_string(&meta_item.path) });
+            return vec![item];
+        }
     };
 
     let is_default = if meta_item.is_word() {
@@ -483,7 +618,10 @@ pub(crate) fn eii_shared_macro(
         return vec![item];
     };
 
-    f.eii_impls.push(EiiImpl {
+    if eii_impl.is_some() {
+        ecx.dcx().emit_err(EiiMultipleImplementations { span });
+    }
+    *eii_impl = Some(Box::new(EiiImpl {
         node_id: DUMMY_NODE_ID,
         inner_span: meta_item.path.span,
         eii_macro_path: meta_item.path.clone(),
@@ -491,7 +629,7 @@ pub(crate) fn eii_shared_macro(
         span,
         is_default,
         known_eii_macro_resolution: None,
-    });
+    }));
 
     vec![item]
 }

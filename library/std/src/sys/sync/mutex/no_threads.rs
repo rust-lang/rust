@@ -1,5 +1,8 @@
 use crate::cell::Cell;
 
+#[cfg(target_has_threads)]
+compile_error!("Using no_threads implementation on a target with threads");
+
 pub struct Mutex {
     // This platform has no threads, so we can use a Cell here.
     locked: Cell<bool>,
@@ -26,6 +29,6 @@ impl Mutex {
 
     #[inline]
     pub fn try_lock(&self) -> bool {
-        self.locked.replace(true) == false
+        !self.locked.replace(true)
     }
 }

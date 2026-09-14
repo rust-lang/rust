@@ -14,7 +14,8 @@
 use std::borrow::Borrow;
 
 use itertools::Itertools;
-use rustc_codegen_ssa::traits::TypeMembershipCodegenMethods;
+use rustc_abi::AddressSpace;
+use rustc_codegen_ssa::traits::{MiscCodegenMethods, TypeMembershipCodegenMethods};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
@@ -70,6 +71,13 @@ pub(crate) fn declare_raw_fn<'ll, 'tcx>(
 
     let mut attrs = SmallVec::<[_; 4]>::new();
 
+    if cx.sess().target.is_like_gpu {
+        // Conservatively apply convergent to all functions in case they may call
+        // a convergent function. Rely on LLVM to optimize away the unnecessary
+        // convergent attributes.
+        attrs.push(llvm::AttributeKind::Convergent.create_attr(cx.llcx));
+    }
+
     if cx.tcx.sess.opts.cg.no_redzone.unwrap_or(cx.tcx.sess.target.disable_redzone) {
         attrs.push(llvm::AttributeKind::NoRedZone.create_attr(cx.llcx));
     }
@@ -94,6 +102,28 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
                 name.as_c_char_ptr(),
                 name.len(),
                 ty,
+            )
+        }
+    }
+
+    /// Declare a global value in a specific address space.
+    ///
+    /// If there’s a value with the same name already declared, the function will
+    /// return its Value instead.
+    pub(crate) fn declare_global_in_addrspace(
+        &self,
+        name: &str,
+        ty: &'ll Type,
+        addr_space: AddressSpace,
+    ) -> &'ll Value {
+        debug!("declare_global(name={name:?}, addrspace={addr_space:?})");
+        unsafe {
+            llvm::LLVMRustGetOrInsertGlobalInAddrspace(
+                (**self).borrow().llmod,
+                name.as_c_char_ptr(),
+                name.len(),
+                ty,
+                addr_space.0,
             )
         }
     }
@@ -202,13 +232,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 options.insert(kcfi::TypeIdOptions::NORMALIZE_INTEGERS);
             }
 
-            if let Some(instance) = instance {
-                let kcfi_typeid = kcfi::typeid_for_instance(self.tcx, instance, options);
-                self.set_kcfi_type_metadata(llfn, kcfi_typeid);
+            let kcfi_typeid = if let Some(instance) = instance {
+                kcfi::typeid_for_instance(self.tcx, instance, options)
             } else {
-                let kcfi_typeid = kcfi::typeid_for_fnabi(self.tcx, fn_abi, options);
-                self.set_kcfi_type_metadata(llfn, kcfi_typeid);
-            }
+                kcfi::typeid_for_fnabi(self.tcx, fn_abi, options)
+            };
+            self.set_kcfi_type_metadata(llfn, kcfi_typeid);
         }
 
         llfn

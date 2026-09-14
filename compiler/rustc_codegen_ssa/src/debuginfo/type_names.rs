@@ -15,14 +15,16 @@ use std::fmt::Write;
 
 use rustc_abi::Integer;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_hashes::Hash64;
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Mutability};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::{self, ExistentialProjection, GenericArgKind, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{
+    self, ExistentialProjection, GenericArgKind, GenericArgsRef, Ty, TyCtxt, Unnormalized,
+};
 use smallvec::SmallVec;
 
 use crate::debuginfo::wants_c_like_enum_debuginfo;
@@ -364,15 +366,16 @@ fn push_debuginfo_type_name<'tcx>(
                 }
                 output.push_str(" (*)(");
             } else {
-                output.push_str(sig.safety.prefix_str());
+                output.push_str(sig.safety().prefix_str());
 
-                if sig.abi != rustc_abi::ExternAbi::Rust {
-                    let _ = write!(output, "extern {} ", sig.abi);
+                if sig.abi() != rustc_abi::ExternAbi::Rust {
+                    let _ = write!(output, "extern {} ", sig.abi());
                 }
 
                 output.push_str("fn(");
             }
 
+            // FIXME(splat): should debuginfo be de-tupled in the callee (and caller)?
             if !sig.inputs().is_empty() {
                 for &parameter_type in sig.inputs() {
                     push_debuginfo_type_name(tcx, parameter_type, true, output, visited);
@@ -381,7 +384,7 @@ fn push_debuginfo_type_name<'tcx>(
                 pop_arg_separator(output);
             }
 
-            if sig.c_variadic {
+            if sig.c_variadic() {
                 if !sig.inputs().is_empty() {
                     output.push_str(", ...");
                 } else {
@@ -540,8 +543,10 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
     }
 
     if let Some(trait_ref) = trait_ref {
-        let trait_ref =
-            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), trait_ref);
+        let trait_ref = tcx.normalize_erasing_regions(
+            ty::TypingEnv::fully_monomorphized(),
+            Unnormalized::new_wip(trait_ref),
+        );
         push_item_name(tcx, trait_ref.def_id, true, &mut vtable_name);
         visited.clear();
         push_generic_args_internal(tcx, trait_ref.args, &mut vtable_name, &mut visited);
@@ -654,7 +659,7 @@ fn push_generic_args_internal<'tcx>(
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
 ) -> bool {
-    assert_eq!(args, tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), args));
+    tcx.assert_fully_normalized(ty::TypingEnv::fully_monomorphized(), args);
     let mut args = args.non_erasable_generics().peekable();
     if args.peek().is_none() {
         return false;
@@ -724,7 +729,7 @@ fn push_debuginfo_const_name<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, outpu
                     // avoiding collisions and will make the emitted type names shorter.
                     let hash_short = tcx.with_stable_hashing_context(|mut hcx| {
                         let mut hasher = StableHasher::new();
-                        hcx.while_hashing_spans(false, |hcx| cv.hash_stable(hcx, &mut hasher));
+                        hcx.while_hashing_spans(false, |hcx| cv.stable_hash(hcx, &mut hasher));
                         hasher.finish::<Hash64>()
                     });
 

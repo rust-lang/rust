@@ -4,6 +4,8 @@ const fs = require("fs");
 const path = require("path");
 const { isGeneratorObject } = require("util/types");
 
+const CHANNEL_REGEX = new RegExp("/nightly/|/beta/|/stable/|/1\\.[0-9]+\\.[0-9]+/");
+
 function arrayToCode(array) {
     return array.map((value, index) => {
         value = value.split("&nbsp;").join(" ");
@@ -56,6 +58,8 @@ function valueMapper(key, testOutput) {
                 value = testOutput["parent"]["name"];
             }
         }
+    } else if (key === "href") {
+        value = value.replace(CHANNEL_REGEX, "/$CHANNEL/");
     }
     return value;
 }
@@ -69,13 +73,14 @@ function betterLookingDiff(expected, testOutput) {
         if (!Object.prototype.hasOwnProperty.call(expected, key)) {
             continue;
         }
+        const expectedValue = expected[key];
         if (!testOutput || !Object.prototype.hasOwnProperty.call(testOutput, key)) {
-            output += "-" + spaces + contentToDiffLine(key, expected[key]) + "\n";
+            output += "-" + spaces + contentToDiffLine(key, expectedValue) + "\n";
             continue;
         }
         const value = valueMapper(key, testOutput);
-        if (value !== expected[key]) {
-            output += "-" + spaces + contentToDiffLine(key, expected[key]) + "\n";
+        if (value !== expectedValue) {
+            output += "-" + spaces + contentToDiffLine(key, expectedValue) + "\n";
             output += "+" + spaces + contentToDiffLine(key, value) + "\n";
         } else {
             output += spaces + " " + contentToDiffLine(key, value) + "\n";
@@ -92,7 +97,11 @@ function lookForEntry(expected, testOutput) {
                 continue;
             }
             const value = valueMapper(key, testOutputEntry);
-            if (value !== expected[key]) {
+            let expectedValue = expected[key];
+            if (key === "href") {
+                expectedValue = expectedValue.replace(CHANNEL_REGEX, "/$CHANNEL/");
+            }
+            if (value !== expectedValue) {
                 allGood = false;
                 break;
             }
@@ -530,6 +539,22 @@ async function loadSearchJS(doc_folder, resource_suffix) {
     };
 }
 
+/**
+ * Returns true if `fileName` looks like a proper rustdoc-js test file.
+ *
+ * Mirrors compiletest's `is_test` filtering so editor temp/autosave files
+ * (for example Emacs `.#foo.js`) are not treated as tests.
+ */
+function isTestFile(fileName) {
+    if (!fileName.endsWith(".js")) {
+        return false;
+    }
+
+    // `.`, `#`, and `~` are common temp-file prefixes.
+    const invalidPrefixes = [".", "#", "~"];
+    return !invalidPrefixes.some(prefix => fileName.startsWith(prefix));
+}
+
 function showHelp() {
     console.log("rustdoc-js options:");
     console.log("  --doc-folder [PATH]        : location of the generated doc folder");
@@ -617,7 +642,7 @@ async function main(argv) {
         }
     } else if (opts["test_folder"].length !== 0) {
         for (const file of fs.readdirSync(opts["test_folder"])) {
-            if (!file.endsWith(".js")) {
+            if (!isTestFile(file)) {
                 continue;
             }
             process.stdout.write(`Testing ${file} ... `);

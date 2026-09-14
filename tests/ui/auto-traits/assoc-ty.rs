@@ -17,6 +17,5 @@ fn main() {
     let _: <() as Trait>::Output = ();
     //[current]~^ ERROR mismatched types
     //[current]~| HELP consider constraining the associated type `<() as Trait>::Output` to `()` or calling a method that returns `<() as Trait>::Output`
-    //[next]~^^^ ERROR type mismatch resolving `<() as Trait>::Output normalizes-to _`
-    //[next]~| ERROR type mismatch resolving `<() as Trait>::Output normalizes-to _`
+    //[next]~^^^ ERROR type mismatch resolving `<() as Trait>::Output == _`
 }

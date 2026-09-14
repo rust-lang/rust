@@ -1,16 +1,16 @@
 use rustc_ast as ast;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, msg};
+use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
 use rustc_middle::{bug, ty};
 use rustc_parse_format::{ParseMode, Parser, Piece};
-use rustc_session::lint::fcw;
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{InnerSpan, Span, Symbol, hygiene, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 
-use crate::lints::{NonFmtPanicBraces, NonFmtPanicUnused};
+use crate::diagnostics::{NonFmtPanicBraces, NonFmtPanicUnused};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {

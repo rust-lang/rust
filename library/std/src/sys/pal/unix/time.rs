@@ -1,3 +1,4 @@
+use core::mem;
 use core::num::niche_types::Nanoseconds;
 
 use crate::io;
@@ -6,18 +7,22 @@ use crate::time::Duration;
 const NSEC_PER_SEC: u64 = 1_000_000_000;
 
 #[allow(dead_code)] // Used for pthread condvar timeouts
-pub const TIMESPEC_MAX: libc::timespec =
-    libc::timespec { tv_sec: <libc::time_t>::MAX, tv_nsec: 1_000_000_000 - 1 };
+pub const TIMESPEC_MAX: libc::timespec = {
+    let mut ts = unsafe { mem::zeroed::<libc::timespec>() };
+    ts.tv_sec = <libc::time_t>::MAX;
+    ts.tv_nsec = 1_000_000_000 - 1;
+    ts
+};
 
 // This additional constant is only used when calling
 // `libc::pthread_cond_timedwait`.
-#[cfg(target_os = "nto")]
+#[cfg(any(target_os = "nto", target_os = "qnx"))]
 pub(in crate::sys) const TIMESPEC_MAX_CAPPED: libc::timespec = libc::timespec {
     tv_sec: (u64::MAX / NSEC_PER_SEC) as i64,
     tv_nsec: (u64::MAX % NSEC_PER_SEC) as i64,
 };
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub(crate) struct Timespec {
     pub tv_sec: i64,
     pub tv_nsec: Nanoseconds,
@@ -66,6 +71,7 @@ impl Timespec {
         }
     }
 
+    #[allow(dead_code)]
     pub fn now(clock: libc::clockid_t) -> Timespec {
         use crate::mem::MaybeUninit;
         use crate::sys::cvt;
@@ -163,15 +169,17 @@ impl Timespec {
 
     #[allow(dead_code)]
     pub fn to_timespec(&self) -> Option<libc::timespec> {
-        Some(libc::timespec {
-            tv_sec: self.tv_sec.try_into().ok()?,
-            tv_nsec: self.tv_nsec.as_inner().try_into().ok()?,
+        Some({
+            let mut ts = libc::timespec::default();
+            ts.tv_sec = self.tv_sec.try_into().ok()?;
+            ts.tv_nsec = self.tv_nsec.as_inner().try_into().ok()?;
+            ts
         })
     }
 
-    // On QNX Neutrino, the maximum timespec for e.g. pthread_cond_timedwait
+    // On QNX, the maximum timespec for e.g. pthread_cond_timedwait
     // is 2^64 nanoseconds
-    #[cfg(target_os = "nto")]
+    #[cfg(any(target_os = "nto", target_os = "qnx"))]
     pub(in crate::sys) fn to_timespec_capped(&self) -> Option<libc::timespec> {
         // Check if timeout in nanoseconds would fit into an u64
         if (self.tv_nsec.as_inner() as u64)

@@ -10,8 +10,8 @@ use itertools::Itertools;
 use span::Edition;
 
 use crate::{
-    Adt, AsAssocItem, AssocItemContainer, Const, ConstParam, Field, Function, Local, ModuleDef,
-    SemanticsScope, Static, Struct, StructKind, Trait, Type, Variant,
+    Adt, AsAssocItem, AssocItemContainer, Const, ConstParam, EnumVariant, Field, Function, Local,
+    ModuleDef, SemanticsScope, Static, Struct, StructKind, Trait, Type,
 };
 
 /// Helper function to get path to `ModuleDef`
@@ -65,7 +65,7 @@ pub enum Expr<'db> {
     /// Static variable
     Static(Static),
     /// Local variable
-    Local(Local),
+    Local(Local<'db>),
     /// Constant generic parameter
     ConstParam(ConstParam),
     /// Well known type (such as `true` for bool)
@@ -80,7 +80,7 @@ pub enum Expr<'db> {
         params: Vec<Expr<'db>>,
     },
     /// Enum variant construction
-    Variant { variant: Variant, generics: Vec<Type<'db>>, params: Vec<Expr<'db>> },
+    Variant { variant: EnumVariant, generics: Vec<Type<'db>>, params: Vec<Expr<'db>> },
     /// Struct construction
     Struct { strukt: Struct, generics: Vec<Type<'db>>, params: Vec<Expr<'db>> },
     /// Tuple construction
@@ -222,7 +222,7 @@ impl<'db> Expr<'db> {
                     StructKind::Unit => String::new(),
                 };
 
-                let prefix = mod_item_path_str(sema_scope, &ModuleDef::Variant(*variant))?;
+                let prefix = mod_item_path_str(sema_scope, &ModuleDef::EnumVariant(*variant))?;
                 Ok(format!("{prefix}{inner}"))
             }
             Expr::Struct { strukt, params, .. } => {
@@ -310,21 +310,18 @@ impl<'db> Expr<'db> {
             Expr::Local(it) => it.ty(db),
             Expr::ConstParam(it) => it.ty(db),
             Expr::FamousType { ty, .. } => ty.clone(),
-            Expr::Function { func, generics, .. } => {
-                func.ret_type_with_args(db, generics.iter().cloned())
-            }
-            Expr::Method { func, generics, target, .. } => func.ret_type_with_args(
-                db,
-                target.ty(db).type_arguments().chain(generics.iter().cloned()),
-            ),
+            Expr::Function { func, generics, .. } => func.ret_type(db).instantiate(generics),
+            Expr::Method { func, generics, target, .. } => func
+                .ret_type(db)
+                .instantiate(target.ty(db).type_arguments().chain(generics.iter().cloned())),
             Expr::Variant { variant, generics, .. } => {
-                Adt::from(variant.parent_enum(db)).ty_with_args(db, generics.iter().cloned())
+                Adt::from(variant.parent_enum(db)).ty(db).instantiate(generics)
             }
             Expr::Struct { strukt, generics, .. } => {
-                Adt::from(*strukt).ty_with_args(db, generics.iter().cloned())
+                Adt::from(*strukt).ty(db).instantiate(generics)
             }
             Expr::Tuple { ty, .. } => ty.clone(),
-            Expr::Field { expr, field } => field.ty_with_args(db, expr.ty(db).type_arguments()),
+            Expr::Field { expr, field } => field.ty(db).instantiate(expr.ty(db).type_arguments()),
             Expr::Reference(it) => it.ty(db),
             Expr::Many(ty) => ty.clone(),
         }

@@ -7,7 +7,7 @@ LL |     let not_adjacent: pattern_type!(i8 is -127..0 | 1..) = unsafe { std::me
    |                                                                     ^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: `i32` (32 bits)
-   = note: target type: `(i8) is (-127..=-1 | 1..)` (the type has an unknown layout)
+   = note: target type: `pattern_type!(i8 is (-127..=-1 | 1..))` (the type has an unknown layout)
 
 error: one pattern needs to end at `i8::MAX`, but was 29 instead
 
@@ -18,7 +18,7 @@ LL |     let not_wrapping: pattern_type!(i8 is 10..20 | 20..30) = unsafe { std::
    |                                                                       ^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: `i32` (32 bits)
-   = note: target type: `(i8) is (10..=19 | 20..=29)` (the type has an unknown layout)
+   = note: target type: `pattern_type!(i8 is (10..=19 | 20..=29))` (the type has an unknown layout)
 
 error: only signed integer base types are allowed for or-pattern pattern types at present
 
@@ -29,7 +29,7 @@ LL |     let not_signed: pattern_type!(u8 is 10.. | 0..5) = unsafe { std::mem::t
    |                                                                 ^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: `i32` (32 bits)
-   = note: target type: `(u8) is (10.. | 0..=4)` (the type has an unknown layout)
+   = note: target type: `pattern_type!(u8 is (10.. | 0..=4))` (the type has an unknown layout)
 
 error: the only or-pattern types allowed are two range patterns that are directly connected at their overflow site
 
@@ -40,7 +40,7 @@ LL |         unsafe { std::mem::transmute(0) };
    |                  ^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: `i32` (32 bits)
-   = note: target type: `(i8) is (i8::MIN..=-1 | 1..=9 | 10..)` (the type has an unknown layout)
+   = note: target type: `pattern_type!(i8 is (i8::MIN..=-1 | 1..=9 | 10..))` (the type has an unknown layout)
 
 error: aborting due to 8 previous errors
 

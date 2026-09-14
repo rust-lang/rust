@@ -36,5 +36,5 @@ ENV \
 
 ENV HOSTS=x86_64-unknown-illumos
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs
-ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
+ENV RUST_CONFIGURE_ARGS="--enable-extended --disable-docs"
+ENV SCRIPT="python2.7 ../x.py dist --host $HOSTS --target $HOSTS"

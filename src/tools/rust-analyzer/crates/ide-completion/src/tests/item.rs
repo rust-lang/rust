@@ -2,7 +2,7 @@
 //!
 //! Except for use items which are tested in [super::use_tree] and mod declarations with are tested
 //! in [crate::completions::mod_].
-use expect_test::expect;
+use expect_test::{Expect, expect};
 
 use crate::tests::{check, check_edit, check_with_base_items};
 
@@ -15,7 +15,7 @@ impl Tra$0
         expect![[r#"
             en Enum                    Enum
             ma makro!(…) macro_rules! makro
-            md module
+            md module::
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
@@ -41,7 +41,7 @@ impl Trait for Str$0
         expect![[r#"
             en Enum                    Enum
             ma makro!(…) macro_rules! makro
-            md module
+            md module::
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
@@ -116,8 +116,29 @@ fn completes_where() {
     check_with_base_items(
         r"fn func() $0",
         expect![[r#"
-        kw where
-    "#]],
+            en Enum (adds ->)          Enum
+            ma makro!(…) macro_rules! makro
+            md module:: (adds ->)
+            st Record (adds ->)      Record
+            st Tuple (adds ->)        Tuple
+            st Unit (adds ->)          Unit
+            tt Trait (adds ->)
+            un Union (adds ->)        Union
+            bt u32 (adds ->)            u32
+            kw crate:: (adds ->)
+            kw dyn (adds ->)
+            kw fn (adds ->)
+            kw for (adds ->)
+            kw impl (adds ->)
+            kw self:: (adds ->)
+            kw where
+        "#]],
+    );
+    check_with_base_items(
+        r"fn func() -> foo::Bar $0",
+        expect![[r#"
+            kw where
+        "#]],
     );
     check_with_base_items(
         r"enum Enum $0",
@@ -132,6 +153,62 @@ fn completes_where() {
     "#]],
     );
     check_with_base_items(
+        r"trait Trait $0 {}",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+}
+
+#[test]
+fn completes_where_in_stmt_list() {
+    fn check_in_stmt_list(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
+        check(&format!("const _: () = {{{ra_fixture}}};"), expect);
+    }
+    check_in_stmt_list(
+        r"struct Struct $0",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    check_in_stmt_list(
+        r"struct Struct $0 {}",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    check_in_stmt_list(
+        r"fn func() $0",
+        expect![[r#"
+            bt u32 (adds ->) u32
+            kw crate:: (adds ->)
+            kw dyn (adds ->)
+            kw fn (adds ->)
+            kw for (adds ->)
+            kw impl (adds ->)
+            kw self:: (adds ->)
+            kw where
+        "#]],
+    );
+    check_in_stmt_list(
+        r"fn func() -> foo::Bar $0",
+        expect![[r#"
+            kw where
+        "#]],
+    );
+    check_in_stmt_list(
+        r"enum Enum $0",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    check_in_stmt_list(
+        r"enum Enum $0 {}",
+        expect![[r#"
+        kw where
+    "#]],
+    );
+    check_in_stmt_list(
         r"trait Trait $0 {}",
         expect![[r#"
         kw where
@@ -244,6 +321,19 @@ impl Copy for S where $0
 }
 
 #[test]
+fn fn_item_where_kw() {
+    check_edit(
+        "where",
+        r#"
+fn foo() $0
+"#,
+        r#"
+fn foo() where $0
+"#,
+    );
+}
+
+#[test]
 fn test_is_not_considered_macro() {
     check_with_base_items(
         r#"
@@ -265,7 +355,7 @@ fn bar() {
 }
     "#,
         expect![[r#"
-            ct CONST                                     Unit
+            ct CONST  = Unit                             Unit
             en Enum                                      Enum
             fn bar()                                     fn()
             fn foo()                                     fn()
@@ -273,7 +363,7 @@ fn bar() {
             ma expand_to_test!(…) macro_rules! expand_to_test
             ma makro!(…)                   macro_rules! makro
             ma test!(…)                            macro test
-            md module
+            md module::
             sc STATIC                                    Unit
             st Record                                  Record
             st Tuple                                    Tuple
@@ -332,7 +422,7 @@ macro_rules! foo {
 foo!(f$0);
     "#,
         expect![[r#"
-            ct BAR                   u8
+            ct BAR  = f              u8
             fn foo()         fn() -> u8
             ma foo!(…) macro_rules! foo
             bt u32                  u32
@@ -349,6 +439,62 @@ foo!(f$0);
             kw unsafe
             kw while
             kw while let
+        "#]],
+    );
+}
+
+#[test]
+fn const_eval_label_details() {
+    check(
+        r#"
+pub const MAX: u32 = !0;
+pub const MIN: u32 = 0;
+pub const MNOEVAL: u32 = unknown();
+
+fn main() {
+    let x = M$0
+}
+    "#,
+        expect![[r#"
+            ct MAX  = 4294967295    u32
+            ct MIN  = 0             u32
+            ct MNOEVAL  = unknown() u32
+            fn main()              fn()
+            bt u32                  u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+}
+
+#[test]
+fn completes_variant_through_hidden_enum_alias() {
+    check(
+        r#"
+//- /lib.rs crate:dep
+#[doc(hidden)]
+pub enum Foo { Variant }
+pub type Bar = Foo;
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    let x = dep::Bar::V$0;
+}
+"#,
+        expect![[r#"
+            ev Variant Variant
         "#]],
     );
 }

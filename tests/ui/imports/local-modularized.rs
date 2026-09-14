@@ -1,5 +1,5 @@
 //@ edition:2015
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ check-pass
 
 #[macro_export(local_inner_macros)]
 macro_rules! dollar_crate_exported {

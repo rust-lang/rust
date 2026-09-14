@@ -244,5 +244,35 @@ error: manual arithmetic check found
 LL |     let y = if x >= 100 { 0 } else { 100 - x };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `100_u8.saturating_sub(x)`
 
-error: aborting due to 28 previous errors
+error: manual arithmetic check found
+  --> tests/ui/implicit_saturating_sub.rs:353:13
+   |
+LL |       let _ = if test_big!(a) > test_little!(b) {
+   |  _____________^
+LL | |
+LL | |         test_big!(a) - test_little!(b)
+LL | |     } else {
+LL | |         0
+LL | |     };
+   | |_____^ help: replace it with: `test_big!(a).saturating_sub(test_little!(b))`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:371:5
+   |
+LL | /     if x != 0 {
+LL | |
+LL | |         x -= 1;
+LL | |     }
+   | |_____^ help: try: `x = x.saturating_sub(1);`
+
+error: implicitly performing saturating subtraction
+  --> tests/ui/implicit_saturating_sub.rs:380:5
+   |
+LL | /     if x != 0 {
+LL | |
+LL | |         x -= 1;
+LL | |     }
+   | |_____^ help: try: `x = x.saturating_sub(1);`
+
+error: aborting due to 31 previous errors
 

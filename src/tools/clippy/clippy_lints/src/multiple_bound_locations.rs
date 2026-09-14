@@ -1,12 +1,11 @@
 use rustc_ast::visit::FnKind;
 use rustc_ast::{Fn, NodeId, WherePredicateKind};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, declare_lint_pass};
 use rustc_span::Span;
 
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt as _;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -69,7 +68,6 @@ impl EarlyLintPass for MultipleBoundLocations {
                             emit_lint(cx, *bound_span, pred.lifetime.ident.span);
                         }
                     },
-                    WherePredicateKind::EqPredicate(_) => {},
                 }
             }
         }

@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at .1.my_alloc_field1: encountered uninitialized memory, but expected an integer
+error: Undefined Behavior: constructing invalid value of type std::boxed::Box<i32, MyAlloc>: at .1.my_alloc_field1, encountered uninitialized memory, but expected an integer
   --> tests/fail/validity/box-custom-alloc-invalid-alloc.rs:LL:CC
    |
 LL |         std::mem::transmute(b)

@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 // EMIT_MIR packed_struct_drop_aligned.main.SimplifyCfg-pre-optimizations.after.mir

@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ test-mir-pass: GVN
 
 // EMIT_MIR gvn_on_unsafe_binder.test.GVN.diff

@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a dangling reference ($HEX[noalloc] has no provenance)
+error: Undefined Behavior: constructing invalid value of type &str: encountered a dangling reference ($HEX[noalloc] has no provenance)
   --> tests/fail/branchless-select-i128-pointer.rs:LL:CC
    |
 LL | /             transmute::<_, &str>(

@@ -6,17 +6,16 @@
 //@ build-fail
 //@ needs-llvm-components: x86
 //@ ignore-backends: gcc
-#![feature(no_core, repr_simd)]
+//@ dont-require-annotations: NOTE
+#![feature(no_core)]
 #![no_core]
 #![allow(improper_ctypes_definitions)]
 
 extern crate minicore;
-use minicore::*;
-
-#[repr(simd)]
-pub struct SseVector([i64; 2]);
+use minicore::simd::Simd;
 
 #[no_mangle]
-pub unsafe extern "C" fn f(_: SseVector) {
-    //~^ ERROR: this function definition uses SIMD vector type `SseVector` which (with the chosen ABI) requires the `sse` target feature, which is not enabled
+pub unsafe extern "C" fn f(_: Simd<i64, 2>) {
+    //~^ ERROR: requires the `sse` target feature
+    //~| NOTE: the function has type `Simd<i64, 2>` in its signature, which is passed in SIMD vector registers under the "C" ABI
 }

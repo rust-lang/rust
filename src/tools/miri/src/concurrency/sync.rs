@@ -5,7 +5,6 @@ use std::collections::hash_map::Entry;
 use std::default::Default;
 use std::ops::Not;
 use std::rc::Rc;
-use std::time::Duration;
 use std::{fmt, iter};
 
 use rustc_abi::Size;
@@ -340,7 +339,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     {
         assert!(init_val != uninit_val);
         let this = self.eval_context_mut();
-        this.check_ptr_access(obj.ptr(), obj.layout.size, CheckInAllocMsg::Dereferenceable)?;
+        this.check_ptr_access(
+            obj.ptr(),
+            obj.layout.size,
+            CheckInAllocMsg::Dereferenceable("pointer"),
+        )?;
         assert!(init_offset < obj.layout.size); // ensure our 1-byte flag fits
         let init_field = obj.offset(init_offset, this.machine.layouts.u8, this)?;
 
@@ -354,17 +357,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // There's no sync object there yet. Create one, and try a CAS for uninit_val to init_val.
         let meta_obj = new_meta_obj(this)?;
-        let (old_init, success) = this
-            .atomic_compare_exchange_scalar(
-                &init_field,
-                &ImmTy::from_scalar(Scalar::from_u8(uninit_val), this.machine.layouts.u8),
-                Scalar::from_u8(init_val),
-                AtomicRwOrd::Relaxed,
-                AtomicReadOrd::Relaxed,
-                /* can_fail_spuriously */ false,
-            )?
-            .to_scalar_pair();
-        if !success.to_bool()? {
+        let (old_init, success) = this.atomic_compare_exchange(
+            &init_field,
+            &ImmTy::from_scalar(Scalar::from_u8(uninit_val), this.machine.layouts.u8),
+            Scalar::from_u8(init_val),
+            AtomicRwOrd::Relaxed,
+            AtomicReadOrd::Relaxed,
+            /* can_fail_spuriously */ false,
+        )?;
+        if !success {
             // This can happen for the macOS lock if it is already marked as initialized.
             assert_eq!(
                 old_init.to_u8()?,
@@ -392,7 +393,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         'tcx: 'a,
     {
         let this = self.eval_context_mut();
-        this.check_ptr_access(obj.ptr(), obj.layout.size, CheckInAllocMsg::Dereferenceable)?;
+        this.check_ptr_access(
+            obj.ptr(),
+            obj.layout.size,
+            CheckInAllocMsg::Dereferenceable("pointer"),
+        )?;
         assert!(init_offset < obj.layout.size); // ensure our 1-byte flag fits
         let init_field = obj.offset(init_offset, this.machine.layouts.u8, this)?;
 
@@ -684,7 +689,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         condvar_ref: CondvarRef,
         mutex_ref: MutexRef,
-        timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
+        deadline: Option<Deadline>,
         retval_succ: Scalar,
         retval_timeout: Scalar,
         dest: MPlaceTy<'tcx>,
@@ -706,7 +711,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         condvar_ref.0.borrow_mut().waiters.push_back(thread);
         this.block_thread(
             BlockReason::Condvar,
-            timeout,
+            deadline,
             callback!(
                 @capture<'tcx> {
                     condvar_ref: CondvarRef,
@@ -763,7 +768,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         futex_ref: FutexRef,
         bitset: u32,
-        timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
+        deadline: Option<Deadline>,
         callback: DynUnblockCallback<'tcx>,
     ) {
         let this = self.eval_context_mut();
@@ -776,7 +781,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.block_thread(
             BlockReason::Futex,
-            timeout,
+            deadline,
             callback!(
                 @capture<'tcx> {
                     futex_ref: FutexRef,

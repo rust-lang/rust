@@ -3,7 +3,7 @@ use ide_db::{assists::AssistId, defs::Definition};
 use stdx::to_upper_snake_case;
 use syntax::{
     AstNode,
-    ast::{self, HasName, syntax_factory::SyntaxFactory},
+    ast::{self, HasName},
 };
 
 use crate::{
@@ -39,7 +39,7 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let pat = ctx.find_node_at_offset::<ast::IdentPat>()?;
     let name = pat.name()?;
     if !pat.is_simple_ident() {
@@ -63,22 +63,26 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>)
         return None;
     }
 
+    let const_name = to_upper_snake_case(&name.to_string());
+    if const_name.is_empty() || const_name.chars().all(|c| c == '_') {
+        return None;
+    }
+
     acc.add(
         AssistId::refactor("promote_local_to_const"),
         "Promote local to constant",
         let_stmt.syntax().text_range(),
         |edit| {
-            let make = SyntaxFactory::with_mappings();
-            let mut editor = edit.make_editor(let_stmt.syntax());
-            let name = to_upper_snake_case(&name.to_string());
+            let editor = edit.make_editor(let_stmt.syntax());
+            let make = editor.make();
             let usages = Definition::Local(local).usages(&ctx.sema).all();
             if let Some(usages) = usages.references.get(&ctx.file_id()) {
-                let name_ref = make.name_ref(&name);
+                let name_ref = make.name_ref(&const_name);
 
                 for usage in usages {
                     let Some(usage_name) = usage.name.as_name_ref().cloned() else { continue };
                     if let Some(record_field) = ast::RecordExprField::for_name_ref(&usage_name) {
-                        let path = make.ident_path(&name);
+                        let path = make.ident_path(&const_name);
                         let name_expr = make.expr_path(path);
                         utils::replace_record_field_expr(ctx, edit, record_field, name_expr);
                     } else {
@@ -88,7 +92,8 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>)
                 }
             }
 
-            let item = make.item_const(None, None, make.name(&name), make.ty(&ty), initializer);
+            let item =
+                make.item_const(None, None, make.name(&const_name), make.ty(&ty), initializer);
 
             if let Some((cap, name)) = ctx.config.snippet_cap.zip(item.name()) {
                 let tabstop = edit.make_tabstop_before(cap);
@@ -97,7 +102,6 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>)
 
             editor.replace(let_stmt.syntax(), item.syntax());
 
-            editor.add_mappings(make.finish_with_mappings());
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -288,6 +292,19 @@ fn foo() {
             r"
 fn foo() {
     const $0X: _ = bar();
+}
+",
+        );
+    }
+
+    #[test]
+    fn not_applicable_when_name_converts_to_all_underscores() {
+        check_assist_not_applicable(
+            promote_local_to_const,
+            r"
+fn foo() {
+    let _$0_ = 0;
+    __;
 }
 ",
         );

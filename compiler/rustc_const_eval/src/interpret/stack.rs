@@ -21,7 +21,7 @@ use super::{
     MemPlaceMeta, MemoryKind, Operand, PlaceTy, Pointer, Provenance, ReturnAction, Scalar,
     from_known_layout, interp_ok, throw_ub, throw_unsup,
 };
-use crate::{enter_trace_span, errors};
+use crate::{diagnostics, enter_trace_span};
 
 // The Phantomdata exists to prevent this type from being `Send`. If it were sent across a thread
 // boundary and dropped in the other thread, it would exit the span in the other thread.
@@ -90,7 +90,7 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
     ///
     /// Do *not* access this directly; always go through the machine hook!
-    pub locals: IndexVec<mir::Local, LocalState<'tcx, Prov>>,
+    pub(super) locals: IndexVec<mir::Local, LocalState<'tcx, Prov>>,
 
     /// The complete variable argument list of this frame. Its elements must be dropped when the
     /// frame is popped.
@@ -168,8 +168,9 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
 
     /// This is a hack because Miri needs a way to visit all the provenance in a `LocalState`
     /// without having a layout or `TyCtxt` available, and we want to keep the `Operand` type
-    /// private.
-    pub fn as_mplace_or_imm(
+    /// private. Does not count as a read of the local for the AM! It's a "ghost" read, like for
+    /// validation or similar purposes.
+    pub fn as_mplace_or_imm_ghost(
         &self,
     ) -> Option<Either<(Pointer<Option<Prov>>, MemPlaceMeta<Prov>), Immediate<Prov>>> {
         match self.value {
@@ -223,10 +224,10 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
 }
 
 impl<'tcx> FrameInfo<'tcx> {
-    pub fn as_note(&self, tcx: TyCtxt<'tcx>) -> errors::FrameNote {
+    pub(crate) fn as_note(&self, tcx: TyCtxt<'tcx>) -> diagnostics::FrameNote {
         let span = self.span;
         if tcx.def_key(self.instance.def_id()).disambiguated_data.data == DefPathData::Closure {
-            errors::FrameNote {
+            diagnostics::FrameNote {
                 where_: "closure",
                 span,
                 instance: String::new(),
@@ -238,7 +239,13 @@ impl<'tcx> FrameInfo<'tcx> {
             // Note: this triggers a `must_produce_diag` state, which means that if we ever get
             // here we must emit a diagnostic. We should never display a `FrameInfo` unless we
             // actually want to emit a warning or error to the user.
-            errors::FrameNote { where_: "instance", span, instance, times: 0, has_label: false }
+            diagnostics::FrameNote {
+                where_: "instance",
+                span,
+                instance,
+                times: 0,
+                has_label: false,
+            }
         }
     }
 }
@@ -285,6 +292,10 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
 
     pub fn return_cont(&self) -> ReturnContinuation {
         self.return_cont
+    }
+
+    pub fn locals(&self) -> &IndexVec<mir::Local, LocalState<'tcx, Prov>> {
+        &self.locals
     }
 
     /// Return the `SourceInfo` of the current instruction.
@@ -381,7 +392,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let locals = IndexVec::from_elem(dead_local, &body.local_decls);
         let pre_frame = Frame {
             body,
-            loc: Right(body.span), // Span used for errors caused during preamble.
+            loc: Right(self.tcx.def_span(body.source.def_id())), // Span used for errors caused during preamble.
             return_cont,
             return_place: return_place.clone(),
             locals,
@@ -408,7 +419,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // Finish things up.
         M::after_stack_push(self)?;
-        self.frame_mut().loc = Left(mir::Location::START);
         // `tracing_separate_thread` is used to instruct the tracing_chrome [tracing::Layer] in Miri
         // to put the "frame" span on a separate trace thread/line than other spans, to make the
         // visualization in <https://ui.perfetto.dev> easier to interpret. It is set to a value of
@@ -466,9 +476,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
-    /// In the current stack frame, mark all locals as live that are not arguments and don't have
-    /// `Storage*` annotations (this includes the return place).
-    pub(crate) fn storage_live_for_always_live_locals(&mut self) -> InterpResult<'tcx> {
+    /// Call this after `push_stack_frame_raw` and when all the other setup that needs to be done
+    /// is completed.
+    pub(crate) fn push_stack_frame_done(&mut self) -> InterpResult<'tcx> {
+        // Mark all locals as live that are not arguments and don't have `Storage*` annotations
+        // (this includes the return place, but not the arguments).
         self.storage_live(mir::RETURN_PLACE)?;
 
         let body = self.body();
@@ -478,6 +490,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.storage_live(local)?;
             }
         }
+
+        // Get ready to execute the first instruction in the stack frame.
+        self.frame_mut().loc = Left(mir::Location::START);
+
         interp_ok(())
     }
 

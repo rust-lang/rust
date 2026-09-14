@@ -112,8 +112,7 @@
       bb8: {
           StorageDead(_17);
           StorageDead(_16);
--         StorageLive(_18);
-+         nop;
+          StorageLive(_18);
           _18 = &mut _1;
           StorageLive(_19);
           StorageLive(_20);
@@ -168,8 +167,7 @@
           StorageDead(_28);
           _0 = const ();
           StorageDead(_19);
--         StorageDead(_18);
-+         nop;
+          StorageDead(_18);
           drop(_1) -> [return: bb13, unwind: bb15];
       }
   

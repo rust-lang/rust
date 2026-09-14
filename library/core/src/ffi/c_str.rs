@@ -155,7 +155,7 @@ impl Error for FromBytesWithNulError {}
 /// within the slice.
 ///
 /// This error is created by the [`CStr::from_bytes_until_nul`] method.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
 pub struct FromBytesUntilNulError(());
 
@@ -176,7 +176,8 @@ impl fmt::Debug for CStr {
 }
 
 #[stable(feature = "cstr_default", since = "1.10.0")]
-impl Default for &CStr {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+const impl Default for &CStr {
     #[inline]
     fn default() -> Self {
         c""
@@ -581,7 +582,12 @@ impl CStr {
     pub const fn to_bytes_with_nul(&self) -> &[u8] {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
-        unsafe { &*((&raw const self.inner) as *const [u8]) }
+        let bytes = unsafe { &*((&raw const self.inner) as *const [u8]) };
+
+        // SAFETY: A valid `CStr` always contains at least its trailing nul byte.
+        unsafe { crate::hint::assert_unchecked(!bytes.is_empty()) };
+
+        bytes
     }
 
     /// Iterates over the bytes in this C string.
@@ -681,7 +687,7 @@ impl PartialEq<&Self> for CStr {
 impl PartialOrd for CStr {
     #[inline]
     fn partial_cmp(&self, other: &CStr) -> Option<Ordering> {
-        self.to_bytes().partial_cmp(&other.to_bytes())
+        self.to_bytes().partial_cmp(other.to_bytes())
     }
 }
 
@@ -689,7 +695,7 @@ impl PartialOrd for CStr {
 impl Ord for CStr {
     #[inline]
     fn cmp(&self, other: &CStr) -> Ordering {
-        self.to_bytes().cmp(&other.to_bytes())
+        self.to_bytes().cmp(other.to_bytes())
     }
 }
 
@@ -716,7 +722,7 @@ impl ops::Index<ops::RangeFrom<usize>> for CStr {
     }
 }
 
-#[unstable(feature = "new_range_api", issue = "125687")]
+#[stable(feature = "new_range_from_api", since = "1.96.0")]
 impl ops::Index<range::RangeFrom<usize>> for CStr {
     type Output = CStr;
 
@@ -728,7 +734,7 @@ impl ops::Index<range::RangeFrom<usize>> for CStr {
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<CStr> for CStr {
+const impl AsRef<CStr> for CStr {
     #[inline]
     fn as_ref(&self) -> &CStr {
         self

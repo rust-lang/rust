@@ -31,7 +31,7 @@ use syntax::{
 // }
 // ```
 
-pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let constant_token = ctx.find_node_at_offset::<ast::NameRef>()?;
     if constant_token.to_string().chars().any(|it| !(it.is_uppercase() || it == '_')) {
         cov_mark::hit!(not_constant_name);
@@ -113,7 +113,7 @@ fn get_text_for_generate_constant(
 }
 
 fn target_data_for_generate_constant(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     current_module: Module,
     constant_module: Module,
 ) -> Option<(TextSize, IndentLevel, Option<FileId>, String)> {

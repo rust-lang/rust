@@ -1,5 +1,5 @@
 error: use of `default` to create a unit struct
-  --> tests/ui/default_constructed_unit_structs.rs:11:9
+  --> tests/ui/default_constructed_unit_structs.rs:10:9
    |
 LL |         Self::default()
    |         ^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +         Self
    |
 
 error: use of `default` to create a unit struct
-  --> tests/ui/default_constructed_unit_structs.rs:54:20
+  --> tests/ui/default_constructed_unit_structs.rs:53:20
    |
 LL |             inner: PhantomData::default(),
    |                    ^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +             inner: PhantomData,
    |
 
 error: use of `default` to create a unit struct
-  --> tests/ui/default_constructed_unit_structs.rs:128:13
+  --> tests/ui/default_constructed_unit_structs.rs:127:13
    |
 LL |     let _ = PhantomData::<usize>::default();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL +     let _ = PhantomData::<usize>;
    |
 
 error: use of `default` to create a unit struct
-  --> tests/ui/default_constructed_unit_structs.rs:130:31
+  --> tests/ui/default_constructed_unit_structs.rs:129:31
    |
 LL |     let _: PhantomData<i32> = PhantomData::default();
    |                               ^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL +     let _: PhantomData<i32> = PhantomData;
    |
 
 error: use of `default` to create a unit struct
-  --> tests/ui/default_constructed_unit_structs.rs:132:31
+  --> tests/ui/default_constructed_unit_structs.rs:131:31
    |
 LL |     let _: PhantomData<i32> = std::marker::PhantomData::default();
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL +     let _: PhantomData<i32> = std::marker::PhantomData;
    |
 
 error: use of `default` to create a unit struct
-  --> tests/ui/default_constructed_unit_structs.rs:134:13
+  --> tests/ui/default_constructed_unit_structs.rs:133:13
    |
 LL |     let _ = UnitStruct::default();
    |             ^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL +     let _ = UnitStruct;
    |
 
 error: use of `default` to create a unit struct
-  --> tests/ui/default_constructed_unit_structs.rs:172:7
+  --> tests/ui/default_constructed_unit_structs.rs:171:7
    |
 LL |     f(<G>::default());
    |       ^^^^^^^^^^^^^^

@@ -4,7 +4,7 @@
 // In this specially crafted example, @steffahn was able to trigger unsoundness with an overlapping
 // impl that was accepted during the incremental rebuild.
 
-//@ revisions: cpass1 cfail2
+//@ revisions: bpass1 bfail2
 //@ compile-flags: -Znext-solver
 
 pub trait Trait {}
@@ -27,14 +27,14 @@ impl<T: Trait> Other for T {
 
 // second impl
 impl<T> Other for S<T> {
-    //[cfail2]~^ ERROR conflicting implementations of trait
+    //[bfail2]~^ ERROR conflicting implementations of trait
     type Choose<L, R> = R;
 }
 
-#[cfg(cpass1)]
+#[cfg(bpass1)]
 impl Trait for W {}
 
-#[cfg(cfail2)]
+#[cfg(bfail2)]
 impl Trait for S<W> {}
 
 fn main() {}

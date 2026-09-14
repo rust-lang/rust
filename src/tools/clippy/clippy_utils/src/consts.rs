@@ -4,12 +4,12 @@
 //! executable MIR bodies, so we have to do this instead.
 #![expect(clippy::float_cmp)]
 
-use crate::res::MaybeDef;
-use crate::source::{SpanRangeExt, walk_span_to_context};
+use crate::res::MaybeDef as _;
+use crate::source::{SpanExt as _, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, sym, unsext};
 
 use rustc_abi::Size;
-use rustc_apfloat::Float;
+use rustc_apfloat::Float as _;
 use rustc_apfloat::ieee::{Half, Quad};
 use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_hir::def::{DefKind, Res};
@@ -462,6 +462,12 @@ pub enum FullInt {
     U(u128),
 }
 
+impl FullInt {
+    pub fn is_zero(self) -> bool {
+        matches!(self, Self::S(0) | Self::U(0))
+    }
+}
+
 impl PartialEq for FullInt {
     fn eq(&self, other: &Self) -> bool {
         self.cmp(other) == Ordering::Equal
@@ -491,15 +497,34 @@ impl Ord for FullInt {
     }
 }
 
+/// Evaluates an expression if it's a builtin integer type.
+pub fn eval_int(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<FullInt> {
+    match e.kind {
+        ExprKind::Lit(lit) if let LitKind::Int(val, _) = lit.node => Some(FullInt::U(val.0)),
+        ExprKind::Unary(UnOp::Neg, e)
+            if let ExprKind::Lit(lit) = e.kind
+                && let LitKind::Int(val, _) = lit.node =>
+        {
+            Some(FullInt::S(val.0.cast_signed().wrapping_neg()))
+        },
+        _ if let ty = cx.typeck_results().expr_ty(e)
+            && let ty::Int(_) | ty::Uint(_) = *ty.kind() =>
+        {
+            ConstEvalCtxt::new(cx).eval(e).and_then(|x| x.int_value(cx.tcx, ty))
+        },
+        _ => None,
+    }
+}
+
 /// The context required to evaluate a constant expression.
 ///
 /// This is currently limited to constant folding and reading the value of named constants.
 ///
 /// See the module level documentation for some context.
 pub struct ConstEvalCtxt<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    typing_env: ty::TypingEnv<'tcx>,
-    typeck: &'tcx TypeckResults<'tcx>,
+    pub tcx: TyCtxt<'tcx>,
+    pub typing_env: ty::TypingEnv<'tcx>,
+    pub typeck: &'tcx TypeckResults<'tcx>,
     source: Cell<ConstantSource>,
     ctxt: Cell<SyntaxContext>,
 }
@@ -753,7 +778,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             QPath::Resolved(None, path)
                 if path.span.ctxt() == self.ctxt.get()
                     && path.segments.iter().all(|s| self.ctxt.get() == s.ident.span.ctxt())
-                    && let Res::Def(DefKind::Const { .. }, did) = path.res
+                    && let Res::Def(DefKind::Const, did) = path.res
                     && (matches!(
                         self.tcx.get_diagnostic_name(did),
                         Some(
@@ -841,12 +866,16 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                     && ty.span.ctxt() == self.ctxt.get()
                     && ty_name.ident.span.ctxt() == self.ctxt.get()
                     && matches!(ty_path.res, Res::PrimTy(_))
-                    && let Some((DefKind::AssocConst { .. }, did)) = self.typeck.type_dependent_def(id) =>
+                    && let Some((DefKind::AssocConst, did)) = self.typeck.type_dependent_def(id)
+                    && self.tcx.inherent_impl_of_assoc(did).is_some() =>
             {
                 did
             },
-            _ if let Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did) =
-                self.typeck.qpath_res(qpath, id) =>
+            // TODO: revisit when feature `min_generic_const_args` is stabilized. In the meantime,
+            // `TyCtxt::const_eval_resolve()` will trigger an ICE when evaluating the body of the
+            // `type const` definition.
+            _ if let Res::Def(DefKind::Const | DefKind::AssocConst, did) = self.typeck.qpath_res(qpath, id)
+                && !self.tcx.is_direct_const(did) =>
             {
                 self.source.set(ConstantSource::NonLocal);
                 did
@@ -854,12 +883,22 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             _ => return None,
         };
 
+        let args = self.typeck.node_args(id);
+
+        if !args.is_empty() {
+            let owner_def_id = self.typeck.hir_owner.def_id.to_def_id();
+            let identity_args = ty::GenericArgs::identity_for_item(self.tcx, owner_def_id);
+            // Don't try to fully evaluate consts inside code whose bounds can't be satisfied.
+            if self
+                .tcx
+                .instantiate_and_check_impossible_clauses((owner_def_id, identity_args))
+            {
+                return None;
+            }
+        }
+
         self.tcx
-            .const_eval_resolve(
-                self.typing_env,
-                mir::UnevaluatedConst::new(did, self.typeck.node_args(id)),
-                qpath.span(),
-            )
+            .const_eval_resolve(self.typing_env, mir::UnevaluatedConst::new(did, args), qpath.span())
             .ok()
     }
 
@@ -903,7 +942,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 if let Some(expr_span) = walk_span_to_context(expr.span, span.ctxt)
                     && let expr_lo = expr_span.lo()
                     && expr_lo >= span.lo
-                    && let Some(src) = (span.lo..expr_lo).get_source_range(&self.tcx)
+                    && let Some(src) = (span.lo..expr_lo).get_source_range(self.tcx)
                     && let Some(src) = src.as_str()
                 {
                     use rustc_lexer::TokenKind::{BlockComment, LineComment, OpenBrace, Semi, Whitespace};
@@ -938,6 +977,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         }
     }
 
+    #[expect(clippy::too_many_lines)]
     fn binop(&self, op: BinOpKind, left: &Expr<'_>, right: &Expr<'_>) -> Option<Constant> {
         let l = self.expr(left)?;
         let r = self.expr(right);
@@ -986,6 +1026,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 },
                 ty::Uint(ity) => {
                     let bits = ity.bits();
+                    let mask = !0u128 >> (128 - bits);
 
                     match op {
                         BinOpKind::Add => l.checked_add(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
@@ -993,8 +1034,12 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                         BinOpKind::Mul => l.checked_mul(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
                         BinOpKind::Div => l.checked_div(r).map(Constant::Int),
                         BinOpKind::Rem => l.checked_rem(r).map(Constant::Int),
-                        BinOpKind::Shr if r < bits => l.checked_shr(r.try_into().ok()?).map(Constant::Int),
-                        BinOpKind::Shl if r < bits => l.checked_shl(r.try_into().ok()?).map(Constant::Int),
+                        BinOpKind::Shr if r < bits => {
+                            l.checked_shr(r.try_into().ok()?).map(|x| Constant::Int(x & mask))
+                        },
+                        BinOpKind::Shl if r < bits => {
+                            l.checked_shl(r.try_into().ok()?).map(|x| Constant::Int(x & mask))
+                        },
                         BinOpKind::BitXor => Some(Constant::Int(l ^ r)),
                         BinOpKind::BitOr => Some(Constant::Int(l | r)),
                         BinOpKind::BitAnd => Some(Constant::Int(l & r)),
@@ -1140,7 +1185,7 @@ pub fn is_zero_integer_const(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: Syntax
 pub fn const_item_rhs_to_expr<'tcx>(tcx: TyCtxt<'tcx>, ct_rhs: ConstItemRhs<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match ct_rhs {
         ConstItemRhs::Body(body_id) => Some(tcx.hir_body(body_id).value),
-        ConstItemRhs::TypeConst(const_arg) => match const_arg.kind {
+        ConstItemRhs::Direct(const_arg) => match const_arg.kind {
             ConstArgKind::Anon(anon) => Some(tcx.hir_body(anon.body).value),
             ConstArgKind::Struct(..)
             | ConstArgKind::Tup(..)

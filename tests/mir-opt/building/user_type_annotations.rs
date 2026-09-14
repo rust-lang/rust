@@ -1,6 +1,6 @@
 //@ compile-flags: -Zmir-opt-level=0
 //@ edition: 2024
-// skip-filecheck
+//@ skip-filecheck
 
 // This test demonstrates how many user type annotations are recorded in MIR
 // for various binding constructs. In particular, this makes it possible to see

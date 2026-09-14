@@ -1,7 +1,7 @@
 use hir::HasSource;
 use syntax::{
     Edition,
-    ast::{self, AstNode, make},
+    ast::{self, AstNode, syntax_factory::SyntaxFactory},
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -45,7 +45,10 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn add_missing_impl_members(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     add_missing_impl_members_inner(
         acc,
         ctx,
@@ -89,7 +92,7 @@ pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext<'_
 // ```
 pub(crate) fn add_missing_default_members(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     add_missing_impl_members_inner(
         acc,
@@ -103,7 +106,7 @@ pub(crate) fn add_missing_default_members(
 
 fn add_missing_impl_members_inner(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     mode: DefaultMethods,
     ignore_items: IgnoreAssocItems,
     assist_id: &'static str,
@@ -137,6 +140,7 @@ fn add_missing_impl_members_inner(
 
     let missing_items = filter_assoc_items(
         &ctx.sema,
+        trait_,
         &ide_db::traits::get_missing_assoc_items(&ctx.sema, &impl_def),
         mode,
         ign_item,
@@ -148,13 +152,17 @@ fn add_missing_impl_members_inner(
 
     let target = impl_def.syntax().text_range();
     acc.add(AssistId::quick_fix(assist_id), label, target, |edit| {
+        let editor = edit.make_editor(impl_def.syntax());
+        let make = editor.make();
         let new_item = add_trait_assoc_items_to_impl(
+            make,
             &ctx.sema,
             ctx.config,
             &missing_items,
             trait_,
             &impl_def,
             &target_scope,
+            mode,
         );
 
         let Some((first_new_item, other_items)) = new_item.split_first() else {
@@ -164,6 +172,7 @@ fn add_missing_impl_members_inner(
         let mut first_new_item = if let DefaultMethods::No = mode
             && let ast::AssocItem::Fn(func) = &first_new_item
             && let Some(body) = try_gen_trait_body(
+                make,
                 ctx,
                 func,
                 trait_ref,
@@ -172,7 +181,7 @@ fn add_missing_impl_members_inner(
             )
             && let Some(func_body) = func.body()
         {
-            let mut func_editor = SyntaxEditor::new(first_new_item.syntax().clone_subtree());
+            let (func_editor, _) = SyntaxEditor::new(first_new_item.syntax().clone());
             func_editor.replace(func_body.syntax(), body.syntax());
             ast::AssocItem::cast(func_editor.finish().new_root().clone())
         } else {
@@ -185,14 +194,13 @@ fn add_missing_impl_members_inner(
             .chain(other_items.iter().cloned())
             .collect::<Vec<_>>();
 
-        let mut editor = edit.make_editor(impl_def.syntax());
         if let Some(assoc_item_list) = impl_def.assoc_item_list() {
-            assoc_item_list.add_items(&mut editor, new_assoc_items);
+            assoc_item_list.add_items(&editor, new_assoc_items);
         } else {
-            let assoc_item_list = make::assoc_item_list(Some(new_assoc_items)).clone_for_update();
+            let assoc_item_list = make.assoc_item_list(new_assoc_items);
             editor.insert_all(
                 Position::after(impl_def.syntax()),
-                vec![make::tokens::whitespace(" ").into(), assoc_item_list.syntax().clone().into()],
+                vec![make.whitespace(" ").into(), assoc_item_list.syntax().clone().into()],
             );
             first_new_item = assoc_item_list.assoc_items().next();
         }
@@ -220,18 +228,18 @@ fn add_missing_impl_members_inner(
 }
 
 fn try_gen_trait_body(
-    ctx: &AssistContext<'_>,
+    make: &SyntaxFactory,
+    ctx: &AssistContext<'_, '_>,
     func: &ast::Fn,
     trait_ref: hir::TraitRef<'_>,
     impl_def: &ast::Impl,
     edition: Edition,
 ) -> Option<ast::BlockExpr> {
-    let trait_path = make::ext::ident_path(
-        &trait_ref.trait_().name(ctx.db()).display(ctx.db(), edition).to_string(),
-    );
+    let trait_path =
+        make.ident_path(&trait_ref.trait_().name(ctx.db()).display(ctx.db(), edition).to_string());
     let hir_ty = ctx.sema.resolve_type(&impl_def.self_ty()?)?;
     let adt = hir_ty.as_adt()?.source(ctx.db())?;
-    gen_trait_fn_body(func, &trait_path, &adt.value, Some(trait_ref))
+    gen_trait_fn_body(make, func, &trait_path, &adt.value, Some(trait_ref))
 }
 
 #[cfg(test)]
@@ -2111,7 +2119,7 @@ macro_rules! define_method {
 }
 trait AnotherTrait { define_method!(); }
 impl AnotherTrait for () {
-    $0fn method(&mut self,params: <ty!()as SomeTrait>::Output) {
+    $0fn method(&mut self, params: <ty!()as SomeTrait>::Output) {
         todo!()
     }
 }
@@ -2148,7 +2156,7 @@ macro_rules! define_method {
 }
 trait AnotherTrait<T: SomeTrait> { define_method!(T); }
 impl AnotherTrait<i32> for () {
-    $0fn method(&mut self,params: <ty!(T)as SomeTrait>::Output) {
+    $0fn method(&mut self, params: <ty!(T)as SomeTrait>::Output) {
         todo!()
     }
 }
@@ -2615,6 +2623,501 @@ impl Allocator for System {
     }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn does_not_include_defaulted_assoc_types() {
+        check_assist_not_applicable(
+            add_missing_impl_members,
+            r#"
+trait Trait {
+    type NotRequired = ();
+}
+
+struct Struct;
+
+impl Trait for Struct {
+    $0
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn drop_pin_drop() {
+        check_assist_not_applicable(
+            add_missing_impl_members,
+            r#"
+//- minicore: drop, pin
+struct Foo;
+impl Drop for Foo {$0
+    fn drop(&mut self) {}
+}
+        "#,
+        );
+        check_assist_not_applicable(
+            add_missing_impl_members,
+            r#"
+//- minicore: drop, pin
+struct Foo;
+impl Drop for Foo {$0
+    fn pin_drop(self: core::pin::Pin<&mut Self>) {}
+}
+        "#,
+        );
+
+        check_assist_not_applicable(
+            add_missing_default_members,
+            r#"
+//- minicore: drop, pin
+struct Foo;
+impl Drop for Foo {$0
+    fn drop(&mut self) {}
+}
+        "#,
+        );
+        check_assist_not_applicable(
+            add_missing_default_members,
+            r#"
+//- minicore: drop, pin
+struct Foo;
+impl Drop for Foo {$0
+    fn pin_drop(self: core::pin::Pin<&mut Self>) {}
+}
+        "#,
+        );
+
+        check_assist(
+            add_missing_impl_members,
+            r#"
+//- minicore: drop, pin
+struct Foo;
+impl Drop for Foo {$0
+}
+        "#,
+            r#"
+struct Foo;
+impl Drop for Foo {
+    fn drop(&mut self) {
+        ${0:todo!()}
+    }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn issue_10326() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait A<T: ?Sized> { fn a(&self) -> &T; }
+trait B {}
+impl<'a, T: B> A<dyn 'a + B> for T {$0}"#,
+            r#"
+trait A<T: ?Sized> { fn a(&self) -> &T; }
+trait B {}
+impl<'a, T: B> A<dyn 'a + B> for T {
+    fn a(&self) -> &(dyn 'a + B) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn rustc_must_implement_one_of() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    $0
+}
+        "#,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read_buf() {
+        ${0:todo!()}
+    }
+}
+        "#,
+        );
+
+        check_assist(
+            add_missing_default_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    $0
+}
+        "#,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    $0fn read() {}
+}
+        "#,
+        );
+
+        check_assist_not_applicable(
+            add_missing_impl_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read() {}
+    $0
+}
+        "#,
+        );
+        check_assist_not_applicable(
+            add_missing_impl_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read_buf() {}
+    $0
+}
+        "#,
+        );
+
+        check_assist(
+            add_missing_default_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read_buf() {}$0
+}
+        "#,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read_buf() {}
+
+    $0fn read() {}
+}
+        "#,
+        );
+        check_assist(
+            add_missing_default_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read() {}$0
+}
+        "#,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read() {}
+
+    $0fn read_buf() {}
+}
+        "#,
+        );
+
+        check_assist(
+            add_missing_impl_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    #[unstable(feature = "read_buf")]
+    fn read_buf() {}
+}
+
+impl Read for () {
+    $0
+}
+        "#,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    #[unstable(feature = "read_buf")]
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read() {
+        ${0:todo!()}
+    }
+}
+        "#,
+        );
+        check_assist(
+            add_missing_impl_members,
+            r#"
+#![feature(read_buf)]
+
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    #[unstable(feature = "read_buf")]
+    fn read_buf() {}
+}
+
+impl Read for () {
+    $0
+}
+        "#,
+            r#"
+#![feature(read_buf)]
+
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {}
+    #[unstable(feature = "read_buf")]
+    fn read_buf() {}
+}
+
+impl Read for () {
+    fn read_buf() {
+        ${0:todo!()}
+    }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn required_method_with_body() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+//- minicore: drop, pin
+struct Foo;
+
+impl Drop for Foo {
+    $0
+}
+        "#,
+            r#"
+struct Foo;
+
+impl Drop for Foo {
+    fn drop(&mut self) {
+        ${0:todo!()}
+    }
+}
+        "#,
+        );
+
+        check_assist(
+            add_missing_impl_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {
+        Self::read_buf()
+    }
+    fn read_buf() {
+        Self::read();
+    }
+}
+
+impl Read for () {
+    $0
+}
+        "#,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {
+        Self::read_buf()
+    }
+    fn read_buf() {
+        Self::read();
+    }
+}
+
+impl Read for () {
+    fn read_buf() {
+        ${0:todo!()}
+    }
+}
+        "#,
+        );
+        check_assist(
+            add_missing_default_members,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {
+        Self::read_buf()
+    }
+    fn read_buf() {
+        Self::read();
+    }
+}
+
+impl Read for () {
+    $0
+}
+        "#,
+            r#"
+#[rustc_must_implement_one_of(read_buf, read)]
+pub trait Read {
+    fn read() {
+        Self::read_buf()
+    }
+    fn read_buf() {
+        Self::read();
+    }
+}
+
+impl Read for () {
+    $0fn read() {
+        Self::read_buf()
+    }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn unstable_item() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar();
+}
+
+impl Foo for () {
+    $0
+}
+        "#,
+            r#"
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar();
+}
+
+impl Foo for () {
+    fn foobar() {
+        ${0:todo!()}
+    }
+}
+        "#,
+        );
+        check_assist_not_applicable(
+            add_missing_default_members,
+            r#"
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar() {}
+}
+
+impl Foo for () {
+    $0
+}
+        "#,
+        );
+        check_assist(
+            add_missing_default_members,
+            r#"
+#![feature(foobar)]
+
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar() {}
+}
+
+impl Foo for () {
+    $0
+}
+        "#,
+            r#"
+#![feature(foobar)]
+
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar() {}
+}
+
+impl Foo for () {
+    $0fn foobar() {}
+}
+        "#,
+        );
+        check_assist(
+            add_missing_default_members,
+            r#"
+#[unstable(feature = "foobar")]
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar() {}
+}
+
+impl Foo for () {
+    $0
+}
+        "#,
+            r#"
+#[unstable(feature = "foobar")]
+trait Foo {
+    #[unstable(feature = "foobar")]
+    fn foobar() {}
+}
+
+impl Foo for () {
+    $0fn foobar() {}
+}
+        "#,
         );
     }
 }

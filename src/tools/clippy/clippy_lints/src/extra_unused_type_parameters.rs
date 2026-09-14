@@ -8,9 +8,8 @@ use rustc_hir::{
     AmbigArg, BodyId, ExprKind, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem, ImplItemKind, Item,
     ItemKind, PredicateOrigin, Ty, WherePredicate, WherePredicateKind,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::hir::nested_filter;
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
 
@@ -102,7 +101,7 @@ impl<'cx, 'tcx> TypeWalker<'cx, 'tcx> {
     fn emit_sugg(&self, spans: Vec<Span>, msg: String, help: &'static str) {
         let suggestions: Vec<(Span, String)> = spans.iter().copied().zip(std::iter::repeat(String::new())).collect();
         span_lint_and_then(self.cx, EXTRA_UNUSED_TYPE_PARAMETERS, spans, msg, |diag| {
-            diag.multipart_suggestion(help, suggestions, Applicability::MachineApplicable);
+            diag.multipart_suggestion(help, suggestions, Applicability::MaybeIncorrect);
         });
     }
 
@@ -158,10 +157,10 @@ impl<'cx, 'tcx> TypeWalker<'cx, 'tcx> {
                 vec![self.generics.span] // Remove the entire list of generics
             } else {
                 // 1. Start from the last extra param
-                // 2. While the params preceding it are also extra, construct spans going from the current param to
-                //    the comma before it
-                // 3. Once this chain of extra params stops, switch to constructing spans going from the current
-                //    param to the comma _after_ it
+                // 2. While the params preceding it are also extra, construct spans going from the current param to the
+                //    comma before it
+                // 3. Once this chain of extra params stops, switch to constructing spans going from the current param
+                //    to the comma _after_ it
                 let mut end: Option<LocalDefId> = None;
                 extra_params
                     .iter()

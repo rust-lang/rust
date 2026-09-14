@@ -1,11 +1,11 @@
 //@ stderr-per-bitwidth
 //@ ignore-endian-big
-// ignore-tidy-linelength
-//@ normalize-stderr: "╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼" -> "╾ALLOC_ID$1╼"
 //@ dont-require-annotations: NOTE
-//@ ignore-parallel-frontend different alloc ids
+// ignore-tidy-file-linelength
+
 #![allow(invalid_value, unnecessary_transmutes)]
-#![feature(never_type, rustc_attrs, ptr_metadata, slice_from_ptr_range, const_slice_from_ptr_range)]
+#![feature(pattern_types, pattern_type_macro)]
+#![feature(rustc_attrs, ptr_metadata, slice_from_ptr_range, const_slice_from_ptr_range)]
 
 use std::mem;
 use std::alloc::Layout;
@@ -63,16 +63,12 @@ const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
 const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
 //~^ ERROR constructing invalid value
 
-#[rustc_layout_scalar_valid_range_start(10)]
-#[rustc_layout_scalar_valid_range_end(30)]
-struct RestrictedRange1(u32);
-const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
+struct RestrictedRange1(std::pat::pattern_type!(u32 is 10..=30));
+const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(mem::transmute(42_u32)) };
 //~^ ERROR constructing invalid value
 
-#[rustc_layout_scalar_valid_range_start(30)]
-#[rustc_layout_scalar_valid_range_end(10)]
-struct RestrictedRange2(u32);
-const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
+struct RestrictedRange2(std::pat::pattern_type!(i32 is 30.. | ..=10));
+const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(mem::transmute(20_i32)) };
 //~^ ERROR constructing invalid value
 
 const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
@@ -83,10 +79,10 @@ const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
 };
 
 const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
-//~^ ERROR constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
+//~^ ERROR encountered an unaligned reference (required 2 byte alignment but found 1)
 
 const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
-//~^ ERROR constructing invalid value: encountered an unaligned box (required 2 byte alignment but found 1)
+//~^ ERROR encountered an unaligned box (required 2 byte alignment but found 1)
 
 const NULL: &u16 = unsafe { mem::transmute(0usize) };
 //~^ ERROR constructing invalid value

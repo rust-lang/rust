@@ -13,5 +13,5 @@ fn assert_field<F: Field>() {}
 fn main() {
     // FIXME(FRTs): improve this error message, point to the `repr(packed)` span.
     assert_field::<field_of!(MyStruct, 0)>();
-    //~^ ERROR: the trait bound `field_of!(MyStruct, 0): std::field::Field` is not satisfied [E0277]
+    //~^ ERROR: the trait bound `field_of!(MyStruct, 0): Field` is not satisfied [E0277]
 }

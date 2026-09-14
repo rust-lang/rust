@@ -1,5 +1,3 @@
-#![allow(clippy::unnecessary_operation)]
-#![allow(clippy::sliced_string_as_bytes)]
 #![warn(clippy::bytes_nth)]
 
 fn main() {

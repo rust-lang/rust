@@ -1,28 +1,28 @@
 error[E0539]: malformed `link` attribute input
-  --> $DIR/wasm-import-module.rs:3:1
+  --> $DIR/wasm-import-module.rs:3:3
    |
 LL | #[link(name = "...", wasm_import_module)]
-   | ^^^^^^^^^^^^^^^^^^^^^------------------^^
+   |   ^^^^^^^^^^^^^^^^^^^------------------^
    |                      |
    |                      expected this to be of the form `wasm_import_module = "..."`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/wasm-import-module.rs:6:1
+  --> $DIR/wasm-import-module.rs:6:3
    |
 LL | #[link(name = "...", wasm_import_module(x))]
-   | ^^^^^^^^^^^^^^^^^^^^^---------------------^^
+   |   ^^^^^^^^^^^^^^^^^^^---------------------^
    |                      |
    |                      expected this to be of the form `wasm_import_module = "..."`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/wasm-import-module.rs:9:1
+  --> $DIR/wasm-import-module.rs:9:3
    |
 LL | #[link(name = "...", wasm_import_module())]
-   | ^^^^^^^^^^^^^^^^^^^^^--------------------^^
+   |   ^^^^^^^^^^^^^^^^^^^--------------------^
    |                      |
    |                      expected this to be of the form `wasm_import_module = "..."`
    |

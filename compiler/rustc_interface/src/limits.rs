@@ -8,31 +8,29 @@
 //! Users can override these limits via an attribute on the crate like
 //! `#![recursion_limit="22"]`. This pass just looks for those attributes.
 
-use rustc_hir::limit::Limit;
 use rustc_hir::{Attribute, find_attr};
 use rustc_middle::query::Providers;
 use rustc_session::{Limits, Session};
+use rustc_structures::Limit;
 
 pub(crate) fn provide(providers: &mut Providers) {
     providers.limits = |tcx, ()| {
         let attrs = tcx.hir_krate_attrs();
         Limits {
             recursion_limit: get_recursion_limit(tcx.hir_krate_attrs(), tcx.sess),
-            move_size_limit: find_attr!(attrs, MoveSizeLimit { limit, .. } => *limit)
+            move_size_limit: find_attr!(attrs, MoveSizeLimit { limit } => *limit)
                 .unwrap_or(Limit::new(tcx.sess.opts.unstable_opts.move_size_limit.unwrap_or(0))),
-            type_length_limit: find_attr!(attrs, TypeLengthLimit { limit, .. } => *limit)
+            type_length_limit: find_attr!(attrs, TypeLengthLimit { limit } => *limit)
                 .unwrap_or(Limit::new(2usize.pow(24))),
-            pattern_complexity_limit:
-                find_attr!(attrs, PatternComplexityLimit { limit, .. } => *limit)
-                    .unwrap_or(Limit::unlimited()),
+            pattern_complexity_limit: find_attr!(attrs, PatternComplexityLimit { limit } => *limit)
+                .unwrap_or(Limit::unlimited()),
         }
     }
 }
 
 // This one is separate because it must be read prior to macro expansion.
 pub(crate) fn get_recursion_limit(attrs: &[Attribute], sess: &Session) -> Limit {
-    let limit_from_crate =
-        find_attr!(attrs, RecursionLimit { limit, .. } => limit.0).unwrap_or(128);
+    let limit_from_crate = find_attr!(attrs, RecursionLimit { limit } => limit.0).unwrap_or(128);
     Limit::new(
         sess.opts
             .unstable_opts

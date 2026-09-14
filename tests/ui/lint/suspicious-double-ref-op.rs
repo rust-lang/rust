@@ -1,6 +1,7 @@
 #![deny(suspicious_double_ref_op, noop_method_call)]
 
 use std::borrow::Borrow;
+use std::io::Write;
 use std::ops::Deref;
 
 struct PlainType<T>(T);
@@ -25,6 +26,15 @@ pub static STRS: LazyLock<&str> = LazyLock::new(|| "First");
 fn rust_clippy_issue_9272() {
     let str = STRS.clone();
     println!("{str}")
+}
+
+// https://github.com/rust-lang/rust/issues/146227
+fn method_receiver_adjustment(file: &std::fs::File, double_ref: &&std::fs::File) {
+    let _ = file.clone().write(&[]);
+    //~^ ERROR using `.clone()` on a double reference, which returns `&File`
+
+    let _ = double_ref.deref().write(&[]);
+    //~^ ERROR using `.deref()` on a double reference, which returns `&File`
 }
 
 fn main() {

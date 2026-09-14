@@ -6,26 +6,23 @@ use rustc_hash::FxHashSet;
 
 use hir::{Crate, Module, db::HirDatabase, sym};
 use ide::{AnalysisHost, AssistResolveStrategy, Diagnostic, DiagnosticsConfig, Severity};
-use ide_db::{LineIndexDatabase, base_db::SourceDatabase};
+use ide_db::{base_db::SourceDatabase, line_index};
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 
-use crate::cli::{flags, progress_report::ProgressReport};
+use crate::cli::{Verbosity, flags, progress_report::ProgressReport};
 
 impl flags::Diagnostics {
-    pub fn run(self) -> anyhow::Result<()> {
-        const STACK_SIZE: usize = 1024 * 1024 * 8;
-
+    pub fn run(self, verbosity: Verbosity) -> anyhow::Result<()> {
         let handle = stdx::thread::Builder::new(
             stdx::thread::ThreadIntent::LatencySensitive,
             "BIG_STACK_THREAD",
         )
-        .stack_size(STACK_SIZE)
-        .spawn(|| self.run_())
+        .spawn(move || self.run_(verbosity))
         .unwrap();
 
         handle.join()
     }
-    fn run_(self) -> anyhow::Result<()> {
+    fn run_(self, verbosity: Verbosity) -> anyhow::Result<()> {
         let cargo_config = CargoConfig {
             sysroot: Some(RustLibSource::Discover),
             all_targets: true,
@@ -41,6 +38,7 @@ impl flags::Diagnostics {
             load_out_dirs_from_check: !self.disable_build_scripts,
             with_proc_macro_server,
             prefill_caches: false,
+            num_worker_threads: 1,
             proc_macro_processes: 1,
         };
         let (db, _vfs, _proc_macro) =
@@ -63,7 +61,11 @@ impl flags::Diagnostics {
             })
             .collect::<Vec<_>>();
 
-        let mut bar = ProgressReport::new(work.len());
+        let mut bar = if verbosity.is_quiet() {
+            ProgressReport::hidden()
+        } else {
+            ProgressReport::new(work.len())
+        };
         for module in work {
             let file_id = module.definition_source_file_id(db).original_file(db);
             if !visited_files.contains(&file_id) {
@@ -98,7 +100,7 @@ impl flags::Diagnostics {
                     }
 
                     let Diagnostic { code, message, range, severity, .. } = diagnostic;
-                    let line_index = db.line_index(range.file_id);
+                    let line_index = line_index(db, range.file_id);
                     let start = line_index.line_col(range.range.start());
                     let end = line_index.line_col(range.range.end());
                     bar.println(format!(

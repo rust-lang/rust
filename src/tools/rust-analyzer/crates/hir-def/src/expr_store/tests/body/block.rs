@@ -190,15 +190,20 @@ fn f() {
     "#,
         expect![[r#"
             ModuleIdLt {
-                [salsa id]: Id(3803),
+                [salsa id]: Id(583),
                 krate: Crate(
-                    Id(2400),
+                    Id(380),
                 ),
                 block: Some(
                     BlockId(
-                        4801,
+                        Id(781),
                     ),
                 ),
+                containing_module_inside_def_map: None,
+                name_or_empty: Name {
+                    symbol: "",
+                    ctx: (),
+                },
             }"#]],
     );
 }

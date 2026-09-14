@@ -1,3 +1,24 @@
+//! This crate is an abstraction layer, shared between rustc and rust-analyzer, to help with the
+//! overlapping responsibilities (like type inference and trait solving), reduce duplication, and
+//! maintain consistent behavior between the two implementations.
+//!
+//! It defines fundamental interfaces for types, predicates, and the context required by the next
+//! trait solver.
+//!
+//! Both rustc and rust-analyzer immplement these traits for their own concrete implementations, and
+//! `rustc_next_trait_solver` is written to be generic over these abstractions.
+//!
+//! In addition to these interfaces, it also contains components built on top of the abstraction
+//! layer, for example elaboration logic, and the search graph machinery used by the solver, as well
+//! as items that do not need compiler-specific implementations.
+//!
+//! Note that rust-analyzer is built with a stable compiler, while rustc uses unstable features, so
+//! this crate and some of its dependencies need to separate unstable code under the `nightly`
+//! feature.
+//!
+//! There are more details available in a [dedicated dev-guide
+//! chapter](https://rustc-dev-guide.rust-lang.org/solve/sharing-crates-with-rust-analyzer.html).
+
 #![cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir")]
 // tidy-alphabetical-start
 #![allow(rustc::direct_use_of_rustc_type_ir)]
@@ -15,7 +36,7 @@ use std::hash::Hash;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
+use rustc_macros::{Decodable, Encodable, StableHash};
 
 // These modules are `pub` since they are not glob-imported.
 pub mod data_structures;
@@ -24,13 +45,16 @@ pub mod error;
 pub mod fast_reject;
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_inherent")]
 pub mod inherent;
+pub mod intern;
 pub mod ir_print;
 pub mod lang_items;
 pub mod lift;
 pub mod outlives;
+pub mod region_constraint;
 pub mod relate;
 pub mod search_graph;
 pub mod solve;
+pub mod sty;
 pub mod walk;
 
 // These modules are not `pub` since they are glob-imported.
@@ -42,7 +66,6 @@ mod const_kind;
 mod flags;
 mod fold;
 mod generic_arg;
-#[cfg(not(feature = "nightly"))]
 mod generic_visit;
 mod infer_ctxt;
 mod interner;
@@ -51,8 +74,14 @@ mod pattern;
 mod predicate;
 mod predicate_kind;
 mod region_kind;
+#[cfg(feature = "nightly")]
+mod serialize;
+mod term_kind;
+mod ty;
 mod ty_info;
 mod ty_kind;
+mod universe;
+mod unnormalized;
 mod upcast;
 mod visit;
 
@@ -67,7 +96,6 @@ pub use const_kind::*;
 pub use flags::*;
 pub use fold::*;
 pub use generic_arg::*;
-#[cfg(not(feature = "nightly"))]
 pub use generic_visit::*;
 pub use infer_ctxt::*;
 pub use interner::*;
@@ -78,8 +106,15 @@ pub use predicate_kind::*;
 pub use region_kind::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 use rustc_type_ir_macros::GenericTypeVisitable;
+#[cfg(feature = "nightly")]
+pub use serialize::*;
+pub use sty::*;
+pub use term_kind::*;
+pub use ty::{Alias, *};
 pub use ty_info::*;
 pub use ty_kind::*;
+pub use universe::*;
+pub use unnormalized::Unnormalized;
 pub use upcast::*;
 pub use visit::*;
 
@@ -123,7 +158,7 @@ rustc_index::newtype_index! {
     /// is the outer fn.
     ///
     /// [dbi]: https://en.wikipedia.org/wiki/De_Bruijn_index
-    #[stable_hash_no_context]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "DebruijnIndex({})"]
@@ -217,7 +252,7 @@ pub fn debug_bound_var<T: std::fmt::Write>(
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, GenericTypeVisitable)]
-#[cfg_attr(feature = "nightly", derive(Decodable, Encodable, HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(Decodable, Encodable, StableHash))]
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
@@ -333,7 +368,7 @@ rustc_index::newtype_index! {
     /// declared, but a type name in a non-zero universe is a placeholder
     /// type -- an idealized representative of "types in general" that we
     /// use for checking generic functions.
-    #[stable_hash_no_context]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "U{}"]
@@ -388,7 +423,7 @@ impl Default for UniverseIndex {
 }
 
 rustc_index::newtype_index! {
-    #[stable_hash_generic]
+    #[stable_hash]
     #[encodable]
     #[orderable]
     #[debug_format = "{}"]
@@ -403,7 +438,7 @@ rustc_index::newtype_index! {
 /// You can get the environment type of a closure using
 /// `tcx.closure_env_ty()`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, StableHash))]
 pub enum ClosureKind {
     Fn,
     FnMut,

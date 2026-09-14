@@ -1,12 +1,12 @@
 //@ proc-macro: egui_inspect_derive.rs
-//@ revisions: cpass1 cpass2
+//@ revisions: bpass1 bpass2
 //@ ignore-backends: gcc
 
 extern crate egui_inspect_derive;
 
 pub struct TileDef {
     pub layer: (),
-    #[cfg(cpass2)]
+    #[cfg(bpass2)]
     pub blend_graphic: String,
 }
 

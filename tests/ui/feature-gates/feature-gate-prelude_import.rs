@@ -1,4 +1,4 @@
-#[prelude_import] //~ ERROR `#[prelude_import]` is for use by rustc only
+#[prelude_import] //~ ERROR the `prelude_import` attribute is for use by rustc only
 use std::prelude::v1::*;
 
 fn main() {}

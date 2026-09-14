@@ -1,17 +1,15 @@
 use std::collections::hash_map::Entry;
-use std::fmt::Write;
 
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_session::parse::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, sym};
 use rustc_target::asm;
 
-use super::LoweringContext;
-use super::errors::{
+use crate::diagnostics::{
     AbiSpecifiedMultipleTimes, AttSyntaxOnlyX86, ClobberAbiNotSupported,
     InlineAsmUnsupportedTarget, InvalidAbiClobberAbi, InvalidAsmTemplateModifierConst,
     InvalidAsmTemplateModifierLabel, InvalidAsmTemplateModifierRegClass,
@@ -20,10 +18,10 @@ use super::errors::{
     RegisterConflict,
 };
 use crate::{
-    AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, ParamMode, ResolverAstLoweringExt,
+    AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
 };
 
-impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
+impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_inline_asm(
         &mut self,
         sp: Span,
@@ -95,7 +93,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 match asm::InlineAsmClobberAbi::parse(
                     asm_arch,
                     &self.tcx.sess.target,
-                    &self.tcx.sess.unstable_target_features,
+                    &self.tcx.sess.internal_target_features,
                     *abi_name,
                 ) {
                     Ok(abi) => {
@@ -124,13 +122,9 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                         self.dcx().emit_err(ClobberAbiNotSupported { abi_span: *abi_span });
                     }
                     Err(supported_abis) => {
-                        let mut abis = format!("`{}`", supported_abis[0]);
-                        for m in &supported_abis[1..] {
-                            let _ = write!(abis, ", `{m}`");
-                        }
                         self.dcx().emit_err(InvalidAbiClobberAbi {
                             abi_span: *abi_span,
-                            supported_abis: abis,
+                            supported_abis: supported_abis.to_vec().into(),
                         });
                     }
                 }
@@ -164,15 +158,12 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                         asm::InlineAsmRegOrRegClass::RegClass(if let Some(asm_arch) = asm_arch {
                             asm::InlineAsmRegClass::parse(asm_arch, reg_class).unwrap_or_else(
                                 |supported_register_classes| {
-                                    let mut register_classes =
-                                        format!("`{}`", supported_register_classes[0]);
-                                    for m in &supported_register_classes[1..] {
-                                        let _ = write!(register_classes, ", `{m}`");
-                                    }
                                     self.dcx().emit_err(InvalidRegisterClass {
                                         op_span: *op_sp,
                                         reg_class,
-                                        supported_register_classes: register_classes,
+                                        supported_register_classes: supported_register_classes
+                                            .to_vec()
+                                            .into(),
                                     });
                                     asm::InlineAsmRegClass::Err
                                 },
@@ -211,7 +202,6 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     },
                     InlineAsmOperand::Sym { sym } => {
                         let static_def_id = self
-                            .resolver
                             .get_partial_res(sym.id)
                             .and_then(|res| res.full_res())
                             .and_then(|res| match res {
@@ -272,23 +262,20 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                         }
                         let valid_modifiers = class.valid_modifiers(asm_arch.unwrap());
                         if !valid_modifiers.contains(&modifier) {
-                            let sub = if !valid_modifiers.is_empty() {
-                                let mut mods = format!("`{}`", valid_modifiers[0]);
-                                for m in &valid_modifiers[1..] {
-                                    let _ = write!(mods, ", `{m}`");
-                                }
-                                InvalidAsmTemplateModifierRegClassSub::SupportModifier {
-                                    class_name: class.name(),
-                                    modifiers: mods,
-                                }
-                            } else {
+                            let sub = if valid_modifiers.is_empty() {
                                 InvalidAsmTemplateModifierRegClassSub::DoesNotSupportModifier {
                                     class_name: class.name(),
+                                }
+                            } else {
+                                InvalidAsmTemplateModifierRegClassSub::SupportModifier {
+                                    class_name: class.name(),
+                                    modifiers: valid_modifiers.to_vec().into(),
                                 }
                             };
                             self.dcx().emit_err(InvalidAsmTemplateModifierRegClass {
                                 placeholder_span,
                                 op_span: op_sp,
+                                modifier: modifier.to_string(),
                                 sub,
                             });
                         }

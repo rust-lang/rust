@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
+error: Undefined Behavior: constructing invalid value of type &i32: encountered a dangling reference (going beyond the bounds of its allocation)
   --> tests/fail/validity/dangling_ref2.rs:LL:CC
    |
 LL |     let _x: &i32 = unsafe { mem::transmute(ptr) };

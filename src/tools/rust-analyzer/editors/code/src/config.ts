@@ -447,6 +447,10 @@ export class Config {
         return this.get<boolean>("initializeStopped");
     }
 
+    get projectCreationOpenAfterCreate() {
+        return this.get<string>("projectCreation.openAfterCreate");
+    }
+
     get askBeforeUpdateTest() {
         return this.get<boolean>("runnables.askBeforeUpdateTest");
     }
@@ -485,7 +489,7 @@ export function substituteVariablesInEnv(env: Env): Env {
         Object.entries(env).map(([key, value]) => {
             const deps = new Set<string>();
             if (value) {
-                let match = undefined;
+                let match;
                 while ((match = depRe.exec(value))) {
                     const depName = unwrapUndefinable(match.groups?.["depName"]);
                     deps.add(depName);

@@ -2,8 +2,8 @@ use std::cmp;
 
 use libc::c_uint;
 use rustc_abi::{
-    ArmCall, BackendRepr, CanonAbi, HasDataLayout, InterruptKind, Primitive, Reg, RegKind, Size,
-    X86Call,
+    ArmCall, BackendRepr, CanonAbi, Float, HasDataLayout, Integer, InterruptKind, Primitive, Reg,
+    RegKind, Size, X86Call,
 };
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -38,11 +38,16 @@ trait ArgAttributesExt {
 const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =
     [(ArgAttribute::InReg, llvm::AttributeKind::InReg)];
 
-const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 4] = [
+const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 6] = [
     (ArgAttribute::NoAlias, llvm::AttributeKind::NoAlias),
     (ArgAttribute::NonNull, llvm::AttributeKind::NonNull),
     (ArgAttribute::ReadOnly, llvm::AttributeKind::ReadOnly),
     (ArgAttribute::NoUndef, llvm::AttributeKind::NoUndef),
+    (ArgAttribute::Writable, llvm::AttributeKind::Writable),
+    // Our internal NoFree attribute still allows deallocation of zero-size allocations. However,
+    // these don't render any bytes non-dereferenceable, so it's still fine to apply LLVM NoFree
+    // for them.
+    (ArgAttribute::NoFree, llvm::AttributeKind::NoFree),
 ];
 
 const CAPTURES_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 3] = [
@@ -74,7 +79,9 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
     // Only apply remaining attributes when optimizing
     if cx.sess().opts.optimize != config::OptLevel::No {
         let deref = this.pointee_size.bytes();
-        if deref != 0 {
+        // dereferenceable in LLVM currently implies nofree, so only emit dereferenceable if nofree
+        // is also set.
+        if deref != 0 && regular.contains(ArgAttribute::NoFree) {
             if regular.contains(ArgAttribute::NonNull) {
                 attrs.push(llvm::CreateDereferenceableAttr(cx.llcx, deref));
             } else {
@@ -137,7 +144,31 @@ impl LlvmType for Reg {
                 128 => cx.type_f128(),
                 _ => bug!("unsupported float: {:?}", self),
             },
-            RegKind::Vector => cx.type_vector(cx.type_i8(), self.size.bytes()),
+            RegKind::Vector { hint_vector_elem } => {
+                // NOTE: it is valid to ignore the element type hint (and always pick i8).
+                // But providing a more accurate type means fewer casts in LLVM IR,
+                // which helps with optimization.
+                let ty = match hint_vector_elem {
+                    Primitive::Int(integer, _) => match integer {
+                        Integer::I8 => cx.type_ix(8),
+                        Integer::I16 => cx.type_ix(16),
+                        Integer::I32 => cx.type_ix(32),
+                        Integer::I64 => cx.type_ix(64),
+                        Integer::I128 => cx.type_ix(128),
+                    },
+                    Primitive::Float(float) => match float {
+                        Float::F16 => cx.type_f16(),
+                        Float::F32 => cx.type_f32(),
+                        Float::F64 => cx.type_f64(),
+                        Float::F128 => cx.type_f128(),
+                    },
+                    Primitive::Pointer(_) => cx.type_ptr(),
+                };
+
+                assert!(self.size.bytes().is_multiple_of(hint_vector_elem.size(cx).bytes()));
+                let len = self.size.bytes() / hint_vector_elem.size(cx).bytes();
+                cx.type_vector(ty, len)
+            }
         }
     }
 }
@@ -162,7 +193,7 @@ impl LlvmType for CastTarget {
 
         // Simplify to a single unit or an array if there's no prefix.
         // This produces the same layout, but using a simpler type.
-        if self.prefix.iter().all(|x| x.is_none()) {
+        if self.prefix.is_empty() {
             // We can't do this if is_consecutive is set and the unit would get
             // split on the target. Currently, this is only relevant for i128
             // registers.
@@ -174,8 +205,7 @@ impl LlvmType for CastTarget {
         }
 
         // Generate a struct type with the prefix and the "rest" arguments.
-        let prefix_args =
-            self.prefix.iter().flat_map(|option_reg| option_reg.map(|reg| reg.llvm_type(cx)));
+        let prefix_args = self.prefix.iter().map(|reg| reg.llvm_type(cx));
         let rest_args = (0..rest_count).map(|_| rest_ll_unit);
         let args: Vec<_> = prefix_args.chain(rest_args).collect();
         cx.type_struct(&args, false)
@@ -219,7 +249,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
                 bug!("unsized `ArgAbi` cannot be stored");
             }
-            PassMode::Cast { cast, pad_i32: _ } => {
+            PassMode::Cast { cast, pad_i32_count: _ } => {
                 // The ABI mandates that the value is passed as a different struct representation.
                 // Spill and reload it from the stack to convert from the ABI representation to
                 // the Rust representation.
@@ -336,7 +366,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         let llreturn_ty = match &self.ret.mode {
             PassMode::Ignore => cx.type_void(),
             PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
-            PassMode::Cast { cast, pad_i32: _ } => cast.llvm_type(cx),
+            PassMode::Cast { cast, pad_i32_count: _ } => cast.llvm_type(cx),
             PassMode::Indirect { .. } => {
                 llargument_tys.push(cx.type_ptr());
                 cx.type_void()
@@ -375,11 +405,13 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     continue;
                 }
                 PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => cx.type_ptr(),
-                PassMode::Cast { cast, pad_i32 } => {
-                    // add padding
-                    if *pad_i32 {
-                        llargument_tys.push(Reg::i32().llvm_type(cx));
-                    }
+                PassMode::Cast { cast, pad_i32_count } => {
+                    // Add padding.
+                    llargument_tys.extend(std::iter::repeat_n(
+                        Reg::i32().llvm_type(cx),
+                        usize::from(*pad_i32_count),
+                    ));
+
                     // Compute the LLVM type we use for this function from the cast type.
                     // We assume here that ABI-compatible Rust types have the same cast type.
                     cast.llvm_type(cx)
@@ -481,7 +513,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     );
                 }
             }
-            PassMode::Cast { cast, pad_i32: _ } => {
+            PassMode::Cast { cast, pad_i32_count: _ } => {
                 cast.attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
             }
             _ => {}
@@ -521,7 +553,9 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Pair(a, b) => {
                     let i = apply(a);
                     let ii = apply(b);
-                    if let BackendRepr::ScalarPair(scalar_a, scalar_b) = arg.layout.backend_repr {
+                    if let BackendRepr::ScalarPair { a: scalar_a, b: scalar_b, b_offset: _ } =
+                        arg.layout.backend_repr
+                    {
                         apply_range_attr(llvm::AttributePlace::Argument(i), scalar_a);
                         let primitive_b = scalar_b.primitive();
                         let scalar_b = if let rustc_abi::Primitive::Int(int, false) = primitive_b
@@ -548,8 +582,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         apply_range_attr(llvm::AttributePlace::Argument(ii), scalar_b);
                     }
                 }
-                PassMode::Cast { cast, pad_i32 } => {
-                    if *pad_i32 {
+                PassMode::Cast { cast, pad_i32_count } => {
+                    for _ in 0..*pad_i32_count {
                         apply(&ArgAttributes::new());
                     }
                     apply(&cast.attrs);
@@ -565,6 +599,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 llfn,
                 &cx.tcx.codegen_instance_attrs(instance.def),
                 Some(instance),
+                cx.sanitizer_ignorelist.as_ref(),
             );
         }
     }
@@ -598,7 +633,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 );
                 attributes::apply_to_callsite(callsite, llvm::AttributePlace::Argument(i), &[sret]);
             }
-            PassMode::Cast { cast, pad_i32: _ } => {
+            PassMode::Cast { cast, pad_i32_count: _ } => {
                 cast.attrs.apply_attrs_to_callsite(
                     llvm::AttributePlace::ReturnValue,
                     bx.cx,
@@ -634,8 +669,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply(bx.cx, a);
                     apply(bx.cx, b);
                 }
-                PassMode::Cast { cast, pad_i32 } => {
-                    if *pad_i32 {
+                PassMode::Cast { cast, pad_i32_count } => {
+                    for _ in 0..*pad_i32_count {
                         apply(bx.cx, &ArgAttributes::new());
                     }
                     apply(bx.cx, &cast.attrs);
@@ -693,10 +728,15 @@ pub(crate) fn to_llvm_calling_convention(sess: &Session, abi: CanonAbi) -> llvm:
             Arch::X86_64 | Arch::AArch64 => llvm::PreserveNone,
             _ => llvm::CCallConv,
         },
+        CanonAbi::RustTail => match &sess.target.arch {
+            Arch::X86 | Arch::X86_64 | Arch::AArch64 => llvm::Tail,
+            _ => sess.dcx().fatal("extern \"tail\" is only supported on x86, x86_64 and aarch64"),
+        },
         // Functions with this calling convention can only be called from assembly, but it is
         // possible to declare an `extern "custom"` block, so the backend still needs a calling
         // convention for declaring foreign functions.
         CanonAbi::Custom => llvm::CCallConv,
+        CanonAbi::Swift => llvm::SwiftCallConv,
         CanonAbi::GpuKernel => match &sess.target.arch {
             Arch::AmdGpu => llvm::AmdgpuKernel,
             Arch::Nvptx64 => llvm::PtxKernel,

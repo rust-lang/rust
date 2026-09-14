@@ -2,6 +2,7 @@
 
 use std::mem;
 
+use base_db::SourceDatabase;
 use cfg::CfgOptions;
 use hir_expand::{
     AstId, AttrMacroAttrIds, ExpandTo, HirFileId, InFile, Intern, Lookup, MacroCallKind,
@@ -17,12 +18,10 @@ use syntax::{
     ast::{self, HasModuleItem, HasName},
 };
 use thin_vec::ThinVec;
-use triomphe::Arc;
 
 use crate::{
     AssocItemId, AstIdWithPath, ConstLoc, FunctionId, FunctionLoc, ImplId, ItemContainerId,
     ItemLoc, MacroCallId, ModuleId, TraitId, TypeAliasId, TypeAliasLoc,
-    db::DefDatabase,
     item_tree::AttrsOrCfg,
     macro_call_as_call_id,
     nameres::{
@@ -42,17 +41,17 @@ pub struct TraitItems {
 #[salsa::tracked]
 impl TraitItems {
     #[inline]
-    pub(crate) fn query(db: &dyn DefDatabase, tr: TraitId) -> &TraitItems {
+    pub(crate) fn query(db: &dyn SourceDatabase, tr: TraitId) -> &TraitItems {
         &Self::query_with_diagnostics(db, tr).0
     }
 
     #[salsa::tracked(returns(ref))]
     pub fn query_with_diagnostics(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         tr: TraitId,
     ) -> (TraitItems, DefDiagnostics) {
-        let ItemLoc { container: module_id, id: ast_id } = tr.lookup(db);
-        let ast_id_map = db.ast_id_map(ast_id.file_id);
+        let ItemLoc { container: module_id, id: ast_id } = *tr.lookup(db);
+        let ast_id_map = ast_id.file_id.ast_id_map(db);
         let source = ast_id.with_value(ast_id_map.get(ast_id.value)).to_node(db);
         if source.eq_token().is_some() {
             // FIXME(trait-alias) probably needs special handling here
@@ -114,9 +113,9 @@ pub struct ImplItems {
 #[salsa::tracked]
 impl ImplItems {
     #[salsa::tracked(returns(ref))]
-    pub fn of(db: &dyn DefDatabase, id: ImplId) -> (ImplItems, DefDiagnostics) {
+    pub fn of(db: &dyn SourceDatabase, id: ImplId) -> (ImplItems, DefDiagnostics) {
         let _p = tracing::info_span!("impl_items_with_diagnostics_query").entered();
-        let ItemLoc { container: module_id, id: ast_id } = id.lookup(db);
+        let ItemLoc { container: module_id, id: ast_id } = *id.lookup(db);
 
         let collector =
             AssocItemCollector::new(db, module_id, ItemContainerId::ImplId(id), ast_id.file_id);
@@ -133,26 +132,26 @@ impl ImplItems {
     }
 }
 
-struct AssocItemCollector<'a> {
-    db: &'a dyn DefDatabase,
+struct AssocItemCollector<'db> {
+    db: &'db dyn SourceDatabase,
     module_id: ModuleId,
-    def_map: &'a DefMap,
-    local_def_map: &'a LocalDefMap,
-    ast_id_map: Arc<AstIdMap>,
-    span_map: SpanMap,
-    cfg_options: &'a CfgOptions,
+    def_map: &'db DefMap,
+    local_def_map: &'db LocalDefMap,
+    ast_id_map: &'db AstIdMap,
+    span_map: SpanMap<'db>,
+    cfg_options: &'db CfgOptions,
     file_id: HirFileId,
     diagnostics: Vec<DefDiagnostic>,
     container: ItemContainerId,
 
-    depth: usize,
+    macro_depth: u32,
     items: Vec<(Name, AssocItemId)>,
     macro_calls: ThinVec<(AstId<ast::Item>, MacroCallId)>,
 }
 
-impl<'a> AssocItemCollector<'a> {
+impl<'db> AssocItemCollector<'db> {
     fn new(
-        db: &'a dyn DefDatabase,
+        db: &'db dyn SourceDatabase,
         module_id: ModuleId,
         container: ItemContainerId,
         file_id: HirFileId,
@@ -163,14 +162,14 @@ impl<'a> AssocItemCollector<'a> {
             module_id,
             def_map,
             local_def_map,
-            ast_id_map: db.ast_id_map(file_id),
-            span_map: db.span_map(file_id),
+            ast_id_map: file_id.ast_id_map(db),
+            span_map: file_id.span_map(db),
             cfg_options: module_id.krate(db).cfg_options(db),
             file_id,
             container,
             items: Vec::new(),
 
-            depth: 0,
+            macro_depth: file_id.macro_expansion_depth(db),
             macro_calls: ThinVec::new(),
             diagnostics: Vec::new(),
         }
@@ -192,19 +191,18 @@ impl<'a> AssocItemCollector<'a> {
 
     fn collect_item(&mut self, item: ast::AssocItem) {
         let ast_id = self.ast_id_map.ast_id(&item);
-        let attrs =
-            match AttrsOrCfg::lower(self.db, &item, &|| self.cfg_options, self.span_map.as_ref()) {
-                AttrsOrCfg::Enabled { attrs } => attrs,
-                AttrsOrCfg::CfgDisabled(cfg) => {
-                    self.diagnostics.push(DefDiagnostic::unconfigured_code(
-                        self.module_id,
-                        InFile::new(self.file_id, ast_id.erase()),
-                        cfg.0,
-                        self.cfg_options.clone(),
-                    ));
-                    return;
-                }
-            };
+        let attrs = match AttrsOrCfg::lower(self.db, &item, &|| self.cfg_options, self.span_map) {
+            AttrsOrCfg::Enabled { attrs } => attrs,
+            AttrsOrCfg::CfgDisabled(cfg) => {
+                self.diagnostics.push(DefDiagnostic::unconfigured_code(
+                    self.module_id,
+                    InFile::new(self.file_id, ast_id.erase()),
+                    cfg.0,
+                    self.cfg_options.clone(),
+                ));
+                return;
+            }
+        };
         let ast_id = InFile::new(self.file_id, ast_id.upcast());
 
         'attrs: for (attr_id, attr) in attrs.as_ref().iter() {
@@ -217,9 +215,10 @@ impl<'a> AssocItemCollector<'a> {
                 ast_id_with_path,
                 attr,
                 attr_id,
+                self.macro_depth + 1,
             ) {
                 Ok(ResolvedAttr::Macro(call_id)) => {
-                    let loc = self.db.lookup_intern_macro_call(call_id);
+                    let loc = call_id.loc(self.db);
                     if let MacroDefKind::ProcMacro(_, exp, _) = loc.def.kind {
                         // If there's no expander for the proc macro (e.g. the
                         // proc macro is ignored, or building the proc macro
@@ -314,7 +313,7 @@ impl<'a> AssocItemCollector<'a> {
                         )
                         .0
                         .take_macros()
-                        .map(|it| self.db.macro_def(it))
+                        .map(|it| it.definition(self.db))
                 };
                 match macro_call_as_call_id(
                     self.db,
@@ -323,6 +322,8 @@ impl<'a> AssocItemCollector<'a> {
                     ctxt,
                     ExpandTo::Items,
                     self.module_id.krate(self.db),
+                    self.macro_depth + 1,
+                    self.def_map.recursion_limit(),
                     resolver,
                     &mut |ptr, call_id| {
                         self.macro_calls.push((ptr.map(|(_, it)| it.upcast()), call_id))
@@ -353,16 +354,16 @@ impl<'a> AssocItemCollector<'a> {
     }
 
     fn collect_macro_items(&mut self, macro_call_id: MacroCallId) {
-        if self.depth > self.def_map.recursion_limit() as usize {
+        if self.macro_depth > self.def_map.recursion_limit() {
             tracing::warn!("macro expansion is too deep");
             return;
         }
 
-        let (syntax, span_map) = self.db.parse_macro_expansion(macro_call_id).value;
+        let (syntax, span_map) = &macro_call_id.parse_macro_expansion(self.db).value;
         let old_file_id = mem::replace(&mut self.file_id, macro_call_id.into());
-        let old_ast_id_map = mem::replace(&mut self.ast_id_map, self.db.ast_id_map(self.file_id));
+        let old_ast_id_map = mem::replace(&mut self.ast_id_map, self.file_id.ast_id_map(self.db));
         let old_span_map = mem::replace(&mut self.span_map, SpanMap::ExpansionSpanMap(span_map));
-        self.depth += 1;
+        self.macro_depth += 1;
 
         let items = ast::MacroItems::cast(syntax.syntax_node()).expect("not `MacroItems`");
         for item in items.items() {
@@ -377,7 +378,7 @@ impl<'a> AssocItemCollector<'a> {
             self.collect_item(item);
         }
 
-        self.depth -= 1;
+        self.macro_depth -= 1;
         self.file_id = old_file_id;
         self.ast_id_map = old_ast_id_map;
         self.span_map = old_span_map;

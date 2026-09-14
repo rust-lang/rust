@@ -13,16 +13,16 @@
 
 extern crate a;
 
-#[rustc_clean(except="typeck,optimized_mir", cfg="rpass2")]
+#[rustc_clean(except="typeck_root,optimized_mir", cfg="rpass2")]
 #[rustc_clean(cfg="rpass3")]
-pub fn use_X() -> u32 {
+pub fn use_x() -> u32 {
     let x: a::X = 22;
     x as u32
 }
 
 #[rustc_clean(cfg="rpass2")]
 #[rustc_clean(cfg="rpass3")]
-pub fn use_Y() {
+pub fn use_y() {
     let x: a::Y = 'c';
 }
 

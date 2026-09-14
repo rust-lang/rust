@@ -1,7 +1,9 @@
 //! Complete fields in record literals and patterns.
+use hir::{HasContainer, ItemContainer};
 use ide_db::SymbolKind;
 use syntax::{
-    SmolStr,
+    SmolStr, T,
+    algo::next_non_trivia_token,
     ast::{self, Expr},
 };
 
@@ -13,7 +15,7 @@ use crate::{
 
 pub(crate) fn complete_record_pattern_fields(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     pattern_ctx: &PatternContext,
 ) {
     if let PatternContext { record_pat: Some(record_pat), .. } = pattern_ctx {
@@ -28,11 +30,7 @@ pub(crate) fn complete_record_pattern_fields(
                     record_pat.record_pat_field_list().and_then(|fl| fl.fields().next()).is_some();
 
                 match were_fields_specified {
-                    false => un
-                        .fields(ctx.db)
-                        .into_iter()
-                        .map(|f| (f, f.ty(ctx.db).to_type(ctx.db)))
-                        .collect(),
+                    false => un.fields(ctx.db).into_iter().map(|f| (f, f.ty(ctx.db))).collect(),
                     true => return,
                 }
             }
@@ -44,7 +42,7 @@ pub(crate) fn complete_record_pattern_fields(
 
 pub(crate) fn complete_record_expr_fields(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     record_expr: &ast::RecordExpr,
     &dot_prefix: &bool,
 ) {
@@ -60,11 +58,7 @@ pub(crate) fn complete_record_expr_fields(
                 record_expr.record_expr_field_list().and_then(|fl| fl.fields().next()).is_some();
 
             match were_fields_specified {
-                false => un
-                    .fields(ctx.db)
-                    .into_iter()
-                    .map(|f| (f, f.ty(ctx.db).to_type(ctx.db)))
-                    .collect(),
+                false => un.fields(ctx.db).into_iter().map(|f| (f, f.ty(ctx.db))).collect(),
                 true => return,
             }
         }
@@ -98,14 +92,20 @@ pub(crate) fn complete_record_expr_fields(
 
 pub(crate) fn add_default_update(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     ty: Option<&hir::TypeInfo<'_>>,
 ) {
     let default_trait = ctx.famous_defs().core_default_Default();
     let impls_default_trait = default_trait
         .zip(ty)
         .is_some_and(|(default_trait, ty)| ty.original.impls_trait(ctx.db, default_trait, &[]));
-    if impls_default_trait {
+    let in_own_default_impl =
+        ty.zip(ctx.containing_function).is_some_and(|(ty, f)| ty.original == f.ret_type(ctx.db)
+            && matches!(f.container(ctx.db), ItemContainer::Impl(impl_) if impl_.trait_(ctx.db) == default_trait));
+    let ends_of_record_list =
+        next_non_trivia_token(ctx.token.clone()).is_none_or(|it| it.kind() == T!['}']);
+
+    if impls_default_trait && !in_own_default_impl && ends_of_record_list {
         // FIXME: This should make use of scope_def like completions so we get all the other goodies
         // that is we should handle this like actually completing the default function
         let completion_text = "..Default::default()";
@@ -127,7 +127,7 @@ pub(crate) fn add_default_update(
 
 fn complete_fields(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     missing_fields: Vec<(hir::Field, hir::Type<'_>)>,
 ) {
     for (field, ty) in missing_fields {

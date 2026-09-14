@@ -5,12 +5,8 @@ LL | fn foo<T: Trait<A = T::B>>() {}
    |                     ^^^^
    |
    = note: ...which immediately requires computing the bounds for type parameter `T` again
-note: cycle used when computing explicit predicates of `foo`
-  --> $DIR/assoc-equality-cycle.rs:7:21
-   |
-LL | fn foo<T: Trait<A = T::B>>() {}
-   |                     ^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+   = note: cycle used when computing explicit predicates of `foo`
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
 error: aborting due to 1 previous error
 

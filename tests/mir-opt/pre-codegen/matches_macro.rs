@@ -10,7 +10,7 @@ pub enum Foo {
     F,
 }
 
-// EMIT_MIR matches_macro.issue_77355_opt.PreCodegen.after.mir
+// EMIT_MIR matches_macro.issue_77355_opt.runtime-optimized.after.mir
 fn issue_77355_opt(num: Foo) -> u64 {
     // CHECK-LABEL: fn issue_77355_opt(
     // CHECK: switchInt({{.*}}) -> [1: bb1, 2: bb1, otherwise: bb2];

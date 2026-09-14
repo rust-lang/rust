@@ -1,10 +1,5 @@
-#![allow(
-    unused,
-    clippy::redundant_closure,
-    clippy::reversed_empty_ranges,
-    clippy::identity_op
-)]
 #![warn(clippy::map_with_unused_argument_over_ranges)]
+#![allow(clippy::identity_op, clippy::redundant_closure, clippy::reversed_empty_ranges)]
 
 fn do_something() -> usize {
     todo!()
@@ -87,5 +82,19 @@ fn msrv_1_28() {
 #[clippy::msrv = "1.81"]
 fn msrv_1_82() {
     (0..10).map(|_| 3);
+    //~^ map_with_unused_argument_over_ranges
+}
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test {
+        ($val:expr) => {
+            ($val * 2 + 1)
+        };
+    }
+
+    (0..test!(10)).map(|_| do_something());
+    //~^ map_with_unused_argument_over_ranges
+
+    (0..10).map(|_| test!(3));
     //~^ map_with_unused_argument_over_ranges
 }

@@ -1,5 +1,4 @@
 use ast::StaticItem;
-use itertools::{Itertools, Position};
 use rustc_ast::{self as ast, EiiImpl, ModKind, Safety, TraitAlias};
 use rustc_span::Ident;
 
@@ -36,13 +35,14 @@ impl<'a> State<'a> {
             ast::ForeignItemKind::Fn(func) => {
                 self.print_fn_full(vis, attrs, &*func);
             }
-            ast::ForeignItemKind::Static(box ast::StaticItem {
+            ast::ForeignItemKind::Static(ast::StaticItem {
                 ident,
                 ty,
                 mutability,
                 expr,
                 safety,
                 define_opaque,
+                eii_impl,
             }) => self.print_item_const(
                 *ident,
                 Some(*mutability),
@@ -53,8 +53,9 @@ impl<'a> State<'a> {
                 *safety,
                 ast::Defaultness::Implicit,
                 define_opaque.as_deref(),
+                eii_impl.as_deref(),
             ),
-            ast::ForeignItemKind::TyAlias(box ast::TyAlias {
+            ast::ForeignItemKind::TyAlias(ast::TyAlias {
                 defaultness,
                 ident,
                 generics,
@@ -93,8 +94,12 @@ impl<'a> State<'a> {
         safety: ast::Safety,
         defaultness: ast::Defaultness,
         define_opaque: Option<&[(ast::NodeId, ast::Path)]>,
+        eii_impl: Option<&EiiImpl>,
     ) {
         self.print_define_opaques(define_opaque);
+        if let Some(eii_impl) = eii_impl {
+            self.print_eii_impl(eii_impl);
+        }
         let (cb, ib) = self.head("");
         self.print_visibility(vis);
         self.print_safety(safety);
@@ -184,13 +189,14 @@ impl<'a> State<'a> {
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(box StaticItem {
+            ast::ItemKind::Static(StaticItem {
                 ident,
                 ty,
                 safety,
                 mutability: mutbl,
                 expr: body,
                 define_opaque,
+                eii_impl,
             }) => {
                 self.print_safety(*safety);
                 self.print_item_const(
@@ -203,6 +209,7 @@ impl<'a> State<'a> {
                     ast::Safety::Default,
                     ast::Defaultness::Implicit,
                     define_opaque.as_deref(),
+                    eii_impl.as_deref(),
                 );
             }
             ast::ItemKind::ConstBlock(ast::ConstBlockItem { id: _, span: _, block }) => {
@@ -216,12 +223,12 @@ impl<'a> State<'a> {
                 }
                 self.end(ib);
             }
-            ast::ItemKind::Const(box ast::ConstItem {
+            ast::ItemKind::Const(ast::ConstItem {
                 defaultness,
                 ident,
                 generics,
                 ty,
-                rhs_kind,
+                body,
                 define_opaque,
             }) => {
                 self.print_item_const(
@@ -229,11 +236,12 @@ impl<'a> State<'a> {
                     None,
                     generics,
                     ty,
-                    rhs_kind.expr(),
+                    body.as_deref(),
                     &item.vis,
                     ast::Safety::Default,
                     *defaultness,
                     define_opaque.as_deref(),
+                    None,
                 );
             }
             ast::ItemKind::Fn(func) => {
@@ -287,7 +295,7 @@ impl<'a> State<'a> {
                 self.end(ib);
                 self.end(cb);
             }
-            ast::ItemKind::TyAlias(box ast::TyAlias {
+            ast::ItemKind::TyAlias(ast::TyAlias {
                 defaultness,
                 ident,
                 generics,
@@ -331,13 +339,13 @@ impl<'a> State<'a> {
                     }
                 };
 
-                if let Some(box of_trait) = of_trait {
+                if let Some(of_trait) = of_trait {
                     let ast::TraitImplHeader { defaultness, safety, polarity, ref trait_ref } =
                         *of_trait;
                     self.print_defaultness(defaultness);
+                    self.print_constness(*constness);
                     self.print_safety(safety);
                     impl_generics(self);
-                    self.print_constness(*constness);
                     if let ast::ImplPolarity::Negative(_) = polarity {
                         self.word("!");
                     }
@@ -361,11 +369,11 @@ impl<'a> State<'a> {
                 let empty = item.attrs.is_empty() && items.is_empty();
                 self.bclose(item.span, empty, cb);
             }
-            ast::ItemKind::Trait(box ast::Trait {
+            ast::ItemKind::Trait(ast::Trait {
+                impl_restriction,
                 constness,
                 safety,
                 is_auto,
-                impl_restriction,
                 ident,
                 generics,
                 bounds,
@@ -373,10 +381,10 @@ impl<'a> State<'a> {
             }) => {
                 let (cb, ib) = self.head("");
                 self.print_visibility(&item.vis);
+                self.print_impl_restriction(impl_restriction);
                 self.print_constness(*constness);
                 self.print_safety(*safety);
                 self.print_is_auto(*is_auto);
-                self.print_impl_restriction(impl_restriction);
                 self.word_nbsp("trait");
                 self.print_ident(*ident);
                 self.print_generic_params(&generics.params);
@@ -394,7 +402,7 @@ impl<'a> State<'a> {
                 let empty = item.attrs.is_empty() && items.is_empty();
                 self.bclose(item.span, empty, cb);
             }
-            ast::ItemKind::TraitAlias(box TraitAlias { constness, ident, generics, bounds }) => {
+            ast::ItemKind::TraitAlias(TraitAlias { constness, ident, generics, bounds }) => {
                 let (cb, ib) = self.head("");
                 self.print_visibility(&item.vis);
                 self.print_constness(*constness);
@@ -435,9 +443,15 @@ impl<'a> State<'a> {
                 &item.vis,
                 &deleg.qself,
                 &deleg.prefix,
-                deleg.suffixes.as_ref().map_or(DelegationKind::Glob, |s| DelegationKind::List(s)),
+                match &deleg.suffixes {
+                    ast::DelegationSuffixes::List(s) => DelegationKind::List(s),
+                    ast::DelegationSuffixes::Glob(_) => DelegationKind::Glob,
+                },
                 &deleg.body,
             ),
+            ast::ItemKind::TestBinderConstraints(_) => {
+                self.word("test_binder_constraints!(/* pretty-printing not supported */)")
+            }
         }
         self.ann.post(self, AnnNode::Item(item))
     }
@@ -499,6 +513,20 @@ impl<'a> State<'a> {
         }
     }
 
+    pub(crate) fn print_mut_restriction(&mut self, mut_restriction: &ast::MutRestriction) {
+        match &mut_restriction.kind {
+            ast::RestrictionKind::Restricted { path, shorthand, .. } => {
+                let path = Self::to_string(|s| s.print_path(path, false, 0));
+                if *shorthand {
+                    self.word_nbsp(format!("mut({path})"))
+                } else {
+                    self.word_nbsp(format!("mut(in {path})"))
+                }
+            }
+            ast::RestrictionKind::Unrestricted => {}
+        }
+    }
+
     fn print_defaultness(&mut self, defaultness: ast::Defaultness) {
         if let ast::Defaultness::Default(_) = defaultness {
             self.word_nbsp("default");
@@ -525,6 +553,7 @@ impl<'a> State<'a> {
                         s.maybe_print_comment(field.span.lo());
                         s.print_outer_attributes(&field.attrs);
                         s.print_visibility(&field.vis);
+                        s.print_mut_restriction(field.mut_restriction());
                         s.print_type(&field.ty)
                     });
                     self.pclose();
@@ -550,6 +579,7 @@ impl<'a> State<'a> {
                         self.maybe_print_comment(field.span.lo());
                         self.print_outer_attributes(&field.attrs);
                         self.print_visibility(&field.vis);
+                        self.print_mut_restriction(field.mut_restriction());
                         self.print_ident(field.ident.unwrap());
                         self.word_nbsp(":");
                         self.print_type(&field.ty);
@@ -584,12 +614,12 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Fn(func) => {
                 self.print_fn_full(vis, attrs, &*func);
             }
-            ast::AssocItemKind::Const(box ast::ConstItem {
+            ast::AssocItemKind::Const(ast::ConstItem {
                 defaultness,
                 ident,
                 generics,
                 ty,
-                rhs_kind,
+                body,
                 define_opaque,
             }) => {
                 self.print_item_const(
@@ -597,14 +627,15 @@ impl<'a> State<'a> {
                     None,
                     generics,
                     ty,
-                    rhs_kind.expr(),
+                    body.as_deref(),
                     vis,
                     ast::Safety::Default,
                     *defaultness,
                     define_opaque.as_deref(),
+                    None,
                 );
             }
-            ast::AssocItemKind::Type(box ast::TyAlias {
+            ast::AssocItemKind::Type(ast::TyAlias {
                 defaultness,
                 ident,
                 generics,
@@ -641,7 +672,10 @@ impl<'a> State<'a> {
                 vis,
                 &deleg.qself,
                 &deleg.prefix,
-                deleg.suffixes.as_ref().map_or(DelegationKind::Glob, |s| DelegationKind::List(s)),
+                match &deleg.suffixes {
+                    ast::DelegationSuffixes::List(s) => DelegationKind::List(s),
+                    ast::DelegationSuffixes::Glob(_) => DelegationKind::Glob,
+                },
                 &deleg.body,
             ),
         }
@@ -698,23 +732,13 @@ impl<'a> State<'a> {
     }
 
     fn print_fn_full(&mut self, vis: &ast::Visibility, attrs: &[ast::Attribute], func: &ast::Fn) {
-        let ast::Fn { defaultness, ident, generics, sig, contract, body, define_opaque, eii_impls } =
+        let ast::Fn { defaultness, ident, generics, sig, contract, body, define_opaque, eii_impl } =
             func;
 
         self.print_define_opaques(define_opaque.as_deref());
 
-        for EiiImpl { eii_macro_path, impl_safety, .. } in eii_impls {
-            self.word("#[");
-            if let Safety::Unsafe(..) = impl_safety {
-                self.word("unsafe");
-                self.popen();
-            }
-            self.print_path(eii_macro_path, false, 0);
-            if let Safety::Unsafe(..) = impl_safety {
-                self.pclose();
-            }
-            self.word("]");
-            self.hardbreak();
+        if let Some(eii_impl) = eii_impl {
+            self.print_eii_impl(eii_impl);
         }
 
         let body_cb_ib = body.as_ref().map(|body| (body, self.head("")));
@@ -739,6 +763,20 @@ impl<'a> State<'a> {
         } else {
             self.word(";");
         }
+    }
+
+    fn print_eii_impl(&mut self, eii: &ast::EiiImpl) {
+        self.word("#[");
+        if let Safety::Unsafe(..) = eii.impl_safety {
+            self.word("unsafe");
+            self.popen();
+        }
+        self.print_path(&eii.eii_macro_path, false, 0);
+        if let Safety::Unsafe(..) = eii.impl_safety {
+            self.pclose();
+        }
+        self.word("]");
+        self.hardbreak();
     }
 
     fn print_define_opaques(&mut self, define_opaque: Option<&[(ast::NodeId, ast::Path)]>) {
@@ -833,14 +871,6 @@ impl<'a> State<'a> {
                     self.print_lifetime_bounds(bounds);
                 }
             }
-            ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate {
-                lhs_ty, rhs_ty, ..
-            }) => {
-                self.print_type(lhs_ty);
-                self.space();
-                self.word_space("=");
-                self.print_type(rhs_ty);
-            }
         }
     }
 
@@ -867,7 +897,7 @@ impl<'a> State<'a> {
                     self.print_ident(rename);
                 }
             }
-            ast::UseTreeKind::Glob => {
+            ast::UseTreeKind::Glob(_) => {
                 if !tree.prefix.segments.is_empty() {
                     self.print_path(&tree.prefix, false, 0);
                     self.word("::");
@@ -881,15 +911,21 @@ impl<'a> State<'a> {
                 }
                 if items.is_empty() {
                     self.word("{}");
-                } else if let [(item, _)] = items.as_slice() {
+                } else if let [(item, _)] = items.as_slice()
+                    && !item
+                        .prefix
+                        .segments
+                        .first()
+                        .is_some_and(|seg| seg.ident.name == rustc_span::symbol::kw::SelfLower)
+                {
                     self.print_use_tree(item);
                 } else {
                     let cb = self.cbox(INDENT_UNIT);
                     self.word("{");
                     self.zerobreak();
                     let ib = self.ibox(0);
-                    for (pos, use_tree) in items.iter().with_position() {
-                        let is_last = matches!(pos, Position::Last | Position::Only);
+                    for (idx, use_tree) in items.iter().enumerate() {
+                        let is_last = idx == items.len() - 1;
                         self.print_use_tree(&use_tree.0);
                         if !is_last {
                             self.word(",");

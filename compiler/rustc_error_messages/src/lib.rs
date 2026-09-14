@@ -1,13 +1,8 @@
-// tidy-alphabetical-start
-#![allow(internal_features)]
-#![feature(rustc_attrs)]
-// tidy-alphabetical-end
-
 use std::borrow::Cow;
 
 pub use fluent_bundle::types::FluentType;
 pub use fluent_bundle::{self, FluentArgs, FluentError, FluentValue};
-use rustc_macros::{Decodable, Encodable};
+use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Span;
 pub use unic_langid::{LanguageIdentifier, langid};
 
@@ -28,8 +23,7 @@ pub fn register_functions<R, M>(bundle: &mut fluent_bundle::bundle::FluentBundle
 /// diagnostic messages.
 ///
 /// Intended to be removed once diagnostics are entirely translatable.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
-#[rustc_diagnostic_item = "DiagMessage"]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub enum DiagMessage {
     /// Non-translatable diagnostic message or a message that has been translated eagerly.
     ///
@@ -89,7 +83,7 @@ pub struct SpanLabel {
 ///   the error, and would be rendered with `^^^`.
 /// - They can have a *label*. In this case, the label is written next
 ///   to the mark in the snippet when we render.
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Encodable, Decodable)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Encodable, Decodable, StableHash)]
 pub struct MultiSpan {
     primary_spans: Vec<Span>,
     span_labels: Vec<(Span, DiagMessage)>,
@@ -219,8 +213,8 @@ impl From<Vec<Span>> for MultiSpan {
     }
 }
 
-fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locale::Locale> {
-    icu_locale::Locale::try_from_str(&lang.to_string()).ok()
+fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locale_core::Locale> {
+    icu_locale_core::Locale::try_from_str(&lang.to_string()).ok()
 }
 
 pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValue<'_> {
@@ -268,10 +262,7 @@ pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValu
         type Args = ();
         type Error = ();
 
-        fn construct(lang: LanguageIdentifier, _args: Self::Args) -> Result<Self, Self::Error>
-        where
-            Self: Sized,
-        {
+        fn construct(lang: LanguageIdentifier, _args: Self::Args) -> Result<Self, Self::Error> {
             let locale = icu_locale_from_unic_langid(lang)
                 .unwrap_or_else(|| rustc_baked_icu_data::supported_locales::EN);
             let list_formatter = icu_list::ListFormatter::try_new_and_unstable(

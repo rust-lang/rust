@@ -190,6 +190,16 @@ To fix the lint, you need to add a code example into the documentation block:
 pub fn no_code_example() {}
 ```
 
+This lint is not emitted on the following items:
+
+ * Impl blocks (both trait and inherent)
+ * Enum variants
+ * Struct/union fields
+ * Type aliases, including associated types
+ * Statics/constants
+ * Modules (including the top-level module of a crate)
+ * Foreign items from reexports (functions, statics, types, etc)
+
 ## `private_doc_tests`
 
 This lint is **allowed by default**. It detects documentation tests when they
@@ -445,4 +455,32 @@ note: the lint level is defined here
 1  | #![deny(rustdoc::redundant_explicit_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: Remove explicit link instead
+```
+
+## `invalid_markdown_table`
+
+This lint is **warn-by-default**. It detects unescaped pipes (`|`) in table rows which
+lead to some row cells being ignored. For example:
+
+```rust
+//! | col1 |
+//! | ---- |
+//! | `code_with(|arg| arg)` |
+```
+
+Which will give:
+
+```text
+error: table row has too many columns
+  --> $DIR/foo.rs:5:18
+   |
+5  | //! | `code_with(|arg| arg)` |
+   |                  ^ help: any content after this column divider is discarded
+   |
+   = help: to escape `|` characters in tables, add a `\` before them like `\|`
+note: the lint level is defined here
+  --> $DIR/foo.rs:1:9
+   |
+1  | #![deny(rustdoc::invalid_markdown_table)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```

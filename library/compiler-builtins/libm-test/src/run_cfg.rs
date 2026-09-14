@@ -2,10 +2,10 @@
 
 use std::ops::RangeInclusive;
 use std::sync::LazyLock;
-use std::{env, str};
+use std::{env, fmt, str};
 
 use crate::generate::random::{SEED, SEED_ENV};
-use crate::{BaseName, FloatTy, Identifier, test_log};
+use crate::{BaseName, Group, Identifier, Ty, test_log};
 
 /// The environment variable indicating which extensive tests should be run.
 pub const EXTENSIVE_ENV: &str = "LIBM_EXTENSIVE_TESTS";
@@ -15,9 +15,12 @@ pub const EXTENSIVE_ITER_ENV: &str = "LIBM_EXTENSIVE_ITERATIONS";
 
 /// The override value, if set by the above environment.
 static EXTENSIVE_ITER_OVERRIDE: LazyLock<Option<u64>> = LazyLock::new(|| {
-    env::var(EXTENSIVE_ITER_ENV)
-        .map(|v| v.parse().expect("failed to parse iteration count"))
-        .ok()
+    let s = env::var(EXTENSIVE_ITER_ENV).ok()?;
+    let r = match s.as_str() {
+        "unlimited" | "max" => u64::MAX,
+        _ => s.parse().expect("failed to parse iteration count"),
+    };
+    Some(r)
 });
 
 /// Specific tests that need to have a reduced amount of iterations to complete in a reasonable
@@ -69,7 +72,7 @@ pub fn extensive_max_iterations() -> u64 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckCtx {
     /// Allowed ULP deviation
-    pub ulp: u32,
+    pub ulp: Option<u32>,
     pub fn_ident: Identifier,
     pub base_name: BaseName,
     /// Function name.
@@ -88,7 +91,7 @@ impl CheckCtx {
     /// Create a new check context, using the default ULP for the function.
     pub fn new(fn_ident: Identifier, basis: CheckBasis, gen_kind: GeneratorKind) -> Self {
         let mut ret = Self {
-            ulp: 0,
+            ulp: None,
             fn_ident,
             fn_name: fn_ident.as_str(),
             base_name: fn_ident.base_name(),
@@ -152,10 +155,10 @@ static EXTENSIVE: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
     let list = var.split(",").filter(|s| !s.is_empty()).collect::<Vec<_>>();
     let mut ret = Vec::new();
 
-    let append_ty_ops = |ret: &mut Vec<_>, fty: FloatTy| {
+    let append_ty_ops = |ret: &mut Vec<_>, group: Group| {
         let iter = Identifier::ALL
             .iter()
-            .filter(move |id| id.math_op().float_ty == fty)
+            .filter(move |id| id.math_op().group == group)
             .copied();
         ret.extend(iter);
     };
@@ -163,10 +166,11 @@ static EXTENSIVE: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
     for item in list {
         match item {
             "all" => ret = Identifier::ALL.to_owned(),
-            "all_f16" => append_ty_ops(&mut ret, FloatTy::F16),
-            "all_f32" => append_ty_ops(&mut ret, FloatTy::F32),
-            "all_f64" => append_ty_ops(&mut ret, FloatTy::F64),
-            "all_f128" => append_ty_ops(&mut ret, FloatTy::F128),
+            "all_f16" => append_ty_ops(&mut ret, Group::F16),
+            "all_f32" => append_ty_ops(&mut ret, Group::F32),
+            "all_f64" => append_ty_ops(&mut ret, Group::F64),
+            "all_f128" => append_ty_ops(&mut ret, Group::F128),
+            "all_int" => append_ty_ops(&mut ret, Group::Integer),
             s => {
                 let id = Identifier::from_str(s)
                     .unwrap_or_else(|| panic!("unrecognized test name `{s}`"));
@@ -178,13 +182,18 @@ static EXTENSIVE: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
     ret
 });
 
+/// Most ops are somewhere on the order or 10^7 iterations per second when running exhaustive
+/// tests. Assuming about four hours to run, this is log2 of the max number of inputs that coul
+/// be tested.
+const MAX_REASONABLE_EXHAUSTIVE_BITS: u32 = 36;
+
 /// Information about the function to be tested.
 #[derive(Debug)]
 struct TestEnv {
     /// Tests should be reduced because the platform is slow. E.g. 32-bit or emulated.
     slow_platform: bool,
-    /// The float cannot be tested exhaustively, `f64` or `f128`.
-    large_float_ty: bool,
+    /// How many bits of input there are for this function.
+    total_input_bits: u32,
     /// Env indicates that an extensive test should be run.
     should_run_extensive: bool,
     /// Multiprecision tests will be run.
@@ -199,10 +208,11 @@ impl TestEnv {
         let op = id.math_op();
 
         let will_run_mp = cfg!(feature = "build-mpfr");
-        let large_float_ty = match op.float_ty {
-            FloatTy::F16 | FloatTy::F32 => false,
-            FloatTy::F64 | FloatTy::F128 => true,
-        };
+
+        let mut total_input_bits = 0;
+        for ty in op.rust_sig.args {
+            total_input_bits += ty.effective_bits();
+        }
 
         let will_run_extensive = EXTENSIVE.contains(&id);
 
@@ -210,7 +220,7 @@ impl TestEnv {
 
         Self {
             slow_platform: slow_platform(),
-            large_float_ty,
+            total_input_bits,
             should_run_extensive: will_run_extensive,
             mp_tests_enabled: will_run_mp,
             input_count,
@@ -229,8 +239,9 @@ fn slow_platform() -> bool {
     slow_on_ci && crate::ci()
 }
 
-/// The number of iterations to run for a given test.
-pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
+/// The maximum number of iterations to run for a given argument in a given test. This may be
+/// greater than the number of representable values.
+pub fn arg_max_iterations(ctx: &CheckCtx, argnum: usize) -> u64 {
     let t_env = TestEnv::from_env(ctx);
 
     // Ideally run 5M tests
@@ -251,51 +262,58 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
     // Run fewer random tests than domain tests.
     let random_iter_count = domain_iter_count / 100;
 
+    let mut should_adjust = true;
     let mut total_iterations = match ctx.gen_kind {
-        GeneratorKind::Spaced if ctx.extensive => extensive_max_iterations(),
+        GeneratorKind::Spaced if ctx.extensive => {
+            // If an exact number is provided, no need to adjust
+            should_adjust = EXTENSIVE_ITER_OVERRIDE.is_none();
+            extensive_max_iterations()
+        }
         GeneratorKind::Spaced => domain_iter_count,
         GeneratorKind::Random => random_iter_count,
         GeneratorKind::EdgeCases | GeneratorKind::List => {
-            unimplemented!("shoudn't need `iteration_count` for {:?}", ctx.gen_kind)
+            unimplemented!("shoudn't need `arg_max_iterations` for {:?}", ctx.gen_kind)
         }
     };
 
-    // Larger float types get more iterations.
-    if t_env.large_float_ty {
-        if ctx.extensive {
-            // Extensive already has a pretty high test count.
-            total_iterations *= 2;
-        } else {
-            total_iterations *= 4;
+    // Apply some adjustments so tests with more possible inputs (argument count or larger float
+    // types) get more tests.
+    if should_adjust {
+        // This signature has too many possible inputs to test exhaustively, so increase input count
+        // on all other kinds of tests to get better coverage.
+        if t_env.total_input_bits > MAX_REASONABLE_EXHAUSTIVE_BITS {
+            if ctx.extensive {
+                // Extensive already has a pretty high test count.
+                total_iterations *= 2;
+            } else {
+                total_iterations *= 4;
+            }
         }
-    }
 
-    // Functions with more arguments get more iterations.
-    let arg_multiplier = 1 << (t_env.input_count - 1);
-    total_iterations *= arg_multiplier;
+        // Functions with more arguments get more iterations.
+        let arg_multiplier = 1 << (t_env.input_count - 1);
+        total_iterations *= arg_multiplier;
 
-    // FMA has a huge domain but is reasonably fast to run, so increase another 1.5x.
-    if ctx.base_name == BaseName::Fma {
-        total_iterations = 3 * total_iterations / 2;
-    }
+        // FMA has a huge domain but is reasonably fast to run, so increase another 1.5x.
+        if ctx.base_name == BaseName::Fma {
+            total_iterations = 3 * total_iterations / 2;
+        }
 
-    // Some tests are significantly slower than others and need to be further reduced.
-    if let Some(slow) = EXTREMELY_SLOW_TESTS
-        .iter()
-        .find(|slow| slow.matches_ctx(ctx))
-    {
-        // However, do not override if the extensive iteration count has been manually set.
-        if !(ctx.extensive && EXTENSIVE_ITER_OVERRIDE.is_some()) {
+        // Some tests are significantly slower than others and need to be further reduced.
+        if let Some(slow) = EXTREMELY_SLOW_TESTS
+            .iter()
+            .find(|slow| slow.matches_ctx(ctx))
+        {
             total_iterations /= slow.reduce_factor;
         }
-    }
 
-    if cfg!(optimizations_enabled) {
-        // Always run at least 10,000 tests.
-        total_iterations = total_iterations.max(10_000);
-    } else {
-        // Without optimizations, just run a quick check regardless of other parameters.
-        total_iterations = 800;
+        if cfg!(optimizations_enabled) {
+            // Always run at least 10,000 tests.
+            total_iterations = total_iterations.max(10_000);
+        } else {
+            // Without optimizations, just run a quick check regardless of other parameters.
+            total_iterations = 800;
+        }
     }
 
     let mut overridden = false;
@@ -304,7 +322,7 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
         overridden = true;
     }
 
-    // Adjust for the number of inputs
+    // Distribute available iterations among inputs.
     let ntests = match t_env.input_count {
         1 => total_iterations,
         2 => (total_iterations as f64).sqrt().ceil() as u64,
@@ -312,7 +330,7 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
         _ => panic!("test has more than three arguments"),
     };
 
-    let total = ntests.pow(t_env.input_count.try_into().unwrap());
+    let total = ntests.saturating_pow(t_env.input_count.try_into().unwrap());
 
     let seed_msg = match ctx.gen_kind {
         GeneratorKind::Spaced => String::new(),
@@ -339,12 +357,39 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
     ntests
 }
 
-/// Some tests require that an integer be kept within reasonable limits; generate that here.
-pub fn int_range(ctx: &CheckCtx, argnum: usize) -> RangeInclusive<i32> {
+/// Some tests require that an integer be kept within reasonable limits; if that is needed, retun
+/// a limited range.
+pub fn int_range<I>(ctx: &CheckCtx, argnum: usize) -> Option<RangeInclusive<I>>
+where
+    I: TryFrom<i32, Error: fmt::Debug>,
+{
     let t_env = TestEnv::from_env(ctx);
 
+    let argcount = ctx.fn_ident.math_op().rust_sig.args.len();
+    assert!(
+        argnum < argcount,
+        "requested argnum {argnum} of only {argcount} args"
+    );
+
+    // Shift operations can have UB if the shift value exceeds their range
+    if matches!(
+        ctx.base_name,
+        BaseName::Ashl | BaseName::Ashr | BaseName::Lshr
+    ) && argnum == 1
+    {
+        let max = match ctx.fn_ident.math_op().rust_sig.args[0] {
+            Ty::U32 | Ty::I32 => 31,
+            Ty::U64 | Ty::I64 => 63,
+            Ty::U128 | Ty::I128 => 127,
+            ty => panic!("unexpected type {ty}"),
+        };
+
+        return Some(map_range(0..=max));
+    }
+
+    // Use the whole range for most functions.
     if !matches!(ctx.base_name, BaseName::Jn | BaseName::Yn) {
-        return i32::MIN..=i32::MAX;
+        return None;
     }
 
     assert_eq!(
@@ -362,12 +407,21 @@ pub fn int_range(ctx: &CheckCtx, argnum: usize) -> RangeInclusive<i32> {
 
     let extensive_range = (-0xfff)..=0xfffff;
 
-    match ctx.gen_kind {
+    let ret = match ctx.gen_kind {
         _ if ctx.extensive => extensive_range,
         GeneratorKind::Spaced | GeneratorKind::Random => non_extensive_range,
         GeneratorKind::EdgeCases => extensive_range,
         GeneratorKind::List => unimplemented!("shoudn't need range for {:?}", ctx.gen_kind),
-    }
+    };
+
+    Some(map_range(ret))
+}
+
+fn map_range<I>(r: RangeInclusive<i32>) -> RangeInclusive<I>
+where
+    I: TryFrom<i32, Error: fmt::Debug>,
+{
+    I::try_from(*r.start()).unwrap()..=I::try_from(*r.end()).unwrap()
 }
 
 /// For domain tests, limit how many asymptotes or specified check points we test.

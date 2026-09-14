@@ -14,8 +14,8 @@ where people can go to pose questions and discuss WASI-specific topics.
 
 So, if you are interested in participating, please sign up for the WASI group!
 To do so, open a PR against the [rust-lang/team] repository.
-Just [follow this example][eg], but change the username to your own!
+Just follow [this example], but change the username to your own!
 
 [`#t-compiler/wasm`]: https://rust-lang.zulipchat.com/#narrow/stream/463513-t-compiler.2Fwasm
 [rust-lang/team]: https://github.com/rust-lang/team
-[eg]: https://github.com/rust-lang/team/pull/1580
+[this example]: https://github.com/rust-lang/team/pull/1580

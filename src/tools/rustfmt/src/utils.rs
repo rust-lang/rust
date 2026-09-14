@@ -2,10 +2,11 @@ use std::borrow::Cow;
 
 use rustc_ast::YieldKind;
 use rustc_ast::ast::{
-    self, Attribute, ImplRestriction, MetaItem, MetaItemInner, MetaItemKind, NodeId, Path,
-    RestrictionKind, Visibility, VisibilityKind,
+    self, Attribute, ImplRestriction, MetaItem, MetaItemInner, MetaItemKind, MutRestriction,
+    NodeId, Path, RestrictionKind, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
+use rustc_feature::is_builtin_attr_name;
 use rustc_span::{BytePos, LocalExpnId, Span, Symbol, SyntaxContext, sym, symbol};
 use unicode_width::UnicodeWidthStr;
 
@@ -81,6 +82,13 @@ pub(crate) fn format_impl_restriction(
     format_restriction("impl", context, &impl_restriction.kind)
 }
 
+pub(crate) fn format_mut_restriction(
+    context: &RewriteContext<'_>,
+    mut_restriction: &MutRestriction,
+) -> String {
+    format_restriction("mut", context, &mut_restriction.kind)
+}
+
 fn format_restriction(
     kw: &'static str,
     context: &RewriteContext<'_>,
@@ -109,11 +117,11 @@ fn format_restriction(
 }
 
 #[inline]
-pub(crate) fn format_coro(coroutine_kind: &ast::CoroutineKind) -> &'static str {
-    match coroutine_kind {
-        ast::CoroutineKind::Async { .. } => "async ",
-        ast::CoroutineKind::Gen { .. } => "gen ",
-        ast::CoroutineKind::AsyncGen { .. } => "async gen ",
+pub(crate) fn format_coro(coroutine_marker: ast::CoroutineMarker) -> &'static str {
+    match coroutine_marker.kind {
+        ast::CoroutineKind::Async => "async ",
+        ast::CoroutineKind::Gen => "gen ",
+        ast::CoroutineKind::AsyncGen => "async gen ",
     }
 }
 
@@ -121,14 +129,6 @@ pub(crate) fn format_coro(coroutine_kind: &ast::CoroutineKind) -> &'static str {
 pub(crate) fn format_constness(constness: ast::Const) -> &'static str {
     match constness {
         ast::Const::Yes(..) => "const ",
-        ast::Const::No => "",
-    }
-}
-
-#[inline]
-pub(crate) fn format_constness_right(constness: ast::Const) -> &'static str {
-    match constness {
-        ast::Const::Yes(..) => " const",
         ast::Const::No => "",
     }
 }
@@ -177,6 +177,15 @@ pub(crate) fn format_pinnedness_and_mutability(
         (ast::Pinnedness::Pinned, ast::Mutability::Not) => ("pin ", "const "),
         (ast::Pinnedness::Not, ast::Mutability::Mut) => ("", "mut "),
         (ast::Pinnedness::Not, ast::Mutability::Not) => ("", ""),
+    }
+}
+
+#[inline]
+pub(crate) fn format_range_end(end: ast::RangeEnd) -> &'static str {
+    match end {
+        ast::RangeEnd::Included(ast::RangeSyntax::DotDotDot) => "...",
+        ast::RangeEnd::Included(ast::RangeSyntax::DotDotEq) => "..=",
+        ast::RangeEnd::Excluded => "..",
     }
 }
 
@@ -317,6 +326,13 @@ pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
     attrs
         .iter()
         .any(|a| a.meta().map_or(false, |a| is_skip(&a)))
+}
+
+#[inline]
+pub(crate) fn contains_custom_attributes(attrs: &[Attribute]) -> bool {
+    attrs
+        .iter()
+        .any(|a| a.name().is_some_and(|name| !is_builtin_attr_name(name)))
 }
 
 #[inline]
@@ -533,9 +549,8 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Index(_, ref expr, _)
         | ast::ExprKind::Unary(_, ref expr)
         | ast::ExprKind::Try(ref expr)
-        | ast::ExprKind::Yield(YieldKind::Prefix(Some(ref expr))) => {
-            is_block_expr(context, expr, repr)
-        }
+        | ast::ExprKind::Yield(YieldKind::Prefix(Some(ref expr)))
+        | ast::ExprKind::DirectConstArg(ref expr) => is_block_expr(context, expr, repr),
         ast::ExprKind::Closure(ref closure) => is_block_expr(context, &closure.body, repr),
         // This can only be a string lit
         ast::ExprKind::Lit(_) => {
@@ -553,6 +568,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Field(..)
         | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::InlineAsm(..)
+        | ast::ExprKind::Move(..)
         | ast::ExprKind::OffsetOf(..)
         | ast::ExprKind::UnsafeBinderCast(..)
         | ast::ExprKind::Let(..)

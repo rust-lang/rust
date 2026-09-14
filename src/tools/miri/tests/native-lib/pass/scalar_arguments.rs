@@ -1,3 +1,10 @@
+#[allow(unused)]
+#[repr(C)]
+enum CEnum {
+    A,
+    B,
+}
+
 extern "C" {
     fn add_one_int(x: i32) -> i32;
     fn add_int16(x: i16) -> i16;
@@ -19,6 +26,7 @@ extern "C" {
     fn get_unsigned_int() -> u32;
     fn add_float(x: f32) -> f32;
     fn printer();
+    fn scalar_enum(e: CEnum) -> u8;
 }
 
 fn main() {
@@ -43,5 +51,8 @@ fn main() {
 
         // test void function that prints from C
         printer();
+
+        // test passing enums with scalar layout
+        assert_eq!(scalar_enum(CEnum::B), 1);
     }
 }

@@ -1,0 +1,32 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/implied-bounds-cyclic-reasoning.rs:13:5
+   |
+LL |     Box::leak(Box::new(x))
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `T` must be valid for the static lifetime...
+   |     ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn foo<T: Display + 'static>(x: T) -> &'static (impl Display + 'static) {
+   |                   +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/implied-bounds-cyclic-reasoning.rs:13:5
+   |
+LL |     Box::leak(Box::new(x))
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `T` must be valid for the static lifetime...
+   |     ...so that the type `T` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL | fn foo<T: Display + 'static>(x: T) -> &'static (impl Display + 'static) {
+   |                   +++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0310`.

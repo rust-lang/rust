@@ -17,8 +17,9 @@ impl Drop for NonTrivialDrop {
 }
 
 struct ConstImplWithDropGlue(NonTrivialDrop);
+//~^ ERROR: `NonTrivialDrop` does not implement `[const] Destruct`
 
-impl const Drop for ConstImplWithDropGlue {
+const impl Drop for ConstImplWithDropGlue {
     fn drop(&mut self) {}
 }
 

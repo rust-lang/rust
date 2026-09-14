@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: wrong trait in wide pointer vtable: expected `Trait<Assoc = bool>`, but encountered `Trait<Assoc = u8>`
+error: Undefined Behavior: constructing invalid value of type std::boxed::Box<dyn Trait<Assoc = bool>>: wrong trait in wide pointer vtable: expected `Trait<Assoc = bool>`, but encountered `Trait<Assoc = u8>`
   --> tests/fail/validity/wrong-dyn-trait-assoc-type.rs:LL:CC
    |
 LL |     let v: Box<dyn Trait<Assoc = bool>> = unsafe { std::mem::transmute(v) };

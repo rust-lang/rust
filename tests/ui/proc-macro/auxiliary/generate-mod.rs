@@ -1,6 +1,4 @@
 //@ edition:2015
-//@ run-pass
-//@ ignore-pass
 
 extern crate proc_macro;
 use proc_macro::*;

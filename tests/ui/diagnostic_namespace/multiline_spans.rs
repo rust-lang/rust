@@ -31,17 +31,17 @@ pub trait MultiLine4 {}
 #[diagnostic::on_unimplemented(message = "here is a big \
                                          multiline string \
                                          {Self:+}")]
-//~^ ERROR invalid format specifier [malformed_diagnostic_format_literals]
+//~^ ERROR format specifiers are not permitted in diagnostic attributes [malformed_diagnostic_format_literals]
 pub trait MultiLineFmt {}
 
 #[diagnostic::on_unimplemented(message = "here is a big \
                                          multiline string {Self:X}")]
-//~^ ERROR invalid format specifier [malformed_diagnostic_format_literals]
+//~^ ERROR format specifiers are not permitted in diagnostic attributes [malformed_diagnostic_format_literals]
 pub trait MultiLineFmt2 {}
 
 #[diagnostic::on_unimplemented(message = "here is a big \
     multiline string {Self:#}")]
-//~^ ERROR invalid format specifier [malformed_diagnostic_format_literals]
+//~^ ERROR format specifiers are not permitted in diagnostic attributes [malformed_diagnostic_format_literals]
 pub trait MultiLineFmt3 {}
 
 
@@ -51,5 +51,5 @@ pub trait MultiLineFmt3 {}
                                 \
                                                 \
     multiline string {Self:?}")]
-//~^ ERROR invalid format specifier [malformed_diagnostic_format_literals]
+//~^ ERROR format specifiers are not permitted in diagnostic attributes [malformed_diagnostic_format_literals]
 pub trait MultiLineFmt4 {}

@@ -10,7 +10,7 @@
 
 use std::cmp::Ordering;
 
-// EMIT_MIR const_promotion_option_ordering_eq.direct.PreCodegen.after.mir
+// EMIT_MIR const_promotion_option_ordering_eq.direct.runtime-optimized.after.mir
 pub fn direct(e: Option<Ordering>) -> bool {
     // CHECK-LABEL: fn direct(
     // CHECK-NOT: promoted[
@@ -19,7 +19,7 @@ pub fn direct(e: Option<Ordering>) -> bool {
     e == Some(Ordering::Equal)
 }
 
-// EMIT_MIR const_promotion_option_ordering_eq.with_let.PreCodegen.after.mir
+// EMIT_MIR const_promotion_option_ordering_eq.with_let.runtime-optimized.after.mir
 pub fn with_let(e: Option<Ordering>) -> bool {
     // CHECK-LABEL: fn with_let(
     // CHECK-NOT: promoted[

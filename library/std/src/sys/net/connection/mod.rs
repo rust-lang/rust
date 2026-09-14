@@ -1,6 +1,6 @@
 cfg_select! {
     any(
-        all(target_family = "unix", not(target_os = "l4re")),
+        target_family = "unix",
         target_os = "windows",
         target_os = "hermit",
         all(target_os = "wasi", any(target_env = "p2", target_env = "p3")),
@@ -58,4 +58,23 @@ where
         Some(err) => Err(err),
         None => Err(Error::NO_ADDRESSES),
     }
+}
+
+// Default implementation, may be overridden by platform-specific implementations.
+#[cfg(not(all(target_vendor = "fortanix", target_env = "sgx")))]
+pub(crate) fn lookup_host_string(
+    addr: &str,
+) -> crate::io::Result<impl Iterator<Item = crate::net::SocketAddr>> {
+    use crate::io;
+
+    // Split the string by ':' and convert the second part to u16...
+    let Some((host, port_str)) = addr.rsplit_once(':') else {
+        return Err(io::const_error!(io::ErrorKind::InvalidInput, "invalid socket address"));
+    };
+    let Ok(port) = port_str.parse::<u16>() else {
+        return Err(io::const_error!(io::ErrorKind::InvalidInput, "invalid port value"));
+    };
+
+    // ... and make the system look up the host.
+    crate::sys::net::lookup_host(host, port)
 }

@@ -1,15 +1,20 @@
-//@ only-x86_64
+//@ add-minicore
 // Set the base cpu explicitly, in case the default has been changed.
-//@ compile-flags: -C target-cpu=x86-64
+//@ compile-flags: --target x86_64-unknown-linux-gnu -C target-cpu=x86-64
+//@ needs-llvm-components: x86
+#![crate_type = "rlib"]
+#![feature(no_core)]
+#![no_core]
 
-use std::arch::asm;
+extern crate minicore;
+use minicore::*;
 
 #[target_feature(enable = "avx")]
 unsafe fn foo() {
     let mut x = 1;
     let y = 2;
     asm!("vaddps {2:y}, {0:y}, {1:y}", in(ymm_reg) x, in(ymm_reg) y, lateout(ymm_reg) x);
-    assert_eq!(x, 3);
+    let _ = x;
 }
 
 unsafe fn bar() {
@@ -19,7 +24,7 @@ unsafe fn bar() {
     //~^ ERROR: register class `ymm_reg` requires the `avx` target feature
     //~| ERROR: register class `ymm_reg` requires the `avx` target feature
     //~| ERROR: register class `ymm_reg` requires the `avx` target feature
-    assert_eq!(x, 3);
+    let _ = x;
 }
 
 #[target_feature(enable = "avx512bw")]

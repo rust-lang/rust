@@ -6,7 +6,7 @@
 use x::y::z; //~ ERROR: cannot find module or crate `x`
 
 macro mac () {
-    Box::z //~ ERROR: no function or associated item
+    Box::z //~ ERROR: no associated function or constant
 }
 
 fn main() {

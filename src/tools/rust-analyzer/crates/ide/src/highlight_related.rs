@@ -1,8 +1,9 @@
 use std::iter;
 
-use hir::{EditionedFileId, FilePosition, FileRange, HirFileId, InFile, Semantics, db};
+use hir::{EditionedFileId, FilePosition, FileRange, HirFileId, InFile, Semantics};
 use ide_db::{
     FxHashMap, FxHashSet, RootDatabase,
+    base_db::SourceDatabase,
     defs::{Definition, IdentClass},
     helpers::pick_best_token,
     search::{FileReference, ReferenceCategory, SearchScope},
@@ -667,7 +668,10 @@ fn cover_range(r0: Option<TextRange>, r1: Option<TextRange>) -> Option<TextRange
     }
 }
 
-fn find_defs(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> FxHashSet<Definition> {
+fn find_defs<'db>(
+    sema: &Semantics<'db, RootDatabase>,
+    token: SyntaxToken,
+) -> FxHashSet<Definition<'db>> {
     sema.descend_into_macros_exact(token)
         .into_iter()
         .filter_map(|token| IdentClass::classify_token(sema, &token))
@@ -676,7 +680,7 @@ fn find_defs(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> FxHashSe
 }
 
 fn original_frange(
-    db: &dyn db::ExpandDatabase,
+    db: &dyn SourceDatabase,
     file_id: HirFileId,
     text_range: Option<TextRange>,
 ) -> Option<FileRange> {
@@ -695,14 +699,14 @@ fn merge_map(res: &mut HighlightMap, new: Option<HighlightMap>) {
 /// Preorder walk all the expression's child expressions.
 /// For macro calls, the callback will be called on the expanded expressions after
 /// visiting the macro call itself.
-struct WalkExpandedExprCtx<'a> {
-    sema: &'a Semantics<'a, RootDatabase>,
+struct WalkExpandedExprCtx<'a, 'db> {
+    sema: &'a Semantics<'db, RootDatabase>,
     depth: usize,
     check_ctx: &'static dyn Fn(&ast::Expr) -> bool,
 }
 
-impl<'a> WalkExpandedExprCtx<'a> {
-    fn new(sema: &'a Semantics<'a, RootDatabase>) -> Self {
+impl<'a, 'db> WalkExpandedExprCtx<'a, 'db> {
+    fn new(sema: &'a Semantics<'db, RootDatabase>) -> Self {
         Self { sema, depth: 0, check_ctx: &is_closure_or_blk_with_modif }
     }
 
@@ -2083,6 +2087,7 @@ fn test() {
     fn return_in_macros() {
         check(
             r#"
+//- minicore: fn
 macro_rules! N {
     ($i:ident, $x:expr, $blk:expr) => {
         for $i in 0..$x {
@@ -2544,6 +2549,28 @@ fn main() {
     };
     unsafe { *(1 as *const u8) };
     unsafe { *(2 as *const u8) };
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn async_fn_param() {
+        check(
+            r#"
+async fn get_double_async(num$0: u32) -> u32 {
+                       // ^^^
+    num
+ // ^^^ read
+}
+        "#,
+        );
+        check(
+            r#"
+async fn get_double_async((num$0,): (u32,)) -> u32 {
+                        // ^^^
+    num
+ // ^^^ read
 }
         "#,
         );

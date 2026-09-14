@@ -1,4 +1,4 @@
-// ignore-tidy-cr
+// ignore-tidy-file-cr
 
 pub fn main() {
     br"a"; //~ ERROR bare CR not allowed in raw string

@@ -7,9 +7,8 @@ use rustc_ast::ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, GenericArg, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -42,7 +41,7 @@ pub struct ManualBits {
 
 impl ManualBits {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -101,8 +100,9 @@ fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<
     {
         cx.typeck_results()
             .node_args(count_func.hir_id)
-            .types()
-            .next()
+            .iter()
+            .next() // the `T` in `size_of::<T>`
+            .and_then(ty::GenericArg::as_type)
             .map(|resolved_ty| (real_ty_span, resolved_ty))
     } else {
         None

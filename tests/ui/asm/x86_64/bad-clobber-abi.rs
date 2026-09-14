@@ -1,7 +1,12 @@
-//@ needs-asm-support
-//@ only-x86_64
+//@ add-minicore
+//@ compile-flags: --target x86_64-unknown-linux-gnu
+//@ needs-llvm-components: x86
+#![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
 
-use std::arch::asm;
+extern crate minicore;
+use minicore::*;
 
 // checks various modes of failure for the `clobber_abi` argument (after parsing)
 

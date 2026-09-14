@@ -10,14 +10,14 @@ help: the trait `From<&PathBuf>` is not implemented for `ToolA`
    |
 LL | pub struct ToolA(PathBuf);
    | ^^^^^^^^^^^^^^^^
-help: the following other types implement trait `From<T>`
+help: `ToolA` implements trait `From<T>`
   --> $DIR/explicit-reference-cast.rs:9:1
    |
 LL | impl From<&Path> for ToolA {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ `ToolA` implements `From<&Path>`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ `From<&Path>`
 ...
 LL | impl From<&str> for ToolA {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ `ToolA` implements `From<&str>`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ `From<&str>`
 
 error[E0277]: the trait bound `ToolB: TryFrom<&PathBuf>` is not satisfied
   --> $DIR/explicit-reference-cast.rs:43:13

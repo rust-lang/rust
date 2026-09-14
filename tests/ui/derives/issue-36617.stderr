@@ -5,7 +5,7 @@ LL | #![derive(Copy)]
    | ^^^^^^^^^^^^^^^^
 ...
 LL | fn main() {}
-   |    ---- the inner attribute doesn't annotate this function
+   | ------------ the inner attribute doesn't annotate this item
    |
 help: perhaps you meant to use an outer attribute
    |
@@ -20,7 +20,7 @@ LL | #![test]
    | ^^^^^^^^
 ...
 LL | fn main() {}
-   |    ---- the inner attribute doesn't annotate this function
+   | ------------ the inner attribute doesn't annotate this item
    |
 help: perhaps you meant to use an outer attribute
    |
@@ -35,7 +35,7 @@ LL | #![test_case]
    | ^^^^^^^^^^^^^
 ...
 LL | fn main() {}
-   |    ---- the inner attribute doesn't annotate this function
+   | ------------ the inner attribute doesn't annotate this item
    |
 help: perhaps you meant to use an outer attribute
    |
@@ -50,7 +50,7 @@ LL | #![bench]
    | ^^^^^^^^^
 ...
 LL | fn main() {}
-   |    ---- the inner attribute doesn't annotate this function
+   | ------------ the inner attribute doesn't annotate this item
    |
 help: perhaps you meant to use an outer attribute
    |
@@ -65,7 +65,7 @@ LL | #![global_allocator]
    | ^^^^^^^^^^^^^^^^^^^^
 ...
 LL | fn main() {}
-   |    ---- the inner attribute doesn't annotate this function
+   | ------------ the inner attribute doesn't annotate this item
    |
 help: perhaps you meant to use an outer attribute
    |

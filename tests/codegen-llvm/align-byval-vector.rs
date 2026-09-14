@@ -8,17 +8,15 @@
 
 // Tests that aggregates containing vector types get their alignment increased to 16 on Darwin.
 
-#![feature(no_core, repr_simd, simd_ffi)]
+#![feature(no_core, simd_ffi)]
 #![crate_type = "lib"]
 #![no_std]
 #![no_core]
 #![allow(non_camel_case_types)]
 
 extern crate minicore;
+use minicore::simd::i32x4;
 use minicore::*;
-
-#[repr(simd)]
-pub struct i32x4([i32; 4]);
 
 #[repr(C)]
 pub struct Foo {
@@ -44,12 +42,12 @@ extern "C" {
 }
 
 pub fn main() {
-    unsafe { f(Foo { a: i32x4([1, 2, 3, 4]), b: 0 }) }
+    unsafe { f(Foo { a: i32x4::from_array([1, 2, 3, 4]), b: 0 }) }
 
     unsafe {
         g(DoubleFoo {
-            one: Foo { a: i32x4([1, 2, 3, 4]), b: 0 },
-            two: Foo { a: i32x4([1, 2, 3, 4]), b: 0 },
+            one: Foo { a: i32x4::from_array([1, 2, 3, 4]), b: 0 },
+            two: Foo { a: i32x4::from_array([1, 2, 3, 4]), b: 0 },
         })
     }
 }

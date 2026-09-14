@@ -1,14 +1,16 @@
 use rustc_data_structures::fx::FxHashSet;
+use rustc_infer::traits::TraitErrors;
 use rustc_infer::traits::query::type_op::DropckOutlives;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
-use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt, Unnormalized};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use crate::solve::NextSolverError;
 use crate::traits::query::NoSolution;
 use crate::traits::query::normalize::QueryNormalizeExt;
-use crate::traits::{FromSolverError, Normalized, ObligationCause, ObligationCtxt};
+use crate::traits::{FromSolverError, Normalized, ObligationCause, ObligationCtxt, OldSolverError};
 
 /// This returns true if the type `ty` is "trivial" for
 /// dropck-outlives -- that is, if it doesn't require any types to
@@ -104,9 +106,9 @@ pub fn compute_dropck_outlives_with_errors<'tcx, E>(
     ocx: &ObligationCtxt<'_, 'tcx, E>,
     goal: ParamEnvAnd<'tcx, DropckOutlives<'tcx>>,
     span: Span,
-) -> Result<DropckOutlivesResult<'tcx>, Vec<E>>
+) -> Result<DropckOutlivesResult<'tcx>, ThinVec<E>>
 where
-    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>> + FromSolverError<'tcx, OldSolverError<'tcx>>,
 {
     let tcx = ocx.infcx.tcx;
     let ParamEnvAnd { param_env, value: DropckOutlives { dropped_ty } } = goal;
@@ -200,7 +202,7 @@ where
                 // obligations, and we may have pending obligations from the
                 // branch above (from other types).
                 let errors = ocx.evaluate_obligations_error_on_ambiguity();
-                if !errors.is_empty() {
+                if let TraitErrors::HasErrors(errors) = errors {
                     return Err(errors);
                 }
 
@@ -208,7 +210,7 @@ where
                 // reason that we could use to report an error in borrowck. In order to turn
                 // this into a reportable error, we deeply normalize again. We don't expect
                 // this to succeed, so delay a bug if it does.
-                match ocx.deeply_normalize(&cause, param_env, ty) {
+                match ocx.deeply_normalize(&cause, param_env, Unnormalized::new_wip(ty)) {
                     Ok(_) => {
                         tcx.dcx().span_delayed_bug(
                             span,
@@ -286,36 +288,25 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
 
         ty::Pat(ety, _) | ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
-            rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ety, constraints)
-            });
+            dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ety, constraints);
         }
 
-        ty::Tuple(tys) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
+        ty::Tuple(tys) => {
             for ty in tys.iter() {
                 dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ty, constraints);
             }
-        }),
+        }
 
-        ty::Closure(_, args) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
+        ty::Closure(_, args) => {
             for ty in args.as_closure().upvar_tys() {
                 dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ty, constraints);
             }
-        }),
+        }
 
         ty::CoroutineClosure(_, args) => {
-            rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                for ty in args.as_coroutine_closure().upvar_tys() {
-                    dtorck_constraint_for_ty_inner(
-                        tcx,
-                        typing_env,
-                        span,
-                        depth + 1,
-                        ty,
-                        constraints,
-                    );
-                }
-            })
+            for ty in args.as_coroutine_closure().upvar_tys() {
+                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ty, constraints);
+            }
         }
 
         ty::Coroutine(def_id, args) => {
@@ -388,15 +379,21 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
                 tcx.at(span).adt_dtorck_constraint(def.did());
             // FIXME: we can try to recursively `dtorck_constraint_on_ty`
             // there, but that needs some way to handle cycles.
-            constraints
-                .dtorck_types
-                .extend(dtorck_types.iter().map(|t| EarlyBinder::bind(*t).instantiate(tcx, args)));
-            constraints
-                .outlives
-                .extend(outlives.iter().map(|t| EarlyBinder::bind(*t).instantiate(tcx, args)));
-            constraints
-                .overflows
-                .extend(overflows.iter().map(|t| EarlyBinder::bind(*t).instantiate(tcx, args)));
+            constraints.dtorck_types.extend(
+                dtorck_types
+                    .iter()
+                    .map(|t| EarlyBinder::bind(tcx, *t).instantiate(tcx, args).skip_norm_wip()),
+            );
+            constraints.outlives.extend(
+                outlives
+                    .iter()
+                    .map(|t| EarlyBinder::bind(tcx, *t).instantiate(tcx, args).skip_norm_wip()),
+            );
+            constraints.overflows.extend(
+                overflows
+                    .iter()
+                    .map(|t| EarlyBinder::bind(tcx, *t).instantiate(tcx, args).skip_norm_wip()),
+            );
         }
 
         // Objects must be alive in order for their destructor

@@ -16,11 +16,11 @@ pub trait Sized: MetaSized {}
 // `aapcs-unwind` extern functions. `aapcs-unwind` functions MUST NOT have this attribute. We
 // disable optimizations above to prevent LLVM from inferring the attribute.
 
-// CHECK: @rust_item_that_cannot_unwind() unnamed_addr #0 {
+// CHECK: @rust_item_that_cannot_unwind() unnamed_addr #0
 #[no_mangle]
 pub extern "aapcs" fn rust_item_that_cannot_unwind() {}
 
-// CHECK: @rust_item_that_can_unwind() unnamed_addr #1 {
+// CHECK: @rust_item_that_can_unwind() unnamed_addr #1
 #[no_mangle]
 pub extern "aapcs-unwind" fn rust_item_that_can_unwind() {}
 

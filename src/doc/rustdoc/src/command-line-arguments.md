@@ -183,6 +183,18 @@ affect that.
 The arguments to this flag are the same as those for the `-C` flag on rustc. Run `rustc -C help` to
 get the full list.
 
+## `--remap-path-prefix`: remap source paths in output
+
+This flag is the equivalent flag from `rustc`: `--remap-path-prefix`.
+
+```bash
+$ rustdoc src/lib.rs --remap-path-prefix="$PWD=/foo"
+```
+
+It permits remapping (as a best effort) source path prefixes in all output, including diagnostics,
+debug information, macro expansions, generated documentation, etc. It takes a value of the
+form `FROM=TO` where a path prefix equal to `FROM` is rewritten to the value `TO`.
+
 ## `--test`: run code examples as tests
 
 Using this flag looks like this:
@@ -439,6 +451,37 @@ $ rustdoc src/lib.rs --crate-version 1.3.37
 When `rustdoc` receives this flag, it will print an extra "Version (version)" into the sidebar of
 the crate root's docs. You can use this flag to differentiate between different versions of your
 library's documentation.
+
+## `--emit`: control the types of output for rustdoc to emit
+
+This flag controls the types of output by rustdoc. It accepts a comma-separated
+list of values, and may be specified multiple times. The valid emit kinds are:
+
+- `html-static-files` --- Generates shared static files whose contents are
+  tied to a specific toolchain version. These are written with a filename
+  that includes a hash of their contents, so they are safe to cache with
+  the change if the toolchain version or their contents change, or with the
+  `Cache-Control: immutable` directive.
+- `html-non-static-files` --- Generates files based on the crate(s) being
+  documented. These file names need to be deterministic so there is no
+  content-hash in their file names.
+- `dep-info` --- Generates a file with Makefile syntax that indicates all the
+  source files that were loaded to document the crate. The default output
+  filename is `CRATE_NAME.d`. This emit type can can optionally be followed by
+  `=` to specify an explicit output path, for example,
+  `--emit=dep-info=/path/to/foo.d`. The output can be sent to stdout by
+  specifying `-` as the path (e.g., `--emit=dep-info=-`).
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs --emit=html-static-files,html-non-static-files,dep-info=/path/to/build/cache/foo.d
+```
+
+If not specified, the default emit types would be
+`--emit=html-static-files,html-non-static-files`.
+
+Output files are written to the current directory unless the `--out-dir` flag is used.
 
 ## `-`: load source code from the standard input
 

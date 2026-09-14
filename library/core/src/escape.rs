@@ -167,13 +167,11 @@ union MaybeEscapedCharacter<const N: usize> {
 /// Marker type to indicate that the character is always escaped,
 /// used to optimize the iterator implementation.
 #[derive(Clone, Copy)]
-#[non_exhaustive]
 pub(crate) struct AlwaysEscaped;
 
 /// Marker type to indicate that the character may be escaped,
 /// used to optimize the iterator implementation.
 #[derive(Clone, Copy)]
-#[non_exhaustive]
 pub(crate) struct MaybeEscaped;
 
 /// An iterator over a possibly escaped character.

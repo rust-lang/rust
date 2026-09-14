@@ -73,6 +73,8 @@
 // === LLDB TESTS ==================================================================================
 
 //@ lldb-command:type format add --format hex char
+// MSVC uses signed char
+//@ lldb-command:type format add --format hex 'signed char'
 //@ lldb-command:type format add --format hex 'unsigned char'
 
 //@ lldb-command:run
@@ -134,16 +136,17 @@
 //@ lldb-command:continue
 
 //@ lldb-command:v simple_struct_ident
-//@ lldb-check:[...] { x = 3537 y = 35437.5 z = true }
+//@ lldb-check:[...] {x:3537, y:35437.5, z:true}
 //@ lldb-command:continue
 
 //@ lldb-command:v simple_tuple_ident
-//@ lldb-check:[...] { 0 = 34903493 1 = 232323 }
+//@ lldb-check:[...] (34903493, 232323)
 //@ lldb-command:continue
 
 #![allow(unused_variables)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
+#[repr(C)]
 struct Struct {
     x: i16,
     y: f32,
@@ -186,7 +189,7 @@ fn main() {
     for &(v1,
           &Struct { x: x1, y: ref y1, z: z1 },
           Struct { x: ref x2, y: y2, z: ref z2 },
-          box v2) in [more_complex].iter() {
+          deref!(v2)) in [more_complex].iter() {
         zzz(); // #break
     }
 

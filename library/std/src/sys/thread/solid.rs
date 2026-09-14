@@ -169,8 +169,7 @@ impl Thread {
             }
         }
 
-        // Safety: `Box::into_raw` returns a non-null pointer
-        let p_inner = unsafe { NonNull::new_unchecked(Box::into_raw(inner)) };
+        let p_inner = Box::into_non_null(inner);
 
         let new_task = ItronError::err_if_negative(unsafe {
             abi::acre_tsk(&abi::T_CTSK {

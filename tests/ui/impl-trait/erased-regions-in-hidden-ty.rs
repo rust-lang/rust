@@ -5,7 +5,7 @@
 //@ normalize-stderr: "DefId\([^\)]+\)" -> "DefId(..)"
 
 #![feature(rustc_attrs)]
-#![rustc_hidden_type_of_opaques]
+#![rustc_dump_hidden_type_of_opaques]
 
 // Make sure that the compiler can handle `ReErased` in the hidden type of an opaque.
 

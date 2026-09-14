@@ -4,7 +4,7 @@ error: Undefined Behavior: calling a function with calling convention "C" using 
 LL | /         std::intrinsics::catch_unwind(
 LL | |
 LL | |             std::mem::transmute::<extern "C" fn(*mut u8), _>(try_fn),
-LL | |             std::ptr::null_mut(),
+LL | |             std::ptr::null_mut::<u8>(),
 LL | |             |_, _| unreachable!(),
 LL | |         );
    | |_________^ Undefined Behavior occurred here

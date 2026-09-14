@@ -14,7 +14,9 @@ error[E0432]: unresolved import `std::simd::intrinsics`
   --> $DIR/portable-intrinsics-arent-exposed.rs:6:5
    |
 LL | use std::simd::intrinsics;
-   |     ^^^^^^^^^^^^^^^^^^^^^ no `intrinsics` in `simd`
+   |     ^^^^^^^^^^^----------
+   |                |
+   |                no `intrinsics` in `simd`
    |
 help: consider importing this module instead
    |

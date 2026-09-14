@@ -19,13 +19,20 @@ pub mod traits;
 /// methods which should not be used during the happy path.
 pub struct TypeErrCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
+    pub param_env: Option<ty::ParamEnv<'tcx>>,
 
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
     pub diverging_fallback_has_occurred: bool,
 
-    pub normalize_fn_sig: Box<dyn Fn(ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx> + 'a>,
-
     pub autoderef_steps: Box<dyn Fn(Ty<'tcx>) -> Vec<(Ty<'tcx>, PredicateObligations<'tcx>)> + 'a>,
+    pub infer_closure_kind: Box<
+        dyn Fn(
+                rustc_hir::def_id::LocalDefId,
+            ) -> Option<(
+                ty::ClosureKind,
+                Option<(rustc_span::Span, rustc_middle::hir::place::Place<'tcx>)>,
+            )> + 'a,
+    >,
 }
 
 #[extension(pub trait InferCtxtErrorExt<'tcx>)]
@@ -35,13 +42,14 @@ impl<'tcx> InferCtxt<'tcx> {
     fn err_ctxt(&self) -> TypeErrCtxt<'_, 'tcx> {
         TypeErrCtxt {
             infcx: self,
+            param_env: None,
             typeck_results: None,
             diverging_fallback_has_occurred: false,
-            normalize_fn_sig: Box::new(|fn_sig| fn_sig),
             autoderef_steps: Box::new(|ty| {
                 debug_assert!(false, "shouldn't be using autoderef_steps outside of typeck");
                 vec![(ty, PredicateObligations::new())]
             }),
+            infer_closure_kind: Box::new(|_| None),
         }
     }
 }

@@ -9,7 +9,7 @@ use crate::directives::{
     FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, extract_llvm_version,
     extract_version_range, line_directive, parse_edition, parse_normalize_rule,
 };
-use crate::executor::{CollectedTestDesc, ShouldFail};
+use crate::executor::{CollectedTestDesc, ShouldFail, TestVariant};
 
 /// All directive handlers should have a name that is also in `KNOWN_DIRECTIVE_NAMES_SET`.
 #[test]
@@ -46,10 +46,13 @@ fn make_test_description(
     filterable_path: &Utf8Path,
     file_contents: &str,
     revision: Option<&str>,
+    debugger: Option<Debugger>,
 ) -> CollectedTestDesc {
     let cache = DirectivesCache::load(config);
     let mut poisoned = false;
     let file_directives = FileDirectives::from_file_contents(path, file_contents);
+
+    let variant = TestVariant { revision: revision.map(str::to_owned), debugger };
 
     let mut aux_props = AuxProps::default();
     let test = crate::directives::make_test_description(
@@ -59,7 +62,7 @@ fn make_test_description(
         path,
         filterable_path,
         &file_directives,
-        revision,
+        &variant,
         &mut poisoned,
         &mut aux_props,
     );
@@ -119,6 +122,7 @@ struct ConfigBuilder {
     rustc_debug_assertions: bool,
     std_debug_assertions: bool,
     std_remap_debuginfo: bool,
+    disable_minification: bool,
 }
 
 impl ConfigBuilder {
@@ -197,6 +201,11 @@ impl ConfigBuilder {
         self
     }
 
+    fn disable_minification(&mut self, is_enabled: bool) -> &mut Self {
+        self.disable_minification = is_enabled;
+        self
+    }
+
     fn build(&mut self) -> Config {
         let args = &[
             "compiletest",
@@ -263,11 +272,14 @@ impl ConfigBuilder {
         if self.std_remap_debuginfo {
             args.push("--with-std-remap-debuginfo".to_owned());
         }
+        if self.disable_minification {
+            args.push("--disable-minification".to_owned());
+        }
 
         args.push("--rustc-path".to_string());
         args.push(std::env::var("TEST_RUSTC").expect("must be configured by bootstrap"));
 
-        crate::parse_config(args)
+        crate::cli::parse_config(args)
     }
 }
 
@@ -283,8 +295,15 @@ fn parse_early_props(config: &Config, contents: &str) -> EarlyProps {
 fn check_ignore(config: &Config, contents: &str) -> bool {
     let tn = String::new();
     let p = Utf8Path::new("a.rs");
-    let d = make_test_description(&config, tn, p, p, contents, None);
-    d.ignore
+    let d = make_test_description(&config, tn, p, p, contents, None, None);
+    d.is_ignored()
+}
+
+fn check_ignore_debugger(config: &Config, contents: &str, debugger: Option<Debugger>) -> bool {
+    let tn = String::new();
+    let p = Utf8Path::new("a.rs");
+    let d = make_test_description(&config, tn, p, p, contents, None, debugger);
+    d.is_ignored()
 }
 
 #[test]
@@ -293,10 +312,19 @@ fn should_fail() {
     let tn = String::new();
     let p = Utf8Path::new("a.rs");
 
-    let d = make_test_description(&config, tn.clone(), p, p, "", None);
+    let d = make_test_description(&config, tn.clone(), p, p, "", None, None);
     assert_eq!(d.should_fail, ShouldFail::No);
-    let d = make_test_description(&config, tn, p, p, "//@ should-fail", None);
+    let d = make_test_description(&config, tn, p, p, "//@ should-fail", None, None);
     assert_eq!(d.should_fail, ShouldFail::Yes);
+}
+
+#[test]
+fn disable_minification_flag() {
+    let config: Config = cfg().build();
+    assert!(!config.disable_minification);
+
+    let config: Config = cfg().disable_minification(true).build();
+    assert!(config.disable_minification);
 }
 
 #[test]
@@ -449,18 +477,11 @@ fn cross_compile() {
 
 #[test]
 fn debugger() {
-    let mut config = cfg().build();
-    config.debugger = None;
-    assert!(!check_ignore(&config, "//@ ignore-cdb"));
-
-    config.debugger = Some(Debugger::Cdb);
-    assert!(check_ignore(&config, "//@ ignore-cdb"));
-
-    config.debugger = Some(Debugger::Gdb);
-    assert!(check_ignore(&config, "//@ ignore-gdb"));
-
-    config.debugger = Some(Debugger::Lldb);
-    assert!(check_ignore(&config, "//@ ignore-lldb"));
+    let config = cfg().build();
+    assert!(!check_ignore_debugger(&config, "//@ ignore-cdb", None));
+    assert!(check_ignore_debugger(&config, "//@ ignore-cdb", Some(Debugger::Cdb)));
+    assert!(check_ignore_debugger(&config, "//@ ignore-gdb", Some(Debugger::Gdb)));
+    assert!(check_ignore_debugger(&config, "//@ ignore-lldb", Some(Debugger::Lldb)));
 }
 
 #[test]
@@ -630,6 +651,21 @@ fn test_codegen_mode_forbidden_revisions() {
 fn test_miropt_mode_forbidden_revisions() {
     let config = cfg().mode("mir-opt").build();
     parse_early_props(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+#[should_panic(expected = "malformed condition directive: multiple revisions aren't supported yet")]
+fn test_multiple_revisions_in_directive() {
+    let directive = "//@ [foo,bar] compile-flags: -Z hello";
+
+    // The problem: this is seen as a single revision.
+    let line_directive = line_directive(Utf8Path::new("foo.txt"), LineNumber::ZERO, directive);
+    assert!(line_directive.is_some());
+    assert_eq!(Some("foo,bar"), line_directive.unwrap().revision);
+
+    // The solution for now: forbid directives from having multiple revisions.
+    let config: Config = cfg().build();
+    parse_early_props(&config, directive);
 }
 
 #[test]
@@ -1138,7 +1174,6 @@ fn edition_order() {
 #[test]
 fn test_parse_edition_range() {
     assert_eq!(None, parse_edition_range("hello-world"));
-    assert_eq!(None, parse_edition_range("edition"));
 
     assert_eq!(Some(EditionRange::Exact(2018.into())), parse_edition_range("edition: 2018"));
     assert_eq!(Some(EditionRange::Exact(2021.into())), parse_edition_range("edition:2021"));
@@ -1253,4 +1288,18 @@ fn test_edition_range_edition_to_test() {
     assert_edition_to_test(2021, range, Some(e2021));
     assert_edition_to_test(2018, range, Some(e2024));
     assert_edition_to_test(2018, range, Some(efuture));
+}
+
+#[test]
+fn needs_asm_ret() {
+    let config_x86_64 = cfg().target("x86_64-unknown-linux-gnu").build();
+    let config_aarch64 = cfg().target("aarch64-unknown-linux-gnu").build();
+    // 32-bit ARM does not have a "ret" mnemonic.
+    let config_arm32 = cfg().target("armv7a-none-eabi").build();
+    let config_wasm = cfg().target("wasm32v1-none").build();
+
+    assert!(!check_ignore(&config_x86_64, "//@ needs-asm-ret"));
+    assert!(!check_ignore(&config_aarch64, "//@ needs-asm-ret"));
+    assert!(check_ignore(&config_arm32, "//@ needs-asm-ret"));
+    assert!(check_ignore(&config_wasm, "//@ needs-asm-ret"));
 }

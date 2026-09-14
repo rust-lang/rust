@@ -4,15 +4,12 @@ use std::iter;
 use hir::AsAssocItem;
 use ide_db::RootDatabase;
 use ide_db::{
-    helpers::mod_path_to_ast,
+    helpers::mod_path_to_ast_with_factory,
     imports::import_assets::{ImportCandidate, LocatedImport},
 };
 use syntax::Edition;
 use syntax::ast::HasGenericArgs;
-use syntax::{
-    AstNode, ast,
-    ast::{HasArgList, make},
-};
+use syntax::{AstNode, ast, ast::HasArgList, syntax_editor::SyntaxEditor};
 
 use crate::{
     AssistId, GroupLabel,
@@ -37,7 +34,7 @@ use crate::{
 // }
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
-pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let (import_assets, syntax_under_caret, expected) = find_importable_node(ctx)?;
     let cfg = ctx.config.import_path_config();
 
@@ -54,25 +51,25 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     let qualify_candidate = match candidate {
         ImportCandidate::Path(candidate) if !candidate.qualifier.is_empty() => {
             cov_mark::hit!(qualify_path_qualifier_start);
-            let path = ast::Path::cast(syntax_under_caret)?;
-            let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
-            QualifyCandidate::QualifierStart(segment, prev_segment.generic_arg_list())
+            let path = ast::Path::cast(syntax_under_caret.clone())?;
+            let first_seg_generics = path.segments().next()?.generic_arg_list();
+            QualifyCandidate::QualifierStart(path, first_seg_generics)
         }
         ImportCandidate::Path(_) => {
             cov_mark::hit!(qualify_path_unqualified_name);
-            let path = ast::Path::cast(syntax_under_caret)?;
+            let path = ast::Path::cast(syntax_under_caret.clone())?;
             let generics = path.segment()?.generic_arg_list();
             QualifyCandidate::UnqualifiedName(generics)
         }
         ImportCandidate::TraitAssocItem(_) => {
             cov_mark::hit!(qualify_path_trait_assoc_item);
-            let path = ast::Path::cast(syntax_under_caret)?;
+            let path = ast::Path::cast(syntax_under_caret.clone())?;
             let (qualifier, segment) = (path.qualifier()?, path.segment()?);
             QualifyCandidate::TraitAssocItem(qualifier, segment)
         }
         ImportCandidate::TraitMethod(_) => {
             cov_mark::hit!(qualify_path_trait_method);
-            let mcall_expr = ast::MethodCallExpr::cast(syntax_under_caret)?;
+            let mcall_expr = ast::MethodCallExpr::cast(syntax_under_caret.clone())?;
             QualifyCandidate::TraitMethod(ctx.sema.db, mcall_expr)
         }
     };
@@ -101,19 +98,22 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             label(ctx.db(), candidate, &import, current_edition),
             range,
             |builder| {
+                let editor = builder.make_editor(&syntax_under_caret);
                 qualify_candidate.qualify(
                     |replace_with: String| builder.replace(range, replace_with),
+                    &editor,
                     &import.import_path,
                     import.item_to_import,
                     current_edition,
-                )
+                );
+                builder.add_file_edits(ctx.vfs_file_id(), editor);
             },
         );
     }
     Some(())
 }
 pub(crate) enum QualifyCandidate<'db> {
-    QualifierStart(ast::PathSegment, Option<ast::GenericArgList>),
+    QualifierStart(ast::Path, Option<ast::GenericArgList>),
     UnqualifiedName(Option<ast::GenericArgList>),
     TraitAssocItem(ast::Path, ast::PathSegment),
     TraitMethod(&'db RootDatabase, ast::MethodCallExpr),
@@ -124,15 +124,18 @@ impl QualifyCandidate<'_> {
     pub(crate) fn qualify(
         &self,
         mut replacer: impl FnMut(String),
+        editor: &SyntaxEditor,
         import: &hir::ModPath,
         item: hir::ItemInNs,
         edition: Edition,
     ) {
-        let import = mod_path_to_ast(import, edition);
+        let import = mod_path_to_ast_with_factory(editor.make(), import, edition);
         match self {
-            QualifyCandidate::QualifierStart(segment, generics) => {
+            QualifyCandidate::QualifierStart(path, generics) => {
                 let generics = generics.as_ref().map_or_else(String::new, ToString::to_string);
-                replacer(format!("{import}{generics}::{segment}"));
+                let suffix =
+                    path.segments().skip(1).map(|s| s.to_string()).collect::<Vec<_>>().join("::");
+                replacer(format!("{import}{generics}::{suffix}"));
             }
             QualifyCandidate::UnqualifiedName(generics) => {
                 let generics = generics.as_ref().map_or_else(String::new, ToString::to_string);
@@ -142,10 +145,10 @@ impl QualifyCandidate<'_> {
                 replacer(format!("<{qualifier} as {import}>::{segment}"));
             }
             QualifyCandidate::TraitMethod(db, mcall_expr) => {
-                Self::qualify_trait_method(db, mcall_expr, replacer, import, item);
+                Self::qualify_trait_method(db, mcall_expr, editor, import, item);
             }
             QualifyCandidate::ImplMethod(db, mcall_expr, hir_fn) => {
-                Self::qualify_fn_call(db, mcall_expr, replacer, import, hir_fn);
+                Self::qualify_fn_call(db, mcall_expr, editor, import, hir_fn);
             }
         }
     }
@@ -153,10 +156,11 @@ impl QualifyCandidate<'_> {
     fn qualify_fn_call(
         db: &RootDatabase,
         mcall_expr: &ast::MethodCallExpr,
-        mut replacer: impl FnMut(String),
+        editor: &SyntaxEditor,
         import: ast::Path,
         hir_fn: &hir::Function,
     ) -> Option<()> {
+        let make = editor.make();
         let receiver = mcall_expr.receiver()?;
         let method_name = mcall_expr.name_ref()?;
         let generics =
@@ -165,15 +169,17 @@ impl QualifyCandidate<'_> {
 
         if let Some(self_access) = hir_fn.self_param(db).map(|sp| sp.access(db)) {
             let receiver = match self_access {
-                hir::Access::Shared => make::expr_ref(receiver, false),
-                hir::Access::Exclusive => make::expr_ref(receiver, true),
+                hir::Access::Shared => make.expr_ref(receiver, false),
+                hir::Access::Exclusive => make.expr_ref(receiver, true),
                 hir::Access::Owned => receiver,
             };
             let arg_list = match arg_list {
-                Some(args) => make::arg_list(iter::once(receiver).chain(args)),
-                None => make::arg_list(iter::once(receiver)),
+                Some(args) => make.arg_list(iter::once(receiver).chain(args)),
+                None => make.arg_list(iter::once(receiver)),
             };
-            replacer(format!("{import}::{method_name}{generics}{arg_list}"));
+            let call_path = make.path_from_text(&format!("{import}::{method_name}{generics}"));
+            let call_expr = make.expr_call(make.expr_path(call_path), arg_list);
+            editor.replace(mcall_expr.syntax(), call_expr.syntax());
         }
         Some(())
     }
@@ -181,14 +187,14 @@ impl QualifyCandidate<'_> {
     fn qualify_trait_method(
         db: &RootDatabase,
         mcall_expr: &ast::MethodCallExpr,
-        replacer: impl FnMut(String),
+        editor: &SyntaxEditor,
         import: ast::Path,
         item: hir::ItemInNs,
     ) -> Option<()> {
         let trait_method_name = mcall_expr.name_ref()?;
         let trait_ = item_as_trait(db, item)?;
         let method = find_trait_method(db, trait_, &trait_method_name)?;
-        Self::qualify_fn_call(db, mcall_expr, replacer, import, &method)
+        Self::qualify_fn_call(db, mcall_expr, editor, import, &method)
     }
 }
 
@@ -276,6 +282,76 @@ mod std {
 use std::fmt;
 
 fmt::Formatter
+"#,
+        );
+    }
+
+    #[test]
+    fn applicable_when_multiple_segments() {
+        check_assist(
+            qualify_path,
+            r#"
+    mod a { pub mod b { pub mod c { pub fn foo() {} } } }
+b::c::foo$0
+"#,
+            r#"
+    mod a { pub mod b { pub mod c { pub fn foo() {} } } }
+a::b::c::foo
+"#,
+        );
+        check_assist(
+            qualify_path,
+            r#"
+    mod a { pub mod b { pub mod c { pub fn foo() {} } } }
+b::c$0::foo
+"#,
+            r#"
+    mod a { pub mod b { pub mod c { pub fn foo() {} } } }
+a::b::c::foo
+"#,
+        );
+        check_assist(
+            qualify_path,
+            r#"
+    mod a { pub mod b { pub mod c { pub fn foo() {} } } }
+b$0::c::foo
+"#,
+            r#"
+    mod a { pub mod b { pub mod c { pub fn foo() {} } } }
+a::b::c::foo
+"#,
+        );
+    }
+
+    #[test]
+    fn applicable_when_multiple_segments_with_generics() {
+        check_assist(
+            qualify_path,
+            r#"
+mod a {
+    pub mod b {
+        pub struct TestStruct<T>(T);
+        impl<T> TestStruct<T> {
+            pub const TEST_CONST: u8 = 42;
+        }
+    }
+}
+fn main() {
+    b::TestStruct::<()>::TEST_CONST$0;
+}
+"#,
+            r#"
+mod a {
+    pub mod b {
+        pub struct TestStruct<T>(T);
+        impl<T> TestStruct<T> {
+            pub const TEST_CONST: u8 = 42;
+        }
+    }
+}
+fn main() {
+    a::b::TestStruct::<()>::TEST_CONST;
+}
 "#,
         );
     }

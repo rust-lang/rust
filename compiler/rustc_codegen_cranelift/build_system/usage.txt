@@ -6,6 +6,7 @@ USAGE:
     ./y.sh test [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen] [--skip-test TESTNAME]
     ./y.sh abi-cafe [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
     ./y.sh bench [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.sh check-todo
 
 OPTIONS:
     --sysroot none|clif|llvm
@@ -13,6 +14,11 @@ OPTIONS:
             `none` will not include any standard library in the sysroot.
             `clif` will build the standard library using Cranelift.
             `llvm` will use the pre-compiled standard library of rustc which is compiled with LLVM.
+
+    --keep-sysroot
+            Disable cleaning of the sysroot dir to cause old compiled artifacts to be re-used when
+            the sysroot source hasn't changed. This is useful when the codegen backend hasn't been
+            modified.
 
     --out-dir DIR
             Specify the directory in which the download, build and dist directories are stored.

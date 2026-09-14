@@ -17,9 +17,9 @@ LL | pub struct Dependent<const N: usize, const X: [u8; N]>([(); N]);
    |                                               ^^^^^^^
    |
    = note: the only supported types are integers, `bool`, and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
-LL + #![feature(adt_const_params)]
+LL + #![feature(min_adt_const_params)]
    |
 
 error: `[u8; N]` is forbidden as the type of a const generic parameter
@@ -29,9 +29,9 @@ LL | pub struct SelfDependent<const N: [u8; N]>;
    |                                   ^^^^^^^
    |
    = note: the only supported types are integers, `bool`, and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
-LL + #![feature(adt_const_params)]
+LL + #![feature(min_adt_const_params)]
    |
 
 error: aborting due to 4 previous errors

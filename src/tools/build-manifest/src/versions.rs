@@ -88,6 +88,8 @@ pkg_type! {
     Gcc = "gcc"; preview = true; suffixes = [
         "x86_64-unknown-linux-gnu"
     ],
+    Enzyme = "enzyme"; preview = true,
+    Offload = "offload"; preview = true,
 }
 
 impl PkgType {
@@ -126,6 +128,8 @@ impl PkgType {
             PkgType::RustMingw => true,
             PkgType::RustAnalysis => true,
             PkgType::LlvmBitcodeLinker => true,
+            PkgType::Enzyme => true,
+            PkgType::Offload => true,
         }
     }
 
@@ -162,6 +166,8 @@ impl PkgType {
             RustAnalysis => TARGETS,
             LlvmTools => TARGETS,
             LlvmBitcodeLinker => HOSTS,
+            Enzyme => HOSTS,
+            Offload => HOSTS,
         }
     }
 

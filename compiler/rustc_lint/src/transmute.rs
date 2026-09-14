@@ -3,12 +3,12 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
+use rustc_lint_defs::{declare_lint, impl_lint_pass};
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::{self, Ty};
-use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::sym;
 
-use crate::lints::{IntegerToPtrTransmutes, IntegerToPtrTransmutesSuggestion};
+use crate::diagnostics::{IntegerToPtrTransmutes, IntegerToPtrTransmutesSuggestion};
 use crate::{LateContext, LateLintPass};
 
 declare_lint! {
@@ -216,7 +216,7 @@ fn check_ptr_transmute_in_const<'tcx>(
     dst: Ty<'tcx>,
 ) {
     if matches!(const_context, Some(hir::ConstContext::ConstFn))
-        || matches!(cx.tcx.def_kind(body_owner_def_id), DefKind::AssocConst { .. })
+        || cx.tcx.def_kind(body_owner_def_id) == DefKind::AssocConst
     {
         if src.is_raw_ptr() && dst.is_integral() {
             cx.tcx.emit_node_span_lint(

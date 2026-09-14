@@ -11,14 +11,13 @@ mod foo {
         fn baz(&self) {}
     }
 
-    impl const Bar for () {}
-    impl const Baz for () {}
+    const impl Bar for () {}
+    const impl Baz for () {}
 
     pub const trait Foo = [const] Bar + Baz;
 }
 
 use foo::Foo as _;
-
 
 const _: () = {
     // Ok via `[const] Bar` on `Foo`

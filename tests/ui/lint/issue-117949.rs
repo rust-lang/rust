@@ -5,8 +5,6 @@
 //@ [opt]compile-flags: -O
 //@ [opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O -Z deduplicate-diagnostics=yes
 //@ build-fail
-//@ ignore-pass (test tests codegen-time behaviour)
-
 
 fn main() {
     format_args!("{}", 1 << 32); //~ ERROR: arithmetic operation will overflow

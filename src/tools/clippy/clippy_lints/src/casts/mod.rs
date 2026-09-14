@@ -31,8 +31,7 @@ use clippy_config::Conf;
 use clippy_utils::is_hir_ty_cfg_dependant;
 use clippy_utils::msrvs::{self, Msrv};
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -691,7 +690,7 @@ declare_clippy_lint! {
     /// const SIZE: usize = 15;
     /// let arr: [u8; SIZE] = [0; SIZE];
     /// ```
-    #[clippy::version = "1.93.0"]
+    #[clippy::version = "1.94.0"]
     pub NEEDLESS_TYPE_CAST,
     nursery,
     "binding defined with one type but always cast to another"
@@ -883,17 +882,16 @@ pub struct Casts {
 
 impl Casts {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
-
         if let ExprKind::Cast(cast_from_expr, cast_to_hir) = expr.kind {
+            if expr.span.in_external_macro(cx.sess().source_map()) {
+                return;
+            }
             if is_hir_ty_cfg_dependant(cx, cast_to_hir) {
                 return;
             }
@@ -911,10 +909,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             ptr_cast_constness::check(cx, expr, cast_from_expr, cast_from, cast_to, self.msrv);
             ptr_as_ptr::check(cx, expr, cast_from_expr, cast_from, cast_to_hir, cast_to, self.msrv);
             as_ptr_cast_mut::check(cx, expr, cast_from_expr, cast_to);
-            fn_to_numeric_cast_any::check(cx, expr, cast_from_expr, cast_from, cast_to);
             confusing_method_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
-            fn_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
-            fn_to_numeric_cast_with_truncation::check(cx, expr, cast_from_expr, cast_from, cast_to);
             zero_ptr::check(cx, expr, cast_from_expr, cast_to_hir, self.msrv);
 
             if self.msrv.meets(cx, msrvs::MANUAL_DANGLING_PTR) {
@@ -932,6 +927,9 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                 }
                 cast_lossless::check(cx, expr, cast_from_expr, cast_from, cast_to, cast_to_hir, self.msrv);
                 cast_enum_constructor::check(cx, expr, cast_from_expr, cast_from);
+                fn_to_numeric_cast_any::check(cx, expr, cast_from_expr, cast_from, cast_to);
+                fn_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
+                fn_to_numeric_cast_with_truncation::check(cx, expr, cast_from_expr, cast_from, cast_to);
             }
 
             as_underscore::check(cx, expr, cast_to_hir);

@@ -39,8 +39,9 @@ macro_rules! panic {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "assert_eq_macro"]
 #[allow_internal_unstable(panic_internals)]
+#[rustc_diagnostic_opaque]
 macro_rules! assert_eq {
-    ($left:expr, $right:expr $(,)?) => {
+    ($left:expr, $right:expr $(,)?) => {{
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
@@ -52,8 +53,8 @@ macro_rules! assert_eq {
                 }
             }
         }
-    };
-    ($left:expr, $right:expr, $($arg:tt)+) => {
+    }};
+    ($left:expr, $right:expr, $($arg:tt)+) => {{
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
@@ -65,7 +66,7 @@ macro_rules! assert_eq {
                 }
             }
         }
-    };
+    }};
 }
 
 /// Asserts that two expressions are not equal to each other (using [`PartialEq`]).
@@ -95,8 +96,9 @@ macro_rules! assert_eq {
 #[stable(feature = "assert_ne", since = "1.13.0")]
 #[rustc_diagnostic_item = "assert_ne_macro"]
 #[allow_internal_unstable(panic_internals)]
+#[rustc_diagnostic_opaque]
 macro_rules! assert_ne {
-    ($left:expr, $right:expr $(,)?) => {
+    ($left:expr, $right:expr $(,)?) => {{
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
@@ -108,8 +110,8 @@ macro_rules! assert_ne {
                 }
             }
         }
-    };
-    ($left:expr, $right:expr, $($arg:tt)+) => {
+    }};
+    ($left:expr, $right:expr, $($arg:tt)+) => {{
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
@@ -121,10 +123,8 @@ macro_rules! assert_ne {
                 }
             }
         }
-    };
+    }};
 }
-
-// FIXME add back debug_assert_matches doc link after bootstrap.
 
 /// Asserts that an expression matches the provided pattern.
 ///
@@ -137,8 +137,10 @@ macro_rules! assert_ne {
 /// otherwise this macro will panic.
 ///
 /// Assertions are always checked in both debug and release builds, and cannot
-/// be disabled. See `debug_assert_matches!` for assertions that are disabled in
+/// be disabled. See [`debug_assert_matches!`] for assertions that are disabled in
 /// release builds by default.
+///
+/// [`debug_assert_matches!`]: crate::debug_assert_matches
 ///
 /// On panic, this macro will print the value of the expression with its debug representation.
 ///
@@ -164,11 +166,11 @@ macro_rules! assert_ne {
 /// assert_matches!(a, Some(x) if x > 100);
 /// // assert_matches!(a, Some(x) if x < 100); // panics
 /// ```
-#[stable(feature = "assert_matches", since = "1.95.0")]
+#[stable(feature = "assert_matches", since = "1.96.0")]
 #[allow_internal_unstable(panic_internals)]
 #[rustc_macro_transparency = "semiopaque"]
 pub macro assert_matches {
-    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {{
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -179,8 +181,8 @@ pub macro assert_matches {
                 );
             }
         }
-    },
-    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => {
+    }},
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => {{
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -191,7 +193,7 @@ pub macro assert_matches {
                 );
             }
         }
-    },
+    }},
 }
 
 /// Selects code at compile-time based on `cfg` predicates.
@@ -229,6 +231,7 @@ pub macro assert_matches {
 /// };
 /// ```
 #[stable(feature = "cfg_select", since = "1.95.0")]
+#[doc(alias = "cfg_if", alias = "cfg-if")]
 #[rustc_diagnostic_item = "cfg_select"]
 #[rustc_builtin_macro]
 pub macro cfg_select($($tt:tt)*) {
@@ -283,6 +286,7 @@ pub macro cfg_select($($tt:tt)*) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "debug_assert_macro"]
 #[allow_internal_unstable(edition_panic)]
+#[rustc_diagnostic_opaque]
 macro_rules! debug_assert {
     ($($arg:tt)*) => {
         if $crate::cfg!(debug_assertions) {
@@ -391,7 +395,7 @@ macro_rules! debug_assert_ne {
 /// debug_assert_matches!(a, Some(x) if x > 100);
 /// // debug_assert_matches!(a, Some(x) if x < 100); // panics
 /// ```
-#[stable(feature = "assert_matches", since = "1.95.0")]
+#[stable(feature = "assert_matches", since = "1.96.0")]
 #[allow_internal_unstable(assert_matches)]
 #[rustc_macro_transparency = "semiopaque"]
 pub macro debug_assert_matches($($arg:tt)*) {
@@ -423,6 +427,7 @@ pub macro debug_assert_matches($($arg:tt)*) {
 #[stable(feature = "matches_macro", since = "1.42.0")]
 #[rustc_diagnostic_item = "matches_macro"]
 #[allow_internal_unstable(non_exhaustive_omitted_patterns_lint, stmt_expr_attributes)]
+#[rustc_diagnostic_opaque]
 macro_rules! matches {
     ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
         #[allow(non_exhaustive_omitted_patterns)]
@@ -594,11 +599,12 @@ macro_rules! r#try {
 /// }
 ///
 /// let mut m = Example{};
-/// write!(&mut m, "Hello World").expect("Not written");
+/// write!(&mut m, "Hello World").expect("Writing to `Example` should succeed");
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "write_macro"]
+#[rustc_diagnostic_opaque]
 macro_rules! write {
     ($dst:expr, $($arg:tt)*) => {
         $dst.write_fmt($crate::format_args!($($arg)*))
@@ -637,6 +643,7 @@ macro_rules! write {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "writeln_macro"]
 #[allow_internal_unstable(format_args_nl)]
+#[rustc_diagnostic_opaque]
 macro_rules! writeln {
     ($dst:expr $(,)?) => {
         $crate::write!($dst, "\n")
@@ -792,6 +799,7 @@ macro_rules! unreachable {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "unimplemented_macro"]
 #[allow_internal_unstable(panic_internals)]
+#[rustc_diagnostic_opaque]
 macro_rules! unimplemented {
     () => {
         $crate::panicking::panic("not implemented")
@@ -872,6 +880,7 @@ macro_rules! unimplemented {
 #[stable(feature = "todo_macro", since = "1.40.0")]
 #[rustc_diagnostic_item = "todo_macro"]
 #[allow_internal_unstable(panic_internals)]
+#[rustc_diagnostic_opaque]
 macro_rules! todo {
     () => {
         $crate::panicking::panic("not yet implemented")
@@ -1627,6 +1636,48 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
+    /// The `offload_kernel` macro is applied to a function to generate two separate
+    /// definitions: a host-side wrapper for dispatch and a device-side kernel.
+    ///
+    /// The macro does not perform the offload itself. It generates the necessary
+    /// code required by the compiler's offloading infrastructure.
+    ///
+    /// ### Usage example:
+    ///
+    /// ```rust,ignore (offload requires a -Z flag)
+    /// #[offload_kernel]
+    /// fn foo(a: &[f32], b: &[f32], c: *mut f32) {
+    ///     *c = a[0] + b[0];
+    /// }
+    /// ```
+    ///
+    /// This expands to the host-side function:
+    ///
+    /// ```rust,ignore (offload requires a -Z flag)
+    /// #[unsafe(no_mangle)]
+    /// #[inline(never)]
+    /// fn foo(_: &[f32], _: &[f32], _: *mut f32) {
+    ///     ::core::panicking::panic("not implemented")
+    /// }
+    /// ```
+    ///
+    /// And the device-side kernel:
+    ///
+    /// ```rust,ignore (offload requires a -Z flag)
+    /// #[rustc_offload_kernel]
+    /// #[unsafe(no_mangle)]
+    /// unsafe extern "gpu-kernel" fn foo(a: &[f32], b: &[f32], c: *mut f32) {
+    ///     *c = a[0] + b[0];
+    /// }
+    /// ```
+    #[unstable(feature = "gpu_offload", issue = "131513")]
+    #[allow_internal_unstable(rustc_attrs)]
+    #[allow_internal_unstable(core_intrinsics)]
+    #[rustc_builtin_macro]
+    pub macro offload_kernel($item:item) {
+        /* compiler built-in */
+    }
+
     /// Asserts that a boolean expression is `true` at runtime.
     ///
     /// This will invoke the [`panic!`] macro if the provided expression cannot be
@@ -1720,7 +1771,7 @@ pub(crate) mod builtin {
     ///
     /// See [the reference] for more info.
     ///
-    /// [the reference]: ../../../reference/attributes/derive.html
+    /// [the reference]: ../reference/attributes/derive.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     pub macro derive($item:item) {
@@ -1862,7 +1913,7 @@ pub(crate) mod builtin {
         issue = "23416",
         reason = "placeholder syntax for type ascription"
     )]
-    #[rustfmt::skip]
+    #[diagnostic::opaque]
     pub macro type_ascribe($expr:expr, $ty:ty) {
         builtin # type_ascribe($expr, $ty)
     }
@@ -1874,6 +1925,7 @@ pub(crate) mod builtin {
         issue = "87121",
         reason = "placeholder syntax for deref patterns"
     )]
+    #[diagnostic::opaque]
     pub macro deref($pat:pat) {
         builtin # deref($pat)
     }

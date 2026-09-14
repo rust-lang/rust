@@ -2,21 +2,21 @@ use std::fmt;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash, StableHash_NoContext};
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
 
-use crate::{self as ty, BoundVarIndexKind, Interner};
+use crate::{self as ty, AliasConst, BoundVarIndexKind, Interner};
 
 /// Represents a constant in Rust.
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
 #[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
@@ -34,7 +34,7 @@ pub enum ConstKind<I: Interner> {
     /// An unnormalized const item such as an anon const or assoc const or free const item.
     /// Right now anything other than anon consts does not actually work properly but this
     /// should
-    Unevaluated(ty::UnevaluatedConst<I>),
+    Alias(ty::IsRigid, ty::AliasConst<I>),
 
     /// Used to hold computed value.
     Value(I::ValueConst),
@@ -43,7 +43,7 @@ pub enum ConstKind<I: Interner> {
     /// propagated to avoid useless error messages.
     Error(I::ErrorGuaranteed),
 
-    /// Unevaluated non-const-item, used by `feature(generic_const_exprs)` to represent
+    /// A non-const-item expression awaiting evaluation, used by `feature(generic_const_exprs)` to represent
     /// const arguments such as `N + 1` or `foo(N)`
     Expr(I::ExprConst),
 }
@@ -59,7 +59,9 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
             Infer(var) => write!(f, "{var:?}"),
             Bound(debruijn, var) => crate::debug_bound_var(f, *debruijn, var),
             Placeholder(placeholder) => write!(f, "{placeholder:?}"),
-            Unevaluated(uv) => write!(f, "{uv:?}"),
+            Alias(is_rigid, alias_const) => {
+                write!(f, "AliasConst({is_rigid:?}, {alias_const:?})")
+            }
             Value(val) => write!(f, "{val:?}"),
             Error(_) => write!(f, "{{const error}}"),
             Expr(expr) => write!(f, "{expr:?}"),
@@ -67,24 +69,119 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
     }
 }
 
-/// An unevaluated (potentially generic) constant used in the type-system.
-#[derive_where(Clone, Copy, Debug, Hash, PartialEq; I: Interner)]
+impl<I: Interner> AliasConst<I> {
+    #[inline]
+    pub fn new(interner: I, kind: AliasConstKind<I>, args: I::GenericArgs) -> AliasConst<I> {
+        if cfg!(debug_assertions) {
+            interner.debug_assert_alias_term_args_compatible(kind.into(), args);
+        }
+        AliasConst { kind, args, _use_alias_new_instead: () }
+    }
+
+    pub fn type_of(self, interner: I) -> ty::Unnormalized<I, I::Ty> {
+        let def_id = match self.kind {
+            ty::AliasConstKind::Projection { def_id } => def_id.into(),
+            ty::AliasConstKind::InherentSelf { .. } => {
+                panic!(
+                    "AliasConst::type_of got InherentSelf - args should always be InherentImpl at this point"
+                )
+            }
+            ty::AliasConstKind::InherentImpl { def_id } => def_id.into(),
+            ty::AliasConstKind::Free { def_id } => def_id.into(),
+            ty::AliasConstKind::Anon { def_id } => def_id.into(),
+        };
+        interner.type_of(def_id).instantiate(interner, self.args)
+    }
+}
+
+/// AliasConstKind is extremely similar to AliasTyKind, and likely should be reasoned about
+/// and handled in very similar ways. The documentation for AliasTyKind/etc. may be helpful when
+/// learning about AliasConstKind.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
-pub struct UnevaluatedConst<I: Interner> {
-    pub def: I::UnevaluatedConstId,
-    pub args: I::GenericArgs,
+pub enum AliasConstKind<I: Interner> {
+    /// A projection `<Type as Trait>::AssocConst`
+    Projection { def_id: I::TraitAssocConstId },
+    /// An associated const in an inherent `impl`.
+    ///
+    /// The generic args are in "Self form", i.e.
+    /// there is a single `Self` type parameter, followed by any GAT args on the inherent const
+    /// itself.
+    ///
+    /// The "impl form" args can be obtained by generating fresh vars for each of the impl params,
+    /// instantiating the impl block's Self type with the fresh vars, equating the resulting type
+    /// with the `Self` generic argument, and using the result of what the fresh vars resolved to as
+    /// the "impl form" args. Doing so without considering the extra predicates generated by the
+    /// equate is a lossy operation, consider the following impl block:
+    ///
+    /// ```rust,ignore (illustrative)
+    /// impl<T> Struct<'static, T> {
+    ///     const ASSOC<A>: () = ();
+    /// }
+    /// ```
+    ///
+    /// If we have `Struct::<'a, u32>::Assoc<usize>`, the Self args form would be `[Struct<'a, u32>,
+    /// usize]`. The "impl form" args would be `[u32, usize]`, with an extra constraint generated
+    /// that `'a == 'static`. Disregarding this extra constraint would be wrong.
+    ///
+    /// Hence, when HIR lowering wants to construct an inherent alias, it must use the "Self form"
+    /// to let the trait solver do the equate and consider additional constraints.
+    ///
+    /// FIXME(inherent_associated_types): This ideally ought be a list of candidate DefIds that a
+    /// path could resolve to, then the trait solver does the above-written routine to figure out
+    /// which exact impl to use. `InherentSelf` could be conceptually be thought of as corresponding
+    /// to `Projection` where the def_id is a trait, and `InherentImpl` is `Projection` where the
+    /// def_id is an impl.
+    InherentSelf { def_id: I::InherentAssocConstId },
+    /// An associated const in an inherent `impl`. See [`Self::InherentSelf`] for a description on
+    /// the difference between `InherentSelf` and `InherentImpl`.
+    InherentImpl { def_id: I::InherentAssocConstId },
+    /// A free constant, outside an impl block.
+    Free { def_id: I::FreeConstAliasId },
+    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`.
+    Anon { def_id: I::AnonConstId },
 }
 
-impl<I: Interner> Eq for UnevaluatedConst<I> {}
+pub enum AliasConstInherentArgsKind {
+    WithSelf,
+    Impl,
+}
 
-impl<I: Interner> UnevaluatedConst<I> {
-    #[inline]
-    pub fn new(def: I::UnevaluatedConstId, args: I::GenericArgs) -> UnevaluatedConst<I> {
-        UnevaluatedConst { def, args }
+impl<I: Interner> AliasConstKind<I> {
+    pub fn new_from_def_id(
+        interner: I,
+        def_id: I::DefId,
+        inherent_args: AliasConstInherentArgsKind,
+    ) -> Self {
+        interner.alias_const_kind_from_def_id(def_id, inherent_args)
+    }
+
+    pub fn is_direct_const(self, interner: I) -> bool {
+        interner.is_direct_const(self)
+    }
+
+    pub fn def_span(self, interner: I) -> I::Span {
+        match self {
+            AliasConstKind::Projection { def_id } => interner.def_span(def_id.into()),
+            AliasConstKind::InherentSelf { def_id } => interner.def_span(def_id.into()),
+            AliasConstKind::InherentImpl { def_id } => interner.def_span(def_id.into()),
+            AliasConstKind::Free { def_id } => interner.def_span(def_id.into()),
+            AliasConstKind::Anon { def_id } => interner.def_span(def_id.into()),
+        }
+    }
+
+    pub fn opt_def_id(self) -> Option<I::DefId> {
+        match self {
+            AliasConstKind::Projection { def_id } => Some(def_id.into()),
+            AliasConstKind::InherentSelf { def_id } => Some(def_id.into()),
+            AliasConstKind::InherentImpl { def_id } => Some(def_id.into()),
+            AliasConstKind::Free { def_id } => Some(def_id.into()),
+            AliasConstKind::Anon { def_id } => Some(def_id.into()),
+        }
     }
 }
 
@@ -117,13 +214,13 @@ impl fmt::Debug for InferConst {
 }
 
 #[cfg(feature = "nightly")]
-impl<CTX> HashStable<CTX> for InferConst {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+impl StableHash for InferConst {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
             InferConst::Var(_) => {
                 panic!("const variables should not be hashed: {self:?}")
             }
-            InferConst::Fresh(i) => i.hash_stable(hcx, hasher),
+            InferConst::Fresh(i) => i.stable_hash(hcx, hasher),
         }
     }
 }
@@ -141,10 +238,10 @@ impl<CTX> HashStable<CTX> for InferConst {
 /// `ValTree` does not have this problem with representation, as it only contains integers or
 /// lists of (nested) `ty::Const`s (which may indirectly contain more `ValTree`s).
 #[derive_where(Clone, Copy, Debug, Hash, Eq, PartialEq; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
 pub enum ValTreeKind<I: Interner> {
     /// integers, `bool`, `char` are represented as scalars.
@@ -201,21 +298,20 @@ impl<I: Interner> ValTreeKind<I> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
-)]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
 pub enum AnonConstKind {
     /// `feature(generic_const_exprs)` anon consts are allowed to use arbitrary generic parameters in scope
     GCE,
     /// stable `min_const_generics` anon consts are not allowed to use any generic parameters
+    ///
+    /// under `feature(min_generic_const_args)`, these may be inline consts as well, and should be
+    /// treated the same as anon consts.
     MCG,
-    /// `feature(opaque_generic_const_args)` anon consts are allowed to use arbitrary
-    /// generic parameters in scope, but only if they syntactically reference them.
-    OGCA,
     /// anon consts used as the length of a repeat expr are syntactically allowed to use generic parameters
     /// but must not depend on the actual instantiation. See #76200 for more information
     RepeatExprCount,
     /// anon consts outside of the type system, e.g. enum discriminants
-    NonTypeSystem,
+    NonTypeSystemAnon,
+    /// inline consts outside of the type system
+    NonTypeSystemInline,
 }

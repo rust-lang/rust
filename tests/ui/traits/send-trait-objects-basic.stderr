@@ -1,0 +1,127 @@
+error[E0277]: `&'a (dyn Dummy + 'a)` cannot be sent between threads safely
+  --> $DIR/send-trait-objects-basic.rs:9:26
+   |
+LL |     assert_send_static::<&'a dyn Dummy>();
+   |                          ^^^^^^^^^^^^^ `&'a (dyn Dummy + 'a)` cannot be sent between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `(dyn Dummy + 'a)`
+   = note: required for `&'a (dyn Dummy + 'a)` to implement `Send`
+note: required by a bound in `assert_send_static`
+  --> $DIR/send-trait-objects-basic.rs:3:26
+   |
+LL | fn assert_send_static<T: Send + 'static>() {}
+   |                          ^^^^ required by this bound in `assert_send_static`
+
+error[E0277]: `(dyn Dummy + 'a)` cannot be sent between threads safely
+  --> $DIR/send-trait-objects-basic.rs:19:26
+   |
+LL |     assert_send_static::<Box<dyn Dummy + 'a>>();
+   |                          ^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be sent between threads safely
+   |
+   = help: the trait `Send` is not implemented for `(dyn Dummy + 'a)`
+   = note: required for `std::ptr::Unique<(dyn Dummy + 'a)>` to implement `Send`
+note: required because it appears within the type `Box<(dyn Dummy + 'a)>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+note: required by a bound in `assert_send_static`
+  --> $DIR/send-trait-objects-basic.rs:3:26
+   |
+LL | fn assert_send_static<T: Send + 'static>() {}
+   |                          ^^^^ required by this bound in `assert_send_static`
+
+error[E0277]: `*mut &'a isize` cannot be sent between threads safely
+  --> $DIR/send-trait-objects-basic.rs:24:19
+   |
+LL |     assert_send::<*mut &'a isize>();
+   |                   ^^^^^^^^^^^^^^ `*mut &'a isize` cannot be sent between threads safely
+   |
+   = help: the trait `Send` is not implemented for `*mut &'a isize`
+note: required by a bound in `assert_send`
+  --> $DIR/send-trait-objects-basic.rs:4:19
+   |
+LL | fn assert_send<T: Send>() {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error[E0277]: `&'static (dyn Dummy + 'static)` cannot be sent between threads safely
+  --> $DIR/send-trait-objects-basic.rs:32:19
+   |
+LL |     assert_send::<&'static dyn Dummy>();
+   |                   ^^^^^^^^^^^^^^^^^^ `&'static (dyn Dummy + 'static)` cannot be sent between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `(dyn Dummy + 'static)`
+   = note: required for `&'static (dyn Dummy + 'static)` to implement `Send`
+note: required by a bound in `assert_send`
+  --> $DIR/send-trait-objects-basic.rs:4:19
+   |
+LL | fn assert_send<T: Send>() {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error[E0277]: `dyn Dummy` cannot be sent between threads safely
+  --> $DIR/send-trait-objects-basic.rs:34:19
+   |
+LL |     assert_send::<Box<dyn Dummy>>();
+   |                   ^^^^^^^^^^^^^^ `dyn Dummy` cannot be sent between threads safely
+   |
+   = help: the trait `Send` is not implemented for `dyn Dummy`
+   = note: required for `std::ptr::Unique<dyn Dummy>` to implement `Send`
+note: required because it appears within the type `Box<dyn Dummy>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+note: required by a bound in `assert_send`
+  --> $DIR/send-trait-objects-basic.rs:4:19
+   |
+LL | fn assert_send<T: Send>() {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error[E0277]: `*mut u8` cannot be sent between threads safely
+  --> $DIR/send-trait-objects-basic.rs:45:19
+   |
+LL |     assert_send::<Box<*mut u8>>();
+   |                   ^^^^^^^^^^^^ `*mut u8` cannot be sent between threads safely
+   |
+   = help: the trait `Send` is not implemented for `*mut u8`
+   = note: required for `std::ptr::Unique<*mut u8>` to implement `Send`
+note: required because it appears within the type `Box<*mut u8>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+note: required by a bound in `assert_send`
+  --> $DIR/send-trait-objects-basic.rs:4:19
+   |
+LL | fn assert_send<T: Send>() {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error[E0277]: `*mut isize` cannot be sent between threads safely
+  --> $DIR/send-trait-objects-basic.rs:48:19
+   |
+LL |     assert_send::<*mut isize>();
+   |                   ^^^^^^^^^^ `*mut isize` cannot be sent between threads safely
+   |
+   = help: the trait `Send` is not implemented for `*mut isize`
+note: required by a bound in `assert_send`
+  --> $DIR/send-trait-objects-basic.rs:4:19
+   |
+LL | fn assert_send<T: Send>() {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error[E0277]: `&'static (dyn Dummy + 'static)` cannot be sent between threads safely
+  --> $DIR/send-trait-objects-basic.rs:53:19
+   |
+LL |     assert_send::<&'static (dyn Dummy + 'static)>();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&'static (dyn Dummy + 'static)` cannot be sent between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `(dyn Dummy + 'static)`
+   = note: required for `&'static (dyn Dummy + 'static)` to implement `Send`
+note: required by a bound in `assert_send`
+  --> $DIR/send-trait-objects-basic.rs:4:19
+   |
+LL | fn assert_send<T: Send>() {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error: lifetime may not live long enough
+  --> $DIR/send-trait-objects-basic.rs:14:5
+   |
+LL | fn test2<'a>() {
+   |          -- lifetime `'a` defined here
+LL |     assert_send_static::<&'a (dyn Dummy + Sync)>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

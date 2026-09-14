@@ -1,24 +1,32 @@
 //! Defining `SolverContext` for next-trait-solver.
 
-use hir_def::{AssocItemId, GeneralConstId};
+use hir_def::{
+    AssocItemId,
+    signatures::{ConstSignature, TypeAliasSignature},
+};
 use rustc_next_trait_solver::delegate::SolverDelegate;
 use rustc_type_ir::{
-    AliasTyKind, GenericArgKind, InferCtxtLike, Interner, PredicatePolarity, TypeFlags,
+    AliasTyKind, GenericArgKind, InferCtxtLike, InferTy, Interner, PredicatePolarity, TypeFlags,
     TypeVisitableExt,
-    inherent::{IntoKind, Term as _, Ty as _},
+    inherent::{Const as _, IntoKind, Term as _, Ty as _},
     lang_items::SolverTraitLangItem,
-    solve::{Certainty, NoSolution},
+    solve::{Certainty, FetchEligibleAssocItemResponse, NoSolution, VisibleForLeakCheck},
 };
 use tracing::debug;
 
-use crate::next_solver::{
-    AliasTy, AnyImplId, CanonicalVarKind, Clause, ClauseKind, CoercePredicate, GenericArgs,
-    ParamEnv, Predicate, PredicateKind, SubtypePredicate, Ty, TyKind, fold::fold_tys,
-    util::sizedness_fast_path,
+use crate::{
+    ParamEnvAndCrate, Span,
+    db::GeneralConstId,
+    next_solver::{
+        AliasTy, AnyImplId, CanonicalVarKind, Clause, ClauseKind, CoercePredicate, ErrorGuaranteed,
+        GenericArgs, ImplOrTraitAssocTermId, OpaqueTyIdWrapper, ParamEnv, Predicate, PredicateKind,
+        RegionConstraint, SubtypePredicate, TermId, TraitAssocTermId, Ty, TyKind, TypingMode,
+        UnevaluatedConst, fold::fold_tys, util::sizedness_fast_path,
+    },
 };
 
 use super::{
-    DbInterner, ErrorGuaranteed, GenericArg, SolverDefId, Span,
+    Const, DbInterner, GenericArg,
     infer::{DbInternerInferExt, InferCtxt, canonical::instantiate::CanonicalExt},
 };
 
@@ -57,15 +65,15 @@ impl<'db> SolverDelegate for SolverContext<'db> {
     where
         V: rustc_type_ir::TypeFoldable<Self::Interner>,
     {
-        let (infcx, value, vars) = cx.infer_ctxt().build_with_canonical(canonical);
+        let (infcx, value, vars) = cx.infer_ctxt().build_with_canonical(Span::Dummy, canonical);
         (SolverContext(infcx), value, vars)
     }
 
-    fn fresh_var_for_kind_with_span(&self, arg: GenericArg<'db>, _span: Span) -> GenericArg<'db> {
+    fn fresh_var_for_kind_with_span(&self, arg: GenericArg<'db>, span: Span) -> GenericArg<'db> {
         match arg.kind() {
-            GenericArgKind::Lifetime(_) => self.next_region_var().into(),
-            GenericArgKind::Type(_) => self.next_ty_var().into(),
-            GenericArgKind::Const(_) => self.next_const_var().into(),
+            GenericArgKind::Lifetime(_) => self.next_region_var(span).into(),
+            GenericArgKind::Type(_) => self.next_ty_var(span).into(),
+            GenericArgKind::Const(_) => self.next_const_var(span).into(),
         }
     }
 
@@ -92,14 +100,9 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         None
     }
 
-    fn make_deduplicated_outlives_constraints(
+    fn make_deduplicated_region_constraints(
         &self,
-    ) -> Vec<
-        rustc_type_ir::OutlivesPredicate<
-            Self::Interner,
-            <Self::Interner as rustc_type_ir::Interner>::GenericArg,
-        >,
-    > {
+    ) -> Vec<(RegionConstraint<'db>, VisibleForLeakCheck)> {
         // FIXME: add if we care about regions
         vec![]
     }
@@ -118,23 +121,22 @@ impl<'db> SolverDelegate for SolverContext<'db> {
     fn instantiate_canonical_var(
         &self,
         kind: CanonicalVarKind<'db>,
-        _span: <Self::Interner as Interner>::Span,
+        span: Span,
         var_values: &[GenericArg<'db>],
         universe_map: impl Fn(rustc_type_ir::UniverseIndex) -> rustc_type_ir::UniverseIndex,
     ) -> GenericArg<'db> {
-        self.0.instantiate_canonical_var(kind, var_values, universe_map)
+        self.0.instantiate_canonical_var(span, kind, var_values, universe_map)
     }
 
     fn add_item_bounds_for_hidden_type(
         &self,
-        def_id: SolverDefId,
+        opaque_id: OpaqueTyIdWrapper<'_>,
         args: GenericArgs<'db>,
         param_env: ParamEnv<'db>,
         hidden_ty: Ty<'db>,
         goals: &mut Vec<Goal<'db, Predicate<'db>>>,
     ) {
         let interner = self.interner;
-        let opaque_id = def_id.expect_opaque_ty();
         // Require that the hidden type is well-formed. We have to
         // make sure we wf-check the hidden type to fix #114728.
         //
@@ -152,17 +154,18 @@ impl<'db> SolverDelegate for SolverContext<'db> {
             fold_tys(interner, clause, |ty| match ty.kind() {
                 // Replace all other mentions of the same opaque type with the hidden type,
                 // as the bounds must hold on the hidden type after all.
-                TyKind::Alias(
-                    AliasTyKind::Opaque,
-                    AliasTy { def_id: def_id2, args: args2, .. },
-                ) if def_id == def_id2 && args == args2 => hidden_ty,
+                TyKind::Alias(AliasTy {
+                    kind: AliasTyKind::Opaque { def_id: def_id2 },
+                    args: args2,
+                    ..
+                }) if opaque_id == def_id2 && args == args2 => hidden_ty,
                 _ => ty,
             })
         };
 
-        let item_bounds = opaque_id.predicates(interner.db);
+        let item_bounds = opaque_id.0.predicates(interner.db);
         for predicate in item_bounds.iter_instantiated_copied(interner, args.as_slice()) {
-            let predicate = replace_opaques_in(predicate);
+            let predicate = replace_opaques_in(predicate.skip_norm_wip());
 
             // Require that the predicate holds for the concrete type.
             debug!(?predicate);
@@ -173,61 +176,71 @@ impl<'db> SolverDelegate for SolverContext<'db> {
     fn fetch_eligible_assoc_item(
         &self,
         _goal_trait_ref: rustc_type_ir::TraitRef<Self::Interner>,
-        trait_assoc_def_id: SolverDefId,
+        trait_assoc_def_id: TraitAssocTermId,
         impl_id: AnyImplId,
-    ) -> Result<Option<SolverDefId>, ErrorGuaranteed> {
+    ) -> FetchEligibleAssocItemResponse<Self::Interner> {
         let AnyImplId::ImplId(impl_id) = impl_id else {
             // Builtin derive traits don't have type/consts assoc items.
-            return Ok(None);
+            return FetchEligibleAssocItemResponse::Err(ErrorGuaranteed);
         };
         let impl_items = impl_id.impl_items(self.0.interner.db());
-        let id =
-            match trait_assoc_def_id {
-                SolverDefId::TypeAliasId(trait_assoc_id) => {
-                    let trait_assoc_data = self.0.interner.db.type_alias_signature(trait_assoc_id);
-                    impl_items
-                        .items
-                        .iter()
-                        .find_map(|(impl_assoc_name, impl_assoc_id)| {
-                            if let AssocItemId::TypeAliasId(impl_assoc_id) = *impl_assoc_id
-                                && *impl_assoc_name == trait_assoc_data.name
-                            {
-                                Some(impl_assoc_id)
-                            } else {
-                                None
-                            }
-                        })
-                        .or_else(|| {
-                            if trait_assoc_data.ty.is_some() { Some(trait_assoc_id) } else { None }
-                        })
-                        .map(SolverDefId::TypeAliasId)
-                }
-                SolverDefId::ConstId(trait_assoc_id) => {
-                    let trait_assoc_data = self.0.interner.db.const_signature(trait_assoc_id);
-                    let trait_assoc_name = trait_assoc_data
-                        .name
-                        .as_ref()
-                        .expect("unnamed consts should not get passed to the solver");
-                    impl_items
-                        .items
-                        .iter()
-                        .find_map(|(impl_assoc_name, impl_assoc_id)| {
-                            if let AssocItemId::ConstId(impl_assoc_id) = *impl_assoc_id
-                                && impl_assoc_name == trait_assoc_name
-                            {
-                                Some(impl_assoc_id)
-                            } else {
-                                None
-                            }
-                        })
-                        .or_else(|| {
+        let id = match trait_assoc_def_id.0 {
+            TermId::TypeAliasId(trait_assoc_id) => {
+                let trait_assoc_data = TypeAliasSignature::of(self.0.interner.db, trait_assoc_id);
+                impl_items
+                    .items
+                    .iter()
+                    .find_map(|(impl_assoc_name, impl_assoc_id)| {
+                        if let AssocItemId::TypeAliasId(impl_assoc_id) = *impl_assoc_id
+                            && *impl_assoc_name == trait_assoc_data.name
+                        {
+                            Some(impl_assoc_id)
+                        } else {
+                            None
+                        }
+                    })
+                    .or_else(|| {
+                        if trait_assoc_data.ty.is_some() { Some(trait_assoc_id) } else { None }
+                    })
+                    .map(|def| ImplOrTraitAssocTermId(TermId::TypeAliasId(def)))
+            }
+            TermId::ConstId(trait_assoc_id) => {
+                let trait_assoc_data = ConstSignature::of(self.0.interner.db, trait_assoc_id);
+                let trait_assoc_name = trait_assoc_data
+                    .name
+                    .as_ref()
+                    .expect("unnamed consts should not get passed to the solver");
+                impl_items
+                    .items
+                    .iter()
+                    .find_map(|(impl_assoc_name, impl_assoc_id)| {
+                        if let AssocItemId::ConstId(impl_assoc_id) = *impl_assoc_id
+                            && impl_assoc_name == trait_assoc_name
+                        {
+                            Some(impl_assoc_id)
+                        } else {
+                            None
+                        }
+                    })
+                    .or_else(
+                        || {
                             if trait_assoc_data.has_body() { Some(trait_assoc_id) } else { None }
-                        })
-                        .map(SolverDefId::ConstId)
+                        },
+                    )
+                    .map(|def| ImplOrTraitAssocTermId(TermId::ConstId(def)))
+            }
+        };
+        match id {
+            Some(id) => FetchEligibleAssocItemResponse::Found(id),
+            None => match self.typing_mode_raw() {
+                TypingMode::ErasedNotCoherence(_) => {
+                    FetchEligibleAssocItemResponse::NotFoundBecauseErased
                 }
-                _ => panic!("Unexpected SolverDefId"),
-            };
-        Ok(id)
+                typing_mode => {
+                    FetchEligibleAssocItemResponse::NotFound(typing_mode.assert_not_erased())
+                }
+            },
+        }
     }
 
     fn is_transmutable(
@@ -243,20 +256,30 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
     fn evaluate_const(
         &self,
-        _param_env: ParamEnv<'db>,
-        uv: rustc_type_ir::UnevaluatedConst<Self::Interner>,
-    ) -> Option<<Self::Interner as rustc_type_ir::Interner>::Const> {
-        match uv.def.0 {
+        param_env: ParamEnv<'db>,
+        uv: UnevaluatedConst<'db>,
+    ) -> Option<Const<'db>> {
+        let ec = match uv.def.0 {
             GeneralConstId::ConstId(c) => {
                 let subst = uv.args;
-                let ec = self.cx().db.const_eval(c, subst, None).ok()?;
-                Some(ec)
+                self.cx().db.const_eval(c, subst, None)
             }
-            GeneralConstId::StaticId(c) => {
-                let ec = self.cx().db.const_eval_static(c).ok()?;
-                Some(ec)
+            GeneralConstId::StaticId(c) => self.cx().db.const_eval_static(c),
+            GeneralConstId::AnonConstId(c) => {
+                let subst = uv.args;
+                self.cx().db.anon_const_eval(c, subst, None)
             }
-        }
+        };
+        let konst = match ec {
+            Ok(ec) => Const::new_from_allocation(
+                self.interner,
+                &ec,
+                ParamEnvAndCrate { param_env, krate: self.interner.expect_crate() },
+            ),
+            // FIXME: Not all evaluation errors should return an error const, rustc returns None on `EvaluateConstErr::{HasGenericsOrInfers, InvalidConstParamTy}`.
+            Err(_) => Const::new_error(self.interner, ErrorGuaranteed),
+        };
+        Some(konst)
     }
 
     fn compute_goal_fast_path(
@@ -279,10 +302,10 @@ impl<'db> SolverDelegate for SolverContext<'db> {
             }
 
             if trait_pred.polarity() == PredicatePolarity::Positive {
-                match self.0.cx().as_trait_lang_item(trait_pred.def_id()) {
+                match self.0.interner.as_trait_lang_item(trait_pred.def_id()) {
                     Some(SolverTraitLangItem::Sized) | Some(SolverTraitLangItem::MetaSized) => {
                         let predicate = self.resolve_vars_if_possible(goal.predicate);
-                        if sizedness_fast_path(self.cx(), predicate, goal.param_env) {
+                        if sizedness_fast_path(self.interner, predicate, goal.param_env) {
                             return Some(Certainty::Yes);
                         }
                     }
@@ -308,17 +331,31 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
         let pred = goal.predicate.kind();
         match pred.no_bound_vars()? {
-            PredicateKind::Clause(ClauseKind::RegionOutlives(_outlives)) => Some(Certainty::Yes),
-            PredicateKind::Clause(ClauseKind::TypeOutlives(_outlives)) => Some(Certainty::Yes),
+            PredicateKind::DynCompatible(def_id)
+                if self.0.interner.trait_is_dyn_compatible(def_id) =>
+            {
+                Some(Certainty::Yes)
+            }
+            PredicateKind::Clause(ClauseKind::RegionOutlives(outlives)) => {
+                self.0.sub_regions(outlives.1, outlives.0);
+                Some(Certainty::Yes)
+            }
+            PredicateKind::Clause(ClauseKind::TypeOutlives(outlives)) => {
+                self.0.register_type_outlives_constraint(outlives.0, outlives.1);
+
+                Some(Certainty::Yes)
+            }
             PredicateKind::Subtype(SubtypePredicate { a, b, .. })
             | PredicateKind::Coerce(CoercePredicate { a, b }) => {
-                if self.shallow_resolve(a).is_ty_var() && self.shallow_resolve(b).is_ty_var() {
-                    // FIXME: We also need to register a subtype relation between these vars
-                    // when those are added, and if they aren't in the same sub root then
-                    // we should mark this goal as `has_changed`.
-                    Some(Certainty::AMBIGUOUS)
-                } else {
-                    None
+                match (self.shallow_resolve(a).kind(), self.shallow_resolve(b).kind()) {
+                    (
+                        TyKind::Infer(InferTy::TyVar(a_vid)),
+                        TyKind::Infer(InferTy::TyVar(b_vid)),
+                    ) => {
+                        self.sub_unify_ty_vids_raw(a_vid, b_vid);
+                        Some(Certainty::AMBIGUOUS)
+                    }
+                    _ => None,
                 }
             }
             PredicateKind::Clause(ClauseKind::ConstArgHasType(ct, _)) => {
@@ -329,6 +366,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
                 }
             }
             PredicateKind::Clause(ClauseKind::WellFormed(arg)) => {
+                let arg = self.shallow_resolve_term(arg);
                 if arg.is_trivially_wf(self.interner) {
                     Some(Certainty::Yes)
                 } else if arg.is_infer() {

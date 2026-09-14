@@ -6,7 +6,21 @@ use crate::path::{Path, PathBuf};
 use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::{Dir, exists};
 use crate::sys::time::SystemTime;
-use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, map_motor_error, unsupported};
+use crate::sys::{
+    AsInner, AsInnerMut, FromInner, IntoInner, io_slices, io_slices_mut, map_motor_error,
+    unsupported,
+};
+
+fn try_lock(fd: RawFd, operation: u8) -> Result<(), crate::fs::TryLockError> {
+    moto_rt::fs::file_lock(fd, operation).map_err(|err| {
+        let err = map_motor_error(err);
+        if err.kind() == io::ErrorKind::WouldBlock {
+            crate::fs::TryLockError::WouldBlock
+        } else {
+            crate::fs::TryLockError::Error(err)
+        }
+    })
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FileType {
@@ -196,14 +210,15 @@ impl File {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        crate::io::default_read_vectored(|b| self.read(b), bufs)
+        moto_rt::fs::read_vectored(self.as_raw_fd(), &mut io_slices_mut(bufs))
+            .map_err(map_motor_error)
     }
 
     pub fn is_read_vectored(&self) -> bool {
-        false
+        true
     }
 
-    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
         crate::io::default_read_buf(|buf| self.read(buf), cursor)
     }
 
@@ -212,11 +227,11 @@ impl File {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        crate::io::default_write_vectored(|b| self.write(b), bufs)
+        moto_rt::fs::write_vectored(self.as_raw_fd(), &io_slices(bufs)).map_err(map_motor_error)
     }
 
     pub fn is_write_vectored(&self) -> bool {
-        false
+        true
     }
 
     pub fn flush(&self) -> io::Result<()> {
@@ -259,23 +274,24 @@ impl File {
     }
 
     pub fn lock(&self) -> io::Result<()> {
-        unsupported()
+        moto_rt::fs::file_lock(self.as_raw_fd(), moto_rt::fs::LOCK_EXCLUSIVE)
+            .map_err(map_motor_error)
     }
 
     pub fn lock_shared(&self) -> io::Result<()> {
-        unsupported()
+        moto_rt::fs::file_lock(self.as_raw_fd(), moto_rt::fs::LOCK_SHARED).map_err(map_motor_error)
     }
 
     pub fn try_lock(&self) -> Result<(), crate::fs::TryLockError> {
-        Err(crate::fs::TryLockError::Error(io::Error::from(io::ErrorKind::Unsupported)))
+        try_lock(self.as_raw_fd(), moto_rt::fs::TRY_LOCK_EXCLUSIVE)
     }
 
     pub fn try_lock_shared(&self) -> Result<(), crate::fs::TryLockError> {
-        Err(crate::fs::TryLockError::Error(io::Error::from(io::ErrorKind::Unsupported)))
+        try_lock(self.as_raw_fd(), moto_rt::fs::TRY_LOCK_SHARED)
     }
 
     pub fn unlock(&self) -> io::Result<()> {
-        unsupported()
+        moto_rt::fs::file_lock(self.as_raw_fd(), moto_rt::fs::UNLOCK).map_err(map_motor_error)
     }
 
     pub fn size(&self) -> Option<io::Result<u64>> {
@@ -319,6 +335,11 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
 }
 
 pub fn set_perm(path: &Path, perm: FilePermissions) -> io::Result<()> {
+    // Motor does not support symlinks
+    set_perm_nofollow(path, perm)
+}
+
+pub fn set_perm_nofollow(path: &Path, perm: FilePermissions) -> io::Result<()> {
     let path = path.to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
     moto_rt::fs::set_perm(path, perm.rt_perm).map_err(map_motor_error)
 }

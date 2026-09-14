@@ -42,7 +42,7 @@ use crate::task::{Context, Poll};
 /// That was a bit of a whirlwind tour of unwind safety, but for more information
 /// about unwind safety and how it applies to Rust, see an [associated RFC][rfc].
 ///
-/// [rfc]: https://github.com/rust-lang/rfcs/blob/master/text/1236-stabilize-catch-panic.md
+/// [rfc]: https://rust-lang.github.io/rfcs/1236-stabilize-catch-panic.html
 ///
 /// ## What is `UnwindSafe`?
 ///
@@ -250,7 +250,7 @@ impl<T> RefUnwindSafe for crate::sync::atomic::AtomicPtr<T> {}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const Deref for AssertUnwindSafe<T> {
+const impl<T> Deref for AssertUnwindSafe<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -260,7 +260,7 @@ impl<T> const Deref for AssertUnwindSafe<T> {
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const DerefMut for AssertUnwindSafe<T> {
+const impl<T> DerefMut for AssertUnwindSafe<T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.0
     }
@@ -317,7 +317,7 @@ impl<S: AsyncIterator> AsyncIterator for AssertUnwindSafe<S> {
 
 /// If a value's type is already `UnwindSafe`,
 /// wrapping it in `AssertUnwindSafe` is never incorrect.
-#[stable(feature = "from_wrapper_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "from_wrapper_impls", since = "1.96.0")]
 impl<T> From<T> for AssertUnwindSafe<T>
 where
     T: UnwindSafe,

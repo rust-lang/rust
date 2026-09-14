@@ -2,19 +2,25 @@ error[E0573]: expected type, found variant `Mode::Cool`
   --> $DIR/unbraced-enum-variant.rs:13:35
    |
 LL | pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
-   |                                   ^^^^^^^^^^
-   |                                   |
-   |                                   not a type
-   |                                   help: try using the variant's enum: `Mode`
+   |                                   ^^^^^^^^^^ not a type
+   |
+help: try using the variant's enum
+   |
+LL - pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
+LL + pub trait CoolStuff: Parse<MODE = Mode> {}
+   |
 
 error[E0573]: expected type, found variant `Mode::Cool`
   --> $DIR/unbraced-enum-variant.rs:19:17
    |
 LL | fn no_help() -> Mode::Cool {}
-   |                 ^^^^^^^^^^
-   |                 |
-   |                 not a type
-   |                 help: try using the variant's enum: `Mode`
+   |                 ^^^^^^^^^^ not a type
+   |
+help: try using the variant's enum
+   |
+LL - fn no_help() -> Mode::Cool {}
+LL + fn no_help() -> Mode {}
+   |
 
 error: expected constant, found type
   --> $DIR/unbraced-enum-variant.rs:13:35

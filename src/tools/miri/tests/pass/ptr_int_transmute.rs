@@ -1,4 +1,5 @@
-//@revisions: stack tree
+//@revisions: stack tree tree_implicit_writes
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
 // Test what happens when we read parts of a pointer.
 // Related to <https://github.com/rust-lang/rust/issues/69488>.

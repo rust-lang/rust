@@ -117,7 +117,6 @@ ui/associated-types/issue-44153.rs
 ui/associated-types/issue-47139-1.rs
 ui/associated-types/issue-47139-2.rs
 ui/associated-types/issue-47385.rs
-ui/associated-types/issue-47814.rs
 ui/associated-types/issue-48010.rs
 ui/associated-types/issue-48551.rs
 ui/associated-types/issue-50301.rs
@@ -406,7 +405,6 @@ ui/closures/2229_closure_analysis/match/issue-87097.rs
 ui/closures/2229_closure_analysis/match/issue-87426.rs
 ui/closures/2229_closure_analysis/match/issue-87988.rs
 ui/closures/2229_closure_analysis/match/issue-88331.rs
-ui/closures/2229_closure_analysis/migrations/issue-78720.rs
 ui/closures/2229_closure_analysis/migrations/issue-86753.rs
 ui/closures/2229_closure_analysis/migrations/issue-90024-adt-correct-subst.rs
 ui/closures/2229_closure_analysis/run_pass/issue-87378.rs
@@ -625,7 +623,6 @@ ui/const-generics/issues/issue-88119.rs
 ui/const-generics/issues/issue-88468.rs
 ui/const-generics/issues/issue-88997.rs
 ui/const-generics/issues/issue-89146.rs
-ui/const-generics/issues/issue-89304.rs
 ui/const-generics/issues/issue-89320.rs
 ui/const-generics/issues/issue-89334.rs
 ui/const-generics/issues/issue-90318.rs
@@ -727,7 +724,6 @@ ui/consts/issue-28113.rs
 ui/consts/issue-28822.rs
 ui/consts/issue-29798.rs
 ui/consts/issue-29914-2.rs
-ui/consts/issue-29914-3.rs
 ui/consts/issue-29914.rs
 ui/consts/issue-29927-1.rs
 ui/consts/issue-29927.rs
@@ -836,8 +832,6 @@ ui/cycle-trait/issue-12511.rs
 ui/debuginfo/issue-105386-debuginfo-ub.rs
 ui/deprecation/issue-66340-deprecated-attr-non-meta-grammar.rs
 ui/deprecation/issue-84637-deprecated-associated-function.rs
-ui/deref-patterns/issue-71676-1.rs
-ui/deref-patterns/issue-71676-2.rs
 ui/derived-errors/issue-30580.rs
 ui/derived-errors/issue-31997-1.rs
 ui/derived-errors/issue-31997.rs
@@ -846,15 +840,6 @@ ui/derives/issue-43023.rs
 ui/derives/issue-91492.rs
 ui/derives/issue-91550.rs
 ui/derives/issue-97343.rs
-ui/deriving/issue-103157.rs
-ui/deriving/issue-15689-1.rs
-ui/deriving/issue-15689-2.rs
-ui/deriving/issue-18738.rs
-ui/deriving/issue-19358.rs
-ui/deriving/issue-3935.rs
-ui/deriving/issue-58319.rs
-ui/deriving/issue-6341.rs
-ui/deriving/issue-89188-gat-hrtb.rs
 ui/did_you_mean/issue-103909.rs
 ui/did_you_mean/issue-105225-named-args.rs
 ui/did_you_mean/issue-105225.rs
@@ -1001,7 +986,6 @@ ui/fmt/issue-86085.rs
 ui/fmt/issue-89173.rs
 ui/fmt/issue-91556.rs
 ui/fn/issue-1451.rs
-ui/fn/issue-1900.rs
 ui/fn/issue-3044.rs
 ui/fn/issue-3099.rs
 ui/fn/issue-3904.rs
@@ -1468,14 +1452,11 @@ ui/lint/issue-63364.rs
 ui/lint/issue-70819-dont-override-forbid-in-same-scope.rs
 ui/lint/issue-79744.rs
 ui/lint/issue-81218.rs
-ui/lint/issue-83477.rs
 ui/lint/issue-87274-paren-parent.rs
 ui/lint/issue-90614-accept-allow-text-direction-codepoint-in-comment-lint.rs
-ui/lint/issue-97094.rs
 ui/lint/issue-99387.rs
 ui/lint/let_underscore/issue-119696-err-on-fn.rs
 ui/lint/let_underscore/issue-119697-extra-let.rs
-ui/lint/must_not_suspend/issue-89562.rs
 ui/lint/unused/issue-103320-must-use-ops.rs
 ui/lint/unused/issue-104397.rs
 ui/lint/unused/issue-105061-array-lint.rs
@@ -1933,7 +1914,6 @@ ui/parser/issues/issue-17718-parse-const.rs
 ui/parser/issues/issue-17904-2.rs
 ui/parser/issues/issue-17904.rs
 ui/parser/issues/issue-1802-1.rs
-ui/parser/issues/issue-1802-2.rs
 ui/parser/issues/issue-19096.rs
 ui/parser/issues/issue-19398.rs
 ui/parser/issues/issue-20616-1.rs
@@ -2341,8 +2321,6 @@ ui/resolve/issue-2356.rs
 ui/resolve/issue-23716.rs
 ui/resolve/issue-24968.rs
 ui/resolve/issue-26545.rs
-ui/resolve/issue-3021-c.rs
-ui/resolve/issue-3021.rs
 ui/resolve/issue-30535.rs
 ui/resolve/issue-3099-a.rs
 ui/resolve/issue-3099-b.rs
@@ -2459,7 +2437,6 @@ ui/span/issue-42234-unknown-receiver-type.rs
 ui/span/issue-43927-non-ADT-derive.rs
 ui/span/issue-71363.rs
 ui/span/issue-81800.rs
-ui/span/issue28498-reject-ex1.rs
 ui/span/issue28498-reject-lifetime-param.rs
 ui/span/issue28498-reject-passed-to-fn.rs
 ui/span/issue28498-reject-trait-bound.rs
@@ -2785,7 +2762,6 @@ ui/type-alias-impl-trait/issue-57961.rs
 ui/type-alias-impl-trait/issue-58662-coroutine-with-lifetime.rs
 ui/type-alias-impl-trait/issue-58662-simplified.rs
 ui/type-alias-impl-trait/issue-58887.rs
-ui/type-alias-impl-trait/issue-58951-2.rs
 ui/type-alias-impl-trait/issue-58951.rs
 ui/type-alias-impl-trait/issue-60371.rs
 ui/type-alias-impl-trait/issue-60407.rs
@@ -2811,7 +2787,6 @@ ui/type-alias-impl-trait/issue-70121.rs
 ui/type-alias-impl-trait/issue-72793.rs
 ui/type-alias-impl-trait/issue-74244.rs
 ui/type-alias-impl-trait/issue-74280.rs
-ui/type-alias-impl-trait/issue-74761-2.rs
 ui/type-alias-impl-trait/issue-74761.rs
 ui/type-alias-impl-trait/issue-76202-trait-impl-for-tait.rs
 ui/type-alias-impl-trait/issue-77179.rs
@@ -2976,7 +2951,6 @@ ui/unsafe/issue-45107-unnecessary-unsafe-in-closure.rs
 ui/unsafe/issue-47412.rs
 ui/unsafe/issue-85435-unsafe-op-in-let-under-unsafe-under-closure.rs
 ui/unsafe/issue-87414-query-cycle.rs
-ui/unsized-locals/issue-30276-feature-flagged.rs
 ui/unsized-locals/issue-30276.rs
 ui/unsized-locals/issue-50940-with-feature.rs
 ui/unsized-locals/issue-50940.rs

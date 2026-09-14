@@ -86,7 +86,7 @@
       bb9: {
           StorageDead(_2);
 -         drop(_1) -> [return: bb10, unwind: bb12];
-+         goto -> bb19;
++         goto -> bb17;
       }
   
       bb10: {
@@ -110,38 +110,30 @@
 +         goto -> bb10;
 +     }
 + 
-+     bb14 (cleanup): {
-+         drop(((_1 as F).0: K)) -> [return: bb12, unwind terminate(cleanup)];
-+     }
-+ 
-+     bb15 (cleanup): {
-+         switchInt(copy _7) -> [0: bb12, otherwise: bb14];
-+     }
-+ 
-+     bb16: {
++     bb14: {
 +         drop(_1) -> [return: bb13, unwind: bb12];
 +     }
 + 
-+     bb17 (cleanup): {
++     bb15 (cleanup): {
 +         drop(_1) -> [return: bb12, unwind terminate(cleanup)];
 +     }
 + 
-+     bb18: {
++     bb16: {
 +         _9 = discriminant(_1);
-+         switchInt(move _9) -> [0: bb13, otherwise: bb16];
++         switchInt(move _9) -> [0: bb13, otherwise: bb14];
 +     }
 + 
-+     bb19: {
-+         switchInt(copy _7) -> [0: bb13, otherwise: bb18];
++     bb17: {
++         switchInt(copy _7) -> [0: bb13, otherwise: bb16];
 +     }
 + 
-+     bb20 (cleanup): {
++     bb18 (cleanup): {
 +         _10 = discriminant(_1);
-+         switchInt(move _10) -> [0: bb15, otherwise: bb17];
++         switchInt(move _10) -> [0: bb12, otherwise: bb15];
 +     }
 + 
-+     bb21 (cleanup): {
-+         switchInt(copy _7) -> [0: bb12, otherwise: bb20];
++     bb19 (cleanup): {
++         switchInt(copy _7) -> [0: bb12, otherwise: bb18];
       }
   }
   

@@ -3,7 +3,7 @@ use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use tracing::{debug, instrument, trace};
 
-use crate::error::ConstNotUsedTraitAlias;
+use crate::diagnostics::ConstNotUsedTraitAlias;
 use crate::ty::{
     self, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
 };
@@ -133,7 +133,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                         self.span,
                         format!(
                             "lifetime `{r}` is part of concrete type but not used in \
-                             parameter list of the `impl Trait` type alias"
+                             parameter list of the `impl Trait` type alias",
                         ),
                     )
                     .emit();

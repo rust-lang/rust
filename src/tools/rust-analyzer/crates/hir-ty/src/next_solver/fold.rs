@@ -8,7 +8,8 @@ use rustc_type_ir::{
 use crate::next_solver::{BoundConst, FxIndexMap};
 
 use super::{
-    Binder, BoundRegion, BoundTy, Const, ConstKind, DbInterner, Predicate, Region, Ty, TyKind,
+    Binder, BoundRegion, BoundTy, Const, ConstKind, DbInterner, Predicate, Region, SolverDefId, Ty,
+    TyKind,
 };
 
 /// A delegate used when instantiating bound vars.
@@ -17,28 +18,28 @@ use super::{
 /// gets mapped to the same result. `BoundVarReplacer` caches by using
 /// a `DelayedMap` which does not cache the first few types it encounters.
 pub trait BoundVarReplacerDelegate<'db> {
-    fn replace_region(&mut self, br: BoundRegion) -> Region<'db>;
-    fn replace_ty(&mut self, bt: BoundTy) -> Ty<'db>;
-    fn replace_const(&mut self, bv: BoundConst) -> Const<'db>;
+    fn replace_region(&mut self, br: BoundRegion<'db>) -> Region<'db>;
+    fn replace_ty(&mut self, bt: BoundTy<'db>) -> Ty<'db>;
+    fn replace_const(&mut self, bv: BoundConst<'db>) -> Const<'db>;
 }
 
 /// A simple delegate taking 3 mutable functions. The used functions must
 /// always return the same result for each bound variable, no matter how
 /// frequently they are called.
 pub struct FnMutDelegate<'db, 'a> {
-    pub regions: &'a mut (dyn FnMut(BoundRegion) -> Region<'db> + 'a),
-    pub types: &'a mut (dyn FnMut(BoundTy) -> Ty<'db> + 'a),
-    pub consts: &'a mut (dyn FnMut(BoundConst) -> Const<'db> + 'a),
+    pub regions: &'a mut (dyn FnMut(BoundRegion<'db>) -> Region<'db> + 'a),
+    pub types: &'a mut (dyn FnMut(BoundTy<'db>) -> Ty<'db> + 'a),
+    pub consts: &'a mut (dyn FnMut(BoundConst<'db>) -> Const<'db> + 'a),
 }
 
 impl<'db, 'a> BoundVarReplacerDelegate<'db> for FnMutDelegate<'db, 'a> {
-    fn replace_region(&mut self, br: BoundRegion) -> Region<'db> {
+    fn replace_region(&mut self, br: BoundRegion<'db>) -> Region<'db> {
         (self.regions)(br)
     }
-    fn replace_ty(&mut self, bt: BoundTy) -> Ty<'db> {
+    fn replace_ty(&mut self, bt: BoundTy<'db>) -> Ty<'db> {
         (self.types)(bt)
     }
-    fn replace_const(&mut self, bv: BoundConst) -> Const<'db> {
+    fn replace_const(&mut self, bv: BoundConst<'db>) -> Const<'db> {
         (self.consts)(bv)
     }
 }
@@ -177,13 +178,13 @@ impl<'db> DbInterner<'db> {
         self,
         value: Binder<'db, T>,
         mut fld_r: F,
-    ) -> (T, FxIndexMap<BoundRegion, Region<'db>>)
+    ) -> (T, FxIndexMap<BoundRegion<'db>, Region<'db>>)
     where
-        F: FnMut(BoundRegion) -> Region<'db>,
+        F: FnMut(BoundRegion<'db>) -> Region<'db>,
         T: TypeFoldable<DbInterner<'db>>,
     {
         let mut region_map = FxIndexMap::default();
-        let real_fld_r = |br: BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
+        let real_fld_r = |br: BoundRegion<'db>| *region_map.entry(br).or_insert_with(|| fld_r(br));
         let value = self.instantiate_bound_regions_uncached(value, real_fld_r);
         (value, region_map)
     }
@@ -194,7 +195,7 @@ impl<'db> DbInterner<'db> {
         mut replace_regions: F,
     ) -> T
     where
-        F: FnMut(BoundRegion) -> Region<'db>,
+        F: FnMut(BoundRegion<'db>) -> Region<'db>,
         T: TypeFoldable<DbInterner<'db>>,
     {
         let value = value.skip_binder();
@@ -218,5 +219,20 @@ impl<'db> DbInterner<'db> {
         T: TypeFoldable<DbInterner<'db>>,
     {
         self.instantiate_bound_regions(value, |_| Region::new_erased(self)).0
+    }
+
+    /// Replaces any late-bound regions bound in `value` with
+    /// free variants attached to `all_outlive_scope`.
+    pub fn liberate_late_bound_regions<T>(
+        self,
+        all_outlive_scope: SolverDefId<'db>,
+        value: Binder<'db, T>,
+    ) -> T
+    where
+        T: TypeFoldable<DbInterner<'db>>,
+    {
+        self.instantiate_bound_regions_uncached(value, |br| {
+            Region::new_late_param(self, all_outlive_scope, br)
+        })
     }
 }

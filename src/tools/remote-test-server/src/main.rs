@@ -211,12 +211,12 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     let mut args = Vec::new();
     while t!(reader.read_until(0, &mut arg)) > 1 {
         args.push(t!(str::from_utf8(&arg[..arg.len() - 1])).to_string());
-        arg.truncate(0);
+        arg.clear();
     }
 
     // Next we'll get a bunch of env vars in pairs delimited by 0s as well
     let mut env = Vec::new();
-    arg.truncate(0);
+    arg.clear();
     while t!(reader.read_until(0, &mut arg)) > 1 {
         let key_len = arg.len() - 1;
         let val_len = t!(reader.read_until(0, &mut arg)) - 1;
@@ -227,7 +227,7 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
             let val = t!(str::from_utf8(val)).to_string();
             env.push((key, val));
         }
-        arg.truncate(0);
+        arg.clear();
     }
 
     // The section of code from here down to where we drop the lock is going to

@@ -3,8 +3,8 @@
 use rustc_abi::Endian;
 
 use crate::spec::{
-    Abi, Arch, Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
-    TargetOptions,
+    Arch, Cc, CfgAbi, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target,
+    TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -20,7 +20,7 @@ pub(crate) fn target() -> Target {
         data_layout: "E-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
         arch: Arch::Arm,
         options: TargetOptions {
-            abi: Abi::EabiHf,
+            cfg_abi: CfgAbi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             endian: Endian::Big,
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),

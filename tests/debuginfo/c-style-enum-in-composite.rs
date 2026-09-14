@@ -32,43 +32,46 @@
 //@ lldb-command:run
 
 //@ lldb-command:v tuple_interior_padding
-//@ lldb-check:[...] { 0 = 0 1 = OneHundred }
+//@ lldb-check:[...] (0, OneHundred)
 
 //@ lldb-command:v tuple_padding_at_end
-//@ lldb-check:[...] ((1, OneThousand), 2) { 0 = (1, OneThousand) { 0 = 1 1 = OneThousand } 1 = 2 }
+//@ lldb-check:[...] ((1, OneThousand), 2)
 
 //@ lldb-command:v tuple_different_enums
-//@ lldb-check:[...] { 0 = OneThousand 1 = MountainView 2 = OneMillion 3 = Vienna }
+//@ lldb-check:[...] (OneThousand, MountainView, OneMillion, Vienna)
 
 //@ lldb-command:v padded_struct
-//@ lldb-check:[...] { a = 3 b = OneMillion c = 4 d = Toronto e = 5 }
+//@ lldb-check:[...] {a:3, b:OneMillion, c:4, d:Toronto, e:5}
 
 //@ lldb-command:v packed_struct
-//@ lldb-check:[...] { a = 6 b = OneHundred c = 7 d = Vienna e = 8 }
+//@ lldb-check:[...] {a:6, b:OneHundred, c:7, d:Vienna, e:8}
 
 //@ lldb-command:v non_padded_struct
-//@ lldb-check:[...] { a = OneMillion b = MountainView c = OneThousand d = Toronto }
+//@ lldb-check:[...] {a:OneMillion, b:MountainView, c:OneThousand, d:Toronto}
 
 //@ lldb-command:v struct_with_drop
-//@ lldb-check:[...] { 0 = { a = OneHundred b = Vienna } 1 = 9 }
+//@ lldb-check:[...] ({a:OneHundred, b:Vienna}, 9)
 
 #![allow(unused_variables)]
 
 use self::AnEnum::{OneHundred, OneThousand, OneMillion};
 use self::AnotherEnum::{MountainView, Toronto, Vienna};
 
+#[repr(u32)]
 enum AnEnum {
     OneHundred = 100,
     OneThousand = 1000,
     OneMillion = 1000000
 }
 
+#[repr(u8)]
 enum AnotherEnum {
     MountainView,
     Toronto,
     Vienna
 }
 
+#[repr(C)]
 struct PaddedStruct {
     a: i16,
     b: AnEnum,
@@ -77,7 +80,7 @@ struct PaddedStruct {
     e: i16
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct PackedStruct {
     a: i16,
     b: AnEnum,
@@ -86,6 +89,7 @@ struct PackedStruct {
     e: i16
 }
 
+#[repr(C)]
 struct NonPaddedStruct {
     a: AnEnum,
     b: AnotherEnum,

@@ -107,7 +107,7 @@ struct PackedTuple<T, U> {
 
 #[allow(improper_ctypes)]
 #[rustfmt::skip]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.nearbyint.v4f32"] fn nearbyint_v4f32(a: vector_float) -> vector_float;
     #[link_name = "llvm.nearbyint.v2f64"] fn nearbyint_v2f64(a: vector_double) -> vector_double;
 
@@ -6463,10 +6463,10 @@ mod tests {
          [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
             #[simd_test(enable = "vector")]
             fn $name() {
-                let a = $longtype::from($shorttype::new($($a),+));
-                let b = $longtype::from($shorttype::new($($b),+));
-                let c = vector_unsigned_char::from(u8x16::new($($c),+));
-                let d = $shorttype::new($($d),+);
+                let a = $longtype::from($shorttype::from_array([$($a),+]));
+                let b = $longtype::from($shorttype::from_array([$($b),+]));
+                let c = vector_unsigned_char::from(u8x16::from_array([$($c),+]));
+                let d = $shorttype::from_array([$($d),+]);
 
                 let r = $shorttype::from(unsafe { vec_perm(a, b, c) });
                 assert_eq!(d, r);

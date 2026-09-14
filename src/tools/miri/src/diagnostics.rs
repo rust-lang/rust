@@ -18,7 +18,7 @@ pub enum TerminationInfo {
         leak_check: bool,
     },
     Abort(String),
-    /// Miri was interrupted by a Ctrl+C from the user
+    /// Miri was interrupted by a Ctrl+C from the user.
     Interrupted,
     UnsupportedInIsolation(String),
     StackedBorrowsUb {
@@ -32,6 +32,9 @@ pub enum TerminationInfo {
         history: tree_diagnostics::HistoryData,
     },
     Int2PtrWithStrictProvenance,
+    /// GenMC deemed this execution "moot" or invalid, so Miri drops it, i.e., it skips to the next
+    /// execution. Mirrors GenMC's `Invalid` result or a "moot" result from the scheduler.
+    GenmcMoot,
     /// All threads are blocked.
     GlobalDeadlock,
     /// Some thread discovered a deadlock condition (e.g. in a mutex with reentrancy checking).
@@ -81,6 +84,7 @@ impl fmt::Display for TerminationInfo {
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             GlobalDeadlock => write!(f, "the evaluated program deadlocked"),
             LocalDeadlock => write!(f, "a thread deadlocked"),
+            GenmcMoot => write!(f, "GenMC wants to skip this execution"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
@@ -106,7 +110,17 @@ impl fmt::Debug for TerminationInfo {
     }
 }
 
-impl MachineStopType for TerminationInfo {}
+impl MachineStopType for TerminationInfo {
+    fn with_validation_path(&mut self, path: String) {
+        use TerminationInfo::*;
+        match self {
+            StackedBorrowsUb { help, .. } => {
+                help.push(format!("while retagging field {path}"));
+            }
+            _ => {}
+        }
+    }
+}
 
 /// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {
@@ -141,12 +155,9 @@ pub enum NonHaltingDiagnostic {
         effective_failure_ordering: AtomicReadOrd,
     },
     FileInProcOpened,
-    SocketListenUnsupportedBacklog {
-        details: bool,
-        /// Unsupported backlog value provided the by the program.
-        provided: i32,
-        /// Supported backlog value by Miri.
-        supported: i32,
+    ConnectingSocketGetsockname,
+    SocketAddressResolution {
+        error: std::io::Error,
     },
 }
 
@@ -226,7 +237,7 @@ pub fn prune_stacktrace<'tcx>(
 /// Report the result of a Miri execution.
 ///
 /// Returns `Some` if this was regular program termination with a given exit code and a `bool`
-/// indicating whether a leak check should happen; `None` otherwise.
+/// indicating whether a leak check should happen; `None` if execution was aborted with an error.
 pub fn report_result<'tcx>(
     ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
     res: InterpErrorInfo<'tcx>,
@@ -247,6 +258,10 @@ pub fn report_result<'tcx>(
                 Some("unsupported operation"),
             StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
                 Some("Undefined Behavior"),
+            GenmcMoot => {
+                assert!(ecx.machine.data_race.as_genmc_ref().is_some());
+                return Some((0, false));
+            }
             LocalDeadlock => {
                 labels.push(format!("thread got stuck here"));
                 None
@@ -357,10 +372,7 @@ pub fn report_result<'tcx>(
                 ..
             }) => {
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
-                bug!(
-                    "This validation error should be impossible in Miri: {}",
-                    format_interp_error(res)
-                );
+                bug!("This validation error should be impossible in Miri: {}", res.to_string());
             }
             UndefinedBehavior(_) => "Undefined Behavior",
             ResourceExhaustion(_) => "resource exhaustion",
@@ -376,7 +388,7 @@ pub fn report_result<'tcx>(
             ) => "post-monomorphization error",
             _ => {
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
-                bug!("This error should be impossible in Miri: {}", format_interp_error(res));
+                bug!("This error should be impossible in Miri: {}", res.to_string());
             }
         };
         #[rustfmt::skip]
@@ -453,7 +465,7 @@ pub fn report_result<'tcx>(
     if let Some(title) = title {
         write!(primary_msg, "{title}: ").unwrap();
     }
-    write!(primary_msg, "{}", format_interp_error(res)).unwrap();
+    write!(primary_msg, "{}", res.to_string()).unwrap();
 
     if labels.is_empty() {
         labels.push(format!(
@@ -488,7 +500,7 @@ pub fn report_result<'tcx>(
         trace!("-------------------");
         trace!("Frame {}", i);
         trace!("    return: {:?}", frame.return_place());
-        for (i, local) in frame.locals.iter().enumerate() {
+        for (i, local) in frame.locals().iter().enumerate() {
             trace!("    local {}: {:?}", i, local);
         }
     }
@@ -650,8 +662,10 @@ impl<'tcx> MiriMachine<'tcx> {
             | WeakMemoryOutdatedLoad { .. } =>
                 ("tracking was triggered here".to_string(), DiagLevel::Note),
             FileInProcOpened => ("open a file in `/proc`".to_string(), DiagLevel::Warning),
-            SocketListenUnsupportedBacklog { .. } =>
-                ("call to `listen` with unsupported backlog value".to_string(), DiagLevel::Warning),
+            ConnectingSocketGetsockname =>
+                ("Called `getsockname` on connecting socket".to_string(), DiagLevel::Warning),
+            SocketAddressResolution { .. } =>
+                ("error during address resolution".to_string(), DiagLevel::Warning),
         };
 
         let title = match &e {
@@ -700,16 +714,26 @@ impl<'tcx> MiriMachine<'tcx> {
                 format!("GenMC currently does not model the failure ordering for `compare_exchange`. {was_upgraded_msg}. Miri with GenMC might miss bugs related to this memory access.")
             }
             FileInProcOpened => format!("files in `/proc` can bypass the Abstract Machine and might not work properly in Miri"),
-            SocketListenUnsupportedBacklog { provided, supported, .. } => format!("called `listen` on socket with backlog value of {provided} but only {supported} is supported"),
+            ConnectingSocketGetsockname => format!("connecting sockets return unspecified socket addresses on Windows hosts"),
+            SocketAddressResolution { error } => format!("address resolution failed: {error}"),
         };
 
         let notes = match &e {
             ProgressReport { block_count } => {
                 vec![note!("so far, {block_count} basic blocks have been executed")]
             }
-            SocketListenUnsupportedBacklog { details: true, supported, .. } =>
+            ConnectingSocketGetsockname =>
+                vec![
+                    note!(
+                        "Windows hosts do not provide `local_addr` information while the socket is still connecting, which might break the assumptions of code compiled for Unix targets"
+                    ),
+                    note!(
+                        "an unspecified socket address (e.g. `0.0.0.0:0`) will be returned instead"
+                    ),
+                ],
+            SocketAddressResolution { .. } =>
                 vec![note!(
-                    "the given value will be ignored and a backlog of {supported} will be used instead"
+                    "Miri cannot return proper error information from this call; only a generic error code is being returned"
                 )],
             _ => vec![],
         };

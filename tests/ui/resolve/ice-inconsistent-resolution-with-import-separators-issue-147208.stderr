@@ -1,0 +1,32 @@
+error[E0433]: cannot find module or crate `foo` in this scope
+  --> $DIR/ice-inconsistent-resolution-with-import-separators-issue-147208.rs:6:5
+   |
+LL | use foo::bar::E::*;
+   |     ^^^ use of unresolved module or unlinked crate `foo`
+   |
+   = help: you might be missing a crate named `foo`
+
+error[E0433]: cannot find module or crate `foo` in this scope
+  --> $DIR/ice-inconsistent-resolution-with-import-separators-issue-147208.rs:8:5
+   |
+LL | use foo::bar::test_use::io as std_io;
+   |     ^^^ use of unresolved module or unlinked crate `foo`
+   |
+   = help: you might be missing a crate named `foo`
+
+error[E0432]: unresolved import `foo::bar::test_use::io`
+  --> $DIR/ice-inconsistent-resolution-with-import-separators-issue-147208.rs:8:5
+   |
+LL | use foo::bar::test_use::io as std_io;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0425]: cannot find function, tuple struct or tuple variant `Foo` in this scope
+  --> $DIR/ice-inconsistent-resolution-with-import-separators-issue-147208.rs:12:5
+   |
+LL |     Foo(());
+   |     ^^^ not found in this scope
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0425, E0432, E0433.
+For more information about an error, try `rustc --explain E0425`.

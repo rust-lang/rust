@@ -19,12 +19,22 @@ env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
+  todo_check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Check todo
+      run: ./y.sh check-todo
+
   rustfmt:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Avoid installing rustc-dev
       run: |
@@ -52,46 +62,46 @@ jobs:
         include:
           - os: ubuntu-latest
             env:
-              TARGET_TRIPLE: x86_64-unknown-linux-gnu
+              TARGET_TUPLE: x86_64-unknown-linux-gnu
           - os: ubuntu-24.04-arm
             env:
-              TARGET_TRIPLE: aarch64-unknown-linux-gnu
+              TARGET_TUPLE: aarch64-unknown-linux-gnu
           - os: macos-15-intel
             env:
-              TARGET_TRIPLE: x86_64-apple-darwin
+              TARGET_TUPLE: x86_64-apple-darwin
           - os: macos-latest
             env:
-              TARGET_TRIPLE: aarch64-apple-darwin
+              TARGET_TUPLE: aarch64-apple-darwin
           - os: ubuntu-latest
             env:
-              TARGET_TRIPLE: s390x-unknown-linux-gnu
+              TARGET_TUPLE: s390x-unknown-linux-gnu
             apt_deps: gcc-s390x-linux-gnu qemu-user
           - os: ubuntu-latest
             env:
-              TARGET_TRIPLE: riscv64gc-unknown-linux-gnu
+              TARGET_TUPLE: riscv64gc-unknown-linux-gnu
             apt_deps: gcc-riscv64-linux-gnu qemu-user
           - os: windows-latest
             env:
-              TARGET_TRIPLE: x86_64-pc-windows-msvc
+              TARGET_TUPLE: x86_64-pc-windows-msvc
           - os: windows-latest
             env:
-              TARGET_TRIPLE: x86_64-pc-windows-gnu
+              TARGET_TUPLE: x86_64-pc-windows-gnu
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: CPU features
       if: matrix.os == 'ubuntu-latest'
       run: cat /proc/cpuinfo
 
     - name: Cache cargo target dir
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build/cg_clif
-        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
+        key: ${{ runner.os }}-${{ matrix.env.TARGET_TUPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
 
     - name: Set MinGW as the default toolchain
-      if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+      if: matrix.os == 'windows-latest' && matrix.env.TARGET_TUPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
 
     - name: Install toolchain and emulator
@@ -108,17 +118,19 @@ jobs:
 
     - name: Test
       env:
-        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      run: ./y.sh test
+        TARGET_TUPLE: ${{ matrix.env.TARGET_TUPLE }}
+      # Skip `graviola` on Windows, too slow
+      run: ./y.sh test ${{ runner.os == 'Windows' && '--skip-test test.graviola' || '' }}
 
     - name: Install LLVM standard library
-      run: rustup target add ${{ matrix.env.TARGET_TRIPLE }}
+      run: rustup target add ${{ matrix.env.TARGET_TUPLE }}
 
     # This is roughly config rust-lang/rust uses for testing
     - name: Test with LLVM sysroot
       env:
-        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      run: ./y.sh test --sysroot llvm --no-unstable-features
+        TARGET_TUPLE: ${{ matrix.env.TARGET_TUPLE }}
+      # Skip `graviola` on Windows, too slow
+      run: ./y.sh test --sysroot llvm --no-unstable-features ${{ runner.os == 'Windows' && '--skip-test test.graviola' || '' }}
 
 
   # This job doesn't use cg_clif in any way. It checks that all cg_clif tests work with cg_llvm too.
@@ -127,7 +139,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: CPU features
       run: cat /proc/cpuinfo
@@ -138,10 +150,11 @@ jobs:
     - name: Disable JIT tests
       run: |
         sed -i 's/jit./#jit./' config.txt
+        sed -i 's/aot.powi_libcall_signature/#aot.powi_libcall_signature/' config.txt
 
     - name: Test
       env:
-        TARGET_TRIPLE: x86_64-unknown-linux-gnu
+        TARGET_TUPLE: x86_64-unknown-linux-gnu
       run: ./y.sh test --use-backend llvm
 
   bench:
@@ -149,13 +162,13 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: CPU features
       run: cat /proc/cpuinfo
 
     - name: Cache cargo target dir
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-x86_64-unknown-linux-gnu-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
@@ -183,34 +196,34 @@ jobs:
           # Intentionally using an older ubuntu version to lower the glibc requirements of the distributed cg_clif
           - os: ubuntu-22.04
             env:
-              TARGET_TRIPLE: x86_64-unknown-linux-gnu
+              TARGET_TUPLE: x86_64-unknown-linux-gnu
           - os: ubuntu-24.04-arm
             env:
-              TARGET_TRIPLE: aarch64-unknown-linux-gnu
+              TARGET_TUPLE: aarch64-unknown-linux-gnu
           - os: macos-15-intel
             env:
-              TARGET_TRIPLE: x86_64-apple-darwin
+              TARGET_TUPLE: x86_64-apple-darwin
           - os: macos-latest
             env:
-              TARGET_TRIPLE: aarch64-apple-darwin
+              TARGET_TUPLE: aarch64-apple-darwin
           - os: windows-latest
             env:
-              TARGET_TRIPLE: x86_64-pc-windows-msvc
+              TARGET_TUPLE: x86_64-pc-windows-msvc
           - os: windows-latest
             env:
-              TARGET_TRIPLE: x86_64-pc-windows-gnu
+              TARGET_TUPLE: x86_64-pc-windows-gnu
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Cache cargo target dir
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: build/cg_clif
-        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-dist-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
+        key: ${{ runner.os }}-${{ matrix.env.TARGET_TUPLE }}-dist-cargo-build-target-${{ hashFiles('rust-toolchain.toml', '**/Cargo.lock') }}
 
     - name: Set MinGW as the default toolchain
-      if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+      if: matrix.os == 'windows-latest' && matrix.env.TARGET_TUPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
 
     - name: Build backend
@@ -223,16 +236,16 @@ jobs:
       run: tar cvfJ cg_clif.tar.xz dist
 
     - name: Upload prebuilt cg_clif
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
-        name: cg_clif-${{ matrix.env.TARGET_TRIPLE }}
+        name: cg_clif-${{ matrix.env.TARGET_TUPLE }}
         path: cg_clif.tar.xz
 
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: ${{ github.ref == 'refs/heads/main' }}
-    needs: [rustfmt, test, bench, dist]
+    needs: [todo_check, rustfmt, test, bench, dist]
 
     permissions:
       contents: write # for creating the dev tag and release
@@ -242,10 +255,10 @@ jobs:
       cancel-in-progress: true
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download all built artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts/
 

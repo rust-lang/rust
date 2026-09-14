@@ -139,9 +139,9 @@ macro_rules! make_mir_visitor {
             fn super_basic_block(&mut self, bb: &$($mutability)? BasicBlock) {
                 let BasicBlock { statements, terminator } = bb;
                 for stmt in statements {
-                    self.visit_statement(stmt, Location(stmt.span));
+                    self.visit_statement(stmt, Location(stmt.source_info.span));
                 }
-                self.visit_terminator(terminator, Location(terminator.span));
+                self.visit_terminator(terminator, Location(terminator.source_info.span));
             }
 
             fn super_local_decl(&mut self, local: Local, decl: &$($mutability)? LocalDecl) {
@@ -159,8 +159,8 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_statement(&mut self, stmt: &$($mutability)? Statement, location: Location) {
-                let Statement { kind, span } = stmt;
-                self.visit_span(span);
+                let Statement { kind, source_info } = stmt;
+                self.visit_span(&$($mutability)? source_info.span);
                 match kind {
                     StatementKind::Assign(place, rvalue) => {
                         self.visit_place(place, PlaceContext::MUTATING, location);
@@ -169,8 +169,7 @@ macro_rules! make_mir_visitor {
                     StatementKind::FakeRead(_, place) | StatementKind::PlaceMention(place) => {
                         self.visit_place(place, PlaceContext::NON_MUTATING, location);
                     }
-                    StatementKind::SetDiscriminant { place, .. }
-                    | StatementKind::Retag(_, place) => {
+                    StatementKind::SetDiscriminant { place, .. } => {
                         self.visit_place(place, PlaceContext::MUTATING, location);
                     }
                     StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
@@ -200,8 +199,8 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_terminator(&mut self, term: &$($mutability)? Terminator, location: Location) {
-                let Terminator { kind, span } = term;
-                self.visit_span(span);
+                let Terminator { kind, source_info } = term;
+                self.visit_span(&$($mutability)? source_info.span);
                 match kind {
                     TerminatorKind::Goto { .. }
                     | TerminatorKind::Resume
@@ -273,12 +272,17 @@ macro_rules! make_mir_visitor {
                         let pcx = PlaceContext { is_mut: matches!(kind, BorrowKind::Mut { .. }) };
                         self.visit_place(place, pcx, location);
                     }
+                    Rvalue::Reborrow(target, mutability, place) => {
+                        self.visit_ty(target, location);
+                        let pcx = PlaceContext { is_mut: matches!(mutability, Mutability::Mut) };
+                        self.visit_place(place, pcx, location);
+                    }
                     Rvalue::Repeat(op, constant) => {
                         self.visit_operand(op, location);
                         self.visit_ty_const(constant, location);
                     }
                     Rvalue::ThreadLocalRef(_) => {}
-                    Rvalue::UnaryOp(_, op) | Rvalue::Use(op) => {
+                    Rvalue::UnaryOp(_, op) | Rvalue::Use(op, _) => {
                         self.visit_operand(op, location);
                     }
                 }
@@ -365,6 +369,7 @@ macro_rules! make_mir_visitor {
                     AssertMessage::ResumedAfterReturn(_)
                     | AssertMessage::ResumedAfterPanic(_)
                     | AssertMessage::NullPointerDereference
+                    | AssertMessage::NullReferenceConstructed
                     | AssertMessage::ResumedAfterDrop(_) => {
                         //nothing to visit
                     }
@@ -403,7 +408,15 @@ macro_rules! super_body {
     };
 
     ($self:ident, $body:ident, ) => {
-        let Body { blocks, locals: _, arg_count, var_debug_info, spread_arg: _, span } = $body;
+        let Body {
+            blocks,
+            locals: _,
+            arg_count,
+            var_debug_info,
+            spread_arg: _,
+            span,
+            source_scopes: _,
+        } = $body;
 
         for bb in blocks {
             $self.visit_basic_block(bb);
@@ -536,7 +549,7 @@ impl Location {
 pub fn statement_location(body: &Body, bb_idx: &BasicBlockIdx, stmt_idx: usize) -> Location {
     let bb = &body.blocks[*bb_idx];
     let stmt = &bb.statements[stmt_idx];
-    Location(stmt.span)
+    Location(stmt.source_info.span)
 }
 
 /// Location of the terminator for a given basic block. Assumes that `bb_idx` is valid for a given
@@ -544,7 +557,7 @@ pub fn statement_location(body: &Body, bb_idx: &BasicBlockIdx, stmt_idx: usize) 
 pub fn terminator_location(body: &Body, bb_idx: &BasicBlockIdx) -> Location {
     let bb = &body.blocks[*bb_idx];
     let terminator = &bb.terminator;
-    Location(terminator.span)
+    Location(terminator.source_info.span)
 }
 
 /// Reference to a place used to represent a partial projection.

@@ -1,5 +1,6 @@
-//@revisions: stack tree
+//@revisions: stack tree tree_implicit_writes
 //@compile-flags: -Zmiri-strict-provenance
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(iter_advance_by, iter_next_chunk)]
 

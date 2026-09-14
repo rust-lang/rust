@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered $HEX, but expected a valid unicode scalar value (in `0..=$HEX` but not in `$HEX..=$HEX`)
+error: Undefined Behavior: constructing invalid value of type char: encountered $HEX, but expected a valid unicode scalar value (in `0..=$HEX` but not in `$HEX..=$HEX`)
   --> tests/fail/validity/invalid_char.rs:LL:CC
    |
 LL |     let _val = match unsafe { std::mem::transmute::<i32, char>(-1) } {

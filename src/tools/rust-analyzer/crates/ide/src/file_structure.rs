@@ -106,7 +106,7 @@ fn structure_node(node: &SyntaxNode, config: &FileStructureConfig) -> Option<Str
 
         Some(StructureNode {
             parent: None,
-            label: name.text().to_string(),
+            label: name.text().to_owned(),
             navigation_range: name.syntax().text_range(),
             node_range: node.syntax().text_range(),
             kind,

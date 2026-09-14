@@ -1,4 +1,5 @@
 //@ check-fail
+
 #![deny(unused)]
 #![allow(dead_code)]
 

@@ -4,6 +4,8 @@ pub trait Foo {
     fn foo() -> Self::X;
 }
 
+// FIXME(#96009): Don't emit `unused_doc_comments` here, we already emit an error anyway.
+//~v WARN
 #[doc(alias = "foo")] //~ ERROR
 extern "C" {}
 

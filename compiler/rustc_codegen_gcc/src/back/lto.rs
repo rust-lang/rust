@@ -24,18 +24,18 @@ use std::path::{Path, PathBuf};
 use gccjit::OutputKind;
 use object::read::archive::ArchiveFile;
 use rustc_codegen_ssa::back::lto::SerializedModule;
+use rustc_codegen_ssa::back::rmeta_link;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, SharedEmitter};
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind, looks_like_rust_object_file};
+use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_log::tracing::info;
-use rustc_session::config::Lto;
 use tempfile::{TempDir, tempdir};
 
 use crate::back::write::{codegen, save_temp_bitcode};
-use crate::errors::LtoBitcodeFromRlib;
+use crate::diagnostics::LtoBitcodeFromRlib;
 use crate::{GccCodegenBackend, GccContext, LtoMode, to_gcc_opt_level};
 
 struct LtoData {
@@ -45,11 +45,7 @@ struct LtoData {
     tmp_path: TempDir,
 }
 
-fn prepare_lto(
-    cgcx: &CodegenContext,
-    each_linked_rlib_for_lto: &[PathBuf],
-    dcx: DiagCtxtHandle<'_>,
-) -> LtoData {
+fn prepare_lto(each_linked_rlib_for_lto: &[PathBuf], dcx: DiagCtxtHandle<'_>) -> LtoData {
     let tmp_path = match tempdir() {
         Ok(tmp_path) => tmp_path,
         Err(error) => {
@@ -64,32 +60,31 @@ fn prepare_lto(
     // We save off all the bytecode and GCC module file path for later processing
     // with either fat or thin LTO
     let mut upstream_modules = Vec::new();
-    if cgcx.lto != Lto::ThinLocal {
-        for path in each_linked_rlib_for_lto {
-            let archive_data = unsafe {
-                Mmap::map(File::open(path).expect("couldn't open rlib")).expect("couldn't map rlib")
-            };
-            let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
-            let obj_files = archive
-                .members()
-                .filter_map(|child| {
-                    child.ok().and_then(|c| {
-                        std::str::from_utf8(c.name()).ok().map(|name| (name.trim(), c))
-                    })
-                })
-                .filter(|&(name, _)| looks_like_rust_object_file(name));
-            for (name, child) in obj_files {
-                info!("adding bitcode from {}", name);
-                let path = tmp_path.path().join(name);
-                match save_as_file(child.data(&*archive_data).expect("corrupt rlib"), &path) {
-                    Ok(()) => {
-                        let buffer = ModuleBuffer::new(path);
-                        let module = SerializedModule::Local(buffer);
-                        upstream_modules.push((module, CString::new(name).unwrap()));
-                    }
-                    Err(e) => {
-                        dcx.emit_fatal(e);
-                    }
+    for path in each_linked_rlib_for_lto {
+        let archive_data = unsafe {
+            Mmap::map(File::open(path).expect("couldn't open rlib")).expect("couldn't map rlib")
+        };
+        let metadata_link = rmeta_link::read_from_data(&archive_data, path).unwrap();
+        let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
+        let obj_files = archive
+            .members()
+            .filter_map(|child| {
+                child
+                    .ok()
+                    .and_then(|c| std::str::from_utf8(c.name()).ok().map(|name| (name.trim(), c)))
+            })
+            .filter(|&(name, _)| metadata_link.rust_object_files.iter().any(|f| f == name));
+        for (name, child) in obj_files {
+            info!("adding bitcode from {}", name);
+            let path = tmp_path.path().join(name);
+            match save_as_file(child.data(&*archive_data).expect("corrupt rlib"), &path) {
+                Ok(()) => {
+                    let buffer = ModuleBuffer::new(path);
+                    let module = SerializedModule::Local(buffer);
+                    upstream_modules.push((module, CString::new(name).unwrap()));
+                }
+                Err(e) => {
+                    dcx.emit_fatal(e);
                 }
             }
         }
@@ -115,7 +110,7 @@ pub(crate) fn run_fat(
 ) -> CompiledModule {
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
-    let lto_data = prepare_lto(cgcx, each_linked_rlib_for_lto, dcx);
+    let lto_data = prepare_lto(each_linked_rlib_for_lto, dcx);
     /*let symbols_below_threshold =
     lto_data.symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();*/
     fat_lto(
@@ -151,9 +146,12 @@ fn fat_lto(
     for module in modules {
         match module {
             FatLtoInput::InMemory(m) => in_memory.push(m),
-            FatLtoInput::Serialized { name, buffer } => {
+            FatLtoInput::Serialized { name, bitcode_path } => {
                 info!("pushing serialized module {:?}", name);
-                serialized_modules.push((buffer, CString::new(name).unwrap()));
+                serialized_modules.push((
+                    SerializedModule::from_file(&bitcode_path),
+                    CString::new(name).unwrap(),
+                ));
             }
         }
     }

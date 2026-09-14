@@ -14,6 +14,7 @@ use rustc_abi::{self as abi, FieldIdx, Size, VariantIdx};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, mir, span_bug, ty};
+use rustc_span::Symbol;
 use tracing::{debug, instrument};
 
 use super::{
@@ -227,6 +228,22 @@ where
         base.offset(Size::ZERO, layout, self)
     }
 
+    /// Equivalent to `project_downcast`, but identifies the variant by name instead of index.
+    pub fn project_downcast_named<P: Projectable<'tcx, M::Provenance>>(
+        &self,
+        base: &P,
+        name: Symbol,
+    ) -> InterpResult<'tcx, (VariantIdx, P)> {
+        let variants = base.layout().ty.ty_adt_def().unwrap().variants();
+        let variant_idx = variants
+            .iter_enumerated()
+            .find(|(_idx, var)| var.name == name)
+            .unwrap_or_else(|| panic!("got {name} but expected one of {variants:#?}"))
+            .0;
+
+        interp_ok((variant_idx, self.project_downcast(base, variant_idx)?))
+    }
+
     /// Compute the offset and field layout for accessing the given index.
     pub fn project_index<P: Projectable<'tcx, M::Provenance>>(
         &self,
@@ -394,10 +411,13 @@ where
             OpaqueCast(ty) => {
                 span_bug!(self.cur_span(), "OpaqueCast({ty}) encountered after borrowck")
             }
+            PhantomDeref => {
+                span_bug!(self.cur_span(), "PhantomDeref encountered after borrowck")
+            }
             UnwrapUnsafeBinder(target) => base.transmute(self.layout_of(target)?, self)?,
             Field(field, _) => self.project_field(base, field)?,
             Downcast(_, variant) => self.project_downcast(base, variant)?,
-            Deref => self.deref_pointer(&base.to_op(self)?)?.into(),
+            Deref => self.deref_pointer(base)?.into(),
             Index(local) => {
                 let layout = self.layout_of(self.tcx.types.usize)?;
                 let n = self.local_to_op(local, Some(layout))?;
@@ -409,5 +429,23 @@ where
             }
             Subslice { from, to, from_end } => self.project_subslice(base, from, to, from_end)?,
         })
+    }
+
+    /// Given a value of type `Box`, returns the inner value of raw pointer type, as well as
+    /// the allocator.
+    pub(super) fn project_to_ptr_in_box<P: Projectable<'tcx, M::Provenance>>(
+        &self,
+        box_: &P,
+    ) -> InterpResult<'tcx, (P, P)> {
+        // `Box` has two fields: the pointer we care about, and the allocator.
+        assert_eq!(box_.layout().fields.count(), 2, "`Box` must have exactly 2 fields");
+        let [ptr, alloc] = self.project_fields(box_, [FieldIdx::ZERO, FieldIdx::ONE])?;
+
+        // We simply transmute the pointer we care about to the underlying raw pointer.
+        // (We could project a bit but that would end up at a pattern type that needs a transmute.)
+        let pointee_ty = box_.layout().ty.boxed_ty().unwrap();
+        let raw_ptr_ty = Ty::new_ptr(*self.tcx, pointee_ty, ty::Mutability::Mut);
+        let raw_ptr = ptr.transmute(self.layout_of(raw_ptr_ty)?, self)?; // The actual raw pointer
+        interp_ok((raw_ptr, alloc))
     }
 }

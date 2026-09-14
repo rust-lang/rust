@@ -11,6 +11,7 @@
 fn outer<T: Tr>() { // outer function
     const K: u32 = T::C;
     //~^ ERROR can't use generic parameters from outer item
+    //~| HELP try using a local `let` binding instead
     //[generic_const_items]~| HELP try introducing a local generic parameter here
 }
 
@@ -18,6 +19,7 @@ impl<T> Tr for T { // outer impl block
     const C: u32 = {
         const I: u32 = T::C;
         //~^ ERROR can't use generic parameters from outer item
+        //~| HELP try using a local `let` binding instead
         //[generic_const_items]~| HELP try introducing a local generic parameter here
         I
     };
@@ -26,6 +28,7 @@ impl<T> Tr for T { // outer impl block
 struct S<T: Tr>(U32<{ // outer struct
     const _: u32 = T::C;
     //~^ ERROR can't use generic parameters from outer item
+    //~| HELP try using a local `let` binding instead
     //[generic_const_items]~| HELP try introducing a local generic parameter here
     0
 }>);

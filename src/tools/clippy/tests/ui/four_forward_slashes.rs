@@ -1,6 +1,5 @@
 //@aux-build:proc_macros.rs
 #![feature(custom_inner_attributes)]
-#![allow(unused)]
 #![warn(clippy::four_forward_slashes)]
 #![no_main]
 #![rustfmt::skip]
@@ -14,7 +13,6 @@ fn a() {}
 
 //// whoops
 //~^ four_forward_slashes
-#[allow(dead_code)]
 fn b() {}
 
 //// whoops
@@ -28,7 +26,6 @@ fn d() {}
 #[test]
 //// between attributes
 //~^ four_forward_slashes
-#[allow(dead_code)]
 fn g() {}
 
     //// not very start of contents
@@ -49,4 +46,11 @@ with_span! {
     span
     //// don't lint me bozo
     fn f() {}
+}
+
+// Regression test for #16168: an inner doc comment (`//!`) inside the body must not
+// drag the `////` scan down into the body and flag a regular comment there.
+fn inner_doc() {
+    //// I am not a doc comment!
+    //! inner doc comment
 }

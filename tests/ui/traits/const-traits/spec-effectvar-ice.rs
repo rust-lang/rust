@@ -7,10 +7,10 @@ trait Specialize {}
 
 trait Foo {}
 
-impl<T> const Foo for T {}
+const impl<T> Foo for T {}
 //~^ error: const `impl` for trait `Foo` which is not `const`
 
-impl<T> const Foo for T where T: const Specialize {}
+const impl<T> Foo for T where T: const Specialize {}
 //~^ error: const `impl` for trait `Foo` which is not `const`
 //~| error: `const` can only be applied to `const` traits
 //~| error: specialization impl does not specialize any associated items

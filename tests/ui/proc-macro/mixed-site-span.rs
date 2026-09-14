@@ -46,8 +46,8 @@ const _: () = {
 // Failed resolutions of `proc_macro_item`
 const _: () = {
     // token_site_span::proc_macro_item
-    invoke_with_crate!{input proc_macro_item}            //~ ERROR unresolved import `$crate`
-    invoke_with_ident!{input proc_macro_item}            //~ ERROR unresolved import `$crate`
+    invoke_with_crate!{input proc_macro_item}            //~ ERROR unresolved import `$crate::proc_macro_item`
+    invoke_with_ident!{input proc_macro_item}            //~ ERROR unresolved import `$crate::proc_macro_item`
     invoke_with_crate!{call proc_macro_item}             //~ ERROR unresolved import `$crate`
     invoke_with_ident!{call proc_macro_item}             //~ ERROR unresolved import `$crate`
     invoke_with_ident!{hello call proc_macro_item}       //~ ERROR unresolved import `$crate`
@@ -59,8 +59,8 @@ const _: () = {
 
     macro_rules! test {() => {
         // crate::proc_macro_item
-        invoke_with_ident!{$crate input proc_macro_item} //~ ERROR unresolved import `$crate`
-        with_crate!{$crate input proc_macro_item}        //~ ERROR unresolved import `$crate`
+        invoke_with_ident!{$crate input proc_macro_item} //~ ERROR unresolved import `$crate::proc_macro_item`
+        with_crate!{$crate input proc_macro_item}        //~ ERROR unresolved import `$crate::proc_macro_item`
         with_crate!{$crate call proc_macro_item}         //~ ERROR unresolved import `$crate`
 
         // token_site_span::proc_macro_item
@@ -98,8 +98,8 @@ const _: () = {
 
     macro_rules! test {() => {
         // crate::TokenItem
-        invoke_with_ident!{$crate input TokenItem}  //~ ERROR unresolved import `$crate`
-        with_crate!{$crate input TokenItem}         //~ ERROR unresolved import `$crate`
+        invoke_with_ident!{$crate input TokenItem}  //~ ERROR unresolved import `$crate::TokenItem`
+        with_crate!{$crate input TokenItem}         //~ ERROR unresolved import `$crate::TokenItem`
         with_crate!{$crate call TokenItem}          //~ ERROR unresolved import `$crate`
 
         // mixed_site_span::TokenItem
@@ -128,8 +128,8 @@ const _: () = {
 // Failed resolutions of `ItemUse`
 const _: () = {
     // token_site_span::ItemUse
-    invoke_with_crate!{input ItemUse}            //~ ERROR unresolved import `$crate`
-    invoke_with_ident!{input ItemUse}            //~ ERROR unresolved import `$crate`
+    invoke_with_crate!{input ItemUse}            //~ ERROR unresolved import `$crate::ItemUse`
+    invoke_with_ident!{input ItemUse}            //~ ERROR unresolved import `$crate::ItemUse`
 
     // mixed_site_span::ItemUse
     invoke_with_crate!{mixed ItemUse}            //~ ERROR unresolved import `$crate`

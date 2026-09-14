@@ -11,7 +11,6 @@
 pub const WORD_SIZE: usize = size_of::<u32>();
 
 pub mod abi;
-pub mod os;
 
 use crate::io as std_io;
 

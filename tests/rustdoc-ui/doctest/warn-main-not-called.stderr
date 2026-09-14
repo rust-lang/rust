@@ -1,14 +1,14 @@
 warning: the `main` function of this doctest won't be run as it contains expressions at the top level, meaning that the whole doctest code will be wrapped in a function
-  --> $DIR/warn-main-not-called.rs:10:1
+  --> $DIR/warn-main-not-called.rs:16:5
    |
-LL | //! ```
-   | ^^^^^^^
+LL | //! let x = 12;
+   |     ^^^^^^^^^^^
 
 warning: the `main` function of this doctest won't be run as it contains expressions at the top level, meaning that the whole doctest code will be wrapped in a function
-  --> $DIR/warn-main-not-called.rs:19:1
+  --> $DIR/warn-main-not-called.rs:22:5
    |
-LL | //!
-   | ^^^
+LL | //! let x = 12;
+   |     ^^^^^^^^^^^
 
 warning: 2 warnings emitted
 

@@ -6,14 +6,13 @@ use clippy_utils::{is_from_proc_macro, is_trait_impl_item};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{self as hir, FnDecl, HirId};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 
 fn check_ty<'a>(cx: &LateContext<'a>, param: &hir::Ty<'a>, param_ty: Ty<'a>, fixes: &mut Vec<(Span, String)>) {
-    if !param.span.in_external_macro(cx.sess().source_map())
-        && let ty::Ref(_, opt_ty, Mutability::Not) = param_ty.kind()
+    if let ty::Ref(_, opt_ty, Mutability::Not) = param_ty.kind()
         && let Some(gen_ty) = option_arg_ty(cx, *opt_ty)
         && !gen_ty.is_ref()
         // Need to gen the original spans, so first parsing mid, and hir parsing afterward
@@ -24,6 +23,7 @@ fn check_ty<'a>(cx: &LateContext<'a>, param: &hir::Ty<'a>, param_ty: Ty<'a>, fix
             args: [hir::GenericArg::Type(opt_ty)],
             ..
         }) = last.args
+        && !param.span.in_external_macro(cx.sess().source_map())
         && !is_from_proc_macro(cx, param)
     {
         let lifetime = snippet(cx, lifetime.ident.span, "..");
@@ -107,7 +107,12 @@ pub(crate) fn check_fn<'a>(
 
         check_fn_sig(cx, decl, inputs_output_span, sig);
     } else if !is_trait_impl_item(cx, hir_id) {
-        let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
+        let sig = cx
+            .tcx
+            .fn_sig(def_id)
+            .instantiate_identity()
+            .skip_norm_wip()
+            .skip_binder();
 
         if is_from_proc_macro(cx, &(&kind, body, hir_id, span)) {
             return;
@@ -128,7 +133,12 @@ pub(super) fn check_trait_item<'a>(
         && !is_from_proc_macro(cx, trait_item)
     {
         let def_id = trait_item.owner_id.def_id;
-        let ty_sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
+        let ty_sig = cx
+            .tcx
+            .fn_sig(def_id)
+            .instantiate_identity()
+            .skip_norm_wip()
+            .skip_binder();
         check_fn_sig(cx, sig.decl, sig.span, ty_sig);
     }
 }

@@ -6,7 +6,7 @@ use askama::Template;
 use askama::filters::Safe;
 use cargo_metadata::Message;
 use cargo_metadata::diagnostic::{Applicability, Diagnostic};
-use clippy_config::ClippyConfiguration;
+use clippy_config::ConfMetadata;
 use clippy_lints::declared_lints::LINTS;
 use clippy_lints::deprecated_lints::{DEPRECATED, DEPRECATED_VERSION, RENAMED};
 use declare_clippy_lint::LintInfo;
@@ -24,7 +24,7 @@ use ui_test::{Args, CommandBuilder, Config, Match, error_on_output_conflict};
 use std::collections::{BTreeMap, HashMap};
 use std::env::{self, set_var, var_os};
 use std::ffi::{OsStr, OsString};
-use std::fmt::Write;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Sender, channel};
 use std::{fs, iter, thread};
@@ -52,7 +52,9 @@ fn internal_extern_flags() -> Vec<String> {
         path.set_extension("d");
         fs::read_to_string(path).unwrap()
     };
-    let mut crates = BTreeMap::<&str, &str>::new();
+    // Map `crate_name` -> (`hash`, [`path1`, `path2`, ...]). Important for `rlib`s, as cargo now
+    // defaults to `-Zembed-metadata=no`, so the `rlib` only contains a metadata stub.
+    let mut crates = BTreeMap::<&str, (&str, Vec<&str>)>::new();
     for line in current_exe_depinfo.lines() {
         // each dependency is expected to have a Makefile rule like `/path/to/crate-hash.rlib:`
         let parse_name_path = || {
@@ -61,20 +63,25 @@ fn internal_extern_flags() -> Vec<String> {
             }
             let path_str = line.strip_suffix(':')?;
             let path = Path::new(path_str);
-            if !matches!(path.extension()?.to_str()?, "rlib" | "so" | "dylib" | "dll") {
+            if !matches!(path.extension()?.to_str()?, "rlib" | "so" | "dylib" | "dll" | "rmeta") {
                 return None;
             }
-            let (name, _hash) = path.file_stem()?.to_str()?.rsplit_once('-')?;
+            let (name, hash) = path.file_stem()?.to_str()?.rsplit_once('-')?;
             // the "lib" prefix is not present for dll files
             let name = name.strip_prefix("lib").unwrap_or(name);
-            Some((name, path_str))
+            Some((name, hash, path_str))
         };
-        if let Some((name, path)) = parse_name_path()
+        if let Some((name, hash, path)) = parse_name_path()
             && INTERNAL_TEST_DEPENDENCIES.contains(&name)
         {
-            // A dependency may be listed twice if it is available in sysroot,
-            // and the sysroot dependencies are listed first.
-            crates.insert(name, path);
+            // A dependency may be listed twice (identified by the hash) if it is available in sysroot,
+            // and the sysroot dependencies are listed first. So only keep the last dependency.
+            let (old_hash, items) = crates.entry(name).or_insert((hash, Vec::new()));
+            if *old_hash != hash {
+                *old_hash = hash;
+                items.clear();
+            }
+            items.push(path);
         }
     }
     let not_found: Vec<&str> = INTERNAL_TEST_DEPENDENCIES
@@ -82,18 +89,41 @@ fn internal_extern_flags() -> Vec<String> {
         .copied()
         .filter(|n| !crates.contains_key(n))
         .collect();
-    assert!(
-        not_found.is_empty(),
+    assert_eq!(
+        not_found,
+        [] as [&str; 0],
         "dependencies not found in depinfo: {not_found:?}\n\
         help: Make sure the `-Z binary-dep-depinfo` rust flag is enabled\n\
         help: Try adding to dev-dependencies in Cargo.toml\n\
         help: Be sure to also add `extern crate ...;` to tests/compile-test.rs",
     );
-    crates
+
+    let mut args: Vec<String> = crates
         .into_iter()
-        .map(|(name, path)| format!("--extern={name}={path}"))
-        .chain([format!("-Ldependency={}", deps_path.display())])
-        .collect()
+        .flat_map(|(name, (_, paths))| paths.into_iter().map(move |path| format!("--extern={name}={path}")))
+        .collect();
+
+    if deps_path.ends_with("deps") {
+        args.push(format!("-Ldependency={}", deps_path.display()));
+    } else {
+        // If the dep_path does not point to `/deps` it very likely means Cargo is using the v2 build-dir
+        // layout
+        assert!(deps_path.ends_with("out"));
+
+        // Get a path to `target/<platform-profile>/build`
+        let build_dir = {
+            let mut d = deps_path.to_path_buf();
+            d.pop(); // remove `out`
+            d.pop(); // remove `<hash>`
+            d.pop(); // remove `<pkgname>`
+            d
+        };
+
+        let out_dirs = discover_out_dirs(&build_dir);
+        args.extend(out_dirs.iter().map(|path| format!("-Ldependency={}", path.display())));
+    }
+
+    args
 }
 
 // whether to run internal tests or not
@@ -205,6 +235,9 @@ impl TestContext {
                 "-Ainternal_features",
                 "-Zui-testing",
                 "-Zdeduplicate-diagnostics=no",
+                // FIXME(#160895): While the new solver is enabled by default on nightly,
+                // we don't want to use it in our tests for now.
+                "-Znext-solver=coherence",
                 "-Dwarnings",
             ]
             .map(OsString::from),
@@ -214,8 +247,21 @@ impl TestContext {
         config.program.envs.push(("RUSTC_ICE".into(), Some("0".into())));
 
         if let Some(host_libs) = option_env!("HOST_LIBS") {
-            let dep = format!("-Ldependency={}", Path::new(host_libs).join("deps").display());
-            config.program.args.push(dep.into());
+            let deps_dir = Path::new(host_libs).join("deps");
+
+            if deps_dir.exists() {
+                let dep = format!("-Ldependency={}", deps_dir.display());
+                config.program.args.push(dep.into());
+            } else {
+                // If `/deps` does not exist, assume Cargo v2 build-dir layout
+                let build_dir = Path::new(host_libs).join("build");
+                let dependencies = discover_out_dirs(&build_dir);
+
+                for dep in dependencies {
+                    let dep = format!("-Ldependency={}", dep.display());
+                    config.program.args.push(dep.into());
+                }
+            }
         }
         if let Some(sysroot) = option_env!("TEST_SYSROOT") {
             config.program.args.push(format!("--sysroot={sysroot}").into());
@@ -298,7 +344,9 @@ fn run_ui_cargo(cx: &TestContext) {
     config.program.out_dir_flag = CommandBuilder::cargo().out_dir_flag;
     config.program.args = vec!["clippy".into(), "--color".into(), "never".into(), "--quiet".into()];
     config.program.envs.extend([
-        ("RUSTFLAGS".into(), Some("-Dwarnings".into())),
+        // FIXME(#160895): While the new solver is enabled by default on nightly,
+        // we don't want to use it in our tests for now.
+        ("RUSTFLAGS".into(), Some("-Dwarnings -Znext-solver=coherence".into())),
         ("CARGO_INCREMENTAL".into(), Some("0".into())),
     ]);
     // We need to do this while we still have a rustc in the `program` field.
@@ -505,7 +553,7 @@ impl DiagnosticCollector {
                 }
             }
 
-            let configs = clippy_config::get_configuration_metadata();
+            let configs = clippy_config::Conf::get_metadata();
             let mut metadata: Vec<LintMetadata> = LINTS
                 .iter()
                 .map(|lint| LintMetadata::new(lint, &applicabilities, &configs))
@@ -577,7 +625,7 @@ struct LintMetadata {
 }
 
 impl LintMetadata {
-    fn new(lint: &LintInfo, applicabilities: &HashMap<String, Applicability>, configs: &[ClippyConfiguration]) -> Self {
+    fn new(lint: &LintInfo, applicabilities: &HashMap<String, Applicability>, configs: &[ConfMetadata]) -> Self {
         let name = lint.name_lower();
         let applicability = applicabilities
             .get(&name)
@@ -647,4 +695,21 @@ impl LintMetadata {
             _ => panic!("needs to update this code"),
         }
     }
+}
+
+/// Gets all of the `out` dirs in a given Cargo `build-dir/<profile>/build` dir.
+fn discover_out_dirs(dir: &Path) -> Vec<PathBuf> {
+    if !dir.exists() {
+        return Vec::new();
+    }
+
+    let read_dir = |path: &Path| path.read_dir().ok().into_iter().flatten().filter_map(Result::ok);
+    dir.read_dir()
+        .unwrap_or_else(|e| panic!("Couldn't read {}: {}", dir.display(), e))
+        .map(|e| e.unwrap())
+        .flat_map(|e| read_dir(&e.path()))
+        .flat_map(|e| read_dir(&e.path()))
+        .map(|e| e.path())
+        .filter(|path| path.ends_with("out"))
+        .collect::<Vec<_>>()
 }

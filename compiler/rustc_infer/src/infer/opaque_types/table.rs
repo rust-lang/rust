@@ -3,7 +3,7 @@ use std::ops::Deref;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::bug;
-use rustc_middle::ty::{self, OpaqueTypeKey, ProvisionalHiddenType, Ty};
+use rustc_middle::ty::{OpaqueTypeKey, ProvisionalHiddenType, Ty};
 use tracing::instrument;
 
 use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, UndoLog};
@@ -118,14 +118,6 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
     ) -> OpaqueTypeTable<'a, 'tcx> {
         OpaqueTypeTable { storage: self, undo_log }
-    }
-}
-
-impl<'tcx> Drop for OpaqueTypeStorage<'tcx> {
-    fn drop(&mut self) {
-        if !self.is_empty() {
-            ty::tls::with(|tcx| tcx.dcx().delayed_bug(format!("{:?}", self.opaque_types)));
-        }
     }
 }
 

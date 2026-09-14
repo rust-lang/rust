@@ -1,8 +1,9 @@
 //! Things related to IR printing in the next-trait-solver.
 
-use std::any::type_name_of_val;
-
+use hir_def::signatures::{TraitSignature, TypeAliasSignature};
 use rustc_type_ir::{self as ty, ir_print::IrPrint};
+
+use crate::next_solver::TermId;
 
 use super::SolverDefId;
 use super::interner::DbInterner;
@@ -13,10 +14,10 @@ impl<'db> IrPrint<ty::AliasTy<Self>> for DbInterner<'db> {
     }
 
     fn print_debug(t: &ty::AliasTy<Self>, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        crate::with_attached_db(|db| match t.def_id {
+        crate::with_attached_db(|db| match t.kind.def_id() {
             SolverDefId::TypeAliasId(id) => fmt.write_str(&format!(
                 "AliasTy({:?}[{:?}])",
-                db.type_alias_signature(id).name.as_str(),
+                TypeAliasSignature::of(db, id).name.as_str(),
                 t.args
             )),
             SolverDefId::InternedOpaqueTyId(id) => {
@@ -33,10 +34,10 @@ impl<'db> IrPrint<ty::AliasTerm<Self>> for DbInterner<'db> {
     }
 
     fn print_debug(t: &ty::AliasTerm<Self>, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        crate::with_attached_db(|db| match t.def_id {
+        crate::with_attached_db(|db| match t.def_id() {
             SolverDefId::TypeAliasId(id) => fmt.write_str(&format!(
                 "AliasTerm({:?}[{:?}])",
-                db.type_alias_signature(id).name.as_str(),
+                TypeAliasSignature::of(db, id).name.as_str(),
                 t.args
             )),
             SolverDefId::InternedOpaqueTyId(id) => {
@@ -60,13 +61,13 @@ impl<'db> IrPrint<ty::TraitRef<Self>> for DbInterner<'db> {
                 fmt.write_str(&format!(
                     "{:?}: {}",
                     self_ty,
-                    db.trait_signature(trait_).name.as_str()
+                    TraitSignature::of(db, trait_).name.as_str()
                 ))
             } else {
                 fmt.write_str(&format!(
                     "{:?}: {}<{:?}>",
                     self_ty,
-                    db.trait_signature(trait_).name.as_str(),
+                    TraitSignature::of(db, trait_).name.as_str(),
                     trait_args
                 ))
             }
@@ -82,7 +83,10 @@ impl<'db> IrPrint<ty::TraitPredicate<Self>> for DbInterner<'db> {
         t: &ty::TraitPredicate<Self>,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        fmt.write_str(&format!("TODO: {:?}", type_name_of_val(t)))
+        match t.polarity {
+            ty::PredicatePolarity::Positive => write!(fmt, "{:?}", t.trait_ref),
+            ty::PredicatePolarity::Negative => write!(fmt, "!{:?}", t.trait_ref),
+        }
     }
 }
 impl<'db> IrPrint<rustc_type_ir::HostEffectPredicate<Self>> for DbInterner<'db> {
@@ -97,7 +101,11 @@ impl<'db> IrPrint<rustc_type_ir::HostEffectPredicate<Self>> for DbInterner<'db> 
         t: &rustc_type_ir::HostEffectPredicate<Self>,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        fmt.write_str(&format!("TODO: {:?}", type_name_of_val(t)))
+        let prefix = match t.constness {
+            ty::BoundConstness::Const => "const",
+            ty::BoundConstness::Maybe => "[const]",
+        };
+        write!(fmt, "{prefix} {:?}", t.trait_ref)
     }
 }
 impl<'db> IrPrint<ty::ExistentialTraitRef<Self>> for DbInterner<'db> {
@@ -116,7 +124,7 @@ impl<'db> IrPrint<ty::ExistentialTraitRef<Self>> for DbInterner<'db> {
             let trait_ = t.def_id.0;
             fmt.write_str(&format!(
                 "ExistentialTraitRef({:?}[{:?}])",
-                db.trait_signature(trait_).name.as_str(),
+                TraitSignature::of(db, trait_).name.as_str(),
                 t.args
             ))
         })
@@ -135,13 +143,13 @@ impl<'db> IrPrint<ty::ExistentialProjection<Self>> for DbInterner<'db> {
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         crate::with_attached_db(|db| {
-            let id = match t.def_id {
-                SolverDefId::TypeAliasId(id) => id,
+            let id = match t.def_id.0 {
+                TermId::TypeAliasId(id) => id,
                 _ => panic!("Expected trait."),
             };
             fmt.write_str(&format!(
                 "ExistentialProjection(({:?}[{:?}]) -> {:?})",
-                db.type_alias_signature(id).name.as_str(),
+                TypeAliasSignature::of(db, id).name.as_str(),
                 t.args,
                 t.term
             ))
@@ -161,13 +169,13 @@ impl<'db> IrPrint<ty::ProjectionPredicate<Self>> for DbInterner<'db> {
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         crate::with_attached_db(|db| {
-            let id = match t.projection_term.def_id {
+            let id = match t.projection_term.def_id() {
                 SolverDefId::TypeAliasId(id) => id,
                 _ => panic!("Expected trait."),
             };
             fmt.write_str(&format!(
                 "ProjectionPredicate(({:?}[{:?}]) -> {:?})",
-                db.type_alias_signature(id).name.as_str(),
+                TypeAliasSignature::of(db, id).name.as_str(),
                 t.projection_term.args,
                 t.term
             ))
@@ -183,7 +191,7 @@ impl<'db> IrPrint<ty::NormalizesTo<Self>> for DbInterner<'db> {
         t: &ty::NormalizesTo<Self>,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        fmt.write_str(&format!("TODO: {:?}", type_name_of_val(t)))
+        write!(fmt, "NormalizesTo({} -> {:?})", t.alias, t.term)
     }
 }
 impl<'db> IrPrint<ty::SubtypePredicate<Self>> for DbInterner<'db> {
@@ -198,7 +206,7 @@ impl<'db> IrPrint<ty::SubtypePredicate<Self>> for DbInterner<'db> {
         t: &ty::SubtypePredicate<Self>,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        fmt.write_str(&format!("TODO: {:?}", type_name_of_val(t)))
+        write!(fmt, "{:?} <: {:?}", t.a, t.b)
     }
 }
 impl<'db> IrPrint<ty::CoercePredicate<Self>> for DbInterner<'db> {
@@ -210,7 +218,7 @@ impl<'db> IrPrint<ty::CoercePredicate<Self>> for DbInterner<'db> {
         t: &ty::CoercePredicate<Self>,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        fmt.write_str(&format!("TODO: {:?}", type_name_of_val(t)))
+        write!(fmt, "CoercePredicate({:?} -> {:?})", t.a, t.b)
     }
 }
 impl<'db> IrPrint<ty::FnSig<Self>> for DbInterner<'db> {
@@ -219,7 +227,9 @@ impl<'db> IrPrint<ty::FnSig<Self>> for DbInterner<'db> {
     }
 
     fn print_debug(t: &ty::FnSig<Self>, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt.write_str(&format!("TODO: {:?}", type_name_of_val(t)))
+        let tys = t.inputs_and_output.as_slice();
+        let (output, inputs) = tys.split_last().unwrap();
+        write!(fmt, "fn({:?}) -> {:?}", inputs, output)
     }
 }
 
@@ -235,6 +245,10 @@ impl<'db> IrPrint<rustc_type_ir::PatternKind<DbInterner<'db>>> for DbInterner<'d
         t: &rustc_type_ir::PatternKind<DbInterner<'db>>,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        fmt.write_str(&format!("TODO: {:?}", type_name_of_val(t)))
+        match t {
+            ty::PatternKind::Range { start, end } => write!(fmt, "{:?}..={:?}", start, end),
+            ty::PatternKind::Or(list) => write!(fmt, "or({:?})", list),
+            ty::PatternKind::NotNull => fmt.write_str("!null"),
+        }
     }
 }

@@ -36,7 +36,6 @@ pub(crate) fn opts() -> TargetOptions {
         families: cvs!["unix"],
         is_like_windows: true,
         binary_format: BinaryFormat::Coff,
-        allows_weak_linkage: false,
         pre_link_args,
         late_link_args,
         abi_return_struct_as_int: true,

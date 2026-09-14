@@ -184,16 +184,18 @@ fn offer_suggestion(
     diag: &mut Diag<'_, ()>,
 ) {
     let cast_to_snip = snippet(cx, cast_to_span, "..");
+    let mut applicability = Applicability::Unspecified;
+    let sugg = Sugg::hir_with_context(cx, cast_expr, expr.span.ctxt(), "..", &mut applicability);
     let suggestion = if cast_to_snip == "_" {
-        format!("{}.try_into()", Sugg::hir(cx, cast_expr, "..").maybe_paren())
+        format!("{}.try_into()", sugg.maybe_paren())
     } else {
-        format!("{cast_to_snip}::try_from({})", Sugg::hir(cx, cast_expr, ".."))
+        format!("{cast_to_snip}::try_from({sugg})")
     };
 
     diag.span_suggestion_verbose(
         expr.span,
         "... or use `try_from` and handle the error accordingly",
         suggestion,
-        Applicability::Unspecified,
+        applicability,
     );
 }

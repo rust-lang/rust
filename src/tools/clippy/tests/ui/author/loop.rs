@@ -1,10 +1,10 @@
 //@ check-pass
 
 #![feature(stmt_expr_attributes)]
-#![allow(
+#![expect(
     clippy::never_loop,
-    clippy::while_immutable_condition,
-    clippy::redundant_pattern_matching
+    clippy::redundant_pattern_matching,
+    clippy::while_immutable_condition
 )]
 
 fn main() {

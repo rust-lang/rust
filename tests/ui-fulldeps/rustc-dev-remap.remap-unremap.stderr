@@ -17,6 +17,9 @@ LL | impl VisitorResult for () {
 ...
 LL | impl<T> VisitorResult for ControlFlow<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ControlFlow<T>`
+...
+LL | impl<E> VisitorResult for Result<(), E> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Result<(), E>`
 note: required by a bound in `rustc_ast::visit::Visitor::Result`
   --> $COMPILER_DIR_REAL/rustc_ast/src/visit.rs:LL:COL
    |

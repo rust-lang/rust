@@ -1,5 +1,4 @@
 #![feature(generic_const_exprs)]
-//~^ WARN the feature `generic_const_exprs` is incomplete
 
 fn test<'a>(
     _: &'a (),

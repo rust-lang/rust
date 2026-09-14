@@ -1,5 +1,4 @@
 //@ compile-flags: -C opt-level=3
-#![feature(c_variadic)]
 
 // Test that the inline attributes are accepted on C-variadic functions.
 //
@@ -8,22 +7,22 @@
 
 #[inline(always)]
 unsafe extern "C" fn inline_always(mut ap: ...) -> u32 {
-    ap.arg::<u32>()
+    ap.next_arg::<u32>()
 }
 
 #[inline]
 unsafe extern "C" fn inline(mut ap: ...) -> u32 {
-    ap.arg::<u32>()
+    ap.next_arg::<u32>()
 }
 
 #[inline(never)]
 unsafe extern "C" fn inline_never(mut ap: ...) -> u32 {
-    ap.arg::<u32>()
+    ap.next_arg::<u32>()
 }
 
 #[cold]
 unsafe extern "C" fn cold(mut ap: ...) -> u32 {
-    ap.arg::<u32>()
+    ap.next_arg::<u32>()
 }
 
 #[unsafe(no_mangle)]

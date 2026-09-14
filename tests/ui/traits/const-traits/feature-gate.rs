@@ -6,7 +6,7 @@
 
 struct S;
 const trait T {} //[stock]~ ERROR const trait impls are experimental
-impl const T for S {}
+const impl T for S {}
 //[stock]~^ ERROR const trait impls are experimental
 
 const fn f<A: [const] T>() {} //[stock]~ ERROR const trait impls are experimental

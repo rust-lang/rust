@@ -5,7 +5,7 @@
 //! based on the parent of the existing expression.
 use syntax::{
     AstNode, T,
-    ast::{self, FieldExpr, MethodCallExpr, make, syntax_factory::SyntaxFactory},
+    ast::{self, FieldExpr, MethodCallExpr, syntax_factory::SyntaxFactory},
 };
 
 use crate::AssistContext;
@@ -13,7 +13,7 @@ use crate::AssistContext;
 /// Decides whether the new path expression needs to be dereferenced and/or wrapped in parens.
 /// Returns the relevant parent expression to replace and the [RefData].
 pub(crate) fn determine_ref_and_parens(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     field_expr: &FieldExpr,
 ) -> (ast::Expr, RefData) {
     let s = field_expr.syntax();
@@ -62,8 +62,8 @@ pub(crate) fn determine_ref_and_parens(
             // other combinations (`&value` -> `value`, `&&value` -> `&value`, `&value` -> `&&value`) might or might not be able to auto-ref/deref,
             // but there might be trait implementations an added `&` might resolve to
             // -> ONLY handle auto-ref from `value` to `&value`
-            fn is_auto_ref(ctx: &AssistContext<'_>, call_expr: &MethodCallExpr) -> bool {
-                fn impl_(ctx: &AssistContext<'_>, call_expr: &MethodCallExpr) -> Option<bool> {
+            fn is_auto_ref(ctx: &AssistContext<'_, '_>, call_expr: &MethodCallExpr) -> bool {
+                fn impl_(ctx: &AssistContext<'_, '_>, call_expr: &MethodCallExpr) -> Option<bool> {
                     let rec = call_expr.receiver()?;
                     let rec_ty = ctx.sema.type_of_expr(&rec)?.original();
                     // input must be actual value
@@ -119,13 +119,13 @@ pub(crate) struct RefData {
 
 impl RefData {
     /// Derefs `expr` and wraps it in parens if necessary
-    pub(crate) fn wrap_expr(&self, mut expr: ast::Expr) -> ast::Expr {
+    pub(crate) fn wrap_expr(&self, mut expr: ast::Expr, make: &SyntaxFactory) -> ast::Expr {
         if self.needs_deref {
-            expr = make::expr_prefix(T![*], expr).into();
+            expr = make.expr_prefix(T![*], expr).into();
         }
 
         if self.needs_parentheses {
-            expr = make::expr_paren(expr).into();
+            expr = make.expr_paren(expr).into();
         }
 
         expr

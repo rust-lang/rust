@@ -1,8 +1,10 @@
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_hir::Safety;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::mir_cast_kind;
 use rustc_span::{Span, Spanned};
 
@@ -22,9 +24,6 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             @call(mir_assume, args) => {
                 let op = self.parse_operand(args[0])?;
                 Ok(StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(op))))
-            },
-            @call(mir_retag, args) => {
-                Ok(StatementKind::Retag(RetagKind::Default, Box::new(self.parse_place(args[0])?)))
             },
             @call(mir_set_discriminant, args) => {
                 let place = self.parse_place(args[0])?;
@@ -66,7 +65,6 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                     unwind: self.parse_unwind_action(args[2])?,
                     replace: false,
                     drop: None,
-                    async_fut: None,
                 })
             },
             @call(mir_call, args) => {
@@ -209,6 +207,97 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         )
     }
 
+    fn parse_cast_fn_ptr_safety(&self, expr_id: ExprId) -> PResult<Safety> {
+        parse_by_kind!(self, expr_id, _, "function pointer safety",
+            @variant(mir_cast_fn_ptr_safety, Safe) => {
+                Ok(Safety::Safe)
+            },
+            @variant(mir_cast_fn_ptr_safety, Unsafe) => {
+                Ok(Safety::Unsafe)
+            },
+        )
+    }
+
+    fn parse_cast_pointer_coercion(&self, expr_id: ExprId) -> PResult<PointerCoercion> {
+        parse_by_kind!(self, expr_id, expr, "pointer coercion kind",
+            @variant(mir_cast_ptr_coercion, ReifyFnPointer) => {
+                let ExprKind::Adt(AdtExpr { fields, .. }) = &expr.kind else {
+                    unreachable!("already matched")
+                };
+                Ok(PointerCoercion::ReifyFnPointer(
+                    self.parse_cast_fn_ptr_safety(fields[0].expr)?,
+                ))
+            },
+            @variant(mir_cast_ptr_coercion, UnsafeFnPointer) => {
+                Ok(PointerCoercion::UnsafeFnPointer)
+            },
+            @variant(mir_cast_ptr_coercion, ClosureFnPointer) => {
+                let ExprKind::Adt(AdtExpr { fields, .. }) = &expr.kind else {
+                    unreachable!("already matched")
+                };
+                Ok(PointerCoercion::ClosureFnPointer(
+                    self.parse_cast_fn_ptr_safety(fields[0].expr)?,
+                ))
+            },
+            @variant(mir_cast_ptr_coercion, MutToConstPointer) => {
+                Ok(PointerCoercion::MutToConstPointer)
+            },
+            @variant(mir_cast_ptr_coercion, ArrayToPointer) => {
+                Ok(PointerCoercion::ArrayToPointer)
+            },
+            @variant(mir_cast_ptr_coercion, UnsizePointee) => {
+                Ok(PointerCoercion::Unsize)
+            },
+        )
+    }
+
+    fn parse_cast_kind(&self, expr_id: ExprId) -> PResult<CastKind> {
+        parse_by_kind!(self, expr_id, expr, "cast kind",
+            @variant(mir_cast_kind, PointerExposeProvenance) => {
+                Ok(CastKind::PointerExposeProvenance)
+            },
+            @variant(mir_cast_kind, PointerWithExposedProvenance) => {
+                Ok(CastKind::PointerWithExposedProvenance)
+            },
+            @variant(mir_cast_kind, IntToInt) => {
+                Ok(CastKind::IntToInt)
+            },
+            @variant(mir_cast_kind, FloatToInt) => {
+                Ok(CastKind::FloatToInt)
+            },
+            @variant(mir_cast_kind, FloatToFloat) => {
+                Ok(CastKind::FloatToFloat)
+            },
+            @variant(mir_cast_kind, IntToFloat) => {
+                Ok(CastKind::IntToFloat)
+            },
+            @variant(mir_cast_kind, PtrToPtr) => {
+                Ok(CastKind::PtrToPtr)
+            },
+            @variant(mir_cast_kind, FnPtrToPtr) => {
+                Ok(CastKind::FnPtrToPtr)
+            },
+            @variant(mir_cast_kind, Transmute) => {
+                Ok(CastKind::Transmute)
+            },
+            @variant(mir_cast_kind, BoxDerefTransmute) => {
+                Ok(CastKind::BoxDerefTransmute)
+            },
+            @variant(mir_cast_kind, Subtype) => {
+                Ok(CastKind::Subtype)
+            },
+            @variant(mir_cast_kind, PointerCoercion) => {
+                let ExprKind::Adt(AdtExpr { fields, .. }) = &expr.kind else {
+                    unreachable!("already matched")
+                };
+                Ok(CastKind::PointerCoercion(
+                    self.parse_cast_pointer_coercion(fields[0].expr)?,
+                    CoercionSource::AsCast,
+                ))
+            },
+        )
+    }
+
     fn parse_rvalue(&self, expr_id: ExprId) -> PResult<Rvalue<'tcx>> {
         parse_by_kind!(self, expr_id, expr, "rvalue",
             @call(mir_discriminant, args) => self.parse_place(args[0]).map(Rvalue::Discriminant),
@@ -224,6 +313,10 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                 let source = self.parse_operand(args[0])?;
                 let kind = CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, CoercionSource::AsCast);
                 Ok(Rvalue::Cast(kind, source, expr.ty))
+            },
+            @call(mir_cast, args) => {
+                let source = self.parse_operand(args[0])?;
+                Ok(Rvalue::Cast(self.parse_cast_kind(args[1])?, source, expr.ty))
             },
             @call(mir_checked, args) => {
                 parse_by_kind!(self, args[0], _, "binary op",
@@ -278,7 +371,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                     fields.iter().map(|e| self.parse_operand(*e)).collect::<Result<_, _>>()?
                 ))
             },
-            ExprKind::Adt(box AdtExpr { adt_def, variant_index, args, fields, .. }) => {
+            ExprKind::Adt(AdtExpr { adt_def, variant_index, args, fields, .. }) => {
                 let is_union = adt_def.is_union();
                 let active_field_index = is_union.then(|| fields[0].name);
 
@@ -287,7 +380,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                     fields.iter().map(|f| self.parse_operand(f.expr)).collect::<Result<_, _>>()?
                 ))
             },
-            _ => self.parse_operand(expr_id).map(Rvalue::Use),
+            _ => self.parse_operand(expr_id).map(|op| Rvalue::Use(op, WithRetag::Yes)),
         )
     }
 
@@ -319,7 +412,8 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             @call(mir_field, args) => {
                 let (parent, place_ty) = self.parse_place_inner(args[0])?;
                 let field = FieldIdx::from_u32(self.parse_integer_literal(args[1])? as u32);
-                let field_ty = PlaceTy::field_ty(self.tcx, place_ty.ty, place_ty.variant_index, field);
+                let field_ty = PlaceTy::field_ty(self.tcx, place_ty.ty, place_ty.variant_index, field)
+                    .skip_norm_wip();
                 let proj = PlaceElem::Field(field, field_ty);
                 let place = parent.project_deeper(&[proj], self.tcx);
                 return Ok((place, PlaceTy::from_ty(field_ty)));

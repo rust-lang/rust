@@ -1,7 +1,7 @@
 //@ run-pass
 #![allow(dead_code)]
 
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 
 // Ensure that specialization works for impls defined directly on a projection
 

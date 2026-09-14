@@ -1,5 +1,6 @@
 //@ check-pass
 //@ edition: 2015
+//@ reference: macro.decl.meta.edition2024
 
 // Ensures expr_2021 fragment specifier is accepted in old editions
 

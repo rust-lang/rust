@@ -2,18 +2,18 @@
 //!
 //! ## Architecture
 //! This crate is part of a series of crates and modules that handle attribute processing.
-//! - [rustc_hir::attrs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html): Defines the data structures that store parsed attributes
-//! - [rustc_attr_parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html): This crate, handles the parsing of attributes
-//! - (planned) rustc_attr_validation: Will handle attribute validation, logic currently handled in `rustc_passes`
+//! - [`rustc_attr_ir`]: Defines the data structures that store parsed attributes
+//! - `rustc_attr_parsing`: This crate, handles the parsing of attributes
+//! - [`rustc_passes::check_attr`] handles attribute validation that cannot be done in this crate
 //!
 //! The separation between data structures and parsing follows the principle of separation of concerns.
-//! Data structures (`rustc_hir::attrs`) define what attributes look like after parsing.
+//! Data structures (`rustc_attr_ir`) define what attributes look like after parsing.
 //! This crate (`rustc_attr_parsing`) handles how to convert raw tokens into those structures.
 //! This split allows other parts of the compiler to use the data structures without needing
 //! the parsing logic, making the codebase more modular and maintainable.
 //!
 //! ## Background
-//! Previously, the compiler had a single attribute definition (`ast::Attribute`) with parsing and
+//! Previously, the compiler had a single attribute definition ([`ast::Attribute`]) with parsing and
 //! validation scattered throughout the codebase. This was reorganized for better maintainability
 //! (see [#131229](https://github.com/rust-lang/rust/issues/131229)).
 //!
@@ -61,8 +61,8 @@
 //! `#[stable(...)]` and `#[unstable()]` cannot occur together, and both semantically define
 //! a "stability" of an item. So, the stability attribute has an
 //! [`AttributeParser`](attributes::AttributeParser) that recognizes both the `#[stable()]`
-//! and `#[unstable()]` syntactic attributes, and at the end produce a single
-//! [`AttributeKind::Stability`](rustc_hir::attrs::AttributeKind::Stability).
+//! and `#[unstable()]` syntactic attributes, and at the end produces a single
+//! [`AttributeKind::Stability`](rustc_attr_ir::AttributeKind::Stability).
 //!
 //! When multiple instances of the same attribute are allowed, they're combined into a single
 //! semantic attribute. For example:
@@ -75,40 +75,49 @@
 //!
 //! This is equivalent to `#[repr(C, packed)]` and results in a single `AttributeKind::Repr`
 //! containing both `C` and `packed` annotations.
+//!
+//! ## Early attribute parsing
+//!
+//! While lowering to the HIR, all attributes are parsed using the attribute parsers.
+//! However, sometimes an attributes' parsed form is needed before the HIR is constructed.
+//! This is referred to as "early" attribute parsing,
+//! and is performed using the `parse_limited_*` family of functions on `AttributeParser`.
+//!
+//! [`ast::Attribute`]: rustc_ast::ast::Attribute
+//! [`rustc_passes::check_attr`]: ../rustc_passes/check_attr/index.html
 
 // tidy-alphabetical-start
+#![expect(internal_features, reason = "rustc_attrs")]
 #![feature(decl_macro)]
+#![feature(deref_patterns)]
 #![feature(iter_intersperse)]
+#![feature(rustc_attrs)]
+#![feature(try_blocks)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 #[macro_use]
-/// All the individual attribute parsers for each of rustc's built-in attributes.
 mod attributes;
-
-/// All the important types given to attribute parsers when parsing
-pub(crate) mod context;
-
-/// Code that other crates interact with, to actually parse a list (or sometimes single)
-/// attribute.
+mod check_cfg;
+mod context;
+mod diagnostics;
 mod interface;
-
-/// Despite this entire module called attribute parsing and the term being a little overloaded,
-/// in this module the code lives that actually breaks up tokenstreams into semantic pieces of attributes,
-/// like lists or name-value pairs.
 pub mod parser;
-
-mod early_parsed;
 mod safety;
-mod session_diagnostics;
+mod stability;
+mod synthetic;
 mod target_checking;
+mod template;
 pub mod validate_attr;
 
+pub use attributes::AttributeSafety;
 pub use attributes::cfg::{
     CFG_TEMPLATE, EvalConfigResult, eval_config_entry, parse_cfg, parse_cfg_attr, parse_cfg_entry,
 };
 pub use attributes::cfg_select::*;
 pub use attributes::util::{is_builtin_attr, parse_version};
-pub use context::{Early, Late, OmitDoc, ShouldEmit};
-pub use interface::AttributeParser;
-pub use session_diagnostics::ParsedDescription;
+pub use context::ShouldEmit;
+pub use diagnostics::ParsedDescription;
+pub use interface::{AttributeParser, EmitAttribute};
+pub use rustc_parse::parser::Recovery;
+pub use template::AttributeTemplate;

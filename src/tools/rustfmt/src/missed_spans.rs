@@ -63,7 +63,10 @@ impl<'a> FmtVisitor<'a> {
         let config = self.config;
         self.format_missing_inner(end, |this, last_snippet, snippet| {
             this.push_str(last_snippet.trim_end());
-            if last_snippet == snippet && !this.output_at_start() {
+            if last_snippet == snippet
+                && !this.output_at_start()
+                && !out_of_file_lines_range!(this, mk_sp(this.last_pos, end))
+            {
                 // No new lines in the snippet.
                 this.push_str("\n");
             }
@@ -100,7 +103,11 @@ impl<'a> FmtVisitor<'a> {
         let snippet = self.snippet(span);
 
         // Do nothing for spaces in the beginning of the file
-        if start == BytePos(0) && end.0 as usize == snippet.len() && snippet.trim().is_empty() {
+        if start == BytePos(0)
+            && end.0 as usize == snippet.len()
+            && snippet.trim().is_empty()
+            && !out_of_file_lines_range!(self, span)
+        {
             return;
         }
 
@@ -262,11 +269,7 @@ impl<'a> FmtVisitor<'a> {
             Indent::from_width(self.config, last_line_width(&self.buffer))
         };
 
-        let comment_width = ::std::cmp::min(
-            self.config.comment_width(),
-            self.config.max_width() - self.block_indent.width(),
-        );
-        let comment_shape = Shape::legacy(comment_width, comment_indent);
+        let comment_shape = Shape::indented(comment_indent, self.config).comment(self.config);
 
         if on_same_line {
             match subslice.find('\n') {
@@ -357,11 +360,20 @@ impl<'a> FmtVisitor<'a> {
             }
         }
 
-        let remaining = snippet[status.line_start..subslice.len() + offset].trim();
-        if !remaining.is_empty() {
-            self.push_str(&self.block_indent.to_string(self.config));
-            self.push_str(remaining);
-            status.line_start = subslice.len() + offset;
+        let mut remaining = &snippet[status.line_start..subslice.len() + offset];
+        status.line_start = subslice.len() + offset;
+
+        let skip_this_line = !self
+            .config
+            .file_lines()
+            .contains_line(file_name, status.cur_line);
+        if !skip_this_line {
+            remaining = remaining.trim();
+            if !remaining.is_empty() {
+                self.push_str(&self.block_indent.to_string(self.config));
+            }
         }
+
+        self.push_str(remaining);
     }
 }

@@ -1,3 +1,3 @@
-//@error-in-other-file: duplicate key `cognitive-complexity-threshold`
+//@error-in-other-file: duplicate key
 
 fn main() {}

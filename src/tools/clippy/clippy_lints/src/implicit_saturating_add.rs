@@ -6,9 +6,8 @@ use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{AssignOpKind, BinOpKind, Block, Expr, ExprKind, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::{IntTy, Ty, UintTy};
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -67,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
             && let ctxt = expr.span.ctxt()
             && ex.span.ctxt() == ctxt
             && cond.span.ctxt() == ctxt
-            && clippy_utils::SpanlessEq::new(cx).eq_expr(l, target)
+            && clippy_utils::SpanlessEq::new(cx).eq_expr(ctxt, l, target)
             && AssignOpKind::AddAssign == op1.node
             && let ExprKind::Lit(lit) = value.kind
             && let LitKind::Int(Pu128(1), LitIntType::Unsuffixed) = lit.node

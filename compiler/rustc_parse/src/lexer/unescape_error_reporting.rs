@@ -3,12 +3,14 @@
 use std::iter::once;
 use std::ops::Range;
 
-use rustc_errors::{Applicability, DiagCtxtHandle, ErrorGuaranteed};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_literal_escaper::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
 use tracing::debug;
 
-use crate::errors::{MoreThanOneCharNote, MoreThanOneCharSugg, NoBraceUnicodeSub, UnescapeError};
+use crate::diagnostics::{
+    MoreThanOneCharNote, MoreThanOneCharSugg, NoBraceUnicodeSub, UnescapeError,
+};
 
 pub(crate) fn emit_unescape_error(
     dcx: DiagCtxtHandle<'_>,
@@ -160,7 +162,7 @@ pub(crate) fn emit_unescape_error(
                 );
             } else {
                 if mode == Mode::Str || mode == Mode::Char {
-                    diag.span_suggestion(
+                    diag.span_suggestion_verbose(
                         full_lit_span,
                         "if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal",
                         format!("r\"{lit}\""),
@@ -172,6 +174,8 @@ pub(crate) fn emit_unescape_error(
                     "for more information, visit \
                      <https://doc.rust-lang.org/reference/tokens.html#literals>",
                 );
+
+                foreign_escape_suggestion(&mut diag, (&ec, span), err_span);
             }
             diag.emit()
         }
@@ -200,7 +204,7 @@ pub(crate) fn emit_unescape_error(
             // Note: the \\xHH suggestions are not given for raw byte string
             // literals, because they are araw and so cannot use any escapes.
             if (c as u32) <= 0xFF && mode != Mode::RawByteStr {
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     span,
                     format!(
                         "if you meant to use the unicode code point for {c:?}, use a \\xHH escape"
@@ -213,7 +217,7 @@ pub(crate) fn emit_unescape_error(
             } else if mode != Mode::RawByteStr {
                 let mut utf8 = String::new();
                 utf8.push(c);
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     span,
                     format!("if you meant to use the UTF-8 encoding of {c:?}, use \\xHH escapes"),
                     utf8.as_bytes()
@@ -300,6 +304,44 @@ pub(crate) fn emit_unescape_error(
             return None;
         }
     })
+}
+
+/// Add additional suggestions for escapes that are supported by C.
+fn foreign_escape_suggestion(
+    diag: &mut Diag<'_>,
+    (escaped_char, escape_span): (&str, Span),
+    err_span: Span,
+) {
+    if escaped_char == "?" {
+        diag.span_suggestion_verbose(
+            err_span,
+            "if you meant to write a literal question mark, don't escape the character",
+            "?",
+            Applicability::MaybeIncorrect,
+        );
+        return;
+    }
+
+    if u8::from_str_radix(escaped_char, 8).is_ok() {
+        diag.help(r"if you meant to write an ASCII control code, use a `\xNN` hex escape");
+        return;
+    }
+
+    let (name, hex) = match escaped_char {
+        "a" => ("an audible bell", "07"),
+        "b" => ("a backspace", "08"),
+        "f" => ("a form feed", "0C"),
+        "v" => ("a vertical tab", "0B"),
+        "e" => ("an ANSI escape sequence", "1B"),
+        _ => return,
+    };
+
+    diag.span_suggestion_verbose(
+        escape_span,
+        format!("if you meant to write {name}, use a hex escape"),
+        format!("x{hex}"),
+        Applicability::MaybeIncorrect,
+    );
 }
 
 /// Pushes a character to a message string for error reporting

@@ -25,7 +25,7 @@ impl Default for ZeroToken {
 
 impl fmt::Debug for ZeroToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&(self.0 as usize), f)
+        fmt::Debug::fmt(&self.0.addr(), f)
     }
 }
 
@@ -315,5 +315,11 @@ impl<T> Channel<T> {
     /// Returns `true` if the channel is full.
     pub(crate) fn is_full(&self) -> bool {
         true
+    }
+
+    /// Returns `true` if the channel is disconnected.
+    pub(crate) fn is_disconnected(&self) -> bool {
+        let inner = self.inner.lock().unwrap();
+        inner.is_disconnected
     }
 }

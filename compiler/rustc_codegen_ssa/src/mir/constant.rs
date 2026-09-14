@@ -5,7 +5,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, mir, span_bug};
 
 use super::FunctionCx;
-use crate::errors;
+use crate::diagnostics;
 use crate::mir::operand::OperandRef;
 use crate::traits::*;
 
@@ -38,8 +38,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &self,
         constant: &mir::ConstOperand<'tcx>,
     ) -> Result<Result<ty::ValTree<'tcx>, Ty<'tcx>>, ErrorHandled> {
+        let tcx = self.cx.tcx();
         let uv = match self.monomorphize(constant.const_) {
-            mir::Const::Unevaluated(uv, _) => uv.shrink(),
+            mir::Const::Unevaluated(uv, _) => uv.shrink(tcx),
             mir::Const::Ty(_, c) => match c.kind() {
                 // A constant that came from a const generic but was then used as an argument to
                 // old-style simd_shuffle (passing as argument instead of as a generic param).
@@ -57,7 +58,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             other => span_bug!(constant.span, "{other:#?}"),
         };
         let uv = self.monomorphize(uv);
-        self.cx.tcx().const_eval_resolve_for_typeck(self.cx.typing_env(), uv, constant.span)
+        tcx.const_eval_resolve_for_typeck(self.cx.typing_env(), uv, constant.span)
     }
 
     /// process constant containing SIMD shuffle indices & constant vectors
@@ -97,7 +98,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.const_vector(&values)
             })
             .unwrap_or_else(|| {
-                bx.tcx().dcx().emit_err(errors::ShuffleIndicesEvaluation { span: constant.span });
+                bx.tcx()
+                    .dcx()
+                    .emit_err(diagnostics::ShuffleIndicesEvaluation { span: constant.span });
                 // We've errored, so we don't have to produce working code.
                 let llty = bx.backend_type(bx.layout_of(ty));
                 bx.const_undef(llty)

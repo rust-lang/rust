@@ -5,10 +5,16 @@
 //@ normalize-stdout: "\d+#" -> "0#"
 
 // minimal junk
-#![feature /* 0#0 */(no_core)]
+#![feature /* 0#0 */(no_core /* 0#0 */)]
 #![no_core /* 0#0 */]
 
-macro_rules! foo /* 0#0 */ { ($x: ident) => { y + $x } }
+macro_rules! foo
+    /*
+    0#0
+    */ {
+    ($x /* 0#0 */: ident /* 0#0 */) =>
+    { y /* 0#0 */ + $x /* 0#0 */ }
+}
 
 fn bar /* 0#0 */() {
     let x /* 0#0 */ = 1;

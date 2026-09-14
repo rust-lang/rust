@@ -2,7 +2,8 @@
 //! If `Box` has a local allocator, then it can't be `noalias` as the allocator
 //! may want to access allocator state based on the data pointer.
 
-//@revisions: stack tree
+//@revisions: stack tree tree_implicit_writes
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(allocator_api)]
 
@@ -45,6 +46,13 @@ impl MyBin {
         let end = start + BIN_SIZE * mem::size_of::<usize>();
         let addr = ptr.addr().get();
         assert!((start..end).contains(&addr));
+
+        // We can't update `top` as this may not be the last bin, but we can pretend to do so
+        // such that the aliasing model checks things.
+        // We access this via raw pointers so that the error span is in this file.
+        let top_ptr = (&raw const self.top) as *mut usize;
+        let top = top_ptr.read();
+        top_ptr.write(top);
     }
 }
 

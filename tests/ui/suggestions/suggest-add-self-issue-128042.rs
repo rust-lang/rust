@@ -5,7 +5,7 @@ struct Thing {
 impl Thing {
     fn oof(*mut Self) { //~ ERROR expected parameter name, found `*`
         self.state = 1;
-        //~^ ERROR expected value, found module `self`
+        //~^ ERROR cannot find value `self` in this scope
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
+    Arch, Cc, LinkerFlavor, Lld, LlvmAbi, PanicStrategy, RelocModel, Target, TargetMetadata,
+    TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -7,7 +8,7 @@ pub(crate) fn target() -> Target {
         llvm_target: "loongarch32-unknown-none".into(),
         metadata: TargetMetadata {
             description: Some("Freestanding/bare-metal LoongArch32".into()),
-            tier: Some(3),
+            tier: Some(2),
             host_tools: Some(false),
             std: Some(false),
         },
@@ -19,8 +20,9 @@ pub(crate) fn target() -> Target {
             features: "+f,+d".into(),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
-            llvm_abiname: "ilp32d".into(),
+            llvm_abiname: LlvmAbi::Ilp32d,
             max_atomic_width: Some(32),
+            mcount: "_mcount".into(),
             relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,
             ..Default::default()

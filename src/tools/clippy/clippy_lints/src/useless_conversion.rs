@@ -1,25 +1,25 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
 use clippy_utils::ty::{is_copy, same_type_modulo_regions};
 use clippy_utils::{get_parent_expr, is_ty_alias, sym};
 use rustc_errors::Applicability;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, PatKind};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::Obligation;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
-use rustc_session::impl_lint_pass;
+use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt as _};
 use rustc_span::Span;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` calls
+    /// Checks for `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIterator` calls
     /// which uselessly convert to the same type.
     ///
     /// ### Why is this bad?
@@ -38,7 +38,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.45.0"]
     pub USELESS_CONVERSION,
     complexity,
-    "calls to `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` which perform useless conversions to the same type"
+    "calls to `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIterator` which perform useless conversions to the same type"
 }
 
 impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
@@ -90,8 +90,8 @@ fn into_iter_bound<'tcx>(
 ) -> Option<Span> {
     let mut into_iter_span = None;
 
-    for (pred, span) in cx.tcx.explicit_predicates_of(fn_did).predicates {
-        if let ty::ClauseKind::Trait(tr) = pred.kind().skip_binder()
+    for (clause, span) in cx.tcx.explicit_clauses_of(fn_did).clauses {
+        if let ty::ClauseKind::Trait(tr) = clause.kind().skip_binder()
             && tr.self_ty().is_param(param_index)
         {
             if tr.def_id() == into_iter_did {
@@ -112,7 +112,7 @@ fn into_iter_bound<'tcx>(
                     }
                 }));
 
-                let predicate = EarlyBinder::bind(tr).instantiate(cx.tcx, args);
+                let predicate = EarlyBinder::bind(cx.tcx, tr).instantiate(cx.tcx, args).skip_norm_wip();
                 let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                 if !cx
                     .tcx
@@ -132,8 +132,8 @@ fn into_iter_bound<'tcx>(
 /// Extracts the receiver of a `.into_iter()` method call.
 fn into_iter_call<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>) -> Option<&'hir Expr<'hir>> {
     if let ExprKind::MethodCall(name, recv, [], _) = expr.kind
-        && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::IntoIterator)
         && name.ident.name == sym::into_iter
+        && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::IntoIterator)
     {
         Some(recv)
     } else {
@@ -187,7 +187,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         Some(sym::Into | sym::From)
                     )
                     && let ty::FnDef(_, args) = cx.typeck_results().expr_ty(arg).kind()
-                    && let &[from_ty, to_ty] = args.into_type_list(cx.tcx).as_slice()
+                    && let &[from_ty, to_ty] = args.no_bound_vars().unwrap().into_type_list(cx.tcx).as_slice()
                     && same_type_modulo_regions(from_ty, to_ty)
                 {
                     span_lint_and_then(
@@ -208,7 +208,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
             },
 
             ExprKind::MethodCall(name, recv, [], _) => {
-                if cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::Into) && name.ident.name == sym::into {
+                if name.ident.name == sym::into && cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::Into) {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(recv);
                     if same_type_modulo_regions(a, b) {
@@ -322,13 +322,13 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         return;
                     }
 
-                    let a = cx.typeck_results().expr_ty(e);
-                    let b = cx.typeck_results().expr_ty(recv);
+                    let iter_ty = cx.typeck_results().expr_ty(e);
+                    let into_iter_ty = cx.typeck_results().expr_ty(recv);
 
                     // If the types are identical then .into_iter() can be removed, unless the type
                     // implements Copy, in which case .into_iter() returns a copy of the receiver and
                     // cannot be safely omitted.
-                    if same_type_modulo_regions(a, b) && !is_copy(cx, b) {
+                    if same_type_modulo_regions(iter_ty, into_iter_ty) && !is_copy(cx, into_iter_ty) {
                         // Below we check if the parent method call meets the following conditions:
                         // 1. First parameter is `&mut self` (requires mutable reference)
                         // 2. Second parameter implements the `FnMut` trait (e.g., Iterator::any)
@@ -343,15 +343,36 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             && let Some(self_ty) = inputs.first()
                             && let ty::Ref(_, _, Mutability::Mut) = self_ty.kind()
                             && let Some(second_ty) = inputs.get(1)
-                            && let predicates = cx.tcx.param_env(def_id).caller_bounds()
-                            && predicates.iter().any(|pred| {
-                                if let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder() {
+                            && cx.tcx.param_env(def_id).caller_bounds().any(|clause| {
+                                if let ty::ClauseKind::Trait(trait_pred) = clause.kind().skip_binder() {
                                     trait_pred.self_ty() == *second_ty
                                         && cx.tcx.lang_items().fn_mut_trait() == Some(trait_pred.def_id())
                                 } else {
                                     false
                                 }
                             })
+                        {
+                            return;
+                        }
+
+                        // In a future edition of Rust (edition 2027, hopefully), or with the unstable
+                        // `feature(new_range)`, the syntax `a..b` will change from producing type `core::ops::Range`,
+                        // which implements `Iterator`, to producing type `core::range::Range`, which implements
+                        // `IntoIterator` only.
+                        //
+                        // Therefore, an `(a..b).into_iter()` call that is technically useless today will be useful for
+                        // edition migration or unstable feature testing; do not remove it.
+                        //
+                        // In the future, after most code has either migrated to the new range types or declined to
+                        // do so, this special case will be much less useful and could be removed.
+                        if let Some(parent) = get_parent_expr(cx, e)
+                            // Is a method call, not, say, a for loop where the conversion *is* useless.
+                            && let ExprKind::MethodCall(_, _, _, _) = parent.kind
+                            // These lang items are the 3 core::ops range types that implement Iterator.
+                            // All other range types do not implement Iterator, so this lint does not apply to them.
+                            && (into_iter_ty.is_lang_item(cx, LangItem::Range)
+                                || into_iter_ty.is_lang_item(cx, LangItem::RangeFrom)
+                                || into_iter_ty.is_lang_item(cx, LangItem::RangeInclusiveStruct))
                         {
                             return;
                         }
@@ -364,20 +385,20 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            format!("useless conversion to the same type: `{b}`"),
+                            format!("useless conversion to the same type: `{into_iter_ty}`"),
                             "consider removing `.into_iter()`",
                             sugg,
                             applicability,
                         );
                     }
                 }
-                if cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::TryInto)
-                    && name.ident.name == sym::try_into
+                if name.ident.name == sym::try_into
+                    && cx.ty_based_def(e).opt_parent(cx).is_diag_item(cx, sym::TryInto)
                     && let a = cx.typeck_results().expr_ty(e)
                     && let b = cx.typeck_results().expr_ty(recv)
                     && a.is_diag_item(cx, sym::Result)
                     && let ty::Adt(_, args) = a.kind()
-                    && let Some(a_type) = args.types().next()
+                    && let Some(a_type) = args.iter().next().and_then(GenericArg::as_type)
                     && same_type_modulo_regions(a_type, b)
                 {
                     span_lint_and_help(
@@ -402,7 +423,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     if name == sym::try_from_fn
                         && a.is_diag_item(cx, sym::Result)
                         && let ty::Adt(_, args) = a.kind()
-                        && let Some(a_type) = args.types().next()
+                        && let Some(a_type) = args.iter().next().and_then(GenericArg::as_type)
                         && same_type_modulo_regions(a_type, b)
                     {
                         let hint = format!("consider removing `{}()`", snippet(cx, path.span, "TryFrom::try_from"));

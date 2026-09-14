@@ -229,12 +229,21 @@ class Context:
         assert len(parents) == 2, f"expected two-parent merge but got:\n{parents}"
         base = parents[0].strip()
         incoming = parents[1].strip()
-
         eprint(f"base: {base}, incoming: {incoming}")
+
+        merge_base = sp.check_output(
+            GIT + ["merge-base", base, incoming], text=True
+        ).strip()
+        eprint(f"merge base: {merge_base}")
+
         textlist = sp.check_output(
-            GIT + ["diff", base, incoming, "--name-only"], text=True
+            GIT + ["diff", merge_base, incoming, "--name-only"], text=True
         )
         self.changed = [Path(p) for p in textlist.splitlines()]
+        eprint("all changed: [")
+        for f in self.changed:
+            eprint(f"    {f},")
+        eprint("]")
 
     def is_pr(self) -> bool:
         """Check if we are looking at a PR rather than a push."""
@@ -304,7 +313,7 @@ class Context:
                 eprint("Skipping all extensive tests")
 
         changed = self.changed_routines()
-        eprint(f"Changed: {changed}")
+        eprint(f"changed routines: {changed}")
 
         matrix = []
         total_to_test = 0
@@ -361,6 +370,10 @@ def base_name(name: str) -> tuple[str, str]:
         return (name.rstrip("f"), "f32")
     elif name.endswith("f16"):
         return (name.rstrip("f16"), "f16")
+    elif name.endswith("f32"):
+        return (name.rstrip("f32"), "f32")
+    elif name.endswith("f64"):
+        return (name.rstrip("f64"), "f64")
     elif name.endswith("f128"):
         return (name.rstrip("f128"), "f128")
 

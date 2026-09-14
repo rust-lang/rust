@@ -96,15 +96,12 @@ SOURCE_FILE
             ATTR
               POUND "#"
               L_BRACK "["
-              META
-                PATH
-                  PATH_SEGMENT
-                    NAME_REF
-                      IDENT "cfg"
-                TOKEN_TREE
-                  L_PAREN "("
+              CFG_META
+                CFG_KW "cfg"
+                L_PAREN "("
+                CFG_ATOM
                   IDENT "never"
-                  R_PAREN ")"
+                R_PAREN ")"
               R_BRACK "]"
             WHITESPACE " "
             SLICE_PAT

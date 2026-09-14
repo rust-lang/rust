@@ -1,5 +1,5 @@
-//@ revisions: cfail1 cfail2
-//@ should-ice
+//@ revisions: bfail1 bfail2
+//@ failure-status: 101
 
 #![feature(rustc_attrs)]
 

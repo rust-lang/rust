@@ -31,7 +31,8 @@ impl DenseLocationMap {
         for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
             basic_blocks.extend((0..=bb_data.statements.len()).map(|_| bb));
         }
-
+        // Invariant: no block is preceded by more than all statements.
+        debug_assert!(*statements_before_block.iter().max().unwrap() < num_points);
         Self { statements_before_block, basic_blocks, num_points }
     }
 
@@ -42,10 +43,14 @@ impl DenseLocationMap {
     }
 
     /// Converts a `Location` into a `PointIndex`. O(1).
+    /// [[`Self::point_in_range()`]] guaranteed for the returned index.
     #[inline]
     pub fn point_from_location(&self, location: Location) -> PointIndex {
         let Location { block, statement_index } = location;
         let start_index = self.statements_before_block[block];
+        // Note the invariant in [`Self::new()`]; if the indexing
+        // operation above did not panic then this holds by construction.
+        debug_assert!(start_index < self.num_points);
         PointIndex::new(start_index + statement_index)
     }
 

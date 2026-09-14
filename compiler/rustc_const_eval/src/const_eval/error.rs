@@ -1,6 +1,6 @@
 use std::{fmt, mem};
 
-use rustc_errors::Diag;
+use rustc_errors::{Diag, E0080};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::interpret::{
     AllocId, Provenance, ReportedErrorInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
@@ -8,10 +8,10 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::ConstInt;
 use rustc_middle::ty::layout::LayoutError;
-use rustc_span::{Span, Symbol};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 
 use super::CompileTimeMachine;
-use crate::errors::{self, FrameNote};
+use crate::diagnostics::{self, FrameNote};
 use crate::interpret::{
     CtfeProvenance, ErrorHandled, Frame, InterpCx, InterpErrorInfo, InterpErrorKind,
     MachineStopType, Pointer, err_inval, err_machine_stop,
@@ -92,10 +92,10 @@ impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     }
 }
 
-pub fn get_span_and_frames<'tcx>(
+pub(crate) fn get_span_and_frames<'tcx>(
     tcx: TyCtxtAt<'tcx>,
     stack: &[Frame<'tcx, impl Provenance, impl Sized>],
-) -> (Span, Vec<errors::FrameNote>) {
+) -> (Span, Vec<diagnostics::FrameNote>) {
     let mut stacktrace = Frame::generate_stacktrace_from_stack(stack, *tcx);
     // Filter out `requires_caller_location` frames.
     stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
@@ -106,8 +106,8 @@ pub fn get_span_and_frames<'tcx>(
     // Add notes to the backtrace. Don't print a single-line backtrace though.
     if stacktrace.len() > 1 {
         // Helper closure to print duplicated lines.
-        let mut add_frame = |mut frame: errors::FrameNote| {
-            frames.push(errors::FrameNote { times: 0, ..frame.clone() });
+        let mut add_frame = |mut frame: diagnostics::FrameNote| {
+            frames.push(diagnostics::FrameNote { times: 0, ..frame.clone() });
             // Don't print [... additional calls ...] if the number of lines is small
             if frame.times < 3 {
                 let times = frame.times;
@@ -118,7 +118,7 @@ pub fn get_span_and_frames<'tcx>(
             }
         };
 
-        let mut last_frame: Option<errors::FrameNote> = None;
+        let mut last_frame: Option<diagnostics::FrameNote> = None;
         for frame_info in &stacktrace {
             let frame = frame_info.as_note(*tcx);
             match last_frame.as_mut() {
@@ -164,36 +164,30 @@ pub fn get_span_and_frames<'tcx>(
 /// This will use the `mk` function for adding more information to the error.
 /// You can use it to add a stacktrace of current execution according to
 /// `get_span_and_frames` or just give context on where the const eval error happened.
-pub(super) fn report<'tcx, C, F>(
+pub(super) fn report<'tcx>(
     ecx: &InterpCx<'tcx, CompileTimeMachine<'tcx>>,
     error: InterpErrorKind<'tcx>,
-    span: Span,
-    get_span_and_frames: C,
-    mk: F,
-) -> ErrorHandled
-where
-    C: FnOnce() -> (Span, Vec<FrameNote>),
-    F: FnOnce(&mut Diag<'_>, Span, Vec<FrameNote>),
-{
+    mk: impl FnOnce(&mut Diag<'_>, Span, Vec<FrameNote>),
+) -> ErrorHandled {
     let tcx = ecx.tcx.tcx;
     // Special handling for certain errors
     match error {
         // Don't emit a new diagnostic for these errors, they are already reported elsewhere or
         // should remain silent.
-        err_inval!(AlreadyReported(info)) => ErrorHandled::Reported(info, span),
+        err_inval!(AlreadyReported(info)) => ErrorHandled::Reported(info, DUMMY_SP),
         err_inval!(Layout(LayoutError::TooGeneric(_))) | err_inval!(TooGeneric) => {
-            ErrorHandled::TooGeneric(span)
+            ErrorHandled::TooGeneric(DUMMY_SP)
         }
         err_inval!(Layout(LayoutError::ReferencesError(guar))) => {
             // This can occur in infallible promoteds e.g. when a non-existent type or field is
             // encountered.
-            ErrorHandled::Reported(ReportedErrorInfo::allowed_in_infallible(guar), span)
+            ErrorHandled::Reported(ReportedErrorInfo::allowed_in_infallible(guar), DUMMY_SP)
         }
         // Report remaining errors.
         _ => {
-            let (our_span, frames) = get_span_and_frames();
-            let span = span.substitute_dummy(our_span);
-            let mut err = tcx.dcx().struct_span_err(our_span, error.to_string());
+            let (span, frames) = super::get_span_and_frames(ecx.tcx, ecx.stack());
+            let mut err = tcx.dcx().struct_span_err(span, error.to_string());
+            err.code(E0080);
             if matches!(
                 error,
                 InterpErrorKind::UndefinedBehavior(UndefinedBehaviorInfo::ValidationError {
@@ -213,7 +207,7 @@ where
             {
                 let bytes = ecx.print_alloc_bytes_for_diagnostics(alloc_id);
                 let info = ecx.get_alloc_info(alloc_id);
-                let raw_bytes = errors::RawBytesNote {
+                let raw_bytes = diagnostics::RawBytesNote {
                     size: info.size.bytes(),
                     align: info.align.bytes(),
                     bytes,
@@ -246,8 +240,8 @@ where
 pub(super) fn lint<'tcx, L>(
     tcx: TyCtxtAt<'tcx>,
     machine: &CompileTimeMachine<'tcx>,
-    lint: &'static rustc_session::lint::Lint,
-    decorator: impl FnOnce(Vec<errors::FrameNote>) -> L,
+    lint: &'static rustc_lint_defs::Lint,
+    decorator: impl FnOnce(Vec<diagnostics::FrameNote>) -> L,
 ) where
     L: for<'a> rustc_errors::Diagnostic<'a, ()>,
 {

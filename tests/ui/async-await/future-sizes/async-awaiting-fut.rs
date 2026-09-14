@@ -4,8 +4,8 @@
 //@ needs-deterministic-layouts
 //@ edition:2021
 //@ build-pass
-//@ ignore-pass
-//@ only-x86_64
+//@ no-pass-override (codegen affects -Zprint-type-sizes)
+//@ only-64bit
 
 async fn wait() {}
 

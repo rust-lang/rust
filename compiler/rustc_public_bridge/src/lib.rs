@@ -5,7 +5,7 @@
 //! This crate is not intended to be invoked directly by users.
 //! This crate is the public API of rustc that will be invoked by the `rustc_public` crate.
 //!
-//! For more information see <https://github.com/rust-lang/project-stable-mir>
+//! For more information see <https://github.com/rust-lang/rustc_public>
 //!
 //! # Note
 //!
@@ -13,7 +13,7 @@
 
 // tidy-alphabetical-start
 #![allow(rustc::usage_of_ty_tykind)]
-#![doc(test(attr(allow(unused_variables), deny(warnings), allow(internal_features))))]
+#![doc(test(attr(allow(unused_variables), deny(warnings))))]
 #![feature(trait_alias)]
 // tidy-alphabetical-end
 

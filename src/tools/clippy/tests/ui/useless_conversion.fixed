@@ -1,8 +1,7 @@
-#![deny(clippy::useless_conversion)]
+#![warn(clippy::useless_conversion)]
+// FIXME(static_mut_refs): use raw pointers instead of references
+#![expect(static_mut_refs)]
 #![allow(clippy::into_iter_on_ref)]
-#![allow(clippy::needless_ifs, clippy::unnecessary_wraps, unused)]
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-#![allow(static_mut_refs)]
 
 use std::ops::ControlFlow;
 
@@ -72,13 +71,13 @@ fn lint_into_iter_on_expr_implementing_iterator_2() {
 
 #[allow(const_item_mutation)]
 fn lint_into_iter_on_const_implementing_iterator() {
-    const NUMBERS: std::ops::Range<i32> = 0..10;
+    const NUMBERS: std::iter::Empty<i32> = std::iter::empty();
     let _ = NUMBERS.next();
     //~^ useless_conversion
 }
 
 fn lint_into_iter_on_const_implementing_iterator_2() {
-    const NUMBERS: std::ops::Range<i32> = 0..10;
+    const NUMBERS: std::iter::Empty<i32> = std::iter::empty();
     let mut n = NUMBERS;
     //~^ useless_conversion
     n.next();
@@ -173,7 +172,6 @@ fn main() {
     issue11300::bar();
 }
 
-#[allow(dead_code)]
 fn issue11065_fp() {
     use std::option::IntoIter;
     fn takes_into_iter(_: impl IntoIterator<Item = i32>) {}
@@ -187,7 +185,6 @@ fn issue11065_fp() {
     x!(Some(5).into_iter());
 }
 
-#[allow(dead_code)]
 fn explicit_into_iter_fn_arg() {
     fn a<T>(_: T) {}
     fn b<T: IntoIterator<Item = i32>>(_: T) {}
@@ -423,10 +420,8 @@ mod issue11819 {
     }
 }
 
-fn issue14739() {
-    use std::ops::Range;
-
-    const R: Range<u32> = 2..7;
+fn issue14800() {
+    const R: std::iter::Empty<u32> = std::iter::empty();
 
     R.into_iter().all(|_x| true); // no lint
 
@@ -436,6 +431,33 @@ fn issue14739() {
     //~^ useless_conversion
     let _ = R.map(|_x| 0);
     //~^ useless_conversion
+}
+
+// In a future edition of Rust or with the unstable `feature(new_range)`, the syntax `a..b`
+// will change from producing type `core::ops::Range`, which implements `Iterator`, to
+// producing type `core::range::Range`, which implements `IntoIterator`.
+//
+// Therefore, an `.into_iter()` call that is technically useless today will be useful for
+// edition migration or unstable feature testing; do not remove it.
+//
+// This test case tests that the ranges produced *by range syntax* aren’t linted on, which
+// should be true both before and after the expected 2027 edition migration (but after such
+// migration, this test will not really be testing anything).
+fn do_not_lint_on_ops_range_into_iter_before_method() {
+    #![allow(clippy::never_loop)]
+
+    // No lint on these
+    (0..10).into_iter().for_each(drop);
+    (0..=10).into_iter().for_each(drop);
+    (0..).into_iter().take(10).for_each(drop);
+
+    // But do still lint on for loops
+    for _ in (0..10) {} //~ useless_conversion
+    for _ in (0..=10) {} //~ useless_conversion
+    for _ in (0..) {
+        //~^ useless_conversion
+        break;
+    }
 }
 
 fn issue16165() {

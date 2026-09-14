@@ -1,4 +1,6 @@
-//@compile-flags: -Zmiri-tree-borrows
+//@revisions: tree tree_implicit_writes
+//@[tree]compile-flags: -Zmiri-tree-borrows
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 
 // copy_nonoverlapping works regardless of the order in which we construct
 // the arguments.

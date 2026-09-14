@@ -61,7 +61,7 @@ fn check_msg(body: &Body, expected: &str) {
                             .find_map(|stmt| match &stmt.kind {
                                 StatementKind::Assign(
                                     destination,
-                                    Rvalue::Use(Operand::Constant(msg_const)),
+                                    Rvalue::Use(Operand::Constant(msg_const), _),
                                 ) if destination == place => Some(msg_const),
                                 _ => None,
                             })
@@ -95,7 +95,7 @@ fn change_panic_msg(mut body: Body, new_msg: &str) -> Body {
                 let new_const = MirConst::from_str(new_msg);
                 args[0] = Operand::Constant(ConstOperand {
                     const_: new_const,
-                    span: bb.terminator.span,
+                    span: bb.terminator.source_info.span,
                     user_ty: None,
                 });
             }

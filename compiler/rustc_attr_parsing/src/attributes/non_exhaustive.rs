@@ -1,18 +1,15 @@
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Span, Symbol, sym};
+use rustc_ast::{ItemKind, VariantData};
+use rustc_feature::AttributeStability;
 
-use crate::attributes::{NoArgsAttributeParser, OnDuplicate};
-use crate::context::Stage;
-use crate::target_checking::AllowedTargets;
-use crate::target_checking::Policy::{Allow, Warn};
+use super::prelude::*;
+use crate::diagnostics::NonExhaustiveWithDefaultFieldValues;
 
 pub(crate) struct NonExhaustiveParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for NonExhaustiveParser {
+impl NoArgsAttributeParser for NonExhaustiveParser {
     const PATH: &[Symbol] = &[sym::non_exhaustive];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Enum),
         Allow(Target::Struct),
         Allow(Target::Variant),
@@ -21,5 +18,25 @@ impl<S: Stage> NoArgsAttributeParser<S> for NonExhaustiveParser {
         Warn(Target::MacroDef),
         Warn(Target::MacroCall),
     ]);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NonExhaustive;
+
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        if cx.target != Target::Struct {
+            return;
+        }
+
+        let item = cx.target_item.expect("missing AST target item for Target::Struct");
+        let ItemKind::Struct(_, _, data) = &item.kind else {
+            panic!("expected struct AST target item for Target::Struct");
+        };
+        if let VariantData::Struct { fields, .. } = data
+            && fields.iter().any(|f| f.default_value().is_some())
+        {
+            cx.emit_err(NonExhaustiveWithDefaultFieldValues {
+                attr_span,
+                defn_span: cx.target_span,
+            });
+        }
+    }
 }

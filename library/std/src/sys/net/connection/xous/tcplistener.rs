@@ -129,12 +129,13 @@ impl TcpListener {
             0,
         ) {
             if receive_request.raw[0] != 0 {
-                // error case
-                if receive_request.raw[1] == NetError::TimedOut as u8 {
+                // Error case — code lives at byte 4 (where the send path
+                // also reads it). Byte 1 is part of the marker header.
+                if receive_request.raw[4] == NetError::TimedOut as u8 {
                     return Err(io::const_error!(io::ErrorKind::TimedOut, "accept timed out"));
-                } else if receive_request.raw[1] == NetError::WouldBlock as u8 {
+                } else if receive_request.raw[4] == NetError::WouldBlock as u8 {
                     return Err(io::const_error!(io::ErrorKind::WouldBlock, "accept would block"));
-                } else if receive_request.raw[1] == NetError::LibraryError as u8 {
+                } else if receive_request.raw[4] == NetError::LibraryError as u8 {
                     return Err(io::const_error!(io::ErrorKind::Other, "library error"));
                 } else {
                     return Err(io::const_error!(io::ErrorKind::Other, "library error"));

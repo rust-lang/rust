@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value: encountered 0x03, but expected a boolean
+error[E0080]: constructing invalid value of type bool: encountered 0x03, but expected a boolean
   --> $DIR/transmute-const.rs:4:1
    |
 LL | static FOO: bool = unsafe { mem::transmute(3u8) };

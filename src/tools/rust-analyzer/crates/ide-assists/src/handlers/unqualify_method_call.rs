@@ -1,5 +1,5 @@
 use hir::AsAssocItem;
-use syntax::ast::{self, AstNode, HasArgList, prec::ExprPrecedence, syntax_factory::SyntaxFactory};
+use syntax::ast::{self, AstNode, HasArgList, prec::ExprPrecedence};
 
 use crate::{AssistContext, AssistId, Assists};
 
@@ -22,7 +22,7 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 // # mod std { pub mod ops { pub trait Add { fn add(self, _: Self) {} } impl Add for i32 {} } }
 // ```
-pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let call = ctx.find_node_at_offset::<ast::CallExpr>()?;
     let ast::Expr::PathExpr(path_expr) = call.expr()? else { return None };
     let path = path_expr.path()?;
@@ -50,8 +50,8 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
         "Unqualify method call",
         call.syntax().text_range(),
         |builder| {
-            let make = SyntaxFactory::with_mappings();
-            let mut editor = builder.make_editor(call.syntax());
+            let editor = builder.make_editor(call.syntax());
+            let make = editor.make();
 
             let new_arg_list = make.arg_list(args.args().skip(1));
             let receiver = if first_arg.precedence().needs_parentheses_in(ExprPrecedence::Postfix) {
@@ -67,10 +67,9 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 && let Some(trait_) = fun.container_or_implemented_trait(ctx.db())
                 && !scope.can_use_trait_methods(trait_)
             {
-                add_import(qualifier, ctx, &make, &mut editor);
+                add_import(qualifier, ctx, &editor);
             }
 
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -78,9 +77,8 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
 
 fn add_import(
     qualifier: ast::Path,
-    ctx: &AssistContext<'_>,
-    make: &SyntaxFactory,
-    editor: &mut syntax::syntax_editor::SyntaxEditor,
+    ctx: &AssistContext<'_, '_>,
+    editor: &syntax::syntax_editor::SyntaxEditor,
 ) {
     if let Some(path_segment) = qualifier.segment() {
         // for `<i32 as std::ops::Add>`
@@ -112,7 +110,6 @@ fn add_import(
                 import,
                 &ctx.config.insert_use,
                 editor,
-                make,
             );
         }
     }

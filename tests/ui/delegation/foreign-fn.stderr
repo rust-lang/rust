@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/foreign-fn.rs:17:30
+  --> $DIR/foreign-fn.rs:16:30
    |
 LL |     let _: extern "C" fn() = default_unsafe_foo;
    |            ---------------   ^^^^^^^^^^^^^^^^^^ expected safe fn, found unsafe fn
@@ -11,7 +11,7 @@ LL |     let _: extern "C" fn() = default_unsafe_foo;
    = note: unsafe functions cannot be coerced into safe function pointers
 
 error[E0308]: mismatched types
-  --> $DIR/foreign-fn.rs:19:30
+  --> $DIR/foreign-fn.rs:18:30
    |
 LL |     let _: extern "C" fn() = unsafe_foo;
    |            ---------------   ^^^^^^^^^^ expected safe fn, found unsafe fn

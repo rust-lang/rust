@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // Test that we can send pointers with any alignment to GenMC and back, even across threads.
 // After a round-trip, the pointers should still work properly (no missing provenance).
 

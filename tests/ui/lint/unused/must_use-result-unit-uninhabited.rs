@@ -2,10 +2,14 @@
 //@ aux-crate:dep=must_use_result_unit_uninhabited_extern_crate.rs
 
 #![deny(unused_must_use)]
-#![feature(never_type)]
 
 use core::ops::{ControlFlow, ControlFlow::Continue};
 use dep::{MyUninhabited, MyUninhabitedNonexhaustive};
+
+#[must_use]
+struct MustUse;
+
+struct Struct;
 
 fn result_unit_unit() -> Result<(), ()> {
     Ok(())
@@ -17,6 +21,14 @@ fn result_unit_infallible() -> Result<(), core::convert::Infallible> {
 
 fn result_unit_never() -> Result<(), !> {
     Ok(())
+}
+
+fn result_struct_never() -> Result<Struct, !> {
+    Ok(Struct)
+}
+
+fn result_must_use_never() -> Result<MustUse, !> {
+    Ok(MustUse)
 }
 
 fn result_unit_myuninhabited() -> Result<(), MyUninhabited> {
@@ -80,6 +92,8 @@ fn main() {
     result_unit_unit(); //~ ERROR: unused `Result` that must be used
     result_unit_infallible();
     result_unit_never();
+    result_must_use_never(); //~ ERROR: unused `MustUse` in a `Result` with an uninhabited error that must be used
+    result_struct_never();
     result_unit_myuninhabited();
     result_unit_myuninhabited_nonexhaustive(); //~ ERROR: unused `Result` that must be used
     result_unit_assoctype(S1);

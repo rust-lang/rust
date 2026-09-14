@@ -14,14 +14,13 @@ use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::{env, fs};
 
-#[cfg(not(test))]
-use crate::builder::Builder;
-use crate::builder::Kind;
-#[cfg(not(test))]
 use crate::core::build_steps::tool;
-use crate::core::config::{CompilerBuiltins, Target};
+use crate::core::builder::Builder;
+use crate::core::config::flags::Subcommand;
+use crate::core::config::{CompilerBuiltins, DebuggerPath, Target};
+use crate::core::session::Session;
 use crate::utils::exec::command;
-use crate::{Build, Subcommand};
+use crate::utils::helpers::{self, t};
 
 pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,
@@ -41,7 +40,6 @@ const STAGE0_MISSING_TARGETS: &[&str] = &[
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
 /// from CI (with`llvm.download-ci-llvm` option).
-#[cfg(not(test))]
 const LIBSTDCXX_MIN_VERSION_THRESHOLD: usize = 8;
 
 impl Finder {
@@ -80,15 +78,15 @@ impl Finder {
     }
 }
 
-pub fn check(build: &mut Build) {
+pub(crate) fn check(sess: &mut Session) {
     let mut skip_target_sanity =
         env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some_and(|s| s == "1" || s == "true");
 
-    skip_target_sanity |= build.config.cmd.kind() == Kind::Check;
+    skip_target_sanity |= matches!(sess.config.cmd, Subcommand::Check { .. });
 
     // Skip target sanity checks when we are doing anything with mir-opt tests or Miri
     let skipped_paths = [OsStr::new("mir-opt"), OsStr::new("miri")];
-    skip_target_sanity |= build.config.paths.iter().any(|path| {
+    skip_target_sanity |= sess.config.paths.iter().any(|path| {
         path.components().any(|component| skipped_paths.contains(&component.as_os_str()))
     });
 
@@ -104,15 +102,18 @@ pub fn check(build: &mut Build) {
     let mut cmd_finder = Finder::new();
     // If we've got a git directory we're gonna need git to update
     // submodules and learn about various other aspects.
-    if build.rust_info().is_managed_git_subrepository() {
+    if sess.rust_info().is_managed_git_subrepository() {
         cmd_finder.must_have("git");
     }
 
     // Ensure that a compatible version of libstdc++ is available on the system when using `llvm.download-ci-llvm`.
-    #[cfg(not(test))]
-    if !build.config.dry_run() && !build.host_target.is_msvc() && build.config.llvm_from_ci {
-        let builder = Builder::new(build);
-        let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: build.host_target });
+    if cfg!(not(test))
+        && !sess.config.dry_run()
+        && !sess.host_target.is_msvc()
+        && sess.config.llvm_ci_mode.requests_download_from_ci()
+    {
+        let builder = Builder::new(sess);
+        let libcxx_version = builder.ensure(tool::LibcxxVersionTool { target: sess.host_target });
 
         match libcxx_version {
             tool::LibcxxVersion::Gnu(version) => {
@@ -137,11 +138,11 @@ pub fn check(build: &mut Build) {
     }
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
-    let building_llvm = !build.config.llvm_from_ci
-        && !build.config.local_rebuild
-        && build.hosts.iter().any(|host| {
-            build.config.llvm_enabled(*host)
-                && build
+    let building_llvm = !sess.config.llvm_ci_mode.requests_download_from_ci()
+        && !sess.config.local_rebuild
+        && sess.hosts.iter().any(|host| {
+            sess.config.llvm_enabled(*host)
+                && sess
                     .config
                     .target_config
                     .get(host)
@@ -149,7 +150,7 @@ pub fn check(build: &mut Build) {
                     .unwrap_or(true)
         });
 
-    let need_cmake = building_llvm || build.config.any_sanitizers_to_build();
+    let need_cmake = building_llvm || sess.config.any_sanitizers_to_build();
     if need_cmake && cmd_finder.maybe_have("cmake").is_none() {
         eprintln!(
             "
@@ -160,10 +161,10 @@ You should install cmake, or set `download-ci-llvm = true` in the
 than building it.
 "
         );
-        crate::exit!(1);
+        helpers::exit_process(1);
     }
 
-    build.config.python = build
+    sess.config.python = sess
         .config
         .python
         .take()
@@ -173,7 +174,7 @@ than building it.
         .or_else(|| cmd_finder.maybe_have("python3"))
         .or_else(|| cmd_finder.maybe_have("python2"));
 
-    build.config.nodejs = build
+    sess.config.nodejs = sess
         .config
         .nodejs
         .take()
@@ -181,31 +182,29 @@ than building it.
         .or_else(|| cmd_finder.maybe_have("node"))
         .or_else(|| cmd_finder.maybe_have("nodejs"));
 
-    build.config.yarn = build
+    sess.config.yarn = sess
         .config
         .yarn
         .take()
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("yarn"));
 
-    build.config.gdb = build
-        .config
-        .gdb
-        .take()
-        .map(|p| cmd_finder.must_have(p))
-        .or_else(|| cmd_finder.maybe_have("gdb"));
+    sess.config.gdb = sess.config.gdb.take().map(|p| match p {
+        DebuggerPath::Discover => DebuggerPath::Discover,
+        DebuggerPath::Path(path) => DebuggerPath::Path(cmd_finder.must_have(path)),
+    });
 
-    build.config.reuse = build
+    sess.config.reuse = sess
         .config
         .reuse
         .take()
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("reuse"));
 
-    let stage0_supported_target_list: HashSet<String> = command(&build.config.initial_rustc)
+    let stage0_supported_target_list: HashSet<String> = command(&sess.initial_rustc)
         .args(["--print", "target-list"])
         .run_in_dry_run()
-        .run_capture_stdout(&build)
+        .run_capture_stdout(&sess)
         .stdout()
         .lines()
         .map(|s| s.to_string())
@@ -215,9 +214,9 @@ than building it.
     // because they are not needed.
     //
     // See `cc_detect::find` for more details.
-    let skip_tools_checks = build.config.dry_run()
+    let skip_tools_checks = sess.config.dry_run()
         || matches!(
-            build.config.cmd,
+            sess.config.cmd,
             Subcommand::Clean { .. }
                 | Subcommand::Check { .. }
                 | Subcommand::Format { .. }
@@ -226,7 +225,7 @@ than building it.
 
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
-    for target in &build.targets {
+    for target in &sess.targets {
         // On emscripten we don't actually need the C compiler to just
         // build the target artifacts, only for testing. For the sake
         // of easier bot configuration, just skip detection.
@@ -244,12 +243,12 @@ than building it.
         }
 
         // skip check for cross-targets
-        if skip_target_sanity && target != &build.host_target {
+        if skip_target_sanity && target != &sess.host_target {
             continue;
         }
 
         // Ignore fake targets that are only used for unit tests in bootstrap.
-        if cfg!(not(test)) && !skip_target_sanity && !build.local_rebuild {
+        if cfg!(not(test)) && !skip_target_sanity && !sess.local_rebuild {
             let mut has_target = false;
             let target_str = target.to_string();
 
@@ -302,44 +301,32 @@ than building it.
         }
 
         if !skip_tools_checks {
-            cmd_finder.must_have(build.cc(*target));
-            if let Some(ar) = build.ar(*target) {
+            cmd_finder.must_have(sess.cc(*target));
+            if let Some(ar) = sess.ar(*target) {
                 cmd_finder.must_have(ar);
             }
         }
     }
 
     if !skip_tools_checks {
-        for host in &build.hosts {
-            cmd_finder.must_have(build.cxx(*host).unwrap());
-
-            if build.config.llvm_enabled(*host) {
-                // Externally configured LLVM requires FileCheck to exist
-                let filecheck = build.llvm_filecheck(build.host_target);
-                if !filecheck.starts_with(&build.out)
-                    && !filecheck.exists()
-                    && build.config.codegen_tests
-                {
-                    panic!("FileCheck executable {filecheck:?} does not exist");
-                }
-            }
+        for host in &sess.hosts {
+            cmd_finder.must_have(sess.cxx(*host).unwrap());
         }
     }
 
-    for target in &build.targets {
-        build
-            .config
+    for target in &sess.config.targets {
+        sess.config
             .target_config
             .entry(*target)
             .or_insert_with(|| Target::from_triple(&target.triple));
 
         // compiler-rt c fallbacks for wasm cannot be built with gcc
         if target.contains("wasm")
-            && (*build.config.optimized_compiler_builtins(*target)
+            && (*sess.config.optimized_compiler_builtins(*target)
                 != CompilerBuiltins::BuildRustOnly
-                || build.config.rust_std_features.contains("compiler-builtins-c"))
+                || sess.config.rust_std_features.contains("compiler-builtins-c"))
         {
-            let cc_tool = build.cc_tool(*target);
+            let cc_tool = sess.cc_tool(*target);
             if !cc_tool.is_like_clang() && !cc_tool.path().ends_with("emcc") {
                 // emcc works as well
                 panic!(
@@ -352,19 +339,19 @@ than building it.
         }
 
         if (target.contains("-none-") || target.contains("nvptx"))
-            && build.no_std(*target) == Some(false)
+            && sess.no_std(*target) == Some(false)
         {
             panic!("All the *-none-* and nvptx* targets are no-std targets")
         }
 
         // skip check for cross-targets
-        if skip_target_sanity && target != &build.host_target {
+        if skip_target_sanity && target != &sess.host_target {
             continue;
         }
 
         // Make sure musl-root is valid.
         if target.contains("musl") && !target.contains("unikraft") {
-            match build.musl_libdir(*target) {
+            match sess.musl_libdir(*target) {
                 Some(libdir) => {
                     if fs::metadata(libdir.join("libc.a")).is_err() {
                         panic!("couldn't find libc.a in musl libdir: {}", libdir.display());
@@ -383,7 +370,7 @@ than building it.
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
             let out =
-                command("cmake").arg("--help").run_in_dry_run().run_capture_stdout(&build).stdout();
+                command("cmake").arg("--help").run_in_dry_run().run_capture_stdout(&sess).stdout();
             if !out.contains("Visual Studio") {
                 panic!(
                     "
@@ -407,13 +394,60 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
         // but if it's disabled then double-check it's present on the system.
         if target.contains("wasip")
             && !target.contains("wasip1")
-            && !build.tool_enabled("wasm-component-ld")
+            && !sess.tool_enabled("wasm-component-ld")
         {
             cmd_finder.must_have("wasm-component-ld");
         }
+
+        // aarch64-unknown-linux-pauthtest must use clang
+        if !skip_tools_checks && target.is_pauthtest() {
+            let cc_tool = sess.cc_tool(*target);
+            let linker_path = sess
+                .linker(*target)
+                .unwrap_or_else(|| panic!("{} requires an explicit clang linker", target.triple));
+
+            if !cc_tool.is_like_clang() {
+                panic!(
+                    "Clang is required to build C code for {} target, got:\n\
+                     cc tool: `{}`,\n\
+                     linker: `{}`\n",
+                    target.triple,
+                    cc_tool.path().display(),
+                    linker_path.display(),
+                );
+            }
+            let cc_canon = t!(fs::canonicalize(cc_tool.path()));
+            let linker_canon = t!(fs::canonicalize(&linker_path));
+            if cc_canon != linker_canon {
+                panic!(
+                    "CC and Linker are expected to be the same for {} target, got:\n\
+                     CC: `{}`,\n\
+                     Linker: `{}`\n",
+                    target.triple,
+                    cc_canon.display(),
+                    linker_canon.display(),
+                );
+            }
+
+            let output =
+                command(cc_tool.path()).arg("-dumpversion").run_capture_stdout(&sess).stdout();
+            let version_str = output.trim();
+            let mut parts = version_str.split('.').map(|s| s.parse::<u32>().unwrap_or(0));
+            let major = parts.next().unwrap_or(0);
+            let minor = parts.next().unwrap_or(0);
+            let patch = parts.next().unwrap_or(0);
+            if (major, minor, patch) < (22, 1, 0) {
+                panic!(
+                    "clang version too old: {} ({} target trequires >= 22.1.0), path: {}",
+                    target.triple,
+                    version_str,
+                    cc_tool.path().display()
+                );
+            }
+        }
     }
 
-    if let Some(ref s) = build.config.ccache {
+    if let Some(ref s) = sess.config.ccache {
         cmd_finder.must_have(s);
     }
 }

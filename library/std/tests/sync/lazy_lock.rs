@@ -34,6 +34,15 @@ fn lazy_default() {
 }
 
 #[test]
+fn const_lazy_default() {
+    // using Box as it cannot be initialized in const contexts
+    const X: LazyLock<Box<u8>> = <_>::default();
+    const Y: LazyCell<Box<u8>> = <_>::default();
+    assert_eq!(**X, 0);
+    assert_eq!(**Y, 0);
+}
+
+#[test]
 #[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn sync_lazy_new() {
     static CALLED: AtomicUsize = AtomicUsize::new(0);

@@ -6,7 +6,7 @@ const trait Trait {
     type Assoc<T: [const] Bound>;
 }
 
-impl const Trait for () {
+const impl Trait for () {
     type Assoc<T: [const] Bound> = T;
 }
 

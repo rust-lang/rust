@@ -12,7 +12,6 @@
 // is ambiguous.
 
 #![feature(specialization)]
-//[next]~^ WARN the feature `specialization` is incomplete
 
 trait Spec {
     type Assoc;

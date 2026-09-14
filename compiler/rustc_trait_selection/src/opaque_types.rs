@@ -9,7 +9,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{ErrorGuaranteed, Span};
 
-use crate::errors::NonGenericOpaqueTypeParam;
+use crate::diagnostics::NonGenericOpaqueTypeParam;
 use crate::regions::OutlivesEnvironmentBuildExt;
 use crate::traits::ObligationCtxt;
 
@@ -80,6 +80,7 @@ pub fn opaque_type_has_defining_use_args<'tcx>(
             .tcx
             .type_of_opaque_hir_typeck(opaque_type_key.def_id)
             .instantiate_identity()
+            .skip_norm_wip()
             .error_reported()?;
     }
 
@@ -224,7 +225,7 @@ pub fn report_item_does_not_constrain_error<'tcx>(
     err.note("consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`");
     err.span_note(opaque_type_span, "this opaque type is supposed to be constrained");
     if let Some((key, span)) = non_defining_use {
-        let opaque_ty = Ty::new_opaque(tcx, key.def_id.into(), key.args);
+        let opaque_ty = Ty::new_opaque(tcx, ty::IsRigid::No, key.def_id.into(), key.args);
         err.span_note(
             span,
             format!("this use of `{opaque_ty}` does not have unique universal generic arguments"),

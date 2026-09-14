@@ -133,6 +133,24 @@ macro_rules! test_mask_api {
                 cast_impl::<i64>();
                 cast_impl::<isize>();
             }
+
+            #[test]
+            fn first_set() {
+                for bitmask in 0..=u8::MAX {
+                    let mask = Mask::<$type, 8>::from_bitmask(bitmask as u64);
+                    let expected = bitmask.lowest_one().map(|i| i as usize);
+                    assert_eq!(mask.first_set(), expected);
+                }
+            }
+
+            #[test]
+            fn last_set() {
+                for bitmask in 0..=u8::MAX {
+                    let mask = Mask::<$type, 8>::from_bitmask(bitmask as u64);
+                    let expected = bitmask.highest_one().map(|i| i as usize);
+                    assert_eq!(mask.last_set(), expected);
+                }
+            }
         }
     }
 }

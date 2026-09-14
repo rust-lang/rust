@@ -9,7 +9,6 @@
 //! `thir_abstract_const` which can then be checked for structural equality with other
 //! generic constants mentioned in the `caller_bounds` of the current environment.
 
-use rustc_hir::def::DefKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::bug;
 use rustc_middle::traits::ObligationCause;
@@ -31,7 +30,7 @@ pub fn is_const_evaluatable<'tcx>(
 ) -> Result<(), NotConstEvaluatable> {
     let tcx = infcx.tcx;
     match tcx.expand_abstract_consts(unexpanded_ct).kind() {
-        ty::ConstKind::Unevaluated(_) | ty::ConstKind::Expr(_) => (),
+        ty::ConstKind::Alias(_, _) | ty::ConstKind::Expr(_) => (),
         ty::ConstKind::Param(_)
         | ty::ConstKind::Bound(_, _)
         | ty::ConstKind::Placeholder(_)
@@ -43,11 +42,10 @@ pub fn is_const_evaluatable<'tcx>(
     if tcx.features().generic_const_exprs() {
         let ct = tcx.expand_abstract_consts(unexpanded_ct);
 
-        let is_anon_ct = if let ty::ConstKind::Unevaluated(uv) = ct.kind() {
-            tcx.def_kind(uv.def) == DefKind::AnonConst
-        } else {
-            false
-        };
+        let is_anon_ct = matches!(
+            ct.kind(),
+            ty::ConstKind::Alias(_, ty::AliasConst { kind: ty::AliasConstKind::Anon { .. }, .. })
+        );
 
         if !is_anon_ct {
             if satisfied_from_param_env(tcx, infcx, ct, param_env) {
@@ -68,8 +66,10 @@ pub fn is_const_evaluatable<'tcx>(
                 // here.
                 tcx.dcx().span_bug(span, "evaluating `ConstKind::Expr` is not currently supported");
             }
-            ty::ConstKind::Unevaluated(_) => {
-                match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env) {
+            ty::ConstKind::Alias(_, _) => {
+                match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env, |ty| {
+                    Ok::<_, !>(ty.skip_norm_wip())
+                }) {
                     Err(EvaluateConstErr::HasGenericsOrInfers) => {
                         Err(NotConstEvaluatable::Error(infcx.dcx().span_delayed_bug(
                             span,
@@ -92,15 +92,17 @@ pub fn is_const_evaluatable<'tcx>(
         crate::traits::evaluate_const(infcx, unexpanded_ct, param_env);
         Ok(())
     } else {
-        let uv = match unexpanded_ct.kind() {
-            ty::ConstKind::Unevaluated(uv) => uv,
+        let alias_const = match unexpanded_ct.kind() {
+            ty::ConstKind::Alias(_, alias_const) => alias_const,
             ty::ConstKind::Expr(_) => {
                 bug!("`ConstKind::Expr` without `feature(generic_const_exprs)` enabled")
             }
             _ => bug!("unexpected constkind in `is_const_evalautable: {unexpanded_ct:?}`"),
         };
 
-        match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env) {
+        match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env, |ty| {
+            Ok::<_, !>(ty.skip_norm_wip())
+        }) {
             // If we're evaluating a generic foreign constant, under a nightly compiler while
             // the current crate does not enable `feature(generic_const_exprs)`, abort
             // compilation with a useful error.
@@ -116,7 +118,7 @@ pub fn is_const_evaluatable<'tcx>(
                 tcx.dcx()
                     .struct_span_fatal(
                         // Slightly better span than just using `span` alone
-                        if span == DUMMY_SP { tcx.def_span(uv.def) } else { span },
+                        if span == DUMMY_SP { alias_const.kind.def_span(tcx) } else { span },
                         "failed to evaluate generic const expression",
                     )
                     .with_note("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")
@@ -130,9 +132,9 @@ pub fn is_const_evaluatable<'tcx>(
             }
 
             Err(EvaluateConstErr::HasGenericsOrInfers) => {
-                let err = if uv.has_non_region_infer() {
+                let err = if alias_const.has_non_region_infer() {
                     NotConstEvaluatable::MentionsInfer
-                } else if uv.has_non_region_param() {
+                } else if alias_const.has_non_region_param() {
                     NotConstEvaluatable::MentionsParam
                 } else {
                     let guar = infcx.dcx().span_delayed_bug(
@@ -176,7 +178,7 @@ fn satisfied_from_param_env<'tcx>(
             if self.infcx.probe(|_| {
                 let ocx = ObligationCtxt::new(self.infcx);
                 ocx.eq(&ObligationCause::dummy(), self.param_env, c, self.ct).is_ok()
-                    && ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+                    && ocx.evaluate_obligations_error_on_ambiguity().no_errors()
             }) {
                 self.single_match = match self.single_match {
                     None => Some(Ok(c)),
@@ -193,7 +195,7 @@ fn satisfied_from_param_env<'tcx>(
                 // with its own `ConstEvaluatable` bound in the param env which we will visit separately.
                 //
                 // If we start allowing directly writing `ConstKind::Expr` without an intermediate anon const
-                // this will be incorrect. It might be worth investigating making `predicates_of` elaborate
+                // this will be incorrect. It might be worth investigating making `clauses_of` elaborate
                 // all of the `ConstEvaluatable` bounds rather than having a visitor here.
             }
         }
@@ -201,8 +203,8 @@ fn satisfied_from_param_env<'tcx>(
 
     let mut single_match: Option<Result<ty::Const<'tcx>, ()>> = None;
 
-    for pred in param_env.caller_bounds() {
-        match pred.kind().skip_binder() {
+    for clause in param_env.caller_bounds() {
+        match clause.kind().skip_binder() {
             ty::ClauseKind::ConstEvaluatable(ce) => {
                 let b_ct = tcx.expand_abstract_consts(ce);
                 let mut v = Visitor { ct, infcx, param_env, single_match };
@@ -217,7 +219,7 @@ fn satisfied_from_param_env<'tcx>(
     if let Some(Ok(c)) = single_match {
         let ocx = ObligationCtxt::new(infcx);
         assert!(ocx.eq(&ObligationCause::dummy(), param_env, c, ct).is_ok());
-        assert!(ocx.evaluate_obligations_error_on_ambiguity().is_empty());
+        assert!(ocx.evaluate_obligations_error_on_ambiguity().no_errors());
         return true;
     }
 

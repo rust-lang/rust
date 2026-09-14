@@ -68,7 +68,7 @@
 //! [`OnceCell<T>`] is somewhat of a hybrid of `Cell` and `RefCell` that works for values that
 //! typically only need to be set once. This means that a reference `&T` can be obtained without
 //! moving or copying the inner value (unlike `Cell`) but also without runtime checks (unlike
-//! `RefCell`). However, its value can also not be updated once set unless you have a mutable
+//! `RefCell`). However, once set, its value cannot be updated unless you have a mutable
 //! reference to the `OnceCell`.
 //!
 //! `OnceCell` provides the following methods:
@@ -255,13 +255,16 @@ use crate::marker::{Destruct, PhantomData, Unsize};
 use crate::mem::{self, ManuallyDrop};
 use crate::ops::{self, CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
 use crate::panic::const_panic;
-use crate::pin::PinCoerceUnsized;
+use crate::pin::PinSafePointer;
 use crate::ptr::{self, NonNull};
 use crate::range;
 
+mod covariant_unsafe_cell;
 mod lazy;
 mod once;
 
+#[unstable(feature = "covariant_unsafe_cell", issue = "159735")]
+pub use covariant_unsafe_cell::CovariantUnsafeCell;
 #[stable(feature = "lazy_cell", since = "1.80.0")]
 pub use lazy::LazyCell;
 #[stable(feature = "once_cell", since = "1.70.0")]
@@ -334,7 +337,7 @@ impl<T: Copy> Clone for Cell<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T: [const] Default> const Default for Cell<T> {
+const impl<T: [const] Default> Default for Cell<T> {
     /// Creates a `Cell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> Cell<T> {
@@ -391,7 +394,7 @@ impl<T: Ord + Copy> Ord for Cell<T> {
 
 #[stable(feature = "cell_from", since = "1.12.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const From<T> for Cell<T> {
+const impl<T> From<T> for Cell<T> {
     /// Creates a new `Cell<T>` containing the given value.
     fn from(t: T) -> Cell<T> {
         Cell::new(t)
@@ -701,7 +704,7 @@ impl<T, const N: usize> AsRef<[Cell<T>; N]> for Cell<[T; N]> {
 impl<T, const N: usize> AsRef<[Cell<T>]> for Cell<[T; N]> {
     #[inline]
     fn as_ref(&self) -> &[Cell<T>] {
-        &*self.as_array_of_cells()
+        self.as_array_of_cells()
     }
 }
 
@@ -1461,7 +1464,7 @@ impl<T: Clone> Clone for RefCell<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T: [const] Default> const Default for RefCell<T> {
+const impl<T: [const] Default> Default for RefCell<T> {
     /// Creates a `RefCell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> RefCell<T> {
@@ -1539,7 +1542,7 @@ impl<T: ?Sized + Ord> Ord for RefCell<T> {
 
 #[stable(feature = "cell_from", since = "1.12.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const From<T> for RefCell<T> {
+const impl<T> From<T> for RefCell<T> {
     /// Creates a new `RefCell<T>` containing the given value.
     fn from(t: T) -> RefCell<T> {
         RefCell::new(t)
@@ -1579,7 +1582,7 @@ impl<'b> BorrowRef<'b> {
 }
 
 #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
-impl const Drop for BorrowRef<'_> {
+const impl Drop for BorrowRef<'_> {
     #[inline]
     fn drop(&mut self) {
         let borrow = self.borrow.get();
@@ -1589,7 +1592,7 @@ impl const Drop for BorrowRef<'_> {
 }
 
 #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
-impl const Clone for BorrowRef<'_> {
+const impl Clone for BorrowRef<'_> {
     #[inline]
     fn clone(&self) -> Self {
         // Since this Ref exists, we know the borrow flag
@@ -1621,7 +1624,7 @@ pub struct Ref<'b, T: ?Sized + 'b> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: ?Sized> const Deref for Ref<'_, T> {
+const impl<T: ?Sized> Deref for Ref<'_, T> {
     type Target = T;
 
     #[inline]
@@ -2047,7 +2050,7 @@ struct BorrowRefMut<'b> {
 }
 
 #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
-impl const Drop for BorrowRefMut<'_> {
+const impl Drop for BorrowRefMut<'_> {
     #[inline]
     fn drop(&mut self) {
         let borrow = self.borrow.get();
@@ -2105,7 +2108,7 @@ pub struct RefMut<'b, T: ?Sized + 'b> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: ?Sized> const Deref for RefMut<'_, T> {
+const impl<T: ?Sized> Deref for RefMut<'_, T> {
     type Target = T;
 
     #[inline]
@@ -2117,7 +2120,7 @@ impl<T: ?Sized> const Deref for RefMut<'_, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T: ?Sized> const DerefMut for RefMut<'_, T> {
+const impl<T: ?Sized> DerefMut for RefMut<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
         // SAFETY: the value is accessible as long as we hold our borrow.
@@ -2150,8 +2153,9 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// use `UnsafeCell` to wrap their data.
 ///
 /// Note that only the immutability guarantee for shared references is affected by `UnsafeCell`. The
-/// uniqueness guarantee for mutable references is unaffected. There is *no* legal way to obtain
-/// aliasing `&mut`, not even with `UnsafeCell<T>`.
+/// uniqueness guarantee for mutable references is unaffected. As explained below, for the duration
+/// of the lifetime of an `&mut`, no other reference may exist and no pointer may be used to access
+/// that memory; this applies even with `UnsafeCell<T>`.
 ///
 /// `UnsafeCell` does nothing to avoid data races; they are still undefined behavior. If multiple
 /// threads have access to the same `UnsafeCell`, they must follow the usual rules of the
@@ -2171,17 +2175,19 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// - If you create a safe reference with lifetime `'a` (either a `&T` or `&mut T` reference), then
 ///   you must not access the data in any way that contradicts that reference for the remainder of
-///   `'a`. For example, this means that if you take the `*mut T` from an `UnsafeCell<T>` and cast it
-///   to an `&T`, then the data in `T` must remain immutable (modulo any `UnsafeCell` data found
-///   within `T`, of course) until that reference's lifetime expires. Similarly, if you create a
-///   `&mut T` reference that is released to safe code, then you must not access the data within the
-///   `UnsafeCell` until that reference expires.
+///   `'a`, and you must not create any contradicting references. For example, this means that if
+///   you take the `*mut T` from an `UnsafeCell<T>` and cast it to a `&T`, then the data in `T` must
+///   remain immutable (modulo any `UnsafeCell` data found within `T`, of course) until that
+///   reference's lifetime expires, and no `&mut` reference to this data may be created. Similarly,
+///   if you create a `&mut T` reference, then you must not access the data within the `UnsafeCell`
+///   with any other pointer/reference until that reference expires, and no reference of any kind
+///   may be created.
 ///
 /// - For both `&T` without `UnsafeCell<_>` and `&mut T`, you must also not deallocate the data
-///   until the reference expires. As a special exception, given an `&T`, any part of it that is
+///   until the reference expires. As a special exception, given a `&T`, any part of it that is
 ///   inside an `UnsafeCell<_>` may be deallocated during the lifetime of the reference, after the
 ///   last time the reference is used (dereferenced or reborrowed). Since you cannot deallocate a part
-///   of what a reference points to, this means the memory an `&T` points to can be deallocated only if
+///   of what a reference points to, this means the memory a `&T` points to can be deallocated only if
 ///   *every part of it* (including padding) is inside an `UnsafeCell`.
 ///
 /// However, whenever a `&UnsafeCell<T>` is constructed or dereferenced, it must still point to
@@ -2197,10 +2203,10 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// 2. A `&mut T` reference may be released to safe code provided neither other `&mut T` nor `&T`
 ///    co-exist with it. A `&mut T` must always be unique.
 ///
-/// Note that whilst mutating the contents of an `&UnsafeCell<T>` (even while other
+/// Note that whilst mutating the contents of a `&UnsafeCell<T>` (even while other
 /// `&UnsafeCell<T>` references alias the cell) is
 /// ok (provided you enforce the above invariants some other way), it is still undefined behavior
-/// to have multiple `&mut UnsafeCell<T>` aliases. That is, `UnsafeCell` is a wrapper
+/// to have aliasing `&mut UnsafeCell<T>` (or aliasing `&mut` of *any* type). That is, `UnsafeCell` is a wrapper
 /// designed to have a special interaction with _shared_ accesses (_i.e._, through an
 /// `&UnsafeCell<_>` reference); there is no magic whatsoever when dealing with _exclusive_
 /// accesses (_e.g._, through a `&mut UnsafeCell<_>`): neither the cell nor the wrapped value
@@ -2223,35 +2229,18 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// order to avoid its interior mutability property from spreading from `T` into the `Outer` type,
 /// thus this can cause distortions in the type size in these cases.
 ///
-/// Note that the only valid way to obtain a `*mut T` pointer to the contents of a
-/// _shared_ `UnsafeCell<T>` is through [`.get()`]  or [`.raw_get()`]. A `&mut T` reference
-/// can be obtained by either dereferencing this pointer or by calling [`.get_mut()`]
-/// on an _exclusive_ `UnsafeCell<T>`. Even though `T` and `UnsafeCell<T>` have the
-/// same memory layout, the following is not allowed and undefined behavior:
-///
-/// ```rust,compile_fail
-/// # use std::cell::UnsafeCell;
-/// unsafe fn not_allowed<T>(ptr: &UnsafeCell<T>) -> &mut T {
-///   let t = ptr as *const UnsafeCell<T> as *mut T;
-///   // This is undefined behavior, because the `*mut T` pointer
-///   // was not obtained through `.get()` nor `.raw_get()`:
-///   unsafe { &mut *t }
-/// }
-/// ```
-///
-/// Instead, do this:
+/// The following examples make use of this guarantee:
 ///
 /// ```rust
 /// # use std::cell::UnsafeCell;
-/// // Safety: the caller must ensure that there are no references that
-/// // point to the *contents* of the `UnsafeCell`.
-/// unsafe fn get_mut<T>(ptr: &UnsafeCell<T>) -> &mut T {
-///   unsafe { &mut *ptr.get() }
+/// /// # Safety
+/// /// The caller must not call `get_mut_unchecked` again (on any alias of `ptr`) for the duration
+/// /// of the lifetime of the returned reference.
+/// unsafe fn get_mut_unchecked<T>(ptr: &UnsafeCell<T>) -> &mut T {
+///   let t = ptr as *const UnsafeCell<T> as *mut T;
+///   unsafe { &mut *t }
 /// }
 /// ```
-///
-/// Converting in the other direction from a `&mut T`
-/// to an `&UnsafeCell<T>` is allowed:
 ///
 /// ```rust
 /// # use std::cell::UnsafeCell;
@@ -2263,7 +2252,6 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// ```
 ///
 /// [niche]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#niche
-/// [`.raw_get()`]: `UnsafeCell::raw_get`
 ///
 /// # Examples
 ///
@@ -2380,7 +2368,6 @@ impl<T> UnsafeCell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(unsafe_cell_access)]
     /// use std::cell::UnsafeCell;
     ///
     /// let uc = UnsafeCell::new(5);
@@ -2389,7 +2376,8 @@ impl<T> UnsafeCell<T> {
     /// assert_eq!(old, 5);
     /// ```
     #[inline]
-    #[unstable(feature = "unsafe_cell_access", issue = "136327")]
+    #[stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_should_not_be_called_on_const_items]
     pub const unsafe fn replace(&self, value: T) -> T {
         // SAFETY: pointer comes from `&self` so naturally satisfies invariants.
@@ -2421,9 +2409,12 @@ impl<T: ?Sized> UnsafeCell<T> {
 
     /// Gets a mutable pointer to the wrapped value.
     ///
-    /// This can be cast to a pointer of any kind. When creating references, you must uphold the
-    /// aliasing rules; see [the type-level docs][UnsafeCell#aliasing-rules] for more discussion and
-    /// caveats.
+    /// This can be cast to a pointer of any kind. When creating (shared or mutable) references, you
+    /// must uphold the aliasing rules; see [the type-level docs][UnsafeCell#aliasing-rules] for
+    /// more discussion and caveats.
+    ///
+    /// This is equivalent to casting `self` to a raw pointer and then casting that raw
+    /// pointer to `*mut T`.
     ///
     /// # Examples
     ///
@@ -2442,8 +2433,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[rustc_should_not_be_called_on_const_items]
     pub const fn get(&self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
-        // #[repr(transparent)]. This exploits std's special status, there is
-        // no guarantee for user code that this will work in future versions of the compiler!
+        // #[repr(transparent)].
         self as *const UnsafeCell<T> as *const T as *mut T
     }
 
@@ -2473,9 +2463,11 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// The difference from [`get`] is that this function accepts a raw pointer,
     /// which is useful to avoid the creation of temporary references.
     ///
-    /// This can be cast to a pointer of any kind. When creating references, you must uphold the
-    /// aliasing rules; see [the type-level docs][UnsafeCell#aliasing-rules] for more discussion and
-    /// caveats.
+    /// This can be cast to a pointer of any kind. When creating (shared or mutable) references, you
+    /// must uphold the aliasing rules; see [the type-level docs][UnsafeCell#aliasing-rules] for
+    /// more discussion and caveats.
+    ///
+    /// This is equivalent to casting `this` to `*mut T`.
     ///
     /// [`get`]: UnsafeCell::get()
     ///
@@ -2502,8 +2494,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[rustc_diagnostic_item = "unsafe_cell_raw_get"]
     pub const fn raw_get(this: *const Self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
-        // #[repr(transparent)]. This exploits std's special status, there is
-        // no guarantee for user code that this will work in future versions of the compiler!
+        // #[repr(transparent)].
         this as *const T as *mut T
     }
 
@@ -2519,7 +2510,6 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(unsafe_cell_access)]
     /// use std::cell::UnsafeCell;
     ///
     /// let uc = UnsafeCell::new(5);
@@ -2528,7 +2518,8 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// assert_eq!(val, &5);
     /// ```
     #[inline]
-    #[unstable(feature = "unsafe_cell_access", issue = "136327")]
+    #[stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_should_not_be_called_on_const_items]
     pub const unsafe fn as_ref_unchecked(&self) -> &T {
         // SAFETY: pointer comes from `&self` so naturally satisfies ptr-to-ref invariants.
@@ -2547,7 +2538,6 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(unsafe_cell_access)]
     /// use std::cell::UnsafeCell;
     ///
     /// let uc = UnsafeCell::new(5);
@@ -2556,7 +2546,8 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// assert_eq!(uc.into_inner(), 6);
     /// ```
     #[inline]
-    #[unstable(feature = "unsafe_cell_access", issue = "136327")]
+    #[stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
     #[allow(clippy::mut_from_ref)]
     #[rustc_should_not_be_called_on_const_items]
     pub const unsafe fn as_mut_unchecked(&self) -> &mut T {
@@ -2567,7 +2558,7 @@ impl<T: ?Sized> UnsafeCell<T> {
 
 #[stable(feature = "unsafe_cell_default", since = "1.10.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T: [const] Default> const Default for UnsafeCell<T> {
+const impl<T: [const] Default> Default for UnsafeCell<T> {
     /// Creates an `UnsafeCell`, with the `Default` value for T.
     fn default() -> UnsafeCell<T> {
         UnsafeCell::new(Default::default())
@@ -2576,7 +2567,7 @@ impl<T: [const] Default> const Default for UnsafeCell<T> {
 
 #[stable(feature = "cell_from", since = "1.12.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const From<T> for UnsafeCell<T> {
+const impl<T> From<T> for UnsafeCell<T> {
     /// Creates a new `UnsafeCell<T>` containing the given value.
     fn from(t: T) -> UnsafeCell<T> {
         UnsafeCell::new(t)
@@ -2674,7 +2665,7 @@ impl<T: ?Sized> SyncUnsafeCell<T> {
 
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T: [const] Default> const Default for SyncUnsafeCell<T> {
+const impl<T: [const] Default> Default for SyncUnsafeCell<T> {
     /// Creates an `SyncUnsafeCell`, with the `Default` value for T.
     fn default() -> SyncUnsafeCell<T> {
         SyncUnsafeCell::new(Default::default())
@@ -2683,7 +2674,7 @@ impl<T: [const] Default> const Default for SyncUnsafeCell<T> {
 
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl<T> const From<T> for SyncUnsafeCell<T> {
+const impl<T> From<T> for SyncUnsafeCell<T> {
     /// Creates a new `SyncUnsafeCell<T>` containing the given value.
     fn from(t: T) -> SyncUnsafeCell<T> {
         SyncUnsafeCell::new(t)
@@ -2718,20 +2709,14 @@ fn assert_coerce_unsized(
     let _: RefCell<&dyn Send> = d;
 }
 
+// The implementations of Deref/DerefMut are not malicious, so we can allow the
+// user to perform unsizing coercions with `Pin<Ref<'b, T>>` pointers if they
+// can manage to create one.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for UnsafeCell<T> {}
+unsafe impl<'b, T: ?Sized> PinSafePointer for Ref<'b, T> {}
 
+// The implementations of Deref/DerefMut are not malicious, so we can allow the
+// user to perform unsizing coercions with `Pin<RefMut<'b, T>>` pointers if they
+// can manage to create one.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for SyncUnsafeCell<T> {}
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for Cell<T> {}
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for RefCell<T> {}
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<'b, T: ?Sized> PinCoerceUnsized for Ref<'b, T> {}
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
-unsafe impl<'b, T: ?Sized> PinCoerceUnsized for RefMut<'b, T> {}
+unsafe impl<'b, T: ?Sized> PinSafePointer for RefMut<'b, T> {}

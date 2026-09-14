@@ -1,6 +1,12 @@
 use core::ffi::CStr;
 
 #[test]
+fn const_default() {
+    const S: &CStr = <_>::default();
+    assert_eq!(S, c"");
+}
+
+#[test]
 fn compares_as_u8s() {
     let a: &CStr = c"Hello!"; // Starts with ascii
     let a_bytes: &[u8] = a.to_bytes();

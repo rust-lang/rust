@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::collapsible_str_replace)]
 
 fn get_filter() -> char {

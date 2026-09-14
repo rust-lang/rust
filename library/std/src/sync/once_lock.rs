@@ -145,6 +145,35 @@ impl<T> OnceLock<T> {
         }
     }
 
+    /// Creates a new initialized cell.
+    ///
+    /// This is equivalent to `OnceLock::from(value)`, but can be used in
+    /// const contexts, unlike the `From` implementation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_lock_new_init)]
+    /// use std::sync::OnceLock;
+    ///
+    /// static CELL: OnceLock<i32> = OnceLock::new_init(1);
+    ///
+    /// assert_eq!(CELL.get(), Some(&1));
+    ///
+    /// // Already initialized, so this closure never runs.
+    /// assert_eq!(CELL.get_or_init(|| panic!("Kaboom!")), &1);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "once_lock_new_init", issue = "159860")]
+    pub const fn new_init(init_value: T) -> OnceLock<T> {
+        OnceLock {
+            once: Once::new_complete(),
+            value: UnsafeCell::new(MaybeUninit::new(init_value)),
+            _marker: PhantomData,
+        }
+    }
+
     /// Gets the reference to the underlying value.
     ///
     /// Returns `None` if the cell is uninitialized, or being initialized.
@@ -592,7 +621,7 @@ impl<T: UnwindSafe> UnwindSafe for OnceLock<T> {}
 
 #[stable(feature = "once_cell", since = "1.70.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T> const Default for OnceLock<T> {
+const impl<T> Default for OnceLock<T> {
     /// Creates a new uninitialized cell.
     ///
     /// # Example
@@ -626,14 +655,7 @@ impl<T: fmt::Debug> fmt::Debug for OnceLock<T> {
 impl<T: Clone> Clone for OnceLock<T> {
     #[inline]
     fn clone(&self) -> OnceLock<T> {
-        let cell = Self::new();
-        if let Some(value) = self.get() {
-            match cell.set(value.clone()) {
-                Ok(()) => (),
-                Err(_) => unreachable!(),
-            }
-        }
-        cell
+        self.get().cloned().map_or_default(Self::from)
     }
 }
 
@@ -656,10 +678,10 @@ impl<T> From<T> for OnceLock<T> {
     /// ```
     #[inline]
     fn from(value: T) -> Self {
-        let cell = Self::new();
-        match cell.set(value) {
-            Ok(()) => cell,
-            Err(_) => unreachable!(),
+        OnceLock {
+            once: Once::new_complete(),
+            value: UnsafeCell::new(MaybeUninit::new(value)),
+            _marker: PhantomData,
         }
     }
 }

@@ -1,21 +1,20 @@
-use base_db::RootQueryDb;
-use hir_def::db::DefDatabase;
+use base_db::all_crates;
+use hir_def::signatures::ConstSignature;
 use hir_expand::EditionedFileId;
 use rustc_apfloat::{
     Float,
     ieee::{Half as f16, Quad as f128},
 };
-use rustc_type_ir::inherent::IntoKind;
 use test_fixture::WithFixture;
 use test_utils::skip_slow_tests;
 
 use crate::{
     MemoryMap,
-    consteval::try_const_usize,
+    consteval::allocation_as_usize,
     db::HirDatabase,
     display::DisplayTarget,
-    mir::pad16,
-    next_solver::{Const, ConstBytes, ConstKind, DbInterner, GenericArgs},
+    mir::{IsSigned, pad16},
+    next_solver::{Allocation, GenericArgs},
     setup_tracing,
     test_db::TestDB,
 };
@@ -27,7 +26,7 @@ use super::{
 
 mod intrinsics;
 
-fn simplify(e: ConstEvalError) -> ConstEvalError {
+fn simplify(e: ConstEvalError<'_>) -> ConstEvalError<'_> {
     match e {
         ConstEvalError::MirEvalError(MirEvalError::InFunction(e, _)) => {
             simplify(ConstEvalError::MirEvalError(*e))
@@ -39,13 +38,17 @@ fn simplify(e: ConstEvalError) -> ConstEvalError {
 #[track_caller]
 fn check_fail(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
-    error: impl FnOnce(ConstEvalError) -> bool,
+    error: impl FnOnce(ConstEvalError<'_>) -> bool,
 ) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
     crate::attach_db(&db, || match eval_goal(&db, file_id) {
         Ok(_) => panic!("Expected fail, but it succeeded"),
         Err(e) => {
-            assert!(error(simplify(e.clone())), "Actual error was: {}", pretty_print_err(e, &db))
+            assert!(
+                error(simplify(e.clone())),
+                "Actual error was: {}\n{e:?}",
+                pretty_print_err(e.clone(), &db)
+            )
         }
     })
 }
@@ -57,7 +60,7 @@ fn check_number(#[rust_analyzer::rust_fixture] ra_fixture: &str, answer: i128) {
             b,
             &answer.to_le_bytes()[0..b.len()],
             "Bytes differ. In decimal form: actual = {}, expected = {answer}",
-            i128::from_le_bytes(pad16(b, true))
+            i128::from_le_bytes(pad16(b, IsSigned::Yes))
         );
     });
 }
@@ -94,21 +97,15 @@ fn check_answer(
                 panic!("Error in evaluating goal: {err}");
             }
         };
-        match r.kind() {
-            ConstKind::Value(value) => {
-                let ConstBytes { memory, memory_map } = value.value.inner();
-                check(memory, memory_map);
-            }
-            _ => panic!("Expected number but found {r:?}"),
-        }
+        check(&r.memory, &r.memory_map);
     });
 }
 
-fn pretty_print_err(e: ConstEvalError, db: &TestDB) -> String {
+fn pretty_print_err(e: ConstEvalError<'_>, db: &TestDB) -> String {
     let mut err = String::new();
     let span_formatter = |file, range| format!("{file:?} {range:?}");
     let display_target =
-        DisplayTarget::from_crate(db, *db.all_crates().last().expect("no crate graph present"));
+        DisplayTarget::from_crate(db, *all_crates(db).last().expect("no crate graph present"));
     match e {
         ConstEvalError::MirLowerError(e) => {
             e.pretty_print(&mut err, db, span_formatter, display_target)
@@ -121,9 +118,8 @@ fn pretty_print_err(e: ConstEvalError, db: &TestDB) -> String {
     err
 }
 
-fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEvalError> {
+fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Allocation<'_>, ConstEvalError<'_>> {
     let _tracing = setup_tracing();
-    let interner = DbInterner::new_no_crate(db);
     let module_id = db.module_for_file(file_id.file_id(db));
     let def_map = module_id.def_map(db);
     let scope = &def_map[module_id].scope;
@@ -131,7 +127,11 @@ fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEv
         .declarations()
         .find_map(|x| match x {
             hir_def::ModuleDefId::ConstId(x) => {
-                if db.const_signature(x).name.as_ref()?.display(db, file_id.edition(db)).to_string()
+                if ConstSignature::of(db, x)
+                    .name
+                    .as_ref()?
+                    .display(db, file_id.edition(db))
+                    .to_string()
                     == "GOAL"
                 {
                     Some(x)
@@ -142,7 +142,7 @@ fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEv
             _ => None,
         })
         .expect("No const named GOAL found in the test");
-    db.const_eval(const_id, GenericArgs::empty(interner), None)
+    db.const_eval(const_id, GenericArgs::empty(), None)
 }
 
 #[test]
@@ -177,28 +177,28 @@ fn floating_point() {
     );
     check_number(
         r#"const GOAL: f64 = 2.0 + 3.0 * 5.5 - 8.;"#,
-        i128::from_le_bytes(pad16(&f64::to_le_bytes(10.5), true)),
+        i128::from_le_bytes(pad16(&f64::to_le_bytes(10.5), IsSigned::Yes)),
     );
     check_number(
         r#"const GOAL: f32 = 2.0 + 3.0 * 5.5 - 8.;"#,
-        i128::from_le_bytes(pad16(&f32::to_le_bytes(10.5), true)),
+        i128::from_le_bytes(pad16(&f32::to_le_bytes(10.5), IsSigned::Yes)),
     );
     check_number(
         r#"const GOAL: f32 = -90.0 + 36.0;"#,
-        i128::from_le_bytes(pad16(&f32::to_le_bytes(-54.0), true)),
+        i128::from_le_bytes(pad16(&f32::to_le_bytes(-54.0), IsSigned::Yes)),
     );
     check_number(
         r#"const GOAL: f16 = 2.0 + 3.0 * 5.5 - 8.;"#,
         i128::from_le_bytes(pad16(
             &u16::try_from("10.5".parse::<f16>().unwrap().to_bits()).unwrap().to_le_bytes(),
-            true,
+            IsSigned::Yes,
         )),
     );
     check_number(
         r#"const GOAL: f16 = -90.0 + 36.0;"#,
         i128::from_le_bytes(pad16(
             &u16::try_from("-54.0".parse::<f16>().unwrap().to_bits()).unwrap().to_le_bytes(),
-            true,
+            IsSigned::Yes,
         )),
     );
 }
@@ -286,6 +286,9 @@ fn floating_point_casts() {
     check_number(r#"const GOAL: i8 = (0./0.) as i8"#, 0);
     check_number(r#"const GOAL: i8 = (1./0.) as i8"#, 127);
     check_number(r#"const GOAL: i8 = (-1./0.) as i8"#, -128);
+    check_number(r#"const GOAL: u8 = (1./0.) as u8"#, 255);
+    check_number(r#"const GOAL: u8 = 256.0f32 as u8"#, 255);
+    check_number(r#"const GOAL: u16 = 1e10f32 as u16"#, 65535);
     check_number(r#"const GOAL: i64 = 1e18f64 as f32 as i64"#, 999999984306749440);
 }
 
@@ -1791,14 +1794,14 @@ const GOAL: i32 = {
 fn closure_capture_unsized_type() {
     check_number(
         r#"
-    //- minicore: fn, copy, slice, index, coerce_unsized
+    //- minicore: fn, copy, slice, index, coerce_unsized, sized
     fn f<T: A>(x: &<T as A>::Ty) -> &<T as A>::Ty {
         let c = || &*x;
         c()
     }
 
     trait A {
-        type Ty;
+        type Ty: ?Sized;
     }
 
     impl A for i32 {
@@ -1809,7 +1812,7 @@ fn closure_capture_unsized_type() {
         let k: &[u8] = &[1, 2, 3];
         let k = f::<i32>(k);
         k[0] + k[1] + k[2]
-    }
+    };
     "#,
         6,
     );
@@ -2213,14 +2216,17 @@ fn boxes() {
 use core::ops::{Deref, DerefMut};
 use core::{marker::Unsize, ops::CoerceUnsized};
 
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub fn box_new<T>(_x: T) -> Box<T>;
+
 #[lang = "owned_box"]
 pub struct Box<T: ?Sized> {
     inner: *mut T,
 }
 impl<T> Box<T> {
     fn new(t: T) -> Self {
-        #[rustc_box]
-        Box::new(t)
+        box_new(t)
     }
 }
 
@@ -2473,8 +2479,6 @@ fn extern_weak_statics() {
 }
 
 #[test]
-// FIXME
-#[should_panic]
 fn from_ne_bytes() {
     check_number(
         r#"
@@ -2520,7 +2524,7 @@ fn enums() {
     );
     crate::attach_db(&db, || {
         let r = eval_goal(&db, file_id).unwrap();
-        assert_eq!(try_const_usize(&db, r), Some(1));
+        assert_eq!(allocation_as_usize(r), 1);
     })
 }
 
@@ -2533,7 +2537,15 @@ fn const_loop() {
     const F2: i32 = 2 * F1;
     const GOAL: i32 = F3;
     "#,
-        |e| e == ConstEvalError::MirLowerError(MirLowerError::Loop),
+        |e| {
+            if let ConstEvalError::MirEvalError(MirEvalError::ConstEvalError(_, inner)) = e
+                && let ConstEvalError::MirLowerError(MirLowerError::Loop) = *inner
+            {
+                true
+            } else {
+                false
+            }
+        },
     );
 }
 
@@ -2553,14 +2565,11 @@ fn const_transfer_memory() {
 }
 
 #[test]
-// FIXME
-#[should_panic]
 fn anonymous_const_block() {
     check_number(
         r#"
-    extern "rust-intrinsic" {
-        pub fn size_of<T>() -> usize;
-    }
+    #[rustc_intrinsic]
+    pub fn size_of<T>() -> usize;
 
     const fn f<T>() -> usize {
         let r = const { size_of::<T>() };
@@ -2621,6 +2630,19 @@ fn const_generic_subst_fn() {
     const GOAL: usize = f([1, 2, 5]);
     "#,
         3,
+    );
+}
+
+#[test]
+fn const_generic_fixed_width() {
+    check_number(
+        r#"
+    const fn m<const N: u64>() -> u64 {
+        N
+    }
+    const GOAL: u64 = m::<0>();
+    "#,
+        0,
     );
 }
 
@@ -2936,6 +2958,14 @@ fn recursive_adt() {
             TAG_TREE
         };
     "#,
-        |e| matches!(e, ConstEvalError::MirLowerError(MirLowerError::Loop)),
+        |e| {
+            if let ConstEvalError::MirEvalError(MirEvalError::ConstEvalError(_, inner)) = e
+                && let ConstEvalError::MirLowerError(MirLowerError::Loop) = *inner
+            {
+                true
+            } else {
+                false
+            }
+        },
     );
 }

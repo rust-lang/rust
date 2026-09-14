@@ -95,7 +95,7 @@ where
             // as we've already registered the destructor.
             State::Alive => unsafe { old_value.assume_init_drop() },
 
-            State::Destroyed(_) => unreachable!(),
+            State::Destroyed(_) => rtabort!("unreachable"),
         }
 
         self.value.get().cast()

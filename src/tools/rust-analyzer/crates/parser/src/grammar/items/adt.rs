@@ -1,4 +1,4 @@
-use crate::grammar::attributes::ATTRIBUTE_FIRST;
+use crate::grammar::attributes::OUTER_ATTR_FIRST;
 
 use super::*;
 
@@ -87,22 +87,27 @@ pub(crate) fn variant_list(p: &mut Parser<'_>) {
         attributes::outer_attrs(p);
         if p.at(IDENT) {
             name(p);
-            match p.current() {
-                T!['{'] => record_field_list(p),
-                T!['('] => tuple_field_list(p),
-                _ => (),
-            }
-
-            // test variant_discriminant
-            // enum E { X(i32) = 10 }
-            if p.eat(T![=]) {
-                expressions::expr(p);
-            }
-            m.complete(p, VARIANT);
+        } else if p.at(T![_]) {
+            p.bump(T![_]);
         } else {
             m.abandon(p);
             p.err_and_bump("expected enum variant");
+            return;
         }
+        match p.current() {
+            T!['{'] => record_field_list(p),
+            T!['('] => tuple_field_list(p),
+            _ => (),
+        }
+
+        // test variant_discriminant
+        // enum E { X(i32) = 10 }
+        if p.eat(T![=]) {
+            let m = p.start();
+            expressions::expr(p);
+            m.complete(p, CONST_ARG);
+        }
+        m.complete(p, VARIANT);
     }
 }
 
@@ -131,7 +136,30 @@ pub(crate) fn record_field_list(p: &mut Parser<'_>) {
         // struct S { #[attr] f: f32 }
         attributes::outer_attrs(p);
         opt_visibility(p, false);
-        p.eat(T![unsafe]);
+
+        if p.at(T![mut]) && p.nth(1) == T!['('] {
+            // test record_mut_restrictions_before
+            // struct Foo { mut(super) unsafe i: i32 }
+            let m = p.start();
+            p.bump(T![mut]);
+            if !opt_visibility_inner(p, false) {
+                p.error("expected a mut restriction");
+            }
+            m.complete(p, MUT_RESTRICTION);
+        }
+
+        // We accept mut restriction both after and before `unsafe`, as the order is undecided yet.
+        if p.eat(T![unsafe]) && p.at(T![mut]) && p.nth(1) == T!['('] {
+            // test record_mut_restrictions_after
+            // struct Foo { unsafe mut(super) i: i32 }
+            let m = p.start();
+            p.bump(T![mut]);
+            if !opt_visibility_inner(p, false) {
+                p.error("expected a mut restriction");
+            }
+            m.complete(p, MUT_RESTRICTION);
+        }
+
         if p.at(IDENT) {
             name(p);
             p.expect(T![:]);
@@ -139,7 +167,9 @@ pub(crate) fn record_field_list(p: &mut Parser<'_>) {
             // test record_field_default_values
             // struct S { f: f32 = 0.0 }
             if p.eat(T![=]) {
+                let m = p.start();
                 expressions::expr(p);
+                m.complete(p, CONST_ARG);
             }
             m.complete(p, RECORD_FIELD);
         } else {
@@ -150,7 +180,7 @@ pub(crate) fn record_field_list(p: &mut Parser<'_>) {
 }
 
 const TUPLE_FIELD_FIRST: TokenSet =
-    types::TYPE_FIRST.union(ATTRIBUTE_FIRST).union(VISIBILITY_FIRST);
+    types::TYPE_FIRST.union(OUTER_ATTR_FIRST).union(VISIBILITY_FIRST);
 
 // test_err tuple_field_list_recovery
 // struct S(struct S;
@@ -171,6 +201,18 @@ fn tuple_field_list(p: &mut Parser<'_>) {
             // struct S (#[attr] f32);
             attributes::outer_attrs(p);
             let has_vis = opt_visibility(p, true);
+
+            if p.at(T![mut]) && p.nth(1) == T!['('] {
+                // test tuple_mut_restrictions
+                // struct Foo(pub(crate) mut(super) i32);
+                let m = p.start();
+                p.bump(T![mut]);
+                if !opt_visibility_inner(p, false) {
+                    p.error("expected a mut restriction");
+                }
+                m.complete(p, MUT_RESTRICTION);
+            }
+
             if !p.at_ts(types::TYPE_FIRST) {
                 p.error("expected a type");
                 if has_vis {

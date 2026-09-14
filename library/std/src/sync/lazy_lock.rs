@@ -258,7 +258,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
         // * the closure was not called, but a previous call initialized `value`.
         // * the closure was not called because the Once is poisoned, which we handled above.
         // So `value` has definitely been initialized and will not be modified again.
-        unsafe { &*(*this.data.get()).value }
+        unsafe { &(*this.data.get()).value }
     }
 }
 
@@ -375,7 +375,8 @@ impl<T, F: FnOnce() -> T> DerefMut for LazyLock<T, F> {
 }
 
 #[stable(feature = "lazy_cell", since = "1.80.0")]
-impl<T: Default> Default for LazyLock<T> {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+const impl<T: Default> Default for LazyLock<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
     #[inline]
     fn default() -> LazyLock<T> {
@@ -395,7 +396,7 @@ impl<T: fmt::Debug, F> fmt::Debug for LazyLock<T, F> {
     }
 }
 
-#[stable(feature = "from_wrapper_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "from_wrapper_impls", since = "1.96.0")]
 impl<T, F> From<T> for LazyLock<T, F> {
     /// Constructs a `LazyLock` that starts already initialized
     /// with the provided value.

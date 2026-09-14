@@ -4,16 +4,19 @@ use std::sync::Arc;
 use std::{iter, mem};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{Diag, DiagCtxtHandle};
-use rustc_hir::def::DefKind;
+use rustc_data_structures::hash_table::HashTable;
+use rustc_data_structures::sync::{DynSend, DynSync};
+use rustc_errors::DiagCtxtHandle;
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::{
-    CycleError, QueryJob, QueryJobId, QueryLatch, QueryStackFrame, QueryWaiter,
+    ActiveKeyStatus, QueryCache, QueryCycle, QueryJob, QueryJobId, QueryKey, QueryLatch,
+    QueryStackFrame, QueryVTable, QueryWaiter,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{DUMMY_SP, Span};
+use tracing::debug;
 
-use crate::{CollectActiveJobsKind, collect_active_query_jobs};
+use crate::query_vtables::for_each_query_vtable;
 
 /// Map from query job IDs to job information collected by
 /// `collect_active_query_jobs`.
@@ -53,34 +56,114 @@ pub(crate) struct QueryJobInfo<'tcx> {
     pub(crate) job: QueryJob<'tcx>,
 }
 
+#[derive(Clone, Copy)]
+pub enum CollectActiveJobsKind {
+    /// We need the full query job map, and we are willing to wait to obtain the query state
+    /// shard lock(s).
+    Full,
+
+    /// We need the full query job map, and we shouldn't need to wait to obtain the shard lock(s),
+    /// because we are in a place where nothing else could hold the shard lock(s).
+    FullNoContention,
+
+    /// We can get by without the full query job map, so we won't bother waiting to obtain the
+    /// shard lock(s) if they're not already unlocked.
+    PartialAllowed,
+}
+
+/// Returns a map of currently active query jobs, collected from all queries.
+pub fn collect_active_query_jobs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    collect_kind: CollectActiveJobsKind,
+) -> QueryJobMap<'tcx> {
+    let mut job_map = QueryJobMap::default();
+
+    for_each_query_vtable!(ALL, tcx, |query| {
+        collect_active_query_jobs_inner(query, collect_kind, &mut job_map);
+    });
+
+    job_map
+}
+
+/// Internal plumbing for collecting the set of active jobs for this query.
+///
+/// Aborts if jobs can't be gathered as specified by `collect_kind`.
+fn collect_active_query_jobs_inner<'tcx, C>(
+    query: &'tcx QueryVTable<'tcx, C>,
+    collect_kind: CollectActiveJobsKind,
+    job_map: &mut QueryJobMap<'tcx>,
+) where
+    C: QueryCache<Key: QueryKey + DynSend + DynSync>,
+    QueryVTable<'tcx, C>: DynSync,
+{
+    let mut collect_shard_jobs = |shard: &HashTable<(C::Key, ActiveKeyStatus<'tcx>)>| {
+        for (key, status) in shard.iter() {
+            if let ActiveKeyStatus::Started(job) = status {
+                // It's fine to call `create_tagged_key` with the shard locked,
+                // because it's just a `TaggedQueryKey` variant constructor.
+                let tagged_key = (query.create_tagged_key)(*key);
+                job_map.insert(job.id, QueryJobInfo { tagged_key, job: job.clone() });
+            }
+        }
+    };
+
+    match collect_kind {
+        CollectActiveJobsKind::Full => {
+            for shard in query.state.active.lock_shards() {
+                collect_shard_jobs(&shard);
+            }
+        }
+        CollectActiveJobsKind::FullNoContention => {
+            for shard in query.state.active.try_lock_shards() {
+                match shard {
+                    Some(shard) => collect_shard_jobs(&shard),
+                    None => panic!("Failed to collect active jobs for query `{}`!", query.name),
+                }
+            }
+        }
+        CollectActiveJobsKind::PartialAllowed => {
+            for shard in query.state.active.try_lock_shards() {
+                match shard {
+                    Some(shard) => collect_shard_jobs(&shard),
+                    // This collection is best-effort (it is only used to print the query
+                    // stack on panic), so a contended shard is expected and fine to skip.
+                    // Emitting this at `warn!` would leak nondeterministically into the
+                    // panic output under the parallel front-end, where another thread may
+                    // still hold a shard lock, so keep it at `debug!`.
+                    None => debug!("Failed to collect active jobs for query `{}`!", query.name),
+                }
+            }
+        }
+    }
+}
+
 pub(crate) fn find_cycle_in_stack<'tcx>(
     id: QueryJobId,
     job_map: QueryJobMap<'tcx>,
     current_job: &Option<QueryJobId>,
     span: Span,
-) -> CycleError<'tcx> {
-    // Find the waitee amongst `current_job` parents
-    let mut cycle = Vec::new();
+) -> QueryCycle<'tcx> {
+    // Find the waitee amongst `current_job` parents.
+    let mut frames = Vec::new();
     let mut current_job = Option::clone(current_job);
 
     while let Some(job) = current_job {
         let info = &job_map.map[&job];
-        cycle.push(QueryStackFrame { span: info.job.span, tagged_key: info.tagged_key });
+        frames.push(QueryStackFrame { span: info.job.span, tagged_key: info.tagged_key });
 
         if job == id {
-            cycle.reverse();
+            frames.reverse();
 
-            // This is the end of the cycle
-            // The span entry we included was for the usage
-            // of the cycle itself, and not part of the cycle
-            // Replace it with the span which caused the cycle to form
-            cycle[0].span = span;
-            // Find out why the cycle itself was used
+            // This is the end of the cycle. The span entry we included was for
+            // the usage of the cycle itself, and not part of the cycle.
+            // Replace it with the span which caused the cycle to form.
+            frames[0].span = span;
+            // Find out why the cycle itself was used.
             let usage = try {
                 let parent = info.job.parent?;
                 QueryStackFrame { span: info.job.span, tagged_key: job_map.tagged_key_of(parent) }
             };
-            return CycleError { usage, cycle };
+            return QueryCycle { usage, frames };
         }
 
         current_job = info.job.parent;
@@ -155,11 +238,11 @@ fn abstracted_waiters_of(job_map: &QueryJobMap<'_>, query: QueryJobId) -> Vec<Ab
     result
 }
 
-/// Look for query cycles by doing a depth first search starting at `query`.
+/// Looks for a query cycle by doing a depth first search starting at `query`.
 /// `span` is the reason for the `query` to execute. This is initially DUMMY_SP.
 /// If a cycle is detected, this initial value is replaced with the span causing
-/// the cycle.
-fn cycle_check<'tcx>(
+/// the cycle. `stack` will contain just the cycle on return if detected.
+fn find_cycle<'tcx>(
     job_map: &QueryJobMap<'tcx>,
     query: QueryJobId,
     span: Span,
@@ -190,7 +273,7 @@ fn cycle_check<'tcx>(
             continue;
         };
         if let ControlFlow::Break(maybe_resumable) =
-            cycle_check(job_map, parent, abstracted_waiter.span, stack, visited)
+            find_cycle(job_map, parent, abstracted_waiter.span, stack, visited)
         {
             // Return the resumable waiter in `waiter.resumable` if present
             return ControlFlow::Break(abstracted_waiter.resumable.or(maybe_resumable));
@@ -232,103 +315,96 @@ fn connected_to_root<'tcx>(
     false
 }
 
-/// Looks for query cycles starting from the last query in `jobs`.
-/// If a cycle is found, all queries in the cycle is removed from `jobs` and
-/// the function return true.
-/// If a cycle was not found, the starting query is removed from `jobs` and
-/// the function returns false.
-fn remove_cycle<'tcx>(
+/// Processes a found query cycle into a `Cycle`
+fn process_cycle<'tcx>(
     job_map: &QueryJobMap<'tcx>,
-    jobs: &mut Vec<QueryJobId>,
-    wakelist: &mut Vec<Arc<QueryWaiter<'tcx>>>,
-) -> bool {
+    stack: Vec<(Span, QueryJobId)>,
+) -> QueryCycle<'tcx> {
+    // The stack is a vector of pairs of spans and queries; reverse it so that
+    // the earlier entries require later entries
+    let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().rev().unzip();
+
+    // Shift the spans so that queries are matched with the span for their waitee
+    spans.rotate_right(1);
+
+    // Zip them back together
+    let mut stack: Vec<_> = iter::zip(spans, queries).collect();
+
+    struct EntryPoint {
+        query_in_cycle: QueryJobId,
+        query_waiting_on_cycle: Option<(Span, QueryJobId)>,
+    }
+
+    // Find the queries in the cycle which are
+    // connected to queries outside the cycle
+    let entry_points = stack
+        .iter()
+        .filter_map(|&(_, query_in_cycle)| {
+            let mut entrypoint = false;
+            let mut query_waiting_on_cycle = None;
+
+            // Find a direct waiter who leads to the root
+            for abstracted_waiter in abstracted_waiters_of(job_map, query_in_cycle) {
+                let Some(parent) = abstracted_waiter.parent else {
+                    // The query in the cycle is directly connected to root.
+                    entrypoint = true;
+                    continue;
+                };
+
+                // Mark all the other queries in the cycle as already visited,
+                // so paths to the root through the cycle itself won't count.
+                let mut visited = FxHashSet::from_iter(stack.iter().map(|q| q.1));
+
+                if connected_to_root(job_map, parent, &mut visited) {
+                    query_waiting_on_cycle = Some((abstracted_waiter.span, parent));
+                    entrypoint = true;
+                    break;
+                }
+            }
+
+            entrypoint.then_some(EntryPoint { query_in_cycle, query_waiting_on_cycle })
+        })
+        .collect::<Vec<EntryPoint>>();
+
+    // Pick an entry point, preferring ones with waiters
+    let entry_point = entry_points
+        .iter()
+        .find(|entry_point| entry_point.query_waiting_on_cycle.is_some())
+        .unwrap_or(&entry_points[0]);
+
+    // Shift the stack so that our entry point is first
+    let entry_point_pos = stack.iter().position(|(_, query)| *query == entry_point.query_in_cycle);
+    if let Some(pos) = entry_point_pos {
+        stack.rotate_left(pos);
+    }
+
+    let usage = entry_point
+        .query_waiting_on_cycle
+        .map(|(span, job)| QueryStackFrame { span, tagged_key: job_map.tagged_key_of(job) });
+
+    // Create the cycle error
+    QueryCycle {
+        usage,
+        frames: stack
+            .iter()
+            .map(|&(span, job)| QueryStackFrame { span, tagged_key: job_map.tagged_key_of(job) })
+            .collect(),
+    }
+}
+
+/// Looks for a query cycle starting at `query`.
+/// Returns a waiter to resume if a cycle is found.
+fn find_and_process_cycle<'tcx>(
+    job_map: &QueryJobMap<'tcx>,
+    query: QueryJobId,
+) -> Option<Arc<QueryWaiter<'tcx>>> {
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
-    // Look for a cycle starting with the last query in `jobs`
     if let ControlFlow::Break(resumable) =
-        cycle_check(job_map, jobs.pop().unwrap(), DUMMY_SP, &mut stack, &mut visited)
+        find_cycle(job_map, query, DUMMY_SP, &mut stack, &mut visited)
     {
-        // The stack is a vector of pairs of spans and queries; reverse it so that
-        // the earlier entries require later entries
-        let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().rev().unzip();
-
-        // Shift the spans so that queries are matched with the span for their waitee
-        spans.rotate_right(1);
-
-        // Zip them back together
-        let mut stack: Vec<_> = iter::zip(spans, queries).collect();
-
-        // Remove the queries in our cycle from the list of jobs to look at
-        for r in &stack {
-            if let Some(pos) = jobs.iter().position(|j| j == &r.1) {
-                jobs.remove(pos);
-            }
-        }
-
-        struct EntryPoint {
-            query_in_cycle: QueryJobId,
-            query_waiting_on_cycle: Option<(Span, QueryJobId)>,
-        }
-
-        // Find the queries in the cycle which are
-        // connected to queries outside the cycle
-        let entry_points = stack
-            .iter()
-            .filter_map(|&(_, query_in_cycle)| {
-                let mut entrypoint = false;
-                let mut query_waiting_on_cycle = None;
-
-                // Find a direct waiter who leads to the root
-                for abstracted_waiter in abstracted_waiters_of(job_map, query_in_cycle) {
-                    let Some(parent) = abstracted_waiter.parent else {
-                        // The query in the cycle is directly connected to root.
-                        entrypoint = true;
-                        continue;
-                    };
-
-                    // Mark all the other queries in the cycle as already visited,
-                    // so paths to the root through the cycle itself won't count.
-                    let mut visited = FxHashSet::from_iter(stack.iter().map(|q| q.1));
-
-                    if connected_to_root(job_map, parent, &mut visited) {
-                        query_waiting_on_cycle = Some((abstracted_waiter.span, parent));
-                        entrypoint = true;
-                        break;
-                    }
-                }
-
-                entrypoint.then_some(EntryPoint { query_in_cycle, query_waiting_on_cycle })
-            })
-            .collect::<Vec<EntryPoint>>();
-
-        // Pick an entry point, preferring ones with waiters
-        let entry_point = entry_points
-            .iter()
-            .find(|entry_point| entry_point.query_waiting_on_cycle.is_some())
-            .unwrap_or(&entry_points[0]);
-
-        // Shift the stack so that our entry point is first
-        let entry_point_pos =
-            stack.iter().position(|(_, query)| *query == entry_point.query_in_cycle);
-        if let Some(pos) = entry_point_pos {
-            stack.rotate_left(pos);
-        }
-
-        let usage = entry_point
-            .query_waiting_on_cycle
-            .map(|(span, job)| QueryStackFrame { span, tagged_key: job_map.tagged_key_of(job) });
-
         // Create the cycle error
-        let error = CycleError {
-            usage,
-            cycle: stack
-                .iter()
-                .map(|&(span, job)| QueryStackFrame {
-                    span,
-                    tagged_key: job_map.tagged_key_of(job),
-                })
-                .collect(),
-        };
+        let error = process_cycle(job_map, stack);
 
         // We unwrap `resumable` here since there must always be one
         // edge which is resumable / waited using a query latch
@@ -341,62 +417,31 @@ fn remove_cycle<'tcx>(
         *waiter.cycle.lock() = Some(error);
 
         // Put the waiter on the list of things to resume
-        wakelist.push(waiter);
-
-        true
+        Some(waiter)
     } else {
-        false
+        None
     }
 }
 
 /// Detects query cycles by using depth first search over all active query jobs.
 /// If a query cycle is found it will break the cycle by finding an edge which
 /// uses a query latch and then resuming that waiter.
-/// There may be multiple cycles involved in a deadlock, so this searches
-/// all active queries for cycles before finally resuming all the waiters at once.
-pub fn break_query_cycles<'tcx>(
-    job_map: QueryJobMap<'tcx>,
-    registry: &rustc_thread_pool::Registry,
-) {
-    let mut wakelist = Vec::new();
-    // It is OK per the comments:
-    // - https://github.com/rust-lang/rust/pull/131200#issuecomment-2798854932
-    // - https://github.com/rust-lang/rust/pull/131200#issuecomment-2798866392
-    #[allow(rustc::potential_query_instability)]
-    let mut jobs: Vec<QueryJobId> = job_map.map.keys().copied().collect();
+///
+/// There may be multiple cycles involved in a deadlock, but this only breaks one at a time so
+/// there will be multiple rounds through the deadlock handler if multiple cycles are present.
+#[allow(rustc::potential_query_instability)]
+pub fn break_query_cycle<'tcx>(job_map: QueryJobMap<'tcx>, registry: &rustc_thread_pool::Registry) {
+    // Look for a cycle starting at each query job
+    let waiter = job_map
+        .map
+        .keys()
+        .find_map(|query| find_and_process_cycle(&job_map, *query))
+        .expect("unable to find a query cycle");
 
-    let mut found_cycle = false;
+    // Mark the thread we're about to wake up as unblocked.
+    rustc_thread_pool::mark_unblocked(registry);
 
-    while jobs.len() > 0 {
-        if remove_cycle(&job_map, &mut jobs, &mut wakelist) {
-            found_cycle = true;
-        }
-    }
-
-    // Check that a cycle was found. It is possible for a deadlock to occur without
-    // a query cycle if a query which can be waited on uses Rayon to do multithreading
-    // internally. Such a query (X) may be executing on 2 threads (A and B) and A may
-    // wait using Rayon on B. Rayon may then switch to executing another query (Y)
-    // which in turn will wait on X causing a deadlock. We have a false dependency from
-    // X to Y due to Rayon waiting and a true dependency from Y to X. The algorithm here
-    // only considers the true dependency and won't detect a cycle.
-    if !found_cycle {
-        panic!(
-            "deadlock detected as we're unable to find a query cycle to break\n\
-            current query map:\n{job_map:#?}",
-        );
-    }
-
-    // Mark all the thread we're about to wake up as unblocked. This needs to be done before
-    // we wake the threads up as otherwise Rayon could detect a deadlock if a thread we
-    // resumed fell asleep and this thread had yet to mark the remaining threads as unblocked.
-    for _ in 0..wakelist.len() {
-        rustc_thread_pool::mark_unblocked(registry);
-    }
-
-    for waiter in wakelist.into_iter() {
-        waiter.condvar.notify_one();
-    }
+    assert!(waiter.condvar.notify_one(), "unable to wake the waiter");
 }
 
 pub fn print_query_stack<'tcx>(
@@ -450,61 +495,4 @@ pub fn print_query_stack<'tcx>(
         let _ = writeln!(file, "end of query stack");
     }
     count_total
-}
-
-#[inline(never)]
-#[cold]
-pub(crate) fn report_cycle<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    CycleError { usage, cycle: stack }: &CycleError<'tcx>,
-) -> Diag<'tcx> {
-    assert!(!stack.is_empty());
-
-    let span = stack[0].tagged_key.default_span(tcx, stack[1 % stack.len()].span);
-
-    let mut cycle_stack = Vec::new();
-
-    use crate::error::StackCount;
-    let stack_bottom = stack[0].tagged_key.description(tcx);
-    let stack_count = if stack.len() == 1 {
-        StackCount::Single { stack_bottom: stack_bottom.clone() }
-    } else {
-        StackCount::Multiple { stack_bottom: stack_bottom.clone() }
-    };
-
-    for i in 1..stack.len() {
-        let frame = &stack[i];
-        let span = frame.tagged_key.default_span(tcx, stack[(i + 1) % stack.len()].span);
-        cycle_stack
-            .push(crate::error::CycleStack { span, desc: frame.tagged_key.description(tcx) });
-    }
-
-    let cycle_usage = usage.as_ref().map(|usage| crate::error::CycleUsage {
-        span: usage.tagged_key.default_span(tcx, usage.span),
-        usage: usage.tagged_key.description(tcx),
-    });
-
-    let alias = if stack
-        .iter()
-        .all(|frame| frame.tagged_key.def_kind(tcx) == Some(DefKind::TyAlias))
-    {
-        Some(crate::error::Alias::Ty)
-    } else if stack.iter().all(|frame| frame.tagged_key.def_kind(tcx) == Some(DefKind::TraitAlias))
-    {
-        Some(crate::error::Alias::Trait)
-    } else {
-        None
-    };
-
-    let cycle_diag = crate::error::Cycle {
-        span,
-        cycle_stack,
-        stack_bottom,
-        alias,
-        cycle_usage,
-        stack_count,
-        note_span: (),
-    };
-
-    tcx.sess.dcx().create_err(cycle_diag)
 }

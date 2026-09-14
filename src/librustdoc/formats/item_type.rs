@@ -101,12 +101,18 @@ item_type! {
     // This number is reserved for use in JavaScript
     // Generic = 26,
     Attribute = 27,
+    // The two next ones represent an attr/derive macro declared as a `macro_rules!`. We need this
+    // distinction because they will point to a `macro.[name].html` file and not
+    // `[attr|derive].[name].html` file, so the link generation needs to take it into account while
+    // still having the filtering working as expected.
+    DeclMacroAttribute = 28,
+    DeclMacroDerive = 29,
 }
 
 impl<'a> From<&'a clean::Item> for ItemType {
     fn from(item: &'a clean::Item) -> ItemType {
         let kind = match &item.kind {
-            clean::StrippedItem(box item) => item,
+            clean::StrippedItem(item) => item,
             kind => kind,
         };
 
@@ -122,7 +128,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::StaticItem(..) => ItemType::Static,
             clean::ConstantItem(..) => ItemType::Constant,
             clean::TraitItem(..) => ItemType::Trait,
-            clean::ImplItem(..) => ItemType::Impl,
+            clean::ImplItem(..) | clean::PlaceholderImplItem => ItemType::Impl,
             clean::RequiredMethodItem(..) => ItemType::TyMethod,
             clean::MethodItem(..) => ItemType::Method,
             clean::StructFieldItem(..) => ItemType::StructField,
@@ -156,17 +162,16 @@ impl ItemType {
             DefKind::Enum => Self::Enum,
             DefKind::Fn => Self::Function,
             DefKind::Mod => Self::Module,
-            DefKind::Const { .. } => Self::Constant,
+            DefKind::Const => Self::Constant,
             DefKind::Static { .. } => Self::Static,
             DefKind::Struct => Self::Struct,
             DefKind::Union => Self::Union,
             DefKind::Trait => Self::Trait,
             DefKind::TyAlias => Self::TypeAlias,
             DefKind::TraitAlias => Self::TraitAlias,
-            DefKind::Macro(MacroKinds::BANG) => ItemType::Macro,
             DefKind::Macro(MacroKinds::ATTR) => ItemType::ProcAttribute,
             DefKind::Macro(MacroKinds::DERIVE) => ItemType::ProcDerive,
-            DefKind::Macro(_) => todo!("Handle macros with multiple kinds"),
+            DefKind::Macro(_) => ItemType::Macro,
             DefKind::ForeignTy => Self::ForeignType,
             DefKind::Variant => Self::Variant,
             DefKind::Field => Self::StructField,
@@ -180,20 +185,20 @@ impl ItemType {
             }
             DefKind::Ctor(CtorOf::Struct, _) => Self::Struct,
             DefKind::Ctor(CtorOf::Variant, _) => Self::Variant,
-            DefKind::AssocConst { .. } => Self::AssocConst,
+            DefKind::AssocConst => Self::AssocConst,
             DefKind::TyParam
             | DefKind::ConstParam
             | DefKind::ExternCrate
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::AnonConst
-            | DefKind::InlineConst
             | DefKind::OpaqueTy
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
             | DefKind::Closure
-            | DefKind::SyntheticCoroutineBody => Self::ForeignType,
+            | DefKind::SyntheticCoroutineBody
+            | DefKind::TestBinderConstraints => Self::ForeignType,
         }
     }
 
@@ -221,8 +226,8 @@ impl ItemType {
             ItemType::AssocConst => "associatedconstant",
             ItemType::ForeignType => "foreigntype",
             ItemType::Keyword => "keyword",
-            ItemType::ProcAttribute => "attr",
-            ItemType::ProcDerive => "derive",
+            ItemType::ProcAttribute | ItemType::DeclMacroAttribute => "attr",
+            ItemType::ProcDerive | ItemType::DeclMacroDerive => "derive",
             ItemType::TraitAlias => "traitalias",
             ItemType::Attribute => "attribute",
         }

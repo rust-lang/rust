@@ -47,7 +47,8 @@ fn osstr_as_utf8_bytes(path: &OsStr) -> &[u8] {
 
 fn make_file_info(source_file: &SourceFile, embed_source: bool) -> Option<FileInfo> {
     let has_md5 = source_file.src_hash.kind == SourceFileHashAlgorithm::Md5;
-    let has_source = embed_source && source_file.src.is_some();
+    let has_source = embed_source
+        && (source_file.src.is_some() || source_file.external_src.read().get_source().is_some());
 
     if !has_md5 && !has_source {
         return None;
@@ -61,6 +62,8 @@ fn make_file_info(source_file: &SourceFile, embed_source: bool) -> Option<FileIn
 
     if embed_source {
         if let Some(src) = &source_file.src {
+            info.source = Some(LineString::String(src.as_bytes().to_vec()));
+        } else if let Some(src) = source_file.external_src.read().get_source() {
             info.source = Some(LineString::String(src.as_bytes().to_vec()));
         }
     }
@@ -79,19 +82,22 @@ impl DebugContext {
         let span = hygiene::walk_chain_collapsed(span, function_span);
         match tcx.sess.source_map().lookup_line(span.lo()) {
             Ok(SourceFileAndLine { sf: file, line }) => {
-                let file_id = self.add_source_file(&file);
+                let file_id = self.add_source_file(tcx, &file);
                 let line_pos = file.lines()[line];
                 let col = file.relative_position(span.lo()) - line_pos;
 
                 (file_id, u64::try_from(line).unwrap() + 1, u64::from(col.to_u32()) + 1)
             }
-            Err(file) => (self.add_source_file(&file), 0, 0),
+            Err(file) => (self.add_source_file(tcx, &file), 0, 0),
         }
     }
 
-    pub(crate) fn add_source_file(&mut self, source_file: &SourceFile) -> FileId {
+    pub(crate) fn add_source_file(&mut self, tcx: TyCtxt<'_>, source_file: &SourceFile) -> FileId {
         let cache_key = (source_file.stable_id, source_file.src_hash);
         *self.created_files.entry(cache_key).or_insert_with(|| {
+            if self.embed_source && source_file.src.is_none() {
+                tcx.sess.source_map().ensure_source_file_source_present(source_file);
+            }
             let line_program: &mut LineProgram = &mut self.dwarf.unit.line_program;
             let line_strings: &mut LineStringTable = &mut self.dwarf.line_strings;
 

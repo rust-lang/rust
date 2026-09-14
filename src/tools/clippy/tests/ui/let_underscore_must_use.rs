@@ -1,5 +1,5 @@
 #![warn(clippy::let_underscore_must_use)]
-#![allow(clippy::unnecessary_wraps)]
+#![expect(clippy::unnecessary_wraps)]
 
 // Debug implementations can fire this lint,
 // so we shouldn't lint external macros
@@ -96,6 +96,9 @@ fn main() {
     let _ = if true { Ok(()) } else { Err(()) };
     //~^ let_underscore_must_use
 
+    let _: Result<(), ()> = if true { Ok(()) } else { Err(()) };
+    //~^ let_underscore_must_use
+
     let a = Result::<(), ()>::Ok(());
 
     let _ = a.is_ok();
@@ -107,16 +110,24 @@ fn main() {
     let _ = a;
     //~^ let_underscore_must_use
 
+    enum Uninhabited {}
+
     #[allow(clippy::let_underscore_must_use)]
     let _ = a;
 
     // No lint because this type should behave as `()`
-    let _ = Result::<_, std::convert::Infallible>::Ok(());
+    let _ = Result::<_, !>::Ok(());
 
+    // No lint because this type should behave as `()`
+    let _ = Result::<_, Uninhabited>::Ok(());
     #[must_use]
     struct T;
 
     // Lint because this type should behave as `T`
-    let _ = Result::<_, std::convert::Infallible>::Ok(T);
+    let _ = Result::<_, !>::Ok(T);
+    //~^ let_underscore_must_use
+
+    // Lint because this type should behave as `T`
+    let _ = Result::<_, Uninhabited>::Ok(T);
     //~^ let_underscore_must_use
 }

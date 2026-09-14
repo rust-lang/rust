@@ -1,0 +1,18 @@
+error[E0277]: `u32` is not an iterator
+  --> $DIR/consider_builtin_pointee_candidate-instantiate-result-fail.rs:9:28
+   |
+LL | struct ThisStructAintValid(<u32 as Iterator>::Item);
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^ `u32` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `u32`
+
+error[E0271]: type mismatch resolving `<ThisStructAintValid as Pointee>::Metadata == _`
+  --> $DIR/consider_builtin_pointee_candidate-instantiate-result-fail.rs:13:12
+   |
+LL |     let y: <ThisStructAintValid as std::ptr::Pointee>::Metadata;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.

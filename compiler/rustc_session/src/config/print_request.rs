@@ -15,51 +15,112 @@ use crate::macros::AllVariants;
 pub struct PrintRequest {
     pub kind: PrintKind,
     pub out: OutFileName,
+    pub arg: Option<String>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[derive(AllVariants)]
 pub enum PrintKind {
     // tidy-alphabetical-start
+    /// All target JSON specifications.
     AllTargetSpecsJson,
+
+    /// Does the backend supports the [`PrintRequest::arg`] `asm!()` mnemonic? (perma-unstable)
+    BackendHasMnemonic,
+
+    /// Does the backend supports Zstd compression? (perma-unstable)
     BackendHasZstd,
+
+    /// List of all calling conventions supported by rustc.
     CallingConventions,
+
+    /// List of cfg values.
     Cfg,
+
+    /// List of check-cfg values.
     CheckCfg,
+
+    /// List of available code models for the current backend.
     CodeModels,
+
+    /// Name of the crate being compiled.
     CrateName,
+
+    /// Lint levels of the crate's root module.
     CrateRootLintLevels,
+
+    /// The current selected deployment target. (Apple only)
     DeploymentTarget,
+
+    /// The names of the files created by the `--emit=link` option. (e.g. `libfoo.a`)
     FileNames,
+
+    /// Target-tuple of the host compiler.
     HostTuple,
+
+    /// Linker invocations.
     LinkArgs,
+
+    /// When compiling a `staticlib` crate, print the linker flags used.
     NativeStaticLibs,
+
+    /// List of available relocation models for the current backend.
     RelocationModels,
+
+    /// List of available split debuginfos for the current target.
     SplitDebuginfo,
+
+    /// List of available stack protector strategies for the current backend.
     StackProtectorStrategies,
+
+    /// List of available crate types for the current target.
     SupportedCrateTypes,
+
+    /// Path to the sysroot.
     Sysroot,
+
+    /// List of available CPU values for the current target.
     TargetCPUs,
+
+    /// List of available target features for the current target.
     TargetFeatures,
+
+    /// Path to the target libdir.
     TargetLibdir,
+
+    /// List of supported targets.
     TargetList,
+
+    /// Current target JSON specification.
     TargetSpecJson,
+
+    /// Target JSON specification schema.
     TargetSpecJsonSchema,
+
+    /// List of available TLS models for the current backend.
     TlsModels,
+
+    /// Target-tuple for WebAssembly's proc-macro crates.
+    WasmProcMacroTuple,
     // tidy-alphabetical-end
 }
 
-impl PrintKind {
-    /// FIXME: rust-analyzer doesn't support `#![feature(macro_derive)]` yet
-    /// (<https://github.com/rust-lang/rust-analyzer/issues/21043>), which breaks autocomplete.
-    /// Work around that by aliasing the trait constant to a regular constant.
-    const ALL_VARIANTS: &[Self] = <Self as AllVariants>::ALL_VARIANTS;
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(AllVariants)]
+pub enum PrintCategory {
+    Target,
+    Codegen,
+    Linker,
+    Crate,
+}
 
+impl PrintKind {
     fn name(self) -> &'static str {
         use PrintKind::*;
         match self {
             // tidy-alphabetical-start
             AllTargetSpecsJson => "all-target-specs-json",
+            BackendHasMnemonic => "backend-has-mnemonic",
             BackendHasZstd => "backend-has-zstd",
             CallingConventions => "calling-conventions",
             Cfg => "cfg",
@@ -84,7 +145,30 @@ impl PrintKind {
             TargetSpecJson => "target-spec-json",
             TargetSpecJsonSchema => "target-spec-json-schema",
             TlsModels => "tls-models",
+            WasmProcMacroTuple => "wasm-proc-macro-tuple",
             // tidy-alphabetical-end
+        }
+    }
+
+    fn category(self) -> PrintCategory {
+        use PrintKind::*;
+        match self {
+            TargetList | TargetSpecJsonSchema | AllTargetSpecsJson | TargetSpecJson
+            | TargetCPUs | TargetFeatures | DeploymentTarget | HostTuple | SupportedCrateTypes
+            | Sysroot | TargetLibdir | Cfg | CheckCfg | WasmProcMacroTuple => PrintCategory::Target,
+
+            BackendHasMnemonic
+            | BackendHasZstd
+            | CallingConventions
+            | CodeModels
+            | SplitDebuginfo
+            | StackProtectorStrategies
+            | TlsModels
+            | RelocationModels => PrintCategory::Codegen,
+
+            LinkArgs | NativeStaticLibs => PrintCategory::Linker,
+
+            CrateName | CrateRootLintLevels | FileNames => PrintCategory::Crate,
         }
     }
 
@@ -113,12 +197,14 @@ impl PrintKind {
 
             // Unstable values:
             AllTargetSpecsJson => false,
-            BackendHasZstd => false, // (perma-unstable, for use by compiletest)
+            BackendHasMnemonic => false, // (perma-unstable, for use by compiletest)
+            BackendHasZstd => false,     // (perma-unstable, for use by compiletest)
             CheckCfg => false,
             CrateRootLintLevels => false,
             SupportedCrateTypes => false,
             TargetSpecJson => false,
             TargetSpecJsonSchema => false,
+            WasmProcMacroTuple => false,
         }
     }
 
@@ -142,19 +228,28 @@ pub(crate) static PRINT_HELP: LazyLock<String> = LazyLock::new(|| {
     )
 });
 
-pub(crate) fn collect_print_requests(
+pub fn collect_print_requests(
     early_dcx: &EarlyDiagCtxt,
     cg: &mut CodegenOptions,
     unstable_opts: &UnstableOptions,
     matches: &getopts::Matches,
+    allowed: &[PrintCategory],
 ) -> Vec<PrintRequest> {
     let mut prints = Vec::<PrintRequest>::new();
     if cg.target_cpu.as_deref() == Some("help") {
-        prints.push(PrintRequest { kind: PrintKind::TargetCPUs, out: OutFileName::Stdout });
+        prints.push(PrintRequest {
+            kind: PrintKind::TargetCPUs,
+            out: OutFileName::Stdout,
+            arg: None,
+        });
         cg.target_cpu = None;
     };
     if cg.target_feature == "help" {
-        prints.push(PrintRequest { kind: PrintKind::TargetFeatures, out: OutFileName::Stdout });
+        prints.push(PrintRequest {
+            kind: PrintKind::TargetFeatures,
+            out: OutFileName::Stdout,
+            arg: None,
+        });
         cg.target_feature = String::new();
     }
 
@@ -167,12 +262,27 @@ pub(crate) fn collect_print_requests(
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
         let (req, out) = split_out_file_name(&req);
 
-        let kind = if let Some(print_kind) = PrintKind::from_str(req) {
+        let (kind, arg) = if let Some(mnemonic) = req.strip_prefix("backend-has-mnemonic") {
+            check_print_request_stability(early_dcx, unstable_opts, PrintKind::BackendHasMnemonic);
+            // BackendHasMnemonic requires a mnemonic argument
+            if let Some(mnemonic) = mnemonic.strip_prefix(':')
+                && !mnemonic.is_empty()
+            {
+                (PrintKind::BackendHasMnemonic, Some(mnemonic.to_string()))
+            } else {
+                early_dcx.early_fatal(
+                    "expected mnemonic name after `--print=backend-has-mnemonic:`, \
+                    for example: `--print=backend-has-mnemonic:RET`",
+                );
+            }
+        } else if let Some(print_kind) = PrintKind::from_str(req)
+            && allowed.contains(&print_kind.category())
+        {
             check_print_request_stability(early_dcx, unstable_opts, print_kind);
-            print_kind
+            (print_kind, None)
         } else {
             let is_nightly = nightly_options::match_is_nightly_build(matches);
-            emit_unknown_print_request_help(early_dcx, req, is_nightly)
+            emit_unknown_print_request_help(early_dcx, req, is_nightly, allowed)
         };
 
         let out = out.unwrap_or(OutFileName::Stdout);
@@ -185,7 +295,7 @@ pub(crate) fn collect_print_requests(
             }
         }
 
-        PrintRequest { kind, out }
+        PrintRequest { kind, out, arg }
     }));
 
     prints
@@ -203,11 +313,17 @@ fn check_print_request_stability(
     }
 }
 
-fn emit_unknown_print_request_help(early_dcx: &EarlyDiagCtxt, req: &str, is_nightly: bool) -> ! {
+fn emit_unknown_print_request_help(
+    early_dcx: &EarlyDiagCtxt,
+    req: &str,
+    is_nightly: bool,
+    allowed: &[PrintCategory],
+) -> ! {
     let prints = PrintKind::ALL_VARIANTS
         .iter()
         // If we're not on nightly, we don't want to print unstable options
         .filter(|kind| is_nightly || kind.is_stable())
+        .filter(|kind| allowed.contains(&kind.category()))
         .map(|kind| format!("`{kind}`"))
         .collect::<Vec<_>>()
         .join(", ");
@@ -216,9 +332,12 @@ fn emit_unknown_print_request_help(early_dcx: &EarlyDiagCtxt, req: &str, is_nigh
     diag.help(format!("valid print requests are: {prints}"));
 
     if req == "lints" {
-        diag.help(format!("use `-Whelp` to print a list of lints"));
+        diag.help("use `-Whelp` to print a list of lints");
     }
 
-    diag.help(format!("for more information, see the rustc book: https://doc.rust-lang.org/rustc/command-line-arguments.html#--print-print-compiler-information"));
+    if allowed == PrintCategory::ALL_VARIANTS {
+        diag.help("for more information, see the rustc book: https://doc.rust-lang.org/rustc/command-line-arguments.html#--print-print-compiler-information");
+    }
+
     diag.emit()
 }

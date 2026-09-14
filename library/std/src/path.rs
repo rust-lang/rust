@@ -1364,7 +1364,7 @@ impl PathBuf {
 
         // absolute `path` replaces `self`
         if need_clear {
-            self.inner.truncate(0);
+            self.inner.clear();
 
         // verbatim paths need . and .. removed
         } else if comps.prefix_verbatim() && !path.inner.is_empty() {
@@ -1796,6 +1796,24 @@ impl PathBuf {
         self.inner
     }
 
+    /// Converts the `PathBuf` into a `String` if it contains valid Unicode data.
+    ///
+    /// On failure, ownership of the original `PathBuf` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::PathBuf;
+    ///
+    /// let path_buf = PathBuf::from("foo");
+    /// let string = path_buf.into_string();
+    /// assert_eq!(string, Ok(String::from("foo")));
+    /// ```
+    #[stable(feature = "pathbuf_into_string", since = "1.98.0")]
+    pub fn into_string(self) -> Result<String, PathBuf> {
+        self.into_os_string().into_string().map_err(PathBuf::from)
+    }
+
     /// Converts this `PathBuf` into a [boxed](Box) [`Path`].
     #[stable(feature = "into_boxed_path", since = "1.20.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
@@ -2007,10 +2025,10 @@ impl From<String> for PathBuf {
 
 #[stable(feature = "path_from_str", since = "1.32.0")]
 impl FromStr for PathBuf {
-    type Err = core::convert::Infallible;
+    type Err = !;
 
     #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, !> {
         Ok(PathBuf::from(s))
     }
 }
@@ -2359,7 +2377,7 @@ pub struct NormalizeError;
 impl Path {
     // The following (private!) function allows construction of a path from a u8
     // slice, which is only safe when it is known to follow the OsStr encoding.
-    unsafe fn from_u8_slice(s: &[u8]) -> &Path {
+    pub(crate) unsafe fn from_u8_slice(s: &[u8]) -> &Path {
         unsafe { Path::new(OsStr::from_encoded_bytes_unchecked(s)) }
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
@@ -2469,7 +2487,7 @@ impl Path {
     /// Any non-UTF-8 sequences are replaced with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
-    /// [U+FFFD]: super::char::REPLACEMENT_CHARACTER
+    /// [U+FFFD]: char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
     ///
@@ -2655,7 +2673,7 @@ impl Path {
     #[stable(feature = "path_ancestors", since = "1.28.0")]
     #[inline]
     pub fn ancestors(&self) -> Ancestors<'_> {
-        Ancestors { next: Some(&self) }
+        Ancestors { next: Some(self) }
     }
 
     /// Returns the final component of the `Path`, if there is one.
@@ -2723,6 +2741,41 @@ impl Path {
         P: AsRef<Path>,
     {
         self._strip_prefix(base.as_ref())
+    }
+
+    /// Returns a path with the optional prefix removed.
+    ///
+    /// If `base` is not a prefix of `self` (i.e., [`starts_with`] returns `false`), returns the original path (`self`)
+    ///
+    /// [`starts_with`]: Path::starts_with
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(trim_prefix_suffix)]
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("/test/haha/foo.txt");
+    ///
+    /// // Prefix present - remove it
+    /// assert_eq!(path.trim_prefix("/"), Path::new("test/haha/foo.txt"));
+    /// assert_eq!(path.trim_prefix("/test"), Path::new("haha/foo.txt"));
+    /// assert_eq!(path.trim_prefix("/test/"), Path::new("haha/foo.txt"));
+    /// assert_eq!(path.trim_prefix("/test/haha/foo.txt"), Path::new(""));
+    /// assert_eq!(path.trim_prefix("/test/haha/foo.txt/"), Path::new(""));
+    ///
+    /// // Prefix absent - return original
+    /// assert_eq!(path.trim_prefix("test"), path);
+    /// assert_eq!(path.trim_prefix("/te"), path);
+    /// assert_eq!(path.trim_prefix("/haha"), path);
+    /// ```
+    #[must_use = "this returns the remaining path as a new path, without modifying the original"]
+    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    pub fn trim_prefix<P>(&self, base: P) -> &Path
+    where
+        P: AsRef<Path>,
+    {
+        self._strip_prefix(base.as_ref()).unwrap_or(self)
     }
 
     fn _strip_prefix(&self, base: &Path) -> Result<&Path, StripPrefixError> {
@@ -2793,10 +2846,13 @@ impl Path {
 
     /// Checks whether the `Path` is empty.
     ///
+    /// Passing an empty path to most OS filesystem APIs will always result in an error.
+    ///
+    /// [Pushing][PathBuf::push] an empty path to an existing path will append a directory separator unless it already ends with a separator or the existing path is itself empty.
+    ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(path_is_empty)]
     /// use std::path::Path;
     ///
     /// let path = Path::new("");
@@ -2808,7 +2864,7 @@ impl Path {
     /// let path = Path::new(".");
     /// assert!(!path.is_empty());
     /// ```
-    #[unstable(feature = "path_is_empty", issue = "148494")]
+    #[stable(feature = "path_is_empty", since = "1.98.0")]
     pub fn is_empty(&self) -> bool {
         self.as_os_str().is_empty()
     }
@@ -2877,7 +2933,7 @@ impl Path {
     #[stable(feature = "path_file_prefix", since = "1.91.0")]
     #[must_use]
     pub fn file_prefix(&self) -> Option<&OsStr> {
-        self.file_name().map(split_file_at_dot).and_then(|(before, _after)| Some(before))
+        self.file_name().map(split_file_at_dot).map(|(before, _after)| before)
     }
 
     /// Extracts the extension (without the leading dot) of [`self.file_name`], if possible.
@@ -3120,7 +3176,9 @@ impl Path {
 
     /// Creates an owned [`PathBuf`] like `self` but with the extension added.
     ///
-    /// See [`PathBuf::add_extension`] for more details.
+    /// See [`PathBuf::add_extension`] for more details. The return value of
+    /// [`PathBuf::add_extension`] is ignored, which means no extension
+    /// will be added to paths with no [`Path::file_name`].
     ///
     /// # Examples
     ///
@@ -3134,6 +3192,13 @@ impl Path {
     /// assert_eq!(path.with_added_extension(""), PathBuf::from("foo.tar.gz"));
     /// assert_eq!(path.with_added_extension("xz"), PathBuf::from("foo.tar.gz.xz"));
     /// assert_eq!(path.with_added_extension("").with_added_extension("txt"), PathBuf::from("foo.tar.gz.txt"));
+    ///
+    /// let path = Path::new("/");
+    /// assert_eq!(path.with_added_extension("gz"), PathBuf::from("/"));
+    /// let path = Path::new("/dir/");
+    /// assert_eq!(path.with_added_extension("gz"), PathBuf::from("/dir.gz"));
+    /// let path = Path::new("/dir/..");
+    /// assert_eq!(path.with_added_extension("gz"), PathBuf::from("/dir/.."));
     /// ```
     #[stable(feature = "path_add_extension", since = "1.91.0")]
     pub fn with_added_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
@@ -3264,7 +3329,7 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path = Path::new("/Minas/tirith");
-    /// let metadata = path.metadata().expect("metadata call failed");
+    /// let metadata = path.metadata().expect("the path should point to an existing file or directory");
     /// println!("{:?}", metadata.file_type());
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
@@ -3283,7 +3348,7 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path = Path::new("/Minas/tirith");
-    /// let metadata = path.symlink_metadata().expect("symlink_metadata call failed");
+    /// let metadata = path.symlink_metadata().expect("the path should exist");
     /// println!("{:?}", metadata.file_type());
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
@@ -3359,6 +3424,8 @@ impl Path {
     ///
     /// </div>
     ///
+    /// On Windows this will convert all `/` to `\` unless a [verbatim](Prefix::is_verbatim()) path is given.
+    ///
     /// [`path::absolute`](absolute) is an alternative that preserves `..`.
     /// Or [`Path::canonicalize`] can be used to resolve any `..` by querying the filesystem.
     #[unstable(feature = "normalize_lexically", issue = "134694")]
@@ -3418,7 +3485,7 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path = Path::new("/laputa/sky_castle.rs");
-    /// let path_link = path.read_link().expect("read_link call failed");
+    /// let path_link = path.read_link().expect("the path should be an existing symbolic link");
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
     #[inline]
@@ -3439,7 +3506,7 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path = Path::new("/laputa");
-    /// for entry in path.read_dir().expect("read_dir call failed") {
+    /// for entry in path.read_dir().expect("the path should point to an existing directory") {
     ///     if let Ok(entry) = entry {
     ///         println!("{:?}", entry.path());
     ///     }
@@ -3504,7 +3571,7 @@ impl Path {
     ///
     /// ```no_run
     /// use std::path::Path;
-    /// assert!(!Path::new("does_not_exist.txt").try_exists().expect("Can't check existence of file does_not_exist.txt"));
+    /// assert!(!Path::new("does_not_exist.txt").try_exists().expect("the path's existence should be verifiable"));
     /// assert!(Path::new("/root/secret_file.txt").try_exists().is_err());
     /// ```
     ///
@@ -3632,7 +3699,7 @@ unsafe impl CloneToUninit for Path {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<OsStr> for Path {
+const impl AsRef<OsStr> for Path {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         &self.inner
@@ -3803,7 +3870,7 @@ impl Ord for Path {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<Path> for Path {
+const impl AsRef<Path> for Path {
     #[inline]
     fn as_ref(&self) -> &Path {
         self
@@ -3812,7 +3879,7 @@ impl const AsRef<Path> for Path {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-impl const AsRef<Path> for OsStr {
+const impl AsRef<Path> for OsStr {
     #[inline]
     fn as_ref(&self) -> &Path {
         Path::new(self)
@@ -4072,7 +4139,7 @@ impl Error for NormalizeError {}
 /// Note that this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
-/// [posix-semantics]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13
+/// [posix-semantics]: https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap04.html#tag_04_16
 /// [windows-path]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfullpathnamew
 /// [cygwin-path]: https://cygwin.com/cygwin-api/func-cygwin-conv-path.html
 #[stable(feature = "absolute_path", since = "1.79.0")]

@@ -1,4 +1,4 @@
-error[E0658]: specialization is unstable
+error[E0658]: specialization is experimental
   --> $DIR/track6.rs:LL:CC
    |
 LL |     default fn bar() {}

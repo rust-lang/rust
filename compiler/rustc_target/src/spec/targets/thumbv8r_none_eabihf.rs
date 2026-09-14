@@ -1,6 +1,6 @@
 // Targets the Little-endian Cortex-R52 processor (ARMv8-R)
 
-use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, CfgAbi, FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -16,7 +16,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::Arm,
 
         options: TargetOptions {
-            abi: Abi::EabiHf,
+            cfg_abi: CfgAbi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             // Armv8-R requires a minimum set of floating-point features equivalent to:
             // fp-armv8, SP-only, with 16 DP (32 SP) registers

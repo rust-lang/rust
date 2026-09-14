@@ -7,18 +7,18 @@ use either::Either;
 use rustc_abi::{Align, Size, VariantIdx};
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagArgValue, ErrorGuaranteed, IntoDiagArg};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_session::CtfeBacktrace;
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 
 use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
-use crate::error;
+use crate::diagnostics;
 use crate::mir::interpret::CtfeProvenance;
 use crate::mir::{ConstAlloc, ConstValue};
 use crate::ty::{self, Ty, TyCtxt, ValTree, layout, tls};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 pub enum ErrorHandled {
     /// Already reported an error for this evaluation, and the compilation is
     /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
@@ -47,7 +47,7 @@ impl ErrorHandled {
         match self {
             &ErrorHandled::Reported(err, span) => {
                 if !err.allowed_in_infallible && !span.is_dummy() {
-                    tcx.dcx().emit_note(error::ErroneousConstant { span });
+                    tcx.dcx().emit_note(diagnostics::ErroneousConstant { span });
                 }
             }
             &ErrorHandled::TooGeneric(_) => {}
@@ -55,7 +55,7 @@ impl ErrorHandled {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 pub struct ReportedErrorInfo {
     error: ErrorGuaranteed,
     /// Whether this error is allowed to show up even in otherwise "infallible" promoteds.
@@ -97,7 +97,7 @@ impl From<ReportedErrorInfo> for ErrorGuaranteed {
 
 /// An error type for the `const_to_valtree` query. Some error should be reported with a "use-site span",
 /// which means the query cannot emit the error, so those errors are represented as dedicated variants here.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 pub enum ValTreeCreationError<'tcx> {
     /// The constant is too big to be valtree'd.
     NodesOverflow,
@@ -105,6 +105,8 @@ pub enum ValTreeCreationError<'tcx> {
     InvalidConst,
     /// Values of this type, or this particular value, are not supported as valtrees.
     NonSupportedType(Ty<'tcx>),
+    /// Trying to valtree this constant would cause the valtree to have cycles.
+    CyclicConst,
     /// The error has already been handled by const evaluation.
     ErrorHandled(ErrorHandled),
 }
@@ -200,7 +202,7 @@ impl InterpErrorBacktrace {
 
 impl<'tcx> InterpErrorInfo<'tcx> {
     pub fn into_parts(self) -> (InterpErrorKind<'tcx>, InterpErrorBacktrace) {
-        let InterpErrorInfo(box InterpErrorInfoInner { kind, backtrace }) = self;
+        let InterpErrorInfo(InterpErrorInfoInner { kind, backtrace }) = self;
         (kind, backtrace)
     }
 
@@ -215,6 +217,17 @@ impl<'tcx> InterpErrorInfo<'tcx> {
     #[inline]
     pub fn kind(&self) -> &InterpErrorKind<'tcx> {
         &self.0.kind
+    }
+
+    /// Turn the given error into a human-readable string. Expects the string to be printed, so if
+    /// `RUSTC_CTFE_BACKTRACE` is set this will show a backtrace of the rustc internals that
+    /// triggered the error.
+    ///
+    /// This is NOT the preferred way to render an error; use `report` from `const_eval` instead.
+    /// However, this is useful when error messages appear in ICEs.
+    pub fn to_string(&self) -> String {
+        self.0.backtrace.print_backtrace();
+        self.0.kind.to_string()
     }
 }
 
@@ -249,7 +262,8 @@ pub enum CheckInAllocMsg {
     /// We are doing pointer arithmetic.
     InboundsPointerArithmetic,
     /// None of the above -- generic/unspecific inbounds test.
-    Dereferenceable,
+    /// The string is the subject of the test, e.g. "pointer".
+    Dereferenceable(&'static str),
 }
 
 impl fmt::Display for CheckInAllocMsg {
@@ -258,7 +272,7 @@ impl fmt::Display for CheckInAllocMsg {
         match self {
             MemoryAccess => write!(f, "memory access failed"),
             InboundsPointerArithmetic => write!(f, "in-bounds pointer arithmetic failed"),
-            Dereferenceable => write!(f, "pointer not dereferenceable"),
+            Dereferenceable(what) => write!(f, "{what} not dereferenceable"),
         }
     }
 }
@@ -298,13 +312,6 @@ pub struct BadBytesAccess {
     pub bad: AllocRange,
 }
 
-/// Information about a size mismatch.
-#[derive(Debug)]
-pub struct ScalarSizeMismatch {
-    pub target_size: u64,
-    pub data_size: u64,
-}
-
 /// Information about a misaligned pointer.
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub struct Misalignment {
@@ -318,7 +325,12 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught! Used by miri
     Ub(String),
     /// Validation error.
-    ValidationError { path: Option<String>, msg: String, ptr_bytes_warning: bool },
+    ValidationError {
+        orig_ty: Ty<'tcx>,
+        path: Option<String>,
+        msg: String,
+        ptr_bytes_warning: bool,
+    },
 
     /// Unreachable code was executed.
     Unreachable,
@@ -384,7 +396,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using a pointer-not-to-a-va-list as variable argument list pointer.
     InvalidVaListPointer(Pointer<AllocId>),
     /// Using a pointer-not-to-a-vtable as vtable pointer.
-    InvalidVTablePointer(Pointer<AllocId>),
+    InvalidVTablePointer(Pointer<Option<AllocId>>),
     /// Using a vtable for the wrong trait.
     InvalidVTableTrait {
         /// The vtable that was actually referenced by the wide pointer metadata.
@@ -398,8 +410,6 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     InvalidUninitBytes(Option<(AllocId, BadBytesAccess)>),
     /// Working with a local that is not currently live.
     DeadLocal,
-    /// Data size is not equal to target size.
-    ScalarSizeMismatch(ScalarSizeMismatch),
     /// A discriminant of an uninhabited enum variant is written.
     UninhabitedEnumVariantWritten(VariantIdx),
     /// An uninhabited enum variant is projected.
@@ -408,7 +418,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     InvalidNichedEnumVariantWritten { enum_ty: Ty<'tcx> },
     /// ABI-incompatible argument types.
     AbiMismatchArgument {
-        /// The index of the argument whose type is wrong.
+        /// The index of the argument whose type is wrong (starting at index 0).
         arg_idx: usize,
         caller_ty: Ty<'tcx>,
         callee_ty: Ty<'tcx>,
@@ -445,11 +455,11 @@ impl<'tcx> fmt::Display for UndefinedBehaviorInfo<'tcx> {
                 CheckInAllocMsg::InboundsPointerArithmetic => {
                     write!(f, "attempting to offset pointer by {inbounds_size_fmt}")
                 }
-                CheckInAllocMsg::Dereferenceable if inbounds_size == 0 => {
-                    write!(f, "pointer must point to some allocation")
+                CheckInAllocMsg::Dereferenceable(what) if inbounds_size == 0 => {
+                    write!(f, "{what} must point to some allocation")
                 }
-                CheckInAllocMsg::Dereferenceable => {
-                    write!(f, "pointer must be dereferenceable for {inbounds_size_fmt}")
+                CheckInAllocMsg::Dereferenceable(what) => {
+                    write!(f, "{what} must be dereferenceable for {inbounds_size_fmt}")
                 }
             }
         }
@@ -457,11 +467,11 @@ impl<'tcx> fmt::Display for UndefinedBehaviorInfo<'tcx> {
         match self {
             Ub(msg) => write!(f, "{msg}"),
 
-            ValidationError { path: None, msg, .. } => {
-                write!(f, "constructing invalid value: {msg}")
+            ValidationError { orig_ty, path: None, msg, .. } => {
+                write!(f, "constructing invalid value of type {orig_ty}: {msg}")
             }
-            ValidationError { path: Some(path), msg, .. } => {
-                write!(f, "constructing invalid value at {path}: {msg}")
+            ValidationError { orig_ty, path: Some(path), msg, .. } => {
+                write!(f, "constructing invalid value of type {orig_ty}: at {path}, {msg}")
             }
 
             Unreachable => write!(f, "entering unreachable code"),
@@ -606,12 +616,6 @@ impl<'tcx> fmt::Display for UndefinedBehaviorInfo<'tcx> {
                 uninit = info.bad,
             ),
             DeadLocal => write!(f, "accessing a dead local variable"),
-            ScalarSizeMismatch(mismatch) => write!(
-                f,
-                "scalar size mismatch: expected {target_size} bytes but got {data_size} bytes instead",
-                target_size = mismatch.target_size,
-                data_size = mismatch.data_size,
-            ),
             UninhabitedEnumVariantWritten(_) => {
                 write!(f, "writing discriminant of an uninhabited enum variant")
             }
@@ -767,7 +771,10 @@ impl fmt::Display for ResourceExhaustionInfo {
 }
 
 /// A trait for machine-specific errors (or other "machine stop" conditions).
-pub trait MachineStopType: Any + fmt::Display + fmt::Debug + Send {}
+pub trait MachineStopType: Any + fmt::Display + fmt::Debug + Send {
+    /// This error occurred during validation, inside a value at the given path.
+    fn with_validation_path(&mut self, _path: String) {}
+}
 
 impl dyn MachineStopType {
     #[inline(always)]
@@ -1034,14 +1041,6 @@ impl<'tcx, T> InterpResult<'tcx, T> {
     }
 
     #[inline]
-    pub fn map_err_info(
-        self,
-        f: impl FnOnce(InterpErrorInfo<'tcx>) -> InterpErrorInfo<'tcx>,
-    ) -> InterpResult<'tcx, T> {
-        InterpResult::new(self.disarm().map_err(f))
-    }
-
-    #[inline]
     pub fn map_err_kind(
         self,
         f: impl FnOnce(InterpErrorKind<'tcx>) -> InterpErrorKind<'tcx>,
@@ -1053,8 +1052,8 @@ impl<'tcx, T> InterpResult<'tcx, T> {
     }
 
     #[inline]
-    pub fn inspect_err_kind(self, f: impl FnOnce(&InterpErrorKind<'tcx>)) -> InterpResult<'tcx, T> {
-        InterpResult::new(self.disarm().inspect_err(|e| f(&e.0.kind)))
+    pub fn inspect_err_info(self, f: impl FnOnce(&InterpErrorInfo<'tcx>)) -> InterpResult<'tcx, T> {
+        InterpResult::new(self.disarm().inspect_err(f))
     }
 
     #[inline]

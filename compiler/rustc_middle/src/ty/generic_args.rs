@@ -8,7 +8,7 @@ use std::ptr::NonNull;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
+use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, extension};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::walk::TypeWalker;
@@ -50,14 +50,17 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
         self.rebase_onto(tcx, source_ancestor, target_args)
     }
 
+    #[track_caller]
     fn type_at(self, i: usize) -> Ty<'tcx> {
         self.type_at(i)
     }
 
+    #[track_caller]
     fn region_at(self, i: usize) -> ty::Region<'tcx> {
         self.region_at(i)
     }
 
+    #[track_caller]
     fn const_at(self, i: usize) -> ty::Const<'tcx> {
         self.const_at(i)
     }
@@ -127,6 +130,7 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
 impl<'tcx> rustc_type_ir::inherent::IntoKind for GenericArg<'tcx> {
     type Kind = GenericArgKind<'tcx>;
 
+    #[inline]
     fn kind(self) -> Self::Kind {
         self.kind()
     }
@@ -317,11 +321,11 @@ impl<'tcx> GenericArg<'tcx> {
 impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for GenericArg<'a> {
     type Lifted = GenericArg<'tcx>;
 
-    fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
         match self.kind() {
-            GenericArgKind::Lifetime(lt) => tcx.lift(lt).map(|lt| lt.into()),
-            GenericArgKind::Type(ty) => tcx.lift(ty).map(|ty| ty.into()),
-            GenericArgKind::Const(ct) => tcx.lift(ct).map(|ct| ct.into()),
+            GenericArgKind::Lifetime(lt) => tcx.lift(lt).into(),
+            GenericArgKind::Type(ty) => tcx.lift(ty).into(),
+            GenericArgKind::Const(ct) => tcx.lift(ct).into(),
         }
     }
 }
@@ -513,6 +517,11 @@ impl<'tcx> GenericArgs<'tcx> {
     #[inline]
     pub fn consts(&self) -> impl DoubleEndedIterator<Item = ty::Const<'tcx>> {
         self.iter().filter_map(|k| k.as_const())
+    }
+
+    #[inline]
+    pub fn terms(&self) -> impl DoubleEndedIterator<Item = ty::Term<'tcx>> {
+        self.iter().filter_map(|k| k.as_term())
     }
 
     /// Returns generic arguments that are not lifetimes.
@@ -712,7 +721,7 @@ impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>> for &'tcx
 /// Stores the user-given args to reach some fully qualified path
 /// (e.g., `<T>::Item` or `<T as Trait>::Item`).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
+#[derive(StableHash, TypeFoldable, TypeVisitable, Lift)]
 pub struct UserArgs<'tcx> {
     /// The args for the item as given by the user.
     pub args: GenericArgsRef<'tcx>,
@@ -739,7 +748,7 @@ pub struct UserArgs<'tcx> {
 /// the self type, giving `Foo<?A>`. Finally, we unify that with
 /// the self type here, which contains `?A` to be `&'static u32`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
+#[derive(StableHash, TypeFoldable, TypeVisitable, Lift)]
 pub struct UserSelfTy<'tcx> {
     pub impl_def_id: DefId,
     pub self_ty: Ty<'tcx>,

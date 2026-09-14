@@ -4,7 +4,9 @@
 // or by `compiler-builtins` on unsupported platforms.
 unsafe extern "C" {
     pub safe fn acos(n: f64) -> f64;
+    pub safe fn acosh(n: f64) -> f64;
     pub safe fn asin(n: f64) -> f64;
+    pub safe fn asinh(n: f64) -> f64;
     pub safe fn atan(n: f64) -> f64;
     pub safe fn atan2(a: f64, b: f64) -> f64;
     pub safe fn cosh(n: f64) -> f64;
@@ -30,7 +32,9 @@ unsafe extern "C" {
     pub safe fn erfcf(n: f32) -> f32;
 
     pub safe fn acosf128(n: f128) -> f128;
+    pub safe fn acoshf128(n: f128) -> f128;
     pub safe fn asinf128(n: f128) -> f128;
+    pub safe fn asinhf128(n: f128) -> f128;
     pub safe fn atanf128(n: f128) -> f128;
     pub safe fn atan2f128(a: f128, b: f128) -> f128;
     pub safe fn cbrtf128(n: f128) -> f128;
@@ -55,6 +59,16 @@ cfg_select! {
         #[inline]
         pub fn acosf(n: f32) -> f32 {
             f64::acos(n as f64) as f32
+        }
+
+        #[inline]
+        pub fn acoshf(n: f32) -> f32 {
+            f64::acosh(n as f64) as f32
+        }
+
+        #[inline]
+        pub fn asinhf(n: f32) -> f32 {
+            f64::asinh(n as f64) as f32
         }
 
         #[inline]
@@ -95,7 +109,9 @@ cfg_select! {
     _ => {
         unsafe extern "C" {
             pub safe fn acosf(n: f32) -> f32;
+            pub safe fn acoshf(n: f32) -> f32;
             pub safe fn asinf(n: f32) -> f32;
+            pub safe fn asinhf(n: f32) -> f32;
             pub safe fn atan2f(a: f32, b: f32) -> f32;
             pub safe fn atanf(n: f32) -> f32;
             pub safe fn coshf(n: f32) -> f32;

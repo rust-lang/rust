@@ -1,7 +1,9 @@
 #![feature(proc_macro_quote, proc_macro_span)]
-#![allow(clippy::field_reassign_with_default)]
-#![allow(clippy::eq_op)]
-#![allow(clippy::literal_string_with_formatting_args)]
+#![allow(
+    clippy::eq_op,
+    clippy::field_reassign_with_default,
+    clippy::literal_string_with_formatting_args
+)]
 
 extern crate proc_macro;
 

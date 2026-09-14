@@ -16,13 +16,13 @@ use provenance_map::*;
 use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
-use rustc_macros::HashStable;
+use rustc_macros::StableHash;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use super::{
     AllocId, BadBytesAccess, CtfeProvenance, InterpErrorKind, InterpResult, Pointer, Provenance,
-    ResourceExhaustionInfo, Scalar, ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo,
-    interp_ok, read_target_uint, write_target_uint,
+    ResourceExhaustionInfo, Scalar, UndefinedBehaviorInfo, UnsupportedOpInfo, interp_ok,
+    read_target_uint, write_target_uint,
 };
 use crate::ty;
 
@@ -91,7 +91,7 @@ impl AllocBytes for Box<[u8]> {
 // Note: for performance reasons when interning, some of the `Allocation` fields can be partially
 // hashed. (see the `Hash` impl below for more details), so the impl is not derived.
 #[derive(Clone, Eq, PartialEq)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 pub struct Allocation<Prov: Provenance = CtfeProvenance, Extra = (), Bytes = Box<[u8]>> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
@@ -281,7 +281,7 @@ impl hash::Hash for Allocation {
 /// Here things are different because only const allocations are interned. This
 /// means that both the inner type (`Allocation`) and the outer type
 /// (`ConstAllocation`) are used quite a bit.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
 #[rustc_pass_by_value]
 pub struct ConstAllocation<'tcx>(pub Interned<'tcx, Allocation>);
 
@@ -303,8 +303,6 @@ impl<'tcx> ConstAllocation<'tcx> {
 /// is added when converting to `InterpError`.
 #[derive(Debug)]
 pub enum AllocError {
-    /// A scalar had the wrong size.
-    ScalarSizeMismatch(ScalarSizeMismatch),
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsInt(Option<BadBytesAccess>),
     /// Partially copying a pointer.
@@ -314,19 +312,10 @@ pub enum AllocError {
 }
 pub type AllocResult<T = ()> = Result<T, AllocError>;
 
-impl From<ScalarSizeMismatch> for AllocError {
-    fn from(s: ScalarSizeMismatch) -> Self {
-        AllocError::ScalarSizeMismatch(s)
-    }
-}
-
 impl AllocError {
     pub fn to_interp_error<'tcx>(self, alloc_id: AllocId) -> InterpErrorKind<'tcx> {
         use AllocError::*;
         match self {
-            ScalarSizeMismatch(s) => {
-                InterpErrorKind::UndefinedBehavior(UndefinedBehaviorInfo::ScalarSizeMismatch(s))
-            }
             ReadPointerAsInt(info) => InterpErrorKind::Unsupported(
                 UnsupportedOpInfo::ReadPointerAsInt(info.map(|b| (alloc_id, b))),
             ),
@@ -753,7 +742,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
 
         // `to_bits_or_ptr_internal` is the right method because we just want to store this data
         // as-is into memory. This also double-checks that `val.size()` matches `range.size`.
-        let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size)? {
+        let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size) {
             Right(ptr) => {
                 let (provenance, offset) = ptr.into_raw_parts();
                 (u128::from(offset.bytes()), Some(provenance))

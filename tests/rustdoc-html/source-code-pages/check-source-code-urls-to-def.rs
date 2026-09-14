@@ -68,4 +68,4 @@ pub fn foo4() {
 
 //@ has - '//pre[@class="rust"]//a[@href="../../foo/primitive.bool.html"]' 'bool'
 #[rustc_doc_primitive = "bool"]
-mod whatever {}
+const _: () = ();

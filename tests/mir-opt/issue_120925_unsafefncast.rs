@@ -1,5 +1,5 @@
 // Verify that we do not ICE when attempting to interpret casts between fn types.
-// skip-filecheck
+//@ skip-filecheck
 
 static FOO: fn() = || assert_ne!(42, 43);
 static BAR: fn(i32, i32) = |a, b| assert_ne!(a, b);

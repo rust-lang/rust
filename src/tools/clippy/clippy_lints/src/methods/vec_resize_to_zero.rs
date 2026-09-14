@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use rustc_ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
@@ -22,6 +22,7 @@ pub(super) fn check<'tcx>(
             .tcx
             .type_of(impl_id)
             .instantiate_identity()
+            .skip_norm_wip()
             .is_diag_item(cx, sym::Vec)
         && let ExprKind::Lit(Spanned {
             node: LitKind::Int(Pu128(0), _),

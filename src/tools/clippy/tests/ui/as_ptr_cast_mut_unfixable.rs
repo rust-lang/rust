@@ -1,5 +1,4 @@
 //@no-rustfix
-#![allow(unused)]
 #![warn(clippy::as_ptr_cast_mut)]
 
 fn main() {

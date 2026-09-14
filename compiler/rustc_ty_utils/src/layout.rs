@@ -1,11 +1,13 @@
+use std::range::{RangeFrom, RangeToInclusive};
+
 use hir::def_id::DefId;
 use rustc_abi as abi;
 use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
     AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
-    LayoutCalculatorError, LayoutData, Niche, ReprOptions, ScalableElt, Scalar, Size, StructKind,
-    TagEncoding, VariantIdx, Variants, WrappingRange,
+    LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
+    VariantIdx, Variants, WrappingRange,
 };
 use rustc_hashes::Hash64;
 use rustc_hir as hir;
@@ -19,13 +21,15 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, AdtDef, CoroutineArgsExt, EarlyBinder, PseudoCanonicalInput, Ty, TyCtxt, TypeVisitableExt,
+    self, AdtDef, CoroutineArgsExt, EarlyBinder, PseudoCanonicalInput, Ty, TyCtxt,
+    TypeVisitableExt, Unnormalized,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, sym};
+use rustc_structures::Limit;
 use tracing::{debug, instrument};
 
-use crate::errors::NonPrimitiveSimdType;
+use crate::diagnostics::NonPrimitiveSimdType;
 
 mod invariant;
 
@@ -38,37 +42,63 @@ fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
 ) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
-    let PseudoCanonicalInput { typing_env, value: ty } = query;
-    debug!(?ty);
+    let PseudoCanonicalInput { typing_env: original_typing_env, value: original_ty } = query;
+    debug!(?original_ty);
 
     // Optimization: We convert to TypingMode::PostAnalysis and convert opaque types in
     // the where bounds to their hidden types. This reduces overall uncached invocations
     // of `layout_of` and is thus a small performance improvement.
-    let typing_env = typing_env.with_post_analysis_normalized(tcx);
-    let unnormalized_ty = ty;
+    let typing_env = original_typing_env.with_post_analysis_normalized(tcx);
+    // Switching to `PostAnalysis` typing mode will reveal opaque types that's marked
+    // as rigid in the original typing env.
+    let unnormalized_ty = if typing_env != original_typing_env {
+        ty::set_aliases_to_non_rigid(tcx, original_ty)
+    } else {
+        ty::Unnormalized::new_wip(original_ty)
+    };
 
     // FIXME: We might want to have two different versions of `layout_of`:
     // One that can be called after typecheck has completed and can use
     // `normalize_erasing_regions` here and another one that can be called
     // before typecheck has completed and uses `try_normalize_erasing_regions`.
-    let ty = match tcx.try_normalize_erasing_regions(typing_env, ty) {
+    let normalized_ty = match tcx.try_normalize_erasing_regions(typing_env, unnormalized_ty) {
         Ok(t) => t,
         Err(normalization_error) => {
-            return Err(tcx
-                .arena
-                .alloc(LayoutError::NormalizationFailure(ty, normalization_error)));
+            return Err(tcx.arena.alloc(LayoutError::NormalizationFailure(
+                unnormalized_ty.skip_normalization(),
+                normalization_error,
+            )));
         }
     };
 
-    if ty != unnormalized_ty {
+    if normalized_ty != original_ty {
         // Ensure this layout is also cached for the normalized type.
-        return tcx.layout_of(typing_env.as_query_input(ty));
+        return tcx.layout_of(typing_env.as_query_input(normalized_ty));
+    }
+
+    match typing_env.typing_mode() {
+        ty::TypingMode::Codegen => {
+            let with_postanalysis =
+                ty::TypingEnv::new(typing_env.param_env, ty::TypingMode::PostAnalysis);
+            let res = tcx.layout_of(with_postanalysis.as_query_input(normalized_ty));
+            match res {
+                Err(LayoutError::TooGeneric(_)) => {}
+                _ => return res,
+            };
+        }
+        ty::TypingMode::Coherence
+        | ty::TypingMode::Typeck { .. }
+        | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+        | ty::TypingMode::PostBorrowck { .. }
+        | ty::TypingMode::Reflection
+        | ty::TypingMode::ErasedNotCoherence(_)
+        | ty::TypingMode::PostAnalysis => {}
     }
 
     let cx = LayoutCx::new(tcx, typing_env);
 
-    let layout = layout_of_uncached(&cx, ty)?;
-    let layout = TyAndLayout { ty, layout };
+    let layout = layout_of_uncached(&cx, normalized_ty)?;
+    let layout = TyAndLayout { ty: normalized_ty, layout };
 
     // If we are running with `-Zprint-type-sizes`, maybe record layouts
     // for dumping later.
@@ -100,7 +130,7 @@ fn map_error<'tcx>(
             // This is sometimes not a compile error if there are trivially false where clauses.
             // See `tests/ui/layout/trivial-bounds-sized.rs` for an example.
             assert!(field.layout.is_unsized(), "invalid layout error {err:#?}");
-            if cx.typing_env.param_env.caller_bounds().is_empty() {
+            if cx.typing_env.param_env.is_empty() {
                 cx.tcx().dcx().delayed_bug(format!(
                     "encountered unexpected unsized field in layout of {ty:?}: {field:#?}"
                 ));
@@ -127,7 +157,7 @@ fn map_error<'tcx>(
         }
         LayoutCalculatorError::OversizedSimdType { max_lanes } => {
             // Can't be caught in typeck if the array length is generic.
-            LayoutError::InvalidSimd { ty, kind: SimdLayoutError::TooManyLanes(max_lanes) }
+            LayoutError::InvalidSimd { ty, kind: SimdLayoutError::TooManyLanes(Limit(max_lanes)) }
         }
         LayoutCalculatorError::NonPrimitiveSimdType(field) => {
             // This error isn't caught in typeck, e.g., if
@@ -151,7 +181,7 @@ fn extract_const_value<'tcx>(
             }
             Err(error(cx, LayoutError::TooGeneric(ty)))
         }
-        ty::ConstKind::Unevaluated(_) => {
+        ty::ConstKind::Alias(_, _) => {
             let err = if ct.has_param() {
                 LayoutError::TooGeneric(ty)
             } else {
@@ -265,7 +295,8 @@ fn layout_of_uncached<'tcx>(
                     }
                 }
                 ty::PatternKind::NotNull => {
-                    if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
+                    if let BackendRepr::Scalar(scalar)
+                    | BackendRepr::ScalarPair { a: scalar, b: _, b_offset: _ } =
                         &mut layout.backend_repr
                     {
                         scalar.valid_range_mut().start = 1;
@@ -418,10 +449,12 @@ fn layout_of_uncached<'tcx>(
             }
 
             let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
-                let pointee_metadata = Ty::new_projection(tcx, metadata_def_id, [pointee]);
-                let metadata_ty = match tcx
-                    .try_normalize_erasing_regions(cx.typing_env, pointee_metadata)
-                {
+                let pointee_metadata =
+                    Ty::new_projection(tcx, ty::IsRigid::No, metadata_def_id, [pointee]);
+                let metadata_ty = match tcx.try_normalize_erasing_regions(
+                    cx.typing_env,
+                    Unnormalized::new_wip(pointee_metadata),
+                ) {
                     Ok(metadata_ty) => metadata_ty,
                     Err(mut err) => {
                         // Usually `<Ty as Pointee>::Metadata` can't be normalized because
@@ -434,7 +467,12 @@ fn layout_of_uncached<'tcx>(
                         // error.
                         match tcx.try_normalize_erasing_regions(
                             cx.typing_env,
-                            tcx.struct_tail_raw(pointee, &ObligationCause::dummy(), |ty| ty, || {}),
+                            Unnormalized::new_wip(tcx.struct_tail_raw(
+                                pointee,
+                                &ObligationCause::dummy(),
+                                |ty| ty.skip_norm_wip(),
+                                || {},
+                            )),
                         ) {
                             Ok(_) => {}
                             Err(better_err) => {
@@ -512,6 +550,19 @@ fn layout_of_uncached<'tcx>(
         }
 
         ty::Coroutine(def_id, args) => {
+            match cx.typing_env.typing_mode() {
+                ty::TypingMode::Codegen => {}
+                ty::TypingMode::Coherence
+                | ty::TypingMode::Typeck { .. }
+                | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                | ty::TypingMode::PostBorrowck { .. }
+                | ty::TypingMode::Reflection
+                | ty::TypingMode::ErasedNotCoherence(_)
+                | ty::TypingMode::PostAnalysis => {
+                    return Err(error(cx, LayoutError::TooGeneric(ty)));
+                }
+            }
+
             use rustc_middle::ty::layout::PrimitiveExt as _;
 
             let info = tcx.coroutine_layout(def_id, args)?;
@@ -520,15 +571,16 @@ fn layout_of_uncached<'tcx>(
                 .field_tys
                 .iter()
                 .map(|local| {
-                    let field_ty = EarlyBinder::bind(local.ty);
-                    let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty.instantiate(tcx, args));
+                    let field_ty = EarlyBinder::bind(tcx, local.ty);
+                    let uninit_ty =
+                        Ty::new_maybe_uninit(tcx, field_ty.instantiate(tcx, args).skip_norm_wip());
                     cx.spanned_layout_of(uninit_ty, local.source_info.span)
                 })
                 .try_collect::<IndexVec<_, _>>()?;
 
             let prefix_layouts = args
                 .as_coroutine()
-                .prefix_tys()
+                .upvar_tys()
                 .iter()
                 .map(|ty| cx.layout_of(ty))
                 .try_collect::<IndexVec<_, _>>()?;
@@ -572,30 +624,26 @@ fn layout_of_uncached<'tcx>(
         // ```rust (ignore, example)
         // #[rustc_scalable_vector(3)]
         // struct svuint32_t(u32);
+        //
+        // #[rustc_scalable_vector]
+        // struct svuint32x2_t(svuint32_t, svuint32_t);
         // ```
-        ty::Adt(def, args)
-            if matches!(def.repr().scalable, Some(ScalableElt::ElementCount(..))) =>
-        {
-            let Some(element_ty) = def
-                .is_struct()
-                .then(|| &def.variant(FIRST_VARIANT).fields)
-                .filter(|fields| fields.len() == 1)
-                .map(|fields| fields[FieldIdx::ZERO].ty(tcx, args))
+        ty::Adt(def, _args) if def.repr().scalable() => {
+            let Some((element_count, element_ty, number_of_vectors)) =
+                ty.scalable_vector_parts(tcx)
             else {
                 let guar = tcx
                     .dcx()
-                    .delayed_bug("#[rustc_scalable_vector] was applied to an invalid type");
-                return Err(error(cx, LayoutError::ReferencesError(guar)));
-            };
-            let Some(ScalableElt::ElementCount(element_count)) = def.repr().scalable else {
-                let guar = tcx
-                    .dcx()
-                    .delayed_bug("#[rustc_scalable_vector] was applied to an invalid type");
+                    .delayed_bug("`#[rustc_scalable_vector]` was applied to an invalid type");
                 return Err(error(cx, LayoutError::ReferencesError(guar)));
             };
 
             let element_layout = cx.layout_of(element_ty)?;
-            map_layout(cx.calc.scalable_vector_type(element_layout, element_count as u64))?
+            map_layout(cx.calc.scalable_vector_type(
+                element_layout,
+                element_count as u64,
+                number_of_vectors,
+            ))?
         }
 
         // SIMD vector types.
@@ -609,7 +657,7 @@ fn layout_of_uncached<'tcx>(
                 .is_struct()
                 .then(|| &def.variant(FIRST_VARIANT).fields)
                 .filter(|fields| fields.len() == 1)
-                .map(|fields| *fields[FieldIdx::ZERO].ty(tcx, args).kind())
+                .map(|fields| *fields[FieldIdx::ZERO].ty(tcx, args).skip_norm_wip().kind())
             else {
                 // Invalid SIMD types should have been caught by typeck by now.
                 let guar = tcx.dcx().delayed_bug("#[repr(simd)] was applied to an invalid ADT");
@@ -631,9 +679,7 @@ fn layout_of_uncached<'tcx>(
                     return Err(map_error(
                         &cx,
                         ty,
-                        rustc_abi::LayoutCalculatorError::OversizedSimdType {
-                            max_lanes: limit.0 as u64,
-                        },
+                        rustc_abi::LayoutCalculatorError::OversizedSimdType { max_lanes: limit.0 },
                     ));
                 }
             }
@@ -650,7 +696,7 @@ fn layout_of_uncached<'tcx>(
                 .map(|v| {
                     v.fields
                         .iter()
-                        .map(|field| cx.layout_of(field.ty(tcx, args)))
+                        .map(|field| cx.layout_of(field.ty(tcx, args).skip_norm_wip()))
                         .try_collect::<IndexVec<_, _>>()
                 })
                 .try_collect::<IndexVec<VariantIdx, _>>()?;
@@ -670,20 +716,26 @@ fn layout_of_uncached<'tcx>(
             // UnsafeCell and UnsafePinned both disable niche optimizations
             let is_special_no_niche = def.is_unsafe_cell() || def.is_unsafe_pinned();
 
-            let discr_range_of_repr =
-                |min, max| abi::Integer::discr_range_of_repr(tcx, ty, &def.repr(), min, max);
+            let discr_range_of_repr = |min: RangeFrom<i128>, max: RangeToInclusive<u128>| {
+                abi::Integer::discr_range_of_repr(tcx, ty, &def.repr(), min.start, max.last)
+            };
 
             let discriminants_iter = || {
                 def.is_enum()
-                    .then(|| def.discriminants(tcx).map(|(v, d)| (v, d.val as i128)))
-                    .into_iter()
-                    .flatten()
+                    .then(|| def.discriminants(tcx).map(|(v, d)| (v, d.val)))
+                    .into_flat_iter()
             };
 
             let maybe_unsized = def.is_struct()
                 && def.non_enum_variant().tail_opt().is_some_and(|last_field| {
-                    let typing_env = ty::TypingEnv::post_analysis(tcx, def.did());
-                    !tcx.type_of(last_field.did).instantiate_identity().is_sized(tcx, typing_env)
+                    let typing_env = ty::TypingEnv::new(
+                        tcx.param_env_normalized_for_post_analysis(def.did()),
+                        cx.typing_env.typing_mode(),
+                    );
+                    !tcx.type_of(last_field.did)
+                        .instantiate_identity()
+                        .skip_norm_wip()
+                        .is_sized(tcx, typing_env)
                 });
 
             let layout = cx
@@ -693,7 +745,6 @@ fn layout_of_uncached<'tcx>(
                     &variants,
                     def.is_enum(),
                     is_special_no_niche,
-                    tcx.layout_scalar_valid_range(def.did()),
                     discr_range_of_repr,
                     discriminants_iter(),
                     !maybe_unsized,
@@ -707,7 +758,12 @@ fn layout_of_uncached<'tcx>(
             // If the struct tail is sized and can be unsized, check that unsizing doesn't move the fields around.
             if cfg!(debug_assertions)
                 && maybe_unsized
-                && def.non_enum_variant().tail().ty(tcx, args).is_sized(tcx, cx.typing_env)
+                && def
+                    .non_enum_variant()
+                    .tail()
+                    .ty(tcx, args)
+                    .skip_norm_wip()
+                    .is_sized(tcx, cx.typing_env)
             {
                 let mut variants = variants;
                 let tail_replacement = cx.layout_of(Ty::new_slice(tcx, tcx.types.u8)).unwrap();
@@ -718,7 +774,6 @@ fn layout_of_uncached<'tcx>(
                     &variants,
                     def.is_enum(),
                     is_special_no_niche,
-                    tcx.layout_scalar_valid_range(def.did()),
                     discr_range_of_repr,
                     discriminants_iter(),
                     !maybe_unsized,
@@ -774,7 +829,7 @@ fn layout_of_uncached<'tcx>(
             // Due to trivial bounds, this can even be the case if the alias does not reference
             // any generic parameters, e.g. a `for<'a> u32: Trait<'a>` where-bound means that
             // `<u32 as Trait<'static>>::Assoc` is rigid.
-            let err = if ty.has_param() || !cx.typing_env.param_env.caller_bounds().is_empty() {
+            let err = if ty.has_param() || !cx.typing_env.param_env.is_empty() {
                 LayoutError::TooGeneric(ty)
             } else {
                 LayoutError::ReferencesError(cx.tcx().dcx().delayed_bug(format!(
@@ -795,7 +850,7 @@ fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx>, layout: TyAndLayout<'tc
     // Ignore layouts that are done with non-empty environments or
     // non-monomorphic layouts, as the user only wants to see the stuff
     // resulting from the final codegen session.
-    if layout.ty.has_non_region_param() || !cx.typing_env.param_env.caller_bounds().is_empty() {
+    if layout.ty.has_non_region_param() || !cx.typing_env.param_env.is_empty() {
         return;
     }
 
@@ -958,7 +1013,7 @@ fn variant_info_for_coroutine<'tcx>(
                 .iter()
                 .enumerate()
                 .map(|(field_idx, local)| {
-                    let field_name = coroutine.field_names[*local];
+                    let field_name = coroutine.field_tys[*local].debuginfo_name;
                     let field_layout = variant_layout.field(cx, field_idx);
                     let offset = variant_layout.fields.offset(field_idx);
                     // The struct is as large as the last field's end

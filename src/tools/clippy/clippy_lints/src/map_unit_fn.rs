@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_context};
 use clippy_utils::{iter_input_pats, method_chain_args};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::declare_lint_pass;
 use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
@@ -102,7 +101,7 @@ fn is_unit_function(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
 
     if let ty::FnDef(id, _) = *ty.kind()
-        && let Some(fn_type) = cx.tcx.fn_sig(id).instantiate_identity().no_bound_vars()
+        && let Some(fn_type) = cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip().no_bound_vars()
     {
         return is_unit_type(fn_type.output());
     }

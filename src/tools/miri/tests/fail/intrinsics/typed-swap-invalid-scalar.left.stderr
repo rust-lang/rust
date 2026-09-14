@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered 0x02, but expected a boolean
+error: Undefined Behavior: constructing invalid value of type bool: encountered 0x02, but expected a boolean
   --> tests/fail/intrinsics/typed-swap-invalid-scalar.rs:LL:CC
    |
 LL |         typed_swap_nonoverlapping(a, b);

@@ -1,3 +1,10 @@
+//@ revisions: msvc
+
+// On MSVC, this test requires LLDB to be able to read `S_DEFRANGE_REGISTER_REL_INDIR` PDB nodes,
+// which is only possible on lldb 23.1+
+//@ [msvc] only-msvc
+//@ [msvc] min-llvm-lldb-version: 23.1.0
+
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
@@ -22,24 +29,26 @@
 
 //@ lldb-command:run
 //@ lldb-command:v simple
-//@ lldb-check:[...] { x = 10 y = 20 }
+//@ lldb-check:[...] {x:10, y:20}
 
 //@ lldb-command:v noDestructor
-//@ lldb-check:[...] { a = { x = 10 y = 20 } guard = -1 }
+//@ lldb-check:[...] {a:{x:10, y:20}, guard:-1}
 
 //@ lldb-command:v withDestructor
-//@ lldb-check:[...] { a = { x = 10 y = 20 } guard = -1 }
+//@ lldb-check:[...] {a:{x:10, y:20}, guard:-1}
 
 //@ lldb-command:v nested
-//@ lldb-check:[...] { a = { a = { x = 7890 y = 9870 } } }
+//@ lldb-check:[...] {a:{a:{x:7890, y:9870}}}
 
 #![allow(unused_variables)]
 
+#[repr(C)]
 struct NoDestructor {
     x: i32,
     y: i64
 }
 
+#[repr(C)]
 struct WithDestructor {
     x: i32,
     y: i64
@@ -49,11 +58,13 @@ impl Drop for WithDestructor {
     fn drop(&mut self) {}
 }
 
+#[repr(C)]
 struct NoDestructorGuarded {
     a: NoDestructor,
     guard: i64
 }
 
+#[repr(C)]
 struct WithDestructorGuarded {
     a: WithDestructor,
     guard: i64

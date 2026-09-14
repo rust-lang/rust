@@ -79,7 +79,10 @@ pub(crate) fn prepare_rename(
     let sema = Semantics::new(db);
     let source_file = sema.parse_guess_edition(position.file_id);
     let syntax = source_file.syntax();
-
+    if let Some(lifetime_token) = syntax.token_at_offset(position.offset).find(|t| t.text() == "'_")
+    {
+        return Ok(RangeInfo::new(lifetime_token.text_range(), ()));
+    }
     let res = find_definitions(&sema, syntax, position, &Name::new_symbol_root(sym::underscore))?
         .filter(|(_, _, def, _, _)| def.range_for_rename(&sema).is_some())
         .map(|(frange, kind, _, _, _)| {
@@ -118,6 +121,17 @@ pub(crate) fn prepare_rename(
 // | VS Code | <kbd>F2</kbd> |
 //
 // ![Rename](https://user-images.githubusercontent.com/48062697/113065582-055aae80-91b1-11eb-8ade-2b58e6d81883.gif)
+//
+// #### Magic Renames
+//
+// rust-analyzer supports some special renames that do additional magic:
+//
+//  - **Anonymous lifetime renames**. You can rename `'_` to any lifetime name (the new name must start with `'`),
+//    and rust-analyzer will automatically add the new lifetime to the list of generic parameters.
+//  - **`self` renames**. You can rename parameters to/from `self`. Renaming `self` into another name will update
+//    all callers using method syntax to call the function like an associated function. Renaming to `self` is only
+//    supported for the first parameter inside an `impl` and when the `Self` type matches the type of the parameter,
+//    and will update callers to use method call syntax.
 pub(crate) fn rename(
     db: &RootDatabase,
     position: FilePosition,
@@ -133,6 +147,13 @@ pub(crate) fn rename(
 
     let edition = file_id.edition(db);
     let (new_name, kind) = IdentifierKind::classify(edition, new_name)?;
+    if kind == IdentifierKind::Lifetime
+        && let Some(lifetime_token) =
+            syntax.token_at_offset(position.offset).find(|t| t.text() == "'_")
+    {
+        let new_name_str = new_name.display(db, edition).to_string();
+        return rename_elided_lifetime(position, lifetime_token, &new_name_str);
+    }
 
     let defs = find_definitions(&sema, syntax, position, &new_name)?;
     let alias_fallback =
@@ -253,13 +274,14 @@ fn alias_fallback(
     Some(builder.finish())
 }
 
-fn find_definitions(
-    sema: &Semantics<'_, RootDatabase>,
+fn find_definitions<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     syntax: &SyntaxNode,
     FilePosition { file_id, offset }: FilePosition,
     new_name: &Name,
-) -> RenameResult<impl Iterator<Item = (FileRange, SyntaxKind, Definition, Name, RenameDefinition)>>
-{
+) -> RenameResult<
+    impl Iterator<Item = (FileRange, SyntaxKind, Definition<'db>, Name, RenameDefinition)>,
+> {
     let maybe_format_args =
         syntax.token_at_offset(offset).find(|t| matches!(t.kind(), SyntaxKind::STRING));
 
@@ -471,16 +493,16 @@ fn transform_assoc_fn_into_method_call(
     }
 }
 
-fn rename_to_self(
-    sema: &Semantics<'_, RootDatabase>,
-    local: hir::Local,
+fn rename_to_self<'db>(
+    sema: &Semantics<'db, RootDatabase>,
+    local: hir::Local<'db>,
 ) -> RenameResult<SourceChange> {
     if never!(local.is_self(sema.db)) {
         bail!("rename_to_self invoked on self");
     }
 
     let fn_def = match local.parent(sema.db) {
-        hir::DefWithBody::Function(func) => func,
+        hir::ExpressionStoreOwner::Body(hir::DefWithBody::Function(func)) => func,
         _ => bail!("Cannot rename local to self outside of function"),
     };
 
@@ -512,11 +534,11 @@ fn rename_to_self(
     };
     let first_param_ty = first_param.ty();
     let impl_ty = impl_.self_ty(sema.db);
-    let (ty, self_param) = if impl_ty.remove_ref().is_some() {
+    let (ty, self_param) = if impl_ty.is_reference() {
         // if the impl is a ref to the type we can just match the `&T` with self directly
         (first_param_ty.clone(), "self")
     } else {
-        first_param_ty.remove_ref().map_or((first_param_ty.clone(), "self"), |ty| {
+        first_param_ty.as_reference_inner().map_or((first_param_ty.clone(), "self"), |ty| {
             (ty, if first_param_ty.is_mutable_reference() { "&mut self" } else { "&self" })
         })
     };
@@ -728,9 +750,9 @@ fn transform_method_call_into_assoc_fn(
     }
 }
 
-fn rename_self_to_param(
-    sema: &Semantics<'_, RootDatabase>,
-    local: hir::Local,
+fn rename_self_to_param<'db>(
+    sema: &Semantics<'db, RootDatabase>,
+    local: hir::Local<'db>,
     self_param: hir::SelfParam,
     new_name: &Name,
     identifier_kind: IdentifierKind,
@@ -743,7 +765,7 @@ fn rename_self_to_param(
     }
 
     let fn_def = match local.parent(sema.db) {
-        hir::DefWithBody::Function(func) => func,
+        hir::ExpressionStoreOwner::Body(hir::DefWithBody::Function(func)) => func,
         _ => bail!("Cannot rename local to self outside of function"),
     };
 
@@ -795,6 +817,31 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: String) -> O
     replacement_text.push_str("Self");
 
     Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
+}
+
+fn rename_elided_lifetime(
+    position: FilePosition,
+    lifetime_token: syntax::SyntaxToken,
+    new_name: &str,
+) -> RenameResult<SourceChange> {
+    let parent = lifetime_token.parent().unwrap();
+    let root = parent.tree_top();
+
+    let mut builder = SourceChangeBuilder::new(position.file_id);
+
+    let editor = builder.make_editor(&root);
+    let make = editor.make();
+
+    editor.replace(lifetime_token, make.lifetime(new_name).syntax().clone());
+
+    if let Some(has_generic_params) = parent.ancestors().find_map(ast::AnyHasGenericParams::cast) {
+        let lifetime_param = make.lifetime_param(make.lifetime(new_name));
+        editor.add_generic_param(&has_generic_params, lifetime_param.into());
+    }
+
+    builder.add_file_edits(position.file_id, editor);
+
+    Ok(builder.finish())
 }
 
 #[cfg(test)]
@@ -1326,8 +1373,8 @@ impl Foo {
 struct Foo { foo$0: i32 }
 
 impl Foo {
-    fn new(foo: i32) -> Self {
-        Self { foo }
+    fn foo(foo: i32) {
+        Self { foo };
     }
 }
 "#,
@@ -1335,8 +1382,8 @@ impl Foo {
 struct Foo { field: i32 }
 
 impl Foo {
-    fn new(foo: i32) -> Self {
-        Self { field: foo }
+    fn foo(foo: i32) {
+        Self { field: foo };
     }
 }
 "#,
@@ -3928,6 +3975,200 @@ fn bar() {
     Foo::foo(&Foo, 1);
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn rename_constructor_locals() {
+        check(
+            "field",
+            r#"
+struct Struct {
+    struct_field$0: String,
+}
+
+impl Struct {
+    fn new(struct_field: String) -> Self {
+        if false {
+            return Self { struct_field };
+        }
+        Self { struct_field }
+    }
+}
+
+mod foo {
+    macro_rules! m {
+        ($it:expr) => { return $it };
+    }
+
+    impl crate::Struct {
+        fn with_foo(struct_field: String) -> crate::Struct {
+            m!(crate::Struct { struct_field });
+        }
+    }
+}
+        "#,
+            r#"
+struct Struct {
+    field: String,
+}
+
+impl Struct {
+    fn new(field: String) -> Self {
+        if false {
+            return Self { field };
+        }
+        Self { field }
+    }
+}
+
+mod foo {
+    macro_rules! m {
+        ($it:expr) => { return $it };
+    }
+
+    impl crate::Struct {
+        fn with_foo(field: String) -> crate::Struct {
+            m!(crate::Struct { field });
+        }
+    }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn test_rename_elided_lifetime_fn_no_generics() {
+        check(
+            "'a",
+            r#"
+fn foo(x: &'_$0 str) {}
+"#,
+            r#"
+fn foo<'a>(x: &'a str) {}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_elided_lifetime_fn_with_generics() {
+        check(
+            "'a",
+            r#"
+fn foo<T>(x: &'_$0 str, y: T) {}
+"#,
+            r#"
+fn foo<'a, T>(x: &'a str, y: T) {}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_elided_lifetime_impl_no_generics() {
+        check(
+            "'a",
+            r#"
+struct Foo<'a>(&'a str);
+impl Foo<'_$0> {}
+"#,
+            r#"
+struct Foo<'a>(&'a str);
+impl<'a> Foo<'a> {}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_elided_lifetime_impl_with_generics() {
+        check(
+            "'a",
+            r#"
+struct Foo<'a, T>(&'a str, T);
+impl<T> Foo<'_$0, T> {}
+"#,
+            r#"
+struct Foo<'a, T>(&'a str, T);
+impl<'a, T> Foo<'a, T> {}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_mut_pattern_with_macro() {
+        check(
+            "new",
+            r#"
+//- minicore: option
+macro_rules! pat_macro {
+    ($pat:pat) => {
+        $pat
+    };
+}
+
+pub fn main() {
+    match None {
+        pat_macro!(Some(mut old$0)) => {
+            old += 1,
+        }
+        None => {}
+    }
+}
+"#,
+            r#"
+macro_rules! pat_macro {
+    ($pat:pat) => {
+        $pat
+    };
+}
+
+pub fn main() {
+    match None {
+        pat_macro!(Some(mut new)) => {
+            new += 1,
+        }
+        None => {}
+    }
+}
+"#,
+        );
+    }
+    #[test]
+    fn test_rename_ref_pattern_with_macro() {
+        check(
+            "new",
+            r#"
+//- minicore: option
+macro_rules! pat_macro {
+    ($pat:pat) => {
+        $pat
+    };
+}
+
+pub fn main() {
+    match None {
+        pat_macro!(Some(ref old$0)) => {
+            old += 1,
+        }
+        None => {}
+    }
+}
+"#,
+            r#"
+macro_rules! pat_macro {
+    ($pat:pat) => {
+        $pat
+    };
+}
+
+pub fn main() {
+    match None {
+        pat_macro!(Some(ref new)) => {
+            new += 1,
+        }
+        None => {}
+    }
+}
+"#,
         );
     }
 }

@@ -4,13 +4,13 @@ error[E0277]: the trait bound `str: From<_>` is not satisfied
 LL |     let _ = &str::from("value");
    |              ^^^ the trait `From<_>` is not implemented for `str`
    |
-   = help: the following other types implement trait `From<T>`:
-             `String` implements `From<&String>`
-             `String` implements `From<&mut str>`
-             `String` implements `From<&str>`
-             `String` implements `From<Box<str>>`
-             `String` implements `From<Cow<'_, str>>`
-             `String` implements `From<char>`
+   = help: `String` implements trait `From<T>`:
+             From<&String>
+             From<&mut str>
+             From<&str>
+             From<Box<str>>
+             From<Cow<'_, str>>
+             From<char>
 help: you likely meant to call the associated function `from` for type `&str`, but the code as written calls associated function `from` on type `str`
    |
 LL |     let _ = <&str>::from("value");

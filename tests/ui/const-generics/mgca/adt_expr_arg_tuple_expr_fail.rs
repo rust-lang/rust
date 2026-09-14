@@ -1,9 +1,14 @@
-#![feature(min_generic_const_args, adt_const_params, unsized_const_params)]
+#![feature(
+    min_generic_const_args,
+    macroless_generic_const_args,
+    adt_const_params,
+    unsized_const_params
+)]
 #![expect(incomplete_features)]
 
-
 trait Trait {
-    type const ASSOC: usize;
+    #[rustc_always_gca]
+    const ASSOC: usize;
 }
 
 fn takes_tuple<const A: (u32, u32)>() {}

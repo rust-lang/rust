@@ -87,6 +87,34 @@ fn eq() {
     assert_eq!(*x.0.borrow(), 0);
 }
 
+#[test]
+fn eq_unsized() {
+    #[derive(Eq)]
+    struct TestEq<T: ?Sized>(RefCell<usize>, T);
+    impl<T: ?Sized> PartialEq for TestEq<T> {
+        fn eq(&self, other: &TestEq<T>) -> bool {
+            *self.0.borrow_mut() += 1;
+            *other.0.borrow_mut() += 1;
+            true
+        }
+    }
+    let x = Rc::<TestEq<[u8; 3]>>::new(TestEq(RefCell::new(0), [0, 1, 2])) as Rc<TestEq<[u8]>>;
+    assert!(x == x);
+    assert!(!(x != x));
+    assert_eq!(*x.0.borrow(), 0);
+}
+
+#[test]
+fn eq_unsized_slice() {
+    let a: Rc<[()]> = Rc::new([(); 3]);
+    let ptr: *const () = Rc::into_raw(a.clone()).cast();
+    let b: Rc<[()]> = unsafe { Rc::from_raw(ptr.cast_slice(42)) };
+    assert!(a == a);
+    assert!(!(a != a));
+    assert!(a != b);
+    assert!(!(a == b));
+}
+
 const SHARED_ITER_MAX: u16 = 100;
 
 fn assert_trusted_len<I: TrustedLen>(_: &I) {}
@@ -921,4 +949,29 @@ fn test_unique_rc_unsizing_coercion() {
     rc[0] = 123;
     let rc: Rc<[u8]> = UniqueRc::into_rc(rc);
     assert_eq!(*rc, [123, 0, 0]);
+}
+
+/// Test that `Rc::make_mut` does not forget an allocator when it steals the data.
+#[test]
+fn issue_158875_make_mut_dont_leak_allocator() {
+    use std::alloc::Global;
+
+    let alloc = Rc::new(Global);
+
+    {
+        let mut arc = Rc::new_in(123, alloc.clone());
+        let weak = Rc::downgrade(&arc); // create a weak so make_mut steals the data
+        _ = Rc::make_mut(&mut arc);
+        assert_eq!(weak.upgrade(), None);
+    }
+
+    assert_eq!(Rc::strong_count(&alloc), 1); // if this is >1, we have a memory leak!
+}
+
+#[test]
+#[should_panic = "capacity overflow"]
+fn new_uninit_slice_capacity_overflow() {
+    // header + payload layout exceeds isize::MAX -> "capacity overflow", not
+    // an unwrapped LayoutError. Regression test for #136797.
+    let _ = Rc::<[u8]>::new_uninit_slice(isize::MAX as usize);
 }

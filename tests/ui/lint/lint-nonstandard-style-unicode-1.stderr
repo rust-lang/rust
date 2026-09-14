@@ -46,5 +46,17 @@ error: type `你_ӟ` should have an upper camel case name
 LL | struct 你_ӟ;
    |        ^^^^ help: convert the identifier to upper camel case: `你Ӟ`
 
-error: aborting due to 7 previous errors
+error: type `ΦΙΛΟΣ_Σ` should have an upper camel case name
+  --> $DIR/lint-nonstandard-style-unicode-1.rs:45:8
+   |
+LL | struct ΦΙΛΟΣ_Σ;
+   |        ^^^^^^^ help: convert the identifier to upper camel case: `ΦιλοςΣ`
+
+error: type `Σ_ΦΙΛΟΣ` should have an upper camel case name
+  --> $DIR/lint-nonstandard-style-unicode-1.rs:48:8
+   |
+LL | struct Σ_ΦΙΛΟΣ;
+   |        ^^^^^^^ help: convert the identifier to upper camel case: `ΣΦιλος`
+
+error: aborting due to 9 previous errors
 

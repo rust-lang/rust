@@ -1,16 +1,21 @@
-warning: use of deprecated module `allowed_through_unstable_core::unstable_module`: use the new path instead
-  --> $DIR/allowed-through-unstable.rs:8:53
+warning: use of deprecated import through accidentally stabilized module `unstable_module`
+  --> $DIR/allowed-through-unstable.rs:8:5
    |
 LL | use allowed_through_unstable_core::unstable_module::OldStableTraitAllowedThoughUnstable;
-   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(deprecated)]` on by default
+help: use the new path instead
+   |
+LL - use allowed_through_unstable_core::unstable_module::OldStableTraitAllowedThoughUnstable;
+LL + use allowed_through_unstable_core::stable::OldStableTraitAllowedThoughUnstable;
+   |
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/allowed-through-unstable.rs:9:5
+  --> $DIR/allowed-through-unstable.rs:9:36
    |
 LL | use allowed_through_unstable_core::unstable_module::NewStableTraitNotAllowedThroughUnstable;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                    ^^^^^^^^^^^^^^^
    |
    = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable

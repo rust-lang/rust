@@ -2,7 +2,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
+use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::normalize::NormalizationResult;
@@ -17,6 +17,25 @@ pub(crate) fn provide(p: &mut Providers) {
         normalize_canonicalized_inherent_projection,
         ..*p
     };
+}
+
+/// If `normalized_term` is a const, returns a `ConstArgHasType` obligation
+/// to verify that the const value's type matches the alias's declared type.
+/// Returns `None` if the term is a type rather than a const.
+fn const_arg_has_type_obligation<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    normalized_term: ty::Term<'tcx>,
+    goal: ty::AliasTerm<'tcx>,
+) -> Option<traits::PredicateObligation<'tcx>> {
+    let ct = normalized_term.as_const()?;
+    let expected_ty = goal.expect_ct().type_of(tcx).skip_norm_wip();
+    Some(traits::Obligation::new(
+        tcx,
+        ObligationCause::dummy(),
+        param_env,
+        ty::ClauseKind::ConstArgHasType(ct, expected_ty),
+    ))
 }
 
 fn normalize_canonicalized_projection<'tcx>(
@@ -35,7 +54,7 @@ fn normalize_canonicalized_projection<'tcx>(
             let normalized_term = traits::normalize_projection_term(
                 selcx,
                 param_env,
-                goal.into(),
+                goal,
                 cause,
                 0,
                 &mut obligations,
@@ -46,7 +65,7 @@ fn normalize_canonicalized_projection<'tcx>(
             // In that case, we may only realize a cycle error when calling
             // `normalize_erasing_regions` in mono.
             let errors = ocx.try_evaluate_obligations();
-            if !errors.is_empty() {
+            if !errors.no_errors() {
                 // Rustdoc may attempt to normalize type alias types which are not
                 // well-formed. Rustdoc also normalizes types that are just not
                 // well-formed, since we don't do as much HIR analysis (checking
@@ -75,22 +94,31 @@ fn normalize_canonicalized_free_alias<'tcx>(
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
         |ocx, ParamEnvAnd { param_env, value: goal }| {
-            let obligations = tcx.predicates_of(goal.def_id).instantiate_own(tcx, goal.args).map(
-                |(predicate, span)| {
+            let def_id = goal.expect_free_def_id();
+            let obligations =
+                tcx.clauses_of(def_id).instantiate_own(tcx, goal.args).map(|(clause, span)| {
                     traits::Obligation::new(
                         tcx,
                         ObligationCause::dummy_with_span(span),
                         param_env,
-                        predicate,
+                        clause.skip_norm_wip(),
                     )
-                },
-            );
+                });
             ocx.register_obligations(obligations);
-            let normalized_term = if goal.kind(tcx).is_type() {
-                tcx.type_of(goal.def_id).instantiate(tcx, goal.args).into()
+            let normalized_term: ty::Term<'tcx> = if goal.kind.is_type() {
+                tcx.type_of(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
             } else {
-                tcx.const_of_item(goal.def_id).instantiate(tcx, goal.args).into()
+                traits::project::const_of_item_or_delayed_bug(tcx, def_id)
+                    .instantiate(tcx, goal.args)
+                    .skip_norm_wip()
+                    .into()
             };
+            ocx.register_obligations(const_arg_has_type_obligation(
+                tcx,
+                param_env,
+                normalized_term,
+                goal,
+            ));
             Ok(NormalizationResult { normalized_term })
         },
     )

@@ -7,16 +7,17 @@
 //!
 //! So the monomorphization should be called even if the substitution is empty.
 
-use hir_def::DefWithBodyId;
 use rustc_type_ir::inherent::IntoKind;
 use rustc_type_ir::{
     FallibleTypeFolder, TypeFlags, TypeFoldable, TypeSuperFoldable, TypeVisitableExt,
 };
-use triomphe::Arc;
 
 use crate::{
-    ParamEnvAndCrate,
-    next_solver::{Const, ConstKind, Region, RegionKind, StoredConst, StoredGenericArgs, StoredTy},
+    InferBodyId, ParamEnvAndCrate,
+    next_solver::{
+        Allocation, AllocationData, Const, ConstKind, Region, RegionKind, StoredConst,
+        StoredGenericArgs, StoredTy,
+    },
     traits::StoredParamEnvAndCrate,
 };
 use crate::{
@@ -38,7 +39,7 @@ struct Filler<'db> {
 }
 
 impl<'db> FallibleTypeFolder<DbInterner<'db>> for Filler<'db> {
-    type Error = MirLowerError;
+    type Error = MirLowerError<'db>;
 
     fn cx(&self) -> DbInterner<'db> {
         self.infcx.interner
@@ -62,6 +63,9 @@ impl<'db> FallibleTypeFolder<DbInterner<'db>> for Filler<'db> {
                         ty,
                     )
                     .map_err(|_| MirLowerError::NotSupported("can't normalize alias".to_owned()))?;
+                // Normalization could introduce infer vars (for example, if the alias cannot be normalized),
+                // and we must not have infer vars in the body.
+                let ty = ty.replace_infer_with_error(self.infcx.interner);
                 ty.try_super_fold_with(self)
             }
             TyKind::Param(param) => Ok(self
@@ -102,7 +106,7 @@ impl<'db> Filler<'db> {
         Self { infcx, trait_env: env, subst }
     }
 
-    fn fill_ty(&mut self, t: &mut StoredTy) -> Result<(), MirLowerError> {
+    fn fill_ty(&mut self, t: &mut StoredTy) -> Result<(), MirLowerError<'db>> {
         // Can't deep normalized as that'll try to normalize consts and fail.
         *t = t.as_ref().try_fold_with(self)?.store();
         if references_non_lt_error(&t.as_ref()) {
@@ -112,7 +116,7 @@ impl<'db> Filler<'db> {
         }
     }
 
-    fn fill_const(&mut self, t: &mut StoredConst) -> Result<(), MirLowerError> {
+    fn fill_const(&mut self, t: &mut StoredConst) -> Result<(), MirLowerError<'db>> {
         // Can't deep normalized as that'll try to normalize consts and fail.
         *t = t.as_ref().try_fold_with(self)?.store();
         if references_non_lt_error(&t.as_ref()) {
@@ -122,7 +126,7 @@ impl<'db> Filler<'db> {
         }
     }
 
-    fn fill_args(&mut self, t: &mut StoredGenericArgs) -> Result<(), MirLowerError> {
+    fn fill_args(&mut self, t: &mut StoredGenericArgs) -> Result<(), MirLowerError<'db>> {
         // Can't deep normalized as that'll try to normalize consts and fail.
         *t = t.as_ref().try_fold_with(self)?.store();
         if references_non_lt_error(&t.as_ref()) {
@@ -132,18 +136,30 @@ impl<'db> Filler<'db> {
         }
     }
 
-    fn fill_operand(&mut self, op: &mut Operand) -> Result<(), MirLowerError> {
+    fn fill_operand(&mut self, op: &mut Operand) -> Result<(), MirLowerError<'db>> {
         match &mut op.kind {
             OperandKind::Constant { konst, ty } => {
                 self.fill_const(konst)?;
                 self.fill_ty(ty)?;
+            }
+            OperandKind::Allocation { allocation } => {
+                let alloc = allocation.as_ref();
+                let mut ty = alloc.ty.store();
+                self.fill_ty(&mut ty)?;
+                *allocation = Allocation::new(AllocationData {
+                    ty: ty.as_ref(),
+                    memory: alloc.memory.clone(),
+                    // FIXME: Do we need to fill the memory map too?
+                    memory_map: alloc.memory_map.clone(),
+                })
+                .store();
             }
             OperandKind::Copy(_) | OperandKind::Move(_) | OperandKind::Static(_) => (),
         }
         Ok(())
     }
 
-    fn fill_body(&mut self, body: &mut MirBody) -> Result<(), MirLowerError> {
+    fn fill_body(&mut self, body: &mut MirBody<'db>) -> Result<(), MirLowerError<'db>> {
         for (_, l) in body.locals.iter_mut() {
             self.fill_ty(&mut l.ty)?;
         }
@@ -162,9 +178,6 @@ impl<'db> Filler<'db> {
                                 super::AggregateKind::Adt(_, subst) => self.fill_args(subst)?,
                                 super::AggregateKind::Union(_, _) => (),
                             }
-                        }
-                        Rvalue::ShallowInitBox(_, ty) | Rvalue::ShallowInitBoxWithAlloc(ty) => {
-                            self.fill_ty(ty)?;
                         }
                         Rvalue::Use(op) => {
                             self.fill_operand(op)?;
@@ -222,38 +235,50 @@ impl<'db> Filler<'db> {
     }
 }
 
-pub fn monomorphized_mir_body_query(
-    db: &dyn HirDatabase,
-    owner: DefWithBodyId,
+#[salsa::tracked(returns(as_ref), cycle_result = monomorphized_mir_body_cycle_result)]
+pub fn monomorphized_mir_body_query<'db>(
+    db: &'db dyn HirDatabase,
+    owner: InferBodyId<'db>,
     subst: StoredGenericArgs,
     trait_env: StoredParamEnvAndCrate,
-) -> Result<Arc<MirBody>, MirLowerError> {
-    let mut filler = Filler::new(db, trait_env.as_ref(), subst.as_ref());
+) -> Result<MirBody<'db>, MirLowerError<'db>> {
+    let mut filler = Filler::new(db, trait_env.as_ref(db), subst.as_ref());
     let body = db.mir_body(owner)?;
     let mut body = (*body).clone();
     filler.fill_body(&mut body)?;
-    Ok(Arc::new(body))
+    Ok(body)
 }
 
-pub(crate) fn monomorphized_mir_body_cycle_result(
-    _db: &dyn HirDatabase,
+fn monomorphized_mir_body_cycle_result<'db>(
+    _db: &'db dyn HirDatabase,
     _: salsa::Id,
-    _: DefWithBodyId,
+    _: InferBodyId<'db>,
     _: StoredGenericArgs,
     _: StoredParamEnvAndCrate,
-) -> Result<Arc<MirBody>, MirLowerError> {
+) -> Result<MirBody<'db>, MirLowerError<'db>> {
     Err(MirLowerError::Loop)
 }
 
-pub fn monomorphized_mir_body_for_closure_query(
-    db: &dyn HirDatabase,
-    closure: InternedClosureId,
+#[salsa::tracked(returns(as_ref), cycle_result = monomorphized_mir_body_for_closure_cycle_result)]
+pub fn monomorphized_mir_body_for_closure_query<'db>(
+    db: &'db dyn HirDatabase,
+    closure: InternedClosureId<'db>,
     subst: StoredGenericArgs,
     trait_env: StoredParamEnvAndCrate,
-) -> Result<Arc<MirBody>, MirLowerError> {
-    let mut filler = Filler::new(db, trait_env.as_ref(), subst.as_ref());
+) -> Result<MirBody<'db>, MirLowerError<'db>> {
+    let mut filler = Filler::new(db, trait_env.as_ref(db), subst.as_ref());
     let body = db.mir_body_for_closure(closure)?;
     let mut body = (*body).clone();
     filler.fill_body(&mut body)?;
-    Ok(Arc::new(body))
+    Ok(body)
+}
+
+fn monomorphized_mir_body_for_closure_cycle_result<'db>(
+    _db: &'db dyn HirDatabase,
+    _: salsa::Id,
+    _: InternedClosureId<'db>,
+    _: StoredGenericArgs,
+    _: StoredParamEnvAndCrate,
+) -> Result<MirBody<'db>, MirLowerError<'db>> {
+    Err(MirLowerError::Loop)
 }

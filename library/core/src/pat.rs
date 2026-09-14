@@ -44,7 +44,7 @@ macro_rules! impl_range_pat {
     ($($ty:ty,)*) => {
         $(
             #[rustc_const_unstable(feature = "pattern_type_range_trait", issue = "123646")]
-            impl const RangePattern for $ty {
+            const impl RangePattern for $ty {
                 const MIN: $ty = <$ty>::MIN;
                 const MAX: $ty = <$ty>::MAX;
                 fn sub_one(self) -> Self {
@@ -64,7 +64,7 @@ impl_range_pat! {
 }
 
 #[rustc_const_unstable(feature = "pattern_type_range_trait", issue = "123646")]
-impl const RangePattern for char {
+const impl RangePattern for char {
     const MIN: Self = char::MIN;
 
     const MAX: Self = char::MAX;

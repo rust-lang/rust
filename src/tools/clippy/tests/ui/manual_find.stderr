@@ -1,5 +1,5 @@
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find.rs:5:5
+  --> tests/ui/manual_find.rs:4:5
    |
 LL | /     for s in strings {
 LL | |
@@ -14,7 +14,7 @@ LL | |     None
    = help: to override `-D warnings` add `#[allow(clippy::manual_find)]`
 
 error: manual implementation of `Iterator::find`
-  --> tests/ui/manual_find.rs:16:5
+  --> tests/ui/manual_find.rs:15:5
    |
 LL | /     for (s, _) in arr {
 LL | |

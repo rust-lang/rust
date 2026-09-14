@@ -8,15 +8,14 @@ use std::str::*;
 //~| NOTE `from_utf8_unchecked` is imported here, but it is a function
 
 mod hey {
-    pub trait Serialize {}
+    pub trait Serialize {} //~ NOTE `Serialize` is a trait, not a derive macro
     pub trait Deserialize {}
 
     pub struct X(i32);
 }
 
 use hey::{Serialize, Deserialize, X};
-//~^ NOTE `Serialize` is imported here, but it is only a trait, without a derive macro
-//~| NOTE `Deserialize` is imported here, but it is a trait
+//~^ NOTE `Deserialize` is imported here, but it is a trait
 //~| NOTE `X` is imported here, but it is a struct
 
 #[derive(Serialize)]

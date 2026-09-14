@@ -62,7 +62,7 @@ error: unresolved link to `Vec:<T>:new`
   --> $DIR/malformed-generics.rs:17:6
    |
 LL | //! [Vec:<T>:new()]
-   |      ^^^^^^^^^^^^^ has invalid path separator
+   |      ^^^^^^^^^^^^^ invalid path separator
 
 error: unresolved link to `Vec<<T>>`
   --> $DIR/malformed-generics.rs:19:6

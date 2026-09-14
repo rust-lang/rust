@@ -19,7 +19,7 @@ extern crate minicore;
 // UNSUPPORTED: define{{( dso_local)?}} void @peach(i16
 #[no_mangle]
 #[inline(never)]
-pub extern "rust-preserve-none" fn peach(x: u16) {
+pub extern "rust-preserve-none" fn peach(_: u16) {
     loop {}
 }
 

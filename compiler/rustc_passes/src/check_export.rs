@@ -12,12 +12,12 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibility, Level};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Visibility,
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Unnormalized, Visibility,
 };
-use rustc_session::config::CrateType;
 use rustc_span::Span;
+use rustc_structures::CrateType;
 
-use crate::errors::UnexportableItem;
+use crate::diagnostics::UnexportableItem;
 
 struct ExportableItemCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -56,7 +56,7 @@ impl<'tcx> ExportableItemCollector<'tcx> {
         if has_attr && !is_pub {
             let vis = visibilities.effective_vis(def_id).cloned().unwrap_or_else(|| {
                 EffectiveVisibility::from_vis(Visibility::Restricted(
-                    self.tcx.parent_module_from_def_id(def_id).to_local_def_id(),
+                    self.tcx.parent_module_from_def_id(def_id),
                 ))
             });
             let vis = vis.at_level(Level::Direct);
@@ -147,7 +147,9 @@ impl<'tcx> Visitor<'tcx> for ExportableItemCollector<'tcx> {
             hir::ItemKind::Impl(impl_) if impl_.of_trait.is_none() => {
                 unreachable!();
             }
-            _ => self.report_wrong_site(def_id),
+            _ => {
+                self.tcx.dcx().delayed_bug("Target is checked by attribute parser");
+            }
         }
     }
 
@@ -204,14 +206,17 @@ impl<'tcx, 'a> ExportableItemsChecker<'tcx, 'a> {
         }
 
         let sig = self.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
-        if !matches!(sig.abi, ExternAbi::C { .. }) {
+        if !matches!(sig.abi(), ExternAbi::C { .. }) {
             self.tcx.dcx().emit_err(UnexportableItem::FnAbi(span));
             return;
         }
 
         let sig = self
             .tcx
-            .try_normalize_erasing_regions(ty::TypingEnv::non_body_analysis(self.tcx, def_id), sig)
+            .try_normalize_erasing_regions(
+                ty::TypingEnv::non_body_analysis(self.tcx, def_id),
+                Unnormalized::new_wip(sig),
+            )
             .unwrap_or(sig);
 
         let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
@@ -280,7 +285,8 @@ impl<'tcx, 'a> TypeVisitor<TyCtxt<'tcx>> for ExportableItemsChecker<'tcx, 'a> {
                 }
                 for variant in adt_def.variants() {
                     for field in &variant.fields {
-                        let field_ty = self.tcx.type_of(field.did).instantiate_identity();
+                        let field_ty =
+                            self.tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
                         field_ty.visit_with(self)?;
                     }
                 }
@@ -308,7 +314,7 @@ impl<'tcx, 'a> TypeVisitor<TyCtxt<'tcx>> for ExportableItemsChecker<'tcx, 'a> {
             | ty::CoroutineWitness(_, _)
             | ty::Never
             | ty::UnsafeBinder(_)
-            | ty::Alias(ty::AliasTyKind::Opaque, _) => {
+            | ty::Alias(_, ty::AliasTy { kind: ty::AliasTyKind::Opaque { .. }, .. }) => {
                 return ControlFlow::Break(ty);
             }
 

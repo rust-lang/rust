@@ -1,6 +1,5 @@
-//@ min-gdb-version: 14.0
+//@ min-gdb-version: 15.1
 // LLDB 1800+ tests were not tested in CI, broke, and now are disabled
-//@ ignore-lldb
 
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
@@ -23,6 +22,12 @@
 //@ gdb-command:print str_in_rc
 //@ gdb-check:$5 = alloc::rc::Rc<&str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<alloc::rc::RcInner<&str>> {pointer: 0x[...]}, phantom: core::marker::PhantomData<alloc::rc::RcInner<&str>>, alloc: alloc::alloc::Global}
 
+//@ gdb-command:print box_str
+//@ gdb-check:$6 = alloc::boxed::Box<str, alloc::alloc::Global> [87, 111, 114, 108, 100]
+
+//@ gdb-command:print rc_str
+//@ gdb-check:$7 = alloc::rc::Rc<str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<alloc::rc::RcInner<str>> {pointer: alloc::rc::RcInner<str> {strong: core::cell::Cell<usize> {value: core::cell::UnsafeCell<usize> {value: 1}}, weak: core::cell::Cell<usize> {value: core::cell::UnsafeCell<usize> {value: 1}}, value: 0x[...]}}, phantom: core::marker::PhantomData<alloc::rc::RcInner<str>>, alloc: alloc::alloc::Global}
+
 // === LLDB TESTS ==================================================================================
 //@ lldb-command:run
 //@ lldb-command:v plain_string
@@ -32,13 +37,26 @@
 //@ lldb-check:(&str) plain_str = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' }
 
 //@ lldb-command:v str_in_struct
-//@ lldb-check:(strings_and_strs::Foo) str_in_struct = { inner = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
+//@ lldb-check:(strings_and_strs::Foo) str_in_struct = {inner:"Hello"}
 
 //@ lldb-command:v str_in_tuple
-//@ lldb-check:((&str, &str)) str_in_tuple = ("Hello", "World") { 0 = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } 1 = "World" { [0] = 'W' [1] = 'o' [2] = 'r' [3] = 'l' [4] = 'd' } }
+//@ lldb-check:[...] str_in_tuple = ("Hello", "World")
 
 //@ lldb-command:v str_in_rc
-//@ lldb-check:(alloc::rc::Rc<&str, alloc::alloc::Global>) str_in_rc = strong=1, weak=0 { value = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
+//@ lldb-check:[...] str_in_rc = strong=1, weak=0 { value = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
+
+//@ lldb-command:v box_str
+//@ lldb-check:[...] box_str = "World" { [0] = 'W' [1] = 'o' [2] = 'r' [3] = 'l' [4] = 'd' }
+
+// Disabled temporarily since it only "works" by accident
+// `value` is a wide pointer, whose `data_ptr` type, according to LLDB, is `unsigned char[]`. LLDB
+// reads this as a c-string by default. On Linux this fairly consistenly results in the expected
+// output below. On Windows, the string data is often not followed by a null byte and attempts to
+// read OOB memory. This will be fixed as part of #161657
+// lldb-command:v rc_str
+
+// ignore-tidy-linelength
+// lldb-check:(alloc::rc::Rc<unsigned char[], alloc::alloc::Global>) rc_str = strong=1, weak=0 { value = "World" }
 
 #![allow(unused_variables)]
 
@@ -53,6 +71,8 @@ fn main() {
     let str_in_tuple = ("Hello", "World");
 
     let str_in_rc = std::rc::Rc::new("Hello");
+    let box_str: Box<str> = "World".into();
+    let rc_str: std::rc::Rc<str> = "World".into();
     zzz(); // #break
 }
 

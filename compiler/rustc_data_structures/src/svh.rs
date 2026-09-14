@@ -7,21 +7,12 @@
 
 use std::fmt;
 
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 
 use crate::fingerprint::Fingerprint;
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    Debug,
-    Encodable_NoContext,
-    Decodable_NoContext,
-    Hash,
-    HashStable_NoContext
-)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Encodable_NoContext, Decodable_NoContext, StableHash)]
 pub struct Svh {
     hash: Fingerprint,
 }

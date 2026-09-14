@@ -56,6 +56,10 @@ impl fmt::Debug for RangeFull {
 /// The range `start..end` contains all values with `start <= x < end`.
 /// It is empty if `start >= end`.
 ///
+/// Note that this type is not suited to represent all possible ranges. For example, `Range<u8>`
+/// cannot represent the range that covers all of `u8`. Use [`(Bound<T>, Bound<T>)`][Bound] if you
+/// need a type that can store an arbitrary range.
+///
 /// # Examples
 ///
 /// The `start..end` syntax is a `Range`:
@@ -148,6 +152,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     #[inline]
     #[stable(feature = "range_is_empty", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_range", issue = "none")]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "incomparable ranges are empty")]
     pub const fn is_empty(&self) -> bool
     where
         Idx: [const] PartialOrd<Idx>,
@@ -363,10 +368,15 @@ pub struct RangeInclusive<Idx> {
     pub(crate) start: Idx,
     pub(crate) end: Idx,
 
-    // This field is:
+    // This field represents an overflow flag for either bound (start or end):
     //  - `false` upon construction
-    //  - `false` when iteration has yielded an element and the iterator is not exhausted
-    //  - `true` when iteration has been used to exhaust the iterator
+    //  - `false` when iteration has yielded an element and
+    //    neither bound has overflowed the valid range of `Idx`
+    //  - `true` when iteration has caused either bound to
+    //    overflow the valid range of `Idx`
+    //
+    // When this is true, `start` or `end` may be left in an unspecified state,
+    // often wrapping (modular arithmetic) around at the boundary of `Idx`.
     //
     // This is required to support PartialEq and Hash without a PartialOrd bound or specialization.
     pub(crate) exhausted: bool,
@@ -464,6 +474,13 @@ impl RangeInclusive<usize> {
     /// The caller is responsible for dealing with `end == usize::MAX`.
     #[inline]
     pub(crate) const fn into_slice_range(self) -> Range<usize> {
+        // Typically users should not be indexing with exhausted instances,
+        // but this heuristic should apply to most cases. This doesn't
+        // handle reverse iteration well (`next_back` and `nth_back` can
+        // cause `end` to wrap around to values at or near `usize::MAX`),
+        // but using an exhausted `RangeInclusive` after reverse iteration
+        // is an exceedingly rare case.
+
         // If we're not exhausted, we want to simply slice `start..end + 1`.
         // If we are exhausted, then slicing with `end + 1..end + 1` gives us an
         // empty range that is still subject to bounds-checks for that endpoint.
@@ -556,6 +573,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     #[stable(feature = "range_is_empty", since = "1.47.0")]
     #[inline]
     #[rustc_const_unstable(feature = "const_range", issue = "none")]
+    #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "incomparable ranges are empty")]
     pub const fn is_empty(&self) -> bool
     where
         Idx: [const] PartialOrd,
@@ -1045,7 +1063,7 @@ use self::Bound::{Excluded, Included, Unbounded};
 
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T: ?Sized> const RangeBounds<T> for RangeFull {
+const impl<T: ?Sized> RangeBounds<T> for RangeFull {
     fn start_bound(&self) -> Bound<&T> {
         Unbounded
     }
@@ -1056,7 +1074,7 @@ impl<T: ?Sized> const RangeBounds<T> for RangeFull {
 
 #[unstable(feature = "range_into_bounds", issue = "136903")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const IntoBounds<T> for RangeFull {
+const impl<T> IntoBounds<T> for RangeFull {
     fn into_bounds(self) -> (Bound<T>, Bound<T>) {
         (Unbounded, Unbounded)
     }
@@ -1064,7 +1082,7 @@ impl<T> const IntoBounds<T> for RangeFull {
 
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const RangeBounds<T> for RangeFrom<T> {
+const impl<T> RangeBounds<T> for RangeFrom<T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(&self.start)
     }
@@ -1075,7 +1093,7 @@ impl<T> const RangeBounds<T> for RangeFrom<T> {
 
 #[unstable(feature = "range_into_bounds", issue = "136903")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const IntoBounds<T> for RangeFrom<T> {
+const impl<T> IntoBounds<T> for RangeFrom<T> {
     fn into_bounds(self) -> (Bound<T>, Bound<T>) {
         (Included(self.start), Unbounded)
     }
@@ -1083,7 +1101,7 @@ impl<T> const IntoBounds<T> for RangeFrom<T> {
 
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const RangeBounds<T> for RangeTo<T> {
+const impl<T> RangeBounds<T> for RangeTo<T> {
     fn start_bound(&self) -> Bound<&T> {
         Unbounded
     }
@@ -1094,7 +1112,7 @@ impl<T> const RangeBounds<T> for RangeTo<T> {
 
 #[unstable(feature = "range_into_bounds", issue = "136903")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const IntoBounds<T> for RangeTo<T> {
+const impl<T> IntoBounds<T> for RangeTo<T> {
     fn into_bounds(self) -> (Bound<T>, Bound<T>) {
         (Unbounded, Excluded(self.end))
     }
@@ -1102,7 +1120,7 @@ impl<T> const IntoBounds<T> for RangeTo<T> {
 
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const RangeBounds<T> for Range<T> {
+const impl<T> RangeBounds<T> for Range<T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(&self.start)
     }
@@ -1113,7 +1131,7 @@ impl<T> const RangeBounds<T> for Range<T> {
 
 #[unstable(feature = "range_into_bounds", issue = "136903")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const IntoBounds<T> for Range<T> {
+const impl<T> IntoBounds<T> for Range<T> {
     fn into_bounds(self) -> (Bound<T>, Bound<T>) {
         (Included(self.start), Excluded(self.end))
     }
@@ -1121,15 +1139,17 @@ impl<T> const IntoBounds<T> for Range<T> {
 
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const RangeBounds<T> for RangeInclusive<T> {
+const impl<T> RangeBounds<T> for RangeInclusive<T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(&self.start)
     }
     fn end_bound(&self) -> Bound<&T> {
         if self.exhausted {
-            // When the iterator is exhausted, we usually have start == end,
+            // When the iterator is exhausted, it might have overflowed,
             // but we want the range to appear empty, containing nothing.
-            Excluded(&self.end)
+            // So in that case, we return bounds which are always empty:
+            // Included(start)..Excluded(start)
+            Excluded(&self.start)
         } else {
             Included(&self.end)
         }
@@ -1138,24 +1158,20 @@ impl<T> const RangeBounds<T> for RangeInclusive<T> {
 
 #[unstable(feature = "range_into_bounds", issue = "136903")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const IntoBounds<T> for RangeInclusive<T> {
+const impl<T> IntoBounds<T> for RangeInclusive<T> {
     fn into_bounds(self) -> (Bound<T>, Bound<T>) {
-        (
-            Included(self.start),
-            if self.exhausted {
-                // When the iterator is exhausted, we usually have start == end,
-                // but we want the range to appear empty, containing nothing.
-                Excluded(self.end)
-            } else {
-                Included(self.end)
-            },
-        )
+        assert!(
+            !self.exhausted,
+            "attempted to convert from an exhausted `RangeInclusive` (unspecified behavior)"
+        );
+
+        (Included(self.start), Included(self.end))
     }
 }
 
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const RangeBounds<T> for RangeToInclusive<T> {
+const impl<T> RangeBounds<T> for RangeToInclusive<T> {
     fn start_bound(&self) -> Bound<&T> {
         Unbounded
     }
@@ -1166,7 +1182,7 @@ impl<T> const RangeBounds<T> for RangeToInclusive<T> {
 
 #[unstable(feature = "range_into_bounds", issue = "136903")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const IntoBounds<T> for RangeToInclusive<T> {
+const impl<T> IntoBounds<T> for RangeToInclusive<T> {
     fn into_bounds(self) -> (Bound<T>, Bound<T>) {
         (Unbounded, Included(self.end))
     }
@@ -1174,7 +1190,7 @@ impl<T> const IntoBounds<T> for RangeToInclusive<T> {
 
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const RangeBounds<T> for (Bound<T>, Bound<T>) {
+const impl<T> RangeBounds<T> for (Bound<T>, Bound<T>) {
     fn start_bound(&self) -> Bound<&T> {
         match *self {
             (Included(ref start), _) => Included(start),
@@ -1194,7 +1210,7 @@ impl<T> const RangeBounds<T> for (Bound<T>, Bound<T>) {
 
 #[unstable(feature = "range_into_bounds", issue = "136903")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const IntoBounds<T> for (Bound<T>, Bound<T>) {
+const impl<T> IntoBounds<T> for (Bound<T>, Bound<T>) {
     fn into_bounds(self) -> (Bound<T>, Bound<T>) {
         self
     }
@@ -1202,7 +1218,7 @@ impl<T> const IntoBounds<T> for (Bound<T>, Bound<T>) {
 
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<'a, T: ?Sized + 'a> const RangeBounds<T> for (Bound<&'a T>, Bound<&'a T>) {
+const impl<'a, T: ?Sized + 'a> RangeBounds<T> for (Bound<&'a T>, Bound<&'a T>) {
     fn start_bound(&self) -> Bound<&T> {
         self.0
     }
@@ -1220,7 +1236,7 @@ impl<'a, T: ?Sized + 'a> const RangeBounds<T> for (Bound<&'a T>, Bound<&'a T>) {
 /// i.e. replace `start..` with `(Bound::Included(start), Bound::Unbounded)`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const RangeBounds<T> for RangeFrom<&T> {
+const impl<T> RangeBounds<T> for RangeFrom<&T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(self.start)
     }
@@ -1237,7 +1253,7 @@ impl<T> const RangeBounds<T> for RangeFrom<&T> {
 /// i.e. replace `..end` with `(Bound::Unbounded, Bound::Excluded(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const RangeBounds<T> for RangeTo<&T> {
+const impl<T> RangeBounds<T> for RangeTo<&T> {
     fn start_bound(&self) -> Bound<&T> {
         Unbounded
     }
@@ -1254,7 +1270,7 @@ impl<T> const RangeBounds<T> for RangeTo<&T> {
 /// i.e. replace `start..end` with `(Bound::Included(start), Bound::Excluded(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const RangeBounds<T> for Range<&T> {
+const impl<T> RangeBounds<T> for Range<&T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(self.start)
     }
@@ -1271,7 +1287,7 @@ impl<T> const RangeBounds<T> for Range<&T> {
 /// i.e. replace `start..=end` with `(Bound::Included(start), Bound::Included(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const RangeBounds<T> for RangeInclusive<&T> {
+const impl<T> RangeBounds<T> for RangeInclusive<&T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(self.start)
     }
@@ -1288,7 +1304,7 @@ impl<T> const RangeBounds<T> for RangeInclusive<&T> {
 /// i.e. replace `..=end` with `(Bound::Unbounded, Bound::Included(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const RangeBounds<T> for RangeToInclusive<&T> {
+const impl<T> RangeBounds<T> for RangeToInclusive<&T> {
     fn start_bound(&self) -> Bound<&T> {
         Unbounded
     }
@@ -1326,7 +1342,7 @@ pub const trait OneSidedRange<T>: RangeBounds<T> {
 
 #[unstable(feature = "one_sided_range", issue = "69780")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const OneSidedRange<T> for RangeTo<T>
+const impl<T> OneSidedRange<T> for RangeTo<T>
 where
     Self: RangeBounds<T>,
 {
@@ -1337,7 +1353,7 @@ where
 
 #[unstable(feature = "one_sided_range", issue = "69780")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const OneSidedRange<T> for RangeFrom<T>
+const impl<T> OneSidedRange<T> for RangeFrom<T>
 where
     Self: RangeBounds<T>,
 {
@@ -1348,7 +1364,7 @@ where
 
 #[unstable(feature = "one_sided_range", issue = "69780")]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-impl<T> const OneSidedRange<T> for RangeToInclusive<T>
+const impl<T> OneSidedRange<T> for RangeToInclusive<T>
 where
     Self: RangeBounds<T>,
 {

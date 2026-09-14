@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sym;
 use clippy_utils::ty::{implements_trait, peel_and_count_ty_refs};
@@ -49,7 +49,7 @@ pub fn is_clone_like(cx: &LateContext<'_>, method_name: Symbol, method_parent_id
         sym::to_string => method_parent_id.is_diag_item(cx, sym::ToString),
         sym::to_vec => method_parent_id
             .opt_impl_ty(cx)
-            .is_some_and(|ty| ty.instantiate_identity().is_slice()),
+            .is_some_and(|ty| ty.instantiate_identity().skip_norm_wip().is_slice()),
         _ => false,
     }
 }

@@ -9,14 +9,14 @@
 //!
 //! * Compiler internal types like `Ty` and `TyCtxt`
 
-use rustc_hir::diagnostic_items::DiagnosticItems;
+use rustc_hir::attrs::diagnostic_items::DiagnosticItems;
 use rustc_hir::{CRATE_OWNER_ID, OwnerId, find_attr};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
+use rustc_span::{Symbol, sym};
 
-use crate::errors::DuplicateDiagnosticItemInCrate;
+use crate::diagnostics::DuplicateDiagnosticItemInCrate;
 
 fn observe_item<'tcx>(tcx: TyCtxt<'tcx>, diagnostic_items: &mut DiagnosticItems, owner: OwnerId) {
     let attrs = tcx.hir_attrs(owner.into());
@@ -53,15 +53,19 @@ fn report_duplicate_item(
     });
 }
 
-/// Traverse and collect the diagnostic items in the current
+/// Traverse and collect the diagnostic items in the current crate
 fn diagnostic_items(tcx: TyCtxt<'_>, _: LocalCrate) -> DiagnosticItems {
     // Initialize the collector.
     let mut diagnostic_items = DiagnosticItems::default();
 
-    // Collect diagnostic items in this crate.
-    let crate_items = tcx.hir_crate_items(());
-    for id in crate_items.owners().chain(std::iter::once(CRATE_OWNER_ID)) {
-        observe_item(tcx, &mut diagnostic_items, id);
+    // Optimization: can this crate even define diagnostic items?
+    // (But do not mark `rustc_attrs` as used while doing so)
+    if tcx.features().enabled_features().contains(&sym::rustc_attrs) {
+        // Collect diagnostic items in this crate.
+        let crate_items = tcx.hir_crate_items(());
+        for id in crate_items.owners().chain(std::iter::once(CRATE_OWNER_ID)) {
+            observe_item(tcx, &mut diagnostic_items, id);
+        }
     }
 
     diagnostic_items

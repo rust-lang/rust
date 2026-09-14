@@ -1,11 +1,5 @@
-#![allow(
-    clippy::assertions_on_constants,
-    clippy::equatable_if_let,
-    clippy::needless_ifs,
-    clippy::nonminimal_bool,
-    clippy::eq_op,
-    clippy::redundant_pattern_matching
-)]
+#![allow(clippy::eq_op, clippy::needless_ifs)]
+#![expect(clippy::assertions_on_constants, clippy::redundant_pattern_matching)]
 
 #[rustfmt::skip]
 #[warn(clippy::collapsible_if)]

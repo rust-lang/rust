@@ -2,29 +2,29 @@
 
 ## The `HostEffect` predicate
 
-[`HostEffectPredicate`]s are a kind of predicate from `~const Tr` or `const Tr` bounds.
+[`HostEffectPredicate`]s are a kind of predicate from `[const] Tr` or `const Tr` bounds.
 It has a trait reference, and a `constness` which could be `Maybe` or
 `Const` depending on the bound.
-Because `~const Tr`, or rather `Maybe` bounds
+Because `[const] Tr`, or rather `Maybe` bounds
 apply differently based on whichever contexts they are in, they have different
 behavior than normal bounds.
 Where normal trait bounds on a function such as
-`T: Tr` are collected within the [`predicates_of`] query to be proven when a
+`T: Tr` are collected within the [`clauses_of`] query to be proven when a
 function is called and to be assumed within the function, bounds such as
-`T: ~const Tr` will behave as a normal trait bound and add `T: Tr` to the result
-from `predicates_of`, but also adds a `HostEffectPredicate` to the [`const_conditions`] query.
+`T: [const] Tr` will behave as a normal trait bound and add `T: Tr` to the result
+from `clauses_of`, but also adds a `HostEffectPredicate` to the [`const_conditions`] query.
 
 On the other hand, `T: const Tr` bounds do not change meaning across contexts,
 therefore they will result in `HostEffect(T: Tr, const)` being added to
-`predicates_of`, and not `const_conditions`.
+`clauses_of`, and not `const_conditions`.
 
 [`HostEffectPredicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/predicate/struct.HostEffectPredicate.html
-[`predicates_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.predicates_of
+[`clauses_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.clauses_of
 [`const_conditions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.const_conditions
 
 ## The `const_conditions` query
 
-`predicates_of` represents a set of predicates that need to be proven to use an item.
+`clauses_of` represents a set of clauses that need to be proven to use an item.
 For example, to use `foo` in the example below:
 
 ```rust
@@ -37,7 +37,7 @@ In a similar vein,
 an item *in const contexts*. If we adjust the example above to use `const` trait bounds:
 
 ```rust
-const fn foo<T>() where T: ~const Default {}
+const fn foo<T>() where T: [const] Default {}
 ```
 
 Then `foo` would get a `HostEffect(T: Default, maybe)` in the `const_conditions`
@@ -55,7 +55,7 @@ Note that we don't check
 if the function is only referred to but not called, as the following code needs to compile:
 
 ```rust
-const fn hi<T: ~const Default>() -> T {
+const fn hi<T: [const] Default>() -> T {
     T::default()
 }
 const X: fn() -> u32 = hi::<u32>;
@@ -69,7 +69,7 @@ Here's an example:
 
 ```rust
 const trait Bar {}
-const trait Foo: ~const Bar {}
+const trait Foo: [const] Bar {}
 // `const_conditions` contains `HostEffect(Self: Bar, maybe)`
 
 impl const Bar for () {}
@@ -86,27 +86,27 @@ We do the same for `const_conditions`:
 
 ```rust
 const trait Foo {
-    fn hi<T: ~const Default>();
+    fn hi<T: [const] Default>();
 }
 
-impl<T: ~const Clone> Foo for Vec<T> {
-    fn hi<T: ~const PartialEq>();
-    // ^ we can't prove `T: ~const PartialEq` given `T: ~const Clone` and
-    // `T: ~const Default`, therefore we know that the method on the impl
+impl<T: [const] Clone> Foo for Vec<T> {
+    fn hi<T: [const] PartialEq>();
+    // ^ we can't prove `T: [const] PartialEq` given `T: [const] Clone` and
+    // `T: [const] Default`, therefore we know that the method on the impl
     // is stricter than the method on the trait.
 }
 ```
 
-These checks are done in [`compare_method_predicate_entailment`].
+These checks are done in [`compare_method_clause_entailment`].
 A similar function that does the same check for associated types is called
-[`compare_type_predicate_entailment`].
+[`compare_type_clause_entailment`].
 Both of these need to consider `const_conditions` when in const contexts.
 
 In MIR, as part of const checking, `const_conditions` of items that are called
 are revalidated again in [`Checker::revalidate_conditional_constness`].
 
-[`compare_method_predicate_entailment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
-[`compare_type_predicate_entailment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_type_predicate_entailment.html
+[`compare_method_clause_entailment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_clause_entailment.html
+[`compare_type_clause_entailment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_type_clause_entailment.html
 [`FnCtxt::enforce_context_effects`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html#method.enforce_context_effects
 [`wfcheck::check_impl`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/wfcheck/fn.check_impl.html
 [`Checker::revalidate_conditional_constness`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/check_consts/check/struct.Checker.html#method.revalidate_conditional_constness
@@ -117,11 +117,11 @@ Bounds on associated types, opaque types, and supertraits such as the following
 have their bounds represented differently:
 
 ```rust
-trait Foo: ~const PartialEq {
-    type X: ~const PartialEq;
+trait Foo: [const] PartialEq {
+    type X: [const] PartialEq;
 }
 
-fn foo() -> impl ~const PartialEq {
+fn foo() -> impl [const] PartialEq {
     // ^ unimplemented syntax
 }
 ```

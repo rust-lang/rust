@@ -1,25 +1,26 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::ty::{adjust_derefs_manually_drop, implements_trait, is_manually_drop, peel_and_count_ty_refs};
+use clippy_utils::ty::{
+    adjust_derefs_manually_drop, get_adt_inherent_method, implements_trait, is_manually_drop, peel_and_count_ty_refs,
+};
 use clippy_utils::{
-    DefinedTy, ExprUseNode, expr_use_ctxt, get_parent_expr, is_block_like, is_from_proc_macro, is_lint_allowed, sym,
+    DefinedTy, ExprUseNode, get_expr_use_site, get_parent_expr, is_block_like, is_from_proc_macro, is_lint_allowed, sym,
 };
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
+use rustc_hir::intravisit::{InferKind, Visitor, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, Item, MatchSource, Mutability,
     Node, OwnerId, Pat, PatKind, Path, QPath, TyKind, UnOp,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
-use rustc_session::impl_lint_pass;
-use rustc_span::{Span, Symbol};
+use rustc_middle::ty::{self, AssocTag, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults, Unnormalized};
+use rustc_span::{Span, Symbol, SyntaxContext};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -276,15 +277,15 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
         match (self.state.take(), kind) {
             (None, kind) => {
                 let expr_ty = typeck.expr_ty(expr);
-                let use_cx = expr_use_ctxt(cx, expr);
-                let adjusted_ty = use_cx.adjustments.last().map_or(expr_ty, |a| a.target);
+                let use_site = get_expr_use_site(cx.tcx, typeck, SyntaxContext::root(), expr);
+                let adjusted_ty = use_site.adjustments.last().map_or(expr_ty, |a| a.target);
 
                 match kind {
-                    RefOp::Deref if use_cx.same_ctxt => {
-                        let use_node = use_cx.use_node(cx);
+                    RefOp::Deref if use_site.same_ctxt => {
+                        let use_node = use_site.use_node(cx);
                         let sub_ty = typeck.expr_ty(sub_expr);
                         if let ExprUseNode::FieldAccess(name) = use_node
-                            && !use_cx.moved_before_use
+                            && !use_site.moved_before_use
                             && !ty_contains_field(sub_ty, name.name)
                         {
                             self.state = Some((
@@ -331,9 +332,9 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             },
                         ));
                     },
-                    RefOp::AddrOf(mutability) if use_cx.same_ctxt => {
+                    RefOp::AddrOf(mutability) if use_site.same_ctxt => {
                         // Find the number of times the borrow is auto-derefed.
-                        let mut iter = use_cx.adjustments.iter();
+                        let mut iter = use_site.adjustments.iter();
                         let mut deref_count = 0usize;
                         let next_adjust = loop {
                             match iter.next() {
@@ -350,13 +351,13 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             }
                         };
 
-                        let use_node = use_cx.use_node(cx);
+                        let use_node = use_site.use_node(cx);
                         let stability = use_node.defined_ty(cx).map_or(TyCoercionStability::None, |ty| {
                             TyCoercionStability::for_defined_ty(cx, ty, use_node.is_return())
                         });
                         let can_auto_borrow = match use_node {
                             ExprUseNode::FieldAccess(_)
-                                if !use_cx.moved_before_use && matches!(sub_expr.kind, ExprKind::Field(..)) =>
+                                if !use_site.moved_before_use && matches!(sub_expr.kind, ExprKind::Field(..)) =>
                             {
                                 // `DerefMut` will not be automatically applied to `ManuallyDrop<_>`
                                 // field expressions when the base type is a union and the parent
@@ -364,38 +365,74 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                 //
                                 // e.g. `&mut x.y.z` where `x` is a union, and accessing `z` requires a
                                 // deref through `ManuallyDrop<_>` will not compile.
-                                !adjust_derefs_manually_drop(use_cx.adjustments, expr_ty)
+                                !adjust_derefs_manually_drop(use_site.adjustments, expr_ty)
                             },
-                            ExprUseNode::Callee | ExprUseNode::FieldAccess(_) if !use_cx.moved_before_use => true,
-                            ExprUseNode::MethodArg(hir_id, _, 0) if !use_cx.moved_before_use => {
-                                // Check for calls to trait methods where the trait is implemented
-                                // on a reference.
-                                // Two cases need to be handled:
+                            ExprUseNode::Callee | ExprUseNode::FieldAccess(_) if !use_site.moved_before_use => true,
+                            ExprUseNode::MethodArg(hir_id, _, 0) if !use_site.moved_before_use => {
+                                // Check for calls to trait methods where auto-borrow will not resolve.
+                                // Three cases need to be handled:
                                 // * `self` methods on `&T` will never have auto-borrow
                                 // * `&self` methods on `&T` can have auto-borrow, but `&self` methods on `T` will take
                                 //   priority.
+                                // * `&self` methods on `T` can have auto-borrow, but if there's another method with the
+                                //   same name, it may take priority.
                                 if let Some(fn_id) = typeck.type_dependent_def_id(hir_id)
                                     && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                                     && let arg_ty = cx.tcx.erase_and_anonymize_regions(adjusted_ty)
                                     && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
                                     && let args =
                                         typeck.node_args_opt(hir_id).map(|args| &args[1..]).unwrap_or_default()
-                                    && let impl_ty =
-                                        if cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder().inputs()[0]
-                                            .is_ref()
-                                        {
-                                            // Trait methods taking `&self`
-                                            sub_ty
-                                        } else {
-                                            // Trait methods taking `self`
-                                            arg_ty
-                                        }
-                                    && impl_ty.is_ref()
-                                    && implements_trait(
-                                        cx,
-                                        impl_ty,
-                                        trait_id,
-                                        &args[..cx.tcx.generics_of(trait_id).own_params.len() - 1],
+                                    && let impl_ty = if cx
+                                        .tcx
+                                        .fn_sig(fn_id)
+                                        .instantiate_identity()
+                                        .skip_norm_wip()
+                                        .skip_binder()
+                                        .inputs()[0]
+                                        .is_ref()
+                                    {
+                                        // Trait methods taking `&self`
+                                        sub_ty
+                                    } else {
+                                        // Trait methods taking `self`
+                                        arg_ty
+                                    }
+                                    && let method_name = cx.tcx.item_name(fn_id)
+                                    && (
+                                        // If this trait impl is implemented on `&T`, then auto-borrowing won't work
+                                        (impl_ty.is_ref()
+                                        && implements_trait(
+                                            cx,
+                                            impl_ty,
+                                            trait_id,
+                                            &args[..cx.tcx.generics_of(trait_id).own_params.len() - 1],
+                                        ))
+                                        // If there's an inherent method, or a method from another trait,
+                                        // with the same name that's also implemented on this same type,
+                                        // then removing the borrow might cause that method to be chosen
+                                        // instead of the current one.
+                                        || get_adt_inherent_method(cx, impl_ty, method_name).is_some()
+                                        || cx.tcx.in_scope_traits(hir_id).is_some_and(|traits| {
+                                            traits
+                                                .iter()
+                                                .filter(|trait_| {
+                                                    cx.tcx
+                                                        .non_blanket_impls_for_ty(trait_.def_id, impl_ty)
+                                                        .next()
+                                                        .is_some()
+                                                        || !cx
+                                                            .tcx
+                                                            .trait_impls_of(trait_.def_id)
+                                                            .blanket_impls()
+                                                            .is_empty()
+                                                })
+                                                .any(|trait_| {
+                                                    cx.tcx
+                                                        .associated_items(trait_.def_id)
+                                                        .filter_by_name_unhygienic(method_name)
+                                                        .any(|item| item.tag() == AssocTag::Fn && item.def_id != fn_id)
+                                                })
+                                        })
                                     )
                                 {
                                     false
@@ -455,7 +492,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     msg,
                                     stability,
                                     for_field_access: if let ExprUseNode::FieldAccess(name) = use_node
-                                        && !use_cx.moved_before_use
+                                        && !use_site.moved_before_use
                                     {
                                         Some(name.name)
                                     } else {
@@ -864,6 +901,10 @@ impl TyCoercionStability {
                 | TyKind::TraitObject(..)
                 | TyKind::InferDelegation(..)
                 | TyKind::Err(_) => Self::Reborrow,
+                TyKind::View(ty, _) => {
+                    // FIXME(scrabsha): what are the semantics of view types here?
+                    Self::for_hir_ty(ty)
+                },
                 TyKind::UnsafeBinder(..) => Self::None,
             };
         }
@@ -876,7 +917,9 @@ impl TyCoercionStability {
 
         if let Some(def_id) = def_site_def_id {
             let typing_env = ty::TypingEnv::non_body_analysis(tcx, def_id);
-            ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+            ty = tcx
+                .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty))
+                .unwrap_or(ty);
         }
         loop {
             break match *ty.kind() {
@@ -885,12 +928,30 @@ impl TyCoercionStability {
                     continue;
                 },
                 ty::Param(_) if for_return => Self::Deref,
-                ty::Alias(ty::Free | ty::Inherent, _) => unreachable!("should have been normalized away above"),
-                ty::Alias(ty::Projection, _) if !for_return && ty.has_non_region_param() => Self::Reborrow,
+                ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Free { .. } | ty::Inherent { .. },
+                        ..
+                    },
+                ) => unreachable!("should have been normalized away above"),
+                ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Projection { .. },
+                        ..
+                    },
+                ) if !for_return && ty.has_non_region_param() => Self::Reborrow,
                 ty::Infer(_)
                 | ty::Error(_)
                 | ty::Bound(..)
-                | ty::Alias(ty::Opaque, ..)
+                | ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Opaque { .. },
+                        ..
+                    },
+                )
                 | ty::Placeholder(_)
                 | ty::Dynamic(..)
                 | ty::Param(_) => Self::Reborrow,
@@ -921,7 +982,13 @@ impl TyCoercionStability {
                 | ty::CoroutineClosure(..)
                 | ty::Never
                 | ty::Tuple(_)
-                | ty::Alias(ty::Projection, _)
+                | ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Projection { .. },
+                        ..
+                    },
+                )
                 | ty::UnsafeBinder(_) => Self::Deref,
             };
         }

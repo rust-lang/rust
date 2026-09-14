@@ -2,6 +2,7 @@
 
 mod lasx;
 mod lsx;
+mod simd;
 
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub use self::lasx::*;
@@ -11,7 +12,7 @@ pub use self::lsx::*;
 use crate::arch::asm;
 
 /// Reads the 64-bit stable counter value and the counter ID
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn rdtime_d() -> (i64, isize) {
     let (val, tid): (i64, isize);
@@ -20,9 +21,21 @@ pub fn rdtime_d() -> (i64, isize) {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
+    #[link_name = "llvm.loongarch.crc.w.b.w"]
+    fn __crc_w_b_w(a: i32, b: i32) -> i32;
+    #[link_name = "llvm.loongarch.crc.w.h.w"]
+    fn __crc_w_h_w(a: i32, b: i32) -> i32;
+    #[link_name = "llvm.loongarch.crc.w.w.w"]
+    fn __crc_w_w_w(a: i32, b: i32) -> i32;
     #[link_name = "llvm.loongarch.crc.w.d.w"]
     fn __crc_w_d_w(a: i64, b: i32) -> i32;
+    #[link_name = "llvm.loongarch.crcc.w.b.w"]
+    fn __crcc_w_b_w(a: i32, b: i32) -> i32;
+    #[link_name = "llvm.loongarch.crcc.w.h.w"]
+    fn __crcc_w_h_w(a: i32, b: i32) -> i32;
+    #[link_name = "llvm.loongarch.crcc.w.w.w"]
+    fn __crcc_w_w_w(a: i32, b: i32) -> i32;
     #[link_name = "llvm.loongarch.crcc.w.d.w"]
     fn __crcc_w_d_w(a: i64, b: i32) -> i32;
     #[link_name = "llvm.loongarch.cacop.d"]
@@ -48,21 +61,63 @@ unsafe extern "unadjusted" {
 }
 
 /// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
-#[inline]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[inline(always)]
+#[stable(feature = "stdarch_loongarch_crc", since = "1.98.0")]
+pub fn crc_w_b_w(a: i8, b: i32) -> i32 {
+    unsafe { __crc_w_b_w(a as i32, b) }
+}
+
+/// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
+#[inline(always)]
+#[stable(feature = "stdarch_loongarch_crc", since = "1.98.0")]
+pub fn crc_w_h_w(a: i16, b: i32) -> i32 {
+    unsafe { __crc_w_h_w(a as i32, b) }
+}
+
+/// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
+#[inline(always)]
+#[stable(feature = "stdarch_loongarch_crc", since = "1.98.0")]
+pub fn crc_w_w_w(a: i32, b: i32) -> i32 {
+    unsafe { __crc_w_w_w(a, b) }
+}
+
+/// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
+#[inline(always)]
+#[stable(feature = "stdarch_loongarch_crc", since = "1.98.0")]
 pub fn crc_w_d_w(a: i64, b: i32) -> i32 {
     unsafe { __crc_w_d_w(a, b) }
 }
 
 /// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
-#[inline]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[inline(always)]
+#[stable(feature = "stdarch_loongarch_crc", since = "1.98.0")]
+pub fn crcc_w_b_w(a: i8, b: i32) -> i32 {
+    unsafe { __crcc_w_b_w(a as i32, b) }
+}
+
+/// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
+#[inline(always)]
+#[stable(feature = "stdarch_loongarch_crc", since = "1.98.0")]
+pub fn crcc_w_h_w(a: i16, b: i32) -> i32 {
+    unsafe { __crcc_w_h_w(a as i32, b) }
+}
+
+/// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
+#[inline(always)]
+#[stable(feature = "stdarch_loongarch_crc", since = "1.98.0")]
+pub fn crcc_w_w_w(a: i32, b: i32) -> i32 {
+    unsafe { __crcc_w_w_w(a, b) }
+}
+
+/// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
+#[inline(always)]
+#[stable(feature = "stdarch_loongarch_crc", since = "1.98.0")]
 pub fn crcc_w_d_w(a: i64, b: i32) -> i32 {
     unsafe { __crcc_w_d_w(a, b) }
 }
 
 /// Generates the cache operation instruction
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn cacop<const IMM5: i64, const IMM_S12: i64>(b: i64) {
     static_assert_uimm_bits!(IMM5, 5);
@@ -71,7 +126,7 @@ pub unsafe fn cacop<const IMM5: i64, const IMM_S12: i64>(b: i64) {
 }
 
 /// Reads the CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn csrrd<const IMM14: i32>() -> i64 {
     static_assert_uimm_bits!(IMM14, 14);
@@ -79,7 +134,7 @@ pub unsafe fn csrrd<const IMM14: i32>() -> i64 {
 }
 
 /// Writes the CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn csrwr<const IMM14: i32>(a: i64) -> i64 {
     static_assert_uimm_bits!(IMM14, 14);
@@ -87,7 +142,7 @@ pub unsafe fn csrwr<const IMM14: i32>(a: i64) -> i64 {
 }
 
 /// Exchanges the CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn csrxchg<const IMM14: i32>(a: i64, b: i64) -> i64 {
     static_assert_uimm_bits!(IMM14, 14);
@@ -95,35 +150,35 @@ pub unsafe fn csrxchg<const IMM14: i32>(a: i64, b: i64) -> i64 {
 }
 
 /// Reads the 64-bit IO-CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn iocsrrd_d(a: i32) -> i64 {
     __iocsrrd_d(a)
 }
 
 /// Writes the 64-bit IO-CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn iocsrwr_d(a: i64, b: i32) {
     __iocsrwr_d(a, b)
 }
 
-/// Generates the less-than-or-equal asseration instruction
-#[inline]
+/// Generates the less-than-or-equal assertion instruction
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn asrtle(a: i64, b: i64) {
     __asrtle(a, b);
 }
 
-/// Generates the greater-than asseration instruction
-#[inline]
+/// Generates the greater-than assertion instruction
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn asrtgt(a: i64, b: i64) {
     __asrtgt(a, b);
 }
 
 /// Loads the page table directory entry
-#[inline]
+#[inline(always)]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lddir<const IMM8: i64>(a: i64) -> i64 {
@@ -132,10 +187,28 @@ pub unsafe fn lddir<const IMM8: i64>(a: i64) -> i64 {
 }
 
 /// Loads the page table entry
-#[inline]
+#[inline(always)]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn ldpte<const IMM8: i64>(a: i64) {
     static_assert_uimm_bits!(IMM8, 8);
     __ldpte(a, IMM8)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn crc32() {
+        assert_eq!(crc_w_b_w(-1, -1), 16777215);
+        assert_eq!(crc_w_h_w(-1, -1), 65535);
+        assert_eq!(crc_w_w_w(-1, -1), 0);
+        assert_eq!(crc_w_d_w(-1, -1), 3736805603u32.cast_signed());
+
+        assert_eq!(crcc_w_b_w(-1, -1), 16777215);
+        assert_eq!(crcc_w_h_w(-1, -1), 65535);
+        assert_eq!(crcc_w_w_w(-1, -1), 0);
+        assert_eq!(crcc_w_d_w(-1, -1), 3080238136u32.cast_signed());
+    }
 }

@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-disable-isolation
-#![feature(thread_sleep_until)]
+#![feature(duration_constructors, thread_sleep_until)]
 
 use std::time::{Duration, Instant, SystemTime};
 
@@ -7,6 +7,13 @@ fn duration_sanity(diff: Duration) {
     // On my laptop, I observed times around 15-40ms. Add 10x lee-way both ways.
     assert!(diff.as_millis() > 1);
     assert!(diff.as_millis() < 1000); // macOS is very slow sometimes
+}
+
+fn test_underflow() {
+    // The time 1 day before the program started should be representable.
+    // (This used to underflow on Windows.)
+    let now = Instant::now();
+    let _earlier = now - Duration::from_days(1);
 }
 
 fn test_sleep() {
@@ -57,6 +64,7 @@ fn main() {
     assert_eq!(now2 - diff, now1);
     duration_sanity(diff);
 
+    test_underflow();
     test_sleep();
     test_sleep_until();
 }

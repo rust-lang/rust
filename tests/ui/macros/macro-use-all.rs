@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ aux-build:two_macros.rs
 
 #[macro_use]

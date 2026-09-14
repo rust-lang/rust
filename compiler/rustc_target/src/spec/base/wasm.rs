@@ -28,16 +28,6 @@ pub(crate) fn options() -> TargetOptions {
                 // stack overflow will be guaranteed to trap as it underflows instead of
                 // corrupting static data.
                 concat!($prefix, "--stack-first"),
-                // FIXME we probably shouldn't pass this but instead pass an explicit list
-                // of symbols we'll allow to be undefined. We don't currently have a
-                // mechanism of knowing, however, which symbols are intended to be imported
-                // from the environment and which are intended to be imported from other
-                // objects linked elsewhere. This is a coarse approximation but is sure to
-                // hide some bugs and frustrate someone at some point, so we should ideally
-                // work towards a world where we can explicitly list symbols that are
-                // supposed to be imported and have all other symbols generate errors if
-                // they remain undefined.
-                concat!($prefix, "--allow-undefined"),
                 // LLD only implements C++-like demangling, which doesn't match our own
                 // mangling scheme. Tell LLD to not demangle anything and leave it up to
                 // us to demangle these symbols later. Currently rustc does not perform
@@ -119,6 +109,21 @@ pub(crate) fn options() -> TargetOptions {
         // that this isn't useful for wasm and has tricky issues with
         // representation, so this is disabled.
         generate_arange_section: false,
+
+        // Differ from LLVM's default to use the legacy exception-handling
+        // proposal instructions and use the standard exception-handling
+        // instructions. Note that this is only applicable when unwinding is
+        // actually turned on, which it's not by default on this target. For
+        // `-Zbuild-std` builds, however, this affects when rebuilding libstd
+        // with unwinding.
+        llvm_args: cvs!["-wasm-use-legacy-eh=false"],
+
+        // WASI's `sys::args::init` function ignores its arguments; instead,
+        // `args::args()` makes the WASI API calls itself.
+        //
+        // Other Wasm targets make no use of `std::env` entirely.
+        // Emscripten enables it explicitly.
+        main_needs_argc_argv: false,
 
         ..Default::default()
     }

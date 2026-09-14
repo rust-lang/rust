@@ -1,42 +1,40 @@
-use rustc_hir::attrs::{DeprecatedSince, Deprecation};
-use rustc_hir::{RustcVersion, VERSION_PLACEHOLDER};
+use rustc_ast::LitKind;
+use rustc_attr_ir::{DeprecatedSince, Deprecation, RustcVersion, VERSION_PLACEHOLDER};
+use rustc_feature::AttributeStability;
+use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
 
 use super::prelude::*;
 use super::util::parse_version;
-use crate::session_diagnostics::{
-    DeprecatedItemSuggestion, InvalidSince, MissingNote, MissingSince,
+use crate::diagnostics::{
+    DeprecatedAnnotationHasNoEffect, DeprecatedItemSuggestion, InvalidSince, MissingNote,
+    MissingSince,
 };
+use crate::target_checking::Policy::AllowSilent;
 
-fn get<S: Stage>(
-    cx: &AcceptContext<'_, '_, S>,
+fn get(
+    cx: &mut AcceptContext<'_, '_>,
     name: Symbol,
     param_span: Span,
     arg: &ArgParser,
     item: Option<Symbol>,
 ) -> Option<Ident> {
     if item.is_some() {
-        cx.duplicate_key(param_span, name);
+        cx.adcx().duplicate_key(param_span, name);
         return None;
     }
-    if let Some(v) = arg.name_value() {
-        if let Some(value_str) = v.value_as_ident() {
-            Some(value_str)
-        } else {
-            cx.expected_string_literal(v.value_span, Some(&v.value_as_lit()));
-            None
-        }
+    let v = cx.expect_name_value(arg, param_span, Some(name))?;
+    if let Some(value_str) = v.value_as_ident() {
+        Some(value_str)
     } else {
-        cx.expected_name_value(param_span, Some(name));
+        cx.adcx().expected_string_literal(v.value_span, Some(v.value_as_lit()));
         None
     }
 }
 
 pub(crate) struct DeprecatedParser;
-impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
+impl SingleAttributeParser for DeprecatedParser {
     const PATH: &[Symbol] = &[sym::deprecated];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
         Allow(Target::Mod),
         Allow(Target::Struct),
@@ -55,8 +53,12 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
         Allow(Target::ForeignTy),
         Allow(Target::Field),
         Allow(Target::Trait),
-        Allow(Target::AssocTy),
-        Allow(Target::AssocConst),
+        Allow(Target::AssocConst(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocConst(AssocCtxt::Trait)),
+        AllowSilent(Target::AssocConst(AssocCtxt::Impl { of_trait: true })),
+        Allow(Target::AssocTy(AssocCtxt::Impl { of_trait: false })),
+        Allow(Target::AssocTy(AssocCtxt::Trait)),
+        AllowSilent(Target::AssocTy(AssocCtxt::Impl { of_trait: true })),
         Allow(Target::Variant),
         Allow(Target::Impl { of_trait: false }),
         Allow(Target::Crate),
@@ -67,8 +69,9 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
         List: &[r#"since = "version""#, r#"note = "reason""#, r#"since = "version", note = "reason""#],
         NameValueStr: "reason"
     );
+    const STABILITY: AttributeStability = AttributeStability::Stable;
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let features = cx.features();
 
         let mut since = None;
@@ -82,9 +85,41 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
                 // ok
             }
             ArgParser::List(list) => {
+                // If the argument list contains a single string literal:
+                // check whether it may be a version and suggest since field
+                // otherwise, suggest using NameValue syntax
+                if let Some(elem) = list.as_single()
+                    && let Some(lit) = elem.as_lit()
+                    && let LitKind::Str(text, _) = lit.kind
+                {
+                    let mut adcx = cx.adcx();
+
+                    match parse_since(text, true) {
+                        DeprecatedSince::Future | DeprecatedSince::RustcVersion(_) => {
+                            adcx.push_suggestion(
+                                String::from("try specifying a deprecated since version"),
+                                elem.span(),
+                                format!("since = {}", lit.kind),
+                            );
+                        }
+                        _ => {
+                            if let Some(span) = args.span() {
+                                adcx.push_suggestion(
+                                    String::from("try using `=` instead"),
+                                    span,
+                                    format!(" = {}", lit.kind),
+                                );
+                            }
+                        }
+                    };
+
+                    adcx.expected_not_literal(elem.span());
+                    return None;
+                }
+
                 for param in list.mixed() {
                     let Some(param) = param.meta_item() else {
-                        cx.unexpected_literal(param.span());
+                        cx.adcx().expected_not_literal(param.span());
                         return None;
                     };
 
@@ -116,7 +151,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
                                 Some(get(cx, name, param.span(), param.args(), suggestion)?.name);
                         }
                         _ => {
-                            cx.expected_specific_argument(
+                            cx.adcx().expected_specific_argument(
                                 param.span(),
                                 if features.deprecated_suggestion() {
                                     &[sym::since, sym::note, sym::suggestion]
@@ -131,7 +166,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
             }
             ArgParser::NameValue(v) => {
                 let Some(value) = v.value_as_ident() else {
-                    cx.expected_string_literal(v.value_span, Some(v.value_as_lit()));
+                    cx.adcx().expected_string_literal(v.value_span, Some(v.value_as_lit()));
                     return None;
                 };
                 note = Some(value);
@@ -139,18 +174,11 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
         }
 
         let since = if let Some(since) = since {
-            if since.as_str() == "TBD" {
-                DeprecatedSince::Future
-            } else if !is_rustc {
-                DeprecatedSince::NonStandard(since)
-            } else if since.as_str() == VERSION_PLACEHOLDER {
-                DeprecatedSince::RustcVersion(RustcVersion::CURRENT)
-            } else if let Some(version) = parse_version(since) {
-                DeprecatedSince::RustcVersion(version)
-            } else {
+            let since = parse_since(since, is_rustc);
+            if matches!(since, DeprecatedSince::Err) {
                 cx.emit_err(InvalidSince { span: cx.attr_span });
-                DeprecatedSince::Err
             }
+            since
         } else if is_rustc {
             cx.emit_err(MissingSince { span: cx.attr_span });
             DeprecatedSince::Err
@@ -163,9 +191,39 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
             return None;
         }
 
+        // `#[deprecated]` on trait-impl associated items has no effect (deprecation comes from the
+        // trait definition). Methods also get `useless_deprecated` from target checking.
+        if matches!(
+            cx.target,
+            Target::Method(MethodKind::TraitImpl)
+                | Target::AssocConst(AssocCtxt::Impl { of_trait: true })
+                | Target::AssocTy(AssocCtxt::Impl { of_trait: true })
+        ) {
+            let attr_span = cx.attr_span;
+            cx.emit_lint(
+                UNUSED_ATTRIBUTES,
+                DeprecatedAnnotationHasNoEffect { span: attr_span },
+                attr_span,
+            );
+        }
+
         Some(AttributeKind::Deprecated {
             deprecation: Deprecation { since, note, suggestion },
             span: cx.attr_span,
         })
+    }
+}
+
+fn parse_since(since: Symbol, is_rustc: bool) -> DeprecatedSince {
+    if since.as_str() == "TBD" {
+        DeprecatedSince::Future
+    } else if !is_rustc {
+        DeprecatedSince::NonStandard(since)
+    } else if since.as_str() == VERSION_PLACEHOLDER {
+        DeprecatedSince::RustcVersion(RustcVersion::CURRENT)
+    } else if let Some(version) = parse_version(since) {
+        DeprecatedSince::RustcVersion(version)
+    } else {
+        DeprecatedSince::Err
     }
 }

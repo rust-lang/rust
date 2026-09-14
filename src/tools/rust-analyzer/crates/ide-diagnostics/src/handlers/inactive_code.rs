@@ -6,14 +6,14 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 // Diagnostic: inactive-code
 //
 // This diagnostic is shown for code with inactive `#[cfg]` attributes.
+//
+// It can be disabled selectively with `#[allow(rust_analyzer::inactive_code)]`.
 pub(crate) fn inactive_code(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::InactiveCode,
 ) -> Option<Diagnostic> {
-    // If there's inactive code somewhere in a macro, don't propagate to the call-site.
-    if d.node.file_id.is_macro() {
-        return None;
-    }
+    // If there's inactive code somewhere in a macro that doesn't map to something in the call, don't propagate to the call-site.
+    d.node.map(|it| it.text_range()).original_node_file_range_rooted_opt(ctx.db())?;
 
     let inactive = DnfExpr::new(&d.cfg).why_inactive(&d.opts);
     let mut message = "code is inactive due to #[cfg] directives".to_owned();
@@ -28,10 +28,11 @@ pub(crate) fn inactive_code(
         }
     }
     // FIXME: This shouldn't be a diagnostic
-    let res = Diagnostic::new(
-        DiagnosticCode::Ra("inactive-code", Severity::WeakWarning),
+    let res = Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RaLint("inactive_code", Severity::WeakWarning),
         message,
-        ctx.sema.diagnostics_display_range(d.node),
+        d.node,
     )
     .stable()
     .with_unused(true);
@@ -40,7 +41,10 @@ pub(crate) fn inactive_code(
 
 #[cfg(test)]
 mod tests {
-    use crate::{DiagnosticsConfig, tests::check_diagnostics_with_config};
+    use ide_db::RootDatabase;
+    use test_fixture::WithFixture;
+
+    use crate::{DiagnosticCode, DiagnosticsConfig, tests::check_diagnostics_with_config};
 
     #[track_caller]
     pub(crate) fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
@@ -206,10 +210,119 @@ union FooBar {
 
   #[cfg(true)] fn active() {}
 
-  #[cfg(any(not(true)), false)] fn inactive2() {}
-//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: true is enabled
+  #[cfg(any(not(true), false))] fn inactive2() {}
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: true is enabled and false is disabled
 
 "#,
+        );
+    }
+
+    #[test]
+    fn inactive_crate() {
+        let db = RootDatabase::with_files(
+            r#"
+#![cfg(false)]
+
+fn foo() {}
+        "#,
+        );
+        let file_id = db.test_crate().root_file_id(&db);
+        let diagnostics = hir::attach_db(&db, || {
+            crate::full_diagnostics(
+                &db,
+                &DiagnosticsConfig::test_sample(),
+                &ide_db::assists::AssistResolveStrategy::All,
+                file_id.file_id(&db),
+            )
+        });
+        let [inactive_code] = &*diagnostics else {
+            panic!("expected one inactive_code diagnostic, found {diagnostics:#?}");
+        };
+        assert_eq!(
+            inactive_code.code,
+            DiagnosticCode::RaLint("inactive_code", ide_db::Severity::WeakWarning)
+        );
+        assert_eq!(
+            inactive_code.message,
+            "code is inactive due to #[cfg] directives: false is disabled",
+        );
+        assert!(inactive_code.fixes.is_none());
+        let full_file_range = file_id.parse(&db).syntax_node().text_range();
+        assert_eq!(
+            inactive_code.range,
+            ide_db::FileRange { file_id: file_id.file_id(&db), range: full_file_range },
+        );
+    }
+
+    #[test]
+    fn cfg_in_macro_does_not_diagnose_the_whole_call() {
+        check(
+            r#"
+macro_rules! m {
+    ($e:item) => {
+        #[cfg(false)]
+        const _: () = ();
+
+        $e
+    };
+}
+
+m! {
+    fn foo() {}
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn in_macro() {
+        check(
+            r#"
+macro_rules! m {
+    ($e:item) => {
+        $e
+    };
+}
+
+m! {
+    #[cfg(false)] fn foo() {}
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: false is disabled
+}
+        "#,
+        );
+        check(
+            r#"
+macro_rules! m {
+    ($e:item) => {
+        #[cfg(false)]
+        $e
+    };
+}
+
+m! {
+    fn foo() {}
+ // ^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: false is disabled
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn allow() {
+        check(
+            r#"
+macro_rules! m {
+    ($e:item) => {
+        #[cfg(false)]
+        #[allow(rust_analyzer::inactive_code)]
+        $e
+    };
+}
+
+m! {
+    fn foo() {}
+}
+        "#,
         );
     }
 }

@@ -12,14 +12,16 @@ use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::{
-    Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, sym, with_metavar_spans,
+    BytePos, Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, kw, sym,
+    with_metavar_spans,
 };
 use smallvec::{SmallVec, smallvec};
 
-use crate::errors::{
-    CountRepetitionMisplaced, MacroVarStillRepeating, MetaVarsDifSeqMatchers, MustRepeatOnce,
-    MveUnrecognizedVar, NoRepeatableVar, NoSyntaxVarsExprRepeat, VarNoTypo,
-    VarTypoSuggestionRepeatable, VarTypoSuggestionUnrepeatable, VarTypoSuggestionUnrepeatableLabel,
+use crate::diagnostics::{
+    ConcatInvalidIdent, CountRepetitionMisplaced, InvalidIdentReason, MacroVarStillRepeating,
+    MetaVarsDifSeqMatchers, MustRepeatOnce, MveUnrecognizedVar, NoRepeatableVar,
+    NoSyntaxVarsExprRepeat, VarNoTypo, VarTypoSuggestionRepeatable, VarTypoSuggestionUnrepeatable,
+    VarTypoSuggestionUnrepeatableLabel,
 };
 use crate::mbe::macro_parser::NamedMatch;
 use crate::mbe::macro_parser::NamedMatch::*;
@@ -395,7 +397,7 @@ fn transcribe_sequence<'tx, 'itp>(
                 // The first time we encounter the sequence we push it to the stack. It
                 // then gets reused (see the beginning of the loop) until we are done
                 // repeating.
-                tscx.stack.push(Frame::new_sequence(seq_rep, seq.separator.clone(), seq.kleene.op));
+                tscx.stack.push(Frame::new_sequence(seq_rep, seq.separator, seq.kleene.op));
             }
         }
     }
@@ -503,7 +505,7 @@ fn transcribe_pnr<'tx>(
             mk_delimited(item.span, MetaVarKind::Item, TokenStream::from_ast(item))
         }
         ParseNtResult::Block(block) => {
-            mk_delimited(block.span, MetaVarKind::Block, TokenStream::from_ast(block))
+            mk_delimited(block.node.span, MetaVarKind::Block, TokenStream::from_ast(block))
         }
         ParseNtResult::Stmt(stmt) => {
             let stream = if let StmtKind::Empty = stmt.kind {
@@ -515,7 +517,7 @@ fn transcribe_pnr<'tx>(
             mk_delimited(stmt.span, MetaVarKind::Stmt, stream)
         }
         ParseNtResult::Pat(pat, pat_kind) => {
-            mk_delimited(pat.span, MetaVarKind::Pat(*pat_kind), TokenStream::from_ast(pat))
+            mk_delimited(pat.node.span, MetaVarKind::Pat(*pat_kind), TokenStream::from_ast(pat))
         }
         ParseNtResult::Expr(expr, kind) => {
             let (can_begin_literal_maybe_minus, can_begin_string_literal) = match &expr.kind {
@@ -539,22 +541,38 @@ fn transcribe_pnr<'tx>(
             mk_delimited(lit.span, MetaVarKind::Literal, TokenStream::from_ast(lit))
         }
         ParseNtResult::Ty(ty) => {
-            let is_path = matches!(&ty.kind, TyKind::Path(None, _path));
-            mk_delimited(ty.span, MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
+            let is_path = matches!(&ty.node.kind, TyKind::Path(None, _path));
+            mk_delimited(ty.node.span, MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
         }
         ParseNtResult::Meta(attr_item) => {
-            let has_meta_form = attr_item.meta_kind().is_some();
+            let has_meta_form = attr_item.node.meta_kind().is_some();
             mk_delimited(
-                attr_item.span(),
+                attr_item.node.span,
                 MetaVarKind::Meta { has_meta_form },
                 TokenStream::from_ast(attr_item),
             )
         }
         ParseNtResult::Path(path) => {
-            mk_delimited(path.span, MetaVarKind::Path, TokenStream::from_ast(path))
+            mk_delimited(path.node.span, MetaVarKind::Path, TokenStream::from_ast(path))
         }
         ParseNtResult::Vis(vis) => {
-            mk_delimited(vis.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
+            mk_delimited(vis.node.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
+        }
+        ParseNtResult::Guard(guard) => {
+            // FIXME(macro_guard_matcher):
+            // Perhaps it would be better to treat the leading `if` as part of `ast::Guard` during parsing?
+            // Currently they are separate, but in macros we match and emit the leading `if` for `:guard` matchers, which creates some inconsistency.
+
+            let leading_if_span =
+                guard.span_with_leading_if.with_hi(guard.span_with_leading_if.lo() + BytePos(2));
+            let ts = std::iter::once(TokenTree::token_alone(
+                token::Ident(kw::If, IdentIsRaw::No),
+                leading_if_span,
+            ))
+            .chain(TokenStream::from_ast(&guard.cond).iter().cloned())
+            .collect();
+
+            mk_delimited(guard.span_with_leading_if, MetaVarKind::Guard, ts)
         }
     };
 
@@ -615,7 +633,7 @@ fn metavar_expr_concat<'tx>(
 ) -> PResult<'tx, TokenTree> {
     let dcx = tscx.psess.dcx();
     let mut concatenated = String::new();
-    for element in elements.into_iter() {
+    for element in elements {
         let symbol = match element {
             MetaVarExprConcatElem::Ident(elem) => elem.name,
             MetaVarExprConcatElem::Literal(elem) => *elem,
@@ -642,10 +660,10 @@ fn metavar_expr_concat<'tx>(
     let symbol = nfc_normalize(&concatenated);
     let concatenated_span = tscx.visited_dspan(dspan);
     if !rustc_lexer::is_ident(symbol.as_str()) {
-        return Err(dcx.struct_span_err(
-            concatenated_span,
-            "`${concat(..)}` is not generating a valid identifier",
-        ));
+        return Err(dcx.create_err(ConcatInvalidIdent {
+            span: concatenated_span,
+            reason: InvalidIdentReason::new(symbol),
+        }));
     }
     tscx.psess.symbol_gallery.insert(symbol, concatenated_span);
 
@@ -733,7 +751,7 @@ fn maybe_use_metavar_location(
         TokenTree::Token(Token { kind, span }, spacing) => {
             let span = metavar_span.with_ctxt(span.ctxt());
             with_metavar_spans(|mspans| mspans.insert(span, metavar_span));
-            TokenTree::Token(Token { kind: kind.clone(), span }, *spacing)
+            TokenTree::Token(Token { kind: *kind, span }, *spacing)
         }
         TokenTree::Delimited(dspan, dspacing, delimiter, tts) => {
             let open = metavar_span.with_ctxt(dspan.open.ctxt());

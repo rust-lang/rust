@@ -1,5 +1,4 @@
 #![warn(clippy::transmute_ptr_to_ptr)]
-#![allow(clippy::borrow_as_ptr, clippy::missing_transmute_annotations)]
 
 use std::mem::transmute;
 

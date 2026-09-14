@@ -1,10 +1,5 @@
 use either::Either;
-use syntax::{
-    AstNode,
-    algo::find_node_at_range,
-    ast::{self, syntax_factory::SyntaxFactory},
-    syntax_editor::SyntaxEditor,
-};
+use syntax::{AstNode, algo::find_node_at_range, ast, syntax_editor::SyntaxEditor};
 
 use crate::{
     AssistId,
@@ -38,7 +33,7 @@ use crate::{
 //     };
 // }
 // ```
-pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let assign_expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
 
     let op_kind = assign_expr.op_kind()?;
@@ -75,7 +70,7 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     }
     let target = tgt.syntax().text_range();
 
-    let edit_tgt = tgt.syntax().clone_subtree();
+    let (editor, edit_tgt) = SyntaxEditor::new(tgt.syntax().clone());
     let assignments: Vec<_> = collector
         .assignments
         .into_iter()
@@ -93,7 +88,6 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         })
         .collect();
 
-    let mut editor = SyntaxEditor::new(edit_tgt);
     for (stmt, rhs) in assignments {
         let mut stmt = stmt.syntax().clone();
         if let Some(parent) = stmt.parent()
@@ -110,25 +104,24 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         "Pull assignment up",
         target,
         move |edit| {
-            let make = SyntaxFactory::with_mappings();
-            let mut editor = edit.make_editor(tgt.syntax());
+            let editor = edit.make_editor(tgt.syntax());
+            let make = editor.make();
             let assign_expr = make.expr_assignment(collector.common_lhs, new_tgt.clone());
             let assign_stmt = make.expr_stmt(assign_expr.into());
 
             editor.replace(tgt.syntax(), assign_stmt.syntax());
-            editor.add_mappings(make.finish_with_mappings());
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
 
-struct AssignmentsCollector<'a> {
-    sema: &'a hir::Semantics<'a, ide_db::RootDatabase>,
+struct AssignmentsCollector<'a, 'db> {
+    sema: &'a hir::Semantics<'db, ide_db::RootDatabase>,
     common_lhs: ast::Expr,
     assignments: Vec<(ast::BinExpr, ast::Expr)>,
 }
 
-impl AssignmentsCollector<'_> {
+impl AssignmentsCollector<'_, '_> {
     fn collect_match(&mut self, match_expr: &ast::MatchExpr) -> Option<()> {
         for arm in match_expr.match_arm_list()?.arms() {
             match arm.expr()? {

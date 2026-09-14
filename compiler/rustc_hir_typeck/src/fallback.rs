@@ -1,24 +1,23 @@
-use std::cell::OnceCell;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_hir as hir;
-use rustc_hir::HirId;
-use rustc_hir::attrs::DivergingFallbackBehavior;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{InferKind, Visitor};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
-use rustc_session::lint;
+use rustc_hir::{self as hir, CRATE_HIR_ID, HirId};
+use rustc_lint_defs::builtin::{
+    FLOAT_LITERAL_F32_FALLBACK, NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
+};
+use rustc_middle::ty::{self, FloatVid, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{DUMMY_SP, Span};
-use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_trait_selection::traits::TraitEngine;
 use tracing::debug;
 
-use crate::{FnCtxt, errors};
+use crate::{FnCtxt, diagnostics};
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
     /// Performs type inference fallback, setting [`FnCtxt::diverging_fallback_has_occurred`]
@@ -45,191 +44,196 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         }
     }
 
-    fn fallback_types(&self) -> bool {
-        // Check if we have any unresolved variables. If not, no need for fallback.
-        let unresolved_variables = self.unresolved_variables();
-
-        if unresolved_variables.is_empty() {
-            return false;
-        }
-
-        let (diverging_fallback, diverging_fallback_ty) =
-            self.calculate_diverging_fallback(&unresolved_variables);
-
-        // We do fallback in two passes, to try to generate
-        // better error messages.
-        // The first time, we do *not* replace opaque types.
-        let mut fallback_occurred = false;
-        for ty in unresolved_variables {
-            debug!("unsolved_variable = {:?}", ty);
-            fallback_occurred |=
-                self.fallback_if_possible(ty, &diverging_fallback, diverging_fallback_ty);
-        }
-
-        fallback_occurred
-    }
-
-    /// Tries to apply a fallback to `ty` if it is an unsolved variable.
+    /// Tries to apply a fallback to all unresolved variables.
     ///
     /// - Unconstrained ints are replaced with `i32`.
     ///
-    /// - Unconstrained floats are replaced with `f64`.
+    /// - Unconstrained floats are replaced with `f64`, except when there is a trait predicate
+    ///   `f32: From<{float}>`, in which case `f32` is used as the fallback instead and a
+    ///   [`FLOAT_LITERAL_F32_FALLBACK`] FCW is emitted.
     ///
     /// - Non-numerics may get replaced with `()` or `!`, depending on how they
     ///   were categorized by [`Self::calculate_diverging_fallback`], crate's
     ///   edition, and the setting of `#![rustc_never_type_options(fallback = ...)]`.
     ///
-    /// Fallback becomes very dubious if we have encountered
-    /// type-checking errors. In that case, fallback to Error.
+    /// Fallback becomes very dubious if we have encountered type-checking errors.
+    /// In that case, all variables fallback to Error.
     ///
     /// Sets [`FnCtxt::diverging_fallback_has_occurred`] if never type fallback
     /// is performed during this call.
-    fn fallback_if_possible(
-        &self,
-        ty: Ty<'tcx>,
-        diverging_fallback: &UnordSet<Ty<'tcx>>,
-        diverging_fallback_ty: Ty<'tcx>,
-    ) -> bool {
-        // Careful: we do NOT shallow-resolve `ty`. We know that `ty`
-        // is an unsolved variable, and we determine its fallback
-        // based solely on how it was created, not what other type
-        // variables it may have been unified with since then.
-        //
-        // The reason this matters is that other attempts at fallback
-        // may (in principle) conflict with this fallback, and we wish
-        // to generate a type error in that case. (However, this
-        // actually isn't true right now, because we're only using the
-        // builtin fallback rules. This would be true if we were using
-        // user-supplied fallbacks. But it's still useful to write the
-        // code to detect bugs.)
-        //
-        // (Note though that if we have a general type variable `?T`
-        // that is then unified with an integer type variable `?I`
-        // that ultimately never gets resolved to a special integral
-        // type, `?T` is not considered unsolved, but `?I` is. The
-        // same is true for float variables.)
-        let fallback = match ty.kind() {
-            _ if let Some(e) = self.tainted_by_errors() => Ty::new_error(self.tcx, e),
-            ty::Infer(ty::IntVar(_)) => self.tcx.types.i32,
-            ty::Infer(ty::FloatVar(_)) => self.tcx.types.f64,
-            _ if diverging_fallback.contains(&ty) => {
-                self.diverging_fallback_has_occurred.set(true);
-                diverging_fallback_ty
-            }
-            _ => return false,
-        };
-        debug!("fallback_if_possible(ty={:?}): defaulting to `{:?}`", ty, fallback);
+    ///
+    /// Returns `true` if *any* kind of fallback has occurred during this call.
+    fn fallback_types(&self) -> bool {
+        let (unresolved_ty, unresolved_int, unresolved_float) = self.unresolved_root_variables();
 
-        let span = ty.ty_vid().map_or(DUMMY_SP, |vid| self.infcx.type_var_origin(vid).span);
-        self.demand_eqtype(span, ty, fallback);
-        true
+        // Check if we have any unresolved variables. If not, no need for fallback.
+        if unresolved_ty.is_empty() && unresolved_int.is_empty() && unresolved_float.is_empty() {
+            return false;
+        }
+
+        // If tainted by errors, fallback all unresolved variables to error type,
+        // in order to prevent unnecessary diagnostics.
+        if let Some(guar) = self.tainted_by_errors() {
+            self.fallback_types_to_error(guar, unresolved_ty, unresolved_int, unresolved_float);
+            return true;
+        }
+
+        let diverging_fallback = self.calculate_diverging_fallback();
+        let fallback_to_f32 = self.calculate_fallback_to_f32(&unresolved_float);
+
+        // All unresolved int and float variables always use fallback,
+        // whereas unresolved type variables might not use fallback.
+        let mut fallback_occurred = !unresolved_int.is_empty() || !unresolved_float.is_empty();
+
+        for &vid in unresolved_ty.iter().filter(|&vid| diverging_fallback.contains(vid)) {
+            let span = self.type_var_origin(vid).span;
+            self.demand_eqtype(span, Ty::new_var(self.tcx, vid), self.tcx.types.never);
+
+            self.diverging_fallback_has_occurred.set(true);
+            fallback_occurred = true;
+        }
+
+        for vid in unresolved_int {
+            self.demand_eqtype(DUMMY_SP, Ty::new_int_var(self.tcx, vid), self.tcx.types.i32);
+        }
+
+        for vid in unresolved_float {
+            let fallback = if fallback_to_f32.contains(&vid) {
+                self.tcx.types.f32
+            } else {
+                self.tcx.types.f64
+            };
+            let span = self.float_var_origin(vid).span;
+            self.demand_eqtype(span, Ty::new_float_var(self.tcx, vid), fallback);
+        }
+
+        fallback_occurred
     }
 
-    fn calculate_diverging_fallback(
+    fn fallback_types_to_error(
         &self,
-        unresolved_variables: &[Ty<'tcx>],
-    ) -> (UnordSet<Ty<'tcx>>, Ty<'tcx>) {
-        debug!("calculate_diverging_fallback({:?})", unresolved_variables);
+        guar: ErrorGuaranteed,
+        unresolved_ty: Vec<ty::TyVid>,
+        unresolved_int: Vec<ty::IntVid>,
+        unresolved_float: Vec<ty::FloatVid>,
+    ) {
+        let vars = unresolved_ty
+            .into_iter()
+            .map(|vid| Ty::new_var(self.tcx, vid))
+            .chain(unresolved_int.into_iter().map(|vid| Ty::new_int_var(self.tcx, vid)))
+            .chain(unresolved_float.into_iter().map(|vid| Ty::new_float_var(self.tcx, vid)));
 
-        let diverging_fallback_ty = match self.diverging_fallback_behavior {
-            DivergingFallbackBehavior::ToUnit => self.tcx.types.unit,
-            DivergingFallbackBehavior::ToNever => self.tcx.types.never,
-            DivergingFallbackBehavior::NoFallback => {
-                // the type doesn't matter, since no fallback will occur
-                return (UnordSet::new(), self.tcx.types.unit);
-            }
-        };
+        let error = Ty::new_error(self.tcx, guar);
 
-        // Construct a coercion graph where an edge `A -> B` indicates
-        // a type variable is that is coerced
-        let coercion_graph = self.create_coercion_graph();
+        for var in vars {
+            self.demand_eqtype(DUMMY_SP, var, error);
+        }
+    }
 
-        // Extract the unsolved type inference variable vids; note that some
-        // unsolved variables are integer/float variables and are excluded.
-        let unsolved_vids = unresolved_variables.iter().filter_map(|ty| ty.ty_vid());
+    /// Existing code relies on `f32: From<T>` (usually written as `T: Into<f32>`) resolving `T` to
+    /// `f32` when the type of `T` is inferred from an unsuffixed float literal. Using the default
+    /// fallback of `f64`, this would break when adding `impl From<f16> for f32`, as there are now
+    /// two float type which could be `T`, meaning that the fallback of `f64` would be used and
+    /// compilation error would occur as `f32` does not implement `From<f64>`. To avoid breaking
+    /// existing code, we instead fallback `T` to `f32` when there is a trait predicate
+    /// `f32: From<T>`. This means code like the following will continue to compile:
+    ///
+    /// ```rust
+    /// fn foo<T: Into<f32>>(_: T) {}
+    ///
+    /// foo(1.0);
+    /// ```
+    fn calculate_fallback_to_f32(
+        &self,
+        unresolved_root_variables: &[ty::FloatVid],
+    ) -> UnordSet<FloatVid> {
+        // Short-circuit: if no unresolved variable is a float, no f32 fallback can apply,
+        // so we can skip the (potentially very expensive) work in `from_float_for_f32_root_vids`.
+        // Under the new solver, that function walks `visit_proof_tree` for every pending
+        // obligation, which is O(N × proof_tree_size) and can dominate type-checking on crates
+        // with many large pending obligations and no f32 involvement.
+        if unresolved_root_variables.is_empty() {
+            return UnordSet::new();
+        }
 
+        let roots: UnordSet<ty::FloatVid> = self.from_float_for_f32_root_vids();
+        if roots.is_empty() {
+            // Most functions have no `f32: From<{float}>` predicates, so short-circuit and return
+            // an empty set when this is the case.
+            return UnordSet::new();
+        }
+        // Calculate all the unresolved variables that need to fallback to `f32` here. This ensures
+        // we don't need to find root variables in `fallback_if_possible`: see the comment at the
+        // top of that function for details.
+        let fallback_to_f32 = unresolved_root_variables
+            .iter()
+            .copied()
+            .filter(|&vid| roots.contains(&vid))
+            .inspect(|&vid| {
+                let origin = self.float_var_origin(vid);
+                // Show the entire literal in the suggestion to make it clearer.
+                let mut literal = self.tcx.sess.source_map().span_to_snippet(origin.span).ok();
+                // A `.` at the end of the literal is no longer necessary if `f32` is explicitly specified
+                if let Some(ref mut literal) = literal
+                    && literal.ends_with('.')
+                {
+                    literal.pop();
+                }
+                self.tcx.emit_node_span_lint(
+                    FLOAT_LITERAL_F32_FALLBACK,
+                    origin.lint_id.unwrap_or(CRATE_HIR_ID),
+                    origin.span,
+                    diagnostics::FloatLiteralF32Fallback {
+                        span: literal.as_ref().map(|_| origin.span),
+                        literal: literal.unwrap_or_default(),
+                    },
+                );
+            })
+            .collect();
+        debug!("calculate_fallback_to_f32: fallback_to_f32={:?}", fallback_to_f32);
+        fallback_to_f32
+    }
+
+    fn calculate_diverging_fallback(&self) -> UnordSet<ty::TyVid> {
         // Compute the diverging root vids D -- that is, the root vid of
         // those type variables that (a) are the target of a coercion from
         // a `!` type and (b) have not yet been solved.
         //
-        // These variables are the ones that are targets for fallback to
-        // either `!` or `()`.
-        let diverging_roots: UnordSet<ty::TyVid> = self
+        // These variables are the ones that are targets for fallback to `!`.
+        let diverging_root_vids: Vec<ty::TyVid> = self
             .diverging_type_vars
             .borrow()
-            .items()
-            .map(|&ty| self.shallow_resolve(ty))
-            .filter_map(|ty| ty.ty_vid())
-            .map(|vid| self.root_var(vid))
+            .iter()
+            .filter_map(|&vid| self.infcx.shallow_resolve_ty_var_or_get_root(vid).err())
             .collect();
-        debug!(
-            "calculate_diverging_fallback: diverging_type_vars={:?}",
-            self.diverging_type_vars.borrow()
-        );
-        debug!("calculate_diverging_fallback: diverging_roots={:?}", diverging_roots);
 
-        // Find all type variables that are reachable from a diverging
-        // type variable. These will typically default to `!`, unless
-        // we find later that they are *also* reachable from some
-        // other type variable outside this set.
-        let mut diverging_vids = vec![];
-        for unsolved_vid in unsolved_vids {
-            let root_vid = self.root_var(unsolved_vid);
-            debug!(
-                "calculate_diverging_fallback: unsolved_vid={:?} root_vid={:?} diverges={:?}",
-                unsolved_vid,
-                root_vid,
-                diverging_roots.contains(&root_vid),
-            );
-            if diverging_roots.contains(&root_vid) {
-                diverging_vids.push(unsolved_vid);
+        {
+            if !diverging_root_vids.is_empty() {
+                // Construct a coercion graph where an edge `A -> B` indicates
+                // a type variable is that is coerced
+                let coercion_graph = self.create_coercion_graph();
 
-                debug!(
-                    "calculate_diverging_fallback: root_vid={:?} reaches {:?}",
-                    root_vid,
-                    graph::depth_first_search(&coercion_graph, root_vid).collect::<Vec<_>>()
-                );
+                let unsafe_infer_vars = compute_unsafe_infer_vars(self, self.body_def_id);
+
+                for &root_vid in &diverging_root_vids {
+                    self.lint_never_type_fallback_flowing_into_unsafe_code(
+                        &unsafe_infer_vars,
+                        &coercion_graph,
+                        root_vid,
+                    );
+                }
             }
         }
 
-        debug!("obligations: {:#?}", self.fulfillment_cx.borrow_mut().pending_obligations());
-
-        let mut diverging_fallback = UnordSet::with_capacity(diverging_vids.len());
-        let unsafe_infer_vars = OnceCell::new();
-
-        self.lint_obligations_broken_by_never_type_fallback_change(
-            &diverging_vids,
-            &coercion_graph,
-        );
-
-        for &diverging_vid in &diverging_vids {
-            let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
-            let root_vid = self.root_var(diverging_vid);
-
-            self.lint_never_type_fallback_flowing_into_unsafe_code(
-                &unsafe_infer_vars,
-                &coercion_graph,
-                root_vid,
-            );
-
-            diverging_fallback.insert(diverging_ty);
-        }
-
-        (diverging_fallback, diverging_fallback_ty)
+        diverging_root_vids.into_iter().collect::<UnordSet<_>>()
     }
 
     fn lint_never_type_fallback_flowing_into_unsafe_code(
         &self,
-        unsafe_infer_vars: &OnceCell<UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)>>,
+        unsafe_infer_vars: &UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)>,
         coercion_graph: &VecGraph<ty::TyVid, true>,
         root_vid: ty::TyVid,
     ) {
-        let unsafe_infer_vars = unsafe_infer_vars.get_or_init(|| {
-            let unsafe_infer_vars = compute_unsafe_infer_vars(self, self.body_id);
-            debug!(?unsafe_infer_vars);
-            unsafe_infer_vars
-        });
-
         let affected_unsafe_infer_vars =
             graph::depth_first_search_as_undirected(&coercion_graph, root_vid)
                 .filter_map(|x| unsafe_infer_vars.get(&x).copied())
@@ -239,81 +243,33 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
         for (hir_id, span, reason) in affected_unsafe_infer_vars {
             self.tcx.emit_node_span_lint(
-                lint::builtin::NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
+                NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
                 hir_id,
                 span,
                 match reason {
                     UnsafeUseReason::Call => {
-                        errors::NeverTypeFallbackFlowingIntoUnsafe::Call { sugg: sugg.clone() }
+                        diagnostics::NeverTypeFallbackFlowingIntoUnsafe::Call { sugg: sugg.clone() }
                     }
                     UnsafeUseReason::Method => {
-                        errors::NeverTypeFallbackFlowingIntoUnsafe::Method { sugg: sugg.clone() }
+                        diagnostics::NeverTypeFallbackFlowingIntoUnsafe::Method {
+                            sugg: sugg.clone(),
+                        }
                     }
                     UnsafeUseReason::Path => {
-                        errors::NeverTypeFallbackFlowingIntoUnsafe::Path { sugg: sugg.clone() }
+                        diagnostics::NeverTypeFallbackFlowingIntoUnsafe::Path { sugg: sugg.clone() }
                     }
                     UnsafeUseReason::UnionField => {
-                        errors::NeverTypeFallbackFlowingIntoUnsafe::UnionField {
+                        diagnostics::NeverTypeFallbackFlowingIntoUnsafe::UnionField {
                             sugg: sugg.clone(),
                         }
                     }
                     UnsafeUseReason::Deref => {
-                        errors::NeverTypeFallbackFlowingIntoUnsafe::Deref { sugg: sugg.clone() }
+                        diagnostics::NeverTypeFallbackFlowingIntoUnsafe::Deref {
+                            sugg: sugg.clone(),
+                        }
                     }
                 },
             );
-        }
-    }
-
-    fn lint_obligations_broken_by_never_type_fallback_change(
-        &self,
-        diverging_vids: &[ty::TyVid],
-        coercions: &VecGraph<ty::TyVid, true>,
-    ) {
-        let DivergingFallbackBehavior::ToUnit = self.diverging_fallback_behavior else { return };
-
-        // Fallback happens if and only if there are diverging variables
-        if diverging_vids.is_empty() {
-            return;
-        }
-
-        // Returns errors which happen if fallback is set to `fallback`
-        let remaining_errors_if_fallback_to = |fallback| {
-            self.probe(|_| {
-                let obligations = self.fulfillment_cx.borrow().pending_obligations();
-                let ocx = ObligationCtxt::new_with_diagnostics(&self.infcx);
-                ocx.register_obligations(obligations.iter().cloned());
-
-                for &diverging_vid in diverging_vids {
-                    let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
-
-                    ocx.eq(&ObligationCause::dummy(), self.param_env, diverging_ty, fallback)
-                        .expect("expected diverging var to be unconstrained");
-                }
-
-                ocx.try_evaluate_obligations()
-            })
-        };
-
-        // If we have no errors with `fallback = ()`, but *do* have errors with `fallback = !`,
-        // then this code will be broken by the never type fallback change.
-        let unit_errors = remaining_errors_if_fallback_to(self.tcx.types.unit);
-        if unit_errors.is_empty()
-            && let mut never_errors = remaining_errors_if_fallback_to(self.tcx.types.never)
-            && let [never_error, ..] = never_errors.as_mut_slice()
-        {
-            self.adjust_fulfillment_error_for_expr_obligation(never_error);
-            let sugg = self.try_to_suggest_annotations(diverging_vids, coercions);
-            self.tcx.emit_node_span_lint(
-                lint::builtin::DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
-                self.tcx.local_def_id_to_hir_id(self.body_id),
-                self.tcx.def_span(self.body_id),
-                errors::DependencyOnUnitNeverTypeFallback {
-                    obligation_span: never_error.obligation.cause.span,
-                    obligation: never_error.obligation.predicate,
-                    sugg,
-                },
-            )
         }
     }
 
@@ -357,15 +313,24 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         VecGraph::new(num_ty_vars, coercion_edges)
     }
 
+    /// If `ty` is an unresolved type variable, returns its root vid.
+    fn root_vid(&self, ty: Ty<'tcx>) -> Option<ty::TyVid> {
+        Some(self.root_var(self.shallow_resolve(ty).ty_vid()?))
+    }
+
+    /// If `ty` is an unresolved float type variable, returns its root vid.
+    pub(crate) fn root_float_vid(&self, ty: Ty<'tcx>) -> Option<ty::FloatVid> {
+        Some(self.root_float_var(self.shallow_resolve(ty).float_vid()?))
+    }
+
     /// Given a set of diverging vids and coercions, walk the HIR to gather a
     /// set of suggestions which can be applied to preserve fallback to unit.
     fn try_to_suggest_annotations(
         &self,
         diverging_vids: &[ty::TyVid],
         coercions: &VecGraph<ty::TyVid, true>,
-    ) -> errors::SuggestAnnotations {
-        let body =
-            self.tcx.hir_maybe_body_owned_by(self.body_id).expect("body id must have an owner");
+    ) -> diagnostics::SuggestAnnotations {
+        let body = self.tcx.hir_body_owned_by(self.body_def_id);
         // For each diverging var, look through the HIR for a place to give it
         // a type annotation. We do this per var because we only really need one
         // suggestion to influence a var to be `()`.
@@ -380,7 +345,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                     .break_value()
             })
             .collect();
-        errors::SuggestAnnotations { suggestions }
+        diagnostics::SuggestAnnotations { suggestions }
     }
 }
 
@@ -401,7 +366,7 @@ impl<'tcx> AnnotateUnitFallbackVisitor<'_, 'tcx> {
         arg_segment: &'tcx hir::PathSegment<'tcx>,
         def_id: DefId,
         id: HirId,
-    ) -> ControlFlow<errors::SuggestAnnotation> {
+    ) -> ControlFlow<diagnostics::SuggestAnnotation> {
         if arg_segment.args.is_none()
             && let Some(all_args) = self.fcx.typeck_results.borrow().node_args_opt(id)
             && let generics = self.fcx.tcx.generics_of(def_id)
@@ -419,7 +384,7 @@ impl<'tcx> AnnotateUnitFallbackVisitor<'_, 'tcx> {
                     && let Some(vid) = self.fcx.root_vid(ty)
                     && self.reachable_vids.contains(&vid)
                 {
-                    return ControlFlow::Break(errors::SuggestAnnotation::Turbo(
+                    return ControlFlow::Break(diagnostics::SuggestAnnotation::Turbo(
                         arg_segment.ident.span.shrink_to_hi(),
                         n_tys,
                         idx,
@@ -431,7 +396,7 @@ impl<'tcx> AnnotateUnitFallbackVisitor<'_, 'tcx> {
     }
 }
 impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
-    type Result = ControlFlow<errors::SuggestAnnotation>;
+    type Result = ControlFlow<diagnostics::SuggestAnnotation>;
 
     fn visit_infer(
         &mut self,
@@ -445,7 +410,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
             && self.reachable_vids.contains(&vid)
             && inf_span.can_be_used_for_suggestions()
         {
-            return ControlFlow::Break(errors::SuggestAnnotation::Unit(inf_span));
+            return ControlFlow::Break(diagnostics::SuggestAnnotation::Unit(inf_span));
         }
 
         ControlFlow::Continue(())
@@ -492,7 +457,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
             && expr.span.can_be_used_for_suggestions()
         {
             let span = path.span.shrink_to_lo().to(trait_segment.ident.span);
-            return ControlFlow::Break(errors::SuggestAnnotation::Path(span));
+            return ControlFlow::Break(diagnostics::SuggestAnnotation::Path(span));
         }
 
         // Or else, try suggesting turbofishing the method args.
@@ -516,7 +481,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
             && self.reachable_vids.contains(&vid)
             && local.span.can_be_used_for_suggestions()
         {
-            return ControlFlow::Break(errors::SuggestAnnotation::Local(
+            return ControlFlow::Break(diagnostics::SuggestAnnotation::Local(
                 local.pat.span.shrink_to_hi(),
             ));
         }
@@ -551,9 +516,9 @@ pub(crate) enum UnsafeUseReason {
 /// `compute_unsafe_infer_vars` will return `{ id(?X) -> (hir_id, span, Call) }`
 fn compute_unsafe_infer_vars<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
-    body_id: LocalDefId,
+    body_def_id: LocalDefId,
 ) -> UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)> {
-    let body = fcx.tcx.hir_maybe_body_owned_by(body_id).expect("body id must have an owner");
+    let body = fcx.tcx.hir_body_owned_by(body_def_id);
     let mut res = UnordMap::default();
 
     struct UnsafeInferVarsVisitor<'a, 'tcx> {
@@ -568,7 +533,8 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
             match ex.kind {
                 hir::ExprKind::MethodCall(..) => {
                     if let Some(def_id) = typeck_results.type_dependent_def_id(ex.hir_id)
-                        && let method_ty = self.fcx.tcx.type_of(def_id).instantiate_identity()
+                        && let method_ty =
+                            self.fcx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip()
                         && let sig = method_ty.fn_sig(self.fcx.tcx)
                         && sig.safety().is_unsafe()
                     {
@@ -680,7 +646,7 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
 
     UnsafeInferVarsVisitor { fcx, res: &mut res }.visit_expr(&body.value);
 
-    debug!(?res, "collected the following unsafe vars for {body_id:?}");
+    debug!(?res, "collected the following unsafe vars for {body_def_id:?}");
 
     res
 }

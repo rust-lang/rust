@@ -1,5 +1,5 @@
 #![warn(clippy::for_kv_map)]
-#![allow(clippy::used_underscore_binding)]
+#![expect(clippy::used_underscore_binding)]
 
 use std::collections::*;
 use std::rc::Rc;
@@ -84,5 +84,27 @@ fn wrongly_unmangled_macros() {
     for v in test_map!(wrapped).values() {
         //~^ for_kv_map
         let _v = v;
+    }
+}
+
+fn issue16822(mut x: HashMap<usize, usize>) {
+    for v in x.values() {
+        //~^ for_kv_map
+        println!("{}", v);
+    }
+
+    for v in x.values_mut() {
+        //~^ for_kv_map
+        *v += 1;
+    }
+
+    for k in x.keys() {
+        //~^ for_kv_map
+        println!("{}", k);
+    }
+
+    for k in x.keys() {
+        //~^ for_kv_map
+        println!("{}", k);
     }
 }

@@ -27,7 +27,10 @@ use std::{
     ops::ControlFlow,
 };
 
-use base_db::{CrateOrigin, LangCrateOrigin, LibraryRoots, LocalRoots, RootQueryDb, SourceRootId};
+use base_db::{
+    CrateOrigin, InternedSourceRootId, LangCrateOrigin, LibraryRoots, LocalRoots, SourceRootId,
+    salsa::SalsaValue, source_root_crates,
+};
 use fst::{Automaton, Streamer, raw::IndexedValue};
 use hir::{
     Crate, Module,
@@ -37,7 +40,6 @@ use hir::{
 };
 use itertools::Itertools;
 use rayon::prelude::*;
-use salsa::Update;
 
 use crate::RootDatabase;
 
@@ -255,7 +257,7 @@ pub fn world_symbols(db: &RootDatabase, mut query: Query) -> Vec<FileSymbol<'_>>
         let mut crates = Vec::new();
 
         for &root in LocalRoots::get(db).roots(db).iter() {
-            crates.extend(db.source_root_crates(root).iter().copied())
+            crates.extend(source_root_crates(db, root).iter().copied())
         }
         crates
             .par_iter()
@@ -322,7 +324,7 @@ fn resolve_path_to_modules(
     // If not anchored to crate, also search for modules matching first segment in local crates
     if !anchor_to_crate {
         for &root in LocalRoots::get(db).roots(db).iter() {
-            for &krate in db.source_root_crates(root).iter() {
+            for &krate in source_root_crates(db, root).iter() {
                 let root_module = Crate::from(krate).root_module(db);
                 for child in root_module.children(db) {
                     if let Some(name) = child.name(db)
@@ -357,7 +359,7 @@ fn resolve_path_to_modules(
     candidate_modules.into_iter().map(|(module, _)| module).collect()
 }
 
-#[derive(Default)]
+#[derive(Default, SalsaValue)]
 pub struct SymbolIndex<'db> {
     symbols: Box<[FileSymbol<'db>]>,
     map: fst::Map<Vec<u8>>,
@@ -369,11 +371,6 @@ impl<'db> SymbolIndex<'db> {
         db: &'db dyn HirDatabase,
         source_root_id: SourceRootId,
     ) -> &'db SymbolIndex<'db> {
-        // FIXME:
-        #[salsa::interned]
-        struct InternedSourceRootId {
-            id: SourceRootId,
-        }
         #[salsa::tracked(returns(ref))]
         fn library_symbols<'db>(
             db: &'db dyn HirDatabase,
@@ -385,7 +382,7 @@ impl<'db> SymbolIndex<'db> {
             hir::attach_db(db, || {
                 let mut symbol_collector = SymbolCollector::new(db, true);
 
-                db.source_root_crates(source_root_id.id(db))
+                source_root_crates(db, source_root_id.id(db))
                     .iter()
                     .flat_map(|&krate| Crate::from(krate).modules(db))
                     // we specifically avoid calling other SymbolsDatabase queries here, even though they do the same thing,
@@ -402,22 +399,16 @@ impl<'db> SymbolIndex<'db> {
     /// The symbol index for a given module. These modules should only be in source roots that
     /// are inside local_roots.
     pub fn module_symbols(db: &dyn HirDatabase, module: Module) -> &SymbolIndex<'_> {
-        // FIXME:
-        #[salsa::interned]
-        struct InternedModuleId {
-            id: hir::ModuleId,
-        }
-
         #[salsa::tracked(returns(ref))]
         fn module_symbols<'db>(
             db: &'db dyn HirDatabase,
-            module: InternedModuleId<'db>,
+            module: hir::ModuleId,
         ) -> SymbolIndex<'db> {
             let _p = tracing::info_span!("module_symbols").entered();
 
             // We call this without attaching because this runs in parallel, so we need to attach here.
             hir::attach_db(db, || {
-                let module: Module = module.id(db).into();
+                let module: Module = module.into();
                 SymbolIndex::new(SymbolCollector::new_module(
                     db,
                     module,
@@ -426,7 +417,7 @@ impl<'db> SymbolIndex<'db> {
             })
         }
 
-        module_symbols(db, InternedModuleId::new(db, hir::ModuleId::from(module)))
+        module_symbols(db, hir::ModuleId::from(module))
     }
 
     /// The symbol index for all extern prelude crates.
@@ -480,18 +471,6 @@ impl Eq for SymbolIndex<'_> {}
 impl Hash for SymbolIndex<'_> {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.symbols.hash(hasher)
-    }
-}
-
-unsafe impl Update for SymbolIndex<'_> {
-    unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
-        let this = unsafe { &mut *old_pointer };
-        if *this == new_value {
-            false
-        } else {
-            *this = new_value;
-            true
-        }
     }
 }
 

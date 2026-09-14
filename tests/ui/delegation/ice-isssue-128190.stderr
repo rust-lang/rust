@@ -1,5 +1,5 @@
 error: `self` parameter is only allowed in associated functions
-  --> $DIR/ice-isssue-128190.rs:4:6
+  --> $DIR/ice-isssue-128190.rs:3:6
    |
 LL | fn a(&self) {}
    |      ^^^^^ not semantically valid as function parameter

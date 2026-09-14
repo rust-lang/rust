@@ -1,3 +1,4 @@
+//@ reference: macro.decl.syntax
 macro_rules! foo {
     ($a:expr) => a; //~ ERROR macro rhs must be delimited
 }

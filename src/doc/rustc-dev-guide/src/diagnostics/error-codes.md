@@ -10,7 +10,7 @@ Note that not all _historical_ (no longer emitted) error codes have explanations
 The explanations are written in Markdown (see the [CommonMark Spec] for
 specifics around syntax), and all of them are linked in the [`rustc_error_codes`] crate.
 Please read [RFC 1567] for details on how to format and write long error codes.
-As of <!-- date-check --> February 2023, there is an
+As of <!-- date-check --> March 2026, there is an
 effort[^new-explanations] to replace this largely outdated RFC with a new more flexible standard.
 
 Error explanations should expand on the error message and provide details about

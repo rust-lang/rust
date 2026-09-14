@@ -1,5 +1,6 @@
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
@@ -7,13 +8,12 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
 use rustc_middle::ty::{
     self, ClosureKind, GenericArgsRef, Instance, PseudoCanonicalInput, TyCtxt, TypeVisitableExt,
+    Unnormalized,
 };
 use rustc_span::sym;
 use rustc_trait_selection::traits;
 use tracing::debug;
 use traits::translate_args;
-
-use crate::errors::UnexpectedFnPtrAssociatedItem;
 
 fn resolve_instance_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -28,25 +28,25 @@ fn resolve_instance_raw<'tcx>(
             def_id,
             typing_env,
             trait_def_id,
-            tcx.normalize_erasing_regions(typing_env, args),
+            tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(args)),
         )
     } else {
         let def = if tcx.intrinsic(def_id).is_some() {
             debug!(" => intrinsic");
             ty::InstanceKind::Intrinsic(def_id)
-        } else if tcx.is_lang_item(def_id, LangItem::DropInPlace) {
+        } else if tcx.is_lang_item(def_id, LangItem::DropGlue) {
             let ty = args.type_at(0);
 
-            if ty.needs_drop(tcx, typing_env) {
+            let shim = if ty.needs_drop(tcx, typing_env) {
                 debug!(" => nontrivial drop glue");
                 match *ty.kind() {
                     ty::Coroutine(coroutine_def_id, ..) => {
                         // FIXME: sync drop of coroutine with async drop (generate both versions?)
                         // Currently just ignored
                         if tcx.optimized_mir(coroutine_def_id).coroutine_drop_async().is_some() {
-                            ty::InstanceKind::DropGlue(def_id, None)
+                            ty::ShimKind::DropGlue(def_id, None)
                         } else {
-                            ty::InstanceKind::DropGlue(def_id, Some(ty))
+                            ty::ShimKind::DropGlue(def_id, Some(ty))
                         }
                     }
                     ty::Closure(..)
@@ -56,14 +56,15 @@ fn resolve_instance_raw<'tcx>(
                     | ty::Dynamic(..)
                     | ty::Array(..)
                     | ty::Slice(..)
-                    | ty::UnsafeBinder(..) => ty::InstanceKind::DropGlue(def_id, Some(ty)),
+                    | ty::UnsafeBinder(..) => ty::ShimKind::DropGlue(def_id, Some(ty)),
                     // Drop shims can only be built from ADTs.
                     _ => return Ok(None),
                 }
             } else {
                 debug!(" => trivial drop glue");
-                ty::InstanceKind::DropGlue(def_id, None)
-            }
+                ty::ShimKind::DropGlue(def_id, None)
+            };
+            ty::InstanceKind::Shim(shim)
         } else if tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace) {
             let ty = args.type_at(0);
 
@@ -81,14 +82,20 @@ fn resolve_instance_raw<'tcx>(
                     _ => return Ok(None),
                 }
                 debug!(" => nontrivial async drop glue ctor");
-                ty::InstanceKind::AsyncDropGlueCtorShim(def_id, ty)
+                ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(def_id, ty))
             } else {
                 debug!(" => trivial async drop glue ctor");
-                ty::InstanceKind::AsyncDropGlueCtorShim(def_id, ty)
+                ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(def_id, ty))
             }
         } else if tcx.is_async_drop_in_place_coroutine(def_id) {
             let ty = args.type_at(0);
-            ty::InstanceKind::AsyncDropGlue(def_id, ty)
+            ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(def_id, ty))
+        } else if tcx.def_kind(def_id) == DefKind::Fn
+            && let Some(name) = tcx.codegen_fn_attrs(def_id).symbol_name
+            && name.as_str().starts_with("llvm.")
+        {
+            debug!(" => LLVM intrinsic");
+            ty::InstanceKind::LlvmIntrinsic(def_id)
         } else {
             debug!(" => free item");
             ty::InstanceKind::Item(def_id)
@@ -154,12 +161,15 @@ fn resolve_associated_item<'tcx>(
                 // and the obligation is monomorphic, otherwise passes such as
                 // transmute checking and polymorphic MIR optimizations could
                 // get a result which isn't correct for all monomorphizations.
-                match typing_env.typing_mode {
+                match typing_env.typing_mode().assert_not_erased() {
                     ty::TypingMode::Coherence
-                    | ty::TypingMode::Analysis { .. }
-                    | ty::TypingMode::Borrowck { .. }
-                    | ty::TypingMode::PostBorrowckAnalysis { .. } => false,
-                    ty::TypingMode::PostAnalysis => !trait_ref.still_further_specializable(),
+                    | ty::TypingMode::Typeck { .. }
+                    | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                    | ty::TypingMode::Reflection
+                    | ty::TypingMode::PostBorrowck { .. } => false,
+                    ty::TypingMode::PostAnalysis | ty::TypingMode::Codegen => {
+                        !trait_ref.still_further_specializable()
+                    }
                 }
             };
             if !eligible {
@@ -187,14 +197,12 @@ fn resolve_associated_item<'tcx>(
             // and const-prop (and also some lints).
             let self_ty = rcvr_args.type_at(0);
             if !self_ty.is_known_rigid() {
-                let predicates = tcx
-                    .predicates_of(impl_data.impl_def_id)
-                    .instantiate(tcx, impl_data.args)
-                    .predicates;
+                let clauses =
+                    tcx.clauses_of(impl_data.impl_def_id).instantiate(tcx, impl_data.args).clauses;
                 let sized_def_id = tcx.lang_items().sized_trait();
                 // If we find a `Self: Sized` bound on the item, then we know
                 // that `dyn Trait` can certainly never apply here.
-                if !predicates.into_iter().filter_map(ty::Clause::as_trait_clause).any(|clause| {
+                if !clauses.into_iter().filter_map(|p| p.as_trait_clause()).any(|clause| {
                     Some(clause.def_id()) == sized_def_id
                         && clause.skip_binder().self_ty() == self_ty
                 }) {
@@ -276,7 +284,7 @@ fn resolve_associated_item<'tcx>(
                     };
 
                     Some(Instance {
-                        def: ty::InstanceKind::CloneShim(trait_item_id, self_ty),
+                        def: ty::InstanceKind::Shim(ty::ShimKind::Clone(trait_item_id, self_ty)),
                         args: rcvr_args,
                     })
                 } else {
@@ -287,19 +295,28 @@ fn resolve_associated_item<'tcx>(
                     Some(ty::Instance::new_raw(trait_item_id, args))
                 }
             } else if tcx.is_lang_item(trait_ref.def_id, LangItem::FnPtrTrait) {
-                if tcx.is_lang_item(trait_item_id, LangItem::FnPtrAddr) {
-                    let self_ty = trait_ref.self_ty();
-                    if !matches!(self_ty.kind(), ty::FnPtr(..)) {
-                        return Ok(None);
-                    }
+                let self_ty = trait_ref.self_ty();
+                if !matches!(self_ty.kind(), ty::FnPtr(..)) {
+                    return Ok(None);
+                }
+                if tcx.is_lang_item(trait_item_id, LangItem::FnPtrAsPtr) {
                     Some(Instance {
-                        def: ty::InstanceKind::FnPtrAddrShim(trait_item_id, self_ty),
+                        def: ty::InstanceKind::Shim(ty::ShimKind::FnPtrAsPtr(
+                            trait_item_id,
+                            self_ty,
+                        )),
+                        args: rcvr_args,
+                    })
+                } else if tcx.is_lang_item(trait_item_id, LangItem::FnPtrFromPtr) {
+                    Some(Instance {
+                        def: ty::InstanceKind::Shim(ty::ShimKind::FnPtrFromPtr(
+                            trait_item_id,
+                            self_ty,
+                        )),
                         args: rcvr_args,
                     })
                 } else {
-                    tcx.dcx().emit_fatal(UnexpectedFnPtrAssociatedItem {
-                        span: tcx.def_span(trait_item_id),
-                    })
+                    Some(Instance { def: ty::InstanceKind::Item(trait_item_id), args: rcvr_args })
                 }
             } else if let Some(target_kind) = tcx.fn_trait_kind_from_def_id(trait_ref.def_id) {
                 // FIXME: This doesn't check for malformed libcore that defines, e.g.,
@@ -323,7 +340,10 @@ fn resolve_associated_item<'tcx>(
                         Some(Instance::resolve_closure(tcx, closure_def_id, args, target_kind))
                     }
                     ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {
-                        def: ty::InstanceKind::FnPtrShim(trait_item_id, rcvr_args.type_at(0)),
+                        def: ty::InstanceKind::Shim(ty::ShimKind::FnPtr(
+                            trait_item_id,
+                            rcvr_args.type_at(0),
+                        )),
                         args: rcvr_args,
                     }),
                     ty::CoroutineClosure(coroutine_closure_def_id, args) => {
@@ -336,10 +356,12 @@ fn resolve_associated_item<'tcx>(
                             Some(Instance::new_raw(coroutine_closure_def_id, args))
                         } else {
                             Some(Instance {
-                                def: ty::InstanceKind::ConstructCoroutineInClosureShim {
-                                    coroutine_closure_def_id,
-                                    receiver_by_ref: target_kind != ty::ClosureKind::FnOnce,
-                                },
+                                def: ty::InstanceKind::Shim(
+                                    ty::ShimKind::ConstructCoroutineInClosure {
+                                        coroutine_closure_def_id,
+                                        receiver_by_ref: target_kind != ty::ClosureKind::FnOnce,
+                                    },
+                                ),
                                 args,
                             })
                         }
@@ -359,10 +381,12 @@ fn resolve_associated_item<'tcx>(
                             // If we're computing `AsyncFnOnce` for a by-ref closure then
                             // construct a new body that has the right return types.
                             Some(Instance {
-                                def: ty::InstanceKind::ConstructCoroutineInClosureShim {
-                                    coroutine_closure_def_id,
-                                    receiver_by_ref: false,
-                                },
+                                def: ty::InstanceKind::Shim(
+                                    ty::ShimKind::ConstructCoroutineInClosure {
+                                        coroutine_closure_def_id,
+                                        receiver_by_ref: false,
+                                    },
+                                ),
                                 args,
                             })
                         } else {
@@ -373,7 +397,10 @@ fn resolve_associated_item<'tcx>(
                         Some(Instance::resolve_closure(tcx, closure_def_id, args, target_kind))
                     }
                     ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {
-                        def: ty::InstanceKind::FnPtrShim(trait_item_id, rcvr_args.type_at(0)),
+                        def: ty::InstanceKind::Shim(ty::ShimKind::FnPtr(
+                            trait_item_id,
+                            rcvr_args.type_at(0),
+                        )),
                         args: rcvr_args,
                     }),
                     _ => bug!(

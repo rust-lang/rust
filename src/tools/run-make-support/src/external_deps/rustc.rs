@@ -76,6 +76,9 @@ pub fn rustc_path() -> String {
 fn setup_common() -> Command {
     let mut cmd = Command::new(rustc_path());
     set_host_compiler_dylib_path(&mut cmd);
+    if let Ok(codegen_backend) = std::env::var("RUSTC_CODEGEN_BACKEND") {
+        cmd.arg(format!("-Zcodegen-backend={codegen_backend}"));
+    }
     cmd
 }
 
@@ -190,14 +193,14 @@ impl Rustc {
         self
     }
 
-    /// Specify path to the output file. Equivalent to `-o`` in rustc.
+    /// Specify path to the output file. Equivalent to `-o` in rustc.
     pub fn output<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("-o");
         self.cmd.arg(path.as_ref());
         self
     }
 
-    /// Specify path to the output directory. Equivalent to `--out-dir`` in rustc.
+    /// Specify path to the output directory. Equivalent to `--out-dir` in rustc.
     pub fn out_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("--out-dir");
         self.cmd.arg(path.as_ref());
@@ -397,6 +400,13 @@ impl Rustc {
         self
     }
 
+    /// Specify `-C link-self-contained={y,n}`.
+    pub fn link_self_contained(&mut self, enabled: bool) -> &mut Self {
+        let enabled = if enabled { "y" } else { "n" };
+        self.cmd.arg(format!("-Clink-self-contained={enabled}"));
+        self
+    }
+
     pub fn split_dwarf_out_dir(&mut self, out_dir: Option<&str>) -> &mut Self {
         if let Some(out_dir) = out_dir {
             self.cmd.arg(format!("-Zsplit-dwarf-out-dir={out_dir}"));
@@ -447,6 +457,16 @@ impl Rustc {
     /// Make that the generated LLVM IR is in source order.
     pub fn codegen_source_order(&mut self) -> &mut Self {
         self.cmd.arg("-Zcodegen-source-order");
+        self
+    }
+
+    /// Specify `-Z function-sections={yes, no}`.
+    pub fn function_sections(&mut self, enable: bool) -> &mut Self {
+        let flag = match enable {
+            true => "-Zfunction-sections=yes",
+            false => "-Zfunction-sections=no",
+        };
+        self.cmd.arg(flag);
         self
     }
 }

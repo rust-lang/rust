@@ -3,7 +3,7 @@
 use crate::arch::asm;
 
 /// Reads the lower 32-bit stable counter value and the counter ID
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn rdtimel_w() -> (i32, isize) {
     let (val, tid): (i32, isize);
@@ -12,7 +12,7 @@ pub fn rdtimel_w() -> (i32, isize) {
 }
 
 /// Reads the upper 32-bit stable counter value and the counter ID
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn rdtimeh_w() -> (i32, isize) {
     let (val, tid): (i32, isize);
@@ -21,19 +21,7 @@ pub fn rdtimeh_w() -> (i32, isize) {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
-    #[link_name = "llvm.loongarch.crc.w.b.w"]
-    fn __crc_w_b_w(a: i32, b: i32) -> i32;
-    #[link_name = "llvm.loongarch.crc.w.h.w"]
-    fn __crc_w_h_w(a: i32, b: i32) -> i32;
-    #[link_name = "llvm.loongarch.crc.w.w.w"]
-    fn __crc_w_w_w(a: i32, b: i32) -> i32;
-    #[link_name = "llvm.loongarch.crcc.w.b.w"]
-    fn __crcc_w_b_w(a: i32, b: i32) -> i32;
-    #[link_name = "llvm.loongarch.crcc.w.h.w"]
-    fn __crcc_w_h_w(a: i32, b: i32) -> i32;
-    #[link_name = "llvm.loongarch.crcc.w.w.w"]
-    fn __crcc_w_w_w(a: i32, b: i32) -> i32;
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.loongarch.dbar"]
     fn __dbar(a: i32);
     #[link_name = "llvm.loongarch.ibar"]
@@ -70,50 +58,8 @@ unsafe extern "unadjusted" {
     fn __frsqrte_d(a: f64) -> f64;
 }
 
-/// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
-#[inline]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn crc_w_b_w(a: i32, b: i32) -> i32 {
-    unsafe { __crc_w_b_w(a, b) }
-}
-
-/// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
-#[inline]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn crc_w_h_w(a: i32, b: i32) -> i32 {
-    unsafe { __crc_w_h_w(a, b) }
-}
-
-/// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
-#[inline]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn crc_w_w_w(a: i32, b: i32) -> i32 {
-    unsafe { __crc_w_w_w(a, b) }
-}
-
-/// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
-#[inline]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn crcc_w_b_w(a: i32, b: i32) -> i32 {
-    unsafe { __crcc_w_b_w(a, b) }
-}
-
-/// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
-#[inline]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn crcc_w_h_w(a: i32, b: i32) -> i32 {
-    unsafe { __crcc_w_h_w(a, b) }
-}
-
-/// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
-#[inline]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn crcc_w_w_w(a: i32, b: i32) -> i32 {
-    unsafe { __crcc_w_w_w(a, b) }
-}
-
 /// Generates the memory barrier instruction
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn dbar<const IMM15: i32>() {
     static_assert_uimm_bits!(IMM15, 15);
@@ -121,7 +67,7 @@ pub fn dbar<const IMM15: i32>() {
 }
 
 /// Generates the instruction-fetch barrier instruction
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn ibar<const IMM15: i32>() {
     static_assert_uimm_bits!(IMM15, 15);
@@ -129,7 +75,7 @@ pub fn ibar<const IMM15: i32>() {
 }
 
 /// Moves data from a GPR to the FCSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn movgr2fcsr<const IMM2: i32>(a: i32) {
     static_assert_uimm_bits!(IMM2, 2);
@@ -137,7 +83,7 @@ pub unsafe fn movgr2fcsr<const IMM2: i32>(a: i32) {
 }
 
 /// Moves data from a FCSR to the GPR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn movfcsr2gr<const IMM2: i32>() -> i32 {
     static_assert_uimm_bits!(IMM2, 2);
@@ -145,49 +91,49 @@ pub fn movfcsr2gr<const IMM2: i32>() -> i32 {
 }
 
 /// Reads the 8-bit IO-CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn iocsrrd_b(a: i32) -> i32 {
     __iocsrrd_b(a)
 }
 
 /// Reads the 16-bit IO-CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn iocsrrd_h(a: i32) -> i32 {
     __iocsrrd_h(a)
 }
 
 /// Reads the 32-bit IO-CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn iocsrrd_w(a: i32) -> i32 {
     __iocsrrd_w(a)
 }
 
 /// Writes the 8-bit IO-CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn iocsrwr_b(a: i32, b: i32) {
     __iocsrwr_b(a, b)
 }
 
 /// Writes the 16-bit IO-CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn iocsrwr_h(a: i32, b: i32) {
     __iocsrwr_h(a, b)
 }
 
 /// Writes the 32-bit IO-CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn iocsrwr_w(a: i32, b: i32) {
     __iocsrwr_w(a, b)
 }
 
 /// Generates the breakpoint instruction
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn brk<const IMM15: i32>() {
     static_assert_uimm_bits!(IMM15, 15);
@@ -195,14 +141,14 @@ pub unsafe fn brk<const IMM15: i32>() {
 }
 
 /// Reads the CPU configuration register
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn cpucfg(a: i32) -> i32 {
     unsafe { __cpucfg(a) }
 }
 
 /// Generates the syscall instruction
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn syscall<const IMM15: i32>() {
     static_assert_uimm_bits!(IMM15, 15);

@@ -1,5 +1,6 @@
 use rustc_infer::infer::InferOk;
-use rustc_infer::infer::resolve::OpportunisticRegionResolver;
+use rustc_infer::infer::canonical::QueryRegionConstraint;
+use rustc_infer::infer::resolve::DeepRegionResolver;
 use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
 use rustc_macros::extension;
 use rustc_middle::infer::canonical::{OriginalQueryValues, QueryRegionConstraints};
@@ -26,20 +27,20 @@ use crate::traits::ObligationCause;
 /// # Parameters
 ///
 /// - `param_env`, the where-clauses in scope
-/// - `body_id`, the body-id to use when normalizing assoc types.
+/// - `body_def_id`, the body_def_id to use when normalizing assoc types.
 ///   Note that this may cause outlives obligations to be injected
 ///   into the inference context with this body-id.
 /// - `ty`, the type that we are supposed to assume is WF.
-#[instrument(level = "debug", skip(infcx, param_env, body_id), ret)]
+#[instrument(level = "debug", skip(infcx, param_env, body_def_id), ret)]
 fn implied_outlives_bounds<'a, 'tcx>(
     infcx: &'a InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: LocalDefId,
+    body_def_id: LocalDefId,
     ty: Ty<'tcx>,
     disable_implied_bounds_hack: bool,
 ) -> Vec<OutlivesBound<'tcx>> {
-    let ty = infcx.resolve_vars_if_possible(ty);
-    let ty = OpportunisticRegionResolver::new(infcx).fold_ty(ty);
+    let ty = infcx.deeply_resolve_ignoring_regions(ty);
+    let ty = DeepRegionResolver::new(infcx).fold_ty(ty);
 
     // We do not expect existential variables in implied bounds.
     // We may however encounter unconstrained lifetime variables
@@ -59,7 +60,7 @@ fn implied_outlives_bounds<'a, 'tcx>(
     };
 
     let mut constraints = QueryRegionConstraints::default();
-    let span = infcx.tcx.def_span(body_id);
+    let span = infcx.tcx.def_span(body_def_id);
     let Ok(InferOk { value: mut bounds, obligations }) = infcx
         .instantiate_nll_query_response_and_region_obligations(
             &ObligationCause::dummy_with_span(span),
@@ -81,10 +82,17 @@ fn implied_outlives_bounds<'a, 'tcx>(
         // FIXME(higher_ranked_auto): Should we register assumptions here?
         // We otherwise would get spurious errors if normalizing an implied
         // outlives bound required proving some higher-ranked coroutine obl.
-        let QueryRegionConstraints { outlives, assumptions: _ } = constraints;
-        let cause = ObligationCause::misc(span, body_id);
-        for &(predicate, _) in &outlives {
-            infcx.register_outlives_constraint(predicate, &cause);
+        let QueryRegionConstraints { constraints, assumptions: _ } = constraints;
+        let cause = ObligationCause::misc(span, body_def_id);
+        for &QueryRegionConstraint { constraint, visible_for_leak_check: vis, .. } in &constraints {
+            match constraint {
+                ty::RegionConstraint::Outlives(predicate) => {
+                    infcx.register_outlives_constraint(predicate, vis, &cause)
+                }
+                ty::RegionConstraint::Eq(predicate) => {
+                    infcx.register_region_eq_constraint(predicate, vis, &cause)
+                }
+            }
         }
     };
 
@@ -97,13 +105,13 @@ impl<'tcx> InferCtxt<'tcx> {
     /// instead if you're interested in the implied bounds for a given signature.
     fn implied_bounds_tys<Tys: IntoIterator<Item = Ty<'tcx>>>(
         &self,
-        body_id: LocalDefId,
+        body_def_id: LocalDefId,
         param_env: ParamEnv<'tcx>,
         tys: Tys,
         disable_implied_bounds_hack: bool,
     ) -> impl Iterator<Item = OutlivesBound<'tcx>> {
         tys.into_iter().flat_map(move |ty| {
-            implied_outlives_bounds(self, param_env, body_id, ty, disable_implied_bounds_hack)
+            implied_outlives_bounds(self, param_env, body_def_id, ty, disable_implied_bounds_hack)
         })
     }
 }

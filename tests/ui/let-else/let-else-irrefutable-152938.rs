@@ -6,7 +6,7 @@
 
 pub fn say_hello(name: Option<String>) {
     let name_str = Some(name) else { return; };
-    //~^ WARN irrefutable `let...else` pattern
+    //~^ WARN unreachable `else` clause
     drop(name_str);
 }
 

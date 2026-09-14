@@ -1,11 +1,11 @@
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
-use rustc_session::{declare_lint, declare_lint_pass};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_span::Symbol;
 use unicode_security::general_security_profile::IdentifierType;
 
-use crate::lints::{
+use crate::diagnostics::{
     ConfusableIdentifierPair, IdentifierNonAsciiChar, IdentifierUncommonCodepoints,
     MixedScriptConfusables,
 };
@@ -33,7 +33,7 @@ declare_lint! {
     /// collaboration or for security reasons).
     /// See [RFC 2457] for more details.
     ///
-    /// [RFC 2457]: https://github.com/rust-lang/rfcs/blob/master/text/2457-non-ascii-idents.md
+    /// [RFC 2457]: https://rust-lang.github.io/rfcs/2457-non-ascii-idents.html
     pub NON_ASCII_IDENTS,
     Allow,
     "detects non-ASCII identifiers",
@@ -155,17 +155,14 @@ impl EarlyLintPass for NonAsciiIdents {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
         use std::collections::BTreeMap;
 
-        use rustc_session::lint::Level;
         use rustc_span::Span;
         use unicode_security::GeneralSecurityProfile;
 
-        let check_non_ascii_idents = cx.builder.lint_level(NON_ASCII_IDENTS).level != Level::Allow;
-        let check_uncommon_codepoints =
-            cx.builder.lint_level(UNCOMMON_CODEPOINTS).level != Level::Allow;
-        let check_confusable_idents =
-            cx.builder.lint_level(CONFUSABLE_IDENTS).level != Level::Allow;
+        let check_non_ascii_idents = !cx.builder.lint_level_spec(NON_ASCII_IDENTS).is_allow();
+        let check_uncommon_codepoints = !cx.builder.lint_level_spec(UNCOMMON_CODEPOINTS).is_allow();
+        let check_confusable_idents = !cx.builder.lint_level_spec(CONFUSABLE_IDENTS).is_allow();
         let check_mixed_script_confusables =
-            cx.builder.lint_level(MIXED_SCRIPT_CONFUSABLES).level != Level::Allow;
+            !cx.builder.lint_level_spec(MIXED_SCRIPT_CONFUSABLES).is_allow();
 
         if !check_non_ascii_idents
             && !check_uncommon_codepoints

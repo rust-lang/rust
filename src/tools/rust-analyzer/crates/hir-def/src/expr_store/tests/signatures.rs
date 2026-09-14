@@ -2,6 +2,7 @@ use crate::{
     GenericDefId, ModuleDefId,
     expr_store::pretty::{print_function, print_struct},
     nameres::crate_def_map,
+    signatures::{FunctionSignature, StructSignature},
     test_db::TestDB,
 };
 use expect_test::{Expect, expect};
@@ -41,7 +42,7 @@ fn lower_and_print(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expe
                     out += &print_struct(
                         &db,
                         struct_id,
-                        &db.struct_signature(struct_id),
+                        StructSignature::of(&db, struct_id),
                         Edition::CURRENT,
                     );
                 }
@@ -53,7 +54,7 @@ fn lower_and_print(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expe
                 out += &print_function(
                     &db,
                     function_id,
-                    &db.function_signature(function_id),
+                    FunctionSignature::of(&db, function_id),
                     Edition::CURRENT,
                 )
             }
@@ -199,6 +200,19 @@ fn allowed3(baz: impl Baz<Assoc = Qux<impl Foo>>) {}
 }
 
 #[test]
+fn type_alias_constrained_lifetime_with_elided_lifetime_args() {
+    lower_and_print(
+        r#"
+type Alias<'a, 'b, T> = &'b T;
+fn f<T>(_: Alias<T>) {}
+"#,
+        expect![[r#"
+            fn f<T>(Alias::<T>) {...}
+        "#]],
+    );
+}
+
+#[test]
 fn regression_21138() {
     lower_and_print(
         r#"
@@ -206,6 +220,20 @@ fn foo(v: for<'a> Trait1 + Trait2) {}
     "#,
         expect![[r#"
             fn foo(dyn for<'a> Trait1 + Trait2) {...}
+        "#]],
+    );
+}
+
+#[test]
+fn extern_block_abi() {
+    lower_and_print(
+        r#"
+extern "C" {
+    fn extern_fn();
+}
+    "#,
+        expect![[r#"
+            extern "C" fn extern_fn() {...}
         "#]],
     );
 }

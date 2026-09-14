@@ -2,7 +2,10 @@ error[E0207]: the type parameter `I` is not constrained by the impl trait, self 
   --> $DIR/issue-88526.rs:25:13
    |
 LL | impl<'q, Q, I, F> A for TestB<Q, F>
-   |             ^ unconstrained type parameter
+   |             ^--
+   |             |
+   |             unconstrained type parameter
+   |             help: remove the unused type parameter `I`
 
 error[E0309]: the parameter type `F` may not live long enough
   --> $DIR/issue-88526.rs:16:5

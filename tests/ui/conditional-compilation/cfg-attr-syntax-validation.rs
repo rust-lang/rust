@@ -12,7 +12,7 @@ struct S2;
 
 #[cfg()]
 //~^ ERROR malformed `cfg` attribute
-//~| NOTE expected a single argument here
+//~| NOTE expected an argument here
 //~| NOTE for more information, visit
 struct S3;
 
@@ -34,7 +34,9 @@ struct S5;
 //~| NOTE for more information, visit
 struct S6;
 
-#[cfg(a())] //~ ERROR invalid predicate `a`
+#[cfg(a())] //~ ERROR malformed `cfg` attribute input
+//~| NOTE valid arguments are `any`, `all`, `not` or `target`
+//~| NOTE for more information, visit
 struct S7;
 
 #[cfg(a = 10)] //~ ERROR malformed `cfg` attribute input

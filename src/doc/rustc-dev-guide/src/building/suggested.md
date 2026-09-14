@@ -90,29 +90,19 @@ Running `./x setup editor` will prompt you to create a project-local LSP config
 file for one of the supported editors.
 You can also create the config file as a step of running `./x setup`.
 
-### Using a separate build directory for rust-analyzer
+### Using a shared build directory for rust-analyzer
 
-By default, when rust-analyzer runs a check or format command, it will share
-the same build directory as manual command-line builds.
-This can be inconvenient for two reasons:
+By default, when rust-analyzer runs a bootstrap command,
+it will use a separate build directory from manual command-line builds.
+You can override this your generated LSP config file if you want to save disk space.
+
+However, this is not recommended:
 - Each build will lock the build directory and force the other to wait, so it
   becomes impossible to run command-line builds while rust-analyzer is running
   commands in the background.
 - There is an increased risk of one of the builds deleting previously-built
   artifacts due to conflicting compiler flags or other settings, forcing
   additional rebuilds in some cases.
-
-To avoid these problems:
-- Add `--build-dir=build-rust-analyzer` to all of the custom `x` commands in
-  your editor's rust-analyzer configuration.
-  (Feel free to choose a different directory name if desired.)
-- Modify the `rust-analyzer.rustfmt.overrideCommand` setting so that it points
-  to the copy of `rustfmt` in that other build directory.
-- Modify the `rust-analyzer.procMacro.server` setting so that it points to the
-  copy of `rust-analyzer-proc-macro-srv` in that other build directory.
-
-Using separate build directories for command-line builds and rust-analyzer
-requires extra disk space.
 
 ### Visual Studio Code
 
@@ -144,77 +134,84 @@ If running `./x check` on save is inconvenient, in VS Code you can use a [Build 
 
 ### Neovim
 
-For Neovim users, there are a few options.
-The easiest way is by using [neoconf.nvim](https://github.com/folke/neoconf.nvim/),
-which allows for project-local configuration files with the native LSP.
+For Neovim users, there are a few options:
+
+1. The easiest way is using [neoconf.nvim][neoconf.nvim] but it uses the
+   deprecated `require('lspconfig')` API which displays a warning on neovim 0.11+.
+2. Using `coc.nvim` is another option but it requires node.js to be installed.
+3. Using a custom script to load rust-analyzer settings.
+
+#### neoconf.nvim
+
+[neoconf.nvim][neoconf.nvim] allows for project-local configuration files with the native LSP.
 The steps for how to use it are below.
 Note that they require rust-analyzer to already be configured with Neovim.
-Steps for this can be [found here](https://rust-analyzer.github.io/manual.html#nvim-lsp).
+Steps for this can be [found here][r-a nvim lsp].
 
 1. First install the plugin.
    This can be done by following the steps in the README.
 2. Run `./x setup editor`, and select `vscode` to create a `.vscode/settings.json` file.
    `neoconf` is able to read and update
    rust-analyzer settings automatically when the project is opened when this file is detected.
+   Neovim does not expand VS Code's `${workspaceFolder}` variable, so replace each occurrence
+   in the generated file with the absolute path to your rust repository.
+
+#### coc.nvim
 
 If you're using `coc.nvim`, you can run `./x setup editor` and select `vim` to
 create a `.vim/coc-settings.json`.
 The settings can be edited with `:CocLocalConfig`.
 The recommended settings live at [`src/etc/rust_analyzer_settings.json`].
 
-Another way is without a plugin, and creating your own logic in your configuration.
-The following code will work for any checkout of rust-lang/rust (newer than February 2025):
+#### Custom LSP settings
+
+If you're running neovim 0.11+, you can configure rust-analyzer with just
+[nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) and a custom script.
+
+1. Make sure [rust-analyzer LSP][r-a nvim lsp] is set up
+2. Create `$HOME/.config/nvim/after/plugged/rust_analyzer.lua` with the following content:
 
 ```lua
-local function expand_config_variables(option)
-    local var_placeholders = {
-        ['${workspaceFolder}'] = function(_)
-            return vim.lsp.buf.list_workspace_folders()[1]
-        end,
-    }
+-- Capture the default functions from nvim-lspconfig/lsp/rust_analyzer.lua before overriding it.
+-- This file is in after/plugin to guarantee nvim-lspconfig has been initialised already.
+local default_root_dir = vim.lsp.config["rust_analyzer"].root_dir
+local default_before_init = vim.lsp.config["rust_analyzer"].before_init
 
-    if type(option) == "table" then
-        local mt = getmetatable(option)
-        local result = {}
-        for k, v in pairs(option) do
-            result[expand_config_variables(k)] = expand_config_variables(v)
+vim.lsp.config("rust_analyzer", {
+    cmd = { "rust-analyzer" },
+    filetypes = { "rust" },
+    -- To support rust-lang/rust, we need to detect when we're in the rust repo and use the git root
+    -- instead of cargo project root.
+    root_dir = function(bufnr, on_dir)
+        local git_root = vim.fs.root(bufnr, { ".git" })
+        if git_root then
+            if vim.uv.fs_stat(vim.fs.joinpath(git_root, "src/etc/rust_analyzer_zed.json")) then
+                on_dir(git_root)
+                return
+            end
         end
-        return setmetatable(result, mt)
-    end
-    if type(option) ~= "string" then
-        return option
-    end
-    local ret = option
-    for key, fn in pairs(var_placeholders) do
-        ret = ret:gsub(key, fn)
-    end
-    return ret
-end
-lspconfig.rust_analyzer.setup {
-    root_dir = function()
-        local default = lspconfig.rust_analyzer.config_def.default_config.root_dir()
-        -- the default root detection uses the cargo workspace root.
-        -- but for rust-lang/rust, the standard library is in its own workspace.
-        -- use the git root instead.
-        local compiler_config = vim.fs.joinpath(default, "../src/bootstrap/defaults/config.compiler.toml")
-        if vim.fs.basename(default) == "library" and vim.uv.fs_stat(compiler_config) then
-            return vim.fs.dirname(default)
-        end
-        return default
+        -- For anything that doesn't match rust-lang/rust, fallback to default root_dir
+        default_root_dir(bufnr, on_dir)
     end,
-    on_init = function(client)
-        local path = client.workspace_folders[1].name
-        local config = vim.fs.joinpath(path, "src/etc/rust_analyzer_zed.json")
-        if vim.uv.fs_stat(config) then
-            -- load rust-lang/rust settings
-            local file = io.open(config)
-            local json = vim.json.decode(file:read("*a"))
-            client.config.settings["rust-analyzer"] = expand_config_variables(json.lsp["rust-analyzer"].initialization_options)
-            client.notify("workspace/didChangeConfiguration", { settings = client.config.settings })
+    before_init = function(init_params, config)
+        -- When inside rust-lang/rust, we need to use the special rust-analyzer settings.
+        local settings = vim.fs.joinpath(config.root_dir, "src/etc/rust_analyzer_zed.json")
+        if vim.uv.fs_stat(settings) then
+            local file = io.open(settings)
+            -- nvim 0.12+ supports comments otherwise you'll need content:gsub("//[^\n]*", "").
+            local json = vim.json.decode(file:read("*a"), { skip_comments = true })
+            file:close()
+            config.settings["rust-analyzer"] = vim.tbl_deep_extend(
+                "force", -- Overwrite with the special settings when there is a conflict.
+                config.settings["rust-analyzer"] or {},
+                json.lsp["rust-analyzer"].initialization_options
+            )
         end
-        return true
-    end
-}
+        default_before_init(init_params, config)
+    end,
+})
+
+vim.lsp.enable("rust_analyzer")
 ```
 
 If you would like to use the build task that is described above, you may either
@@ -222,6 +219,9 @@ make your own command in your config, or you can install a plugin such as
 [overseer.nvim](https://github.com/stevearc/overseer.nvim) that can [read VSCode's `task.json`
 files](https://github.com/stevearc/overseer.nvim/blob/master/doc/guides.md#vs-code-tasks),
 and follow the same instructions as above.
+
+[neoconf.nvim]: https://github.com/folke/neoconf.nvim/
+[r-a nvim lsp]: https://rust-analyzer.github.io/book/other_editors.html#nvim-lsp
 
 ### Emacs
 
@@ -319,16 +319,14 @@ Sometimes just checking whether the compiler builds is not enough.
 A common example is that you need to add a `debug!` statement to inspect the value of
 some state or better understand the problem.
 In that case, you don't really need a full build.
-By bypassing bootstrap's cache invalidation, you can often get
-these builds to complete very fast (e.g., around 30 seconds). The only catch is
-this requires a bit of fudging and may produce compilers that don't work (but
+By bypassing bootstrap's cache invalidation, you can often get these builds to complete faster.
+The only catch is this requires a bit of fudging and may produce compilers that don't work (but
 that is easily detected and fixed).
 
 The sequence of commands you want is as follows:
 
 - Initial build: `./x build library`
 - Subsequent builds: `./x build library --keep-stage-std=1`
-  - Note that we added the `--keep-stage-std=1` flag here
 
 As mentioned, the effect of `--keep-stage-std=1` is that we just _assume_ that the
 old standard library can be re-used.
@@ -339,11 +337,9 @@ the compiler, which controls how the compiler encodes types and other states
 into the `rlib` files, or if you are editing things that wind up in the metadata
 (such as the definition of the MIR).
 
-**The TL;DR is that you might get weird behavior from a compile when using
-`--keep-stage-std=1`** -- for example, strange [ICEs](../appendix/glossary.html#ice)
-or other panics.
+That is, you might get weird behavior from a compile when using
+`--keep-stage-std=1`, for example, strange [ICEs](../appendix/glossary.md#ice) or other panics.
 In that case, you should simply remove the `--keep-stage-std=1` from the command and rebuild.
-That ought to fix the problem.
 
 You can also use `--keep-stage-std=1` when running tests.
 Something like this:
@@ -469,11 +465,11 @@ pkgs.mkShell {
 ## Shell Completions
 
 If you use Bash, Zsh, Fish or PowerShell, you can find automatically-generated shell
-completion scripts for `x.py` in
+completion scripts for `./x` in
 [`src/etc/completions`](https://github.com/rust-lang/rust/tree/HEAD/src/etc/completions).
 
-You can use `source ./src/etc/completions/x.py.<extension>` to load completions
-for your shell of choice, or `& .\src\etc\completions\x.py.ps1` for PowerShell.
+You can use `source ./src/etc/completions/x.<extension>` to load completions
+for your shell of choice, or `& .\src\etc\completions\x.ps1` for PowerShell.
 Adding this to your shell's startup script (e.g. `.bashrc`) will automatically
 load this completion.
 

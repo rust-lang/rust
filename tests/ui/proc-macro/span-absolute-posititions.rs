@@ -1,5 +1,5 @@
 //@ proc-macro: assert-span-pos.rs
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 extern crate assert_span_pos;
 
 assert_span_pos::assert_span_pos!(5, 35);

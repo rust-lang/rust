@@ -44,7 +44,7 @@ fn uses_local() {
         DocHiddenInHiddenMod,
     ) = 3u32;
     //~^ ERROR mismatched types [E0308]
-    //~| NOTE expected `(ActuallyPub, ..., ..., ..., ..., ...)`, found `u32`
+    //~| NOTE expected `(ActuallyPub, DocHidden, _, _, _, _)`, found `u32`
     //~| NOTE expected tuple `(local::ActuallyPub, DocHidden, local::pub_mod::ActuallyPubInPubMod, DocHiddenInPubMod, ActuallyPubInHiddenMod, DocHiddenInHiddenMod)`
 }
 
@@ -63,6 +63,6 @@ fn uses_helper() {
         DocHiddenInHiddenMod,
     ) = 3u32;
     //~^ ERROR mismatched types [E0308]
-    //~| NOTE expected `(ActuallyPub, ..., ..., ..., ..., ...)`, found `u32`
+    //~| NOTE expected `(ActuallyPub, DocHidden, _, _, _, _)`, found `u32`
     //~| NOTE expected tuple `(doc_hidden_helper::ActuallyPub, doc_hidden_helper::DocHidden, doc_hidden_helper::pub_mod::ActuallyPubInPubMod, doc_hidden_helper::pub_mod::DocHiddenInPubMod, doc_hidden_helper::hidden_mod::ActuallyPubInHiddenMod, doc_hidden_helper::hidden_mod::DocHiddenInHiddenMod)`
 }

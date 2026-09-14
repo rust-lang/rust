@@ -38,6 +38,7 @@ impl flags::PrimeCaches {
             // we want to ensure that this command, not `load_workspace_at`,
             // is responsible for that work.
             prefill_caches: false,
+            num_worker_threads: 1,
             proc_macro_processes: config.proc_macro_num_processes(),
         };
 
@@ -54,7 +55,8 @@ impl flags::PrimeCaches {
         );
 
         let threads = self.num_threads.unwrap_or_else(num_cpus::get_physical);
-        ide_db::prime_caches::parallel_prime_caches(&db, threads, &|_| ());
+        let all = ide_db::base_db::all_crates(&db);
+        ide_db::prime_caches::parallel_prime_caches(&db, &all, threads, &|_| ());
 
         let elapsed = stop_watch.elapsed();
         eprintln!(

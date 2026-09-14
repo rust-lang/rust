@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{SpanlessEq, get_parent_expr, sym};
@@ -168,6 +168,7 @@ impl<'hir> MapFunc<'hir> {
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 fn emit_lint<'tcx>(
     cx: &LateContext<'tcx>,
     span: Span,
@@ -176,7 +177,16 @@ fn emit_lint<'tcx>(
     in_some_or_ok: bool,
     map_func: MapFunc<'tcx>,
     recv: &Expr<'_>,
+    msrv: Msrv,
 ) {
+    let required_msrv = match (flavor, op) {
+        (Flavor::Option, Op::Ne) => msrvs::IS_NONE_OR,
+        _ => msrvs::OPTION_RESULT_IS_VARIANT_AND,
+    };
+    if !msrv.meets(cx, required_msrv) {
+        return;
+    }
+
     let mut app = Applicability::MachineApplicable;
     let recv = snippet_with_applicability(cx, recv.span, "_", &mut app);
 
@@ -201,7 +211,7 @@ fn emit_lint<'tcx>(
     );
 }
 
-pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>) {
+pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
     if let Some(parent_expr) = get_parent_expr(cx, expr)
         && let ExprKind::Binary(op, left, right) = parent_expr.kind
         && op.span.eq_ctxt(expr.span)
@@ -222,7 +232,7 @@ pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 && cx.typeck_results().expr_ty(recv).is_diag_item(cx, flavor.diag_sym())
                 && let Ok(map_func) = MapFunc::try_from(map_expr)
             {
-                emit_lint(cx, parent_expr.span, op, flavor, bool_cst, map_func, recv);
+                emit_lint(cx, parent_expr.span, op, flavor, bool_cst, map_func, recv, msrv);
                 return;
             }
         }
@@ -256,20 +266,20 @@ pub(super) fn check_or<'tcx>(
             .expr_ty_adjusted(some_recv)
             .peel_refs()
             .is_diag_item(cx, sym::Option)
-        && SpanlessEq::new(cx).eq_expr(none_recv, some_recv)
+        && SpanlessEq::new(cx).eq_expr(expr.span.ctxt(), none_recv, some_recv)
     {
         (some_recv, some_arg)
     } else {
         return;
     };
 
-    if !msrv.meets(cx, msrvs::IS_NONE_OR) {
-        return;
-    }
-
     let Ok(map_func) = MapFunc::try_from(some_arg) else {
         return;
     };
+
+    if !msrv.meets(cx, msrvs::IS_NONE_OR) {
+        return;
+    }
 
     span_lint_and_then(
         cx,
@@ -327,6 +337,36 @@ pub(super) fn check_is_some_is_none<'tcx>(
                     app,
                 );
             },
+        );
+    }
+}
+
+/// Lint `result.ok().is_some_and(f)`, which is `result.is_ok_and(f)`.
+pub(super) fn check_ok_is_some_and<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    is_some_and_recv: &'tcx Expr<'tcx>,
+    arg: &'tcx Expr<'tcx>,
+) {
+    // `is_some_and` and `is_ok_and` were both stabilized in the same release, so if the receiver
+    // already calls `is_some_and` then `is_ok_and` is necessarily available too: no MSRV check.
+    if !expr.span.from_expansion()
+        && let ExprKind::MethodCall(_, result_recv, [], _) = is_some_and_recv.kind
+        && cx
+            .ty_based_def(is_some_and_recv)
+            .is_diag_item(cx, sym::result_ok_method)
+    {
+        let mut app = Applicability::MachineApplicable;
+        let recv_snip = snippet_with_context(cx, result_recv.span, expr.span.ctxt(), "_", &mut app).0;
+        let arg_snip = snippet_with_context(cx, arg.span, expr.span.ctxt(), "_", &mut app).0;
+        span_lint_and_sugg(
+            cx,
+            MANUAL_IS_VARIANT_AND,
+            expr.span,
+            "called `.ok().is_some_and(..)` on a `Result` value",
+            "use `is_ok_and` instead",
+            format!("{recv_snip}.is_ok_and({arg_snip})"),
+            app,
         );
     }
 }

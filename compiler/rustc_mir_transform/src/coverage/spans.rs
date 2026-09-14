@@ -1,7 +1,7 @@
 use rustc_middle::mir::coverage::{Mapping, MappingKind, START_BCB};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, DesugaringKind, ExpnId, ExpnKind, MacroKind, Span};
+use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span, SyntaxContext};
 use tracing::instrument;
 
 use crate::coverage::expansion::{ExpnTree, SpanWithBcb};
@@ -28,7 +28,7 @@ pub(super) fn extract_refined_covspans<'tcx>(
 
     // If there somehow isn't an expansion tree node corresponding to the
     // body span, return now and don't create any mappings.
-    let Some(node) = expn_tree.get(hir_info.body_span.ctxt().outer_expn()) else { return };
+    let Some(node) = expn_tree.get(hir_info.body_span.ctxt()) else { return };
 
     let mut covspans = vec![];
 
@@ -38,8 +38,8 @@ pub(super) fn extract_refined_covspans<'tcx>(
 
     // For each expansion with its call-site in the body span, try to
     // distill a corresponding covspan.
-    for &child_expn_id in &node.child_expn_ids {
-        if let Some(covspan) = single_covspan_for_child_expn(tcx, &expn_tree, child_expn_id) {
+    for &child_context in &node.child_contexts {
+        if let Some(covspan) = single_covspan_for_child_context(tcx, &expn_tree, child_context) {
             covspans.push(covspan);
         }
     }
@@ -57,8 +57,9 @@ pub(super) fn extract_refined_covspans<'tcx>(
             // Each pushed covspan should have the same context as the body span.
             // If it somehow doesn't, discard the covspan.
             if !body_span.eq_ctxt(covspan_span) {
-                // FIXME(Zalathar): Investigate how and why this is triggered
-                // by `tests/coverage/macros/context-mismatch-issue-147339.rs`.
+                // There is currently no known way for this to happen, but if it
+                // does happen then dropping the offending span is better than
+                // having tricky macro expansions trigger an ICE.
                 return false;
             }
 
@@ -122,12 +123,12 @@ pub(super) fn extract_refined_covspans<'tcx>(
 }
 
 /// For a single child expansion, try to distill it into a single span+BCB mapping.
-fn single_covspan_for_child_expn(
+fn single_covspan_for_child_context(
     tcx: TyCtxt<'_>,
     expn_tree: &ExpnTree,
-    expn_id: ExpnId,
+    child_context: SyntaxContext,
 ) -> Option<Covspan> {
-    let node = expn_tree.get(expn_id)?;
+    let node = expn_tree.get(child_context)?;
     let minmax_bcbs = node.minmax_bcbs?;
 
     let bcb = match node.expn_kind {

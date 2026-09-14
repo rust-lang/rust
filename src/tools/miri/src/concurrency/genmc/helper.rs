@@ -1,43 +1,26 @@
-use genmc_sys::{MemOrdering, RMWBinOp};
+use genmc_sys::{GenmcHandlerResult, MemOrdering, RMWBinOp};
 use rustc_abi::Size;
 use rustc_const_eval::interpret::{InterpResult, interp_ok};
-use rustc_middle::mir;
 use rustc_middle::mir::interpret;
 use rustc_middle::ty::ScalarInt;
-use tracing::debug;
+use rustc_middle::{mir, throw_ub_format};
 
 use super::GenmcScalar;
 use crate::alloc_addresses::EvalContextExt as _;
-use crate::intrinsics::AtomicRmwOp;
 use crate::*;
 
 /// Maximum size memory access in bytes that GenMC supports.
 pub(super) const MAX_ACCESS_SIZE: u64 = 8;
 
-/// This function is used to split up a large memory access into aligned, non-overlapping chunks of a limited size.
-/// Returns an iterator over the chunks, yielding `(base address, size)` of each chunk, ordered by address.
-pub fn split_access(address: Size, size: Size) -> impl Iterator<Item = (u64, u64)> {
-    let start_address = address.bytes();
-    let end_address = start_address + size.bytes();
-
-    let start_address_aligned = start_address.next_multiple_of(MAX_ACCESS_SIZE);
-    let end_address_aligned = (end_address / MAX_ACCESS_SIZE) * MAX_ACCESS_SIZE; // prev_multiple_of
-
-    debug!(
-        "GenMC: splitting NA memory access into {MAX_ACCESS_SIZE} byte chunks: {}B + {} * {MAX_ACCESS_SIZE}B + {}B = {size:?}",
-        start_address_aligned - start_address,
-        (end_address_aligned - start_address_aligned) / MAX_ACCESS_SIZE,
-        end_address - end_address_aligned,
-    );
-
-    // FIXME(genmc): could make remaining accesses powers-of-2, instead of 1 byte.
-    let start_chunks = (start_address..start_address_aligned).map(|address| (address, 1));
-    let aligned_chunks = (start_address_aligned..end_address_aligned)
-        .step_by(MAX_ACCESS_SIZE.try_into().unwrap())
-        .map(|address| (address, MAX_ACCESS_SIZE));
-    let end_chunks = (end_address_aligned..end_address).map(|address| (address, 1));
-
-    start_chunks.chain(aligned_chunks).chain(end_chunks)
+/// Convert a [`GenmcHandlerResult`] into an `InterpResult`, raising the matching Miri error.
+// FIXME(genmc): improve error handling.
+pub(super) fn get_outcome<'tcx, T>(result: GenmcHandlerResult<T>) -> InterpResult<'tcx, T> {
+    match result {
+        // A handler producing an invalid result means that the execution is moot.
+        GenmcHandlerResult::Invalid => throw_machine_stop!(TerminationInfo::GenmcMoot),
+        GenmcHandlerResult::Error(e) => throw_ub_format!("{e}"),
+        GenmcHandlerResult::Ok(outcome) => interp_ok(outcome),
+    }
 }
 
 /// Inverse function to `scalar_to_genmc_scalar`.
@@ -57,15 +40,14 @@ pub fn scalar_to_genmc_scalar<'tcx>(
             let value: u64 = scalar_int.to_uint(scalar_int.size()).try_into().unwrap();
             GenmcScalar { value, provenance: 0, is_init: true }
         }
-        rustc_const_eval::interpret::Scalar::Ptr(pointer, size) => {
+        rustc_const_eval::interpret::Scalar::Ptr(pointer, _ptr_size) => {
             // FIXME(genmc,borrow tracking): Borrow tracking information is lost.
             let addr = crate::Pointer::from(pointer).addr();
             if let crate::Provenance::Wildcard = pointer.provenance {
                 throw_unsup_format!("Pointers with wildcard provenance not allowed in GenMC mode");
             }
             let (alloc_id, _size, _prov_extra) =
-                rustc_const_eval::interpret::Machine::ptr_get_alloc(ecx, pointer, size.into())
-                    .unwrap();
+                rustc_const_eval::interpret::Machine::ptr_get_alloc(ecx, pointer, 0).unwrap();
             let base_addr = ecx.addr_from_alloc_id(alloc_id, None)?;
             // Add the base_addr alloc_id pair to the map.
             genmc_ctx.exec_state.genmc_shared_allocs_map.borrow_mut().insert(base_addr, alloc_id);
@@ -194,6 +176,7 @@ pub(super) fn to_genmc_rmw_op(atomic_op: AtomicRmwOp, is_signed: bool) -> RMWBin
         (AtomicRmwOp::Max, true) => RMWBinOp::Max,
         (AtomicRmwOp::Min, false) => RMWBinOp::UMin,
         (AtomicRmwOp::Max, false) => RMWBinOp::UMax,
+        (AtomicRmwOp::Swap, _is_signed) => RMWBinOp::Xchg,
         (AtomicRmwOp::MirOp { op, neg }, _is_signed) =>
             match (op, neg) {
                 (mir::BinOp::Add, false) => RMWBinOp::Add,

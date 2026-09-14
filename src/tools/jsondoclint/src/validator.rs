@@ -20,10 +20,10 @@ const LOCAL_CRATE_ID: u32 = 0;
 /// It is made of several parts.
 ///
 /// - `check_*`: These take a type from [`rustdoc_json_types`], and check that
-///              it is well formed. This involves calling `check_*` functions on
-///              fields of that item, and `add_*` functions on [`Id`]s.
+///   it is well formed. This involves calling `check_*` functions on
+///   fields of that item, and `add_*` functions on [`Id`]s.
 /// - `add_*`: These add an [`Id`] to the worklist, after validating it to check if
-///            the `Id` is a kind expected in this situation.
+///   the `Id` is a kind expected in this situation.
 #[derive(Debug)]
 pub struct Validator<'a> {
     pub(crate) errs: Vec<Error>,
@@ -97,7 +97,7 @@ impl<'a> Validator<'a> {
                 ItemEnum::StructField(x) => self.check_struct_field(x),
                 ItemEnum::Enum(x) => self.check_enum(x),
                 ItemEnum::Variant(x) => self.check_variant(x, id),
-                ItemEnum::Function(x) => self.check_function(x),
+                ItemEnum::Function(x) => self.check_function(x, id),
                 ItemEnum::Trait(x) => self.check_trait(x, id),
                 ItemEnum::TraitAlias(x) => self.check_trait_alias(x),
                 ItemEnum::Impl(x) => self.check_impl(x, id),
@@ -114,12 +114,35 @@ impl<'a> Validator<'a> {
                 ItemEnum::Module(x) => self.check_module(x, id),
                 // FIXME: Why don't these have their own structs?
                 ItemEnum::ExternCrate { .. } => {}
-                ItemEnum::AssocConst { type_, value: _ } => self.check_type(type_),
-                ItemEnum::AssocType { generics, bounds, type_ } => {
+                ItemEnum::AssocConst { type_, value, default_unstable } => {
+                    self.check_type(type_);
+                    if value.is_none()
+                        && let Some(default_unstable) = default_unstable
+                    {
+                        self.fail(
+                            id,
+                            ErrorKind::Custom(format!(
+                                "`default_unstable` must be `None` when `value` is `None`, but \
+                                 assoc const id {} had `default_unstable` with feature `{}`",
+                                id.0, default_unstable.feature
+                            )),
+                        );
+                    }
+                }
+                ItemEnum::AssocType { generics, bounds, type_, default_unstable } => {
                     self.check_generics(generics);
                     bounds.iter().for_each(|b| self.check_generic_bound(b));
                     if let Some(ty) = type_ {
                         self.check_type(ty);
+                    } else if let Some(default_unstable) = default_unstable {
+                        self.fail(
+                            id,
+                            ErrorKind::Custom(format!(
+                                "`default_unstable` must be `None` when `type_` is `None`, but \
+                                 assoc type id {} had `default_unstable` with feature `{}`",
+                                id.0, default_unstable.feature
+                            )),
+                        );
                     }
                 }
             }
@@ -194,9 +217,21 @@ impl<'a> Validator<'a> {
         }
     }
 
-    fn check_function(&mut self, x: &'a Function) {
+    fn check_function(&mut self, x: &'a Function, id: &Id) {
         self.check_generics(&x.generics);
         self.check_function_signature(&x.sig);
+        if !x.has_body
+            && let Some(default_unstable) = &x.default_unstable
+        {
+            self.fail(
+                id,
+                ErrorKind::Custom(format!(
+                    "`default_unstable` must be `None` when `has_body == false`, but \
+                     function item id {} had `default_unstable` with feature `{}`",
+                    id.0, default_unstable.feature
+                )),
+            );
+        }
     }
 
     fn check_trait(&mut self, x: &'a Trait, id: &Id) {
@@ -262,17 +297,17 @@ impl<'a> Validator<'a> {
             Type::Generic(_) => {}
             Type::Primitive(_) => {}
             Type::Pat { type_, __pat_unstable_do_not_use: _ } => self.check_type(type_),
-            Type::FunctionPointer(fp) => self.check_function_pointer(&**fp),
+            Type::FunctionPointer(fp) => self.check_function_pointer(fp),
             Type::Tuple(tys) => tys.iter().for_each(|ty| self.check_type(ty)),
-            Type::Slice(inner) => self.check_type(&**inner),
-            Type::Array { type_, len: _ } => self.check_type(&**type_),
+            Type::Slice(inner) => self.check_type(inner),
+            Type::Array { type_, len: _ } => self.check_type(type_),
             Type::ImplTrait(bounds) => bounds.iter().for_each(|b| self.check_generic_bound(b)),
             Type::Infer => {}
-            Type::RawPointer { is_mutable: _, type_ } => self.check_type(&**type_),
-            Type::BorrowedRef { lifetime: _, is_mutable: _, type_ } => self.check_type(&**type_),
+            Type::RawPointer { is_mutable: _, type_ } => self.check_type(type_),
+            Type::BorrowedRef { lifetime: _, is_mutable: _, type_ } => self.check_type(type_),
             Type::QualifiedPath { name: _, args, self_type, trait_ } => {
-                self.check_opt_generic_args(&args);
-                self.check_type(&**self_type);
+                self.check_opt_generic_args(args);
+                self.check_type(self_type);
                 if let Some(trait_) = trait_ {
                     self.check_path(trait_, PathKind::Trait);
                 }
@@ -404,7 +439,7 @@ impl<'a> Validator<'a> {
         // which encodes rustc implementation details.
         if item_info.crate_id == LOCAL_CRATE_ID && !self.krate.index.contains_key(id) {
             self.errs.push(Error {
-                id: id.clone(),
+                id: *id,
                 kind: ErrorKind::Custom(
                     "Id for local item in `paths` but not in `index`".to_owned(),
                 ),
@@ -483,16 +518,14 @@ impl<'a> Validator<'a> {
     }
 
     fn fail(&mut self, id: &Id, kind: ErrorKind) {
-        self.errs.push(Error { id: id.clone(), kind });
+        self.errs.push(Error { id: *id, kind });
     }
 
     fn kind_of(&mut self, id: &Id) -> Option<Kind> {
         if let Some(item) = self.krate.index.get(id) {
             Some(Kind::from_item(item))
-        } else if let Some(summary) = self.krate.paths.get(id) {
-            Some(Kind::from_summary(summary))
         } else {
-            None
+            self.krate.paths.get(id).map(Kind::from_summary)
         }
     }
 }

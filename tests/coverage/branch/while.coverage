@@ -18,7 +18,7 @@
   |  Branch (LL:11): [True: 8, False: 1]
   ------------------
    LL|      8|        a -= 1;
-   LL|      8|    }
+   LL|       |    }
    LL|      1|}
    LL|       |
    LL|      1|fn while_cond_not() {
@@ -30,7 +30,7 @@
   |  Branch (LL:11): [True: 8, False: 1]
   ------------------
    LL|      8|        a -= 1;
-   LL|      8|    }
+   LL|       |    }
    LL|      1|}
    LL|       |
    LL|      1|fn while_op_and() {
@@ -45,7 +45,7 @@
   ------------------
    LL|      4|        a -= 1;
    LL|      4|        b -= 1;
-   LL|      4|    }
+   LL|       |    }
    LL|      1|}
    LL|       |
    LL|      1|fn while_op_or() {
@@ -61,7 +61,7 @@
   ------------------
    LL|      8|        a -= 1;
    LL|      8|        b -= 1;
-   LL|      8|    }
+   LL|       |    }
    LL|      1|}
    LL|       |
    LL|       |#[coverage(off)]

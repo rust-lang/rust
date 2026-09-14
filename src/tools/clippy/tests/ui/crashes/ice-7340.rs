@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![allow(clippy::no_effect)]
+#![expect(clippy::no_effect)]
 
 fn main() {
     const CONSTANT: usize = 8;

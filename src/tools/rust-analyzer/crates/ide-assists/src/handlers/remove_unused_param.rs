@@ -31,7 +31,7 @@ use crate::{
 //     frobnicate();
 // }
 // ```
-pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let param: ast::Param = ctx.find_node_at_offset()?;
     let ident_pat = match param.pat()? {
         ast::Pat::IdentPat(it) => it,
@@ -80,7 +80,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
         "Remove unused parameter",
         param.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(&parent);
+            let editor = builder.make_editor(&parent);
             let elements = elements_to_remove(param.syntax());
             for element in elements {
                 editor.delete(element);
@@ -94,7 +94,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
 }
 
 fn process_usages(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     builder: &mut SourceChangeBuilder,
     editioned_file_id: EditionedFileId,
     references: Vec<FileReference>,
@@ -116,7 +116,7 @@ fn process_usages(
         else {
             continue;
         };
-        let mut editor = builder.make_editor(&parent);
+        let editor = builder.make_editor(&parent);
         for element in element_range {
             editor.delete(element);
         }

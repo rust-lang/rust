@@ -2,5 +2,5 @@
 struct X {}
 fn main() {
     let _ = vec![X]; //…
-    //~^ ERROR expected value, found struct `X`
+    //~^ ERROR cannot find value `X` in this scope
 }

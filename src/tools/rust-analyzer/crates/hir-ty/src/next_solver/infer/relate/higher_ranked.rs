@@ -8,7 +8,7 @@ use crate::next_solver::fold::FnMutDelegate;
 use crate::next_solver::infer::InferCtxt;
 use crate::next_solver::{
     Binder, BoundConst, BoundRegion, BoundTy, Const, DbInterner, PlaceholderConst,
-    PlaceholderRegion, PlaceholderTy, Region, Ty,
+    PlaceholderRegion, PlaceholderType, Region, Ty,
 };
 
 impl<'db> InferCtxt<'db> {
@@ -35,23 +35,14 @@ impl<'db> InferCtxt<'db> {
         let next_universe = self.create_next_universe();
 
         let delegate = FnMutDelegate {
-            regions: &mut |br: BoundRegion| {
-                Region::new_placeholder(
-                    self.interner,
-                    PlaceholderRegion { universe: next_universe, bound: br },
-                )
+            regions: &mut |br: BoundRegion<'db>| {
+                Region::new_placeholder(self.interner, PlaceholderRegion::new(next_universe, br))
             },
-            types: &mut |bound_ty: BoundTy| {
-                Ty::new_placeholder(
-                    self.interner,
-                    PlaceholderTy { universe: next_universe, bound: bound_ty },
-                )
+            types: &mut |bound_ty: BoundTy<'db>| {
+                Ty::new_placeholder(self.interner, PlaceholderType::new(next_universe, bound_ty))
             },
-            consts: &mut |bound: BoundConst| {
-                Const::new_placeholder(
-                    self.interner,
-                    PlaceholderConst { universe: next_universe, bound },
-                )
+            consts: &mut |bound: BoundConst<'db>| {
+                Const::new_placeholder(self.interner, PlaceholderConst::new(next_universe, bound))
             },
         };
 

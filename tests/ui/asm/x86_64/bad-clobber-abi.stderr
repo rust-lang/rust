@@ -1,21 +1,21 @@
 error: invalid ABI for `clobber_abi`
-  --> $DIR/bad-clobber-abi.rs:11:18
+  --> $DIR/bad-clobber-abi.rs:16:18
    |
 LL |         asm!("", clobber_abi("foo"));
    |                  ^^^^^^^^^^^^^^^^^^
    |
-   = note: the following ABIs are supported on this target: `C`, `system`, `efiapi`, `win64`, `sysv64`
+   = note: the following ABIs are supported on this target: `C`, `system`, `efiapi`, `win64`, and `sysv64`
 
 error: invalid ABI for `clobber_abi`
-  --> $DIR/bad-clobber-abi.rs:13:35
+  --> $DIR/bad-clobber-abi.rs:18:35
    |
 LL |         asm!("", clobber_abi("C", "foo"));
    |                                   ^^^^^
    |
-   = note: the following ABIs are supported on this target: `C`, `system`, `efiapi`, `win64`, `sysv64`
+   = note: the following ABIs are supported on this target: `C`, `system`, `efiapi`, `win64`, and `sysv64`
 
 error: `C` ABI specified multiple times
-  --> $DIR/bad-clobber-abi.rs:15:35
+  --> $DIR/bad-clobber-abi.rs:20:35
    |
 LL |         asm!("", clobber_abi("C", "C"));
    |                              ---  ^^^
@@ -23,7 +23,7 @@ LL |         asm!("", clobber_abi("C", "C"));
    |                              previously specified here
 
 error: `win64` ABI specified multiple times
-  --> $DIR/bad-clobber-abi.rs:18:39
+  --> $DIR/bad-clobber-abi.rs:23:39
    |
 LL |         asm!("", clobber_abi("win64", "efiapi"));
    |                              -------  ^^^^^^^^
@@ -33,15 +33,15 @@ LL |         asm!("", clobber_abi("win64", "efiapi"));
    = note: these ABIs are equivalent on the current target
 
 error: invalid ABI for `clobber_abi`
-  --> $DIR/bad-clobber-abi.rs:20:35
+  --> $DIR/bad-clobber-abi.rs:25:35
    |
 LL |         asm!("", clobber_abi("C", "foo", "C"));
    |                                   ^^^^^
    |
-   = note: the following ABIs are supported on this target: `C`, `system`, `efiapi`, `win64`, `sysv64`
+   = note: the following ABIs are supported on this target: `C`, `system`, `efiapi`, `win64`, and `sysv64`
 
 error: `C` ABI specified multiple times
-  --> $DIR/bad-clobber-abi.rs:20:42
+  --> $DIR/bad-clobber-abi.rs:25:42
    |
 LL |         asm!("", clobber_abi("C", "foo", "C"));
    |                              ---         ^^^
@@ -49,15 +49,15 @@ LL |         asm!("", clobber_abi("C", "foo", "C"));
    |                              previously specified here
 
 error: invalid ABI for `clobber_abi`
-  --> $DIR/bad-clobber-abi.rs:23:39
+  --> $DIR/bad-clobber-abi.rs:28:39
    |
 LL |         asm!("", clobber_abi("win64", "foo", "efiapi"));
    |                                       ^^^^^
    |
-   = note: the following ABIs are supported on this target: `C`, `system`, `efiapi`, `win64`, `sysv64`
+   = note: the following ABIs are supported on this target: `C`, `system`, `efiapi`, `win64`, and `sysv64`
 
 error: `win64` ABI specified multiple times
-  --> $DIR/bad-clobber-abi.rs:23:46
+  --> $DIR/bad-clobber-abi.rs:28:46
    |
 LL |         asm!("", clobber_abi("win64", "foo", "efiapi"));
    |                              -------         ^^^^^^^^
@@ -67,7 +67,7 @@ LL |         asm!("", clobber_abi("win64", "foo", "efiapi"));
    = note: these ABIs are equivalent on the current target
 
 error: `C` ABI specified multiple times
-  --> $DIR/bad-clobber-abi.rs:26:36
+  --> $DIR/bad-clobber-abi.rs:31:36
    |
 LL |         asm!("", clobber_abi("C"), clobber_abi("C"));
    |                  ----------------  ^^^^^^^^^^^^^^^^
@@ -75,7 +75,7 @@ LL |         asm!("", clobber_abi("C"), clobber_abi("C"));
    |                  previously specified here
 
 error: `win64` ABI specified multiple times
-  --> $DIR/bad-clobber-abi.rs:29:40
+  --> $DIR/bad-clobber-abi.rs:34:40
    |
 LL |         asm!("", clobber_abi("win64"), clobber_abi("efiapi"));
    |                  --------------------  ^^^^^^^^^^^^^^^^^^^^^

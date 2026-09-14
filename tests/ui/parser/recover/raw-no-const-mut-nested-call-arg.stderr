@@ -1,0 +1,15 @@
+error: expected one of `!`, `,`, `.`, `::`, `;`, `?`, `]`, `const`, `mut`, `{`, or an operator, found `2`
+  --> $DIR/raw-no-const-mut-nested-call-arg.rs:4:16
+   |
+LL |     Test([&raw 2])
+   |                ^ expected one of 11 possible tokens
+   |
+help: `&raw` must be followed by `const` or `mut` to be a raw reference expression
+   |
+LL |     Test([&raw const 2])
+   |                +++++
+LL |     Test([&raw mut 2])
+   |                +++
+
+error: aborting due to 1 previous error
+

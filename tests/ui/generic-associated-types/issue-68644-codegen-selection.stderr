@@ -1,4 +1,4 @@
-error[E0277]: expected a `Fn()` closure, found `T`
+error[E0277]: expected an `Fn()` closure, found `T`
   --> $DIR/issue-68644-codegen-selection.rs:12:18
    |
 LL |     type F<'a> = Self;

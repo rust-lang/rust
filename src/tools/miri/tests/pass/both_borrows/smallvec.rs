@@ -2,8 +2,11 @@
 //! What makes it interesting as a test is that it relies on Stacked Borrow's "quirk"
 //! in a fundamental, hard-to-fix-without-full-trees way.
 
-//@revisions: stack tree
+//@revisions: stack tree tree_implicit_writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
+
+#![feature(rustc_attrs)]
 
 use std::marker::PhantomData;
 use std::mem::{ManuallyDrop, MaybeUninit};
@@ -24,6 +27,7 @@ impl<T, const N: usize> RawSmallVec<T, N> {
         Self { inline: ManuallyDrop::new(inline) }
     }
 
+    #[rustc_no_writable]
     const fn as_mut_ptr_inline(&mut self) -> *mut T {
         &raw mut self.inline as *mut T
     }
@@ -77,6 +81,7 @@ impl<T, const N: usize> SmallVec<T, N> {
         size_of::<T>() == 0
     }
 
+    #[rustc_no_writable]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         if self.len.on_heap(Self::is_zst()) {
             // SAFETY: see above

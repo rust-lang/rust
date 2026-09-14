@@ -1,13 +1,14 @@
 use rustc_ast::visit::{visit_opt, walk_list};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
-use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, FnRetTy, LangItem, TyKind, find_attr};
+use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, FnRetTy, TyKind, find_attr};
+use rustc_lint_defs::{declare_lint, impl_lint_pass};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::{Span, sym};
 
-use crate::lints::{DanglingPointersFromLocals, DanglingPointersFromTemporaries};
+use crate::diagnostics::{DanglingPointersFromLocals, DanglingPointersFromTemporaries};
 use crate::{LateContext, LateLintPass};
 
 declare_lint! {
@@ -102,8 +103,8 @@ impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
             && let TyKind::Ptr(_) = ret_ty.kind
         {
             // get the return type of the function or closure
-            let ty = match cx.tcx.type_of(def_id).instantiate_identity().kind() {
-                ty::FnDef(..) => cx.tcx.fn_sig(def_id).instantiate_identity(),
+            let ty = match cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip().kind() {
+                ty::FnDef(..) => cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip(),
                 ty::Closure(_, args) => args.as_closure().sig(),
                 _ => return,
             };
@@ -179,7 +180,7 @@ fn lint_addr_of_local<'a>(
     expr: &'a Expr<'a>,
 ) {
     // peel casts as they do not interest us here, we want the inner expression.
-    let (inner, _) = super::utils::peel_casts(cx, expr);
+    let inner = super::utils::peel_casts(cx, expr);
 
     if let ExprKind::AddrOf(_, _, inner_of) = inner.kind
         && let ExprKind::Path(ref qpath) = inner_of.peel_blocks().kind
@@ -267,7 +268,7 @@ fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let ty = cx.typeck_results().expr_ty(receiver)
         && owns_allocation(cx.tcx, ty)
         && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && find_attr!(cx.tcx, fn_id, RustcAsPtr(_))
+        && find_attr!(cx.tcx, fn_id, RustcAsPtr)
     {
         cx.tcx.emit_node_span_lint(
             DANGLING_POINTERS_FROM_TEMPORARIES,

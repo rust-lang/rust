@@ -1,0 +1,38 @@
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/ice-wrong-span-114865.rs:16:10
+   |
+LL |     foo!("字");
+   |          ^^^^
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/ice-wrong-span-114865.rs:17:10
+   |
+LL |     foo!("r字字");
+   |          ^^^^^^^
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/ice-wrong-span-114865.rs:19:11
+   |
+LL |     foo2!("字");
+   |           ^^^^
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/ice-wrong-span-114865.rs:20:11
+   |
+LL |     foo2!("r字字");
+   |           ^^^^^^^
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/ice-wrong-span-114865.rs:22:11
+   |
+LL |     foo3!(r"abc" 字);
+   |           ^^^^^^^^^
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/ice-wrong-span-114865.rs:24:11
+   |
+LL |     foo4!(r##"abcd"## 字);
+   |           ^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

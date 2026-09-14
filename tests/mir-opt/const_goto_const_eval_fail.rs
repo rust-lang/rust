@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 #![feature(min_const_generics)]
 #![crate_type = "lib"]
 

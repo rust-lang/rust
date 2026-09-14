@@ -1,4 +1,4 @@
-error: Undefined Behavior: writing to ALLOC which is read-only
+error: Undefined Behavior: constructing invalid value of type &mut usize: encountered mutable reference pointing to read-only memory
   --> tests/fail/stacked_borrows/static_memory_modification.rs:LL:CC
    |
 LL |         std::mem::transmute::<&usize, &mut usize>(&X)

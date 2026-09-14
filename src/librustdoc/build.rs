@@ -27,7 +27,7 @@ fn main() {
         "static/fonts/FiraSans-MediumItalic.woff2",
         "static/fonts/FiraMono-Regular.woff2",
         "static/fonts/FiraMono-Medium.woff2",
-        "static/fonts/FiraSans-LICENSE.txt",
+        "static/fonts/Fira-LICENSE.txt",
         "static/fonts/SourceSerif4-Regular.ttf.woff2",
         "static/fonts/SourceSerif4-Semibold.ttf.woff2",
         "static/fonts/SourceSerif4-Bold.ttf.woff2",
@@ -55,12 +55,9 @@ fn main() {
         let minified_path = std::path::PathBuf::from(format!("{out_dir}/{path}.min"));
         if path.ends_with(".js") || path.ends_with(".css") {
             let minified: String = if path.ends_with(".css") {
-                minifier::css::minify(str::from_utf8(&data_bytes).unwrap())
-                    .unwrap()
-                    .to_string()
-                    .into()
+                minifier::css::minify(str::from_utf8(&data_bytes).unwrap()).unwrap().to_string()
             } else {
-                minifier::js::minify(str::from_utf8(&data_bytes).unwrap()).to_string().into()
+                minifier::js::minify(str::from_utf8(&data_bytes).unwrap()).unwrap().to_string()
             };
             std::fs::write(&minified_path, minified.as_bytes()).expect("write to out_dir");
         } else {

@@ -204,12 +204,11 @@ fn const_eval_select() {
     check_number(
         r#"
         //- minicore: fn
-        extern "rust-intrinsic" {
-            pub fn const_eval_select<ARG, F, G, RET>(arg: ARG, called_in_const: F, called_at_rt: G) -> RET
-            where
-                G: FnOnce<ARG, Output = RET>,
-                F: FnOnce<ARG, Output = RET>;
-        }
+        #[rustc_intrinsic]
+        pub fn const_eval_select<ARG, F, G, RET>(arg: ARG, called_in_const: F, called_at_rt: G) -> RET
+        where
+            G: FnOnce<ARG, Output = RET>,
+            F: FnOnce<ARG, Output = RET>;
 
         const fn in_const(x: i32, y: i32) -> i32 {
             x + y
@@ -226,12 +225,33 @@ fn const_eval_select() {
 }
 
 #[test]
+fn const_allocate() {
+    check_number(
+        r#"
+        //- minicore: fn
+        #[rustc_intrinsic]
+        pub const unsafe fn const_allocate(size: usize, align: usize) -> *mut u8;
+        #[rustc_intrinsic]
+        pub const unsafe fn const_deallocate(ptr: *mut u8, size: usize, align: usize);
+
+        const GOAL: u8 = unsafe {
+            let ptr = const_allocate(4, 4);
+            *ptr = 5;
+            let value = *ptr;
+            const_deallocate(ptr, 4, 4);
+            value
+        };
+        "#,
+        5,
+    );
+}
+
+#[test]
 fn wrapping_add() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn wrapping_add<T>(a: T, b: T) -> T;
-        }
+        #[rustc_intrinsic]
+        pub fn wrapping_add<T>(a: T, b: T) -> T;
 
         const GOAL: u8 = wrapping_add(10, 250);
         "#,
@@ -244,10 +264,10 @@ fn ptr_offset_from() {
     check_number(
         r#"
         //- minicore: index, slice, coerce_unsized
-        extern "rust-intrinsic" {
-            pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
-            pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
-        }
+        #[rustc_intrinsic]
+        pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
+        #[rustc_intrinsic]
+        pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
 
         const GOAL: isize = {
             let x = [1, 2, 3, 4, 5i32];
@@ -265,9 +285,8 @@ fn ptr_offset_from() {
 fn saturating() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn saturating_add<T>(a: T, b: T) -> T;
-        }
+        #[rustc_intrinsic]
+        pub fn saturating_add<T>(a: T, b: T) -> T;
 
         const GOAL: u8 = saturating_add(10, 250);
         "#,
@@ -275,9 +294,8 @@ fn saturating() {
     );
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn saturating_sub<T>(a: T, b: T) -> T;
-        }
+        #[rustc_intrinsic]
+        pub fn saturating_sub<T>(a: T, b: T) -> T;
 
         const GOAL: bool = saturating_sub(5u8, 7) == 0 && saturating_sub(8u8, 4) == 4;
         "#,
@@ -285,9 +303,8 @@ fn saturating() {
     );
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn saturating_add<T>(a: T, b: T) -> T;
-        }
+        #[rustc_intrinsic]
+        pub fn saturating_add<T>(a: T, b: T) -> T;
 
         const GOAL: i8 = saturating_add(5, 8);
         "#,
@@ -330,9 +347,8 @@ fn allocator() {
 fn overflowing_add() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn add_with_overflow<T>(x: T, y: T) -> (T, bool);
-        }
+        #[rustc_intrinsic]
+        pub fn add_with_overflow<T>(x: T, y: T) -> (T, bool);
 
         const GOAL: u8 = add_with_overflow(1, 2).0;
         "#,
@@ -340,9 +356,8 @@ fn overflowing_add() {
     );
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn add_with_overflow<T>(x: T, y: T) -> (T, bool);
-        }
+        #[rustc_intrinsic]
+        pub fn add_with_overflow<T>(x: T, y: T) -> (T, bool);
 
         const GOAL: u8 = add_with_overflow(1, 2).1 as u8;
         "#,
@@ -357,9 +372,8 @@ fn needs_drop() {
         //- minicore: drop, manually_drop, copy, sized, phantom_data
         use core::mem::ManuallyDrop;
         use core::marker::PhantomData;
-        extern "rust-intrinsic" {
-            pub fn needs_drop<T: ?Sized>() -> bool;
-        }
+        #[rustc_intrinsic]
+        pub fn needs_drop<T: ?Sized>() -> bool;
         struct X;
         struct NeedsDrop;
         impl Drop for NeedsDrop {
@@ -405,9 +419,8 @@ fn discriminant_value() {
         r#"
         //- minicore: discriminant, option
         use core::marker::DiscriminantKind;
-        extern "rust-intrinsic" {
-            pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
-        }
+        #[rustc_intrinsic]
+        pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
         const GOAL: bool = {
             discriminant_value(&Some(2i32)) == discriminant_value(&Some(5i32))
                 && discriminant_value(&Some(2i32)) != discriminant_value(&None::<i32>)
@@ -442,33 +455,36 @@ fn floating_point() {
     // FIXME(#17451): Add `f16` and `f128` tests once intrinsics are added.
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn sqrtf32(x: f32) -> f32;
-            pub fn powf32(a: f32, x: f32) -> f32;
-            pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
-        }
+        #[rustc_intrinsic]
+        pub fn sqrtf32(x: f32) -> f32;
+        #[rustc_intrinsic]
+        pub fn powf32(a: f32, x: f32) -> f32;
+        #[rustc_intrinsic]
+        pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
 
         const GOAL: f32 = sqrtf32(1.2) + powf32(3.4, 5.6) + fmaf32(-7.8, 1.3, 2.4);
         "#,
         i128::from_le_bytes(pad16(
             &f32::to_le_bytes(1.2f32.sqrt() + 3.4f32.powf(5.6) + (-7.8f32).mul_add(1.3, 2.4)),
-            true,
+            IsSigned::Yes,
         )),
     );
-    #[allow(unknown_lints, clippy::unnecessary_min_or_max)]
+    // FIXME: this should be an `expect`, but that currently results in `lint_expectation_unfulfilled`
+    #[allow(clippy::unnecessary_min_or_max, reason = "for symmetry with the expression in `GOAL`")]
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn powif64(a: f64, x: i32) -> f64;
-            pub fn sinf64(x: f64) -> f64;
-            pub fn minnumf64(x: f64, y: f64) -> f64;
-        }
+        #[rustc_intrinsic]
+        pub fn powif64(a: f64, x: i32) -> f64;
+        #[rustc_intrinsic]
+        pub fn sinf64(x: f64) -> f64;
+        #[rustc_intrinsic]
+        pub fn minnumf64(x: f64, y: f64) -> f64;
 
         const GOAL: f64 = powif64(1.2, 5) + sinf64(3.4) + minnumf64(-7.8, 1.3);
         "#,
         i128::from_le_bytes(pad16(
             &f64::to_le_bytes(1.2f64.powi(5) + 3.4f64.sin() + (-7.8f64).min(1.3)),
-            true,
+            IsSigned::Yes,
         )),
     );
 }
@@ -478,21 +494,32 @@ fn atomic() {
     check_number(
         r#"
         //- minicore: copy
-        extern "rust-intrinsic" {
-            pub fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
-            pub fn atomic_xchg_acquire<T: Copy>(dst: *mut T, src: T) -> T;
-            pub fn atomic_cxchg_release_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-            pub fn atomic_cxchgweak_acquire_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-            pub fn atomic_store_release<T: Copy>(dst: *mut T, val: T);
-            pub fn atomic_xadd_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-            pub fn atomic_xsub_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-            pub fn atomic_and_acquire<T: Copy>(dst: *mut T, src: T) -> T;
-            pub fn atomic_nand_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-            pub fn atomic_or_release<T: Copy>(dst: *mut T, src: T) -> T;
-            pub fn atomic_xor_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-            pub fn atomic_fence_seqcst();
-            pub fn atomic_singlethreadfence_acqrel();
-        }
+        #[rustc_intrinsic]
+        pub fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
+        #[rustc_intrinsic]
+        pub fn atomic_xchg_acquire<T: Copy>(dst: *mut T, src: T) -> T;
+        #[rustc_intrinsic]
+        pub fn atomic_cxchg_release_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+        #[rustc_intrinsic]
+        pub fn atomic_cxchgweak_acquire_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+        #[rustc_intrinsic]
+        pub fn atomic_store_release<T: Copy>(dst: *mut T, val: T);
+        #[rustc_intrinsic]
+        pub fn atomic_xadd_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
+        #[rustc_intrinsic]
+        pub fn atomic_xsub_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
+        #[rustc_intrinsic]
+        pub fn atomic_and_acquire<T: Copy>(dst: *mut T, src: T) -> T;
+        #[rustc_intrinsic]
+        pub fn atomic_nand_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
+        #[rustc_intrinsic]
+        pub fn atomic_or_release<T: Copy>(dst: *mut T, src: T) -> T;
+        #[rustc_intrinsic]
+        pub fn atomic_xor_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
+        #[rustc_intrinsic]
+        pub fn atomic_fence_seqcst();
+        #[rustc_intrinsic]
+        pub fn atomic_singlethreadfence_acqrel();
 
         fn should_not_reach() {
             _ // fails the test if executed
@@ -528,10 +555,10 @@ fn offset() {
     check_number(
         r#"
         //- minicore: coerce_unsized, index, slice
-        extern "rust-intrinsic" {
-            pub fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
-            pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
-        }
+        #[rustc_intrinsic]
+        pub fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
+        #[rustc_intrinsic]
+        pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
         const GOAL: i32 = unsafe {
             let ar: &[(i32, i32, i32)] = &[
@@ -557,9 +584,8 @@ fn arith_offset() {
     check_number(
         r#"
         //- minicore: coerce_unsized, index, slice
-        extern "rust-intrinsic" {
-            pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
-        }
+        #[rustc_intrinsic]
+        pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
         const GOAL: u8 = unsafe {
             let ar: &[(u8, u8, u8)] = &[
@@ -583,9 +609,8 @@ fn arith_offset() {
 fn copy_nonoverlapping() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
-        }
+        #[rustc_intrinsic]
+        pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
         const GOAL: u8 = unsafe {
             let mut x = 2;
@@ -602,9 +627,8 @@ fn copy_nonoverlapping() {
 fn write_bytes() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
-        }
+        #[rustc_intrinsic]
+        fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 
         const GOAL: i32 = unsafe {
             let mut x = 2;
@@ -620,9 +644,8 @@ fn write_bytes() {
 fn write_via_move() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            fn write_via_move<T>(ptr: *mut T, value: T);
-        }
+        #[rustc_intrinsic]
+        fn write_via_move<T>(ptr: *mut T, value: T);
 
         const GOAL: i32 = unsafe {
             let mut x = 2;
@@ -639,9 +662,8 @@ fn copy() {
     check_number(
         r#"
         //- minicore: coerce_unsized, index, slice
-        extern "rust-intrinsic" {
-            pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
-        }
+        #[rustc_intrinsic]
+        pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
 
         const GOAL: i32 = unsafe {
             let mut x = [1i32, 2, 3, 4, 5];
@@ -659,9 +681,8 @@ fn copy() {
 fn ctpop() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn ctpop<T: Copy>(x: T) -> T;
-        }
+        #[rustc_intrinsic]
+        pub fn ctpop<T: Copy>(x: T) -> T;
 
         const GOAL: i64 = ctpop(-29);
         "#,
@@ -673,9 +694,8 @@ fn ctpop() {
 fn ctlz() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn ctlz<T: Copy>(x: T) -> T;
-        }
+        #[rustc_intrinsic]
+        pub fn ctlz<T: Copy>(x: T) -> T;
 
         const GOAL: u8 = ctlz(0b0001_1100_u8);
         "#,
@@ -687,13 +707,39 @@ fn ctlz() {
 fn cttz() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn cttz<T: Copy>(x: T) -> T;
-        }
+        #[rustc_intrinsic]
+        pub fn cttz<T: Copy>(x: T) -> T;
 
         const GOAL: i64 = cttz(-24);
         "#,
         3,
+    );
+    check_number(
+        r#"
+        #[rustc_intrinsic]
+        pub fn cttz<T: Copy>(x: T) -> T;
+
+        const GOAL: i8 = cttz(0i8);
+        "#,
+        8,
+    );
+    check_number(
+        r#"
+        #[rustc_intrinsic]
+        pub fn cttz<T: Copy>(x: T) -> T;
+
+        const GOAL: u32 = cttz(0u32);
+        "#,
+        32,
+    );
+    check_number(
+        r#"
+        #[rustc_intrinsic]
+        pub fn cttz<T: Copy>(x: T) -> T;
+
+        const GOAL: u64 = cttz(0u64);
+        "#,
+        64,
     );
 }
 
@@ -701,9 +747,8 @@ fn cttz() {
 fn rotate() {
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn rotate_left<T: Copy>(x: T, y: T) -> T;
-        }
+        #[rustc_intrinsic]
+        pub fn rotate_left<T: Copy>(x: T, y: T) -> T;
 
         const GOAL: i64 = rotate_left(0xaa00000000006e1i64, 12);
         "#,
@@ -711,9 +756,8 @@ fn rotate() {
     );
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn rotate_right<T: Copy>(x: T, y: T) -> T;
-        }
+        #[rustc_intrinsic]
+        pub fn rotate_right<T: Copy>(x: T, y: T) -> T;
 
         const GOAL: i64 = rotate_right(0x6e10aa, 12);
         "#,
@@ -721,9 +765,8 @@ fn rotate() {
     );
     check_number(
         r#"
-        extern "rust-intrinsic" {
-            pub fn rotate_left<T: Copy>(x: T, y: T) -> T;
-        }
+        #[rustc_intrinsic]
+        pub fn rotate_left<T: Copy>(x: T, y: T) -> T;
 
         const GOAL: i8 = rotate_left(129, 2);
         "#,

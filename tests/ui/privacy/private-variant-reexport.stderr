@@ -22,13 +22,11 @@ note: consider marking `V` as `pub` in the imported module
 LL |     pub use ::E::{V};
    |                   ^
 
-error[E0365]: `V` is only public within the crate, and cannot be re-exported outside
-  --> $DIR/private-variant-reexport.rs:11:22
+error[E0432]: unresolved import `E::V`
+  --> $DIR/private-variant-reexport.rs:11:18
    |
 LL |     pub use ::E::V::{self};
-   |                      ^^^^ re-export of crate public `V`
-   |
-   = note: consider declaring type or module `V` with `pub`
+   |                  ^ `V` is a variant, not a module
 
 error: glob import doesn't reexport anything with visibility `pub` because no imported item is public enough
   --> $DIR/private-variant-reexport.rs:16:13
@@ -56,5 +54,5 @@ LL |     pub use ::E::*;
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0364, E0365.
+Some errors have detailed explanations: E0364, E0432.
 For more information about an error, try `rustc --explain E0364`.

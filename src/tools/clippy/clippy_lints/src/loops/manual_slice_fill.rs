@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::{HasSession, snippet_with_applicability};
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, is_slice_like};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{higher, peel_blocks_with_stmt, span_contains_comment};
@@ -13,6 +13,7 @@ use rustc_hir::QPath::Resolved;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, Pat};
 use rustc_lint::LateContext;
+use rustc_middle::ty;
 use rustc_span::{Spanned, sym};
 
 use super::MANUAL_SLICE_FILL;
@@ -29,9 +30,10 @@ pub(super) fn check<'tcx>(
     if let Some(higher::Range {
         start: Some(start),
         end: Some(end),
-        limits: RangeLimits::HalfOpen,
+        ty: range_ty,
         span: _,
     }) = higher::Range::hir(cx, arg)
+        && let RangeLimits::HalfOpen = range_ty.limits()
         && let ExprKind::Lit(Spanned {
             node: LitKind::Int(Pu128(0), _),
             ..
@@ -84,6 +86,24 @@ pub(super) fn check<'tcx>(
     {
         sugg(cx, body, expr, recv_path.span, assignval.span);
     }
+    // `for slot in s { *slot = value; }` where `s` is already `&mut [T; N]`
+    else if let ExprKind::Assign(assignee, assignval, _) = peel_blocks_with_stmt(body).kind
+        && let ExprKind::Unary(UnOp::Deref, slice_iter) = assignee.kind
+        && let ExprKind::Path(Resolved(_, slice_path)) = slice_iter.kind
+        && let Res::Local(local) = slice_path.res
+        && local == pat.hir_id
+        && !assignval.span.from_expansion()
+        && switch_to_eager_eval(cx, assignval)
+        && !is_local_used(cx, assignval, local)
+        && let arg_ty = cx.typeck_results().expr_ty(arg)
+        && let ty::Ref(_, inner_ty, rustc_ast::Mutability::Mut) = arg_ty.kind()
+        && is_slice_like(cx, *inner_ty)
+        && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
+        && implements_trait(cx, *inner_ty, clone_trait, &[])
+        && msrv.meets(cx, msrvs::SLICE_FILL)
+    {
+        sugg(cx, body, expr, arg.span, assignval.span);
+    }
 }
 
 fn sugg<'tcx>(
@@ -93,7 +113,7 @@ fn sugg<'tcx>(
     slice_span: rustc_span::Span,
     assignval_span: rustc_span::Span,
 ) {
-    let mut app = if span_contains_comment(cx.sess().source_map(), body.span) {
+    let mut app = if span_contains_comment(cx, body.span) {
         Applicability::MaybeIncorrect // Comments may be informational.
     } else {
         Applicability::MachineApplicable

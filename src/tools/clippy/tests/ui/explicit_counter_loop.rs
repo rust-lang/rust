@@ -1,5 +1,5 @@
 #![warn(clippy::explicit_counter_loop)]
-#![allow(clippy::useless_vec)]
+#![expect(clippy::useless_vec)]
 //@no-rustfix: suggestion does not remove the `+= 1`
 fn main() {
     let mut vec = vec![1, 2, 3, 4];
@@ -330,5 +330,57 @@ fn issue16640(x: &[u8]) {
     let mut priority = Priority(1);
     for _val in x {
         priority += 1;
+    }
+}
+
+pub fn issue_16642() {
+    let mut base = 100;
+    const MAX: usize = 10;
+    for _ in 0..MAX {
+        //~^ explicit_counter_loop
+        base += 1;
+    }
+
+    let mut base = 100;
+
+    let nums = vec![1, 2, 3, 4];
+    for _ in nums {
+        //~^ explicit_counter_loop
+        base += 1;
+    }
+
+    // inclusive range: should not suggest .take()
+    let mut base = 100;
+    for _ in 0..=MAX {
+        //~^ explicit_counter_loop
+        base += 1;
+    }
+
+    // non-zero start: should not suggest .take(), falls through to zip
+    let mut base = 100;
+    for _ in 5..MAX {
+        //~^ explicit_counter_loop
+        base += 1;
+    }
+}
+
+fn issue_17014(v: Vec<u8>) {
+    let mut count = 0;
+    for item in &v {
+        let Some(_) = Some(0) else {
+            count += 1;
+            continue;
+        };
+    }
+
+    let mut count = 0;
+    for item in &v {
+        //~^ explicit_counter_loop
+        let Some(_) = ({
+            count += 1;
+            Some(0)
+        }) else {
+            continue;
+        };
     }
 }

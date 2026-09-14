@@ -37,11 +37,11 @@ pub mod pre {
 pub mod post {
     // issue: <https://github.com/rust-lang/rust/issues/113982>
     //@ has 'it/post/index.html' '//*[@class="stab portability"]' 'extra'
-    //@ has - '//*[@class="stab portability"]' 'extra and extension'
+    //@ has - '//*[@class="stab portability"]' 'extension and extra'
     //@ has 'it/post/struct.Type.html' '//*[@class="stab portability"]' \
     //      'Available on crate feature extra only.'
     //@ has 'it/post/fn.compute.html' '//*[@class="stab portability"]' \
-    //      'Available on crate feature extra and extension only.'
+    //      'Available on extension and crate feature extra only.'
     #[cfg(feature = "extra")]
     pub use doc_auto_cfg::*;
 

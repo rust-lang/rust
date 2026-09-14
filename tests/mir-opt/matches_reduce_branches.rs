@@ -679,7 +679,7 @@ fn match_i128_u128(i: EnumAi128) -> u128 {
 fn match_option(i: &Option<i32>) -> Option<i32> {
     // CHECK-LABEL: fn match_option(
     // CHECK-NOT: switchInt
-    // CHECK: _0 = copy (*_1);
+    // CHECK: _0 = no_retag copy (*_1);
     match i {
         Some(_) => *i,
         None => None,

@@ -10,7 +10,7 @@ For a given vector math operation on TxN, please add tests for interactions with
   - [ ] 0
 
 
-For a given vector math operation on TxN where T is a float, please add tests for test interactions with:
+For a given vector math operation on TxN where T is a float, please add tests for interactions with:
   - [ ] a really large number, larger than the mantissa
   - [ ] a really small "subnormal" number
   - [ ] NaN

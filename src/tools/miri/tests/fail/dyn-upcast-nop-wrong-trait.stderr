@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: wrong trait in wide pointer vtable: expected `std::fmt::Debug + std::marker::Send + std::marker::Sync`, but encountered `std::fmt::Display`
+error: Undefined Behavior: constructing invalid value of type *const dyn std::fmt::Debug + std::marker::Send + std::marker::Sync: wrong trait in wide pointer vtable: expected `std::fmt::Debug + std::marker::Send + std::marker::Sync`, but encountered `std::fmt::Display`
   --> tests/fail/dyn-upcast-nop-wrong-trait.rs:LL:CC
    |
 LL |     let ptr: *const (dyn fmt::Debug + Send + Sync) = unsafe { std::mem::transmute(ptr) };

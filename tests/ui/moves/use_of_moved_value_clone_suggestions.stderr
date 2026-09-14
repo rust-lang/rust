@@ -1,13 +1,14 @@
-error[E0382]: use of moved value: `t`
+error[E0382]: the type `Rc` does not implement `Copy`
   --> $DIR/use_of_moved_value_clone_suggestions.rs:3:9
    |
 LL | fn duplicate_rc<T>(t: std::rc::Rc<T>) -> (std::rc::Rc<T>, std::rc::Rc<T>) {
-   |                    - move occurs because `t` has type `Rc<T>`, which does not implement the `Copy` trait
+   |                    - this move could be avoided by cloning the original `Rc`, which is inexpensive
 LL |     (t, t)
    |      -  ^ value used here after move
    |      |
    |      value moved here
    |
+   = note: consider using `Rc::clone`
 help: clone the value to increment its reference count
    |
 LL |     (t.clone(), t)

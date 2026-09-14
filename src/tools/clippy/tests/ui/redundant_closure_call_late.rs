@@ -1,7 +1,5 @@
 // non rustfixable, see redundant_closure_call_fixable.rs
-
 #![warn(clippy::redundant_closure_call)]
-#![allow(clippy::needless_late_init)]
 
 fn main() {
     let mut i = 1;

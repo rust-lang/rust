@@ -1,11 +1,11 @@
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:9:19
+  --> tests/ui/manual_find_map.rs:7:19
    |
 LL |     let _ = (0..).find(|n| to_opt(*n).is_some()).map(|a| to_opt(a).unwrap());
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|a| to_opt(a))`
    |
 note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
-  --> tests/ui/manual_find_map.rs:9:28
+  --> tests/ui/manual_find_map.rs:7:28
    |
 LL |     let _ = (0..).find(|n| to_opt(*n).is_some()).map(|a| to_opt(a).unwrap());
    |                            ^^^^^^^^^^
@@ -13,31 +13,31 @@ LL |     let _ = (0..).find(|n| to_opt(*n).is_some()).map(|a| to_opt(a).unwrap()
    = help: to override `-D warnings` add `#[allow(clippy::manual_find_map)]`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:13:19
+  --> tests/ui/manual_find_map.rs:11:19
    |
 LL |     let _ = (0..).find(|&n| to_opt(n).is_some()).map(|a| to_opt(a).expect("hi"));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|a| to_opt(a))`
    |
 note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
-  --> tests/ui/manual_find_map.rs:13:29
+  --> tests/ui/manual_find_map.rs:11:29
    |
 LL |     let _ = (0..).find(|&n| to_opt(n).is_some()).map(|a| to_opt(a).expect("hi"));
    |                             ^^^^^^^^^
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:17:19
+  --> tests/ui/manual_find_map.rs:15:19
    |
 LL |     let _ = (0..).find(|&n| to_res(n).is_ok()).map(|a| to_res(a).unwrap_or(1));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|a| to_res(a).ok())`
    |
 note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
-  --> tests/ui/manual_find_map.rs:17:29
+  --> tests/ui/manual_find_map.rs:15:29
    |
 LL |     let _ = (0..).find(|&n| to_res(n).is_ok()).map(|a| to_res(a).unwrap_or(1));
    |                             ^^^^^^^^^
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:21:10
+  --> tests/ui/manual_find_map.rs:19:10
    |
 LL |           .find(|&x| to_ref(to_opt(x)).is_some())
    |  __________^
@@ -46,13 +46,13 @@ LL | |         .map(|y| to_ref(to_opt(y)).unwrap());
    | |____________________________________________^ help: try: `find_map(|y| *to_ref(to_opt(y)))`
    |
 note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
-  --> tests/ui/manual_find_map.rs:21:20
+  --> tests/ui/manual_find_map.rs:19:20
    |
 LL |         .find(|&x| to_ref(to_opt(x)).is_some())
    |                    ^^^^^^^^^^^^^^^^^
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:25:10
+  --> tests/ui/manual_find_map.rs:23:10
    |
 LL |           .find(|x| to_ref(to_opt(*x)).is_some())
    |  __________^
@@ -61,13 +61,13 @@ LL | |         .map(|y| to_ref(to_opt(y)).unwrap());
    | |____________________________________________^ help: try: `find_map(|y| *to_ref(to_opt(y)))`
    |
 note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
-  --> tests/ui/manual_find_map.rs:25:19
+  --> tests/ui/manual_find_map.rs:23:19
    |
 LL |         .find(|x| to_ref(to_opt(*x)).is_some())
    |                   ^^^^^^^^^^^^^^^^^^
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:30:10
+  --> tests/ui/manual_find_map.rs:28:10
    |
 LL |           .find(|&x| to_ref(to_res(x)).is_ok())
    |  __________^
@@ -76,13 +76,13 @@ LL | |         .map(|y| to_ref(to_res(y)).unwrap());
    | |____________________________________________^ help: try: `find_map(|y| to_ref(to_res(y)).ok())`
    |
 note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
-  --> tests/ui/manual_find_map.rs:30:20
+  --> tests/ui/manual_find_map.rs:28:20
    |
 LL |         .find(|&x| to_ref(to_res(x)).is_ok())
    |                    ^^^^^^^^^^^^^^^^^
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:34:10
+  --> tests/ui/manual_find_map.rs:32:10
    |
 LL |           .find(|x| to_ref(to_res(*x)).is_ok())
    |  __________^
@@ -91,109 +91,109 @@ LL | |         .map(|y| to_ref(to_res(y)).unwrap());
    | |____________________________________________^ help: try: `find_map(|y| to_ref(to_res(y)).ok())`
    |
 note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
-  --> tests/ui/manual_find_map.rs:34:19
+  --> tests/ui/manual_find_map.rs:32:19
    |
 LL |         .find(|x| to_ref(to_res(*x)).is_ok())
    |                   ^^^^^^^^^^^^^^^^^^
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:41:26
+  --> tests/ui/manual_find_map.rs:39:26
    |
 LL |     iter::<Option<u8>>().find(|x| x.is_some()).map(|x| x.unwrap());
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x)`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:43:27
+  --> tests/ui/manual_find_map.rs:41:27
    |
 LL |     iter::<&Option<u8>>().find(|x| x.is_some()).map(|x| x.unwrap());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| *x)`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:45:28
+  --> tests/ui/manual_find_map.rs:43:28
    |
 LL |     iter::<&&Option<u8>>().find(|x| x.is_some()).map(|x| x.unwrap());
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| **x)`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:47:27
+  --> tests/ui/manual_find_map.rs:45:27
    |
 LL |     iter::<Option<&u8>>().find(|x| x.is_some()).map(|x| x.cloned().unwrap());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.cloned())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:49:28
+  --> tests/ui/manual_find_map.rs:47:28
    |
 LL |     iter::<&Option<&u8>>().find(|x| x.is_some()).map(|x| x.cloned().unwrap());
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.cloned())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:51:31
+  --> tests/ui/manual_find_map.rs:49:31
    |
 LL |     iter::<&Option<String>>().find(|x| x.is_some()).map(|x| x.as_deref().unwrap());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.as_deref())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:53:31
+  --> tests/ui/manual_find_map.rs:51:31
    |
 LL |     iter::<Option<&String>>().find(|&x| to_ref(x).is_some()).map(|y| to_ref(y).cloned().unwrap());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|y| to_ref(y).cloned())`
    |
 note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
-  --> tests/ui/manual_find_map.rs:53:41
+  --> tests/ui/manual_find_map.rs:51:41
    |
 LL |     iter::<Option<&String>>().find(|&x| to_ref(x).is_some()).map(|y| to_ref(y).cloned().unwrap());
    |                                         ^^^^^^^^^
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:56:30
+  --> tests/ui/manual_find_map.rs:54:30
    |
 LL |     iter::<Result<u8, ()>>().find(|x| x.is_ok()).map(|x| x.unwrap());
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:58:31
+  --> tests/ui/manual_find_map.rs:56:31
    |
 LL |     iter::<&Result<u8, ()>>().find(|x| x.is_ok()).map(|x| x.unwrap());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:60:32
+  --> tests/ui/manual_find_map.rs:58:32
    |
 LL |     iter::<&&Result<u8, ()>>().find(|x| x.is_ok()).map(|x| x.unwrap());
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:62:31
+  --> tests/ui/manual_find_map.rs:60:31
    |
 LL |     iter::<Result<&u8, ()>>().find(|x| x.is_ok()).map(|x| x.cloned().unwrap());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.cloned().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:64:32
+  --> tests/ui/manual_find_map.rs:62:32
    |
 LL |     iter::<&Result<&u8, ()>>().find(|x| x.is_ok()).map(|x| x.cloned().unwrap());
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.cloned().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:66:35
+  --> tests/ui/manual_find_map.rs:64:35
    |
 LL |     iter::<&Result<String, ()>>().find(|x| x.is_ok()).map(|x| x.as_deref().unwrap());
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|x| x.as_deref().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:68:35
+  --> tests/ui/manual_find_map.rs:66:35
    |
 LL |     iter::<Result<&String, ()>>().find(|&x| to_ref(x).is_ok()).map(|y| to_ref(y).cloned().unwrap());
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `find_map(|y| to_ref(y).cloned().ok())`
    |
 note: the suggestion might change the behavior of the program when merging `filter` and `map`, because this expression potentially contains side effects and will only execute once
-  --> tests/ui/manual_find_map.rs:68:45
+  --> tests/ui/manual_find_map.rs:66:45
    |
 LL |     iter::<Result<&String, ()>>().find(|&x| to_ref(x).is_ok()).map(|y| to_ref(y).cloned().unwrap());
    |                                             ^^^^^^^^^
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:117:10
+  --> tests/ui/manual_find_map.rs:115:10
    |
 LL |           .find(|f| f.option_field.is_some())
    |  __________^
@@ -202,7 +202,7 @@ LL | |         .map(|f| f.option_field.clone().unwrap());
    | |_________________________________________________^ help: try: `find_map(|f| f.option_field.clone())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:123:10
+  --> tests/ui/manual_find_map.rs:121:10
    |
 LL |           .find(|f| f.ref_field.is_some())
    |  __________^
@@ -211,7 +211,7 @@ LL | |         .map(|f| f.ref_field.cloned().unwrap());
    | |_______________________________________________^ help: try: `find_map(|f| f.ref_field.cloned())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:129:10
+  --> tests/ui/manual_find_map.rs:127:10
    |
 LL |           .find(|f| f.ref_field.is_some())
    |  __________^
@@ -220,7 +220,7 @@ LL | |         .map(|f| f.ref_field.copied().unwrap());
    | |_______________________________________________^ help: try: `find_map(|f| f.ref_field.copied())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:135:10
+  --> tests/ui/manual_find_map.rs:133:10
    |
 LL |           .find(|f| f.result_field.is_ok())
    |  __________^
@@ -229,7 +229,7 @@ LL | |         .map(|f| f.result_field.clone().unwrap());
    | |_________________________________________________^ help: try: `find_map(|f| f.result_field.clone().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:141:10
+  --> tests/ui/manual_find_map.rs:139:10
    |
 LL |           .find(|f| f.result_field.is_ok())
    |  __________^
@@ -238,7 +238,7 @@ LL | |         .map(|f| f.result_field.as_ref().unwrap());
    | |__________________________________________________^ help: try: `find_map(|f| f.result_field.as_ref().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:147:10
+  --> tests/ui/manual_find_map.rs:145:10
    |
 LL |           .find(|f| f.result_field.is_ok())
    |  __________^
@@ -247,7 +247,7 @@ LL | |         .map(|f| f.result_field.as_deref().unwrap());
    | |____________________________________________________^ help: try: `find_map(|f| f.result_field.as_deref().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:153:10
+  --> tests/ui/manual_find_map.rs:151:10
    |
 LL |           .find(|f| f.result_field.is_ok())
    |  __________^
@@ -256,7 +256,7 @@ LL | |         .map(|f| f.result_field.as_mut().unwrap());
    | |__________________________________________________^ help: try: `find_map(|f| f.result_field.as_mut().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:159:10
+  --> tests/ui/manual_find_map.rs:157:10
    |
 LL |           .find(|f| f.result_field.is_ok())
    |  __________^
@@ -265,7 +265,7 @@ LL | |         .map(|f| f.result_field.as_deref_mut().unwrap());
    | |________________________________________________________^ help: try: `find_map(|f| f.result_field.as_deref_mut().ok())`
 
 error: `find(..).map(..)` can be simplified as `find_map(..)`
-  --> tests/ui/manual_find_map.rs:165:10
+  --> tests/ui/manual_find_map.rs:163:10
    |
 LL |           .find(|f| f.result_field.is_ok())
    |  __________^

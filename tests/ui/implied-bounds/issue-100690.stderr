@@ -1,4 +1,4 @@
-error[E0277]: expected a `FnOnce(&mut UIView<'_, T>)` closure, found `F`
+error[E0277]: expected an `FnOnce(&mut UIView<'_, T>)` closure, found `F`
   --> $DIR/issue-100690.rs:34:23
    |
 LL |         real_dispatch(f)

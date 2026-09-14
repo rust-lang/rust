@@ -1,4 +1,5 @@
-//@compile-flags: -Zmiri-permissive-provenance
+// We have to disable `RemoveStorageMarkers` as that kills re-allocating the local in the loop.
+//@compile-flags: -Zmiri-permissive-provenance -Zmir-enable-passes=-RemoveStorageMarkers
 
 fn ensure_allocs_can_be_adjacent() {
     for _ in 0..512 {

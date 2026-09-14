@@ -2,7 +2,9 @@ error[E0432]: unresolved import `empty::issue_56125`
   --> $DIR/issue-56125.rs:17:9
    |
 LL |     use empty::issue_56125;
-   |         ^^^^^^^^^^^^^^^^^^ no `issue_56125` in `m3::empty`
+   |         ^^^^^^^-----------
+   |                |
+   |                no `issue_56125` in `m3::empty`
    |
 help: consider importing one of these modules instead
    |

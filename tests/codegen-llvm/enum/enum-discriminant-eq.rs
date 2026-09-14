@@ -36,8 +36,8 @@ pub fn opt_bool_eq_discr(a: Option<bool>, b: Option<bool>) -> bool {
 #[unsafe(no_mangle)]
 pub fn opt_ord_eq_discr(a: Option<Ordering>, b: Option<Ordering>) -> bool {
     // CHECK-LABEL: @opt_ord_eq_discr(
-    // CHECK: %[[A:.+]] = icmp ne i8 %a, 2
-    // CHECK: %[[B:.+]] = icmp eq i8 %b, 2
+    // CHECK: %[[A:.+]] = icmp ne i8 %a, -2
+    // CHECK: %[[B:.+]] = icmp eq i8 %b, -2
     // CHECK: %[[R:.+]] = xor i1 %[[A]], %[[B]]
     // CHECK: ret i1 %[[R]]
 
@@ -58,8 +58,8 @@ pub fn opt_nz32_eq_discr(a: Option<NonZero<u32>>, b: Option<NonZero<u32>>) -> bo
 #[unsafe(no_mangle)]
 pub fn opt_ac_eq_discr(a: Option<AC>, b: Option<AC>) -> bool {
     // CHECK-LABEL: @opt_ac_eq_discr(
-    // CHECK: %[[A:.+]] = icmp ne i8 %a, -128
-    // CHECK: %[[B:.+]] = icmp eq i8 %b, -128
+    // CHECK: %[[A:.+]] = icmp ne i8 %a, -1
+    // CHECK: %[[B:.+]] = icmp eq i8 %b, -1
     // CHECK: %[[R:.+]] = xor i1 %[[A]], %[[B]]
     // CHECK: ret i1 %[[R]]
 

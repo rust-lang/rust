@@ -4,7 +4,7 @@
 use std::arch::asm;
 
 #[repr(simd)]
-//~^ ERROR attribute should be applied to a struct
+//~^ ERROR attribute cannot be used on
 //~| ERROR unsupported representation for zero-variant enum
 enum Es {}
 

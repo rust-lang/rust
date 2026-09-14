@@ -1,4 +1,4 @@
-#![allow(clippy::map_identity)]
+#![expect(clippy::map_identity)]
 #![warn(clippy::lines_filter_map_ok)]
 
 use std::io::{self, BufRead, BufReader};

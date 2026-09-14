@@ -289,9 +289,9 @@ impl TypeKind {
                     (
                         BaseType::Sized(Float | Int | UInt, _),
                         BaseType::Sized(Float | Int | UInt, _),
-                    ) => Some(FnCall::new_expression(
+                    ) => Some(FnCall::new_unsafe_expression(
                         // Conversions between float and (u)int, or where the lane size changes.
-                        "simd_reinterpret".parse().unwrap(),
+                        "transmute_unchecked".parse().unwrap(),
                         vec![expr.into()],
                     )),
                     _ => None,

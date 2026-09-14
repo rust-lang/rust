@@ -18,7 +18,7 @@ pub struct Foo;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "local_feature", issue = "none")]
-impl const MyTrait for Foo {
+const impl MyTrait for Foo {
     fn func() {}
 }
 
@@ -93,26 +93,26 @@ const trait U {}
 const trait S {}
 
 // implied stable
-impl const U for u8 {}
+const impl U for u8 {}
 //~^ ERROR const stability on the impl does not match the const stability on the trait
 
 #[rustc_const_stable(since = "0.0.0", feature = "beef2")]
-impl const U for u16 {}
+const impl U for u16 {}
 //~^ ERROR const stability on the impl does not match the const stability on the trait
 //~| ERROR trait implementations cannot be const stable yet
 
 #[rustc_const_unstable(feature = "beef", issue = "none")]
-impl const U for u32 {}
+const impl U for u32 {}
 
 // implied stable
-impl const S for u8 {}
+const impl S for u8 {}
 
 #[rustc_const_stable(since = "0.0.0", feature = "beef2")]
-impl const S for u16 {}
+const impl S for u16 {}
 //~^ ERROR trait implementations cannot be const stable yet
 
 #[rustc_const_unstable(feature = "beef", issue = "none")]
-impl const S for u32 {}
+const impl S for u32 {}
 //~^ ERROR const stability on the impl does not match the const stability on the trait
 
 fn main() {}

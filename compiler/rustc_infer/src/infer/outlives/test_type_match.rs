@@ -44,6 +44,9 @@ pub fn extract_verify_if_eq<'tcx>(
     assert!(!verify_if_eq_b.has_escaping_bound_vars());
     let mut m = MatchAgainstHigherRankedOutlives::new(tcx);
     let verify_if_eq = verify_if_eq_b.skip_binder();
+    debug_assert!(
+        !tcx.next_trait_solver_globally() || !(verify_if_eq.ty, test_ty).has_non_rigid_aliases()
+    );
     m.relate(verify_if_eq.ty, test_ty).ok()?;
 
     if let ty::RegionKind::ReBound(index_kind, br) = verify_if_eq.bound.kind() {
@@ -74,12 +77,12 @@ pub fn extract_verify_if_eq<'tcx>(
 #[instrument(level = "debug", skip(tcx))]
 pub(super) fn can_match_erased_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
-    outlives_predicate: ty::Binder<'tcx, ty::TypeOutlivesPredicate<'tcx>>,
+    outlives_clause: ty::Binder<'tcx, ty::TypeOutlivesClause<'tcx>>,
     erased_ty: Ty<'tcx>,
 ) -> bool {
-    assert!(!outlives_predicate.has_escaping_bound_vars());
-    let erased_outlives_predicate = tcx.erase_and_anonymize_regions(outlives_predicate);
-    let outlives_ty = erased_outlives_predicate.skip_binder().0;
+    assert!(!outlives_clause.has_escaping_bound_vars());
+    let erased_outlives_clause = tcx.erase_and_anonymize_regions(outlives_clause);
+    let outlives_ty = erased_outlives_clause.skip_binder().0;
     if outlives_ty == erased_ty {
         // pointless micro-optimization
         true

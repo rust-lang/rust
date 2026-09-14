@@ -1,0 +1,3 @@
+panicked at $DIR/panic-in-hook.rs:12:34:
+
+thread panicked while processing panic. aborting.

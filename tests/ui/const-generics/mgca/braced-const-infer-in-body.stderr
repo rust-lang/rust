@@ -1,0 +1,15 @@
+error[E0747]: constant provided when a type was expected
+  --> $DIR/braced-const-infer-in-body.rs:14:28
+   |
+LL |     let _z: &[&dyn Trait<{ _ }>] = &[&0i32];
+   |                            ^
+
+error[E0747]: constant provided when a type was expected
+  --> $DIR/braced-const-infer-in-body.rs:16:48
+   |
+LL |     let _y: &dyn Trait<core::direct_const_arg!(_)> = &0i32;
+   |                                                ^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0747`.

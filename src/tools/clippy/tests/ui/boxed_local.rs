@@ -1,10 +1,10 @@
-#![allow(
+#![expect(
     clippy::borrowed_box,
-    clippy::needless_pass_by_value,
-    clippy::unused_unit,
-    clippy::redundant_clone,
     clippy::match_single_binding,
-    clippy::needless_lifetimes
+    clippy::needless_lifetimes,
+    clippy::needless_pass_by_value,
+    clippy::redundant_clone,
+    clippy::unused_unit
 )]
 #![warn(clippy::boxed_local)]
 

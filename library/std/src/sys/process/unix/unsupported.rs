@@ -4,7 +4,7 @@ use super::common::*;
 use crate::io;
 use crate::num::NonZero;
 use crate::process::StdioPipes;
-use crate::sys::pal::unsupported::*;
+use crate::sys::pal::{unsupported, unsupported_err};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -46,6 +46,10 @@ impl Process {
     }
 
     pub fn send_signal(&self, _signal: i32) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn send_process_group_signal(&self, _signal: i32) -> io::Result<()> {
         unsupported()
     }
 

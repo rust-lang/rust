@@ -14,7 +14,7 @@
 //! let output = Command::new("echo")
 //!     .arg("Hello world")
 //!     .output()
-//!     .expect("Failed to execute command");
+//!     .expect("echo command should execute successfully");
 //!
 //! assert_eq!(b"Hello world\n", output.stdout.as_slice());
 //! ```
@@ -41,20 +41,20 @@
 //!     .arg("Oh no, a tpyo!")
 //!     .stdout(Stdio::piped())
 //!     .spawn()
-//!     .expect("Failed to start echo process");
+//!     .expect("echo command should start");
 //!
 //! // Note that `echo_child` is moved here, but we won't be needing
 //! // `echo_child` anymore
-//! let echo_out = echo_child.stdout.expect("Failed to open echo stdout");
+//! let echo_out = echo_child.stdout.expect("child stdout should open");
 //!
 //! let mut sed_child = Command::new("sed")
 //!     .arg("s/tpyo/typo/")
 //!     .stdin(Stdio::from(echo_out))
 //!     .stdout(Stdio::piped())
 //!     .spawn()
-//!     .expect("Failed to start sed process");
+//!     .expect("sed command should start");
 //!
-//! let output = sed_child.wait_with_output().expect("Failed to wait on sed");
+//! let output = sed_child.wait_with_output().expect("wait_with_output on sed should succeed");
 //! assert_eq!(b"Oh no, a typo!\n", output.stdout.as_slice());
 //! ```
 //!
@@ -69,21 +69,21 @@
 //!     .stdin(Stdio::piped())
 //!     .stdout(Stdio::piped())
 //!     .spawn()
-//!     .expect("failed to execute child");
+//!     .expect("child should start");
 //!
 //! // If the child process fills its stdout buffer, it may end up
 //! // waiting until the parent reads the stdout, and not be able to
 //! // read stdin in the meantime, causing a deadlock.
 //! // Writing from another thread ensures that stdout is being read
 //! // at the same time, avoiding the problem.
-//! let mut stdin = child.stdin.take().expect("failed to get stdin");
+//! let mut stdin = child.stdin.take().expect("stdin should be able to be retrieved");
 //! std::thread::spawn(move || {
-//!     stdin.write_all(b"test").expect("failed to write to stdin");
+//!     stdin.write_all(b"test").expect("writing to stdin should succeed");
 //! });
 //!
 //! let output = child
 //!     .wait_with_output()
-//!     .expect("failed to wait on child");
+//!     .expect("wait_with_output on child should succeed");
 //!
 //! assert_eq!(b"test", output.stdout.as_slice());
 //! ```
@@ -157,11 +157,11 @@
         target_os = "xous",
         target_os = "trusty",
         target_os = "hermit",
+        target_os = "l4re",
     ))
 ))]
 mod tests;
 
-use crate::convert::Infallible;
 use crate::ffi::OsStr;
 use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
@@ -206,9 +206,9 @@ use crate::{fmt, format_args_nl, fs, str};
 /// let mut child = Command::new("/bin/cat")
 ///     .arg("file.txt")
 ///     .spawn()
-///     .expect("failed to execute child");
+///     .expect("child should spawn");
 ///
-/// let ecode = child.wait().expect("failed to wait on child");
+/// let ecode = child.wait().expect("child should be running");
 ///
 /// assert!(ecode.success());
 /// ```
@@ -223,7 +223,7 @@ pub struct Child {
     /// has been captured. You might find it helpful to do
     ///
     /// ```ignore (incomplete)
-    /// let stdin = child.stdin.take().expect("handle present");
+    /// let stdin = child.stdin.take().expect("handle should be present");
     /// ```
     ///
     /// to avoid partially moving the `child` and thus blocking yourself from calling
@@ -235,7 +235,7 @@ pub struct Child {
     /// has been captured. You might find it helpful to do
     ///
     /// ```ignore (incomplete)
-    /// let stdout = child.stdout.take().expect("handle present");
+    /// let stdout = child.stdout.take().expect("handle should be present");
     /// ```
     ///
     /// to avoid partially moving the `child` and thus blocking yourself from calling
@@ -247,7 +247,7 @@ pub struct Child {
     /// has been captured. You might find it helpful to do
     ///
     /// ```ignore (incomplete)
-    /// let stderr = child.stderr.take().expect("handle present");
+    /// let stderr = child.stderr.take().expect("handle should be present");
     /// ```
     ///
     /// to avoid partially moving the `child` and thus blocking yourself from calling
@@ -255,10 +255,6 @@ pub struct Child {
     #[stable(feature = "process", since = "1.0.0")]
     pub stderr: Option<ChildStderr>,
 }
-
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for Child {}
 
 impl AsInner<imp::Process> for Child {
     #[inline]
@@ -336,7 +332,7 @@ impl Write for ChildStdin {
     }
 
     fn is_write_vectored(&self) -> bool {
-        io::Write::is_write_vectored(&&*self)
+        io::Write::is_write_vectored(&self)
     }
 
     #[inline]
@@ -417,7 +413,7 @@ impl Read for ChildStdout {
         self.inner.read(buf)
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.inner.read_buf(buf)
     }
 
@@ -487,7 +483,7 @@ impl Read for ChildStderr {
         self.inner.read(buf)
     }
 
-    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_, u8>) -> io::Result<()> {
         self.inner.read_buf(buf)
     }
 
@@ -547,13 +543,13 @@ impl fmt::Debug for ChildStderr {
 ///     Command::new("cmd")
 ///         .args(["/C", "echo hello"])
 ///         .output()
-///         .expect("failed to execute process")
+///         .expect("process should execute successfully")
 /// } else {
 ///     Command::new("sh")
 ///         .arg("-c")
 ///         .arg("echo hello")
 ///         .output()
-///         .expect("failed to execute process")
+///         .expect("process should execute successfully")
 /// };
 ///
 /// let hello = output.stdout;
@@ -568,8 +564,8 @@ impl fmt::Debug for ChildStderr {
 ///
 /// let mut echo_hello = Command::new("sh");
 /// echo_hello.arg("-c").arg("echo hello");
-/// let hello_1 = echo_hello.output().expect("failed to execute process");
-/// let hello_2 = echo_hello.output().expect("failed to execute process");
+/// let hello_1 = echo_hello.output().expect("process should execute successfully");
+/// let hello_2 = echo_hello.output().expect("process should execute successfully");
 /// ```
 ///
 /// Similarly, you can call builder methods after spawning a process and then
@@ -581,7 +577,7 @@ impl fmt::Debug for ChildStderr {
 /// let mut list_dir = Command::new("ls");
 ///
 /// // Execute `ls` in the current directory of the program.
-/// list_dir.status().expect("process failed to execute");
+/// list_dir.status().expect("process should execute successfully");
 ///
 /// println!();
 ///
@@ -589,17 +585,13 @@ impl fmt::Debug for ChildStderr {
 /// list_dir.current_dir("/");
 ///
 /// // And then execute `ls` again but in the root directory.
-/// list_dir.status().expect("process failed to execute");
+/// list_dir.status().expect("process should execute successfully");
 /// ```
 #[stable(feature = "process", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Command")]
 pub struct Command {
     inner: imp::Command,
 }
-
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for Command {}
 
 impl Command {
     /// Constructs a new `Command` for launching the program at
@@ -617,21 +609,50 @@ impl Command {
     /// Builder methods are provided to change these defaults and
     /// otherwise configure the process.
     ///
-    /// If `program` is not an absolute path, the `PATH` will be searched in
-    /// an OS-defined way.
-    ///
-    /// The search path to be used may be controlled by setting the
-    /// `PATH` environment variable on the Command,
-    /// but this has some implementation limitations on Windows
-    /// (see issue #37519).
+    /// If `program` is not an absolute path, the `PATH` environment variable
+    /// will be searched in an OS-defined way.
     ///
     /// # Platform-specific behavior
     ///
-    /// Note on Windows: For executable files with the .exe extension,
-    /// it can be omitted when specifying the program for this Command.
-    /// However, if the file has a different extension,
-    /// a filename including the extension needs to be provided,
-    /// otherwise the file won't be found.
+    /// The details below describe the current behavior, but these details
+    /// may change in future versions of Rust.
+    ///
+    /// On Unix, the `PATH` searched comes from the child's environment:
+    ///
+    /// - If the environment is unmodified, the child inherits the parent's
+    ///   `PATH` and that is what is searched.
+    /// - If `PATH` is explicitly set via [`env`], that new value is searched.
+    /// - If [`env_clear`] or [`env_remove`] removes `PATH` without a
+    ///   replacement, `execvp` falls back to an OS-defined default (typically
+    ///   `/bin:/usr/bin`), **not** the parent's `PATH`. This may fail to find
+    ///   programs that rely on the parent's `PATH`.
+    ///
+    /// To avoid surprises, use an absolute path or explicitly set `PATH` on
+    /// the `Command` when modifying the child's environment.
+    ///
+    /// On Windows, Rust resolves the executable path before spawning, rather
+    /// than passing the name to `CreateProcessW` for resolution. When
+    /// `program` is not an absolute path, the following locations are searched
+    /// in order:
+    ///
+    /// 1. The child's `PATH`, if explicitly set via [`env`].
+    /// 2. The directory of the current executable.
+    /// 3. The system directory (`GetSystemDirectoryW`).
+    /// 4. The Windows directory (`GetWindowsDirectoryW`).
+    /// 5. The parent process's `PATH`.
+    ///
+    /// Note: when `PATH` is cleared via [`env_clear`] or [`env_remove`] on
+    /// Windows, step 1 is skipped but the parent process's `PATH` is still
+    /// searched at step 5, unlike on Unix.
+    ///
+    /// For executable files, the `.exe` extension may be omitted. Files with
+    /// other extensions must include the extension, otherwise they will not be
+    /// found. Note that this behavior has some known limitations
+    /// (see issue #37519).
+    ///
+    /// [`env`]: Self::env
+    /// [`env_remove`]: Self::env_remove
+    /// [`env_clear`]: Self::env_clear
     ///
     /// # Examples
     ///
@@ -640,7 +661,7 @@ impl Command {
     ///
     /// Command::new("sh")
     ///     .spawn()
-    ///     .expect("sh command failed to start");
+    ///     .expect("sh command should start");
     /// ```
     ///
     /// # Caveats
@@ -656,7 +677,7 @@ impl Command {
     /// Command::new("ls")
     ///     .arg("-l") // arg passed separately
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     ///
     /// [`arg`]: Self::arg
@@ -722,7 +743,7 @@ impl Command {
     ///     .arg("-l")
     ///     .arg("-a")
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Command {
@@ -768,7 +789,7 @@ impl Command {
     /// Command::new("ls")
     ///     .args(["-l", "-a"])
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn args<I, S>(&mut self, args: I) -> &mut Command
@@ -804,7 +825,7 @@ impl Command {
     /// Command::new("ls")
     ///     .env("PATH", "/bin")
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn env<K, V>(&mut self, key: K, val: V) -> &mut Command
@@ -848,7 +869,7 @@ impl Command {
     ///     .env_clear()
     ///     .envs(&filtered_env)
     ///     .spawn()
-    ///     .expect("printenv failed to start");
+    ///     .expect("printenv command should start");
     /// ```
     #[stable(feature = "command_envs", since = "1.19.0")]
     pub fn envs<I, K, V>(&mut self, vars: I) -> &mut Command
@@ -946,7 +967,7 @@ impl Command {
     /// Command::new("ls")
     ///     .current_dir("/bin")
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     ///
     /// [`canonicalize`]: crate::fs::canonicalize
@@ -975,7 +996,7 @@ impl Command {
     /// Command::new("ls")
     ///     .stdin(Stdio::null())
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stdin<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Command {
@@ -1002,7 +1023,7 @@ impl Command {
     /// Command::new("ls")
     ///     .stdout(Stdio::null())
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stdout<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Command {
@@ -1029,7 +1050,7 @@ impl Command {
     /// Command::new("ls")
     ///     .stderr(Stdio::null())
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stderr<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Command {
@@ -1041,6 +1062,26 @@ impl Command {
     ///
     /// By default, stdin, stdout and stderr are inherited from the parent.
     ///
+    /// # Errors
+    ///
+    /// This method returns an [`io::Error`] if the child process could not be
+    /// spawned. Common reasons include:
+    ///
+    /// * the program could not be found (for example, it does not exist, or,
+    ///   when given a bare name, it is not present in the `PATH`);
+    /// * the current process does not have permission to execute the program
+    ///   (for example, the file is not marked executable, or execution is
+    ///   denied by a security policy such as `seccomp`);
+    /// * the operating system could not create the new process because of
+    ///   resource exhaustion (for example, a limit on the number of processes
+    ///   was reached).
+    ///
+    /// An error is only returned for failures that occur while the child is
+    /// being spawned. Once the child has started successfully, anything that
+    /// happens to it afterwards — including being terminated by a signal — is
+    /// reported through its [`ExitStatus`] rather than as an error from the
+    /// spawning method.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -1048,7 +1089,7 @@ impl Command {
     ///
     /// Command::new("ls")
     ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .expect("ls command should start");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn spawn(&mut self) -> io::Result<Child> {
@@ -1062,6 +1103,20 @@ impl Command {
     /// resulting output). Stdin is not inherited from the parent and any
     /// attempt by the child process to read from the stdin stream will result
     /// in the stream immediately closing.
+    ///
+    /// # Errors
+    ///
+    /// Like [`spawn`], this method returns an [`io::Error`] if the child
+    /// process could not be spawned; see [`spawn`] for the common reasons. It
+    /// may also return an error if reading the child's output or waiting on the
+    /// child fails.
+    ///
+    /// Note that this method does **not** return an error if the child runs and
+    /// then exits unsuccessfully, or is terminated by a signal. In those cases
+    /// it still returns [`Ok`], and the outcome is reflected in the
+    /// [`ExitStatus`] stored in the returned [`Output`].
+    ///
+    /// [`spawn`]: Command::spawn
     ///
     /// # Examples
     ///
@@ -1090,6 +1145,19 @@ impl Command {
     ///
     /// By default, stdin, stdout and stderr are inherited from the parent.
     ///
+    /// # Errors
+    ///
+    /// Like [`spawn`], this method returns an [`io::Error`] if the child
+    /// process could not be spawned; see [`spawn`] for the common reasons. It
+    /// may also return an error if waiting on the child fails.
+    ///
+    /// Note that this method does **not** return an error if the child runs and
+    /// then exits unsuccessfully, or is terminated by a signal. In those cases
+    /// it still returns [`Ok`], and the outcome is reflected in the returned
+    /// [`ExitStatus`].
+    ///
+    /// [`spawn`]: Command::spawn
+    ///
     /// # Examples
     ///
     /// ```should_panic
@@ -1098,7 +1166,7 @@ impl Command {
     /// let status = Command::new("/bin/cat")
     ///     .arg("file.txt")
     ///     .status()
-    ///     .expect("failed to execute process");
+    ///     .expect("process should execute successfully");
     ///
     /// println!("process finished with: {status}");
     ///
@@ -1156,7 +1224,8 @@ impl Command {
     /// [`Command::env_remove`] can be retrieved with this method.
     ///
     /// Note that this output does not include environment variables inherited from the parent
-    /// process.
+    /// process. To see the full list of environment variables, including those inherited from the
+    /// parent process, use [`Command::get_resolved_envs`].
     ///
     /// Each element is a tuple key/value pair `(&OsStr, Option<&OsStr>)`. A [`None`] value
     /// indicates its key was explicitly removed via [`Command::env_remove`]. The associated key for
@@ -1183,6 +1252,42 @@ impl Command {
     #[stable(feature = "command_access", since = "1.57.0")]
     pub fn get_envs(&self) -> CommandEnvs<'_> {
         CommandEnvs { iter: self.inner.get_envs() }
+    }
+
+    /// Returns an iterator of the environment variables that will be set when the process is spawned.
+    ///
+    /// This returns the environment as it would be if the command were executed at the time of calling
+    /// this method. The returned environment includes:
+    /// - All inherited environment variables from the parent process (unless [`Command::env_clear`] was called)
+    /// - All environment variables explicitly set via [`Command::env`] or [`Command::envs`]
+    /// - Excluding any environment variables removed via [`Command::env_remove`]
+    ///
+    /// Note that the returned environment is a snapshot at the time this method is called and will not
+    /// reflect any subsequent changes to the `Command` or the parent process's environment. Additionally,
+    /// it will not reflect changes made in a `pre_exec` hook (on Unix platforms).
+    ///
+    /// Each element is a tuple `(OsString, OsString)` representing an environment variable key and value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(command_resolved_envs)]
+    /// use std::process::Command;
+    /// use std::ffi::{OsString, OsStr};
+    /// use std::env;
+    /// use std::collections::HashMap;
+    ///
+    /// let mut cmd = Command::new("ls");
+    /// cmd.env("TZ", "UTC");
+    /// unsafe { env::set_var("EDITOR", "vim"); }
+    ///
+    /// let resolved: HashMap<OsString, OsString> = cmd.get_resolved_envs().collect();
+    /// assert_eq!(resolved.get(OsStr::new("TZ")), Some(&OsString::from("UTC")));
+    /// assert_eq!(resolved.get(OsStr::new("EDITOR")), Some(&OsString::from("vim")));
+    /// ```
+    #[unstable(feature = "command_resolved_envs", issue = "149070")]
+    pub fn get_resolved_envs(&self) -> CommandResolvedEnvs {
+        self.inner.get_resolved_envs()
     }
 
     /// Returns the working directory for the child process.
@@ -1296,6 +1401,12 @@ impl<'a> ExactSizeIterator for CommandArgs<'a> {
     }
 }
 
+const fn assert_send<T: core::marker::Send>() {}
+const fn assert_sync<T: core::marker::Sync>() {}
+
+const _: () = assert_send::<CommandArgs<'static>>();
+const _: () = assert_sync::<CommandArgs<'static>>();
+
 /// An iterator over the command environment variables.
 ///
 /// This struct is created by
@@ -1337,6 +1448,9 @@ impl<'a> fmt::Debug for CommandEnvs<'a> {
         self.iter.fmt(f)
     }
 }
+
+#[unstable(feature = "command_resolved_envs", issue = "149070")]
+pub use imp::CommandResolvedEnvs;
 
 /// The output of a finished process.
 ///
@@ -1443,7 +1557,7 @@ impl Stdio {
     ///     .arg("Hello, world!")
     ///     .stdout(Stdio::piped())
     ///     .output()
-    ///     .expect("Failed to execute command");
+    ///     .expect("process should execute successfully");
     ///
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "Hello, world!\n");
     /// // Nothing echoed to console
@@ -1459,14 +1573,14 @@ impl Stdio {
     ///     .stdin(Stdio::piped())
     ///     .stdout(Stdio::piped())
     ///     .spawn()
-    ///     .expect("Failed to spawn child process");
+    ///     .expect("rev command should start");
     ///
-    /// let mut stdin = child.stdin.take().expect("Failed to open stdin");
+    /// let mut stdin = child.stdin.take().expect("child stdin should be retrievable");
     /// std::thread::spawn(move || {
-    ///     stdin.write_all("Hello, world!".as_bytes()).expect("Failed to write to stdin");
+    ///     stdin.write_all("Hello, world!".as_bytes()).expect("writing to child stdin should succeed");
     /// });
     ///
-    /// let output = child.wait_with_output().expect("Failed to read stdout");
+    /// let output = child.wait_with_output().expect("child stdout should be able to be read");
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "!dlrow ,olleH");
     /// ```
     ///
@@ -1495,7 +1609,7 @@ impl Stdio {
     ///     .arg("Hello, world!")
     ///     .stdout(Stdio::inherit())
     ///     .output()
-    ///     .expect("Failed to execute command");
+    ///     .expect("process should execute successfully");
     ///
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
     /// // "Hello, world!" echoed to console
@@ -1536,7 +1650,7 @@ impl Stdio {
     ///     .arg("Hello, world!")
     ///     .stdout(Stdio::null())
     ///     .output()
-    ///     .expect("Failed to execute command");
+    ///     .expect("process should execute successfully");
     ///
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
     /// // Nothing echoed to console
@@ -1551,7 +1665,7 @@ impl Stdio {
     ///     .stdin(Stdio::null())
     ///     .stdout(Stdio::piped())
     ///     .output()
-    ///     .expect("Failed to execute command");
+    ///     .expect("process should execute successfully");
     ///
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
     /// // Ignores any piped-in input
@@ -1606,13 +1720,13 @@ impl From<ChildStdin> for Stdio {
     /// let reverse = Command::new("rev")
     ///     .stdin(Stdio::piped())
     ///     .spawn()
-    ///     .expect("failed reverse command");
+    ///     .expect("rev command should start");
     ///
     /// let _echo = Command::new("echo")
     ///     .arg("Hello, world!")
     ///     .stdout(reverse.stdin.unwrap()) // Converted into a Stdio here
     ///     .output()
-    ///     .expect("failed echo command");
+    ///     .expect("echo command should execute successfully");
     ///
     /// // "!dlrow ,olleH" echoed to console
     /// ```
@@ -1636,12 +1750,12 @@ impl From<ChildStdout> for Stdio {
     ///     .arg("Hello, world!")
     ///     .stdout(Stdio::piped())
     ///     .spawn()
-    ///     .expect("failed echo command");
+    ///     .expect("echo command should start");
     ///
     /// let reverse = Command::new("rev")
     ///     .stdin(hello.stdout.unwrap())  // Converted into a Stdio here
     ///     .output()
-    ///     .expect("failed reverse command");
+    ///     .expect("rev command should execute successfully");
     ///
     /// assert_eq!(reverse.stdout, b"!dlrow ,olleH\n");
     /// ```
@@ -1663,13 +1777,13 @@ impl From<ChildStderr> for Stdio {
     ///     .arg("non_existing_file.txt")
     ///     .stderr(Stdio::piped())
     ///     .spawn()
-    ///     .expect("failed reverse command");
+    ///     .expect("rev command should start");
     ///
     /// let cat = Command::new("cat")
     ///     .arg("-")
     ///     .stdin(reverse.stderr.unwrap()) // Converted into a Stdio here
     ///     .output()
-    ///     .expect("failed echo command");
+    ///     .expect("cat command should execute successfully");
     ///
     /// assert_eq!(
     ///     String::from_utf8_lossy(&cat.stdout),
@@ -1824,10 +1938,6 @@ impl Default for ExitStatus {
     }
 }
 
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for ExitStatus {}
-
 impl ExitStatus {
     /// Was termination successful?  Returns a `Result`.
     ///
@@ -1841,7 +1951,7 @@ impl ExitStatus {
     /// let status = Command::new("ls")
     ///     .arg("/dev/nonexistent")
     ///     .status()
-    ///     .expect("ls could not be executed");
+    ///     .expect("ls command should execute successfully");
     ///
     /// println!("ls: {status}");
     /// status.exit_ok().expect_err("/dev/nonexistent could be listed!");
@@ -1863,7 +1973,7 @@ impl ExitStatus {
     /// let status = Command::new("mkdir")
     ///     .arg("projects")
     ///     .status()
-    ///     .expect("failed to execute mkdir");
+    ///     .expect("mkdir command should execute successfully");
     ///
     /// if status.success() {
     ///     println!("'projects/' directory created");
@@ -1896,7 +2006,7 @@ impl ExitStatus {
     /// let status = Command::new("mkdir")
     ///     .arg("projects")
     ///     .status()
-    ///     .expect("failed to execute mkdir");
+    ///     .expect("mkdir command should execute successfully");
     ///
     /// match status.code() {
     ///     Some(code) => println!("Exited with status code: {code}"),
@@ -1929,10 +2039,6 @@ impl fmt::Display for ExitStatus {
         self.0.fmt(f)
     }
 }
-
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for ExitStatusError {}
 
 /// Describes the result of a process after it has failed
 ///
@@ -2102,10 +2208,6 @@ impl crate::error::Error for ExitStatusError {}
 #[stable(feature = "process_exitcode", since = "1.61.0")]
 pub struct ExitCode(imp::ExitCode);
 
-/// Allows extension traits within `std`.
-#[unstable(feature = "sealed", issue = "none")]
-impl crate::sealed::Sealed for ExitCode {}
-
 #[stable(feature = "process_exitcode", since = "1.61.0")]
 impl ExitCode {
     /// The canonical `ExitCode` for successful termination on this platform.
@@ -2232,7 +2334,7 @@ impl Child {
     ///
     /// let mut command = Command::new("yes");
     /// if let Ok(mut child) = command.spawn() {
-    ///     child.kill().expect("command couldn't be killed");
+    ///     child.kill().expect("process should be killed");
     /// } else {
     ///     println!("yes command didn't start");
     /// }
@@ -2283,7 +2385,7 @@ impl Child {
     ///
     /// let mut command = Command::new("ls");
     /// if let Ok(mut child) = command.spawn() {
-    ///     child.wait().expect("command wasn't running");
+    ///     child.wait().expect("child should be running");
     ///     println!("Child has finished its execution!");
     /// } else {
     ///     println!("ls command didn't start");
@@ -2356,11 +2458,11 @@ impl Child {
     ///     .arg("file.txt")
     ///     .stdout(Stdio::piped())
     ///     .spawn()
-    ///     .expect("failed to execute child");
+    ///     .expect("child should spawn");
     ///
     /// let output = child
     ///     .wait_with_output()
-    ///     .expect("failed to wait on child");
+    ///     .expect("wait_with_output on child should succeed");
     ///
     /// assert!(output.status.success());
     /// ```
@@ -2536,6 +2638,10 @@ pub fn abort() -> ! {
     crate::sys::abort_internal();
 }
 
+#[doc(inline)]
+#[unstable(feature = "abort_immediate", issue = "154601")]
+pub use core::process::abort_immediate;
+
 /// Returns the OS-assigned process identifier associated with this process.
 ///
 /// # Examples
@@ -2590,13 +2696,6 @@ impl Termination for () {
 impl Termination for ! {
     fn report(self) -> ExitCode {
         self
-    }
-}
-
-#[stable(feature = "termination_trait_lib", since = "1.61.0")]
-impl Termination for Infallible {
-    fn report(self) -> ExitCode {
-        match self {}
     }
 }
 

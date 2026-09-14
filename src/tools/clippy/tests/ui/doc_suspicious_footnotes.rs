@@ -1,5 +1,5 @@
 #![warn(clippy::doc_suspicious_footnotes)]
-#![allow(clippy::needless_raw_string_hashes)]
+#![expect(clippy::needless_raw_string_hashes)]
 //! This is not a footnote[^1].
 //~^ doc_suspicious_footnotes
 //!

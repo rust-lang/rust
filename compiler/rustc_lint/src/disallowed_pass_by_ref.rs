@@ -1,9 +1,9 @@
 use rustc_hir::def::Res;
 use rustc_hir::{self as hir, AmbigArg, GenericArg, PathSegment, QPath, TyKind, find_attr};
+use rustc_lint_defs::{declare_lint_pass, declare_tool_lint};
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::lints::DisallowedPassByRefDiag;
+use crate::diagnostics::DisallowedPassByRefDiag;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_tool_lint! {
@@ -42,14 +42,16 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedPassByRef {
 fn path_for_rustc_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<String> {
     if let TyKind::Path(QPath::Resolved(_, path)) = &ty.kind {
         match path.res {
-            Res::Def(_, def_id) if find_attr!(cx.tcx, def_id, RustcPassByValue(_)) => {
+            Res::Def(_, def_id) if find_attr!(cx.tcx, def_id, RustcPassByValue) => {
                 let name = cx.tcx.item_ident(def_id);
                 let path_segment = path.segments.last().unwrap();
                 return Some(format!("{}{}", name, gen_args(cx, path_segment)));
             }
             Res::SelfTyAlias { alias_to: did, is_trait_impl: false, .. } => {
-                if let ty::Adt(adt, args) = cx.tcx.type_of(did).instantiate_identity().kind() {
-                    if find_attr!(cx.tcx, adt.did(), RustcPassByValue(_)) {
+                if let ty::Adt(adt, args) =
+                    cx.tcx.type_of(did).instantiate_identity().skip_norm_wip().kind()
+                {
+                    if find_attr!(cx.tcx, adt.did(), RustcPassByValue) {
                         return Some(cx.tcx.def_path_str_with_args(adt.did(), args));
                     }
                 }

@@ -2,6 +2,7 @@ use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
+use crate::PassPolicy;
 use crate::patch::MirPatch;
 
 pub(super) struct Subtyper;
@@ -23,6 +24,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for SubTypeChecker<'a, 'tcx> {
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
     ) {
+        if rvalue.is_generic_reborrow() {
+            return;
+        }
         // We don't need to do anything for deref temps as they are
         // not part of the source code, but used for desugaring purposes.
         if self.local_decls[place.local].is_deref_temp() {
@@ -62,7 +66,8 @@ impl<'tcx> crate::MirPass<'tcx> for Subtyper {
         checker.patcher.apply(body);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // Later MIR phases expect all subtyping to be explicit.
+        PassPolicy::Required
     }
 }

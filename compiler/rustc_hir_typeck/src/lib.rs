@@ -1,8 +1,10 @@
 // tidy-alphabetical-start
-#![feature(box_patterns)]
+#![cfg_attr(bootstrap, feature(never_type))]
+#![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
-#![feature(never_type)]
+#![feature(option_into_flat_iter)]
+#![feature(option_reference_flattening)]
 #![feature(trim_prefix_suffix)]
 // tidy-alphabetical-end
 
@@ -15,8 +17,8 @@ mod check;
 mod closure;
 mod coercion;
 mod demand;
+mod diagnostics;
 mod diverges;
-mod errors;
 mod expectation;
 mod expr;
 mod inline_asm;
@@ -41,16 +43,16 @@ pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, HirIdMap, Node};
-use rustc_hir_analysis::check::{check_abi, check_custom_abi};
+use rustc_hir_analysis::check::check_abi;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
+use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, TraitEngine, WellFormedLoc};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, FnSigKind, Ty, TyCtxt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config;
 use rustc_span::Span;
@@ -82,7 +84,7 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
     &tcx.typeck(def_id).used_trait_imports
 }
 
-fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
+fn typeck_root<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
     typeck_with_inspect(tcx, def_id, None)
 }
 
@@ -95,6 +97,13 @@ pub fn inspect_typeck<'tcx>(
     def_id: LocalDefId,
     inspect: ObligationInspector<'tcx>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
+    // Closures' typeck results come from their outermost function,
+    // as they are part of the same "inference environment".
+    let typeck_root_def_id = tcx.typeck_root_def_id_local(def_id);
+    if typeck_root_def_id != def_id {
+        return tcx.typeck(typeck_root_def_id);
+    }
+
     typeck_with_inspect(tcx, def_id, Some(inspect))
 }
 
@@ -104,12 +113,7 @@ fn typeck_with_inspect<'tcx>(
     def_id: LocalDefId,
     inspector: Option<ObligationInspector<'tcx>>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
-    // Closures' typeck results come from their outermost function,
-    // as they are part of the same "inference environment".
-    let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id()).expect_local();
-    if typeck_root_def_id != def_id {
-        return tcx.typeck(typeck_root_def_id);
-    }
+    assert!(!tcx.is_typeck_child(def_id.to_def_id()));
 
     let id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(id);
@@ -134,7 +138,7 @@ fn typeck_with_inspect<'tcx>(
         // for visit the asm expr of the body.
         let ty = fcx.check_expr(body.value);
         fcx.write_ty(id, ty);
-    } else if let Some(hir::FnSig { header, decl, span: fn_sig_span }) = node.fn_sig() {
+    } else if let Some(hir::FnSig { header, decl, span: _ }) = node.fn_sig() {
         let fn_sig = if decl.output.is_suggestable_infer_ty().is_some() {
             // In the case that we're recovering `fn() -> W<_>` or some other return
             // type that has an infer in it, lower the type directly so that it'll
@@ -142,11 +146,10 @@ fn typeck_with_inspect<'tcx>(
             // a suggestion later on.
             fcx.lowerer().lower_fn_ty(id, header.safety(), header.abi, decl, None, None)
         } else {
-            tcx.fn_sig(def_id).instantiate_identity()
+            tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip()
         };
 
         check_abi(tcx, id, span, fn_sig.abi());
-        check_custom_abi(tcx, def_id, fn_sig.skip_binder(), *fn_sig_span);
 
         loops::check(tcx, def_id, body);
 
@@ -166,7 +169,7 @@ fn typeck_with_inspect<'tcx>(
                 .inputs_and_output
                 .iter()
                 .enumerate()
-                .map(|(idx, ty)| fcx.normalize(arg_span(idx), ty)),
+                .map(|(idx, ty)| fcx.normalize(arg_span(idx), Unnormalized::new_wip(ty))),
         );
 
         if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
@@ -186,12 +189,12 @@ fn typeck_with_inspect<'tcx>(
             // a suggestion later on.
             fcx.lowerer().lower_ty(ty)
         } else {
-            tcx.type_of(def_id).instantiate_identity()
+            tcx.type_of(def_id).instantiate_identity().skip_norm_wip()
         };
 
         loops::check(tcx, def_id, body);
 
-        let expected_type = fcx.normalize(body.value.span, expected_type);
+        let expected_type = fcx.normalize(body.value.span, Unnormalized::new_wip(expected_type));
 
         let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
         fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);
@@ -242,7 +245,7 @@ fn typeck_with_inspect<'tcx>(
     assert!(fcx.deferred_call_resolutions.borrow().is_empty());
 
     for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
-        let ty = fcx.normalize(span, ty);
+        let ty = fcx.normalize(span, Unnormalized::new_wip(ty));
         fcx.require_type_is_sized(ty, span, code);
     }
 
@@ -284,9 +287,7 @@ fn extend_err_with_const_context(
 ) {
     match node {
         hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, _), .. })
-        | hir::Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Const(ty, _, _), ..
-        }) => {
+        | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Const(ty, _), .. }) => {
             // Point at the `Type` in `const NAME: Type = value;`.
             err.span_label(ty.span, "expected because of the type of the associated constant");
         }
@@ -317,35 +318,13 @@ fn extend_err_with_const_context(
         // FIXME: support method calls too.
         hir::Node::AnonConst(anon)
             if let hir::Node::ConstArg(parent) = tcx.parent_hir_node(anon.hir_id)
-                && let hir::Node::Expr(expr) = tcx.parent_hir_node(parent.hir_id)
-                && let hir::ExprKind::Path(path) = expr.kind
+                && let Some(path) = tcx.parent_hir_node(parent.hir_id).path()
                 && let hir::QPath::Resolved(_, path) = path
                 && let Res::Def(_, def_id) = path.res =>
         {
-            // `foo<N>()` in expression context, point at `foo`'s const parameter.
+            // `foo<N>()`, point at the const parameter in the definition of `foo`.
             if let Some(i) =
-                path.segments.iter().last().and_then(|segment| segment.args).and_then(|args| {
-                    args.args.iter().position(|arg| {
-                        matches!(arg, hir::GenericArg::Const(arg) if arg.hir_id == parent.hir_id)
-                    })
-                })
-            {
-                let generics = tcx.generics_of(def_id);
-                let param = &generics.param_at(i, tcx);
-                let sp = tcx.def_span(param.def_id);
-                err.span_note(sp, "expected because of the type of the const parameter");
-            }
-        }
-        hir::Node::AnonConst(anon)
-            if let hir::Node::ConstArg(parent) = tcx.parent_hir_node(anon.hir_id)
-                && let hir::Node::Ty(ty) = tcx.parent_hir_node(parent.hir_id)
-                && let hir::TyKind::Path(path) = ty.kind
-                && let hir::QPath::Resolved(_, path) = path
-                && let Res::Def(_, def_id) = path.res =>
-        {
-            // `Foo<N>` in type context, point at `Foo`'s const parameter.
-            if let Some(i) =
-                path.segments.iter().last().and_then(|segment| segment.args).and_then(|args| {
+                path.segments.last().and_then(|segment| segment.args).and_then(|args| {
                     args.args.iter().position(|arg| {
                         matches!(arg, hir::GenericArg::Const(arg) if arg.hir_id == parent.hir_id)
                     })
@@ -398,7 +377,7 @@ fn extend_err_with_const_context(
 
 fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Option<Ty<'tcx>> {
     let tcx = fcx.tcx;
-    let def_id = fcx.body_id;
+    let def_id = fcx.body_def_id;
     let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer(()), span, .. }) = node.ty()
     {
         if let Some(item) = tcx.opt_associated_item(def_id.into())
@@ -406,14 +385,16 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
             && let ty::AssocContainer::TraitImpl(Ok(trait_item_def_id)) = item.container
         {
             let impl_def_id = item.container_id(tcx);
-            let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity();
+            let impl_trait_ref =
+                tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_norm_wip();
             let args = ty::GenericArgs::identity_for_item(tcx, def_id).rebase_onto(
                 tcx,
                 impl_def_id,
                 impl_trait_ref.args,
             );
-            tcx.check_args_compatible(trait_item_def_id, args)
-                .then(|| tcx.type_of(trait_item_def_id).instantiate(tcx, args))
+            let alias_kind = ty::AliasTermKind::ProjectionConst { def_id: trait_item_def_id };
+            tcx.check_alias_term_args_compatible(alias_kind, args)
+                .then(|| tcx.type_of(trait_item_def_id).instantiate(tcx, args).skip_norm_wip())
         } else {
             Some(fcx.next_ty_var(span))
         }
@@ -497,125 +478,144 @@ impl<'tcx> EnclosingBreakables<'tcx> {
         }
     }
 }
-
-fn report_unexpected_variant_res(
-    tcx: TyCtxt<'_>,
-    res: Res,
-    expr: Option<&hir::Expr<'_>>,
-    qpath: &hir::QPath<'_>,
-    span: Span,
-    err_code: ErrCode,
-    expected: &str,
-) -> ErrorGuaranteed {
-    let res_descr = match res {
-        Res::Def(DefKind::Variant, _) => "struct variant",
-        _ => res.descr(),
-    };
-    let path_str = rustc_hir_pretty::qpath_to_string(&tcx, qpath);
-    let mut err = tcx
-        .dcx()
-        .struct_span_err(span, format!("expected {expected}, found {res_descr} `{path_str}`"))
-        .with_code(err_code);
-    match res {
-        Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == E0164 => {
-            let patterns_url = "https://doc.rust-lang.org/book/ch19-00-patterns.html";
-            err.with_span_label(span, "`fn` calls are not allowed in patterns")
-                .with_help(format!("for more information, visit {patterns_url}"))
-        }
-        Res::Def(DefKind::Variant, _) if let Some(expr) = expr => {
-            err.span_label(span, format!("not a {expected}"));
-            let variant = tcx.expect_variant_res(res);
-            let sugg = if variant.fields.is_empty() {
-                " {}".to_string()
-            } else {
-                format!(
-                    " {{ {} }}",
-                    variant
-                        .fields
-                        .iter()
-                        .map(|f| format!("{}: /* value */", f.name))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            };
-            let descr = "you might have meant to create a new value of the struct";
-            let mut suggestion = vec![];
-            match tcx.parent_hir_node(expr.hir_id) {
-                hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Call(..),
-                    span: call_span,
-                    ..
-                }) => {
-                    suggestion.push((span.shrink_to_hi().with_hi(call_span.hi()), sugg));
-                }
-                hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(..), hir_id, .. }) => {
-                    suggestion.push((expr.span.shrink_to_lo(), "(".to_string()));
-                    if let hir::Node::Expr(parent) = tcx.parent_hir_node(*hir_id)
-                        && let hir::ExprKind::If(condition, block, None) = parent.kind
-                        && condition.hir_id == *hir_id
-                        && let hir::ExprKind::Block(block, _) = block.kind
-                        && block.stmts.is_empty()
-                        && let Some(expr) = block.expr
-                        && let hir::ExprKind::Path(..) = expr.kind
-                    {
-                        // Special case: you can incorrectly write an equality condition:
-                        // if foo == Struct { field } { /* if body */ }
-                        // which should have been written
-                        // if foo == (Struct { field }) { /* if body */ }
-                        suggestion.push((block.span.shrink_to_hi(), ")".to_string()));
-                    } else {
-                        suggestion.push((span.shrink_to_hi().with_hi(expr.span.hi()), sugg));
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    fn report_unexpected_variant_res(
+        &self,
+        res: Res,
+        expr: Option<&hir::Expr<'_>>,
+        sub_pats: &[hir::Pat<'_>],
+        qpath: &hir::QPath<'_>,
+        span: Span,
+        err_code: ErrCode,
+        expected: &str,
+    ) -> ErrorGuaranteed {
+        let tcx = self.tcx;
+        let res_descr = match res {
+            Res::Def(DefKind::Variant, _) => "struct variant",
+            _ => res.descr(),
+        };
+        let path_str = rustc_hir_pretty::qpath_to_string(self, qpath);
+        let mut err = tcx
+            .dcx()
+            .struct_span_err(span, format!("expected {expected}, found {res_descr} `{path_str}`"))
+            .with_code(err_code);
+        match res {
+            Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == E0164 => {
+                let patterns_url = "https://doc.rust-lang.org/book/ch19-00-patterns.html";
+                err.with_span_label(span, "`fn` calls are not allowed in patterns")
+                    .with_help(format!("for more information, visit {patterns_url}"))
+            }
+            Res::Def(DefKind::Variant, _) if let Some(expr) = expr => {
+                err.span_label(span, format!("not a {expected}"));
+                let variant = tcx.expect_variant_res(res);
+                let sugg = if variant.fields.is_empty() {
+                    " {}".to_string()
+                } else {
+                    format!(
+                        " {{ {} }}",
+                        variant
+                            .fields
+                            .iter()
+                            .map(|f| format!("{}: /* value */", f.name))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                };
+                let descr = "you might have meant to create a new value of the struct";
+                let mut suggestion = vec![];
+                match tcx.parent_hir_node(expr.hir_id) {
+                    hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Call(..),
+                        span: call_span,
+                        ..
+                    }) => {
+                        suggestion.push((span.shrink_to_hi().with_hi(call_span.hi()), sugg));
+                    }
+                    hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Binary(..), hir_id, ..
+                    }) => {
+                        suggestion.push((expr.span.shrink_to_lo(), "(".to_string()));
+                        if let hir::Node::Expr(parent) = tcx.parent_hir_node(*hir_id)
+                            && let hir::ExprKind::If(condition, block, None) = parent.kind
+                            && condition.hir_id == *hir_id
+                            && let hir::ExprKind::Block(block, _) = block.kind
+                            && block.stmts.is_empty()
+                            && let Some(expr) = block.expr
+                            && let hir::ExprKind::Path(..) = expr.kind
+                        {
+                            // Special case: you can incorrectly write an equality condition:
+                            // if foo == Struct { field } { /* if body */ }
+                            // which should have been written
+                            // if foo == (Struct { field }) { /* if body */ }
+                            suggestion.push((block.span.shrink_to_hi(), ")".to_string()));
+                        } else {
+                            suggestion.push((span.shrink_to_hi().with_hi(expr.span.hi()), sugg));
+                        }
+                    }
+                    _ => {
+                        suggestion.push((span.shrink_to_hi(), sugg));
                     }
                 }
-                _ => {
-                    suggestion.push((span.shrink_to_hi(), sugg));
-                }
+
+                err.multipart_suggestion(descr, suggestion, Applicability::HasPlaceholders);
+                err
             }
+            Res::Def(DefKind::Variant, _) if expr.is_none() => {
+                err.span_label(span, format!("not a {expected}"));
 
-            err.multipart_suggestion(descr, suggestion, Applicability::HasPlaceholders);
-            err
-        }
-        Res::Def(DefKind::Variant, _) if expr.is_none() => {
-            err.span_label(span, format!("not a {expected}"));
+                let fields = &tcx.expect_variant_res(res).fields.raw;
+                let span = qpath.span().shrink_to_hi().to(span.shrink_to_hi());
+                let (msg, sugg) = if fields.is_empty() {
+                    ("use the struct variant pattern syntax", " {}".to_string())
+                } else {
+                    let msg = if fields.is_empty() {
+                        "use struct variant pattern syntax"
+                    } else {
+                        "add the names to match a struct variant's fields"
+                    };
+                    let fields_sugg = fields
+                        .iter()
+                        .enumerate()
+                        .map(|(i, field)| {
+                            let field_name = field.ident(tcx).to_string();
 
-            let fields = &tcx.expect_variant_res(res).fields.raw;
-            let span = qpath.span().shrink_to_hi().to(span.shrink_to_hi());
-            let (msg, sugg) = if fields.is_empty() {
-                ("use the struct variant pattern syntax".to_string(), " {}".to_string())
-            } else {
-                let msg = format!(
-                    "the struct variant's field{s} {are} being ignored",
-                    s = pluralize!(fields.len()),
-                    are = pluralize!("is", fields.len())
+                            let pat_snippet = sub_pats
+                                .get(i)
+                                .and_then(|sub_pat| {
+                                    tcx.sess.source_map().span_to_snippet(sub_pat.span).ok()
+                                })
+                                .unwrap_or_else(|| "_".to_string());
+
+                            if field_name == pat_snippet {
+                                field_name
+                            } else {
+                                format!("{field_name}: {pat_snippet}")
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    let sugg = format!(" {{ {} }}", fields_sugg);
+                    (msg, sugg)
+                };
+
+                err.span_suggestion_verbose(
+                    qpath.span().shrink_to_hi().to(span.shrink_to_hi()),
+                    msg,
+                    sugg,
+                    Applicability::HasPlaceholders,
                 );
-                let fields = fields
-                    .iter()
-                    .map(|field| format!("{}: _", field.ident(tcx)))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let sugg = format!(" {{ {} }}", fields);
-                (msg, sugg)
-            };
-
-            err.span_suggestion_verbose(
-                qpath.span().shrink_to_hi().to(span.shrink_to_hi()),
-                msg,
-                sugg,
-                Applicability::HasPlaceholders,
-            );
-            err
+                err
+            }
+            _ => err.with_span_label(span, format!("not a {expected}")),
         }
-        _ => err.with_span_label(span, format!("not a {expected}")),
+        .emit()
     }
-    .emit()
 }
 
-/// Controls whether the arguments are tupled. This is used for the call
-/// operator.
+/// Controls whether all arguments are tupled. This is used for the call operator only.
 ///
-/// Tupling means that all call-side arguments are packed into a tuple and
-/// passed as a single parameter. For example, if tupling is enabled, this
-/// function:
+/// Tupling means that all call-side arguments are packed into a tuple and passed as a single
+/// parameter. For example, if tupling is enabled, this function:
 /// ```
 /// fn f(x: (isize, isize)) {}
 /// ```
@@ -629,10 +629,72 @@ fn report_unexpected_variant_res(
 /// # fn f(x: (isize, isize)) {}
 /// f((1, 2));
 /// ```
-#[derive(Copy, Clone, Eq, PartialEq)]
+///
+/// Note: splatted arguments are handled separately.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum TupleArgumentsFlag {
+    /// Arguments are typechecked unchanged.
     DontTupleArguments,
-    TupleArguments,
+    /// This is a call operator: all caller arguments are tupled before typechecking.
+    /// Set based on the "rust-call" ABI and Fn* traits.
+    TupleAllCallArgs,
+    /// The `self` method argument is splatted, so `Self` should be tupled before typechecking.
+    TupleSplattedSelfArg,
+    /// A non-self argument is splatted, so that argument should be tupled before typechecking.
+    TupleSplattedArg(u8),
+}
+
+impl TupleArgumentsFlag {
+    /// Returns the TupleArgumentsFlag for a known RustCall function.
+    fn rust_fn_trait_call() -> Self {
+        Self::TupleAllCallArgs
+    }
+
+    /// Returns the appropriate TupleArgumentsFlag for the given FnSigKind and method flag.
+    fn with_fn_sig_kind<'tcx>(fn_sig_kind: FnSigKind<'tcx>, is_method: bool) -> Self {
+        if let Some(splatted_arg_index) = fn_sig_kind.splatted() {
+            if is_method {
+                if let Some(splatted_arg_index) = splatted_arg_index.checked_sub(1) {
+                    return Self::TupleSplattedArg(splatted_arg_index);
+                } else {
+                    // In `check_argument_types`, this is effectively `TupleSplattedArg(-1)`
+                    return Self::TupleSplattedSelfArg;
+                }
+            }
+
+            return Self::TupleSplattedArg(splatted_arg_index);
+        }
+
+        Self::DontTupleArguments
+    }
+
+    /// Returns true if the arguments are tupled through "rust-call" or splatting.
+    fn is_tupled(self) -> bool {
+        match self {
+            Self::DontTupleArguments => false,
+            Self::TupleAllCallArgs | Self::TupleSplattedSelfArg | Self::TupleSplattedArg(_) => true,
+        }
+    }
+
+    /// Returns true if the arguments are tupled through splatting.
+    /// (But false if they are "rust-call" or not tupled.)
+    fn is_splatted(self) -> bool {
+        match self {
+            Self::TupleSplattedSelfArg | Self::TupleSplattedArg(_) => true,
+            Self::DontTupleArguments | Self::TupleAllCallArgs => false,
+        }
+    }
+
+    /// Returns the tupled argument index, and whether the `self` argument is splatted.
+    /// Returns `None` if the arguments are not tupled, or if the `self` argument is splatted.
+    fn tupled_arg_index(self) -> (Option<u16>, bool /* is_self_splatted */) {
+        match self {
+            Self::TupleSplattedArg(index) => (Some(u16::from(index)), false),
+            Self::TupleAllCallArgs => (Some(0), false),
+            Self::TupleSplattedSelfArg => (None, true),
+            Self::DontTupleArguments => (None, false),
+        }
+    }
 }
 
 fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
@@ -660,9 +722,10 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         method_autoderef_steps: method::probe::method_autoderef_steps,
-        typeck,
+        typeck_root,
         used_trait_imports,
         check_transmutes: intrinsicck::check_transmutes,
+        check_offloads: intrinsicck::check_offloads,
         ..*providers
     };
 }

@@ -48,8 +48,15 @@
 //! # Handling of references
 //!
 //! We handle references by assigning a different "provenance" index to each Ref/RawPtr rvalue.
-//! This ensure that we do not spuriously merge borrows that should not be merged. Meanwhile, we
-//! consider all the derefs of an immutable reference to a freeze type to give the same value:
+//! This ensure that we do not spuriously merge borrows that should not be merged. For instance:
+//! ```ignore (MIR)
+//! _x = &_a;
+//! _a = 0;
+//! _y = &_a; // cannot be turned into `_y = _x`!
+//! ```
+//!
+//! On top of that, we consider all the derefs of an immutable reference to a freeze type to give
+//! the same value:
 //! ```ignore (MIR)
 //! _a = *_b // _b is &Freeze
 //! _c = *_b // replaced by _c = _a
@@ -109,18 +116,20 @@ use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::HasTypingEnv;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
-use crate::ssa::SsaLocals;
+use crate::PassPolicy;
+use crate::ssa::{MaybeUninitializedLocals, SsaLocals};
 
 pub(super) struct GVN;
 
 impl<'tcx> crate::MirPass<'tcx> for GVN {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 2)
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -147,14 +156,35 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
             state.visit_basic_block_data(bb, data);
         }
 
-        // For each local that is reused (`y` above), we remove its storage statements do avoid any
-        // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
-        // statements.
-        StorageRemover { tcx, reused_locals: state.reused_locals }.visit_body_preserves_cfg(body);
-    }
+        // When emitting storage statements, we want to retain the reused locals' storage statements,
+        // as this enables better optimizations. For each local use location, we mark it for storage removal
+        // only if it might be uninitialized at that point.
+        let storage_to_remove = if tcx.sess.emit_lifetime_markers() {
+            let maybe_uninit = MaybeUninitializedLocals
+                .iterate_to_fixpoint(tcx, body, Some("mir_opt::gvn"))
+                .into_results_cursor(body);
 
-    fn is_required(&self) -> bool {
-        false
+            let mut storage_checker = StorageChecker {
+                reused_locals: &state.reused_locals,
+                storage_to_remove: DenseBitSet::new_empty(body.local_decls.len()),
+                maybe_uninit,
+            };
+
+            for (bb, data) in traversal::reachable(body) {
+                storage_checker.visit_basic_block_data(bb, data);
+            }
+
+            Some(storage_checker.storage_to_remove)
+        } else {
+            None
+        };
+
+        // If None, remove the storage statements of all the reused locals.
+        let storage_to_remove = storage_to_remove.as_ref().unwrap_or(&state.reused_locals);
+        debug!(?storage_to_remove);
+
+        StorageRemover { tcx, reused_locals: &state.reused_locals, storage_to_remove }
+            .visit_body_preserves_cfg(body);
     }
 }
 
@@ -575,7 +605,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 let fields =
                     fields.iter().map(|&f| self.eval_to_const(f)).collect::<Option<Vec<_>>>()?;
                 let variant = if ty.ty.is_enum() { Some(variant) } else { None };
-                let (BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)) = ty.backend_repr
+                let (BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. }) = ty.backend_repr
                 else {
                     return None;
                 };
@@ -606,7 +636,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     ImmTy::from_immediate(Immediate::Uninit, ty).into()
                 } else if matches!(
                     ty.backend_repr,
-                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)
+                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. }
                 ) {
                     let dest = self.ecx.allocate(ty, MemoryKind::Stack).discard_err()?;
                     let field_dest = self.ecx.project_field(&dest, active_field).discard_err()?;
@@ -705,11 +735,15 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                                 s1.size(&self.ecx) == s2.size(&self.ecx)
                                     && !matches!(s1.primitive(), Primitive::Pointer(..))
                             }
-                            (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
+                            (
+                                BackendRepr::ScalarPair { a: a1, b: b1, b_offset: b1_offset },
+                                BackendRepr::ScalarPair { a: a2, b: b2, b_offset: b2_offset },
+                            ) => {
                                 a1.size(&self.ecx) == a2.size(&self.ecx)
                                     && b1.size(&self.ecx) == b2.size(&self.ecx)
-                                    // The alignment of the second component determines its offset, so that also needs to match.
-                                    && b1.align(&self.ecx) == b2.align(&self.ecx)
+                                    // The first component is always at offset zero, but the offset to the second
+                                    // component needs to match as well for us to be able to transmute.
+                                    && b1_offset == b2_offset
                                     // None of the inputs may be a pointer.
                                     && !matches!(a1.primitive(), Primitive::Pointer(..))
                                     && !matches!(b1.primitive(), Primitive::Pointer(..))
@@ -801,16 +835,20 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     {
                         return Some((projection_ty, value));
                     }
-                    // DO NOT reason the pointer value.
-                    // We cannot unify two pointers that dereference same local, because they may
-                    // have different lifetimes.
+                    // We cannot unify two references produced by dereferencing the same nested reference,
+                    // because they may have different lifetimes.
                     // ```
                     // let b: &T = *a;
                     // ... `a` is allowed to be modified. `c` and `b` have different borrowing lifetime.
                     // Unifying them will extend the lifetime of `b`.
                     // let c: &T = *a;
                     // ```
-                    if projection_ty.ty.is_ref() {
+                    // Furthermore, unifying them can also violate Stacked Borrows or Tree Borrows.
+                    // We can only unify all `*b` and `*c` separately
+                    // because nested shared references are not read-only.
+                    // For more, see <https://github.com/rust-lang/rust/issues/155884> and
+                    // <https://github.com/rust-lang/rust/issues/130853>.
+                    if self.ty_may_have_ref(projection_ty.ty) {
                         return None;
                     }
 
@@ -823,6 +861,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     return None;
                 }
             }
+            ProjectionElem::PhantomDeref => bug!("PhantomDeref in GVN"),
             ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
             ProjectionElem::Field(f, _) => match self.get(value) {
                 Value::Aggregate(_, fields) => return Some((projection_ty, fields[f.as_usize()])),
@@ -1022,13 +1061,12 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     fn simplify_rvalue(
         &mut self,
-        lhs: &Place<'tcx>,
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
         let value = match *rvalue {
             // Forward values.
-            Rvalue::Use(ref mut operand) => return self.simplify_operand(operand, location),
+            Rvalue::Use(ref mut operand, _) => return self.simplify_operand(operand, location),
 
             // Roots.
             Rvalue::Repeat(ref mut op, amount) => {
@@ -1039,6 +1077,21 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             Rvalue::Ref(_, borrow_kind, ref mut place) => {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
+            }
+            Rvalue::Reborrow(_, mutbl, place) => {
+                if mutbl == Mutability::Mut {
+                    // Note: this is adapted from simplify_aggregate.
+                    let mut operand = Operand::Copy(place);
+                    let val = self.simplify_operand(&mut operand, location);
+                    // FIXME(reborrow): Is it correct to make these retagging assignments?
+                    *rvalue = Rvalue::Use(Operand::Copy(place), WithRetag::Yes);
+                    return val;
+                } else {
+                    // FIXME(reborrow): CoerceShared should perform effectively a copy followed by a
+                    // transmute, or possibly something more complicated in the future. For now we
+                    // leave this unoptimised.
+                    return None;
+                }
             }
             Rvalue::RawPtr(mutbl, ref mut place) => {
                 self.simplify_place_projection(place, location);
@@ -1053,7 +1106,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             Rvalue::Cast(ref mut kind, ref mut value, to) => {
                 return self.simplify_cast(kind, value, to, location);
             }
-            Rvalue::BinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
+            Rvalue::BinaryOp(op, (ref mut lhs, ref mut rhs)) => {
                 return self.simplify_binary(op, lhs, rhs, location);
             }
             Rvalue::UnaryOp(op, ref mut arg_op) => {
@@ -1152,7 +1205,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let tcx = self.tcx;
         let ty = rvalue.ty(self.local_decls, tcx);
 
-        let Rvalue::Aggregate(box ref kind, ref mut field_ops) = *rvalue else { bug!() };
+        let Rvalue::Aggregate(ref kind, ref mut field_ops) = *rvalue else { bug!() };
 
         if field_ops.is_empty() {
             let is_zst = match *kind {
@@ -1230,7 +1283,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         if let Some(value) = self.simplify_aggregate_to_copy(ty, variant_index, &fields) {
             if let Some(place) = self.try_as_place(value, location, true) {
                 self.reused_locals.insert(place.local);
-                *rvalue = Rvalue::Use(Operand::Copy(place));
+                // FIXME: Is it correct to make these retagging assignments?
+                *rvalue = Rvalue::Use(Operand::Copy(place), WithRetag::Yes);
             }
             return Some(value);
         }
@@ -1625,15 +1679,71 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let right_meta_ty = right_ptr_ty.pointee_metadata_ty_or_projection(self.tcx);
         if left_meta_ty == right_meta_ty {
             true
-        } else if let Ok(left) =
-            self.tcx.try_normalize_erasing_regions(self.typing_env(), left_meta_ty)
-            && let Ok(right) =
-                self.tcx.try_normalize_erasing_regions(self.typing_env(), right_meta_ty)
+        } else if let Ok(left) = self
+            .tcx
+            .try_normalize_erasing_regions(self.typing_env(), Unnormalized::new_wip(left_meta_ty))
+            && let Ok(right) = self.tcx.try_normalize_erasing_regions(
+                self.typing_env(),
+                Unnormalized::new_wip(right_meta_ty),
+            )
         {
             left == right
         } else {
             false
         }
+    }
+
+    fn ty_may_have_ref(&self, ty: Ty<'tcx>) -> bool {
+        fn ty_may_have_ref_inner<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, depth: usize) -> bool {
+            if !tcx.recursion_limit().value_within_limit(depth) {
+                return true;
+            }
+            let depth = depth + 1;
+            match ty.kind() {
+                ty::Int(_)
+                | ty::Uint(_)
+                | ty::Float(_)
+                | ty::Bool
+                | ty::Char
+                | ty::Str
+                | ty::Never
+                | ty::FnDef(..)
+                | ty::Error(_)
+                | ty::FnPtr(..) => false,
+                ty::Tuple(fields) => {
+                    fields.iter().any(|field| ty_may_have_ref_inner(tcx, field, depth))
+                }
+                ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => {
+                    ty_may_have_ref_inner(tcx, *ty, depth)
+                }
+                ty::Adt(adt_def, args) => {
+                    adt_def.has_param()
+                        || adt_def.has_aliases()
+                        || adt_def.all_fields().any(|field| {
+                            ty_may_have_ref_inner(
+                                tcx,
+                                field.ty(tcx, args).skip_normalization(),
+                                depth,
+                            )
+                        })
+                }
+                ty::Ref(..)
+                | ty::RawPtr(_, _)
+                | ty::Bound(..)
+                | ty::Closure(..)
+                | ty::CoroutineClosure(..)
+                | ty::Dynamic(..)
+                | ty::Foreign(_)
+                | ty::Coroutine(..)
+                | ty::CoroutineWitness(..)
+                | ty::UnsafeBinder(_)
+                | ty::Infer(_)
+                | ty::Alias(..)
+                | ty::Param(_)
+                | ty::Placeholder(_) => true,
+            }
+        }
+        ty_may_have_ref_inner(self.tcx, ty, 0)
     }
 
     /// Returns `false` if we're confident that the middle type doesn't have an
@@ -1695,7 +1805,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     true
                 }
             }
-            BackendRepr::ScalarPair(a, b) => {
+            BackendRepr::ScalarPair { a, b, b_offset: _ } => {
+                // The offset is irrelevant to niches since it can only cause padding,
+                // which can never have a niche since it's uninitialized.
                 !a.is_always_valid(&self.ecx) || !b.is_always_valid(&self.ecx)
             }
             BackendRepr::SimdVector { .. }
@@ -1724,7 +1836,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             && adt.repr().transparent()
             && let [single_field] = adt.non_enum_variant().fields.raw.as_slice()
         {
-            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args)))
+            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args).skip_norm_wip()))
         } else {
             None
         }
@@ -1793,7 +1905,10 @@ fn op_to_prop_const<'tcx>(
     // But we *do* want to synthesize any size constant if it is entirely uninit because that
     // benefits codegen, which has special handling for them.
     if !op.is_immediate_uninit()
-        && !matches!(op.layout.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..))
+        && !matches!(
+            op.layout.backend_repr,
+            BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. }
+        )
     {
         return None;
     }
@@ -1984,15 +2099,15 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
     ) {
         self.simplify_place_projection(lhs, location);
 
-        let value = self.simplify_rvalue(lhs, rvalue, location);
+        let value = self.simplify_rvalue(rvalue, location);
         if let Some(value) = value {
+            // FIXME: Is it correct to make these retagging assignments?
             if let Some(const_) = self.try_as_constant(value) {
-                *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
+                *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)), WithRetag::Yes);
             } else if let Some(place) = self.try_as_place(value, location, false)
-                && *rvalue != Rvalue::Use(Operand::Move(place))
-                && *rvalue != Rvalue::Use(Operand::Copy(place))
+                && !matches!(rvalue, Rvalue::Use(Operand::Move(p) | Operand::Copy(p), _) if p == &place)
             {
-                *rvalue = Rvalue::Use(Operand::Copy(place));
+                *rvalue = Rvalue::Use(Operand::Copy(place), WithRetag::Yes);
                 self.reused_locals.insert(place.local);
             }
         }
@@ -2023,12 +2138,13 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
     }
 }
 
-struct StorageRemover<'tcx> {
+struct StorageRemover<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    reused_locals: DenseBitSet<Local>,
+    reused_locals: &'a DenseBitSet<Local>,
+    storage_to_remove: &'a DenseBitSet<Local>,
 }
 
-impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
+impl<'a, 'tcx> MutVisitor<'tcx> for StorageRemover<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -2046,11 +2162,53 @@ impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
         match stmt.kind {
             // When removing storage statements, we need to remove both (#107511).
             StatementKind::StorageLive(l) | StatementKind::StorageDead(l)
-                if self.reused_locals.contains(l) =>
+                if self.storage_to_remove.contains(l) =>
             {
                 stmt.make_nop(true)
             }
             _ => self.super_statement(stmt, loc),
+        }
+    }
+}
+
+struct StorageChecker<'a, 'tcx> {
+    reused_locals: &'a DenseBitSet<Local>,
+    storage_to_remove: DenseBitSet<Local>,
+    maybe_uninit: ResultsCursor<'a, 'tcx, MaybeUninitializedLocals>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
+        match context {
+            // These mutating uses do not require the local to be initialized,
+            // so we cannot use our maybe-uninit check on them.
+            // However, GVN doesn't introduce or move mutations,
+            // so this local must already have valid storage at this location.
+            PlaceContext::MutatingUse(MutatingUseContext::AsmOutput)
+            | PlaceContext::MutatingUse(MutatingUseContext::Call)
+            | PlaceContext::MutatingUse(MutatingUseContext::Store)
+            | PlaceContext::MutatingUse(MutatingUseContext::Yield)
+            | PlaceContext::NonUse(_) => {
+                return;
+            }
+            // Must check validity for other mutating usages and all non-mutating uses.
+            PlaceContext::MutatingUse(_) | PlaceContext::NonMutatingUse(_) => {}
+        }
+
+        // We only need to check reused locals which we haven't already removed storage for.
+        if !self.reused_locals.contains(local) || self.storage_to_remove.contains(local) {
+            return;
+        }
+
+        self.maybe_uninit.seek_before_primary_effect(location);
+
+        if self.maybe_uninit.get().contains(local) {
+            debug!(
+                ?location,
+                ?local,
+                "local is reused and is maybe uninit at this location, marking it for storage statement removal"
+            );
+            self.storage_to_remove.insert(local);
         }
     }
 }

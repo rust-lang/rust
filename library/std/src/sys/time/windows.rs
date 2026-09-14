@@ -35,7 +35,14 @@ impl Instant {
 
         let freq = perf_counter::frequency() as u64;
         let now = perf_counter::now();
+
+        // We convert now to `u64` to be able to use `Duration`.
         let instant_nsec = mul_div_u64(now as u64, NANOS_PER_SEC, freq);
+        // We can add an arbitrary offset to shift the epoch of this clock. We do that to avoid
+        // being too close to 0 which would lead to underflow when computing times in the past. Also
+        // see <https://github.com/rust-lang/rust/issues/156142>.
+        let instant_nsec = instant_nsec + (u64::MAX / 4);
+
         Self { t: Duration::from_nanos(instant_nsec) }
     }
 

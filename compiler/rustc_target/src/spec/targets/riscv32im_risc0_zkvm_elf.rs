@@ -1,5 +1,5 @@
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, Target, TargetMetadata,
+    Arch, Cc, LinkerFlavor, Lld, LlvmAbi, Os, PanicStrategy, RelocModel, Target, TargetMetadata,
     TargetOptions,
 };
 
@@ -32,7 +32,7 @@ pub(crate) fn target() -> Target {
             atomic_cas: true,
 
             features: "+m".into(),
-            llvm_abiname: "ilp32".into(),
+            llvm_abiname: LlvmAbi::Ilp32,
             executables: true,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,

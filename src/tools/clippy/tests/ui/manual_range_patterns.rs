@@ -1,5 +1,3 @@
-#![allow(unused)]
-#![allow(non_contiguous_range_endpoints)]
 #![warn(clippy::manual_range_patterns)]
 
 fn main() {

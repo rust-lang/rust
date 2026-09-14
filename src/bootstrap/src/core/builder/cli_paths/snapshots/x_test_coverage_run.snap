@@ -2,6 +2,6 @@
 source: src/bootstrap/src/core/builder/cli_paths/tests.rs
 expression: test coverage-run
 ---
-[Test] test::Coverage
+[Test] test::CoverageModeAlias
     targets: [aarch64-unknown-linux-gnu]
-    - Set({test::coverage-run})
+    - Set({coverage-run})

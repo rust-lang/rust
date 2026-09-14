@@ -16,7 +16,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 // fn foo() -> i32 { 42i32 }
 // ```
-pub(crate) fn add_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn add_return_type(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let (fn_type, tail_expr, builder_edit_pos) = extract_tail(ctx)?;
     let module = ctx.sema.scope(tail_expr.syntax())?.module();
     let ty = ctx.sema.type_of_expr(&peel_blocks(tail_expr.clone()))?.adjusted();
@@ -133,7 +133,7 @@ fn peel_blocks(mut expr: ast::Expr) -> ast::Expr {
     expr
 }
 
-fn extract_tail(ctx: &AssistContext<'_>) -> Option<(FnType, ast::Expr, InsertOrReplace)> {
+fn extract_tail(ctx: &AssistContext<'_, '_>) -> Option<(FnType, ast::Expr, InsertOrReplace)> {
     let node = ctx.find_node_at_offset::<Either<ast::ClosureExpr, ast::Fn>>()?;
     let (fn_type, tail_expr, return_type_range, action) = match node {
         Either::Left(closure) => {
@@ -161,7 +161,7 @@ fn extract_tail(ctx: &AssistContext<'_>) -> Option<(FnType, ast::Expr, InsertOrR
             let stmt_list = body.stmt_list()?;
             let tail_expr = stmt_list.tail_expr()?;
 
-            let ret_range_end = stmt_list.l_curly_token()?.text_range().start();
+            let ret_range_end = stmt_list.l_curly_token()?.text_range().end();
             let ret_range = TextRange::new(rparen_pos, ret_range_end);
             (FnType::Function, tail_expr, ret_range, action)
         }
@@ -215,10 +215,28 @@ mod tests {
 
     #[test]
     fn infer_return_type_cursor_at_return_type_pos() {
-        cov_mark::check!(cursor_in_ret_position);
+        cov_mark::check_count!(cursor_in_ret_position, 3);
         check_assist(
             add_return_type,
             r#"fn foo() $0{
+    45
+}"#,
+            r#"fn foo() -> i32 {
+    45
+}"#,
+        );
+        check_assist(
+            add_return_type,
+            r#"fn foo()$0 {
+    45
+}"#,
+            r#"fn foo() -> i32 {
+    45
+}"#,
+        );
+        check_assist(
+            add_return_type,
+            r#"fn foo() {$0
     45
 }"#,
             r#"fn foo() -> i32 {

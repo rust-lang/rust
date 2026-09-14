@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
-use clippy_utils::source::SpanRangeExt;
-use itertools::Itertools;
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _, MaybeTypeckRes as _};
+use clippy_utils::source::SpanExt as _;
+use itertools::Itertools as _;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Param, PatKind};
@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(
         }
         && msrv.meets(cx, msrvs::MATCHES_MACRO)
         && !is_from_proc_macro(cx, expr)
-        && let Some(scrutinee_snip) = scrutinee.span.get_source_text(cx)
+        && let Some(scrutinee_snip) = scrutinee.span.get_text(cx)
     {
         // Normalize the char using `map` so `join` doesn't use `Display`, if we don't then
         // something like `r"\"` will become `'\'`, which is of course invalid

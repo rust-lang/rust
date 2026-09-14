@@ -6,17 +6,17 @@ const trait A {
     fn b() { println!("hi"); }
 }
 
-impl const A for () {
+const impl A for () {
     fn a() {}
 }
 
-impl const A for u8 {
+const impl A for u8 {
     fn a() {}
     fn b() { println!("hello"); }
     //~^ ERROR: cannot call non-const function
 }
 
-impl const A for i8 {
+const impl A for i8 {
     fn a() {}
     fn b() {}
 }

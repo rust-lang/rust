@@ -1,25 +1,28 @@
-use super::support::{Float, Round};
+//! Note that we can use `rint` for these implementations since Rust expects the rounding
+//! mode is always ties-to-even. `roundeven` also does not raise `FE_INEXACT`.
+//!
+//! Tested in the `rint` module.
 
 /// Round `x` to the nearest integer, breaking ties toward even. This is IEEE 754
 /// `roundToIntegralTiesToEven`.
 #[cfg(f16_enabled)]
 #[cfg_attr(assert_no_panic, no_panic::no_panic)]
 pub fn roundevenf16(x: f16) -> f16 {
-    roundeven_impl(x)
+    super::rintf16(x)
 }
 
 /// Round `x` to the nearest integer, breaking ties toward even. This is IEEE 754
 /// `roundToIntegralTiesToEven`.
 #[cfg_attr(assert_no_panic, no_panic::no_panic)]
 pub fn roundevenf(x: f32) -> f32 {
-    roundeven_impl(x)
+    super::rintf(x)
 }
 
 /// Round `x` to the nearest integer, breaking ties toward even. This is IEEE 754
 /// `roundToIntegralTiesToEven`.
 #[cfg_attr(assert_no_panic, no_panic::no_panic)]
 pub fn roundeven(x: f64) -> f64 {
-    roundeven_impl(x)
+    super::rint(x)
 }
 
 /// Round `x` to the nearest integer, breaking ties toward even. This is IEEE 754
@@ -27,10 +30,5 @@ pub fn roundeven(x: f64) -> f64 {
 #[cfg(f128_enabled)]
 #[cfg_attr(assert_no_panic, no_panic::no_panic)]
 pub fn roundevenf128(x: f128) -> f128 {
-    roundeven_impl(x)
-}
-
-#[inline]
-pub fn roundeven_impl<F: Float>(x: F) -> F {
-    super::generic::rint_round(x, Round::Nearest).val
+    super::rintf128(x)
 }

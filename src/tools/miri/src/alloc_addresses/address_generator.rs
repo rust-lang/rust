@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use rand::Rng;
+use rand::{Rng, RngExt};
 use rustc_abi::{Align, Size};
 use rustc_const_eval::interpret::{InterpResult, interp_ok};
 use rustc_middle::{err_exhaust, throw_exhaust};

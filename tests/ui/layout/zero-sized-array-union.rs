@@ -55,7 +55,7 @@ struct Baz1 {
     u: U1,
 }
 
-#[rustc_layout(homogeneous_aggregate)]
+#[rustc_dump_layout(homogeneous_aggregate)]
 type TestBaz1 = Baz1;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous
 
@@ -66,7 +66,7 @@ struct Baz2 {
     u: U2,
 }
 
-#[rustc_layout(homogeneous_aggregate)]
+#[rustc_dump_layout(homogeneous_aggregate)]
 type TestBaz2 = Baz2;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous
 
@@ -77,7 +77,7 @@ struct Baz3 {
     u: U3,
 }
 
-#[rustc_layout(homogeneous_aggregate)]
+#[rustc_dump_layout(homogeneous_aggregate)]
 type TestBaz3 = Baz3;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous
 
@@ -88,7 +88,7 @@ struct Baz4 {
     u: U4,
 }
 
-#[rustc_layout(homogeneous_aggregate)]
+#[rustc_dump_layout(homogeneous_aggregate)]
 type TestBaz4 = Baz4;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous
 

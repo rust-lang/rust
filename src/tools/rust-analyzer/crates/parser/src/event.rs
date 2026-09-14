@@ -2,7 +2,7 @@
 //! It is intended to be completely decoupled from the
 //! parser, so as to allow to evolve the tree representation
 //! and the parser algorithm independently.
-use std::mem;
+use std::{mem, num::NonZeroU32};
 
 use crate::{
     SyntaxKind::{self, *},
@@ -12,7 +12,13 @@ use crate::{
 /// `Parser` produces a flat list of `Event`s.
 /// They are converted to a tree-structure in
 /// a separate pass, via `TreeBuilder`.
-#[derive(Debug, PartialEq)]
+///
+/// Kept to 8 bytes: error messages live in a side table on the `Parser`
+/// (the `errors` vec) and `Event::Error` only stores an index into it.
+/// `forward_parent` uses `NonZeroU32` so `Option` is niche-optimised away
+/// (the offset is always ≥ 1 because the forward parent sits later in the
+/// event stream).
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub(crate) enum Event {
     /// This event signifies the start of the node.
     /// It should be either abandoned (in which case the
@@ -53,10 +59,7 @@ pub(crate) enum Event {
     /// ```
     ///
     /// See also `CompletedMarker::precede`.
-    Start {
-        kind: SyntaxKind,
-        forward_parent: Option<u32>,
-    },
+    Start { kind: SyntaxKind, forward_parent: Option<NonZeroU32> },
 
     /// Complete the previous `Start` event
     Finish,
@@ -65,20 +68,14 @@ pub(crate) enum Event {
     /// `n_raw_tokens` is used to glue complex contextual tokens.
     /// For example, lexer tokenizes `>>` as `>`, `>`, and
     /// `n_raw_tokens = 2` is used to produced a single `>>`.
-    Token {
-        kind: SyntaxKind,
-        n_raw_tokens: u8,
-    },
+    Token { kind: SyntaxKind, n_raw_tokens: u8 },
     /// When we parse `foo.0.0` or `foo. 0. 0` the lexer will hand us a float literal
     /// instead of an integer literal followed by a dot as the lexer has no contextual knowledge.
     /// This event instructs whatever consumes the events to split the float literal into
     /// the corresponding parts.
-    FloatSplitHack {
-        ends_in_dot: bool,
-    },
-    Error {
-        msg: String,
-    },
+    FloatSplitHack { ends_in_dot: bool },
+    /// Index into the parser's side `errors` vec.
+    Error { err: u32 },
 }
 
 impl Event {
@@ -87,13 +84,16 @@ impl Event {
     }
 }
 
-/// Generate the syntax tree with the control of events.
-pub(super) fn process(mut events: Vec<Event>) -> Output {
-    let mut res = Output::default();
+/// Generate the syntax tree with the control of events. `errors` is the
+/// side table of error messages built up alongside the `events` stream.
+pub(super) fn process(mut events: Vec<Event>, mut errors: Vec<String>) -> Output {
+    // Each event becomes roughly one u32 in Output, so preallocate to avoid
+    // the amortized grow-one churn we used to see in Output::enter_node.
+    let mut res = Output::with_event_capacity(events.len());
     let mut forward_parents = Vec::new();
 
     for i in 0..events.len() {
-        match mem::replace(&mut events[i], Event::tombstone()) {
+        match events[i] {
             Event::Start { kind, forward_parent } => {
                 // For events[A, B, C], B is A's forward_parent, C is B's forward_parent,
                 // in the normal control flow, the parent-child relation: `A -> B -> C`,
@@ -104,7 +104,7 @@ pub(super) fn process(mut events: Vec<Event>) -> Output {
                 let mut idx = i;
                 let mut fp = forward_parent;
                 while let Some(fwd) = fp {
-                    idx += fwd as usize;
+                    idx += fwd.get() as usize;
                     // append `A`'s forward_parent `B`
                     fp = match mem::replace(&mut events[idx], Event::tombstone()) {
                         Event::Start { kind, forward_parent } => {
@@ -131,7 +131,13 @@ pub(super) fn process(mut events: Vec<Event>) -> Output {
                 let ev = mem::replace(&mut events[i + 1], Event::tombstone());
                 assert!(matches!(ev, Event::Finish), "{ev:?}");
             }
-            Event::Error { msg } => res.error(msg),
+            Event::Error { err } => {
+                // Move the string out of the side table; each index is visited
+                // exactly once, so swapping with an empty String is cheap and
+                // avoids any clone.
+                let msg = mem::take(&mut errors[err as usize]);
+                res.error(msg);
+            }
         }
     }
 

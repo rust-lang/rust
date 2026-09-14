@@ -9,7 +9,7 @@ trait NeedsDrop: Sized {
 impl<This> NeedsDrop for This {}
 
 // EMIT_MIR control_flow_simplification.hello.GVN.diff
-// EMIT_MIR control_flow_simplification.hello.PreCodegen.before.mir
+// EMIT_MIR control_flow_simplification.hello.runtime-optimized.after.mir
 fn hello<T>() {
     // CHECK-LABEL: fn hello(
     // CHECK: bb0:

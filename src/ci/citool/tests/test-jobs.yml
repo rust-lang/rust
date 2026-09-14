@@ -28,7 +28,7 @@ runners:
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
     SCRIPT: ./x.py check compiletest && ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc-html -- --exact
-    RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+    RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set build.allocator=jemalloc
     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
     # Ensure that host tooling is tested on our minimum supported macOS version.
     MACOSX_DEPLOYMENT_TARGET: 10.12
@@ -64,11 +64,11 @@ envs:
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
 pr:
-  - name: pr-check-1
+  - name: test-pr-check-1
     <<: *job-linux-4c
-  - name: pr-check-2
+  - name: test-pr-check-2
     <<: *job-linux-4c
-  - name: tidy
+  - name: test-tidy
     continue_on_error: true
     doc_url: https://foo.bar
     <<: *job-linux-4c
@@ -86,12 +86,12 @@ try:
 # These jobs automatically inherit envs.auto, to avoid repeating
 # it in each job definition.
 auto:
-  - name: aarch64-gnu
+  - name: test-aarch64-gnu
     <<: *job-aarch64-linux
 
   # The x86_64-gnu-llvm-18 job is split into multiple jobs to run tests in parallel.
   # x86_64-gnu-llvm-18-1 skips tests that run in x86_64-gnu-llvm-18-{2,3}.
-  - name: x86_64-gnu-llvm-18-1
+  - name: test-x86_64-gnu-llvm-18-1
     env:
       RUST_BACKTRACE: 1
       READ_ONLY_SRC: "0"
@@ -104,13 +104,13 @@ auto:
   #  macOS Builders  #
   ####################
 
-  - name: aarch64-apple
+  - name: test-aarch64-apple
     env:
       SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler
-        --set rust.jemalloc
+        --set build.allocator=jemalloc
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else

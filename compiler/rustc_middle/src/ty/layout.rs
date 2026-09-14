@@ -1,4 +1,3 @@
-use std::ops::Bound;
 use std::{cmp, fmt};
 
 use rustc_abi as abi;
@@ -7,15 +6,14 @@ use rustc_abi::{
     PointerKind, Primitive, ReprFlags, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
     TyAbiInterface, VariantIdx, Variants,
 };
-use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
-};
+use rustc_errors::{Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, IntoDiagArg, Level};
 use rustc_hir as hir;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, Symbol, sym};
+use rustc_structures::Limit;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 use tracing::debug;
@@ -24,7 +22,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::traits::ObligationCause;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 
 #[extension(pub trait IntegerExt)]
 impl abi::Integer {
@@ -69,9 +67,11 @@ impl abi::Integer {
     }
 
     /// Finds the appropriate Integer type and signedness for the given
-    /// signed discriminant range and `#[repr]` attribute.
-    /// N.B.: `u128` values above `i128::MAX` will be treated as signed, but
-    /// that shouldn't affect anything, other than maybe debuginfo.
+    /// discriminant range and `#[repr]` attribute.
+    ///
+    /// To represent the way the values were written in the rust source, min and max
+    /// are in different types. It's thus possible to pass in an unrepresentable range,
+    /// and the method will panic in those cases.
     ///
     /// This is the basis for computing the type of the *tag* of an enum (which can be smaller than
     /// the type of the *discriminant*, which is determined by [`ReprOptions::discr_type`]).
@@ -79,15 +79,24 @@ impl abi::Integer {
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
         repr: &ReprOptions,
-        min: i128,
-        max: i128,
+        min_negative: i128,
+        max_positive: u128,
     ) -> (abi::Integer, bool) {
+        assert!(
+            min_negative >= 0 || max_positive <= i128::MAX.cast_unsigned(),
+            "No type can represent the full range of {min_negative}..={max_positive}",
+        );
+
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
         // are any negative values, the only valid unsigned representation is u128
         // which can fit all i128 values, so the result remains unaffected.
-        let unsigned_fit = abi::Integer::fit_unsigned(cmp::max(min as u128, max as u128));
-        let signed_fit = cmp::max(abi::Integer::fit_signed(min), abi::Integer::fit_signed(max));
+        let unsigned_fit =
+            abi::Integer::fit_unsigned(cmp::max(min_negative.cast_unsigned(), max_positive));
+        let signed_fit = cmp::max(
+            abi::Integer::fit_signed(min_negative),
+            abi::Integer::fit_signed(max_positive.cast_signed()),
+        );
 
         if let Some(ity) = repr.int {
             let discr = abi::Integer::from_attr(&tcx, ity);
@@ -185,11 +194,9 @@ pub const WIDE_PTR_ADDR: usize = 0;
 /// - For a slice, this is the length.
 pub const WIDE_PTR_EXTRA: usize = 1;
 
-pub const MAX_SIMD_LANES: u64 = rustc_abi::MAX_SIMD_LANES;
-
 /// Used in `check_validity_requirement` to indicate the kind of initialization
 /// that is checked to be valid
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, StableHash)]
 pub enum ValidityRequirement {
     Inhabited,
     Zero,
@@ -222,16 +229,16 @@ impl fmt::Display for ValidityRequirement {
     }
 }
 
-#[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, StableHash, TyEncodable, TyDecodable)]
 pub enum SimdLayoutError {
     /// The vector has 0 lanes.
     ZeroLength,
     /// The vector has more lanes than supported or permitted by
     /// #\[rustc_simd_monomorphize_lane_limit\].
-    TooManyLanes(u64),
+    TooManyLanes(Limit),
 }
 
-#[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, StableHash, TyEncodable, TyDecodable)]
 pub enum LayoutError<'tcx> {
     /// A type doesn't have a sensible layout.
     ///
@@ -260,8 +267,6 @@ pub enum LayoutError<'tcx> {
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
     /// A non-layout error is reported elsewhere.
     ReferencesError(ErrorGuaranteed),
-    /// A type has cyclic layout, i.e. the type contains itself without indirection.
-    Cycle(ErrorGuaranteed),
 }
 
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
@@ -286,7 +291,6 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
                 t,
                 e.get_type_for_failure()
             ),
-            LayoutError::Cycle(_) => write!(f, "a cycle occurred during layout computation"),
             LayoutError::ReferencesError(_) => write!(f, "the type has an unknown layout"),
         }
     }
@@ -320,12 +324,6 @@ pub enum SizeSkeleton<'tcx> {
     /// Alignment can be `None` if unknown.
     Known(Size, Option<Align>),
 
-    /// This is a generic const expression (i.e. N * 2), which may contain some parameters.
-    /// It must be of type usize, and represents the size of a type in bytes.
-    /// It is not required to be evaluatable to a concrete value, but can be used to check
-    /// that another SizeSkeleton is of equal size.
-    Generic(ty::Const<'tcx>),
-
     /// A potentially-wide pointer.
     Pointer {
         /// If true, this pointer is never null.
@@ -342,8 +340,38 @@ impl<'tcx> SizeSkeleton<'tcx> {
         ty: Ty<'tcx>,
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
+        span: Span,
+    ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
+        Self::compute_inner(ty, tcx, typing_env, span, 0)
+    }
+
+    fn compute_inner(
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        span: Span,
+        depth: usize,
     ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
         debug_assert!(!ty.has_non_region_infer());
+
+        // Bail out if we've recursed too deeply (issue #156137); a cyclic type
+        // alias can otherwise blow the stack here. Using `>=` rather than `>`
+        // means we fire exactly at the limit, which lets us report the
+        // cycle-root type (`Thing<T>`) instead of an innocent field type.
+        let recursion_limit = tcx.recursion_limit();
+        if depth >= recursion_limit.0 {
+            let suggested_limit = match recursion_limit {
+                Limit(0) => Limit(2),
+                limit => limit * 2,
+            };
+            let reported =
+                tcx.dcx().emit_err(crate::diagnostics::RecursionLimitReachedSizeSkeleton {
+                    span,
+                    ty,
+                    suggested_limit,
+                });
+            return Err(tcx.arena.alloc(LayoutError::ReferencesError(reported)));
+        }
 
         // First try computing a static layout.
         let err = match tcx.layout_of(typing_env.as_query_input(ty)) {
@@ -358,8 +386,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
             Err(err @ LayoutError::TooGeneric(_)) => err,
             // We can't extract SizeSkeleton info from other layout errors
             Err(
-                e @ LayoutError::Cycle(_)
-                | e @ LayoutError::Unknown(_)
+                e @ LayoutError::Unknown(_)
                 | e @ LayoutError::SizeOverflow(_)
                 | e @ LayoutError::InvalidSimd { .. }
                 | e @ LayoutError::NormalizationFailure(..)
@@ -371,6 +398,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
                 let non_zero = !ty.is_raw_ptr();
 
+                tcx.assert_fully_normalized(typing_env, pointee);
                 let tail = tcx.struct_tail_raw(
                     pointee,
                     &ObligationCause::dummy(),
@@ -389,7 +417,13 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 );
 
                 match tail.kind() {
-                    ty::Param(_) | ty::Alias(ty::Projection | ty::Inherent, _) => {
+                    // FIXME(#155345): This should only handle rigid aliases if we're using
+                    // the new solver.
+                    ty::Param(_)
+                    | ty::Alias(
+                        _,
+                        ty::AliasTy { kind: ty::Projection { .. } | ty::Inherent { .. }, .. },
+                    ) => {
                         debug_assert!(tail.has_non_region_param());
                         Ok(SizeSkeleton::Pointer {
                             non_zero,
@@ -412,7 +446,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     return Ok(SizeSkeleton::Known(Size::from_bytes(0), None));
                 }
 
-                match SizeSkeleton::compute(inner, tcx, typing_env)? {
+                match SizeSkeleton::compute_inner(inner, tcx, typing_env, span, depth + 1)? {
                     // This may succeed because the multiplication of two types may overflow
                     // but a single size of a nested array will not.
                     SizeSkeleton::Known(s, a) => {
@@ -426,23 +460,57 @@ impl<'tcx> SizeSkeleton<'tcx> {
                         }
                         Err(err)
                     }
-                    SizeSkeleton::Pointer { .. } | SizeSkeleton::Generic(_) => Err(err),
+                    SizeSkeleton::Pointer { .. } => Err(err),
                 }
             }
 
             ty::Adt(def, args) => {
-                // Only newtypes and enums w/ nullable pointer optimization.
+                // Only newtypes and enums w/ nullable pointer optimization (NPO).
                 if def.is_union() || def.variants().is_empty() || def.variants().len() > 2 {
                     return Err(err);
                 }
+                // Only default repr types.
+                {
+                    // We can ignore the seed and some particular flags that can never affect the
+                    // layout of newtypes / NPO types, but we have to check everything else.
+                    // If you are adding a new field to `ReprOptions`, make sure to extend the check
+                    // below so that we bail out if it is not at its default value!
+                    let ReprOptions { int, align, pack, flags, scalable, field_shuffle_seed: _ } =
+                        def.repr();
+                    let mut ignored_flags = ReprFlags::IS_TRANSPARENT
+                        | ReprFlags::IS_LINEAR
+                        | ReprFlags::RANDOMIZE_LAYOUT;
+                    if def.is_struct() {
+                        // `repr(C)` is only okay for structs, not for enums.
+                        // Below, the *only* thing we do for structs is propagating
+                        // `SizeSkeleton::Pointer`. We do *not* assume that `repr(C)` preserved
+                        // ZST-ness (which might stop being true eventually).
+                        ignored_flags |= ReprFlags::IS_C;
+                    }
+                    if int.is_some()
+                        || align.is_some()
+                        || pack.is_some()
+                        || flags.difference(ignored_flags) != ReprFlags::default()
+                        || scalable.is_some()
+                    {
+                        return Err(err);
+                    }
+                }
 
                 // Get a zero-sized variant or a pointer newtype.
-                let zero_or_ptr_variant = |i| {
+                // Returns `Ok(None)` for 1-ZST types, `Ok(Some)` if (ignoring all 1-ZST fields)
+                // there's just a single pointer, and `Err` otherwise.
+                let zero_or_ptr_variant = |i| -> Result<Option<SizeSkeleton<'tcx>>, _> {
                     let i = VariantIdx::from_usize(i);
-                    let fields =
-                        def.variant(i).fields.iter().map(|field| {
-                            SizeSkeleton::compute(field.ty(tcx, args), tcx, typing_env)
-                        });
+                    let fields = def.variant(i).fields.iter().map(|field| {
+                        SizeSkeleton::compute_inner(
+                            field.ty(tcx, args).skip_norm_wip(),
+                            tcx,
+                            typing_env,
+                            span,
+                            depth + 1,
+                        )
+                    });
                     let mut ptr = None;
                     for field in fields {
                         let field = field?;
@@ -460,36 +528,26 @@ impl<'tcx> SizeSkeleton<'tcx> {
                                 }
                                 ptr = Some(field);
                             }
-                            SizeSkeleton::Generic(_) => {
-                                return Err(err);
-                            }
                         }
                     }
                     Ok(ptr)
                 };
 
                 let v0 = zero_or_ptr_variant(0)?;
-                // Newtype.
+                // Single-variant case: Check if this is a newtype around a pointer.
+                // Such types are themselves pointer-sized.
                 if def.variants().len() == 1 {
                     if let Some(SizeSkeleton::Pointer { non_zero, tail }) = v0 {
-                        return Ok(SizeSkeleton::Pointer {
-                            non_zero: non_zero
-                                || match tcx.layout_scalar_valid_range(def.did()) {
-                                    (Bound::Included(start), Bound::Unbounded) => start > 0,
-                                    (Bound::Included(start), Bound::Included(end)) => {
-                                        0 < start && start < end
-                                    }
-                                    _ => false,
-                                },
-                            tail,
-                        });
+                        return Ok(SizeSkeleton::Pointer { non_zero, tail });
                     } else {
                         return Err(err);
                     }
                 }
 
                 let v1 = zero_or_ptr_variant(1)?;
-                // Nullable pointer enum optimization.
+                // 2-variant case: Check if one variant is a *non-zero* pointer and the other a
+                // 1-ZST. Such types are eligible to for the nullable pointer enum optimization, so
+                // they are themselves pointer-sized.
                 match (v0, v1) {
                     (Some(SizeSkeleton::Pointer { non_zero: true, tail }), None)
                     | (None, Some(SizeSkeleton::Pointer { non_zero: true, tail })) => {
@@ -500,16 +558,30 @@ impl<'tcx> SizeSkeleton<'tcx> {
             }
 
             ty::Alias(..) => {
-                let normalized = tcx.normalize_erasing_regions(typing_env, ty);
+                let normalized =
+                    tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty));
                 if ty == normalized {
                     Err(err)
                 } else {
-                    SizeSkeleton::compute(normalized, tcx, typing_env)
+                    SizeSkeleton::compute_inner(normalized, tcx, typing_env, span, depth + 1)
                 }
             }
 
-            // Pattern types are always the same size as their base.
-            ty::Pat(base, _) => SizeSkeleton::compute(base, tcx, typing_env),
+            ty::Pat(base, pat) => {
+                // Pattern types are always the same size as their base.
+                let base = SizeSkeleton::compute_inner(base, tcx, typing_env, span, depth + 1);
+                match *pat {
+                    ty::PatternKind::Range { .. } | ty::PatternKind::Or(_) => base,
+                    // But in the case of `!null` patterns we need to note that in the
+                    // raw pointer.
+                    ty::PatternKind::NotNull => match base? {
+                        SizeSkeleton::Known(..) => base,
+                        SizeSkeleton::Pointer { non_zero: _, tail } => {
+                            Ok(SizeSkeleton::Pointer { non_zero: true, tail })
+                        }
+                    },
+                }
+            }
 
             _ => Err(err),
         }
@@ -521,9 +593,6 @@ impl<'tcx> SizeSkeleton<'tcx> {
             (SizeSkeleton::Pointer { tail: a, .. }, SizeSkeleton::Pointer { tail: b, .. }) => {
                 a == b
             }
-            // constants are always pre-normalized into a canonical form so this
-            // only needs to check if their pointers are identical.
-            (SizeSkeleton::Generic(a), SizeSkeleton::Generic(b)) => a == b,
             _ => false,
         }
     }
@@ -535,12 +604,6 @@ pub trait HasTyCtxt<'tcx>: HasDataLayout {
 
 pub trait HasTypingEnv<'tcx> {
     fn typing_env(&self) -> ty::TypingEnv<'tcx>;
-
-    /// FIXME(#132279): This method should not be used as in the future
-    /// everything should take a `TypingEnv` instead. Remove it as that point.
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.typing_env().param_env
-    }
 }
 
 impl<'tcx> HasDataLayout for TyCtxt<'tcx> {
@@ -761,8 +824,8 @@ where
                 tcx.mk_layout(LayoutData::uninhabited_variant(cx, variant_index, fields))
             }
 
-            Variants::Multiple { ref variants, .. } => {
-                cx.tcx().mk_layout(variants[variant_index].clone())
+            Variants::Multiple { .. } => {
+                cx.tcx().mk_layout(LayoutData::for_variant(&this, variant_index))
             }
         };
 
@@ -863,7 +926,12 @@ where
                     {
                         let metadata = tcx.normalize_erasing_regions(
                             cx.typing_env(),
-                            Ty::new_projection(tcx, metadata_def_id, [pointee]),
+                            Unnormalized::new(Ty::new_projection(
+                                tcx,
+                                ty::IsRigid::No,
+                                metadata_def_id,
+                                [pointee],
+                            )),
                         );
 
                         // Map `Metadata = DynMetadata<dyn Trait>` back to a vtable, since it
@@ -918,9 +986,10 @@ where
                     ),
                     Variants::Multiple { tag, tag_field, .. } => {
                         if FieldIdx::from_usize(i) == tag_field {
-                            return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
+                            TyMaybeWithLayout::TyAndLayout(tag_layout(tag))
+                        } else {
+                            TyMaybeWithLayout::Ty(args.as_coroutine().upvar_tys()[i])
                         }
-                        TyMaybeWithLayout::Ty(args.as_coroutine().prefix_tys()[i])
                     }
                 },
 
@@ -931,7 +1000,7 @@ where
                     match this.variants {
                         Variants::Single { index } => {
                             let field = &def.variant(index).fields[FieldIdx::from_usize(i)];
-                            TyMaybeWithLayout::Ty(field.ty(tcx, args))
+                            TyMaybeWithLayout::Ty(field.ty(tcx, args).skip_norm_wip())
                         }
                         Variants::Empty => panic!("there is no field in Variants::Empty types"),
 
@@ -986,33 +1055,19 @@ where
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
                 tcx.layout_of(typing_env.as_query_input(ty)).ok().map(|layout| {
-                    let (size, kind);
-                    match mt {
+                    let kind = match mt {
                         hir::Mutability::Not => {
                             let frozen = optimize && ty.is_freeze(tcx, typing_env);
-
-                            // Non-frozen shared references are not necessarily dereferenceable for the entire duration of the function
-                            // (see <https://github.com/rust-lang/rust/pull/98017>)
-                            // (if we had "dereferenceable on entry", we could support this)
-                            size = if frozen { layout.size } else { Size::ZERO };
-
-                            kind = PointerKind::SharedRef { frozen };
+                            PointerKind::SharedRef { frozen }
                         }
                         hir::Mutability::Mut => {
                             let unpin = optimize
                                 && ty.is_unpin(tcx, typing_env)
                                 && ty.is_unsafe_unpin(tcx, typing_env);
-
-                            // Mutable references to potentially self-referential types are not
-                            // necessarily dereferenceable for the entire duration of the function
-                            // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>)
-                            // (if we had "dereferenceable on entry", we could support this)
-                            size = if unpin { layout.size } else { Size::ZERO };
-
-                            kind = PointerKind::MutableRef { unpin };
+                            PointerKind::MutableRef { unpin }
                         }
                     };
-                    PointeeInfo { safe: Some(kind), size, align: layout.align.abi }
+                    PointeeInfo { safe: Some(kind), size: layout.size, align: layout.align.abi }
                 })
             }
 
@@ -1028,27 +1083,8 @@ where
                             && pointee.is_unsafe_unpin(tcx, typing_env),
                         global: this.ty.is_box_global(tcx),
                     }),
-
-                    // `Box` are not necessarily dereferenceable for the entire duration of the function as
-                    // they can be deallocated at any time.
-                    // (if we had "dereferenceable on entry", we could support this)
-                    size: Size::ZERO,
-
+                    size: layout.size,
                     align: layout.align.abi,
-                })
-            }
-
-            ty::Adt(adt_def, ..) if adt_def.is_maybe_dangling() => {
-                Self::ty_and_layout_pointee_info_at(this.field(cx, 0), cx, offset).map(|info| {
-                    PointeeInfo {
-                        // Mark the pointer as raw
-                        // (thus removing noalias/readonly/etc in case of the llvm backend)
-                        safe: None,
-                        // Make sure we don't assert dereferenceability of the pointer.
-                        size: Size::ZERO,
-                        // Preserve the alignment assertion! That is required even inside `MaybeDangling`.
-                        align: info.align,
-                    }
                 })
             }
 
@@ -1077,7 +1113,7 @@ where
                         } else {
                             VariantIdx::from_u32(0)
                         };
-                        assert_eq!(tagged_variant, *niche_variants.start());
+                        assert_eq!(tagged_variant, niche_variants.start);
                         if *niche_start == 0 {
                             // The other variant is encoded as "null", so we can recurse searching for
                             // a pointer here. This relies on the fact that the codegen backend
@@ -1127,6 +1163,21 @@ where
                     }
                 }
 
+                // Patch result if we are a MaybeDangling-like type.
+                if this.ty.is_like_maybe_dangling()
+                    && let Some(info) = result
+                {
+                    result = Some(PointeeInfo {
+                        // Mark the pointer as raw
+                        // (thus removing noalias/readonly/etc in case of the llvm backend)
+                        safe: None,
+                        // Make sure we don't assert dereferenceability of the pointer.
+                        size: Size::ZERO,
+                        // Preserve the alignment assertion! That is required even inside `MaybeDangling`.
+                        align: info.align,
+                    });
+                }
+
                 result
             }
         };
@@ -1159,6 +1210,12 @@ where
 
     fn is_transparent(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().transparent())
+    }
+
+    /// Is this type `core::num::Complex<T>`?
+    fn is_complex_number_lang_item(this: TyAndLayout<'tcx>, cx: &C) -> bool {
+        let Some(def) = this.ty.ty_adt_def() else { return false };
+        cx.tcx().is_lang_item(def.did(), LangItem::Complex)
     }
 
     fn is_scalable_vector(this: TyAndLayout<'tcx>) -> bool {
@@ -1228,12 +1285,12 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
             return false;
         }
 
-        // With -Z panic-in-drop=abort, drop_in_place never unwinds.
+        // With -Z panic-in-drop=abort, `drop_glue` never unwinds.
         //
         // This is not part of `codegen_fn_attrs` as it can differ between crates
         // and therefore cannot be computed in core.
         if !tcx.sess.opts.unstable_opts.panic_in_drop.unwinds()
-            && tcx.is_lang_item(did, LangItem::DropInPlace)
+            && tcx.is_lang_item(did, LangItem::DropGlue)
         {
             return false;
         }
@@ -1270,19 +1327,22 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         | RiscvInterruptM
         | RiscvInterruptS
         | RustInvalid
-        | Unadjusted => false,
-        Rust | RustCall | RustCold | RustPreserveNone => tcx.sess.panic_strategy().unwinds(),
+        | Swift
+        | LlvmIntrinsic => false,
+        Rust | RustCall | RustCold | RustPreserveNone | RustTail => {
+            tcx.sess.panic_strategy().unwinds()
+        }
     }
 }
 
 /// Error produced by attempting to compute or adjust a `FnAbi`.
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, StableHash)]
 pub enum FnAbiError<'tcx> {
     /// Error produced by a `layout_of` call, while computing `FnAbi` initially.
     Layout(LayoutError<'tcx>),
 }
 
-impl<'a, 'b, G: EmissionGuarantee> Diagnostic<'a, G> for FnAbiError<'b> {
+impl<'a, 'b, G> Diagnostic<'a, G> for FnAbiError<'b> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         match self {
             Self::Layout(e) => Diag::new(dcx, level, e.to_string()),
@@ -1312,12 +1372,36 @@ pub trait FnAbiOfHelpers<'tcx>: LayoutOfHelpers<'tcx> {
     /// but this hook allows e.g. codegen to return only `&FnAbi` from its
     /// `cx.fn_abi_of_*(...)`, without any `Result<...>` around it to deal with
     /// (and any `FnAbiError`s are turned into fatal errors or ICEs).
+    ///
+    /// Codegen backends should use [`codegen_handle_fn_abi_err`] as implementation.
     fn handle_fn_abi_err(
         &self,
         err: FnAbiError<'tcx>,
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> <Self::FnAbiOfResult as MaybeResult<&'tcx FnAbi<'tcx, Ty<'tcx>>>>::Error;
+}
+
+/// Implementation of [`FnAbiOfHelpers::handle_fn_abi_err`] for codegen backends.
+pub fn codegen_handle_fn_abi_err<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    err: FnAbiError<'tcx>,
+    span: Span,
+    fn_abi_request: FnAbiRequest<'tcx>,
+) -> ErrorGuaranteed {
+    match err {
+        FnAbiError::Layout(LayoutError::SizeOverflow(_) | LayoutError::InvalidSimd { .. }) => {
+            tcx.dcx().emit_err(Spanned { span, node: err })
+        }
+        _ => match fn_abi_request {
+            FnAbiRequest::OfFnPtr { sig, extra_args } => {
+                span_bug!(span, "`fn_abi_of_fn_ptr({sig}, {extra_args:?})` failed: {err:?}",);
+            }
+            FnAbiRequest::OfInstance { instance, extra_args } => {
+                span_bug!(span, "`fn_abi_of_instance({instance}, {extra_args:?})` failed: {err:?}",);
+            }
+        },
+    }
 }
 
 /// Blanket extension trait for contexts that can compute `FnAbi`s.

@@ -1,0 +1,7 @@
+warning: linker stderr: bar
+  |
+  = note: requested on the command line with `-W linker-messages`
+  = note: the `linker_messages` lint ignores `-D warnings`
+
+warning: 1 warning emitted
+

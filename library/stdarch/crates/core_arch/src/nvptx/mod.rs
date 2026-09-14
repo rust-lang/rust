@@ -19,9 +19,9 @@ mod packed;
 pub use packed::*;
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
-    #[link_name = "llvm.nvvm.barrier0"]
-    fn syncthreads() -> ();
+unsafe extern "llvm-intrinsic" {
+    #[link_name = "llvm.nvvm.barrier.cta.sync.aligned.all"]
+    fn syncthreads(a: u32) -> ();
     #[link_name = "llvm.nvvm.read.ptx.sreg.ntid.x"]
     fn block_dim_x() -> u32;
     #[link_name = "llvm.nvvm.read.ptx.sreg.ntid.y"]
@@ -49,10 +49,12 @@ unsafe extern "C" {
 }
 
 /// Synchronizes all threads in the block.
+///
+#[doc = include_str!("../amdgpu/intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_nvptx", issue = "111199")]
 pub unsafe fn _syncthreads() -> () {
-    syncthreads()
+    syncthreads(0)
 }
 
 /// x-th thread-block dimension.
@@ -155,10 +157,13 @@ unsafe extern "C" {
     /// * `format`: A pointer to the format specifier input (uses common `printf` format).
     /// * `valist`: A pointer to the valist input.
     ///
-    /// ```
+    /// ```ignore (available only for nvptx)
+    /// # use std::mem::transmute;
     /// #[repr(C)]
     /// struct PrintArgs(f32, f32, f32, i32);
     ///
+    /// let a = 0.1f32;
+    /// let b = 0.2f32;
     /// vprintf(
     ///     "int(%f + %f) = int(%f) = %d\n".as_ptr(),
     ///     transmute(&PrintArgs(a, b, a + b, (a + b) as i32)),

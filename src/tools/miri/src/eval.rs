@@ -10,8 +10,12 @@ use std::{iter, thread};
 
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::FatalErrorMarker;
 use rustc_hir::def::Namespace;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir_analysis::check::check_function_signature;
+use rustc_middle::middle::exported_symbols::ExportedSymbol;
+use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutCx};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::EntryFnType;
@@ -20,6 +24,7 @@ use rustc_target::spec::Os;
 use crate::concurrency::GenmcCtx;
 use crate::concurrency::thread::TlsAllocAction;
 use crate::diagnostics::report_leaks;
+use crate::helpers::is_no_core;
 use crate::shims::{global_ctor, tls};
 use crate::*;
 
@@ -27,6 +32,56 @@ use crate::*;
 pub enum MiriEntryFnType {
     MiriStart,
     Rustc(EntryFnType),
+}
+
+/// Finds the entry point Miri should execute.
+///
+/// Public because this is used by Priroda.
+pub fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, MiriEntryFnType) {
+    if let Some((def_id, entry_type)) = tcx.entry_fn(()) {
+        return (def_id, MiriEntryFnType::Rustc(entry_type));
+    }
+    // Look for a symbol in the local crate named `miri_start`, and treat that as the entry point.
+    let sym = tcx.exported_non_generic_symbols(LOCAL_CRATE).iter().find_map(|(sym, _)| {
+        if sym.symbol_name_for_local_instance(tcx).name == "miri_start" { Some(sym) } else { None }
+    });
+    if let Some(ExportedSymbol::NonGeneric(id)) = sym {
+        let start_def_id = id.expect_local();
+        let start_span = tcx.def_span(start_def_id);
+
+        let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi(
+            [tcx.types.isize, Ty::new_imm_ptr(tcx, Ty::new_imm_ptr(tcx, tcx.types.u8))],
+            tcx.types.isize,
+        ));
+
+        let correct_func_sig = check_function_signature(
+            tcx,
+            ObligationCause::new(start_span, start_def_id, ObligationCauseCode::Misc),
+            *id,
+            expected_sig,
+        )
+        .is_ok();
+
+        if correct_func_sig {
+            (*id, MiriEntryFnType::MiriStart)
+        } else {
+            tcx.dcx().fatal(
+                "`miri_start` must have the following signature:\n\
+                fn miri_start(argc: isize, argv: *const *const u8) -> isize",
+            );
+        }
+    } else {
+        tcx.dcx().fatal(
+            "Miri can only run programs that have a main function.\n\
+            Alternatively, you can export a `miri_start` function:\n\
+            \n\
+            #[cfg(miri)]\n\
+            #[unsafe(no_mangle)]\n\
+            fn miri_start(argc: isize, argv: *const *const u8) -> isize {\
+            \n    // Call the actual start function that your project implements, based on your target's conventions.\n\
+            }"
+        );
+    }
 }
 
 /// When the main thread would exit, we will yield to any other thread that is ready to execute.
@@ -107,8 +162,6 @@ pub struct MiriConfig {
     pub address_reuse_cross_thread_rate: f64,
     /// Round Robin scheduling with no preemption.
     pub fixed_scheduling: bool,
-    /// Always prefer the intrinsic fallback body over the native Miri implementation.
-    pub force_intrinsic_fallback: bool,
     /// Whether floating-point operations can behave non-deterministically.
     pub float_nondet: bool,
     /// Whether floating-point operations can have a non-deterministic rounding error.
@@ -155,7 +208,6 @@ impl Default for MiriConfig {
             address_reuse_rate: 0.5,
             address_reuse_cross_thread_rate: 0.1,
             fixed_scheduling: false,
-            force_intrinsic_fallback: false,
             float_nondet: true,
             float_rounding_error: FloatRoundingErrorMode::Random,
             short_fd_operations: true,
@@ -288,14 +340,20 @@ pub fn create_ecx<'tcx>(
         MiriMachine::new(config, layout_cx, genmc_ctx),
     );
 
-    // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
-    let sentinel =
-        helpers::try_resolve_path(tcx, &["core", "ascii", "escape_default"], Namespace::ValueNS);
-    if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
-        tcx.dcx().fatal(
-            "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing.\n\
-            Note that directly invoking the `miri` binary is not supported; please use `cargo miri` instead."
+    // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore. However,
+    // if the current crate is #![no_core] it's fine to be missing the usual items from libcore.
+    if !is_no_core(tcx) {
+        let sentinel = helpers::try_resolve_path(
+            tcx,
+            &["core", "ascii", "escape_default"],
+            Namespace::ValueNS,
         );
+        if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
+            tcx.dcx().fatal(
+                "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing.\n\
+                Note that directly invoking the `miri` binary is not supported; please use `cargo miri` instead."
+            );
+        }
     }
 
     // Compute argc and argv from `config.args`.
@@ -452,8 +510,8 @@ fn call_main<'tcx>(
 }
 
 /// Evaluates the entry function specified by `entry_id`.
-/// Returns `Some(return_code)` if program execution completed.
-/// Returns `None` if an evaluation error occurred.
+/// Returns `Ok(())` if program execution completed with exit code 0.
+/// Returns `Err(code)` if an evaluation error occurred or the program returned a non-0 exit code.
 pub fn eval_entry<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,
@@ -477,7 +535,11 @@ pub fn eval_entry<'tcx>(
     let res: thread::Result<InterpResult<'_, !>> =
         panic::catch_unwind(AssertUnwindSafe(|| ecx.run_threads()));
     let res = res.unwrap_or_else(|panic_payload| {
-        ecx.handle_ice();
+        // rustc "handles" some errors by unwinding with FatalErrorMarker
+        // (after emitting suitable diagnostics), so do not treat those as ICEs.
+        if !panic_payload.is::<FatalErrorMarker>() {
+            ecx.handle_ice();
+        }
         panic::resume_unwind(panic_payload)
     });
     // Obtain the result of the execution. This is always an `Err`, but that doesn't necessarily

@@ -6,12 +6,15 @@ use std::marker::PhantomData;
 use ena::unify::{NoError, UnifyKey, UnifyValue};
 use rustc_type_ir::{ConstVid, RegionKind, RegionVid, UniverseIndex, inherent::IntoKind};
 
-use crate::next_solver::{Const, Region};
+use crate::{
+    Span,
+    next_solver::{Const, Region},
+};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum RegionVariableValue<'db> {
-    Known { value: Region<'db> },
-    Unknown { universe: UniverseIndex },
+    Known { value: Region<'db>, span: Option<Span> },
+    Unknown { universe: UniverseIndex, span: Span },
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -51,9 +54,15 @@ impl<'db> UnifyValue for RegionVariableValue<'db> {
                 Err(RegionUnificationError)
             }
 
-            (RegionVariableValue::Known { value }, RegionVariableValue::Unknown { universe })
-            | (RegionVariableValue::Unknown { universe }, RegionVariableValue::Known { value }) => {
-                let universe_of_value = match (*value).kind() {
+            (
+                &RegionVariableValue::Known { value, span: span_known },
+                &RegionVariableValue::Unknown { universe, span: span_unknown },
+            )
+            | (
+                &RegionVariableValue::Unknown { universe, span: span_unknown },
+                &RegionVariableValue::Known { value, span: span_known },
+            ) => {
+                let universe_of_value = match value.kind() {
                     RegionKind::ReStatic
                     | RegionKind::ReErased
                     | RegionKind::ReLateParam(..)
@@ -65,23 +74,28 @@ impl<'db> UnifyValue for RegionVariableValue<'db> {
                     }
                 };
 
+                let span = match span_known {
+                    Some(span_known) => Span::pick_best(span_known, span_unknown),
+                    None => span_unknown,
+                };
                 if universe.can_name(universe_of_value) {
-                    Ok(RegionVariableValue::Known { value: *value })
+                    Ok(RegionVariableValue::Known { value, span: Some(span) })
                 } else {
                     Err(RegionUnificationError)
                 }
             }
 
             (
-                RegionVariableValue::Unknown { universe: a },
-                RegionVariableValue::Unknown { universe: b },
+                &RegionVariableValue::Unknown { universe: a, span: span1 },
+                &RegionVariableValue::Unknown { universe: b, span: span2 },
             ) => {
                 // If we unify two unconstrained regions then whatever
                 // value they wind up taking (which must be the same value) must
                 // be nameable by both universes. Therefore, the resulting
                 // universe is the minimum of the two universes, because that is
                 // the one which contains the fewest names in scope.
-                Ok(RegionVariableValue::Unknown { universe: (*a).min(*b) })
+                let span = Span::pick_best(span1, span2);
+                Ok(RegionVariableValue::Unknown { universe: a.min(b), span })
             }
         }
     }
@@ -89,13 +103,10 @@ impl<'db> UnifyValue for RegionVariableValue<'db> {
 
 // Generic consts.
 
-#[derive(Copy, Clone, Debug)]
-pub struct ConstVariableOrigin {}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum ConstVariableValue<'db> {
     Known { value: Const<'db> },
-    Unknown { origin: ConstVariableOrigin, universe: UniverseIndex },
+    Unknown { span: Span, universe: UniverseIndex },
 }
 
 impl<'db> ConstVariableValue<'db> {
@@ -134,9 +145,6 @@ impl<'db> UnifyKey for ConstVidKey<'db> {
     fn tag() -> &'static str {
         "ConstVidKey"
     }
-    fn order_roots(a: Self, _: &Self::Value, b: Self, _: &Self::Value) -> Option<(Self, Self)> {
-        if a.vid.as_u32() < b.vid.as_u32() { Some((a, b)) } else { Some((b, a)) }
-    }
 }
 
 impl<'db> UnifyValue for ConstVariableValue<'db> {
@@ -149,25 +157,22 @@ impl<'db> UnifyValue for ConstVariableValue<'db> {
             }
 
             // If one side is known, prefer that one.
-            (ConstVariableValue::Known { .. }, ConstVariableValue::Unknown { .. }) => {
-                Ok(value1.clone())
-            }
-            (ConstVariableValue::Unknown { .. }, ConstVariableValue::Known { .. }) => {
-                Ok(value2.clone())
-            }
+            (ConstVariableValue::Known { .. }, ConstVariableValue::Unknown { .. }) => Ok(*value1),
+            (ConstVariableValue::Unknown { .. }, ConstVariableValue::Known { .. }) => Ok(*value2),
 
             // If both sides are *unknown*, it hardly matters, does it?
             (
-                ConstVariableValue::Unknown { origin, universe: universe1 },
-                ConstVariableValue::Unknown { origin: _, universe: universe2 },
+                &ConstVariableValue::Unknown { span: span1, universe: universe1 },
+                &ConstVariableValue::Unknown { span: span2, universe: universe2 },
             ) => {
                 // If we unify two unbound variables, ?T and ?U, then whatever
                 // value they wind up taking (which must be the same value) must
                 // be nameable by both universes. Therefore, the resulting
                 // universe is the minimum of the two universes, because that is
                 // the one which contains the fewest names in scope.
-                let universe = cmp::min(*universe1, *universe2);
-                Ok(ConstVariableValue::Unknown { origin: *origin, universe })
+                let universe = cmp::min(universe1, universe2);
+                let span = Span::pick_best(span1, span2);
+                Ok(ConstVariableValue::Unknown { span, universe })
             }
         }
     }

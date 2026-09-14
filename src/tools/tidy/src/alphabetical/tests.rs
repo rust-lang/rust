@@ -115,7 +115,7 @@ fn test_rust_bad() {
         def
         // tidy-alphabetical-end
     ";
-    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -127,7 +127,7 @@ fn test_toml_bad() {
         def
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -141,7 +141,7 @@ fn test_features_bad() {
         #![feature(def)]
         tidy-alphabetical-end
     ";
-    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -154,7 +154,7 @@ fn test_indent_bad() {
             def
         $ tidy-alphabetical-end
     ";
-    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -170,7 +170,7 @@ fn test_split_bad() {
         )
         && tidy-alphabetical-end
     ";
-    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:4: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -339,7 +339,7 @@ fn test_numeric_bad() {
         item2
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
         # tidy-alphabetical-start
@@ -347,7 +347,7 @@ fn test_numeric_bad() {
         zve64d
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
         # tidy-alphabetical-start
@@ -355,7 +355,7 @@ fn test_numeric_bad() {
         00
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -394,7 +394,7 @@ fn multiline() {
         );
         tidy-alphabetical-end
     ";
-    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
         tidy-alphabetical-start
@@ -406,13 +406,34 @@ fn multiline() {
          a);
         tidy-alphabetical-end
     ";
-    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
+        // tidy-alphabetical-start
         force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED],
              'force use of unwind tables'),
         incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
             'enable incremental compilation'),
+        // tidy-alphabetical-end
+    ";
+    good(lines);
+}
+
+#[test]
+fn multiline_types() {
+    let lines = "\
+        // tidy-alphabetical-start
+        rustc_data_structures::steal::Steal<
+            rustc_index::IndexVec<
+                rustc_middle::mir::Promoted,
+                rustc_middle::mir::Body<'tcx>
+            >
+        >,
+        rustc_index::IndexVec<
+            rustc_middle::mir::Promoted,
+            rustc_middle::mir::Body<'tcx>
+        >,
+        // tidy-alphabetical-end
     ";
     good(lines);
 }
@@ -476,6 +497,41 @@ fn bless_multiline() {
         )
     notaddition
         tidy-alphabetical-end
+    ";
+
+    bless_test(before, after);
+}
+
+#[test]
+fn bless_multiline_types() {
+    let before = "\
+        // tidy-alphabetical-start
+        rustc_index::IndexVec<
+            rustc_middle::mir::Promoted,
+            rustc_middle::mir::Body<'tcx>
+        >,
+        rustc_data_structures::steal::Steal<
+            rustc_index::IndexVec<
+                rustc_middle::mir::Promoted,
+                rustc_middle::mir::Body<'tcx>
+            >
+        >,
+        // tidy-alphabetical-end
+    ";
+
+    let after = "\
+        // tidy-alphabetical-start
+        rustc_data_structures::steal::Steal<
+            rustc_index::IndexVec<
+                rustc_middle::mir::Promoted,
+                rustc_middle::mir::Body<'tcx>
+            >
+        >,
+        rustc_index::IndexVec<
+            rustc_middle::mir::Promoted,
+            rustc_middle::mir::Body<'tcx>
+        >,
+        // tidy-alphabetical-end
     ";
 
     bless_test(before, after);

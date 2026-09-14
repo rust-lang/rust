@@ -6,16 +6,16 @@ use clippy_utils::{is_self, is_self_ty};
 use core::ops::ControlFlow;
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::unord::UnordItems;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::attrs::InlineAttr;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingMode, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, Node, PatKind, find_attr};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, BoundVarIndexKind, RegionKind, TyCtxt};
-use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
 use std::iter;
@@ -130,7 +130,7 @@ impl PassByRefOrValue {
             return;
         }
 
-        let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity();
+        let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
         let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir_body(id));
 
         // Gather all the lifetimes found in the output type which may affect whether
@@ -173,7 +173,7 @@ impl PassByRefOrValue {
                         && size <= self.ref_min_size
                         && let hir::TyKind::Ref(_, MutTy { ty: decl_ty, .. }) = input.kind
                     {
-                        if let Some(typeck) = cx.maybe_typeck_results()
+                        if let Some(typeck) = cx.typeck_results
                             // Don't lint if a raw pointer is created.
                             // TODO: Limit the check only to raw pointers to the argument (or part of the argument)
                             //       which escape the current function.
@@ -181,7 +181,7 @@ impl PassByRefOrValue {
                                 || typeck
                                     .adjustments()
                                     .items()
-                                    .flat_map(|(_, a)| a)
+                                    .flat_map(|(_, a)| UnordItems::new(a.iter()))
                                     .any(|a| matches!(a.kind, Adjust::Pointer(PointerCoercion::UnsafeFnPointer))))
                         {
                             continue;
@@ -292,7 +292,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id)
             && matches!(
                 item.kind,
-                ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
+                ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait { .. }
             )
         {
             return;

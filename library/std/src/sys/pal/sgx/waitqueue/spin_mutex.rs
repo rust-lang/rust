@@ -7,6 +7,7 @@ mod tests;
 use crate::cell::UnsafeCell;
 use crate::hint;
 use crate::ops::{Deref, DerefMut};
+use crate::pin::Pin;
 use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 
 #[derive(Default)]
@@ -52,11 +53,19 @@ impl<T> SpinMutex<T> {
             None
         }
     }
-}
 
-/// Lock the Mutex or return false.
-pub macro try_lock_or_false($e:expr) {
-    if let Some(v) = $e.try_lock() { v } else { return false }
+    #[inline(always)]
+    pub fn lock_pinned(self: Pin<&Self>) -> Pin<SpinMutexGuard<'_, T>> {
+        // SAFETY: `value` is structurally pinned: a pinned mutex pins its
+        // contents, and `SpinMutexGuard` never moves the value.
+        unsafe { Pin::new_unchecked(self.get_ref().lock()) }
+    }
+
+    #[inline(always)]
+    pub fn try_lock_pinned(self: Pin<&Self>) -> Option<Pin<SpinMutexGuard<'_, T>>> {
+        // SAFETY: see `lock_pinned`
+        self.get_ref().try_lock().map(|guard| unsafe { Pin::new_unchecked(guard) })
+    }
 }
 
 impl<'a, T> Deref for SpinMutexGuard<'a, T> {

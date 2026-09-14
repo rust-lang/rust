@@ -1,6 +1,7 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+avx2
+//@run-native
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
@@ -1068,23 +1069,31 @@ unsafe fn test_avx2() {
             18, 20, 22, 24, 26, 28, 30,
         );
 
-        let r = _mm256_mpsadbw_epu8::<0b000>(a, a);
+        let r = _mm256_mpsadbw_epu8::<0b00000>(a, a);
         let e = _mm256_setr_epi16(0, 4, 8, 12, 16, 20, 24, 28, 0, 8, 16, 24, 32, 40, 48, 56);
         assert_eq_m256i(r, e);
 
-        let r = _mm256_mpsadbw_epu8::<0b001>(a, a);
+        let r = _mm256_mpsadbw_epu8::<0b001001>(a, a);
         let e = _mm256_setr_epi16(16, 12, 8, 4, 0, 4, 8, 12, 32, 24, 16, 8, 0, 8, 16, 24);
         assert_eq_m256i(r, e);
 
-        let r = _mm256_mpsadbw_epu8::<0b100>(a, a);
+        let r = _mm256_mpsadbw_epu8::<0b000001>(a, a);
+        let e = _mm256_setr_epi16(16, 12, 8, 4, 0, 4, 8, 12, 0, 8, 16, 24, 32, 40, 48, 56);
+        assert_eq_m256i(r, e);
+
+        let r = _mm256_mpsadbw_epu8::<0b001000>(a, a);
+        let e = _mm256_setr_epi16(0, 4, 8, 12, 16, 20, 24, 28, 32, 24, 16, 8, 0, 8, 16, 24);
+        assert_eq_m256i(r, e);
+
+        let r = _mm256_mpsadbw_epu8::<0b100100>(a, a);
         let e = _mm256_setr_epi16(16, 20, 24, 28, 32, 36, 40, 44, 32, 40, 48, 56, 64, 72, 80, 88);
         assert_eq_m256i(r, e);
 
-        let r = _mm256_mpsadbw_epu8::<0b101>(a, a);
+        let r = _mm256_mpsadbw_epu8::<0b101101>(a, a);
         let e = _mm256_setr_epi16(0, 4, 8, 12, 16, 20, 24, 28, 0, 8, 16, 24, 32, 40, 48, 56);
         assert_eq_m256i(r, e);
 
-        let r = _mm256_mpsadbw_epu8::<0b111>(a, a);
+        let r = _mm256_mpsadbw_epu8::<0b111111>(a, a);
         let e = _mm256_setr_epi16(32, 28, 24, 20, 16, 12, 8, 4, 64, 56, 48, 40, 32, 24, 16, 8);
         assert_eq_m256i(r, e);
     }

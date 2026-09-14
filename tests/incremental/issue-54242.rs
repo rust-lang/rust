@@ -1,4 +1,4 @@
-//@ revisions: rpass cfail
+//@ revisions: rpass bfail
 
 trait Tr
 where
@@ -12,9 +12,9 @@ where
 impl Tr for str {
     #[cfg(rpass)]
     type Arr = [u8; 8];
-    #[cfg(cfail)]
+    #[cfg(bfail)]
     type Arr = [u8; Self::C];
-    //[cfail]~^ ERROR cycle detected when
+    //[bfail]~^ ERROR cycle detected when
 }
 
 fn main() {}

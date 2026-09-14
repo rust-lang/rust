@@ -2,7 +2,6 @@
 // bounds on them.
 
 #![feature(specialization)]
-//~^ WARNING `specialization` is incomplete
 
 trait X {
     type U: Clone;

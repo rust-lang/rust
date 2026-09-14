@@ -7,12 +7,16 @@
 
 #[doc(no_inline)]
 pub use super::{
-    Mask, Simd,
+    Mask, Select, Simd, ToBytes,
     cmp::{SimdOrd, SimdPartialEq, SimdPartialOrd},
     num::{SimdFloat, SimdInt, SimdUint},
     ptr::{SimdConstPtr, SimdMutPtr},
     simd_swizzle,
 };
+
+#[rustfmt::skip]
+#[doc(no_inline)]
+pub use super::{f16x1, f16x2, f16x4, f16x8, f16x16, f16x32, f16x64};
 
 #[rustfmt::skip]
 #[doc(no_inline)]

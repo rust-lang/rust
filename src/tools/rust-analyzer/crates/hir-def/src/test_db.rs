@@ -3,8 +3,9 @@
 use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
-    Crate, CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Nonce, RootQueryDb,
-    SourceDatabase, SourceRoot, SourceRootId, SourceRootInput,
+    Crate, CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Nonce, SourceDatabase,
+    SourceRoot, SourceRootId, SourceRootInput, all_crates, relevant_crates,
+    set_all_crates_with_durability,
 };
 use hir_expand::{InFile, files::FilePosition};
 use salsa::Durability;
@@ -14,12 +15,12 @@ use triomphe::Arc;
 
 use crate::{
     Lookup, ModuleDefId, ModuleId,
-    db::DefDatabase,
+    expr_store::{Body, scope::ExprScopes},
     nameres::{DefMap, ModuleSource, block_def_map, crate_def_map},
     src::HasSource,
 };
 
-#[salsa_macros::db]
+#[salsa::db]
 pub(crate) struct TestDB {
     storage: salsa::Storage<Self>,
     files: Arc<base_db::Files>,
@@ -46,9 +47,9 @@ impl Default for TestDB {
             crates_map: Default::default(),
             nonce: Nonce::new(),
         };
-        this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
+        crate::set_expand_proc_attr_macros(&mut this, true);
         // This needs to be here otherwise `CrateGraphBuilder` panics.
-        this.set_all_crates(Arc::new(Box::new([])));
+        set_all_crates_with_durability(&mut this, std::iter::empty(), Durability::HIGH);
         _ = base_db::LibraryRoots::builder(Default::default())
             .durability(Durability::MEDIUM)
             .new(&this);
@@ -67,12 +68,12 @@ impl Clone for TestDB {
             files: self.files.clone(),
             crates_map: self.crates_map.clone(),
             events: self.events.clone(),
-            nonce: Nonce::new(),
+            nonce: self.nonce,
         }
     }
 }
 
-#[salsa_macros::db]
+#[salsa::db]
 impl salsa::Database for TestDB {}
 
 impl fmt::Debug for TestDB {
@@ -83,7 +84,7 @@ impl fmt::Debug for TestDB {
 
 impl panic::RefUnwindSafe for TestDB {}
 
-#[salsa_macros::db]
+#[salsa::db]
 impl SourceDatabase for TestDB {
     fn file_text(&self, file_id: base_db::FileId) -> FileText {
         self.files.file_text(file_id)
@@ -120,7 +121,7 @@ impl SourceDatabase for TestDB {
     }
 
     fn file_source_root(&self, id: base_db::FileId) -> FileSourceRootInput {
-        self.files.file_source_root(id)
+        self.files.file_source_root(self, id)
     }
 
     fn set_file_source_root_with_durability(
@@ -140,11 +141,15 @@ impl SourceDatabase for TestDB {
     fn nonce_and_revision(&self) -> (Nonce, salsa::Revision) {
         (self.nonce, salsa::plumbing::ZalsaDatabase::zalsa(self).current_revision())
     }
+
+    fn line_column(&self, _file: FileId, _offset: syntax::TextSize) -> Result<(u32, u32), ()> {
+        Err(())
+    }
 }
 
 impl TestDB {
     pub(crate) fn fetch_test_crate(&self) -> Crate {
-        let all_crates = self.all_crates();
+        let all_crates = all_crates(self);
         all_crates
             .iter()
             .copied()
@@ -156,7 +161,7 @@ impl TestDB {
     }
 
     pub(crate) fn module_for_file(&self, file_id: FileId) -> ModuleId {
-        for &krate in self.relevant_crates(file_id).iter() {
+        for &krate in relevant_crates(self, file_id).iter() {
             let crate_def_map = crate_def_map(self, krate);
             for (local_id, data) in crate_def_map.modules() {
                 if data.origin.file_id().map(|file_id| file_id.file_id(self)) == Some(file_id) {
@@ -284,10 +289,10 @@ impl TestDB {
         // Find the innermost block expression that has a `DefMap`.
         let (def_with_body, file_id) = fn_def?;
         let def_with_body = def_with_body.into();
-        let source_map = self.body_with_source_map(def_with_body).1;
-        let scopes = self.expr_scopes(def_with_body);
+        let source_map = &Body::with_source_map(self, def_with_body).1;
+        let scopes = ExprScopes::body_expr_scopes(self, def_with_body);
 
-        let root_syntax_node = self.parse(file_id).syntax_node();
+        let root_syntax_node = file_id.parse(self).syntax_node();
         let scope_iter =
             algo::ancestors_at_offset(&root_syntax_node, position.offset).filter_map(|node| {
                 let block = ast::BlockExpr::cast(node)?;

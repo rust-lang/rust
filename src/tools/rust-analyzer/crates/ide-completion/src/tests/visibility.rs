@@ -44,7 +44,7 @@ mod foo {
 mod bar {}
 "#,
         expect![[r#"
-            md foo
+            md foo::
         "#]],
     );
     check(
@@ -59,7 +59,7 @@ mod qux {
 mod bar {}
 "#,
         expect![[r#"
-            md qux
+            md qux::
         "#]],
     );
     check(
@@ -74,7 +74,7 @@ mod qux {
 mod bar {}
 "#,
         expect![[r#"
-            md foo
+            md foo::
         "#]],
     );
 }

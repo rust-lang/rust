@@ -27,14 +27,11 @@
       bb0: {
           StorageLive(_2);
           _2 = &(*_1);
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           _3 = copy ((*_2).0: i32);
--         StorageLive(_4);
-+         nop;
+          StorageLive(_4);
           _4 = copy ((*_2).1: u64);
--         StorageLive(_5);
-+         nop;
+          StorageLive(_5);
           _5 = copy ((*_2).2: [i8; 3]);
           ((*_1).0: i32) = const 0_i32;
           StorageLive(_6);
@@ -48,12 +45,9 @@
           StorageDead(_8);
           StorageDead(_7);
           StorageDead(_6);
--         StorageDead(_5);
--         StorageDead(_4);
--         StorageDead(_3);
-+         nop;
-+         nop;
-+         nop;
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_3);
           StorageDead(_2);
           return;
       }

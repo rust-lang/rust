@@ -1,4 +1,6 @@
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+//@only-target: x86_64 i686
+//@run-native
+
 mod x86 {
     #[cfg(target_arch = "x86")]
     use core::arch::x86 as arch;
@@ -84,7 +86,6 @@ mod x86_64 {
 }
 
 fn main() {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     x86::main();
     #[cfg(target_arch = "x86_64")]
     x86_64::main();

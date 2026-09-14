@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value at .part_1.high: encountered uninitialized memory, but expected an integer
+error: Undefined Behavior: constructing invalid value of type ComplexStruct: at .part_1.high, encountered uninitialized memory, but expected an integer
   --> tests/native-lib/fail/uninit_struct.rs:LL:CC
    |
 LL |     unsafe { pass_struct_complex(*arg.as_ptr(), 0, 0, 0) };

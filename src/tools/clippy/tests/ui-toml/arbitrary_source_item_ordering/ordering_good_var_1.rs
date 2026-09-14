@@ -3,7 +3,6 @@
 //@[var_1] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/var_1
 //@check-pass
 
-#![allow(dead_code)]
 #![warn(clippy::arbitrary_source_item_ordering)]
 
 /// This module gets linted before clippy gives up.

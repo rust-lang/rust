@@ -1,6 +1,11 @@
 use core::{fmt, mem, ops};
 
 use super::int_traits::{CastFrom, Int, MinInt};
+use crate::support::{DInt, DisplayHex};
+
+/// Wrapper to extract the integer type half of the float's size
+#[allow(unused)] // only used in c-b
+pub type HalfRep<F> = <<F as Float>::Int as DInt>::H;
 
 /// Whether MIPS sNaN/qNaNs should be used.
 ///
@@ -14,6 +19,7 @@ const MIPS_NAN: bool = cfg!(target_arch = "mips") || cfg!(target_arch = "mips64"
 pub trait Float:
     Copy
     + fmt::Debug
+    + DisplayHex
     + PartialEq
     + PartialOrd
     + ops::AddAssign
@@ -56,14 +62,15 @@ pub trait Float:
     const FRAC_PI_2: Self;
 
     const MIN_POSITIVE_NORMAL: Self;
+    const MIN_POSITIVE_SUBNORMAL: Self;
 
-    /// The bitwidth of the float type
+    /// The bitwidth of the float type.
     const BITS: u32;
 
-    /// The bitwidth of the significand
+    /// The bitwidth of the significand (does not include the implicit bit).
     const SIG_BITS: u32;
 
-    /// The bitwidth of the exponent
+    /// The bitwidth of the exponent.
     const EXP_BITS: u32 = Self::BITS - Self::SIG_BITS - 1;
 
     /// The saturated (maximum bitpattern) value of the exponent, i.e. the infinite
@@ -72,7 +79,7 @@ pub trait Float:
     /// This shifted fully right, use `EXP_MASK` for the shifted value.
     const EXP_SAT: u32 = (1 << Self::EXP_BITS) - 1;
 
-    /// The exponent bias value
+    /// The exponent bias value.
     const EXP_BIAS: u32 = Self::EXP_SAT >> 1;
 
     /// Maximum unbiased exponent value.
@@ -120,13 +127,7 @@ pub trait Float:
     /// This method returns `true` if two NaNs are compared. Use [`biteq`](Self::biteq) instead
     /// if `NaN` should not be treated separately.
     #[allow(dead_code)]
-    fn eq_repr(self, rhs: Self) -> bool {
-        if self.is_nan() && rhs.is_nan() {
-            true
-        } else {
-            self.biteq(rhs)
-        }
-    }
+    fn eq_repr(self, rhs: Self) -> bool;
 
     /// Returns true if the value is NaN.
     fn is_nan(self) -> bool;
@@ -151,6 +152,12 @@ pub trait Float:
 
     /// Returns true if the value is +inf or -inf.
     fn is_infinite(self) -> bool;
+
+    /// Returns true if this number is neither infinite nor NaN.
+    #[allow(dead_code)]
+    fn is_finite(self) -> bool {
+        self.abs() < Self::INFINITY
+    }
 
     /// Returns true if the sign is negative. Extracts the sign bit regardless of zero or NaN.
     fn is_sign_negative(self) -> bool;
@@ -283,6 +290,9 @@ macro_rules! float_impl {
             // Exponent is a 1 in the LSB
             const MIN_POSITIVE_NORMAL: Self = $from_bits(1 << Self::SIG_BITS);
 
+            // Single 1 in the LSB
+            const MIN_POSITIVE_SUBNORMAL: Self = $from_bits(1);
+
             const PI: Self = core::$ty::consts::PI;
             const NEG_PI: Self = -Self::PI;
             const FRAC_PI_2: Self = core::$ty::consts::FRAC_PI_2;
@@ -299,6 +309,27 @@ macro_rules! float_impl {
             fn to_bits(self) -> Self::Int {
                 self.to_bits()
             }
+
+            fn eq_repr(self, rhs: Self) -> bool {
+                #[cfg(not(feature = "unmangled-names"))]
+                fn is_nan(x: $ty) -> bool {
+                    // When not using unmangled-names, the "real" compiler-builtins might not have
+                    // the necessary builtin (__unordtf2) to test whether `f128` is NaN.
+                    // FIXME(f128): Remove once the nightly toolchain has the __unordtf2 builtin
+                    // x is NaN if all the bits of the exponent are set and the significand is non-0
+                    x.to_bits() & $ty::EXP_MASK == $ty::EXP_MASK && x.to_bits() & $ty::SIG_MASK != 0
+                }
+                #[cfg(feature = "unmangled-names")]
+                fn is_nan(x: $ty) -> bool {
+                    x.is_nan()
+                }
+                if is_nan(self) && is_nan(rhs) {
+                    true
+                } else {
+                    self.to_bits() == rhs.to_bits()
+                }
+            }
+
             fn is_nan(self) -> bool {
                 self.is_nan()
             }
@@ -312,31 +343,34 @@ macro_rules! float_impl {
                 Self::from_bits(a)
             }
             fn abs(self) -> Self {
-                cfg_if! {
+                cfg_select_nofmt! {
                     // FIXME(msrv): `abs` is available in `core` starting with 1.85.
-                    if #[cfg(intrinsics_enabled)] {
+                    intrinsics_enabled => {
                         self.abs()
-                    } else {
+                    }
+                    _ => {
                         super::super::generic::fabs(self)
                     }
                 }
             }
             fn copysign(self, other: Self) -> Self {
-                cfg_if! {
+                cfg_select_nofmt! {
                     // FIXME(msrv): `copysign` is available in `core` starting with 1.85.
-                    if #[cfg(intrinsics_enabled)] {
+                    intrinsics_enabled => {
                         self.copysign(other)
-                    } else {
+                    }
+                    _ => {
                         super::super::generic::copysign(self, other)
                     }
                 }
             }
             fn fma(self, y: Self, z: Self) -> Self {
-                cfg_if! {
+                cfg_select_nofmt! {
                     // fma is not yet available in `core`
-                    if #[cfg(intrinsics_enabled)] {
+                    intrinsics_enabled => {
                         core::intrinsics::$fma_intrinsic(self, y, z)
-                    } else {
+                    }
+                    _ => {
                         super::super::$fma_fn(self, y, z)
                     }
                 }
@@ -428,28 +462,28 @@ pub const fn f64_to_bits(x: f64) -> u64 {
     unsafe { mem::transmute::<f64, u64>(x) }
 }
 
-/// Trait for floats twice the bit width of another integer.
-pub trait DFloat: Float {
+/// Trait for floats that are wider than a `NFloat` type.
+pub trait WideFloat: Float {
     /// Float that is half the bit width of the floatthis trait is implemented for.
-    type H: HFloat<D = Self>;
+    type H: NarrowFloat<D = Self>;
 
     /// Narrow the float type.
     fn narrow(self) -> Self::H;
 }
 
-/// Trait for floats half the bit width of another float.
-pub trait HFloat: Float {
+/// Trait for floats narrower than a `WFloat` type.
+pub trait NarrowFloat: Float {
     /// Float that is double the bit width of the float this trait is implemented for.
-    type D: DFloat<H = Self>;
+    type D: WideFloat<H = Self>;
 
     /// Widen the float type.
     fn widen(self) -> Self::D;
 }
 
-macro_rules! impl_d_float {
+macro_rules! impl_wide_float {
     ($($X:ident $D:ident),*) => {
         $(
-            impl DFloat for $D {
+            impl WideFloat for $D {
                 type H = $X;
 
                 fn narrow(self) -> Self::H {
@@ -460,10 +494,10 @@ macro_rules! impl_d_float {
     };
 }
 
-macro_rules! impl_h_float {
+macro_rules! impl_narrow_float {
     ($($H:ident $X:ident),*) => {
         $(
-            impl HFloat for $H {
+            impl NarrowFloat for $H {
                 type D = $X;
 
                 fn widen(self) -> Self::D {
@@ -474,17 +508,17 @@ macro_rules! impl_h_float {
     };
 }
 
-impl_d_float!(f32 f64);
+impl_wide_float!(f32 f64);
 #[cfg(f16_enabled)]
-impl_d_float!(f16 f32);
+impl_wide_float!(f16 f32);
 #[cfg(f128_enabled)]
-impl_d_float!(f64 f128);
+impl_wide_float!(f64 f128);
 
-impl_h_float!(f32 f64);
+impl_narrow_float!(f32 f64);
 #[cfg(f16_enabled)]
-impl_h_float!(f16 f32);
+impl_narrow_float!(f16 f32);
 #[cfg(f128_enabled)]
-impl_h_float!(f64 f128);
+impl_narrow_float!(f64 f128);
 
 #[cfg(test)]
 mod tests {
@@ -548,7 +582,7 @@ mod tests {
         }
         assert!(f32::NAN.is_qnan());
         // FIXME(rust-lang/rust#115567): x87 use in `is_snan` quiets the sNaN
-        if !cfg!(x86_no_sse) {
+        if !cfg!(x86_no_sse2) {
             assert!(f32::SNAN.is_snan());
         }
 
@@ -593,7 +627,7 @@ mod tests {
         }
         assert!(f64::NAN.is_qnan());
         // FIXME(rust-lang/rust#115567): x87 use in `is_snan` quiets the sNaN
-        if !cfg!(x86_no_sse) {
+        if !cfg!(x86_no_sse2) {
             assert!(f64::SNAN.is_snan());
         }
 

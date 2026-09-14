@@ -1,29 +1,45 @@
-use super::{FailMode, TestCx, WillExecute};
-use crate::errors;
+use std::sync::LazyLock;
+
+use crate::runtest::{Emit, TestCx, WillExecute};
+use crate::util::string_enum;
+
+string_enum!(
+    /// How far an incremental test revision should proceed through the compile/run
+    /// sequence, and whether the last step should succeed or fail, as determined
+    /// from the start of the revision name.
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum IncrRevKind {
+        CheckPass => "cpass",
+        BuildFail => "bfail",
+        BuildPass => "bpass",
+        RunPass => "rpass",
+    }
+);
+
+impl IncrRevKind {
+    fn for_revision_name(rev_name: &str) -> Result<Self, &'static str> {
+        static MESSAGE: LazyLock<String> = LazyLock::new(|| {
+            let values = IncrRevKind::STR_VARIANTS
+                .iter()
+                .map(|s| format!("`{s}`"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("incremental revision name must begin with one of: {values}")
+        });
+
+        IncrRevKind::VARIANTS
+            .iter()
+            .copied()
+            .find(|kind| rev_name.starts_with(kind.to_str()))
+            .ok_or_else(|| MESSAGE.as_str())
+    }
+}
 
 impl TestCx<'_> {
+    /// Runs a single revision of an incremental test.
     pub(super) fn run_incremental_test(&self) {
-        // Basic plan for a test incremental/foo/bar.rs:
-        // - load list of revisions rpass1, cfail2, rpass3
-        //   - each should begin with `cpass`, `rpass`, `cfail`, or `rfail`
-        //   - if `cpass`, expect compilation to succeed, don't execute
-        //   - if `rpass`, expect compilation and execution to succeed
-        //   - if `cfail`, expect compilation to fail
-        //   - if `rfail`, expect compilation to succeed and execution to fail
-        // - create a directory build/foo/bar.incremental
-        // - compile foo/bar.rs with -C incremental=.../foo/bar.incremental and -C rpass1
-        //   - because name of revision starts with "rpass", expect success
-        // - compile foo/bar.rs with -C incremental=.../foo/bar.incremental and -C cfail2
-        //   - because name of revision starts with "cfail", expect an error
-        //   - load expected errors as usual, but filter for those that end in `[rfail2]`
-        // - compile foo/bar.rs with -C incremental=.../foo/bar.incremental and -C rpass3
-        //   - because name of revision starts with "rpass", expect success
-        // - execute build/foo/bar.exe and save output
-        //
-        // FIXME -- use non-incremental mode as an oracle? That doesn't apply
-        // to #[rustc_clean] tests I guess
-
-        let revision = self.revision.expect("incremental tests require a list of revisions");
+        let revision =
+            self.variant.revision().expect("incremental tests require a list of revisions");
 
         // Incremental workproduct directory should have already been created.
         let incremental_dir = self.props.incremental_dir.as_ref().unwrap();
@@ -33,102 +49,63 @@ impl TestCx<'_> {
             write!(self.stdout, "revision={:?} props={:#?}", revision, self.props);
         }
 
-        if revision.starts_with("cpass") {
-            if self.props.should_ice {
-                self.fatal("can only use should-ice in cfail tests");
+        // Determine the revision kind from the revision name.
+        // The revision kind should be matched exhaustively to ensure that no cases are missed.
+        let rev_kind = IncrRevKind::for_revision_name(revision).unwrap_or_else(|e| self.fatal(e));
+
+        // Compile the test for this revision.
+        let emit = match rev_kind {
+            IncrRevKind::CheckPass => Emit::Metadata, // Do a check build.
+            IncrRevKind::BuildFail | IncrRevKind::BuildPass | IncrRevKind::RunPass => Emit::None,
+        };
+        let will_execute = match rev_kind {
+            IncrRevKind::CheckPass | IncrRevKind::BuildFail | IncrRevKind::BuildPass => {
+                WillExecute::No
             }
-            self.run_cpass_test();
-        } else if revision.starts_with("rpass") {
-            if self.props.should_ice {
-                self.fatal("can only use should-ice in cfail tests");
+            IncrRevKind::RunPass => {
+                // Yes, unless running test binaries is disabled.
+                self.run_if_enabled()
             }
-            self.run_rpass_test();
-        } else if revision.starts_with("rfail") {
-            if self.props.should_ice {
-                self.fatal("can only use should-ice in cfail tests");
+        };
+        let proc_res = &self.compile_test(will_execute, emit);
+
+        // Check the compiler's exit status.
+        match rev_kind {
+            IncrRevKind::CheckPass | IncrRevKind::BuildPass | IncrRevKind::RunPass => {
+                // Compilation should have succeeded.
+                if !proc_res.status.success() {
+                    self.fatal_proc_rec("test compilation failed although it shouldn't!", proc_res);
+                }
             }
-            self.run_rfail_test();
-        } else if revision.starts_with("cfail") {
-            self.run_cfail_test();
-        } else {
-            self.fatal("revision name must begin with cpass, rpass, rfail, or cfail");
-        }
-    }
 
-    fn run_cpass_test(&self) {
-        let emit_metadata = self.should_emit_metadata(self.pass_mode());
-        let proc_res = self.compile_test(WillExecute::No, emit_metadata);
-
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("compilation failed!", &proc_res);
+            IncrRevKind::BuildFail => {
+                // Compilation should have failed, with the expected status code.
+                if proc_res.status.success() {
+                    self.fatal_proc_rec("incremental test did not emit an error", proc_res);
+                }
+                if !self.props.dont_check_failure_status {
+                    self.check_correct_failure_status(proc_res);
+                }
+            }
         }
 
-        // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("build-pass tests with expected warnings should be moved to ui/");
-        }
-    }
-
-    fn run_rpass_test(&self) {
-        let emit_metadata = self.should_emit_metadata(self.pass_mode());
-        let should_run = self.run_if_enabled();
-        let proc_res = self.compile_test(should_run, emit_metadata);
-
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("compilation failed!", &proc_res);
-        }
-
-        // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("run-pass tests with expected warnings should be moved to ui/");
-        }
-
-        if let WillExecute::Disabled = should_run {
-            return;
-        }
-
-        let proc_res = self.exec_compiled_test();
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("test run failed!", &proc_res);
-        }
-    }
-
-    fn run_cfail_test(&self) {
-        let pm = self.pass_mode();
-        let proc_res = self.compile_test(WillExecute::No, self.should_emit_metadata(pm));
-        self.check_if_test_should_compile(Some(FailMode::Build), pm, &proc_res);
-        self.check_no_compiler_crash(&proc_res, self.props.should_ice);
-
-        let output_to_check = self.get_output(&proc_res);
+        // Check compilation output.
+        let output_to_check = self.get_output(proc_res);
         self.check_expected_errors(&proc_res);
-        self.check_all_error_patterns(&output_to_check, &proc_res);
-        if self.props.should_ice {
-            match proc_res.status.code() {
-                Some(101) => (),
-                _ => self.fatal("expected ICE"),
+        self.check_all_error_patterns(&output_to_check, proc_res);
+        self.check_forbid_output(&output_to_check, proc_res);
+
+        // Run the binary and check its exit status, if appropriate.
+        match rev_kind {
+            IncrRevKind::CheckPass | IncrRevKind::BuildFail | IncrRevKind::BuildPass => {}
+            IncrRevKind::RunPass => {
+                if self.config.run_enabled() {
+                    let run_proc_res = self.exec_compiled_test();
+                    if !run_proc_res.status.success() {
+                        self.fatal_proc_rec("test run failed!", &run_proc_res);
+                    }
+                }
             }
         }
-
-        self.check_forbid_output(&output_to_check, &proc_res);
-    }
-
-    fn run_rfail_test(&self) {
-        let pm = self.pass_mode();
-        let should_run = self.run_if_enabled();
-        let proc_res = self.compile_test(should_run, self.should_emit_metadata(pm));
-
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("compilation failed!", &proc_res);
-        }
-
-        if let WillExecute::Disabled = should_run {
-            return;
-        }
-
-        let proc_res = self.exec_compiled_test();
-
-        let output_to_check = self.get_output(&proc_res);
-        self.check_correct_failure_status(&proc_res);
-        self.check_all_error_patterns(&output_to_check, &proc_res);
     }
 }

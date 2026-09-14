@@ -6,7 +6,7 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::errors;
+use crate::diagnostics;
 use crate::util::check_builtin_macro_attribute;
 
 pub(crate) fn expand(
@@ -31,7 +31,7 @@ pub(crate) fn expand(
     {
         (item, fn_kind.ident, true, ecx.with_def_site_ctxt(fn_kind.sig.span))
     } else {
-        ecx.dcx().emit_err(errors::AllocErrorMustBeFn { span: item.span() });
+        ecx.dcx().emit_err(diagnostics::AllocErrorMustBeFn { span: item.span() });
         return vec![orig_item];
     };
 
@@ -43,8 +43,9 @@ pub(crate) fn expand(
 
     // Generate anonymous constant serving as container for the allocator methods.
     let const_ty = ecx.ty(sig_span, TyKind::Tup(ThinVec::new()));
-    let const_body = ast::ConstItemRhsKind::new_body(ecx.expr_block(ecx.block(span, stmts)));
-    let const_item = ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
+    let const_body = ecx.expr_block(ecx.block(span, stmts));
+    let const_item =
+        ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, Some(const_body));
     let const_item = if is_stmt {
         Annotatable::Stmt(Box::new(ecx.stmt_item(span, const_item)))
     } else {
@@ -90,7 +91,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
         contract: None,
         body,
         define_opaque: None,
-        eii_impls: ThinVec::new(),
+        eii_impl: None,
     }));
 
     let attrs = thin_vec![cx.attr_word(sym::rustc_std_internal_symbol, span)];

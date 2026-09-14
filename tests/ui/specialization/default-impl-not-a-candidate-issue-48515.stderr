@@ -1,0 +1,63 @@
+error[E0277]: the trait bound `A: Spam` is not satisfied
+  --> $DIR/default-impl-not-a-candidate-issue-48515.rs:37:19
+   |
+LL | impl SpamMore for A {}
+   |                   ^ unsatisfied trait bound
+   |
+help: the trait `Spam` is not implemented for `A`
+  --> $DIR/default-impl-not-a-candidate-issue-48515.rs:35:1
+   |
+LL | struct A;
+   | ^^^^^^^^
+note: required by a bound in `SpamMore`
+  --> $DIR/default-impl-not-a-candidate-issue-48515.rs:31:17
+   |
+LL | trait SpamMore: Spam {}
+   |                 ^^^^ required by this bound in `SpamMore`
+
+error[E0277]: the trait bound `usize: TypeString` is not satisfied
+  --> $DIR/default-impl-not-a-candidate-issue-48515.rs:56:14
+   |
+LL |     let _ = <usize as TypeString>::type_string();
+   |              ^^^^^ the trait `TypeString` is not implemented for `usize`
+   |
+help: the trait `TypeString` is implemented for `()`
+  --> $DIR/default-impl-not-a-candidate-issue-48515.rs:21:1
+   |
+LL | impl TypeString for () {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `A: Spam` is not satisfied
+  --> $DIR/default-impl-not-a-candidate-issue-48515.rs:59:18
+   |
+LL |     needs_spam::<A>();
+   |                  ^ unsatisfied trait bound
+   |
+help: the trait `Spam` is not implemented for `A`
+  --> $DIR/default-impl-not-a-candidate-issue-48515.rs:35:1
+   |
+LL | struct A;
+   | ^^^^^^^^
+note: required by a bound in `needs_spam`
+  --> $DIR/default-impl-not-a-candidate-issue-48515.rs:40:18
+   |
+LL | fn needs_spam<T: Spam>() {}
+   |                  ^^^^ required by this bound in `needs_spam`
+
+error[E0599]: no method named `contains` found for type `u32` in the current scope
+  --> $DIR/default-impl-not-a-candidate-issue-48515.rs:62:10
+   |
+LL |     0u32.contains(());
+   |          ^^^^^^^^ method not found in `u32`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Set` defines an item `contains`, perhaps you need to implement it
+  --> $DIR/default-impl-not-a-candidate-issue-48515.rs:44:1
+   |
+LL | trait Set<T> {
+   | ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

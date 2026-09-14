@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 // EMIT_MIR address_of.address_of_reborrow.SimplifyCfg-initial.after.mir
 
 fn address_of_reborrow() {

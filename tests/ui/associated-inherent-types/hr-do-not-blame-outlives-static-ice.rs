@@ -2,7 +2,6 @@
 
 // Regression test for #146467.
 #![feature(inherent_associated_types)]
-//~^ WARN the feature `inherent_associated_types` is incomplete
 
 struct Foo<T>(T);
 

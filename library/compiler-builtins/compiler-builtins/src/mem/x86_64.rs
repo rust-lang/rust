@@ -168,7 +168,7 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
     c16(a.cast(), b.cast(), n)
 }
 
-// In order to process more than on byte simultaneously when executing strlen,
+// In order to process more than one byte simultaneously when executing strlen,
 // two things must be considered:
 // * An n byte read with an n-byte aligned address will never cross
 //   a page boundary and will always succeed. Any smaller alignment
@@ -198,8 +198,8 @@ pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
         s = s.add(1);
     }
 
-    // Shave of the least significand bits to align the address to a 16
-    // byte boundary. The shaved of bits are used to correct the first iteration.
+    // Shave off the least significant bits to align the address to a 16
+    // byte boundary. The shaved off bits are used to correct the first iteration.
 
     let align = s as usize & 15;
     let mut s = ((s as usize) - align) as *const __m128i;

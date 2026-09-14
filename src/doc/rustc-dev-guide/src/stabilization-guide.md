@@ -89,7 +89,7 @@ Next, search for the feature string (in this case, `pub_restricted`) in the code
 Change uses of `#![feature(XXX)]` from the `std` and any rustc crates
 (which includes test folders under `library/` and `compiler/` but not the toplevel `tests/` one)
 to be `#![cfg_attr(bootstrap, feature(XXX))]`.
-This includes the feature-gate only for stage0, which is built using the current beta (this is needed because the feature is still unstable in the current beta).
+This includes the feature-gate only for stage1, which is built using the current beta (this is needed because the feature is still unstable in the current beta).
 
 Also, remove those strings from any tests (e.g. under `tests/`). If there are tests specifically targeting the feature-gate (i.e., testing that the feature-gate is required to use the feature, but nothing else), simply remove the test.
 
@@ -147,7 +147,7 @@ When opening the stabilization PR, CC the lang team and its advisors (`@rust-lan
 - `@rust-lang/types`, for type system interactions.
 - `@rust-lang/opsem`, for interactions with unsafe code.
 - `@rust-lang/compiler`, for implementation robustness.
-- `@rust-lang/libs-api`, for changes to the standard library API or its guarantees.
+- `@rust-lang/libs`, for changes to the standard library API or its guarantees.
 - `@rust-lang/lang-docs`, for questions about how this should be documented in the Reference.
 
 After the stabilization PR is opened with the stabilization report, wait a bit for any immediate comments.

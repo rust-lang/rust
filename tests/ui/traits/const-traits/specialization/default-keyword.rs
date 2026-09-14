@@ -7,7 +7,7 @@ const trait Foo {
     fn foo();
 }
 
-impl const Foo for u32 {
+const impl Foo for u32 {
     default fn foo() {}
 }
 

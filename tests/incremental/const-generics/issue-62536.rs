@@ -1,4 +1,4 @@
-//@ revisions:cfail1
+//@ revisions: bfail1
 
 #![allow(unused_variables)]
 
@@ -8,5 +8,5 @@ fn f<T, const N: usize>(x: T) -> S<T, {N}> { panic!() }
 
 fn main() {
     f(0u8);
-    //[cfail1]~^ ERROR type annotations needed
+    //[bfail1]~^ ERROR type annotations needed
 }

@@ -1,5 +1,5 @@
 //@ run-pass
-//@ ignore-pass
+//@ no-pass-override (checks for a warning produced by codegen)
 //@ ignore-backends: gcc
 #![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]

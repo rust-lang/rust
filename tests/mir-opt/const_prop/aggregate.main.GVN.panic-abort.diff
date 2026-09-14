@@ -13,8 +13,7 @@
       }
   
       bb0: {
--         StorageLive(_1);
-+         nop;
+          StorageLive(_1);
           StorageLive(_2);
           StorageLive(_3);
           _3 = (const 0_i32, const 1_u8, const 2_i32);
@@ -36,8 +35,7 @@
           StorageDead(_5);
           StorageDead(_4);
           _0 = const ();
--         StorageDead(_1);
-+         nop;
+          StorageDead(_1);
           return;
       }
   }

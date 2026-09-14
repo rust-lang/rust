@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ compile-flags: -Zmir-opt-level=0 -Z validate-mir
 //@ edition: 2024
 struct Droppy(u8);

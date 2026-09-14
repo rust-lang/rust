@@ -184,18 +184,19 @@ However, sometimes we might want to declare a new lint by hand. In this case,
 we'd use `cargo dev update_lints` command afterwards.
 
 When a lint is manually declared, we might need to register the lint pass
-manually in the `register_lints` function in `clippy_lints/src/lib.rs`:
+manually by adding an entry to the `late_lint_methods!` macro invocation in
+`clippy_lints/src/lib.rs`, at the `// add late passes here` marker:
 
 ```rust
-store.register_late_pass(|_| Box::new(foo_functions::FooFunctions));
+FooFunctions: foo_functions::FooFunctions = foo_functions::FooFunctions,
 ```
 
 As you might have guessed, where there's something late, there is something
-early: in Clippy there is a `register_early_pass` method as well. More on early
+early: in Clippy there is an `early_lint_methods!` macro as well. More on early
 vs. late passes in the [Lint Passes] chapter.
 
-Without a call to one of `register_early_pass` or `register_late_pass`, the lint
-pass in question will not be run.
+Without an entry in one of `early_lint_methods!` or `late_lint_methods!`, the
+lint pass in question will not be run.
 
 
 [all_lints]: https://rust-lang.github.io/rust-clippy/master/

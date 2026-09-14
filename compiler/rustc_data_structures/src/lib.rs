@@ -10,6 +10,7 @@
 #![allow(internal_features)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![cfg_attr(test, feature(test))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(allocator_api)]
@@ -24,7 +25,7 @@
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
-#![feature(never_type)]
+#![feature(nonzero_internals)]
 #![feature(pattern_type_macro)]
 #![feature(pattern_types)]
 #![feature(ptr_alignment_type)]
@@ -50,7 +51,6 @@ pub use hashbrown::hash_table;
 pub use rustc_index::static_assert_size;
 // Re-export some data-structure crates which are part of our public API.
 pub use {either, indexmap, smallvec, thin_vec};
-
 pub mod aligned;
 pub mod base_n;
 pub mod binary_search_util;
@@ -68,26 +68,24 @@ pub mod obligation_forest;
 pub mod owned_slice;
 pub mod packed;
 pub mod profiling;
+pub mod range_set;
 pub mod sharded;
 pub mod small_c_str;
 pub mod snapshot_map;
 pub mod sorted_map;
 pub mod sso;
-pub mod stable_hasher;
-pub mod stack;
+pub mod stable_hash;
 pub mod steal;
 pub mod svh;
 pub mod sync;
 pub mod tagged_ptr;
 pub mod temp_dir;
-pub mod thinvec;
 pub mod thousands;
 pub mod transitive_relation;
 pub mod unhash;
 pub mod union_find;
 pub mod unord;
 pub mod vec_cache;
-pub mod work_queue;
 
 mod atomic_ref;
 

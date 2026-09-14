@@ -102,7 +102,7 @@ pub fn assists(
 mod handlers {
     use crate::{AssistContext, Assists};
 
-    pub(crate) type Handler = fn(&mut Assists, &AssistContext<'_>) -> Option<()>;
+    pub(crate) type Handler = fn(&mut Assists, &AssistContext<'_, '_>) -> Option<()>;
 
     mod add_braces;
     mod add_explicit_dot_deref;
@@ -232,7 +232,7 @@ mod handlers {
     mod unmerge_match_arm;
     mod unnecessary_async;
     mod unqualify_method_call;
-    mod unwrap_block;
+    mod unwrap_branch;
     mod unwrap_return_type;
     mod unwrap_tuple;
     mod unwrap_type_to_generic_arg;
@@ -358,6 +358,7 @@ mod handlers {
             reorder_impl_items::reorder_impl_items,
             replace_arith_op::replace_arith_with_checked,
             replace_arith_op::replace_arith_with_saturating,
+            replace_arith_op::replace_arith_with_strict,
             replace_arith_op::replace_arith_with_wrapping,
             replace_derive_with_manual_impl::replace_derive_with_manual_impl,
             replace_if_let_with_match::replace_if_let_with_match,
@@ -380,7 +381,8 @@ mod handlers {
             unmerge_imports::unmerge_imports,
             unnecessary_async::unnecessary_async,
             unqualify_method_call::unqualify_method_call,
-            unwrap_block::unwrap_block,
+            unwrap_branch::unwrap_block,
+            unwrap_branch::unwrap_branch,
             unwrap_return_type::unwrap_return_type,
             unwrap_tuple::unwrap_tuple,
             unwrap_type_to_generic_arg::unwrap_type_to_generic_arg,

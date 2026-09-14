@@ -10,8 +10,8 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::CrateNum;
 use rustc_index::IndexVec;
-use rustc_macros::{Decodable, Encodable, HashStable};
-use rustc_session::config::CrateType;
+use rustc_macros::{Decodable, Encodable, StableHash};
+use rustc_structures::CrateType;
 
 /// A list of dependencies for a certain crate type.
 pub type DependencyList = IndexVec<CrateNum, Linkage>;
@@ -21,7 +21,7 @@ pub type DependencyList = IndexVec<CrateNum, Linkage>;
 /// This is local to the tcx, and is generally relevant to one session.
 pub type Dependencies = FxIndexMap<CrateType, DependencyList>;
 
-#[derive(Copy, Clone, PartialEq, Debug, HashStable, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Debug, StableHash, Encodable, Decodable)]
 pub enum Linkage {
     NotLinked,
     IncludedFromDylib,

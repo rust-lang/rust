@@ -1,4 +1,4 @@
-#![allow(clippy::needless_raw_string_hashes)]
+#![expect(clippy::needless_raw_string_hashes)]
 #![warn(clippy::join_absolute_paths)]
 
 use std::path::{Path, PathBuf};

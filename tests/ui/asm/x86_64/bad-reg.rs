@@ -1,9 +1,8 @@
 //@ add-minicore
-//@ only-x86_64
 //@ revisions: stable experimental_reg
-//@ compile-flags: -C target-feature=+avx2,+avx512f
+//@ compile-flags: --target x86_64-unknown-linux-gnu -C target-feature=+avx2,+avx512f
+//@ needs-llvm-components: x86
 #![cfg_attr(experimental_reg, feature(asm_experimental_reg))]
-
 #![crate_type = "lib"]
 #![feature(no_core)]
 #![no_core]
@@ -22,9 +21,9 @@ fn main() {
         asm!("", in("foo") foo);
         //~^ ERROR invalid register `foo`: unknown register
         asm!("{:z}", in(reg) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `z` for this register class
         asm!("{:r}", in(xmm_reg) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `r` for this register class
         asm!("{:a}", const 0);
         //~^ ERROR asm template modifiers are not allowed for `const` arguments
         asm!("{:a}", sym main);
@@ -79,22 +78,16 @@ fn main() {
         //~^ ERROR register `ymm0` conflicts with register `xmm0`
         asm!("", in("xmm0") foo, lateout("ymm0") bar);
 
-        // Passing u128/i128 is currently experimental.
+        // Use 128-bit integers with vector registers.
         let mut xmmword = 0u128;
 
-        asm!("/* {:x} */", in(xmm_reg) xmmword); // requires asm_experimental_reg
-        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
-        asm!("/* {:x} */", out(xmm_reg) xmmword); // requires asm_experimental_reg
-        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+        asm!("/* {:x} */", in(xmm_reg) xmmword);
+        asm!("/* {:x} */", out(xmm_reg) xmmword);
 
-        asm!("/* {:y} */", in(ymm_reg) xmmword); // requires asm_experimental_reg
-        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
-        asm!("/* {:y} */", out(ymm_reg) xmmword); // requires asm_experimental_reg
-        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+        asm!("/* {:y} */", in(ymm_reg) xmmword);
+        asm!("/* {:y} */", out(ymm_reg) xmmword);
 
-        asm!("/* {:z} */", in(zmm_reg) xmmword); // requires asm_experimental_reg
-        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
-        asm!("/* {:z} */", out(zmm_reg) xmmword); // requires asm_experimental_reg
-        //[stable]~^ ERROR type `u128` cannot be used with this register class in stable
+        asm!("/* {:z} */", in(zmm_reg) xmmword);
+        asm!("/* {:z} */", out(zmm_reg) xmmword);
     }
 }

@@ -3,15 +3,27 @@
 If you want to hack on Miri yourself, great!  Here are some resources you might
 find useful.
 
+## AI policy
+
+Before opening a PR or issue, please note our AI policy:
+
+* Using LLMs privately (any use where the output is not part of what you submit to Miri) is allowed.
+* Using LLMs to generate code, documentation, or text that you post in a PR or issue is disallowed, except:
+  - Machine translation is okay, but we recommend tools like https://www.deepl.com/ instead of general-purpose LLMs to reduce the chance of the meaning of the text being altered by the translation.
+  - For issues, it's okay to have a clearly separated LLM-generated section, but the rest of the issue without that section must be written and verified by you personally and must stand on its own.
+  - For PRs, if a Miri maintainer has previously agreed to mentor you, it's okay to submit LLM-generated code and have it reviewed by that maintainer. The PR needs to clearly indicate that it contains LLM-generated code and who the mentor is, and the PR description needs to be written and verified by you personally.
+
+If you have any doubts or questions, please come talk to us on [Zulip].
+
+[Zulip]: https://rust-lang.zulipchat.com/#narrow/channel/269128-miri
+
 ## Getting started
 
 Check out the issues on this GitHub repository for some ideas. In particular,
 look for the green `E-*` labels which mark issues that should be rather
 well-suited for onboarding. For more ideas or help with hacking on Miri, you can
-contact us on the [Rust Zulip]. See the [Rust website](https://www.rust-lang.org/governance/teams/compiler#team-miri)
+contact us on the [Rust Zulip][Zulip]. See the [Rust website](https://www.rust-lang.org/governance/teams/compiler#team-miri)
 for a list of Miri maintainers.
-
-[Rust Zulip]: https://rust-lang.zulipchat.com
 
 ### PR review process
 
@@ -171,8 +183,8 @@ MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows ./miri run tests/pass/v
 ```
 
 Note that you will only get `info`, `warn` or `error` messages if you use a prebuilt compiler.
-In order to get `debug` and `trace` level messages, you need to build miri with a locally built
-compiler that has `debug=true` set in `bootstrap.toml`.
+In order to get `debug` and `trace` level messages, you need to build miri with a [locally built
+compiler](#advanced-topic-building-miri-against-a-locally-compiled-rustc) that has `debug=true` set in `bootstrap.toml`.
 
 #### Debugging error messages
 
@@ -240,7 +252,7 @@ and on macOS, `rm -rf ~/Library/Caches/org.rust-lang.miri`).
 
 Miri comes with a few benchmarks; you can run `./miri bench` to run them with the locally built
 Miri. Note: this will run `./miri install` as a side-effect. Also requires `hyperfine` to be
-installed (`cargo install hyperfine`).
+installed (`cargo install --locked hyperfine`).
 
 To compare the benchmark results with a baseline, do the following:
 - Before applying your changes, run `./miri bench --save-baseline=baseline.json`.
@@ -318,6 +330,33 @@ You can also directly run Miri on a Rust source file:
 
 ```
 ./x.py run miri --stage 1 --args src/tools/miri/tests/pass/hello.rs
+```
+
+## Advanced topic: Building Miri against a locally compiled rustc
+
+Very rarely, it can be necessary to work with an out-of-tree Miri but build it against a rustc that
+was locally compiled. (Usually, you should instead work on the Miri that's in the Rust tree, as
+described in the previous subsection.)
+
+This requires a fully bootstrapped build:
+
+```sh
+# Build rustc, then build rustc with that rustc. This can take a while.
+./x build library --stage 3
+```
+
+You also need to set up a linked toolchain with rustup:
+
+```sh
+rustup toolchain link stage2 build/host/stage2
+```
+
+Then in the Miri folder, you can set this as the current toolchain and build against it:
+
+```sh
+rustup override set stage2
+# Prevent `./miri` from reseting the toolchain.
+export MIRI_AUTO_OPS=no
 ```
 
 ## Advanced topic: Syncing with the rustc repo

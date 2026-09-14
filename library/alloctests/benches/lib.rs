@@ -1,16 +1,19 @@
 // This is marked as `test = true` and hence picked up by `./x miri`, but that would be too slow.
 #![cfg(not(miri))]
+#![allow(internal_features)]
 #![feature(iter_next_chunk)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(repr_simd)]
 #![feature(slice_partition_dedup)]
 #![feature(strict_provenance_lints)]
 #![feature(test)]
-#![deny(fuzzy_provenance_casts)]
+#![deny(implicit_provenance_casts)]
 
 extern crate test;
 
 mod binary_heap;
 mod btree;
+mod io;
 mod linked_list;
 mod slice;
 mod str;

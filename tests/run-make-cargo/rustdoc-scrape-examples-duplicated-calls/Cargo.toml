@@ -1,0 +1,10 @@
+[workspace]
+
+[package]
+edition = "2024"
+name = "tester"
+version = "0.1.0"
+
+[[example]]
+doc-scrape-examples = true
+name = "window"

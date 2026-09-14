@@ -550,7 +550,7 @@ impl LLVMLink {
 
     /// Alters all the unsigned types from the signature. This is required where
     /// a signed and unsigned variant require the same binding to an exposed
-    /// LLVM instrinsic.
+    /// LLVM intrinsic.
     pub fn sanitise_uints(&mut self) {
         let transform = |tk: &mut TypeKind| {
             if let Some(BaseType::Sized(BaseTypeKind::UInt, size)) = tk.base_type() {
@@ -630,7 +630,7 @@ impl LLVMLink {
 
                     match (scope, kind.base_type()) {
                         (Argument, Some(Sized(Bool, bitsize))) if *bitsize != 8 => {
-                            Ok(convert("into", arg))
+                            Ok(convert("sve_into", arg))
                         }
                         (Argument, Some(Sized(UInt, _) | Unsized(UInt))) => {
                             if ctx.global.auto_llvm_sign_conversion {
@@ -647,27 +647,26 @@ impl LLVMLink {
             })
             .try_collect()?;
 
-        let return_type_conversion = if !ctx.global.auto_llvm_sign_conversion {
-            None
-        } else {
-            self.signature
-                .as_ref()
-                .and_then(|sig| sig.return_type.as_ref())
-                .and_then(|ty| {
-                    if let Some(Sized(Bool, bitsize)) = ty.base_type() {
-                        (*bitsize != 8).then_some(Bool)
-                    } else if let Some(Sized(UInt, _) | Unsized(UInt)) = ty.base_type() {
-                        Some(UInt)
-                    } else {
-                        None
-                    }
-                })
-        };
+        let return_type_conversion = self
+            .signature
+            .as_ref()
+            .and_then(|sig| sig.return_type.as_ref())
+            .and_then(|ty| {
+                if let Some(Sized(Bool, bitsize)) = ty.base_type() {
+                    (*bitsize != 8).then_some(Bool)
+                } else if let Some(Sized(UInt, _) | Unsized(UInt)) = ty.base_type() {
+                    Some(UInt)
+                } else {
+                    None
+                }
+            });
 
         let fn_call = Expression::FnCall(fn_call);
         match return_type_conversion {
-            Some(Bool) => Ok(convert("into", fn_call)),
-            Some(UInt) => Ok(convert("as_unsigned", fn_call)),
+            Some(Bool) => Ok(convert("sve_into", fn_call)),
+            Some(UInt) if ctx.global.auto_llvm_sign_conversion => {
+                Ok(convert("as_unsigned", fn_call))
+            }
             _ => Ok(fn_call),
         }
     }
@@ -683,7 +682,7 @@ impl ToTokens for LLVMLink {
         let signature = self.signature.as_ref().unwrap();
         let links = self.links.as_ref().unwrap();
         tokens.append_all(quote! {
-            unsafe extern "unadjusted" {
+            unsafe extern "llvm-intrinsic" {
                 #(#links)*
                 #signature;
             }
@@ -807,6 +806,7 @@ pub enum UnsafetyComment {
     NonTemporal,
     Neon,
     NoProvenance(String),
+    PointerWrite(String),
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -872,8 +872,12 @@ impl fmt::Display for UnsafetyComment {
             Self::NoProvenance(arg) => write!(
                 f,
                 "Addresses passed in `{arg}` lack provenance, so this is similar to using a \
-                `usize as ptr` cast (or [`core::ptr::from_exposed_addr`]) on each lane before \
-                using it."
+                `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane \
+                before  using it."
+            ),
+            Self::PointerWrite(arg) => write!(
+                f,
+                "The pointer in `{arg}` must satisfy the requirements of [`core::ptr::write`]."
             ),
             Self::UnpredictableOnFault => write!(
                 f,
@@ -1055,23 +1059,8 @@ impl Intrinsic {
 
     /// Add a big endian implementation
     fn generate_big_endian(&self, variant: &mut Intrinsic) {
-        /* We can't always blindly reverse the bits only in certain conditions
-         * do we need a different order - thus this allows us to have the
-         * ability to do so without having to play codegolf with the yaml AST */
-        let should_reverse = {
-            if let Some(should_reverse) = variant.big_endian_inverse {
-                should_reverse
-            } else if variant.compose.len() == 1 {
-                match &variant.compose[0] {
-                    Expression::FnCall(fn_call) => fn_call.0.to_string() == "transmute",
-                    _ => false,
-                }
-            } else {
-                false
-            }
-        };
-
-        if !should_reverse {
+        // We only reverse if it was specifically requested
+        if !variant.big_endian_inverse.unwrap_or(false) {
             return;
         }
 
@@ -1139,7 +1128,7 @@ impl Intrinsic {
             } else {
                 /* If we do not need to reorder anything then immediately add
                  * the expressions from the big_endian_expressions and
-                 * concatinate the compose vector */
+                 * concatenate the compose vector */
                 variant.big_endian_compose.extend(big_endian_expressions);
                 variant
                     .big_endian_compose
@@ -1157,11 +1146,11 @@ impl Intrinsic {
 
             /* If we do not create a shuffle call we do not need modify the
              * return value and append to the big endian ast array. A bit confusing
-             * as in code we are making the final call before caputuring the return
+             * as in code we are making the final call before capturing the return
              * value of the intrinsic that has been called.*/
             let ret_val_name = "ret_val".to_string();
             if let Some(simd_shuffle_call) = create_shuffle_call(&ret_val_name, return_type) {
-                /* There is a possibility that the funcion arguments did not
+                /* There is a possibility that the function arguments did not
                  * require big endian treatment, thus we need to now add the
                  * original function body before appending the return value.*/
                 if variant.big_endian_compose.is_empty() {
@@ -1187,9 +1176,10 @@ impl Intrinsic {
                      * re-assigning each tuple however those generated calls do
                      * not make the parent function return. So we add the return
                      * value here */
-                    variant
-                        .big_endian_compose
-                        .push(create_symbol_identifier(&ret_val_name));
+                    variant.big_endian_compose.push(create_symbol_identifier(
+                        &ret_val_name,
+                        IdentifierType::Symbol,
+                    ));
                 }
             }
         }
@@ -1614,6 +1604,7 @@ impl Intrinsic {
                             (Some(BaseTypeKind::Float), Some(BaseTypeKind::Float)) => ex,
                             (Some(BaseTypeKind::UInt), Some(BaseTypeKind::UInt)) => ex,
                             (Some(BaseTypeKind::Poly), Some(BaseTypeKind::Poly)) => ex,
+                            (Some(BaseTypeKind::Bool), Some(BaseTypeKind::Bool)) => ex,
 
                             (None, None) => ex,
                             _ => unreachable!(
@@ -1695,8 +1686,8 @@ enum Endianness {
     NA,
 }
 
-/// Based on the endianess will create the appropriate intrinsic, or simply
-/// create the desired intrinsic without any endianess
+/// Based on the endianness will create the appropriate intrinsic, or simply
+/// create the desired intrinsic without any endianness
 fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut TokenStream) {
     let signature = &intrinsic.signature;
     let fn_name = signature.fn_name().to_string();
@@ -1736,7 +1727,7 @@ fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut Tok
         );
     }
 
-    tokens.append_all(quote! { #[inline(always)] });
+    tokens.append_all(quote! { #[inline] });
 
     match endianness {
         Endianness::Little => tokens.append_all(quote! { #[cfg(target_endian = "little")] }),
@@ -1811,9 +1802,8 @@ fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut Tok
             body_current = &mut body_unsafe;
         }
         ex.to_tokens(body_current);
-        let is_last = matches!(pos, itertools::Position::Last | itertools::Position::Only);
         let is_llvm_link = matches!(ex, Expression::LLVMLink(_));
-        if !is_last && !is_llvm_link {
+        if !pos.is_last && !is_llvm_link {
             body_current.append(Punct::new(';', Spacing::Alone));
         }
     }

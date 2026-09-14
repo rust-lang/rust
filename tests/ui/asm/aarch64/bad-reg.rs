@@ -1,7 +1,13 @@
-//@ only-aarch64
-//@ compile-flags: -C target-feature=+neon
+//@ add-minicore
+//@ compile-flags: --target aarch64-unknown-linux-gnu -C target-feature=+neon,+sve
+//@ needs-llvm-components: aarch64
+//@ ignore-backends: gcc
+#![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
 
-use std::arch::asm;
+extern crate minicore;
+use minicore::*;
 
 fn main() {
     let mut foo = 0;
@@ -14,11 +20,11 @@ fn main() {
         asm!("", in("foo") foo);
         //~^ ERROR invalid register `foo`: unknown register
         asm!("{:z}", in(reg) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `z` for this register class
         asm!("{:r}", in(vreg) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `r` for this register class
         asm!("{:r}", in(vreg_low16) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `r` for this register class
         asm!("{:a}", const 0);
         //~^ ERROR asm template modifiers are not allowed for `const` arguments
         asm!("{:a}", sym main);
@@ -32,15 +38,15 @@ fn main() {
         asm!("", in("x19") foo);
         //~^ ERROR invalid register `x19`: x19 is used internally by LLVM and cannot be used as an operand for inline asm
 
-        asm!("", in("p0") foo);
-        //~^ ERROR register class `preg` can only be used as a clobber, not as an input or output
+        asm!("", in("ffr") foo);
+        //~^ ERROR register class `ffr` can only be used as a clobber, not as an input or output
         //~| ERROR type `i32` cannot be used with this register class
-        asm!("", out("p0") _);
-        asm!("{}", in(preg) foo);
-        //~^ ERROR register class `preg` can only be used as a clobber, not as an input or output
+        asm!("", out("ffr") _);
+        asm!("{}", in(ffr) foo);
+        //~^ ERROR register class `ffr` can only be used as a clobber, not as an input or output
         //~| ERROR type `i32` cannot be used with this register class
-        asm!("{}", out(preg) _);
-        //~^ ERROR register class `preg` can only be used as a clobber, not as an input or output
+        asm!("{}", out(ffr) _);
+        //~^ ERROR register class `ffr` can only be used as a clobber, not as an input or output
 
         // Explicit register conflicts
         // (except in/lateout which don't conflict)

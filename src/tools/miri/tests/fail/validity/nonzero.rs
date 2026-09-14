@@ -1,11 +1,10 @@
-#![feature(rustc_attrs)]
+#![feature(rustc_attrs, pattern_types, pattern_type_macro)]
 #![allow(unused_attributes)]
 
-#[rustc_layout_scalar_valid_range_start(1)]
 #[repr(transparent)]
-pub(crate) struct NonZero<T>(pub(crate) T);
+struct NonZero(std::pat::pattern_type!(u32 is 1..=u32::MAX));
 
 fn main() {
     // Make sure that we detect this even when no function call is happening along the way
-    let _x = Some(unsafe { NonZero(0) }); //~ ERROR: encountered 0, but expected something greater or equal to 1
+    let _x = Some(unsafe { NonZero(std::mem::transmute(0_u32)) }); //~ ERROR: encountered 0, but expected something greater or equal to 1
 }

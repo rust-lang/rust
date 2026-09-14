@@ -7,7 +7,7 @@ use crate::{
     resolving::{ResolvedPattern, ResolvedRule, UfcsCallInfo},
 };
 use hir::{FileRange, FindPathConfig, Semantics};
-use ide_db::{FxHashMap, base_db::RootQueryDb};
+use ide_db::{FxHashMap, base_db::all_crates};
 use std::{cell::Cell, iter::Peekable};
 use syntax::{
     SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken,
@@ -315,7 +315,6 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         Ok(())
     }
 
-    #[allow(clippy::only_used_in_recursion)]
     fn check_constraint(
         &self,
         constraint: &Constraint,
@@ -621,7 +620,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             })?
             .original;
         let krate = self.sema.scope(expr.syntax()).map(|it| it.krate()).unwrap_or_else(|| {
-            hir::Crate::from(*self.sema.db.all_crates().last().expect("no crate graph present"))
+            hir::Crate::from(*all_crates(self.sema.db).last().expect("no crate graph present"))
         });
 
         code_type

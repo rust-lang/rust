@@ -73,6 +73,7 @@ impl<S: Borrow<str>> Join<&str> for [S] {
     type Output = String;
 
     fn join(slice: &Self, sep: &str) -> String {
+        // ignore-tidy-undocumented-unsafe
         unsafe { String::from_utf8_unchecked(join_generic_copy(slice, sep.as_bytes())) }
     }
 }
@@ -126,6 +127,22 @@ macro_rules! copy_slice_and_advance {
 // the bounds for String-join are S: Borrow<str> and for Vec-join Borrow<[T]>
 // [T] and str both impl AsRef<[T]> for some T
 // => s.borrow().as_ref() and we always have slices
+//
+// # Safety notes
+//
+// `Borrow` is a safe trait, and implementations are not required
+// to be deterministic. An inconsistent `Borrow` implementation could return slices
+// of different lengths on consecutive calls (e.g. by using interior mutability).
+//
+// This implementation calls `borrow()` multiple times:
+// 1. To calculate `reserved_len`, all elements are borrowed once.
+// 2. All elements, except the first, are borrowed a second time when building the mapped iterator.
+//
+// Risks and Mitigations:
+// - If elements 2..N GROW on their second borrow, the target slice bounds set by `checked_sub`
+//   means that `split_at_mut` inside `copy_slice_and_advance!` will correctly panic.
+// - If elements SHRINK on their second borrow, the spare space is never written, and the final
+//   length set via `set_len` masks trailing uninitialized bytes.
 #[cfg(not(no_global_oom_handling))]
 fn join_generic_copy<B, T, S>(slice: &[S], sep: &[T]) -> Vec<T>
 where
@@ -137,8 +154,10 @@ where
     let mut iter = slice.iter();
 
     // the first slice is the only one without a separator preceding it
+    // we take care to only borrow this once during the length calculation
+    // to avoid inconsistent Borrow implementations from breaking our assumptions
     let first = match iter.next() {
-        Some(first) => first,
+        Some(first) => first.borrow().as_ref(),
         None => return vec![],
     };
 
@@ -148,8 +167,11 @@ where
     // the entire Vec pre-allocated for safety
     let reserved_len = sep_len
         .checked_mul(iter.len())
+        .and_then(|n| n.checked_add(first.len()))
         .and_then(|n| {
-            slice.iter().map(|s| s.borrow().as_ref().len()).try_fold(n, usize::checked_add)
+            // iter starts from the second element as we've already taken the first
+            // it's cloned so we can reuse the same iterator below
+            iter.clone().map(|s| s.borrow().as_ref().len()).try_fold(n, usize::checked_add)
         })
         .expect("attempt to join into collection with len > usize::MAX");
 
@@ -157,23 +179,26 @@ where
     let mut result = Vec::with_capacity(reserved_len);
     debug_assert!(result.capacity() >= reserved_len);
 
-    result.extend_from_slice(first.borrow().as_ref());
+    result.extend_from_slice(first);
 
+    let pos = result.len();
+    debug_assert!(reserved_len >= pos);
+    // ignore-tidy-undocumented-unsafe
     unsafe {
-        let pos = result.len();
         let target = result.spare_capacity_mut().get_unchecked_mut(..reserved_len - pos);
 
         // Convert the separator and slices to slices of MaybeUninit
-        // to simplify implementation in specialize_for_lengths
+        // to simplify implementation in specialize_for_lengths.
         let sep_uninit = core::slice::from_raw_parts(sep.as_ptr().cast(), sep.len());
         let iter_uninit = iter.map(|it| {
             let it = it.borrow().as_ref();
             core::slice::from_raw_parts(it.as_ptr().cast(), it.len())
         });
 
-        // copy separator and slices over without bounds checks
-        // generate loops with hardcoded offsets for small separators
-        // massive improvements possible (~ x2)
+        // copy separator and slices over without bounds checks.
+        // `specialize_for_lengths!` internally calls `s.borrow()`, but because it uses
+        // the bounds-checked `split_at_mut` any misbehaving implementation
+        // will not write out of bounds.
         let remain = specialize_for_lengths!(sep_uninit, target, iter_uninit; 0, 1, 2, 3, 4);
 
         // A weird borrow implementation may return different
@@ -183,6 +208,23 @@ where
         result.set_len(result_len);
     }
     result
+}
+
+/// Helper for final sigma lowercase
+#[cfg(not(no_global_oom_handling))]
+fn map_uppercase_sigma(from: &str, i: usize) -> char {
+    fn case_ignorable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
+        match iter.skip_while(|&c| c.is_case_ignorable()).next() {
+            Some(c) => c.is_cased(),
+            None => false,
+        }
+    }
+
+    // See https://www.unicode.org/versions/latest/core-spec/chapter-3/#G54277
+    // for the definition of `Final_Sigma`.
+    let is_word_final = case_ignorable_then_cased(from[..i].chars().rev())
+        && !case_ignorable_then_cased(from[i + const { 'Σ'.len_utf8() }..].chars());
+    if is_word_final { 'ς' } else { 'σ' }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -208,6 +250,7 @@ impl ToOwned for str {
 
     #[inline]
     fn to_owned(&self) -> String {
+        // ignore-tidy-undocumented-unsafe
         unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
     }
 
@@ -268,11 +311,15 @@ impl str {
     pub fn replace<P: Pattern>(&self, from: P, to: &str) -> String {
         // Fast path for replacing a single ASCII character with another.
         if let Some(from_byte) = match from.as_utf8_pattern() {
-            Some(Utf8Pattern::StringPattern([from_byte])) => Some(*from_byte),
+            Some(Utf8Pattern::StringPattern(s)) => match s.as_bytes() {
+                [from_byte] => Some(*from_byte),
+                _ => None,
+            },
             Some(Utf8Pattern::CharPattern(c)) => c.as_ascii().map(|ascii_char| ascii_char.to_u8()),
             _ => None,
         } {
             if let [to_byte] = to.as_bytes() {
+                // ignore-tidy-undocumented-unsafe
                 return unsafe { replace_ascii(self.as_bytes(), from_byte, *to_byte) };
             }
         }
@@ -285,10 +332,12 @@ impl str {
         let mut result = String::with_capacity(default_capacity);
         let mut last_end = 0;
         for (start, part) in self.match_indices(from) {
+            // ignore-tidy-undocumented-unsafe
             result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
         }
+        // ignore-tidy-undocumented-unsafe
         result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         result
     }
@@ -325,34 +374,42 @@ impl str {
         let mut result = String::with_capacity(32);
         let mut last_end = 0;
         for (start, part) in self.match_indices(pat).take(count) {
+            // ignore-tidy-undocumented-unsafe
             result.push_str(unsafe { self.get_unchecked(last_end..start) });
             result.push_str(to);
             last_end = start + part.len();
         }
+        // ignore-tidy-undocumented-unsafe
         result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
         result
     }
 
     /// Returns the lowercase equivalent of this string slice, as a new [`String`].
     ///
-    /// 'Lowercase' is defined according to the terms of the Unicode Derived Core Property
-    /// `Lowercase`.
+    /// 'Lowercase' is defined according to the terms of
+    /// [Chapter 3 (Conformance)](https://www.unicode.org/versions/latest/core-spec/chapter-3/#G34432)
+    /// of the Unicode standard.
     ///
     /// Since some characters can expand into multiple characters when changing
     /// the case, this function returns a [`String`] instead of modifying the
     /// parameter in-place.
+    ///
+    /// Unlike [`char::to_lowercase()`], this method fully handles the context-dependent
+    /// casing of Greek sigma. However, like that method, it does not handle locale-specific
+    /// casing, like Turkish and Azeri I/ı/İ/i. See its documentation
+    /// for more information.
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// let s = "HELLO";
+    /// let s = "HELLO WORLD";
     ///
-    /// assert_eq!("hello", s.to_lowercase());
+    /// assert_eq!("hello world", s.to_lowercase());
     /// ```
     ///
-    /// A tricky example, with sigma:
+    /// Tricky examples, with sigma:
     ///
     /// ```
     /// let sigma = "Σ";
@@ -363,6 +420,10 @@ impl str {
     /// let odysseus = "ὈΔΥΣΣΕΎΣ";
     ///
     /// assert_eq!("ὀδυσσεύς", odysseus.to_lowercase());
+    ///
+    /// let odysseus_king_of_ithaca = "Ο ΟΔΥΣΣΈΑΣ ΒΑΣΙΛΙΆΣ ΤΗΣ ΙΘΆΚΗΣ";
+    ///
+    /// assert_eq!("ο οδυσσέας βασιλιάς της ιθάκης", odysseus_king_of_ithaca.to_lowercase());
     /// ```
     ///
     /// Languages without case are not changed:
@@ -378,7 +439,9 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_lowercase(&self) -> String {
-        let (mut s, rest) = convert_while_ascii(self, u8::to_ascii_lowercase);
+        // SAFETY: `to_ascii_lowercase` preserves ASCII bytes, so the converted
+        // prefix remains valid UTF-8.
+        let (mut s, rest) = unsafe { convert_while_ascii(self, u8::to_ascii_lowercase) };
 
         let prefix_len = s.len();
 
@@ -406,41 +469,169 @@ impl str {
                 }
             }
         }
-        return s;
-
-        fn map_uppercase_sigma(from: &str, i: usize) -> char {
-            // See https://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
-            // for the definition of `Final_Sigma`.
-            let is_word_final = case_ignorable_then_cased(from[..i].chars().rev())
-                && !case_ignorable_then_cased(from[i + const { 'Σ'.len_utf8() }..].chars());
-            if is_word_final { 'ς' } else { 'σ' }
-        }
-
-        fn case_ignorable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
-            match iter.skip_while(|&c| c.is_case_ignorable()).next() {
-                Some(c) => c.is_cased(),
-                None => false,
-            }
-        }
+        s
     }
 
-    /// Returns the uppercase equivalent of this string slice, as a new [`String`].
+    /// Returns the titlecase equivalent of this string slice,
+    /// which is assumed to represent a single word,
+    /// as a new [`String`].
     ///
-    /// 'Uppercase' is defined according to the terms of the Unicode Derived Core Property
-    /// `Uppercase`.
+    /// Essentially, this consists of uppercasing the first cased letter
+    /// (with [`char::to_titlecase()`]), and lowercasing everything that follows.
+    ///
+    /// 'Titlecase' is defined according to the terms of
+    /// [Chapter 3 (Conformance)](https://www.unicode.org/versions/latest/core-spec/chapter-3/#G34082)
+    /// of the Unicode standard.
     ///
     /// Since some characters can expand into multiple characters when changing
     /// the case, this function returns a [`String`] instead of modifying the
     /// parameter in-place.
+    ///
+    /// Unlike [`char::to_lowercase()`], this method fully handles the context-dependent
+    /// casing of Greek sigma. However, like that method, it does not handle locale-specific
+    /// casing, like Turkish and Azeri I/ı/İ/i. See its documentation
+    /// for more information.
+    ///
+    /// This method does not perform any kind of word segmentation.
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// let s = "hello";
+    /// #![feature(titlecase)]
+    /// let s = "HELLO WORLD";
     ///
-    /// assert_eq!("HELLO", s.to_uppercase());
+    /// assert_eq!("Hello world", s.word_to_titlecase());
+    /// ```
+    ///
+    /// The first *cased* letter is uppercased:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let the_night_before_christmas = "'twas";
+    ///
+    /// assert_eq!("'Twas", the_night_before_christmas.word_to_titlecase());
+    /// ```
+    ///
+    /// Languages without case are not changed:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let new_year = "农历新年";
+    ///
+    /// assert_eq!(new_year, new_year.word_to_titlecase());
+    /// ```
+    ///
+    /// Georgian uppercase ("Mtavruli") letters are not used in titlecase:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let georgian = "ერთობაშია";
+    ///
+    /// assert_eq!(georgian, georgian.word_to_titlecase());
+    /// ```
+    ///
+    /// No word segmentation is performed,
+    /// so only the first cased letter in the whole string gets uppercased:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let blazingly_fast = "ferris and I";
+    ///
+    /// assert_eq!("Ferris and i", blazingly_fast.word_to_titlecase());
+    /// ```
+    ///
+    /// Tricky examples, with sigma:
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let odysseus = "ὈΔΥΣΣΕΎΣ";
+    ///
+    /// assert_eq!("Ὀδυσσεύς", odysseus.word_to_titlecase());
+    ///
+    /// let odysseus_king_of_ithaca = "Ο ΟΔΥΣΣΈΑΣ ΒΑΣΙΛΙΆΣ ΤΗΣ ΙΘΆΚΗΣ";
+    ///
+    /// assert_eq!("Ο οδυσσέας βασιλιάς της ιθάκης", odysseus_king_of_ithaca.word_to_titlecase());
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "this returns the titlecase word as a new String, \
+                  without modifying the original"]
+    #[unstable(feature = "titlecase", issue = "153892")]
+    pub fn word_to_titlecase(&self) -> String {
+        let mut s = String::with_capacity(self.len());
+        let mut chars = self.char_indices();
+
+        // The first cased character is title-cased; leading uncased characters pass through.
+        'until_first_cased_char: for (_, c) in chars.by_ref() {
+            if c.is_cased() {
+                s.extend(c.to_titlecase());
+                break 'until_first_cased_char;
+            } else {
+                s.push(c);
+            }
+        }
+
+        // Everything after the first cased character is lower-cased. Use the ASCII fast
+        // path (auto-vectorized) for its ASCII prefix, mirroring `to_lowercase`.
+        let remainder = chars.as_str();
+        let rest_start = self.len() - remainder.len();
+        // SAFETY: `to_ascii_lowercase` preserves ASCII bytes, so the prefix stays valid UTF-8.
+        let (ascii, rest) = unsafe { convert_while_ascii(remainder, u8::to_ascii_lowercase) };
+        s.push_str(&ascii);
+        let prefix_len = rest_start + ascii.len();
+
+        for (i, c) in rest.char_indices() {
+            if c == 'Σ' {
+                // Σ maps to σ, except at the end of a word where it maps to ς.
+                // This is the only conditional (contextual) but language-independent mapping
+                // in `SpecialCasing.txt`,
+                // so hard-code it rather than have a generic "condition" mechanism.
+                // See https://github.com/rust-lang/rust/issues/26035
+                let sigma_lowercase = map_uppercase_sigma(self, prefix_len + i);
+                s.push(sigma_lowercase);
+            } else {
+                match conversions::to_lower(c) {
+                    [a, '\0', _] => s.push(a),
+                    [a, b, '\0'] => {
+                        s.push(a);
+                        s.push(b);
+                    }
+                    [a, b, c] => {
+                        s.push(a);
+                        s.push(b);
+                        s.push(c);
+                    }
+                }
+            }
+        }
+
+        s
+    }
+
+    /// Returns the uppercase equivalent of this string slice, as a new [`String`].
+    ///
+    /// 'Uppercase' is defined according to the terms of
+    /// [Chapter 3 (Conformance)](https://www.unicode.org/versions/latest/core-spec/chapter-3/#G34431)
+    /// of the Unicode standard.
+    ///
+    /// Since some characters can expand into multiple characters when changing
+    /// the case, this function returns a [`String`] instead of modifying the
+    /// parameter in-place.
+    ///
+    /// Like [`char::to_uppercase()`] this method does not handle language-specific
+    /// casing, like Turkish and Azeri I/ı/İ/i. See that method's documentation
+    /// for more information.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s = "hello world";
+    ///
+    /// assert_eq!("HELLO WORLD", s.to_uppercase());
     /// ```
     ///
     /// Scripts without case are not changed:
@@ -463,10 +654,114 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
-        let (mut s, rest) = convert_while_ascii(self, u8::to_ascii_uppercase);
+        // SAFETY: `to_ascii_uppercase` preserves ASCII bytes, so the converted
+        // prefix remains valid UTF-8.
+        let (mut s, rest) = unsafe { convert_while_ascii(self, u8::to_ascii_uppercase) };
 
         for c in rest.chars() {
             match conversions::to_upper(c) {
+                [a, '\0', _] => s.push(a),
+                [a, b, '\0'] => {
+                    s.push(a);
+                    s.push(b);
+                }
+                [a, b, c] => {
+                    s.push(a);
+                    s.push(b);
+                    s.push(c);
+                }
+            }
+        }
+        s
+    }
+
+    /// Returns the case-folded equivalent of this string slice, as a new [`String`].
+    ///
+    /// Case folding is a transformation, mostly matching lowercase, that is meant to be used
+    /// for case-insensitive string comparisons. Case-folded strings should not usually
+    /// be exposed directly to users.
+    ///
+    /// For the precise specification of case folding, see
+    /// [Chapter 3 (Conformance)](https://www.unicode.org/versions/latest/core-spec/chapter-3/#G63737)
+    /// of the Unicode standard.
+    ///
+    /// Since some characters can expand into multiple characters when case folding,
+    /// this function returns a [`String`] instead of modifying the parameter in-place.
+    ///
+    /// No [normalization] (e.g. NFC) is performed, so visually and semantically identical strings
+    /// might still casefold differently. For example, `"Å"` (U+00C5 LATIN CAPITAL LETTER A WITH RING ABOVE)
+    /// is considered distinct from `"Å"` (A followed by U+030A COMBINING RING ABOVE),
+    /// even though Unicode considers them canonically equivalent.
+    ///
+    /// Like [`char::to_casefold_unnormalized()`] this method does not handle language-specific
+    /// casing, like Turkish and Azeri I/ı/İ/i. See that method's documentation
+    /// for more information.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let s0 = "HELLO";
+    /// let s1 = "Hello";
+    ///
+    /// assert_eq!(s0.to_casefold_unnormalized(), s1.to_casefold_unnormalized());
+    /// assert_eq!(s0.to_casefold_unnormalized(), "hello")
+    /// ```
+    ///
+    /// Scripts without case are not changed:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let new_year = "农历新年";
+    ///
+    /// assert_eq!(new_year, new_year.to_casefold_unnormalized());
+    /// ```
+    ///
+    /// One character can become multiple:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let s0 = "TSCHÜẞ";
+    /// let s1 = "TSCHÜSS";
+    /// let s2 = "tschüß";
+    ///
+    /// assert_eq!(s0.to_casefold_unnormalized(), s1.to_casefold_unnormalized());
+    /// assert_eq!(s0.to_casefold_unnormalized(), s2.to_casefold_unnormalized());
+    /// assert_eq!(s0.to_casefold_unnormalized(), "tschüss");
+    /// ```
+    ///
+    /// No NFC [normalization] is performed:
+    ///
+    /// ```rust
+    /// #![feature(casefold)]
+    /// // These two strings are visually and semantically identical...
+    /// let comp = "Å";
+    /// let decomp = "Å";
+    ///
+    /// // ... but not codepoint-for-codepoint equal.
+    /// assert_eq!(comp, "\u{C5}");
+    /// assert_eq!(decomp, "A\u{030A}");
+    ///
+    /// // Their case-foldings are likewise unequal:
+    /// assert_eq!(comp.to_casefold_unnormalized(), "\u{E5}");
+    /// assert_eq!(decomp.to_casefold_unnormalized(), "a\u{030A}");
+    /// ```
+    ///
+    /// [normalization]: https://www.unicode.org/faq/normalization.html
+    #[cfg(not(no_global_oom_handling))]
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "this returns the case-folded string as a new String, \
+                  without modifying the original"]
+    #[unstable(feature = "casefold", issue = "157000")]
+    pub fn to_casefold_unnormalized(&self) -> String {
+        // SAFETY: `to_ascii_lowercase` preserves ASCII bytes, so the converted
+        // prefix remains valid UTF-8.
+        let (mut s, rest) = unsafe { convert_while_ascii(self, u8::to_ascii_lowercase) };
+
+        for c in rest.chars() {
+            match conversions::to_casefold(c) {
                 [a, '\0', _] => s.push(a),
                 [a, b, '\0'] => {
                     s.push(a);
@@ -498,6 +793,7 @@ impl str {
     #[inline]
     pub fn into_string(self: Box<Self>) -> String {
         let slice = Box::<[u8]>::from(self);
+        // ignore-tidy-undocumented-unsafe
         unsafe { String::from_utf8_unchecked(slice.into_vec()) }
     }
 
@@ -527,6 +823,7 @@ impl str {
     #[stable(feature = "repeat_str", since = "1.16.0")]
     #[inline]
     pub fn repeat(&self, n: usize) -> String {
+        // ignore-tidy-undocumented-unsafe
         unsafe { String::from_utf8_unchecked(self.as_bytes().repeat(n)) }
     }
 
@@ -557,9 +854,10 @@ impl str {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> String {
-        let mut s = self.to_owned();
-        s.make_ascii_uppercase();
-        s
+        let bytes = self.as_bytes().to_ascii_uppercase();
+        // SAFETY: ASCII case conversion only maps a-z to A-Z and leaves
+        // all other bytes unchanged as valid UTF-8
+        unsafe { String::from_utf8_unchecked(bytes) }
     }
 
     /// Returns a copy of this string where each character is mapped to its
@@ -589,9 +887,10 @@ impl str {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> String {
-        let mut s = self.to_owned();
-        s.make_ascii_lowercase();
-        s
+        let bytes = self.as_bytes().to_ascii_lowercase();
+        // SAFETY: ASCII case conversion only maps A-Z to a-z and leaves
+        // all other bytes unchanged as valid UTF-8
+        unsafe { String::from_utf8_unchecked(bytes) }
     }
 }
 
@@ -614,7 +913,21 @@ impl str {
 #[must_use]
 #[inline]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
+    // SAFETY: Upheld by caller.
     unsafe { Box::from_raw(Box::into_raw(v) as *mut str) }
+}
+
+/// Internal; same as `from_boxed_utf8_unchecked` but allocator-generic. Name
+/// probably not suitable for being made `pub` as-is.
+#[must_use]
+#[inline]
+#[cfg(not(no_global_oom_handling))]
+pub(crate) unsafe fn from_boxed_utf8_unchecked_in<A: crate::alloc::Allocator>(
+    v: Box<[u8], A>,
+) -> Box<str, A> {
+    let (ptr, alloc) = Box::into_raw_with_allocator(v);
+    // SAFETY: Upheld by caller.
+    unsafe { Box::from_raw_in(ptr as *mut str, alloc) }
 }
 
 /// Converts leading ascii bytes in `s` by calling the `convert` function.
@@ -626,11 +939,15 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
 ///
 /// This function is only public so that it can be verified in a codegen test,
 /// see `issue-123712-str-to-lower-autovectorization.rs`.
+///
+/// # Safety
+///
+/// `convert` must return an ASCII byte for every ASCII input byte.
 #[unstable(feature = "str_internals", issue = "none")]
 #[doc(hidden)]
 #[inline]
 #[cfg(not(no_global_oom_handling))]
-pub fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
+pub unsafe fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
     // Process the input in chunks of 16 bytes to enable auto-vectorization.
     // Previously the chunk size depended on the size of `usize`,
     // but on 32-bit platforms with sse or neon is also the better choice.
@@ -667,12 +984,14 @@ pub fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
         }
 
         ascii_prefix_len += N;
+        // ignore-tidy-undocumented-unsafe
         slice = unsafe { slice.get_unchecked(N..) };
+        // ignore-tidy-undocumented-unsafe
         out_slice = unsafe { out_slice.get_unchecked_mut(N..) };
     }
 
     // handle the remainder as individual bytes
-    while slice.len() > 0 {
+    while !slice.is_empty() {
         let byte = slice[0];
         if byte > 127 {
             break;
@@ -682,23 +1001,23 @@ pub fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
             *out_slice.get_unchecked_mut(0) = MaybeUninit::new(convert(&byte));
         }
         ascii_prefix_len += 1;
+        // ignore-tidy-undocumented-unsafe
         slice = unsafe { slice.get_unchecked(1..) };
+        // ignore-tidy-undocumented-unsafe
         out_slice = unsafe { out_slice.get_unchecked_mut(1..) };
     }
 
-    unsafe {
-        // SAFETY: ascii_prefix_len bytes have been initialized above
-        out.set_len(ascii_prefix_len);
+    // SAFETY: ascii_prefix_len bytes have been initialized above
+    unsafe { out.set_len(ascii_prefix_len) };
 
-        // SAFETY: We have written only valid ascii to the output vec
-        let ascii_string = String::from_utf8_unchecked(out);
+    // SAFETY: We have written only valid ascii to the output vec
+    let ascii_string = unsafe { String::from_utf8_unchecked(out) };
 
-        // SAFETY: we know this is a valid char boundary
-        // since we only skipped over leading ascii bytes
-        let rest = core::str::from_utf8_unchecked(slice);
+    // SAFETY: we know this is a valid char boundary
+    // since we only skipped over leading ascii bytes
+    let rest = unsafe { core::str::from_utf8_unchecked(slice) };
 
-        (ascii_string, rest)
-    }
+    (ascii_string, rest)
 }
 #[inline]
 #[cfg(not(no_global_oom_handling))]

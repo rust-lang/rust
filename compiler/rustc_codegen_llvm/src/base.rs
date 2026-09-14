@@ -21,7 +21,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::attrs::Linkage;
 use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, SanitizerFnAttrs};
-use rustc_middle::mir::mono::Visibility;
+use rustc_middle::mono::Visibility;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, Offload};
 use rustc_span::Symbol;
@@ -55,9 +55,16 @@ pub(crate) fn iter_globals(llmod: &llvm::Module) -> ValueIter<'_> {
     unsafe { ValueIter { cur: llvm::LLVMGetFirstGlobal(llmod), step: llvm::LLVMGetNextGlobal } }
 }
 
+pub(crate) fn iter_global_aliases(llmod: &llvm::Module) -> ValueIter<'_> {
+    unsafe {
+        ValueIter { cur: llvm::LLVMGetFirstGlobalAlias(llmod), step: llvm::LLVMGetNextGlobalAlias }
+    }
+}
+
 pub(crate) fn compile_codegen_unit(
     tcx: TyCtxt<'_>,
     cgu_name: Symbol,
+    bitcode_needed: bool,
 ) -> (ModuleCodegen<ModuleLlvm>, u64) {
     let start_time = Instant::now();
 
@@ -65,8 +72,7 @@ pub(crate) fn compile_codegen_unit(
     let (module, _) = tcx.dep_graph.with_task(
         dep_node,
         tcx,
-        cgu_name,
-        module_codegen,
+        || module_codegen(tcx, cgu_name, bitcode_needed),
         Some(dep_graph::hash_result),
     );
     let time_to_codegen = start_time.elapsed();
@@ -75,7 +81,11 @@ pub(crate) fn compile_codegen_unit(
     // the time we needed for codegenning it.
     let cost = time_to_codegen.as_nanos() as u64;
 
-    fn module_codegen(tcx: TyCtxt<'_>, cgu_name: Symbol) -> ModuleCodegen<ModuleLlvm> {
+    fn module_codegen(
+        tcx: TyCtxt<'_>,
+        cgu_name: Symbol,
+        needs_bitcode: bool,
+    ) -> ModuleCodegen<ModuleLlvm> {
         let cgu = tcx.codegen_unit(cgu_name);
         let _prof_timer =
             tcx.prof.generic_activity_with_arg_recorder("codegen_module", |recorder| {
@@ -85,7 +95,7 @@ pub(crate) fn compile_codegen_unit(
         // Instantiate monomorphizations without filling out definitions yet...
         let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
         {
-            let mut cx = CodegenCx::new(tcx, cgu, &llvm_module);
+            let mut cx = CodegenCx::new(tcx, cgu, &llvm_module, needs_bitcode);
 
             // Declare and store globals shared by all offload kernels
             //
@@ -124,7 +134,20 @@ pub(crate) fn compile_codegen_unit(
             if let Some(entry) =
                 maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx, cx.codegen_unit)
             {
-                let attrs = attributes::sanitize_attrs(&cx, tcx, SanitizerFnAttrs::default());
+                let mut attrs =
+                    attributes::sanitize_attrs(&cx, tcx, SanitizerFnAttrs::default(), None, None);
+                // When pointer authentication is enabled, ensure that the ptrauth-* attributes are
+                // also attached to the entry wrapper.
+                //
+                // FIXME(jchlanda) If it ever becomes necessary to ensure that all compiler
+                // generated functions receive the ptrauth-* attributes, `declare_fn` or
+                // `declare_raw_fn` could be used to provide those.
+                if cx.sess().pointer_authentication() {
+                    let cfg = cx.sess().pointer_auth_config.as_ref().unwrap();
+                    for ptrauth_attr in cfg.fn_attrs() {
+                        attrs.push(llvm::CreateAttrString(cx.llcx, ptrauth_attr));
+                    }
+                }
                 attributes::apply_to_llfn(entry, llvm::AttributePlace::Function, &attrs);
             }
 
@@ -139,6 +162,24 @@ pub(crate) fn compile_codegen_unit(
                     cx.define_objc_module_info();
                 }
                 cx.add_objc_module_flags();
+            }
+
+            if cx.sess().pointer_authentication() {
+                let cfg = cx.sess().pointer_auth_config.as_ref().unwrap();
+
+                let aarch64_elf_pauthabi_version =
+                    cfg.calculate_pauth_abi_version(&cx.sess().target);
+                if aarch64_elf_pauthabi_version != 0 {
+                    cx.add_ptrauth_pauthabi_version_and_platform_flags(
+                        aarch64_elf_pauthabi_version,
+                    );
+                }
+                if cfg.elf_got {
+                    cx.add_ptrauth_elf_got_flag();
+                }
+                if cx.sess().pointer_authentication_functions().is_some() {
+                    cx.add_ptrauth_sign_personality_flag();
+                }
             }
 
             // Finalize code coverage by injecting the coverage map. Note, the coverage map will
@@ -210,10 +251,14 @@ pub(crate) fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
 }
 
 pub(crate) fn set_variable_sanitizer_attrs(llval: &Value, attrs: &CodegenFnAttrs) {
-    if attrs.sanitizers.disabled.contains(SanitizerSet::ADDRESS) {
+    if attrs.sanitizers.disabled.contains(SanitizerSet::ADDRESS)
+        || attrs.sanitizers.disabled.contains(SanitizerSet::KERNELADDRESS)
+    {
         unsafe { llvm::LLVMRustSetNoSanitizeAddress(llval) };
     }
-    if attrs.sanitizers.disabled.contains(SanitizerSet::HWADDRESS) {
+    if attrs.sanitizers.disabled.contains(SanitizerSet::HWADDRESS)
+        || attrs.sanitizers.disabled.contains(SanitizerSet::KERNELHWADDRESS)
+    {
         unsafe { llvm::LLVMRustSetNoSanitizeHWAddress(llval) };
     }
 }

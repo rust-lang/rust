@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ test-mir-pass: ElaborateBoxDerefs
 
 #![feature(custom_mir, core_intrinsics)]

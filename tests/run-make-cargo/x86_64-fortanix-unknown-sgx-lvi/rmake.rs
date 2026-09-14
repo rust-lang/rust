@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 // Reason: intel.com link
 
 // This security test checks that the disassembled form of certain symbols

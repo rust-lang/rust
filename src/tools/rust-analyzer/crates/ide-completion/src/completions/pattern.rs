@@ -12,7 +12,7 @@ use crate::{
 /// Completes constants and paths in unqualified patterns.
 pub(crate) fn complete_pattern(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     pattern_ctx: &PatternContext,
 ) {
     let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
@@ -91,7 +91,7 @@ pub(crate) fn complete_pattern(
                     acc.add_struct_pat(ctx, pattern_ctx, strukt, Some(name.clone()));
                     true
                 }
-                hir::ModuleDef::Variant(variant)
+                hir::ModuleDef::EnumVariant(variant)
                     if refutable || single_variant_enum(variant.parent_enum(ctx.db)) =>
                 {
                     acc.add_variant_pat(ctx, pattern_ctx, None, variant, Some(name.clone()));
@@ -128,7 +128,7 @@ pub(crate) fn complete_pattern(
 
 pub(crate) fn complete_pattern_path(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
 ) {
     match qualified {
@@ -190,7 +190,7 @@ pub(crate) fn complete_pattern_path(
                 let add_completion = match res {
                     ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => mac.is_fn_like(ctx.db),
                     ScopeDef::ModuleDef(hir::ModuleDef::Adt(_)) => true,
-                    ScopeDef::ModuleDef(hir::ModuleDef::Variant(_)) => true,
+                    ScopeDef::ModuleDef(hir::ModuleDef::EnumVariant(_)) => true,
                     ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => true,
                     ScopeDef::ImplSelfType(_) => true,
                     _ => false,

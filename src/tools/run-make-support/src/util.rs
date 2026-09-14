@@ -4,7 +4,7 @@ use crate::command::{Command, CompletedProcess};
 use crate::env::env_var;
 use crate::path_helpers::cwd;
 
-pub(crate) fn verbose_print_command(cmd: &Command, output: &CompletedProcess) {
+fn print_command_output(cmd: &Command, output: &CompletedProcess) {
     cmd.inspect(|std_cmd| {
         eprintln!("{std_cmd:?}");
     });
@@ -14,6 +14,15 @@ pub(crate) fn verbose_print_command(cmd: &Command, output: &CompletedProcess) {
     if !cmd.get_context().is_empty() {
         eprintln!("Context:\n{}", cmd.get_context());
     }
+}
+
+pub(crate) fn verbose_print_command(cmd: &Command, output: &CompletedProcess) {
+    // Only prints when `--verbose-run-make-subprocess-output` is active (env var set),
+    // so that passing tests don't flood the terminal when using `--no-capture`.
+    if std::env::var_os("__RMAKE_VERBOSE_SUBPROCESS_OUTPUT").is_none() {
+        return;
+    }
+    print_command_output(cmd, output);
 }
 
 /// If a given [`Command`] failed (as indicated by its [`CompletedProcess`]), verbose print the
@@ -29,7 +38,7 @@ pub(crate) fn handle_failed_output(
     } else {
         eprintln!("command failed at line {caller_line_number}");
     }
-    verbose_print_command(cmd, &output);
+    print_command_output(cmd, &output);
     std::process::exit(1)
 }
 

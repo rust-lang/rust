@@ -1,4 +1,4 @@
-#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
+#![feature(specialization)]
 #![feature(negative_impls)]
 
 // Test a negative impl that "specializes" another negative impl.

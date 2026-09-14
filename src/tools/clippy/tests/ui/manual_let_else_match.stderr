@@ -1,5 +1,5 @@
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:36:5
+  --> tests/ui/manual_let_else_match.rs:32:5
    |
 LL | /     let v = match g() {
 LL | |
@@ -12,7 +12,7 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:42:5
+  --> tests/ui/manual_let_else_match.rs:38:5
    |
 LL | /     let v = match g() {
 LL | |
@@ -22,7 +22,7 @@ LL | |     };
    | |______^ help: consider writing: `let Some(v) = g() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:50:9
+  --> tests/ui/manual_let_else_match.rs:46:9
    |
 LL | /         let v = match h() {
 LL | |
@@ -32,7 +32,7 @@ LL | |         };
    | |__________^ help: consider writing: `let ((Some(v), None) | (None, Some(v))) = h() else { continue };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:56:9
+  --> tests/ui/manual_let_else_match.rs:52:9
    |
 LL | /         let v = match build_enum() {
 LL | |
@@ -42,7 +42,7 @@ LL | |         };
    | |__________^ help: consider writing: `let (Variant::Bar(v) | Variant::Baz(v)) = build_enum() else { continue };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:65:5
+  --> tests/ui/manual_let_else_match.rs:61:5
    |
 LL | /     let v = match f() {
 LL | |
@@ -52,7 +52,7 @@ LL | |     };
    | |______^ help: consider writing: `let Ok(v) = f() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:72:5
+  --> tests/ui/manual_let_else_match.rs:68:5
    |
 LL | /     let v = match f().map_err(|_| ()) {
 LL | |
@@ -62,7 +62,7 @@ LL | |     };
    | |______^ help: consider writing: `let Ok(v) = f().map_err(|_| ()) else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:80:5
+  --> tests/ui/manual_let_else_match.rs:76:5
    |
 LL | /     let _value = match f {
 LL | |
@@ -72,7 +72,7 @@ LL | |     };
    | |______^ help: consider writing: `let (Variant::Bar(_value) | Variant::Baz(_value)) = f else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:86:5
+  --> tests/ui/manual_let_else_match.rs:82:5
    |
 LL | /     let _value = match Some(build_enum()) {
 LL | |
@@ -82,7 +82,7 @@ LL | |     };
    | |______^ help: consider writing: `let Some(Variant::Bar(_value) | Variant::Baz(_value)) = Some(build_enum()) else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:93:5
+  --> tests/ui/manual_let_else_match.rs:89:5
    |
 LL | /     let data = match data.as_slice() {
 LL | |
@@ -92,7 +92,7 @@ LL | |     };
    | |______^ help: consider writing: `let ([data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0]) = data.as_slice() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:174:5
+  --> tests/ui/manual_let_else_match.rs:170:5
    |
 LL | /     let msg = match Some("hi") {
 LL | |
@@ -102,7 +102,7 @@ LL | |     };
    | |______^ help: consider writing: `let Some(msg) = Some("hi") else { unreachable!("can't happen") };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:188:5
+  --> tests/ui/manual_let_else_match.rs:184:5
    |
 LL | /     let tornado = match issue {
 LL | |
@@ -112,7 +112,7 @@ LL | |     };
    | |______^ help: consider writing: `let Some(Issue9939 { avalanche: tornado }) = issue else { unreachable!("can't happen") };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:194:5
+  --> tests/ui/manual_let_else_match.rs:190:5
    |
 LL | /     let acid_rain = match issue {
 LL | |
@@ -122,7 +122,7 @@ LL | |     };
    | |______^ help: consider writing: `let Some(Issue9939 { avalanche: acid_rain }) = issue else { unreachable!("can't happen") };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:203:5
+  --> tests/ui/manual_let_else_match.rs:199:5
    |
 LL | /     let _y = match issue {
 LL | |
@@ -132,7 +132,7 @@ LL | |     };
    | |______^ help: consider writing: `let _x @ Some(Issue9939 { avalanche: _y }) = issue else { unreachable!("can't happen") };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:210:5
+  --> tests/ui/manual_let_else_match.rs:206:5
    |
 LL | /     let _x = match issue {
 LL | |
@@ -142,7 +142,7 @@ LL | |     };
    | |______^ help: consider writing: `let Some(Issue9939 { avalanche: _x }) = issue else { unreachable!("can't happen") };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:228:5
+  --> tests/ui/manual_let_else_match.rs:224:5
    |
 LL | /     let (issue, drought, flood) = match issue {
 LL | |
@@ -152,7 +152,7 @@ LL | |     };
    | |______^ help: consider writing: `let issue @ Some(Issue9939b { earthquake: flood, hurricane: drought }) = issue else { unreachable!("can't happen") };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:238:5
+  --> tests/ui/manual_let_else_match.rs:234:5
    |
 LL | /     let (_y, erosion) = match issue {
 LL | |
@@ -162,7 +162,7 @@ LL | |     };
    | |______^ help: consider writing: `let _x @ Some(Issue9939b { earthquake: erosion, hurricane: _y }) = issue else { unreachable!("can't happen") };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:246:5
+  --> tests/ui/manual_let_else_match.rs:242:5
    |
 LL | /     let (_x, erosion) = match issue {
 LL | |
@@ -172,7 +172,7 @@ LL | |     };
    | |______^ help: consider writing: `let Some(Issue9939b { earthquake: erosion, hurricane: _x }) = issue else { unreachable!("can't happen") };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:263:9
+  --> tests/ui/manual_let_else_match.rs:259:9
    |
 LL | /         let first_arg = match a {
 LL | |

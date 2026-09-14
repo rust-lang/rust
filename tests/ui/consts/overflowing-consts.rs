@@ -5,7 +5,6 @@
 //@ [noopt]compile-flags: -C opt-level=0
 //@ [opt]compile-flags: -O
 //@ [opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
-//@ ignore-pass (test tests codegen-time behaviour)
 //@ normalize-stderr: "shift left by `(64|32)_usize`, which" -> "shift left by `%BITS%`, which"
 //@ normalize-stderr: "shift right by `(64|32)_usize`, which" -> "shift right by `%BITS%`, which"
 

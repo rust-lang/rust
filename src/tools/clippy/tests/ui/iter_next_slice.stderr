@@ -1,4 +1,4 @@
-error: using `.iter().next()` on an array
+error: using `.iter.next()` on an array
   --> tests/ui/iter_next_slice.rs:9:13
    |
 LL |     let _ = s.iter().next();
@@ -7,23 +7,35 @@ LL |     let _ = s.iter().next();
    = note: `-D clippy::iter-next-slice` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_next_slice)]`
 
-error: using `.iter().next()` on a Slice without end index
+error: using `.iter.next()` on a Slice without end index
   --> tests/ui/iter_next_slice.rs:13:13
    |
 LL |     let _ = s[2..].iter().next();
    |             ^^^^^^^^^^^^^^^^^^^^ help: try calling: `s.get(2)`
 
-error: using `.iter().next()` on a Slice without end index
+error: using `.iter.next()` on a Slice without end index
   --> tests/ui/iter_next_slice.rs:17:13
    |
 LL |     let _ = v[5..].iter().next();
    |             ^^^^^^^^^^^^^^^^^^^^ help: try calling: `v.get(5)`
 
-error: using `.iter().next()` on an array
+error: using `.iter.next()` on an array
   --> tests/ui/iter_next_slice.rs:21:13
    |
 LL |     let _ = v.iter().next();
    |             ^^^^^^^^^^^^^^^ help: try calling: `v.first()`
 
-error: aborting due to 4 previous errors
+error: using `.iter_mut.next()` on an array
+  --> tests/ui/iter_next_slice.rs:32:31
+   |
+LL |     let _: Option<&mut i32> = s_mut.iter_mut().next();
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^ help: try calling: `s_mut.first_mut()`
+
+error: using `.iter_mut.next()` on an array
+  --> tests/ui/iter_next_slice.rs:35:13
+   |
+LL |     let _ = v_mut.iter_mut().next();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ help: try calling: `v_mut.first_mut()`
+
+error: aborting due to 6 previous errors
 

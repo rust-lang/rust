@@ -84,7 +84,7 @@ float_bench! {
     crate_fn_ppc: conv::__floatunsikf,
     sys_fn: __floatunsitf,
     sys_fn_ppc: __floatunsikf,
-    sys_available: not(feature = "no-sys-f16-f128-convert"),
+    sys_available: not(no_sys_f16_f128_convert),
     asm: []
 }
 
@@ -138,7 +138,7 @@ float_bench! {
     crate_fn_ppc: conv::__floatundikf,
     sys_fn: __floatunditf,
     sys_fn_ppc: __floatundikf,
-    sys_available: not(feature = "no-sys-f16-f128-convert"),
+    sys_available: not(no_sys_f16_f128_convert),
     asm: []
 }
 
@@ -168,7 +168,7 @@ float_bench! {
     crate_fn_ppc: conv::__floatuntikf,
     sys_fn: __floatuntitf,
     sys_fn_ppc: __floatuntikf,
-    sys_available: not(feature = "no-sys-f16-f128-convert"),
+    sys_available: not(no_sys_f16_f128_convert),
     asm: []
 }
 
@@ -249,7 +249,7 @@ float_bench! {
     crate_fn_ppc: conv::__floatsikf,
     sys_fn: __floatsitf,
     sys_fn_ppc: __floatsikf,
-    sys_available: not(feature = "no-sys-f16-f128-convert"),
+    sys_available: not(no_sys_f16_f128_convert),
     asm: []
 }
 
@@ -328,7 +328,7 @@ float_bench! {
     crate_fn_ppc: conv::__floatdikf,
     sys_fn: __floatditf,
     sys_fn_ppc: __floatdikf,
-    sys_available: not(feature = "no-sys-f16-f128-convert"),
+    sys_available: not(no_sys_f16_f128_convert),
     asm: []
 }
 
@@ -358,7 +358,7 @@ float_bench! {
     crate_fn_ppc: conv::__floattikf,
     sys_fn: __floattitf,
     sys_fn_ppc: __floattikf,
-    sys_available: not(feature = "no-sys-f16-f128-convert"),
+    sys_available: not(no_sys_f16_f128_convert),
     asm: []
 }
 
@@ -473,7 +473,7 @@ float_bench! {
     crate_fn: conv::__fixunstfsi,
     crate_fn_ppc: conv::__fixunskfsi,
     sys_fn: __fixunstfsi,
-    sys_available: not(feature = "no-sys-f16-f128-convert"),
+    sys_available: not(no_sys_f16_f128_convert),
     asm: []
 }
 
@@ -484,7 +484,7 @@ float_bench! {
     crate_fn: conv::__fixunstfdi,
     crate_fn_ppc: conv::__fixunskfdi,
     sys_fn: __fixunstfdi,
-    sys_available: not(feature = "no-sys-f16-f128-convert"),
+    sys_available: not(no_sys_f16_f128_convert),
     asm: []
 }
 
@@ -495,7 +495,7 @@ float_bench! {
     crate_fn: conv::__fixunstfti,
     crate_fn_ppc: conv::__fixunskfti,
     sys_fn: __fixunstfti,
-    sys_available: not(feature = "no-sys-f16-f128-convert"),
+    sys_available: not(no_sys_f16_f128_convert),
     asm: []
 }
 
@@ -610,7 +610,7 @@ float_bench! {
     crate_fn: conv::__fixtfsi,
     crate_fn_ppc: conv::__fixkfsi,
     sys_fn: __fixtfsi,
-    sys_available: not(feature = "no-sys-f16-f128-convert"),
+    sys_available: not(no_sys_f16_f128_convert),
     asm: []
 }
 
@@ -621,7 +621,7 @@ float_bench! {
     crate_fn: conv::__fixtfdi,
     crate_fn_ppc: conv::__fixkfdi,
     sys_fn: __fixtfdi,
-    sys_available: not(feature = "no-sys-f16-f128-convert"),
+    sys_available: not(no_sys_f16_f128_convert),
     asm: []
 }
 
@@ -632,7 +632,7 @@ float_bench! {
     crate_fn: conv::__fixtfti,
     crate_fn_ppc: conv::__fixkfti,
     sys_fn: __fixtfti,
-    sys_available: not(feature = "no-sys-f16-f128-convert"),
+    sys_available: not(no_sys_f16_f128_convert),
     asm: []
 }
 

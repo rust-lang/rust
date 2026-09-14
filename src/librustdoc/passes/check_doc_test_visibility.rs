@@ -7,29 +7,22 @@
 
 use rustc_hir as hir;
 use rustc_macros::Diagnostic;
-use rustc_middle::lint::{LevelAndSource, LintLevelSource};
-use rustc_session::lint;
+use rustc_middle::lint::LintLevelSource;
 use tracing::debug;
 
-use super::Pass;
-use crate::clean;
 use crate::clean::utils::inherits_doc_hidden;
-use crate::clean::*;
+use crate::clean::{self, *};
 use crate::core::DocContext;
-use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine, find_testable_code};
-use crate::visit::DocVisitor;
-
-pub(crate) const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {
-    name: "check_doc_test_visibility",
-    run: Some(check_doc_test_visibility),
-    description: "run various visibility-related lints on doctests",
+use crate::html::markdown::{
+    CodeLineMapping, ErrorCodes, Ignore, LangString, MdRelLine, find_testable_code,
 };
+use crate::visit::DocVisitor;
 
 struct DocTestVisibilityLinter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
 }
 
-pub(crate) fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(super) fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     let mut coll = DocTestVisibilityLinter { cx };
     coll.visit_crate(&krate);
     krate
@@ -48,7 +41,7 @@ pub(crate) struct Tests {
 }
 
 impl crate::doctest::DocTestVisitor for Tests {
-    fn visit_test(&mut self, _: String, config: LangString, _: MdRelLine) {
+    fn visit_test(&mut self, _: String, config: LangString, _: MdRelLine, _: Vec<CodeLineMapping>) {
         if config.rust && config.ignore == Ignore::None {
             self.found_tests += 1;
         }
@@ -56,7 +49,8 @@ impl crate::doctest::DocTestVisitor for Tests {
 }
 
 pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
-    if !cx.cache.effective_visibilities.is_directly_public(cx.tcx, item.item_id.expect_def_id())
+    if !(cx.cache.effective_visibilities.is_directly_public(cx.tcx, item.item_id.expect_def_id())
+        || item.is_exported_macro())
         || matches!(
             item.kind,
             clean::StructFieldItem(_)
@@ -79,8 +73,8 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | clean::ProvidedAssocConstItem(..)
                 | clean::ImplAssocConstItem(..)
                 | clean::RequiredAssocTypeItem(..)
-                // check for trait impl
-                | clean::ImplItem(box clean::Impl { trait_: Some(_), .. })
+                | clean::ImplItem(_)
+                | clean::PlaceholderImplItem
         )
     {
         return false;
@@ -109,11 +103,11 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
     {
         return false;
     }
-    let LevelAndSource { level, src, .. } = cx.tcx.lint_level_at_node(
+    let level_spec = cx.tcx.lint_level_spec_at_node(
         crate::lint::MISSING_DOC_CODE_EXAMPLES,
         cx.tcx.local_def_id_to_hir_id(def_id),
     );
-    level != lint::Level::Allow || matches!(src, LintLevelSource::Default)
+    !level_spec.is_allow() || matches!(level_spec.src, LintLevelSource::Default)
 }
 
 pub(crate) fn look_for_tests(cx: &DocContext<'_>, dox: &str, item: &Item) {

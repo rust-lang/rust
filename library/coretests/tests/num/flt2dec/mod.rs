@@ -793,7 +793,15 @@ where
         F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
     {
         to_string_with_parts(|buf, parts| {
-            to_exact_exp_str(|d, b, l| f(d, b, l), v, sign, ndigits, upper, buf, parts)
+            to_exact_exp_str(
+                |d, b, l| f(d, b, l),
+                v,
+                sign,
+                ndigits.saturating_sub(1),
+                upper,
+                buf,
+                parts,
+            )
         })
     }
 

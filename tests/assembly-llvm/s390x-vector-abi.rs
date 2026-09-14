@@ -12,7 +12,7 @@
 //@[z13_no_vector] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z13 -C target-feature=-vector --cfg no_vector
 //@[z13_no_vector] needs-llvm-components: systemz
 
-#![feature(no_core, lang_items, repr_simd)]
+#![feature(no_core, lang_items)]
 #![no_core]
 #![crate_type = "lib"]
 #![allow(non_camel_case_types)]
@@ -20,14 +20,9 @@
 // See tests/ui/simd-abi-checks-s390x.rs for test for them.
 
 extern crate minicore;
+use minicore::simd::{i8x8, i8x16, i8x32};
 use minicore::*;
 
-#[repr(simd)]
-pub struct i8x8([i8; 8]);
-#[repr(simd)]
-pub struct i8x16([i8; 16]);
-#[repr(simd)]
-pub struct i8x32([i8; 32]);
 #[repr(C)]
 pub struct Wrapper<T>(T);
 #[repr(C, align(16))]
@@ -37,9 +32,6 @@ pub struct WrapperWithZst<T>(T, PhantomData<()>);
 #[repr(transparent)]
 pub struct TransparentWrapper<T>(T);
 
-impl Copy for i8x8 {}
-impl Copy for i8x16 {}
-impl Copy for i8x32 {}
 impl<T: Copy> Copy for Wrapper<T> {}
 impl<T: Copy> Copy for WrapperAlign16<T> {}
 impl<T: Copy> Copy for WrapperWithZst<T> {}
@@ -62,16 +54,11 @@ unsafe extern "C" fn vector_ret(x: &i8x16) -> i8x16 {
     *x
 }
 // CHECK-LABEL: vector_ret_large:
-// z10: vl %v0, 16(%r3), 4
-// z10-NEXT: vl %v1, 0(%r3), 4
-// z10-NEXT: vst %v0, 16(%r2), 4
-// z10-NEXT: vst %v1, 0(%r2), 4
-// z10-NEXT: br %r14
-// z13: vl %v0, 0(%r3), 4
-// z13-NEXT: vl %v1, 16(%r3), 4
-// z13-NEXT: vst %v1, 16(%r2), 4
-// z13-NEXT: vst %v0, 0(%r2), 4
-// z13-NEXT: br %r14
+// CHECK-DAG: vl [[REG1:%v[0-9]+]], 16(%r3), 4
+// CHECK-DAG: vl [[REG2:%v[0-9]+]], 0(%r3), 4
+// CHECK-DAG: vst [[REG1]], 16(%r2), 4
+// CHECK-DAG: vst [[REG2]], 0(%r2), 4
+// CHECK: br %r14
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_ret_large(x: &i8x32) -> i8x32 {
@@ -95,16 +82,11 @@ unsafe extern "C" fn vector_wrapper_ret(x: &Wrapper<i8x16>) -> Wrapper<i8x16> {
     *x
 }
 // CHECK-LABEL: vector_wrapper_ret_large:
-// z10: vl %v0, 16(%r3), 4
-// z10-NEXT: vl %v1, 0(%r3), 4
-// z10-NEXT: vst %v0, 16(%r2), 4
-// z10-NEXT: vst %v1, 0(%r2), 4
-// z10-NEXT: br %r14
-// z13: vl %v0, 16(%r3), 4
-// z13-NEXT: vst %v0, 16(%r2), 4
-// z13-NEXT: vl %v0, 0(%r3), 4
-// z13-NEXT: vst %v0, 0(%r2), 4
-// z13-NEXT: br %r14
+// CHECK-DAG: vl [[REG1:%v[0-9]+]], 16(%r3), 4
+// CHECK-DAG: vl [[REG2:%v[0-9]+]], 0(%r3), 4
+// CHECK-DAG: vst [[REG1]], 16(%r2), 4
+// CHECK-DAG: vst [[REG2]], 0(%r2), 4
+// CHECK: br %r14
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_wrapper_ret_large(x: &Wrapper<i8x32>) -> Wrapper<i8x32> {
@@ -141,16 +123,11 @@ unsafe extern "C" fn vector_wrapper_with_zst_ret(
     *x
 }
 // CHECK-LABEL: vector_wrapper_with_zst_ret_large:
-// z10: vl %v0, 16(%r3), 4
-// z10-NEXT: vl %v1, 0(%r3), 4
-// z10-NEXT: vst %v0, 16(%r2), 4
-// z10-NEXT: vst %v1, 0(%r2), 4
-// z10-NEXT: br %r14
-// z13: vl %v0, 16(%r3), 4
-// z13-NEXT: vst %v0, 16(%r2), 4
-// z13-NEXT: vl %v0, 0(%r3), 4
-// z13-NEXT: vst %v0, 0(%r2), 4
-// z13-NEXT: br %r14
+// CHECK-DAG: vl [[REG1:%v[0-9]+]], 16(%r3), 4
+// CHECK-DAG: vl [[REG2:%v[0-9]+]], 0(%r3), 4
+// CHECK-DAG: vst [[REG1]], 16(%r2), 4
+// CHECK-DAG: vst [[REG2]], 0(%r2), 4
+// CHECK: br %r14
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_wrapper_with_zst_ret_large(
@@ -180,16 +157,11 @@ unsafe extern "C" fn vector_transparent_wrapper_ret(
     *x
 }
 // CHECK-LABEL: vector_transparent_wrapper_ret_large:
-// z10: vl %v0, 16(%r3), 4
-// z10-NEXT: vl %v1, 0(%r3), 4
-// z10-NEXT: vst %v0, 16(%r2), 4
-// z10-NEXT: vst %v1, 0(%r2), 4
-// z10-NEXT: br %r14
-// z13: vl %v0, 0(%r3), 4
-// z13-NEXT: vl %v1, 16(%r3), 4
-// z13-NEXT: vst %v1, 16(%r2), 4
-// z13-NEXT: vst %v0, 0(%r2), 4
-// z13-NEXT: br %r14
+// CHECK-DAG: vl [[REG1:%v[0-9]+]], 16(%r3), 4
+// CHECK-DAG: vl [[REG2:%v[0-9]+]], 0(%r3), 4
+// CHECK-DAG: vst [[REG1]], 16(%r2), 4
+// CHECK-DAG: vst [[REG2]], 0(%r2), 4
+// CHECK: br %r14
 #[cfg_attr(no_vector, target_feature(enable = "vector"))]
 #[no_mangle]
 unsafe extern "C" fn vector_transparent_wrapper_ret_large(

@@ -1,12 +1,3 @@
-warning: the feature `async_fn_in_dyn_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/wrong-size.rs:4:12
-   |
-LL | #![feature(async_fn_in_dyn_trait)]
-   |            ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #133119 <https://github.com/rust-lang/rust/issues/133119> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0038]: the trait `AsyncTrait` is not dyn compatible
   --> $DIR/wrong-size.rs:21:17
    |
@@ -24,6 +15,6 @@ LL |     async fn async_dispatch(&self);
    = help: consider moving `async_dispatch` to another trait
    = help: only type `&'static str` implements `AsyncTrait`; consider using it directly instead.
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

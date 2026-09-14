@@ -1,4 +1,4 @@
-error[E0055]: reached the recursion limit while auto-dereferencing `Wrap<Wrap<Wrap<Wrap<Wrap<Wrap<Wrap<Wrap<Wrap<Wrap<Wrap<...>>>>>>>>>>>`
+error[E0055]: reached the recursion limit while auto-dereferencing `Wrap<Wrap<Wrap<Wrap<Wrap<Wrap<Wrap<Wrap<Wrap<Wrap<Wrap<_>>>>>>>>>>>`
   --> $DIR/probe-error-on-infinite-deref.rs:14:13
    |
 LL |     Wrap(1).lmao();

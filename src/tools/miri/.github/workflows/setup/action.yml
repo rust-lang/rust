@@ -20,7 +20,7 @@ runs:
       # over time).
       - name: Add cache for cargo
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
@@ -38,7 +38,7 @@ runs:
 
       - name: Install the tools we need
         if: steps.cache.outputs.cache-hit != 'true'
-        run: cargo install -f rustup-toolchain-install-master hyperfine
+        run: cargo install --locked -f rustup-toolchain-install-master hyperfine
         shell: bash
 
       - name: Install "master" toolchain

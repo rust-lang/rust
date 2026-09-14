@@ -1,6 +1,6 @@
 #!    
 
 //@ check-pass
-//@ reference: input.shebang
-// ignore-tidy-end-whitespace
+//@ reference: shebang.syntax
+// ignore-tidy-file-end-whitespace
 fn main() {}

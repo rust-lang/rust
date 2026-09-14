@@ -1,6 +1,6 @@
 // Check that `Self` appearing in a phantom fn does not make a trait dyn-incompatible.
 
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ check-pass
 #![allow(dead_code)]
 
 trait Baz {

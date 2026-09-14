@@ -1,13 +1,11 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_lint_allowed;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, HirId, Stmt, UnsafeSource, find_attr};
-use rustc_lint::{LateContext, LateLintPass, Level, LintContext};
-use rustc_middle::lint::LevelAndSource;
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::{Span, SyntaxContext};
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
@@ -252,17 +250,14 @@ impl<'tcx> LateLintPass<'tcx> for ExprMetavarsInUnsafe {
             .flatten()
             .copied()
             .inspect(|&unsafe_block| {
-                if let LevelAndSource {
-                    level: Level::Expect,
-                    lint_id: Some(id),
-                    ..
-                } = cx.tcx.lint_level_at_node(MACRO_METAVARS_IN_UNSAFE, unsafe_block)
-                {
+                let level_spec = cx.tcx.lint_level_spec_at_node(MACRO_METAVARS_IN_UNSAFE, unsafe_block);
+                if level_spec.is_expect() {
                     // Since we're going to deduplicate expanded unsafe blocks by its enclosing macro definition soon,
                     // which would lead to unfulfilled `#[expect()]`s in all other unsafe blocks that are filtered out
                     // except for the one we emit the warning at, we must manually fulfill the lint
                     // for all unsafe blocks here.
-                    cx.fulfill_expectation(id);
+                    // `unwrap` is safe because `Expect` lints always have a `lint_id`.
+                    cx.fulfill_expectation(level_spec.lint_id().unwrap());
                 }
             })
             .map(|id| {

@@ -16,7 +16,7 @@ const trait Add42 {
     fn add(a: usize) -> usize;
 }
 
-impl const Add42 for () {
+const impl Add42 for () {
     fn add(a: usize) -> usize {
         a + 42
     }

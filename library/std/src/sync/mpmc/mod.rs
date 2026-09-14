@@ -15,8 +15,9 @@
 //!
 //! 1. An asynchronous, infinitely buffered channel. The [`channel`] function
 //!    will return a `(Sender, Receiver)` tuple where all sends will be
-//!    **asynchronous** (they never block). The channel conceptually has an
-//!    infinite buffer.
+//!    **asynchronous** (they never block for space to become available; see
+//!    [`std::sync`] for precise guarantees on blocking.) The channel
+//!    conceptually has an infinite buffer.
 //!
 //! 2. A synchronous, bounded channel. The [`sync_channel`] function will
 //!    return a `(Sender, Receiver)` tuple where the storage for pending
@@ -26,6 +27,7 @@
 //!    channel where each sender atomically hands off a message to a receiver.
 //!
 //! [`send`]: Sender::send
+//! [`std::sync`]: ../index.html#blocking-guarantees
 //!
 //! ## Disconnection
 //!
@@ -297,6 +299,7 @@ pub fn sync_channel<T>(cap: usize) -> (Sender<T>, Receiver<T>) {
 /// assert_eq!(3, msg + msg2);
 /// ```
 #[unstable(feature = "mpmc_channel", issue = "126840")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "MpmcSender")]
 pub struct Sender<T> {
     flavor: SenderFlavor<T>,
 }
@@ -372,6 +375,11 @@ impl<T> Sender<T> {
     ///
     /// If called on a zero-capacity channel, this method will wait for a receive
     /// operation to appear on the other side of the channel.
+    ///
+    /// If called on an unbounded channel, this method will never block in order to wait for space to
+    /// become available. (See [`std::sync`] for precise guarantees on blocking.)
+    ///
+    /// [`std::sync`]: ../index.html#blocking-guarantees
     ///
     /// # Examples
     ///
@@ -623,6 +631,33 @@ impl<T> Sender<T> {
             _ => false,
         }
     }
+
+    /// Returns `true` if the channel is disconnected.
+    ///
+    /// Note that a return value of `false` does not guarantee the channel will
+    /// remain connected. The channel may be disconnected immediately after this method
+    /// returns, so a subsequent [`Sender::send`] may still fail with [`SendError`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpmc_channel)]
+    ///
+    /// use std::sync::mpmc::channel;
+    ///
+    /// let (tx, rx) = channel::<i32>();
+    /// assert!(!tx.is_disconnected());
+    /// drop(rx);
+    /// assert!(tx.is_disconnected());
+    /// ```
+    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    pub fn is_disconnected(&self) -> bool {
+        match &self.flavor {
+            SenderFlavor::Array(chan) => chan.is_disconnected(),
+            SenderFlavor::List(chan) => chan.is_disconnected(),
+            SenderFlavor::Zero(chan) => chan.is_disconnected(),
+        }
+    }
 }
 
 #[unstable(feature = "mpmc_channel", issue = "126840")]
@@ -695,6 +730,7 @@ impl<T> fmt::Debug for Sender<T> {
 /// rx_thread_2.join().unwrap();
 /// ```
 #[unstable(feature = "mpmc_channel", issue = "126840")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "MpmcReceiver")]
 pub struct Receiver<T> {
     flavor: ReceiverFlavor<T>,
 }
@@ -741,9 +777,11 @@ pub struct Iter<'a, T: 'a> {
 /// if the corresponding channel has hung up.
 ///
 /// This iterator will never block the caller in order to wait for data to
-/// become available. Instead, it will return [`None`].
+/// become available. Instead, it will return [`None`]. (See [`std::sync`] for
+/// precise guarantees on blocking.)
 ///
 /// [`try_iter`]: Receiver::try_iter
+/// [`std::sync`]: ../index.html#blocking-guarantees
 ///
 /// # Examples
 ///
@@ -888,7 +926,8 @@ impl<T> Receiver<T> {
     ///
     /// This method will never block the caller in order to wait for data to
     /// become available. Instead, this will always return immediately with a
-    /// possible option of pending data on the channel.
+    /// possible option of pending data on the channel. (See [`std::sync`] for precise
+    /// guarantees on blocking.)
     ///
     /// If called on a zero-capacity channel, this method will receive a message only if there
     /// happens to be a send operation on the other side of the channel at the same time.
@@ -900,6 +939,7 @@ impl<T> Receiver<T> {
     /// (one for disconnection, one for an empty buffer).
     ///
     /// [`recv`]: Self::recv
+    /// [`std::sync`]: ../index.html#blocking-guarantees
     ///
     /// # Examples
     ///
@@ -1348,6 +1388,33 @@ impl<T> Receiver<T> {
     #[unstable(feature = "mpmc_channel", issue = "126840")]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter { rx: self }
+    }
+
+    /// Returns `true` if the channel is disconnected.
+    ///
+    /// Note that a return value of `false` does not guarantee the channel will
+    /// remain connected. The channel may be disconnected immediately after this method
+    /// returns, so a subsequent [`Receiver::recv`] may still fail with [`RecvError`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mpmc_channel)]
+    ///
+    /// use std::sync::mpmc::channel;
+    ///
+    /// let (tx, rx) = channel::<i32>();
+    /// assert!(!rx.is_disconnected());
+    /// drop(tx);
+    /// assert!(rx.is_disconnected());
+    /// ```
+    #[unstable(feature = "mpmc_channel", issue = "126840")]
+    pub fn is_disconnected(&self) -> bool {
+        match &self.flavor {
+            ReceiverFlavor::Array(chan) => chan.is_disconnected(),
+            ReceiverFlavor::List(chan) => chan.is_disconnected(),
+            ReceiverFlavor::Zero(chan) => chan.is_disconnected(),
+        }
     }
 }
 

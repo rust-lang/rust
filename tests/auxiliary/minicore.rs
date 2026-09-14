@@ -8,12 +8,15 @@
 //!   items. For identical error output, any `diagnostic` attributes (e.g. `on_unimplemented`)
 //!   should also be replicated here.
 //! - Be careful of adding new features and things that are only available for a subset of targets.
+//! - `Sync` is only provided such that the minimal set of impls required by tests is met (not
+//!   exhaustive covering of all possible function pointer signatures).
 //!
+
 //! # References
 //!
 //! This is partially adapted from `rustc_codegen_cranelift`:
 //! <https://github.com/rust-lang/rust/blob/c0b5cc9003f6464c11ae1c0662c6a7e06f6f5cab/compiler/rustc_codegen_cranelift/example/mini_core.rs>.
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 #![feature(
     no_core,
@@ -22,14 +25,17 @@
     auto_traits,
     freeze_impls,
     negative_impls,
+    pattern_types,
     rustc_attrs,
     decl_macro,
     f16,
     f128,
+    repr_simd,
+    transparent_unions,
     asm_experimental_arch,
     unboxed_closures
 )]
-#![allow(unused, improper_ctypes_definitions, internal_features)]
+#![allow(unused, improper_ctypes_definitions, internal_features, non_camel_case_types)]
 #![no_std]
 #![no_core]
 
@@ -63,7 +69,7 @@ pub trait MetaSized: PointeeSized {}
 pub trait Sized: MetaSized {}
 
 #[lang = "destruct"]
-#[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
+#[diagnostic::on_unimplemented(message = "can't drop `{Self}`")]
 pub trait Destruct: PointeeSized {}
 
 #[lang = "legacy_receiver"]
@@ -126,18 +132,62 @@ pub struct ManuallyDrop<T: PointeeSized> {
 }
 impl<T: Copy + PointeeSized> Copy for ManuallyDrop<T> {}
 
+#[lang = "maybe_uninit"]
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(1)]
+pub union MaybeUninit<T> {
+    uninit: (),
+    value: ManuallyDrop<T>,
+}
+
+impl<T: Copy + PointeeSized> Copy for MaybeUninit<T> {}
+
+impl<T> MaybeUninit<T> {
+    pub const fn uninit() -> Self {
+        Self { uninit: () }
+    }
+
+    pub const fn new(value: T) -> Self {
+        Self { value: ManuallyDrop { value } }
+    }
+}
+
+#[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
 pub struct NonNull<T: ?Sized> {
-    pointer: *const T,
+    pointer: pattern_type!(*const T is !null),
 }
 impl<T: ?Sized> Copy for NonNull<T> {}
 
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
-pub struct NonZero<T>(T);
+pub struct NonZero<T: ZeroablePrimitive>(T::NonZeroInner);
+
+pub trait ZeroablePrimitive {
+    type NonZeroInner;
+}
+
+macro_rules! define_valid_range_type {
+    ($(
+        $name:ident($int:ident is $pat:pat);
+    )+) => {$(
+        #[repr(transparent)]
+        pub struct $name(pattern_type!($int is $pat));
+
+        impl ZeroablePrimitive for $int {
+            type NonZeroInner = $name;
+        }
+    )+};
+}
+
+define_valid_range_type! {
+    NonZeroU8Inner(u8 is 1..=0xFF);
+    NonZeroU16Inner(u16 is 1..=0xFFFF);
+    NonZeroU32Inner(u32 is 1..=0xFFFF_FFFF);
+    NonZeroU64Inner(u64 is 1..=0xFFFF_FFFF_FFFF_FFFF);
+
+    NonZeroI8Inner(i8 is (-128..=-1 | 1..=0x7F));
+    NonZeroI32Inner(i32 is (-0x8000_0000..=-1 | 1..=0x7FFF_FFFF));
+}
 
 pub struct Unique<T: ?Sized> {
     pub pointer: NonNull<T>,
@@ -187,6 +237,12 @@ macro_rules! stringify {
     };
 }
 
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! compile_error {
+    ($msg:expr $(,)?) => {{ /* compiler built-in */ }};
+}
+
 #[lang = "add"]
 pub trait Add<Rhs = Self> {
     type Output;
@@ -225,6 +281,14 @@ impl Neg for i8 {
     }
 }
 
+impl Neg for i32 {
+    type Output = i32;
+
+    fn neg(self) -> i32 {
+        loop {}
+    }
+}
+
 #[lang = "sync"]
 pub trait Sync {}
 impl_marker_trait!(
@@ -238,8 +302,20 @@ impl_marker_trait!(
 
 impl Sync for () {}
 
-#[lang = "drop_in_place"]
-fn drop_in_place<T>(_: *mut T) {}
+impl<T, const N: usize> Sync for [T; N] {}
+// Function pointers are treated as `Sync` to match real `core` behavior.
+//
+// Minicore provides only the minimal set of impls required by tests. Rather
+// than exhaustively covering all possible function pointer signatures,
+// additional impls should be added as needed.
+impl<R> Sync for fn() -> R {}
+impl<R> Sync for extern "C" fn() -> R {}
+impl<R> Sync for unsafe extern "C" fn() -> R {}
+impl<A, R> Sync for extern "C" fn(A) -> R {}
+impl<A, R> Sync for unsafe extern "C" fn(A) -> R {}
+
+#[lang = "drop_glue"]
+fn drop_glue<T>(_: &mut T) {}
 
 #[lang = "fn_once"]
 pub trait FnOnce<Args: Tuple> {
@@ -277,6 +353,10 @@ trait Drop {
     fn drop(&mut self);
 }
 
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+
 pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
@@ -301,11 +381,42 @@ pub mod ptr {
     }
 }
 
+pub mod hint {
+    #[inline]
+    pub fn black_box<T>(dummy: T) -> T {
+        #[rustc_intrinsic]
+        fn black_box<T>(dummy: T) -> T;
+
+        unsafe { black_box(dummy) }
+    }
+}
+
+pub mod num {
+    use super::Copy;
+
+    #[repr(C)]
+    #[lang = "complex"]
+    pub struct Complex<T> {
+        pub re: T,
+        pub im: T,
+    }
+
+    impl<T: Copy> Copy for Complex<T> {}
+}
+
 #[lang = "c_void"]
 #[repr(u8)]
 pub enum c_void {
     __variant1,
     __variant2,
+}
+
+#[rustc_builtin_macro(pattern_type)]
+#[macro_export]
+macro_rules! pattern_type {
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
 }
 
 #[lang = "Ordering"]
@@ -331,3 +442,59 @@ pub enum SimdAlign {
 }
 
 impl ConstParamTy_ for SimdAlign {}
+
+pub mod simd {
+    use super::Copy;
+
+    #[repr(simd)]
+    pub struct Simd<T, const N: usize>(pub [T; N]);
+
+    impl<T: Copy, const N: usize> Copy for Simd<T, N> {}
+
+    impl<T, const N: usize> Simd<T, N> {
+        pub fn from_array(arr: [T; N]) -> Self {
+            Self(arr)
+        }
+    }
+
+    pub type f16x2 = Simd<f16, 2>;
+    pub type f16x4 = Simd<f16, 4>;
+    pub type f16x8 = Simd<f16, 8>;
+    pub type f16x16 = Simd<f16, 16>;
+    pub type f16x32 = Simd<f16, 32>;
+
+    pub type f32x2 = Simd<f32, 2>;
+    pub type f32x4 = Simd<f32, 4>;
+    pub type f32x8 = Simd<f32, 8>;
+    pub type f32x16 = Simd<f32, 16>;
+    pub type f32x32 = Simd<f32, 32>;
+
+    pub type f64x1 = Simd<f64, 1>;
+    pub type f64x2 = Simd<f64, 2>;
+    pub type f64x4 = Simd<f64, 4>;
+    pub type f64x8 = Simd<f64, 8>;
+
+    pub type i8x8 = Simd<i8, 8>;
+    pub type i8x16 = Simd<i8, 16>;
+    pub type i8x32 = Simd<i8, 32>;
+    pub type i8x64 = Simd<i8, 64>;
+
+    pub type i16x2 = Simd<i16, 2>;
+    pub type i16x4 = Simd<i16, 4>;
+    pub type i16x8 = Simd<i16, 8>;
+    pub type i16x16 = Simd<i16, 16>;
+    pub type i16x32 = Simd<i16, 32>;
+
+    pub type i32x2 = Simd<i32, 2>;
+    pub type i32x4 = Simd<i32, 4>;
+    pub type i32x8 = Simd<i32, 8>;
+    pub type i32x16 = Simd<i32, 16>;
+
+    pub type i64x1 = Simd<i64, 1>;
+    pub type i64x2 = Simd<i64, 2>;
+    pub type i64x4 = Simd<i64, 4>;
+    pub type i64x8 = Simd<i64, 8>;
+
+    pub type u8x16 = Simd<u8, 16>;
+    pub type u64x2 = Simd<u8, 16>;
+}

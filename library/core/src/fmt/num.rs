@@ -254,13 +254,16 @@ macro_rules! impl_Display {
         }
 
         impl $Signed {
-            /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
-            /// type [`NumBuffer`] that is passed by the caller by mutable reference.
+            /// Formats this integer as a signed decimal number, using the memory pointed to by
+            /// `buf` as storage for the returned string slice.
+            ///
+            /// This method can be used to convert integers to strings without involving the
+            /// dynamic dispatch that using [`Display`][fmt::Display] would.
+            /// This may be more efficient in situations where [`fmt`] is not otherwise used.
             ///
             /// # Examples
             ///
             /// ```
-            /// #![feature(int_format_into)]
             /// use core::fmt::NumBuffer;
             ///
             #[doc = concat!("let n = 0", stringify!($Signed), ";")]
@@ -273,7 +276,7 @@ macro_rules! impl_Display {
             #[doc = concat!("let n2 = ", stringify!($Signed::MAX), ";")]
             #[doc = concat!("assert_eq!(n2.format_into(&mut buf), ", stringify!($Signed::MAX), ".to_string());")]
             /// ```
-            #[unstable(feature = "int_format_into", issue = "138215")]
+            #[stable(feature = "int_format_into", since = "1.98.0")]
             pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
                 let mut offset;
 
@@ -299,13 +302,16 @@ macro_rules! impl_Display {
         }
 
         impl $Unsigned {
-            /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
-            /// type [`NumBuffer`] that is passed by the caller by mutable reference.
+            /// Formats this integer as an unsigned decimal number, using the memory pointed to by
+            /// `buf` as storage for the returned string slice.
+            ///
+            /// This method can be used to convert integers to strings without involving the
+            /// dynamic dispatch that using [`Display`][fmt::Display] would.
+            /// This may be more efficient in situations where [`fmt`] is not otherwise used.
             ///
             /// # Examples
             ///
             /// ```
-            /// #![feature(int_format_into)]
             /// use core::fmt::NumBuffer;
             ///
             #[doc = concat!("let n = 0", stringify!($Unsigned), ";")]
@@ -318,7 +324,7 @@ macro_rules! impl_Display {
             #[doc = concat!("let n2 = ", stringify!($Unsigned::MAX), ";")]
             #[doc = concat!("assert_eq!(n2.format_into(&mut buf), ", stringify!($Unsigned::MAX), ".to_string());")]
             /// ```
-            #[unstable(feature = "int_format_into", issue = "138215")]
+            #[stable(feature = "int_format_into", since = "1.98.0")]
             pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
                 let offset;
 
@@ -363,7 +369,7 @@ macro_rules! impl_Display {
 
         #[cfg(feature = "optimize_for_size")]
         fn ${concat($fmt_fn, _small)}(n: $T, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            const MAX_DEC_N: usize = $T::MAX.ilog(10) as usize + 1;
+            const MAX_DEC_N: usize = $T::MAX.ilog10() as usize + 1;
             let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
 
             let offset = ${concat($fmt_fn, _in_buf_small)}(n, &mut buf);
@@ -594,6 +600,7 @@ impl_Debug! {
 // Include wasm32 in here since it doesn't reflect the native pointer size, and
 // often cares strongly about getting a smaller code size.
 #[cfg(any(target_pointer_width = "64", target_arch = "wasm32"))]
+#[doc(auto_cfg = false)]
 mod imp {
     use super::*;
     impl_Display!(i8, u8, i16, u16, i32, u32, i64, u64, isize, usize; as u64 into display_u64);
@@ -601,6 +608,7 @@ mod imp {
 }
 
 #[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
+#[doc(auto_cfg = false)]
 mod imp {
     use super::*;
     impl_Display!(i8, u8, i16, u16, i32, u32, isize, usize; as u32 into display_u32);
@@ -666,7 +674,9 @@ impl u128 {
             (mod_1e16, U128_MAX_DEC_N)
         } else {
             // Write digits at buf[23..39].
-            enc_16lsd::<{ U128_MAX_DEC_N - 16 }>(buf, mod_1e16);
+            //
+            // SAFETY: `mod_1e16 < 1e16` (remainder), and `U128_MAX_DEC_N - 16 + 16 == buf.len()`.
+            unsafe { enc_16lsd::<{ U128_MAX_DEC_N - 16 }>(buf, mod_1e16) };
 
             // Take another 16 decimals.
             let (quot2, mod2) = div_rem_1e16(quot_1e16);
@@ -674,7 +684,10 @@ impl u128 {
                 (mod2, U128_MAX_DEC_N - 16)
             } else {
                 // Write digits at buf[7..23].
-                enc_16lsd::<{ U128_MAX_DEC_N - 32 }>(buf, mod2);
+                //
+                // SAFETY: `mod2 < 1e16` (remainder), and `U128_MAX_DEC_N - 32 + 16 <= buf.len()`.
+                unsafe { enc_16lsd::<{ U128_MAX_DEC_N - 32 }>(buf, mod2) };
+
                 // Quot2 has at most 7 decimals remaining after two 1e16 divisions.
                 (quot2 as u64, U128_MAX_DEC_N - 32)
             }
@@ -690,15 +703,14 @@ impl u128 {
             unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
             offset -= 4;
 
-            // pull two pairs
             let quad = remain % 1_00_00;
             remain /= 1_00_00;
-            let pair1 = (quad / 100) as usize;
-            let pair2 = (quad % 100) as usize;
-            buf[offset + 0].write(DECIMAL_PAIRS[pair1 * 2 + 0]);
-            buf[offset + 1].write(DECIMAL_PAIRS[pair1 * 2 + 1]);
-            buf[offset + 2].write(DECIMAL_PAIRS[pair2 * 2 + 0]);
-            buf[offset + 3].write(DECIMAL_PAIRS[pair2 * 2 + 1]);
+
+            // SAFETY: quad is a remainder modulo 10_000. The offset checks
+            // above reserve exactly four bytes in buf.
+            unsafe {
+                write_quad(buf.get_unchecked_mut(offset..offset + 4), quad);
+            }
         }
 
         // Format per two digits from the lookup table.
@@ -736,13 +748,16 @@ impl u128 {
         offset
     }
 
-    /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
-    /// type [`NumBuffer`] that is passed by the caller by mutable reference.
+    /// Formats this integer as an unsigned decimal number, using the memory pointed to by
+    /// `buf` as storage for the returned string slice.
+    ///
+    /// This method can be used to convert integers to strings without involving the
+    /// dynamic dispatch that using [`Display`][fmt::Display] would.
+    /// This may be more efficient in situations where [`fmt`] is not otherwise used.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(int_format_into)]
     /// use core::fmt::NumBuffer;
     ///
     /// let n = 0u128;
@@ -757,9 +772,9 @@ impl u128 {
     /// let mut buf2 = NumBuffer::new();
     /// assert_eq!(n2.format_into(&mut buf2), u128::MAX.to_string());
     /// ```
-    #[unstable(feature = "int_format_into", issue = "138215")]
+    #[stable(feature = "int_format_into", since = "1.98.0")]
     pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
-        let diff = buf.capacity() - U128_MAX_DEC_N;
+        let diff = buf.buf.len() - U128_MAX_DEC_N;
         // FIXME: Once const generics are better, use `NumberBufferTrait::BUF_SIZE` as generic const
         // for `fmt_u128_inner`.
         //
@@ -771,13 +786,16 @@ impl u128 {
 }
 
 impl i128 {
-    /// Allows users to write an integer (in signed decimal format) into a variable `buf` of
-    /// type [`NumBuffer`] that is passed by the caller by mutable reference.
+    /// Formats this integer as a signed decimal number, using the memory pointed to by
+    /// `buf` as storage for the returned string slice.
+    ///
+    /// This method can be used to convert integers to strings without involving the
+    /// dynamic dispatch that using [`Display`][fmt::Display] would.
+    /// This may be more efficient in situations where [`fmt`] is not otherwise used.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(int_format_into)]
     /// use core::fmt::NumBuffer;
     ///
     /// let n = 0i128;
@@ -790,9 +808,9 @@ impl i128 {
     /// let n2 = i128::MAX;
     /// assert_eq!(n2.format_into(&mut buf), i128::MAX.to_string());
     /// ```
-    #[unstable(feature = "int_format_into", issue = "138215")]
+    #[stable(feature = "int_format_into", since = "1.98.0")]
     pub fn format_into(self, buf: &mut NumBuffer<Self>) -> &str {
-        let diff = buf.capacity() - U128_MAX_DEC_N;
+        let diff = buf.buf.len() - U128_MAX_DEC_N;
         // FIXME: Once const generics are better, use `NumberBufferTrait::BUF_SIZE` as generic const
         // for `fmt_u128_inner`.
         //
@@ -816,23 +834,69 @@ impl i128 {
     }
 }
 
+/// Writes `quad` as exactly four digits (for example: `42` becomes `"0042"`).
+///
+/// # Safety
+///
+/// `quad` must be below 10_000 and `buf` must contain exactly four bytes.
+#[inline(always)]
+unsafe fn write_quad(buf: &mut [MaybeUninit<u8>], quad: u64) {
+    // SAFETY: These are this function's caller-provided invariants.
+    unsafe {
+        core::hint::assert_unchecked(quad < 10_000);
+        core::hint::assert_unchecked(buf.len() == 4);
+    }
+
+    let quad = quad as u32;
+
+    // Note: this is equivalent to `quad / 100`, but contains no division instructions.
+    let high = (quad * const { (1 << 19) / 100 + 1 }) >> 19;
+    let low = quad - high * 100;
+    let high = high as usize;
+    let low = low as usize;
+
+    // SAFETY: `high` and `low` are below 100 because `quad` is below 10_000.
+    unsafe { core::hint::assert_unchecked(high < 100 && low < 100) }
+
+    buf[0..2].write_copy_of_slice(&DECIMAL_PAIRS[high * 2..high * 2 + 2]);
+    buf[2..4].write_copy_of_slice(&DECIMAL_PAIRS[low * 2..low * 2 + 2]);
+}
+
 /// Encodes the 16 least-significant decimals of n into `buf[OFFSET .. OFFSET +
 /// 16 ]`.
-fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>], n: u64) {
-    // Consume the least-significant decimals from a working copy.
+///
+/// # Safety
+///
+/// `n` must be below 1e16, and `buf` must be at least `OFFSET + 16` bytes long.
+unsafe fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>], n: u64) {
+    // SAFETY: Every caller passes a remainder produced by division by 10^16,
+    // and every used `OFFSET` specialization reserves sixteen bytes in `buf`.
+    unsafe {
+        core::hint::assert_unchecked(n < 10_000_000_000_000_000);
+        core::hint::assert_unchecked(OFFSET + 16 <= buf.len());
+    }
+
+    // Peel four digits at a time from right to left (12345678 -> 1234 | 5678).
+    // Since 10_000 is constant, LLVM replaces each division with multiply or shift.
     let mut remain = n;
 
-    // Format per four digits from the lookup table.
-    for quad_index in (0..4).rev() {
-        // pull two pairs
+    for quad_index in (1..4).rev() {
         let quad = remain % 1_00_00;
         remain /= 1_00_00;
-        let pair1 = (quad / 100) as usize;
-        let pair2 = (quad % 100) as usize;
-        buf[quad_index * 4 + OFFSET + 0].write(DECIMAL_PAIRS[pair1 * 2 + 0]);
-        buf[quad_index * 4 + OFFSET + 1].write(DECIMAL_PAIRS[pair1 * 2 + 1]);
-        buf[quad_index * 4 + OFFSET + 2].write(DECIMAL_PAIRS[pair2 * 2 + 0]);
-        buf[quad_index * 4 + OFFSET + 3].write(DECIMAL_PAIRS[pair2 * 2 + 1]);
+
+        // SAFETY: `OFFSET + quad_index * 4` starts one of the four
+        // non-overlapping four-byte regions proven in bounds above.
+        unsafe {
+            write_quad(
+                buf.get_unchecked_mut(OFFSET + quad_index * 4..OFFSET + (quad_index + 1) * 4),
+                quad,
+            );
+        }
+    }
+
+    // SAFETY: OFFSET starts the first four-byte region proven in bounds above.
+    unsafe {
+        write_quad(buf.get_unchecked_mut(OFFSET..OFFSET + 4), remain);
     }
 }
 
@@ -858,7 +922,7 @@ fn div_rem_1e16(n: u128) -> (u128, u64) {
     const M_HIGH: u128 = 76624777043294442917917351357515459181;
     const SH_POST: u8 = 51;
 
-    let quot = n.widening_mul(M_HIGH).1 >> SH_POST;
+    let quot = n.carrying_mul(M_HIGH, 0).1 >> SH_POST;
     let rem = n - quot * D;
     (quot, rem as u64)
 }

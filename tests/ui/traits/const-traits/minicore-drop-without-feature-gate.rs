@@ -13,7 +13,7 @@ extern crate minicore;
 use minicore::*;
 
 struct ConstDrop;
-impl const Drop for ConstDrop {
+const impl Drop for ConstDrop {
     fn drop(&mut self) {}
 }
 

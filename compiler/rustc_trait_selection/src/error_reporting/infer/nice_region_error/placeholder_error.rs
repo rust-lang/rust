@@ -1,26 +1,27 @@
 use std::fmt;
 
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{Diag, IntoDiagArg};
+use rustc_errors::{Applicability, Diag, IntoDiagArg};
+use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::bug;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
-use rustc_middle::ty::{self, GenericArgsRef, RePlaceholder, Region, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, IsSuggestable, RePlaceholder, Region, TyCtxt};
+use rustc_structures::Limit;
 use tracing::{debug, instrument};
 
-use crate::error_reporting::infer::nice_region_error::NiceRegionError;
-use crate::errors::{
+use crate::diagnostics::{
     ActualImplExpectedKind, ActualImplExpectedLifetimeKind, ActualImplExplNotes,
     TraitPlaceholderMismatch, TyOrSig,
 };
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::infer::{RegionResolutionError, SubregionOrigin, TypeTrace, ValuePairs};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 
-// HACK(eddyb) maybe move this in a more central location.
 #[derive(Copy, Clone)]
-pub struct Highlighted<'tcx, T> {
+pub(crate) struct Highlighted<'tcx, T> {
     pub tcx: TyCtxt<'tcx>,
     pub highlight: RegionHighlightMode<'tcx>,
     pub value: T,
@@ -29,7 +30,7 @@ pub struct Highlighted<'tcx, T> {
 
 impl<'tcx, T> IntoDiagArg for Highlighted<'tcx, T>
 where
-    T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>>,
+    T: for<'a> Print<FmtPrinter<'a, 'tcx>> + Copy,
 {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         rustc_errors::DiagArgValue::Str(self.to_string().into())
@@ -44,14 +45,28 @@ impl<'tcx, T> Highlighted<'tcx, T> {
 
 impl<'tcx, T> fmt::Display for Highlighted<'tcx, T>
 where
-    T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>>,
+    T: for<'a> Print<FmtPrinter<'a, 'tcx>> + Copy,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut p = ty::print::FmtPrinter::new(self.tcx, self.ns);
         p.region_highlight_mode = self.highlight;
 
         self.value.print(&mut p)?;
-        f.write_str(&p.into_buffer())
+        let b = p.into_buffer();
+        if b.len() <= 40 || !self.highlight.keep_regions || self.tcx.sess.opts.verbose {
+            // This is a short enough type that can be safely be printed to the user, or we aren't
+            // showing the type with a particular interest in its lifetimes.
+            f.write_str(&b)?;
+        } else {
+            // We are highlighting lifetimes in the output, we will print out the smallest possible
+            // portion of the type while keeping the lifetimes visible.
+            let mut p = FmtPrinter::new_with_limit(self.tcx, self.ns, Limit(0));
+            p.region_highlight_mode = self.highlight;
+            self.value.print(&mut p).expect("could not print type");
+            let x = p.into_buffer();
+            f.write_str(&x)?;
+        }
+        Ok(())
     }
 }
 
@@ -72,7 +87,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             Some(RegionResolutionError::SubSupConflict(
                 vid,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sub_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
@@ -88,7 +103,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             Some(RegionResolutionError::SubSupConflict(
                 vid,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sub_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
                 _,
@@ -104,7 +119,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             Some(RegionResolutionError::SubSupConflict(
                 vid,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 _,
                 _,
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
@@ -122,7 +137,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 _,
                 _,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
@@ -137,7 +152,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 vid,
                 _,
                 _,
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
                 Some(ty::Region::new_var(self.tcx(), *vid)),
@@ -148,7 +163,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             ),
 
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sub_region @ Region(Interned(RePlaceholder(_), _)),
                 sup_region @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
@@ -160,7 +175,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             ),
 
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sub_region @ Region(Interned(RePlaceholder(_), _)),
                 sup_region,
             )) => self.try_report_trait_placeholder_mismatch(
@@ -172,7 +187,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             ),
 
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::Subtype(box TypeTrace { cause, values }),
+                SubregionOrigin::Subtype(TypeTrace { cause, values }),
                 sub_region,
                 sup_region @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
@@ -256,16 +271,12 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 (false, None, None, Some(span), String::new())
             };
 
-        let expected_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new_from_args(
-            self.cx.tcx,
-            trait_def_id,
-            expected_args,
-        ));
-        let actual_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef::new_from_args(
-            self.cx.tcx,
-            trait_def_id,
-            actual_args,
-        ));
+        let expected_trait_ref = self.cx.deeply_resolve_ignoring_regions(
+            ty::TraitRef::new_from_args(self.cx.tcx, trait_def_id, expected_args),
+        );
+        let actual_trait_ref = self.cx.deeply_resolve_ignoring_regions(
+            ty::TraitRef::new_from_args(self.cx.tcx, trait_def_id, actual_args),
+        );
 
         // Search the expected and actual trait references to see (a)
         // whether the sub/sup placeholders appear in them (sometimes
@@ -333,7 +344,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             leading_ellipsis,
         );
 
-        self.tcx().dcx().create_err(TraitPlaceholderMismatch {
+        let mut err = self.tcx().dcx().create_err(TraitPlaceholderMismatch {
             span,
             satisfy_span,
             where_span,
@@ -341,7 +352,90 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             def_id,
             trait_def_id: self.tcx().def_path_str(trait_def_id),
             actual_impl_expl_notes,
-        })
+        });
+
+        let mut current_code = cause.code();
+        let mut coroutine_def_id = None;
+
+        loop {
+            match current_code {
+                ObligationCauseCode::MatchImpl(inner_cause, _) => {
+                    current_code = inner_cause.code();
+                }
+                ObligationCauseCode::BuiltinDerived(derived) => {
+                    let self_ty = derived.parent_trait_pred.skip_binder().self_ty();
+
+                    if let ty::Coroutine(def_id, _) | ty::CoroutineWitness(def_id, _) =
+                        self_ty.kind()
+                    {
+                        coroutine_def_id = Some(*def_id);
+                        break;
+                    }
+
+                    current_code = &derived.parent_code;
+                }
+                _ => break,
+            }
+        }
+
+        if let Some(def_id) = coroutine_def_id {
+            if self.tcx().trait_is_auto(trait_def_id) {
+                let c_span = self.tcx().def_span(def_id);
+                let descr = self.tcx().def_descr(def_id);
+                let trait_name = self.tcx().def_path_str(trait_def_id);
+
+                err.span_label(
+                    c_span,
+                    format!("this {descr} captures a value whose type is not `{trait_name}`"),
+                );
+            }
+        }
+
+        // When the mismatched trait is an Fn-trait and the self type is a closure with
+        // unannotated parameters, suggest adding explicit type annotations. This turns
+        // the confusing lifetime-generality error into an actionable hint, e.g.:
+        //   |buf|  →  |buf: &mut [u8]|
+        if self.tcx().is_fn_trait(trait_def_id) {
+            let actual_self_ty = self.cx.deeply_resolve_ignoring_regions(
+                ty::TraitRef::new_from_args(self.cx.tcx, trait_def_id, actual_args).self_ty(),
+            );
+            if let ty::Closure(closure_def_id, _) = *actual_self_ty.kind()
+                && let Some(local_def_id) = closure_def_id.as_local()
+                && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) =
+                    self.tcx().hir_node_by_def_id(local_def_id)
+            {
+                let body = self.tcx().hir_body(closure.body);
+                // For Fn traits, args[1] is the tupled input types (e.g. `(&mut [u8],)`).
+                let expected_input_tys = expected_args.type_at(1);
+                if let ty::Tuple(input_tys) = *expected_input_tys.kind() {
+                    let suggestions: Vec<_> = body
+                        .params
+                        .iter()
+                        .zip(input_tys.iter())
+                        .filter_map(|(param, ty)| {
+                            // ty_span == pat.span means no explicit type annotation was written.
+                            if param.ty_span == param.pat.span
+                                && ty.is_suggestable(self.tcx(), false)
+                            {
+                                Some((param.pat.span.shrink_to_hi(), format!(": {ty}")))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    if !suggestions.is_empty() {
+                        let msg = if suggestions.len() == 1 {
+                            "consider adding an explicit type annotation to the closure's argument"
+                        } else {
+                            "consider adding explicit type annotations to the closure's arguments"
+                        };
+                        err.multipart_suggestion(msg, suggestions, Applicability::MaybeIncorrect);
+                    }
+                }
+            }
+        }
+
+        err
     }
 
     /// Add notes with details about the expected and actual trait refs, with attention to cases

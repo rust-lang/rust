@@ -16,11 +16,12 @@ use rustc_errors::Applicability;
 use rustc_errors::codes::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::{ErrorGuaranteed, kw};
 
 use crate::constrained_generic_params as cgp;
-use crate::errors::UnconstrainedGenericParameter;
+use crate::diagnostics::UnconstrainedGenericParameter;
+use crate::diagnostics::remove_or_use_generic::suggest_to_remove_or_use_generic;
 
 mod min_specialization;
 
@@ -78,22 +79,23 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
     impl_def_id: LocalDefId,
     of_trait: bool,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
+    let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
 
     // Don't complain about unconstrained type params when self ty isn't known due to errors.
     // (#36836)
     impl_self_ty.error_reported()?;
 
     let impl_generics = tcx.generics_of(impl_def_id);
-    let impl_predicates = tcx.predicates_of(impl_def_id);
-    let impl_trait_ref = of_trait.then(|| tcx.impl_trait_ref(impl_def_id).instantiate_identity());
+    let impl_clauses = tcx.clauses_of(impl_def_id);
+    let impl_trait_ref =
+        of_trait.then(|| tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_norm_wip());
 
     impl_trait_ref.error_reported()?;
 
     let mut input_parameters = cgp::parameters_for_impl(tcx, impl_self_ty, impl_trait_ref);
     cgp::identify_constrained_generic_params(
         tcx,
-        impl_predicates,
+        impl_clauses,
         impl_trait_ref,
         &mut input_parameters,
     );
@@ -107,7 +109,11 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
             match item.kind {
                 ty::AssocKind::Type { .. } => {
                     if item.defaultness(tcx).has_value() {
-                        cgp::parameters_for(tcx, tcx.type_of(def_id).instantiate_identity(), true)
+                        cgp::parameters_for(
+                            tcx,
+                            tcx.type_of(def_id).instantiate_identity().skip_norm_wip(),
+                            true,
+                        )
                     } else {
                         vec![]
                     }
@@ -172,6 +178,7 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
                             );
                         }
                     }
+                    suggest_to_remove_or_use_generic(tcx, &mut diag, impl_def_id, param, true);
                     res = Err(diag.emit());
                 }
             }
@@ -187,23 +194,25 @@ pub(crate) fn enforce_impl_non_lifetime_params_are_constrained(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
+    let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
 
     // Don't complain about unconstrained type params when self ty isn't known due to errors.
     // (#36836)
     impl_self_ty.error_reported()?;
 
     let impl_generics = tcx.generics_of(impl_def_id);
-    let impl_predicates = tcx.predicates_of(impl_def_id);
-    let impl_trait_ref =
-        tcx.impl_opt_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
+    let impl_clauses = tcx.clauses_of(impl_def_id);
+    let impl_trait_ref = tcx
+        .impl_opt_trait_ref(impl_def_id)
+        .map(ty::EarlyBinder::instantiate_identity)
+        .map(Unnormalized::skip_norm_wip);
 
     impl_trait_ref.error_reported()?;
 
     let mut input_parameters = cgp::parameters_for_impl(tcx, impl_self_ty, impl_trait_ref);
     cgp::identify_constrained_generic_params(
         tcx,
-        impl_predicates,
+        impl_clauses,
         impl_trait_ref,
         &mut input_parameters,
     );
@@ -235,6 +244,7 @@ pub(crate) fn enforce_impl_non_lifetime_params_are_constrained(
                 const_param_note2: const_param_note,
             });
             diag.code(E0207);
+            suggest_to_remove_or_use_generic(tcx, &mut diag, impl_def_id, &param, false);
             res = Err(diag.emit());
         }
     }

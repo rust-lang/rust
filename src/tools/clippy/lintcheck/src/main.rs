@@ -7,17 +7,15 @@
 
 #![feature(iter_collect_into)]
 #![warn(
+    rust_2018_idioms,
     trivial_casts,
     trivial_numeric_casts,
-    rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications
 )]
-#![allow(
-    clippy::collapsible_else_if,
-    clippy::needless_borrows_for_generic_args,
-    clippy::module_name_repetitions,
-    clippy::literal_string_with_formatting_args
+#![expect(
+    clippy::literal_string_with_formatting_args,
+    clippy::needless_borrows_for_generic_args
 )]
 
 mod config;
@@ -85,12 +83,12 @@ impl Crate {
         if config.max_jobs == 1 {
             println!(
                 "{index}/{total_crates_to_lint} {perc}% Linting {} {}",
-                &self.name, &self.version
+                self.name, self.version
             );
         } else {
             println!(
                 "{index}/{total_crates_to_lint} {perc}% Linting {} {} in target dir {thread_index:?}",
-                &self.name, &self.version
+                self.name, self.version
             );
         }
 
@@ -521,7 +519,6 @@ fn lintcheck_test() {
         .args(args)
         .current_dir("..") // repo root
         .status();
-    //.output();
 
     assert!(status.unwrap().success());
 }

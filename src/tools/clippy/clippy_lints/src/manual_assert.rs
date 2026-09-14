@@ -4,8 +4,7 @@ use clippy_utils::source::{indent_of, reindent_multiline};
 use clippy_utils::{higher, is_else_clause, is_parent_stmt, peel_blocks_with_stmt, span_extract_comment, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -58,7 +57,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
                 "only a `panic!` in `if`-then statement",
                 |diag| {
                     let mut applicability = Applicability::MachineApplicable;
-                    let mut comments = span_extract_comment(cx.sess().source_map(), expr.span);
+                    let mut comments = span_extract_comment(cx, expr.span);
                     if !comments.is_empty() {
                         comments += "\n";
                     }

@@ -1,5 +1,5 @@
 #![warn(clippy::else_if_without_else)]
-#![allow(clippy::collapsible_else_if)]
+#![expect(clippy::collapsible_else_if)]
 
 fn bla1() -> bool {
     unimplemented!()

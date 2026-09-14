@@ -30,11 +30,11 @@ use crate::{AssistContext, AssistId, Assists};
 //     m::frobnicate();
 // }
 // ```
-pub(crate) fn fix_visibility(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn fix_visibility(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     add_vis_to_referenced_module_def(acc, ctx)
 }
 
-fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let path: ast::Path = ctx.find_node_at_offset()?;
     let qualifier = path.qualifier()?;
     let name_ref = path.segment()?.name_ref()?;
@@ -78,7 +78,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
     };
 
     acc.add(AssistId::quick_fix("fix_visibility"), assist_label, target, |builder| {
-        let mut editor = builder.make_editor(vis_owner.syntax());
+        let editor = builder.make_editor(vis_owner.syntax());
 
         if let Some(current_visibility) = vis_owner.visibility() {
             editor.replace(current_visibility.syntax(), missing_visibility.syntax());
@@ -91,6 +91,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
                         it.kind(),
                         syntax::SyntaxKind::WHITESPACE
                             | syntax::SyntaxKind::COMMENT
+                            | syntax::SyntaxKind::DOC_COMMENT
                             | syntax::SyntaxKind::ATTR
                     )
                 })
@@ -173,7 +174,7 @@ fn target_data_for_def(
         // FIXME
         hir::ModuleDef::Macro(_) => return None,
         // Enum variants can't be private, we can't modify builtin types
-        hir::ModuleDef::Variant(_) | hir::ModuleDef::BuiltinType(_) => return None,
+        hir::ModuleDef::EnumVariant(_) | hir::ModuleDef::BuiltinType(_) => return None,
     };
 
     Some((offset, target, target_file, target_name))

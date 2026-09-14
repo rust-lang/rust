@@ -1,7 +1,10 @@
 error: implementation of `Send` is not general enough
   --> $DIR/issue-110963-early.rs:17:5
    |
-LL | /     spawn(async move {
+LL |       spawn(async move {
+   |       ^     ---------- this async block captures a value whose type is not `Send`
+   |  _____|
+   | |
 LL | |         let mut hc = hc;
 LL | |         if !hc.check().await {
 LL | |             log_health_check_failure().await;
@@ -15,7 +18,10 @@ LL | |     });
 error: implementation of `Send` is not general enough
   --> $DIR/issue-110963-early.rs:17:5
    |
-LL | /     spawn(async move {
+LL |       spawn(async move {
+   |       ^     ---------- this async block captures a value whose type is not `Send`
+   |  _____|
+   | |
 LL | |         let mut hc = hc;
 LL | |         if !hc.check().await {
 LL | |             log_health_check_failure().await;

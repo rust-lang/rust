@@ -9,5 +9,5 @@ use std::ptr::null;
 fn main() {
     let null = MaybeDangling::new(null());
     unsafe { transmute::<MaybeDangling<*const u8>, MaybeDangling<&u8>>(null) };
-    //~^ ERROR: Undefined Behavior: constructing invalid value: encountered a null reference
+    //~^ ERROR: encountered a null reference
 }

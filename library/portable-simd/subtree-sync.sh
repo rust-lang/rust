@@ -12,8 +12,8 @@ if [ "$(git rev-parse --show-prefix)" != "" ]; then
     exit 1
 fi
 
-if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/master)" ]; then
-    echo "$(pwd) is not at origin/master" >&2
+if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+    echo "$(pwd) is not at origin/main" >&2
     exit 1
 fi
 

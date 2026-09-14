@@ -1,5 +1,5 @@
 #![warn(clippy::manual_ignore_case_cmp)]
-#![allow(
+#![expect(
     clippy::deref_addrof,
     clippy::op_ref,
     clippy::ptr_arg,

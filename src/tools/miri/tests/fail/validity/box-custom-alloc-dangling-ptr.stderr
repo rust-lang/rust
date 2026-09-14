@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a dangling box (0x4[noalloc] has no provenance)
+error: Undefined Behavior: constructing invalid value of type std::boxed::Box<i32, MyAlloc>: encountered a dangling box (0x4[noalloc] has no provenance)
   --> tests/fail/validity/box-custom-alloc-dangling-ptr.rs:LL:CC
    |
 LL |         std::mem::transmute(b)

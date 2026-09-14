@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{SpanRangeExt, position_before_rarrow};
+use clippy_utils::source::{SpanExt as _, position_before_rarrow};
 use clippy_utils::{is_never_expr, is_unit_expr};
 use rustc_ast::{Block, StmtKind};
 use rustc_errors::Applicability;
@@ -9,8 +9,7 @@ use rustc_hir::{
     AssocItemConstraintKind, Body, Expr, ExprKind, FnDecl, FnRetTy, GenericArgsParentheses, PolyTraitRef, Term, Ty,
     TyKind,
 };
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::edition::Edition;
 use rustc_span::{BytePos, Pos as _, Span, sym};
 
@@ -58,8 +57,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedUnit {
         {
             // The explicit `-> ()` in the closure signature might be necessary for multiple reasons:
             // - Implicit types in closure signatures are forbidden when `for<...>` is present
-            // - If the closure body ends with a function call, and that function's return type is generic, the
-            //   `-> ()` could be required for it to be inferred
+            // - If the closure body ends with a function call, and that function's return type is generic, the `-> ()`
+            //   could be required for it to be inferred
             //
             // There could be more reasons to have it, and, in general, we shouldn't discourage the users from
             // writing more type annotations than strictly necessary, because it can help readability and

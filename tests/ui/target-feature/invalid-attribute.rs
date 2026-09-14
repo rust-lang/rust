@@ -1,6 +1,7 @@
 //@ add-minicore
 //@ compile-flags: --target=x86_64-unknown-linux-gnu
 //@ needs-llvm-components: x86
+//@ normalize-stderr: "and \d+ more" -> "and X more"
 
 #![warn(unused_attributes)]
 #![feature(no_core)]
@@ -31,7 +32,7 @@ extern "Rust" {}
 //~| NOTE expected this to be of the form `enable = "..."`
 #[target_feature(disable = "baz")]
 //~^ ERROR malformed `target_feature` attribute
-//~| NOTE expected this to be of the form `enable = "..."`
+//~| NOTE the only valid argument here is `enable`
 unsafe fn foo() {}
 
 #[target_feature(enable = "sse2")]
@@ -67,8 +68,7 @@ trait Baz {}
 
 #[inline(always)]
 //~^ ERROR: cannot use `#[inline(always)]`
-//~| NOTE: see issue #145574 <https://github.com/rust-lang/rust/issues/145574> for more information
-//~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+//~| NOTE: See this issue for full discussion: https://github.com/rust-lang/rust/issues/145574
 #[target_feature(enable = "sse2")]
 unsafe fn test() {}
 

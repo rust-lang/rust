@@ -14,7 +14,7 @@ use hir_def::{
         GenericParamDataRef, TypeOrConstParamData, TypeParamData, TypeParamProvenance,
     },
     resolver::{ResolveValueResult, TypeNs, ValueNs},
-    signatures::TraitFlags,
+    signatures::{TraitFlags, TraitSignature},
     type_ref::{TypeRef, TypeRefId},
 };
 use rustc_type_ir::{
@@ -22,27 +22,26 @@ use rustc_type_ir::{
     inherent::{GenericArgs as _, Region as _, Ty as _},
 };
 use smallvec::SmallVec;
-use stdx::never;
 
 use crate::{
     GenericArgsProhibitedReason, IncorrectGenericsLenKind, PathGenericsSource,
-    PathLoweringDiagnostic, TyDefId, ValueTyDefId,
-    consteval::{unknown_const, unknown_const_as_generic},
+    PathLoweringDiagnostic, Span, TyDefId, ValueTyDefId,
     db::HirDatabase,
     generics::{Generics, generics},
+    infer::unify::InferenceTable,
     lower::{
-        AssocTypeShorthandResolution, GenericPredicateSource, LifetimeElisionKind,
-        PathDiagnosticCallbackData,
+        AssocTypeShorthandResolution, ForbidParamsAfterReason, GenericPredicateSource,
+        LifetimeElisionKind, PathDiagnosticCallbackData, const_param_ty,
     },
     next_solver::{
-        Binder, Clause, Const, DbInterner, EarlyBinder, ErrorGuaranteed, GenericArg, GenericArgs,
-        Predicate, ProjectionPredicate, Region, TraitRef, Ty,
+        AliasTermKind, Binder, Clause, Const, DbInterner, EarlyBinder, ErrorGuaranteed, GenericArg,
+        GenericArgs, Predicate, ProjectionPredicate, Region, TraitRef, Ty,
     },
 };
 
 use super::{
     ImplTraitLoweringMode, TyLoweringContext,
-    associated_type_by_name_including_super_traits_allow_ambiguity, const_param_ty_query, ty_query,
+    associated_type_by_name_including_super_traits_allow_ambiguity, ty_query,
 };
 
 type CallbackData<'a> =
@@ -83,6 +82,11 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             current_segment_idx: 0,
             current_or_prev_segment: first_segment,
         }
+    }
+
+    #[track_caller]
+    pub(crate) fn expect_table(&mut self) -> &mut InferenceTable<'db> {
+        self.ctx.expect_table()
     }
 
     #[inline]
@@ -150,17 +154,18 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         // We need the original resolution to lower `Self::AssocTy` correctly
         res: Option<TypeNs>,
         infer_args: bool,
+        span: Span,
     ) -> (Ty<'db>, Option<TypeNs>) {
         let remaining_segments = self.segments.len() - self.current_segment_idx;
         match remaining_segments {
             0 => (ty, res),
             1 => {
                 // resolve unselected assoc types
-                (self.select_associated_type(res, infer_args), None)
+                (self.select_associated_type(res, infer_args, span), None)
             }
             _ => {
                 // FIXME report error (ambiguous associated type)
-                (Ty::new_error(self.ctx.interner, ErrorGuaranteed), None)
+                (self.ctx.types.types.error, None)
             }
         }
     }
@@ -170,6 +175,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         &mut self,
         resolution: TypeNs,
         infer_args: bool,
+        span: Span,
     ) -> (Ty<'db>, Option<TypeNs>) {
         let remaining_segments = self.segments.skip(self.current_segment_idx + 1);
         tracing::debug!(?remaining_segments);
@@ -182,8 +188,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                     1 => {
                         let trait_ref = self.lower_trait_ref_from_resolved_path(
                             trait_,
-                            Ty::new_error(self.ctx.interner, ErrorGuaranteed),
+                            self.ctx.types.types.error,
                             infer_args,
+                            span,
                         );
                         tracing::debug!(?trait_ref);
                         self.skip_resolved_segment();
@@ -204,6 +211,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                     infer_args,
                                     None,
                                     true,
+                                    span,
                                 );
                                 let args = GenericArgs::new_from_iter(
                                     self.ctx.interner,
@@ -214,17 +222,16 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 );
                                 Ty::new_alias(
                                     self.ctx.interner,
-                                    AliasTyKind::Projection,
                                     AliasTy::new_from_args(
                                         self.ctx.interner,
-                                        associated_ty.into(),
+                                        AliasTyKind::Projection { def_id: associated_ty.into() },
                                         args,
                                     ),
                                 )
                             }
                             None => {
                                 // FIXME: report error (associated type not found)
-                                Ty::new_error(self.ctx.interner, ErrorGuaranteed)
+                                self.ctx.types.types.error
                             }
                         }
                     }
@@ -232,11 +239,11 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         // Trait object type without dyn; this should be handled in upstream. See
                         // `lower_path()`.
                         stdx::never!("unexpected fully resolved trait path");
-                        Ty::new_error(self.ctx.interner, ErrorGuaranteed)
+                        self.ctx.types.types.error
                     }
                     _ => {
                         // FIXME report error (ambiguous associated type)
-                        Ty::new_error(self.ctx.interner, ErrorGuaranteed)
+                        self.ctx.types.types.error
                     }
                 };
                 return (ty, None);
@@ -244,17 +251,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             TypeNs::GenericParam(param_id) => {
                 let generics = self.ctx.generics();
                 let idx = generics.type_or_const_param_idx(param_id.into());
-                match idx {
-                    None => {
-                        never!("no matching generics");
-                        Ty::new_error(self.ctx.interner, ErrorGuaranteed)
-                    }
-                    Some(idx) => {
-                        let (pidx, _param) = generics.iter().nth(idx).unwrap();
-                        assert_eq!(pidx, param_id.into());
-                        self.ctx.type_param(param_id, idx as u32)
-                    }
-                }
+                self.ctx.type_param(param_id, idx)
             }
             TypeNs::SelfType(impl_id) => self.ctx.db.impl_self_ty(impl_id).skip_binder(),
             TypeNs::AdtSelfType(adt) => {
@@ -262,19 +259,19 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 Ty::new_adt(self.ctx.interner, adt, args)
             }
 
-            TypeNs::AdtId(it) => self.lower_path_inner(it.into(), infer_args),
-            TypeNs::BuiltinType(it) => self.lower_path_inner(it.into(), infer_args),
-            TypeNs::TypeAliasId(it) => self.lower_path_inner(it.into(), infer_args),
+            TypeNs::AdtId(it) => self.lower_path_inner(it.into(), infer_args, span),
+            TypeNs::BuiltinType(it) => self.lower_path_inner(it.into(), infer_args, span),
+            TypeNs::TypeAliasId(it) => self.lower_path_inner(it.into(), infer_args, span),
             // FIXME: report error
             TypeNs::EnumVariantId(_) | TypeNs::ModuleId(_) => {
-                return (Ty::new_error(self.ctx.interner, ErrorGuaranteed), None);
+                return (self.ctx.types.types.error, None);
             }
         };
 
         tracing::debug!(?ty);
 
         self.skip_resolved_segment();
-        self.lower_ty_relative_path(ty, Some(resolution), infer_args)
+        self.lower_ty_relative_path(ty, Some(resolution), infer_args, span)
     }
 
     /// This returns whether to keep the resolution (`true`) of throw it (`false`).
@@ -300,9 +297,15 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             TypeNs::AdtSelfType(_) => {
                 prohibit_generics_on_resolved(GenericArgsProhibitedReason::SelfTy);
 
-                if self.ctx.lowering_param_default.is_some() {
-                    // Generic defaults are not allowed to refer to `Self`.
-                    // FIXME: Emit an error.
+                if self.ctx.forbid_params_after.is_some()
+                    && self.ctx.forbid_params_after_reason
+                        == ForbidParamsAfterReason::LoweringParamDefault
+                {
+                    // FIXME: Handle other reasons.
+                    let segment = self.current_segment_u32();
+                    self.on_diagnostic(PathLoweringDiagnostic::GenericDefaultRefersToSelf {
+                        segment,
+                    });
                     return false;
                 }
             }
@@ -331,7 +334,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
 
     #[tracing::instrument(skip(self), ret)]
     pub(crate) fn resolve_path_in_type_ns(&mut self) -> Option<(TypeNs, Option<usize>)> {
-        let (resolution, remaining_index, _, prefix_info) =
+        let (resolution, remaining_index, _, prefix_info, _) =
             self.ctx.resolver.resolve_path_in_type_ns_with_prefix_info(self.ctx.db, self.path)?;
 
         let segments = self.segments;
@@ -382,7 +385,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         &mut self,
         hygiene_id: HygieneId,
     ) -> Option<ResolveValueResult> {
-        let (res, prefix_info) = self.ctx.resolver.resolve_path_in_value_ns_with_prefix_info(
+        let (res, prefix_info, _) = self.ctx.resolver.resolve_path_in_value_ns_with_prefix_info(
             self.ctx.db,
             self.path,
             hygiene_id,
@@ -476,13 +479,17 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
     }
 
     #[tracing::instrument(skip(self), ret)]
-    fn select_associated_type(&mut self, res: Option<TypeNs>, infer_args: bool) -> Ty<'db> {
+    fn select_associated_type(
+        &mut self,
+        res: Option<TypeNs>,
+        infer_args: bool,
+        span: Span,
+    ) -> Ty<'db> {
         let interner = self.ctx.interner;
         let db = self.ctx.db;
-        let def = self.ctx.def;
+        let def = self.ctx.generic_def;
         let segment = self.current_or_prev_segment;
         let assoc_name = segment.name;
-        let error_ty = || Ty::new_error(self.ctx.interner, ErrorGuaranteed);
         let (assoc_type, trait_args) = match res {
             Some(TypeNs::GenericParam(param)) => {
                 let AssocTypeShorthandResolution::Resolved(assoc_type) =
@@ -493,7 +500,8 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         assoc_name.clone(),
                     )
                 else {
-                    return error_ty();
+                    // FIXME: Emit an error.
+                    return self.ctx.types.types.error;
                 };
                 assoc_type
                     .get_with(|(assoc_type, trait_args)| (*assoc_type, trait_args.as_ref()))
@@ -501,9 +509,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             }
             Some(TypeNs::SelfType(impl_)) => {
                 let Some(impl_trait) = db.impl_trait(impl_) else {
-                    return error_ty();
+                    return self.ctx.types.types.error;
                 };
-                let impl_trait = impl_trait.instantiate_identity();
+                let impl_trait = impl_trait.instantiate_identity().skip_norm_wip();
                 // Searching for `Self::Assoc` in `impl Trait for Type` is like searching for `Self::Assoc` in `Trait`.
                 let AssocTypeShorthandResolution::Resolved(assoc_type) =
                     super::resolve_type_param_assoc_type_shorthand(
@@ -513,21 +521,27 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         assoc_name.clone(),
                     )
                 else {
-                    return error_ty();
+                    // FIXME: Emit an error.
+                    return self.ctx.types.types.error;
                 };
                 let (assoc_type, trait_args) = assoc_type
                     .get_with(|(assoc_type, trait_args)| (*assoc_type, trait_args.as_ref()))
                     .skip_binder();
-                (assoc_type, EarlyBinder::bind(trait_args).instantiate(interner, impl_trait.args))
+                (
+                    assoc_type,
+                    EarlyBinder::bind(trait_args)
+                        .instantiate(interner, impl_trait.args)
+                        .skip_norm_wip(),
+                )
             }
-            _ => return error_ty(),
+            _ => return self.ctx.types.types.error,
         };
 
         // FIXME: `substs_from_path_segment()` pushes `TyKind::Error` for every parent
         // generic params. It's inefficient to splice the `Substitution`s, so we may want
         // that method to optionally take parent `Substitution` as we already know them at
         // this point (`t.substitution`).
-        let substs = self.substs_from_path_segment(assoc_type.into(), infer_args, None, true);
+        let substs = self.substs_from_path_segment(assoc_type.into(), infer_args, None, true, span);
 
         let substs = GenericArgs::new_from_iter(
             interner,
@@ -537,7 +551,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         Ty::new_projection_from_args(interner, assoc_type.into(), substs)
     }
 
-    fn lower_path_inner(&mut self, typeable: TyDefId, infer_args: bool) -> Ty<'db> {
+    fn lower_path_inner(&mut self, typeable: TyDefId, infer_args: bool, span: Span) -> Ty<'db> {
         let generic_def = match typeable {
             TyDefId::BuiltinType(builtinty) => {
                 return Ty::from_builtin_type(self.ctx.interner, builtinty);
@@ -545,9 +559,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             TyDefId::AdtId(it) => it.into(),
             TyDefId::TypeAliasId(it) => it.into(),
         };
-        let args = self.substs_from_path_segment(generic_def, infer_args, None, false);
+        let args = self.substs_from_path_segment(generic_def, infer_args, None, false, span);
         let ty = ty_query(self.ctx.db, typeable);
-        ty.instantiate(self.ctx.interner, args)
+        ty.instantiate(self.ctx.interner, args).skip_norm_wip()
     }
 
     /// Collect generic arguments from a path into a `Substs`. See also
@@ -560,8 +574,8 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         resolved: ValueTyDefId,
         infer_args: bool,
         lowering_assoc_type_generics: bool,
+        span: Span,
     ) -> GenericArgs<'db> {
-        let interner = self.ctx.interner;
         let prev_current_segment_idx = self.current_segment_idx;
         let prev_current_segment = self.current_or_prev_segment;
 
@@ -571,7 +585,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             ValueTyDefId::UnionId(it) => it.into(),
             ValueTyDefId::ConstId(it) => it.into(),
             ValueTyDefId::StaticId(_) => {
-                return GenericArgs::empty(interner);
+                return GenericArgs::empty();
             }
             ValueTyDefId::EnumVariantId(var) => {
                 // the generic args for an enum variant may be either specified
@@ -603,6 +617,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             infer_args,
             None,
             lowering_assoc_type_generics,
+            span,
         );
         self.current_segment_idx = prev_current_segment_idx;
         self.current_or_prev_segment = prev_current_segment;
@@ -615,6 +630,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         infer_args: bool,
         explicit_self_ty: Option<Ty<'db>>,
         lowering_assoc_type_generics: bool,
+        span: Span,
     ) -> GenericArgs<'db> {
         let old_lifetime_elision = self.ctx.lifetime_elision;
 
@@ -625,10 +641,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 GenericDefId::TraitId(trait_) => {
                     // RTN is prohibited anyways if we got here.
                     let is_rtn = args.parenthesized == GenericArgsParentheses::ReturnTypeNotation;
-                    let is_fn_trait = self
-                        .ctx
-                        .db
-                        .trait_signature(trait_)
+                    let is_fn_trait = TraitSignature::of(self.ctx.db, trait_)
                         .flags
                         .contains(TraitFlags::RUSTC_PAREN_SUGAR);
                     is_rtn || !is_fn_trait
@@ -642,7 +655,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                     PathLoweringDiagnostic::ParenthesizedGenericArgsWithoutFnTrait { segment },
                 );
 
-                return unknown_subst(self.ctx.interner, def);
+                return GenericArgs::error_for_item(self.ctx.interner, def.into());
             }
 
             // `Fn()`-style generics are treated like functions for the purpose of lifetime elision.
@@ -658,6 +671,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             PathGenericsSource::Segment(self.current_segment_u32()),
             lowering_assoc_type_generics,
             self.ctx.lifetime_elision,
+            span,
         );
         self.ctx.lifetime_elision = old_lifetime_elision;
         result
@@ -672,10 +686,12 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         generics_source: PathGenericsSource,
         lowering_assoc_type_generics: bool,
         lifetime_elision: LifetimeElisionKind<'db>,
+        span: Span,
     ) -> GenericArgs<'db> {
         struct LowererCtx<'a, 'b, 'c, 'db> {
             ctx: &'a mut PathLoweringContext<'b, 'c, 'db>,
             generics_source: PathGenericsSource,
+            span: Span,
         }
 
         impl<'db> GenericArgsLowerer<'db> for LowererCtx<'_, '_, '_, 'db> {
@@ -729,7 +745,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         };
                         self.ctx
                             .ctx
-                            .lower_const(konst, const_param_ty_query(self.ctx.ctx.db, const_id))
+                            .lower_const(konst, const_param_ty(self.ctx.ctx.db, const_id))
                             .into()
                     }
                     _ => unreachable!("unmatching param kinds were passed to `provided_kind()`"),
@@ -738,12 +754,13 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
 
             fn provided_type_like_const(
                 &mut self,
+                type_ref: TypeRefId,
                 const_ty: Ty<'db>,
                 arg: TypeLikeConst<'_>,
             ) -> Const<'db> {
                 match arg {
                     TypeLikeConst::Path(path) => self.ctx.ctx.lower_path_as_const(path, const_ty),
-                    TypeLikeConst::Infer => unknown_const(const_ty),
+                    TypeLikeConst::Infer => self.ctx.ctx.next_const_var(type_ref.into()),
                 }
             }
 
@@ -754,17 +771,18 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 param: GenericParamDataRef<'_>,
                 infer_args: bool,
                 preceding_args: &[GenericArg<'db>],
+                had_count_error: bool,
             ) -> GenericArg<'db> {
-                let default =
-                    || {
-                        self.ctx.ctx.db.generic_defaults(def).get(preceding_args.len()).map(
-                            |default| default.instantiate(self.ctx.ctx.interner, preceding_args),
-                        )
-                    };
+                let default = || {
+                    self.ctx.ctx.db.generic_defaults(def).get(preceding_args.len()).map(|default| {
+                        default.instantiate(self.ctx.ctx.interner, preceding_args).skip_norm_wip()
+                    })
+                };
+                // If `!infer_args`, we've already emitted an error, so put a dummy span.
+                let span = if !infer_args || had_count_error { Span::Dummy } else { self.span };
                 match param {
                     GenericParamDataRef::LifetimeParamData(_) => {
-                        Region::new(self.ctx.ctx.interner, rustc_type_ir::ReError(ErrorGuaranteed))
-                            .into()
+                        self.ctx.ctx.next_region_var(span).into()
                     }
                     GenericParamDataRef::TypeParamData(param) => {
                         if !infer_args
@@ -773,7 +791,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         {
                             return default;
                         }
-                        Ty::new_error(self.ctx.ctx.interner, ErrorGuaranteed).into()
+                        self.ctx.ctx.next_ty_var(span).into()
                     }
                     GenericParamDataRef::ConstParamData(param) => {
                         if !infer_args
@@ -782,10 +800,10 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         {
                             return default;
                         }
-                        let GenericParamId::ConstParamId(const_id) = param_id else {
+                        let GenericParamId::ConstParamId(_) = param_id else {
                             unreachable!("non-const param ID for const param");
                         };
-                        unknown_const_as_generic(const_param_ty_query(self.ctx.ctx.db, const_id))
+                        self.ctx.ctx.next_const_var(span).into()
                     }
                 }
             }
@@ -795,13 +813,8 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                     GenericParamId::TypeParamId(_) => {
                         Ty::new_error(self.ctx.ctx.interner, ErrorGuaranteed).into()
                     }
-                    GenericParamId::ConstParamId(const_id) => {
-                        unknown_const_as_generic(const_param_ty_query(self.ctx.ctx.db, const_id))
-                    }
-                    GenericParamId::LifetimeParamId(_) => {
-                        Region::new(self.ctx.ctx.interner, rustc_type_ir::ReError(ErrorGuaranteed))
-                            .into()
-                    }
+                    GenericParamId::ConstParamId(_) => self.ctx.ctx.types.consts.error.into(),
+                    GenericParamId::LifetimeParamId(_) => self.ctx.ctx.types.regions.error.into(),
                 }
             }
 
@@ -845,7 +858,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             lifetime_elision,
             lowering_assoc_type_generics,
             explicit_self_ty,
-            &mut LowererCtx { ctx: self, generics_source },
+            &mut LowererCtx { ctx: self, generics_source, span },
         )
     }
 
@@ -854,8 +867,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         resolved: TraitId,
         explicit_self_ty: Ty<'db>,
         infer_args: bool,
+        span: Span,
     ) -> TraitRef<'db> {
-        let args = self.trait_ref_substs_from_path(resolved, explicit_self_ty, infer_args);
+        let args = self.trait_ref_substs_from_path(resolved, explicit_self_ty, infer_args, span);
         TraitRef::new_from_args(self.ctx.interner, resolved.into(), args)
     }
 
@@ -864,14 +878,22 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         resolved: TraitId,
         explicit_self_ty: Ty<'db>,
         infer_args: bool,
+        span: Span,
     ) -> GenericArgs<'db> {
-        self.substs_from_path_segment(resolved.into(), infer_args, Some(explicit_self_ty), false)
+        self.substs_from_path_segment(
+            resolved.into(),
+            infer_args,
+            Some(explicit_self_ty),
+            false,
+            span,
+        )
     }
 
-    pub(super) fn assoc_type_bindings_from_type_bound<'c>(
+    pub(super) fn assoc_type_bindings_from_type_bound(
         mut self,
         trait_ref: TraitRef<'db>,
-    ) -> Option<impl Iterator<Item = (Clause<'db>, GenericPredicateSource)> + use<'a, 'b, 'c, 'db>>
+        span: Span,
+    ) -> Option<impl Iterator<Item = (Clause<'db>, GenericPredicateSource)> + use<'a, 'b, 'db>>
     {
         let interner = self.ctx.interner;
         self.current_or_prev_segment.args_and_bindings.map(|args_and_bindings| {
@@ -902,14 +924,18 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                             },
                             false,
                             this.ctx.lifetime_elision,
+                            span,
                         )
                     });
                 let args = GenericArgs::new_from_iter(
                     interner,
                     super_trait_args.iter().chain(args.iter().skip(super_trait_args.len())),
                 );
-                let projection_term =
-                    AliasTerm::new_from_args(interner, associated_ty.into(), args);
+                let projection_term = AliasTerm::new_from_args(
+                    interner,
+                    AliasTermKind::ProjectionTy { def_id: associated_ty.into() },
+                    args,
+                );
                 let mut predicates: SmallVec<[_; 1]> = SmallVec::with_capacity(
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
                 );
@@ -929,16 +955,20 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 ImplTraitLoweringMode::Disallowed | ImplTraitLoweringMode::Opaque,
                             ) => {
                                 let ty = this.ctx.lower_ty(type_ref);
+                                let bound_vars = this.ctx.peek_bound_vars();
                                 let pred = Clause(Predicate::new(
                                     interner,
-                                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                                        rustc_type_ir::ClauseKind::Projection(
-                                            ProjectionPredicate {
-                                                projection_term,
-                                                term: ty.into(),
-                                            },
+                                    Binder::bind_with_vars(
+                                        rustc_type_ir::PredicateKind::Clause(
+                                            rustc_type_ir::ClauseKind::Projection(
+                                                ProjectionPredicate {
+                                                    projection_term,
+                                                    term: ty.into(),
+                                                },
+                                            ),
                                         ),
-                                    )),
+                                        bound_vars,
+                                    ),
                                 ));
                                 predicates.push((pred, GenericPredicateSource::SelfOnly));
                             }
@@ -952,10 +982,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 bound,
                                 Ty::new_alias(
                                     self.ctx.interner,
-                                    AliasTyKind::Projection,
                                     AliasTy::new_from_args(
                                         self.ctx.interner,
-                                        associated_ty.into(),
+                                        AliasTyKind::Projection { def_id: associated_ty.into() },
                                         args,
                                     ),
                                 ),
@@ -967,6 +996,10 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 predicates
             })
         })
+    }
+
+    pub(crate) fn interner(&self) -> DbInterner<'db> {
+        self.ctx.interner
     }
 }
 
@@ -1005,8 +1038,12 @@ pub(crate) trait GenericArgsLowerer<'db> {
         arg: &HirGenericArg,
     ) -> GenericArg<'db>;
 
-    fn provided_type_like_const(&mut self, const_ty: Ty<'db>, arg: TypeLikeConst<'_>)
-    -> Const<'db>;
+    fn provided_type_like_const(
+        &mut self,
+        type_ref: TypeRefId,
+        const_ty: Ty<'db>,
+        arg: TypeLikeConst<'_>,
+    ) -> Const<'db>;
 
     fn inferred_kind(
         &mut self,
@@ -1015,6 +1052,7 @@ pub(crate) trait GenericArgsLowerer<'db> {
         param: GenericParamDataRef<'_>,
         infer_args: bool,
         preceding_args: &[GenericArg<'db>],
+        had_count_error: bool,
     ) -> GenericArg<'db>;
 
     fn parent_arg(&mut self, param_idx: u32, param_id: GenericParamId) -> GenericArg<'db>;
@@ -1024,7 +1062,7 @@ pub(crate) trait GenericArgsLowerer<'db> {
 fn check_generic_args_len<'db>(
     args_and_bindings: Option<&HirGenericArgs>,
     def: GenericDefId,
-    def_generics: &Generics,
+    def_generics: &Generics<'db>,
     infer_args: bool,
     lifetime_elision: &LifetimeElisionKind<'db>,
     lowering_assoc_type_generics: bool,
@@ -1152,7 +1190,7 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
         ctx,
     );
 
-    let mut substs = Vec::with_capacity(def_generics.len());
+    let mut substs = Vec::with_capacity(def_generics.len(true));
 
     substs.extend(
         def_generics.iter_parent_id().enumerate().map(|(idx, id)| ctx.parent_arg(idx as u32, id)),
@@ -1183,11 +1221,24 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
             ctx.provided_kind(self_param_id, self_param, self_ty)
         } else {
             explicit_self_ty.map(|it| it.into()).unwrap_or_else(|| {
-                ctx.inferred_kind(def, self_param_id, self_param, infer_args, &substs)
+                ctx.inferred_kind(
+                    def,
+                    self_param_id,
+                    self_param,
+                    infer_args,
+                    &substs,
+                    had_count_error,
+                )
             })
         };
         params.next();
         substs.push(self_ty);
+    } else if has_self_arg {
+        // A qualified path `<T as Trait>::Assoc` where `Trait` resolved to something without a
+        // `Self` parameter, e.g. a struct. `check_generic_args_len()` skips the self type
+        // unconditionally, so drop it here too instead of matching it against a real parameter.
+        // FIXME: Report a diagnostic here, rustc emits `E0404: expected trait, found struct`.
+        args.next();
     }
 
     loop {
@@ -1202,7 +1253,14 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
                 {
                     // Do not allow specifying `impl Trait` explicitly. We already err at that, but if we won't handle it here
                     // we will handle it as if it was specified, instead of inferring it.
-                    substs.push(ctx.inferred_kind(def, param_id, param, infer_args, &substs));
+                    substs.push(ctx.inferred_kind(
+                        def,
+                        param_id,
+                        param,
+                        infer_args,
+                        &substs,
+                        had_count_error,
+                    ));
                     params.next();
                 }
                 (HirGenericArg::Lifetime(_), GenericParamDataRef::LifetimeParamData(_))
@@ -1218,7 +1276,14 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
                 ) => {
                     // We expected a lifetime argument, but got a type or const
                     // argument. That means we're inferring the lifetime.
-                    substs.push(ctx.inferred_kind(def, param_id, param, infer_args, &substs));
+                    substs.push(ctx.inferred_kind(
+                        def,
+                        param_id,
+                        param,
+                        infer_args,
+                        &substs,
+                        had_count_error,
+                    ));
                     params.next();
                     force_infer_lt = Some((arg_idx as u32, param_id));
                 }
@@ -1227,8 +1292,9 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
                         let GenericParamId::ConstParamId(param_id) = param_id else {
                             panic!("unmatching param kinds");
                         };
-                        let const_ty = const_param_ty_query(db, param_id);
-                        substs.push(ctx.provided_type_like_const(const_ty, konst).into());
+                        let const_ty = const_param_ty(db, param_id);
+                        substs
+                            .push(ctx.provided_type_like_const(*type_ref, const_ty, konst).into());
                         args.next();
                         params.next();
                     } else {
@@ -1286,7 +1352,14 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
                         | LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true }
                         | LifetimeElisionKind::AnonymousReportError => {
                             assert!(had_count_error);
-                            ctx.inferred_kind(def, param_id, param, infer_args, &substs)
+                            ctx.inferred_kind(
+                                def,
+                                param_id,
+                                param,
+                                infer_args,
+                                &substs,
+                                had_count_error,
+                            )
                         }
                         LifetimeElisionKind::StaticIfNoLifetimeInScope { only_lint: _ } => {
                             Region::new_static(interner).into()
@@ -1296,11 +1369,18 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
                         | LifetimeElisionKind::Infer => {
                             // FIXME: With `AnonymousCreateParameter`, we need to create a new lifetime parameter here
                             // (but this will probably be done in hir-def lowering instead).
-                            ctx.inferred_kind(def, param_id, param, infer_args, &substs)
+                            ctx.inferred_kind(
+                                def,
+                                param_id,
+                                param,
+                                infer_args,
+                                &substs,
+                                had_count_error,
+                            )
                         }
                     }
                 } else {
-                    ctx.inferred_kind(def, param_id, param, infer_args, &substs)
+                    ctx.inferred_kind(def, param_id, param, infer_args, &substs, had_count_error)
                 };
                 substs.push(param);
                 params.next();
@@ -1328,18 +1408,4 @@ fn type_looks_like_const(
         TypeRef::Placeholder => Some(TypeLikeConst::Infer),
         _ => None,
     }
-}
-
-fn unknown_subst<'db>(interner: DbInterner<'db>, def: impl Into<GenericDefId>) -> GenericArgs<'db> {
-    let params = generics(interner.db(), def.into());
-    GenericArgs::new_from_iter(
-        interner,
-        params.iter_id().map(|id| match id {
-            GenericParamId::TypeParamId(_) => Ty::new_error(interner, ErrorGuaranteed).into(),
-            GenericParamId::ConstParamId(id) => {
-                unknown_const_as_generic(const_param_ty_query(interner.db(), id))
-            }
-            GenericParamId::LifetimeParamId(_) => Region::error(interner).into(),
-        }),
-    )
 }

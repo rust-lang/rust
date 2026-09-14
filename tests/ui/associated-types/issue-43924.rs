@@ -13,5 +13,5 @@ impl Foo<u64> for () {}
 
 fn main() {
     assert_eq!(<() as Foo<u32>>::Out::default().to_string(), "false");
-    //~^ ERROR no function or associated item named `default` found for trait object
+    //~^ ERROR no associated function or constant named `default` found for trait object
 }

@@ -52,7 +52,7 @@ fn move_out(val: Container) {
 
     let rc_foo = Rc::new(Foo);
     rc_foo.use_rc_self();
-    rc_foo; //~ ERROR use of moved
+    rc_foo; //~ ERROR the type `Rc` does not implement `Copy`
 
     let foo_add = Foo;
     foo_add + Foo;

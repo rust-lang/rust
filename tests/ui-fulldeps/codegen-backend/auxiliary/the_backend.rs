@@ -4,27 +4,21 @@
 #![deny(warnings)]
 
 extern crate rustc_codegen_ssa;
-extern crate rustc_data_structures;
-extern crate rustc_driver;
-extern crate rustc_errors;
-extern crate rustc_hir;
+extern crate rustc_driver as _;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
-extern crate rustc_span;
-extern crate rustc_symbol_mangling;
-extern crate rustc_target;
+extern crate rustc_structures;
 
 use std::any::Any;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
 use rustc_session::config::OutputFilenames;
+use rustc_session::{IncrCompSession, Session};
 
 struct TheBackend;
 
@@ -37,7 +31,7 @@ impl CodegenBackend for TheBackend {
         "fake_target_cpu".to_owned()
     }
 
-    fn codegen_crate(&self, _tcx: TyCtxt<'_>, _crate_info: &CrateInfo) -> Box<dyn Any> {
+    fn codegen_crate(&self, _tcx: TyCtxt<'_>) -> Box<dyn Any> {
         Box::new(CompiledModules { modules: vec![], allocator_module: None })
     }
 
@@ -45,12 +39,14 @@ impl CodegenBackend for TheBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
+        _incr_comp_session: Option<&IncrCompSession>,
         _outputs: &OutputFilenames,
-    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
+        _crate_info: &CrateInfo,
+    ) -> (CompiledModules, WorkProductMap) {
         let codegen_results = ongoing_codegen
             .downcast::<CompiledModules>()
             .expect("in join_codegen: ongoing_codegen is not a CompiledModules");
-        (*codegen_results, FxIndexMap::default())
+        (*codegen_results, WorkProductMap::default())
     }
 
     fn link(
@@ -63,8 +59,9 @@ impl CodegenBackend for TheBackend {
     ) {
         use std::io::Write;
 
-        use rustc_session::config::{CrateType, OutFileName};
+        use rustc_session::config::OutFileName;
         use rustc_session::output::out_filename;
+        use rustc_structures::CrateType;
 
         let crate_name = crate_info.local_crate_name;
         for &crate_type in sess.opts.crate_types.iter() {

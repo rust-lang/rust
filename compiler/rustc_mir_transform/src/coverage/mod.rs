@@ -1,8 +1,9 @@
-use rustc_middle::mir::coverage::{CoverageKind, FunctionCoverageInfo};
+use rustc_middle::mir::coverage::{CoverageKind, CoverageMirInfo};
 use rustc_middle::mir::{self, BasicBlock, Statement, StatementKind, TerminatorKind};
 use rustc_middle::ty::TyCtxt;
 use tracing::{debug, debug_span, trace};
 
+use crate::PassPolicy;
 use crate::coverage::counters::BcbCountersData;
 use crate::coverage::graph::CoverageGraph;
 use crate::coverage::mappings::ExtractedMappings;
@@ -24,8 +25,8 @@ mod tests;
 pub(super) struct InstrumentCoverage;
 
 impl<'tcx> crate::MirPass<'tcx> for InstrumentCoverage {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.instrument_coverage()
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.instrument_coverage())
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
@@ -54,17 +55,13 @@ impl<'tcx> crate::MirPass<'tcx> for InstrumentCoverage {
 
         instrument_function_for_coverage(tcx, mir_body);
     }
-
-    fn is_required(&self) -> bool {
-        false
-    }
 }
 
 fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
-    let def_id = mir_body.source.def_id();
-    let _span = debug_span!("instrument_function_for_coverage", ?def_id).entered();
+    let _span = debug_span!("instrument_function_for_coverage", def_id = ?mir_body.source.def_id())
+        .entered();
 
-    let hir_info = hir_info::extract_hir_info(tcx, def_id.expect_local());
+    let hir_info = hir_info::extract_hir_info(tcx, mir_body);
 
     // Build the coverage graph, which is a simplified view of the MIR control-flow
     // graph that ignores some details not relevant to coverage instrumentation.
@@ -90,7 +87,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     // Inject coverage statements into MIR.
     inject_coverage_statements(mir_body, &graph);
 
-    mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
+    mir_body.coverage_mir_info = Some(Box::new(CoverageMirInfo {
         function_source_hash: hir_info.function_source_hash,
 
         node_flow_data,

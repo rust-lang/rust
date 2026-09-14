@@ -1,4 +1,5 @@
 target/
+vendor/
 /dist/
 **/*.rs.bk
 **/*.rs.pending-snap
@@ -6,6 +7,7 @@ target/
 *.log
 *.iml
 .vscode/settings.json
+.vim/coc-settings.json
 .DS_Store
 /out/
 /dump.lsif

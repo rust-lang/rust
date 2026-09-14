@@ -46,11 +46,11 @@ LL | pub trait Trait {
    | --------------- this is the trait that was imported
    = help: you can use `cargo tree` to explore your dependency tree
 
-error[E0599]: no function or associated item named `bar` found for struct `dep_2_reexport::Type` in the current scope
+error[E0599]: no associated function or constant named `bar` found for struct `dep_2_reexport::Type` in the current scope
   --> replaced
    |
 LL |     Type::bar();
-   |           ^^^ function or associated item not found in `dep_2_reexport::Type`
+   |           ^^^ associated function or constant not found in `dep_2_reexport::Type`
    |
 note: there are multiple different versions of crate `dependency` in the dependency graph
   --> replaced
@@ -177,14 +177,14 @@ LL |     Err(Error2)?;
    |     this can't be annotated with `?` because it has type `Result<_, Error2>`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-help: the following other types implement trait `From<T>`
+help: `dependency::OtherError` implements trait `From<T>`
   --> replaced
    |
 LL | impl From<()> for OtherError {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dependency::OtherError` implements `From<()>`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `From<()>`
 ...
 LL | impl From<i32> for OtherError {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dependency::OtherError` implements `From<i32>`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `From<i32>`
    = note: there are multiple different versions of crate `dependency` in the dependency graph
    = help: you can use `cargo tree` to explore your dependency tree
 

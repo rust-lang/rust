@@ -4,19 +4,19 @@ use clippy_utils::mir::{PossibleBorrowerMap, enclosing_mir, expr_local, local_as
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::{DefinedTy, ExprUseNode, expr_use_ctxt, peel_n_hir_expr_refs, sym};
+use clippy_utils::{DefinedTy, ExprUseNode, get_expr_use_site, peel_n_hir_expr_refs, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{Body, Expr, ExprKind, Mutability, Path, QPath};
 use rustc_index::bit_set::DenseBitSet;
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_infer::infer::TyCtxtInferExt as _;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::{
-    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionPredicate, Ty,
+    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionClause, Ty, Unnormalized,
 };
-use rustc_session::impl_lint_pass;
+use rustc_span::SyntaxContext;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::collections::VecDeque;
@@ -73,7 +73,7 @@ impl NeedlessBorrowsForGenericArgs<'_> {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             possible_borrowers: Vec::new(),
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
         }
     }
 }
@@ -82,10 +82,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if matches!(expr.kind, ExprKind::AddrOf(..))
             && !expr.span.from_expansion()
-            && let use_cx = expr_use_ctxt(cx, expr)
-            && use_cx.same_ctxt
-            && !use_cx.is_ty_unified
-            && let use_node = use_cx.use_node(cx)
+            && let use_site = get_expr_use_site(cx.tcx, cx.typeck_results(), SyntaxContext::root(), expr)
+            && use_site.same_ctxt
+            && !use_site.is_ty_unified
+            && let use_node = use_site.use_node(cx)
             && let Some(DefinedTy::Mir { def_site_def_id: _, ty }) = use_node.defined_ty(cx)
             && let ty::Param(param_ty) = *ty.skip_binder().kind()
             && let Some((hir_id, fn_id, i)) = match use_node {
@@ -178,12 +178,17 @@ fn needless_borrow_count<'tcx>(
     let meta_sized_trait_def_id = cx.tcx.lang_items().meta_sized_trait();
     let drop_trait_def_id = cx.tcx.lang_items().drop_trait();
 
-    let fn_sig = cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder();
-    let predicates = cx.tcx.param_env(fn_id).caller_bounds();
-    let projection_predicates = predicates
+    let fn_sig = cx
+        .tcx
+        .fn_sig(fn_id)
+        .instantiate_identity()
+        .skip_norm_wip()
+        .skip_binder();
+    let clauses = cx.tcx.param_env(fn_id).caller_bounds().collect::<Vec<_>>();
+    let projection_predicates = clauses
         .iter()
-        .filter_map(|predicate| {
-            if let ClauseKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
+        .filter_map(|clause| {
+            if let ClauseKind::Projection(projection_predicate) = clause.kind().skip_binder() {
                 Some(projection_predicate)
             } else {
                 None
@@ -194,10 +199,10 @@ fn needless_borrow_count<'tcx>(
     let mut trait_with_ref_mut_self_method = false;
 
     // If no traits were found, or only the `Destruct`, `Sized`, or `Any` traits were found, return.
-    if predicates
+    if clauses
         .iter()
-        .filter_map(|predicate| {
-            if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
+        .filter_map(|clause| {
+            if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
                 && trait_predicate.trait_ref.self_ty() == param_ty.to_ty(cx.tcx)
             {
                 Some(trait_predicate.trait_ref.def_id)
@@ -266,8 +271,8 @@ fn needless_borrow_count<'tcx>(
             return false;
         }
 
-        predicates.iter().all(|predicate| {
-            if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
+        clauses.iter().all(|&clause| {
+            if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
                 && cx
                     .tcx
                     .is_diagnostic_item(sym::IntoIterator, trait_predicate.trait_ref.def_id)
@@ -279,8 +284,10 @@ fn needless_borrow_count<'tcx>(
                 return false;
             }
 
-            let predicate = EarlyBinder::bind(predicate).instantiate(cx.tcx, &args_with_referent_ty[..]);
-            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
+            let clause = EarlyBinder::bind(cx.tcx, clause)
+                .instantiate(cx.tcx, &args_with_referent_ty[..])
+                .skip_norm_wip();
+            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, clause);
             let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
             infcx.predicate_must_hold_modulo_regions(&obligation)
         })
@@ -307,6 +314,7 @@ fn has_ref_mut_self_method(cx: &LateContext<'_>, trait_def_id: DefId) -> bool {
                     .tcx
                     .fn_sig(assoc_item.def_id)
                     .instantiate_identity()
+                    .skip_norm_wip()
                     .skip_binder()
                     .inputs()[0];
                 matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Mut))
@@ -319,7 +327,7 @@ fn has_ref_mut_self_method(cx: &LateContext<'_>, trait_def_id: DefId) -> bool {
 fn is_mixed_projection_predicate<'tcx>(
     cx: &LateContext<'tcx>,
     callee_def_id: DefId,
-    projection_predicate: &ProjectionPredicate<'tcx>,
+    projection_predicate: &ProjectionClause<'tcx>,
 ) -> bool {
     let generics = cx.tcx.generics_of(callee_def_id);
     // The predicate requires the projected type to equal a type parameter from the parent context.
@@ -331,7 +339,13 @@ fn is_mixed_projection_predicate<'tcx>(
         let mut projection_term = projection_predicate.projection_term;
         loop {
             match *projection_term.self_ty().kind() {
-                ty::Alias(ty::Projection, inner_projection_ty) => {
+                ty::Alias(
+                    _,
+                    inner_projection_ty @ ty::AliasTy {
+                        kind: ty::Projection { .. },
+                        ..
+                    },
+                ) => {
                     projection_term = inner_projection_ty.into();
                 },
                 ty::Param(param_ty) => {
@@ -342,9 +356,8 @@ fn is_mixed_projection_predicate<'tcx>(
                 },
             }
         }
-    } else {
-        false
     }
+    false
 }
 
 fn referent_used_exactly_once<'tcx>(
@@ -357,7 +370,7 @@ fn referent_used_exactly_once<'tcx>(
         && let [location] = *local_assignments(mir, local).as_slice()
         && let block_data = &mir.basic_blocks[location.block]
         && let Some(statement) = block_data.statements.get(location.statement_index)
-        && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
+        && let StatementKind::Assign((_, Rvalue::Ref(_, _, place))) = statement.kind
         && !place.is_indirect_first_projection()
     {
         let body_owner_local_def_id = cx.tcx.hir_enclosing_body_owner(reference.hir_id);
@@ -388,7 +401,7 @@ fn replace_types<'tcx>(
     new_ty: Ty<'tcx>,
     fn_sig: FnSig<'tcx>,
     arg_index: usize,
-    projection_predicates: &[ProjectionPredicate<'tcx>],
+    projection_predicates: &[ProjectionClause<'tcx>],
     args: &mut [GenericArg<'tcx>],
 ) -> bool {
     let mut replaced = DenseBitSet::new_empty(args.len());
@@ -419,10 +432,12 @@ fn replace_types<'tcx>(
                     let projection = projection_predicate
                         .projection_term
                         .with_replaced_self_ty(cx.tcx, new_ty)
-                        .expect_ty(cx.tcx)
-                        .to_ty(cx.tcx);
+                        .expect_ty()
+                        .to_ty(cx.tcx, ty::IsRigid::No);
 
-                    if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), projection)
+                    if let Ok(projected_ty) = cx
+                        .tcx
+                        .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(projection))
                         && args[term_param_ty.index as usize] != GenericArg::from(projected_ty)
                     {
                         deque.push_back((*term_param_ty, projected_ty));

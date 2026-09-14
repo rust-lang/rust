@@ -34,10 +34,13 @@ thir = "thir"
 jod = "jod"
 tructure = "tructure"
 taits = "taits"
+inh = "inh"
 
 [default.extend-identifiers]
 anc = "anc"
 datas = "datas"
 impl_froms = "impl_froms"
+implicits = "implicits"
 selfs = "selfs"
 taits = "taits"
+verifys = "verifys"

@@ -93,7 +93,7 @@ fn parse_lp_cmd_line(code_units: &[u16]) -> Option<Vec<OsString>> {
             // If not `in_quotes`, a space or tab ends the argument.
             SPACE if !in_quotes => {
                 ret_val.push(OsString::from(&cur[..]));
-                cur.truncate(0);
+                cur.clear();
 
                 // Skip whitespace.
                 while code_units_iter.next_if_eq(&Ok(SPACE)).is_some() {}

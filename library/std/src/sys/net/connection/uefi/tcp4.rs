@@ -20,6 +20,24 @@ pub(crate) struct Tcp4 {
 
 const DEFAULT_ADDR: efi::Ipv4Address = efi::Ipv4Address { addr: [0u8; 4] };
 
+const DEFAULT_CONTROL_OPTION: tcp4::Option = tcp4::Option {
+    receive_buffer_size: 0,
+    send_buffer_size: 0,
+    max_syn_back_log: 0,
+    connection_timeout: 0,
+    data_retries: 0,
+    fin_timeout: 0,
+    time_wait_timeout: 0,
+    keep_alive_probes: 0,
+    keep_alive_time: 0,
+    keep_alive_interval: 0,
+    enable_nagle: efi::Boolean::FALSE,
+    enable_time_stamp: efi::Boolean::FALSE,
+    enable_window_scaling: efi::Boolean::FALSE,
+    enable_selective_ack: efi::Boolean::FALSE,
+    enable_path_mtu_discovery: efi::Boolean::FALSE,
+};
+
 impl Tcp4 {
     pub(crate) fn new() -> io::Result<Self> {
         let (service_binding, handle) =
@@ -71,22 +89,35 @@ impl Tcp4 {
         if r.is_error() { Err(crate::io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
     }
 
-    pub(crate) fn get_mode_data(&self) -> io::Result<tcp4::ConfigData> {
-        let mut config_data = tcp4::ConfigData::default();
+    fn get_mode_data_into(&self, config_data: &mut tcp4::ConfigData) -> io::Result<()> {
         let protocol = self.protocol.as_ptr();
 
         let r = unsafe {
             ((*protocol).get_mode_data)(
                 protocol,
                 ptr::null_mut(),
-                &mut config_data,
+                config_data,
                 ptr::null_mut(),
                 ptr::null_mut(),
                 ptr::null_mut(),
             )
         };
 
-        if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(config_data) }
+        if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
+    }
+
+    pub(crate) fn get_mode_data(&self) -> io::Result<tcp4::ConfigData> {
+        let mut config_data = tcp4::ConfigData::default();
+        self.get_mode_data_into(&mut config_data)?;
+        Ok(config_data)
+    }
+
+    pub(crate) fn get_control_option(&self) -> io::Result<tcp4::Option> {
+        let mut control_option = DEFAULT_CONTROL_OPTION;
+        let mut config_data =
+            tcp4::ConfigData { control_option: &mut control_option, ..Default::default() };
+        self.get_mode_data_into(&mut config_data)?;
+        Ok(control_option)
     }
 
     pub(crate) fn accept(&self) -> io::Result<Self> {

@@ -1,0 +1,2 @@
+error: could not create LLVM MCSubtargetInfo for triple: not-a-real-target: No available targets are compatible with triple "not-a-real-target"
+

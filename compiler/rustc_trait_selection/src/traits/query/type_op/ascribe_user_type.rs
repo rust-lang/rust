@@ -1,10 +1,11 @@
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::traits::Obligation;
 use rustc_middle::traits::query::NoSolution;
 pub use rustc_middle::traits::query::type_op::AscribeUserType;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, UserArgs, UserSelfTy, UserTypeKind};
+use rustc_middle::ty::{
+    self, ParamEnvAnd, Ty, TyCtxt, Unnormalized, UserArgs, UserSelfTy, UserTypeKind,
+};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
@@ -26,14 +27,6 @@ impl<'tcx> super::QueryTypeOp<'tcx> for AscribeUserType<'tcx> {
         canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, ()>, NoSolution> {
         tcx.type_op_ascribe_user_type(canonicalized)
-    }
-
-    fn perform_locally_with_next_solver(
-        ocx: &ObligationCtxt<'_, 'tcx>,
-        key: ParamEnvAnd<'tcx, Self>,
-        span: Span,
-    ) -> Result<Self::QueryResponse, NoSolution> {
-        type_op_ascribe_user_type_with_span(ocx, key, span)
     }
 }
 
@@ -78,7 +71,7 @@ fn relate_mir_and_user_ty<'tcx>(
         ty::ClauseKind::WellFormed(user_ty.into()),
     ));
 
-    let user_ty = ocx.normalize(&cause, param_env, user_ty);
+    let user_ty = ocx.normalize(&cause, param_env, Unnormalized::new_wip(user_ty));
     ocx.eq(&cause, param_env, mir_ty, user_ty)?;
 
     Ok(())
@@ -97,50 +90,30 @@ fn relate_mir_and_user_args<'tcx>(
     let tcx = ocx.infcx.tcx;
     let cause = ObligationCause::dummy_with_span(span);
 
-    // For IACs, the user args are in the format [SelfTy, GAT_args...] but type_of expects [impl_args..., GAT_args...].
-    // We need to infer the impl args by equating the impl's self type with the user-provided self type.
-    let is_inherent_assoc_const = matches!(tcx.def_kind(def_id), DefKind::AssocConst { .. })
-        && tcx.def_kind(tcx.parent(def_id)) == DefKind::Impl { of_trait: false }
-        && tcx.is_type_const(def_id);
-
-    let args = if is_inherent_assoc_const {
-        let impl_def_id = tcx.parent(def_id);
-        let impl_args = ocx.infcx.fresh_args_for_item(span, impl_def_id);
-        let impl_self_ty =
-            ocx.normalize(&cause, param_env, tcx.type_of(impl_def_id).instantiate(tcx, impl_args));
-        let user_self_ty = ocx.normalize(&cause, param_env, args[0].expect_ty());
-        ocx.eq(&cause, param_env, impl_self_ty, user_self_ty)?;
-
-        let gat_args = &args[1..];
-        tcx.mk_args_from_iter(impl_args.iter().chain(gat_args.iter().copied()))
-    } else {
-        args
-    };
-
     let ty = tcx.type_of(def_id).instantiate(tcx, args);
     let ty = ocx.normalize(&cause, param_env, ty);
     debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
 
     ocx.eq(&cause, param_env, mir_ty, ty)?;
 
-    // Prove the predicates coming along with `def_id`.
+    // Prove the clauses coming along with `def_id`.
     //
-    // Also, normalize the `instantiated_predicates`
+    // Also, normalize the `instantiated_clauses`
     // because otherwise we wind up with duplicate "type
     // outlives" error messages.
-    let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
+    let instantiated_clauses = tcx.clauses_of(def_id).instantiate(tcx, args);
 
-    debug!(?instantiated_predicates);
-    for (instantiated_predicate, predicate_span) in instantiated_predicates {
-        let span = if span == DUMMY_SP { predicate_span } else { span };
+    debug!(?instantiated_clauses);
+    for (instantiated_clause, clause_span) in instantiated_clauses {
+        let span = if span == DUMMY_SP { clause_span } else { span };
         let cause = ObligationCause::new(
             span,
             CRATE_DEF_ID,
-            ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span),
+            ObligationCauseCode::AscribeUserTypeProvePredicate(clause_span),
         );
-        let instantiated_predicate = ocx.normalize(&cause, param_env, instantiated_predicate);
+        let instantiated_clause = ocx.normalize(&cause, param_env, instantiated_clause);
 
-        ocx.register_obligation(Obligation::new(tcx, cause, param_env, instantiated_predicate));
+        ocx.register_obligation(Obligation::new(tcx, cause, param_env, instantiated_clause));
     }
 
     // Now prove the well-formedness of `def_id` with `args`.
@@ -169,9 +142,9 @@ fn relate_mir_and_user_args<'tcx>(
             ty::ClauseKind::WellFormed(self_ty.into()),
         ));
 
-        let self_ty = ocx.normalize(&cause, param_env, self_ty);
-        let impl_self_ty = tcx.type_of(impl_def_id).instantiate(tcx, args);
-        let impl_self_ty = ocx.normalize(&cause, param_env, impl_self_ty);
+        let self_ty = ocx.normalize(&cause, param_env, Unnormalized::new_wip(self_ty));
+        let impl_self_ty = tcx.type_of(impl_def_id).instantiate(tcx, args).skip_norm_wip();
+        let impl_self_ty = ocx.normalize(&cause, param_env, Unnormalized::new_wip(impl_self_ty));
 
         ocx.eq(&cause, param_env, self_ty, impl_self_ty)?;
     }

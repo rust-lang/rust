@@ -15,7 +15,7 @@ help: this trait has no implementations, consider adding one
 LL | pub trait Foo {
    | ^^^^^^^^^^^^^
 
-error[E0275]: overflow evaluating the requirement `Bar<T> well-formed`
+error[E0275]: overflow evaluating whether `Bar<T>` is well-formed
   --> $DIR/issue-64855.rs:9:46
    |
 LL | pub struct Bar<T>(<Self as Foo>::Type) where Self: ;

@@ -1,4 +1,4 @@
-//@ revisions: rpass1 cfail2
+//@ revisions: rpass1 bfail2
 //@ compile-flags: -Z query-dep-graph
 //@ ignore-backends: gcc
 
@@ -11,25 +11,25 @@
 
 fn main() {
 
-    #[rustc_clean(except="hir_owner", cfg="cfail2")]
-    //[cfail2]~^ ERROR found unchecked `#[rustc_clean]` attribute
+    #[rustc_clean(except="hir_owner", cfg="bfail2")]
+    //[bfail2]~^ ERROR found unchecked `#[rustc_clean]` attribute
     {
         // empty block
     }
 
-    #[rustc_clean(cfg="cfail2")]
-    //[cfail2]~^ ERROR found unchecked `#[rustc_clean]` attribute
+    #[rustc_clean(cfg="bfail2")]
+    //[bfail2]~^ ERROR found unchecked `#[rustc_clean]` attribute
     {
         // empty block
     }
 }
 
 struct _Struct {
-    #[rustc_clean(except="hir_owner", cfg="cfail2")]
-    //[cfail2]~^ ERROR found unchecked `#[rustc_clean]` attribute
+    #[rustc_clean(except="hir_owner", cfg="bfail2")]
+    //[bfail2]~^ ERROR found unchecked `#[rustc_clean]` attribute
     _field1: i32,
 
-    #[rustc_clean(cfg="cfail2")]
-    //[cfail2]~^ ERROR found unchecked `#[rustc_clean]` attribute
+    #[rustc_clean(cfg="bfail2")]
+    //[bfail2]~^ ERROR found unchecked `#[rustc_clean]` attribute
     _field2: i32,
 }

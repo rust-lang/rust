@@ -1,9 +1,11 @@
-//@revisions: stack tree
+//@revisions: stack tree tree_iwrites
 //@[tree]compile-flags: -Zmiri-tree-borrows
+//@[tree_iwrites]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 use std::mem;
 
 fn safe(x: &mut i32, y: &mut i32) {
     //~[stack]^ ERROR: protect
+    //~[tree_iwrites]^^ ERROR: /Undefined Behavior: reborrow through .* at .* is forbidden/
     *x = 1; //~[tree] ERROR: /write access through .* is forbidden/
     *y = 2;
 }

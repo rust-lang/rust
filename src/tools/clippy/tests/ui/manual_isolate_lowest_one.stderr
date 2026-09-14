@@ -1,0 +1,59 @@
+error: manual implementation of `isolate_lowest_one`
+  --> tests/ui/manual_isolate_lowest_one.rs:7:13
+   |
+LL |     let _ = x_u32 & x_u32.wrapping_neg();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.isolate_lowest_one()`: `x_u32.isolate_lowest_one()`
+   |
+   = note: `-D clippy::manual-isolate-lowest-one` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_isolate_lowest_one)]`
+
+error: manual implementation of `isolate_lowest_one`
+  --> tests/ui/manual_isolate_lowest_one.rs:11:13
+   |
+LL |     let _ = x_i32 & -x_i32;
+   |             ^^^^^^^^^^^^^^ help: consider using `.isolate_lowest_one()`: `x_i32.isolate_lowest_one()`
+
+error: manual implementation of `isolate_lowest_one`
+  --> tests/ui/manual_isolate_lowest_one.rs:15:13
+   |
+LL |     let _ = x_u64.wrapping_neg() & x_u64;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.isolate_lowest_one()`: `x_u64.isolate_lowest_one()`
+
+error: manual implementation of `isolate_lowest_one`
+  --> tests/ui/manual_isolate_lowest_one.rs:19:13
+   |
+LL |     let _ = -x_i64 & x_i64;
+   |             ^^^^^^^^^^^^^^ help: consider using `.isolate_lowest_one()`: `x_i64.isolate_lowest_one()`
+
+error: manual implementation of `isolate_lowest_one`
+  --> tests/ui/manual_isolate_lowest_one.rs:23:13
+   |
+LL |     let _ = nz_u32.get() & nz_u32.get().wrapping_neg();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.isolate_lowest_one()`: `nz_u32.isolate_lowest_one().get()`
+
+error: manual implementation of `isolate_lowest_one`
+  --> tests/ui/manual_isolate_lowest_one.rs:25:13
+   |
+LL |     let _ = nz_u32.get().wrapping_neg() & nz_u32.get();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.isolate_lowest_one()`: `nz_u32.isolate_lowest_one().get()`
+
+error: manual implementation of `isolate_lowest_one`
+  --> tests/ui/manual_isolate_lowest_one.rs:29:13
+   |
+LL |     let _ = nz_i32.get() & -nz_i32.get();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.isolate_lowest_one()`: `nz_i32.isolate_lowest_one().get()`
+
+error: manual implementation of `isolate_lowest_one`
+  --> tests/ui/manual_isolate_lowest_one.rs:31:13
+   |
+LL |     let _ = -nz_i32.get() & nz_i32.get();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.isolate_lowest_one()`: `nz_i32.isolate_lowest_one().get()`
+
+error: manual implementation of `isolate_lowest_one`
+  --> tests/ui/manual_isolate_lowest_one.rs:82:13
+   |
+LL |     let _ = x & x.wrapping_neg();
+   |             ^^^^^^^^^^^^^^^^^^^^ help: consider using `.isolate_lowest_one()`: `x.isolate_lowest_one()`
+
+error: aborting due to 9 previous errors
+

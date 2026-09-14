@@ -1,4 +1,5 @@
-//@revisions: stack tree
+//@revisions: stack tree tree_implicit_writes
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@compile-flags: -Zmiri-strict-provenance
 //@[tree]compile-flags: -Zmiri-tree-borrows
 
@@ -6,7 +7,7 @@
 // please consider modifying rustc's async drop test at
 // `tests/ui/async-await/async-drop/async-drop-initial.rs`.
 
-#![feature(async_drop, impl_trait_in_assoc_type)]
+#![feature(async_drop)]
 #![allow(incomplete_features, dead_code)]
 
 // FIXME(zetanumbers): consider AsyncDestruct::async_drop cleanup tests
@@ -18,7 +19,7 @@ use core::task::{Context, Poll, Waker};
 
 async fn test_async_drop<T>(x: T) {
     let mut x = mem::MaybeUninit::new(x);
-    let dtor = pin!(unsafe { async_drop_in_place(x.as_mut_ptr()) });
+    let dtor = pin!(unsafe { async_drop_in_place(&mut *x.as_mut_ptr()) });
     test_idempotency(dtor).await;
 }
 
@@ -69,7 +70,7 @@ fn main() {
             .await;
 
         let mut ptr19 = mem::MaybeUninit::new(AsyncInt(19));
-        let async_drop_fut = pin!(unsafe { async_drop_in_place(ptr19.as_mut_ptr()) });
+        let async_drop_fut = pin!(unsafe { async_drop_in_place(&mut *ptr19.as_mut_ptr()) });
         test_idempotency(async_drop_fut).await;
 
         let foo = AsyncInt(20);

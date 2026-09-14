@@ -1,16 +1,16 @@
 error[E0515]: cannot return value referencing function parameter
-  --> $DIR/regions-ref-in-fn-arg.rs:5:5
+  --> $DIR/regions-ref-in-fn-arg.rs:2:5
    |
-LL | fn arg_item(box ref x: Box<isize>) -> &'static isize {
-   |             --------- function parameter borrowed here
+LL | fn arg_item(ref x: Box<isize>) -> &'static isize {
+   |             ----- function parameter borrowed here
 LL |     x
    |     ^ returns a value referencing data owned by the current function
 
 error[E0515]: cannot return value referencing function parameter
-  --> $DIR/regions-ref-in-fn-arg.rs:11:22
+  --> $DIR/regions-ref-in-fn-arg.rs:8:18
    |
-LL |     with(|box ref x| x)
-   |           ---------  ^ returns a value referencing data owned by the current function
+LL |     with(|ref x| x)
+   |           -----  ^ returns a value referencing data owned by the current function
    |           |
    |           function parameter borrowed here
 

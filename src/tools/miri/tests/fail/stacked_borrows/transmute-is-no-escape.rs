@@ -2,7 +2,7 @@
 // (i.e, no EscapeToRaw happened).
 // We could, in principle, do EscapeToRaw lazily to allow this code, but that
 // would no alleviate the need for EscapeToRaw (see `ref_raw_int_raw` in
-// `run-pass/stacked-borrows.rs`), and thus increase overall complexity.
+// `pass/both_borrows/int-to-ptr.rs`), and thus increase overall complexity.
 use std::mem;
 
 fn main() {

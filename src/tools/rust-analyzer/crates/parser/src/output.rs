@@ -14,11 +14,11 @@ use crate::SyntaxKind;
 #[derive(Default)]
 pub struct Output {
     /// 32-bit encoding of events. If LSB is zero, then that's an index into the
-    /// error vector. Otherwise, it's one of the thee other variants, with data encoded as
+    /// error vector. Otherwise, it's one of the three other variants, with data encoded as
     ///
     /// ```text
     /// |16 bit kind|8 bit n_input_tokens|4 bit tag|4 bit leftover|
-    /// ``````
+    /// ```
     event: Vec<u32>,
     error: Vec<String>,
 }
@@ -33,6 +33,14 @@ pub enum Step<'a> {
 }
 
 impl Output {
+    /// Preallocate the event buffer. Each `Event` in the input stream maps to
+    /// roughly one `u32` in the output, so passing the event count as the
+    /// initial capacity avoids most of the amortized `Vec::grow` allocations
+    /// during `event::process`.
+    pub(crate) fn with_event_capacity(cap: usize) -> Self {
+        Output { event: Vec::with_capacity(cap), error: Vec::new() }
+    }
+
     const EVENT_MASK: u32 = 0b1;
     const TAG_MASK: u32 = 0x0000_00F0;
     const N_INPUT_TOKEN_MASK: u32 = 0x0000_FF00;

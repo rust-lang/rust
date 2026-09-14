@@ -1,7 +1,7 @@
 use std::fmt;
 
 use rustc_ast::Mutability;
-use rustc_macros::HashStable;
+use rustc_macros::StableHash;
 use rustc_type_ir::elaborate;
 
 use crate::mir::interpret::{
@@ -9,7 +9,7 @@ use crate::mir::interpret::{
 };
 use crate::ty::{self, Instance, TraitRef, Ty, TyCtxt};
 
-#[derive(Clone, Copy, PartialEq, HashStable)]
+#[derive(Clone, Copy, PartialEq, StableHash)]
 pub enum VtblEntry<'tcx> {
     /// destructor of this type (used in vtable header)
     MetadataDropInPlace,
@@ -122,7 +122,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
         let scalar = match *entry {
             VtblEntry::MetadataDropInPlace => {
                 if ty.needs_drop(tcx, ty::TypingEnv::fully_monomorphized()) {
-                    let instance = ty::Instance::resolve_drop_in_place(tcx, ty);
+                    let instance = ty::Instance::resolve_drop_glue(tcx, ty);
                     let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT);
                     let fn_ptr = Pointer::from(fn_alloc_id);
                     Scalar::from_pointer(fn_ptr, &tcx)

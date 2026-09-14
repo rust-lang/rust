@@ -1,8 +1,11 @@
+use std::assert_matches;
+
 use itertools::Itertools as _;
 use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
+use rustc_index::IndexVec;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Mutability, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::config::OptLevel;
 use tracing::{debug, instrument};
@@ -15,6 +18,84 @@ use crate::traits::*;
 use crate::{MemFlags, base};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    fn try_codegen_const_aggregate_as_immediate(
+        &mut self,
+        bx: &mut Bx,
+        dest: PlaceRef<'tcx, Bx::Value>,
+        kind: &mir::AggregateKind<'tcx>,
+        operands: &IndexVec<abi::FieldIdx, mir::Operand<'tcx>>,
+    ) -> bool {
+        // Keep this allowlist limited to aggregate kinds with direct codegen coverage.
+        // Extract the variant index at the same time so we can verify it against
+        // the layout below. Tuples always use `FIRST_VARIANT` (index 0); the
+        // `None` in the `Adt` arm excludes unions (which carry an active field).
+        let variant_index = match kind {
+            mir::AggregateKind::Tuple => FIRST_VARIANT,
+            mir::AggregateKind::Adt(_, variant_index, _, _, None) => *variant_index,
+            _ => return false,
+        };
+        if !matches!(dest.layout.fields, abi::FieldsShape::Arbitrary { .. }) {
+            return false;
+        }
+        // `dest.layout` is the layout of the *overall* type, not a specific
+        // variant. When the layout is `Variants::Single { index: M }`, the
+        // field offsets and counts below all refer to variant M. If the MIR
+        // aggregate is constructing a different variant N (e.g. because N is
+        // uninhabited and the layout collapsed to M), using `dest.layout`
+        // directly would read the wrong field metadata. Bail out and let the
+        // normal codegen path handle it via `project_downcast`.
+        if !matches!(dest.layout.variants, abi::Variants::Single { index } if index == variant_index)
+        {
+            return false;
+        }
+        // Now that the variant indices are known to match, the operand count
+        // and the layout field count must agree.
+        debug_assert_eq!(operands.len(), dest.layout.fields.count());
+
+        let size = dest.layout.size.bytes();
+        let llty = match size {
+            1 => bx.cx().type_i8(),
+            2 => bx.cx().type_i16(),
+            4 => bx.cx().type_i32(),
+            8 => bx.cx().type_i64(),
+            16 => bx.cx().type_i128(),
+            _ => return false,
+        };
+
+        let mut value = 0u128;
+        for (field_idx, operand) in operands.iter_enumerated() {
+            let field_layout = dest.layout.field(bx.cx(), field_idx.as_usize());
+            if field_layout.is_zst() {
+                continue;
+            }
+            let mir::Operand::Constant(constant) = operand else {
+                return false;
+            };
+            let Some(field_value) = self.eval_mir_constant(constant).try_to_bits(field_layout.size)
+            else {
+                return false;
+            };
+
+            let field_size = field_layout.size.bytes();
+            let field_offset = dest.layout.fields.offset(field_idx.as_usize()).bytes();
+            debug_assert!(field_offset + field_size <= size);
+            let shift = match bx.tcx().data_layout.endian {
+                abi::Endian::Little => field_offset * 8,
+                abi::Endian::Big => (size - field_offset - field_size) * 8,
+            };
+            value |= field_value << shift;
+        }
+
+        let value = bx.cx().const_uint_big(llty, value);
+        bx.store_to_place(value, dest.val);
+        true
+    }
+
+    fn is_entirely_uninit_const(&self, operand: &mir::Operand<'tcx>) -> bool {
+        let mir::Operand::Constant(const_op) = operand else { return false };
+        self.eval_mir_constant(const_op).all_bytes_uninit(self.cx.tcx())
+    }
+
     #[instrument(level = "trace", skip(self, bx))]
     pub(crate) fn codegen_rvalue(
         &mut self,
@@ -23,12 +104,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         rvalue: &mir::Rvalue<'tcx>,
     ) {
         match *rvalue {
-            mir::Rvalue::Use(ref operand) => {
-                if let mir::Operand::Constant(const_op) = operand {
-                    let val = self.eval_mir_constant(&const_op);
-                    if val.all_bytes_uninit(self.cx.tcx()) {
-                        return;
-                    }
+            mir::Rvalue::Use(ref operand, with_retag) => {
+                if self.is_entirely_uninit_const(operand) {
+                    return;
                 }
                 let cg_operand = self.codegen_operand(bx, operand);
                 // Crucially, we do *not* use `OperandValue::Ref` for types with
@@ -36,13 +114,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // semantics regarding when assignment operators allow overlap of LHS and RHS.
                 if matches!(
                     cg_operand.layout.backend_repr,
-                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..),
+                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. },
                 ) {
                     debug_assert!(!matches!(cg_operand.val, OperandValue::Ref(..)));
                 }
+                // If this is storing a &Freeze reference with a retag, record that it's not
+                // possible to perform writes through the stored pointer.
+                let flags = if let ty::Ref(_, pointee_ty, Mutability::Not) =
+                    cg_operand.layout.ty.kind()
+                    && with_retag.yes()
+                    && pointee_ty.is_freeze(self.cx.tcx(), self.cx.typing_env())
+                {
+                    MemFlags::CAPTURES_READ_ONLY
+                } else {
+                    MemFlags::empty()
+                };
                 // FIXME: consider not copying constants through stack. (Fixable by codegen'ing
                 // constants into `OperandValue::Ref`; why don’t we do that yet if we don’t?)
-                cg_operand.store_with_annotation(bx, dest);
+                cg_operand.store_with_annotation_and_flags(bx, dest, flags);
             }
 
             mir::Rvalue::Cast(
@@ -52,7 +141,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             ) => {
                 // The destination necessarily contains a wide pointer, so if
                 // it's a scalar pair, it's a wide pointer or newtype thereof.
-                if bx.cx().is_backend_scalar_pair(dest.layout) {
+                if let BackendRepr::ScalarPair { .. } = dest.layout.backend_repr {
                     // Into-coerce of a thin pointer to a wide pointer -- just
                     // use the operand path.
                     let temp = self.codegen_rvalue_operand(bx, rvalue);
@@ -109,19 +198,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 // When the element is a const with all bytes uninit, emit a single memset that
                 // writes undef to the entire destination.
-                if let mir::Operand::Constant(const_op) = elem {
-                    let val = self.eval_mir_constant(const_op);
-                    if val.all_bytes_uninit(self.cx.tcx()) {
-                        let size = bx.const_usize(dest.layout.size.bytes());
-                        bx.memset(
-                            dest.val.llval,
-                            bx.const_undef(bx.type_i8()),
-                            size,
-                            dest.val.align,
-                            MemFlags::empty(),
-                        );
-                        return;
-                    }
+                if self.is_entirely_uninit_const(elem) {
+                    let size = bx.const_usize(dest.layout.size.bytes());
+                    bx.memset(
+                        dest.val.llval,
+                        bx.const_undef(bx.type_i8()),
+                        size,
+                        dest.val.align,
+                        MemFlags::empty(),
+                    );
+                    return;
                 }
 
                 let cg_elem = self.codegen_operand(bx, elem);
@@ -168,6 +254,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Aggregate(ref kind, ref operands)
                 if !matches!(**kind, mir::AggregateKind::RawPtr(..)) =>
             {
+                if self.try_codegen_const_aggregate_as_immediate(bx, dest, kind, operands) {
+                    return;
+                }
+
                 let (variant_index, variant_dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
                         let variant_dest = dest.project_downcast(bx, variant_index);
@@ -179,6 +269,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     assert_eq!(operands.len(), 1);
                 }
                 for (i, operand) in operands.iter_enumerated() {
+                    // Do not generate stores for entirely uninit constant fields, for the same
+                    // reason as in `Rvalue::Use` above.
+                    if self.is_entirely_uninit_const(operand) {
+                        continue;
+                    }
                     let op = self.codegen_operand(bx, operand);
                     // Do not generate stores and GEPis for zero-sized fields.
                     if !op.layout.is_zst() {
@@ -303,10 +398,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandValue::Immediate(bx.bitcast(imm, to_backend_ty))
             }
             (
+                OperandValue::Immediate(imm),
+                abi::BackendRepr::SimdScalableVector { element: from_scalar, .. },
+                abi::BackendRepr::SimdScalableVector { element: to_scalar, .. },
+            ) if vector_can_bitcast(from_scalar) && vector_can_bitcast(to_scalar) => {
+                let to_backend_ty = bx.cx().immediate_backend_type(cast);
+                OperandValue::Immediate(bx.bitcast(imm, to_backend_ty))
+            }
+            (
                 OperandValue::Pair(imm_a, imm_b),
-                abi::BackendRepr::ScalarPair(in_a, in_b),
-                abi::BackendRepr::ScalarPair(out_a, out_b),
-            ) if in_a.size(cx) == out_a.size(cx) && in_b.size(cx) == out_b.size(cx) => {
+                abi::BackendRepr::ScalarPair { a: in_a, b: in_b, b_offset: in_offset },
+                abi::BackendRepr::ScalarPair { a: out_a, b: out_b, b_offset: out_offset },
+            ) if in_a.size(cx) == out_a.size(cx)
+                && in_b.size(cx) == out_b.size(cx)
+                && in_offset == out_offset =>
+            {
                 OperandValue::Pair(
                     transmute_scalar(bx, imm_a, in_a, out_a),
                     transmute_scalar(bx, imm_b, in_b, out_b),
@@ -399,7 +505,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let val = match *kind {
                     mir::CastKind::PointerExposeProvenance => {
-                        assert!(bx.cx().is_backend_immediate(cast));
+                        assert!(cast.backend_repr.is_scalar_or_simd());
                         let llptr = operand.immediate();
                         let llcast_ty = bx.cx().immediate_backend_type(cast);
                         let lladdr = bx.ptrtoint(llptr, llcast_ty);
@@ -412,10 +518,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     bx.tcx(),
                                     bx.typing_env(),
                                     def_id,
-                                    args,
+                                    args.no_bound_vars().unwrap(),
                                 )
                                 .unwrap();
-                                OperandValue::Immediate(bx.get_fn_addr(instance))
+                                OperandValue::Immediate(
+                                    bx.get_fn_addr(
+                                        instance,
+                                        bx.sess().pointer_authentication_functions(),
+                                    ),
+                                )
                             }
                             _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
                         }
@@ -429,7 +540,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     args,
                                     ty::ClosureKind::FnOnce,
                                 );
-                                OperandValue::Immediate(bx.cx().get_fn_addr(instance))
+                                OperandValue::Immediate(
+                                    bx.cx().get_fn_addr(
+                                        instance,
+                                        bx.sess().pointer_authentication_functions(),
+                                    ),
+                                )
                             }
                             _ => bug!("{} cannot be cast to a fn ptr", operand.layout.ty),
                         }
@@ -439,22 +555,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         operand.val
                     }
                     mir::CastKind::PointerCoercion(PointerCoercion::Unsize, _) => {
-                        assert!(bx.cx().is_backend_scalar_pair(cast));
+                        assert_matches!(cast.backend_repr, BackendRepr::ScalarPair { .. });
                         let (lldata, llextra) = operand.val.pointer_parts();
                         let (lldata, llextra) =
                             base::unsize_ptr(bx, lldata, operand.layout.ty, cast.ty, llextra);
                         OperandValue::Pair(lldata, llextra)
                     }
                     mir::CastKind::PointerCoercion(
-                        PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer, _
+                        PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
+                        _,
                     ) => {
                         bug!("{kind:?} is for borrowck, and should never appear in codegen");
                     }
-                    mir::CastKind::PtrToPtr
-                        if bx.cx().is_backend_scalar_pair(operand.layout) =>
-                    {
+                    mir::CastKind::PtrToPtr if let BackendRepr::ScalarPair { .. } = operand.layout.backend_repr => {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
-                            if bx.cx().is_backend_scalar_pair(cast) {
+                            if let BackendRepr::ScalarPair { .. } = cast.layout.backend_repr {
                                 OperandValue::Pair(data_ptr, meta)
                             } else {
                                 // Cast of wide-ptr to thin-ptr is an extraction of data-ptr.
@@ -475,12 +590,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // path as the other integer-to-X casts.
                     | mir::CastKind::PointerWithExposedProvenance => {
                         let imm = operand.immediate();
-                        let abi::BackendRepr::Scalar(from_scalar) = operand.layout.backend_repr else {
+                        let abi::BackendRepr::Scalar(from_scalar) = operand.layout.backend_repr
+                        else {
                             bug!("Found non-scalar for operand {operand:?}");
                         };
                         let from_backend_ty = bx.cx().immediate_backend_type(operand.layout);
 
-                        assert!(bx.cx().is_backend_immediate(cast));
+                        assert!(cast.backend_repr.is_scalar_or_simd());
                         let to_backend_ty = bx.cx().immediate_backend_type(cast);
                         if operand.layout.is_uninhabited() {
                             let val = OperandValue::Immediate(bx.cx().const_poison(to_backend_ty));
@@ -490,13 +606,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("Found non-scalar for cast {cast:?}");
                         };
 
-                        self.cast_immediate(bx, imm, from_scalar, from_backend_ty, to_scalar, to_backend_ty)
-                            .map(OperandValue::Immediate)
-                            .unwrap_or_else(|| {
-                                bug!("Unsupported cast of {operand:?} to {cast:?}");
-                            })
+                        self.cast_immediate(
+                            bx,
+                            imm,
+                            from_scalar,
+                            from_backend_ty,
+                            to_scalar,
+                            to_backend_ty,
+                        )
+                        .map(OperandValue::Immediate)
+                        .unwrap_or_else(|| {
+                            bug!("Unsupported cast of {operand:?} to {cast:?}");
+                        })
                     }
-                    mir::CastKind::Transmute | mir::CastKind::Subtype => {
+                    mir::CastKind::Transmute | mir::CastKind::BoxDerefTransmute | mir::CastKind::Subtype => {
                         self.codegen_transmute_operand(bx, operand, cast)
                     }
                 };
@@ -507,7 +630,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let mk_ref = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
                     Ty::new_ref(tcx, tcx.lifetimes.re_erased, ty, bk.to_mutbl_lossy())
                 };
-                self.codegen_place_to_pointer(bx, place, mk_ref)
+                let op = self.codegen_place_to_pointer(bx, place, mk_ref);
+                if self.cx.tcx().sess.opts.unstable_opts.codegen_emit_retag.is_some() {
+                    self.codegen_retag_operand(bx, op, false)
+                } else {
+                    op
+                }
+            }
+
+            // Note: Exclusive reborrowing is always equal to a memcpy, as the types do not change.
+            // Generic shared reborrowing is not (necessarily) a simple memcpy, but currently the
+            // coherence check places such restrictions on the CoerceShared trait as to guarantee
+            // that it is.
+            mir::Rvalue::Reborrow(_, _, place) => {
+                self.codegen_operand(bx, &mir::Operand::Copy(place))
             }
 
             mir::Rvalue::RawPtr(kind, place) => {
@@ -517,7 +653,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
 
-            mir::Rvalue::BinaryOp(op_with_overflow, box (ref lhs, ref rhs))
+            mir::Rvalue::BinaryOp(op_with_overflow, (ref lhs, ref rhs))
                 if let Some(op) = op_with_overflow.overflowing_to_wrapping() =>
             {
                 let lhs = self.codegen_operand(bx, lhs);
@@ -537,7 +673,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     move_annotation: None,
                 }
             }
-            mir::Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
+
+            mir::Rvalue::BinaryOp(op, (ref lhs, ref rhs)) => {
                 let lhs = self.codegen_operand(bx, lhs);
                 let rhs = self.codegen_operand(bx, rhs);
                 let llresult = match (lhs.val, rhs.val) {
@@ -601,7 +738,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 };
                 assert!(
-                    val.is_expected_variant_for_type(self.cx, layout),
+                    val.is_expected_variant_for_type(layout),
                     "Made wrong variant {val:?} for type {layout:?}",
                 );
                 OperandRef { val, layout, move_annotation: None }
@@ -625,10 +762,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let static_ = if !def_id.is_local() && bx.cx().tcx().needs_thread_local_shim(def_id)
                 {
                     let instance = ty::Instance {
-                        def: ty::InstanceKind::ThreadLocalShim(def_id),
+                        def: ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(def_id)),
                         args: ty::GenericArgs::empty(),
                     };
-                    let fn_ptr = bx.get_fn_addr(instance);
+                    let fn_ptr =
+                        bx.get_fn_addr(instance, bx.sess().pointer_authentication_functions());
                     let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
                     let fn_ty = bx.fn_decl_backend_type(fn_abi);
                     let fn_attrs = if bx.tcx().def_kind(instance.def_id()).has_codegen_attrs() {
@@ -641,6 +779,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         fn_attrs.as_deref(),
                         Some(fn_abi),
                         fn_ptr,
+                        ReturnSlot::Direct,
                         &[],
                         None,
                         Some(instance),
@@ -650,7 +789,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 OperandRef { val: OperandValue::Immediate(static_), layout, move_annotation: None }
             }
-            mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
+
+            mir::Rvalue::Use(ref operand, _) => self.codegen_operand(bx, operand),
+
             mir::Rvalue::Repeat(ref elem, len_const) => {
                 // All arrays have `BackendRepr::Memory`, so only the ZST cases
                 // end up here. Anything else forces the destination local to be
@@ -666,6 +807,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     move_annotation: None,
                 }
             }
+
             mir::Rvalue::Aggregate(ref kind, ref fields) => {
                 let (variant_index, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
@@ -703,12 +845,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
+
             mir::Rvalue::WrapUnsafeBinder(ref operand, binder_ty) => {
                 let operand = self.codegen_operand(bx, operand);
                 let binder_ty = self.monomorphize(binder_ty);
                 let layout = bx.cx().layout_of(binder_ty);
                 OperandRef { val: operand.val, layout, move_annotation: None }
             }
+
             mir::Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in codegen"),
         }
     }

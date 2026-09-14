@@ -6,11 +6,10 @@
 // tidy-alphabetical-end
 
 mod callbacks;
-pub mod errors;
+pub mod diagnostics;
 pub mod interface;
 mod limits;
 pub mod passes;
-mod proc_macro_decls;
 mod queries;
 pub mod util;
 
