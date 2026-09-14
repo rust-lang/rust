@@ -921,7 +921,10 @@ impl GlobalState {
                         }
                         Err(e) => self.show_message(
                             lsp_types::MessageType::Error,
-                            format!("Failed to spawn project discovery command: {e:#}"),
+                            format!(
+                                "Failed to spawn project discovery command in {}: {e:#}",
+                                current_dir,
+                            ),
                             false,
                         ),
                     }
