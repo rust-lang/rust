@@ -703,7 +703,7 @@ fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResul
             false if *has_type_mismatches => (),
             false => {
                 let pat = &body[pat];
-                if let Pat::ConstBlock(expr) | Pat::Lit(expr) = *pat {
+                if let Pat::Lit(expr) = *pat {
                     *has_type_mismatches |= infer.expr_has_type_mismatch(expr);
                     if *has_type_mismatches {
                         return;
