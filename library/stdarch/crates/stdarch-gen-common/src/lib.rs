@@ -6,6 +6,8 @@ use std::fs;
 use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::str::FromStr;
 
 /// First-line marker identifying an auto-generated file. Generators emit this
 /// as the first line of every file they produce; the harness uses it to
@@ -44,6 +46,20 @@ impl Mode {
             Ok("bless") => Mode::Bless,
             Ok(other) => panic!("unknown STDARCH_GEN_MODE value: {other:?}"),
             Err(_) => Mode::Bless,
+        }
+    }
+}
+
+impl FromStr for Mode {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "check" => Ok(Mode::Check),
+            "bless" => Ok(Mode::Bless),
+            other => Err(format!(
+                "unknown stdarch generation mode: {other:?}. Possible values are `check` or `bless`."
+            )),
         }
     }
 }
@@ -103,6 +119,18 @@ impl From<io::Error> for Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+pub struct GeneratorCtx {
+    rustfmt_path: PathBuf,
+}
+
+impl GeneratorCtx {
+    pub fn new(rustfmt_path: Option<PathBuf>) -> Self {
+        Self {
+            rustfmt_path: rustfmt_path.unwrap_or_else(|| PathBuf::from("rustfmt")),
+        }
+    }
+}
+
 /// Run a generator under the chosen `mode`, reconciling its output with `committed`.
 ///
 /// Arguments:
@@ -121,7 +149,12 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// - [`Mode::Bless`]: runs the generator into a temp dir and copies owned
 ///   files into `committed`, or removes `committed`'s copy if the generator no
 ///   longer produces them.
-pub fn run_generator<F, E>(committed: &Path, mode: Mode, generate: F) -> Result<()>
+pub fn run_generator<F, E>(
+    ctx: &GeneratorCtx,
+    committed: &Path,
+    mode: Mode,
+    generate: F,
+) -> Result<()>
 where
     F: FnOnce(&Path) -> std::result::Result<(), E>,
     E: Into<Box<dyn StdError + Send + Sync>>,
@@ -131,6 +164,14 @@ where
 
     let owned = discover_owned(committed)?;
     let produced = discover_all(scratch.path())?;
+
+    // Format all generated Rust files
+    for file in &produced {
+        let fullpath = scratch.path().join(file);
+        if fullpath.extension().and_then(|s| s.to_str()) == Some("rs") {
+            reformat_file(ctx, &fullpath)?;
+        }
+    }
 
     let mut names: Vec<&String> = owned.iter().chain(produced.iter()).collect();
     names.sort();
@@ -143,6 +184,34 @@ where
         }
     }
     Ok(())
+}
+
+fn reformat_file(ctx: &GeneratorCtx, path: &Path) -> std::io::Result<()> {
+    let file = std::fs::File::open(path)?;
+    let proc = Command::new(&ctx.rustfmt_path)
+        // Ensure that rustfmt config files in other directories won't interfere with the formatting
+        // This is important for usage within the rust-lang/rust repository
+        .arg("--config-path")
+        .arg(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("rustfmt.toml"),
+        )
+        .stdin(Stdio::from(file))
+        .stdout(Stdio::piped())
+        .spawn()?;
+
+    let output = proc.wait_with_output()?;
+    if !output.status.success() {
+        panic!(
+            "Running {:?} on {path:?} failed with exit code {:?}",
+            ctx.rustfmt_path, output.status
+        );
+    }
+    std::fs::write(path, output.stdout)
 }
 
 /// Returns the names of files in `dir` whose first line begins with
