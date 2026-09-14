@@ -1780,7 +1780,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     pub fn into_unique(b: Self) -> (Unique<T>, A) {
         let (ptr, alloc) = Box::into_raw_with_allocator(b);
         // SAFETY: Pointer is valid and unique.
-        unsafe { (Unique::from(&mut *ptr), alloc) }
+        unsafe { (Unique::new_unchecked(ptr), alloc) }
     }
 
     /// Returns a raw mutable pointer to the `Box`'s contents.
