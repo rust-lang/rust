@@ -2489,15 +2489,16 @@ pub(crate) enum UnpredictableFunctionPointerComparisons<'a, 'tcx> {
 #[derive(Subdiagnostic)]
 pub(crate) enum UnpredictableFunctionPointerComparisonsSuggestion<'a, 'tcx> {
     #[multipart_suggestion(
-        "refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint",
+        "refactor your code, or use `{$krate}::ptr::fn_addr_eq` to suppress the lint",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
     FnAddrEq {
+        krate: &'static str,
         ne: &'a str,
         deref_left: &'a str,
         deref_right: &'a str,
-        #[suggestion_part(code = "{ne}std::ptr::fn_addr_eq({deref_left}")]
+        #[suggestion_part(code = "{ne}{krate}::ptr::fn_addr_eq({deref_left}")]
         left: Span,
         #[suggestion_part(code = ", {deref_right}")]
         middle: Span,
@@ -2505,16 +2506,17 @@ pub(crate) enum UnpredictableFunctionPointerComparisonsSuggestion<'a, 'tcx> {
         right: Span,
     },
     #[multipart_suggestion(
-        "refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint",
+        "refactor your code, or use `{$krate}::ptr::fn_addr_eq` to suppress the lint",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
     FnAddrEqWithCast {
+        krate: &'static str,
         ne: &'a str,
         deref_left: &'a str,
         deref_right: &'a str,
         fn_sig: rustc_middle::ty::PolyFnSig<'tcx>,
-        #[suggestion_part(code = "{ne}std::ptr::fn_addr_eq({deref_left}")]
+        #[suggestion_part(code = "{ne}{krate}::ptr::fn_addr_eq({deref_left}")]
         left: Span,
         #[suggestion_part(code = ", {deref_right}")]
         middle: Span,

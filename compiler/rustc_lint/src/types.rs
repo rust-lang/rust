@@ -521,6 +521,14 @@ fn lint_fn_pointer<'tcx>(
     let middle = l_span.shrink_to_hi().until(r_span.shrink_to_lo());
     let right = r_span.shrink_to_hi().until(e.span.shrink_to_hi());
 
+    let Some(krate) = std_or_core(cx) else {
+        return cx.emit_span_lint(
+            UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
+            e.span,
+            UnpredictableFunctionPointerComparisons::Warn,
+        );
+    };
+
     let sugg =
         // We only check for a right cast as `FnDef` == `FnPtr` is not possible,
         // only `FnPtr == FnDef` is possible.
@@ -528,6 +536,7 @@ fn lint_fn_pointer<'tcx>(
             let fn_sig = r_ty.fn_sig(cx.tcx);
 
             UnpredictableFunctionPointerComparisonsSuggestion::FnAddrEqWithCast {
+                krate,
                 ne,
                 fn_sig,
                 deref_left,
@@ -538,6 +547,7 @@ fn lint_fn_pointer<'tcx>(
             }
         } else {
             UnpredictableFunctionPointerComparisonsSuggestion::FnAddrEq {
+                krate,
                 ne,
                 deref_left,
                 deref_right,
