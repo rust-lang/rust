@@ -1597,14 +1597,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::TyKind::Path(path)
             }
             TyKind::FnPtr(f) => {
+                let hir_id = self.lower_node_id(t.id);
                 let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
-                hir::TyKind::FnPtr(self.arena.alloc(hir::FnPtrTy {
+                let kind = hir::TyKind::FnPtr(self.arena.alloc(hir::FnPtrTy {
                     generic_params,
                     safety: self.lower_safety(f.safety, hir::Safety::Safe),
                     abi: self.lower_extern(f.ext),
-                    decl: self.lower_fn_decl(&f.decl, t.id, FnDeclKind::Pointer, None),
+                    decl: self.lower_fn_decl(
+                        &f.decl,
+                        t.id,
+                        hir_id,
+                        FnDeclKind::Pointer,
+                        None,
+                    ),
                     param_idents: self.lower_fn_params_to_idents(&f.decl),
-                }))
+                }));
+                return hir::Ty { kind, span: self.lower_span(t.span), hir_id };
             }
             TyKind::UnsafeBinder(f) => {
                 let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
@@ -1962,6 +1970,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         decl: &FnDecl,
         fn_node_id: NodeId,
+        fn_hir_id: HirId,
         kind: FnDeclKind,
         coro: Option<CoroutineMarker>,
     ) -> &'hir hir::FnDecl<'hir> {

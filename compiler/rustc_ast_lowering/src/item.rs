@@ -332,7 +332,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) = this.lower_generics(generics, itctx, |this| {
-                        this.lower_fn_decl(decl, id, FnDeclKind::Fn, coroutine_marker)
+                        this.lower_fn_decl(
+                            decl,
+                            id,
+                            hir_id,
+                            FnDeclKind::Fn,
+                            coroutine_marker)
                     });
                     let sig = hir::FnSig {
                         decl,
@@ -741,7 +746,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, (decl, fn_args)) = self.lower_generics(generics, itctx, |this| {
                     (
                         // Disallow `impl Trait` in foreign items.
-                        this.lower_fn_decl(fdec, i.id, FnDeclKind::ExternFn, None),
+                        this.lower_fn_decl(fdec, i.id, hir_id, FnDeclKind::ExternFn, None),
                         this.lower_fn_params_to_idents(fdec),
                     )
                 });
@@ -965,6 +970,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generics,
                     sig,
                     i.id,
+                    hir_id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_marker,
                     attrs,
@@ -1005,6 +1011,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generics,
                     sig,
                     i.id,
+                    hir_id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_marker,
                     attrs,
@@ -1215,6 +1222,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generics,
                     sig,
                     i.id,
+                    hir_id,
                     if is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
                     sig.header.coroutine_marker,
                     attrs,
@@ -1660,7 +1668,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         generics: &Generics,
         sig: &FnSig,
-        id: NodeId,
+        node_id: NodeId,
+        hir_id: HirId,
         kind: FnDeclKind,
         coroutine_marker: Option<CoroutineMarker>,
         attrs: &[hir::Attribute],
@@ -1668,7 +1677,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, itctx, |this| {
-            this.lower_fn_decl(&sig.decl, id, kind, coroutine_marker)
+            this.lower_fn_decl(&sig.decl, node_id, hir_id, kind, coroutine_marker)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
