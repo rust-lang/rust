@@ -734,7 +734,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             GenericKind::Param(_) => format!("the parameter type `{bound_kind}`"),
             GenericKind::Placeholder(_) => format!("the placeholder type `{bound_kind}`"),
             GenericKind::Alias(p) => match p.kind {
-                ty::Projection { .. } | ty::Inherent { .. } => {
+                ty::Projection { .. } | ty::EvidenceProjection { .. } | ty::Inherent { .. } => {
                     format!("the associated type `{bound_kind}`")
                 }
                 ty::Free { .. } => format!("the type alias `{bound_kind}`"),

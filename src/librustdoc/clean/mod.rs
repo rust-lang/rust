@@ -2292,12 +2292,29 @@ pub(crate) fn clean_middle_ty<'tcx>(
             Tuple(t.iter().map(|t| clean_middle_ty(bound_ty.rebind(t), cx, None, None)).collect())
         }
 
-        ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) => {
+        ty::Alias(
+            _,
+            alias_ty @ ty::AliasTy {
+                kind: ty::Projection { .. } | ty::EvidenceProjection { .. },
+                ..
+            },
+        ) => {
+            let def_id = match alias_ty.kind {
+                ty::Projection { def_id } => def_id,
+                ty::EvidenceProjection { projection } => projection.item_def_id,
+                _ => unreachable!(),
+            };
+            let args = alias_ty.full_args(cx.tcx);
             if cx.tcx.is_impl_trait_in_trait(def_id) {
                 clean_middle_opaque_bounds(cx, def_id, args)
             } else {
+                let projection = ty::AliasTerm::new_from_args(
+                    cx.tcx,
+                    ty::AliasTermKind::ProjectionTy { def_id },
+                    args,
+                );
                 Type::QPath(Box::new(clean_projection(
-                    bound_ty.rebind(alias_ty.into()),
+                    bound_ty.rebind(projection),
                     cx,
                     parent_def_id,
                 )))
@@ -3374,7 +3391,10 @@ fn clean_bound_vars<'tcx>(
                 })
             }
             // FIXME(non_lifetime_binders): Support higher-ranked const parameters.
-            ty::BoundVariableKind::Const => None,
+            ty::BoundVariableKind::Const(_) => None,
+            ty::BoundVariableKind::Evidence(_) => {
+                bug!("binder evidence cannot be displayed as a generic parameter")
+            }
             _ => None,
         })
         .collect()

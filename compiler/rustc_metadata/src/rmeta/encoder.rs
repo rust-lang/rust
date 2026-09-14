@@ -22,6 +22,7 @@ use rustc_middle::dep_graph::WorkProductId;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
+use rustc_middle::traits::solve::TraitEvidence;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::codec::TyEncoder;
@@ -52,6 +53,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     lazy_state: LazyState,
     span_shorthands: FxHashMap<Span, usize>,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
+    trait_evidence_shorthands: FxHashMap<TraitEvidence<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
 
     interpret_allocs: FxIndexSet<interpret::AllocId>,
@@ -385,6 +387,10 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
 
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize> {
         &mut self.predicate_shorthands
+    }
+
+    fn trait_evidence_shorthands(&mut self) -> &mut FxHashMap<TraitEvidence<'tcx>, usize> {
+        &mut self.trait_evidence_shorthands
     }
 
     fn encode_alloc_id(&mut self, alloc_id: &rustc_middle::mir::interpret::AllocId) {
@@ -2582,6 +2588,7 @@ fn with_encode_metadata_header(
         lazy_state: LazyState::NoNode,
         span_shorthands: Default::default(),
         type_shorthands: Default::default(),
+        trait_evidence_shorthands: Default::default(),
         predicate_shorthands: Default::default(),
         source_file_cache,
         interpret_allocs: Default::default(),

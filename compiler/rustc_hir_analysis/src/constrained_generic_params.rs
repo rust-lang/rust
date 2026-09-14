@@ -66,7 +66,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
             ty::Alias(
                 _,
                 ty::AliasTy {
-                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Opaque { .. },
+                    kind:
+                        ty::Projection { .. }
+                        | ty::EvidenceProjection { .. }
+                        | ty::Inherent { .. }
+                        | ty::Opaque { .. },
                     ..
                 },
             ) if !self.include_nonconstraining => {

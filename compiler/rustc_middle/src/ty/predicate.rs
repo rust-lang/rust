@@ -5,6 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, extension};
 use rustc_type_ir as ir;
 
+use crate::traits::solve::TraitEvidence;
 use crate::ty::{self, EarlyBinder, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom, WithCachedTypeInfo};
 
 pub type TraitRef<'tcx> = ir::TraitRef<TyCtxt<'tcx>>;
@@ -422,16 +423,96 @@ impl<'tcx> Clause<'tcx> {
         let bound_pred = self.kind();
         let pred_bound_vars = bound_pred.bound_vars();
         let trait_bound_vars = trait_ref.bound_vars();
-        // 1) Self: Bar1<'a, '^0.0> -> Self: Bar1<'a, '^0.1>
-        let shifted_pred =
-            tcx.shift_bound_var_indices(trait_bound_vars.len(), bound_pred.skip_binder());
-        // 2) Self: Bar1<'a, '^0.1> -> T: Bar1<'^0.0, '^0.1>
-        let new = EarlyBinder::bind(tcx, shifted_pred)
-            .instantiate(tcx, trait_ref.skip_binder().args)
+        let trait_ordinary_count = trait_ref.ordinary_bound_var_count();
+        let pred_ordinary_count = bound_pred.ordinary_bound_var_count();
+
+        // Both telescopes must retain an ordinary prefix followed by evidence.
+        // Their merged order is [trait ordinary, predicate ordinary, trait evidence,
+        // predicate evidence]. All four groups use indices in this complete list;
+        // only GenericArgs omits evidence slots.
+        struct Reindex<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            ordinary_offset: usize,
+            evidence_offset: usize,
+        }
+
+        impl<'tcx> ty::BoundVarReplacerDelegate<'tcx> for Reindex<'tcx> {
+            fn replace_region(&mut self, region: ty::BoundRegion<'tcx>) -> ty::Region<'tcx> {
+                ty::Region::new_bound(
+                    self.tcx,
+                    ty::INNERMOST,
+                    ty::BoundRegion { var: region.var + self.ordinary_offset, kind: region.kind },
+                )
+            }
+
+            fn replace_ty(&mut self, ty: ty::BoundTy<'tcx>) -> Ty<'tcx> {
+                Ty::new_bound(
+                    self.tcx,
+                    ty::INNERMOST,
+                    ty::BoundTy { var: ty.var + self.ordinary_offset, kind: ty.kind },
+                )
+            }
+
+            fn replace_const(&mut self, ct: ty::BoundConst<'tcx>) -> ty::Const<'tcx> {
+                ty::Const::new_bound(
+                    self.tcx,
+                    ty::INNERMOST,
+                    ty::BoundConst::new(ct.var + self.ordinary_offset),
+                )
+            }
+
+            fn replace_evidence(
+                &mut self,
+                trait_ref: ty::TraitRef<'tcx>,
+                evidence: ty::BoundEvidence<'tcx>,
+            ) -> TraitEvidence<'tcx> {
+                self.tcx.mk_trait_evidence_kind(
+                    trait_ref,
+                    ty::solve::TraitEvidenceKind::Bound(
+                        ty::BoundVarIndexKind::Bound(ty::INNERMOST),
+                        ty::BoundEvidence::new(evidence.var + self.evidence_offset),
+                    ),
+                )
+            }
+        }
+
+        let trait_value = (trait_ref.skip_binder().args, trait_bound_vars.to_vec());
+        let pred_value = (bound_pred.skip_binder(), pred_bound_vars.to_vec());
+        let ((trait_args, trait_bound_vars), (shifted_pred, pred_bound_vars)) =
+            if trait_ref.has_evidence_bound_vars() {
+                (
+                    tcx.replace_escaping_bound_vars_uncached(
+                        trait_value,
+                        Reindex { tcx, ordinary_offset: 0, evidence_offset: pred_ordinary_count },
+                    ),
+                    tcx.replace_escaping_bound_vars_uncached(
+                        pred_value,
+                        Reindex {
+                            tcx,
+                            ordinary_offset: trait_ordinary_count,
+                            evidence_offset: trait_bound_vars.len(),
+                        },
+                    ),
+                )
+            } else {
+                (trait_value, tcx.shift_bound_var_indices(trait_ordinary_count, pred_value))
+            };
+
+        // Substitute early parameters after both values and declaration metadata use
+        // the merged indices. Trait arguments may themselves refer to trait evidence.
+        let (new, pred_bound_vars) = EarlyBinder::bind(tcx, (shifted_pred, pred_bound_vars))
+            .instantiate(tcx, trait_args)
             .skip_norm_wip();
-        // 3) ['x] + ['b] -> ['x, 'b]
-        let bound_vars =
-            tcx.mk_bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(pred_bound_vars));
+        let (trait_ordinary, trait_evidence) = trait_bound_vars.split_at(trait_ordinary_count);
+        let (pred_ordinary, pred_evidence) = pred_bound_vars.split_at(pred_ordinary_count);
+        let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
+            trait_ordinary
+                .iter()
+                .chain(pred_ordinary)
+                .chain(trait_evidence)
+                .chain(pred_evidence)
+                .copied(),
+        );
 
         // FIXME: Is it really perf sensitive to use reuse_or_mk_predicate here?
         tcx.reuse_or_mk_predicate(

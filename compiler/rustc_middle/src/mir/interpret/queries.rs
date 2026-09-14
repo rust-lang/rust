@@ -111,6 +111,9 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::AliasConstKind::InherentImpl { def_id }
             | ty::AliasConstKind::Free { def_id }
             | ty::AliasConstKind::Anon { def_id } => def_id,
+            ty::AliasConstKind::EvidenceProjection { .. } => {
+                return Err(ErrorHandled::TooGeneric(DUMMY_SP));
+            }
         };
 
         let cid = match ty::Instance::try_resolve(self, typing_env, def_id, ct.args) {

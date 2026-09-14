@@ -271,6 +271,14 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_invariant_args(current, args, variance);
             }
 
+            ty::Alias(_, alias @ ty::AliasTy { kind: ty::EvidenceProjection { .. }, .. }) => {
+                self.add_constraints_from_invariant_args(
+                    current,
+                    alias.full_args(self.tcx()),
+                    variance,
+                );
+            }
+
             ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. }) => {
                 let ty = self.tcx().expand_free_alias_tys(ty);
                 self.add_constraints_from_ty(current, ty, variance);

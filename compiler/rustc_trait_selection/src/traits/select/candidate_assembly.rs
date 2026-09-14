@@ -791,7 +791,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Alias(
                     _,
                     ty::AliasTy {
-                        kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                        kind:
+                            ty::Projection { .. }
+                            | ty::EvidenceProjection { .. }
+                            | ty::Inherent { .. }
+                            | ty::Free { .. },
                         ..
                     },
                 )

@@ -9,6 +9,7 @@ use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
 
+use crate::inherent::*;
 use crate::{self as ty, AliasConst, BoundVarIndexKind, Interner};
 
 /// Represents a constant in Rust.
@@ -72,10 +73,20 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
 impl<I: Interner> AliasConst<I> {
     #[inline]
     pub fn new(interner: I, kind: AliasConstKind<I>, args: I::GenericArgs) -> AliasConst<I> {
+        let alias = AliasConst { kind, args, _use_alias_new_instead: () };
         if cfg!(debug_assertions) {
             interner.debug_assert_alias_term_args_compatible(kind.into(), args);
         }
-        AliasConst { kind, args, _use_alias_new_instead: () }
+        alias
+    }
+
+    /// Reconstructs the associated item's full arguments from its proof prefix.
+    pub fn full_args(self, interner: I) -> I::GenericArgs {
+        match self.kind {
+            ty::AliasConstKind::EvidenceProjection { projection } => interner
+                .mk_args_from_iter(projection.trait_ref().args.iter().chain(self.args.iter())),
+            _ => self.args,
+        }
     }
 
     pub fn type_of(self, interner: I) -> ty::Unnormalized<I, I::Ty> {
@@ -87,10 +98,11 @@ impl<I: Interner> AliasConst<I> {
                 )
             }
             ty::AliasConstKind::InherentImpl { def_id } => def_id.into(),
+            ty::AliasConstKind::EvidenceProjection { projection } => projection.item_def_id.into(),
             ty::AliasConstKind::Free { def_id } => def_id.into(),
             ty::AliasConstKind::Anon { def_id } => def_id.into(),
         };
-        interner.type_of(def_id).instantiate(interner, self.args)
+        interner.type_of(def_id).instantiate(interner, self.full_args(interner))
     }
 }
 
@@ -106,6 +118,8 @@ impl<I: Interner> AliasConst<I> {
 pub enum AliasConstKind<I: Interner> {
     /// A projection `<Type as Trait>::AssocConst`
     Projection { def_id: I::TraitAssocConstId },
+    /// An elaborated associated const projection indexed by exact trait evidence.
+    EvidenceProjection { projection: I::EvidenceProjection },
     /// An associated const in an inherent `impl`.
     ///
     /// The generic args are in "Self form", i.e.
@@ -169,6 +183,9 @@ impl<I: Interner> AliasConstKind<I> {
             AliasConstKind::Projection { def_id } => interner.def_span(def_id.into()),
             AliasConstKind::InherentSelf { def_id } => interner.def_span(def_id.into()),
             AliasConstKind::InherentImpl { def_id } => interner.def_span(def_id.into()),
+            AliasConstKind::EvidenceProjection { projection } => {
+                interner.def_span(projection.item_def_id.into())
+            }
             AliasConstKind::Free { def_id } => interner.def_span(def_id.into()),
             AliasConstKind::Anon { def_id } => interner.def_span(def_id.into()),
         }
@@ -179,6 +196,9 @@ impl<I: Interner> AliasConstKind<I> {
             AliasConstKind::Projection { def_id } => Some(def_id.into()),
             AliasConstKind::InherentSelf { def_id } => Some(def_id.into()),
             AliasConstKind::InherentImpl { def_id } => Some(def_id.into()),
+            AliasConstKind::EvidenceProjection { projection } => {
+                Some(projection.item_def_id.into())
+            }
             AliasConstKind::Free { def_id } => Some(def_id.into()),
             AliasConstKind::Anon { def_id } => Some(def_id.into()),
         }

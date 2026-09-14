@@ -861,7 +861,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Alias(
                 _,
                 ref data @ ty::AliasTy {
-                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                    kind:
+                        ty::Projection { .. }
+                        | ty::EvidenceProjection { .. }
+                        | ty::Inherent { .. }
+                        | ty::Free { .. },
                     ..
                 },
             ) => data.print(self)?,
@@ -1542,6 +1546,17 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     | ty::AliasConstKind::InherentImpl { def_id }
                     | ty::AliasConstKind::Free { def_id } => {
                         self.pretty_print_value_path(def_id, args)?;
+                    }
+                    ty::AliasConstKind::EvidenceProjection { projection } => {
+                        let alias = ty::AliasConst::new(
+                            self.tcx(),
+                            ty::AliasConstKind::EvidenceProjection { projection },
+                            args,
+                        );
+                        self.pretty_print_value_path(
+                            projection.item_def_id,
+                            alias.full_args(self.tcx()),
+                        )?;
                     }
                     ty::AliasConstKind::Anon { def_id } => {
                         if def_id.is_local()
@@ -3184,6 +3199,17 @@ define_print! {
                     p.print_def_path(def_id, self.args)?;
                 }
             }
+            ty::AliasTermKind::EvidenceProjectionTy { projection } => {
+                let args = self.full_args(p.tcx());
+                let def_id = projection.item_def_id;
+                if !(p.should_print_verbose() || with_reduced_queries())
+                    && p.tcx().is_impl_trait_in_trait(def_id)
+                {
+                    p.pretty_print_rpitit(def_id, args)?;
+                } else {
+                    p.print_def_path(def_id, args)?;
+                }
+            }
             ty::AliasTermKind::FreeTy { def_id }
             | ty::AliasTermKind::FreeConst { def_id }
             | ty::AliasTermKind::OpaqueTy { def_id }
@@ -3191,6 +3217,9 @@ define_print! {
             | ty::AliasTermKind::ProjectionConst { def_id }
             | ty::AliasTermKind::InherentConstImpl { def_id } => {
                 p.print_def_path(def_id, self.args)?;
+            }
+            ty::AliasTermKind::EvidenceProjectionConst { projection } => {
+                p.print_def_path(projection.item_def_id, self.full_args(p.tcx()))?;
             }
         }
     }

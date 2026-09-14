@@ -16,7 +16,9 @@ impl<'tcx> Stable<'tcx> for ty::AliasTyKind<'tcx> {
     type T = crate::ty::AliasKind;
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
         match self {
-            ty::Projection { .. } => crate::ty::AliasKind::Projection,
+            ty::Projection { .. } | ty::EvidenceProjection { .. } => {
+                crate::ty::AliasKind::Projection
+            }
             ty::Inherent { .. } => crate::ty::AliasKind::Inherent,
             ty::Opaque { .. } => crate::ty::AliasKind::Opaque,
             ty::Free { .. } => crate::ty::AliasKind::Free,
@@ -31,15 +33,30 @@ impl<'tcx> Stable<'tcx> for ty::AliasTy<'tcx> {
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let ty::AliasTy { args, kind, .. } = self;
+        let ty::AliasTy { kind, .. } = self;
         // rustc_public must change its API once we introduce a variant without a def_id.
         let def_id = match *kind {
             ty::AliasTyKind::Projection { def_id }
             | ty::AliasTyKind::Inherent { def_id }
             | ty::AliasTyKind::Opaque { def_id }
             | ty::AliasTyKind::Free { def_id } => def_id,
+            ty::AliasTyKind::EvidenceProjection { projection } => projection.item_def_id,
         };
-        crate::ty::AliasTy { def_id: tables.alias_def(def_id), args: args.stable(tables, cx) }
+        crate::ty::AliasTy {
+            def_id: tables.alias_def(def_id),
+            args: match *kind {
+                ty::AliasTyKind::EvidenceProjection { projection } => GenericArgs(
+                    projection
+                        .trait_ref()
+                        .args
+                        .iter()
+                        .chain(self.args.iter())
+                        .map(|arg| arg.kind().stable(tables, cx))
+                        .collect(),
+                ),
+                _ => self.args.stable(tables, cx),
+            },
+        }
     }
 }
 
@@ -50,7 +67,7 @@ impl<'tcx> Stable<'tcx> for ty::AliasTerm<'tcx> {
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let ty::AliasTerm { args, kind, .. } = self;
+        let ty::AliasTerm { kind, .. } = self;
         // rustc_public must change its API once we introduce a variant without a def_id.
         let def_id = match *kind {
             ty::AliasTermKind::ProjectionTy { def_id }
@@ -62,8 +79,25 @@ impl<'tcx> Stable<'tcx> for ty::AliasTerm<'tcx> {
             | ty::AliasTermKind::FreeConst { def_id }
             | ty::AliasTermKind::InherentConstSelf { def_id }
             | ty::AliasTermKind::InherentConstImpl { def_id } => def_id,
+            ty::AliasTermKind::EvidenceProjectionTy { projection }
+            | ty::AliasTermKind::EvidenceProjectionConst { projection } => projection.item_def_id,
         };
-        crate::ty::AliasTerm { def_id: tables.alias_def(def_id), args: args.stable(tables, cx) }
+        crate::ty::AliasTerm {
+            def_id: tables.alias_def(def_id),
+            args: match *kind {
+                ty::AliasTermKind::EvidenceProjectionTy { projection }
+                | ty::AliasTermKind::EvidenceProjectionConst { projection } => GenericArgs(
+                    projection
+                        .trait_ref()
+                        .args
+                        .iter()
+                        .chain(self.args.iter())
+                        .map(|arg| arg.kind().stable(tables, cx))
+                        .collect(),
+                ),
+                _ => self.args.stable(tables, cx),
+            },
+        }
     }
 }
 
@@ -366,7 +400,10 @@ impl<'tcx> Stable<'tcx> for ty::BoundVariableKind<'tcx> {
             ty::BoundVariableKind::Region(bound_region_kind) => {
                 BoundVariableKind::Region(bound_region_kind.stable(tables, cx))
             }
-            ty::BoundVariableKind::Const => BoundVariableKind::Const,
+            ty::BoundVariableKind::Const(None) => BoundVariableKind::Const,
+            ty::BoundVariableKind::Const(Some(_)) | ty::BoundVariableKind::Evidence(_) => {
+                bug!("dependent bound variables cannot be converted independently")
+            }
         }
     }
 }

@@ -4,7 +4,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::sync::{HashMapExt, Lock, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
@@ -29,6 +29,7 @@ use crate::dep_graph::{DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::mono::MonoItem;
+use crate::traits::solve::TraitEvidence;
 use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use crate::ty::{self, Ty, TyCtxt};
 
@@ -230,6 +231,7 @@ impl OnDiskCache {
                 tcx,
                 encoder,
                 type_shorthands: Default::default(),
+                trait_evidence_shorthands: Default::default(),
                 predicate_shorthands: Default::default(),
                 interpret_allocs: Default::default(),
                 caching_source_map_view: CachingSourceMapView::new(tcx.sess.source_map()),
@@ -375,6 +377,7 @@ impl OnDiskCache {
         let serialized_data = self.serialized_data.read();
         let mut decoder = CacheDecoder {
             tcx,
+            trait_evidence_in_progress: Default::default(),
             opaque: MemDecoder::new(serialized_data.as_deref().unwrap_or(&[]), pos.to_usize())
                 .unwrap(),
             file_index_to_file: &self.file_index_to_file,
@@ -397,6 +400,7 @@ impl OnDiskCache {
 pub struct CacheDecoder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     opaque: MemDecoder<'a>,
+    trait_evidence_in_progress: FxHashSet<usize>,
     file_index_to_file: &'a Lock<FxHashMap<SourceFileIndex, Arc<SourceFile>>>,
     file_index_to_stable_id: &'a FxHashMap<SourceFileIndex, EncodedSourceFileId>,
     alloc_decoding_session: AllocDecodingSession<'a>,
@@ -500,6 +504,29 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
         // This may overwrite the entry, but it should overwrite with the same value.
         tcx.caches.ty_rcache.borrow_mut().insert_same(cache_key, ty);
         ty
+    }
+
+    fn cached_trait_evidence_for_shorthand<F>(
+        &mut self,
+        shorthand: usize,
+        or_insert_with: F,
+    ) -> TraitEvidence<'tcx>
+    where
+        F: FnOnce(&mut Self) -> TraitEvidence<'tcx>,
+    {
+        let tcx = self.tcx;
+        let key = ty::CReaderCacheKey { cnum: None, pos: shorthand };
+        if let Some(&evidence) = tcx.caches.trait_evidence_rcache.borrow().get(&key) {
+            return evidence;
+        }
+
+        let evidence = or_insert_with(self);
+        tcx.caches.trait_evidence_rcache.borrow_mut().insert_same(key, evidence);
+        evidence
+    }
+
+    fn trait_evidence_in_progress(&mut self) -> &mut FxHashSet<usize> {
+        &mut self.trait_evidence_in_progress
     }
 
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
@@ -780,6 +807,7 @@ pub struct CacheEncoder<'tcx> {
     tcx: TyCtxt<'tcx>,
     encoder: FileEncoder<'static>,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
+    trait_evidence_shorthands: FxHashMap<TraitEvidence<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
     interpret_allocs: FxIndexSet<interpret::AllocId>,
     caching_source_map_view: CachingSourceMapView<'tcx>,
@@ -960,6 +988,10 @@ impl<'tcx> TyEncoder<'tcx> for CacheEncoder<'tcx> {
     #[inline]
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize> {
         &mut self.predicate_shorthands
+    }
+
+    fn trait_evidence_shorthands(&mut self) -> &mut FxHashMap<TraitEvidence<'tcx>, usize> {
+        &mut self.trait_evidence_shorthands
     }
     #[inline]
     fn encode_alloc_id(&mut self, alloc_id: &interpret::AllocId) {

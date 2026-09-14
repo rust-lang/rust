@@ -1769,6 +1769,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             let maybe_uneval = match constant.const_ {
                 Const::Ty(_, ct) => match ct.kind() {
                     ty::ConstKind::Alias(_, alias_const) => match alias_const.kind {
+                        ty::AliasConstKind::EvidenceProjection { .. } => {
+                            bug!("evidence projection in a MIR constant operand")
+                        }
                         ty::AliasConstKind::Projection { def_id }
                         | ty::AliasConstKind::InherentSelf { def_id }
                         | ty::AliasConstKind::InherentImpl { def_id }

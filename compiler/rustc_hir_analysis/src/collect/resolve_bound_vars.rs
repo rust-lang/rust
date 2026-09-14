@@ -296,7 +296,7 @@ fn late_arg_as_bound_arg<'tcx>(param: &GenericParam<'tcx>) -> ty::BoundVariableK
             ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id))
         }
         GenericParamKind::Type { .. } => ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id)),
-        GenericParamKind::Const { .. } => ty::BoundVariableKind::Const,
+        GenericParamKind::Const { .. } => ty::BoundVariableKind::Const(None),
     }
 }
 
@@ -313,7 +313,7 @@ fn generic_param_def_as_bound_arg<'tcx>(
         ty::GenericParamDefKind::Type { .. } => {
             ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id))
         }
-        ty::GenericParamDefKind::Const { .. } => ty::BoundVariableKind::Const,
+        ty::GenericParamDefKind::Const { .. } => ty::BoundVariableKind::Const(None),
     }
 }
 

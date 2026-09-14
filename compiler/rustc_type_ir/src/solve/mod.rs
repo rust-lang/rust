@@ -3,6 +3,7 @@ pub mod inspect;
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::ops::Deref;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
@@ -18,8 +19,10 @@ use crate::lang_items::SolverTraitLangItem;
 use crate::region_constraint::RegionConstraint;
 use crate::search_graph::PathKind;
 use crate::{
-    self as ty, Canonical, CanonicalVarValues, CantBeErased, ConstVid, FloatVid, GenericArgKind,
-    InferConst, IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
+    self as ty, BoundEvidence, BoundVarIndexKind, Canonical, CanonicalVarValues, CantBeErased,
+    ConstVid, FallibleTypeFolder, FloatVid, GenericArgKind, InferConst, IntVid, Interner,
+    PlaceholderEvidence, TermKind, TyVid, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
+    TypingMode, Upcast,
 };
 
 pub type CanonicalInputData<I> =
@@ -551,6 +554,8 @@ pub enum CandidateSource<I: Interner> {
 impl<I: Interner> Eq for CandidateSource<I> {}
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(StableHash, Encodable_NoContext, Decodable_NoContext))]
 pub enum ParamEnvSource {
     /// Preferred eagerly.
     NonGlobal,
@@ -558,8 +563,146 @@ pub enum ParamEnvSource {
     Global,
 }
 
+/// Source identity shared by the principal trait clause and every associated
+/// equality written in the same HIR trait bound.
+///
+/// The local id is scoped by `owner`; it is never interpreted without that
+/// owner and therefore remains stable across clause elaboration and reordering.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub struct ItemContractKey<I: Interner> {
+    pub owner: I::DefId,
+    #[lift(identity)]
+    pub hir_local_id: u32,
+}
+
+impl<I: Interner> Eq for ItemContractKey<I> {}
+
+/// One source contract instantiated with all early arguments of its owner.
+///
+/// Keeping the complete substitution in the identity prevents two inherited
+/// uses of the same source bound from sharing proof identity accidentally.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub struct InstantiatedItemContract<I: Interner> {
+    pub key: ItemContractKey<I>,
+    pub complete_early_args: I::GenericArgs,
+}
+
+impl<I: Interner> Eq for InstantiatedItemContract<I> {}
+
+/// A source dictionary contract instantiated in one variable scope.
+///
+/// The identity records the source bound and its complete early substitution.
+/// The clauses retain the principal trait clause, associated equalities, and
+/// host-effect requirements as one bundle. `ordinary_args` records the binder
+/// substitution used to open the contract.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub struct RequiredContract<I: Interner>(pub I::BoundRequiredContract);
+
+impl<I: Interner> Eq for RequiredContract<I> {}
+
+impl<I: Interner> Deref for RequiredContract<I> {
+    type Target = ty::BoundRequiredContractData<I>;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
+impl<I: Interner> RequiredContract<I> {
+    pub fn new(
+        cx: I,
+        identity: InstantiatedItemContract<I>,
+        clauses: I::Clauses,
+        principal_index: u32,
+        ordinary_args: Option<I::GenericArgs>,
+    ) -> Self {
+        assert!(
+            clauses.get(principal_index as usize).is_some(),
+            "required-contract principal index is out of bounds",
+        );
+        RequiredContract(cx.mk_bound_required_contract(ty::BoundRequiredContractData {
+            identity,
+            clauses,
+            principal_index,
+            ordinary_args,
+        }))
+    }
+
+    pub fn principal_clause(self) -> I::Clause {
+        self.clauses
+            .get(self.principal_index as usize)
+            .expect("required-contract principal index is out of bounds")
+    }
+
+    pub fn is_principal_clause(self, clause: I::Clause) -> bool {
+        self.principal_clause() == clause
+    }
+}
+
+/// Stable semantic identity of one clause in a parameter environment.
+///
+/// Origins distinguish positional caller bounds, item-owned clauses, and
+/// binder-owned assumptions. Source contracts carry their complete early
+/// substitution alongside the source key.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub enum ParamEnvAssumption<I: Interner> {
+    CallerBound {
+        #[lift(identity)]
+        index: u32,
+    },
+    /// Clause declared on a concrete item. The owner plus the index in that
+    /// item's own clause list stays stable when inherited clauses are rebased
+    /// or a parameter environment is rebuilt with a different prefix.
+    ItemClause {
+        owner: I::DefId,
+        #[lift(identity)]
+        index: u32,
+    },
+    /// A source-written trait bound and all clauses derived from its single
+    /// dictionary contract. Unlike `ItemClause`, this identity is independent
+    /// of clause ordering and survives supertrait elaboration.
+    ItemContract { contract: InstantiatedItemContract<I> },
+    /// Compiler-generated clause attached to an item (for example an RPITIT
+    /// equality or a const condition). These use a separate index namespace
+    /// from user-written item clauses.
+    Generated {
+        owner: I::DefId,
+        #[lift(identity)]
+        index: u32,
+    },
+    Binder {
+        #[lift(identity)]
+        telescope_index: u32,
+        identity: I::Clause,
+        instantiation: I::GenericArgs,
+    },
+}
+
+impl<I: Interner> Eq for ParamEnvAssumption<I> {}
+
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(StableHash, Encodable_NoContext, Decodable_NoContext))]
 pub enum AliasBoundKind {
     /// Alias bound from the self type of a projection
     SelfBounds,
@@ -584,6 +727,578 @@ pub enum BuiltinImplSource {
     /// The index is only used for winnowing.
     // FIXME(-Znext-solver=no): The new solver does not need this index, remove!
     TraitUpcasting(usize),
+}
+
+/// Data attached to a builtin proof node.
+///
+/// Callable proof nodes retain their output and ordinary binder substitution
+/// together, preserving the relationship between their arguments and result.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub enum BuiltinEvidence<I: Interner> {
+    /// The builtin rule needs no proof-local data beyond the proven trait ref.
+    RuleOnly,
+    /// The output and binder substitution of an `Fn`, `FnMut`, or `FnOnce`
+    /// proof. The instantiated inputs are in the owning node's trait ref;
+    /// the substitution also retains variables absent from those inputs.
+    Fn { output: I::Ty, instantiation: I::GenericArgs },
+    /// Awaited output and the input binder substitution of an async callable.
+    AsyncFn { output: I::Ty, instantiation: I::GenericArgs },
+}
+
+impl<I: Interner> Eq for BuiltinEvidence<I> {}
+
+/// One call-operation instantiation of an output-only projection bound carried
+/// by a trait object. The bound retains its declarations, and `ordinary_args`
+/// records their ordinary substitution separately from the owning Dyn evidence.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub struct DynProjectionOperation<I: Interner> {
+    pub projection_bound: I::Clause,
+    pub ordinary_args: I::GenericArgs,
+}
+
+impl<I: Interner> Eq for DynProjectionOperation<I> {}
+
+/// Stable identity of the rule selected for one node in a trait proof.
+///
+/// Unlike [`CandidateSource`], this also identifies a specific param-env
+/// assumption. Its type and const payloads use the enclosing proof's variable
+/// scope and participate in substitution with the proven trait reference.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub enum CandidateEvidenceSource<I: Interner> {
+    /// Multiple proof paths were explicitly quotiented by coherence. The
+    /// selected concrete recipe is the sole nested node of this proof node.
+    Unique(CoherenceKey<I>),
+    Impl {
+        impl_def_id: I::ImplId,
+        args: I::GenericArgs,
+    },
+    Builtin {
+        source: BuiltinImplSource,
+        evidence: BuiltinEvidence<I>,
+    },
+    /// Proof obtained from a bound carried by a trait object. The bound is
+    /// stored in binder-preserving clause form, with an optional stable vtable slot.
+    Dyn {
+        object_bound: I::Clause,
+        /// The exact ordinary binder substitution, or `None` for a proof
+        /// independent of every ordinary binder variable.
+        instantiation: Option<I::GenericArgs>,
+        vtable_slot: Option<u32>,
+        operation: Option<DynProjectionOperation<I>>,
+    },
+    ParamEnv {
+        source: ParamEnvSource,
+        origin: ParamEnvAssumption<I>,
+    },
+    AliasBound(AliasBoundKind),
+    /// Error-recovery data, which cannot establish proof identity.
+    Error,
+    CoherenceUnknowable,
+}
+
+impl<I: Interner> Eq for CandidateEvidenceSource<I> {}
+
+/// Stable identity used when coherence proves that candidate choice is not
+/// semantically observable for a trait ref.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub struct CoherenceKey<I: Interner> {
+    pub trait_ref: ty::TraitRef<I>,
+}
+
+impl<I: Interner> Eq for CoherenceKey<I> {}
+
+impl<I: Interner> CandidateEvidenceSource<I> {
+    /// Converts source tags that need no additional proof payload.
+    /// Impl, param-env, and alias-bound tags lack the arguments or origin
+    /// required by their evidence representation and return `None`.
+    pub fn from_source(source: CandidateSource<I>) -> Option<Self> {
+        match source {
+            CandidateSource::Impl(_)
+            | CandidateSource::ParamEnv(_)
+            | CandidateSource::AliasBound(_) => None,
+            CandidateSource::BuiltinImpl(source) => Some(CandidateEvidenceSource::Builtin {
+                source,
+                evidence: BuiltinEvidence::RuleOnly,
+            }),
+            CandidateSource::CoherenceUnknowable => {
+                Some(CandidateEvidenceSource::CoherenceUnknowable)
+            }
+        }
+    }
+}
+
+/// One node in a trait proof DAG.
+///
+/// `nested` contains stable indices into the owning [`CandidateEvidence`]. A
+/// node stores the instantiated trait ref it proves so that consumers can
+/// validate that a recipe is not accidentally reused for a different goal.
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub struct CandidateEvidenceNode<I: Interner> {
+    pub trait_ref: ty::TraitRef<I>,
+    pub source: CandidateEvidenceSource<I>,
+    /// Edges to nodes in the same variable scope. This is used for
+    /// wrappers such as [`CandidateEvidenceSource::Unique`].
+    pub nested: Vec<u32>,
+    /// Interned nested proofs in this node's variable scope.
+    pub nested_evidence: Vec<CandidateEvidenceUse<I>>,
+}
+
+impl<I: Interner> Eq for CandidateEvidenceNode<I> {}
+
+/// A proof recipe for a trait goal.
+///
+/// Nodes in one variable scope use a flat DAG with interned nested proofs.
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub struct CandidateEvidence<I: Interner> {
+    pub root: u32,
+    pub nodes: Vec<CandidateEvidenceNode<I>>,
+}
+
+impl<I: Interner> Eq for CandidateEvidence<I> {}
+
+impl<I: Interner> CandidateEvidence<I> {
+    /// Whether this proof and all of its nested proofs are structural builtin
+    /// rules which carry no associated value or dictionary choice.
+    pub fn is_rule_only(&self) -> bool {
+        self.nodes.iter().all(|node| {
+            matches!(
+                node.source,
+                CandidateEvidenceSource::Builtin { evidence: BuiltinEvidence::RuleOnly, .. }
+                    | CandidateEvidenceSource::Unique(_)
+            ) && node.nested_evidence.iter().all(CandidateEvidenceUse::is_rule_only)
+        })
+    }
+
+    /// Returns the equivalence classes of proof nodes whose trait refs are one
+    /// semantic identity. A coherence `Unique` node and the concrete recipe it
+    /// wraps deliberately repeat that identity in the serialized DAG, but a
+    /// type folder must not instantiate the repeated occurrences separately.
+    fn trait_ref_classes(&self) -> Vec<usize> {
+        fn find(parents: &mut [usize], mut index: usize) -> usize {
+            while parents[index] != index {
+                let parent = parents[index];
+                parents[index] = parents[parent];
+                index = parents[index];
+            }
+            index
+        }
+
+        let mut parents = (0..self.nodes.len()).collect::<Vec<_>>();
+        for (index, node) in self.nodes.iter().enumerate() {
+            if matches!(node.source, CandidateEvidenceSource::Unique(_)) {
+                let nested = usize::try_from(node.nested[0]).expect("proof node index overflow");
+                let index_root = find(&mut parents, index);
+                let nested_root = find(&mut parents, nested);
+                if index_root != nested_root {
+                    parents[nested_root] = index_root;
+                }
+            }
+        }
+        for index in 0..parents.len() {
+            parents[index] = find(&mut parents, index);
+        }
+        parents
+    }
+}
+
+impl<I: Interner> TypeFoldable<I> for CandidateEvidence<I> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        let classes = self.trait_ref_classes();
+        let mut folded_trait_refs = vec![None; self.nodes.len()];
+        let mut nodes = Vec::with_capacity(self.nodes.len());
+
+        for (index, node) in self.nodes.into_iter().enumerate() {
+            let class = classes[index];
+            let trait_ref = match folded_trait_refs[class] {
+                Some(trait_ref) => trait_ref,
+                None => {
+                    let trait_ref = node.trait_ref.try_fold_with(folder)?;
+                    folded_trait_refs[class] = Some(trait_ref);
+                    trait_ref
+                }
+            };
+            let source = match node.source {
+                CandidateEvidenceSource::Unique(_) => {
+                    CandidateEvidenceSource::Unique(CoherenceKey { trait_ref })
+                }
+                source => source.try_fold_with(folder)?,
+            };
+            nodes.push(CandidateEvidenceNode {
+                trait_ref,
+                source,
+                nested: node.nested,
+                nested_evidence: node.nested_evidence.try_fold_with(folder)?,
+            });
+        }
+
+        Ok(CandidateEvidence { root: self.root, nodes })
+    }
+
+    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        let classes = self.trait_ref_classes();
+        let mut folded_trait_refs = vec![None; self.nodes.len()];
+        let mut nodes = Vec::with_capacity(self.nodes.len());
+
+        for (index, node) in self.nodes.into_iter().enumerate() {
+            let class = classes[index];
+            let trait_ref = match folded_trait_refs[class] {
+                Some(trait_ref) => trait_ref,
+                None => {
+                    let trait_ref = node.trait_ref.fold_with(folder);
+                    folded_trait_refs[class] = Some(trait_ref);
+                    trait_ref
+                }
+            };
+            let source = match node.source {
+                CandidateEvidenceSource::Unique(_) => {
+                    CandidateEvidenceSource::Unique(CoherenceKey { trait_ref })
+                }
+                source => source.fold_with(folder),
+            };
+            nodes.push(CandidateEvidenceNode {
+                trait_ref,
+                source,
+                nested: node.nested,
+                nested_evidence: node.nested_evidence.fold_with(folder),
+            });
+        }
+
+        CandidateEvidence { root: self.root, nodes }
+    }
+}
+
+impl<I: Interner> CandidateEvidence<I> {
+    /// Builds a proof root from existing interned proofs. Nested recipe ordering
+    /// remains semantically significant, while their handles provide sharing.
+    pub fn new(
+        trait_ref: ty::TraitRef<I>,
+        source: CandidateEvidenceSource<I>,
+        nested_evidence: impl IntoIterator<Item = CandidateEvidenceUse<I>>,
+    ) -> Self {
+        let nested_evidence: Vec<_> = nested_evidence.into_iter().collect();
+        let evidence = CandidateEvidence {
+            root: 0,
+            nodes: vec![CandidateEvidenceNode {
+                trait_ref,
+                source,
+                nested: vec![],
+                nested_evidence,
+            }],
+        };
+        evidence.assert_well_formed();
+        evidence
+    }
+
+    pub fn root_node(&self) -> &CandidateEvidenceNode<I> {
+        &self.nodes[usize::try_from(self.root).expect("proof node index overflow")]
+    }
+
+    pub fn root_source(&self) -> CandidateEvidenceSource<I> {
+        self.root_node().source
+    }
+
+    /// Returns the concrete proof node selected by this recipe, looking
+    /// through any coherence `Unique` wrapper.
+    pub fn selected_node(&self) -> &CandidateEvidenceNode<I> {
+        let mut index = self.root;
+        for _ in 0..=self.nodes.len() {
+            let node = &self.nodes[usize::try_from(index).expect("proof node index overflow")];
+            match node.source {
+                CandidateEvidenceSource::Unique(_) => index = node.nested[0],
+                _ => return node,
+            }
+        }
+        panic!("cycle while selecting a concrete trait proof node")
+    }
+
+    /// Returns the concrete rule selected by this recipe, looking through a
+    /// coherence `Unique` wrapper when present.
+    pub fn selected_source(&self) -> CandidateEvidenceSource<I> {
+        self.selected_node().source
+    }
+
+    /// Wraps this concrete recipe in a coherence-quotiented `Unique` node.
+    pub fn into_unique(mut self, key: CoherenceKey<I>) -> Self {
+        self.assert_well_formed();
+        assert_eq!(
+            key.trait_ref,
+            self.root_node().trait_ref,
+            "coherence key does not match proof goal"
+        );
+        if matches!(self.root_source(), CandidateEvidenceSource::Unique(existing) if existing == key)
+        {
+            return self;
+        }
+        let selected = self.root;
+        self.nodes.push(CandidateEvidenceNode {
+            trait_ref: key.trait_ref,
+            source: CandidateEvidenceSource::Unique(key),
+            nested: vec![selected],
+            nested_evidence: vec![],
+        });
+        self.root = u32::try_from(self.nodes.len() - 1).expect("too many proof nodes");
+        self.assert_well_formed();
+        self
+    }
+
+    /// Validates the node indices and acyclic shape of this proof recipe.
+    pub fn assert_well_formed(&self) {
+        assert!(!self.nodes.is_empty(), "empty trait proof recipe");
+        let root = usize::try_from(self.root).expect("proof node index overflow");
+        assert!(root < self.nodes.len(), "trait proof root is out of bounds");
+        for node in &self.nodes {
+            for evidence in &node.nested_evidence {
+                // Nested proofs are interned. Avoid expanding shared recipes
+                // into an exponential tree for structural traits with repeated fields.
+                evidence.assert_well_formed();
+            }
+            for &nested in &node.nested {
+                let nested = usize::try_from(nested).expect("proof node index overflow");
+                assert!(nested < self.nodes.len(), "nested trait proof node is out of bounds");
+            }
+            match node.source {
+                CandidateEvidenceSource::Unique(key) => {
+                    assert_eq!(node.trait_ref, key.trait_ref, "invalid coherence proof key");
+                    assert_eq!(node.nested.len(), 1, "unique proof must wrap one selected recipe");
+                    assert!(
+                        node.nested_evidence.is_empty(),
+                        "unique wrapper must not own nested proofs"
+                    );
+                    let selected = &self.nodes
+                        [usize::try_from(node.nested[0]).expect("proof node index overflow")];
+                    assert_eq!(
+                        node.trait_ref, selected.trait_ref,
+                        "unique proof selected a recipe for a different goal"
+                    );
+                }
+                CandidateEvidenceSource::Impl { .. }
+                | CandidateEvidenceSource::Builtin { .. }
+                | CandidateEvidenceSource::Dyn { .. }
+                | CandidateEvidenceSource::ParamEnv { .. }
+                | CandidateEvidenceSource::AliasBound(_)
+                | CandidateEvidenceSource::Error
+                | CandidateEvidenceSource::CoherenceUnknowable => {}
+            }
+        }
+
+        fn visit<I: Interner>(index: usize, nodes: &[CandidateEvidenceNode<I>], state: &mut [u8]) {
+            match state[index] {
+                2 => return,
+                1 => panic!("non-productive cycle in trait proof DAG"),
+                0 => {}
+                _ => unreachable!(),
+            }
+            state[index] = 1;
+            for &nested in &nodes[index].nested {
+                visit(usize::try_from(nested).expect("proof node index overflow"), nodes, state);
+            }
+            state[index] = 2;
+        }
+
+        let mut state = vec![0; self.nodes.len()];
+        visit(root, &self.nodes, &mut state);
+        assert!(state.into_iter().all(|state| state == 2), "unreachable node in trait proof DAG");
+    }
+}
+
+/// The semantic state of a compiler-internal trait evidence value.
+///
+/// A selected proof recipe is only one possible value. Higher-ranked
+/// instantiation may instead use a late-bound value or a universe placeholder. Error
+/// evidence is explicit so recovery cannot accidentally masquerade as a
+/// selected candidate.
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub enum TraitEvidenceKind<I: Interner> {
+    Selected(CandidateEvidence<I>),
+    Bound(BoundVarIndexKind, BoundEvidence<I>),
+    Placeholder(PlaceholderEvidence<I>),
+    Error(I::ErrorGuaranteed),
+}
+
+impl<I: Interner> Eq for TraitEvidenceKind<I> {}
+
+/// An interned evidence value together with the trait predicate it proves.
+///
+/// Keeping `trait_ref` on every state lets evidence-indexed projections remain
+/// well-formed even while their proof is unresolved. For `Selected`, the field
+/// is required to equal the root node's trait ref and is folded from that root
+/// rather than independently, preserving shared inference identity.
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub struct TraitEvidenceData<I: Interner> {
+    pub trait_ref: ty::TraitRef<I>,
+    pub kind: TraitEvidenceKind<I>,
+}
+
+impl<I: Interner> Eq for TraitEvidenceData<I> {}
+
+impl<I: Interner> TraitEvidenceData<I> {
+    pub fn selected(recipe: CandidateEvidence<I>) -> Self {
+        recipe.assert_well_formed();
+        let trait_ref = recipe.root_node().trait_ref;
+        TraitEvidenceData { trait_ref, kind: TraitEvidenceKind::Selected(recipe) }
+    }
+
+    pub fn bound(
+        trait_ref: ty::TraitRef<I>,
+        index: BoundVarIndexKind,
+        bound: BoundEvidence<I>,
+    ) -> Self {
+        TraitEvidenceData { trait_ref, kind: TraitEvidenceKind::Bound(index, bound) }
+    }
+
+    pub fn placeholder(trait_ref: ty::TraitRef<I>, placeholder: PlaceholderEvidence<I>) -> Self {
+        TraitEvidenceData { trait_ref, kind: TraitEvidenceKind::Placeholder(placeholder) }
+    }
+
+    pub fn error(trait_ref: ty::TraitRef<I>, guar: I::ErrorGuaranteed) -> Self {
+        TraitEvidenceData { trait_ref, kind: TraitEvidenceKind::Error(guar) }
+    }
+
+    pub fn as_selected(&self) -> Option<&CandidateEvidence<I>> {
+        match &self.kind {
+            TraitEvidenceKind::Selected(recipe) => Some(recipe),
+            TraitEvidenceKind::Bound(..)
+            | TraitEvidenceKind::Placeholder(_)
+            | TraitEvidenceKind::Error(_) => None,
+        }
+    }
+
+    pub fn into_selected(self) -> Option<CandidateEvidence<I>> {
+        match self.kind {
+            TraitEvidenceKind::Selected(recipe) => Some(recipe),
+            TraitEvidenceKind::Bound(..)
+            | TraitEvidenceKind::Placeholder(_)
+            | TraitEvidenceKind::Error(_) => None,
+        }
+    }
+
+    pub fn assert_well_formed(&self) {
+        if let TraitEvidenceKind::Selected(recipe) = &self.kind {
+            recipe.assert_well_formed();
+            assert_eq!(
+                self.trait_ref,
+                recipe.root_node().trait_ref,
+                "selected evidence predicate does not match its proof recipe"
+            );
+        }
+    }
+}
+
+impl<I: Interner> TypeFoldable<I> for TraitEvidenceData<I> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        match self.kind {
+            TraitEvidenceKind::Selected(recipe) => {
+                Ok(TraitEvidenceData::selected(recipe.try_fold_with(folder)?))
+            }
+            kind => {
+                Ok(TraitEvidenceData { trait_ref: self.trait_ref.try_fold_with(folder)?, kind })
+            }
+        }
+    }
+
+    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        match self.kind {
+            TraitEvidenceKind::Selected(recipe) => {
+                TraitEvidenceData::selected(recipe.fold_with(folder))
+            }
+            kind => TraitEvidenceData { trait_ref: self.trait_ref.fold_with(folder), kind },
+        }
+    }
+}
+
+impl<I: Interner> TypeVisitable<I> for TraitEvidenceData<I> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        match &self.kind {
+            // The recipe root is the authoritative occurrence of the selected
+            // predicate. Visiting the duplicate field would make a shared
+            // proof identity appear twice to stateful visitors.
+            TraitEvidenceKind::Selected(recipe) => recipe.visit_with(visitor),
+            TraitEvidenceKind::Bound(..) | TraitEvidenceKind::Placeholder(_) => {
+                self.trait_ref.visit_with(visitor)
+            }
+            TraitEvidenceKind::Error(guar) => {
+                rustc_ast_ir::try_visit!(self.trait_ref.visit_with(visitor));
+                visitor.visit_error(*guar)
+            }
+        }
+    }
+}
+
+/// One use of a nested proof recipe.
+///
+/// Nested evidence is interned and shares the enclosing proof's variable scope.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(StableHash_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
+pub enum CandidateEvidenceUse<I: Interner> {
+    /// A proof in the same variable scope, folded with its parent recipe.
+    Instantiated(I::TraitEvidence),
+}
+
+impl<I: Interner> Eq for CandidateEvidenceUse<I> {}
+
+impl<I: Interner> CandidateEvidenceUse<I> {
+    pub fn is_rule_only(&self) -> bool {
+        let evidence = match self {
+            CandidateEvidenceUse::Instantiated(evidence) => *evidence,
+        };
+        matches!(
+            &evidence.kind,
+            TraitEvidenceKind::Selected(recipe) if recipe.is_rule_only()
+        )
+    }
+
+    pub fn assert_well_formed(&self) {
+        // Each immutable nested recipe is validated when it is interned. Check
+        // the duplicated root predicate without recursively expanding the DAG.
+        let Self::Instantiated(evidence) = self;
+        if let TraitEvidenceKind::Selected(recipe) = &evidence.kind {
+            assert_eq!(evidence.trait_ref, recipe.root_node().trait_ref);
+        }
+    }
 }
 
 #[derive_where(Copy, Clone, Debug; I: Interner)]

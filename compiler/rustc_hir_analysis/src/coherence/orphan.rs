@@ -207,7 +207,7 @@ pub(crate) fn orphan_check_impl(
                     //     type This = T;
                     // }
                     // impl<T: ?Sized> AutoTrait for <T as Id>::This {}
-                    ty::Projection { .. } => "associated type",
+                    ty::Projection { .. } | ty::EvidenceProjection { .. } => "associated type",
                     // type Foo = (impl Sized, bool)
                     // impl AutoTrait for Foo {}
                     ty::Free { .. } => "type alias",

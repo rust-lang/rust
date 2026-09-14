@@ -961,6 +961,14 @@ impl<'tcx> TyCtxt<'tcx> {
                     None
                 }
             }
+            ty::AliasTermKind::EvidenceProjectionTy { projection } => {
+                let def_id = projection.item_def_id;
+                if self.is_impl_trait_in_trait(def_id) {
+                    Some(self.variances_of(def_id))
+                } else {
+                    None
+                }
+            }
             ty::AliasTermKind::OpaqueTy { def_id } => Some(self.variances_of(def_id)),
             ty::AliasTermKind::InherentTy { .. }
             | ty::AliasTermKind::InherentConstSelf { .. }
@@ -968,7 +976,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::AliasTermKind::FreeTy { .. }
             | ty::AliasTermKind::FreeConst { .. }
             | ty::AliasTermKind::AnonConst { .. }
-            | ty::AliasTermKind::ProjectionConst { .. } => None,
+            | ty::AliasTermKind::ProjectionConst { .. }
+            | ty::AliasTermKind::EvidenceProjectionConst { .. } => None,
         }
     }
 }

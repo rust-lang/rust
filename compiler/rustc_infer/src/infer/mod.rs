@@ -994,10 +994,12 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> ty::Term<'tcx> {
         match alias_term.kind {
             ty::AliasTermKind::ProjectionTy { .. }
+            | ty::AliasTermKind::EvidenceProjectionTy { .. }
             | ty::AliasTermKind::InherentTy { .. }
             | ty::AliasTermKind::OpaqueTy { .. }
             | ty::AliasTermKind::FreeTy { .. } => self.next_ty_var(span).into(),
             ty::AliasTermKind::FreeConst { .. }
+            | ty::AliasTermKind::EvidenceProjectionConst { .. }
             | ty::AliasTermKind::InherentConstSelf { .. }
             | ty::AliasTermKind::InherentConstImpl { .. }
             | ty::AliasTermKind::AnonConst { .. }
@@ -1526,11 +1528,19 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
+        let bound_vars = value.bound_vars();
+        if bound_vars.iter().any(|kind| {
+            matches!(
+                kind,
+                ty::BoundVariableKind::Const(Some(_)) | ty::BoundVariableKind::Evidence(_)
+            )
+        }) {
+            bug!("dependent binders require telescope instantiation");
+        }
         if let Some(_) = value.as_ref().no_bound_vars() {
             return value.skip_binder();
         }
 
-        let bound_vars = value.bound_vars();
         let mut args = Vec::with_capacity(bound_vars.len());
 
         for bound_var_kind in bound_vars {
@@ -1539,7 +1549,10 @@ impl<'tcx> InferCtxt<'tcx> {
                 ty::BoundVariableKind::Region(br) => {
                     self.next_region_var(RegionVariableOrigin::BoundRegion(span, br, lbrct)).into()
                 }
-                ty::BoundVariableKind::Const => self.next_const_var(span).into(),
+                ty::BoundVariableKind::Const(None) => self.next_const_var(span).into(),
+                ty::BoundVariableKind::Const(Some(_)) | ty::BoundVariableKind::Evidence(_) => {
+                    unreachable!()
+                }
             };
             args.push(arg);
         }

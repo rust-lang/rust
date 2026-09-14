@@ -1,3 +1,4 @@
+use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::visit::Flags;
 use crate::{self as ty, Interner, Region};
@@ -158,6 +159,9 @@ bitflags::bitflags! {
         /// We have a separate flag from `HAS_ALIAS` because `HAS_ALIAS` doesn't care
         /// about rigidness while we rely on rigidness to skip renormalization.
         const HAS_NON_RIGID_ALIAS         = 1 << 28;
+
+        /// Does this have an evidence-indexed projection?
+        const HAS_EVIDENCE_PROJECTION     = 1 << 29;
     }
 }
 
@@ -237,6 +241,33 @@ impl<I: Interner> FlagComputation<I> {
             computation.add_flags(TypeFlags::HAS_BINDER_VARS);
         }
 
+        // Dependent telescope metadata is folded and hashed as part of the
+        // binder, so its flags and escaping depth must be visible as well.
+        // Otherwise a surrounding interned type may incorrectly skip a folder
+        // even though a typed const declaration or evidence assumption contains
+        // inference variables, placeholders, aliases, or outer bound vars.
+        for entry in value.bound_vars().iter() {
+            match entry {
+                ty::BoundVariableKind::Const(Some(ty)) => computation.add_ty(ty),
+                ty::BoundVariableKind::Evidence(evidence) => {
+                    computation.add_predicate_atom(ty::PredicateKind::Clause(evidence.clause));
+                    if let Some(contract) = evidence.required_contract {
+                        computation.add_args(contract.identity.complete_early_args.as_slice());
+                        for clause in contract.clauses.iter() {
+                            computation.add_flags(clause.flags());
+                            computation.add_exclusive_binder(clause.outer_exclusive_binder());
+                        }
+                        if let Some(args) = contract.ordinary_args {
+                            computation.add_args(args.as_slice());
+                        }
+                    }
+                }
+                ty::BoundVariableKind::Ty(_)
+                | ty::BoundVariableKind::Region(_)
+                | ty::BoundVariableKind::Const(None) => {}
+            }
+        }
+
         f(&mut computation, value.skip_binder());
 
         self.add_flags(computation.flags);
@@ -310,7 +341,9 @@ impl<I: Interner> FlagComputation<I> {
             ty::Alias(is_rigid, alias) => {
                 self.add_is_rigid(is_rigid);
                 self.add_flags(match alias.kind {
-                    ty::Projection { .. } => TypeFlags::HAS_TY_PROJECTION,
+                    ty::Projection { .. } | ty::EvidenceProjection { .. } => {
+                        TypeFlags::HAS_TY_PROJECTION
+                    }
                     ty::Free { .. } => TypeFlags::HAS_TY_FREE_ALIAS,
                     ty::Opaque { .. } => TypeFlags::HAS_TY_OPAQUE,
                     ty::Inherent { .. } => TypeFlags::HAS_TY_INHERENT,
@@ -473,6 +506,17 @@ impl<I: Interner> FlagComputation<I> {
             ty::ConstKind::Alias(is_rigid, alias_const) => {
                 self.add_is_rigid(is_rigid);
                 self.add_args(alias_const.args.as_slice());
+                match alias_const.kind {
+                    ty::AliasConstKind::EvidenceProjection { projection } => {
+                        self.add_flags(TypeFlags::HAS_EVIDENCE_PROJECTION);
+                        self.add_trait_evidence(projection.evidence);
+                    }
+                    ty::AliasConstKind::Projection { .. }
+                    | ty::AliasConstKind::InherentSelf { .. }
+                    | ty::AliasConstKind::InherentImpl { .. }
+                    | ty::AliasConstKind::Free { .. }
+                    | ty::AliasConstKind::Anon { .. } => {}
+                }
                 self.add_flags(TypeFlags::HAS_CONST_ALIAS);
             }
             ty::ConstKind::Infer(infer) => match infer {
@@ -519,10 +563,144 @@ impl<I: Interner> FlagComputation<I> {
 
     fn add_alias_ty(&mut self, alias_ty: ty::AliasTy<I>) {
         self.add_args(alias_ty.args.as_slice());
+        if let ty::AliasTyKind::EvidenceProjection { projection } = alias_ty.kind {
+            self.add_flags(TypeFlags::HAS_EVIDENCE_PROJECTION);
+            self.add_trait_evidence(projection.evidence);
+        }
     }
 
     fn add_alias_term(&mut self, alias_term: ty::AliasTerm<I>) {
         self.add_args(alias_term.args.as_slice());
+        match alias_term.kind {
+            ty::AliasTermKind::EvidenceProjectionTy { projection }
+            | ty::AliasTermKind::EvidenceProjectionConst { projection } => {
+                self.add_flags(TypeFlags::HAS_EVIDENCE_PROJECTION);
+                self.add_trait_evidence(projection.evidence);
+            }
+            ty::AliasTermKind::ProjectionTy { .. }
+            | ty::AliasTermKind::ProjectionConst { .. }
+            | ty::AliasTermKind::InherentTy { .. }
+            | ty::AliasTermKind::OpaqueTy { .. }
+            | ty::AliasTermKind::FreeTy { .. }
+            | ty::AliasTermKind::AnonConst { .. }
+            | ty::AliasTermKind::FreeConst { .. }
+            | ty::AliasTermKind::InherentConstSelf { .. }
+            | ty::AliasTermKind::InherentConstImpl { .. } => {}
+        }
+    }
+
+    /// Adds every parent-scope value which is folded as part of a proof recipe.
+    ///
+    /// Evidence-indexed projections keep trait arguments in the evidence rather
+    /// than in `Alias::args`. Missing these flags lets folders incorrectly skip
+    /// the alias and overlook bound variables or placeholders in its proof.
+    fn add_trait_evidence(&mut self, evidence: I::TraitEvidence) {
+        // Interned nested proofs share this variable scope. Visit each handle once;
+        // a fresh cache for each root keeps separate binder scopes independent.
+        self.add_trait_evidence_with_cache(evidence, &mut HashSet::default());
+    }
+
+    fn add_trait_evidence_with_cache(
+        &mut self,
+        evidence: I::TraitEvidence,
+        visited: &mut HashSet<I::TraitEvidence>,
+    ) {
+        if !visited.insert(evidence) {
+            return;
+        }
+        match &evidence.kind {
+            ty::solve::TraitEvidenceKind::Selected(recipe) => {
+                self.add_selected_trait_evidence(recipe, visited)
+            }
+            ty::solve::TraitEvidenceKind::Bound(index, _) => {
+                self.add_args(evidence.trait_ref.args.as_slice());
+                self.add_flags(TypeFlags::HAS_TY_BOUND);
+                match index {
+                    ty::BoundVarIndexKind::Bound(debruijn) => self.add_bound_var(*debruijn),
+                    ty::BoundVarIndexKind::Canonical => {
+                        self.add_flags(TypeFlags::HAS_CANONICAL_BOUND)
+                    }
+                }
+            }
+            ty::solve::TraitEvidenceKind::Placeholder(_) => {
+                self.add_args(evidence.trait_ref.args.as_slice());
+                self.add_flags(TypeFlags::HAS_TY_PLACEHOLDER);
+            }
+            ty::solve::TraitEvidenceKind::Error(_) => {
+                self.add_args(evidence.trait_ref.args.as_slice());
+                self.add_flags(TypeFlags::HAS_NON_REGION_ERROR);
+            }
+        }
+    }
+
+    fn add_selected_trait_evidence(
+        &mut self,
+        evidence: &ty::solve::CandidateEvidence<I>,
+        visited: &mut HashSet<I::TraitEvidence>,
+    ) {
+        for node in &evidence.nodes {
+            self.add_args(node.trait_ref.args.as_slice());
+
+            match node.source {
+                ty::solve::CandidateEvidenceSource::Unique(key) => {
+                    self.add_args(key.trait_ref.args.as_slice());
+                }
+                ty::solve::CandidateEvidenceSource::Impl { args, .. } => {
+                    self.add_args(args.as_slice())
+                }
+                ty::solve::CandidateEvidenceSource::Dyn {
+                    object_bound,
+                    instantiation,
+                    operation,
+                    ..
+                } => {
+                    self.add_flags(object_bound.flags());
+                    self.add_exclusive_binder(object_bound.outer_exclusive_binder());
+                    if let Some(instantiation) = instantiation {
+                        self.add_args(instantiation.as_slice());
+                    }
+                    if let Some(operation) = operation {
+                        self.add_flags(operation.projection_bound.flags());
+                        self.add_exclusive_binder(
+                            operation.projection_bound.outer_exclusive_binder(),
+                        );
+                        self.add_args(operation.ordinary_args.as_slice());
+                    }
+                }
+                ty::solve::CandidateEvidenceSource::ParamEnv { origin, .. } => match origin {
+                    ty::solve::ParamEnvAssumption::ItemContract { contract } => {
+                        self.add_args(contract.complete_early_args.as_slice());
+                    }
+                    ty::solve::ParamEnvAssumption::Binder { identity, instantiation, .. } => {
+                        self.add_flags(identity.flags());
+                        self.add_exclusive_binder(identity.outer_exclusive_binder());
+                        self.add_args(instantiation.as_slice());
+                    }
+                    ty::solve::ParamEnvAssumption::CallerBound { .. }
+                    | ty::solve::ParamEnvAssumption::ItemClause { .. }
+                    | ty::solve::ParamEnvAssumption::Generated { .. } => {}
+                },
+                ty::solve::CandidateEvidenceSource::Builtin { evidence, .. } => match evidence {
+                    ty::solve::BuiltinEvidence::RuleOnly => {}
+                    ty::solve::BuiltinEvidence::Fn { output, instantiation }
+                    | ty::solve::BuiltinEvidence::AsyncFn { output, instantiation } => {
+                        self.add_ty(output);
+                        self.add_args(instantiation.as_slice());
+                    }
+                },
+                ty::solve::CandidateEvidenceSource::AliasBound(_)
+                | ty::solve::CandidateEvidenceSource::Error
+                | ty::solve::CandidateEvidenceSource::CoherenceUnknowable => {}
+            }
+
+            for nested in &node.nested_evidence {
+                match nested {
+                    ty::solve::CandidateEvidenceUse::Instantiated(evidence) => {
+                        self.add_trait_evidence_with_cache(*evidence, visited)
+                    }
+                }
+            }
+        }
     }
 
     fn add_args(&mut self, args: &[I::GenericArg]) {

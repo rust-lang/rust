@@ -549,6 +549,18 @@ impl<I: Interner> TypeFolder<I> for FoldEscapingRegions<I> {
             r
         }
     }
+
+    fn fold_trait_evidence(&mut self, evidence: I::TraitEvidence) -> I::TraitEvidence {
+        if let ty::solve::TraitEvidenceKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), _) =
+            &evidence.kind
+            && *debruijn >= self.debruijn
+        {
+            panic!(
+                "region-only closure binder instantiation cannot replace bound evidence: {evidence:?}"
+            );
+        }
+        self.interner.mk_trait_evidence_data((*evidence).clone().fold_with(self))
+    }
 }
 
 #[derive_where(Clone, Copy, PartialEq, Hash, Debug; I: Interner)]

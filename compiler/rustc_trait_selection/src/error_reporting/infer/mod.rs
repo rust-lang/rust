@@ -1608,6 +1608,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ValuePairs::Aliases(ExpectedFound { expected, .. }) => {
                         let def_id = match expected.kind {
                             ty::AliasTermKind::ProjectionTy { def_id } => def_id.into(),
+                            ty::AliasTermKind::EvidenceProjectionTy { projection }
+                            | ty::AliasTermKind::EvidenceProjectionConst { projection } => {
+                                projection.item_def_id
+                            }
                             ty::AliasTermKind::InherentTy { def_id } => def_id.into(),
                             ty::AliasTermKind::OpaqueTy { def_id } => def_id.into(),
                             ty::AliasTermKind::FreeTy { def_id } => def_id.into(),

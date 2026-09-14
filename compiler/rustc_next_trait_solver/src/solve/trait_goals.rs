@@ -1334,7 +1334,11 @@ where
             | ty::Alias(
                 ty::IsRigid::Yes,
                 ty::AliasTy {
-                    kind: ty::Projection { .. } | ty::Free { .. } | ty::Inherent { .. },
+                    kind:
+                        ty::Projection { .. }
+                        | ty::EvidenceProjection { .. }
+                        | ty::Free { .. }
+                        | ty::Inherent { .. },
                     ..
                 },
             )

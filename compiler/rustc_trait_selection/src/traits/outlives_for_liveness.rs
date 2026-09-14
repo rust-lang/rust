@@ -30,6 +30,9 @@ pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
     kind: ty::AliasTyKind<'tcx>,
 ) -> DenseBitSet<u32> {
     let def_id = match kind {
+        ty::AliasTyKind::EvidenceProjection { .. } => {
+            bug!("evidence projection in alias liveness query")
+        }
         ty::AliasTyKind::Projection { def_id }
         | ty::AliasTyKind::Inherent { def_id }
         | ty::AliasTyKind::Opaque { def_id }
@@ -361,6 +364,9 @@ fn live_args_for_outlives_clause<'tcx>(
         return no_restriction();
     };
     let clause_def_id = match clause_alias_kind {
+        ty::AliasTyKind::EvidenceProjection { .. } => {
+            bug!("evidence projection in alias liveness clause")
+        }
         ty::AliasTyKind::Projection { def_id }
         | ty::AliasTyKind::Inherent { def_id }
         | ty::AliasTyKind::Opaque { def_id }
@@ -525,6 +531,9 @@ where
                 // args independently: only the args that can be live for *every*
                 // source of information can be actually live, so we take the intersection.
                 let def_id = match kind {
+                    ty::AliasTyKind::EvidenceProjection { .. } => {
+                        bug!("evidence projection in alias liveness computation")
+                    }
                     ty::AliasTyKind::Projection { def_id }
                     | ty::AliasTyKind::Inherent { def_id }
                     | ty::AliasTyKind::Opaque { def_id }

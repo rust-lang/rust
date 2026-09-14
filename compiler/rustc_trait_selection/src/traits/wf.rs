@@ -839,6 +839,9 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 self.add_wf_preds_for_inherent_projection(data.into());
                 return; // Subtree handled by compute_inherent_projection.
             }
+            ty::Alias(_, ty::AliasTy { kind: ty::EvidenceProjection { .. }, .. }) => {
+                bug!("evidence projection in well-formedness computation")
+            }
 
             ty::Adt(def, args) => {
                 // WfNominalType
@@ -1108,6 +1111,9 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                     }
 
                     match alias_const.kind {
+                        ty::AliasConstKind::EvidenceProjection { .. } => {
+                            bug!("evidence projection in well-formedness computation")
+                        }
                         ty::AliasConstKind::InherentSelf { .. } => {
                             self.add_wf_preds_for_inherent_projection(alias_const.into());
                             return; // Subtree is handled by above function

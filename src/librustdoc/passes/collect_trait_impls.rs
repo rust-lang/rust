@@ -220,6 +220,14 @@ impl SelfTyHead {
                 Self::of(bound_ty.rebind(alias_ty.self_ty()), tcx, parent)
             }
 
+            ty::Alias(
+                _,
+                alias_ty @ ty::AliasTy { kind: ty::EvidenceProjection { projection }, .. },
+            ) => {
+                debug_assert!(!tcx.is_impl_trait_in_trait(projection.item_def_id));
+                Self::of(bound_ty.rebind(alias_ty.self_ty()), tcx, parent)
+            }
+
             ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
                 let alias_ty = bound_ty.rebind(alias_ty);
                 Self::of(alias_ty.map_bound(|ty| ty.self_ty()), tcx, parent)

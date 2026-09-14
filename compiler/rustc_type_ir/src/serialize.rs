@@ -1,6 +1,5 @@
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use crate::inherent::*;
 use crate::visit::TypeVisitable;
 use crate::{self as ty, Interner, Region, RegionKind, UnsafeBinderInner};
 
@@ -17,46 +16,11 @@ pub trait InternerDecoder: Decoder {
     fn interner(&self) -> Self::Interner;
 }
 
-macro_rules! impl_binder_encode_decode {
-    ($($t:ty),+ $(,)?) => {
-        $(
-            impl<I: Interner, E: rustc_serialize::Encoder> rustc_serialize::Encodable<E> for ty::Binder<I, $t>
-            where
-                $t: rustc_serialize::Encodable<E>,
-                I::BoundVarKinds: rustc_serialize::Encodable<E>,
-            {
-                fn encode(&self, e: &mut E) {
-                    self.bound_vars().encode(e);
-                    self.as_ref().skip_binder().encode(e);
-                }
-            }
-            impl<I: Interner, D: rustc_serialize::Decoder> rustc_serialize::Decodable<D> for ty::Binder<I, $t>
-            where
-                $t: TypeVisitable<I> + rustc_serialize::Decodable<D>,
-                I::BoundVarKinds: rustc_serialize::Decodable<D>,
-            {
-                fn decode(decoder: &mut D) -> Self {
-                    let bound_vars = rustc_serialize::Decodable::decode(decoder);
-                    ty::Binder::bind_with_vars(rustc_serialize::Decodable::decode(decoder), bound_vars)
-                }
-            }
-        )*
-    }
-}
-
-impl_binder_encode_decode! {
-    ty::FnSig<I>,
-    ty::FnSigTys<I>,
-    ty::TraitClause<I>,
-    ty::ExistentialPredicate<I>,
-    ty::TraitRef<I>,
-    ty::ExistentialTraitRef<I>,
-    ty::HostEffectClause<I>,
-}
-
-impl<T: GenericArgs<I>, I: Interner<GenericArgs = T>, E: Encoder> Encodable<E> for ty::Binder<I, T>
+// Every binder uses the same wire representation: its ordered declarations,
+// followed by its payload. Keep this generic so a closed evidence projection
+// can cross MIR and metadata boundaries without losing its region binder.
+impl<I: Interner, T: Encodable<E>, E: Encoder> Encodable<E> for ty::Binder<I, T>
 where
-    T: Encodable<E>,
     I::BoundVarKinds: Encodable<E>,
 {
     fn encode(&self, e: &mut E) {
@@ -65,9 +29,8 @@ where
     }
 }
 
-impl<T: GenericArgs<I>, I: Interner<GenericArgs = T>, D: Decoder> Decodable<D> for ty::Binder<I, T>
+impl<I: Interner, T: TypeVisitable<I> + Decodable<D>, D: Decoder> Decodable<D> for ty::Binder<I, T>
 where
-    T: TypeVisitable<I> + Decodable<D>,
     I::BoundVarKinds: Decodable<D>,
 {
     fn decode(decoder: &mut D) -> Self {

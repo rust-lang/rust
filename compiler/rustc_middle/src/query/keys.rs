@@ -297,6 +297,7 @@ impl<'tcx> QueryKey for ty::AliasTyKind<'tcx> {
             | ty::AliasTyKind::Inherent { def_id }
             | ty::AliasTyKind::Opaque { def_id }
             | ty::AliasTyKind::Free { def_id } => def_id,
+            ty::AliasTyKind::EvidenceProjection { projection } => &projection.item_def_id,
         };
         tcx.def_span(*def_id)
     }
@@ -451,6 +452,7 @@ fn def_id_of_type_cached<'a>(ty: Ty<'a>, visited: &mut SsoHashSet<Ty<'a>>) -> Op
             | ty::AliasTyKind::Inherent { def_id }
             | ty::AliasTyKind::Opaque { def_id }
             | ty::AliasTyKind::Free { def_id } => Some(def_id),
+            ty::AliasTyKind::EvidenceProjection { projection } => Some(projection.item_def_id),
         },
 
         ty::Bool

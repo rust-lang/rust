@@ -87,6 +87,9 @@ where
         let mut candidates = vec![];
 
         let def_id = match alias_ty.kind {
+            ty::AliasTyKind::EvidenceProjection { .. } => {
+                unreachable!("evidence projection in alias const conditions")
+            }
             ty::AliasTyKind::Projection { def_id } => def_id.into(),
             ty::AliasTyKind::Inherent { def_id } => def_id.into(),
             ty::AliasTyKind::Opaque { def_id } => def_id.into(),

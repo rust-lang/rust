@@ -334,7 +334,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
                 mapped.expect_const()
             } else {
                 let var = ty::BoundVar::from_usize(self.still_bound_vars.len());
-                self.still_bound_vars.push(ty::BoundVariableKind::Const);
+                self.still_bound_vars.push(ty::BoundVariableKind::Const(None));
                 let mapped =
                     ty::Const::new_bound(self.tcx, ty::INNERMOST, ty::BoundConst::new(var));
                 self.mapping.insert(old_bound.var, mapped.into());

@@ -246,7 +246,7 @@ where
                     match kind {
                         ty::Inherent { .. } | ty::Projection { .. } => "associated type",
                         ty::Free { .. } => "type alias",
-                        ty::Opaque { .. } => unreachable!(),
+                        ty::Opaque { .. } | ty::EvidenceProjection { .. } => unreachable!(),
                     },
                     &LazyDefPathStr { def_id, tcx },
                 ));
@@ -260,6 +260,30 @@ where
                     V::Result::from_branch(
                         data.args.iter().try_for_each(|arg| arg.visit_with(self).branch()),
                     )
+                };
+            }
+            ty::Alias(
+                _,
+                data @ ty::AliasTy { kind: ty::EvidenceProjection { projection }, .. },
+            ) => {
+                if self.def_id_visitor.skip_assoc_tys() {
+                    return V::Result::output();
+                }
+                if !self.visited_tys.insert(ty) {
+                    return V::Result::output();
+                }
+
+                let def_id = projection.item_def_id;
+                try_visit!(self.def_id_visitor.visit_def_id(
+                    def_id,
+                    "associated type",
+                    &LazyDefPathStr { def_id, tcx },
+                ));
+
+                return if V::SHALLOW {
+                    V::Result::output()
+                } else {
+                    self.visit_projection_term(data.into())
                 };
             }
             ty::Dynamic(predicates, ..) => {

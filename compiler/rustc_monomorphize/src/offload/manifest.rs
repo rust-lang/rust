@@ -6,12 +6,13 @@
 
 use std::fs;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lock;
 use rustc_hir::def_id::{DefId, DefIndex, LOCAL_CRATE, StableCrateId};
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mono::MonoItem;
+use rustc_middle::traits::solve::TraitEvidence;
 use rustc_middle::ty::codec::{TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
@@ -23,6 +24,7 @@ use rustc_span::{
 pub(crate) struct OffloadManifestEncoder<'a, 'tcx> {
     encoder: FileEncoder<'a>,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
+    trait_evidence_shorthands: FxHashMap<TraitEvidence<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
     tcx: TyCtxt<'tcx>,
 }
@@ -33,6 +35,7 @@ impl<'a, 'tcx> OffloadManifestEncoder<'a, 'tcx> {
         Ok(OffloadManifestEncoder {
             encoder,
             type_shorthands: FxHashMap::default(),
+            trait_evidence_shorthands: FxHashMap::default(),
             predicate_shorthands: FxHashMap::default(),
             tcx,
         })
@@ -146,6 +149,10 @@ impl<'a, 'tcx> TyEncoder<'tcx> for OffloadManifestEncoder<'a, 'tcx> {
         &mut self.predicate_shorthands
     }
 
+    fn trait_evidence_shorthands(&mut self) -> &mut FxHashMap<TraitEvidence<'tcx>, usize> {
+        &mut self.trait_evidence_shorthands
+    }
+
     fn encode_alloc_id(&mut self, _alloc_id: &rustc_middle::mir::interpret::AllocId) {
         // AllocIds are not expected in the manifest.
     }
@@ -159,7 +166,9 @@ const UNRESOLVED_DEF_ID: DefId = DefId {
 /// Decoder used to read the offload monomorphization manifest.
 pub(crate) struct OffloadManifestDecoder<'a, 'tcx> {
     decoder: MemDecoder<'a>,
+    trait_evidence_in_progress: FxHashSet<usize>,
     type_shorthands: Lock<FxHashMap<usize, Ty<'tcx>>>,
+    trait_evidence_shorthands: Lock<FxHashMap<usize, TraitEvidence<'tcx>>>,
     #[allow(dead_code)]
     predicate_shorthands: Lock<FxHashMap<usize, ty::PredicateKind<'tcx>>>,
     tcx: TyCtxt<'tcx>,
@@ -173,7 +182,9 @@ impl<'a, 'tcx> OffloadManifestDecoder<'a, 'tcx> {
         let decoder = MemDecoder::new(data, 0)?;
         Ok(OffloadManifestDecoder {
             decoder,
+            trait_evidence_in_progress: Default::default(),
             type_shorthands: Lock::new(FxHashMap::default()),
+            trait_evidence_shorthands: Lock::new(FxHashMap::default()),
             predicate_shorthands: Lock::new(FxHashMap::default()),
             tcx,
             def_path_map: Lock::new(None),
@@ -341,6 +352,27 @@ impl<'a, 'tcx> TyDecoder<'tcx> for OffloadManifestDecoder<'a, 'tcx> {
         let ty = or_insert_with(self);
         self.type_shorthands.lock().insert(shorthand, ty);
         ty
+    }
+
+    fn cached_trait_evidence_for_shorthand<F>(
+        &mut self,
+        shorthand: usize,
+        or_insert_with: F,
+    ) -> TraitEvidence<'tcx>
+    where
+        F: FnOnce(&mut Self) -> TraitEvidence<'tcx>,
+    {
+        if let Some(&evidence) = self.trait_evidence_shorthands.lock().get(&shorthand) {
+            return evidence;
+        }
+
+        let evidence = or_insert_with(self);
+        self.trait_evidence_shorthands.lock().insert(shorthand, evidence);
+        evidence
+    }
+
+    fn trait_evidence_in_progress(&mut self) -> &mut FxHashSet<usize> {
+        &mut self.trait_evidence_in_progress
     }
 
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R

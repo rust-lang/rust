@@ -17,7 +17,8 @@ use crate::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTrait
 use crate::relate::Relate;
 use crate::search_graph::RequiredDepth;
 use crate::solve::{
-    AccessedOpaques, CanonicalInputData, Certainty, ExternalConstraintsData, QueryResult, inspect,
+    AccessedOpaques, CandidateEvidence, CanonicalInputData, Certainty, ExternalConstraintsData,
+    QueryResult, TraitEvidenceData, TraitEvidenceKind, inspect,
 };
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
@@ -158,6 +159,118 @@ pub trait Interner:
         self,
         data: ExternalConstraintsData<Self>,
     ) -> Self::ExternalConstraints;
+
+    #[cfg(feature = "nightly")]
+    type BoundRequiredContract: Copy
+        + Debug
+        + Hash
+        + Eq
+        + StableHash
+        + TypeFoldable<Self>
+        + TypeVisitable<Self>
+        + Deref<Target = ty::BoundRequiredContractData<Self>>;
+
+    #[cfg(not(feature = "nightly"))]
+    type BoundRequiredContract: Copy
+        + Debug
+        + Hash
+        + Eq
+        + TypeFoldable<Self>
+        + TypeVisitable<Self>
+        + Deref<Target = ty::BoundRequiredContractData<Self>>;
+
+    fn mk_bound_required_contract(
+        self,
+        data: ty::BoundRequiredContractData<Self>,
+    ) -> Self::BoundRequiredContract;
+
+    #[cfg(feature = "nightly")]
+    type TraitEvidence: Copy
+        + Debug
+        + Hash
+        + Eq
+        + StableHash
+        + TypeFoldable<Self>
+        + TypeVisitable<Self>
+        + Deref<Target = TraitEvidenceData<Self>>;
+
+    #[cfg(not(feature = "nightly"))]
+    type TraitEvidence: Copy
+        + Debug
+        + Hash
+        + Eq
+        + TypeFoldable<Self>
+        + TypeVisitable<Self>
+        + Deref<Target = TraitEvidenceData<Self>>;
+    fn mk_trait_evidence_data(self, data: TraitEvidenceData<Self>) -> Self::TraitEvidence;
+
+    type TraitEvidences: Copy
+        + Debug
+        + Hash
+        + Eq
+        + Default
+        + TypeFoldable<Self>
+        + TypeVisitable<Self>
+        + SliceLike<Item = Self::TraitEvidence>;
+
+    fn mk_trait_evidences(self, values: &[Self::TraitEvidence]) -> Self::TraitEvidences;
+
+    fn mk_trait_evidences_from_iter<I, T>(self, values: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<Self::TraitEvidence, Self::TraitEvidences>;
+
+    fn mk_trait_evidence(self, recipe: CandidateEvidence<Self>) -> Self::TraitEvidence {
+        self.mk_trait_evidence_data(TraitEvidenceData::selected(recipe))
+    }
+
+    fn mk_trait_evidence_kind(
+        self,
+        trait_ref: TraitRef<Self>,
+        kind: TraitEvidenceKind<Self>,
+    ) -> Self::TraitEvidence {
+        let data = match kind {
+            TraitEvidenceKind::Selected(recipe) => {
+                let data = TraitEvidenceData::selected(recipe);
+                assert_eq!(
+                    data.trait_ref, trait_ref,
+                    "selected evidence predicate does not match its proof recipe"
+                );
+                data
+            }
+            TraitEvidenceKind::Bound(index, bound) => {
+                TraitEvidenceData::bound(trait_ref, index, bound)
+            }
+            TraitEvidenceKind::Placeholder(placeholder) => {
+                TraitEvidenceData::placeholder(trait_ref, placeholder)
+            }
+            TraitEvidenceKind::Error(guar) => TraitEvidenceData::error(trait_ref, guar),
+        };
+        self.mk_trait_evidence_data(data)
+    }
+
+    #[cfg(feature = "nightly")]
+    type EvidenceProjection: Copy
+        + Debug
+        + Hash
+        + Eq
+        + StableHash
+        + TypeFoldable<Self>
+        + TypeVisitable<Self>
+        + Deref<Target = ty::EvidenceProjectionData<Self>>;
+
+    #[cfg(not(feature = "nightly"))]
+    type EvidenceProjection: Copy
+        + Debug
+        + Hash
+        + Eq
+        + TypeFoldable<Self>
+        + TypeVisitable<Self>
+        + Deref<Target = ty::EvidenceProjectionData<Self>>;
+    fn mk_evidence_projection(
+        self,
+        data: ty::EvidenceProjectionData<Self>,
+    ) -> Self::EvidenceProjection;
 
     type DepNodeIndex;
     type Tracked<T: Debug + Clone>: Debug;
@@ -311,6 +424,10 @@ pub trait Interner:
         def_id: Self::TraitAssocTermId,
         args: Self::GenericArgs,
     ) -> (ty::TraitRef<Self>, Self::GenericArgsSlice);
+
+    /// Converts an interned generic-argument list into the implementation's
+    /// corresponding interned slice view.
+    fn generic_args_slice(self, args: Self::GenericArgs) -> Self::GenericArgsSlice;
 
     fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs;
 
@@ -584,7 +701,10 @@ macro_rules! declare_lift_into {
 }
 
 declare_lift_into! {
+    BoundRequiredContract,
     BoundVarKinds,
+    Clause,
+    Clauses,
     Const,
     DefId,
     EarlyParamRegion,
@@ -602,6 +722,9 @@ declare_lift_into! {
     RegionAssumptions,
     Symbol,
     Term,
+    TraitEvidence,
+    TraitEvidences,
+    EvidenceProjection,
     TraitAssocConstId,
     TraitAssocTermId,
     TraitAssocTyId,

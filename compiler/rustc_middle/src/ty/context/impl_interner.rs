@@ -20,7 +20,8 @@ use crate::dep_graph::{DepKind, DepNodeIndex};
 use crate::infer::canonical::CanonicalVarKinds;
 use crate::traits::cache::WithDepNode;
 use crate::traits::solve::{
-    self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, QueryResult, inspect,
+    self, BoundRequiredContract, CanonicalInput, EvidenceProjection, ExternalConstraints,
+    ExternalConstraintsData, QueryResult, TraitEvidence, TraitEvidences, inspect,
 };
 use crate::ty::{
     self, BoundRegion, Clause, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Predicate,
@@ -83,13 +84,44 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> Self::CanonicalVarKinds {
         self.mk_canonical_var_kinds(kinds)
     }
-
     type ExternalConstraints = ExternalConstraints<'tcx>;
     fn mk_external_constraints(
         self,
         data: ExternalConstraintsData<Self>,
     ) -> ExternalConstraints<'tcx> {
         self.mk_external_constraints(data)
+    }
+    type BoundRequiredContract = BoundRequiredContract<'tcx>;
+    fn mk_bound_required_contract(
+        self,
+        data: rustc_type_ir::BoundRequiredContractData<Self>,
+    ) -> Self::BoundRequiredContract {
+        self.mk_bound_required_contract(data)
+    }
+    type TraitEvidence = TraitEvidence<'tcx>;
+    fn mk_trait_evidence_data(
+        self,
+        data: rustc_type_ir::solve::TraitEvidenceData<Self>,
+    ) -> Self::TraitEvidence {
+        self.mk_trait_evidence_data(data)
+    }
+    type TraitEvidences = TraitEvidences<'tcx>;
+    fn mk_trait_evidences(self, values: &[Self::TraitEvidence]) -> Self::TraitEvidences {
+        self.mk_trait_evidences(values)
+    }
+    fn mk_trait_evidences_from_iter<I, T>(self, values: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<Self::TraitEvidence, Self::TraitEvidences>,
+    {
+        self.mk_trait_evidences_from_iter(values)
+    }
+    type EvidenceProjection = EvidenceProjection<'tcx>;
+    fn mk_evidence_projection(
+        self,
+        data: rustc_type_ir::EvidenceProjectionData<Self>,
+    ) -> Self::EvidenceProjection {
+        self.mk_evidence_projection(data)
     }
     type DepNodeIndex = DepNodeIndex;
     fn with_cached_task<T>(self, task: impl FnOnce() -> T) -> (T, DepNodeIndex) {
@@ -188,6 +220,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
     fn is_direct_const(self, alias: ty::AliasConstKind<'tcx>) -> bool {
         match alias {
+            ty::AliasConstKind::EvidenceProjection { projection } => {
+                self.is_direct_const(projection.item_def_id)
+            }
             ty::AliasConstKind::Projection { def_id }
             | ty::AliasConstKind::InherentSelf { def_id }
             | ty::AliasConstKind::InherentImpl { def_id }
@@ -200,6 +235,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         alias: ty::AliasConstKind<'tcx>,
     ) -> Option<ty::EarlyBinder<'tcx, Const<'tcx>>> {
         match alias {
+            ty::AliasConstKind::EvidenceProjection { projection } => {
+                self.const_of_item(projection.item_def_id)
+            }
             ty::AliasConstKind::Projection { def_id }
             | ty::AliasConstKind::InherentSelf { def_id }
             | ty::AliasConstKind::InherentImpl { def_id }
@@ -295,6 +333,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         debug_assert_matches!(self.def_kind(trait_def_id), DefKind::Trait);
         let trait_ref = ty::TraitRef::from_assoc(self, trait_def_id, args);
         (trait_ref, &args[trait_ref.args.len()..])
+    }
+
+    fn generic_args_slice(self, args: ty::GenericArgsRef<'tcx>) -> &'tcx [ty::GenericArg<'tcx>] {
+        args
     }
 
     fn mk_args(self, args: &[Self::GenericArg]) -> ty::GenericArgsRef<'tcx> {

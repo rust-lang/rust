@@ -63,6 +63,11 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
             | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
+            ty::Alias(
+                _,
+                alias @ ty::AliasTy { kind: ty::EvidenceProjection { projection }, .. },
+            ) => self.print_def_path(projection.item_def_id, alias.full_args(self.tcx)),
+
             ty::FnDef(def_id, args) => self.print_def_path(def_id, args.no_bound_vars().unwrap()),
             ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. }) => {
                 bug!("type_name: unexpected free alias")

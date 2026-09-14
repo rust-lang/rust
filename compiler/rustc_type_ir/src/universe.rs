@@ -2,6 +2,7 @@ use tracing::{debug, instrument};
 
 use crate::data_structures::HashSet;
 use crate::inherent::*;
+use crate::solve::TraitEvidenceKind;
 use crate::visit::TypeVisitableExt;
 use crate::{
     ConstKind, InferCtxtLike, InferTy, Interner, Region, RegionKind, TyKind, TypeFoldable,
@@ -167,6 +168,16 @@ impl<
                 }
             }
             _ => (),
+        }
+    }
+
+    fn visit_trait_evidence(&mut self, evidence: I::TraitEvidence) {
+        match &evidence.kind {
+            TraitEvidenceKind::Placeholder(placeholder) if VISIT_PLACEHOLDER => {
+                self.max_universe = self.max_universe.max(placeholder.universe());
+                evidence.trait_ref.visit_with(self);
+            }
+            _ => (*evidence).visit_with(self),
         }
     }
 }
