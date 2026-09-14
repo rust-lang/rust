@@ -78,6 +78,7 @@ use std::rc::Rc;
 pub(crate) use NamedMatch::*;
 pub(crate) use ParseResult::*;
 use rustc_ast::token::{self, DocComment, NonterminalKind, Token, TokenKind};
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
@@ -380,14 +381,14 @@ pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
 #[derive(Debug, Clone)]
 pub(crate) enum NamedMatch {
     MatchedSeq(Vec<NamedMatch>),
-    MatchedSingle(ParseNtResult),
+    MatchedSingle(ParseNtResult, ArenaTokenStream),
 }
 
 impl NamedMatch {
     pub(super) fn is_repeatable(&self) -> bool {
         match self {
             NamedMatch::MatchedSeq(_) => true,
-            NamedMatch::MatchedSingle(_) => false,
+            NamedMatch::MatchedSingle(_, _) => false,
         }
     }
 }
@@ -616,7 +617,11 @@ impl TtParser {
                     Err(err) => return Some(self.nt_parsing_error(matcher_loc, err)),
                     Ok(nt) => nt,
                 };
-                mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
+                mp.push_match(
+                    next_metavar,
+                    seq_depth,
+                    MatchedSingle(nt, parser.token_stream().clone()),
+                );
 
                 mp.idx += 1;
                 self.cur_mps.push(mp);
