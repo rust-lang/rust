@@ -1,7 +1,7 @@
 //! Custom arbitrary-precision number (bignum) implementation.
 //!
 //! This is designed to avoid the heap allocation at expense of stack memory.
-//! The most used bignum type, `Big32x40`, is limited by 32 × 40 = 1,280 bits
+//! The most used bignum type, `Big64x20`, is limited by 64 × 20 = 1,280 bits
 //! and will take at most 160 bytes of stack memory. This is more than enough
 //! for round-tripping all possible finite `f64` values.
 //!
@@ -61,9 +61,10 @@ impl_full_ops! {
     u64: add(intrinsics::u64_add_with_overflow), mul/div(u128);
 }
 
-/// Table of powers of 5 representable in digits. Specifically, the largest {u8, u16, u32} value
+/// Table of powers of 5 representable in digits. Specifically, the largest {u8, u16, u32, u64} value
 /// that's a power of five, plus the corresponding exponent. Used in `mul_pow5`.
-const SMALL_POW5: [(u64, usize); 3] = [(125, 3), (15625, 6), (1_220_703_125, 13)];
+const SMALL_POW5: [(u64, usize); 4] =
+    [(125, 3), (15625, 6), (1_220_703_125, 13), (7_450_580_596_923_828_125, 27)];
 
 macro_rules! define_bignum {
     ($name:ident: type=$ty:ty, n=$n:expr) => {
@@ -100,7 +101,7 @@ macro_rules! define_bignum {
                 let mut sz = 0;
                 while v > 0 {
                     base[sz] = v as $ty;
-                    v >>= <$ty>::BITS;
+                    v = v.checked_shr(<$ty>::BITS).unwrap_or(0);
                     sz += 1;
                 }
                 $name { size: sz, base }
@@ -382,10 +383,10 @@ macro_rules! define_bignum {
     };
 }
 
-/// The digit type for `Big32x40`.
-pub type Digit32 = u32;
+/// The digit type for `Big64x20`.
+pub type Digit64 = u64;
 
-define_bignum!(Big32x40: type=Digit32, n=40);
+define_bignum!(Big64x20: type=Digit64, n=20);
 
 // this one is used for testing only.
 #[doc(hidden)]
