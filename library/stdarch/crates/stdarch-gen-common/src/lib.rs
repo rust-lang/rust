@@ -32,24 +32,6 @@ pub enum Mode {
     Bless,
 }
 
-impl Mode {
-    /// Read the mode from the `STDARCH_GEN_MODE` environment variable.
-    ///
-    /// Recognized values:
-    /// - `"check"` → [`Mode::Check`]
-    /// - `"bless"` → [`Mode::Bless`]
-    /// - unset → [`Mode::Bless`]
-    /// - any other value → panic
-    pub fn from_env() -> Self {
-        match std::env::var("STDARCH_GEN_MODE").as_deref() {
-            Ok("check") => Mode::Check,
-            Ok("bless") => Mode::Bless,
-            Ok(other) => panic!("unknown STDARCH_GEN_MODE value: {other:?}"),
-            Err(_) => Mode::Bless,
-        }
-    }
-}
-
 impl FromStr for Mode {
     type Err = String;
 
