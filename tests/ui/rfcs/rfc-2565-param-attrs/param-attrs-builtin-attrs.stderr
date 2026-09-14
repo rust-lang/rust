@@ -5,55 +5,55 @@ LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:21:7
+  --> $DIR/param-attrs-builtin-attrs.rs:25:7
    |
 LL |     #[test] a: u32,
    |       ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:36:7
+  --> $DIR/param-attrs-builtin-attrs.rs:44:7
    |
 LL |     #[test] a: u32,
    |       ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:60:11
+  --> $DIR/param-attrs-builtin-attrs.rs:68:11
    |
 LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:79:11
+  --> $DIR/param-attrs-builtin-attrs.rs:87:11
    |
 LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:104:11
+  --> $DIR/param-attrs-builtin-attrs.rs:112:11
    |
 LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:127:11
+  --> $DIR/param-attrs-builtin-attrs.rs:135:11
    |
 LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:146:11
+  --> $DIR/param-attrs-builtin-attrs.rs:154:11
    |
 LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:170:11
+  --> $DIR/param-attrs-builtin-attrs.rs:178:11
    |
 LL |         #[test] a: i32,
    |           ^^^^ not a non-macro attribute
 
 error: expected non-macro attribute, found attribute macro `test`
-  --> $DIR/param-attrs-builtin-attrs.rs:191:11
+  --> $DIR/param-attrs-builtin-attrs.rs:199:11
    |
 LL |         #[test] a: u32,
    |           ^^^^ not a non-macro attribute
@@ -77,313 +77,313 @@ LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:11:9
+  --> $DIR/param-attrs-builtin-attrs.rs:13:9
    |
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:13:9
+  --> $DIR/param-attrs-builtin-attrs.rs:15:9
    |
 LL |         #[no_mangle] b: i32,
    |         ^^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:19:5
+  --> $DIR/param-attrs-builtin-attrs.rs:23:5
    |
 LL |     /// Foo
    |     ^^^^^^^ doc comments are not allowed here
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:23:5
-   |
-LL |     /// Bar
-   |     ^^^^^^^ doc comments are not allowed here
-
-error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:25:5
-   |
-LL |     #[must_use]
-   |     ^^^^^^^^^^^
-
-error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:27:5
    |
-LL |     /// Baz
+LL |     /// Bar
    |     ^^^^^^^ doc comments are not allowed here
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:29:5
    |
-LL |     #[no_mangle] b: i32,
-   |     ^^^^^^^^^^^^
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:34:5
-   |
-LL |     /// Foo
-   |     ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:38:5
-   |
-LL |     /// Bar
-   |     ^^^^^^^ doc comments are not allowed here
-
-error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:40:5
-   |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:44:5
+  --> $DIR/param-attrs-builtin-attrs.rs:33:5
    |
 LL |     /// Baz
    |     ^^^^^^^ doc comments are not allowed here
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:46:5
+  --> $DIR/param-attrs-builtin-attrs.rs:35:5
    |
 LL |     #[no_mangle] b: i32,
    |     ^^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:55:9
+  --> $DIR/param-attrs-builtin-attrs.rs:42:5
+   |
+LL |     /// Foo
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:46:5
+   |
+LL |     /// Bar
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:48:5
+   |
+LL |     #[must_use]
+   |     ^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:52:5
+   |
+LL |     /// Baz
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:54:5
+   |
+LL |     #[no_mangle] b: i32,
+   |     ^^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:63:9
    |
 LL |         /// Foo
    |         ^^^^^^^ doc comments are not allowed here
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:58:9
+  --> $DIR/param-attrs-builtin-attrs.rs:66:9
    |
 LL |         /// Bar
    |         ^^^^^^^ doc comments are not allowed here
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:62:9
-   |
-LL |         /// Baz
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:64:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:68:9
-   |
-LL |         /// Qux
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:70:9
    |
-LL |         #[no_mangle] b: i32,
-   |         ^^^^^^^^^^^^
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:77:9
-   |
-LL |         /// Foo
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:81:9
-   |
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:83:9
+  --> $DIR/param-attrs-builtin-attrs.rs:72:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:87:9
+  --> $DIR/param-attrs-builtin-attrs.rs:76:9
    |
 LL |         /// Qux
    |         ^^^^^^^ doc comments are not allowed here
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:78:9
+   |
+LL |         #[no_mangle] b: i32,
+   |         ^^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:85:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:89:9
    |
-LL |         #[no_mangle] b: i32,
-   |         ^^^^^^^^^^^^
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:99:9
-   |
-LL |         /// Foo
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:102:9
-   |
-LL |         /// Bar
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:106:9
-   |
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:108:9
+  --> $DIR/param-attrs-builtin-attrs.rs:91:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:112:9
+  --> $DIR/param-attrs-builtin-attrs.rs:95:9
    |
 LL |         /// Qux
    |         ^^^^^^^ doc comments are not allowed here
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:97:9
+   |
+LL |         #[no_mangle] b: i32,
+   |         ^^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:107:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:110:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:114:9
    |
-LL |         #[no_mangle] b: i32,
-   |         ^^^^^^^^^^^^
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:116:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:120:9
+   |
+LL |         /// Qux
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:122:9
    |
+LL |         #[no_mangle] b: i32,
+   |         ^^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:130:9
+   |
 LL |         /// Foo
    |         ^^^^^^^ doc comments are not allowed here
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:125:9
+  --> $DIR/param-attrs-builtin-attrs.rs:133:9
    |
 LL |         /// Bar
    |         ^^^^^^^ doc comments are not allowed here
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:129:9
-   |
-LL |         /// Baz
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:131:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:135:9
-   |
-LL |         /// Qux
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:137:9
    |
-LL |         #[no_mangle] b: i32,
-   |         ^^^^^^^^^^^^
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:144:9
-   |
-LL |         /// Foo
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:148:9
-   |
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:150:9
+  --> $DIR/param-attrs-builtin-attrs.rs:139:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:154:9
+  --> $DIR/param-attrs-builtin-attrs.rs:143:9
    |
 LL |         /// Qux
    |         ^^^^^^^ doc comments are not allowed here
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:145:9
+   |
+LL |         #[no_mangle] b: i32,
+   |         ^^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:152:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:156:9
    |
-LL |         #[no_mangle] b: i32,
-   |         ^^^^^^^^^^^^
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:165:9
-   |
-LL |         /// Foo
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:168:9
-   |
-LL |         /// Bar
-   |         ^^^^^^^ doc comments are not allowed here
-
-error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:172:9
-   |
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:174:9
+  --> $DIR/param-attrs-builtin-attrs.rs:158:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:178:9
+  --> $DIR/param-attrs-builtin-attrs.rs:162:9
    |
 LL |         /// Qux
    |         ^^^^^^^ doc comments are not allowed here
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:180:9
+  --> $DIR/param-attrs-builtin-attrs.rs:164:9
    |
 LL |         #[no_mangle] b: i32,
    |         ^^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:189:9
+  --> $DIR/param-attrs-builtin-attrs.rs:173:9
    |
 LL |         /// Foo
    |         ^^^^^^^ doc comments are not allowed here
 
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:193:9
+  --> $DIR/param-attrs-builtin-attrs.rs:176:9
    |
 LL |         /// Bar
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:195:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
-
 error: documentation comments cannot be applied to function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:199:9
+  --> $DIR/param-attrs-builtin-attrs.rs:180:9
    |
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:182:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:186:9
+   |
+LL |         /// Qux
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:188:9
+   |
+LL |         #[no_mangle] b: i32,
+   |         ^^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:197:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:201:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:203:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:207:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:209:9
    |
 LL |         #[no_mangle] b: i32
    |         ^^^^^^^^^^^^
 
 warning: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:40:7
+  --> $DIR/param-attrs-builtin-attrs.rs:29:7
    |
 LL |     #[must_use]
    |       ^^^^^^^^
@@ -393,7 +393,7 @@ LL |     #[must_use]
    = note: requested on the command line with `-W unused-attributes`
 
 warning: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:46:7
+  --> $DIR/param-attrs-builtin-attrs.rs:35:7
    |
 LL |     #[no_mangle] b: i32,
    |       ^^^^^^^^^
@@ -402,7 +402,25 @@ LL |     #[no_mangle] b: i32,
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:195:11
+  --> $DIR/param-attrs-builtin-attrs.rs:48:7
+   |
+LL |     #[must_use]
+   |       ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: the `no_mangle` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:54:7
+   |
+LL |     #[no_mangle] b: i32,
+   |       ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:203:11
    |
 LL |         #[must_use]
    |           ^^^^^^^^
@@ -411,7 +429,7 @@ LL |         #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:201:11
+  --> $DIR/param-attrs-builtin-attrs.rs:209:11
    |
 LL |         #[no_mangle] b: i32
    |           ^^^^^^^^^
@@ -420,7 +438,7 @@ LL |         #[no_mangle] b: i32
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:131:11
+  --> $DIR/param-attrs-builtin-attrs.rs:139:11
    |
 LL |         #[must_use]
    |           ^^^^^^^^
@@ -429,7 +447,7 @@ LL |         #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:137:11
+  --> $DIR/param-attrs-builtin-attrs.rs:145:11
    |
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
@@ -438,7 +456,7 @@ LL |         #[no_mangle] b: i32,
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:150:11
+  --> $DIR/param-attrs-builtin-attrs.rs:158:11
    |
 LL |         #[must_use]
    |           ^^^^^^^^
@@ -447,7 +465,7 @@ LL |         #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:156:11
+  --> $DIR/param-attrs-builtin-attrs.rs:164:11
    |
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
@@ -456,7 +474,7 @@ LL |         #[no_mangle] b: i32,
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:64:11
+  --> $DIR/param-attrs-builtin-attrs.rs:72:11
    |
 LL |         #[must_use]
    |           ^^^^^^^^
@@ -465,7 +483,7 @@ LL |         #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:70:11
+  --> $DIR/param-attrs-builtin-attrs.rs:78:11
    |
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
@@ -474,7 +492,7 @@ LL |         #[no_mangle] b: i32,
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:83:11
+  --> $DIR/param-attrs-builtin-attrs.rs:91:11
    |
 LL |         #[must_use]
    |           ^^^^^^^^
@@ -483,7 +501,7 @@ LL |         #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:89:11
+  --> $DIR/param-attrs-builtin-attrs.rs:97:11
    |
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
@@ -492,7 +510,7 @@ LL |         #[no_mangle] b: i32,
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:108:11
+  --> $DIR/param-attrs-builtin-attrs.rs:116:11
    |
 LL |         #[must_use]
    |           ^^^^^^^^
@@ -501,7 +519,7 @@ LL |         #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:114:11
+  --> $DIR/param-attrs-builtin-attrs.rs:122:11
    |
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
@@ -510,7 +528,7 @@ LL |         #[no_mangle] b: i32,
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `must_use` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:174:11
+  --> $DIR/param-attrs-builtin-attrs.rs:182:11
    |
 LL |         #[must_use]
    |           ^^^^^^^^
@@ -519,7 +537,7 @@ LL |         #[must_use]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `no_mangle` attribute cannot be used on function params
-  --> $DIR/param-attrs-builtin-attrs.rs:180:11
+  --> $DIR/param-attrs-builtin-attrs.rs:188:11
    |
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
@@ -527,5 +545,23 @@ LL |         #[no_mangle] b: i32,
    = help: the `no_mangle` attribute can be applied to functions and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: aborting due to 64 previous errors; 16 warnings emitted
+warning: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:9:11
+   |
+LL |         #[must_use]
+   |           ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: the `no_mangle` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:15:11
+   |
+LL |         #[no_mangle] b: i32,
+   |           ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: aborting due to 64 previous errors; 20 warnings emitted
 
