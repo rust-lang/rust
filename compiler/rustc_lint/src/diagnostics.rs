@@ -2079,9 +2079,6 @@ impl<'a> Diagnostic<'a, ()> for DropGlue<'_> {
     "exposed provenance semantics can be used to create a pointer based on some previously exposed provenance"
 )]
 #[help(
-    "if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`"
-)]
-#[help(
     "for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>"
 )]
 #[help(
@@ -2089,33 +2086,45 @@ impl<'a> Diagnostic<'a, ()> for DropGlue<'_> {
 )]
 pub(crate) struct IntegerToPtrTransmutes<'tcx> {
     #[subdiagnostic]
+    pub without_prov: Option<IntegerToPtrWithoutProvHelp>,
+    #[subdiagnostic]
     pub suggestion: Option<IntegerToPtrTransmutesSuggestion<'tcx>>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(
+    "if you truly mean to create a pointer without provenance, use `{$krate}::ptr::without_provenance_mut`"
+)]
+pub(crate) struct IntegerToPtrWithoutProvHelp {
+    pub krate: &'static str,
 }
 
 #[derive(Subdiagnostic)]
 pub(crate) enum IntegerToPtrTransmutesSuggestion<'tcx> {
     #[multipart_suggestion(
-        "use `std::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance",
+        "use `{$krate}::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance",
         applicability = "machine-applicable",
         style = "verbose"
     )]
     ToPtr {
+        krate: &'static str,
         dst: Ty<'tcx>,
         suffix: &'static str,
-        #[suggestion_part(code = "std::ptr::with_exposed_provenance{suffix}::<{dst}>(")]
+        #[suggestion_part(code = "{krate}::ptr::with_exposed_provenance{suffix}::<{dst}>(")]
         start_call: Span,
     },
     #[multipart_suggestion(
-        "use `std::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance",
+        "use `{$krate}::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance",
         applicability = "machine-applicable",
         style = "verbose"
     )]
     ToRef {
+        krate: &'static str,
         dst: Ty<'tcx>,
         suffix: &'static str,
         ref_mutbl: &'static str,
         #[suggestion_part(
-            code = "&{ref_mutbl}*std::ptr::with_exposed_provenance{suffix}::<{dst}>("
+            code = "&{ref_mutbl}*{krate}::ptr::with_exposed_provenance{suffix}::<{dst}>("
         )]
         start_call: Span,
     },
