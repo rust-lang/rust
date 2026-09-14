@@ -800,9 +800,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_variant(&mut self, item_kind: &ItemKind, v: &Variant) -> hir::Variant<'hir> {
         if v.ident.name == kw::Underscore && self.tcx.features().unnamed_enum_variants() {
             // FIXME(#156628): lower unnamed enum variants to HIR.
-            self.dcx()
-                .struct_span_fatal(v.span, "unnamed enum variants are not yet implemented")
-                .emit()
+            self.dcx().span_fatal(v.span, "unnamed enum variants are not yet implemented");
         }
         let hir_id = self.lower_node_id(v.id);
         self.lower_attrs(hir_id, &v.attrs, v.span, Target::Variant);
