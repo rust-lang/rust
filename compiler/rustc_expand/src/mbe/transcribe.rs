@@ -447,18 +447,19 @@ fn transcribe_metavar<'tx>(
         return Ok(());
     };
 
-    let MatchedSingle(pnr) = cur_matched else {
+    let MatchedSingle(pnr, stream) = cur_matched else {
         // We were unable to descend far enough. This is an error.
         return Err(dcx.create_err(MacroVarStillRepeating { span: sp, ident }));
     };
 
-    transcribe_pnr(tscx, sp, pnr)
+    transcribe_pnr(tscx, sp, pnr, stream)
 }
 
 fn transcribe_pnr<'tx>(
     tscx: &mut TranscrCtx<'tx, '_>,
     mut sp: Span,
     pnr: &ParseNtResult,
+    stream: &ArenaTokenStream,
 ) -> PResult<'tx, ()> {
     // We wrap the tokens in invisible delimiters, unless they are already wrapped
     // in invisible delimiters with the same `MetaVarKind`. Because some proc
@@ -502,7 +503,7 @@ fn transcribe_pnr<'tx>(
         };
 
     match pnr {
-        ParseNtResult::Tt(tt, stream) => {
+        ParseNtResult::Tt(tt) => {
             // `tt`s are emitted into the output stream directly as "raw tokens",
             // without wrapping them into groups. Other variables are emitted into
             // the output stream as groups with `Delimiter::Invisible` to maintain
@@ -715,7 +716,7 @@ fn metavar_expr_concat<'tx>(
             MetaVarExprConcatElem::Var(ident) => {
                 let key = MacroRulesNormalizedIdent::new(*ident);
                 match lookup_cur_matched(key, tscx.interp, &tscx.repeats) {
-                    Some(NamedMatch::MatchedSingle(pnr)) => {
+                    Some(NamedMatch::MatchedSingle(pnr, _)) => {
                         extract_symbol_from_pnr(dcx, pnr, ident.span)?
                     }
                     Some(NamedMatch::MatchedSeq(..)) => {
@@ -863,7 +864,7 @@ fn lookup_cur_matched<'a>(
     interpolations.get(&ident).map(|mut matched| {
         for &(idx, _) in repeats {
             match matched {
-                MatchedSingle(_) => break,
+                MatchedSingle(_, _) => break,
                 MatchedSeq(ads) => matched = ads.get(idx).unwrap(),
             }
         }
@@ -953,7 +954,7 @@ fn lockstep_iter_size(
             let name = MacroRulesNormalizedIdent::new(*name);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match matched {
-                    MatchedSingle(_) => LockstepIterSize::Unconstrained,
+                    MatchedSingle(_, _) => LockstepIterSize::Unconstrained,
                     MatchedSeq(ads) => LockstepIterSize::Constraint(ads.len(), name),
                 },
                 _ => LockstepIterSize::Unconstrained,
@@ -992,7 +993,7 @@ fn count_repetitions<'dx>(
     // (or at the top-level of `matched` if no depth is given).
     fn count<'a>(depth_curr: usize, depth_max: usize, matched: &NamedMatch) -> PResult<'a, usize> {
         match matched {
-            MatchedSingle(_) => Ok(1),
+            MatchedSingle(_, _) => Ok(1),
             MatchedSeq(named_matches) => {
                 if depth_curr == depth_max {
                     Ok(named_matches.len())
@@ -1006,7 +1007,7 @@ fn count_repetitions<'dx>(
     /// Maximum depth
     fn depth(counter: usize, matched: &NamedMatch) -> usize {
         match matched {
-            MatchedSingle(_) => counter,
+            MatchedSingle(_, _) => counter,
             MatchedSeq(named_matches) => {
                 let rslt = counter + 1;
                 if let Some(elem) = named_matches.first() { depth(rslt, elem) } else { rslt }
@@ -1034,7 +1035,7 @@ fn count_repetitions<'dx>(
         }
     }
 
-    if let MatchedSingle(_) = matched {
+    if let MatchedSingle(_, _) = matched {
         return Err(dcx.create_err(CountRepetitionMisplaced { span: sp.entire() }));
     }
 
@@ -1086,26 +1087,23 @@ fn extract_symbol_from_pnr<'a>(
                 Ok(nt_ident.name)
             }
         }
-        ParseNtResult::Tt(
-            ArenaTokenTree::Token(Token { kind: TokenKind::Ident(symbol, is_raw), .. }, _),
+        ParseNtResult::Tt(ArenaTokenTree::Token(
+            Token { kind: TokenKind::Ident(symbol, is_raw), .. },
             _,
-        ) => {
+        )) => {
             if let IdentIsRaw::Yes = is_raw {
                 Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
             } else {
                 Ok(*symbol)
             }
         }
-        ParseNtResult::Tt(
-            ArenaTokenTree::Token(
-                Token {
-                    kind: TokenKind::Literal(Lit { kind: LitKind::Str, symbol, suffix: None }),
-                    ..
-                },
-                _,
-            ),
+        ParseNtResult::Tt(ArenaTokenTree::Token(
+            Token {
+                kind: TokenKind::Literal(Lit { kind: LitKind::Str, symbol, suffix: None }),
+                ..
+            },
             _,
-        ) => Ok(*symbol),
+        )) => Ok(*symbol),
         ParseNtResult::Literal(expr)
             if let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) = &expr.kind =>
         {

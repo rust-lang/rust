@@ -1821,7 +1821,7 @@ impl<'a> Parser<'a> {
 // smaller.
 #[derive(Clone, Debug)]
 pub enum ParseNtResult {
-    Tt(ArenaTokenTree, ArenaTokenStream),
+    Tt(ArenaTokenTree),
     Ident(Ident, IdentIsRaw),
     Lifetime(Ident, IdentIsRaw),
     Item(Box<ast::Item>),
