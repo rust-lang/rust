@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_index::static_assert_size;
@@ -334,7 +334,11 @@ impl ArenaTokenStreamBuilder {
 
     pub fn finish(self) -> ArenaTokenStream {
         assert!(self.current_delimited_sequence.is_none());
-        ArenaTokenStream { tokens: Arc::new(self.tokens) }
+        if self.tokens.is_empty() {
+            ArenaTokenStream::default()
+        } else {
+            ArenaTokenStream { tokens: Arc::new(self.tokens) }
+        }
     }
 
     pub fn length(&self) -> usize {
@@ -356,7 +360,12 @@ pub enum PerTreeOp {
     Skip,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encodable, Decodable)]
+/// A shared empty token stream, used to avoid an unnecessary `Arc` allocation for every empty
+/// token stream.
+static EMPTY_TOKEN_STREAM: LazyLock<ArenaTokenStream> =
+    LazyLock::new(|| ArenaTokenStream { tokens: Arc::new(Vec::new()) });
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct ArenaTokenStream {
     tokens: Arc<Vec<ArenaTokenTree>>,
 }
@@ -454,6 +463,10 @@ impl ArenaTokenStream {
         bounds: DelimitedBounds,
         stream: &ArenaTokenStream,
     ) -> ArenaTokenStream {
+        if bounds.is_empty() {
+            return Self::default();
+        }
+
         // FIXME: optimize this to avoid copying
         // This could be implemented in a smarter way by reusing the original allocation
         // and storing an index with "view" into it.
@@ -524,6 +537,12 @@ impl ArenaTokenStream {
 
     pub fn iter_all_trees(&self) -> impl Iterator<Item = &ArenaTokenTree> {
         self.tokens.as_slice().into_iter()
+    }
+}
+
+impl Default for ArenaTokenStream {
+    fn default() -> Self {
+        EMPTY_TOKEN_STREAM.clone()
     }
 }
 
