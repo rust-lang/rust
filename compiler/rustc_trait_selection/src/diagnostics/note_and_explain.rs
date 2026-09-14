@@ -1,5 +1,5 @@
 use rustc_errors::formatting::DiagMessageAddArg;
-use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, Subdiagnostic, msg};
+use rustc_errors::{Diag, IntoDiagArg, Subdiagnostic, msg};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
@@ -163,7 +163,7 @@ impl RegionExplanation<'_> {
 }
 
 impl Subdiagnostic for RegionExplanation<'_> {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         let msg = msg!(
             "{$pref_kind ->
                 *[should_not_happen] [{$pref_kind}]

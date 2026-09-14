@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 use rustc_abi::{ExternAbi, FieldIdx, MAX_SIMD_LANES, ScalableElt};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::attrs::ReprAttr::ReprPacked;
 use rustc_hir::attrs::lang_items::LangItem;
@@ -41,7 +41,7 @@ use crate::check::wfcheck::{
 use crate::collect::ItemCtxt;
 use crate::diagnostics;
 
-fn add_abi_diag_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T>) {
+fn add_abi_diag_help<G>(abi: ExternAbi, diag: &mut Diag<'_, G>) {
     if let ExternAbi::Cdecl { unwind } = abi {
         let c_abi = ExternAbi::C { unwind };
         diag.help(format!("use `extern {c_abi}` instead",));
@@ -1560,7 +1560,7 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
             return;
         }
         ScalableElt::ElementCount(..) if fields.len() >= 2 => {
-            tcx.dcx().struct_span_err(span, "scalable vectors cannot have multiple fields").emit();
+            tcx.dcx().span_err(span, "scalable vectors cannot have multiple fields");
             return;
         }
         ScalableElt::Container if fields.is_empty() => {
