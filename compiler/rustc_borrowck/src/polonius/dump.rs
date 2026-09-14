@@ -5,17 +5,33 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::pretty::{MirDumper, PassWhere, PrettyPrintMirOptions};
 use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
-use rustc_mir_dataflow::points::PointIndex;
+use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use rustc_session::config::MirIncludeSpans;
 
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraint;
 use crate::polonius::{
-    CachedLivenessSource, LocalizedConstraintGraphVisitor, LocalizedNode, PoloniusContext,
+    LiveRegionVariances, LivenessSource, LocalizedConstraintGraphVisitor, LocalizedNode,
+    PoloniusContext, RegionLiveness,
 };
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
 use crate::{BorrowckInferCtxt, ClosureRegionRequirements, RegionInferenceContext};
+
+/// A `LivenessSource` for already-existing liveness and variance data.
+struct CachedLivenessSource<'a> {
+    live_region_variances: &'a LiveRegionVariances,
+    liveness: &'a LivenessValues,
+}
+
+impl<'a> LivenessSource for CachedLivenessSource<'a> {
+    fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_> {
+        RegionLiveness::new(region, self.live_region_variances, self.liveness)
+    }
+    fn location_map(&self) -> &DenseLocationMap {
+        self.liveness.location_map()
+    }
+}
 
 /// `-Zdump-mir=polonius` dumps MIR annotated with NLL and polonius specific information.
 pub(crate) fn dump_polonius_mir<'tcx>(
@@ -24,7 +40,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     borrow_set: &BorrowSet<'tcx>,
-    polonius_context: Option<&PoloniusContext>,
+    polonius_context: Option<&PoloniusContext<'tcx>>,
 ) {
     let tcx = infcx.tcx;
     if !tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {

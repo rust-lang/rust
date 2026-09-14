@@ -36,23 +36,28 @@
 mod constraints;
 mod dump;
 pub(crate) mod legacy;
+mod liveness;
 mod liveness_constraints;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{Body, Local};
-use rustc_middle::ty::RegionVid;
-use rustc_mir_dataflow::points::PointIndex;
+use rustc_middle::ty::{RegionVid, TypeVisitable};
+use rustc_mir_dataflow::move_paths::MoveData;
+use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use rustc_trait_selection::traits::outlives_for_liveness::FreeRegionsVisitor;
 
 pub(self) use self::constraints::*;
 pub(crate) use self::dump::dump_polonius_mir;
 pub(crate) use self::liveness_constraints::record_live_region_variance;
-use crate::BorrowSet;
 use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
+pub(crate) use crate::polonius::liveness::DeferredLocals;
 use crate::region_infer::values::LivenessValues;
+use crate::type_check::liveness::{LivenessCalculation, LocalUseMap};
 use crate::universal_regions::UniversalRegions;
+use crate::{BorrowSet, BorrowckInferCtxt};
 
 pub(crate) type LiveRegionVariances = IndexVec<RegionVid, Option<ConstraintDirection>>;
 
@@ -84,7 +89,7 @@ impl LiveLoans {
 ///    polonius localized constraints, during NLL region inference as well as MIR dumping,
 ///  - data needed by the borrowck error computation and diagnostics.
 #[derive(Default)]
-pub(crate) struct PoloniusContext {
+pub(crate) struct PoloniusContext<'tcx> {
     /// The graph from which we extract the localized outlives constraints.
     graph: Option<LocalizedConstraintGraph>,
 
@@ -97,6 +102,10 @@ pub(crate) struct PoloniusContext {
     /// currently has more boring locals than NLLs so we record the latter to use in errors and
     /// diagnostics, to focus on the locals we consider relevant and match NLL diagnostics.
     pub(crate) boring_nll_locals: FxHashSet<Local>,
+
+    pub(crate) deferred_locals_for_liveness: DeferredLocals<'tcx>,
+
+    pub(crate) local_use_map: Option<LocalUseMap>,
 }
 
 /// The direction a constraint can flow into. Used to create liveness constraints according to
@@ -113,7 +122,7 @@ pub(crate) enum ConstraintDirection {
     Bidirectional,
 }
 
-impl PoloniusContext {
+impl<'tcx> PoloniusContext<'tcx> {
     /// Computes live loans using the set of loans model for `-Zpolonius=next`.
     ///
     /// First, creates a constraint graph combining regions and CFG points, by:
@@ -124,14 +133,16 @@ impl PoloniusContext {
     /// loan scope and active loans computations.
     ///
     /// The constraint data will be used to compute errors and diagnostics.
-    pub(crate) fn compute_loan_liveness<'tcx>(
+    pub(crate) fn compute_loan_liveness(
         &mut self,
+        infcx: &BorrowckInferCtxt<'tcx>,
         liveness: &mut LivenessValues,
         outlives_constraints: impl Iterator<Item = OutlivesConstraint<'tcx>>,
         universal_regions: &UniversalRegions<'tcx>,
         body: &Body<'tcx>,
+        move_data: &MoveData<'tcx>,
+        location_map: &DenseLocationMap,
         borrow_set: &BorrowSet<'tcx>,
-        num_points: usize,
     ) {
         // We don't need to prepare the graph (index NLL constraints, etc.) if we have no loans to
         // trace throughout localized constraints.
@@ -142,10 +153,21 @@ impl PoloniusContext {
             let graph =
                 LocalizedConstraintGraph::new(liveness.location_map(), outlives_constraints);
 
-            let mut live_loans = LiveLoans::new(num_points, borrow_set.len());
-            let mut liveness_source = CachedLivenessSource {
-                live_region_variances: &self.live_region_variances,
+            let local_use_map = self
+                .local_use_map
+                .as_ref()
+                .expect("local use map should be computed before loan liveness");
+            let deferred_locals_for_liveness =
+                std::mem::take(&mut self.deferred_locals_for_liveness);
+            let mut live_loans = LiveLoans::new(location_map.num_points(), borrow_set.len());
+            let calc =
+                LivenessCalculation::new(infcx, body, location_map, move_data, &local_use_map);
+            let mut liveness_source = DeferredLivenessSource {
                 liveness,
+                live_region_variances: &mut self.live_region_variances,
+                universal_regions,
+                deferred_locals_for_liveness,
+                calc,
             };
             let mut visitor = LoanLivenessVisitor { live_loans: &mut live_loans };
             graph.traverse(body, universal_regions, borrow_set, &mut liveness_source, &mut visitor);
@@ -154,6 +176,63 @@ impl PoloniusContext {
             // The graph can be traversed again during MIR dumping, so we store it here.
             self.graph = Some(graph);
         }
+    }
+}
+
+struct DeferredLivenessSource<'a, 'tcx> {
+    liveness: &'a mut LivenessValues,
+    live_region_variances: &'a mut LiveRegionVariances,
+    universal_regions: &'a UniversalRegions<'tcx>,
+    deferred_locals_for_liveness: DeferredLocals<'tcx>,
+    calc: LivenessCalculation<'a, 'tcx>,
+}
+
+impl LivenessSource for DeferredLivenessSource<'_, '_> {
+    fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_> {
+        if let Some((local, drop_args)) =
+            self.deferred_locals_for_liveness.use_deferred_local(region)
+        {
+            self.calc.compute(local);
+
+            if !self.calc.use_live_at.is_empty() || !self.calc.drop_live_at.is_empty() {
+                record_live_region_variance(
+                    self.calc.infcx.tcx,
+                    &mut self.live_region_variances,
+                    self.universal_regions,
+                    self.calc.body.local_decls[local].ty,
+                );
+            }
+            if !self.calc.use_live_at.is_empty() {
+                let local_ty = self.calc.body.local_decls[local].ty;
+
+                local_ty.visit_with(&mut FreeRegionsVisitor {
+                    tcx: self.calc.infcx.tcx,
+                    param_env: self.calc.infcx.param_env,
+                    op: |live_region| {
+                        let region = self.universal_regions.to_region_vid(live_region);
+                        self.liveness.add_points(region, &self.calc.use_live_at);
+                    },
+                });
+            }
+            if !self.calc.drop_live_at.is_empty() {
+                for drop_arg in drop_args {
+                    drop_arg.visit_with(&mut FreeRegionsVisitor {
+                        tcx: self.calc.infcx.tcx,
+                        param_env: self.calc.infcx.param_env,
+                        op: |live_region| {
+                            let region = self.universal_regions.to_region_vid(live_region);
+                            self.liveness.add_points(region, &self.calc.drop_live_at);
+                        },
+                    });
+                }
+            }
+        }
+
+        RegionLiveness::new(region, self.live_region_variances, self.liveness)
+    }
+
+    fn location_map(&self) -> &rustc_mir_dataflow::points::DenseLocationMap {
+        self.calc.location_map
     }
 }
 

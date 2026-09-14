@@ -87,21 +87,6 @@ pub(super) trait LivenessSource {
     fn location_map(&self) -> &DenseLocationMap;
 }
 
-/// A `LivenessSource` for already-existing liveness and variance data.
-pub(super) struct CachedLivenessSource<'a> {
-    pub(super) live_region_variances: &'a LiveRegionVariances,
-    pub(super) liveness: &'a LivenessValues,
-}
-
-impl<'a> LivenessSource for CachedLivenessSource<'a> {
-    fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_> {
-        RegionLiveness::new(region, self.live_region_variances, self.liveness)
-    }
-    fn location_map(&self) -> &DenseLocationMap {
-        self.liveness.location_map()
-    }
-}
-
 /// The visitor interface when traversing a `LocalizedConstraintGraph`.
 pub(super) trait LocalizedConstraintGraphVisitor {
     /// Callback called when traversing a given `loan` encounters a localized `node` it hasn't
