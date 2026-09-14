@@ -225,6 +225,8 @@ jobs:
           rustup default nightly
         shell: bash
 
+      - run: rustup component add rustfmt
+
       - run: rustup target add ${{ matrix.target.tuple }}
         shell: bash
         if: matrix.build_std == '' && matrix.target.tuple != 'amdgcn-amd-amdhsa'
