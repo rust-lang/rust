@@ -923,11 +923,13 @@ fn eq_generic_param(l: &GenericParam, r: &GenericParam) -> bool {
                     ty: lt,
                     default: ld,
                     span: _,
+                    arg_pos: _
                 },
                 Const {
                     ty: rt,
                     default: rd,
                     span: _,
+                    arg_pos: _
                 },
             ) => eq_ty(lt, rt) && both(ld.as_ref(), rd.as_ref(), eq_anon_const),
             _ => false,

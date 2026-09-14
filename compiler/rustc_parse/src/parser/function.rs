@@ -109,6 +109,64 @@ pub(crate) enum FnContext {
     Impl,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) enum FuncParam {
+    GeneralParam(Param),
+    ConstGenericParam(GenericParam),
+}
+
+pub(crate) struct FnDeclWithConstGenerics {
+    pub(crate) inputs: ThinVec<FuncParam>,
+    pub(crate) output: FnRetTy,
+}
+
+impl FnDeclWithConstGenerics {
+    pub(crate) fn into_fn_decl(self) -> (FnDecl, ThinVec<GenericParam>) {
+        let mut const_params = ThinVec::new();
+        let inputs = self
+            .inputs
+            .into_iter()
+            .filter_map(|param| match param {
+                FuncParam::GeneralParam(param) => Some(param),
+                FuncParam::ConstGenericParam(param) => {
+                    const_params.push(param);
+                    None
+                }
+            })
+            .collect();
+        (FnDecl { inputs, output: self.output }, const_params)
+    }
+}
+
+impl ast::HasAttrs for FuncParam {
+    // Follows `ast::Expr`.
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = false;
+
+    fn attrs(&self) -> &[rustc_ast::Attribute] {
+        match self {
+            FuncParam::GeneralParam(p) => &p.attrs,
+            FuncParam::ConstGenericParam(p) => &p.attrs,
+        }
+    }
+
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut rustc_ast::AttrVec)) {
+        match self {
+            FuncParam::GeneralParam(p) => p.visit_attrs(f),
+            FuncParam::ConstGenericParam(p) => p.visit_attrs(f),
+        }
+    }
+}
+
+impl ast::HasTokens for FuncParam {
+    fn tokens(&self) -> Option<&rustc_ast::tokenstream::LazyAttrTokenStream> {
+        None
+    }
+
+    fn tokens_mut(&mut self) -> Option<&mut Option<rustc_ast::tokenstream::LazyAttrTokenStream>> {
+        None
+    }
+}
+
 /// Parsing of functions and methods.
 impl<'a> Parser<'a> {
     /// Parse a function starting from the front matter (`const ...`) to the body `{ ... }` or `;`.
@@ -137,6 +195,10 @@ impl<'a> Parser<'a> {
                 }
             }
         };
+
+        let (decl, const_params) = decl.into_fn_decl();
+        let decl = Box::new(decl);
+        generics.params.extend(const_params);
 
         // Store the end of function parameters to give better diagnostics
         // inside `parse_fn_body()`.
@@ -663,18 +725,18 @@ impl<'a> Parser<'a> {
         fn_parse_mode: &FnParseMode,
         ret_allow_plus: AllowPlus,
         recover_return_sign: RecoverReturnSign,
-    ) -> PResult<'a, Box<FnDecl>> {
-        Ok(Box::new(FnDecl {
+    ) -> PResult<'a, FnDeclWithConstGenerics> {
+        Ok(FnDeclWithConstGenerics {
             inputs: self.parse_fn_params(fn_parse_mode)?,
             output: self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes, recover_return_sign)?,
-        }))
+        })
     }
 
     /// Parses the parameter list of a function, including the `(` and `)` delimiters.
     pub(super) fn parse_fn_params(
         &mut self,
         fn_parse_mode: &FnParseMode,
-    ) -> PResult<'a, ThinVec<Param>> {
+    ) -> PResult<'a, ThinVec<FuncParam>> {
         let mut first_param = true;
         // Parse the arguments, starting out with `self` being allowed...
         if self.token != TokenKind::OpenParen
@@ -688,27 +750,34 @@ impl<'a> Parser<'a> {
             return Ok(ThinVec::new());
         }
 
+        let mut param_index = 0;
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
             p.recover_vcs_conflict_marker();
             let snapshot = p.create_snapshot_for_diagnostic();
-            let param = p.parse_param_general(fn_parse_mode, first_param, true).or_else(|e| {
-                let guar = e.emit();
-                // When parsing a param failed, we should check to make the span of the param
-                // not contain '(' before it.
-                // For example when parsing `*mut Self` in function `fn oof(*mut Self)`.
-                let lo = if let TokenKind::OpenParen = p.prev_token.kind {
-                    p.prev_token.span.shrink_to_hi()
-                } else {
-                    p.prev_token.span
-                };
-                p.restore_snapshot(snapshot);
-                // Skip every token until next possible arg or end.
-                p.eat_to_tokens(&[exp!(Comma), exp!(CloseParen)]);
-                // Create a placeholder argument for proper arg count (issue #34264).
-                Ok(dummy_arg(Ident::new(sym::dummy, lo.to(p.prev_token.span)), guar))
-            });
+            let param = p
+                .parse_param_general(fn_parse_mode, first_param, true, Some(param_index))
+                .or_else(|e| {
+                    let guar = e.emit();
+                    // When parsing a param failed, we should check to make the span of the param
+                    // not contain '(' before it.
+                    // For example when parsing `*mut Self` in function `fn oof(*mut Self)`.
+                    let lo = if let TokenKind::OpenParen = p.prev_token.kind {
+                        p.prev_token.span.shrink_to_hi()
+                    } else {
+                        p.prev_token.span
+                    };
+                    p.restore_snapshot(snapshot);
+                    // Skip every token until next possible arg or end.
+                    p.eat_to_tokens(&[exp!(Comma), exp!(CloseParen)]);
+                    // Create a placeholder argument for proper arg count (issue #34264).
+                    Ok(FuncParam::GeneralParam(dummy_arg(
+                        Ident::new(sym::dummy, lo.to(p.prev_token.span)),
+                        guar,
+                    )))
+                });
             // ...now that we've parsed the first argument, `self` is no longer allowed.
             first_param = false;
+            param_index += 1;
             param
         })?;
         // Replace duplicated recovered params with `_` pattern to avoid unnecessary errors.
@@ -725,7 +794,8 @@ impl<'a> Parser<'a> {
         fn_parse_mode: &FnParseMode,
         first_param: bool,
         recover_arg_parse: bool,
-    ) -> PResult<'a, Param> {
+        param_index: Option<u32>,
+    ) -> PResult<'a, FuncParam> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
@@ -733,7 +803,7 @@ impl<'a> Parser<'a> {
             if let Some(mut param) = this.parse_self_param()? {
                 param.attrs = attrs;
                 let res = if first_param { Ok(param) } else { this.recover_bad_self_param(param) };
-                return Ok((res?, Trailing::No, UsePreAttrPos::No));
+                return Ok((FuncParam::GeneralParam(res?), Trailing::No, UsePreAttrPos::No));
             }
 
             let is_dot_dot_dot = if this.token.kind == token::DotDotDot {
@@ -756,6 +826,37 @@ impl<'a> Parser<'a> {
             } else {
                 is_name_required
             };
+
+            if let Some(arg_pos) = param_index
+                && this.eat_keyword(exp!(Const))
+            {
+                let const_span = this.prev_token.span;
+                let ident = this.parse_ident()?;
+                let colon_span = Some(this.token.span);
+                this.expect(exp!(Colon))?;
+                let ty = this.parse_ty()?;
+                this.psess.gated_spans.gate(sym::function_arg_const_generics, const_span);
+                let generic_param = GenericParam {
+                    id: ast::DUMMY_NODE_ID,
+                    ident,
+                    attrs,
+                    bounds: ThinVec::new(),
+                    is_placeholder: false,
+                    kind: GenericParamKind::Const {
+                        ty,
+                        span: const_span.to(this.prev_token.span),
+                        default: None,
+                        arg_pos: Some(arg_pos),
+                    },
+                    colon_span,
+                };
+                return Ok((
+                    FuncParam::ConstGenericParam(generic_param),
+                    Trailing::No,
+                    UsePreAttrPos::No,
+                ));
+            }
+
             let (pat, ty) = if is_name_required || this.is_named_param() {
                 debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
                 let (pat, colon) = this.parse_fn_param_pat_colon()?;
@@ -772,7 +873,7 @@ impl<'a> Parser<'a> {
                         let guar = err.emit();
                         let mut arg = dummy_arg(ident, guar);
                         arg.span = pat_span;
-                        Ok((arg, Trailing::No, UsePreAttrPos::No))
+                        Ok((FuncParam::GeneralParam(arg), Trailing::No, UsePreAttrPos::No))
                     } else {
                         Err(err)
                     };
@@ -792,7 +893,7 @@ impl<'a> Parser<'a> {
                             this.check_trailing_angle_brackets(segment, &[exp!(CloseParen)])
                     {
                         return Ok((
-                            dummy_arg(segment.ident, guar),
+                            FuncParam::GeneralParam(dummy_arg(segment.ident, guar)),
                             Trailing::No,
                             UsePreAttrPos::No,
                         ));
@@ -825,7 +926,14 @@ impl<'a> Parser<'a> {
             let span = lo.to(this.prev_token.span);
 
             Ok((
-                Param { attrs, id: ast::DUMMY_NODE_ID, is_placeholder: false, pat, span, ty },
+                FuncParam::GeneralParam(Param {
+                    attrs,
+                    id: ast::DUMMY_NODE_ID,
+                    is_placeholder: false,
+                    pat,
+                    span,
+                    ty,
+                }),
                 Trailing::No,
                 UsePreAttrPos::No,
             ))

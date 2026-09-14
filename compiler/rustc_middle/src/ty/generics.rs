@@ -15,7 +15,7 @@ use crate::ty::{self, ClauseKind, EarlyBinder, GenericArgsRef, Region, RegionKin
 pub enum GenericParamDefKind {
     Lifetime,
     Type { has_default: bool, synthetic: bool },
-    Const { has_default: bool },
+    Const { has_default: bool, arg_pos: Option<u32> },
 }
 
 impl GenericParamDefKind {
@@ -46,6 +46,13 @@ impl GenericParamDefKind {
         match self {
             GenericParamDefKind::Type { synthetic, .. } => *synthetic,
             _ => false,
+        }
+    }
+
+    pub fn arg_pos(&self) -> Option<u32> {
+        match self {
+            GenericParamDefKind::Const { arg_pos, .. } => *arg_pos,
+            _ => None,
         }
     }
 }
@@ -298,6 +305,10 @@ impl<'tcx> Generics {
 
     pub fn own_synthetic_params_count(&'tcx self) -> usize {
         self.own_params.iter().filter(|p| p.kind.is_synthetic()).count()
+    }
+
+    pub fn own_arg_pos_consts(&'tcx self) -> impl Iterator<Item = (&'tcx GenericParamDef, u32)> {
+        self.own_params.iter().filter_map(|param| Some((param, param.kind.arg_pos()?)))
     }
 
     /// Returns the args corresponding to the generic parameters

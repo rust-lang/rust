@@ -665,6 +665,7 @@ impl Rewrite for ast::GenericParam {
             ref ty,
             span,
             default,
+            ..
         } = &self.kind
         {
             param.push_str("const ");

@@ -446,6 +446,8 @@ pub enum GenericParamKind {
         span: Span,
         /// Optional default value for the const generic param.
         default: Option<AnonConst>,
+        #[visitable(ignore)]
+        arg_pos: Option<u32>,
     },
 }
 
@@ -4483,7 +4485,7 @@ mod size_asserts {
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericArgs, 40);
     static_assert_size!(GenericBound, 80);
-    static_assert_size!(GenericParam, 80);
+    static_assert_size!(GenericParam, 88);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 80);
     static_assert_size!(Item, 144);

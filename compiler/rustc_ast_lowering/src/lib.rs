@@ -2355,7 +2355,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (hir::ParamName::Plain(self.lower_ident(param.ident)), kind)
             }
-            GenericParamKind::Const { ty, span: _, default } => {
+            GenericParamKind::Const { ty, default, arg_pos, .. } => {
                 let ty = self.lower_ty_alloc(
                     ty,
                     ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault),
@@ -2388,7 +2388,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
-                    hir::GenericParamKind::Const { ty, default },
+                    hir::GenericParamKind::Const { ty, default, arg_pos: *arg_pos },
                 )
             }
         }

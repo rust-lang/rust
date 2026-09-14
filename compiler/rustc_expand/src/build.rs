@@ -174,7 +174,7 @@ impl<'a> ExtCtxt<'a> {
             attrs: AttrVec::new(),
             bounds,
             is_placeholder: false,
-            kind: ast::GenericParamKind::Const { ty, span: DUMMY_SP, default },
+            kind: ast::GenericParamKind::Const { ty, span: DUMMY_SP, default, arg_pos: None },
             colon_span: None,
         }
     }
