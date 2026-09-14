@@ -257,7 +257,7 @@ pub(crate) enum InvalidComparisonOperatorSub {
 pub(crate) struct InvalidLogicalOperator {
     #[primary_span]
     pub span: Span,
-    pub incorrect: String,
+    pub incorrect: Symbol,
     #[subdiagnostic]
     pub sub: InvalidLogicalOperatorSub,
 }
@@ -797,7 +797,7 @@ pub(crate) struct EqFieldInit {
 
 #[derive(Diagnostic)]
 #[diag("unexpected token: `...`")]
-pub(crate) struct DotDotDot {
+pub(crate) struct DotDotDotExprOp {
     #[primary_span]
     #[suggestion(
         "use `..` for an exclusive range",
@@ -816,7 +816,7 @@ pub(crate) struct DotDotDot {
 
 #[derive(Diagnostic)]
 #[diag("unexpected token: `<-`")]
-pub(crate) struct LeftArrowOperator {
+pub(crate) struct LArrowExprOp {
     #[primary_span]
     #[suggestion(
         "if you meant to write a comparison against a negative value, add a space in between `<` and `-`",
