@@ -2112,7 +2112,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Not in scope: check if the name refers to a trait importable from elsewhere.
-        if macro_kind == MacroKind::Derive {
+        // An exact derive macro candidate is much more likely to be intended than any
+        // same-named traits, so we only consider them if there are no import suggestions for the derive macro.
+        if macro_kind == MacroKind::Derive && import_suggestions.is_empty() {
             let trait_candidates =
                 self.lookup_import_candidates(ident, TypeNS, parent_scope, |res| {
                     matches!(res, Res::Def(DefKind::Trait, _))
