@@ -258,7 +258,7 @@ fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 }
 
 /// Checks that an opaque type does not contain cycles.
-pub(super) fn check_opaque_for_cycles<'tcx>(
+fn check_opaque_for_cycles<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
@@ -1209,7 +1209,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
     })
 }
 
-pub(super) fn check_specialization_validity<'tcx>(
+fn check_specialization_validity<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def: &ty::TraitDef,
     trait_item: ty::AssocItem,
@@ -1646,7 +1646,7 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
     }
 }
 
-pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
+fn check_packed(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
     let repr = def.repr();
     if repr.packed() {
@@ -1762,7 +1762,7 @@ fn check_packed_inner(
     None
 }
 
-pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
+fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
     if !adt.repr().transparent() {
         return;
     }
