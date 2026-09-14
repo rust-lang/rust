@@ -1,11 +1,13 @@
 use std::borrow::Cow;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::sync::{Arc, LazyLock};
 
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_index::static_assert_size;
 use rustc_macros::{Decodable, Encodable, StableHash};
-use rustc_span::Span;
+use rustc_serialize::{Decodable, Encodable};
+use rustc_span::{Span, SpanDecoder, SpanEncoder};
 
 use crate::token::{Delimiter, Token, TokenKind};
 use crate::tokenstream::{
@@ -14,8 +16,7 @@ use crate::tokenstream::{
 use crate::{Attribute, HasTokens};
 
 /// Part of a `TokenArena`.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
-#[derive(StableHash)] // FIXME: is this Ok?
+#[derive(Debug, Copy, Clone)]
 pub enum ArenaTokenTree {
     /// A single token. Should never be `OpenDelim` or `CloseDelim`, because
     /// delimiters are implicitly represented by `DelimitedStart`/`DelimitedEnd`.
@@ -365,7 +366,7 @@ pub enum PerTreeOp {
 static EMPTY_TOKEN_STREAM: LazyLock<ArenaTokenStream> =
     LazyLock::new(|| ArenaTokenStream { tokens: Arc::new(Vec::new()) });
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
+#[derive(Clone, Debug)]
 pub struct ArenaTokenStream {
     tokens: Arc<Vec<ArenaTokenTree>>,
 }
@@ -538,11 +539,116 @@ impl ArenaTokenStream {
     pub fn iter_all_trees(&self) -> impl Iterator<Item = &ArenaTokenTree> {
         self.tokens.as_slice().into_iter()
     }
+
+    fn iter_flattened(&self) -> impl Iterator<Item = FlattenedTokenTree> {
+        let mut index = 0;
+        std::iter::from_fn(move || {
+            let Some(tree) = self.tokens.get(index) else {
+                return None;
+            };
+            index += 1;
+            let item = match tree {
+                ArenaTokenTree::Token(token, spacing) => {
+                    FlattenedTokenTree::Token(*token, *spacing)
+                }
+                ArenaTokenTree::DelimitedStart(bounds, data) => {
+                    // FIXME: is this correct? do we also have to take parents into account?
+                    FlattenedTokenTree::Delimited { data: *data, length: bounds.length }
+                }
+            };
+            Some(item)
+        })
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
+enum FlattenedTokenTree {
+    Token(Token, Spacing),
+    Delimited { data: DelimitedData, length: u32 },
 }
 
 impl Default for ArenaTokenStream {
     fn default() -> Self {
         EMPTY_TOKEN_STREAM.clone()
+    }
+}
+
+impl PartialEq for ArenaTokenStream {
+    fn eq(&self, other: &Self) -> bool {
+        self.iter_flattened().eq(other.iter_flattened())
+    }
+}
+
+impl Eq for ArenaTokenStream {}
+
+impl Hash for ArenaTokenStream {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        for tree in self.iter_flattened() {
+            tree.hash(state);
+        }
+    }
+}
+
+impl StableHash for ArenaTokenStream {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        for tree in self.iter_flattened() {
+            tree.stable_hash(hcx, hasher);
+        }
+    }
+}
+
+impl<S: SpanEncoder> Encodable<S> for ArenaTokenStream {
+    fn encode(&self, encoder: &mut S) {
+        let size = self.tokens.len();
+        size.encode(encoder);
+        for tree in self.iter_flattened() {
+            tree.encode(encoder);
+        }
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for ArenaTokenStream {
+    fn decode(decoder: &mut D) -> Self {
+        let mut remaining = usize::decode(decoder);
+        if remaining == 0 {
+            return Self::default();
+        }
+
+        let mut builder = ArenaTokenStreamBuilder::with_capacity(remaining);
+
+        fn build<D: SpanDecoder>(
+            decoder: &mut D,
+            builder: &mut ArenaTokenStreamBuilder,
+            remaining: &mut usize,
+        ) {
+            if *remaining == 0 {
+                return;
+            }
+            let flattened = FlattenedTokenTree::decode(decoder);
+            *remaining -= 1;
+            match flattened {
+                FlattenedTokenTree::Token(token, spacing) => {
+                    builder.push_token(token, spacing);
+                }
+                FlattenedTokenTree::Delimited { data, length } => {
+                    let mut remaining_children = length as usize - 1;
+                    builder.push_delimited(
+                        |builder| {
+                            while remaining_children > 0 {
+                                build(decoder, builder, &mut remaining_children);
+                            }
+                        },
+                        data,
+                    );
+                    *remaining -= (length - 1) as usize;
+                }
+            }
+        }
+
+        while remaining > 0 {
+            build(decoder, &mut builder, &mut remaining);
+        }
+        builder.finish()
     }
 }
 
@@ -645,12 +751,6 @@ pub fn attrs_and_tokens_to_token_trees_arena(
     }
 }
 
-impl StableHash for ArenaTokenStream {
-    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.tokens.as_slice().stable_hash(hcx, hasher);
-    }
-}
-
 #[derive(Clone)]
 pub struct ArenaTokenTreeIter<'a> {
     index: usize,
@@ -728,8 +828,8 @@ pub struct OpenDelimited {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub struct DelimitedBounds {
     start: u32,
-    /// The length includes both the start and the end token.
-    /// So an empty delimited sequence has length 2.
+    /// The length includes both the start token.
+    /// So an empty delimited sequence has length 1.
     length: u32,
     /// Index of the parent of the current delimited sequence.
     /// If this is the root delimited sequence, is `None`.
