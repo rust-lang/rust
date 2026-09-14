@@ -266,7 +266,7 @@ fn generate_test_harness(
 /// #[rustc_main]
 /// pub fn main() {
 ///     extern crate test;
-///     test::test_main_static(&[
+///     test::test_main_env_args(&[
 ///         &test_const1,
 ///         &test_const2,
 ///         &test_const3,
@@ -286,16 +286,16 @@ fn generate_test_harness(
 ///
 /// [`TestCtxt::reexport_test_harness_main`] provides a different name for the `main`
 /// function and [`TestCtxt::test_runner`] provides a path that replaces
-/// `test::test_main_static`.
+/// `test::test_main_env_args`.
 fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
     let sp = cx.def_site;
     let ecx = &cx.ext_cx;
     let test_ident = Ident::new(sym::test, sp);
 
     let runner_name =
-        if cx.panic_strategy.unwinds() { "test_main_static" } else { "test_main_static_abort" };
+        if cx.panic_strategy.unwinds() { "test_main_env_args" } else { "test_main_env_args_abort" };
 
-    // test::test_main_static(...)
+    // test::test_main_env_args(...)
     let mut test_runner = cx.test_runner.clone().unwrap_or_else(|| {
         ecx.path(sp, vec![test_ident, Ident::from_str_and_span(runner_name, sp)])
     });
