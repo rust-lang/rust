@@ -109,12 +109,7 @@ use crate::{
     utils::TargetFeatureIsSafeInTarget,
 };
 
-// This lint has a false positive here. See the link below for details.
-//
-// https://github.com/rust-lang/rust/issues/57411
-#[allow(unreachable_pub)]
 pub use coerce::could_coerce;
-#[allow(unreachable_pub)]
 pub use unify::{could_unify, could_unify_deeply};
 
 use cast::{CastCheck, CastError};
@@ -1429,7 +1424,7 @@ impl<'db> InferenceContext<'db> {
     ) -> Self {
         let trait_env = db.trait_environment(generic_def);
         let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), owner);
-        let types = crate::next_solver::default_types(db);
+        let types = crate::next_solver::default_types();
         InferenceContext {
             result: InferenceResult::new(types.types.error),
             return_ty: types.types.error, // set in collect_* calls
