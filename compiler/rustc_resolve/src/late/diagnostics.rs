@@ -1043,9 +1043,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             // Put them back if we have no more candidates to suggest...
             candidates = intrinsic_candidates;
         }
-        if !case_sensitive {
-            return (false, suggested_candidates, candidates);
-        }
         let crate_def_id = CRATE_DEF_ID.to_def_id();
         if candidates.is_empty() && is_expected(Res::Def(DefKind::Enum, crate_def_id)) {
             let mut enum_candidates: Vec<_> = self
