@@ -1460,6 +1460,20 @@ impl<'tcx> InferCtxt<'tcx> {
         value.fold_with(&mut r)
     }
 
+    /// Where possible, replaces type/const/region variables in `value` with their final value.
+    /// If a type/const/region variable has not (yet) been unified, it is left as is.
+    ///
+    /// This is an idempotent operation that does not affect inference state in any way,
+    /// which means it's safe to call this function at will.
+    pub fn deeply_resolve_via_unification_table<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        use rustc_middle::ty::InferCtxtLike;
+        #[allow(rustc::usage_of_type_ir_traits)]
+        InferCtxtLike::deeply_resolve_via_unification_table(self, value)
+    }
+
     pub fn resolve_numeric_literals_with_default<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
