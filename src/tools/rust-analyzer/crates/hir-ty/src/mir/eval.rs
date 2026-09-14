@@ -57,8 +57,8 @@ use crate::{
 
 use super::{
     AggregateKind, BasicBlockId, BinOp, CastKind, LocalId, MirBody, MirLowerError, MirSpan,
-    Operand, OperandKind, Place, PlaceElem, PlaceRef, PlaceTy, ProjectionElem, Rvalue,
-    StatementKind, TerminatorKind, UnOp, return_slot,
+    Operand, OperandKind, Place, PlaceElem, PlaceTy, ProjectionElem, Rvalue, StatementKind,
+    StoredPlace, TerminatorKind, UnOp, return_slot,
 };
 
 mod shim;
@@ -563,11 +563,11 @@ type Result<'db, T> = std::result::Result<T, MirEvalError<'db>>;
 
 #[derive(Debug, Default)]
 struct DropFlags<'db> {
-    need_drop: FxHashSet<PlaceRef<'db>>,
+    need_drop: FxHashSet<Place<'db>>,
 }
 
 impl<'db> DropFlags<'db> {
-    fn add_place(&mut self, p: PlaceRef<'db>) {
+    fn add_place(&mut self, p: Place<'db>) {
         if p.iterate_over_parents().any(|it| self.need_drop.contains(&it)) {
             return;
         }
@@ -575,7 +575,7 @@ impl<'db> DropFlags<'db> {
         self.need_drop.insert(p);
     }
 
-    fn remove_place(&mut self, p: PlaceRef<'db>) -> bool {
+    fn remove_place(&mut self, p: Place<'db>) -> bool {
         // FIXME: replace parents with parts
         if let Some(parent) = p.iterate_over_parents().find(|it| self.need_drop.contains(it)) {
             self.need_drop.remove(&parent);
@@ -713,11 +713,11 @@ impl<'a, 'db> Evaluator<'a, 'db> {
         self.infcx.interner.lang_items()
     }
 
-    fn place_addr(&self, p: &Place, locals: &Locals<'a, 'db>) -> Result<'db, Address> {
+    fn place_addr(&self, p: &StoredPlace, locals: &Locals<'a, 'db>) -> Result<'db, Address> {
         Ok(self.place_addr_and_ty_and_metadata(p, locals)?.0)
     }
 
-    fn place_interval(&self, p: &Place, locals: &Locals<'a, 'db>) -> Result<'db, Interval> {
+    fn place_interval(&self, p: &StoredPlace, locals: &Locals<'a, 'db>) -> Result<'db, Interval> {
         let place_addr_and_ty = self.place_addr_and_ty_and_metadata(p, locals)?;
         Ok(Interval {
             addr: place_addr_and_ty.0,
@@ -786,13 +786,13 @@ impl<'a, 'db> Evaluator<'a, 'db> {
 
     fn place_addr_and_ty_and_metadata<'b>(
         &'b self,
-        p: &Place,
+        p: &StoredPlace,
         locals: &'b Locals<'a, 'db>,
     ) -> Result<'db, (Address, Ty<'db>, Option<IntervalOrOwned>)> {
         let mut addr = locals.ptr[p.local].addr;
         let mut ty = PlaceTy::from_ty(locals.body.locals[p.local].ty.as_ref());
         let mut metadata: Option<IntervalOrOwned> = None; // locals are always sized
-        for proj in p.projection.lookup() {
+        for proj in p.projection.as_slice() {
             let prev_ty = ty;
             ty = self.projected_ty(ty, *proj);
             match proj {
@@ -814,8 +814,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         self.read_memory(locals.ptr[*op].addr, self.ptr_size())?
                     );
                     metadata = None; // Result of index is always sized
-                    let ty_size =
-                        self.size_of_sized(ty.ty, locals, "array inner type should be sized")?;
+                    let ty_size = self.size_of_sized(ty.ty, locals, "array inner type")?;
                     addr = addr.offset(ty_size * offset);
                 }
                 &ProjectionElem::ConstantIndex { from_end, offset } => {
@@ -838,8 +837,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         offset as usize
                     };
                     metadata = None; // Result of index is always sized
-                    let ty_size =
-                        self.size_of_sized(ty.ty, locals, "array inner type should be sized")?;
+                    let ty_size = self.size_of_sized(ty.ty, locals, "array inner type")?;
                     addr = addr.offset(ty_size * offset);
                 }
                 &ProjectionElem::Subslice { from, to } => {
@@ -856,8 +854,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         }
                         None => None,
                     };
-                    let ty_size =
-                        self.size_of_sized(inner_ty, locals, "array inner type should be sized")?;
+                    let ty_size = self.size_of_sized(inner_ty, locals, "array inner type")?;
                     addr = addr.offset(ty_size * (from as usize));
                 }
                 ProjectionElem::Field(f) => {
@@ -908,7 +905,11 @@ impl<'a, 'db> Evaluator<'a, 'db> {
         self.layout(Ty::new_adt(self.interner(), adt, subst))
     }
 
-    fn place_ty<'b>(&'b self, p: &Place, locals: &'b Locals<'a, 'db>) -> Result<'db, Ty<'db>> {
+    fn place_ty<'b>(
+        &'b self,
+        p: &StoredPlace,
+        locals: &'b Locals<'a, 'db>,
+    ) -> Result<'db, Ty<'db>> {
         Ok(self.place_addr_and_ty_and_metadata(p, locals)?.1)
     }
 
@@ -2176,7 +2177,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
         Ok(Interval::new(addr, size))
     }
 
-    fn eval_place(&mut self, p: &Place, locals: &Locals<'a, 'db>) -> Result<'db, Interval> {
+    fn eval_place(&mut self, p: &StoredPlace, locals: &Locals<'a, 'db>) -> Result<'db, Interval> {
         let addr = self.place_addr(p, locals)?;
         Ok(Interval::new(
             addr,
@@ -3081,7 +3082,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
 
     fn drop_place(
         &mut self,
-        place: &Place,
+        place: &StoredPlace,
         locals: &mut Locals<'a, 'db>,
         span: MirSpan,
     ) -> Result<'db, ()> {

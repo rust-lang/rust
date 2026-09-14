@@ -3,22 +3,23 @@
 #![expect(incomplete_features)]
 #![allow(irrefutable_let_patterns)]
 
-type const CONST: usize = 1_usize;
+const CONST: usize = core::direct_const_arg!(1_usize);
 
 struct Inherent;
 
 impl Inherent {
-    type const BAR: usize = 1_usize;
+    const BAR: usize = core::direct_const_arg!(1_usize);
 }
 
 trait Trait {
-    type const BAZ: usize;
+    #[rustc_always_gca]
+    const BAZ: usize;
 }
 
 struct Assoc;
 
 impl Trait for Assoc {
-    type const BAZ: usize = 1_usize;
+    const BAZ: usize = core::direct_const_arg!(1_usize);
 }
 
 fn main() {

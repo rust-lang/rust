@@ -5,12 +5,13 @@
 #![feature(generic_const_parameter_types)]
 
 trait Trait {
-    type const LEN: usize;
+    #[rustc_always_gca]
+    const LEN: usize;
 }
 
 struct S;
 impl Trait for S {
-    type const LEN: usize = 2;
+    const LEN: usize = core::direct_const_arg!(2);
 }
 
 fn foo<T: Trait, const A: [u8; <T as Trait>::LEN]>() -> [u8; <T as Trait>::LEN] {

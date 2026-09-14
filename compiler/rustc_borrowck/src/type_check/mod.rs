@@ -187,6 +187,7 @@ pub(crate) fn type_check<'tcx>(
         typeck.infcx.destructure_solver_region_constraints_for_borrowck(
             &mut converter,
             typeck.known_type_outlives_obligations,
+            typeck.region_bound_pairs,
             universal_region_relations.outlives.clone(),
         );
     }
@@ -2597,8 +2598,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let Some(src_field) = src_fields.iter().find(|f| f.name == dst_field.name) else {
                     continue;
                 };
-                let dst_ty = dst_field.ty(tcx, dst_args).skip_norm_wip();
-                let src_ty = src_field.ty(tcx, src_args).skip_norm_wip();
+                // These field types can still contain projections from the source or target type
+                // and normalize them before handing them to `NllTypeRelating`
+                let dst_ty = self.normalize(dst_field.ty(tcx, dst_args), location.to_locations());
+                let src_ty = self.normalize(src_field.ty(tcx, src_args), location.to_locations());
+
                 if let (
                     ty::Ref(src_region, _, Mutability::Mut),
                     ty::Ref(dst_region, _, Mutability::Not),

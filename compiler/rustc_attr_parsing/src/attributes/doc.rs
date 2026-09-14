@@ -705,16 +705,7 @@ impl DocParser {
 
     fn accept_single_doc_attr(&mut self, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
         match args {
-            ArgParser::NoArgs => {
-                let suggestions = cx.adcx().suggestions();
-                let span = cx.inner_span;
-                cx.emit_lint(
-                    INVALID_DOC_ATTRIBUTES,
-                    IllFormedAttributeInput::new(&suggestions, None, None),
-                    span,
-                );
-            }
-            ArgParser::List(items) => {
+            ArgParser::List(items) if !items.is_empty() => {
                 for i in items.mixed() {
                     match i {
                         MetaItemOrLitParser::MetaItemParser(mip) => {
@@ -739,6 +730,15 @@ impl DocParser {
                     );
                 }
             }
+            _ => {
+                let suggestions = cx.adcx().suggestions();
+                let span = cx.inner_span;
+                cx.emit_lint(
+                    INVALID_DOC_ATTRIBUTES,
+                    IllFormedAttributeInput::new(&suggestions, None, None),
+                    span,
+                );
+            }
         }
     }
 }
@@ -749,7 +749,6 @@ impl AttributeParser for DocParser {
         template!(
             List: &[
                 "alias",
-                "attribute",
                 "hidden",
                 "html_favicon_url",
                 "html_logo_url",
@@ -762,19 +761,10 @@ impl AttributeParser for DocParser {
                 "masked",
                 "cfg",
                 "notable_trait",
-                "keyword",
-                "fake_variadic",
-                "search_unbox",
-                "rust_logo",
                 "auto_cfg",
                 "test",
-                "spotlight",
-                "include",
-                "no_default_passes",
-                "passes",
-                "plugins",
             ],
-            NameValueStr: "string"
+            NameValueStr: "doc comment"
         ),
         AttributeStability::Stable, // Some parts of the attribute are unstable, manually checked in parser
         |this, cx, args| {

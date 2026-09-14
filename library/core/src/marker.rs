@@ -225,7 +225,7 @@ pub trait PointeeSized {
 ///
 /// [`ops::CoerceUnsized`]: crate::ops::CoerceUnsized
 /// [`Rc`]: ../../std/rc/struct.Rc.html
-/// [RFC982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
+/// [RFC982]: https://rust-lang.github.io/rfcs/0982-dst-coercion.html
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 /// [^1]: Formerly known as *object safe*.
 #[unstable(feature = "unsize", issue = "18598")]
@@ -1076,8 +1076,8 @@ pub trait Tuple {}
 
 /// Creates a new style directly represented const argument.
 /// ```ignore (cannot test this from within core yet)
-/// type const BAR<const N: usize>: usize = N;
-/// type const FOO<const N: usize>: usize = direct!(BAR::<N>);
+/// const BAR<const N: usize>: usize = direct_const_arg!(N);
+/// const FOO<const N: usize>: usize = direct_const_arg!(BAR::<N>);
 /// ```
 #[rustc_builtin_macro(direct_const_arg)]
 #[unstable(feature = "min_generic_const_args", issue = "132980")]

@@ -9,12 +9,19 @@ pub struct NoPin;
 impl<TA> Pins<TA> for NoPin {}
 
 pub trait PinA<PER> {
-    type const A: &'static () = const { &() };
+    #[rustc_always_gca]
+    const A: &'static () = core::direct_const_arg!(const { &() });
+    //~^ ERROR anonymous constants with lifetimes in their type are not yet supported
 }
 
 pub trait Pins<USART> {}
 
-impl<USART, T> Pins<USART> for T where T: PinA<USART, A = const { &() }> {}
+impl<USART, T> Pins<USART> for T
 //~^ ERROR conflicting implementations of trait `Pins<_>` for type `NoPin`
+where
+    T: PinA<USART, A = { core::direct_const_arg!(const { &() }) }>,
+    //~^ ERROR anonymous constants with lifetimes in their type are not yet supported
+{
+}
 
 pub fn main() {}

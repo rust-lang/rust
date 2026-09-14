@@ -11,8 +11,6 @@ struct Y;
 
 impl Y {
     reuse X::{foo, foo2} { X }
-    //~^ ERROR: cannot find function `foo` in `X`
-    //~| ERROR: cannot find function `foo2` in `X`
 }
 
 impl Y {

@@ -672,6 +672,8 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
             [string] => { $crate::SyntaxKind::STRING };
             [shebang] => { $crate::SyntaxKind::SHEBANG };
             [frontmatter] => { $crate::SyntaxKind::FRONTMATTER };
+            [inner_doc_comment] => { $crate::SyntaxKind::INNER_DOC_COMMENT };
+            [outer_doc_comment] => { $crate::SyntaxKind::OUTER_DOC_COMMENT };
         }
 
         impl ::core::marker::Copy for SyntaxKind {}
@@ -938,7 +940,13 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
         Rule::Rep(inner) => {
             if let Rule::Node(node) = &**inner {
                 let ty = grammar[*node].name.clone();
-                let name = label.cloned().unwrap_or_else(|| pluralize(&to_lower_snake_case(&ty)));
+                let name = label.cloned().unwrap_or_else(|| {
+                    if ty == "AnyAttr" {
+                        "attrs".to_owned()
+                    } else {
+                        pluralize(&to_lower_snake_case(&ty))
+                    }
+                });
                 let field = Field::Node { name, ty, cardinality: Cardinality::Many };
                 acc.push(field);
                 return;
@@ -1087,35 +1095,6 @@ fn extract_struct_traits(ast: &mut AstSrc) {
     for node in &mut ast.nodes {
         for (name, methods) in TRAITS {
             extract_struct_trait(node, name, methods);
-        }
-    }
-
-    let nodes_with_doc_comments = [
-        "SourceFile",
-        "Fn",
-        "Struct",
-        "Union",
-        "RecordField",
-        "TupleField",
-        "Enum",
-        "Variant",
-        "Trait",
-        "Module",
-        "Static",
-        "Const",
-        "TypeAlias",
-        "Impl",
-        "ExternBlock",
-        "ExternCrate",
-        "MacroCall",
-        "MacroRules",
-        "MacroDef",
-        "Use",
-    ];
-
-    for node in &mut ast.nodes {
-        if nodes_with_doc_comments.contains(&&*node.name) {
-            node.traits.push("HasDocComments".into());
         }
     }
 }

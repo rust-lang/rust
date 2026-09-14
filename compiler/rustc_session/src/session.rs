@@ -608,6 +608,14 @@ impl Session {
         self.opts.unstable_opts.sanitizer_cfi_normalize_integers == Some(true)
     }
 
+    pub fn is_sanitizer_cfi_recover_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_recover == Some(true)
+    }
+
+    pub fn is_sanitizer_cfi_diag_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_diag == Some(true)
+    }
+
     pub fn is_sanitizer_kcfi_arity_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer_kcfi_arity == Some(true)
     }
@@ -1580,6 +1588,20 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
+    // LLVM CFI recovery requires CFI.
+    if sess.is_sanitizer_cfi_recover_enabled() {
+        if !sess.is_sanitizer_cfi_enabled() {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiRecoverRequiresCfi);
+        }
+    }
+
+    // LLVM CFI diagnostics requires CFI.
+    if sess.is_sanitizer_cfi_diag_enabled() {
+        if !sess.is_sanitizer_cfi_enabled() {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiDiagRequiresCfi);
+        }
+    }
+
     // LLVM CFI integer normalization requires CFI or KCFI.
     if sess.is_sanitizer_cfi_normalize_integers_enabled() {
         if !(sess.is_sanitizer_cfi_enabled() || sess.is_sanitizer_kcfi_enabled()) {
@@ -1765,14 +1787,6 @@ impl EarlyDiagCtxt {
 
         let emitter = mk_emitter(output);
         self.dcx = DiagCtxt::new(emitter);
-    }
-
-    pub fn early_note(&self, msg: impl Into<DiagMessage>) {
-        self.dcx.handle().note(msg)
-    }
-
-    pub fn early_help(&self, msg: impl Into<DiagMessage>) {
-        self.dcx.handle().struct_help(msg).emit()
     }
 
     #[must_use = "raise_fatal must be called on the returned ErrorGuaranteed in order to exit with a non-zero status code"]

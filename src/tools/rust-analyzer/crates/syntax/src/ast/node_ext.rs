@@ -7,14 +7,14 @@ use std::{fmt, iter::successors};
 
 use itertools::Itertools;
 use parser::SyntaxKind;
-use rowan::{GreenNodeData, GreenTokenData};
+use rowan::{GreenNodeData, GreenTokenData, TextSize};
 use smallvec::{SmallVec, smallvec};
 
 use crate::{
     NodeOrToken, SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxToken, T,
     ast::{
-        self, AstNode, AstToken, HasAttrs, HasGenericArgs, HasGenericParams, HasName,
-        HasTypeBounds, SyntaxNode, support,
+        self, AnyComment, AstNode, AstToken, CommentShape, HasAttrs, HasGenericArgs,
+        HasGenericParams, HasName, HasTypeBounds, SyntaxNode, support,
     },
     syntax_editor::SyntaxEditor,
 };
@@ -267,6 +267,55 @@ impl ast::Attr {
         match self.meta() {
             Some(meta) => meta.skip_cfg_attrs(),
             None => SmallVec::new(),
+        }
+    }
+}
+
+impl ast::DocComment {
+    // `///` or `/**` or `//!` or `/*!`, all are 3 chars.
+    pub const PREFIX_LEN: TextSize = TextSize::new(3);
+
+    pub fn kind(&self) -> AttrKind {
+        match self.inner_doc_comment_token() {
+            Some(_) => AttrKind::Inner,
+            None => AttrKind::Outer,
+        }
+    }
+
+    pub fn token(&self) -> AnyComment {
+        self.syntax
+            .first_token()
+            .and_then(ast::AnyComment::cast)
+            .expect("`ast::DocComment` must have a comment token")
+    }
+
+    pub fn shape(&self) -> CommentShape {
+        CommentShape::from_text(self.text_with_markers())
+    }
+
+    /// Returns the text with the `/**...*/` or `/*!...*/` or `///...` or `//!...` markers.
+    pub fn text_with_markers(&self) -> &str {
+        text_of_first_token(&self.syntax)
+    }
+
+    /// Returns the textual content of a doc comment node as a single string with prefix and suffix removed.
+    pub fn text(&self) -> &str {
+        let shape = self.shape();
+        let text = &self.text_with_markers()[Self::PREFIX_LEN.into()..];
+        if shape == CommentShape::Block {
+            // The `*/` may not exist because of recovery.
+            text.strip_suffix("*/").unwrap_or(text)
+        } else {
+            text
+        }
+    }
+}
+
+impl ast::AnyAttr {
+    pub fn kind(&self) -> AttrKind {
+        match self {
+            ast::AnyAttr::Attr(it) => it.kind(),
+            ast::AnyAttr::DocComment(it) => it.kind(),
         }
     }
 }
@@ -1128,8 +1177,6 @@ impl ast::HasLoopBody for ast::WhileExpr {
         second.or(first)
     }
 }
-
-impl ast::HasAttrs for ast::AnyHasDocComments {}
 
 impl From<ast::Adt> for ast::Item {
     fn from(it: ast::Adt) -> Self {

@@ -67,8 +67,8 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         DefKind::TyAlias { .. }
         | DefKind::AssocTy
         | DefKind::Static { .. }
-        | DefKind::Const { .. }
-        | DefKind::AssocConst { .. } => return visit_alias(),
+        | DefKind::Const
+        | DefKind::AssocConst => return visit_alias(),
         DefKind::AnonConst
             if tcx.anon_const_kind(item) != ty::AnonConstKind::NonTypeSystemInline =>
         {

@@ -368,7 +368,7 @@ impl<'tcx> ReachableContext<'tcx> {
             }
             // Reachable constants and reachable statics can have their contents inlined
             // into other crates. Mark them as reachable and recurse into their body.
-            DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::Static { .. } => {
+            DefKind::Const | DefKind::AssocConst | DefKind::Static { .. } => {
                 self.worklist.push(def_id);
             }
             _ => {

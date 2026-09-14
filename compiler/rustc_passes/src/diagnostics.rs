@@ -49,15 +49,6 @@ pub(crate) struct OuterCrateLevelAttrSuggestion {
 pub(crate) struct InnerCrateLevelAttr;
 
 #[derive(Diagnostic)]
-#[diag("`#[non_exhaustive]` can't be used to annotate items with default field values")]
-pub(crate) struct NonExhaustiveWithDefaultFieldValues {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("this struct has default field values")]
-    pub defn_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[doc(alias = \"...\")]` isn't allowed on {$location}")]
 pub(crate) struct DocAliasBadLocation<'a> {
     #[primary_span]
@@ -958,6 +949,10 @@ pub(crate) struct UnnecessaryPartialStableFeature {
 #[diag("an `#[unstable]` annotation here has no effect")]
 #[note("see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information")]
 pub(crate) struct IneffectiveUnstableImpl;
+
+#[derive(Diagnostic)]
+#[diag("`#[unstable]` does not make this re-exported path unstable")]
+pub(crate) struct IneffectiveUnstableReexport;
 
 // FIXME(jdonszelmann): move back to rustc_attr
 #[derive(Diagnostic)]

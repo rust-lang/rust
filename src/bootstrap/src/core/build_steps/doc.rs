@@ -1415,13 +1415,6 @@ impl CommandLineStep for RustcBook {
     /// in the "md-doc" directory in the build output directory. Then
     /// "rustbook" is used to convert it to HTML.
     fn run(self, builder: &Builder<'_>) {
-        // FIXME: Temporary workaround for https://github.com/rust-lang/rust/issues/158378
-        // Make sure this workaround doesn't break unit tests on the affected host.
-        if cfg!(not(test)) && self.target == "i686-pc-windows-msvc" {
-            eprintln!("WARNING: Skipping rustc book build to work around #158378");
-            return;
-        }
-
         let out_base = builder.out.join(self.target).join("md-doc").join("rustc");
         t!(fs::create_dir_all(&out_base));
         let out_listing = out_base.join("src/lints");

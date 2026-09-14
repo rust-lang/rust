@@ -415,7 +415,10 @@ impl Command {
                 // SAFETY: Casting this `*const` pointer to a `*mut` pointer is "safe"
                 // here because windows does not internally mutate the attribute list.
                 // Ideally this should be reflected in the interface of the `windows-sys` crate.
-                lpAttributeList: proc_thread_attribute_list.as_ptr().cast::<c_void>().cast_mut(),
+                lpAttributeList: proc_thread_attribute_list
+                    .as_ptr()
+                    .cast::<c::_PROC_THREAD_ATTRIBUTE_LIST>()
+                    .cast_mut(),
             };
             si_ptr = (&raw mut si_ex) as _;
         } else {

@@ -714,9 +714,9 @@ impl<T, A: Allocator> Arc<T, A> {
             },
             alloc,
         );
-        let (ptr, alloc) = Box::into_unique(x);
+        let (ptr, alloc) = Box::into_non_null_with_allocator(x);
         // SAFETY: Pointer is valid.
-        unsafe { Self::from_inner_in(ptr.into(), alloc) }
+        unsafe { Self::from_inner_in(ptr, alloc) }
     }
 
     /// Constructs a new `Arc` with uninitialized contents in the provided allocator.
@@ -834,7 +834,7 @@ impl<T, A: Allocator> Arc<T, A> {
     {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
-        let (uninit_raw_ptr, alloc) = Box::into_raw_with_allocator(Box::new_in(
+        let (uninit_ptr, alloc) = Box::into_non_null_with_allocator(Box::new_in(
             ArcInner {
                 strong: atomic::AtomicUsize::new(0),
                 weak: atomic::AtomicUsize::new(1),
@@ -842,8 +842,6 @@ impl<T, A: Allocator> Arc<T, A> {
             },
             alloc,
         ));
-        // SAFETY: Pointer is valid since we constructed it.
-        let uninit_ptr: NonNull<_> = (unsafe { &mut *uninit_raw_ptr }).into();
         let init_ptr: NonNull<ArcInner<T>> = uninit_ptr.cast();
 
         let weak = Weak { ptr: init_ptr, alloc };
@@ -939,9 +937,9 @@ impl<T, A: Allocator> Arc<T, A> {
             },
             alloc,
         )?;
-        let (ptr, alloc) = Box::into_unique(x);
+        let (ptr, alloc) = Box::into_non_null_with_allocator(x);
         // SAFETY: Pointer is valid since we created it.
-        Ok(unsafe { Self::from_inner_in(ptr.into(), alloc) })
+        Ok(unsafe { Self::from_inner_in(ptr, alloc) })
     }
 
     /// Constructs a new `Arc` with uninitialized contents, in the provided allocator, returning an
@@ -4817,7 +4815,7 @@ impl<T, A: Allocator> UniqueArc<T, A> {
     #[must_use]
     // #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_in(data: T, alloc: A) -> Self {
-        let (ptr, alloc) = Box::into_unique(Box::new_in(
+        let (ptr, alloc) = Box::into_non_null_with_allocator(Box::new_in(
             ArcInner {
                 strong: atomic::AtomicUsize::new(0),
                 // keep one weak reference so if all the weak pointers that are created are dropped
@@ -4827,7 +4825,7 @@ impl<T, A: Allocator> UniqueArc<T, A> {
             },
             alloc,
         ));
-        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
+        Self { ptr, _marker: PhantomData, _marker2: PhantomData, alloc }
     }
 
     #[cfg(not(no_global_oom_handling))]

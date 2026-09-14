@@ -1165,7 +1165,9 @@ extern "C" LLVMRustResult LLVMRustPrintModule(LLVMModuleRef M, const char *Path,
     LLVMRustSetLastError(ErrorInfo.c_str());
     return LLVMRustResult::Failure;
   }
-
+#if LLVM_VERSION_GE(24, 0)
+  unwrap(M)->renumberMetadataForAssembly();
+#endif
   auto AAW = RustAssemblyAnnotationWriter(Demangle);
   auto FOS = formatted_raw_ostream(OS);
   unwrap(M)->print(FOS, &AAW);

@@ -61,7 +61,7 @@
 //@ lldb-check:[...] -1
 
 //@ lldb-command:v *char_ref
-//@ lldb-check: [...] U+0x00000061 U'a'
+//@ lldb-check: [...] U+[...]61 U'a'
 
 //@ lldb-command:v *i8_ref
 //@ lldb-check:[...] 68

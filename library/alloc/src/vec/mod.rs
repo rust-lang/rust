@@ -762,8 +762,6 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```rust
-    /// #![feature(vec_from_fn)]
-    ///
     /// let vec = Vec::from_fn(5, |i| i);
     ///
     /// // indexes are:  0  1  2  3  4
@@ -783,8 +781,6 @@ impl<T> Vec<T> {
     /// The `Vec<T>` is generated in ascending index order, starting from the front
     /// and going towards the back, so you can use closures with mutable state:
     /// ```
-    /// #![feature(vec_from_fn)]
-    ///
     /// let mut state = 1;
     /// let a = Vec::from_fn(6, |_| { let x = state; state *= 2; x });
     ///
@@ -792,7 +788,7 @@ impl<T> Vec<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "vec_from_fn", issue = "149698")]
+    #[stable(feature = "vec_from_fn", since = "CURRENT_RUSTC_VERSION")]
     pub fn from_fn<F>(length: usize, f: F) -> Self
     where
         F: FnMut(usize) -> T,

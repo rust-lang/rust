@@ -12,11 +12,11 @@ LL | |     });
    |
    = help: the trait `Sync` is not implemented for `std::sync::mpsc::Receiver<()>`
    = note: required for `&std::sync::mpsc::Receiver<()>` to implement `Send`
-note: required because it's used within this closure
-  --> $DIR/closure-move-sync.rs:6:27
+note: required because `recv` is used within this closure
+  --> $DIR/closure-move-sync.rs:7:9
    |
-LL |     let t = thread::spawn(|| {
-   |                           ^^
+LL |         recv.recv().unwrap();
+   |         ^^^^
 note: required by a bound in `spawn`
   --> $SRC_DIR/std/src/thread/functions.rs:LL:COL
 

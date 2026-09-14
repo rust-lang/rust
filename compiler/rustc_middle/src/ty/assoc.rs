@@ -181,7 +181,7 @@ pub enum AssocTypeData {
 
 #[derive(Copy, Clone, PartialEq, Debug, StableHash, Eq, Hash, Encodable, Decodable)]
 pub enum AssocKind {
-    Const { name: Symbol, is_type_const: bool },
+    Const { name: Symbol },
     Fn { name: Symbol, has_self: bool },
     Type { data: AssocTypeData },
 }
@@ -204,7 +204,7 @@ impl AssocKind {
 
     pub fn as_def_kind(&self) -> DefKind {
         match self {
-            &Self::Const { is_type_const, .. } => DefKind::AssocConst { is_type_const },
+            Self::Const { .. } => DefKind::AssocConst,
             Self::Fn { .. } => DefKind::AssocFn,
             Self::Type { .. } => DefKind::AssocTy,
         }

@@ -4,7 +4,10 @@
 #![feature(min_generic_const_args)]
 #![expect(incomplete_features)]
 
-trait Trait { type const CT: bool; }
+trait Trait {
+    #[rustc_always_gca]
+    const CT: bool;
+}
 
 fn f<const N: i32>(_: impl Trait<CT = { N }>) {}
 //~^ ERROR the constant `N` is not of type `bool`

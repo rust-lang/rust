@@ -328,7 +328,6 @@ impl<'a> Parser<'a> {
                 generics,
                 ty,
                 body,
-                kind: ConstItemKind::Body,
                 define_opaque: None,
             }))
         } else if let Some(kind) = self.is_reuse_item() {
@@ -339,27 +338,8 @@ impl<'a> Parser<'a> {
             // MODULE ITEM
             self.parse_item_mod(attrs)?
         } else if self.eat_keyword_case(exp!(Type), case) {
-            if let Const::Yes(const_span) = self.parse_constness(case) {
-                // TYPE CONST (mgca)
-                self.recover_const_mut(const_span);
-                self.recover_missing_kw_before_item()?;
-                let (ident, generics, ty, body) = self.parse_const_item(const_span)?;
-                // Make sure this is only allowed if the feature gate is enabled.
-                // #![feature(mgca_type_const_syntax)]
-                self.psess.gated_spans.gate(sym::mgca_type_const_syntax, lo.to(const_span));
-                ItemKind::Const(Box::new(ConstItem {
-                    defaultness: def_(),
-                    ident,
-                    generics,
-                    ty,
-                    body,
-                    kind: ConstItemKind::TypeConst,
-                    define_opaque: None,
-                }))
-            } else {
-                // TYPE ITEM
-                self.parse_type_alias(def_())?
-            }
+            // TYPE ITEM
+            self.parse_type_alias(def_())?
         } else if self.eat_keyword_case(exp!(Enum), case) {
             // ENUM ITEM
             self.parse_item_enum()?
@@ -1268,7 +1248,6 @@ impl<'a> Parser<'a> {
                                 generics: Generics::default(),
                                 ty,
                                 body: expr,
-                                kind: ConstItemKind::Body,
                                 define_opaque,
                             }))
                         }

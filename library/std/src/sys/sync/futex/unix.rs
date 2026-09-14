@@ -62,7 +62,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
                     // absolute time rather than a relative time.
                     libc::syscall(
                         libc::SYS_futex,
-                        futex as *const Atomic<u32>,
+                        futex as *const Atomic<u32> as *const u32,
                         libc::FUTEX_WAIT_BITSET | libc::FUTEX_PRIVATE_FLAG,
                         expected,
                         timespec.as_ref().map_or(null(), |t| t as *const libc::timespec),
@@ -92,7 +92,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
 /// On some platforms, this always returns false.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn futex_wake(futex: &Atomic<u32>) -> bool {
-    let ptr = futex as *const Atomic<u32>;
+    let ptr = futex as *const Atomic<u32> as *const u32;
     let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
     unsafe { libc::syscall(libc::SYS_futex, ptr, op, 1) > 0 }
 }
@@ -100,7 +100,7 @@ pub fn futex_wake(futex: &Atomic<u32>) -> bool {
 /// Wakes up all threads that are waiting on `futex_wait` on this futex.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn futex_wake_all(futex: &Atomic<u32>) {
-    let ptr = futex as *const Atomic<u32>;
+    let ptr = futex as *const Atomic<u32> as *const u32;
     let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
     unsafe {
         libc::syscall(libc::SYS_futex, ptr, op, i32::MAX);

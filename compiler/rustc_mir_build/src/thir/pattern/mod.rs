@@ -637,8 +637,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         let res = self.typeck_results.qpath_res(qpath, id);
 
         let (def_id, user_ty) = match res {
-            Res::Def(DefKind::Const { .. }, def_id)
-            | Res::Def(DefKind::AssocConst { .. }, def_id) => {
+            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 (def_id, self.typeck_results.user_provided_types().get(id))
             }
 

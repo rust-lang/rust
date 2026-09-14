@@ -6,7 +6,8 @@
 // with associated const equality bounds.
 
 trait Trait {
-    type const C: usize;
+    #[rustc_always_gca]
+    const C: usize;
 }
 
 fn f<T: Trait<C = 1>>() {

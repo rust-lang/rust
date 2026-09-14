@@ -143,7 +143,7 @@ Reading the docs of the `base_db::input` module should be useful: everything els
 
 **Architecture Invariant:** particularities of the build system are *not* the part of the ground state.
 In particular, `base-db` knows nothing about cargo.
-For example, `cfg` flags are a part of `base_db`, but `feature`s are not.
+For example, `cfg` flags are a part of `base-db`, but `feature`s are not.
 A `foo` feature is a Cargo-level concept, which is lowered by Cargo to `--cfg feature=foo` argument on the command line.
 The `CrateGraph` structure is used to represent the dependencies between the crates abstractly.
 

@@ -338,6 +338,14 @@ pub(crate) struct SanitizerCfiGeneralizePointersRequiresCfi;
 pub(crate) struct SanitizerCfiNormalizeIntegersRequiresCfi;
 
 #[derive(Diagnostic)]
+#[diag("`-Zsanitizer-cfi-recover` requires `-Zsanitizer=cfi`")]
+pub(crate) struct SanitizerCfiRecoverRequiresCfi;
+
+#[derive(Diagnostic)]
+#[diag("`-Zsanitizer-cfi-diag` requires `-Zsanitizer=cfi`")]
+pub(crate) struct SanitizerCfiDiagRequiresCfi;
+
+#[derive(Diagnostic)]
 #[diag("`-Zsanitizer-kcfi-arity` requires `-Zsanitizer=kcfi`")]
 pub(crate) struct SanitizerKcfiArityRequiresKcfi;
 

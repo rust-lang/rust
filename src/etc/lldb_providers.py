@@ -545,6 +545,9 @@ def f16SummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
 def sequence_formatter(output: str, valobj: SBValue, _dict: LLDBOpaque):
     length: int = valobj.GetNumChildren()
 
+    if length == 0:
+        return output
+
     long: bool = False
     for i in range(0, length):
         if len(output) > 32:

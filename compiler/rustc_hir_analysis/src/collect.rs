@@ -26,7 +26,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt};
+use rustc_hir::intravisit::{InferKind, Visitor};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
 use rustc_infer::infer::{InferCtxt, SolverRegionConstraint, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
@@ -491,7 +491,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn dcx(&self) -> DiagCtxtHandle<'_> {
-        self.tcx.dcx().taintable_handle(&self.tainted_by_errors)
+        self.tcx.dcx().into_taintable(&self.tainted_by_errors)
     }
 
     fn item_def_id(&self) -> LocalDefId {
@@ -1539,11 +1539,11 @@ pub fn suggest_impl_trait<'tcx>(
             );
             // FIXME(compiler-errors): We may benefit from resolving regions here.
             if ocx.try_evaluate_obligations().no_errors()
-                && let item_ty = infcx.resolve_vars_if_possible(item_ty)
+                && let item_ty = infcx.deeply_resolve_ignoring_regions(item_ty)
                 && let Some(item_ty) = item_ty.make_suggestable(infcx.tcx, false, None)
                 && let Some(sugg) = formatter(
                     infcx.tcx,
-                    infcx.resolve_vars_if_possible(args),
+                    infcx.deeply_resolve_ignoring_regions(args),
                     trait_def_id,
                     assoc_item_def_id,
                     item_ty,
