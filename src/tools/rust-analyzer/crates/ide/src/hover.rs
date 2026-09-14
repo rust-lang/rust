@@ -156,7 +156,6 @@ pub(crate) fn hover(
     Some(res)
 }
 
-#[allow(clippy::field_reassign_with_default)]
 fn hover_offset(
     sema: &Semantics<'_, RootDatabase>,
     FilePosition { file_id, offset }: FilePosition,

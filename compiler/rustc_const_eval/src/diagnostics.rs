@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
-use rustc_errors::{Diag, DiagArgValue, EmissionGuarantee, MultiSpan, Subdiagnostic, msg};
+use rustc_errors::{Diag, DiagArgValue, MultiSpan, Subdiagnostic, msg};
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{Mutability, Ty};
@@ -317,7 +317,7 @@ pub(crate) struct FrameNote {
 }
 
 impl Subdiagnostic for FrameNote {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         let mut span: MultiSpan = self.span.into();
         if self.has_label && !self.span.is_dummy() {
             span.push_span_label(self.span, msg!("the failure occurred here"));

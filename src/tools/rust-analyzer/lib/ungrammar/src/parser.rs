@@ -1,5 +1,5 @@
 //! Simple hand-written ungrammar parser.
-#![allow(clippy::disallowed_types)]
+
 use std::collections::HashMap;
 
 use crate::{

@@ -1007,7 +1007,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         err.emit()
     }
 
-    fn report_unterminated_block_comment(&self, start: BytePos, doc_style: Option<DocStyle>) {
+    fn report_unterminated_block_comment(&self, start: BytePos, doc_style: Option<DocStyle>) -> ! {
         let msg = match doc_style {
             Some(_) => "unterminated block doc-comment",
             None => "unterminated block comment",
