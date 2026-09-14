@@ -34,7 +34,6 @@ error: fn_abi_of(take_va_list) = FnAbi {
                                Align(8 bytes),
                            ),
                        },
-                       meta_attrs: None,
                        on_stack: false,
                    },
                },

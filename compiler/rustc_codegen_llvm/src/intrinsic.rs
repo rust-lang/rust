@@ -2040,6 +2040,9 @@ fn get_args_from_tuple<'ll, 'tcx>(
                         result.push(field.val.llval);
                         tuple_index += 1;
                     }
+                    PassMode::IndirectUnsized { .. } => {
+                        bug!("autodiff/offload args must not be unsized");
+                    }
                 }
             }
 

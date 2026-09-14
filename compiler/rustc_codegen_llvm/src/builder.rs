@@ -24,7 +24,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::{Arch, HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
@@ -1570,6 +1570,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         match &fn_abi.ret.mode {
             PassMode::Ignore | PassMode::Indirect { .. } => self.ret_void(),
             PassMode::Direct(_) | PassMode::Pair { .. } | PassMode::Cast { .. } => self.ret(call),
+            PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
         }
     }
 

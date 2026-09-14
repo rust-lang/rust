@@ -14,6 +14,12 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_public;
 
+use std::assert_matches;
+use std::collections::HashSet;
+use std::convert::TryFrom;
+use std::io::Write;
+use std::ops::ControlFlow;
+
 use rustc_public::abi::{
     ArgAbi, ArgExtension, CallConvention, FieldsShape, IntegerLength, PassMode, Primitive, Scalar,
     ValueRepr, VariantsShape,
@@ -23,11 +29,6 @@ use rustc_public::mir::mono::Instance;
 use rustc_public::target::MachineInfo;
 use rustc_public::ty::{AdtDef, RigidTy, Ty, TyKind};
 use rustc_public::{CrateDef, CrateItem, CrateItems, ItemKind};
-use std::assert_matches;
-use std::collections::HashSet;
-use std::convert::TryFrom;
-use std::io::Write;
-use std::ops::ControlFlow;
 
 const CRATE_NAME: &str = "input";
 
@@ -122,13 +123,11 @@ fn check_primitive(abi: &ArgAbi) {
 /// Check the return value: `Result<usize, &str>`.
 fn check_result(abi: &ArgAbi) {
     assert!(abi.ty.kind().is_enum());
-    let PassMode::Indirect { ref attrs, ref meta_attrs, on_stack } = abi.mode else {
+    let PassMode::Indirect { ref attrs, on_stack } = abi.mode else {
         panic!("Expected PassMode::Indirect for Result, got: {:?}", abi.mode);
     };
     // Indirect arguments have a pointee alignment (the pointer must be aligned).
     assert!(attrs.pointee_align().is_some());
-    // Result is a sized type, so no metadata pointer.
-    assert!(meta_attrs.is_none());
     assert!(!on_stack);
     let layout = abi.layout.shape();
     assert!(layout.is_sized());
