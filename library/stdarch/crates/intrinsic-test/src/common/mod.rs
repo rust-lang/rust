@@ -138,3 +138,8 @@ pub fn manual_chunk(intrinsic_count: usize) -> (usize, usize) {
     let number_of_chunks = intrinsic_count.div_ceil(max_intrinsics_per_chunk);
     (max_intrinsics_per_chunk, number_of_chunks)
 }
+
+pub fn imm_value_to_ident(value: impl std::fmt::Display) -> String {
+    let value = value.to_string();
+    value.replace('-', "neg")
+}

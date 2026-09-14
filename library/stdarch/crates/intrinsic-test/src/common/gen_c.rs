@@ -1,5 +1,6 @@
 use itertools::Itertools;
 
+use crate::common::imm_value_to_ident;
 use crate::common::{SupportedArchitecture, intrinsic::Intrinsic};
 
 use super::intrinsic_helpers::TypeDefinition;
@@ -41,9 +42,13 @@ void {name}_wrapper{imm_arglist}({return_ty}* __dst{arglist}) {{
 }}",
                         return_ty = intrinsic.results.c_type(),
                         name = intrinsic.name,
-                        imm_arglist = imm_values
-                            .iter()
-                            .format_with("", |i, fmt| fmt(&format_args!("_{i}"))),
+                        imm_arglist =
+                            imm_values
+                                .iter()
+                                .format_with("", |i, fmt| fmt(&format_args!(
+                                    "_{}",
+                                    imm_value_to_ident(i)
+                                ))),
                         arglist = intrinsic.arguments.as_non_imm_arglist_c(),
                         params = intrinsic.arguments.as_call_params_c(&imm_values)
                     ))
