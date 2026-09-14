@@ -23,6 +23,7 @@ use crate::diagnostics::{
     UnpredictableFunctionPointerComparisonsSuggestion, UnusedComparisons,
     VariantSizeDifferencesDiag,
 };
+use crate::utils::std_or_core;
 use crate::{LateContext, LateLintPass, LintContext};
 
 mod literal;
@@ -346,13 +347,21 @@ fn lint_wide_pointer<'tcx>(
         return;
     };
 
+    let Some(krate) = std_or_core(cx) else {
+        return cx.emit_span_lint(
+            AMBIGUOUS_WIDE_POINTER_COMPARISONS,
+            e.span,
+            AmbiguousWidePointerComparisons::Warn,
+        );
+    };
+
     let (Some(l_span), Some(r_span)) =
         (l.span.find_ancestor_inside(e.span), r.span.find_ancestor_inside(e.span))
     else {
         return cx.emit_span_lint(
             AMBIGUOUS_WIDE_POINTER_COMPARISONS,
             e.span,
-            AmbiguousWidePointerComparisons::Spanless,
+            AmbiguousWidePointerComparisons::Spanless { krate },
         );
     };
 
@@ -378,6 +387,7 @@ fn lint_wide_pointer<'tcx>(
             AmbiguousWidePointerComparisons::SpanfulEq {
                 addr_metadata_suggestion: (!is_dyn_comparison).then(|| {
                     AmbiguousWidePointerComparisonsAddrMetadataSuggestion {
+                        krate,
                         ne,
                         deref_left,
                         deref_right,
@@ -389,6 +399,7 @@ fn lint_wide_pointer<'tcx>(
                     }
                 }),
                 addr_suggestion: AmbiguousWidePointerComparisonsAddrSuggestion {
+                    krate,
                     ne,
                     deref_left,
                     deref_right,

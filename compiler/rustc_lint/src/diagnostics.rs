@@ -2361,25 +2361,30 @@ pub(crate) enum AmbiguousWidePointerComparisons<'a> {
     #[diag(
         "ambiguous wide pointer comparison, the comparison includes metadata which may not be expected"
     )]
-    #[help("use explicit `std::ptr::eq` method to compare metadata and addresses")]
-    #[help("use `std::ptr::addr_eq` or untyped pointers to only compare their addresses")]
-    Spanless,
+    #[help("use explicit `{$krate}::ptr::eq` method to compare metadata and addresses")]
+    #[help("use `{$krate}::ptr::addr_eq` or untyped pointers to only compare their addresses")]
+    Spanless { krate: &'static str },
+    #[diag(
+        "ambiguous wide pointer comparison, the comparison includes metadata which may not be expected"
+    )]
+    Warn,
 }
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    "use explicit `std::ptr::eq` method to compare metadata and addresses",
+    "use explicit `{$krate}::ptr::eq` method to compare metadata and addresses",
     style = "verbose",
     // FIXME(#53934): make machine-applicable again
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct AmbiguousWidePointerComparisonsAddrMetadataSuggestion<'a> {
+    pub krate: &'static str,
     pub ne: &'a str,
     pub deref_left: &'a str,
     pub deref_right: &'a str,
     pub l_modifiers: &'a str,
     pub r_modifiers: &'a str,
-    #[suggestion_part(code = "{ne}std::ptr::eq({deref_left}")]
+    #[suggestion_part(code = "{ne}{krate}::ptr::eq({deref_left}")]
     pub left: Span,
     #[suggestion_part(code = "{l_modifiers}, {deref_right}")]
     pub middle: Span,
@@ -2389,18 +2394,19 @@ pub(crate) struct AmbiguousWidePointerComparisonsAddrMetadataSuggestion<'a> {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
-    "use `std::ptr::addr_eq` or untyped pointers to only compare their addresses",
+    "use `{$krate}::ptr::addr_eq` or untyped pointers to only compare their addresses",
     style = "verbose",
     // FIXME(#53934): make machine-applicable again
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
+    pub(crate) krate: &'static str,
     pub(crate) ne: &'a str,
     pub(crate) deref_left: &'a str,
     pub(crate) deref_right: &'a str,
     pub(crate) l_modifiers: &'a str,
     pub(crate) r_modifiers: &'a str,
-    #[suggestion_part(code = "{ne}std::ptr::addr_eq({deref_left}")]
+    #[suggestion_part(code = "{ne}{krate}::ptr::addr_eq({deref_left}")]
     pub(crate) left: Span,
     #[suggestion_part(code = "{l_modifiers}, {deref_right}")]
     pub(crate) middle: Span,
