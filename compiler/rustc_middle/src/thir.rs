@@ -528,8 +528,7 @@ pub enum ExprKind<'tcx> {
     },
     /// Associated constants and named constants
     NamedConst {
-        def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        ct: ty::AliasConst<'tcx>,
         user_ty: UserTy<'tcx>,
     },
     ConstParam {
