@@ -49,6 +49,10 @@ pub trait SupportedArchitecture: Sized {
     const C_PRELUDE: &str;
     const RUST_PRELUDE: &str;
 
+    /// Per-architecture prefix used to convert a Rust intrinsic name to the
+    /// corresponding C intrinsic name by prepending it to the Rust name.
+    const C_NAME_PREFIX: &str;
+
     fn c_compiler_flags(&self, cli_options: &ProcessedCli) -> Vec<&str>;
 
     fn generate_c_file(&self) {

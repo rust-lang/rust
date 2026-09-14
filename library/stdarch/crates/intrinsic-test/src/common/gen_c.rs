@@ -38,9 +38,10 @@ pub fn write_wrapper_c<A: SupportedArchitecture>(
                     fmt(&format_args!(
                         "
 void {name}_wrapper{imm_arglist}({return_ty}* __dst{arglist}) {{
-    *__dst = {name}({params});
+    *__dst = {prefix}{name}({params});
 }}",
                         return_ty = intrinsic.results.c_type(),
+                        prefix = A::C_NAME_PREFIX,
                         name = intrinsic.name,
                         imm_arglist =
                             imm_values
