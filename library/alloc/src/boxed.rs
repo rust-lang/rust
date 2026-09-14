@@ -448,10 +448,7 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[must_use]
     #[inline]
-    pub fn new_in(x: T, alloc: A) -> Self
-    where
-        A: Allocator,
-    {
+    pub fn new_in(x: T, alloc: A) -> Self {
         let mut boxed = Self::new_uninit_in(alloc);
         boxed.write(x);
         // SAFETY: Initialised by the above.
@@ -475,10 +472,7 @@ impl<T, A: Allocator> Box<T, A> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn try_new_in(x: T, alloc: A) -> Result<Self, AllocError>
-    where
-        A: Allocator,
-    {
+    pub fn try_new_in(x: T, alloc: A) -> Result<Self, AllocError> {
         let mut boxed = Self::try_new_uninit_in(alloc)?;
         boxed.write(x);
         // SAFETY: Initialised by the above.
@@ -504,10 +498,7 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
-    pub fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A>
-    where
-        A: Allocator,
-    {
+    pub fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
         // That would make code size bigger.
@@ -536,10 +527,7 @@ impl<T, A: Allocator> Box<T, A> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn try_new_uninit_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError>
-    where
-        A: Allocator,
-    {
+    pub fn try_new_uninit_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError> {
         let ptr = if T::IS_ZST {
             NonNull::dangling()
         } else {
@@ -573,10 +561,7 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
-    pub fn new_zeroed_in(alloc: A) -> Box<mem::MaybeUninit<T>, A>
-    where
-        A: Allocator,
-    {
+    pub fn new_zeroed_in(alloc: A) -> Box<mem::MaybeUninit<T>, A> {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
         // That would make code size bigger.
@@ -609,10 +594,7 @@ impl<T, A: Allocator> Box<T, A> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn try_new_zeroed_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError>
-    where
-        A: Allocator,
-    {
+    pub fn try_new_zeroed_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError> {
         let ptr = if T::IS_ZST {
             NonNull::dangling()
         } else {
