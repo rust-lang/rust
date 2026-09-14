@@ -58,7 +58,7 @@ where
     match arg.mode {
         super::PassMode::Ignore | super::PassMode::Direct(_) => return,
         super::PassMode::Pair(_, _) => {}
-        super::PassMode::Cast { .. } => unreachable!(),
+        super::PassMode::Cast { .. } | super::PassMode::IndirectUnsized { .. } => unreachable!(),
         super::PassMode::Indirect { .. } => {}
     }
 
