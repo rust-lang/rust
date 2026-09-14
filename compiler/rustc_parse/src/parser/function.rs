@@ -828,15 +828,14 @@ impl<'a> Parser<'a> {
             };
 
             if let Some(arg_pos) = param_index
-                && this.check_keyword(exp!(Const))
+                && this.eat_keyword(exp!(Const))
             {
-                let const_span = this.token.span;
-                this.psess.gated_spans.gate(sym::function_arg_const_generics, const_span);
-                this.expect_keyword(exp!(Const))?;
+                let const_span = this.prev_token.span;
                 let ident = this.parse_ident()?;
                 let colon_span = Some(this.token.span);
                 this.expect(exp!(Colon))?;
                 let ty = this.parse_ty()?;
+                this.psess.gated_spans.gate(sym::function_arg_const_generics, const_span);
                 let generic_param = GenericParam {
                     id: ast::DUMMY_NODE_ID,
                     ident,

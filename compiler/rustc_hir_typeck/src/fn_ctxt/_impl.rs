@@ -1375,7 +1375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(pos) = param.kind.arg_pos() {
                     let Some(args) = self.call_args else {
                         let guard =
-                            self.fcx.dcx().span_err(self.span, "Argument should be provided");
+                            self.fcx.dcx().span_err(self.span, "argument should be provided");
                         return ty::Const::new_error(tcx, guard).into();
                     };
 

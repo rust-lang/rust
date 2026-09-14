@@ -617,7 +617,7 @@ fn clean_generic_param_def(
                 },
             )
         }
-        ty::GenericParamDefKind::Const { has_default } => (
+        ty::GenericParamDefKind::Const { has_default, arg_pos: _ } => (
             def.name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_middle_ty(
@@ -696,7 +696,7 @@ fn clean_generic_param<'tcx>(
                 },
             )
         }
-        hir::GenericParamKind::Const { ty, default } => (
+        hir::GenericParamKind::Const { ty, default, arg_pos: _ } => (
             param.name.ident().name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),

@@ -373,10 +373,12 @@ impl HirEqInterExpr<'_, '_, '_> {
                 GenericParamKind::Const {
                     ty: l_ty,
                     default: l_default,
+                    arg_pos: _
                 },
                 GenericParamKind::Const {
                     ty: r_ty,
                     default: r_default,
+                    arg_pos: _
                 },
             ) => self.eq_ty(l_ty, r_ty) && both(*l_default, *r_default, |l, r| self.eq_const_arg(l, r)),
             _ => false,
