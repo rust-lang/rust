@@ -16,9 +16,10 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_fs_util::path_to_c_string;
 use rustc_session::config::{NATIVE_CPU, PrintKind, PrintRequest};
 use rustc_session::{EarlySession, Session};
-use rustc_span::{bug, sym};
+use rustc_span::{Symbol, bug, sym};
 use rustc_target::spec::{
-    Arch, CfgAbi, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport, Target,
+    Arch, CfgAbi, Env, LlvmAbi, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport,
+    Target,
 };
 use smallvec::{SmallVec, smallvec};
 
@@ -820,4 +821,35 @@ pub(crate) fn target_has_mnemonic(sess: &Session, mnemonic: &str) -> bool {
     let tm = create_informational_target_machine(sess);
     let cstr = SmallCStr::new(mnemonic);
     unsafe { llvm::LLVMRustTargetHasMnemonic(tm.raw(), cstr.as_ptr()) }
+}
+
+pub(crate) fn target_abi(sess: &Session) -> &str {
+    if get_version().0 >= 24 && matches!(sess.target.arch, Arch::RiscV32 | Arch::RiscV64) {
+        let has_feature =
+            |feat: &str| sess.internal_target_features.contains(&Symbol::intern(feat));
+        match sess.target.llvm_abiname {
+            // On LLVM 24+, `computeTargetABI()` treats an ABI requiring `d` (or `f`) as a fatal
+            // error if the feature is disabled (e.g. via `-Ctarget-feature=-d`). Fall back to a
+            // compatible ABI so that LLVM module asm parsing (e.g. for `.llvmbc`) succeeds.
+            LlvmAbi::Ilp32d if !has_feature("d") => {
+                if has_feature("f") {
+                    LlvmAbi::Ilp32f.desc()
+                } else {
+                    LlvmAbi::Ilp32.desc()
+                }
+            }
+            LlvmAbi::Lp64d if !has_feature("d") => {
+                if has_feature("f") {
+                    LlvmAbi::Lp64f.desc()
+                } else {
+                    LlvmAbi::Lp64.desc()
+                }
+            }
+            LlvmAbi::Ilp32f if !has_feature("f") => LlvmAbi::Ilp32.desc(),
+            LlvmAbi::Lp64f if !has_feature("f") => LlvmAbi::Lp64.desc(),
+            _ => sess.target.llvm_abiname.desc(),
+        }
+    } else {
+        sess.target.llvm_abiname.desc()
+    }
 }
