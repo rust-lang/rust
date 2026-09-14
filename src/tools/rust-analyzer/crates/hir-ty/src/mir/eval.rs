@@ -1468,14 +1468,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
             Rvalue::Discriminant(p) => {
                 let ty = self.place_ty(p, locals)?;
                 let bytes = self.eval_place(p, locals)?.get(self)?;
-                let result = if let Some(f) = locals.body.owner.as_variant()
-                    && let Some((AdtId::EnumId(e), _)) = ty.as_adt()
-                    && f.lookup(self.db).parent == e
-                {
-                    i128::from_le_bytes(pad16(bytes, IsSigned::Yes))
-                } else {
-                    self.compute_discriminant(ty, bytes)?
-                };
+                let result = self.compute_discriminant(ty, bytes)?;
                 Owned(result.to_le_bytes().to_vec())
             }
             Rvalue::Repeat(it, len) => {

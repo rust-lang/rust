@@ -977,40 +977,45 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 } else {
                     let source_ty = self.infer.expr_ty(*expr);
                     let target_ty = self.infer.expr_ty(expr_id);
-                    let (it, source_ty, current) = if let TyKind::Adt(adt, _) = source_ty.kind()
-                        && adt.is_enum()
-                    {
-                        let Some((enum_place, current)) =
-                            self.lower_expr_as_place(current, *expr, true)?
-                        else {
-                            return Ok(None);
-                        };
-                        let discr_ty = Ty::new_int(self.interner(), rustc_type_ir::IntTy::I128);
-                        let discr_place: Place<'db> =
-                            self.temp(discr_ty, current, expr_id.into())?.into();
+                    let (it, source_ty, current) =
+                        if let Some(VariantId::EnumVariantId(variant_id)) =
+                            self.infer.variant_resolution_for_expr(*expr)
+                        {
+                            self.lower_variant_discriminant(current, variant_id)?
+                        } else if let TyKind::Adt(adt, _) = source_ty.kind()
+                            && adt.is_enum()
+                        {
+                            let Some((enum_place, current)) =
+                                self.lower_expr_as_place(current, *expr, true)?
+                            else {
+                                return Ok(None);
+                            };
+                            let discr_ty = Ty::new_int(self.interner(), rustc_type_ir::IntTy::I128);
+                            let discr_place: Place<'db> =
+                                self.temp(discr_ty, current, expr_id.into())?.into();
 
-                        self.push_assignment(
-                            current,
-                            discr_place,
-                            Rvalue::Discriminant(enum_place.store()),
-                            expr_id.into(),
-                        );
-                        (
-                            Operand {
-                                kind: OperandKind::Copy(discr_place.store()),
-                                span: Some(expr_id.into()),
-                            },
-                            discr_ty,
-                            current,
-                        )
-                    } else {
-                        let Some((it, current)) =
-                            self.lower_expr_to_some_operand(*expr, current)?
-                        else {
-                            return Ok(None);
+                            self.push_assignment(
+                                current,
+                                discr_place,
+                                Rvalue::Discriminant(enum_place.store()),
+                                expr_id.into(),
+                            );
+                            (
+                                Operand {
+                                    kind: OperandKind::Copy(discr_place.store()),
+                                    span: Some(expr_id.into()),
+                                },
+                                discr_ty,
+                                current,
+                            )
+                        } else {
+                            let Some((it, current)) =
+                                self.lower_expr_to_some_operand(*expr, current)?
+                            else {
+                                return Ok(None);
+                            };
+                            (it, source_ty, current)
                         };
-                        (it, source_ty, current)
-                    };
                     let cast_kind = if source_ty.as_reference().is_some() {
                         CastKind::PointerCoercion(PointerCast::ArrayToPointer)
                     } else {
@@ -1551,6 +1556,17 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             span,
         );
         Ok(prev_block)
+    }
+
+    fn lower_variant_discriminant(
+        &mut self,
+        current: BasicBlockId,
+        variant_id: EnumVariantId,
+    ) -> Result<'db, (Operand, Ty<'db>, BasicBlockId)> {
+        let discriminant = self.const_eval_discriminant(variant_id)?;
+        let discr_ty = Ty::new_int(self.interner(), rustc_type_ir::IntTy::I128);
+        let operand = Operand::from_bytes(Box::new(discriminant.to_le_bytes()), discr_ty);
+        Ok((operand, discr_ty, current))
     }
 
     fn lower_call_and_args(
