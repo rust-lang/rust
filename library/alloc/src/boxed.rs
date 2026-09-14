@@ -1752,19 +1752,6 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         unsafe { (NonNull::new_unchecked(ptr), alloc) }
     }
 
-    #[unstable(
-        feature = "ptr_internals",
-        issue = "none",
-        reason = "use `Box::leak(b).into()` or `Unique::from(Box::leak(b))` instead"
-    )]
-    #[inline]
-    #[doc(hidden)]
-    pub fn into_unique(b: Self) -> (Unique<T>, A) {
-        let (ptr, alloc) = Box::into_raw_with_allocator(b);
-        // SAFETY: Pointer is valid and unique.
-        unsafe { (Unique::new_unchecked(ptr), alloc) }
-    }
-
     /// Returns a raw mutable pointer to the `Box`'s contents.
     ///
     /// The caller must ensure that the `Box` outlives the pointer this

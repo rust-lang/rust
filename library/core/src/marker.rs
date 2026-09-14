@@ -1302,7 +1302,7 @@ marker_impls! {
 ///             value,
 ///         });
 ///         Self {
-///             inner: NonNull::from(Box::leak(inner)),
+///             inner: Box::into_non_null(inner),
 ///         }
 ///     }
 /// }
