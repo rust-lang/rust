@@ -6,7 +6,6 @@ use askama::Template;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefIdMap, DefIdSet};
-use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
 use super::{Context, ItemSection, impl_trait_key, item_ty_to_section};
@@ -454,13 +453,14 @@ fn sidebar_assoc_items<'a>(
                     impl_,
                     GetMethodsMode::AlsoCollectAssocFns { assoc_fns: &mut assoc_fns },
                     used_links_bor,
-                    cx.tcx(),
+                    cx,
                 ));
             }
             // We want links' order to be reproducible so we don't use unstable sort.
             assoc_consts.sort();
             assoc_types.sort();
-            methods.sort();
+            postprocess_method_list(&mut assoc_fns);
+            postprocess_method_list(&mut methods);
         }
 
         let mut blocks = vec![
@@ -564,13 +564,8 @@ fn sidebar_deref_methods<'a>(
                         && real_target.is_doc_subtype_of(&i.inner_impl().for_, c)
                 })
                 .flat_map(|i| {
-                    get_methods(
-                        i.inner_impl(),
-                        GetMethodsMode::Deref { deref_mut },
-                        used_links,
-                        cx.tcx(),
-                    )
-                    .collect::<Vec<_>>()
+                    get_methods(i.inner_impl(), GetMethodsMode::Deref { deref_mut }, used_links, cx)
+                        .collect::<Vec<_>>()
                 })
                 .collect::<Vec<_>>();
             if !ret.is_empty() {
@@ -589,8 +584,8 @@ fn sidebar_deref_methods<'a>(
                     print_path(impl_.inner_impl().trait_.as_ref().unwrap(), cx),
                     print_type(real_target, cx),
                 );
-                // We want links' order to be reproducible so we don't use unstable sort.
-                ret.sort();
+
+                postprocess_method_list(&mut ret);
                 out.push(LinkBlock::new(Link::new(id, title), "deref-methods", ret));
             }
         }
@@ -765,7 +760,7 @@ fn get_methods<'a>(
     i: &'a clean::Impl,
     mut mode: GetMethodsMode<'_, 'a>,
     used_links: &mut FxHashSet<String>,
-    tcx: TyCtxt<'_>,
+    cx: &Context<'_>,
 ) -> impl Iterator<Item = Link<'a>> {
     i.items.iter().filter_map(move |item| {
         if let Some(ref name) = item.name
@@ -774,12 +769,12 @@ fn get_methods<'a>(
             let mut build_link = || {
                 Link::new(
                     get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::Method)),
-                    name.as_str(),
+                    format!("{} ({:#})", name.as_str(), print_type(&i.for_, cx)),
                 )
             };
             match &mut mode {
                 &mut GetMethodsMode::Deref { deref_mut } => {
-                    if super::should_render_item(item, deref_mut, tcx) {
+                    if super::should_render_item(item, deref_mut, cx.tcx()) {
                         Some(build_link())
                     } else {
                         None
@@ -798,6 +793,27 @@ fn get_methods<'a>(
             None
         }
     })
+}
+
+fn postprocess_method_list(methods: &mut [Link<'_>]) {
+    // We want links' order to be reproducible so we don't use unstable sort.
+    methods.sort();
+    let trunc_to = |dst: &mut Cow<'_, str>, len: usize| match dst {
+        Cow::Borrowed(s) => *s = &s[..len],
+        Cow::Owned(s) => s.truncate(len),
+    };
+    fn get_short_name<'a>(itm: Option<&'a Link<'a>>) -> Option<&'a str> {
+        Some(itm?.name.split_once(' ')?.0)
+    }
+    for i in 0..methods.len() {
+        let short_name = get_short_name(methods.get(i));
+        if get_short_name(methods.get(i.wrapping_sub(1))) != short_name
+            && short_name != get_short_name(methods.get(i + 1))
+        {
+            let shortened_len = short_name.unwrap().len();
+            trunc_to(&mut methods[i].name, shortened_len);
+        }
+    }
 }
 
 fn get_associated_constants<'a>(
