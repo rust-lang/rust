@@ -10,6 +10,7 @@ use rustc_session::config::MirIncludeSpans;
 
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraint;
+use crate::dataflow::BorrowIndex;
 use crate::polonius::{LocalizedConstraintGraphVisitor, LocalizedNode, PoloniusContext};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
@@ -40,7 +41,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 
     // If we have a polonius graph to dump along the rest of the MIR and NLL info, we extract its
     // constraints here.
-    let mut collector = LocalizedOutlivesConstraintCollector { constraints: Vec::new() };
+    let mut collector = MirDumpCollector::default();
     if let Some(graph) = &polonius_context.graph {
         graph.traverse(
             body,
@@ -76,7 +77,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 
     let _ = try {
         let mut file = dumper.create_dump_file("html", body)?;
-        emit_polonius_dump(&dumper, body, regioncx, borrow_set, &collector.constraints, &mut file)?;
+        emit_polonius_dump(&dumper, body, regioncx, borrow_set, &collector, &mut file)?;
     };
 }
 
@@ -88,12 +89,19 @@ struct LocalizedOutlivesConstraint {
     to: PointIndex,
 }
 
-/// Visitor to record constraints encountered when traversing the localized constraint graph.
-struct LocalizedOutlivesConstraintCollector {
+/// Visitor to record constraints encountered when traversing the localized constraint graph, as
+/// well as the reachability of each loan.
+#[derive(Default)]
+struct MirDumpCollector {
     constraints: Vec<LocalizedOutlivesConstraint>,
+    reachability: FxIndexMap<BorrowIndex, Vec<LocalizedNode>>,
 }
 
-impl LocalizedConstraintGraphVisitor for LocalizedOutlivesConstraintCollector {
+impl LocalizedConstraintGraphVisitor for MirDumpCollector {
+    fn on_node_traversed(&mut self, loan: BorrowIndex, node: LocalizedNode) {
+        self.reachability.entry(loan).or_default().push(node);
+    }
+
     fn on_successor_discovered(&mut self, current_node: LocalizedNode, successor: LocalizedNode) {
         self.constraints.push(LocalizedOutlivesConstraint {
             source: current_node.region,
@@ -115,7 +123,7 @@ fn emit_polonius_dump<'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    localized_outlives_constraints: &[LocalizedOutlivesConstraint],
+    collector: &MirDumpCollector,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
     let mut edge_count = 0;
@@ -144,7 +152,15 @@ fn emit_polonius_dump<'tcx>(
                         edge_count = emit_mermaid_constraint_graph(
                             borrow_set,
                             regioncx.liveness_constraints(),
-                            &localized_outlives_constraints,
+                            &collector.constraints,
+                            out,
+                        )?;
+                    }
+                    "POLONIUS_REACHABILITY" => {
+                        emit_loan_reachability(
+                            borrow_set,
+                            regioncx.liveness_constraints(),
+                            &collector.reachability,
                             out,
                         )?;
                     }
@@ -429,15 +445,9 @@ fn emit_mermaid_constraint_graph<'tcx>(
     localized_outlives_constraints: &[LocalizedOutlivesConstraint],
     out: &mut dyn io::Write,
 ) -> io::Result<usize> {
-    let location_name = |location: Location| {
-        // A MIR location looks like `bb5[2]`. As that is not a syntactically valid mermaid node id,
-        // transform it into `BB5_2`.
-        format!("BB{}_{}", location.block.index(), location.statement_index)
-    };
-    let region_name = |region: RegionVid| format!("'{}", region.index());
-    let node_name = |region: RegionVid, point: PointIndex| {
+    let node_label = |region: RegionVid, point: PointIndex| {
         let location = liveness.location_from_point(point);
-        format!("{}_{}", region_name(region), location_name(location))
+        node_name(region, location)
     };
 
     // The mermaid chart type: a top-down flowchart, which supports subgraphs.
@@ -472,7 +482,7 @@ fn emit_mermaid_constraint_graph<'tcx>(
     for (region, points) in points_per_region {
         writeln!(out, "    subgraph \"{}\"", region_name(region))?;
         for point in points {
-            writeln!(out, "        {}", node_name(region, point))?;
+            writeln!(out, "        {}", node_label(region, point))?;
         }
         writeln!(out, "    end\n")?;
     }
@@ -483,8 +493,8 @@ fn emit_mermaid_constraint_graph<'tcx>(
         writeln!(
             out,
             "    {} --> {}",
-            node_name(constraint.source, constraint.from),
-            node_name(constraint.target, constraint.to),
+            node_label(constraint.source, constraint.from),
+            node_label(constraint.target, constraint.to),
         )?;
     }
 
@@ -492,4 +502,62 @@ fn emit_mermaid_constraint_graph<'tcx>(
     // mermaid's max edge count to support.
     let edge_count = borrow_set.len() + localized_outlives_constraints.len();
     Ok(edge_count)
+}
+
+/// Emits the reachability of loans: a list of all nodes reached while traversing the polonius
+/// constraint graph.
+fn emit_loan_reachability(
+    borrow_set: &BorrowSet<'_>,
+    liveness: &LivenessValues,
+    reachability: &FxIndexMap<BorrowIndex, Vec<LocalizedNode>>,
+    out: &mut dyn io::Write,
+) -> io::Result<()> {
+    for (loan, _) in borrow_set.iter_enumerated() {
+        let Some(reachability) = reachability.get(&loan) else {
+            continue;
+        };
+        let loan = format!("L{}", loan.index());
+        writeln!(out, "<div>")?;
+        writeln!(out, "<div>Trace for loan {loan}</div>")?;
+        writeln!(out, "<ul>")?;
+        for (idx, node) in reachability.iter().enumerate() {
+            writeln!(out, "<li>")?;
+
+            let location = liveness.location_from_point(node.point);
+            let kind = if idx == 0 { "starts in" } else { "reaches" };
+            writeln!(
+                out,
+                "<code>{loan}</code> {kind} <code>{}</code>",
+                node_name(node.region, location),
+            )?;
+
+            // It's useful to know whether the region we're reaching is live at this point.
+            let node_liveness =
+                if liveness.is_live_at(node.region, location) { "live" } else { "not live" };
+            writeln!(
+                out,
+                "/ at <code>{:?}</code>: <code>'{}</code> is {}",
+                location,
+                node.region.index(),
+                node_liveness,
+            )?;
+            writeln!(out, "</li>")?;
+        }
+        writeln!(out, "</ul>")?;
+        writeln!(out, "</div>")?;
+    }
+
+    Ok(())
+}
+
+fn region_name(region: RegionVid) -> String {
+    format!("'{}", region.index())
+}
+/// A MIR location looks like `bb5[2]`. As that is not a syntactically valid mermaid node id,
+/// transform it into `BB5_2`.
+fn location_name(location: Location) -> String {
+    format!("BB{}_{}", location.block.index(), location.statement_index)
+}
+fn node_name(region: RegionVid, location: Location) -> String {
+    format!("{}_{}", region_name(region), location_name(location))
 }
