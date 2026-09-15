@@ -183,6 +183,34 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugStruct::field`], but formats the
     /// value using a provided closure rather than by calling [`Debug::fmt`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(debug_closure_helpers)]
+    ///
+    /// use std::fmt;
+    ///
+    /// struct Bar {
+    ///     bar: i32,
+    ///     another: String,
+    /// }
+    ///
+    /// impl fmt::Debug for Bar {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_struct("Bar")
+    ///            // Print `bar` as a hex value
+    ///            .field_with("bar", |fmt| write!(fmt, "{:#010x}", &self.bar))
+    ///            .field("another", &self.another)
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Bar { bar: 10, another: "Hello World".to_string() }),
+    ///     r#"Bar { bar: 0x0000000a, another: "Hello World" }"#,
+    /// );
+    /// ```
     #[unstable(feature = "debug_closure_helpers", issue = "117729")]
     pub fn field_with<F>(&mut self, name: &str, value_fmt: F) -> &mut Self
     where
@@ -376,6 +404,31 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugTuple::field`], but formats the
     /// value using a provided closure rather than by calling [`Debug::fmt`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(debug_closure_helpers)]
+    ///
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32, String);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_tuple("Foo")
+    ///             // Print the first field as a hex value
+    ///             .field_with(|fmt| write!(fmt, "{:#010x}", &self.0))
+    ///             .field(&self.1)
+    ///             .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(10, "Hello World".to_string())),
+    ///     r#"Foo(0x0000000a, "Hello World")"#,
+    /// );
+    /// ```
     #[unstable(feature = "debug_closure_helpers", issue = "117729")]
     pub fn field_with<F>(&mut self, value_fmt: F) -> &mut Self
     where
@@ -582,6 +635,31 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugSet::entry`], but formats the
     /// entry using a provided closure rather than by calling [`Debug::fmt`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(debug_closure_helpers)]
+    ///
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<i32>, Vec<u32>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_set()
+    ///            .entry(&self.0)
+    ///            // Print the second member as a set
+    ///            .entry_with(|fmt| fmt.debug_set().entries(&self.1).finish())
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![10, 11], vec![12, 13])),
+    ///     "{[10, 11], {12, 13}}",
+    /// );
+    /// ```
     #[unstable(feature = "debug_closure_helpers", issue = "117729")]
     pub fn entry_with<F>(&mut self, entry_fmt: F) -> &mut Self
     where
@@ -774,6 +852,31 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugList::entry`], but formats the
     /// entry using a provided closure rather than by calling [`Debug::fmt`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(debug_closure_helpers)]
+    ///
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<i32>, Vec<u32>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_list()
+    ///            .entry(&self.0)
+    ///            // Print the second member as a set
+    ///            .entry_with(|fmt| fmt.debug_set().entries(&self.1).finish())
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![10, 11], vec![12, 13])),
+    ///     "[[10, 11], {12, 13}]",
+    /// );
+    /// ```
     #[unstable(feature = "debug_closure_helpers", issue = "117729")]
     pub fn entry_with<F>(&mut self, entry_fmt: F) -> &mut Self
     where
@@ -1032,6 +1135,34 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugMap::key`], but formats the
     /// key using a provided closure rather than by calling [`Debug::fmt`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(debug_closure_helpers)]
+    ///
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<(String, i32)>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         let mut map = fmt.debug_map();
+    ///         for (k, v) in &self.0 {
+    ///             // Append "entry" to each key
+    ///             map.key_with(|fmt| write!(fmt, "entry {k}"));
+    ///             // Write values as hex
+    ///             map.value_with(|fmt| write!(fmt, "{v:#010x}"));
+    ///         }
+    ///         map.finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
+    ///     r#"{entry A: 0x0000000a, entry B: 0x0000000b}"#,
+    /// );
+    /// ```
     #[unstable(feature = "debug_closure_helpers", issue = "117729")]
     pub fn key_with<F>(&mut self, key_fmt: F) -> &mut Self
     where
@@ -1097,6 +1228,34 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugMap::value`], but formats the
     /// value using a provided closure rather than by calling [`Debug::fmt`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(debug_closure_helpers)]
+    ///
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<(String, i32)>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         let mut map = fmt.debug_map();
+    ///         for (k, v) in &self.0 {
+    ///             // Append "entry" to each key
+    ///             map.key_with(|fmt| write!(fmt, "entry {k}"));
+    ///             // Write values as hex
+    ///             map.value_with(|fmt| write!(fmt, "{v:#010x}"));
+    ///         }
+    ///         map.finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
+    ///     r#"{entry A: 0x0000000a, entry B: 0x0000000b}"#,
+    /// );
+    /// ```
     #[unstable(feature = "debug_closure_helpers", issue = "117729")]
     pub fn value_with<F>(&mut self, value_fmt: F) -> &mut Self
     where
