@@ -1,4 +1,5 @@
 use crate::iter::InPlaceIterable;
+use crate::marker::Destruct;
 use crate::num::NonZero;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
