@@ -82,6 +82,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use core::clone::CloneToUninit;
+use core::mem;
 
 use crate::borrow::{Borrow, Cow};
 use crate::collections::TryReserveError;
@@ -1344,7 +1345,7 @@ impl PathBuf {
         let mut need_sep = buf.last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
 
         // in the special case of `C:` on Windows, do *not* add a separator
-        let comps = self.components();
+        let mut comps = self.components();
 
         if comps.prefix_len() > 0
             && comps.prefix_len() == comps.path.len()
@@ -1367,45 +1368,70 @@ impl PathBuf {
             self.inner.clear();
 
         // verbatim paths need . and .. removed
-        } else if comps.prefix_verbatim() && !path.inner.is_empty() {
-            let mut buf: Vec<_> = comps.collect();
+        } else if comps.prefix_verbatim() && !path.is_empty() {
+            let mut prefix_len = comps.prefix_len();
+            let has_root_dir = comps.nth(1) == Some(Component::RootDir);
+
+            // collapse multiple verbatim separators in the base path.
+            let mut temp = mem::take(self);
+            let mut vector = temp.into_os_string().into_encoded_bytes();
+            let mut skip = prefix_len;
+            let mut prev_sep = false;
+            vector.retain_mut(|&mut v| {
+                if skip > 0 {
+                    skip -= 1;
+                    return true;
+                }
+                let cur_sep = is_verbatim_sep(v);
+                let is_duplicate = prev_sep && cur_sep;
+                prev_sep = cur_sep;
+                !is_duplicate
+            });
+            // SAFETY: we've only removed the platform's separator characters
+            temp = unsafe { OsString::from_encoded_bytes_unchecked(vector) }.into();
+            *self = mem::take(&mut temp);
+
+            if has_root_dir {
+                prefix_len += 1;
+            }
             for c in path.components() {
                 match c {
+                    // RootDir can only ever appear once.
                     Component::RootDir => {
-                        buf.truncate(1);
-                        buf.push(c);
-                    }
-                    Component::CurDir => (),
-                    Component::ParentDir => {
-                        if let Some(Component::Normal(_)) = buf.last() {
-                            buf.pop();
+                        self.inner.truncate(prefix_len);
+                        if !has_root_dir {
+                            self.inner.push(MAIN_SEPARATOR_STR);
+                            prefix_len += 1;
                         }
                     }
-                    _ => buf.push(c),
-                }
-            }
-
-            let mut res = OsString::new();
-            let mut need_sep = false;
-
-            for c in buf {
-                if need_sep && c != Component::RootDir {
-                    res.push(MAIN_SEPARATOR_STR);
-                }
-                res.push(c.as_os_str());
-
-                need_sep = match c {
-                    Component::RootDir => false,
-                    Component::Prefix(prefix) => {
-                        !prefix.parsed.is_drive() && prefix.parsed.len() > 0
+                    Component::CurDir => self.pop_trailing_sep(),
+                    Component::ParentDir => {
+                        let mut components = self.components();
+                        // Preserve pre-existing behaviour of stopping at any non-normal component in the base path.
+                        match components.next_back() {
+                            Some(Component::Normal(_)) => {
+                                self.pop();
+                                if self.components().next_back() == Some(Component::RootDir) {
+                                    self.inner.truncate(prefix_len);
+                                }
+                            }
+                            Some(Component::CurDir | Component::ParentDir) => {
+                                self.pop_trailing_sep()
+                            }
+                            _ => {}
+                        }
                     }
-                    _ => true,
+                    _ => {
+                        // FIXME: We can't use `push_trailing_sep` here due to a bug
+                        // that treats `/` as a separator when pushing.
+                        if !self.has_trailing_sep() || self == r"\\?\" {
+                            self.inner.push(MAIN_SEPARATOR_STR);
+                        }
+                        self.inner.push(c);
+                    }
                 }
             }
-
-            self.inner = res;
             return;
-
         // `path` has a root but no prefix, e.g., `\windows` (Windows only)
         } else if path.has_root() {
             let prefix_len = self.components().prefix_remaining();
