@@ -38,10 +38,9 @@ pub use self::ColorConfig::*;
 pub use self::bench::{Bencher, black_box};
 pub use self::console::run_tests_console;
 pub use self::options::{ColorConfig, Options, OutputFormat, RunIgnored, ShouldPanic};
-pub use self::types::TestName::*;
 pub use self::types::*;
 
-// Module to be used by rustc to compile tests in libtest itself
+// Make some items publicly available for our own tests.
 pub mod test {
     pub use crate::bench::Bencher;
     pub use crate::cli::{TestOpts, parse_opts};
@@ -49,11 +48,6 @@ pub mod test {
     pub use crate::options::{Options, RunIgnored, RunStrategy, ShouldPanic};
     pub use crate::test_result::{TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk};
     pub use crate::time::{TestExecTime, TestTimeOptions};
-    pub use crate::types::{
-        DynTestFn, DynTestName, StaticBenchFn, StaticTestFn, StaticTestName, TestDesc,
-        TestDescAndFn, TestId, TestList, TestListOrder, TestName, TestType,
-    };
-    pub use crate::{assert_test_result, filter_tests, run_test, test_main, test_main_env_args};
 }
 
 use std::collections::VecDeque;
