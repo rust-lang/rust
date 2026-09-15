@@ -27,6 +27,25 @@ LL | |     /// line3
    |
    = help: to document an item produced by a macro, the macro must produce the documentation as part of its expansion
 
+error: invalid expression in `doc` attribute on macro invocation
+  --> $DIR/unused-doc-comments-for-macros.rs:19:13
+   |
+LL |        #[doc = {
+   |  ______-       ^
+   | | _____________|
+LL | ||         let a = 1;
+LL | ||         let b = 1;
+LL | ||         let sum = a + b;
+LL | ||         assert_eq!(sum, 2);
+LL | ||     }]
+   | ||_____^- help: remove the attribute
+   |  |_____|
+   |
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
+
 error: unused doc comment
   --> $DIR/unused-doc-comments-for-macros.rs:19:5
    |
@@ -40,5 +59,25 @@ LL | |     }]
    |
    = help: to document an item produced by a macro, the macro must produce the documentation as part of its expansion
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+error: invalid expression in `doc` attribute on macro invocation
+  --> $DIR/unused-doc-comments-for-macros.rs:19:13
+   |
+LL |        #[doc = {
+   |  ______-       ^
+   | | _____________|
+LL | ||         let a = 1;
+LL | ||         let b = 1;
+LL | ||         let sum = a + b;
+LL | ||         assert_eq!(sum, 2);
+LL | ||     }]
+   | ||_____^- help: remove the attribute
+   |  |_____|
+   |
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
