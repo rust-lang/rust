@@ -1053,7 +1053,8 @@ impl<'db> Interner for DbInterner<'db> {
     }
 
     fn assert_evaluation_is_concurrent(&self) {
-        panic!("evaluation shouldn't be concurrent yet")
+        // Turns out, the assumption for this function isn't perfect.
+        // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/234
     }
 
     fn expand_abstract_consts<T: rustc_type_ir::TypeFoldable<Self>>(self, _: T) -> T {
