@@ -7,7 +7,7 @@ pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
 
 use libc::{c_char, c_uint};
-use rustc_abi::{self as abi, Align, CanonAbi, Size, WrappingRange};
+use rustc_abi::{self as abi, Align, CanonAbi, FieldIdx, Size, VariantIdx, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -16,6 +16,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::attrs::{AttributeKind, UnrollAttr};
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -34,6 +35,7 @@ use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
+use crate::debuginfo::metadata::type_di_node;
 use crate::llvm::{
     self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, FromGeneric, GEPNoWrapFlags, Metadata, TRUE,
     ToLlvmBool, Type, Value,
@@ -1544,6 +1546,78 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // Cleanup is always the cold path.
         let cold_inline = llvm::AttributeKind::Cold.create_attr(self.llcx);
         attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[cold_inline]);
+    }
+
+    fn btf_preserve_access_index(
+        &mut self,
+        base: &'ll Value,
+        container_ty: Ty<'tcx>,
+        variant: VariantIdx,
+        field: FieldIdx,
+    ) -> &'ll Value {
+        fn llvm_struct_field_index<'ll, 'tcx>(
+            bx: &Builder<'_, 'll, 'tcx>,
+            layout: TyAndLayout<'tcx>,
+            field_index: usize,
+        ) -> usize {
+            let mut llvm_index = 0;
+            let mut offset = Size::ZERO;
+
+            for i in layout.fields.index_by_increasing_offset() {
+                let target_offset = layout.fields.offset(i as usize);
+                if target_offset != offset {
+                    llvm_index += 1;
+                }
+                if i as usize == field_index {
+                    return llvm_index;
+                }
+
+                let field = layout.field(bx.cx(), i);
+                llvm_index += 1;
+                offset = target_offset + field.size;
+            }
+
+            bug!("field index {field_index} not found in layout {layout:#?}")
+        }
+
+        let layout_cx = ty::layout::LayoutCx::new(self.tcx, self.typing_env());
+        let layout = self.layout_of(container_ty).for_variant(&layout_cx, variant);
+        match container_ty.kind() {
+            ty::Adt(adt, _) if adt.is_union() => {
+                let dbg_info: &'ll Metadata = type_di_node(self.cx, container_ty);
+                unsafe {
+                    llvm::LLVMRustBuildPreserveUnionAccessIndex(
+                        self.llbuilder,
+                        base,
+                        field.index() as c_uint,
+                        Some(dbg_info),
+                    )
+                }
+            }
+            ty::Adt(..) | ty::Tuple(..) => {
+                let llvm_index = llvm_struct_field_index(self, layout, field.index());
+                let dbg_info: &'ll Metadata = type_di_node(self.cx, container_ty);
+                unsafe {
+                    llvm::LLVMRustBuildPreserveStructAccessIndex(
+                        self.llbuilder,
+                        self.cx().backend_type(layout),
+                        base,
+                        llvm_index as c_uint,
+                        field.index() as c_uint,
+                        Some(dbg_info),
+                    )
+                }
+            }
+            _ => bug!("BTF field info query has unsupported container type: {container_ty:?}"),
+        }
+    }
+
+    fn btf_preserve_field_info(&mut self, field: &'ll Value, kind: u64) -> &'ll Value {
+        self.call_intrinsic(
+            "llvm.bpf.preserve.field.info",
+            &[self.val_ty(field)],
+            &[field, self.const_u64(kind)],
+        )
     }
 }
 
