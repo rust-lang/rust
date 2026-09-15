@@ -197,8 +197,10 @@ impl CodegenBackend for GccCodegenBackend {
 
     fn init(&self, sess: &Session) {
         fn file_path(sysroot_path: &Path, sess: &Session) -> PathBuf {
-            let rustlib_path =
-                rustc_target::relative_target_rustlib_path(sysroot_path, &sess.host.llvm_target);
+            let rustlib_path = rustc_target::relative_target_rustlib_path(
+                sysroot_path,
+                rustc_session::config::host_tuple(),
+            );
             sysroot_path
                 .join(rustlib_path)
                 .join("codegen-backends")
