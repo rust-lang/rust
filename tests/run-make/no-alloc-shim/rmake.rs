@@ -23,6 +23,9 @@ fn main() {
     let compiler_builtins_libs = shallow_find_files(libdir, |path| {
         has_prefix(path, "libcompiler_builtins") && has_extension(path, "rlib")
     });
+    let unwind_libs = shallow_find_files(libdir, |path| {
+        has_prefix(path, "libunwind") && has_extension(path, "rlib")
+    });
 
     #[allow(unused_mut)]
     let mut platform_args = Vec::<String>::new();
@@ -42,6 +45,7 @@ fn main() {
         .args(&alloc_libs)
         .args(&core_libs)
         .args(&compiler_builtins_libs)
+        .args(&unwind_libs)
         .run();
     run("foo");
 
@@ -59,5 +63,6 @@ fn main() {
         .args(&alloc_libs)
         .args(&core_libs)
         .args(&compiler_builtins_libs)
+        .args(&unwind_libs)
         .run_fail();
 }
