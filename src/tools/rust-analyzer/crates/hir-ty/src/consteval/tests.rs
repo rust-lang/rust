@@ -2529,6 +2529,20 @@ fn enums() {
 }
 
 #[test]
+fn unsupported_str_binary_op_in_eval_rvalue() {
+    check_fail(
+        r#"
+        enum E {
+            A = 1,
+            B = "a" + 1,
+        }
+        const GOAL: u8 = E::B as u8;
+        "#,
+        |e| matches!(e, ConstEvalError::MirEvalError(_)),
+    );
+}
+
+#[test]
 fn const_loop() {
     check_fail(
         r#"

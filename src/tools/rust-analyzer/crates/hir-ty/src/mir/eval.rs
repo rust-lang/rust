@@ -1260,7 +1260,9 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                     ty = z;
                     let size = if ty.is_str() {
                         if *op != BinOp::Eq {
-                            never!("Only eq is builtin for `str`");
+                            return Err(MirEvalError::NotSupported(
+                                "Only eq is builtin for `str`".to_owned(),
+                            ));
                         }
                         let ls = from_bytes!(usize, &lc[self.ptr_size()..self.ptr_size() * 2]);
                         let rs = from_bytes!(usize, &rc[self.ptr_size()..self.ptr_size() * 2]);
