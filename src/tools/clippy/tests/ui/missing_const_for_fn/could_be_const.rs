@@ -56,6 +56,10 @@ fn sub(x: u32) -> usize {
     unsafe { transmute(&x) }
 }
 
+fn sub_transmute_copy(x: u32) -> u64 {
+    unsafe { std::mem::transmute_copy(&x) }
+}
+
 fn generic_arr<T: Copy>(t: [T; 1]) -> T {
     //~^ missing_const_for_fn
     t[0]

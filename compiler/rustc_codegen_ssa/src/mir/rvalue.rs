@@ -1,8 +1,11 @@
 use std::assert_matches;
 
 use itertools::Itertools as _;
-use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
+use rustc_abi::{self as abi, BackendRepr, ExternAbi, FIRST_VARIANT};
 use rustc_index::IndexVec;
+use rustc_middle::ptrauth::{
+    ptrauth_clone_discriminated_schema_for, ptrauth_compute_fn_ptr_type_discriminator_for,
+};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Mutability, Ty, TyCtxt};
@@ -16,6 +19,13 @@ use super::place::{PlaceRef, PlaceValue, codegen_tag_value};
 use crate::common::{IntPredicate, TypeKind};
 use crate::traits::*;
 use crate::{MemFlags, base};
+
+/// Type metadata used when applying pointer authentication semantics during
+/// transmute lowering.
+struct TransmuteInfo<'tcx> {
+    src_ty: Ty<'tcx>,
+    dst_ty: Ty<'tcx>,
+}
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn try_codegen_const_aggregate_as_immediate(
@@ -89,6 +99,236 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let value = bx.cx().const_uint_big(llty, value);
         bx.store_to_place(value, dest.val);
         true
+    }
+
+    /// Lowers a transmute of an SSA operand while preserving pointer authentication semantics.
+    /// When the source and destination are both, or transparently wrap, function pointer types
+    /// with different type discriminators, the resulting pointer is re-signed.
+    ///
+    /// Aggregates that contain a function pointer field are intentionally treated as an ordinary
+    /// opaque-values, for which no pointer resigning is performed.
+    fn ptrauth_codegen_transmute_operand(
+        &mut self,
+        bx: &mut Bx,
+        operand: OperandRef<'tcx, Bx::Value>,
+        cast: TyAndLayout<'tcx>,
+    ) -> OperandValue<Bx::Value> {
+        let val = self.codegen_transmute_operand(bx, operand, cast);
+
+        let OperandValue::Immediate(ptr) = val else {
+            return val;
+        };
+
+        let src_semantic = self.ptrauth_canonicalize_fn_ptr_layout(operand.layout);
+        let dst_semantic = self.ptrauth_canonicalize_fn_ptr_layout(cast);
+
+        // Neither side is a function pointer - early return.
+        if src_semantic.is_none() && dst_semantic.is_none() {
+            return val;
+        }
+
+        let info = TransmuteInfo {
+            src_ty: src_semantic.map_or(operand.layout.ty, |(ty, _)| ty),
+            dst_ty: dst_semantic.map_or(cast.ty, |(ty, _)| ty),
+        };
+
+        let nullable = src_semantic.is_some_and(|(_, n)| n) || dst_semantic.is_some_and(|(_, n)| n);
+
+        let ptr = if nullable {
+            self.ptrauth_resign_transmuted_nullable_fn_ptr(bx, ptr, info)
+        } else {
+            self.ptrauth_resign_transmuted_fn_ptr(bx, ptr, info)
+        };
+
+        OperandValue::Immediate(ptr)
+    }
+
+    /// Applies pointer-authentication type discriminator correction for a function pointer value
+    /// being transmuted between two types.
+    ///
+    /// If the source and destination types have different type discriminator values, the pointer
+    /// must be resigned using `llvm.ptrauth.resign` intrinsic.
+    ///
+    /// A discriminator value of `0` is used to represent non-function-pointer
+    /// or "raw pointer" values:
+    /// ```text
+    ///   static mut CPTR: *const u8 = 0 as *const u8;
+    ///   ... = mem::transmute::<*const u8, unsafe extern "C" fn()>(CPTR);
+    /// ```
+    /// where the source has no type discriminator.
+    ///
+    /// `TransmuteInfo` carries the source and destination types used to compute type
+    /// discriminators. These may differ from the original operand layouts after transparent
+    /// wrapper or nullable normalization.
+    fn ptrauth_resign_transmuted_fn_ptr(
+        &mut self,
+        bx: &mut Bx,
+        val: Bx::Value,
+        info: TransmuteInfo<'tcx>,
+    ) -> Bx::Value {
+        // Resigning can only happen in the context of function pointer type discrimination.
+        assert!(self.cx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination());
+
+        let tcx = bx.tcx();
+
+        let src_disc = ptrauth_compute_fn_ptr_type_discriminator_for(tcx, info.src_ty).unwrap_or(0);
+        let dst_disc = ptrauth_compute_fn_ptr_type_discriminator_for(tcx, info.dst_ty).unwrap_or(0);
+
+        if src_disc == dst_disc {
+            return val;
+        }
+
+        let key = self.cx.tcx().sess.pointer_authentication_fn_ptr_key().unwrap() as u32;
+        bx.ptrauth_resign(val, key, src_disc.into(), key, dst_disc.into())
+    }
+
+    /// Resigns a nullable function pointer.
+    ///
+    /// `llvm.ptrauth.resign` performs an authenticate-and-resign operation on an already signed
+    /// pointer. A null function pointer carries no authentication signature, so it must bypass the
+    /// intrinsic and remain null.
+    fn ptrauth_resign_transmuted_nullable_fn_ptr(
+        &mut self,
+        bx: &mut Bx,
+        ptr: Bx::Value,
+        info: TransmuteInfo<'tcx>,
+    ) -> Bx::Value {
+        let ptrtoint = bx.ptrtoint(ptr, bx.type_isize());
+
+        // Fast path for compile time known null value.
+        if bx.const_to_opt_u128(ptrtoint, false) == Some(0) {
+            return bx.const_null(bx.type_ptr());
+        }
+
+        let pointer_align = bx.tcx().data_layout.pointer_align().abi;
+        let pointer_size = bx.tcx().data_layout.pointer_size();
+        let result = bx.alloca(pointer_size, pointer_align);
+
+        let null_bb = bx.append_sibling_block("ptrauth.null");
+        let resign_bb = bx.append_sibling_block("ptrauth.resign");
+        let end_bb = bx.append_sibling_block("ptrauth.end");
+
+        let is_null = bx.icmp(IntPredicate::IntEQ, ptrtoint, bx.const_usize(0));
+        bx.cond_br(is_null, null_bb, resign_bb);
+
+        bx.switch_to_block(null_bb);
+        bx.store(bx.const_null(bx.type_ptr()), result, pointer_align);
+        bx.br(end_bb);
+
+        bx.switch_to_block(resign_bb);
+        let resigned = self.ptrauth_resign_transmuted_fn_ptr(bx, ptr, info);
+        bx.store(resigned, result, pointer_align);
+        bx.br(end_bb);
+
+        bx.switch_to_block(end_bb);
+        bx.load(bx.type_ptr(), result, pointer_align)
+    }
+
+    /// Returns the underlying function pointer type represented by `layout`.
+    ///
+    /// Transparent wrappers and `Option<T>` are peeled until either a function pointer is reached
+    /// or a non-wrapper type is encountered.
+    ///
+    /// The returned boolean indicates whether an `Option<T>` wrapper was seen, meaning the
+    /// function pointer uses a nullable representation.
+    fn ptrauth_canonicalize_fn_ptr_layout(
+        &self,
+        mut layout: TyAndLayout<'tcx>,
+    ) -> Option<(Ty<'tcx>, bool)> {
+        let mut nullable = false;
+        loop {
+            match layout.ty.kind() {
+                ty::FnPtr(..) | ty::FnDef(..) => {
+                    return Some((layout.ty, nullable));
+                }
+
+                ty::Adt(def, _) if def.repr().transparent() => {
+                    let Some((_, field_layout)) = layout.non_1zst_field(self.cx) else {
+                        // Every field is a ZST - early exit.
+                        return None;
+                    };
+                    layout = field_layout;
+                }
+
+                ty::Adt(def, args)
+                    if self.cx.tcx().lang_items().option_type() == Some(def.did())
+                        // Only nullable-peel if `Option<T>` genuinely niche-optimized to a single
+                        // scalar, rejecting `Option<Option<T>>`.
+                        && matches!(layout.backend_repr, abi::BackendRepr::Scalar(_)) =>
+                {
+                    nullable = true;
+                    layout = self.cx.layout_of(args.type_at(0));
+                }
+
+                _ => return None,
+            }
+        }
+    }
+
+    /// Applies pointer-authentication resign for a function pointer transmute and stores the
+    /// resigned value into the destination place.
+    ///
+    /// The source operand may be an SSA immediate, or may already reside in memory (its caller in
+    /// `ptrauth_codegen_transmute_place` receives the source as a place, not a register).
+    fn ptrauth_resign_fn_ptr(
+        &mut self,
+        bx: &mut Bx,
+        src: OperandRef<'tcx, Bx::Value>,
+        dst: PlaceRef<'tcx, Bx::Value>,
+        src_ty: Ty<'tcx>,
+        dst_ty: Ty<'tcx>,
+        nullable: bool,
+    ) {
+        let val = match src.val {
+            OperandValue::Immediate(v) => v,
+
+            OperandValue::Ref(place) => bx.load_operand(place.with_type(src.layout)).immediate(),
+
+            _ => {
+                bug!(
+                    "unexpected operand representation for function pointer transmute: {:?}",
+                    src.val
+                );
+            }
+        };
+
+        let info = TransmuteInfo { src_ty, dst_ty };
+
+        let val = if nullable {
+            self.ptrauth_resign_transmuted_nullable_fn_ptr(bx, val, info)
+        } else {
+            self.ptrauth_resign_transmuted_fn_ptr(bx, val, info)
+        };
+
+        OperandRef { val: OperandValue::Immediate(val), layout: dst.layout, move_annotation: None }
+            .store_with_annotation(bx, dst);
+    }
+
+    /// Applies pointer-authentication type discriminator correction when transmuting into a
+    /// memory-backed place.
+    ///
+    /// Resigning only happens when the transmute is directly between (or through a transparent
+    /// wrapper or `Option` around) extern "C" function pointer types. A transmute of an aggregate
+    /// that contains a function pointer field is deliberately lowered as an ordinary copy, with
+    /// no resigning. This matches how Clang lowers the analogous C code: a struct-level pointer
+    /// cast or struct copy does not re-sign a nested function-pointer field, and a real type
+    /// mismatch is instead caught by authentication failing at the point the pointer is actually
+    /// called.
+    fn ptrauth_codegen_transmute_place(
+        &mut self,
+        bx: &mut Bx,
+        src: OperandRef<'tcx, Bx::Value>,
+        dst: PlaceRef<'tcx, Bx::Value>,
+    ) {
+        if let (Some((src_ty, src_nullable)), Some((dst_ty, dst_nullable))) = (
+            self.ptrauth_canonicalize_fn_ptr_layout(src.layout),
+            self.ptrauth_canonicalize_fn_ptr_layout(dst.layout),
+        ) {
+            self.ptrauth_resign_fn_ptr(bx, src, dst, src_ty, dst_ty, src_nullable || dst_nullable);
+            return;
+        }
+
+        src.store_with_annotation(bx, dst.val.with_type(src.layout));
     }
 
     fn is_entirely_uninit_const(&self, operand: &mir::Operand<'tcx>) -> bool {
@@ -184,8 +424,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Cast(
                 mir::CastKind::Transmute | mir::CastKind::Subtype,
                 ref operand,
-                _ty,
+                ty,
             ) => {
+                if self.cx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination() {
+                    let src_ty = operand.ty(self.mir, self.cx.tcx());
+                    let dst_ty = self.monomorphize(ty);
+
+                    if src_ty.is_fn_ptr() || dst_ty.is_fn_ptr() {
+                        let op = self.codegen_operand(bx, operand);
+                        let cast = bx.cx().layout_of(dst_ty);
+
+                        let val = self.ptrauth_codegen_transmute_operand(bx, op, cast);
+
+                        OperandRef { val, layout: cast, move_annotation: None }
+                            .store_with_annotation(bx, dest);
+
+                        return;
+                    }
+                }
+
                 let src = self.codegen_operand(bx, operand);
                 self.codegen_transmute(bx, src, dest);
             }
@@ -322,7 +579,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // Since in this path we have a place anyway, we can store or copy to it,
             // making sure we use the destination place's alignment even if the
             // source would normally have a higher one.
-            src.store_with_annotation(bx, dst.val.with_type(src.layout));
+
+            if self.cx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination() {
+                self.ptrauth_codegen_transmute_place(bx, src, dst);
+            } else {
+                src.store_with_annotation(bx, dst.val.with_type(src.layout));
+            }
         }
     }
 
@@ -336,6 +598,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         operand: OperandRef<'tcx, Bx::Value>,
         cast: TyAndLayout<'tcx>,
     ) -> OperandValue<Bx::Value> {
+        debug!(
+            "codegen_transmute_operand\t
+                from_ty={:?} to_ty={:?} from_layout={:?} to_layout={:?} is fnptr=({}, {})",
+            operand.layout.ty,
+            cast.ty,
+            operand.layout.backend_repr,
+            cast.backend_repr,
+            operand.layout.ty.is_fn_ptr(),
+            cast.ty.is_fn_ptr()
+        );
         if let abi::BackendRepr::Memory { .. } = cast.backend_repr
             && !cast.is_zst()
         {
@@ -492,6 +764,61 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         Some(imm)
     }
 
+    /// Loads a `dst`-typed value from the first `dst.size` bytes at `src`'s address.
+    ///
+    /// Unlike ordinary `transmute`, `transmute_copy` does not require `Src` and `Dst` to have the
+    /// same size: `Dst` may be smaller than `Src`. `Src` may also be dynamically sized, so this
+    /// helper operates directly on the source address rather than requiring a register-sized
+    /// representation of the source value.
+    ///
+    /// The load uses the weaker of the destination's natural alignment and the alignment actually
+    /// guaranteed by the source pointer.
+    ///
+    /// When function pointer type discrimination is enabled, the loaded pointer may need to be
+    /// resigned (if the type discriminator changes as a result of the transmute).
+    fn codegen_transmute_copy_from_place(
+        &mut self,
+        bx: &mut Bx,
+        src: PlaceRef<'tcx, Bx::Value>,
+        dst: TyAndLayout<'tcx>,
+    ) -> OperandValue<Bx::Value> {
+        // `src.val.align` is the alignment guaranteed by the source place. We must not tell the
+        // compiler that the source has `dst`'s (possibly stronger) alignment. This matters, for
+        // example, when reading a `u64` from a `&[u8]`.
+        //
+        // For `dyn Trait`, the static layout's alignment is only a conservative placeholder; using
+        // the minimum here ensures that we never claim more alignment than is guaranteed.
+        let align = Ord::min(dst.align.abi, src.val.align);
+        let dst_place = PlaceValue::new_sized(src.val.llval, align).with_type(dst);
+        let loaded = bx.load_operand(dst_place);
+
+        // Early exit for non-pointer type discriminated compilations.
+        if !self.cx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination() {
+            return loaded.val;
+        }
+        let OperandValue::Immediate(ptr) = loaded.val else {
+            return loaded.val;
+        };
+
+        let src_semantic = self.ptrauth_canonicalize_fn_ptr_layout(src.layout);
+        let dst_semantic = self.ptrauth_canonicalize_fn_ptr_layout(dst);
+        if src_semantic.is_none() && dst_semantic.is_none() {
+            return loaded.val;
+        }
+
+        let info = TransmuteInfo {
+            src_ty: src_semantic.map_or(src.layout.ty, |(ty, _)| ty),
+            dst_ty: dst_semantic.map_or(dst.ty, |(ty, _)| ty),
+        };
+        let nullable = src_semantic.is_some_and(|(_, n)| n) || dst_semantic.is_some_and(|(_, n)| n);
+        let ptr = if nullable {
+            self.ptrauth_resign_transmuted_nullable_fn_ptr(bx, ptr, info)
+        } else {
+            self.ptrauth_resign_transmuted_fn_ptr(bx, ptr, info)
+        };
+        OperandValue::Immediate(ptr)
+    }
+
     pub(crate) fn codegen_rvalue_operand(
         &mut self,
         bx: &mut Bx,
@@ -521,12 +848,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     args.no_bound_vars().unwrap(),
                                 )
                                 .unwrap();
-                                OperandValue::Immediate(
-                                    bx.get_fn_addr(
-                                        instance,
-                                        bx.sess().pointer_authentication_functions(),
-                                    ),
+
+                            let schema = if bx.sess().pointer_authentication_fn_ptr_type_discrimination() {
+                                ptrauth_clone_discriminated_schema_for(
+                                    bx.tcx(),
+                                    bx.sess().pointer_authentication_functions(),
+                                    operand.layout.ty,
                                 )
+                            } else {
+                                bx.sess().pointer_authentication_functions().clone()
+                            };
+
+                                OperandValue::Immediate(bx.get_fn_addr(instance, schema))
                             }
                             _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
                         }
@@ -540,10 +873,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     args,
                                     ty::ClosureKind::FnOnce,
                                 );
+                                assert!(
+                                    !matches!(
+                                        bx.cx().tcx().fn_sig(instance.def_id()).skip_binder().abi(),
+                                        ExternAbi::C { .. } | ExternAbi::System { .. }
+                                    )
+                                );
                                 OperandValue::Immediate(
+                                    // A closure coerced to a function pointer retains the Rust
+                                    // ABI. Pointer authentication only applies to extern
+                                    // "C"/System ABI function pointer, hence pass None to
+                                    // `get_fn_addr`.
                                     bx.cx().get_fn_addr(
                                         instance,
-                                        bx.sess().pointer_authentication_functions(),
+                                        /* ptrauth_schema */ None,
                                     ),
                                 )
                             }
@@ -619,8 +962,70 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("Unsupported cast of {operand:?} to {cast:?}");
                         })
                     }
+                    mir::CastKind::TransmuteCopy => {
+                        match operand.layout.ty.kind() {
+                            ty::Ref(_, inner, _) => {
+                                let src_layout = bx.layout_of(*inner);
+                                // Turn the reference into a place pointing at the `Src` value.
+                                let place = operand.val.deref(src_layout.align.abi).with_type(src_layout);
+
+                                let val = if src_layout.is_unsized() {
+                                    // For an unsized `Src`, size is determined by the metadata.
+                                    // That information may be a compile-time constant, that the
+                                    // compiler can use to prove that the source is too small for
+                                    // `Dst` and therefore the operation is unconditionally UB.
+                                    let provably_too_short = if let Some(len) =
+                                        place.val.llextra.and_then(|len| bx.cx().const_to_opt_u128(len, false))
+                                    {
+                                        let bytes_per_unit = match src_layout.ty.kind() {
+                                            ty::Slice(elem_ty) => Some(bx.layout_of(*elem_ty).size.bytes()),
+                                            ty::Str => Some(1),
+                                            // For `dyn Trait` determining dynamic size would
+                                            // require loading and inspecting the vtable, which is
+                                            // more work than we want to do for this check.
+                                            _ => None,
+                                        };
+                                        // `transmute_copy` needs at least `Dst.size` bytes
+                                        // available at the source address.
+                                        bytes_per_unit.is_some_and(|b| b.saturating_mul(len as u64) < cast.size.bytes())
+                                    } else {
+                                        false
+                                    };
+
+                                    if provably_too_short {
+                                        bx.unreachable_nonterminator();
+                                        OperandValue::poison(bx, cast)
+                                    } else {
+                                        self.codegen_transmute_copy_from_place(bx, place, cast)
+                                    }
+                                } else if cast.size > src_layout.size {
+                                    // `transmute_copy` may never read beyond the end of `Src`.
+                                    bx.unreachable_nonterminator();
+                                    OperandValue::poison(bx, cast)
+                                } else {
+                                    // `Src` is large enough. This covers both:
+                                    //
+                                    //   Src.size == Dst.size  (exact-size copy)
+                                    //   Src.size >  Dst.size (shrinking copy)
+                                    self.codegen_transmute_copy_from_place(bx, place, cast)
+                                };
+
+                                return OperandRef { val, layout: cast, move_annotation: None };
+                            }
+                            _ => {
+                                // `LowerIntrinsics` pass guarantees that the operand of
+                                // `TransmuteCopy` is a reference. Reaching another operand type
+                                // means the MIR invariant has been violated.
+                                bug!("TransmuteCopy operand was not a reference: {:?}", operand.layout.ty);
+                            }
+                        }
+                    }
                     mir::CastKind::Transmute | mir::CastKind::BoxDerefTransmute | mir::CastKind::Subtype => {
-                        self.codegen_transmute_operand(bx, operand, cast)
+                        if self.cx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination() {
+                            self.ptrauth_codegen_transmute_operand(bx, operand, cast)
+                        } else {
+                            self.codegen_transmute_operand(bx, operand, cast)
+                        }
                     }
                 };
                 OperandRef { val, layout: cast, move_annotation: None }
@@ -765,8 +1170,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         def: ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(def_id)),
                         args: ty::GenericArgs::empty(),
                     };
-                    let fn_ptr =
-                        bx.get_fn_addr(instance, bx.sess().pointer_authentication_functions());
+                    // needs_thread_local_shim implies Windows/MSVC, for which pointer
+                    // authentication is not yet supported.
+                    assert!(!self.cx.tcx().sess.pointer_authentication());
+                    let fn_ptr = bx.get_fn_addr(instance, /* ptrauth_schema */ None);
                     let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
                     let fn_ty = bx.fn_decl_backend_type(fn_abi);
                     let fn_attrs = if bx.tcx().def_kind(instance.def_id()).has_codegen_attrs() {

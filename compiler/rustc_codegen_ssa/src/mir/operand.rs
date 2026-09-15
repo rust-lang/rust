@@ -8,6 +8,7 @@ use rustc_abi::{
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
+use rustc_middle::ptrauth::ptrauth_collect_fn_ptr_discriminators;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
@@ -182,7 +183,34 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let BackendRepr::Scalar(scalar) = layout.backend_repr else {
                     bug!("from_const: invalid ByVal layout: {:#?}", layout);
                 };
-                let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
+                let llval = match x {
+                    Scalar::Ptr(..) => {
+                        let pointee_ty = match ty.kind() {
+                            ty::Ref(_, pointee, _) => *pointee,
+                            _ => ty,
+                        };
+                        let ptrauth_discriminators =
+                            if bx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination() {
+                                Some(ptrauth_collect_fn_ptr_discriminators(
+                                    bx.tcx(),
+                                    bx.typing_env(),
+                                    pointee_ty,
+                                ))
+                            } else {
+                                None
+                            };
+                        let ptrauth_schema = bx.sess().pointer_authentication_functions();
+                        bx.scalar_to_backend_with_pac(
+                            x,
+                            scalar,
+                            bx.immediate_backend_type(layout),
+                            ptrauth_schema,
+                            ptrauth_discriminators.as_ref(),
+                        )
+                    }
+                    _ => bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout)),
+                };
+
                 OperandValue::Immediate(llval)
             }
             ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
@@ -267,8 +295,19 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
             _ if layout.is_zst() => OperandRef::zero_sized(layout),
             _ => {
+                let ptrauth_discriminators =
+                    if bx.tcx().sess.pointer_authentication_fn_ptr_type_discrimination() {
+                        Some(ptrauth_collect_fn_ptr_discriminators(
+                            bx.tcx(),
+                            bx.typing_env(),
+                            layout.ty,
+                        ))
+                    } else {
+                        None
+                    };
+
                 // Neither a scalar nor scalar pair. Load from a place
-                let base_addr = bx.static_addr_of(alloc, None);
+                let base_addr = bx.static_addr_of(alloc, None, ptrauth_discriminators.as_ref());
 
                 let llval = bx.const_ptr_byte_offset(base_addr, offset);
                 bx.load_operand(PlaceRef::new_sized(llval, layout))

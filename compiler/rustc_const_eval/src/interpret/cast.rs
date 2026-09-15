@@ -37,6 +37,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if !matches!(
             cast_kind,
             CastKind::Transmute
+                | CastKind::TransmuteCopy
                 | CastKind::Subtype
                 | CastKind::BoxDerefTransmute
                 | CastKind::PointerCoercion(PointerCoercion::Unsize, _)
@@ -215,6 +216,51 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // This does validation at `src` and `dest` type.
                 self.copy_op_allow_transmute(src, dest)?;
+            }
+
+            CastKind::TransmuteCopy => {
+                // Unlike `Transmute`, `TransmuteCopy` takes a reference to `Src`, so `Src` itself
+                // may be unsized. `Dst` must be a sized type.
+                assert!(dest.layout.is_sized());
+                assert_eq!(cast_ty, dest.layout.ty);
+
+                let src_place = self.deref_pointer(src)?;
+                // Determine the size of the actual source value (not the reference).
+                let (src_size, _src_align) = self
+                    .size_and_align_of_val(&src_place)?
+                    .unwrap_or((src_place.layout.size, src_place.layout.align.abi));
+
+                if dest.layout.size > src_size {
+                    throw_ub_format!(
+                        "transmuting from a {src_bytes}-byte value to a larger, {dest_bytes}-byte type: `{src}` -> `{dest}`",
+                        src_bytes = src_size.bytes(),
+                        dest_bytes = dest.layout.size.bytes(),
+                        src = src_place.layout.ty,
+                        dest = dest.layout.ty,
+                    );
+                }
+
+                // Do not use `copy_op_allow_transmute` here, even when `Src` and `Dst` happen to
+                // have the same dynamic size. As that operation requires the source layout to be
+                // statically sized, whereas `transmute_copy` supports dynamically sized sources
+                // (`[T]`, `str`, and `dyn Trait`).
+                // Instead, perform the operation directly as a memcpy.
+                let dest_mplace = dest.force_mplace(self)?;
+                self.mem_copy(
+                    src_place.ptr(),
+                    dest_mplace.ptr(),
+                    dest.layout.size,
+                    /*nonoverlapping*/ true,
+                )?;
+
+                // Validate copied `Dst` type.
+                if M::enforce_validity(self, dest.layout()) {
+                    self.validate_place(
+                        &dest.to_place(),
+                        M::enforce_validity_recursively(self, dest.layout()),
+                        /*reset_provenance_and_padding*/ true,
+                    )?;
+                }
             }
         }
         interp_ok(())
