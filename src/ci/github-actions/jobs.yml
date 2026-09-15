@@ -501,6 +501,11 @@ auto:
     doc_url: https://rustc-dev-guide.rust-lang.org/tests/autodiff-ci-job.html
     <<: *job-linux-4c
 
+  - name: optional-x86_64-gnu-offload
+    continue_on_error: true
+    doc_url: https://rustc-dev-guide.rust-lang.org/tests/offload-ci-job.html
+    <<: *job-linux-4c
+
   ####################
   #  macOS Builders  #
   ####################
