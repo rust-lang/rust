@@ -1,7 +1,8 @@
 #![allow(unused_imports)]
 
-use crate::cell::Cell;
+use crate::cell::UnsafeCell;
 use crate::fmt::{self, Debug, Formatter};
+use crate::mem::ManuallyDrop;
 
 struct PadAdapter<'buf, 'state> {
     buf: &'buf mut (dyn fmt::Write + 'buf),
@@ -60,17 +61,14 @@ impl fmt::Write for PadAdapter<'_, '_> {
 ///
 /// Formatting a `DebugOnce` consumes the closure, so attempting to format it more than once
 /// panics. This never happens because the debug builders format each value exactly once.
-struct DebugOnce<F>(Cell<Option<F>>);
+struct DebugOnce<F>(UnsafeCell<ManuallyDrop<F>>);
 
 impl<F> fmt::Debug for DebugOnce<F>
 where
     F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0.take() {
-            Some(value_fmt) => value_fmt(f),
-            None => panic!("formatting closure called more than once"),
-        }
+        ManuallyDrop::into_inner(unsafe { self.0.get().read() })(f)
     }
 }
 
@@ -188,7 +186,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
     {
-        self.field(name, &DebugOnce(Cell::new(Some(value_fmt))))
+        self.field(name, &DebugOnce(UnsafeCell::new(ManuallyDrop::new(value_fmt))))
     }
 
     /// Marks the struct as non-exhaustive, indicating to the reader that there are some other
@@ -381,7 +379,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
     {
-        self.field(&DebugOnce(Cell::new(Some(value_fmt))))
+        self.field(&DebugOnce(UnsafeCell::new(ManuallyDrop::new(value_fmt))))
     }
 
     /// Marks the tuple struct as non-exhaustive, indicating to the reader that there are some
@@ -503,7 +501,7 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
     {
-        self.entry(&DebugOnce(Cell::new(Some(entry_fmt))));
+        self.entry(&DebugOnce(UnsafeCell::new(ManuallyDrop::new(entry_fmt))));
     }
 
     fn is_pretty(&self) -> bool {
@@ -1037,7 +1035,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
     {
-        self.key(&DebugOnce(Cell::new(Some(key_fmt))))
+        self.key(&DebugOnce(UnsafeCell::new(ManuallyDrop::new(key_fmt))))
     }
 
     /// Adds the value part of a new entry to the map output.
@@ -1102,7 +1100,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
     {
-        self.value(&DebugOnce(Cell::new(Some(value_fmt))))
+        self.value(&DebugOnce(UnsafeCell::new(ManuallyDrop::new(value_fmt))))
     }
 
     /// Adds the contents of an iterator of entries to the map output.
