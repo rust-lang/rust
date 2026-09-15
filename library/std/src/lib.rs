@@ -456,6 +456,19 @@
     since = "1.90.0"
 )]
 
+// Macro used when rendering with `rustdoc` to replace code with `loop {}`.
+#[allow(unused_macros)]
+macro_rules! no_code {
+    ($($code:tt)*) => {
+        #[cfg(not(doc))]
+    {
+            $($code)*
+    }
+    #[cfg(doc)]
+    loop {}
+    }
+}
+
 // The Rust prelude
 // The compiler expects the prelude definition to be defined before its use statement.
 pub mod prelude;

@@ -1315,11 +1315,13 @@ mod linux_child_ext {
         }
 
         fn into_pidfd(mut self) -> Result<os::PidFd, Self> {
-            self.handle
-                .pidfd
-                .take()
-                .map(<os::PidFd as FromInner<imp::PidFd>>::from_inner)
-                .ok_or_else(|| self)
+            no_code! {
+                self.handle
+                    .pidfd
+                    .take()
+                    .map(<os::PidFd as FromInner<imp::PidFd>>::from_inner)
+                    .ok_or_else(|| self)
+            }
         }
     }
 }
