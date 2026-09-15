@@ -1,0 +1,23 @@
+error[E0391]: cycle detected when computing type of opaque `Test::{opaque#0}`
+  --> $DIR/reveal-auto-trait-notsend-outer-id-left.rs:33:13
+   |
+LL | type Test = impl Sized;
+   |             ^^^^^^^^^^
+   |
+note: ...which requires type-checking `test`...
+  --> $DIR/reveal-auto-trait-notsend-outer-id-left.rs:38:57
+   |
+LL |     let _: OnWShow = id2(&&W(x), &&W(&() as *const ())).show();
+   |                                                         ^^^^
+   = note: ...which requires evaluating trait selection obligation `&'a W<Test>: OnWSend`...
+   = note: ...which again requires computing type of opaque `Test::{opaque#0}`, completing the cycle
+note: cycle used when computing type of `Test::{opaque#0}`
+  --> $DIR/reveal-auto-trait-notsend-outer-id-left.rs:33:13
+   |
+LL | type Test = impl Sized;
+   |             ^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.
