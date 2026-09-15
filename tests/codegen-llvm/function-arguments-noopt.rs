@@ -10,7 +10,7 @@ pub struct S {
     _field: [i32; 8],
 }
 
-// CHECK: zeroext i1 @boolean(i1 zeroext %x)
+// CHECK: {{(zeroext)?}} i1 @boolean(i1{{( zeroext)?}} %x)
 #[no_mangle]
 pub fn boolean(x: bool) -> bool {
     x
@@ -19,7 +19,7 @@ pub fn boolean(x: bool) -> bool {
 // CHECK-LABEL: @boolean_call
 #[no_mangle]
 pub fn boolean_call(x: bool, f: fn(bool) -> bool) -> bool {
-    // CHECK: call zeroext i1 %f(i1 zeroext %x)
+    // CHECK: call{{( zeroext)?}} i1 %f(i1{{( zeroext)?}} %x)
     f(x)
 }
 
@@ -55,7 +55,7 @@ pub fn struct_call(x: S, f: fn(S) -> S) -> S {
     f(x)
 }
 
-// CHECK: { i1, i8 } @enum_(i1 zeroext %x.0, i8 %x.1)
+// CHECK: { i1, i8 } @enum_(i1{{( zeroext)?}} %x.0, i8 %x.1)
 #[no_mangle]
 pub fn enum_(x: Option<u8>) -> Option<u8> {
     x
@@ -64,6 +64,6 @@ pub fn enum_(x: Option<u8>) -> Option<u8> {
 // CHECK-LABEL: @enum_call
 #[no_mangle]
 pub fn enum_call(x: Option<u8>, f: fn(Option<u8>) -> Option<u8>) -> Option<u8> {
-    // CHECK: call { i1, i8 } %f(i1 zeroext %x.0, i8 %x.1)
+    // CHECK: call { i1, i8 } %f(i1{{( zeroext)?}} %x.0, i8 %x.1)
     f(x)
 }

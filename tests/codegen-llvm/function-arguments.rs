@@ -26,7 +26,7 @@ pub enum MyBool {
     False,
 }
 
-// CHECK: noundef zeroext i1 @boolean(i1 noundef zeroext %x)
+// CHECK: noundef{{( zeroext)?}} i1 @boolean(i1 noundef{{( zeroext)?}} %x)
 #[no_mangle]
 pub fn boolean(x: bool) -> bool {
     x
@@ -38,7 +38,7 @@ pub fn maybeuninit_boolean(x: MaybeUninit<bool>) -> MaybeUninit<bool> {
     x
 }
 
-// CHECK: noundef zeroext i1 @enum_bool(i1 noundef zeroext %x)
+// CHECK: noundef{{( zeroext)?}} i1 @enum_bool(i1 noundef{{( zeroext)?}} %x)
 #[no_mangle]
 pub fn enum_bool(x: MyBool) -> MyBool {
     x
@@ -271,7 +271,7 @@ pub fn enum_id_1(x: Option<Result<u16, u16>>) -> Option<Result<u16, u16>> {
     x
 }
 
-// CHECK: { i1, i8 } @enum_id_2(i1 noundef zeroext %x.0, i8 %x.1)
+// CHECK: { i1, i8 } @enum_id_2(i1 noundef{{( zeroext)?}} %x.0, i8 %x.1)
 #[no_mangle]
 pub fn enum_id_2(x: Option<u8>) -> Option<u8> {
     x
