@@ -1388,7 +1388,7 @@ impl Ipv6Addr {
         Ipv6Addr {
             // All elements in `addr16` are big endian.
             // SAFETY: `[u16; 8]` is always safe to transmute to `[u8; 16]`.
-            octets: unsafe { transmute::<_, [u8; 16]>(addr16) },
+            octets: unsafe { transmute::<[u16; 8], [u8; 16]>(addr16) },
         }
     }
 
@@ -1525,7 +1525,7 @@ impl Ipv6Addr {
     pub const fn segments(&self) -> [u16; 8] {
         // All elements in `self.octets` must be big endian.
         // SAFETY: `[u8; 16]` is always safe to transmute to `[u16; 8]`.
-        let [a, b, c, d, e, f, g, h] = unsafe { transmute::<_, [u16; 8]>(self.octets) };
+        let [a, b, c, d, e, f, g, h] = unsafe { transmute::<[u8; 16], [u16; 8]>(self.octets) };
         // We want native endian u16
         [
             u16::from_be(a),
