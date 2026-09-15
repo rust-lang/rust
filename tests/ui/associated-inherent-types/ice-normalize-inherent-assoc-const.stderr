@@ -1,0 +1,15 @@
+error[E0080]: evaluation panicked: not yet implemented
+  --> $DIR/ice-normalize-inherent-assoc-const.rs:10:28
+   |
+LL |     const ASSOC_C: usize = todo!();
+   |                            ^^^^^^^ evaluation of `Foo::ASSOC_C` failed here
+
+note: erroneous constant encountered
+  --> $DIR/ice-normalize-inherent-assoc-const.rs:14:14
+   |
+LL |         [u8; Self::ASSOC_C]:,
+   |              ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.
