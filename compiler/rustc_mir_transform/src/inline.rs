@@ -18,7 +18,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{
     self, Instance, InstanceKind, ShimKind, Ty, TyCtxt, TypeFlags, TypeVisitableExt, Unnormalized,
 };
-use rustc_session::config::{DebugInfo, OptLevel};
+use rustc_session::config::DebugInfo;
 use rustc_span::Spanned;
 use tracing::{debug, instrument, trace, trace_span};
 
@@ -45,22 +45,18 @@ struct CallSite<'tcx> {
 pub struct Inline;
 
 impl<'tcx> crate::MirPass<'tcx> for Inline {
-    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
-        match ctx.opts.unstable_opts.inline_mir {
-            Some(enabled) => PassPolicy::optional(enabled),
-            None => PassPolicy::optional(match ctx.mir_opt_level() {
-                0 | 1 => false,
-                // Only inline for `-Copt-level >= 2`, and don't inline
-                // in incremental mode to increase incremental effectiveness.
-                // FIXME: This should be cleaned up to not rely on inspecting the global opt level.
-                2 => {
-                    (ctx.opts.optimize == OptLevel::More
-                        || ctx.opts.optimize == OptLevel::Aggressive)
-                        && ctx.opts.incremental.is_none()
-                }
-                _ => true,
-            }),
-        }
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // let enabled_by_default =
+        //     sess.opts.unstable_opts.inline_mir.unwrap_or_else(|| match sess.mir_opt_level() {
+        //         0 | 1 => false,
+        //         2 => {
+        //             (sess.opts.optimize == OptLevel::More
+        //                 || sess.opts.optimize == OptLevel::Aggressive)
+        //                 && sess.opts.incremental == None
+        //         }
+        //         _ => true,
+        //     });
+        PassPolicy::optional(false)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
