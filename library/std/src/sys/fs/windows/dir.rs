@@ -6,7 +6,7 @@ use crate::os::windows::io::{
     OwnedHandle, RawHandle,
 };
 use crate::path::Path;
-use crate::sys::api::{UnicodeStrRef, WinError};
+use crate::sys::api::{UnicodeStrRef, WinError, get_last_error};
 use crate::sys::fs::windows::debug_path_handle;
 use crate::sys::fs::{File, FileAttr, OpenOptions};
 use crate::sys::handle::Handle;
@@ -109,6 +109,11 @@ impl Dir {
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
         let path = to_u16s_without_nul(&path)?;
         self.remove_native(&path, true)
+    }
+
+    pub fn symlink(&self, original: &Path, link: &Path) -> io::Result<()> {
+        let orig = to_u16s_without_nul(original)?;
+        self.symlink_native(&orig, link, original.is_relative())
     }
 
     fn open_with_native(path: &WCStr, opts: &OpenOptions) -> io::Result<Self> {
@@ -222,6 +227,68 @@ impl Dir {
             handle: unsafe { Handle::from_raw_handle(handle) },
         });
         f.file_attr()
+    }
+
+    fn symlink_native(&self, original: &[u16], link: &Path, relative: bool) -> io::Result<()> {
+        const TOO_LONG_ERR: io::Error =
+            io::const_error!(io::ErrorKind::InvalidFilename, "File name is too long");
+        let mut opts = OpenOptions::new();
+        opts.write(true);
+        opts.create(true);
+        opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
+        opts.attributes(c::FILE_ATTRIBUTE_REPARSE_POINT);
+        let linkfile = self.open_file(link, &opts)?;
+        let original_name_byte_len =
+            u16::try_from(size_of::<u16>() * original.len()).or(Err(TOO_LONG_ERR))?;
+        let layout = Layout::from_size_align(
+            size_of::<c::REPARSE_DATA_BUFFER>()
+                + size_of::<c::SYMBOLIC_LINK_REPARSE_BUFFER>()
+                + usize::from(original_name_byte_len),
+            align_of::<c::REPARSE_DATA_BUFFER>()
+                .max(align_of::<c::SYMBOLIC_LINK_REPARSE_BUFFER>())
+                .max(align_of::<u16>()),
+        )
+        .or(Err(TOO_LONG_ERR))?;
+        let buffer = unsafe { alloc(layout) }.cast::<c::REPARSE_DATA_BUFFER>();
+        if buffer.is_null() {
+            return Err(io::ErrorKind::OutOfMemory.into());
+        }
+        unsafe {
+            (&raw mut (*buffer).ReparseTag).write(c::IO_REPARSE_TAG_SYMLINK);
+            (&raw mut (*buffer).ReparseDataLength).write(original_name_byte_len);
+            (&raw mut (*buffer).Reserved).write(0);
+            let rest = (&raw mut (*buffer).rest).cast::<c::SYMBOLIC_LINK_REPARSE_BUFFER>();
+
+            (&raw mut (*rest).SubstituteNameOffset).write(0);
+            (&raw mut (*rest).SubstituteNameLength).write(original_name_byte_len);
+            (&raw mut (*rest).PrintNameOffset).write(0);
+            (&raw mut (*rest).PrintNameLength).write(original_name_byte_len);
+            (&raw mut (*rest).Flags).write(if relative { c::SYMLINK_FLAG_RELATIVE } else { 0 });
+
+            original.as_ptr().copy_to_nonoverlapping(&raw mut (*rest).PathBuffer, original.len());
+        };
+        let result = unsafe {
+            c::DeviceIoControl(
+                linkfile.handle.as_raw_handle(),
+                c::FSCTL_SET_REPARSE_POINT,
+                buffer as *mut c_void as *const c_void,
+                u32::try_from(
+                    size_of::<c::REPARSE_DATA_BUFFER>()
+                        + size_of::<c::SYMBOLIC_LINK_REPARSE_BUFFER>()
+                        + usize::from(original_name_byte_len),
+                )
+                .or(Err(TOO_LONG_ERR))?,
+                ptr::null_mut(),
+                0,
+                ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        };
+        unsafe {
+            dealloc(buffer.cast(), layout);
+        }
+
+        if result == 0 { Err(get_last_error()).io_result() } else { Ok(()) }
     }
 }
 
