@@ -346,7 +346,7 @@ fn borrowck_collect_region_constraints<'tcx>(
     let locals_are_invalidated_at_exit = tcx.hir_body_owner_kind(def).is_fn_or_closure();
     let borrow_set = BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data);
 
-    let location_map = Rc::new(DenseLocationMap::new(body));
+    let location_map = Rc::clone(move_data.location_map());
 
     let polonius_input = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_input())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
