@@ -839,6 +839,7 @@ pub enum GenericParamKind<'hir> {
     /// A lifetime definition (e.g., `'a: 'b + 'c + 'd`).
     Lifetime {
         kind: LifetimeParamKind,
+        // FIXME(addiesh): add late_bound: bool,
     },
     Type {
         default: Option<&'hir Ty<'hir>>,
