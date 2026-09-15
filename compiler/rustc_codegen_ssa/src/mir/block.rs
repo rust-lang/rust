@@ -19,7 +19,7 @@ use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, Spanned};
-use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, IndirectMode, PassMode};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -1258,7 +1258,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             (args, None)
         };
 
-        // Special logic for tail calls with `PassMode::Indirect { on_stack: false, .. }` arguments.
+        // Special logic for tail calls with `PassMode::Indirect { mode: IndirectMode::Pointer, .. }` arguments.
         //
         // Normally an indirect argument that is allocated in the caller's stack frame
         // would be passed as a pointer into the callee's stack frame.
@@ -1283,10 +1283,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let mut tail_call_temporaries = vec![];
         if kind == CallKind::Tail {
             tail_call_temporaries = vec![None; first_args.len()];
-            // Copy the arguments that use `PassMode::Indirect { on_stack: false , ..}`
+            // Copy the arguments that use `PassMode::Indirect { mode: IndirectMode::Pointer , ..}`
             // to temporary stack allocations. See the comment above.
             for (i, arg) in first_args.iter().enumerate() {
-                if !matches!(fn_abi.args[i].mode, PassMode::Indirect { on_stack: false, .. }) {
+                if !matches!(
+                    fn_abi.args[i].mode,
+                    PassMode::Indirect { mode: IndirectMode::Pointer, .. }
+                ) {
                     continue;
                 }
 
@@ -1354,10 +1357,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            let by_move = if let PassMode::Indirect { on_stack: false, .. } = fn_abi.args[i].mode
+            let by_move = if let PassMode::Indirect { mode: IndirectMode::Pointer, .. } =
+                fn_abi.args[i].mode
                 && kind == CallKind::Tail
             {
-                // Special logic for tail calls with `PassMode::Indirect { on_stack: false, .. }` arguments.
+                // Special logic for tail calls with `PassMode::Indirect { mode: IndirectMode::Pointer, .. }` arguments.
                 //
                 // Normally an indirect argument that is allocated in the caller's stack frame
                 // would be passed as a pointer into the callee's stack frame.
@@ -1978,14 +1982,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 _ => bug!("codegen_argument: {:?} invalid for pair argument", op),
             },
-            PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => match op.val {
-                Ref(PlaceValue { llval: a, llextra: Some(b), .. }) => {
-                    llargs.push(a);
-                    llargs.push(b);
-                    return;
+            PassMode::Indirect { attrs: _, meta_attrs: Some(_), address_space: _, mode: _ } => {
+                match op.val {
+                    Ref(PlaceValue { llval: a, llextra: Some(b), .. }) => {
+                        llargs.push(a);
+                        llargs.push(b);
+                        return;
+                    }
+                    _ => bug!("codegen_argument: {:?} invalid for unsized indirect argument", op),
                 }
-                _ => bug!("codegen_argument: {:?} invalid for unsized indirect argument", op),
-            },
+            }
             _ => {}
         }
 
@@ -2015,7 +2021,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 PassMode::Ignore | PassMode::Pair(..) => unreachable!("handled above"),
             },
             Ref(op_place_val) => match arg.mode {
-                PassMode::Indirect { attrs, on_stack, .. } => {
+                PassMode::Indirect { attrs, mode, .. } => {
+                    if mode == IndirectMode::AmdgpuKernelArg {
+                        bug!("{op:?} passed as amdgpu kernel argument with abi {arg:?}");
+                    }
                     // For `foo(packed.large_field)`, and types with <4 byte alignment on x86,
                     // alignment requirements may be higher than the type's alignment, so copy
                     // to a higher-aligned alloca.
@@ -2024,7 +2033,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         None => arg.layout.align.abi,
                     };
                     // Copy to an alloca when the argument is neither by-val nor by-move.
-                    if op_place_val.align < required_align || (!on_stack && !by_move) {
+                    if op_place_val.align < required_align
+                        || (mode == IndirectMode::Pointer && !by_move)
+                    {
                         let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
                         bx.lifetime_start(scratch.llval, arg.layout.size);
                         op.store_with_annotation(bx, scratch.with_type(arg.layout));
@@ -2037,8 +2048,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 _ => (op_place_val.llval, op_place_val.align, true),
             },
             ZeroSized => match arg.mode {
-                PassMode::Indirect { on_stack, .. } => {
-                    if on_stack {
+                PassMode::Indirect { mode, .. } => {
+                    if mode == IndirectMode::AmdgpuKernelArg {
+                        bug!("{op:?} passed as amdgpu kernel argument with abi {arg:?}");
+                    }
+                    if mode == IndirectMode::OnStack {
                         // It doesn't seem like any target can have `byval` ZSTs, so this assert
                         // is here to replace a would-be untested codepath.
                         bug!("ZST {op:?} passed on stack with abi {arg:?}");

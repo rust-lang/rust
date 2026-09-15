@@ -9,10 +9,10 @@ use rustc_public_bridge::context::CompilerCtxt;
 use rustc_target::callconv;
 
 use crate::abi::{
-    AddressSpace, ArgAbi, CallConvention, FieldsShape, FloatLength, FnAbi, IntegerLength,
-    IntegerType, Layout, LayoutShape, NumScalableVectors, PassMode, Primitive, ReprFlags,
-    ReprOptions, Scalar, TagEncoding, TyAndLayout, ValueAbi, VariantFields, VariantsShape,
-    WrappingRange,
+    AddressSpace, ArgAbi, CallConvention, FieldsShape, FloatLength, FnAbi, IndirectMode,
+    IntegerLength, IntegerType, Layout, LayoutShape, NumScalableVectors, PassMode, Primitive,
+    ReprFlags, ReprOptions, Scalar, TagEncoding, TyAndLayout, ValueAbi, VariantFields,
+    VariantsShape, WrappingRange,
 };
 use crate::compiler_interface::BridgeTys;
 use crate::target::MachineSize as Size;
@@ -155,10 +155,30 @@ impl<'tcx> Stable<'tcx> for CanonAbi {
     }
 }
 
+impl<'tcx> Stable<'tcx> for callconv::IndirectMode {
+    type T = IndirectMode;
+
+    fn stable<'cx>(
+        &self,
+        _tables: &mut Tables<'cx, BridgeTys>,
+        _cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        match self {
+            callconv::IndirectMode::Pointer => IndirectMode::Pointer,
+            callconv::IndirectMode::OnStack => IndirectMode::OnStack,
+            callconv::IndirectMode::AmdgpuKernelArg => IndirectMode::AmdgpuKernelArg,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for callconv::PassMode {
     type T = PassMode;
 
-    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
         match self {
             callconv::PassMode::Ignore => PassMode::Ignore,
             callconv::PassMode::Direct(attr) => PassMode::Direct(opaque(attr)),
@@ -168,11 +188,14 @@ impl<'tcx> Stable<'tcx> for callconv::PassMode {
             callconv::PassMode::Cast { pad_i32_count, cast } => {
                 PassMode::Cast { pad_i32_count: *pad_i32_count, cast: opaque(cast) }
             }
-            callconv::PassMode::Indirect { attrs, meta_attrs, on_stack } => PassMode::Indirect {
-                attrs: opaque(attrs),
-                meta_attrs: opaque(meta_attrs),
-                on_stack: *on_stack,
-            },
+            callconv::PassMode::Indirect { attrs, meta_attrs, address_space, mode } => {
+                PassMode::Indirect {
+                    attrs: opaque(attrs),
+                    meta_attrs: opaque(meta_attrs),
+                    address_space: address_space.stable(tables, cx),
+                    mode: mode.stable(tables, cx),
+                }
+            }
         }
     }
 }

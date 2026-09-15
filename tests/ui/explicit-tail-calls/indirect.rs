@@ -25,17 +25,17 @@
 #![feature(explicit_tail_calls)]
 #![expect(incomplete_features)]
 
-// Test tail calls with `PassMode::Indirect { on_stack: false, .. }` arguments.
+// Test tail calls with `PassMode::Indirect { mode: IndirectMode::Pointer, .. }` arguments.
 //
-// Normally an indirect argument with `on_stack: false` would be passed as a pointer to the
-// caller's stack frame. For tail calls, that would be unsound, because the caller's stack
+// Normally an indirect argument with `mode: IndirectMode::Pointer` would be passed as a pointer to
+// the caller's stack frame. For tail calls, that would be unsound, because the caller's stack
 // frame is overwritten by the callee's stack frame.
 //
 // The solution is to write the argument into the caller's argument place (stored somewhere further
 // up the stack), and forward that place.
 
 // A struct big enough that it is not passed via registers, so that the rust calling convention uses
-// `Indirect { on_stack: false, .. }`.
+// `Indirect { mode: IndirectMode::Pointer, .. }`.
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Big([u64; 4]);
@@ -79,7 +79,7 @@ fn main() {
     assert_eq!(update_in_caller(Big::default()), 0 + 2 + 3 + 4);
 
     assert_eq!(swapper(u8::MIN, u8::MAX), (u8::MAX, u8::MIN));
-    // i128 uses `PassMode::Indirect { on_stack: false, .. }` on x86_64 MSVC.
+    // i128 uses `PassMode::Indirect { mode: IndirectMode::Pointer, .. }` on x86_64 MSVC.
     assert_eq!(swapper(i128::MIN, i128::MAX), (i128::MAX, i128::MIN));
     assert_eq!(swapper(Big([1; 4]), Big([2; 4])), (Big([2; 4]), Big([1; 4])));
 
