@@ -171,7 +171,7 @@ fn is_valid_cmse_output_layout<'tcx>(cx: LayoutCx<'tcx>, layout: TyAndLayout<'tc
 
     // Accept (transparently wrapped) scalar 64-bit primitives.
     matches!(
-        layout.peel_transparent_wrappers(&cx).ty.kind(),
+        layout.peel_transparent_wrappers_from_non_1zst(&cx).ty.kind(),
         ty::Int(ty::IntTy::I64) | ty::Uint(ty::UintTy::U64) | ty::Float(ty::FloatTy::F64)
     )
 }
