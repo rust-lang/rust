@@ -190,7 +190,7 @@ use core::error::{self, Error};
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
-use core::marker::{Tuple, Unsize};
+use core::marker::{PhantomData, Tuple, Unsize};
 #[cfg(not(no_global_oom_handling))]
 use core::mem::MaybeUninit;
 use core::mem::{self, SizedTypeProperties};
@@ -201,7 +201,7 @@ use core::ops::{
 #[cfg(not(no_global_oom_handling))]
 use core::ops::{Residual, Try};
 use core::pin::{Pin, PinSafePointer};
-use core::ptr::{self, NonNull, Unique};
+use core::ptr::{self, NonNull};
 use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
@@ -223,6 +223,71 @@ pub use iter::BoxedArrayIntoIter;
 #[unstable(feature = "thin_box", issue = "92791")]
 pub use thin::ThinBox;
 
+/// An internal wrapper for the pointer + `PhantomData` inside a `Box`.
+/// This type has no semantic meaning. It only exists because the layout of
+/// `Box` is hard-coded into the compiler, and because moving the
+/// auto trait impls to `Box` would cause regressions (#162850).
+#[repr(transparent)]
+struct BoxRaw<T: ?Sized> {
+    pointer: NonNull<T>,
+    _marker: PhantomData<T>,
+}
+
+unsafe impl<T: ?Sized + Send> Send for BoxRaw<T> {}
+unsafe impl<T: ?Sized + Sync> Sync for BoxRaw<T> {}
+impl<T: ?Sized + core::panic::UnwindSafe> core::panic::UnwindSafe for BoxRaw<T> {}
+impl<T: ?Sized, U: ?Sized> CoerceUnsized<BoxRaw<U>> for BoxRaw<T> where T: Unsize<U> {}
+impl<T: ?Sized, U: ?Sized> DispatchFromDyn<BoxRaw<U>> for BoxRaw<T> where T: Unsize<U> {}
+
+impl<T: ?Sized> BoxRaw<T> {
+    /// # Safety
+    /// `ptr` must be non-null
+    #[inline]
+    const unsafe fn new_unchecked(ptr: *mut T) -> Self {
+        // SAFETY: Upheld by the caller
+        unsafe { BoxRaw { pointer: NonNull::new_unchecked(ptr), _marker: PhantomData } }
+    }
+
+    #[inline]
+    const fn cast<U>(self) -> BoxRaw<U> {
+        BoxRaw { pointer: self.pointer.cast(), _marker: PhantomData }
+    }
+
+    #[inline]
+    const fn as_non_null_ptr(self) -> NonNull<T> {
+        self.pointer
+    }
+
+    #[inline]
+    const fn as_ptr(self) -> *mut T {
+        self.pointer.as_ptr()
+    }
+
+    #[inline]
+    #[cfg(not(no_global_oom_handling))]
+    const fn dangling() -> Self
+    where
+        T: Sized,
+    {
+        BoxRaw { pointer: NonNull::dangling(), _marker: PhantomData }
+    }
+}
+
+impl<T: ?Sized> Clone for BoxRaw<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<T: ?Sized> Copy for BoxRaw<T> {}
+
+#[expect(ineffective_unstable_trait_impl, reason = "See #164109")]
+#[unstable(feature = "box_internals", issue = "none")]
+impl<T: ?Sized> From<BoxRaw<T>> for NonNull<T> {
+    fn from(value: BoxRaw<T>) -> Self {
+        value.as_non_null_ptr()
+    }
+}
+
 /// A pointer type that uniquely owns a heap allocation of type `T`.
 ///
 /// See the [module-level documentation](../../std/boxed/index.html) for more.
@@ -236,7 +301,7 @@ pub use thin::ThinBox;
 pub struct Box<
     T: ?Sized,
     #[stable(feature = "allocator_api", since = "1.100.0")] A: Allocator = Global,
->(Unique<T>, A);
+>(BoxRaw<T>, A);
 
 /// Monomorphic function for allocating an uninit `Box`.
 #[inline]
@@ -1566,7 +1631,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[inline]
     pub unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {
         // SAFETY: Upheld by caller.
-        Box(unsafe { Unique::new_unchecked(raw) }, alloc)
+        Box(unsafe { BoxRaw::new_unchecked(raw) }, alloc)
     }
 
     /// Constructs a box from a `NonNull` pointer in the given allocator.
@@ -2024,7 +2089,9 @@ impl<T> Default for Box<[T]> {
     /// Creates an empty `[T]` inside a `Box`.
     #[inline]
     fn default() -> Self {
-        let ptr: Unique<[T]> = Unique::<[T; 0]>::dangling();
+        let ptr: BoxRaw<[T]> = BoxRaw::<[T; 0]>::dangling();
+        // SAFETY: `[T; 0]` is a ZST, for which `dangling` is valid to turn into a `Box`,
+        // even after unsize coercion.
         Box(ptr, Global)
     }
 }
@@ -2034,10 +2101,13 @@ impl<T> Default for Box<[T]> {
 impl Default for Box<str> {
     #[inline]
     fn default() -> Self {
-        // SAFETY: This is the same as `Unique::cast<U>` but with an unsized `U = str`.
-        let ptr: Unique<str> = unsafe {
-            let bytes: Unique<[u8]> = Unique::<[u8; 0]>::dangling();
-            Unique::new_unchecked(bytes.as_ptr() as *mut str)
+        // SAFETY:
+        // - `[u8; 0]` is a ZST, for which `dangling` is valid to turn into a `Box`
+        // - Casting `[u8]` to `str` is correct
+        // - The empty byte slice is valid UTF-8
+        let ptr: BoxRaw<str> = unsafe {
+            let bytes: BoxRaw<[u8]> = BoxRaw::<[u8; 0]>::dangling();
+            BoxRaw::new_unchecked(bytes.as_ptr() as *mut str)
         };
         Box(ptr, Global)
     }
