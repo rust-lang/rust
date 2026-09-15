@@ -19,8 +19,7 @@ use rustc_type_ir::solve::{
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
     OpaqueTypeKey, PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    eager_resolve_vars, max_universe,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, max_universe,
 };
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
@@ -659,7 +658,9 @@ where
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
-        let (goal, opaque_types) = eager_resolve_vars(&**self.delegate, (goal, opaque_types));
+
+        let (goal, opaque_types) =
+            self.delegate.deeply_resolve_via_unification_table((goal, opaque_types));
         let typing_mode = self.typing_mode();
         let step_kind = self.step_kind_for_source(source);
 
@@ -793,7 +794,6 @@ where
 
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
-            goal.param_env,
             &orig_values,
             response,
             self.origin_span,
@@ -1098,7 +1098,7 @@ where
             }
             ty::TermKind::Const(ct) => {
                 if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() {
-                    self.delegate.universe_of_ct(vid).unwrap()
+                    self.delegate.universe_of_const(vid).unwrap()
                 } else {
                     return false;
                 }
@@ -1165,7 +1165,7 @@ where
                             return ControlFlow::Break(());
                         }
 
-                        self.check_nameable(self.delegate.universe_of_ct(vid).unwrap())
+                        self.check_nameable(self.delegate.universe_of_const(vid).unwrap())
                     }
                     ty::ConstKind::Placeholder(p) => self.check_nameable(p.universe()),
                     _ => {
@@ -1300,11 +1300,11 @@ where
         })
     }
 
-    pub(super) fn resolve_vars_if_possible<T>(&self, value: T) -> T
+    pub(super) fn deeply_resolve_ignoring_regions<T>(&self, value: T) -> T
     where
         T: TypeFoldable<I>,
     {
-        self.delegate.resolve_vars_if_possible(value)
+        self.delegate.deeply_resolve_ignoring_regions(value)
     }
 
     pub(super) fn shallow_resolve(&self, ty: I::Ty) -> I::Ty {
@@ -1313,7 +1313,7 @@ where
 
     pub(super) fn eager_resolve_region(&self, r: Region<I>) -> Region<I> {
         if let ty::ReVar(vid) = r.kind() {
-            self.delegate.opportunistic_resolve_lt_var(vid)
+            self.delegate.shallow_resolve_region_var(vid)
         } else {
             r
         }
@@ -1432,14 +1432,14 @@ where
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             None if self.cx().features().generic_const_args() => {
-                // HACK(khyperia): calling `resolve_vars_if_possible` here shouldn't be necessary,
-                // `try_evaluate_const` calls `resolve_vars_if_possible` already. However, we want
+                // HACK(khyperia): calling `deeply_resolve_ignoring_regions` here shouldn't be necessary,
+                // `try_evaluate_const` calls `deeply_resolve_ignoring_regions` already. However, we want
                 // to check `has_non_region_infer` against the type with vars resolved (i.e. check
                 // if there are vars we failed to resolve), so we need to call it again here.
                 // Perhaps we could split EvaluateConstErr::HasGenericsOrInfers into HasGenerics and
                 // HasInfers or something, make evaluate_const return that, and make this branch be
                 // based on that, rather than checking `has_non_region_infer`.
-                if self.resolve_vars_if_possible(alias_const).has_non_region_infer() {
+                if self.deeply_resolve_ignoring_regions(alias_const).has_non_region_infer() {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 } else {
                     // Evaluation failed because the const was too generic or was an invalid type
@@ -1604,8 +1604,9 @@ where
 
         let external_constraints =
             self.compute_external_query_constraints(certainty, normalization_nested_goals);
-        let (var_values, mut external_constraints) =
-            eager_resolve_vars(&**self.delegate, (self.var_values, external_constraints));
+        let (var_values, mut external_constraints) = self
+            .delegate
+            .deeply_resolve_via_unification_table((self.var_values, external_constraints));
 
         // Remove any trivial or duplicated region constraints once we've resolved regions
         let mut unique = HashSet::default();
@@ -1613,74 +1614,7 @@ where
             r.retain(|(outlives, _)| !outlives.is_trivial() && unique.insert(*outlives));
         }
 
-        #[derive(Default)]
-        struct NonTrivialVars {
-            vars: HashSet<RegionVid>,
-        }
-        impl<I> TypeVisitor<I> for NonTrivialVars
-        where
-            I: Interner,
-        {
-            type Result = ();
-            fn visit_ty(&mut self, t: I::Ty) {
-                // If a nested type doesn't have any `ReVar`s, then we won't insert
-                // anything into `vars` anyway, so skip for better perf.
-                if !t.has_infer_regions() {
-                    return;
-                }
-                t.super_visit_with(self);
-            }
-            fn visit_const(&mut self, c: I::Const) {
-                // The same goes for consts.
-                if !c.has_infer_regions() {
-                    return;
-                }
-                c.super_visit_with(self);
-            }
-            fn visit_region(&mut self, r: Region<I>) {
-                if let ty::ReVar(vid) = r.kind() {
-                    self.vars.insert(vid);
-                }
-            }
-        }
-
-        // If we have a constraint like `'re: '?1`, where '?1 can name 're and '?1 appears
-        // only on the RHS of region constraints, then this kind of constraint is also trivial,
-        // since we're able to pick '?1 := 'empty, and 're: 'empty is always true for any 're.
-        if let ExternalRegionConstraints::Old(r) = &mut external_constraints.region_constraints
-            && !r.is_empty()
-        {
-            let mut vis = NonTrivialVars::default();
-            var_values.visit_with(&mut vis);
-            // We have to visit each component of `external_constraints` individually here
-            // because we skip the RHS of outlives constraints, and `TypeVisitor` doesn't
-            // have a method we can easily override in order to do this.
-            external_constraints.opaque_types.visit_with(&mut vis);
-            external_constraints.normalization_nested_goals.visit_with(&mut vis);
-            for (constraint, _) in r.iter() {
-                match constraint {
-                    ty::RegionConstraint::Outlives(ty::OutlivesClause(sup, _)) => {
-                        sup.visit_with(&mut vis)
-                    }
-                    ty::RegionConstraint::Eq(eq) => eq.visit_with(&mut vis),
-                }
-            }
-
-            r.retain(|(outlives, _)| {
-                if let ty::RegionConstraint::Outlives(ty::OutlivesClause(sup, re)) = *outlives
-                    && let Some(sup_re) = sup.as_region()
-                    && let ty::RegionKind::ReVar(vid) = re.kind()
-                    // This is only safe if we call `eager_resolve_vars` beforehand,
-                    // which we do.
-                    && self.delegate.universe_of_lt(vid).unwrap()
-                        .can_name(max_universe(&**self.delegate, sup_re))
-                {
-                    vis.vars.contains(&vid)
-                } else {
-                    true
-                }
-            });
-        }
+        filter_irrelevant_region_constraints(self.delegate, &var_values, &mut external_constraints);
 
         let canonical = canonicalize_response(
             self.delegate,
@@ -1772,7 +1706,7 @@ where
         param_env: I::ParamEnv,
         value: ty::Unnormalized<I, T>,
     ) -> Result<T, NoSolutionOrRerunNonErased> {
-        let value = self.delegate.resolve_vars_if_possible(value.skip_normalization());
+        let value = self.delegate.deeply_resolve_ignoring_regions(value.skip_normalization());
 
         if !self.cx().renormalize_rigid_aliases() && !value.has_non_rigid_aliases() {
             return Ok(value);
@@ -1795,9 +1729,91 @@ where
                 }
             };
 
-            Ok((self.resolve_vars_if_possible(infer_term), normalization_was_ambiguous))
+            Ok((self.deeply_resolve_ignoring_regions(infer_term), normalization_was_ambiguous))
         });
         value.try_fold_with(&mut folder)
+    }
+}
+
+fn filter_irrelevant_region_constraints<D, I>(
+    delegate: &D,
+    var_values: &CanonicalVarValues<I>,
+    external_constraints: &mut ExternalConstraintsData<I>,
+) where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    #[derive(Default)]
+    struct NonTrivialVars {
+        vars: HashSet<RegionVid>,
+    }
+    impl<I> TypeVisitor<I> for NonTrivialVars
+    where
+        I: Interner,
+    {
+        type Result = ();
+        fn visit_ty(&mut self, t: I::Ty) {
+            // If a nested type doesn't have any `ReVar`s, then we won't insert
+            // anything into `vars` anyway, so skip for better perf.
+            if !t.has_infer_regions() {
+                return;
+            }
+            t.super_visit_with(self);
+        }
+        fn visit_const(&mut self, c: I::Const) {
+            // The same goes for consts.
+            if !c.has_infer_regions() {
+                return;
+            }
+            c.super_visit_with(self);
+        }
+        fn visit_region(&mut self, r: Region<I>) {
+            if let ty::ReVar(vid) = r.kind() {
+                self.vars.insert(vid);
+            }
+        }
+    }
+
+    let ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals } =
+        external_constraints;
+
+    // If we have a constraint like `'re: '?1`, where '?1 can name 're and '?1 appears
+    // only on the RHS of region constraints, then this kind of constraint is also trivial,
+    // since we're able to pick '?1 := glb('re, other_regions), and by definition of glb,
+    // `'re: glb`.
+    if let ExternalRegionConstraints::Old(r) = region_constraints
+        && !r.is_empty()
+    {
+        let mut vis = NonTrivialVars::default();
+        var_values.visit_with(&mut vis);
+        // We have to visit each component of `external_constraints` individually here
+        // because we skip the RHS of outlives constraints, and `TypeVisitor` doesn't
+        // have a method we can easily override in order to do this.
+        opaque_types.visit_with(&mut vis);
+        normalization_nested_goals.visit_with(&mut vis);
+        for (constraint, _) in r.iter() {
+            match constraint {
+                ty::RegionConstraint::Outlives(ty::OutlivesClause(sup, _)) => {
+                    sup.visit_with(&mut vis)
+                }
+                ty::RegionConstraint::Eq(eq) => eq.visit_with(&mut vis),
+            }
+        }
+
+        r.retain(|(outlives, _)| {
+            if let ty::RegionConstraint::Outlives(ty::OutlivesClause(sup, re)) = *outlives
+                && let Some(sup_re) = sup.as_region()
+                && let ty::RegionKind::ReVar(vid) = re.kind()
+                // This is only safe if we call `eager_resolve_vars` before calling,
+                // this function, which we do.
+                && delegate.universe_of_region(vid).unwrap()
+                    .can_name(max_universe(&**delegate, sup_re))
+            {
+                vis.vars.contains(&vid)
+            } else {
+                true
+            }
+        });
     }
 }
 
@@ -1929,7 +1945,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     root_depth: usize,
 ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {
     let opaque_types = delegate.clone_opaque_types_lookup_table();
-    let (goal, opaque_types) = eager_resolve_vars(&**delegate, (goal, opaque_types));
+    let (goal, opaque_types) = delegate.deeply_resolve_via_unification_table((goal, opaque_types));
     let typing_mode = delegate.typing_mode_raw().assert_not_erased();
 
     let (orig_values, canonical_goal) =
@@ -1953,7 +1969,6 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
 
     let (normalization_nested_goals, _certainty) = instantiate_and_apply_query_response(
         delegate,
-        goal.param_env,
         &proof_tree.orig_values,
         response,
         origin_span,

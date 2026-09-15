@@ -1,19 +1,20 @@
 #![expect(incomplete_features)]
 #![feature(min_generic_const_args)]
 
-type const FREE: u32 = 5_usize;
+const FREE: u32 = core::direct_const_arg!(5_usize);
 //~^ ERROR the constant `5` is not of type `u32`
 
-type const FREE2: isize = FREE;
+const FREE2: isize = core::direct_const_arg!(FREE);
 //~^ ERROR the constant `5` is not of type `u32`
 //~| ERROR the constant `5` is not of type `isize`
 
 trait Tr {
-    type const N: usize;
+    #[rustc_always_gca]
+    const N: usize;
 }
 
 impl Tr for () {
-    type const N: usize = false;
+    const N: usize = core::direct_const_arg!(false);
     //~^ ERROR the constant `false` is not of type `usize`
 }
 

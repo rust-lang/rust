@@ -4,13 +4,23 @@
 #![feature(min_generic_const_args, macroless_generic_const_args)]
 #![expect(incomplete_features)]
 
-trait Trait { type const CT: bool; }
+trait Trait {
+    #[rustc_always_gca]
+    const CT: bool;
+}
 
-trait Bound { type const N: u32; }
-impl Bound for () { type const N: u32 = 0; }
+trait Bound {
+    #[rustc_always_gca]
+    const N: u32;
+}
+impl Bound for () {
+    const N: u32 = core::direct_const_arg!(0);
+}
 
-fn f() { let _: dyn Trait<CT = { <() as Bound>::N }>; }
-//~^ ERROR the constant `0` is not of type `bool`
+fn f() {
+    let _: dyn Trait<CT = { <() as Bound>::N }>;
+    //~^ ERROR the constant `0` is not of type `bool`
+}
 fn g(_: impl Trait<CT = { <() as Bound>::N }>) {}
 //~^ ERROR the constant `0` is not of type `bool`
 

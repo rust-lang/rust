@@ -13,7 +13,7 @@
 //@ lldb-command:v basic_types_globals::I
 //@ lldb-check:[...]basic_types_globals::I = -1
 //@ lldb-command:v basic_types_globals::C
-//@ lldb-check:[...]basic_types_globals::C = U+0x00000061 U'a'
+//@ lldb-check:[...]basic_types_globals::C = U+[...]61 U'a'
 //@ lldb-command:v basic_types_globals::I8
 //@ lldb-check:[...]basic_types_globals::I8 = 68
 //@ lldb-command:v basic_types_globals::I16

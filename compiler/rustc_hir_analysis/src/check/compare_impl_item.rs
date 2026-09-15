@@ -584,9 +584,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         .iter()
         .map(|(_, &(ty, _))| {
             assert!(
-                infcx.resolve_vars_if_possible(ty) == ty && ty.is_ty_var(),
+                infcx.deeply_resolve_ignoring_regions(ty) == ty && ty.is_ty_var(),
                 "{ty:?} should not have been constrained via normalization",
-                ty = infcx.resolve_vars_if_possible(ty)
+                ty = infcx.deeply_resolve_ignoring_regions(ty)
             );
             idx += 1;
             (
@@ -708,7 +708,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     let mut remapped_types = DefIdMap::default();
     for (def_id, (ty, args)) in collected_types {
-        match infcx.fully_resolve(ty) {
+        match infcx.deeply_resolve_via_region_graph(ty) {
             Ok(ty) => {
                 // `ty` contains free regions that we created earlier while liberating the
                 // trait fn signature. However, projection normalization expects `ty` to
@@ -1296,7 +1296,7 @@ fn check_region_late_boundedness<'tcx>(
                 .inner
                 .borrow_mut()
                 .unwrap_region_constraints()
-                .opportunistic_resolve_var(tcx, vid)
+                .shallow_resolve_region_var(tcx, vid)
             && let ty::ReLateParam(ty::LateParamRegion {
                 kind: ty::LateParamRegionKind::Named(trait_param_def_id),
                 ..
@@ -1321,7 +1321,7 @@ fn check_region_late_boundedness<'tcx>(
                 .inner
                 .borrow_mut()
                 .unwrap_region_constraints()
-                .opportunistic_resolve_var(tcx, vid)
+                .shallow_resolve_region_var(tcx, vid)
             && let ty::ReLateParam(ty::LateParamRegion {
                 kind: ty::LateParamRegionKind::Named(impl_param_def_id),
                 ..
@@ -2145,35 +2145,53 @@ fn compare_impl_const<'tcx>(
     trait_const_item: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    compare_type_const(tcx, impl_const_item, trait_const_item)?;
+    compare_const_directness(tcx, impl_const_item, trait_const_item)?;
     compare_number_of_generics(tcx, impl_const_item, trait_const_item, false)?;
     compare_generic_param_kinds(tcx, impl_const_item, trait_const_item, false)?;
     check_region_bounds_on_impl_item(tcx, impl_const_item, trait_const_item, false)?;
     compare_const_clause_entailment(tcx, impl_const_item, trait_const_item, impl_trait_ref)
 }
 
-fn compare_type_const<'tcx>(
+pub(super) fn compare_const_directness<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_const_item: ty::AssocItem,
     trait_const_item: ty::AssocItem,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl_is_type_const = tcx.is_type_const_syntax(impl_const_item.def_id);
-    let trait_is_type_const = tcx.is_type_const_syntax(trait_const_item.def_id);
+    let trait_is_gca = tcx.is_always_gca(trait_const_item.def_id);
+    let impl_is_gca = tcx.const_of_item(impl_const_item.def_id).is_some();
 
-    if trait_is_type_const && !impl_is_type_const {
-        return Err(tcx
-            .dcx()
+    if trait_is_gca == impl_is_gca {
+        return Ok(());
+    }
+    // feature(generic_const_args) is allowed to impl non-GCA traits with a GCA const
+    if tcx.features().generic_const_args() && !trait_is_gca && impl_is_gca {
+        return Ok(());
+    }
+
+    let guar = if trait_is_gca {
+        tcx.dcx()
             .struct_span_err(
                 tcx.def_span(impl_const_item.def_id),
-                "implementation of a `type const` must also be marked as `type const`",
+                "implementation of a `#[rustc_always_gca]` must have a `direct_const_arg!` RHS",
             )
             .with_span_note(
                 tcx.def_span(trait_const_item.def_id),
-                "trait declaration of const is marked as `type const`",
+                "trait declaration of const is marked as `#[rustc_always_gca]`",
             )
-            .emit());
-    }
-    Ok(())
+            .emit()
+    } else {
+        tcx.dcx()
+            .struct_span_err(
+                tcx.def_span(impl_const_item.def_id),
+                "implementation of a regular const cannot have a `direct_const_arg!` RHS",
+            )
+            .with_span_note(
+                tcx.def_span(trait_const_item.def_id),
+                "trait declaration of const is not marked as `#[rustc_always_gca]`",
+            )
+            .emit()
+    };
+    Err(guar)
 }
 
 /// The equivalent of [compare_method_clause_entailment], but for associated constants

@@ -321,6 +321,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // Internal attributes, Const related:
     // ==========================================================================
 
+    sym::rustc_always_gca,
     sym::rustc_promotable,
     sym::rustc_legacy_const_generics,
     // Do not const-check this function's body. It will always get replaced during CTFE via `hook_special_const_fn`.

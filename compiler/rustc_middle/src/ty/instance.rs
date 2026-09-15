@@ -579,8 +579,8 @@ impl<'tcx> Instance<'tcx> {
             tcx.def_kind(def_id),
             DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::Const { .. }
-                | DefKind::AssocConst { .. }
+                | DefKind::Const
+                | DefKind::AssocConst
                 | DefKind::AnonConst
                 | DefKind::Static { .. }
                 | DefKind::Ctor(_, CtorKind::Fn)

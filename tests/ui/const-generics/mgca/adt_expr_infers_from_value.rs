@@ -17,9 +17,7 @@ struct Foo<T> {
     field: T,
 }
 
-type const WRAP<T: ConstParamTy_, const N: T>: Foo<T> = { Foo::<T> {
-    field: N,
-} };
+const WRAP<T: ConstParamTy_, const N: T>: Foo<T> = core::direct_const_arg!(Foo::<T> { field: N });
 
 fn main() {
     // What we're trying to accomplish here is winding up with an equality relation
@@ -43,4 +41,5 @@ fn main() {
 struct PC<T: ConstParamTy_, const N: T> {
     _0: PhantomData<T>,
 }
-const PC<T: ConstParamTy_, const N: T>: PC<T, N> = PC { _0: PhantomData::<T> };
+// FIXME(min_generic_const_args): this shouldn't have to do silly (expr,).0 hacks
+const PC<T: ConstParamTy_, const N: T>: PC<T, N> = (PC { _0: PhantomData::<T> },).0;

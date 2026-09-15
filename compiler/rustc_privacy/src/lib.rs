@@ -590,7 +590,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             // Effective visibilities for macros are processed earlier.
             DefKind::Macro { .. } => {}
             DefKind::ForeignTy
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::Static { .. }
             | DefKind::Fn
             | DefKind::TyAlias => {
@@ -712,7 +712,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::Variant
             | DefKind::AssocFn
             | DefKind::AssocTy
-            | DefKind::AssocConst { .. }
+            | DefKind::AssocConst
             | DefKind::TyParam
             | DefKind::AnonConst
             | DefKind::OpaqueTy
@@ -790,7 +790,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
                 self.ev.queue.insert(def_id);
             }
 
-            DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy => {
+            DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => {
                 // Traverse the whole impl/trait.
                 self.ev.queue.insert(self.ev.tcx.local_parent(def_id));
             }
@@ -825,7 +825,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
             | DefKind::ExternCrate
             | DefKind::GlobalAsm
             | DefKind::ForeignMod
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::TestBinderConstraints => {
                 span_bug!(
                     self.tcx().def_span(def_id),
@@ -1293,10 +1293,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         let def = def.filter(|(kind, _)| {
             matches!(
                 kind,
-                DefKind::AssocFn
-                    | DefKind::AssocConst { .. }
-                    | DefKind::AssocTy
-                    | DefKind::Static { .. }
+                DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static { .. }
             )
         });
         if let Some((kind, def_id)) = def {
@@ -1621,7 +1618,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
         let def_kind = tcx.def_kind(def_id);
 
         match def_kind {
-            DefKind::Const { .. } | DefKind::Static { .. } | DefKind::Fn | DefKind::TyAlias => {
+            DefKind::Const | DefKind::Static { .. } | DefKind::Fn | DefKind::TyAlias => {
                 if let DefKind::TyAlias = def_kind {
                     self.check_unnameable(def_id, effective_vis);
                 }

@@ -17,6 +17,7 @@ pub mod hardwired {
             // tidy-alphabetical-start
             AARCH64_SOFTFLOAT_NEON,
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
+            ALIGNED_FIELDS_IN_PACKED,
             AMBIGUOUS_ASSOCIATED_ITEMS,
             AMBIGUOUS_DERIVE_HELPERS,
             AMBIGUOUS_GLOB_IMPORTED_TRAITS,
@@ -54,6 +55,7 @@ pub mod hardwired {
             HIDDEN_GLOB_REEXPORTS,
             ILL_FORMED_ATTRIBUTE_INPUT,
             INCOMPLETE_INCLUDE,
+            INEFFECTIVE_UNSTABLE_REEXPORTS,
             INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
             INLINE_NO_SANITIZE,
             INVALID_DOC_ATTRIBUTES,
@@ -2814,6 +2816,39 @@ declare_lint! {
     pub USELESS_DEPRECATED,
     Deny,
     "detects deprecation attributes with no effect",
+}
+
+declare_lint! {
+    /// The `ineffective_unstable_reexports` lint detects `#[unstable]`
+    /// attributes on re-exports where the attribute does not make the
+    /// re-exported path unstable.
+    ///
+    /// ### Example
+    ///
+    #[cfg_attr(bootstrap, doc = "```rust,ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// #![feature(staged_api)]
+    /// #![stable(feature = "test", since = "1.0.0")]
+    ///
+    /// #[stable(feature = "test", since = "1.0.0")]
+    /// pub struct S;
+    ///
+    /// #[unstable(feature = "reexport", issue = "none")]
+    /// pub use self::S as T;
+    ///
+    /// fn main() {}
+    #[doc = "```"]
+    ///
+    #[cfg_attr(not(bootstrap), doc = "{{produces}}")]
+    ///
+    /// ### Explanation
+    ///
+    /// `#[unstable]` on a re-export does not make a stable path unstable
+    /// re-exports inside unstable modules are already on an unstable path
+    pub INEFFECTIVE_UNSTABLE_REEXPORTS,
+    Deny,
+    "detects ineffective `#[unstable]` attributes on re-exports",
+    @feature_gate = staged_api;
 }
 
 declare_lint! {
@@ -5789,4 +5824,33 @@ declare_lint! {
     Deny,
     "duplicate tools found in crate-level `#[register_tools]` directives",
     @feature_gate = register_tool;
+}
+
+declare_lint! {
+    /// The `aligned_fields_in_packed` lint detects fields with `align` representation hints
+    /// inside `repr(C)` types with `packed` representation hint.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #[repr(C, align(16))]
+    /// struct Aligned(i32);
+    ///
+    /// #[repr(C, packed)] // error!
+    /// struct Packed(Aligned);
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The behavior of this combination of hints is inconsistent across C compilers. The layout
+    /// computed for these types by Rust may thus not match the layout actually used by C.
+    /// Specifically, Rust always follows the GCC convention, which makes it incompatible with MSVC
+    /// for these types. This may change in the future for targets where GCC is not the default C
+    /// compiler.
+    pub ALIGNED_FIELDS_IN_PACKED,
+    Deny,
+    "`repr(C, align)` types nested inside `repr(C, packed)` types \
+    do not always have a C-compatible layout",
 }

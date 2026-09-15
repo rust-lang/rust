@@ -6,7 +6,7 @@ use rustc_abi::Align;
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
-use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods, ReturnSlot};
 use rustc_middle::bug;
 use rustc_middle::ty::offload_meta::{MappingFlags, OffloadMetadata, OffloadSize};
 
@@ -681,7 +681,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         let num_args = cx.get_const_i32(num_args);
         let args =
             vec![s_ident_t, i64_max, num_args, geps[0], geps[1], geps[2], o_type, nullptr, nullptr];
-        builder.call(fn_ty, None, None, fn_to_call, &args, None, None);
+        builder.call(fn_ty, None, None, fn_to_call, ReturnSlot::Direct, &args, None, None);
     }
 
     // Step 2)
@@ -718,7 +718,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     let device_id = builder.sext(device_id, cx.type_i64());
     let args = vec![s_ident_t, device_id, num_workgroups, threads_per_block, region_id, a5];
-    builder.call(tgt_target_kernel_ty, None, None, tgt_decl, &args, None, None);
+    builder.call(tgt_target_kernel_ty, None, None, tgt_decl, ReturnSlot::Direct, &args, None, None);
     // %41 = call i32 @__tgt_target_kernel(ptr @1, i64 -1, i32 2097152, i32 256, ptr @.kernel_1.region_id, ptr %kernel_args)
 
     // Step 4)

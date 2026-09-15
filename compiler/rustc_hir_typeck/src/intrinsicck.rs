@@ -78,7 +78,7 @@ fn check_transmute<'tcx>(
     let normalize = |ty: Unnormalized<'tcx, Ty<'tcx>>| -> Result<Ty<'tcx>, ErrorGuaranteed> {
         tcx.try_normalize_erasing_regions(typing_env, ty).map_err(|err| {
             let err = LayoutError::NormalizationFailure(ty.skip_normalization(), err);
-            tcx.dcx().struct_span_err(span, err.to_string()).emit()
+            tcx.dcx().span_err(span, err.to_string())
         })
     };
 

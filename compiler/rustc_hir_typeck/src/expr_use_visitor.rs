@@ -157,7 +157,7 @@ pub trait TypeInformationCtxt<'tcx> {
 
     fn typeck_results(&self) -> Self::TypeckResults<'_>;
 
-    fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T;
+    fn deeply_resolve_ignoring_regions<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T;
 
     fn structurally_resolve_type(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx>;
 
@@ -188,8 +188,8 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
         self.typeck_results.borrow()
     }
 
-    fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
-        self.infcx.resolve_vars_if_possible(t)
+    fn deeply_resolve_ignoring_regions<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
+        self.infcx.deeply_resolve_ignoring_regions(t)
     }
 
     fn structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -242,7 +242,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
         ty
     }
 
-    fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
+    fn deeply_resolve_ignoring_regions<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T {
         t
     }
 
@@ -905,8 +905,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
                     let res = self.cx.typeck_results().qpath_res(qpath, *hir_id);
                     match res {
-                        Res::Def(DefKind::Const { .. }, _)
-                        | Res::Def(DefKind::AssocConst { .. }, _) => {
+                        Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {
                             // Named constants have to be equated with the value
                             // being matched, so that's a read of the value being matched.
                             //
@@ -1127,7 +1126,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     ) -> Result<Ty<'tcx>, Cx::Error> {
         match ty {
             Some(ty) => {
-                let ty = self.cx.resolve_vars_if_possible(ty);
+                let ty = self.cx.deeply_resolve_ignoring_regions(ty);
                 self.cx.error_reported_in_ty(ty)?;
                 Ok(ty)
             }
@@ -1266,7 +1265,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     where
         F: FnOnce() -> Result<PlaceWithHirId<'tcx>, Cx::Error>,
     {
-        let target = self.cx.resolve_vars_if_possible(adjustment.target);
+        let target = self.cx.deeply_resolve_ignoring_regions(adjustment.target);
         match adjustment.kind {
             adjustment::Adjust::Deref(deref_kind) => {
                 // Equivalent to *expr or something similar.
@@ -1402,9 +1401,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         match res {
             Res::Def(
                 DefKind::Ctor(..)
-                | DefKind::Const { .. }
+                | DefKind::Const
                 | DefKind::ConstParam
-                | DefKind::AssocConst { .. }
+                | DefKind::AssocConst
                 | DefKind::Fn
                 | DefKind::AssocFn,
                 _,

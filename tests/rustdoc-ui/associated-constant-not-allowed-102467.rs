@@ -11,7 +11,8 @@ trait T {
 }
 
 trait S {
-    type const C: i32;
+    #[rustc_always_gca]
+    const C: i32;
 }
 
 fn main() {}

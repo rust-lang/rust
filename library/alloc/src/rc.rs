@@ -431,10 +431,11 @@ impl<T> Rc<T> {
         // the allocation while the strong destructor is running, even
         // if the weak pointer is stored inside the strong one.
         unsafe {
-            Self::from_inner(
-                Box::leak(Box::new(RcInner { strong: Cell::new(1), weak: Cell::new(1), value }))
-                    .into(),
-            )
+            Self::from_inner(Box::into_non_null(Box::new(RcInner {
+                strong: Cell::new(1),
+                weak: Cell::new(1),
+                value,
+            })))
         }
     }
 
@@ -578,14 +579,11 @@ impl<T> Rc<T> {
         // the allocation while the strong destructor is running, even
         // if the weak pointer is stored inside the strong one.
         unsafe {
-            Ok(Self::from_inner(
-                Box::leak(Box::try_new(RcInner {
-                    strong: Cell::new(1),
-                    weak: Cell::new(1),
-                    value,
-                })?)
-                .into(),
-            ))
+            Ok(Self::from_inner(Box::into_non_null(Box::try_new(RcInner {
+                strong: Cell::new(1),
+                weak: Cell::new(1),
+                value,
+            })?)))
         }
     }
 
@@ -802,7 +800,7 @@ impl<T, A: Allocator> Rc<T, A> {
     {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
-        let (uninit_raw_ptr, alloc) = Box::into_raw_with_allocator(Box::new_in(
+        let (uninit_ptr, alloc) = Box::into_non_null_with_allocator(Box::new_in(
             RcInner {
                 strong: Cell::new(0),
                 weak: Cell::new(1),
@@ -810,8 +808,6 @@ impl<T, A: Allocator> Rc<T, A> {
             },
             alloc,
         ));
-        // ignore-tidy-undocumented-unsafe
-        let uninit_ptr: NonNull<_> = (unsafe { &mut *uninit_raw_ptr }).into();
         let init_ptr: NonNull<RcInner<T>> = uninit_ptr.cast();
 
         let weak = Weak { ptr: init_ptr, alloc };
@@ -863,12 +859,12 @@ impl<T, A: Allocator> Rc<T, A> {
         // pointers, which ensures that the weak destructor never frees
         // the allocation while the strong destructor is running, even
         // if the weak pointer is stored inside the strong one.
-        let (ptr, alloc) = Box::into_unique(Box::try_new_in(
+        let (ptr, alloc) = Box::into_non_null_with_allocator(Box::try_new_in(
             RcInner { strong: Cell::new(1), weak: Cell::new(1), value },
             alloc,
         )?);
-        // ignore-tidy-undocumented-unsafe
-        Ok(unsafe { Self::from_inner_in(ptr.into(), alloc) })
+        // SAFETY: Pointer is valid.
+        Ok(unsafe { Self::from_inner_in(ptr, alloc) })
     }
 
     /// Constructs a new `Rc` with uninitialized contents, in the provided allocator, returning an
@@ -2658,13 +2654,10 @@ impl<T: Default> Default for Rc<T> {
     fn default() -> Self {
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            Self::from_inner(
-                Box::leak(Box::write(
-                    Box::new_uninit(),
-                    RcInner { strong: Cell::new(1), weak: Cell::new(1), value: T::default() },
-                ))
-                .into(),
-            )
+            Self::from_inner(Box::into_non_null(Box::write(
+                Box::new_uninit(),
+                RcInner { strong: Cell::new(1), weak: Cell::new(1), value: T::default() },
+            )))
         }
     }
 }
@@ -4340,7 +4333,7 @@ impl<T, A: Allocator> UniqueRc<T, A> {
     #[must_use]
     // #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_in(value: T, alloc: A) -> Self {
-        let (ptr, alloc) = Box::into_unique(Box::new_in(
+        let (ptr, alloc) = Box::into_non_null_with_allocator(Box::new_in(
             RcInner {
                 strong: Cell::new(0),
                 // keep one weak reference so if all the weak pointers that are created are dropped
@@ -4350,7 +4343,7 @@ impl<T, A: Allocator> UniqueRc<T, A> {
             },
             alloc,
         ));
-        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
+        Self { ptr, _marker: PhantomData, _marker2: PhantomData, alloc }
     }
 
     #[cfg(not(no_global_oom_handling))]
