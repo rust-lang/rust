@@ -79,14 +79,16 @@ impl OwnedSocket {
     #[allow(implicit_provenance_casts)]
     #[cfg(not(target_vendor = "uwp"))]
     pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
-        cvt(unsafe {
-            sys::c::SetHandleInformation(
-                self.as_raw_socket() as sys::c::HANDLE,
-                sys::c::HANDLE_FLAG_INHERIT,
-                0,
-            )
-        })
-        .map(drop)
+        no_code! {
+            cvt(unsafe {
+                sys::c::SetHandleInformation(
+                    self.as_raw_socket() as sys::c::HANDLE,
+                    sys::c::HANDLE_FLAG_INHERIT,
+                    0,
+                )
+            })
+            .map(drop)
+        }
     }
 
     #[cfg(target_vendor = "uwp")]
@@ -100,35 +102,16 @@ impl BorrowedSocket<'_> {
     /// object as the existing `BorrowedSocket` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> io::Result<OwnedSocket> {
-        let mut info = unsafe { mem::zeroed::<sys::c::WSAPROTOCOL_INFOW>() };
-        let result = unsafe {
-            sys::c::WSADuplicateSocketW(
-                self.as_raw_socket() as sys::c::SOCKET,
-                sys::c::GetCurrentProcessId(),
-                &mut info,
-            )
-        };
-        sys::net::cvt(result)?;
-        let socket = unsafe {
-            sys::c::WSASocketW(
-                info.iAddressFamily,
-                info.iSocketType,
-                info.iProtocol,
-                &info,
-                0,
-                sys::c::WSA_FLAG_OVERLAPPED | sys::c::WSA_FLAG_NO_HANDLE_INHERIT,
-            )
-        };
-
-        if socket != sys::c::INVALID_SOCKET {
-            unsafe { Ok(OwnedSocket::from_raw_socket(socket as RawSocket)) }
-        } else {
-            let error = unsafe { sys::c::WSAGetLastError() };
-
-            if error != sys::c::WSAEPROTOTYPE && error != sys::c::WSAEINVAL {
-                return Err(io::Error::from_raw_os_error(error));
-            }
-
+        no_code! {
+            let mut info = unsafe { mem::zeroed::<sys::c::WSAPROTOCOL_INFOW>() };
+            let result = unsafe {
+                sys::c::WSADuplicateSocketW(
+                    self.as_raw_socket() as sys::c::SOCKET,
+                    sys::c::GetCurrentProcessId(),
+                    &mut info,
+                )
+            };
+            sys::net::cvt(result)?;
             let socket = unsafe {
                 sys::c::WSASocketW(
                     info.iAddressFamily,
@@ -136,18 +119,39 @@ impl BorrowedSocket<'_> {
                     info.iProtocol,
                     &info,
                     0,
-                    sys::c::WSA_FLAG_OVERLAPPED,
+                    sys::c::WSA_FLAG_OVERLAPPED | sys::c::WSA_FLAG_NO_HANDLE_INHERIT,
                 )
             };
 
-            if socket == sys::c::INVALID_SOCKET {
-                return Err(last_error());
-            }
+            if socket != sys::c::INVALID_SOCKET {
+                unsafe { Ok(OwnedSocket::from_raw_socket(socket as RawSocket)) }
+            } else {
+                let error = unsafe { sys::c::WSAGetLastError() };
 
-            unsafe {
-                let socket = OwnedSocket::from_raw_socket(socket as RawSocket);
-                socket.set_no_inherit()?;
-                Ok(socket)
+                if error != sys::c::WSAEPROTOTYPE && error != sys::c::WSAEINVAL {
+                    return Err(io::Error::from_raw_os_error(error));
+                }
+
+                let socket = unsafe {
+                    sys::c::WSASocketW(
+                        info.iAddressFamily,
+                        info.iSocketType,
+                        info.iProtocol,
+                        &info,
+                        0,
+                        sys::c::WSA_FLAG_OVERLAPPED,
+                    )
+                };
+
+                if socket == sys::c::INVALID_SOCKET {
+                    return Err(last_error());
+                }
+
+                unsafe {
+                    let socket = OwnedSocket::from_raw_socket(socket as RawSocket);
+                    socket.set_no_inherit()?;
+                    Ok(socket)
+                }
             }
         }
     }
@@ -155,7 +159,9 @@ impl BorrowedSocket<'_> {
 
 /// Returns the last error from the Windows socket interface.
 fn last_error() -> io::Error {
-    io::Error::from_raw_os_error(unsafe { sys::c::WSAGetLastError() })
+    no_code! {
+        io::Error::from_raw_os_error(unsafe { sys::c::WSAGetLastError() })
+    }
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
@@ -195,8 +201,10 @@ impl FromRawSocket for OwnedSocket {
 impl Drop for OwnedSocket {
     #[inline]
     fn drop(&mut self) {
-        unsafe {
-            let _ = sys::c::closesocket(self.socket.as_inner() as sys::c::SOCKET);
+        no_code! {
+            unsafe {
+                let _ = sys::c::closesocket(self.socket.as_inner() as sys::c::SOCKET);
+            }
         }
     }
 }
