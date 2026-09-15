@@ -95,33 +95,28 @@ pub fn ty_known_to_outlive<'tcx>(
     ty: Unnormalized<'tcx, Ty<'tcx>>,
     region: ty::Region<'tcx>,
 ) -> bool {
-    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
-
-    let ty = ty.skip_norm_wip();
-
-    // Types in region obligations should be normalized.
-    let ty = if infcx.next_trait_solver() {
-        let Ok(ty) = crate::solve::deeply_normalize::<_, ScrubbedTraitError<'tcx>>(
-            infcx.at(&ObligationCause::dummy_with_span(DUMMY_SP), param_env),
-            Unnormalized::new_wip(ty),
-        ) else {
-            return false;
+    test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
+        // Types in region obligations should be normalized.
+        let ty = if infcx.next_trait_solver() {
+            let Ok(ty) = crate::solve::deeply_normalize::<_, ScrubbedTraitError<'tcx>>(
+                infcx.at(&ObligationCause::dummy_with_span(DUMMY_SP), param_env),
+                ty,
+            ) else {
+                return false;
+            };
+            ty
+        } else {
+            ty.skip_norm_wip()
         };
-        ty
-    } else {
-        ty
-    };
 
-    infcx.register_type_outlives_constraint_inner(TypeOutlivesConstraint {
-        sub_region: region,
-        sup_type: ty,
-        origin: SubregionOrigin::RelateParamBound(DUMMY_SP, ty, None),
-    });
+        infcx.register_type_outlives_constraint_inner(TypeOutlivesConstraint {
+            sub_region: region,
+            sup_type: ty,
+            origin: SubregionOrigin::RelateParamBound(DUMMY_SP, ty, None),
+        });
 
-    let errors = infcx.resolve_regions(id, param_env, wf_tys.iter().copied());
-    tracing::debug!(?errors, "errors");
-
-    errors.is_empty()
+        true
+    })
 }
 
 /// Given a known `param_env` and a set of well formed types, can we prove that
@@ -141,6 +136,7 @@ pub fn region_known_to_outlive<'tcx>(
             region_a,
             ty::VisibleForLeakCheck::Unreachable,
         );
+        true
     })
 }
 
@@ -152,14 +148,16 @@ pub fn test_region_obligations<'tcx>(
     id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
     wf_tys: &FxIndexSet<Ty<'tcx>>,
-    add_constraints: impl FnOnce(&InferCtxt<'tcx>),
+    add_constraints: impl FnOnce(&InferCtxt<'tcx>) -> bool,
 ) -> bool {
     // Unfortunately, we have to use a new `InferCtxt` each call, because
     // region constraints get added and solved there and we need to test each
     // call individually.
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
 
-    add_constraints(&infcx);
+    if !add_constraints(&infcx) {
+        return false;
+    }
 
     let errors = infcx.resolve_regions(id, param_env, wf_tys.iter().copied());
     tracing::debug!(?errors, "errors");
