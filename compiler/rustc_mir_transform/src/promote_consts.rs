@@ -16,7 +16,6 @@ use std::{assert_matches, cmp, iter, mem};
 use either::{Left, Right};
 use rustc_const_eval::check_consts::{ConstCx, qualifs};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_index::{IndexSlice, IndexVec};
@@ -756,7 +755,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             Some(Terminator {
                 source_info: SourceInfo::outermost(span),
                 kind: TerminatorKind::Return,
-                attributes: ThinVec::new(),
+                attributes: None,
             }),
             false,
         ))
@@ -845,7 +844,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Terminator {
                     source_info: terminator.source_info,
                     kind: mem::replace(&mut terminator.kind, TerminatorKind::Goto { target }),
-                    attributes: ThinVec::new(),
+                    attributes: None,
                 }
             };
 
