@@ -65,9 +65,9 @@ impl LateLintPass<'_> for ItemsAfterTestModule {
 
         let after: Vec<_> = items
             .filter(|item| {
-                // Ignore the generated test main function
-                if let ItemKind::Fn { ident, .. } = item.kind
-                    && ident.name == sym::main
+                // Ignore the generated test main function and `extern crate test`
+                if (matches!(item.kind, ItemKind::Fn { ident, .. } if ident.name == sym::main)
+                    || matches!(item.kind, ItemKind::ExternCrate(None, ident) if ident.name == sym::test))
                     && item.span.ctxt().outer_expn_data().kind == ExpnKind::AstPass(AstPass::TestHarness)
                 {
                     false
