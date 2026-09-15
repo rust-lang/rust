@@ -15,11 +15,7 @@ where
         let BackendRepr::Scalar(scalar) = layout.backend_repr else {
             return None;
         };
-        let kind = match scalar.primitive() {
-            Primitive::Int(..) | Primitive::Pointer(_) => RegKind::Integer,
-            Primitive::Float(_) => RegKind::Float,
-        };
-        return Some(Reg { kind, size: layout.size });
+        return Some(Reg { kind: RegKind::from_primitive(scalar.primitive()), size: layout.size });
     }
 
     let mut found = None;
