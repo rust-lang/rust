@@ -1,4 +1,4 @@
-//@ revisions: a b c d e f g
+//@ revisions: a b c d e f g h
 //@ ignore-parallel-frontend option conflicts
 //@ compile-flags: -Z unstable-options
 
@@ -20,5 +20,8 @@
 
 //@[g] compile-flags: --jobs 1 --jobs 2
 //[g]~? RAW Option 'jobs' given more than once
+
+//@[h] compile-flags: --reproducible true --reproducible false
+//[h]~? RAW Option 'reproducible' given more than once
 
 fn main() {}
