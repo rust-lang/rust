@@ -1182,7 +1182,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target: Target,
-        ast_target: Option<AstTarget<'_>>,
+        ast_target: AstTarget<'_>,
     ) -> &'hir [hir::Attribute] {
         self.lower_attrs_with_extra(id, attrs, target_span, target, ast_target, &[])
     }
@@ -1193,7 +1193,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target: Target,
-        ast_target: Option<AstTarget<'_>>,
+        ast_target: AstTarget<'_>,
         extra_hir_attributes: &[hir::Attribute],
     ) -> &'hir [hir::Attribute] {
         if attrs.is_empty() && extra_hir_attributes.is_empty() {
@@ -1227,7 +1227,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         target_span: Span,
         target_hir_id: HirId,
         target: Target,
-        ast_target: Option<AstTarget<'_>>,
+        ast_target: AstTarget<'_>,
     ) -> Vec<hir::Attribute> {
         let l = self.span_lowerer();
         self.attribute_parser.parse_attribute_list(
@@ -2296,7 +2296,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let hir_id = self.lower_node_id(param.id);
         let param_attrs = &param.attrs;
         let param_span = param.span();
-        let param = hir::GenericParam {
+        let param_hir = hir::GenericParam {
             hir_id,
             def_id: self.local_def_id(param.id),
             name,
@@ -2306,8 +2306,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             colon_span: param.colon_span.map(|s| self.lower_span(s)),
             source,
         };
-        self.lower_attrs(hir_id, param_attrs, param_span, Target::from(&param), None);
-        param
+        self.lower_attrs(
+            hir_id,
+            param_attrs,
+            param_span,
+            Target::from(&param_hir),
+            AstTarget::GenericParam(param),
+        );
+        param_hir
     }
 
     fn lower_generic_param_kind(
@@ -2926,7 +2932,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // FIXME(mgca): This might result in lowering attributes that
                     // then go unused as the `Target::ExprField` is not actually
                     // corresponding to `Node::ExprField`.
-                    self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField, None);
+                    self.lower_attrs(
+                        hir_id,
+                        &f.attrs,
+                        f.span,
+                        Target::ExprField,
+                        AstTarget::Expr(expr),
+                    );
                     let expr = self.lower_expr_to_const_arg_direct(&f.expr, None);
 
                     &*self.arena.alloc(hir::ConstArgExprField {
