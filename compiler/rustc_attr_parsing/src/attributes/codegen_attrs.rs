@@ -336,13 +336,9 @@ impl AttributeParser for NakedParser {
                 | Target::Method(
                     MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
                 ) => {
-                    let Some(ast_target) = cx.ast_target else {
-                        panic!("missing AST target for {:?}", cx.target);
-                    };
-
                     let fn_sig =
-                        ast_target.get_fn_sig().expect("missing fn signature for AST target");
-                    let Some(abi) = ast_target.get_abi() else {
+                        cx.ast_target.get_fn_sig().expect("missing fn signature for AST target");
+                    let Some(abi) = cx.ast_target.get_abi() else {
                         return;
                     };
 
