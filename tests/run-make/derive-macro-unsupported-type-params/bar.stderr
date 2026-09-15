@@ -8,7 +8,7 @@ error[E0107]: missing generics for enum `A`
  --> bar.rs:8:6
   |
 7 | #[derive(A)]
-  |          - it looks like this derive macro might not support annotating items with type parameters
+  |          - it looks like this derive macro might not support annotating items with generic parameters
 8 | enum A<T> {
   |      ^
 
@@ -16,7 +16,7 @@ error[E0107]: missing generics for enum `A`
  --> bar.rs:8:6
   |
 7 | #[derive(A)]
-  |          - it looks like this derive macro might not support annotating items with type parameters
+  |          - it looks like this derive macro might not support annotating items with generic parameters
 8 | enum A<T> {
   |      ^
 

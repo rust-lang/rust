@@ -20,10 +20,8 @@ pub fn derive(item: TokenStream) -> TokenStream {
     let arg = args.stream().into_iter().next().unwrap();
     let tokens = quote! {
         trait X {}
-        #[automatically_derived]
         impl X for $name {}
 
-        #[automatically_derived]
         impl $name {
             fn foo(&self) {
                 if let Self :: $variant(val) = self {

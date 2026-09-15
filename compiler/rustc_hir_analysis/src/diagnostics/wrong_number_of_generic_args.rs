@@ -548,20 +548,19 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn bad_derive(&self, err: &mut Diag<'_, impl EmissionGuarantee>) -> bool {
+    fn bad_derive<G>(&self, err: &mut Diag<'_, G>) -> bool {
+        let cx_span = self.tcx.def_span(self.cx_def_id);
         if let Some(ident) = self.tcx.opt_item_ident(self.def_id)
-            && self.def_id.is_local()
+            && cx_span.in_derive_expansion()
             && self.path_segment.ident.span.source_equal(ident.span)
-            && self.tcx.is_automatically_derived(self.cx_def_id.into())
         {
             // Very likely this is a botched `derive` which passes the iten name straight
             // through, but doesn't support type parameters.
             err.span_label(
                 self.tcx.def_span(self.cx_def_id),
-                "it looks like this derive macro might not support annotating items with type \
-                 parameters",
+                "it looks like this derive macro might not support annotating items with \
+                 generic parameters",
             );
-
             return true;
         }
         false
