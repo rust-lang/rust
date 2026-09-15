@@ -1406,23 +1406,30 @@ fn generate_link_to_def(
                     LinkFromSrc::Local(span) => {
                         context.href_from_span_relative(*span, &href_context.current_href)
                     }
-                    LinkFromSrc::External(def_id) => {
-                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
-                            .ok()
-                            .map(|HrefInfo { url, .. }| url)
-                    }
+                    LinkFromSrc::External(def_id) => format::href_with_root_path(
+                        *def_id,
+                        context,
+                        Some(href_context.root_path),
+                        None,
+                    )
+                    .ok()
+                    .map(|HrefInfo { url, .. }| url),
                     LinkFromSrc::Primitive(prim) => format::href_with_root_path(
                         PrimitiveType::primitive_locations(context.tcx())[prim],
                         context,
                         Some(href_context.root_path),
+                        None,
                     )
                     .ok()
                     .map(|HrefInfo { url, .. }| url),
-                    LinkFromSrc::Doc(def_id) => {
-                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
-                            .ok()
-                            .map(|HrefInfo { url, .. }| url)
-                    }
+                    LinkFromSrc::Doc(def_id) => format::href_with_root_path(
+                        *def_id,
+                        context,
+                        Some(href_context.root_path),
+                        None,
+                    )
+                    .ok()
+                    .map(|HrefInfo { url, .. }| url),
                 }
             })
     {

@@ -18,6 +18,27 @@ use crate::formats::item_type::ItemType;
 use crate::html::render::{IndexItem, IndexItemInfo};
 use crate::visit_lib::RustdocEffectiveVisibilities;
 
+pub(crate) struct PathInfo {
+    /// Parts of the path. So in `foo::bar::bib`, it will be `["foo", "bar", "bib"]`.
+    pub(crate) parts: Vec<Symbol>,
+    pub(crate) ty: ItemType,
+    /// When a reexport inline an item, we can end up with the same `DefId` with multiple local
+    /// targets. So in case like:
+    ///
+    /// ```
+    /// /// Link to [`a2`].
+    /// pub use std::ffi::os_str::OsString as a1;
+    /// /// Link to [`a1`].
+    /// pub use std::ffi::os_str::OsString as a2;
+    /// /// Link to [`a2`].
+    /// pub use std::ffi::os_str::OsString as a3;
+    /// ```
+    ///
+    /// To ensure that `a1` and `a2` links to `a1` and `a2` which have the same `DefId`, we need
+    /// to store both paths.
+    pub(crate) alternatives: Vec<Vec<Symbol>>,
+}
+
 /// This cache is used to store information about the [`clean::Crate`] being
 /// rendered in order to provide more useful documentation. This contains
 /// information like all implementors of a trait, all traits a type implements,
@@ -42,7 +63,7 @@ pub(crate) struct Cache {
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    pub(crate) paths: FxIndexMap<DefId, (Vec<Symbol>, ItemType)>,
+    pub(crate) paths: FxIndexMap<DefId, PathInfo>,
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
@@ -358,7 +379,8 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::ForeignTypeItem
             | clean::MacroItem(..)
             | clean::ProcMacroItem(..)
-            | clean::VariantItem(..) => {
+            | clean::VariantItem(..)
+            | clean::PrimitiveItem(..) => {
                 use rustc_data_structures::fx::IndexEntry as Entry;
 
                 let skip_because_unstable = matches!(
@@ -376,20 +398,30 @@ impl DocFolder for CacheBuilder<'_, '_> {
                     let item_def_id = item.item_id.expect_def_id();
                     match self.cache.paths.entry(item_def_id) {
                         Entry::Vacant(entry) => {
-                            entry.insert((self.cache.stack.clone(), item.type_()));
+                            entry.insert(PathInfo {
+                                parts: self.cache.stack.clone(),
+                                ty: item.type_(),
+                                alternatives: Vec::new(),
+                            });
                         }
                         Entry::Occupied(mut entry) => {
-                            if entry.get().0.len() > self.cache.stack.len() {
-                                entry.insert((self.cache.stack.clone(), item.type_()));
+                            // Shorter paths are preferred by default.
+                            if entry.get().parts.len() > self.cache.stack.len() {
+                                let old_parts = std::mem::replace(
+                                    &mut entry.get_mut().parts,
+                                    self.cache.stack.clone(),
+                                );
+                                // We only keep the old path if it's a different (final) name.
+                                if old_parts.last() != self.cache.stack.last() {
+                                    entry.get_mut().alternatives.push(old_parts);
+                                }
+                            }
+                            if !entry.get().alternatives.contains(&self.cache.stack) {
+                                entry.get_mut().alternatives.push(self.cache.stack.clone());
                             }
                         }
                     }
                 }
-            }
-            clean::PrimitiveItem(..) => {
-                self.cache
-                    .paths
-                    .insert(item.item_id.expect_def_id(), (self.cache.stack.clone(), item.type_()));
             }
 
             clean::ExternCrateItem { .. }
@@ -570,7 +602,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             // in a field of the cache whose elements are added to the search index later,
             // after cache building is complete (see `handle_orphan_impl_child`).
             match cache.paths.get(&parent_did) {
-                Some((fqp, _)) => (Some(parent_did), &fqp[..fqp.len() - 1]),
+                Some(info) => (Some(parent_did), &info.parts[..info.parts.len() - 1]),
                 None => {
                     handle_orphan_impl_child(cache, item, parent_did);
                     return;
