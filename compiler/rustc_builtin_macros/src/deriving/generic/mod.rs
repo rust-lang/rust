@@ -774,6 +774,7 @@ impl<'a> TraitDef<'a> {
         // Other crates don't need stability attributes, so adding them is not useful, but libcore needs them
         // on all const trait impls.
         if self.is_const && cx.ecfg.features.staged_api() {
+            // #[rustc_const_unstable(feature = "derive_const", issue = "118304")]
             attrs.push(
                 cx.attr_nested(
                     rustc_ast::AttrItem {
@@ -1195,24 +1196,21 @@ impl<'a> MethodDef<'a> {
         // let __self_discr = ::core::intrinsics::discriminant_value(self);
         // let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         // ```
-        let get_discr_pieces = |cx: &ExtCtxt<'_>| {
-            let discr_idents: Vec<_> = prefixes
+        let get_discr_pieces = || {
+            let discr_idents = prefixes
                 .iter()
-                .map(|name| Ident::from_str_and_span(&format!("{name}_discr"), span))
-                .collect();
+                .map(|name| Ident::from_str_and_span(&format!("{name}_discr"), span));
 
-            let mut discr_exprs: Vec<_> = discr_idents
-                .iter()
-                .map(|&ident| cx.expr_addr_of(span, cx.expr_ident(span, ident)))
-                .collect();
+            let mut discr_exprs =
+                discr_idents.clone().map(|ident| cx.expr_addr_of(span, cx.expr_ident(span, ident)));
 
-            let self_expr = discr_exprs.remove(0);
-            let other_selflike_exprs = discr_exprs;
+            let self_expr = discr_exprs.next().unwrap();
+            let other_selflike_exprs = discr_exprs.collect();
             let discr_field =
                 FieldInfo { span, name: None, self_expr, other_selflike_exprs, maybe_scalar: true };
 
-            let discr_let_stmts: ThinVec<_> = iter::zip(&discr_idents, &selflike_args)
-                .map(|(&ident, selflike_arg)| {
+            let discr_let_stmts: ThinVec<_> = iter::zip(discr_idents, &selflike_args)
+                .map(|(ident, selflike_arg)| {
                     let variant_value = deriving::call_intrinsic(
                         cx,
                         span,
@@ -1236,7 +1234,7 @@ impl<'a> MethodDef<'a> {
                         // If the type is fieldless and the trait uses the discriminant and
                         // there are multiple variants, we need just an operation on
                         // the discriminant(s).
-                        let (discr_field, mut discr_let_stmts) = get_discr_pieces(cx);
+                        let (discr_field, mut discr_let_stmts) = get_discr_pieces();
                         let mut discr_check = self.call_substructure_method(
                             cx,
                             trait_,
@@ -1371,7 +1369,7 @@ impl<'a> MethodDef<'a> {
         // to add a discriminant check operation before the match. Otherwise, the match
         // is enough.
         if unify_fieldless_variants && variants.len() > 1 {
-            let (discr_field, mut discr_let_stmts) = get_discr_pieces(cx);
+            let (discr_field, mut discr_let_stmts) = get_discr_pieces();
 
             // Combine a discriminant check with the match.
             let mut discr_check_plus_match = self.call_substructure_method(
