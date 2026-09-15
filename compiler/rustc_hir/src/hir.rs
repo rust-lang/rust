@@ -1707,6 +1707,10 @@ impl DotDotPos {
     pub fn as_opt_usize(&self) -> Option<usize> {
         if self.0 == u32::MAX { None } else { Some(self.0 as usize) }
     }
+
+    pub fn is_some(&self) -> bool {
+        self.0 != u32::MAX
+    }
 }
 
 impl fmt::Debug for DotDotPos {
