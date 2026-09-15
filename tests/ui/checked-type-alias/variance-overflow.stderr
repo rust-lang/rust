@@ -23,7 +23,34 @@ LL | type Second = Second; // diverging free alias type
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 
-error: aborting due to 3 previous errors
+error[E0275]: overflow normalizing the type alias `Diverging<(((((((_,),),),),),),)>`
+  --> $DIR/variance-overflow.rs:26:1
+   |
+LL | type Diverging<T> = Diverging<(T,)>;
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-overflow.rs:29:13
+   |
+LL | struct Wrap<T>(Diverging<T>);
+   |             ^            - `T` is named here, but this does not constrain `T`
+   |             |
+   |             unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0275]: overflow normalizing the type alias `Diverging<(((((((_,),),),),),),)>`
+  --> $DIR/variance-overflow.rs:29:16
+   |
+LL | struct Wrap<T>(Diverging<T>);
+   |                ^^^^^^^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0275, E0392.
 For more information about an error, try `rustc --explain E0275`.

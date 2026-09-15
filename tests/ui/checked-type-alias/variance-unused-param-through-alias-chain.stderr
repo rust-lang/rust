@@ -1,0 +1,34 @@
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-param-through-alias-chain.rs:7:16
+   |
+LL | struct Ignores<T> {}
+   |                ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-param-through-alias-chain.rs:13:13
+   |
+LL | struct Wrap<T>(Forward<T>);
+   |             ^          - `T` is named here, but `Forward` does not use it
+   |             |
+   |             unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error: type parameter `T` is only used recursively
+  --> $DIR/variance-unused-param-through-alias-chain.rs:22:42
+   |
+LL | struct Recursive<T>(Repeat<Box<Recursive<T>>>);
+   |                  -                       ^
+   |                  |
+   |                  type parameter must be used non-recursively in the definition
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0392`.
