@@ -1929,16 +1929,12 @@ fn op_to_prop_const<'tcx>(
     // If this constant is already represented as an `Allocation`,
     // try putting it into global memory to return it.
     if let Either::Left(mplace) = op.as_mplace_or_imm() {
-        let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
-        let (prov, offset) = pointer.prov_and_relative_offset();
-        let alloc_id = prov.alloc_id();
+        let (alloc_id, offset, _) = ecx.ptr_try_get_alloc_id(mplace.ptr(), 0).ok()?;
 
         // Do not try interning a value that contains provenance.
         // Due to https://github.com/rust-lang/rust/issues/128775, doing so could lead to bugs.
         // FIXME: remove this hack once that issue is fixed.
-        let size = ecx.get_alloc_info(alloc_id).size;
-        let alloc_ref = ecx.get_ptr_alloc(mplace.ptr(), size).discard_err()??;
-        if alloc_ref.has_provenance() {
+        if ecx.has_provenance_in_alloc(alloc_id).discard_err()? {
             return None;
         }
 
