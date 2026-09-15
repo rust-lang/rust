@@ -16,7 +16,7 @@ extern crate rustc_public;
 
 use rustc_public::abi::{
     ArgAbi, ArgExtension, CallConvention, FieldsShape, IntegerLength, PassMode, Primitive, Scalar,
-    ValueAbi, VariantsShape,
+    ValueRepr, VariantsShape,
 };
 use rustc_public::mir::MirVisitor;
 use rustc_public::mir::mono::Instance;
@@ -144,7 +144,7 @@ fn check_niche(abi: &ArgAbi) {
     assert!(layout.is_sized());
     assert_eq!(layout.size.bytes(), 1);
 
-    let ValueAbi::Scalar(scalar) = layout.abi else { unreachable!() };
+    let ValueRepr::Scalar(scalar) = layout.value_repr else { unreachable!() };
     assert!(scalar.has_niche(&MachineInfo::target()), "Opps: {:?}", scalar);
 
     let Scalar::Initialized { value, valid_range } = scalar else { unreachable!() };
