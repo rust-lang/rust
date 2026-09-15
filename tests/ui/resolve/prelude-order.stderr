@@ -4,14 +4,23 @@ error[E0433]: cannot find `inner` in `type_ns`
 LL | #[type_ns::inner]
    |            ^^^^^ could not find `inner` in `type_ns`
 
+error: attribute macro `type_ns::inner` is ambiguous
+  --> $DIR/prelude-order.rs:62:3
+   |
+LL | #[type_ns::inner]
+   |   ^^^^^^^^^^^^^^
+   |
+   = note: ambiguous because of a name conflict with a tool namespace
+   = note: `type_ns` could refer to a tool namespace
+
 error[E0433]: cannot find `inner` in `usize`
-  --> $DIR/prelude-order.rs:74:10
+  --> $DIR/prelude-order.rs:76:10
    |
 LL | #[usize::inner]
    |          ^^^^^ could not find `inner` in `usize`
 
 error[E0573]: expected type, found crate `Option`
-  --> $DIR/prelude-order.rs:80:12
+  --> $DIR/prelude-order.rs:82:12
    |
 LL | fn e2() -> Option<i32> { None }
    |            ^^^^^^^^^^^ not a type
@@ -22,7 +31,7 @@ LL + use std::option::Option;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/prelude-order.rs:83:1
+  --> $DIR/prelude-order.rs:85:1
    |
 LL | #[test]
    | ^^^^^^^- help: try adding a return type: `-> &'static str`
@@ -32,7 +41,7 @@ LL | #[test]
    = note: this error originates in the attribute macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
-  --> $DIR/prelude-order.rs:87:1
+  --> $DIR/prelude-order.rs:89:1
    |
 LL | #[global_allocator]
    | ^^^^^^^^^^^^^^^^^^^- help: try adding a return type: `-> &'static str`
@@ -41,7 +50,7 @@ LL | #[global_allocator]
    |
    = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0308, E0433, E0573.
 For more information about an error, try `rustc --explain E0308`.
