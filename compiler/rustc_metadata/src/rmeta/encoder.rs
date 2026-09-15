@@ -12,7 +12,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, EncodeCrossCrate};
-use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
+use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
@@ -43,7 +43,7 @@ use crate::rmeta::*;
 
 pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: opaque::FileEncoder<'a>,
-    tcx: TyCtxt<'tcx>,
+    pub(super) tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
     tables: TableBuilders,
 
@@ -69,7 +69,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     hygiene_ctxt: &'a HygieneEncodeContext,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
-    def_indexes_remapping: IndexVec<DefIndex, DefIndex>,
+    pub(super) def_indexes_remapping: FxHashMap<DefIndex, DefIndex>,
     can_remap_index: bool,
 }
 
@@ -149,11 +149,7 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_index(&mut self, def_index: DefIndex) {
-        self.emit_u32(if self.can_remap_index {
-            self.def_indexes_remapping[def_index].as_u32()
-        } else {
-            def_index.as_u32()
-        });
+        self.emit_u32(self.map_index(def_index).as_u32());
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
@@ -534,7 +530,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         } else {
             let mut data = defs
                 .enumerated_keys_and_path_hashes()
-                .map(|(i, k, h)| (self.def_indexes_remapping[i], k, h))
+                .map(|(i, k, h)| (self.map_index(i), k, h))
                 .collect::<Vec<_>>();
 
             data.sort_by_key(|(idx, ..)| *idx);
@@ -621,29 +617,34 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn create_def_index_remapping(&mut self) {
         let tcx = self.tcx;
+        let defs = tcx.untracked().definitions.read();
 
-        let mut indices = tcx
-            .untracked()
-            .definitions
-            .read()
-            .enumerated_keys_and_path_hashes()
-            .map(|(idx, _, def_path_hash)| (idx, def_path_hash))
-            .collect::<Vec<_>>();
-
-        indices.sort_by_key(|(_, def_path)| def_path.local_hash().as_u64());
-
-        let mut result = IndexVec::with_capacity(indices.len());
-        for (remapped_index, (idx, _)) in indices.into_iter().enumerate() {
-            result.ensure_contains_elem(idx, || DefIndex::from_usize(0));
-
-            result[idx] = if idx.as_usize() == 0 {
-                CRATE_DEF_INDEX
-            } else {
-                DefIndex::from_usize(remapped_index + 1)
-            };
+        let mut to_remap = vec![];
+        let mut def_ids = vec![];
+        for idx in 0..defs.num_definitions() {
+            let def_id = LocalDefId { local_def_index: idx.into() };
+            if let Some(data) = defs.def_path(def_id).data.last()
+                && matches!(
+                    data.data,
+                    DefPathData::SyntheticCoroutineBody
+                        | DefPathData::OpaqueLifetime(..)
+                        | DefPathData::NestedStatic
+                        | DefPathData::AnonAssocTy(..)
+                )
+            {
+                to_remap.push((def_id, defs.def_path_hash(def_id).local_hash()));
+                def_ids.push(def_id);
+            }
         }
 
-        self.def_indexes_remapping = result;
+        to_remap.sort_by_key(|(_, hash)| *hash);
+
+        let mut remapping = FxHashMap::default();
+        for ((orig_id, _), remapped_id) in to_remap.into_iter().zip(def_ids) {
+            remapping.insert(orig_id.local_def_index, remapped_id.local_def_index);
+        }
+
+        self.def_indexes_remapping = remapping;
     }
 
     fn encode_crate_root(&mut self) -> LazyValue<CrateRoot> {
@@ -1451,11 +1452,26 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn map_def_id(&self, def_id: impl Into<DefId>) -> DefId {
         let def_id = def_id.into();
         match def_id.as_local() {
-            Some(def_id) => DefId {
-                index: self.def_indexes_remapping[def_id.local_def_index],
-                krate: LOCAL_CRATE,
-            },
+            Some(def_id) => {
+                if let Some(index) =
+                    self.def_indexes_remapping.get(&def_id.local_def_index).copied()
+                {
+                    DefId { index, krate: LOCAL_CRATE }
+                } else {
+                    def_id.to_def_id()
+                }
+            }
             None => def_id,
+        }
+    }
+
+    fn map_index(&self, index: DefIndex) -> DefIndex {
+        if self.can_remap_index
+            && let Some(index) = self.def_indexes_remapping.get(&index).copied()
+        {
+            index
+        } else {
+            index
         }
     }
 
@@ -1474,7 +1490,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             .into_iter()
             .collect::<Vec<_>>();
 
-        def_ids.sort_by_key(|idx| self.def_indexes_remapping[DefIndex::from(*idx)]);
+        def_ids.sort_by_key(|idx| self.map_index(DefIndex::from(*idx)));
 
         for local_id in
             def_ids.into_iter().map(|idx| LocalDefId { local_def_index: DefIndex::from(idx) })

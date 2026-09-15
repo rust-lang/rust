@@ -22,7 +22,7 @@ impl DefPathHashMapRef<'_> {
             DefPathHashMapRef::OwnedFromMetadata(ref map) => {
                 map.get(&def_path_hash.local_hash()).copied()
             }
-            DefPathHashMapRef::BorrowedFromTcx(_) => {
+            DefPathHashMapRef::BorrowedFromTcx(..) => {
                 panic!("DefPathHashMap::BorrowedFromTcx variant only exists for serialization")
             }
         }
