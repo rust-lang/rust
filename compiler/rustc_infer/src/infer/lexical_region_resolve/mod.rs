@@ -580,17 +580,13 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     let sub_data = var_data.value_mut(sub_vid);
                     debug!("contraction: {:?} == {:?}, {:?}", sub_vid, sub_data, c.sup);
 
-                    let VarValue::Value(sub_region) = *sub_data else {
-                        continue;
-                    };
-
                     // Do not report these errors immediately:
                     // instead, set the variable value to error and
                     // collect them later.
-                    if !self.sub_concrete_regions(sub_region, c.sup) {
+                    if !self.sub_region_values(*sub_data, VarValue::Value(c.sup)) {
                         debug!(
                             "region error at {:?}: cannot verify that {:?}={:?} <= {:?}",
-                            origin, sub_vid, sub_region, c.sup
+                            origin, sub_vid, sub_data, c.sup
                         );
                         *sub_data = VarValue::ErrorValue;
                     }
