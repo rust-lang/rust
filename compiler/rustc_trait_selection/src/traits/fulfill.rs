@@ -12,6 +12,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::bug;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, Binder, Const, DelayedSet, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,

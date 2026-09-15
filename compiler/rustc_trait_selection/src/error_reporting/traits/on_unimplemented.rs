@@ -4,6 +4,7 @@ use rustc_hir as hir;
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, FilterOptions, FormatArgs};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, GenericParamDef, GenericParamDefKind};
 use rustc_span::Symbol;

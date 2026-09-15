@@ -17,6 +17,7 @@ use crate::mir::interpret::{
 use crate::mir::visit::Visitor;
 use crate::mir::*;
 use crate::ty::CoroutineArgsExt;
+use crate::ty::consts::ConstExt;
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
