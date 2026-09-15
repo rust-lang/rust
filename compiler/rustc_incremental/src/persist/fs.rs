@@ -116,6 +116,8 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_data_structures::{base_n, flock};
 use rustc_fs_util::{LinkOrCopy, link_or_copy, try_canonicalize};
 use rustc_middle::bug;
+use rustc_middle::dep_graph::WorkProduct;
+use rustc_session::config::OutputType;
 use rustc_session::{IncrCompSession, Session, StableCrateId};
 use rustc_span::Symbol;
 use tracing::debug;
@@ -130,7 +132,6 @@ const DEP_GRAPH_FILENAME: &str = "dep-graph.bin";
 const STAGING_DEP_GRAPH_FILENAME: &str = "dep-graph.part.bin";
 const WORK_PRODUCTS_FILENAME: &str = "work-products.bin";
 const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
-const METADATA_WORK_PRODUCT_FILENAME: &str = "metadata.rmeta";
 
 // We encode integers using the following base, so they are shorter than decimal
 // or hexadecimal numbers (we want short file and directory names). Since these
@@ -346,7 +347,11 @@ pub fn finalize_session_directory(
         // See https://github.com/rust-lang/rust/issues/151181
         if let Err(err) = replace_hard_link_with_copy(&in_incr_comp_dir_sess(
             &incr_comp_session,
-            METADATA_WORK_PRODUCT_FILENAME,
+            &format!(
+                "{}.{}",
+                WorkProduct::METADATA_WORKPRODUCT_CGU_NAME,
+                OutputType::Metadata.extension()
+            ),
         )) {
             debug!("finalize_session_directory() - error replacing hard link with copy: {}", err);
         }
