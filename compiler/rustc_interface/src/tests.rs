@@ -39,7 +39,7 @@ where
 {
     let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
     let matches = optgroups().parse(args).unwrap();
-    let sessopts = build_session_options(&mut early_dcx, &matches);
+    let sessopts = build_session_options(&mut early_dcx, &matches, true);
     let target = rustc_session::config::build_target_config(
         &early_dcx,
         &sessopts.target_triple,
@@ -938,7 +938,7 @@ fn test_edition_parsing() {
     let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     let matches = optgroups().parse(&["--edition=2018".to_string()]).unwrap();
-    let sessopts = build_session_options(&mut early_dcx, &matches);
+    let sessopts = build_session_options(&mut early_dcx, &matches, false);
     assert!(sessopts.edition == Edition::Edition2018)
 }
 
@@ -949,7 +949,7 @@ fn test_assumptions_on_binders_enables_next_solver_globally() {
 
     // `-Zassumptions-on-binders` alone enables the next solver globally.
     let matches = optgroups().parse(&["-Zassumptions-on-binders".to_string()]).unwrap();
-    let opts = build_session_options(&mut early_dcx, &matches);
+    let opts = build_session_options(&mut early_dcx, &matches, false);
     assert!(opts.unstable_opts.assumptions_on_binders);
     assert_eq!(opts.unstable_opts.next_solver, globally);
 
@@ -960,7 +960,7 @@ fn test_assumptions_on_binders_enables_next_solver_globally() {
         ["-Znext-solver=coherence".to_string(), "-Zassumptions-on-binders".to_string()],
     ] {
         let matches = optgroups().parse(&args).unwrap();
-        let opts = build_session_options(&mut early_dcx, &matches);
+        let opts = build_session_options(&mut early_dcx, &matches, false);
         assert!(opts.unstable_opts.assumptions_on_binders);
         assert_eq!(opts.unstable_opts.next_solver, globally);
     }
@@ -973,7 +973,7 @@ fn test_assumptions_on_binders_enables_next_solver_globally() {
         ["-Znext-solver=no".to_string(), "-Zassumptions-on-binders".to_string()],
     ] {
         let matches = optgroups().parse(&args).unwrap();
-        let opts = build_session_options(&mut early_dcx, &matches);
+        let opts = build_session_options(&mut early_dcx, &matches, false);
         assert!(opts.unstable_opts.assumptions_on_binders);
         assert_eq!(opts.unstable_opts.next_solver, globally);
     }
