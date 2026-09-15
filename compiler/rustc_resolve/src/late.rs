@@ -5408,6 +5408,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     }
                 }
             }
+            ExprKind::FormatArgs(ref args) => {
+                for arg in args.arguments.all_args() {
+                    // Keep the format context so recovery can add a named argument instead.
+                    let parent =
+                        matches!(arg.kind, FormatArgumentKind::Captured(_)).then_some(expr);
+                    self.resolve_expr(&arg.expr, parent);
+                }
+            }
             ExprKind::Type(ref _type_expr, ref _ty) => {
                 visit::walk_expr(self, expr);
             }
