@@ -127,7 +127,9 @@ impl UnixStream {
     /// }
     /// ```
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe { getsockname(self.0.as_raw(), addr, len) })
+        no_code! {
+            SocketAddr::new(|addr, len| unsafe { getsockname(self.0.as_raw(), addr, len) })
+        }
     }
 
     /// Returns the socket address of the remote half of this connection.
@@ -146,7 +148,9 @@ impl UnixStream {
     /// }
     /// ```
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe { getpeername(self.0.as_raw(), addr, len) })
+        no_code! {
+            SocketAddr::new(|addr, len| unsafe { getpeername(self.0.as_raw(), addr, len) })
+        }
     }
 
     /// Returns the read timeout of this socket.
@@ -167,7 +171,9 @@ impl UnixStream {
     /// }
     /// ```
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        self.0.timeout(SO_RCVTIMEO)
+        no_code! {
+            self.0.timeout(SO_RCVTIMEO)
+        }
     }
 
     /// Moves the socket into or out of nonblocking mode.
@@ -231,7 +237,9 @@ impl UnixStream {
     /// }
     /// ```
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.0.set_timeout(dur, SO_RCVTIMEO)
+        no_code! {
+            self.0.set_timeout(dur, SO_RCVTIMEO)
+        }
     }
 
     /// Sets the write timeout for the socket.
@@ -277,7 +285,9 @@ impl UnixStream {
     /// }
     /// ```
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.0.set_timeout(dur, SO_SNDTIMEO)
+        no_code! {
+            self.0.set_timeout(dur, SO_SNDTIMEO)
+        }
     }
 
     /// Shuts down the read, write, or both halves of this connection.
@@ -368,7 +378,9 @@ impl UnixStream {
     /// }
     /// ```
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        self.0.timeout(SO_SNDTIMEO)
+        no_code! {
+            self.0.timeout(SO_SNDTIMEO)
+        }
     }
 }
 
@@ -413,26 +425,34 @@ impl<'a> io::Write for &'a UnixStream {
 impl AsSocket for UnixStream {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
-        self.0.as_socket()
+        no_code! {
+            self.0.as_socket()
+        }
     }
 }
 
 impl AsRawSocket for UnixStream {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
-        self.0.as_raw_socket()
+        no_code! {
+            self.0.as_raw_socket()
+        }
     }
 }
 
 impl FromRawSocket for UnixStream {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> Self {
-        unsafe { UnixStream(Socket::from_raw_socket(sock)) }
+        no_code! {
+            unsafe { UnixStream(Socket::from_raw_socket(sock)) }
+        }
     }
 }
 
 impl IntoRawSocket for UnixStream {
     fn into_raw_socket(self) -> RawSocket {
-        self.0.into_raw_socket()
+        no_code! {
+            self.0.into_raw_socket()
+        }
     }
 }
