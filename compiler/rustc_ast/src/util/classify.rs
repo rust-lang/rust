@@ -159,6 +159,7 @@ pub fn leading_labeled_expr(mut expr: &ast::Expr) -> bool {
             | Yield(..)
             | UnsafeBinderCast(..)
             | DirectConstArg(..)
+            | BtfFieldInfo(..)
             | Err(..)
             | Dummy => return false,
         }
@@ -218,7 +219,7 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
                 break (mac.args.delim == Delimiter::Brace).then_some(TrailingBrace::MacCall(mac));
             }
 
-            InlineAsm(_) | OffsetOf(_, _) | IncludedBytes(_) | FormatArgs(_) => {
+            InlineAsm(_) | OffsetOf(_, _) | IncludedBytes(_) | FormatArgs(_) | BtfFieldInfo(..) => {
                 // These should have been denied pre-expansion.
                 break None;
             }

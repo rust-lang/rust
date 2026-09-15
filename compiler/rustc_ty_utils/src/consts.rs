@@ -208,7 +208,6 @@ fn recurse_build<'tcx>(
         ExprKind::InlineAsm { .. } => {
             error(GenericConstantTooComplexSub::InlineAsmNotSupported(node.span))?
         }
-
         // we dont permit let stmts so `VarRef` and `UpvarRef` cant happen
         ExprKind::VarRef { .. }
         | ExprKind::UpvarRef { .. }

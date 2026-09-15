@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size, VariantIdx};
-use rustc_ast::UnsafeBinderCastKind;
+use rustc_ast::{BtfRelocKind, UnsafeBinderCastKind};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
@@ -1183,6 +1183,91 @@ impl<'tcx> ThirBuildCx<'tcx> {
             hir::ExprKind::DropTemps(source) => {
                 ExprKind::ValueExpr { source: self.mirror_expr(source) }
             }
+
+            // Experimental expression for BPF Type Format (BTF) CO-RE
+            // relocations:
+            //
+            // https://docs.kernel.org/bpf/llvm_reloc.html#btf-co-re-relocations
+            hir::ExprKind::BtfFieldInfo(kind, _, _) => {
+                let mk_usize_kind = |val: u64| ExprKind::NonHirLiteral {
+                    lit: ScalarInt::try_from_target_usize(val, tcx).unwrap(),
+                    user_ty: None,
+                };
+
+                let indices = self.typeck_results.btf_field_info_data().get(expr.hir_id).unwrap();
+                if indices.is_empty() {
+                    return match kind {
+                        BtfRelocKind::ByteOffset | BtfRelocKind::ByteSize => {
+                            mk_expr(mk_usize_kind(0), tcx.types.usize)
+                        }
+                        BtfRelocKind::Exists => mk_expr(
+                            ExprKind::NonHirLiteral { lit: false.into(), user_ty: None },
+                            tcx.types.bool,
+                        ),
+                    };
+                }
+
+                // Traverse all the components of the requested field path and
+                // emit `preserve_access_index` intrinsics for them.
+                let preserve_access_index =
+                    tcx.require_lang_item(LangItem::BtfPreserveAccessIndex, expr.span);
+                let unit_ptr_ty = Ty::new_imm_ptr(tcx, tcx.types.unit);
+                let mk_u32_kind = |value: u32| ExprKind::NonHirLiteral {
+                    lit: ScalarInt::try_from_uint(value, Size::from_bits(32)).unwrap(),
+                    user_ty: None,
+                };
+                let zero = self.thir.exprs.push(mk_expr(mk_usize_kind(0), tcx.types.usize));
+                // The base for the field access. Initially it's null, then
+                // for each subsequent component it's the result of the
+                // previous intrinsic call. It's an opaque input to the
+                // intrinsic and it's never dereferenced.
+                let mut base_ptr =
+                    self.thir.exprs.push(mk_expr(ExprKind::Cast { source: zero }, unit_ptr_ty));
+                for &(container_ty, variant, field) in indices {
+                    let fun_ty = tcx
+                        .type_of(preserve_access_index)
+                        .instantiate(tcx, &[container_ty.into()])
+                        .skip_norm_wip();
+                    let fun = self
+                        .thir
+                        .exprs
+                        .push(mk_expr(ExprKind::ZstLiteral { user_ty: None }, fun_ty));
+                    let variant =
+                        self.thir.exprs.push(mk_expr(mk_u32_kind(variant.as_u32()), tcx.types.u32));
+                    let field =
+                        self.thir.exprs.push(mk_expr(mk_u32_kind(field.as_u32()), tcx.types.u32));
+                    base_ptr = self.thir.exprs.push(mk_expr(
+                        ExprKind::Call {
+                            ty: fun_ty,
+                            fun,
+                            args: Box::new([base_ptr, variant, field]),
+                            from_hir_call: false,
+                            fn_span: expr.span,
+                        },
+                        unit_ptr_ty,
+                    ));
+                }
+
+                // Emit an appropriate relocation intrinsic call for the last
+                // component of the field path.
+                let field_intrinsic = match kind {
+                    BtfRelocKind::ByteOffset => LangItem::BtfPreserveFieldByteOffset,
+                    BtfRelocKind::ByteSize => LangItem::BtfPreserveFieldByteSize,
+                    BtfRelocKind::Exists => LangItem::BtfPreserveFieldExists,
+                };
+                let field_intrinsic = tcx.require_lang_item(field_intrinsic, expr.span);
+                let fun_ty = tcx.type_of(field_intrinsic).instantiate_identity().skip_norm_wip();
+                let fun =
+                    self.thir.exprs.push(mk_expr(ExprKind::ZstLiteral { user_ty: None }, fun_ty));
+                ExprKind::Call {
+                    ty: fun_ty,
+                    fun,
+                    args: Box::new([base_ptr]),
+                    from_hir_call: false,
+                    fn_span: expr.span,
+                }
+            }
+
             hir::ExprKind::Array(fields) => ExprKind::Array { fields: self.mirror_exprs(fields) },
             hir::ExprKind::Tup(fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
 
