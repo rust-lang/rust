@@ -404,7 +404,8 @@ macro_rules! record {
         {
             let value = $value;
             let lazy = $self.lazy(value);
-            $self.$tables.$table.set_some($def_id.index, lazy);
+            let def_id = $self.map_def_id($def_id);
+            $self.$tables.$table.set_some(def_id.index, lazy);
         }
     }};
 }
@@ -416,7 +417,8 @@ macro_rules! record_array {
         {
             let value = $value;
             let lazy = $self.lazy_array(value);
-            $self.$tables.$table.set_some($def_id.index, lazy);
+            let def_id = $self.map_def_id($def_id);
+            $self.$tables.$table.set_some(def_id.index, lazy);
         }
     }};
 }
@@ -426,7 +428,8 @@ macro_rules! record_defaulted_array {
         {
             let value = $value;
             let lazy = $self.lazy_array(value);
-            $self.$tables.$table.set($def_id.index, lazy);
+            let def_id = $self.map_def_id($def_id);
+            $self.$tables.$table.set(def_id.index, lazy);
         }
     }};
 }
