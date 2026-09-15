@@ -84,10 +84,10 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 use std::mem;
 
 use interpret::ErrorHandled;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_lint_defs::Level;
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{AdtExpr, AdtExprBase, ArmId, ExprId, ExprKind};
@@ -1292,13 +1292,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // This is a moderately common case, mostly hit for previously unseen nodes.
                 break;
             }
-
-            if self
-                .tcx
-                .hir_attrs(id)
-                .iter()
-                .any(|attr| Level::from_opt_symbol(attr.name()).is_some())
-            {
+            if find_attr!(self.tcx, id, LintCheck(_)) {
                 // This is a rare case. It's for a node path that doesn't reach the root due to an
                 // intervening lint level attribute. This result doesn't get cached.
                 return id;

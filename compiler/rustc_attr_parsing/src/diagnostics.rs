@@ -2056,3 +2056,37 @@ pub(crate) struct UnusedDuplicate {
     )]
     pub warning: bool,
 }
+
+#[derive(Diagnostic)]
+#[diag("malformed lint attribute input", code = E0452)]
+pub(crate) struct MalformedAttribute {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sub: MalformedAttributeSub,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum MalformedAttributeSub {
+    #[label("bad attribute argument")]
+    BadAttributeArgument(#[primary_span] Span),
+    #[label("reason in lint attribute must come last")]
+    ReasonMustComeLast(#[primary_span] Span),
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum UnusedNote {
+    #[note("attribute `{$name}` with an empty list has no effect")]
+    EmptyList { name: Symbol },
+    #[note("attribute `{$name}` without any lints has no effect")]
+    NoLints { name: Symbol },
+}
+
+#[derive(Diagnostic)]
+#[diag("unused attribute")]
+pub(crate) struct Unused {
+    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    pub attr_span: Span,
+    #[subdiagnostic]
+    pub note: UnusedNote,
+}

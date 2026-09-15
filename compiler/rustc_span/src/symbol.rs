@@ -805,7 +805,6 @@ symbols! {
         default_field_values,
         default_fn,
         default_lib_allocator,
-        default_method_body_is_const,
         // --------------------------
         // Lang items which are used only for experiments with auto traits with default bounds.
         // These lang items are not actually defined in core/std. Experiment is a part of

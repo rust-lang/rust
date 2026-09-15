@@ -1,3 +1,14 @@
+#![attr = Feature([auto_traits#0, builtin_syntax#0, const_trait_impl#0,
+coroutines#0, decl_macro#0, deref_patterns#0, explicit_tail_calls#0,
+gen_blocks#0, more_qualified_paths#0, never_patterns#0, pattern_types#0,
+pattern_type_macro#0, prelude_import#0, specialization#0, trace_macros#0,
+trait_alias#0, try_blocks#0, try_blocks_heterogeneous#0, yeet_expr#0])]
+#![attr = LintCheck([LintCheck {name: "incomplete_features", attr_index: 0,
+lint_index: 0, kind: Allow}, LintCheck {name: "unused_attributes",
+attr_index: 0, lint_index: 1, kind: Allow}])]
+extern crate std;
+#[attr = PreludeImport]
+use std::prelude::rust_2024::*;
 //@ revisions: expanded hir
 //@[expanded]compile-flags: -Zunpretty=expanded
 //@[expanded]check-pass
@@ -8,15 +19,6 @@
 // Note: the HIR revision includes a `.stderr` file because there are some
 // errors that only occur once we get past the AST.
 
-#![allow(incomplete_features)]
-#![attr = Feature([auto_traits#0, builtin_syntax#0, const_trait_impl#0,
-coroutines#0, decl_macro#0, deref_patterns#0, explicit_tail_calls#0,
-gen_blocks#0, more_qualified_paths#0, never_patterns#0, pattern_types#0,
-pattern_type_macro#0, prelude_import#0, specialization#0, trace_macros#0,
-trait_alias#0, try_blocks#0, try_blocks_heterogeneous#0, yeet_expr#0])]
-extern crate std;
-#[attr = PreludeImport]
-use std::prelude::rust_2024::*;
 
 mod prelude {
     use std::prelude::rust_2024::*;
@@ -38,7 +40,9 @@ use self::prelude::*;
      * inner multi-line doc comment
      */
 #[doc = "inner doc attribute"]
-#[allow(dead_code, unused_variables)]
+#[attr = LintCheck([LintCheck {name: "dead_code", attr_index: 0,
+lint_index: 0, kind: Allow}, LintCheck {name: "unused_variables",
+attr_index: 0, lint_index: 1, kind: Allow}])]
 #[attr = NoStd]
 mod attributes {
 
@@ -48,7 +52,6 @@ mod attributes {
      */
     #[doc = "outer doc attribute"]
     #[doc = "macro"]
-    #[allow()]
     #[attr = Repr {reprs: [ReprC]}]
     struct Struct;
 }
@@ -207,15 +210,7 @@ mod expressions {
     }
 
     /// ExprKind::Block
-    fn expr_block() {
-        { }
-        unsafe { }
-        'a: { }
-        #[allow()]
-        { }
-        #[allow()]
-        { }
-    }
+    fn expr_block() { { } unsafe { } 'a: { } { } { } }
 
     /// ExprKind::Gen
     fn expr_gen() {
@@ -243,9 +238,17 @@ mod expressions {
         type_ascribe!({ from_output(()) }, Option<_>);
         type_ascribe!({
                 from_output(match branch(None) {
-                        Break {  0: residual } => #[allow(unreachable_code)]
+                        Break {  0: residual } =>
+                            #[attr = LintCheck([LintCheck {name: "unreachable_code",
+                            attr_index: 0,
+                            lint_index: 0,
+                            kind: Allow}])]
                             break from_residual(residual),
-                        Continue {  0: val } => #[allow(unreachable_code)]
+                        Continue {  0: val } =>
+                            #[attr = LintCheck([LintCheck {name: "unreachable_code",
+                            attr_index: 0,
+                            lint_index: 0,
+                            kind: Allow}])]
                             val,
                     })
             }, Option<String>)
@@ -367,9 +370,17 @@ mod expressions {
     fn expr_try() {
         let expr;
         match branch(expr) {
-            Break {  0: residual } => #[allow(unreachable_code)]
+            Break {  0: residual } =>
+                #[attr = LintCheck([LintCheck {name: "unreachable_code",
+                attr_index: 0,
+                lint_index: 0,
+                kind: Allow}])]
                 return from_residual(residual),
-            Continue {  0: val } => #[allow(unreachable_code)]
+            Continue {  0: val } =>
+                #[attr = LintCheck([LintCheck {name: "unreachable_code",
+                attr_index: 0,
+                lint_index: 0,
+                kind: Allow}])]
                 val,
         };
     }
