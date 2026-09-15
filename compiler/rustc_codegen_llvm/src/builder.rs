@@ -7,7 +7,7 @@ pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
 
 use libc::{c_char, c_uint};
-use rustc_abi::{self as abi, Align, CanonAbi, Size, WrappingRange};
+use rustc_abi::{self as abi, Align, CanonAbi, FieldIdx, Size, VariantIdx, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -24,7 +24,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::{Arch, HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
@@ -34,6 +34,7 @@ use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
+use crate::debuginfo::metadata::type_di_node;
 use crate::llvm::{
     self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, FromGeneric, GEPNoWrapFlags, Metadata, TRUE,
     ToLlvmBool, Type, Value,
@@ -285,6 +286,22 @@ macro_rules! set_math_builder_methods {
         })+
     }
 }
+
+// Kinds of BPF Type Format (BTF) CO-RE relocations
+// (https://docs.kernel.org/bpf/llvm_reloc.html#btf-co-re-relocations),
+// defined by:
+//
+// * Linux kernel:
+//   https://elixir.bootlin.com/linux/v7.2.5/source/include/uapi/linux/bpf.h#L7616
+// * LLVM:
+//   https://github.com/llvm/llvm-project/blob/llvmorg-23.1.1/llvm/include/llvm/DebugInfo/BTF/BTF.h#L281
+
+/// Field byte offset BTF CO-RE relocation.
+const BPF_CORE_FIELD_BYTE_OFFSET: u64 = 0;
+/// Field size (in bytes) BTF CO-RE relocation.
+const BPF_CORE_FIELD_BYTE_SIZE: u64 = 1;
+/// Field existence in target kernel BTF CO-RE relocation.
+const BPF_CORE_FIELD_EXISTS: u64 = 2;
 
 impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     type CodegenCx = CodegenCx<'ll, 'tcx>;
@@ -1581,6 +1598,100 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // Cleanup is always the cold path.
         let cold_inline = llvm::AttributeKind::Cold.create_attr(self.llcx);
         attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[cold_inline]);
+    }
+
+    // Experimental intrinsics for BPF Type Format (BTF) CO-RE relocations:
+    //
+    // https://docs.kernel.org/bpf/llvm_reloc.html#btf-co-re-relocations
+    fn btf_preserve_access_index(
+        &mut self,
+        base: &'ll Value,
+        container_ty: Ty<'tcx>,
+        variant: VariantIdx,
+        field: FieldIdx,
+    ) -> &'ll Value {
+        fn llvm_struct_field_index<'ll, 'tcx>(
+            bx: &Builder<'_, 'll, 'tcx>,
+            layout: TyAndLayout<'tcx>,
+            field_index: usize,
+        ) -> usize {
+            let mut llvm_index = 0;
+            let mut offset = Size::ZERO;
+
+            for i in layout.fields.index_by_increasing_offset() {
+                let target_offset = layout.fields.offset(i as usize);
+                if target_offset != offset {
+                    llvm_index += 1;
+                }
+                if i as usize == field_index {
+                    return llvm_index;
+                }
+
+                let field = layout.field(bx.cx(), i);
+                llvm_index += 1;
+                offset = target_offset + field.size;
+            }
+
+            bug!("field index {field_index} not found in layout {layout:#?}")
+        }
+
+        let layout_cx = ty::layout::LayoutCx::new(self.tcx, self.typing_env());
+        let layout = self.layout_of(container_ty).for_variant(&layout_cx, variant);
+        match container_ty.kind() {
+            ty::Adt(adt, _) if adt.is_union() => {
+                let dbg_info: &'ll Metadata = type_di_node(self.cx, container_ty);
+                unsafe {
+                    llvm::LLVMRustBuildPreserveUnionAccessIndex(
+                        self.llbuilder,
+                        base,
+                        field.index() as c_uint,
+                        Some(dbg_info),
+                    )
+                }
+            }
+            ty::Adt(..) | ty::Tuple(..) => {
+                let llvm_index = llvm_struct_field_index(self, layout, field.index());
+                let dbg_info: &'ll Metadata = type_di_node(self.cx, container_ty);
+                unsafe {
+                    llvm::LLVMRustBuildPreserveStructAccessIndex(
+                        self.llbuilder,
+                        self.cx().backend_type(layout),
+                        base,
+                        llvm_index as c_uint,
+                        field.index() as c_uint,
+                        Some(dbg_info),
+                    )
+                }
+            }
+            _ => bug!("BTF field info query has unsupported container type: {container_ty:?}"),
+        }
+    }
+
+    fn btf_preserve_field_byte_offset(&mut self, field: &'ll Value) -> &'ll Value {
+        let offset = self.call_intrinsic(
+            "llvm.bpf.preserve.field.info",
+            &[self.val_ty(field)],
+            &[field, self.const_u64(BPF_CORE_FIELD_BYTE_OFFSET)],
+        );
+        self.intcast(offset, self.type_isize(), false)
+    }
+
+    fn btf_preserve_field_byte_size(&mut self, field: &'ll Value) -> &'ll Value {
+        let byte_size = self.call_intrinsic(
+            "llvm.bpf.preserve.field.info",
+            &[self.val_ty(field)],
+            &[field, self.const_u64(BPF_CORE_FIELD_BYTE_SIZE)],
+        );
+        self.intcast(byte_size, self.type_isize(), false)
+    }
+
+    fn btf_preserve_field_exists(&mut self, field: &'ll Value) -> &'ll Value {
+        let exists = self.call_intrinsic(
+            "llvm.bpf.preserve.field.info",
+            &[self.val_ty(field)],
+            &[field, self.const_u64(BPF_CORE_FIELD_EXISTS)],
+        );
+        self.icmp(IntPredicate::IntNE, exists, self.const_i32(0))
     }
 }
 
