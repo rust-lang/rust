@@ -2594,7 +2594,7 @@ pub(crate) struct UnusedOp<'a> {
 #[derive(Subdiagnostic)]
 pub(crate) enum UnusedOpSuggestion {
     #[suggestion(
-        "use `let _ = ...` to ignore the resulting value",
+        "if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`",
         style = "verbose",
         code = "let _ = ",
         applicability = "maybe-incorrect"
@@ -2604,7 +2604,7 @@ pub(crate) enum UnusedOpSuggestion {
         span: Span,
     },
     #[multipart_suggestion(
-        "use `let _ = ...` to ignore the resulting value",
+        "if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
@@ -2668,7 +2668,7 @@ pub(crate) struct UnusedDef<'a, 'b> {
 #[derive(Subdiagnostic)]
 pub(crate) enum UnusedDefSuggestion {
     #[suggestion(
-        "use `let _ = ...` to ignore the resulting value",
+        "if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`",
         style = "verbose",
         code = "let _ = ",
         applicability = "maybe-incorrect"
@@ -2678,7 +2678,7 @@ pub(crate) enum UnusedDefSuggestion {
         span: Span,
     },
     #[multipart_suggestion(
-        "use `let _ = ...` to ignore the resulting value",
+        "if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
