@@ -356,7 +356,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx>>(
     Ok(())
 }
 
-/// Intern `ret`. This function assumes that `ret` references no other allocation.
+/// Intern an allocation. This function assumes that it references no other allocation.
 #[instrument(level = "debug", skip(ecx))]
 pub fn intern_const_alloc_for_constprop<'tcx, M: CompileTimeMachine<'tcx>>(
     ecx: &mut InterpCx<'tcx, M>,
