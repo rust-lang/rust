@@ -127,7 +127,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
             match field.name {
                 sym::generics => self.write_generics(&field_place, generics)?,
-                sym::variants => {
+                sym::type_id_variants => {
                     self.allocate_fill_and_write_slice_ptr(
                         &field_place,
                         enum_def.variants().len() as u64,

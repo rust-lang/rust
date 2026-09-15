@@ -150,7 +150,6 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::minimumf128
         | sym::mul_with_overflow
         | sym::needs_drop
-        | sym::non_exhaustive
         | sym::offload
         | sym::offload_get_num_devices
         | sym::offset_of
@@ -199,6 +198,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::truncf64
         | sym::truncf128
         | sym::type_id
+        | sym::type_id_non_exhaustive
         | sym::type_id_array_len
         | sym::type_id_element_ty
         | sym::type_id_eq
@@ -212,12 +212,14 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id_variants
         | sym::type_id_vtable
         | sym::type_name
-        | sym::type_of
+        | sym::type_id_type_of
+        | sym::type_id_size_of
+        | sym::type_id_variants
+        | sym::type_id_variant_name
+        | sym::type_id_variant_non_exhaustive
         | sym::ub_checks
         | sym::va_copy
         | sym::variant_count
-        | sym::variant_name
-        | sym::variant_non_exhaustive
         | sym::wrapping_add
         | sym::wrapping_mul
         | sym::wrapping_sub
@@ -296,7 +298,7 @@ pub(crate) fn check_intrinsic_type(
         sym::size_of_val | sym::align_of_val => {
             (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], tcx.types.usize)
         }
-        sym::size_of_type_id => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, tcx.types.usize)),
+        sym::type_id_size_of => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, tcx.types.usize)),
         sym::offset_of => (1, 0, vec![tcx.types.u32, tcx.types.u32], tcx.types.usize),
         sym::field_offset => (1, 0, vec![], tcx.types.usize),
         sym::rustc_peek => (1, 0, vec![param(0)], param(0)),
@@ -339,8 +341,12 @@ pub(crate) fn check_intrinsic_type(
         sym::type_id_points_mutably => (0, 0, vec![type_id_ty()], tcx.types.bool),
         sym::type_id_points_to => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, type_id_ty())),
         sym::type_id_variants => (0, 0, vec![type_id_ty()], tcx.types.usize),
-        sym::variant_name => (0, 0, vec![type_id_ty(), tcx.types.usize], Ty::new_static_str(tcx)),
-        sym::variant_non_exhaustive => (0, 0, vec![type_id_ty(), tcx.types.usize], tcx.types.bool),
+        sym::type_id_variant_name => {
+            (0, 0, vec![type_id_ty(), tcx.types.usize], Ty::new_static_str(tcx))
+        }
+        sym::type_id_variant_non_exhaustive => {
+            (0, 0, vec![type_id_ty(), tcx.types.usize], tcx.types.bool)
+        }
         sym::type_id_vtable => {
             let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, span);
             let dyn_metadata_adt_ref = tcx.adt_def(dyn_metadata);
@@ -355,7 +361,7 @@ pub(crate) fn check_intrinsic_type(
 
             (0, 0, vec![type_id_ty(); 2], ret_ty)
         }
-        sym::type_of => (
+        sym::type_id_type_of => (
             0,
             0,
             vec![type_id_ty()],
@@ -364,7 +370,7 @@ pub(crate) fn check_intrinsic_type(
         sym::field_representing_type_actual_type_id => (0, 0, vec![type_id_ty()], type_id_ty()),
         sym::field_representing_type_name => (0, 0, vec![type_id_ty()], Ty::new_static_str(tcx)),
         sym::field_representing_type_offset => (0, 0, vec![type_id_ty()], tcx.types.usize),
-        sym::non_exhaustive => (0, 0, vec![type_id_ty()], tcx.types.bool),
+        sym::type_id_non_exhaustive => (0, 0, vec![type_id_ty()], tcx.types.bool),
         sym::type_id_generics => (
             0,
             0,

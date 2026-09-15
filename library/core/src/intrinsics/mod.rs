@@ -2979,7 +2979,7 @@ pub fn type_id_vtable(
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
-pub fn type_of(_id: crate::any::TypeId) -> crate::mem::type_info::Type;
+pub fn type_id_type_of(_id: crate::any::TypeId) -> crate::mem::type_info::Type;
 
 /// Gets a static string slice containing the name of a type.
 ///
@@ -3056,7 +3056,7 @@ pub fn type_id_element_ty(_id: crate::any::TypeId) -> Option<crate::any::TypeId>
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
-pub fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize>;
+pub fn type_id_size_of(_id: crate::any::TypeId) -> Option<usize>;
 
 /// Gets the number of variants of the type represented by this `TypeId`.
 ///
@@ -3074,7 +3074,7 @@ pub fn type_id_variants(_id: crate::any::TypeId) -> usize;
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
-pub fn variant_name(_base: crate::any::TypeId, _variant_index: usize) -> &'static str;
+pub fn type_id_variant_name(_base: crate::any::TypeId, _variant_index: usize) -> &'static str;
 
 /// Returns true when the variant represented by the base `TypeId` and variant_idx is non
 /// exhaustive.
@@ -3086,7 +3086,7 @@ pub fn variant_name(_base: crate::any::TypeId, _variant_index: usize) -> &'stati
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
-pub fn variant_non_exhaustive(base: crate::any::TypeId, variant: usize) -> bool;
+pub fn type_id_variant_non_exhaustive(base: crate::any::TypeId, variant: usize) -> bool;
 
 /// Gets the number of fields at the given `variant_index` represented by this `TypeId`.
 ///
@@ -3155,7 +3155,7 @@ pub fn type_id_function_ptr(_type_id: crate::any::TypeId) -> Option<crate::mem::
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
-pub fn non_exhaustive(_id: crate::any::TypeId) -> bool;
+pub fn type_id_non_exhaustive(_id: crate::any::TypeId) -> bool;
 
 /// Returns the list of generic args on this type.
 /// Only meaningful for Adts, closures, ... Everything else returns an empty slice.

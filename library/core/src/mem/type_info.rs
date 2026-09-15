@@ -3,7 +3,7 @@
 
 use crate::any::TypeId;
 use crate::fmt;
-use crate::intrinsics::{self, type_id, type_of};
+use crate::intrinsics;
 use crate::marker::PointeeSized;
 use crate::ptr::DynMetadata;
 
@@ -38,7 +38,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn info(self) -> Type {
-        type_of(self)
+        intrinsics::type_id_type_of(self)
     }
 }
 
@@ -54,7 +54,7 @@ impl Type {
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     pub const fn of<T: ?Sized>() -> Self {
-        const { type_id::<T>().info() }
+        const { intrinsics::type_id::<T>().info() }
     }
 }
 
@@ -328,7 +328,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn size(self) -> Option<usize> {
-        intrinsics::size_of_type_id(self)
+        intrinsics::type_id_size_of(self)
     }
 
     /// Returns the number of variants of the type represented by this `TypeId`.
@@ -566,7 +566,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn non_exhaustive(self) -> bool {
-        intrinsics::non_exhaustive(self)
+        intrinsics::type_id_non_exhaustive(self)
     }
 
     /// Returns a list of generic parameters of the type.
@@ -696,7 +696,7 @@ impl VariantId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn name(self) -> &'static str {
-        intrinsics::variant_name(self.base, self.variant)
+        intrinsics::type_id_variant_name(self.base, self.variant)
     }
 
     /// Returns whether this variant is marked with `#[non_exhaustive]`.
@@ -704,7 +704,7 @@ impl VariantId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn non_exhaustive(self) -> bool {
-        intrinsics::variant_non_exhaustive(self.base, self.variant)
+        intrinsics::type_id_variant_non_exhaustive(self.base, self.variant)
     }
 }
 
