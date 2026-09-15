@@ -6,6 +6,7 @@ use std::fs;
 use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use similar::TextDiff;
 
 /// First-line marker identifying an auto-generated file. Generators emit this
 /// as the first line of every file they produce; the harness uses it to
@@ -199,7 +200,13 @@ fn compare(generated_dir: &Path, committed_dir: &Path, filename: &str) -> Result
         }),
         (false, false) => Ok(()),
         (true, true) => {
-            if fs::read(&gen_path)? != fs::read(&comm_path)? {
+            let generated = fs::read(&gen_path)?;
+            let committed = fs::read(&comm_path)?;
+            if generated != committed {
+                if let (Ok(committed),Ok(generated)) = (str::from_utf8(&committed), str::from_utf8(&generated))
+                {
+                    eprint!("{}", TextDiff::from_lines(committed , generated).unified_diff().context_radius(3).header(&format!("committed/{filename}"),&format!("generated/{filename}"),));
+                }
                 Err(Error::Mismatch {
                     path: rel_path,
                     kind: MismatchKind::ContentsDiffer,

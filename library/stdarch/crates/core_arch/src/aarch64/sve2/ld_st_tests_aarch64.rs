@@ -7,12 +7,14 @@
 // cargo run --bin=stdarch-gen-arm -- crates/stdarch-gen-arm/spec
 // ```
 #![allow(unused)]
-use super::*;
 use std::boxed::Box;
 use std::convert::{TryFrom, TryInto};
 use std::sync::LazyLock;
 use std::vec::Vec;
+
 use stdarch_test::simd_test;
+
+use super::*;
 static F32_DATA: LazyLock<[f32; 64 * 5]> = LazyLock::new(|| {
     (0..64 * 5)
         .map(|i| i as f32)
