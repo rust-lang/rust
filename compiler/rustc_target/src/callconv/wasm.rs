@@ -39,17 +39,22 @@ where
     found.filter(|scalar| scalar.size == layout.size)
 }
 
-fn unwrap_trivial_aggregate<'a, Ty, C>(cx: &C, val: &mut ArgAbi<'a, Ty>) -> bool
+/// Return whether the value should be passed as an aggregate (i.e. indirectly).
+fn is_aggregate_for_abi<'a, Ty, C>(cx: &C, val: &mut ArgAbi<'a, Ty>) -> bool
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    let Some(scalar) = singleton_scalar(cx, val.layout) else {
+    if !val.layout.is_aggregate() {
         return false;
+    }
+
+    let Some(scalar) = singleton_scalar(cx, val.layout) else {
+        return true;
     };
 
     val.cast_to(scalar);
-    true
+    false
 }
 
 fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>)
@@ -69,7 +74,7 @@ where
     }
 
     ret.extend_integer_width_to(32);
-    if ret.layout.is_aggregate() && !unwrap_trivial_aggregate(cx, ret) {
+    if is_aggregate_for_abi(cx, ret) {
         ret.make_indirect();
     }
 }
@@ -88,7 +93,7 @@ where
         return;
     }
     arg.extend_integer_width_to(32);
-    if arg.layout.is_aggregate() && !unwrap_trivial_aggregate(cx, arg) {
+    if is_aggregate_for_abi(cx, arg) {
         arg.make_indirect();
     }
 }
