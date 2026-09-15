@@ -2,9 +2,36 @@
 
 use std::fmt::{self, Display};
 
+use rustc_abi::ExternAbi;
 pub use rustc_ast::visit::AssocCtxt;
-use rustc_ast::{AssocItemKind, ForeignItemKind, ast};
+use rustc_ast::{
+    Arm, AssocItemKind, Closure, Crate, Expr, ExprField, FieldDef, ForeignItemKind, GenericParam,
+    Item, Local, Param, Pat, Variant, WherePredicate, ast,
+};
 use rustc_macros::StableHash;
+
+// This enum lists all possible types of AST items.
+#[derive(Clone, Copy, Debug)]
+pub enum AstTarget<'a> {
+    AssocItem(&'a Item<AssocItemKind>),
+    ForeignItem(&'a Item<ForeignItemKind>),
+    Item(&'a Item),
+
+    Arm(&'a Arm),
+    Closure(&'a Closure),
+    Crate(&'a Crate),
+    Expr(&'a Expr),
+    ExprField(&'a ExprField),
+    FieldDef(&'a FieldDef),
+    GenericParam(&'a GenericParam),
+    Local(&'a Local),
+    Param(&'a Param),
+    Pat(&'a Pat),
+    Variant(&'a Variant),
+    WherePredicate(&'a WherePredicate),
+
+    None, // Used when it is not possible to get detailed information about the target.
+}
 
 #[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
 pub enum GenericParamKind {
@@ -68,6 +95,62 @@ pub enum Target {
     While,
     Loop,
     Break,
+}
+
+impl AstTarget<'_> {
+    pub fn get_abi(&self) -> Option<ExternAbi> {
+        let ext = match self {
+            AstTarget::Item(item) => {
+                let ast::ItemKind::Fn(fn_item) = &item.kind else {
+                    return None;
+                };
+                fn_item.sig.header.ext
+            }
+            AstTarget::AssocItem(assoc_item) => {
+                let ast::AssocItemKind::Fn(fn_item) = &assoc_item.kind else {
+                    return None;
+                };
+                fn_item.sig.header.ext
+            }
+            AstTarget::ForeignItem(foreign_item) => {
+                let ast::ForeignItemKind::Fn(fn_item) = &foreign_item.kind else {
+                    return None;
+                };
+                fn_item.sig.header.ext
+            }
+            _ => return None,
+        };
+
+        match ext {
+            ast::Extern::None => Some(ExternAbi::Rust),
+            ast::Extern::Implicit(_) => Some(ExternAbi::FALLBACK),
+            ast::Extern::Explicit(abi, _) => Some(abi.symbol_unescaped.as_str().parse().ok()?),
+        }
+    }
+
+    pub fn get_fn_sig(&self) -> Option<&rustc_ast::ast::FnSig> {
+        match self {
+            AstTarget::Item(item) => {
+                let ast::ItemKind::Fn(fn_item) = &item.kind else {
+                    return None;
+                };
+                Some(&fn_item.sig)
+            }
+            AstTarget::AssocItem(assoc_item) => {
+                let ast::AssocItemKind::Fn(fn_item) = &assoc_item.kind else {
+                    return None;
+                };
+                Some(&fn_item.sig)
+            }
+            AstTarget::ForeignItem(foreign_item) => {
+                let ast::ForeignItemKind::Fn(fn_item) = &foreign_item.kind else {
+                    return None;
+                };
+                Some(&fn_item.sig)
+            }
+            _ => None,
+        }
+    }
 }
 
 impl Display for Target {
