@@ -1463,7 +1463,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
     }
 }
 
-/// Creates debug information for the given global variable.
+/// Creates debug information for the given global variable (definition).
 ///
 /// Adds the created debuginfo nodes directly to the crate's IR.
 pub(crate) fn build_global_var_di_node<'ll>(
@@ -1471,35 +1471,49 @@ pub(crate) fn build_global_var_di_node<'ll>(
     def_id: DefId,
     global: &'ll Value,
 ) {
+    let DefKind::Static { nested, .. } = cx.tcx.def_kind(def_id) else { bug!() };
+    if nested {
+        return;
+    }
+
+    let is_local_to_unit = is_node_local_to_unit(cx, def_id);
+    build_static_var_di_node_inner(cx, def_id, global, is_local_to_unit, true);
+}
+
+/// Creates debug information for a foreign static (declaration, not definition).
+pub(crate) fn build_extern_static_di_node<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    def_id: DefId,
+    global: &'ll Value,
+) {
+    build_static_var_di_node_inner(cx, def_id, global, false, false);
+}
+
+fn build_static_var_di_node_inner<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    def_id: DefId,
+    global: &'ll Value,
+    is_local_to_unit: bool,
+    is_definition: bool,
+) {
     if cx.dbg_cx.is_none() {
         return;
     }
 
-    // Only create type information if full debuginfo is enabled
     if cx.sess().opts.debuginfo != DebugInfo::Full {
         return;
     }
 
     let tcx = cx.tcx;
 
-    // We may want to remove the namespace scope if we're in an extern block (see
-    // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952).
     let var_scope = get_namespace_for_item(cx, def_id);
     let (file_metadata, line_number) = file_metadata_from_def_id(cx, Some(def_id));
 
-    let is_local_to_unit = is_node_local_to_unit(cx, def_id);
-
-    let DefKind::Static { nested, .. } = cx.tcx.def_kind(def_id) else { bug!() };
-    if nested {
-        return;
-    }
     let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, cx.typing_env());
     let type_di_node = type_di_node(cx, variable_type);
     let var_name = tcx.item_name(def_id);
     let var_name = var_name.as_str();
     let linkage_name = mangled_name_of_instance(cx, Instance::mono(tcx, def_id)).name;
-    // When empty, linkage_name field is omitted,
-    // which is what we want for no_mangle statics
     let linkage_name = if var_name == linkage_name { "" } else { linkage_name };
 
     let global_align = cx.align_of(variable_type);
@@ -1512,8 +1526,9 @@ pub(crate) fn build_global_var_di_node<'ll>(
         line_number,
         type_di_node,
         is_local_to_unit,
-        global, // (value)
-        None,   // (decl)
+        is_definition,
+        global,
+        None,
         Some(global_align),
     );
 }
@@ -1790,6 +1805,7 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
         UNKNOWN_LINE_NUMBER,
         vtable_type_di_node,
         true,   // (is_local_to_unit)
+        true,   // (is_definition)
         vtable, // (value)
         None,   // (decl)
         None::<Align>,

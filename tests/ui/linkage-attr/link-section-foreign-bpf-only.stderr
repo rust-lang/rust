@@ -1,0 +1,14 @@
+error: `link_section` on foreign items is only supported on BPF targets
+  --> $DIR/link-section-foreign-bpf-only.rs:12:5
+   |
+LL |     #[unsafe(link_section = ".ksyms")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `link_section` on foreign items is only supported on BPF targets
+  --> $DIR/link-section-foreign-bpf-only.rs:16:5
+   |
+LL |     #[unsafe(link_section = ".ksyms")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
