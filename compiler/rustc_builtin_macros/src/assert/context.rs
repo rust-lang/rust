@@ -97,14 +97,10 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///
     /// use ::core::asserting::{ ... };
     fn build_initial_imports(&self) -> Stmt {
-        let nested_tree = |this: &Self, sym| {
-            (
-                UseTree {
-                    prefix: this.cx.path(this.span, vec![Ident::with_dummy_span(sym)]),
-                    kind: UseTreeKind::Simple(None),
-                },
-                DUMMY_NODE_ID,
-            )
+        let nested_tree = |this: &Self, sym| UseTree {
+            prefix: this.cx.path(this.span, vec![Ident::with_dummy_span(sym)]),
+            kind: UseTreeKind::Simple(None),
+            id: DUMMY_NODE_ID,
         };
         self.cx.stmt_item(
             self.span,
@@ -120,6 +116,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                         ],
                         span: self.span,
                     },
+                    id: DUMMY_NODE_ID,
                 }),
             ),
         )

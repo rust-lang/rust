@@ -104,7 +104,7 @@ struct SelfImport<'a> {
 fn for_each_self_import<'a>(tree: &'a UseTree, emit_lint: impl Fn(SelfImport<'a>) + Copy) {
     fn inner<'a>(tree: &'a UseTree, emit_lint: impl Fn(SelfImport<'a>) + Copy, is_toplevel: bool) {
         if let UseTreeKind::Nested { items, .. } = &tree.kind {
-            if let [(self_tree, _)] = &**items
+            if let [self_tree] = &**items
                 && let [self_seg] = &*self_tree.prefix.segments
                 && self_seg.ident.name == kw::SelfLower
             {
@@ -114,7 +114,7 @@ fn for_each_self_import<'a>(tree: &'a UseTree, emit_lint: impl Fn(SelfImport<'a>
                     is_toplevel,
                 });
             } else {
-                for (subtree, _) in &**items {
+                for subtree in items {
                     inner(subtree, emit_lint, false);
                 }
             }

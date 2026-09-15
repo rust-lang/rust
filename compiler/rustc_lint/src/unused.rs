@@ -1318,12 +1318,12 @@ impl UnusedImportBraces {
     fn check_use_tree(&self, cx: &EarlyContext<'_>, use_tree: &ast::UseTree, item: &ast::Item) {
         if let ast::UseTreeKind::Nested { ref items, .. } = use_tree.kind {
             // Recursively check nested UseTrees
-            for (tree, _) in items {
+            for tree in items {
                 self.check_use_tree(cx, tree, item);
             }
 
             // Trigger the lint only if there is one nested item
-            let [(tree, _)] = items.as_slice() else { return };
+            let [tree] = items.as_slice() else { return };
 
             // Trigger the lint if the nested item is a non-self single item
             let node_name = match tree.kind {

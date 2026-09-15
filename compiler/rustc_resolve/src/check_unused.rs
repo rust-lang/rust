@@ -42,7 +42,6 @@ use crate::{DeclKind, IdentKey, LateDecl, Resolver, diagnostics, module_to_strin
 
 struct UnusedImport {
     use_tree: ast::UseTree,
-    use_tree_id: ast::NodeId,
     item_span: Span,
     unused: UnordSet<ast::NodeId>,
 }
@@ -59,7 +58,6 @@ struct UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
     unused_imports: FxIndexMap<ast::NodeId, UnusedImport>,
     extern_crate_items: Vec<ExternCrateToLint>,
     base_use_tree: Option<&'a ast::UseTree>,
-    base_id: ast::NodeId,
     item_span: Span,
 }
 
@@ -80,6 +78,10 @@ struct ExternCrateToLint {
 }
 
 impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
+    fn base_id(&self) -> ast::NodeId {
+        self.base_use_tree.unwrap().id
+    }
+
     // We have information about whether `use` (import) items are actually
     // used now. If an import is not used at all, we signal a lint error.
     fn check_import(&mut self, id: ast::NodeId, def_id: LocalDefId) {
@@ -89,58 +91,56 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                 // Check later.
                 return;
             }
-            self.unused_import(self.base_id).add(id);
+            self.unused_import(self.base_id()).add(id);
         } else {
             // This trait import is definitely used, in a way other than
             // method resolution.
             // FIXME(#120456) - is `swap_remove` correct?
             self.r.maybe_unused_trait_imports.swap_remove(&def_id);
-            if let Some(i) = self.unused_imports.get_mut(&self.base_id) {
+            if let Some(i) = self.unused_imports.get_mut(&self.base_id()) {
                 i.unused.remove(&id);
             }
         }
     }
 
-    fn check_use_tree(&mut self, use_tree: &'a ast::UseTree, id: ast::NodeId) {
-        let def_id = self.r.owner_def_id(id);
+    fn check_use_tree(&mut self, use_tree: &'a ast::UseTree) {
+        let def_id = self.r.owner_def_id(use_tree.id);
         if self.r.effective_visibilities.is_exported(def_id) {
-            self.check_import_as_underscore(use_tree, id);
+            self.check_import_as_underscore(use_tree);
             self.r.maybe_unused_trait_imports.swap_remove(&def_id);
             return;
         }
 
         if let ast::UseTreeKind::Nested { ref items, .. } = use_tree.kind {
             if items.is_empty() {
-                self.unused_import(self.base_id).add(id);
+                self.unused_import(self.base_id()).add(use_tree.id);
             }
         } else {
-            self.check_import(id, def_id);
+            self.check_import(use_tree.id, def_id);
         }
     }
 
     fn unused_import(&mut self, id: ast::NodeId) -> &mut UnusedImport {
-        let use_tree_id = self.base_id;
         let use_tree = self.base_use_tree.unwrap().clone();
         let item_span = self.item_span;
 
         self.unused_imports.entry(id).or_insert_with(|| UnusedImport {
             use_tree,
-            use_tree_id,
             item_span,
             unused: Default::default(),
         })
     }
 
-    fn check_import_as_underscore(&mut self, item: &ast::UseTree, id: ast::NodeId) {
-        match item.kind {
+    fn check_import_as_underscore(&mut self, use_tree: &ast::UseTree) {
+        match use_tree.kind {
             ast::UseTreeKind::Simple(Some(ident)) => {
                 if ident.name == kw::Underscore
                     && !matches!(
-                        self.r.owners[&id].import_res.type_ns,
+                        self.r.owners[&use_tree.id].import_res.type_ns,
                         Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
                     )
                 {
-                    self.unused_import(self.base_id).add(id);
+                    self.unused_import(self.base_id()).add(use_tree.id);
                 }
             }
             ast::UseTreeKind::Nested { ref items, .. } => self.check_imports_as_underscore(items),
@@ -148,9 +148,9 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
         }
     }
 
-    fn check_imports_as_underscore(&mut self, items: &[(ast::UseTree, ast::NodeId)]) {
-        for (item, id) in items {
-            self.check_import_as_underscore(item, *id);
+    fn check_imports_as_underscore(&mut self, use_trees: &[ast::UseTree]) {
+        for use_tree in use_trees {
+            self.check_import_as_underscore(use_tree);
         }
     }
 
@@ -247,17 +247,15 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         self.item_span = item.span_with_attributes();
         match &item.kind {
-            // Ignore is_public import statements because there's no way to be sure
-            // whether they're used or not. Also ignore imports with a dummy span
-            // because this means that they were generated in some fashion by the
-            // compiler and we don't need to consider them.
+            // Ignore imports with a dummy span because this means that they
+            // were generated in some fashion by the compiler and we don't need
+            // to consider them.
             ast::ItemKind::Use(..) if item.span.is_dummy() => return,
             // Use the base UseTree's NodeId as the item id
             // This allows the grouping of all the lints in the same item
             ast::ItemKind::Use(use_tree) => {
-                self.base_id = item.id;
+                assert_eq!(use_tree.id, item.id);
                 self.base_use_tree = Some(use_tree);
-                self.check_use_tree(use_tree, item.id);
             }
             &ast::ItemKind::ExternCrate(orig_name, ident) => {
                 self.extern_crate_items.push(ExternCrateToLint {
@@ -276,8 +274,8 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
         visit::walk_item(self, item);
     }
 
-    fn visit_nested_use_tree(&mut self, use_tree: &'a ast::UseTree, id: ast::NodeId) {
-        self.check_use_tree(use_tree, id);
+    fn visit_use_tree(&mut self, use_tree: &'a ast::UseTree) {
+        self.check_use_tree(use_tree);
         visit::walk_use_tree(self, use_tree);
     }
 }
@@ -288,11 +286,7 @@ enum UnusedSpanResult {
     PartialUnused { spans: Vec<Span>, remove: Vec<Span> },
 }
 
-fn calc_unused_spans(
-    unused_import: &UnusedImport,
-    use_tree: &ast::UseTree,
-    use_tree_id: ast::NodeId,
-) -> UnusedSpanResult {
+fn calc_unused_spans(unused_import: &UnusedImport, use_tree: &ast::UseTree) -> UnusedSpanResult {
     // The full span is the whole item's span if this current tree is not nested inside another
     // This tells rustfix to remove the whole item if all the imports are unused
     let full_span = if unused_import.use_tree.span() == use_tree.span() {
@@ -302,7 +296,7 @@ fn calc_unused_spans(
     };
     match use_tree.kind {
         ast::UseTreeKind::Simple(..) | ast::UseTreeKind::Glob(_) => {
-            if unused_import.unused.contains(&use_tree_id) {
+            if unused_import.unused.contains(&use_tree.id) {
                 UnusedSpanResult::Unused { spans: vec![use_tree.span()], remove: full_span }
             } else {
                 UnusedSpanResult::Used
@@ -321,8 +315,8 @@ fn calc_unused_spans(
             let mut used_children = 0;
             let mut contains_self = false;
             let mut previous_unused = false;
-            for (pos, (use_tree, use_tree_id)) in nested.iter().enumerate() {
-                let remove = match calc_unused_spans(unused_import, use_tree, *use_tree_id) {
+            for (pos, use_tree) in nested.iter().enumerate() {
+                let remove = match calc_unused_spans(unused_import, use_tree) {
                     UnusedSpanResult::Used => {
                         used_children += 1;
                         None
@@ -344,10 +338,10 @@ fn calc_unused_spans(
                     } else if pos == nested.len() - 1 || used_children > 0 {
                         // Delete everything from the end of the last import, to delete the
                         // previous comma
-                        nested[pos - 1].0.hi_span().shrink_to_hi().to(use_tree.hi_span())
+                        nested[pos - 1].hi_span().shrink_to_hi().to(use_tree.hi_span())
                     } else {
                         // Delete everything until the next import, to delete the trailing commas
-                        use_tree.prefix.span.to(nested[pos + 1].0.prefix.span.shrink_to_lo())
+                        use_tree.prefix.span.to(nested[pos + 1].prefix.span.shrink_to_lo())
                     };
 
                     // Try to collapse adjacent spans into a single one. This prevents all cases of
@@ -361,7 +355,7 @@ fn calc_unused_spans(
                 }
                 contains_self |= use_tree.prefix == kw::SelfLower
                     && matches!(use_tree.kind, ast::UseTreeKind::Simple(_))
-                    && !unused_import.unused.contains(&use_tree_id);
+                    && !unused_import.unused.contains(&use_tree.id);
                 previous_unused = remove.is_some();
             }
             if unused_spans.is_empty() {
@@ -386,7 +380,6 @@ fn calc_unused_spans(
                         tree_span.shrink_to_lo().to(nested
                             .first()
                             .unwrap()
-                            .0
                             .prefix
                             .span
                             .shrink_to_lo()),
@@ -396,7 +389,6 @@ fn calc_unused_spans(
                         nested
                             .last()
                             .unwrap()
-                            .0
                             .hi_span()
                             .shrink_to_hi()
                             .to(tree_span.shrink_to_hi()),
@@ -462,7 +454,6 @@ impl Resolver<'_, '_> {
             unused_imports: Default::default(),
             extern_crate_items: Default::default(),
             base_use_tree: None,
-            base_id: ast::DUMMY_NODE_ID,
             item_span: DUMMY_SP,
         };
         // `use_items` is in crate DFS order, so diagnostics and side effects are unchanged.
@@ -473,12 +464,11 @@ impl Resolver<'_, '_> {
         visitor.report_unused_extern_crate_items(maybe_unused_extern_crates);
 
         for unused in visitor.unused_imports.values() {
-            let (spans, remove_spans) =
-                match calc_unused_spans(unused, &unused.use_tree, unused.use_tree_id) {
-                    UnusedSpanResult::Used => continue,
-                    UnusedSpanResult::Unused { spans, remove } => (spans, vec![remove]),
-                    UnusedSpanResult::PartialUnused { spans, remove } => (spans, remove),
-                };
+            let (spans, remove_spans) = match calc_unused_spans(unused, &unused.use_tree) {
+                UnusedSpanResult::Used => continue,
+                UnusedSpanResult::Unused { spans, remove } => (spans, vec![remove]),
+                UnusedSpanResult::PartialUnused { spans, remove } => (spans, remove),
+            };
 
             let ms = MultiSpan::from_spans(spans);
 
@@ -503,7 +493,7 @@ impl Resolver<'_, '_> {
                 None
             } else {
                 let parent_module = visitor.r.get_nearest_non_block_module(
-                    visitor.r.owner_def_id(unused.use_tree_id).to_def_id(),
+                    visitor.r.owner_def_id(unused.use_tree.id).to_def_id(),
                 );
                 match module_to_string(parent_module) {
                     Some(module)
@@ -522,7 +512,7 @@ impl Resolver<'_, '_> {
 
             visitor.r.lint_buffer.dyn_buffer_lint_any(
                 UNUSED_IMPORTS,
-                unused.use_tree_id,
+                unused.use_tree.id,
                 ms,
                 move |dcx, level, sess| {
                     let sugg = can_suggest_removal.then(|| {

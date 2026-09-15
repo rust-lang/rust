@@ -911,7 +911,7 @@ impl<'a> State<'a> {
                 }
                 if items.is_empty() {
                     self.word("{}");
-                } else if let [(item, _)] = items.as_slice()
+                } else if let [item] = items.as_slice()
                     && !item
                         .prefix
                         .segments
@@ -926,10 +926,10 @@ impl<'a> State<'a> {
                     let ib = self.ibox(0);
                     for (idx, use_tree) in items.iter().enumerate() {
                         let is_last = idx == items.len() - 1;
-                        self.print_use_tree(&use_tree.0);
+                        self.print_use_tree(use_tree);
                         if !is_last {
                             self.word(",");
-                            if let ast::UseTreeKind::Nested { .. } = use_tree.0.kind {
+                            if let ast::UseTreeKind::Nested { .. } = use_tree.kind {
                                 self.hardbreak();
                             } else {
                                 self.space();

@@ -3336,7 +3336,7 @@ pub enum UseTreeKind {
     /// use foo::{bar, baz};
     ///          ^^^^^^^^^^
     /// ```
-    Nested { items: ThinVec<(UseTree, NodeId)>, span: Span },
+    Nested { items: ThinVec<UseTree>, span: Span },
     /// `use prefix::*`
     Glob(Span),
 }
@@ -3347,6 +3347,15 @@ pub enum UseTreeKind {
 pub struct UseTree {
     pub prefix: Path,
     pub kind: UseTreeKind,
+
+    /// For top-level `UseTrees` this id is the same as the enclosing item's id.
+    ///
+    /// This duplication is a little clumsy and requires special handling when assigning ids in
+    /// `<InvocationCollectorNode for Box<Item>>::walk_flat_map`. But it's better than what we used
+    /// to do, which was to not store an id here and instead store an id next to every
+    /// non-top-level `UseTree`. That required uglier special handling at multiple `UseTree` use
+    /// points.
+    pub id: NodeId,
 }
 
 impl UseTree {

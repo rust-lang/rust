@@ -583,16 +583,16 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
+    /// Note:
+    /// - `item` is the top-level `use` item.
+    /// - `use_tree` is the particular use tree within the top-level `use` item.
     fn build_reduced_graph_for_use_tree(
         &mut self,
-        // This particular use tree
+        item: &Item,
         use_tree: &ast::UseTree,
-        id: NodeId,
         parent_prefix: &[Segment],
         nested: bool,
         list_stem: bool,
-        // The whole `use` item
-        item: &Item,
         vis: Visibility,
         root_span: Span,
         feed: TyCtxtFeed<'tcx, LocalDefId>,
@@ -601,6 +601,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             "build_reduced_graph_for_use_tree(parent_prefix={:?}, use_tree={:?}, nested={})",
             parent_prefix, use_tree, nested
         );
+
+        let id = use_tree.id;
 
         // Top level use tree reuses the item's id and list stems reuse their parent
         // use tree's ids, so in both cases their visibilities are already filled.
@@ -753,12 +755,10 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 }
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
-                for &(ref tree, id) in items {
-                    self.with_owner(id, None, DefKind::Use, use_tree.span(), |this, feed| {
+                for tree in items {
+                    self.with_owner(tree.id, None, DefKind::Use, use_tree.span(), |this, feed| {
                         this.build_reduced_graph_for_use_tree(
-                            // This particular use tree
-                            tree, id, &prefix, true, false, // The whole `use` item
-                            item, vis, root_span, feed,
+                            item, tree, &prefix, true, false, vis, root_span, feed,
                         )
                     });
                 }
@@ -774,21 +774,13 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     let tree = ast::UseTree {
                         prefix: ast::Path::from_ident(Ident::new(kw::SelfLower, new_span)),
                         kind: ast::UseTreeKind::Simple(Some(Ident::new(kw::Underscore, new_span))),
-                    };
-                    self.build_reduced_graph_for_use_tree(
-                        // This particular use tree
-                        &tree,
                         id,
-                        &prefix,
-                        true,
-                        true,
-                        // The whole `use` item
-                        item,
-                        Visibility::Restricted(
-                            self.parent_scope.module.nearest_parent_mod().expect_local(),
-                        ),
-                        root_span,
-                        feed,
+                    };
+                    let vis = Visibility::Restricted(
+                        self.parent_scope.module.nearest_parent_mod().expect_local(),
+                    );
+                    self.build_reduced_graph_for_use_tree(
+                        item, &tree, &prefix, true, true, vis, root_span, feed,
                     );
                 }
             }
@@ -835,14 +827,11 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         match item.kind {
             ItemKind::Use(ref use_tree) => {
                 self.build_reduced_graph_for_use_tree(
-                    // This particular use tree
+                    item,
                     use_tree,
-                    item.id,
                     &[],
                     false,
                     false,
-                    // The whole `use` item
-                    item,
                     vis,
                     use_tree.span(),
                     feed,
