@@ -866,6 +866,9 @@ impl<'a> Parser<'a> {
                             break;
                         }
                         Err(mut expect_err) => {
+                            if !self.may_recover() {
+                                return Err(expect_err);
+                            }
                             let sp = self.prev_token.span.shrink_to_hi();
                             let token_str = pprust::token_kind_to_string(&exp.tok);
 
