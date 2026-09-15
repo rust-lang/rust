@@ -276,28 +276,51 @@ macro_rules! compare_and_swap_u128 {
     ($ordering:ident, $name:ident) => {
         intrinsics! {
             #[maybe_use_optimized_c_shim]
-            #[unsafe(naked)]
             pub unsafe extern "C" fn $name (
                 expected: u128, desired: u128, ptr: *mut u128
             ) -> u128 {
-                core::arch::naked_asm! {
-                    // CASP   x0, x1, x2, x3, [x4]; if LSE supported.
-                    try_lse_op!("cas", $ordering, 16, 0, 1, 2, 3, [x4]),
-                    "mov    x16, x0",
-                    "mov    x17, x1",
-                    "0:",
-                    // LDXP   x0, x1, [x4]
-                    concat!(ldxp!($ordering), " x0, x1, [x4]"),
-                    "cmp    x0, x16",
-                    "ccmp   x1, x17, #0, eq",
-                    "bne    1f",
-                    // STXP   w(tmp2), x2, x3, [x4]
-                    concat!(stxp!($ordering), " w15, x2, x3, [x4]"),
-                    "cbnz   w15, 0b",
-                    "1:",
-                    "ret",
-                    have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
+                let mut expected_lo = (expected & 0xFFFFFFFFFFFFFFFF) as u64;
+                let mut expected_hi = (expected >> 64) as u64;
+                let desired_lo = (desired & 0xFFFFFFFFFFFFFFFF) as u64;
+                let desired_hi = (desired >> 64) as u64;
+
+                unsafe {
+                    if HAVE_LSE_ATOMICS.load(Ordering::Relaxed) != 0 {
+                        core::arch::asm!(
+                            ".arch_extension lse",
+                            concat!(lse!("cas", $ordering, 16), " x0, x1, x2, x3, [x4]"),
+                            inlateout("x0") expected_lo,
+                            inlateout("x1") expected_hi,
+                            in("x2") desired_lo,
+                            in("x3") desired_hi,
+                            in("x4") ptr,
+                            options(nostack),
+                        );
+                    } else {
+                        core::arch::asm!(
+                            "mov x16, x0",
+                            "mov x17, x1",
+                            "1:",
+                            concat!(ldxp!($ordering), " x0, x1, [x4]"),
+                            "cmp x0, x16",
+                            "ccmp x1, x17, #0x0, eq",
+                            "b.ne 2f",
+                            concat!(stxp!($ordering), " w15, x2, x3, [x4]"),
+                            "cbnz w15, 1b",
+                            "2:",
+                            inlateout("x0") expected_lo,
+                            inlateout("x1") expected_hi,
+                            in("x2") desired_lo,
+                            in("x3") desired_hi,
+                            in("x4") ptr,
+                            out("w15") _,
+                            out("x16") _,
+                            out("x17") _,
+                            options(nostack),
+                        );
+                    }
                 }
+                return ((expected_hi as u128) << 64) | expected_lo as u128;
             }
         }
     };
