@@ -11,13 +11,12 @@ use rustc_hir::{self as hir, HirId, find_attr};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
-use rustc_middle::bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::{self, FnSig, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Ident, Span, bug, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;

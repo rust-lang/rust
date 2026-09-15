@@ -14,9 +14,9 @@ use std::{assert_matches, fmt, ptr};
 use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_middle::bug;
 use rustc_middle::mir::display_allocation;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_span::bug;
 use tracing::{debug, instrument, trace};
 
 use super::{

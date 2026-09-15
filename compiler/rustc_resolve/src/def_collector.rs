@@ -11,9 +11,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def::Namespace::{TypeNS, ValueNS};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::middle::resolve::PerOwnerResolverData;
-use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxtFeed;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol, span_bug, sym};
 use tracing::{debug, instrument};
 
 use crate::macros::MacroRulesScopeRef;

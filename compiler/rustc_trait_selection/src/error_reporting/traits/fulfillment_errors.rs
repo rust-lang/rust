@@ -33,9 +33,8 @@ use rustc_middle::ty::{
     self, GenericArgKind, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::CrateNum;
-use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
+use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, bug, span_bug, sym};
 use tracing::{debug, instrument};
 
 use super::suggestions::get_explanation_based_on_obligation;

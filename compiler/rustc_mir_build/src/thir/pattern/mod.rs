@@ -23,8 +23,7 @@ use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, LitToConstInput, Ty, TyCtxt, const_lit_matches_ty,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::ErrorGuaranteed;
+use rustc_span::{ErrorGuaranteed, bug, span_bug};
 use tracing::{debug, instrument};
 
 pub(crate) use self::check_match::check_match;

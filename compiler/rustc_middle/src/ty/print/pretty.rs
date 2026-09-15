@@ -15,7 +15,7 @@ use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModId};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_macros::{Lift, extension};
-use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
+use rustc_span::{Ident, RemapPathScopeComponents, Symbol, bug, kw, sym};
 use rustc_structures::Limit;
 use rustc_type_ir::{FieldInfo, Unnormalized, Upcast as _, elaborate};
 use smallvec::SmallVec;
