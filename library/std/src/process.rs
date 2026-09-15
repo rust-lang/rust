@@ -2206,6 +2206,7 @@ impl crate::error::Error for ExitStatusError {}
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[stable(feature = "process_exitcode", since = "1.61.0")]
+#[must_use]
 pub struct ExitCode(imp::ExitCode);
 
 #[stable(feature = "process_exitcode", since = "1.61.0")]
