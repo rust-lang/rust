@@ -18,7 +18,7 @@ use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
     BackendTypes, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
-    LayoutTypeCodegenMethods, OverflowOp, StaticBuilderMethods,
+    LayoutTypeCodegenMethods, OverflowOp, ReturnSlot, StaticBuilderMethods,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
@@ -34,6 +34,7 @@ use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 
 use crate::abi::FnAbiGccExt;
+use crate::builder;
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
 #[cfg(feature = "master")]
@@ -347,24 +348,36 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
     /// Shared implementation of `call` and `tail_call`. For tail call it is important that this
     /// returns a bare call, and not the result assigned to a local, or the result of `add_eval`.
+    #[allow(clippy::too_many_arguments)]
     fn build_call(
         &mut self,
         typ: Type<'gcc>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
+        return_slot: ReturnSlot<<builder::Builder<'a, 'gcc, 'tcx> as BackendTypes>::Value>,
         args: &[RValue<'gcc>],
         funclet: Option<&Funclet>,
         must_tail: bool,
     ) -> RValue<'gcc> {
+        // FIXME: change this in the `rustc_codegen_gcc` repo after the sync, to use the `libgccjit` indirect return suppport.
+        let args = match return_slot {
+            ReturnSlot::Direct => Cow::Borrowed(args),
+            ReturnSlot::Indirect(sret_ptr) => {
+                let mut args = args.to_vec();
+                // Prepend the indirect return pointer
+                args.insert(0, sret_ptr);
+                Cow::Owned(args)
+            }
+        };
         // FIXME(antoyo): remove when having a proper API.
         let gcc_func = unsafe { std::mem::transmute::<RValue<'gcc>, Function<'gcc>>(func) };
         let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
             // FIXME(antoyo): remove when the API supports a different type for functions.
             let func: Function<'gcc> = self.cx.rvalue_as_function(func);
-            self.function_call(func, args, funclet, must_tail)
+            self.function_call(func, &args, funclet, must_tail)
         } else {
             // If it's a not function that was defined, it's a function pointer.
-            self.function_ptr_call(typ, fn_abi, func, args, funclet, must_tail)
+            self.function_ptr_call(typ, fn_abi, func, &args, funclet, must_tail)
         };
         if let Some(_fn_abi) = fn_abi {
             // FIXME(bjorn3): Apply function attributes
@@ -680,6 +693,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
+        return_slot: ReturnSlot<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         then: Block<'gcc>,
         catch: Block<'gcc>,
@@ -692,7 +706,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         let current_block = self.block;
         self.block = try_block;
-        let call = self.call(typ, fn_attrs, fn_abi, func, args, None, instance); // FIXME(antoyo): use funclet here?
+        // FIXME(antoyo): use funclet here?
+        let call = self.call(typ, fn_attrs, fn_abi, func, return_slot, args, None, instance);
         self.block = current_block;
 
         let return_value = self.new_temp(current_func, self.location, call.get_type());
@@ -728,13 +743,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
+        return_slot: ReturnSlot<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         then: Block<'gcc>,
         catch: Block<'gcc>,
         _funclet: Option<&Funclet>,
         instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
-        let call_site = self.call(typ, fn_attrs, fn_abi, func, args, None, instance);
+        let call_site = self.call(typ, fn_attrs, fn_abi, func, return_slot, args, None, instance);
         let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(self.location, condition, then, catch);
         if let Some(_fn_abi) = fn_abi {
@@ -1855,11 +1871,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
+        return_slot: ReturnSlot<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         funclet: Option<&Funclet>,
         _instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
-        self.build_call(typ, fn_abi, func, args, funclet, false)
+        self.build_call(typ, fn_abi, func, return_slot, args, funclet, false)
     }
 
     fn tail_call(
@@ -1868,12 +1885,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: Self::Value,
+        return_slot: ReturnSlot<Self::Value>,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
         _instance: Option<Instance<'tcx>>,
     ) {
         // `emit_call` returns a bare call for here, it has not been assigned or passed to add_eval.
-        let call = self.build_call(llty, Some(fn_abi), llfn, args, funclet, true);
+        let call = self.build_call(llty, Some(fn_abi), llfn, return_slot, args, funclet, true);
         call.set_require_tail_call(true);
 
         let return_type = self.current_func().get_return_type();
