@@ -23,10 +23,9 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_index::Idx;
-use rustc_middle::implement_ty_decoder;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::ty::codec::TyDecoder;
+use rustc_middle::ty::codec::{TyDecoder, forward_all_decoder_methods_to};
 use rustc_middle::ty::{RestrictionKind, Visibility};
 use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_serialize::opaque::MemDecoder;
@@ -689,13 +688,12 @@ impl<I: Idx, D: LazyDecoder, T> Decodable<D> for LazyTable<I, T> {
     }
 }
 
-mod meta {
-    use super::*;
-    implement_ty_decoder!(MetadataDecodeContext<'a, 'tcx>);
+impl<'a, 'tcx> Decoder for MetadataDecodeContext<'a, 'tcx> {
+    forward_all_decoder_methods_to!(|self| self.opaque);
 }
-mod blob {
-    use super::*;
-    implement_ty_decoder!(BlobDecodeContext<'a>);
+
+impl<'a> Decoder for BlobDecodeContext<'a> {
+    forward_all_decoder_methods_to!(|self| self.opaque);
 }
 
 impl MetadataBlob {
