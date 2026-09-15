@@ -57,19 +57,20 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
+    // `long double`, `__int128_t` and `__uint128_t` use an indirect return
+    if let BackendRepr::Scalar(scalar) = ret.layout.backend_repr
+        && matches!(
+            scalar.primitive(),
+            Primitive::Int(Integer::I128, _) | Primitive::Float(Float::F128)
+        )
+    {
+        ret.make_indirect();
+        return;
+    }
+
     ret.extend_integer_width_to(32);
     if ret.layout.is_aggregate() && !unwrap_trivial_aggregate(cx, ret) {
         ret.make_indirect();
-    }
-
-    // `long double`, `__int128_t` and `__uint128_t` use an indirect return
-    if let BackendRepr::Scalar(scalar) = ret.layout.backend_repr {
-        match scalar.primitive() {
-            Primitive::Int(Integer::I128, _) | Primitive::Float(Float::F128) => {
-                ret.make_indirect();
-            }
-            _ => {}
-        }
     }
 }
 
