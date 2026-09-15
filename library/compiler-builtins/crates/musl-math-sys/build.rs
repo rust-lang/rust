@@ -47,7 +47,7 @@ fn main() {
 
     if cfg.target_env == "msvc"
         || cfg.target_families.iter().any(|f| f == "wasm")
-        || cfg.target_features.iter().any(|f| f == "thumb-mode")
+        || cfg.target_os == "none"
     {
         println!(
             "cargo::warning=Musl doesn't compile with the current \

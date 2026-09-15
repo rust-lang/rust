@@ -160,14 +160,13 @@ mflags+=(--exclude update-api-list)
 # We need to specifically skip tests for musl-math-sys on systems that can't
 # build musl since otherwise `--all` will activate it.
 case "$target" in
-    # Can't build at all on MSVC, WASM, or thumb
+    # Musl uses `__attribute__` a lot which MSVC doesn't support
     *windows-msvc*) mflags+=(--exclude musl-math-sys) ;;
+    # Possible with a patch for `a_clz_64`, but this is a build-only target so
+    # we don't have a C toolchain set up.
     *wasm*) mflags+=(--exclude musl-math-sys) ;;
-    *thumb*) mflags+=(--exclude musl-math-sys) ;;
-
-    # We can build musl on MinGW but running tests gets a stack overflow
+    # We can build musl but musl's results are inaccurate for unclear reasons.
     *windows-gnu*) ;;
-
     # Everything else gets musl enabled
     *) mflags+=(--features libm-test/build-musl) ;;
 esac
