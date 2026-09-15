@@ -1,0 +1,12 @@
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/higher-ranked-outlives-for-capture.rs:13:5
+   |
+LL |     test(&vec![])
+   |     ^^^^^^------^
+   |     |     |
+   |     |     temporary value created here
+   |     returns a value referencing data owned by the current function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

@@ -1,0 +1,17 @@
+error[E0597]: `first` does not live long enough
+  --> $DIR/higher-ranked-item-bounds-capture.rs:19:26
+   |
+LL |         let first = ();
+   |             ----- binding `first` declared here
+LL |         value = T::assoc(&first, &second);
+   |                          ^^^^^^ borrowed value does not live long enough
+LL |
+LL |     }
+   |     - `first` dropped here while still borrowed
+LL |     // The GAT's item bound becomes its first identity region, not 'static.
+LL |     drop(value);
+   |          ----- borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.
