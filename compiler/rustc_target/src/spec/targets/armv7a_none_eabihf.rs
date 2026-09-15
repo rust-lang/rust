@@ -4,7 +4,7 @@ use crate::spec::{Arch, CfgAbi, FloatAbi, Target, TargetMetadata, TargetOptions,
 
 pub(crate) fn target() -> Target {
     Target {
-        llvm_target: "armv7a-none-eabihf".into(),
+        llvm_target: "arm-none-eabihf".into(),
         metadata: TargetMetadata {
             description: Some("Bare Armv7-A, hardfloat".into()),
             tier: Some(2),
@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             cfg_abi: CfgAbi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
-            features: "+vfp3d16,-neon,+strict-align".into(),
+            features: "+v7,+db,+dsp,+aclass,+perfmon,+vfp3d16,+strict-align".into(),
             max_atomic_width: Some(64),
             has_thumb_interworking: true,
             ..base::arm_none::opts()
