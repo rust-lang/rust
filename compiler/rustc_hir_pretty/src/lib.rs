@@ -1778,6 +1778,23 @@ impl<'a> State<'a> {
                 self.word_space("yield");
                 self.print_expr_cond_paren(expr, self.precedence(expr) < ExprPrecedence::Jump);
             }
+            hir::ExprKind::BtfFieldInfo(kind, container, fields) => {
+                self.word(format!("{}!(", kind.as_str()));
+                self.print_type(container);
+                self.word(",");
+                self.space();
+
+                if let Some((&first, rest)) = fields.split_first() {
+                    self.print_ident(first);
+
+                    for &field in rest {
+                        self.word(".");
+                        self.print_ident(field);
+                    }
+                }
+
+                self.word(")");
+            }
             hir::ExprKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");

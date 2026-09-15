@@ -160,7 +160,8 @@ impl CheckInlineAssembly {
             | ExprKind::Become(..)
             | ExprKind::Struct(..)
             | ExprKind::Repeat(..)
-            | ExprKind::Yield(..) => {
+            | ExprKind::Yield(..)
+            | ExprKind::BtfFieldInfo(..) => {
                 self.items.push((ItemKind::NonAsm, span));
             }
 

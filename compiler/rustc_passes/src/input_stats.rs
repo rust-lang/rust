@@ -380,6 +380,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Repeat,
                 Yield,
                 UnsafeBinderCast,
+                BtfFieldInfo,
                 Err
             ]
         );
@@ -661,7 +662,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 If, While, ForLoop, Loop, Match, Closure, Block, Await, Move, Use, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
                 InlineAsm, FormatArgs, OffsetOf, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet,
-                Become, IncludedBytes, Gen, UnsafeBinderCast, Err, Dummy, DirectConstArg
+                Become, IncludedBytes, Gen, UnsafeBinderCast, Err, Dummy, DirectConstArg, BtfFieldInfo
             ]
         );
         ast_visit::walk_expr(self, e)

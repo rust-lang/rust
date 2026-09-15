@@ -354,6 +354,18 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn inbounds_ptradd(&mut self, ptr: Self::Value, offset: Self::Value) -> Self::Value {
         self.inbounds_gep(self.cx().type_i8(), ptr, &[offset])
     }
+    fn btf_preserve_access_index(
+        &mut self,
+        _base: Self::Value,
+        _container_ty: Ty<'tcx>,
+        _variant: rustc_abi::VariantIdx,
+        _field: rustc_abi::FieldIdx,
+    ) -> Self::Value {
+        self.tcx().dcx().fatal("the selected codegen backend does not support BTF relocations")
+    }
+    fn btf_preserve_field_info(&mut self, _field: Self::Value, _kind: u64) -> Self::Value {
+        self.tcx().dcx().fatal("the selected codegen backend does not support BTF relocations")
+    }
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     /// Produces the same value as [`Self::trunc`] (and defaults to that),

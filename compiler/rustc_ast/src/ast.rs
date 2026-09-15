@@ -1621,6 +1621,7 @@ impl Expr {
             | ExprKind::While(..)
             | ExprKind::Yield(YieldKind::Postfix(..))
             | ExprKind::DirectConstArg(..)
+            | ExprKind::BtfFieldInfo(..)
             | ExprKind::Err(_)
             | ExprKind::Dummy => prefix_attrs_precedence(&self.attrs),
         }
@@ -1920,6 +1921,9 @@ pub enum ExprKind {
     /// An mGCA `direct_const_arg!()` expression.
     DirectConstArg(Box<Expr>),
 
+    /// A BTF field metadata query.
+    BtfFieldInfo(BtfRelocKind, Box<Ty>, ThinVec<Ident>),
+
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err(ErrorGuaranteed),
 
@@ -2181,6 +2185,50 @@ impl YieldKind {
             (YieldKind::Prefix(_), YieldKind::Prefix(_)) => true,
             (YieldKind::Postfix(_), YieldKind::Postfix(_)) => true,
             _ => false,
+        }
+    }
+}
+
+/// The kind of [BPF Type Format (BTF)][btf] relocation.
+///
+/// [BTF][btf] is the type metadata format used by the Linux kernel and eBPF
+/// tooling for relocations: the compiled program records which field or array
+/// element it intended to access, and the loader rewrites the bytecode to
+/// match the layout of the kernel it is about to run on.
+///
+/// The following variants are a subset of the relocation kinds defined by
+/// Linux's [`bpf_core_relo_kind`].
+///
+/// [btf]: https://docs.kernel.org/bpf/btf.html
+/// [`bpf_core_relo_kind`]: https://docs.kernel.org/bpf/llvm_reloc.html#relocation-kinds
+#[derive(Clone, Copy, Encodable, Decodable, Debug, Eq, PartialEq, StableHash, Walkable)]
+pub enum BtfRelocKind {
+    /// Offset of the field.
+    ByteOffset,
+    /// Size of the field.
+    ByteSize,
+    /// Whether the field exists.
+    Exists,
+}
+
+impl BtfRelocKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::ByteOffset => "btf_field_byte_offset",
+            Self::ByteSize => "btf_field_byte_size",
+            Self::Exists => "btf_field_exists",
+        }
+    }
+
+    /// Returns a code number associated with the given relocation kind that matches Linux's
+    /// [`bpf_core_relo_kind`].
+    ///
+    /// [`bpf_core_relo_kind`]: https://docs.kernel.org/bpf/llvm_reloc.html#relocation-kinds
+    pub fn code(&self) -> u32 {
+        match self {
+            Self::ByteOffset => 0,
+            Self::ByteSize => 1,
+            Self::Exists => 2,
         }
     }
 }

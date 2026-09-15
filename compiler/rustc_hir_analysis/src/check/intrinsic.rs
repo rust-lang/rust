@@ -79,6 +79,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::black_box
         | sym::breakpoint
         | sym::bswap
+        | sym::btf_preserve_access_index
+        | sym::btf_preserve_field_info
         | sym::caller_location
         | sym::carrying_mul_add
         | sym::carryless_mul
@@ -309,6 +311,15 @@ pub(crate) fn check_intrinsic_type(
         }
         sym::size_of_type_id => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, tcx.types.usize)),
         sym::offset_of => (1, 0, vec![tcx.types.u32, tcx.types.u32], tcx.types.usize),
+        sym::btf_preserve_access_index => (
+            1,
+            0,
+            vec![Ty::new_imm_ptr(tcx, tcx.types.unit), tcx.types.u32, tcx.types.u32],
+            Ty::new_imm_ptr(tcx, tcx.types.unit),
+        ),
+        sym::btf_preserve_field_info => {
+            (0, 0, vec![Ty::new_imm_ptr(tcx, tcx.types.unit), tcx.types.u32], tcx.types.u32)
+        }
         sym::field_offset => (1, 0, vec![], tcx.types.usize),
         sym::rustc_peek => (1, 0, vec![param(0)], param(0)),
         sym::caller_location => (0, 0, vec![], tcx.caller_location_ty()),

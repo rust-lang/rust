@@ -338,6 +338,8 @@ fn test_expr() {
 
     // ExprKind::FormatArgs: untestable because this test works pre-expansion.
 
+    // ExprKind::BtfFieldInfo: untestable because this test works pre-expansion.
+
     // ExprKind::Err: untestable.
 
     // Ones involving attributes.
