@@ -124,6 +124,8 @@ pub mod abstract_const;
 pub mod adjustment;
 pub mod cast;
 pub mod codec;
+// FIXME(#159654): This should get deleted soon
+pub mod consts;
 pub mod error;
 pub mod fast_reject;
 pub mod inhabitedness;
@@ -143,7 +145,6 @@ pub mod vtable;
 mod adt;
 mod assoc;
 mod closure;
-mod consts;
 mod context;
 mod diagnostics;
 mod elaborate_impl;

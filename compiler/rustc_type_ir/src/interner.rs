@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::ops::Deref;
 
@@ -21,8 +21,8 @@ use crate::solve::{
 };
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
-    self as ty, AliasTermKind, BoundRegion, BoundVar, CanonicalParamEnvCache, DebruijnIndex,
-    Region, RegionKind, RegionVid, TraitRef, search_graph,
+    self as ty, AliasTermKind, BoundRegion, BoundVar, CanonicalParamEnvCache, Const, ConstKind,
+    DebruijnIndex, Region, RegionKind, RegionVid, TraitRef, WithCachedTypeInfo, search_graph,
 };
 
 /// The central trait in the shared abstraction layer, specifying all implementation-specific
@@ -198,10 +198,9 @@ pub trait Interner:
     type Safety: Safety<Self>;
 
     // Kinds of consts
-    type Const: Const<Self>;
-    type Consts: Copy + Debug + Hash + Eq + SliceLike<Item = Self::Const> + Default;
+    type Consts: Copy + Debug + Hash + Eq + SliceLike<Item = Const<Self>> + Default;
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
-    type ValueConst: ValueConst<Self>;
+    type ValueConst: ValueConst<Self> + TypeFoldable<Self> + Display;
     type ExprConst: ExprConst<Self>;
     type ValTree: Copy + Debug + Hash + Eq + IntoKind<Kind = ty::ValTreeKind<Self>>;
     type ScalarInt: Copy + Debug + Hash + Eq;
@@ -238,6 +237,7 @@ pub trait Interner:
         + RegionName<Self>;
 
     type InternedRegionKind: Interned<Self, Value = RegionKind<Self>>;
+    type InternedConstKind: Interned<Self, Value = WithCachedTypeInfo<ConstKind<Self>>>;
 
     type RegionAssumptions: Copy
         + Debug
@@ -285,7 +285,7 @@ pub trait Interner:
     fn const_of_item(
         self,
         alias: ty::AliasConstKind<Self>,
-    ) -> Option<ty::EarlyBinder<Self, Self::Const>>;
+    ) -> Option<ty::EarlyBinder<Self, Const<Self>>>;
     fn anon_const_kind(self, def_id: Self::DefId) -> ty::AnonConstKind;
 
     fn def_span(self, def_id: Self::DefId) -> Self::Span;
@@ -340,6 +340,8 @@ pub trait Interner:
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<Self::Ty, Self::Tys>;
+
+    fn mk_ct_from_kind(self, kind: ConstKind<Self>) -> Const<Self>;
 
     fn projection_parent(self, def_id: Self::TraitAssocTermId) -> Self::TraitId;
 
@@ -585,7 +587,6 @@ macro_rules! declare_lift_into {
 
 declare_lift_into! {
     BoundVarKinds,
-    Const,
     DefId,
     EarlyParamRegion,
     ErrorGuaranteed,
@@ -595,6 +596,7 @@ declare_lift_into! {
     GenericArgs,
     InherentAssocConstId,
     InherentAssocTyId,
+    InternedConstKind,
     InternedRegionKind,
     OpaqueTyId,
     ParamEnv,
