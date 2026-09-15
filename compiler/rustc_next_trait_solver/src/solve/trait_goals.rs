@@ -911,47 +911,49 @@ where
         if goal.predicate.polarity != ty::ClausePolarity::Positive {
             return Err(NoSolution.into());
         }
-        if let ty::Adt(def, args) = goal.predicate.self_ty().kind()
-            && let Some(FieldInfo { base, ty, .. }) =
-                def.field_representing_type_info(ecx.cx(), args)
-            && {
-                let sized_trait = ecx.cx().require_trait_lang_item(SolverTraitLangItem::Sized);
-                // FIXME: add better support for builtin impls of traits that check for the bounds
-                // on the trait definition in std.
 
-                // NOTE: these bounds have to be kept in sync with the definition of the `Field`
-                // trait in `library/core/src/field.rs` as well as the old trait solver `fn
-                // assemble_candidates_for_field_trait` in
-                // `compiler/rustc_trait_selection/src/traits/select/candidate_assembly.rs`.
-                ecx.add_goal(
-                    GoalSource::ImplWhereBound,
-                    Goal {
-                        param_env: goal.param_env,
-                        predicate: TraitRef::new(ecx.cx(), sized_trait, [base]).upcast(ecx.cx()),
-                    },
-                )?;
-                ecx.add_goal(
-                    GoalSource::ImplWhereBound,
-                    Goal {
-                        param_env: goal.param_env,
-                        predicate: TraitRef::new(ecx.cx(), sized_trait, [ty]).upcast(ecx.cx()),
-                    },
-                )?;
-                // FIXME(field_projections): This function does some questionable incomplete stuff by
-                // returning `Err(NoSolution)` on ambiguity.
-                ecx.try_evaluate_added_goals()? == Certainty::Yes
-            }
-            && match base.kind() {
-                ty::Adt(def, _) => def.is_struct() && !def.is_packed(),
-                ty::Tuple(..) => true,
-                _ => false,
-            }
-        {
-            ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
-                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
-        } else {
-            Err(NoSolution.into())
+        let ty::Adt(def, args) = goal.predicate.self_ty().kind() else {
+            return Err(NoSolution.into());
+        };
+
+        let Some(FieldInfo { base, ty, .. }) = def.field_representing_type_info(ecx.cx(), args)
+        else {
+            return Err(NoSolution.into());
+        };
+
+        match base.kind() {
+            ty::Adt(def, _) if def.is_struct() && !def.is_packed() => {}
+            ty::Tuple(..) => {}
+            _ => return Err(NoSolution.into()),
         }
+
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            let sized_trait = ecx.cx().require_trait_lang_item(SolverTraitLangItem::Sized);
+
+            // FIXME: add better support for builtin impls of traits that check for the bounds
+            // on the trait definition in std.
+            //
+            // NOTE: these bounds have to be kept in sync with the definition of the `Field`
+            // trait in `library/core/src/field.rs` as well as the old trait solver `fn
+            // assemble_candidates_for_field_trait` in
+            // `compiler/rustc_trait_selection/src/traits/select/candidate_assembly.rs`.
+            ecx.add_goal(
+                GoalSource::ImplWhereBound,
+                Goal {
+                    param_env: goal.param_env,
+                    predicate: TraitRef::new(ecx.cx(), sized_trait, [base]).upcast(ecx.cx()),
+                },
+            )?;
+            ecx.add_goal(
+                GoalSource::ImplWhereBound,
+                Goal {
+                    param_env: goal.param_env,
+                    predicate: TraitRef::new(ecx.cx(), sized_trait, [ty]).upcast(ecx.cx()),
+                },
+            )?;
+
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
     }
 }
 
