@@ -5,9 +5,9 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
-use rustc_middle::{bug, ty};
+use rustc_middle::ty;
 use rustc_parse_format::{ParseMode, Parser, Piece};
-use rustc_span::{InnerSpan, Span, Symbol, hygiene, sym};
+use rustc_span::{InnerSpan, Span, Symbol, bug, hygiene, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::diagnostics::{NonFmtPanicBraces, NonFmtPanicUnused};

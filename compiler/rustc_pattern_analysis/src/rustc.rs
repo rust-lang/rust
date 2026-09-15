@@ -13,9 +13,8 @@ use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalModId;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug, span_bug};
 
 use crate::constructor::Constructor::*;
 use crate::constructor::{

@@ -18,12 +18,11 @@
 //! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 
 use rustc_hir::def_id::DefId;
-use rustc_middle::span_bug;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::relate::combine::{combine_ty_args, super_combine_consts, super_combine_tys};
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Ty, TyCtxt, TyVar, TypeVisitableExt};
-use rustc_span::Span;
+use rustc_span::{Span, span_bug};
 use tracing::{debug, instrument};
 
 use super::combine::PredicateEmittingRelation;

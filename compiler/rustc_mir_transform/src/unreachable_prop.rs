@@ -4,10 +4,10 @@
 
 use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::bug;
 
 use crate::PassPolicy;
 use crate::patch::MirPatch;

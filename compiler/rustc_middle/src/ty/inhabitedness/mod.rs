@@ -47,6 +47,7 @@ use std::assert_matches;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
+use rustc_span::bug;
 use rustc_span::def_id::LocalModId;
 use rustc_type_ir::TyKind::*;
 use tracing::instrument;

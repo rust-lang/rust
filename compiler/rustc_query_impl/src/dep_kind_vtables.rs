@@ -1,7 +1,7 @@
 use rustc_middle::arena::Arena;
-use rustc_middle::bug;
 use rustc_middle::dep_graph::{DepKindVTable, DepNodeKey, KeyFingerprintStyle};
 use rustc_middle::query::QueryCache;
+use rustc_span::bug;
 
 use crate::incremental::promote_from_disk_inner;
 use crate::query_vtables::GetQueryVTable;

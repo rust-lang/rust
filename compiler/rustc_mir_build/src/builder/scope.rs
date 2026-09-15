@@ -92,9 +92,8 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{AdtExpr, AdtExprBase, ArmId, ExprId, ExprKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
-use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
-use rustc_span::{DUMMY_SP, Span, Spanned};
+use rustc_span::{DUMMY_SP, Span, Spanned, bug, span_bug};
 use tracing::{debug, instrument};
 
 use super::matches::BuiltMatchTree;
