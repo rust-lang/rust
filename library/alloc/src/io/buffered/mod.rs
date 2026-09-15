@@ -25,7 +25,7 @@ use crate::io::Error;
 /// use std::net::TcpStream;
 ///
 /// # #[expect(unused_mut)]
-/// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+/// let mut stream = BufWriter::new(TcpStream::connect("[::1]:34254").unwrap());
 ///
 /// // do stuff with the stream
 ///
@@ -68,7 +68,7 @@ impl<W> IntoInnerError<W> {
     /// use std::net::TcpStream;
     ///
     /// # #[expect(unused_mut)]
-    /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut stream = BufWriter::new(TcpStream::connect("[::1]:34254").unwrap());
     ///
     /// // do stuff with the stream
     ///
@@ -103,7 +103,7 @@ impl<W> IntoInnerError<W> {
     /// use std::net::TcpStream;
     ///
     /// # #[expect(unused_mut)]
-    /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut stream = BufWriter::new(TcpStream::connect("[::1]:34254").unwrap());
     ///
     /// // do stuff with the stream
     ///

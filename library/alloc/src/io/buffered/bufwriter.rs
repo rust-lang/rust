@@ -34,7 +34,7 @@ use crate::vec::Vec;
 /// use std::io::prelude::*;
 /// use std::net::TcpStream;
 ///
-/// let mut stream = TcpStream::connect("127.0.0.1:34254").unwrap();
+/// let mut stream = TcpStream::connect("[::1]:34254").unwrap();
 ///
 /// for i in 0..10 {
 ///     stream.write(&[i+1]).unwrap();
@@ -50,7 +50,7 @@ use crate::vec::Vec;
 /// use std::io::BufWriter;
 /// use std::net::TcpStream;
 ///
-/// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+/// let mut stream = BufWriter::new(TcpStream::connect("[::1]:34254").unwrap());
 ///
 /// for i in 0..10 {
 ///     stream.write(&[i+1]).unwrap();
@@ -91,7 +91,7 @@ impl<W: Write> BufWriter<W> {
     /// use std::net::TcpStream;
     ///
     /// # #[expect(unused_mut)]
-    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut buffer = BufWriter::new(TcpStream::connect("[::1]:34254").unwrap());
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -122,7 +122,7 @@ impl<W: Write> BufWriter<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:34254").unwrap();
+    /// let stream = TcpStream::connect("[::1]:34254").unwrap();
     /// # #[expect(unused_mut)]
     /// let mut buffer = BufWriter::with_capacity(100, stream);
     /// ```
@@ -147,7 +147,7 @@ impl<W: Write> BufWriter<W> {
     /// use std::net::TcpStream;
     ///
     /// # #[expect(unused_mut)]
-    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut buffer = BufWriter::new(TcpStream::connect("[::1]:34254").unwrap());
     ///
     /// // unwrap the TcpStream and flush the buffer
     /// let stream = buffer.into_inner().unwrap();
@@ -301,7 +301,7 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// use std::net::TcpStream;
     ///
     /// # #[expect(unused_mut)]
-    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut buffer = BufWriter::new(TcpStream::connect("[::1]:34254").unwrap());
     ///
     /// // we can use reference just like buffer
     /// let reference = buffer.get_ref();
@@ -321,7 +321,7 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
-    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut buffer = BufWriter::new(TcpStream::connect("[::1]:34254").unwrap());
     ///
     /// // we can use reference just like buffer
     /// let reference = buffer.get_mut();
@@ -339,7 +339,7 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
-    /// let buf_writer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let buf_writer = BufWriter::new(TcpStream::connect("[::1]:34254").unwrap());
     ///
     /// // See how many bytes are currently buffered
     /// let bytes_buffered = buf_writer.buffer().len();
@@ -371,7 +371,7 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
-    /// let buf_writer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let buf_writer = BufWriter::new(TcpStream::connect("[::1]:34254").unwrap());
     ///
     /// // Check the capacity of the inner buffer
     /// let capacity = buf_writer.capacity();

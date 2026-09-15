@@ -20,13 +20,13 @@ use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 /// # Examples
 ///
 /// ```
-/// use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+/// use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 ///
-/// let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+/// let socket = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 8080);
 ///
-/// assert_eq!("127.0.0.1:8080".parse(), Ok(socket));
+/// assert_eq!("[::1]:8080".parse(), Ok(socket));
 /// assert_eq!(socket.port(), 8080);
-/// assert_eq!(socket.is_ipv4(), true);
+/// assert_eq!(socket.is_ipv6(), true);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -159,10 +159,10 @@ impl SocketAddr {
     /// # Examples
     ///
     /// ```
-    /// use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    /// use std::net::{IpAddr, Ipv6Addr, SocketAddr};
     ///
-    /// let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
-    /// assert_eq!(socket.ip(), IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
+    /// let socket = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 8080);
+    /// assert_eq!(socket.ip(), IpAddr::V6(Ipv6Addr::LOCALHOST));
     /// assert_eq!(socket.port(), 8080);
     /// ```
     #[stable(feature = "ip_addr", since = "1.7.0")]
@@ -181,10 +181,10 @@ impl SocketAddr {
     /// # Examples
     ///
     /// ```
-    /// use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    /// use std::net::{IpAddr, Ipv6Addr, SocketAddr};
     ///
-    /// let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
-    /// assert_eq!(socket.ip(), IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
+    /// let socket = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 8080);
+    /// assert_eq!(socket.ip(), IpAddr::V6(Ipv6Addr::LOCALHOST));
     /// ```
     #[must_use]
     #[stable(feature = "ip_addr", since = "1.7.0")]
@@ -202,11 +202,12 @@ impl SocketAddr {
     /// # Examples
     ///
     /// ```
-    /// use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    /// use std::net::{IpAddr, Ipv6Addr, SocketAddr};
     ///
-    /// let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
-    /// socket.set_ip(IpAddr::V4(Ipv4Addr::new(10, 10, 0, 1)));
-    /// assert_eq!(socket.ip(), IpAddr::V4(Ipv4Addr::new(10, 10, 0, 1)));
+    /// let mut socket = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 8080);
+    /// // [2001:db8::1]
+    /// socket.set_ip(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)));
+    /// assert_eq!(socket.ip(), IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1)));
     /// ```
     #[inline]
     #[stable(feature = "sockaddr_setters", since = "1.9.0")]
@@ -225,9 +226,9 @@ impl SocketAddr {
     /// # Examples
     ///
     /// ```
-    /// use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    /// use std::net::{IpAddr, Ipv6Addr, SocketAddr};
     ///
-    /// let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+    /// let socket = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 8080);
     /// assert_eq!(socket.port(), 8080);
     /// ```
     #[must_use]
@@ -246,9 +247,9 @@ impl SocketAddr {
     /// # Examples
     ///
     /// ```
-    /// use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    /// use std::net::{IpAddr, Ipv6Addr, SocketAddr};
     ///
-    /// let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+    /// let mut socket = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 8080);
     /// socket.set_port(1025);
     /// assert_eq!(socket.port(), 1025);
     /// ```
@@ -465,7 +466,7 @@ impl SocketAddrV6 {
     /// ```
     /// use std::net::{SocketAddrV6, Ipv6Addr};
     ///
-    /// let socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 0);
+    /// let socket = SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8080, 0, 0);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
@@ -482,8 +483,8 @@ impl SocketAddrV6 {
     /// ```
     /// use std::net::{SocketAddrV6, Ipv6Addr};
     ///
-    /// let socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 0);
-    /// assert_eq!(socket.ip(), &Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+    /// let socket = SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8080, 0, 0);
+    /// assert_eq!(socket.ip(), &Ipv6Addr::LOCALHOST);
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -500,7 +501,7 @@ impl SocketAddrV6 {
     /// ```
     /// use std::net::{SocketAddrV6, Ipv6Addr};
     ///
-    /// let mut socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 0);
+    /// let mut socket = SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8080, 0, 0);
     /// socket.set_ip(Ipv6Addr::new(76, 45, 0, 0, 0, 0, 0, 0));
     /// assert_eq!(socket.ip(), &Ipv6Addr::new(76, 45, 0, 0, 0, 0, 0, 0));
     /// ```
@@ -518,7 +519,7 @@ impl SocketAddrV6 {
     /// ```
     /// use std::net::{SocketAddrV6, Ipv6Addr};
     ///
-    /// let socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 0);
+    /// let socket = SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8080, 0, 0);
     /// assert_eq!(socket.port(), 8080);
     /// ```
     #[must_use]
@@ -536,7 +537,7 @@ impl SocketAddrV6 {
     /// ```
     /// use std::net::{SocketAddrV6, Ipv6Addr};
     ///
-    /// let mut socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 0);
+    /// let mut socket = SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8080, 0, 0);
     /// socket.set_port(4242);
     /// assert_eq!(socket.port(), 4242);
     /// ```
@@ -564,7 +565,7 @@ impl SocketAddrV6 {
     /// ```
     /// use std::net::{SocketAddrV6, Ipv6Addr};
     ///
-    /// let socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 10, 0);
+    /// let socket = SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8080, 10, 0);
     /// assert_eq!(socket.flowinfo(), 10);
     /// ```
     #[must_use]
@@ -584,7 +585,7 @@ impl SocketAddrV6 {
     /// ```
     /// use std::net::{SocketAddrV6, Ipv6Addr};
     ///
-    /// let mut socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 10, 0);
+    /// let mut socket = SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8080, 10, 0);
     /// socket.set_flowinfo(56);
     /// assert_eq!(socket.flowinfo(), 56);
     /// ```
@@ -607,7 +608,7 @@ impl SocketAddrV6 {
     /// ```
     /// use std::net::{SocketAddrV6, Ipv6Addr};
     ///
-    /// let socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 78);
+    /// let socket = SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8080, 0, 78);
     /// assert_eq!(socket.scope_id(), 78);
     /// ```
     #[must_use]
@@ -627,7 +628,7 @@ impl SocketAddrV6 {
     /// ```
     /// use std::net::{SocketAddrV6, Ipv6Addr};
     ///
-    /// let mut socket = SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 8080, 0, 78);
+    /// let mut socket = SocketAddrV6::new(Ipv6Addr::LOCALHOST, 8080, 0, 78);
     /// socket.set_scope_id(42);
     /// assert_eq!(socket.scope_id(), 42);
     /// ```
