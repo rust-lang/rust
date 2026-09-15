@@ -198,7 +198,6 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::truncf64
         | sym::truncf128
         | sym::type_id
-        | sym::type_id_non_exhaustive
         | sym::type_id_array_len
         | sym::type_id_element_ty
         | sym::type_id_eq
@@ -207,16 +206,16 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id_function_ptr
         | sym::type_id_generics
         | sym::type_id_is_signed
+        | sym::type_id_non_exhaustive
         | sym::type_id_points_mutably
         | sym::type_id_points_to
+        | sym::type_id_size_of
+        | sym::type_id_type_of
+        | sym::type_id_variant_name
+        | sym::type_id_variant_non_exhaustive
         | sym::type_id_variants
         | sym::type_id_vtable
         | sym::type_name
-        | sym::type_id_type_of
-        | sym::type_id_size_of
-        | sym::type_id_variants
-        | sym::type_id_variant_name
-        | sym::type_id_variant_non_exhaustive
         | sym::ub_checks
         | sym::va_copy
         | sym::variant_count

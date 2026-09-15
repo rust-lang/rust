@@ -2,10 +2,9 @@
 //! runtime or const-eval processable way.
 
 use crate::any::TypeId;
-use crate::fmt;
-use crate::intrinsics;
 use crate::marker::PointeeSized;
 use crate::ptr::DynMetadata;
+use crate::{fmt, intrinsics};
 
 /// Compile-time type information.
 #[derive(Debug)]
@@ -38,7 +37,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn info(self) -> Type {
-        intrinsics::type_id_type_of(self)
+        intrinsics::reflection::type_id_type_of(self)
     }
 }
 
@@ -54,7 +53,7 @@ impl Type {
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     pub const fn of<T: ?Sized>() -> Self {
-        const { intrinsics::type_id::<T>().info() }
+        const { intrinsics::reflection::type_id::<T>().info() }
     }
 }
 
@@ -67,7 +66,7 @@ impl Type {
 #[unstable(feature = "type_info", issue = "146922")]
 #[rustc_const_unstable(feature = "type_info", issue = "146922")]
 pub const fn of<T: ?Sized>() -> TypeId {
-    const { intrinsics::type_id::<T>() }
+    const { intrinsics::reflection::type_id::<T>() }
 }
 
 /// Compile-time type information.
@@ -272,7 +271,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn is_signed(self) -> bool {
-        intrinsics::type_id_is_signed(self)
+        intrinsics::reflection::type_id_is_signed(self)
     }
 
     /// When called on a `TypeId` representing an array or slice this returns the type of each
@@ -291,7 +290,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn element_ty(self) -> Option<TypeId> {
-        intrinsics::type_id_element_ty(self)
+        intrinsics::reflection::type_id_element_ty(self)
     }
 
     /// When called on a `TypeId` representing an array this returns the length of the array in
@@ -310,7 +309,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn array_len(self) -> usize {
-        intrinsics::type_id_array_len(self)
+        intrinsics::reflection::type_id_array_len(self)
     }
 
     /// Returns the size of the type represented by this `TypeId`. `None` if it is unsized.
@@ -328,7 +327,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn size(self) -> Option<usize> {
-        intrinsics::type_id_size_of(self)
+        intrinsics::reflection::type_id_size_of(self)
     }
 
     /// Returns the number of variants of the type represented by this `TypeId`.
@@ -354,7 +353,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn variants(self) -> usize {
-        intrinsics::type_id_variants(self)
+        intrinsics::reflection::type_id_variants(self)
     }
 
     // FIXME(reflection): make the errors nicer. This is a wider problem,
@@ -416,7 +415,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn variant(self, variant_index: usize) -> VariantId {
-        intrinsics::type_id_fields(self, variant_index);
+        intrinsics::reflection::type_id_fields(self, variant_index);
         VariantId { base: self, variant: variant_index }
     }
 
@@ -484,7 +483,7 @@ impl TypeId {
     // type we have) and add methods on that. It's the only way to really sensibly represent
     // things like `non_exhaustive` which can be applied to variants as well.
     pub fn fields(self, variant_index: usize) -> usize {
-        intrinsics::type_id_fields(self, variant_index)
+        intrinsics::reflection::type_id_fields(self, variant_index)
     }
 
     /// Returns the field representing type at the given index of the type represented by this `TypeId`.
@@ -552,7 +551,7 @@ impl TypeId {
     #[rustc_comptime]
     pub fn field(self, variant_index: usize, field_index: usize) -> FieldId {
         FieldId {
-            frt_type_id: intrinsics::type_id_field_representing_type(
+            frt_type_id: intrinsics::reflection::type_id_field_representing_type(
                 self,
                 variant_index,
                 field_index,
@@ -566,7 +565,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn non_exhaustive(self) -> bool {
-        intrinsics::type_id_non_exhaustive(self)
+        intrinsics::reflection::type_id_non_exhaustive(self)
     }
 
     /// Returns a list of generic parameters of the type.
@@ -575,7 +574,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn generics(self) -> &'static [Generic] {
-        intrinsics::type_id_generics(self)
+        intrinsics::reflection::type_id_generics(self)
     }
 
     /// Given a `TypeId` that represents a pointer this returns the `TypeId`
@@ -600,7 +599,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn points_to(self) -> Option<TypeId> {
-        intrinsics::type_id_points_to(self)
+        intrinsics::reflection::type_id_points_to(self)
     }
 
     /// Given a `TypeId` that represents a pointer returns whether that pointer is mutable.
@@ -620,7 +619,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn points_mutably(self) -> bool {
-        intrinsics::type_id_points_mutably(self)
+        intrinsics::reflection::type_id_points_mutably(self)
     }
 
     /// Given a `TypeId` that represents a function pointer returns an
@@ -655,7 +654,7 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn function_ptr(self) -> Option<FnPtr> {
-        intrinsics::type_id_function_ptr(self)
+        intrinsics::reflection::type_id_function_ptr(self)
     }
 }
 
@@ -696,7 +695,7 @@ impl VariantId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn name(self) -> &'static str {
-        intrinsics::type_id_variant_name(self.base, self.variant)
+        intrinsics::reflection::type_id_variant_name(self.base, self.variant)
     }
 
     /// Returns whether this variant is marked with `#[non_exhaustive]`.
@@ -704,7 +703,7 @@ impl VariantId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn non_exhaustive(self) -> bool {
-        intrinsics::type_id_variant_non_exhaustive(self.base, self.variant)
+        intrinsics::reflection::type_id_variant_non_exhaustive(self.base, self.variant)
     }
 }
 
