@@ -245,6 +245,12 @@ where
         return Err(errors);
     }
 
+    // The fallback in `normalize_with_universes` builds `value` using fresh inference
+    // variables and returns their obligations separately. Fulfillment may constrain
+    // these variables, but it does not fold `value` again, so resolve them before
+    // returning.
+    let value = at.infcx.resolve_vars_if_possible(value);
+
     Ok((value, stalled_coroutine_goals))
 }
 
