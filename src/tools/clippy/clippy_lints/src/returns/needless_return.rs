@@ -188,13 +188,8 @@ fn check_final_expr<'tcx>(
                         .iter()
                         .filter(|lint| matches!(lint.kind, LintCheckKind::Expect))
                         .any(|lint| {
-                            matches!(
-                                &*lint.name,
-                                [
-                                    sym::clippy,
-                                    sym::needless_return | sym::style | sym::all | sym::warnings
-                                ]
-                            )
+                            lint.tool_name == Some(sym::clippy)
+                                && matches!(lint.name, sym::needless_return | sym::style | sym::all | sym::warnings)
                         })
                     {
                         // This is an expectation of the `needless_return` lint

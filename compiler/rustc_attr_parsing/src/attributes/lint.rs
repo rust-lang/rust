@@ -28,7 +28,7 @@ impl LintParser {
         let attr_index = self.attr_index;
         let attr_span = cx.attr_span;
         let attr_id = cx.attr_id.expect("no `AttrId` for lint attribute");
-        let mut lints: Vec<(ThinVec<Symbol>, Span)> = Vec::new();
+        let mut lints: Vec<(Option<Symbol>, Symbol, Span)> = Vec::new();
 
         if let Some(list) = cx.expect_list(args, cx.attr_span) {
             let mut parsers = list.sub_parsers();
@@ -54,7 +54,19 @@ impl LintParser {
                 if let Some(p) = item.meta_item() {
                     match p.args() {
                         ArgParser::NoArgs => {
-                            lints.push((p.path().segments().map(|i| i.name).collect(), p.span()))
+                            let (tool_name, name) = match &*p.path().0.segments {
+                                [] => unreachable!(),
+                                [name] => (None, name.ident.name),
+                                [tool_name, name, rest @ ..] => {
+                                    if !rest.is_empty() {
+                                        // drop 3 and up segments
+                                        // FIXME make lint or smth
+                                    }
+                                    (Some(tool_name.ident.name), name.ident.name)
+                                }
+                            };
+
+                            lints.push((tool_name, name, p.span()))
                         }
                         // We're found a `reason = "reason"` but we're not the last element.
                         ArgParser::NameValue(nv) if p.path().word_is(sym::reason) => {
@@ -97,8 +109,9 @@ impl LintParser {
                 );
             }
 
-            for (lint_index, (name, span)) in lints.into_iter().enumerate() {
+            for (lint_index, (tool_name, name, span)) in lints.into_iter().enumerate() {
                 self.lints.push(LintCheck {
+                    tool_name,
                     name,
                     span,
                     lint_index: lint_index as u16,

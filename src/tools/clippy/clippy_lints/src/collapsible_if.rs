@@ -245,13 +245,13 @@ impl CollapsibleIf {
                     .iter()
                     .filter(|lint| matches!(lint.kind, LintCheckKind::Expect))
                     .filter_map(|lint| {
-                        if let [sym::clippy, lint_name] = &*lint.name {
-                            Some(lint_name)
+                        if lint.tool_name == Some(sym::clippy) {
+                            Some(lint.name)
                         } else {
                             None
                         }
                     })
-                    .any(|lint| [expected_lint_name, sym::style, sym::all].contains(lint)) =>
+                    .any(|lint| [expected_lint_name, sym::style, sym::all].contains(&lint)) =>
             {
                 let attr_span = lints.first().unwrap().attr_span.to(lints.last().unwrap().attr_span);
                 // There is an `expect` attribute -- check that there is no _other_ significant text

@@ -1,4 +1,4 @@
-#![attr = LintCheck([LintCheck {name: ["dead_code"], attr_index: 0,
+#![attr = LintCheck([LintCheck {name: "dead_code", attr_index: 0,
 lint_index: 0, kind: Allow}])]
 extern crate std;
 #[attr = PreludeImport]

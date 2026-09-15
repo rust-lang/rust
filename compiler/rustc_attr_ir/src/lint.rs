@@ -1,6 +1,5 @@
 use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::{Span, Symbol, sym};
-use thin_vec::ThinVec;
 
 use crate::{HashIgnoredAttrId, PrintAttribute};
 #[derive(Clone, Copy, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
@@ -26,7 +25,8 @@ impl LintCheckKind {
 
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct LintCheck {
-    pub name: ThinVec<Symbol>,
+    pub tool_name: Option<Symbol>,
+    pub name: Symbol,
     pub span: Span,
     pub attr_index: u16,
     pub lint_index: u16,

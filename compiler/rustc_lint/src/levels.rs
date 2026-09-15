@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use rustc_ast as ast;
+use rustc_ast::CRATE_NODE_ID;
 use rustc_ast::attr::AttributeExt;
-use rustc_ast::{CRATE_NODE_ID, join_path_syms};
 use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{Attribute, AttributeKind, find_attr};
@@ -765,7 +765,8 @@ where
 
         for lint_check in lint_checks {
             let LintCheck {
-                mut name,
+                tool_name,
+                name,
                 span: sp,
                 attr_index,
                 lint_index,
@@ -789,22 +790,16 @@ where
                 self.provider.mk_lint_expectation_id(attr_id.attr_id, attr_index, lint_index)
             });
 
-            let tool_name = if name.len() > 1 { Some(name.remove(0)) } else { None };
-
-            let lint_name = join_path_syms(&name);
             let lint_result =
-                self.store.check_lint_name(&lint_name, tool_name, self.registered_lint_tools);
+                self.store.check_lint_name(name.as_str(), tool_name, self.registered_lint_tools);
 
             let (ids, name) = match lint_result {
-                CheckLintNameResult::Ok(ids) => {
-                    let name = name.last().expect("empty lint name");
-                    (ids, *name)
-                }
+                CheckLintNameResult::Ok(ids) => (ids, name),
 
                 CheckLintNameResult::Tool(ids, new_lint_name) => {
                     let name = match new_lint_name {
                         None => {
-                            let complete_name = &format!("{}::{}", tool_name.unwrap(), lint_name);
+                            let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
                             Symbol::intern(complete_name)
                         }
                         Some(new_lint_name) => {
@@ -812,7 +807,7 @@ where
                                 builtin::RENAMED_AND_REMOVED_LINTS,
                                 sp.into(),
                                 DeprecatedLintName {
-                                    name: lint_name,
+                                    name: name.to_string(),
                                     suggestion: sp,
                                     replace: &new_lint_name,
                                 },
@@ -835,7 +830,7 @@ where
                     sess.dcx().emit_err(UnknownToolInScopedLint {
                         span: Some(sp),
                         tool_name: tool_name.unwrap(),
-                        lint_name,
+                        lint_name: name.to_string(),
                         is_nightly_build: sess.is_nightly_build(),
                     });
                     continue;
@@ -846,8 +841,8 @@ where
                         let suggestion =
                             RenamedLintSuggestion::WithSpan { suggestion: sp, replace };
                         let name = tool_name
-                            .map(|tool| format!("{tool}::{lint_name}"))
-                            .unwrap_or(lint_name);
+                            .map(|tool| format!("{tool}::{name}"))
+                            .unwrap_or_else(|| name.to_string());
                         self.emit_span_lint(
                             RENAMED_AND_REMOVED_LINTS,
                             sp.into(),
@@ -872,8 +867,8 @@ where
                 CheckLintNameResult::Removed(ref reason) => {
                     if self.lint_added_lints {
                         let name = tool_name
-                            .map(|tool| format!("{tool}::{lint_name}"))
-                            .unwrap_or(lint_name);
+                            .map(|tool| format!("{tool}::{name}"))
+                            .unwrap_or_else(|| name.to_string());
                         self.emit_span_lint(
                             RENAMED_AND_REMOVED_LINTS,
                             sp.into(),
@@ -886,8 +881,8 @@ where
                 CheckLintNameResult::NoLint(suggestion) => {
                     if self.lint_added_lints {
                         let name = tool_name
-                            .map(|tool| format!("{tool}::{lint_name}"))
-                            .unwrap_or(lint_name);
+                            .map(|tool| format!("{tool}::{name}"))
+                            .unwrap_or_else(|| name.to_string());
                         let suggestion = suggestion.map(|(replace, from_rustc)| {
                             UnknownLintSuggestion::WithSpan { suggestion: sp, replace, from_rustc }
                         });
