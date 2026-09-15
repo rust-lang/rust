@@ -61,12 +61,7 @@ impl ::core::cmp::PartialEq for Empty {
     fn eq(&self, other: &Empty) -> bool { true }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Empty {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {}
-}
+impl ::core::cmp::Eq for Empty { }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Empty {
     #[inline]

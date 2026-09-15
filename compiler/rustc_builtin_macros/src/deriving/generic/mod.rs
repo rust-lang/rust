@@ -837,7 +837,7 @@ impl<'a> TraitDef<'a> {
     ) -> Box<ast::Item> {
         let field_tys = struct_def.fields().iter().map(|field| &*field.ty);
 
-        let methods = self.methods.iter().map(|method_def| {
+        let methods = self.methods.iter().filter_map(|method_def| {
             let ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys } =
                 method_def.extract_arg_details(cx, self, type_ident, generics);
 
@@ -912,13 +912,7 @@ impl<'a> TraitDef<'a> {
                 )
             };
 
-            // `assert_fields_are_eq` has an empty default implementation
-            if body.0.is_empty() && body.1.is_none() && method_def.name == sym::assert_fields_are_eq
-            {
-                return None;
-            }
-
-            Some(method_def.create_method(
+            method_def.create_method(
                 cx,
                 self,
                 type_ident,
@@ -926,7 +920,7 @@ impl<'a> TraitDef<'a> {
                 explicit_self,
                 nonself_arg_tys,
                 body,
-            ))
+            )
         });
 
         let is_packed = false; // enums are never packed
@@ -1010,7 +1004,11 @@ impl<'a> MethodDef<'a> {
         explicit_self: Option<ast::ExplicitSelf>,
         nonself_arg_tys: Vec<(Ident, Box<ast::Ty>)>,
         body: BlockOrExpr,
-    ) -> Box<ast::AssocItem> {
+    ) -> Option<Box<ast::AssocItem>> {
+        // `assert_fields_are_eq` has an empty default implementation
+        if body.0.is_empty() && body.1.is_none() && self.name == sym::assert_fields_are_eq {
+            return None;
+        }
         let span = trait_.span;
         // Create the generics that aren't for `Self`.
         let fn_generics = self.generics.clone();
@@ -1041,7 +1039,7 @@ impl<'a> MethodDef<'a> {
         let defaultness = ast::Defaultness::Implicit;
 
         // Create the method.
-        Box::new(ast::AssocItem {
+        Some(Box::new(ast::AssocItem {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
             span,
@@ -1057,7 +1055,7 @@ impl<'a> MethodDef<'a> {
                 eii_impl: None,
             })),
             tokens: None,
-        })
+        }))
     }
 
     /// The normal case uses field access.
