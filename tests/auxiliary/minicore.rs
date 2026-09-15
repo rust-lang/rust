@@ -358,6 +358,30 @@ trait Drop {
 #[rustc_intrinsic]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[lang = "btf_preserve_access_index"]
+pub fn btf_preserve_access_index<T: PointeeSized>(
+    base: *const (),
+    variant: u32,
+    field: u32,
+) -> *const ();
+
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[lang = "btf_preserve_field_byte_offset"]
+pub fn btf_preserve_field_byte_offset(field: *const ()) -> usize;
+
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[lang = "btf_preserve_field_byte_size"]
+pub fn btf_preserve_field_byte_size(field: *const ()) -> usize;
+
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[lang = "btf_preserve_field_exists"]
+pub fn btf_preserve_field_exists(field: *const ()) -> bool;
+
 pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
