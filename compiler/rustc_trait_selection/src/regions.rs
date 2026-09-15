@@ -100,7 +100,7 @@ pub fn ty_known_to_outlive<'tcx>(
     let ty = ty.skip_norm_wip();
 
     // Types in region obligations should be normalized.
-    let ty = if infcx.next_trait_solver() && ty.has_non_rigid_aliases() {
+    let ty = if infcx.next_trait_solver() {
         let Ok(ty) = crate::solve::deeply_normalize::<_, ScrubbedTraitError<'tcx>>(
             infcx.at(&ObligationCause::dummy_with_span(DUMMY_SP), param_env),
             Unnormalized::new_wip(ty),
