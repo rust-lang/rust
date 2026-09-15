@@ -348,6 +348,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
     /// Shared implementation of `call` and `tail_call`. For tail call it is important that this
     /// returns a bare call, and not the result assigned to a local, or the result of `add_eval`.
+    #[allow(clippy::too_many_arguments)]
     fn build_call(
         &mut self,
         typ: Type<'gcc>,
