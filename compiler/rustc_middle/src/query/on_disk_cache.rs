@@ -18,7 +18,6 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{
     ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextKey,
-    raw_encode_syntax_context,
 };
 use rustc_span::{
     BlobDecoder, BytePos, ByteSymbol, CachingSourceMapView, ExpnData, ExpnHash, RelativeBytePos,
@@ -870,7 +869,8 @@ impl<'tcx> CacheEncoder<'tcx> {
 
 impl<'tcx> SpanEncoder for CacheEncoder<'tcx> {
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
-        raw_encode_syntax_context(syntax_context, Rc::clone(&self.hygiene_context), self);
+        let idx = self.hygiene_context.borrow_mut().get_syntax_ctxt_encoding_index(syntax_context);
+        idx.encode(self);
     }
 
     fn encode_expn_id(&mut self, expn_id: ExpnId) {
