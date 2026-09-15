@@ -944,6 +944,14 @@ fn recursive_mkdir() {
 }
 
 #[test]
+fn recursive_mkdir_with_trailing_cur_dir() {
+    let tmpdir = tmpdir();
+    let dir = tmpdir.join("foo").join(".");
+    check!(fs::create_dir_all(&dir));
+    assert!(dir.is_dir())
+}
+
+#[test]
 fn recursive_mkdir_failure() {
     let tmpdir = tmpdir();
     let dir = tmpdir.join("d1");
