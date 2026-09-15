@@ -630,35 +630,8 @@ fn write_mir_intro<'tcx>(
     // Add an empty line before the first block is printed.
     writeln!(w)?;
 
-    if let Some(early_info) = &body.coverage_early_info {
-        write_coverage_early_info(early_info, w)?;
-    }
     if let Some(mir_info) = &body.coverage_mir_info {
         write_coverage_mir_info(mir_info, w)?;
-    }
-
-    Ok(())
-}
-
-fn write_coverage_early_info(
-    early_info: &coverage::CoverageEarlyInfo,
-    w: &mut dyn io::Write,
-) -> io::Result<()> {
-    let coverage::CoverageEarlyInfo { num_block_markers: _, branch_spans } = early_info;
-
-    // Only add an extra trailing newline if we printed at least one thing.
-    let mut did_print = false;
-
-    for coverage::BranchSpan { span, true_marker, false_marker } in branch_spans {
-        writeln!(
-            w,
-            "{INDENT}coverage branch {{ true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
-        )?;
-        did_print = true;
-    }
-
-    if did_print {
-        writeln!(w)?;
     }
 
     Ok(())
