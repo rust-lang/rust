@@ -1,0 +1,12 @@
+error[E0765]: unterminated double quote string
+  --> $DIR/unterminated-string-line-continuation.rs:9:13
+   |
+LL |       let _ = "unterminated;
+   |  _____________^
+LL | | }
+LL | |
+   | |_____________________________________________^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0765`.
