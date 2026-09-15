@@ -618,6 +618,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     call_expr_and_args.map_or(expr.span, |(e, _)| e.span),
                     expr.span,
                     expr.hir_id,
+                    call_expr_and_args.is_some(),
                 )
                 .0
             }
