@@ -1,5 +1,5 @@
 use core::iter::{FusedIterator, TrustedLen};
-use core::mem::{self, ManuallyDrop, SizedTypeProperties};
+use core::mem::{self, DropGuard, ManuallyDrop, SizedTypeProperties};
 use core::ptr::{self, NonNull};
 use core::{fmt, slice};
 
@@ -176,29 +176,6 @@ impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> Drop for Drain<'_, T, A> {
     fn drop(&mut self) {
-        /// Moves back the un-`Drain`ed elements to restore the original `Vec`.
-        struct DropGuard<'r, 'a, T, A: Allocator>(&'r mut Drain<'a, T, A>);
-
-        impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
-            fn drop(&mut self) {
-                if self.0.tail_len > 0 {
-                    // ignore-tidy-undocumented-unsafe
-                    unsafe {
-                        let source_vec = self.0.vec.as_mut();
-                        // memmove back untouched tail, update to new length
-                        let start = source_vec.len();
-                        let tail = self.0.tail_start;
-                        if tail != start {
-                            let src = source_vec.as_ptr().add(tail);
-                            let dst = source_vec.as_mut_ptr().add(start);
-                            ptr::copy(src, dst, self.0.tail_len);
-                        }
-                        source_vec.set_len(start + self.0.tail_len);
-                    }
-                }
-            }
-        }
-
         let iter = mem::take(&mut self.iter);
         let drop_len = iter.len();
 
@@ -219,7 +196,23 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
         }
 
         // ensure elements are moved back into their appropriate places, even when drop_in_place panics
-        let _guard = DropGuard(self);
+        let _guard = DropGuard::new(self, |this| {
+            if this.tail_len > 0 {
+                // ignore-tidy-undocumented-unsafe
+                unsafe {
+                    let source_vec = this.vec.as_mut();
+                    // memmove back untouched tail, update to new length
+                    let start = source_vec.len();
+                    let tail = this.tail_start;
+                    if tail != start {
+                        let src = source_vec.as_ptr().add(tail);
+                        let dst = source_vec.as_mut_ptr().add(start);
+                        ptr::copy(src, dst, this.tail_len);
+                    }
+                    source_vec.set_len(start + this.tail_len);
+                }
+            }
+        });
 
         if drop_len == 0 {
             return;
