@@ -31,6 +31,11 @@ fn resolve_instance_raw<'tcx>(
             tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(args)),
         )
     } else {
+        if tcx.opt_associated_item(def_id).is_some_and(|assoc| assoc.trait_item_def_id().is_some())
+            && let Some(local_def_id) = def_id.as_local()
+        {
+            tcx.ensure_result().compare_impl_item(local_def_id)?;
+        }
         let def = if tcx.intrinsic(def_id).is_some() {
             debug!(" => intrinsic");
             ty::InstanceKind::Intrinsic(def_id)
