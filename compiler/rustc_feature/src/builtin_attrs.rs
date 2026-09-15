@@ -182,6 +182,9 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // RFC 2412
     sym::optimize,
 
+    // BTF CO-RE relocation support.
+    sym::btf_relocatable,
+
     sym::ffi_pure,
     sym::ffi_const,
     sym::register_attribute_tool,
