@@ -10,7 +10,7 @@ note: the lint level is defined here
    |
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = result_unit_unit();
    |     +++++++
@@ -28,7 +28,7 @@ LL |     result_unit_myuninhabited_nonexhaustive();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this `Result` may be an `Err` variant, which should be handled
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = result_unit_myuninhabited_nonexhaustive();
    |     +++++++
@@ -40,7 +40,7 @@ LL |     result_unit_assoctype(S2);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this `Result` may be an `Err` variant, which should be handled
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = result_unit_assoctype(S2);
    |     +++++++
@@ -52,7 +52,7 @@ LL |     S2.method_use_assoc_type();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this `Result` may be an `Err` variant, which should be handled
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = S2.method_use_assoc_type();
    |     +++++++
@@ -63,7 +63,7 @@ error: unused `ControlFlow` that must be used
 LL |     controlflow_unit();
    |     ^^^^^^^^^^^^^^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = controlflow_unit();
    |     +++++++
@@ -75,7 +75,7 @@ LL |         self.generate();
    |         ^^^^^^^^^^^^^^^
    |
    = note: this `Result` may be an `Err` variant, which should be handled
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |         let _ = self.generate();
    |         +++++++

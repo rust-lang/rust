@@ -213,7 +213,7 @@ note: the lint level is defined here
    |
 LL | #![deny(unused_attributes, unused_must_use)]
    |                            ^^^^^^^^^^^^^^^
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = X;
    |     +++++++
@@ -224,7 +224,7 @@ error: unused `Y` that must be used
 LL |     Y::Z;
    |     ^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = Y::Z;
    |     +++++++
@@ -235,7 +235,7 @@ error: unused `U` that must be used
 LL |     U { unit: () };
    |     ^^^^^^^^^^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = U { unit: () };
    |     +++++++
@@ -246,7 +246,7 @@ error: unused return value of `U::method` that must be used
 LL |     U::method();
    |     ^^^^^^^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = U::method();
    |     +++++++
@@ -257,7 +257,7 @@ error: unused return value of `foo` that must be used
 LL |     foo();
    |     ^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = foo();
    |     +++++++
@@ -268,7 +268,7 @@ error: unused return value of `foreign_foo` that must be used
 LL |         foreign_foo();
    |         ^^^^^^^^^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |         let _ = foreign_foo();
    |         +++++++
@@ -279,7 +279,7 @@ error: unused return value of `Use::get_four` that must be used
 LL |     ().get_four();
    |     ^^^^^^^^^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = ().get_four();
    |     +++++++
