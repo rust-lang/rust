@@ -47,16 +47,15 @@
               scope 6 (inlined #[track_caller] <String as Index<RangeFull>>::index) {
                   let _29: &str;
                   scope 7 (inlined String::as_str) {
-                      let _30: &[u8];
                       scope 8 (inlined Vec::<u8>::as_slice) {
-                          let _31: *const [u8];
-                          let mut _32: *const u8;
-                          let mut _33: usize;
+                          let _30: *const [u8];
+                          let mut _31: *const u8;
+                          let mut _32: usize;
                           scope 9 (inlined Vec::<u8>::as_ptr) {
                               scope 10 (inlined alloc::raw_vec::RawVec::<u8>::ptr) {
                                   scope 11 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
                                       scope 12 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
-                                          let mut _34: std::ptr::NonNull<u8>;
+                                          let mut _33: std::ptr::NonNull<u8>;
                                           scope 13 (inlined std::ptr::Unique::<u8>::cast::<u8>) {
                                               scope 14 (inlined NonNull::<u8>::cast::<u8>) {
                                                   scope 15 (inlined NonNull::<u8>::as_ptr) {
@@ -73,6 +72,7 @@
                           }
                       }
                       scope 18 (inlined from_utf8_unchecked) {
+                          let _34: *const str;
                       }
                   }
                   scope 19 (inlined #[track_caller] core::str::traits::<impl SliceIndex<str> for RangeFull>::index) {
@@ -123,16 +123,15 @@
               scope 34 (inlined #[track_caller] <String as Index<RangeFull>>::index) {
                   let _49: &str;
                   scope 35 (inlined String::as_str) {
-                      let _50: &[u8];
                       scope 36 (inlined Vec::<u8>::as_slice) {
-                          let _51: *const [u8];
-                          let mut _52: *const u8;
-                          let mut _53: usize;
+                          let _50: *const [u8];
+                          let mut _51: *const u8;
+                          let mut _52: usize;
                           scope 37 (inlined Vec::<u8>::as_ptr) {
                               scope 38 (inlined alloc::raw_vec::RawVec::<u8>::ptr) {
                                   scope 39 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
                                       scope 40 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
-                                          let mut _54: std::ptr::NonNull<u8>;
+                                          let mut _53: std::ptr::NonNull<u8>;
                                           scope 41 (inlined std::ptr::Unique::<u8>::cast::<u8>) {
                                               scope 42 (inlined NonNull::<u8>::cast::<u8>) {
                                                   scope 43 (inlined NonNull::<u8>::as_ptr) {
@@ -149,6 +148,7 @@
                           }
                       }
                       scope 46 (inlined from_utf8_unchecked) {
+                          let _54: *const str;
                       }
                   }
                   scope 47 (inlined #[track_caller] core::str::traits::<impl SliceIndex<str> for RangeFull>::index) {
@@ -236,19 +236,19 @@
           StorageLive(_29);
           StorageLive(_30);
           StorageLive(_31);
-          StorageLive(_32);
-          StorageLive(_34);
-          _34 = copy ((((((*_27).0: std::vec::Vec<u8>).0: alloc::raw_vec::RawVec<u8>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
-          _32 = copy _34 as *const u8 (Transmute);
-          StorageDead(_34);
           StorageLive(_33);
-          _33 = copy (((*_27).0: std::vec::Vec<u8>).1: usize);
-          _31 = *const [u8] from (copy _32, move _33);
+          _33 = copy ((((((*_27).0: std::vec::Vec<u8>).0: alloc::raw_vec::RawVec<u8>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
+          _31 = copy _33 as *const u8 (Transmute);
           StorageDead(_33);
+          StorageLive(_32);
+          _32 = copy (((*_27).0: std::vec::Vec<u8>).1: usize);
+          _30 = *const [u8] from (copy _31, move _32);
           StorageDead(_32);
-          _30 = &(*_31);
           StorageDead(_31);
-          _29 = copy _30 as &str (Transmute);
+          StorageLive(_34);
+          _34 = copy _30 as *const str (PtrToPtr);
+          _29 = &(*_34);
+          StorageDead(_34);
           StorageDead(_30);
           StorageLive(_36);
           StorageLive(_38);
@@ -298,19 +298,19 @@
           StorageLive(_49);
           StorageLive(_50);
           StorageLive(_51);
-          StorageLive(_52);
-          StorageLive(_54);
-          _54 = copy ((((((*_47).0: std::vec::Vec<u8>).0: alloc::raw_vec::RawVec<u8>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
-          _52 = copy _54 as *const u8 (Transmute);
-          StorageDead(_54);
           StorageLive(_53);
-          _53 = copy (((*_47).0: std::vec::Vec<u8>).1: usize);
-          _51 = *const [u8] from (copy _52, move _53);
+          _53 = copy ((((((*_47).0: std::vec::Vec<u8>).0: alloc::raw_vec::RawVec<u8>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
+          _51 = copy _53 as *const u8 (Transmute);
           StorageDead(_53);
+          StorageLive(_52);
+          _52 = copy (((*_47).0: std::vec::Vec<u8>).1: usize);
+          _50 = *const [u8] from (copy _51, move _52);
           StorageDead(_52);
-          _50 = &(*_51);
           StorageDead(_51);
-          _49 = copy _50 as &str (Transmute);
+          StorageLive(_54);
+          _54 = copy _50 as *const str (PtrToPtr);
+          _49 = &(*_54);
+          StorageDead(_54);
           StorageDead(_50);
           StorageLive(_56);
           StorageLive(_58);
