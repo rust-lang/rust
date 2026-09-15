@@ -76,9 +76,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
-use gccjit::{TargetInfo, Version};
+use gccjit::TargetInfo;
+use gccjit::{CType, Context, OptimizationLevel};
 use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::ThinModule;
 use rustc_codegen_ssa::back::write::{
@@ -97,7 +97,7 @@ use rustc_middle::util::Providers;
 use rustc_session::config::{OptLevel, OutputFilenames};
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::{Symbol, sym};
-use rustc_target::spec::{Arch, RelocModel};
+use rustc_target::spec::{RelocModel, TargetTuple};
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
@@ -196,35 +196,44 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn init(&self, sess: &Session) {
-        fn file_path(sysroot_path: &Path, sess: &Session) -> PathBuf {
-            let rustlib_path =
-                rustc_target::relative_target_rustlib_path(sysroot_path, &sess.host.llvm_target);
-            sysroot_path
-                .join(rustlib_path)
-                .join("codegen-backends")
-                .join("lib")
-                .join(sess.target.llvm_target.as_ref())
-                .join("libgccjit.so")
+        fn file_paths(sysroot_path: &Path, sess: &Session) -> Vec<PathBuf> {
+            let rustlib_path = rustc_target::relative_target_rustlib_path(
+                sysroot_path,
+                rustc_session::config::host_tuple(),
+            );
+            let lib_path = sysroot_path.join(rustlib_path).join("codegen-backends").join("lib");
+            let rust_target_path =
+                lib_path.join(sess.opts.target_triple.tuple()).join("libgccjit.so");
+            let mut paths = vec![rust_target_path];
+            if matches!(sess.opts.target_triple, TargetTuple::TargetJson { .. }) {
+                let llvm_target_path =
+                    lib_path.join(sess.target.llvm_target.as_ref()).join("libgccjit.so");
+                paths.push(llvm_target_path);
+            }
+            paths
         }
 
         // We use all_paths() instead of only path() in case the path specified by --sysroot is
         // invalid.
         // This is the case for instance in Rust for Linux where they specify --sysroot=/dev/null.
-        for path in sess.opts.sysroot.all_paths() {
-            let libgccjit_target_lib_file = file_path(path, sess);
-            if let Ok(true) = fs::exists(&libgccjit_target_lib_file) {
-                load_libgccjit_if_needed(&libgccjit_target_lib_file);
-                break;
+        'sysroot: for path in sess.opts.sysroot.all_paths() {
+            for libgccjit_target_lib_file in file_paths(path, sess) {
+                if let Ok(true) = fs::exists(&libgccjit_target_lib_file) {
+                    load_libgccjit_if_needed(&libgccjit_target_lib_file);
+                    break 'sysroot;
+                }
             }
         }
 
         if !gccjit::is_loaded() {
             let mut paths = vec![];
             for path in sess.opts.sysroot.all_paths() {
-                let libgccjit_target_lib_file = file_path(path, sess);
-                paths.push(libgccjit_target_lib_file);
+                for libgccjit_target_lib_file in file_paths(path, sess) {
+                    paths.push(libgccjit_target_lib_file);
+                }
             }
 
+            paths.dedup();
             panic!("Could not load libgccjit.so. Attempted paths: {:#?}", paths);
         }
 
@@ -286,7 +295,7 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn target_cpu(&self, sess: &Session) -> String {
-        target_cpu(sess).to_owned()
+        target_cpu(sess).into_owned()
     }
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
@@ -316,27 +325,6 @@ impl CodegenBackend for GccCodegenBackend {
     }
 }
 
-fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
-    let context = Context::default();
-    if matches!(tcx.sess.target.arch, Arch::X86 | Arch::X86_64) {
-        context.add_command_line_option("-masm=intel");
-    }
-    #[cfg(feature = "master")]
-    {
-        context.set_special_chars_allowed_in_func_names("$.*");
-        let version = Version::get();
-        let version = format!("{}.{}.{}", version.major, version.minor, version.patch);
-        context.set_output_ident(&format!(
-            "rustc version {} with libgccjit {}",
-            rustc_interface::util::rustc_version_str().unwrap_or("unknown version"),
-            version,
-        ));
-    }
-    // FIXME(antoyo): check if this should only be added when using -Cforce-unwind-tables=n.
-    context.add_command_line_option("-fno-asynchronous-unwind-tables");
-    context
-}
-
 impl ExtraBackendMethods for GccCodegenBackend {
     type Module = GccContext;
 
@@ -348,7 +336,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
     ) -> Self::Module {
         let lto_supported = self.lto_supported.load(Ordering::SeqCst);
         let mut mods = GccContext {
-            context: Arc::new(SyncContext::new(new_context(tcx))),
+            context: Arc::new(SyncContext::new(gcc_util::new_context(tcx.sess))),
             relocation_model: tcx.sess.relocation_model(),
             lto_mode: LtoMode::None,
             lto_supported,
@@ -446,7 +434,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
     ) -> CompiledModule {
-        back::lto::run_fat(cgcx, &sess.prof, shared_emitter, each_linked_rlib_for_lto, modules)
+        back::lto::run_fat(sess, cgcx, shared_emitter, each_linked_rlib_for_lto, modules)
     }
 
     fn run_thin_lto(

@@ -1,17 +1,28 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
-use std::fs::{File, remove_dir_all};
+use std::fs::{File, read_to_string, remove_dir_all};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+
+use boml::Toml;
 
 use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
     create_dir, get_sysroot_dir, get_toolchain, git_clone, git_clone_root_dir, remove_file,
-    run_command, run_command_with_env, run_command_with_output_and_env, rustc_version_info,
-    split_args, walk_dir,
+    run_command, run_command_with_env, run_command_with_output_and_env,
+    run_command_with_output_and_env_no_err, rustc_version_info, split_args, walk_dir,
 };
+
+/// Exit code of `y.sh test` when the tests ran and reported failures, as opposed to the build
+/// system failing to run them at all. CI relies on the distinction: the suites of known-failing
+/// tests are expected to report failures, but a broken build system must never pass silently.
+pub const TESTS_FAILED_EXIT_CODE: i32 = 2;
+
+/// The error returned for that case. `main` compares against it to pick the exit code, so no other
+/// error may use this message.
+pub const TESTS_FAILED_ERROR: &str = "the test suite reported failures";
 
 type Env = HashMap<String, String>;
 type Runner = fn(&Env, &TestArg) -> Result<(), String>;
@@ -28,8 +39,12 @@ fn get_runners() -> Runners {
         ("Run failing ui pattern tests", test_failing_ui_pattern_tests),
     );
     runners.insert("--test-failing-rustc", ("Run failing rustc tests", test_failing_rustc));
+    runners.insert("--run-ui-tests", ("Run specified rustc UI tests", run_ui_tests));
     runners.insert("--projects", ("Run the tests of popular crates", test_projects));
     runners.insert("--test-libcore", ("Run libcore tests", test_libcore));
+    runners.insert("--test-release-libcore", ("Run libcore tests", test_release_libcore));
+    runners.insert("--test-libcore-doctests", ("Run libcore doc-tests", test_libcore_doctests));
+    runners.insert("--alloc-tests", ("Run alloc tests", test_alloc));
     runners.insert("--clean", ("Empty cargo target directory", clean));
     runners.insert("--build-sysroot", ("Build sysroot", build_sysroot));
     runners.insert("--std-tests", ("Run std tests", std_tests));
@@ -42,8 +57,10 @@ fn get_runners() -> Runners {
     );
     runners.insert("--extended-regex-tests", ("Run extended regex tests", extended_regex_tests));
     runners.insert("--mini-tests", ("Run mini tests", mini_tests));
+    runners.insert("--gcc-asm-tests", ("Run cg_gcc asm tests", test_asm));
     runners.insert("--cargo-tests", ("Run cargo tests", cargo_tests));
     runners.insert("--no-builtins-tests", ("Test #![no_builtins] attribute", no_builtins_tests));
+    runners.insert("--stdarch-tests", ("Run stdarch tests", test_stdarch as Runner));
     runners
 }
 
@@ -505,6 +522,26 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     Ok(())
 }
 
+fn get_llvm_filecheck(env: &Env) -> Result<String, String> {
+    match run_command_with_env(
+        &[
+            &"bash",
+            &"-c",
+            &"which FileCheck-10 || \
+          which FileCheck-11 || \
+          which FileCheck-12 || \
+          which FileCheck-13 || \
+          which FileCheck-14 || \
+          which FileCheck",
+        ],
+        None,
+        Some(env),
+    ) {
+        Ok(cmd) => Ok(String::from_utf8_lossy(&cmd.stdout).trim().to_string()),
+        Err(_) => Err("Failed to retrieve LLVM FileCheck, ignoring...".to_owned()),
+    }
+}
+
 fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     let toolchain = format!(
         "+{channel}-{host}",
@@ -548,23 +585,10 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
         let rustc = rustc.trim().to_owned();
         if rustc.is_empty() { Err("`rustc` path is empty".to_string()) } else { Ok(rustc) }
     })?;
-    let llvm_filecheck = match run_command_with_env(
-        &[
-            &"bash",
-            &"-c",
-            &"which FileCheck-10 || \
-          which FileCheck-11 || \
-          which FileCheck-12 || \
-          which FileCheck-13 || \
-          which FileCheck-14 || \
-          which FileCheck",
-        ],
-        rust_dir,
-        Some(env),
-    ) {
-        Ok(cmd) => String::from_utf8_lossy(&cmd.stdout).to_string(),
-        Err(_) => {
-            eprintln!("Failed to retrieve LLVM FileCheck, ignoring...");
+    let llvm_filecheck = match get_llvm_filecheck(env) {
+        Ok(l) => l,
+        Err(error) => {
+            eprintln!("{error}");
             // FIXME: the test tests/run-make/no-builtins-attribute will fail if we cannot find
             // FileCheck.
             String::new()
@@ -634,7 +658,7 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
             &"0",
             &"--set",
             &"build.compiletest-allow-stage0=true",
-            &"tests/assembly-llvm/asm",
+            &"tests/assembly-gcc/asm",
             &"--compiletest-rustc-args",
             &rustc_args,
         ],
@@ -755,9 +779,116 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
 }
 
 fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
+    test_libcore_inner(env, args, false)
+}
+
+fn test_release_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
+    test_libcore_inner(env, args, true)
+}
+
+fn test_libcore_inner(env: &Env, args: &TestArg, release: bool) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] libcore");
     let path = get_sysroot_dir().join("sysroot_src/library/coretests");
+    let _ = remove_dir_all(path.join("target"));
+    let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"test"];
+    if release {
+        command.push(&"--release");
+    }
+    run_cargo_command(&command, Some(&path), env, args)?;
+    Ok(())
+}
+
+/// Returns the edition declared in the manifest of the given library crate, so that the doctests
+/// are run with the same edition as the crate they are extracted from.
+fn get_crate_edition(crate_dir: &Path) -> Result<String, String> {
+    let manifest_path = crate_dir.join("Cargo.toml");
+    let content = read_to_string(&manifest_path)
+        .map_err(|error| format!("Failed to read `{}`: {error:?}", manifest_path.display()))?;
+    let manifest = Toml::parse(&content)
+        .map_err(|error| format!("Failed to parse `{}`: {error:?}", manifest_path.display()))?;
+    manifest
+        .get_table("package")
+        .and_then(|package| package.get_string("edition"))
+        .map(|edition| edition.to_string())
+        .map_err(|error| {
+            format!("Failed to get `package.edition` from `{}`: {error:?}", manifest_path.display())
+        })
+}
+
+fn test_libcore_doctests(env: &Env, args: &TestArg) -> Result<(), String> {
+    // FIXME: create a function "display_if_not_quiet" or something along the line.
+    println!("[TEST] libcore doctests");
+
+    let library_dir = get_sysroot_dir().join("sysroot_src/library");
+    let edition = get_crate_edition(&library_dir.join("core"))?;
+    // `rustdoc` is called directly instead of through `cargo test --doc` because `cargo` builds its
+    // own `core` and passes it with `--extern`, which then conflicts with the `core` of the sysroot
+    // the doctests are linked against ("duplicate lang item" errors).
+    let toolchain = get_toolchain()?;
+    let toolchain_arg = format!("+{toolchain}");
+    let rustflags = split_args(&env.get("RUSTFLAGS").cloned().unwrap_or_default())?;
+    // `-Zunstable-options` is needed for `--test-args`.
+    let mut command: Vec<&dyn AsRef<OsStr>> = vec![
+        &"rustdoc",
+        &toolchain_arg,
+        &"--test",
+        &"core/src/lib.rs",
+        &"--crate-name",
+        &"core",
+        &"--crate-type",
+        &"lib",
+        &"--edition",
+        &edition,
+        &"-Zunstable-options",
+        // FIXME: remove `-Zforce-unstable-if-unmarked` once the doctest of
+        // `core::io::ErrorKind`'s `Display` impl declares `#![feature(core_io)]` upstream: without
+        // it, that doctest fails to compile with `E0658` on any backend.
+        &"-Zforce-unstable-if-unmarked",
+        // FIXME: one test cannot compile due to an upstream bug in the new trait solver.
+        &"-Znext-solver=coherence",
+    ];
+    for flag in &rustflags {
+        command.push(flag);
+    }
+    // Additional arguments are forwarded to the test harness, so that a subset of the doctests can
+    // be run.
+    let test_args =
+        args.test_args.iter().map(|test_arg| format!("--test-args={test_arg}")).collect::<Vec<_>>();
+    for test_arg in &test_args {
+        command.push(test_arg);
+    }
+    run_command_with_output_and_env(&command, Some(&library_dir), Some(env))?;
+    Ok(())
+}
+
+fn test_stdarch(env: &Env, args: &TestArg) -> Result<(), String> {
+    println!("[TEST] stdarch");
+    let manifest_path = get_sysroot_dir().join("sysroot_src/library/stdarch/Cargo.toml");
+    let mut env = env.clone();
+
+    // `config.setup` already baked `CG_RUSTFLAGS` into `RUSTFLAGS`, so append the lint-allow to
+    // `RUSTFLAGS` directly (which `run_cargo_command` also propagates to `RUSTDOCFLAGS`).
+    let rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
+    env.insert(
+        "RUSTFLAGS".to_string(),
+        format!("{rustflags} -Ainternal_features").trim().to_owned(),
+    );
+    env.insert("TARGET".to_string(), args.config_info.target_triple.clone());
+
+    let mut command: Vec<&dyn AsRef<OsStr>> =
+        vec![&"test", &"--manifest-path", &manifest_path, &"--"];
+    for test_name in &args.test_args {
+        command.push(test_name);
+    }
+    run_cargo_command(&command, None, &env, args)?;
+    Ok(())
+}
+
+fn test_alloc(env: &Env, args: &TestArg) -> Result<(), String> {
+    // FIXME: create a function "display_if_not_quiet" or something along the line.
+    println!("[TEST] alloc");
+    let path = get_sysroot_dir().join("sysroot_src/library/alloctests");
     let _ = remove_dir_all(path.join("target"));
     // FIXME(antoyo): run in release mode when we fix the failures.
     run_cargo_command(&[&"test"], Some(&path), env, args)?;
@@ -908,7 +1039,6 @@ fn contains_ui_error_patterns(file_path: &Path, keep_lto_tests: bool) -> Result<
             "//@ known-bug",
             "-Cllvm-args",
             "//~",
-            "thread",
         ]
         .iter()
         .any(|check| line.contains(check))
@@ -934,10 +1064,7 @@ fn contains_ui_error_patterns(file_path: &Path, keep_lto_tests: bool) -> Result<
         eprintln!("nothing found for {file_path:?}");
     }
     // The files in this directory contain errors.
-    if file_path.contains("/error-emitter/") {
-        return Ok(true);
-    }
-    Ok(false)
+    Ok(file_path.contains("/error-emitter/"))
 }
 
 // # Parameters
@@ -947,6 +1074,8 @@ fn contains_ui_error_patterns(file_path: &Path, keep_lto_tests: bool) -> Result<
 // * `prepare_files_callback`: A callback function that prepares the files needed for the test. Its used to remove/retain tests giving Error to run various rust test suits.
 // * `run_error_pattern_test`: A boolean that determines whether to run only error pattern tests.
 // * `test_type`: A string that indicates the type of the test being run.
+// * `retained_tests_list_path`: The list of tests that `prepare_files_callback` retained, if any.
+//   It is checked against the tests remaining after the filtering to report dead lines.
 //
 fn test_rustc_inner<F>(
     env: &Env,
@@ -954,7 +1083,7 @@ fn test_rustc_inner<F>(
     prepare_files_callback: F,
     run_error_pattern_test: bool,
     test_type: &str,
-    run_ignored_tests: bool,
+    retained_tests_list_path: Option<&str>,
 ) -> Result<(), String>
 where
     F: Fn(&Path) -> Result<bool, String>,
@@ -970,74 +1099,57 @@ where
     }
 
     if test_type == "ui" {
-        if run_error_pattern_test {
-            // After we removed the error tests that are known to panic with rustc_codegen_gcc, we now remove the passing tests since this runs the error tests.
-            walk_dir(
-                rust_path.join("tests/ui"),
-                &mut |_dir| Ok(()),
-                &mut |file_path| {
-                    if contains_ui_error_patterns(file_path, args.keep_lto_tests)? {
-                        Ok(())
-                    } else {
-                        remove_file(file_path).map_err(|e| e.to_string())
-                    }
-                },
-                true,
-            )?;
-        } else {
-            walk_dir(
-                rust_path.join("tests/ui"),
-                &mut |dir| {
-                    let dir_name = dir.file_name().and_then(|name| name.to_str()).unwrap_or("");
-                    if ["abi", "extern", "proc-macro", "threads-sendsync"].contains(&dir_name) {
-                        remove_dir_all(dir).map_err(|error| {
-                            format!("Failed to remove folder `{}`: {:?}", dir.display(), error)
-                        })?;
-                    }
-                    Ok(())
-                },
-                &mut |_| Ok(()),
-                false,
-            )?;
-
-            // These two functions are used to remove files that are known to not be working currently
-            // with the GCC backend to reduce noise.
-            fn dir_handling(keep_lto_tests: bool) -> impl Fn(&Path) -> Result<(), String> {
-                move |dir| {
-                    if dir.file_name().map(|name| name == "auxiliary").unwrap_or(true) {
-                        return Ok(());
-                    }
-
-                    walk_dir(
-                        dir,
-                        &mut dir_handling(keep_lto_tests),
-                        &mut file_handling(keep_lto_tests),
-                        false,
-                    )
+        // Each mode runs one half of the ui tests and removes the other: `run_error_pattern_test`
+        // runs the tests expected to error, the other mode runs the rest. Only `.rs` files outside
+        // `auxiliary` are tests, so the expected output and the auxiliary crates are left alone.
+        fn dir_handling(
+            keep_lto_tests: bool,
+            remove_error_pattern_tests: bool,
+        ) -> impl Fn(&Path) -> Result<(), String> {
+            move |dir| {
+                if dir.file_name().map(|name| name == "auxiliary").unwrap_or(true) {
+                    return Ok(());
                 }
-            }
 
-            fn file_handling(keep_lto_tests: bool) -> impl Fn(&Path) -> Result<(), String> {
-                move |file_path| {
-                    if !file_path.extension().map(|extension| extension == "rs").unwrap_or(false) {
-                        return Ok(());
-                    }
-                    let path_str = file_path.display().to_string().replace("\\", "/");
-                    if valid_ui_error_pattern_test(&path_str) {
-                        return Ok(());
-                    } else if contains_ui_error_patterns(file_path, keep_lto_tests)? {
-                        return remove_file(&file_path);
-                    }
-                    Ok(())
+                walk_dir(
+                    dir,
+                    &mut dir_handling(keep_lto_tests, remove_error_pattern_tests),
+                    &mut file_handling(keep_lto_tests, remove_error_pattern_tests),
+                    false,
+                )
+            }
+        }
+
+        fn file_handling(
+            keep_lto_tests: bool,
+            remove_error_pattern_tests: bool,
+        ) -> impl Fn(&Path) -> Result<(), String> {
+            move |file_path| {
+                if !file_path.extension().map(|extension| extension == "rs").unwrap_or(false) {
+                    return Ok(());
                 }
+                let path_str = file_path.display().to_string().replace("\\", "/");
+                if valid_ui_error_pattern_test(&path_str) {
+                    return Ok(());
+                }
+                if contains_ui_error_patterns(file_path, keep_lto_tests)?
+                    == remove_error_pattern_tests
+                {
+                    return remove_file(file_path);
+                }
+                Ok(())
             }
+        }
 
-            walk_dir(
-                rust_path.join("tests/ui"),
-                &mut dir_handling(args.keep_lto_tests),
-                &mut file_handling(args.keep_lto_tests),
-                false,
-            )?;
+        let remove_error_pattern_tests = !run_error_pattern_test;
+        walk_dir(
+            rust_path.join("tests/ui"),
+            &mut dir_handling(args.keep_lto_tests, remove_error_pattern_tests),
+            &mut file_handling(args.keep_lto_tests, remove_error_pattern_tests),
+            false,
+        )?;
+        if let Some(retained_tests_list_path) = retained_tests_list_path {
+            check_for_dead_listed_tests(&rust_path, retained_tests_list_path)?;
         }
         let nb_parts = args.nb_parts.unwrap_or(0);
         if nb_parts > 0 {
@@ -1097,7 +1209,7 @@ where
     env.get_mut("RUSTFLAGS").unwrap().clear();
 
     let test_dir = format!("tests/{test_type}");
-    let mut command: Vec<&dyn AsRef<OsStr>> = vec![
+    let command: Vec<&dyn AsRef<OsStr>> = vec![
         &"./x.py",
         &"test",
         &"--run",
@@ -1112,19 +1224,85 @@ where
         &"--bypass-ignore-backends",
     ];
 
-    if run_ignored_tests {
-        command.push(&"--");
-        command.push(&"--ignored");
+    run_test_command(&command, &rust_path, &env)
+}
+
+/// Reads the list of tests at `list_path`, checking that each of them still exists in the rust
+/// checkout at `rust_path` and that none is listed twice.
+///
+/// Both problems make a line a no-op: the test it names is neither kept nor removed, so the test
+/// suite silently drifts away from what the list claims to describe.
+fn read_test_list(rust_path: &Path, list_path: &str) -> Result<Vec<String>, String> {
+    let content = std::fs::read_to_string(list_path)
+        .map_err(|error| format!("Failed to read `{list_path}`: {error:?}"))?;
+
+    let mut tests = Vec::new();
+    let mut seen = HashSet::new();
+    let mut missing = Vec::new();
+    let mut duplicated = Vec::new();
+
+    for line in content.lines().map(|line| line.trim()).filter(|line| !line.is_empty()) {
+        if !seen.insert(line) {
+            duplicated.push(line);
+            continue;
+        }
+        if !rust_path.join(line.trim_end_matches('/')).exists() {
+            missing.push(line);
+        }
+        tests.push(line.to_string());
     }
 
-    run_command_with_output_and_env(&command, Some(&rust_path), Some(&env))?;
-    Ok(())
+    if missing.is_empty() && duplicated.is_empty() {
+        return Ok(tests);
+    }
+
+    let mut error = format!("`{list_path}` is out of date:\n");
+    if !missing.is_empty() {
+        error.push_str(&format!(
+            "\nThese tests no longer exist in `{rust_path}`:\n{missing}\n",
+            rust_path = rust_path.display(),
+            missing = missing.join("\n"),
+        ));
+    }
+    if !duplicated.is_empty() {
+        error.push_str(&format!(
+            "\nThese tests are listed more than once:\n{}\n",
+            duplicated.join("\n")
+        ));
+    }
+    error.push_str(
+        "\nEvery line must name a test that exists, exactly once, otherwise the line filters \
+         nothing. Delete the stale lines, or update them to the test's current path.",
+    );
+    Err(error)
+}
+
+/// Checks that every test listed in `list_path` survived the filtering done by
+/// `contains_ui_error_patterns`.
+fn check_for_dead_listed_tests(rust_path: &Path, list_path: &str) -> Result<(), String> {
+    let listed_tests = std::fs::read_to_string(list_path)
+        .map_err(|error| format!("Failed to read `{list_path}`: {error:?}"))?;
+    let dead_tests = listed_tests
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty() && !rust_path.join(line).exists())
+        .collect::<Vec<_>>();
+    if dead_tests.is_empty() {
+        return Ok(());
+    }
+    Err(format!(
+        "The following tests listed in `{list_path}` are filtered out before the tests are run, \
+         so listing them has no effect:\n{}\n\nThis happens when a test contains an error pattern \
+         (like `//~` or `//@ known-bug`), in which case it should be removed from `{list_path}`, \
+         or when it uses LTO, in which case it should be moved to `tests/failing-lto-tests.txt`.",
+        dead_tests.join("\n")
+    ))
 }
 
 fn test_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
-    test_rustc_inner(env, args, |_| Ok(false), false, "run-make", false)?;
-    test_rustc_inner(env, args, |_| Ok(false), false, "run-make-cargo", false)?;
-    test_rustc_inner(env, args, |_| Ok(false), false, "ui", false)
+    test_rustc_inner(env, args, |_| Ok(false), false, "run-make", None)?;
+    test_rustc_inner(env, args, |_| Ok(false), false, "run-make-cargo", None)?;
+    test_rustc_inner(env, args, |_| Ok(false), false, "ui", None)
 }
 
 fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
@@ -1134,7 +1312,7 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         retain_files_callback("tests/failing-run-make-tests.txt", "run-make"),
         false,
         "run-make",
-        true,
+        None,
     );
 
     let run_make_cargo_result = test_rustc_inner(
@@ -1142,8 +1320,8 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         args,
         retain_files_callback("tests/failing-run-make-tests.txt", "run-make-cargo"),
         false,
-        "run-make",
-        true,
+        "run-make-cargo",
+        None,
     );
 
     let ui_result = test_rustc_inner(
@@ -1152,36 +1330,51 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
         retain_files_callback("tests/failing-ui-tests.txt", "ui"),
         false,
         "ui",
-        true,
+        Some("tests/failing-ui-tests.txt"),
     );
 
-    run_make_result.and(run_make_cargo_result).and(ui_result)
+    combine_test_results([run_make_result, run_make_cargo_result, ui_result])
+}
+
+/// Combines the results of several test suites, letting a build system error win over a test
+/// failure so that a broken build system is never reported to CI as the failures those suites
+/// expect.
+fn combine_test_results<const N: usize>(results: [Result<(), String>; N]) -> Result<(), String> {
+    let mut tests_failed = false;
+    for result in results {
+        match result {
+            Ok(()) => {}
+            Err(error) if error == TESTS_FAILED_ERROR => tests_failed = true,
+            Err(error) => return Err(error),
+        }
+    }
+    if tests_failed { Err(TESTS_FAILED_ERROR.to_string()) } else { Ok(()) }
 }
 
 fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
     test_rustc_inner(
         env,
         args,
-        remove_files_callback("tests/failing-ui-tests.txt", "ui"),
+        remove_files_callback("tests/failing-ui-tests.txt"),
         false,
         "ui",
-        false,
+        None,
     )?;
     test_rustc_inner(
         env,
         args,
-        remove_files_callback("tests/failing-run-make-tests.txt", "run-make"),
+        remove_files_callback("tests/failing-run-make-tests.txt"),
         false,
         "run-make",
-        false,
+        None,
     )?;
     test_rustc_inner(
         env,
         args,
-        remove_files_callback("tests/failing-run-make-tests.txt", "run-make-cargo"),
+        remove_files_callback("tests/failing-run-make-tests.txt"),
         false,
         "run-make-cargo",
-        false,
+        None,
     )
 }
 
@@ -1189,11 +1382,64 @@ fn test_failing_ui_pattern_tests(env: &Env, args: &TestArg) -> Result<(), String
     test_rustc_inner(
         env,
         args,
-        remove_files_callback("tests/failing-ice-tests.txt", "ui"),
+        remove_files_callback("tests/failing-ice-tests.txt"),
         true,
         "ui",
-        false,
+        None,
     )
+}
+
+fn run_ui_tests(env: &Env, args: &TestArg) -> Result<(), String> {
+    let mut env = env.clone();
+    let rust_path = setup_rustc(&mut env, args)?;
+
+    let extra =
+        if args.is_using_gcc_master_branch() { "" } else { " -Csymbol-mangling-version=v0" };
+
+    let rustc_args = format!(
+        "{test_flags} -Zcodegen-backend={backend} --sysroot {sysroot}{extra}",
+        test_flags = env.get("TEST_FLAGS").unwrap_or(&String::new()),
+        backend = args.config_info.cg_backend_path,
+        sysroot = args.config_info.sysroot_path,
+        extra = extra,
+    );
+
+    env.get_mut("RUSTFLAGS").unwrap().clear();
+
+    let mut command: Vec<&dyn AsRef<OsStr>> = vec![
+        &"./x.py",
+        &"test",
+        &"--run",
+        &"always",
+        &"--stage",
+        &"0",
+        &"--set",
+        &"build.compiletest-allow-stage0=true",
+        &"--compiletest-rustc-args",
+        &rustc_args,
+        &"--bypass-ignore-backends",
+        &"--force-rerun",
+    ];
+
+    for test_name in &args.test_args {
+        command.push(test_name);
+    }
+
+    run_test_command(&command, &rust_path, &env)
+}
+
+/// Runs the command that actually runs a test suite, mapping its failure to `TESTS_FAILED_ERROR`.
+fn run_test_command(
+    command: &[&dyn AsRef<OsStr>],
+    rust_path: &Path,
+    env: &Env,
+) -> Result<(), String> {
+    if let Err(error) = run_command_with_output_and_env(command, Some(rust_path), Some(env)) {
+        // The failures themselves were already streamed to the console.
+        eprintln!("{error}");
+        return Err(TESTS_FAILED_ERROR.to_string());
+    }
+    Ok(())
 }
 
 fn retain_files_callback<'a>(
@@ -1201,8 +1447,8 @@ fn retain_files_callback<'a>(
     test_type: &'a str,
 ) -> impl Fn(&Path) -> Result<bool, String> + 'a {
     move |rust_path| {
-        let files = std::fs::read_to_string(file_path).unwrap_or_default();
-        let first_file_name = files.lines().next().unwrap_or("");
+        let tests = read_test_list(rust_path, file_path)?;
+        let first_file_name = tests.first().map(String::as_str).unwrap_or("");
         // If the first line ends with a `/`, we treat all lines in the file as a directory.
         if first_file_name.ends_with('/') {
             // Treat as directory
@@ -1244,57 +1490,89 @@ fn retain_files_callback<'a>(
         }
 
         // Putting back only the failing ones.
-        if let Ok(files) = std::fs::read_to_string(file_path) {
-            for file in files.split('\n').map(|line| line.trim()).filter(|line| !line.is_empty()) {
-                run_command(&[&"git", &"checkout", &"--", &file], Some(rust_path))?;
-            }
-        } else {
-            println!("Failed to read `{file_path}`, not putting back failing {test_type} tests");
+        for test in &tests {
+            run_command(&[&"git", &"checkout", &"--", test], Some(rust_path))?;
         }
 
         Ok(true)
     }
 }
 
-fn remove_files_callback<'a>(
-    file_path: &'a str,
-    test_type: &'a str,
-) -> impl Fn(&Path) -> Result<bool, String> + 'a {
+fn remove_files_callback(file_path: &str) -> impl Fn(&Path) -> Result<bool, String> + '_ {
     move |rust_path| {
-        let files = std::fs::read_to_string(file_path).unwrap_or_default();
-        let first_file_name = files.lines().next().unwrap_or("");
+        let tests = read_test_list(rust_path, file_path)?;
+        let first_file_name = tests.first().map(String::as_str).unwrap_or("");
         // If the first line ends with a `/`, we treat all lines in the file as a directory.
         if first_file_name.ends_with('/') {
             // Removing the failing tests.
-            if let Ok(files) = std::fs::read_to_string(file_path) {
-                for file in
-                    files.split('\n').map(|line| line.trim()).filter(|line| !line.is_empty())
-                {
-                    let path = rust_path.join(file);
-                    if let Err(e) = remove_dir_all(&path) {
-                        println!("Failed to remove directory `{}`: {}", path.display(), e);
-                    }
-                }
-            } else {
-                println!(
-                    "Failed to read `{file_path}`, not putting back failing {test_type} tests"
-                );
+            for test in &tests {
+                let path = rust_path.join(test);
+                remove_dir_all(&path).map_err(|error| {
+                    format!("Failed to remove directory `{}`: {error}", path.display())
+                })?;
             }
         } else {
             // Removing the failing tests.
-            if let Ok(files) = std::fs::read_to_string(file_path) {
-                for file in
-                    files.split('\n').map(|line| line.trim()).filter(|line| !line.is_empty())
-                {
-                    let path = rust_path.join(file);
-                    remove_file(&path)?;
-                }
-            } else {
-                println!("Failed to read `{file_path}`, not putting back failing ui tests");
+            for test in &tests {
+                remove_file(&rust_path.join(test))?;
             }
         }
         Ok(true)
     }
+}
+
+fn test_asm(env: &Env, args: &TestArg) -> Result<(), String> {
+    fn is_path_time_more_recent(ref_time: std::time::SystemTime, path: &str) -> bool {
+        std::fs::metadata(path)
+            .and_then(|metadata| metadata.modified())
+            .is_ok_and(|time| ref_time < time)
+    }
+
+    // FIXME: create a function "display_if_not_quiet" or something along the line.
+    println!("[TEST] cg_gcc assembly");
+    let llvm_filecheck = get_llvm_filecheck(env)?;
+
+    let target_dir = std::env::current_dir().unwrap().join("build_system/asm-tester/target");
+
+    // All this code is because `cargo` keeps recompiling this file, and we can't figure out why.
+    let binary_file_path = "build_system/asm-tester/target/debug/asm-tester";
+    let mut need_recompilation = true;
+    if let Ok(metadata) = std::fs::metadata(binary_file_path)
+        && let Ok(ref_time) = metadata.modified()
+        && !is_path_time_more_recent(ref_time, "build_system/asm-tester/Cargo.toml")
+        && !is_path_time_more_recent(ref_time, "build_system/asm-tester/Cargo.lock")
+        && !is_path_time_more_recent(ref_time, "build_system/asm-tester/src/main.rs")
+    {
+        need_recompilation = false;
+    }
+
+    if need_recompilation {
+        let build_asm_args: Vec<&dyn AsRef<OsStr>> = vec![
+            &"cargo",
+            &"build",
+            &"--manifest-path",
+            &"build_system/asm-tester/Cargo.toml",
+            &"--target-dir",
+            &target_dir,
+            &"--",
+        ];
+        run_command_with_output_and_env_no_err(&build_asm_args, Some(Path::new(".")), Some(env))?;
+    }
+
+    let mut test_asm_args: Vec<&dyn AsRef<OsStr>> = vec![
+        &"build_system/asm-tester/target/debug/asm-tester",
+        &"--llvm-filecheck",
+        &llvm_filecheck,
+    ];
+    for test_arg in &args.test_args {
+        test_asm_args.push(&"--filter");
+        test_asm_args.push(test_arg);
+    }
+    test_asm_args.push(&"--");
+    for arg in args.config_info.rustc_command_vec().into_iter().skip(1) {
+        test_asm_args.push(arg);
+    }
+    run_command_with_output_and_env_no_err(&test_asm_args, Some(Path::new(".")), Some(env))
 }
 
 fn run_all(env: &Env, args: &TestArg) -> Result<(), String> {
@@ -1308,6 +1586,7 @@ fn run_all(env: &Env, args: &TestArg) -> Result<(), String> {
     cargo_tests(env, args)?;
     no_builtins_tests(env, args)?;
     test_rustc(env, args)?;
+    test_asm(env, args)?;
 
     Ok(())
 }
@@ -1329,7 +1608,7 @@ pub fn run() -> Result<(), String> {
         return Ok(());
     }
 
-    args.config_info.setup(&mut env, args.use_system_gcc)?;
+    args.config_info.setup(&mut env, args.use_system_gcc, true)?;
 
     if args.runners.is_empty() {
         run_all(&env, &args)?;
@@ -1341,4 +1620,59 @@ pub fn run() -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write_test_list(directory: &Path, content: &str) -> PathBuf {
+        let list_path = directory.join("failing-tests.txt");
+        std::fs::write(&list_path, content).unwrap();
+        list_path
+    }
+
+    #[test]
+    fn test_combine_test_results() {
+        let tests_failed = || Err(TESTS_FAILED_ERROR.to_string());
+        let build_error = || Err("could not clone rust".to_string());
+
+        assert_eq!(combine_test_results([Ok(()), Ok(())]), Ok(()));
+        assert_eq!(combine_test_results([Ok(()), tests_failed()]), tests_failed());
+        assert_eq!(combine_test_results([Ok(()), build_error()]), build_error());
+        // A build system error wins, whichever suite reported it.
+        assert_eq!(combine_test_results([tests_failed(), build_error()]), build_error());
+        assert_eq!(combine_test_results([build_error(), tests_failed()]), build_error());
+    }
+
+    #[test]
+    fn test_read_test_list() {
+        let rust_path = std::env::temp_dir().join("cg_gcc_read_test_list");
+        let _ = remove_dir_all(&rust_path);
+        create_dir(rust_path.join("tests/ui")).unwrap();
+        std::fs::write(rust_path.join("tests/ui/alive.rs"), "").unwrap();
+
+        let list_path = write_test_list(&rust_path, "\ntests/ui/alive.rs\n  \n");
+        let list_path = list_path.display().to_string();
+        assert_eq!(
+            read_test_list(&rust_path, &list_path),
+            Ok(vec!["tests/ui/alive.rs".to_string()])
+        );
+
+        write_test_list(&rust_path, "tests/ui/alive.rs\ntests/ui/gone.rs\n");
+        let error = read_test_list(&rust_path, &list_path).unwrap_err();
+        assert!(error.contains("no longer exist"), "{error}");
+        assert!(error.contains("tests/ui/gone.rs"), "{error}");
+
+        write_test_list(&rust_path, "tests/ui/alive.rs\ntests/ui/alive.rs\n");
+        let error = read_test_list(&rust_path, &list_path).unwrap_err();
+        assert!(error.contains("listed more than once"), "{error}");
+        assert!(error.contains("tests/ui/alive.rs"), "{error}");
+
+        // Directories are listed with a trailing `/`.
+        write_test_list(&rust_path, "tests/ui/\n");
+        assert_eq!(read_test_list(&rust_path, &list_path), Ok(vec!["tests/ui/".to_string()]));
+
+        remove_dir_all(&rust_path).unwrap();
+    }
 }

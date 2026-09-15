@@ -136,18 +136,20 @@ $ ./y.sh cargo build --manifest-path tests/hello-world/Cargo.toml
 ### Cargo
 
 ```bash
-$ CHANNEL="release" $CG_GCCJIT_DIR/y.sh cargo run
+$ CHANNEL=release $CG_GCCJIT_DIR/y.sh cargo run
 ```
 
-If you compiled cg_gccjit in debug mode (aka you didn't pass `--release` to `./y.sh test`) you should use `CHANNEL="debug"` instead or omit `CHANNEL="release"` completely.
+If you compiled `cg_gcc` in debug mode (aka you didn't pass `--release` to `./y.sh build`) you should use `CHANNEL=debug` instead or omit `CHANNEL=release` completely.
 
 ### Rustc
 
 If you want to run `rustc` directly, you can do so with:
 
 ```bash
-$ ./y.sh rustc my_crate.rs
+$ CHANNEL=release ./y.sh rustc my_crate.rs
 ```
+
+If you compiled `cg_gcc` in debug mode (aka you didn't pass `--release` to `./y.sh build`) you should use `CHANNEL=debug` instead or omit `CHANNEL=release` completely.
 
 You can do the same manually (although we don't recommend it):
 
@@ -176,7 +178,7 @@ $ LIBRARY_PATH="[gcc-path value]" LD_LIBRARY_PATH="[gcc-path value]" rustc +$(ca
 More specific documentation is available in the [`doc`](./doc) folder:
 
  * [Common errors](./doc/errors.md)
- * [Debugging GCC LTO](./doc/debugging-gcc-lto.md)
+ * [Debugging](./doc/debugging.md)
  * [Debugging libgccjit](./doc/debugging-libgccjit.md)
  * [Git subtree sync](./doc/subtree.md)
  * [List of useful commands](./doc/tips.md)

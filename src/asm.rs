@@ -298,7 +298,9 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         out_place,
                     });
 
-                    if !readwrite {
+                    if readwrite {
+                        self.llbb().add_assignment(None, tmp_var, in_value.immediate());
+                    } else {
                         let out_gcc_idx = outputs.len() - 1;
                         let constraint = Cow::Owned(out_gcc_idx.to_string());
 
@@ -364,7 +366,14 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         let ty = value.layout.gcc_type(self.cx);
                         let reg_var = self.current_func().new_local(None, ty, "input_register");
                         reg_var.set_register_name(reg_name);
-                        self.llbb().add_assignment(None, reg_var, value.immediate());
+                        // FIXME: We should remove this when switching to "untyped" pointers
+                        let value = value.immediate();
+                        let value = if value.get_type() != ty {
+                            self.context.new_cast(None, value, ty)
+                        } else {
+                            value
+                        };
+                        self.llbb().add_assignment(None, reg_var, value);
 
                         inputs.push(AsmInOperand {
                             constraint: "r".into(),
@@ -603,6 +612,12 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             self.llbb().add_eval(None, self.context.new_call(None, builtin_unreachable, &[]));
         }
 
+        if !options.contains(InlineAsmOptions::NORETURN)
+            && let Some(dest) = dest
+        {
+            self.switch_to_block(dest);
+        }
+
         // Write results to outputs.
         //
         // We need to do this because:
@@ -682,6 +697,7 @@ fn explicit_reg_to_gcc(reg: InlineAsmReg) -> &'static str {
         }
         InlineAsmReg::Arm(reg) => reg.name(),
         InlineAsmReg::AArch64(reg) => reg.name(),
+        InlineAsmReg::M68k(reg) => reg.name(),
         _ => unimplemented!(),
     }
 }
