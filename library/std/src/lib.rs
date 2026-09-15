@@ -390,7 +390,6 @@
 #![feature(str_internals)]
 #![feature(sync_unsafe_cell)]
 #![feature(temporary_niche_types)]
-#![feature(trim_prefix_suffix)]
 #![feature(ub_checks)]
 #![feature(uint_carryless_mul)]
 #![feature(unsafe_pinned)]
