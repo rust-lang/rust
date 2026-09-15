@@ -2,7 +2,7 @@
 
 extern crate issue_3907;
 
-type Foo = dyn issue_3907::Foo;
+type Foo = dyn issue_3907::Foo; //~ ERROR not dyn compatible
 
 struct S {
     name: isize
