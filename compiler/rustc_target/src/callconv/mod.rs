@@ -649,7 +649,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         C: HasDataLayout + HasTargetSpec + HasX86AbiOpt,
     {
         if abi == ExternAbi::X86Interrupt {
-            if let Some(arg) = self.args.first_mut() {
+            if let Some(arg) = self.args.first_mut()
+                && !arg.is_ignore()
+                && arg.layout.is_sized()
+            {
                 arg.pass_by_stack_offset(None);
             }
             return;
