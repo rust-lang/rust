@@ -261,7 +261,7 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
 
 #[derive(Clone, Debug)]
 pub(crate) struct BestBlame<'tcx> {
-    /// See docs on [`RegionInferenceContext::best_blame_constraint`] for what this is.
+    /// See docs on [`RegionInferenceContextInner::best_blame_constraint`] for what this is.
     path: Vec<OutlivesConstraint<'tcx>>,
     /// Index into `path` of the constraint most relevant to report to users.
     idx: usize,
