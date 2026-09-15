@@ -75,6 +75,8 @@ impl<'a> PanicInfo<'a> {
     /// fn panic_handler(panic_info: &PanicInfo<'_>) -> ! {
     ///     if let Some(location) = panic_info.location() {
     ///         write!(DEBUG_OUTPUT, "panicked at {}", location);
+    ///     } else {
+    ///         write!(DEBUG_OUTPUT, "panicked at unknown location");
     ///     }
     ///     loop {}
     /// }
