@@ -50,78 +50,78 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                             scope 9 {
                                 debug cap => _19;
                             }
-                            scope 39 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
+                            scope 37 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
                                 debug self => _37;
                             }
-                            scope 40 (inlined alloc::raw_vec::RawVec::<impl Sized>::capacity) {
+                            scope 38 (inlined alloc::raw_vec::RawVec::<impl Sized>::capacity) {
                                 debug self => _36;
                                 let mut _38: &alloc::raw_vec::RawVecInner;
-                                scope 41 (inlined std::mem::size_of::<impl Sized>) {
+                                scope 39 (inlined std::mem::size_of::<impl Sized>) {
                                 }
-                                scope 42 (inlined alloc::raw_vec::RawVecInner::capacity) {
+                                scope 40 (inlined alloc::raw_vec::RawVecInner::capacity) {
                                     debug self => _38;
                                     debug elem_size => const <impl Sized as std::mem::SizedTypeProperties>::SIZE;
                                     let mut _20: core::num::niche_types::UsizeNoHighBit;
-                                    scope 43 (inlined core::num::niche_types::UsizeNoHighBit::as_inner) {
+                                    scope 41 (inlined core::num::niche_types::UsizeNoHighBit::as_inner) {
                                         debug self => _20;
                                     }
                                 }
                             }
                         }
-                        scope 25 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
+                        scope 23 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
                             debug self => _33;
                         }
-                        scope 26 (inlined Vec::<impl Sized>::len) {
+                        scope 24 (inlined Vec::<impl Sized>::len) {
                             debug self => _32;
                             let mut _12: bool;
-                            scope 27 {
+                            scope 25 {
                             }
                         }
-                        scope 28 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::wrapping_byte_add) {
+                        scope 26 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::wrapping_byte_add) {
                             debug self => _6;
                             debug count => _11;
                             let mut _13: *mut u8;
                             let mut _17: *mut u8;
                             let mut _18: *const impl Sized;
-                            scope 29 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::cast::<u8>) {
+                            scope 27 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::cast::<u8>) {
                                 debug self => _6;
                             }
-                            scope 30 (inlined std::ptr::mut_ptr::<impl *mut u8>::wrapping_add) {
+                            scope 28 (inlined std::ptr::mut_ptr::<impl *mut u8>::wrapping_add) {
                                 debug self => _13;
                                 debug count => _11;
                                 let mut _14: isize;
-                                scope 31 (inlined std::ptr::mut_ptr::<impl *mut u8>::wrapping_offset) {
+                                scope 29 (inlined std::ptr::mut_ptr::<impl *mut u8>::wrapping_offset) {
                                     debug self => _13;
                                     debug count => _14;
                                     let mut _15: *const u8;
                                     let mut _16: *const u8;
                                 }
                             }
-                            scope 32 (inlined std::ptr::mut_ptr::<impl *mut u8>::with_metadata_of::<impl Sized>) {
+                            scope 30 (inlined std::ptr::mut_ptr::<impl *mut u8>::with_metadata_of::<impl Sized>) {
                                 debug self => _17;
                                 debug meta => _18;
-                                scope 33 (inlined std::ptr::metadata::<impl Sized>) {
+                                scope 31 (inlined std::ptr::metadata::<impl Sized>) {
                                     debug ptr => _18;
                                 }
-                                scope 34 (inlined std::ptr::from_raw_parts_mut::<impl Sized, ()>) {
+                                scope 32 (inlined std::ptr::from_raw_parts_mut::<impl Sized, ()>) {
                                 }
                             }
                         }
-                        scope 35 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
+                        scope 33 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
                             debug self => _35;
                         }
-                        scope 36 (inlined Vec::<impl Sized>::len) {
+                        scope 34 (inlined Vec::<impl Sized>::len) {
                             debug self => _34;
                             let mut _8: bool;
-                            scope 37 {
+                            scope 35 {
                             }
                         }
-                        scope 38 (inlined #[track_caller] std::ptr::mut_ptr::<impl *mut impl Sized>::add) {
+                        scope 36 (inlined #[track_caller] std::ptr::mut_ptr::<impl *mut impl Sized>::add) {
                             debug self => _6;
                             debug count => _7;
                         }
                     }
-                    scope 24 (inlined NonNull::<impl Sized>::as_ptr) {
+                    scope 22 (inlined NonNull::<impl Sized>::as_ptr) {
                         debug self => _5;
                     }
                 }
@@ -132,13 +132,9 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                     debug self => _30;
                     scope 19 (inlined alloc::raw_vec::RawVecInner::non_null::<impl Sized>) {
                         let mut _4: std::ptr::NonNull<u8>;
-                        scope 20 (inlined std::ptr::Unique::<u8>::cast::<impl Sized>) {
-                            scope 21 (inlined NonNull::<u8>::cast::<impl Sized>) {
-                                scope 22 (inlined NonNull::<u8>::as_ptr) {
-                                }
+                        scope 20 (inlined NonNull::<u8>::cast::<impl Sized>) {
+                            scope 21 (inlined NonNull::<u8>::as_ptr) {
                             }
-                        }
-                        scope 23 (inlined std::ptr::Unique::<impl Sized>::as_non_null_ptr) {
                         }
                     }
                 }
@@ -181,7 +177,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         StorageLive(_5);
         // DBG: _31 = &_2;
         // DBG: _30 = &((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
-        _4 = copy (((((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
+        _4 = copy ((((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).0: std::ptr::NonNull<u8>);
         _5 = copy _4 as std::ptr::NonNull<impl Sized> (Transmute);
         StorageLive(_6);
         _6 = copy _4 as *mut impl Sized (Transmute);
