@@ -51,7 +51,6 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
-use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_hir::attrs::lang_items::LangItem;
@@ -663,27 +662,6 @@ fn index_ast<'tcx>(
             let item = mem::replace(item, *dummy);
             self.insert(item.id, node(Box::new(item)));
         }
-
-        #[tracing::instrument(level = "trace", skip(self))]
-        fn visit_item_id_use_tree(
-            &mut self,
-            tree: &UseTree,
-            parent: LocalDefId,
-            items: &mut SmallVec<[Box<Item>; 1]>,
-        ) {
-            match tree.kind {
-                UseTreeKind::Glob(_) | UseTreeKind::Simple(_) => {}
-                UseTreeKind::Nested { items: ref nested_vec, span } => {
-                    for &(ref nested, id) in nested_vec {
-                        self.insert(id, AstOwner::NestedUseTree(parent));
-                        items.push(self.make_dummy(id, span, ItemKind::MacCall));
-
-                        let def_id = self.owners[&id].def_id;
-                        self.visit_item_id_use_tree(nested, def_id, items);
-                    }
-                }
-            }
-        }
     }
 
     impl MutVisitor for Indexer<'_, '_> {
@@ -693,35 +671,11 @@ fn index_ast<'tcx>(
         }
 
         fn flat_map_item(&mut self, mut item: Box<Item>) -> SmallVec<[Box<Item>; 1]> {
-            let def_id = self.owners[&item.id].def_id;
             mut_visit::walk_item(self, &mut *item);
             let dummy = self.make_dummy(item.id, item.span, ItemKind::MacCall);
-            let mut items = smallvec![dummy];
-            if let ItemKind::Use(ref use_tree) = item.kind {
-                self.visit_item_id_use_tree(use_tree, def_id, &mut items);
-            }
+            let items = smallvec![dummy];
             self.insert(item.id, AstOwner::Item(item));
             items
-        }
-
-        fn flat_map_stmt(&mut self, stmt: Stmt) -> SmallVec<[Stmt; 1]> {
-            let Stmt { id, span, kind } = stmt;
-            let mut id = Some(id);
-            mut_visit::walk_flat_map_stmt_kind(self, kind)
-                .into_iter()
-                .map(|kind| {
-                    // Expanding the current statement is a nested `use` item,
-                    // it is expanded into several flat `use` items.
-                    // Create new NodeIds for the corresponding statements
-                    // as two statements cannot have the same.
-                    let id = id.take().unwrap_or_else(|| {
-                        let next = self.next_node_id;
-                        self.next_node_id.increment_by(1);
-                        next
-                    });
-                    Stmt { id, kind, span }
-                })
-                .collect()
         }
 
         fn visit_assoc_item(&mut self, item: &mut AssocItem, ctxt: visit::AssocCtxt) {
@@ -750,12 +704,12 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
     let ast_index = tcx.index_ast(());
     let resolver_and_node = ast_index.get(def_id).map(Steal::steal);
 
-    let fallback_to_ancestor = |parent_id| {
+    let fallback_to_ancestor = || {
         // The item did not exist in the AST, it was created while lowering another item.
-        // `parent_id` may be different from the direct parent of `def_id`,
-        // for instance use-trees are lowered by the first sibling.
+
+        let parent_id = tcx.local_parent(def_id);
         let mut parent_info = tcx.lower_to_hir(parent_id);
-        if let hir::MaybeOwner::NonOwner(hir_id) = parent_info {
+        while let hir::MaybeOwner::NonOwner(hir_id) = parent_info {
             // `parent_id` could also not be a owner either.
             // For instance if `def_id` is an enum variant field,
             // the direct parent is the enum variant.
@@ -766,7 +720,8 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
 
         let parent_info = parent_info.unwrap();
         *parent_info.children.get(&def_id).unwrap_or_else(|| {
-            panic!(
+            span_bug!(
+                tcx.source_span(def_id),
                 "{:?} does not appear in children of {:?}",
                 def_id,
                 parent_info.nodes.node().def_id()
@@ -778,7 +733,7 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         // `ast_index` does not contain all definitions, only up-to the highest
         // `LocalDefId` which has a non-trivial `AstOwner`. Gracefully handle
         // other definitions, in particular those nested inside this highest definition.
-        return fallback_to_ancestor(tcx.local_parent(def_id));
+        return fallback_to_ancestor();
     };
 
     let mut item_lowerer = item::ItemLowerer { tcx, resolver: &*resolver };
@@ -790,10 +745,9 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         AstOwner::TraitItem(item) => item_lowerer.lower_trait_item(&item),
         AstOwner::ImplItem(item) => item_lowerer.lower_impl_item(&item),
         AstOwner::ForeignItem(item) => item_lowerer.lower_foreign_item(&item),
-        AstOwner::NestedUseTree(owner_id) => fallback_to_ancestor(*owner_id),
         // The item existed in the AST, but is not a HIR owner.
         // Fetch the correct information from its parent.
-        AstOwner::NonOwner => fallback_to_ancestor(tcx.local_parent(def_id)),
+        AstOwner::NonOwner => fallback_to_ancestor(),
     };
 
     tcx.sess.time("drop_ast", || mem::drop(node));
@@ -902,43 +856,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::OwnerId { def_id: self.resolver.owners[&node].def_id }
     }
 
-    /// Freshen the `LoweringContext` and ready it to lower a nested item.
-    /// The lowered item is registered into `self.curr_owner.children`.
-    ///
-    /// This function sets up `HirId` lowering infrastructure,
-    /// and stashes the per-owner state to avoid pollution by the closure.
-    #[instrument(level = "debug", skip(self, f))]
-    fn with_hir_id_owner(
-        &mut self,
-        owner: NodeId,
-        f: impl FnOnce(&mut Self) -> hir::OwnerNode<'hir>,
-    ) {
-        let child_owner = PerOwnerLoweringState::new(self.resolver, owner);
-        let parent_owner = mem::replace(&mut self.curr_owner, child_owner);
-
-        // Do not reset `next_node_id` and `node_id_to_def_id`:
-        // we want `f` to be able to refer to the `LocalDefId`s that the caller created.
-        // and the caller to refer to some of the subdefinitions' nodes' `LocalDefId`s.
-
-        // Always allocate the first `HirId` for the owner itself.
-        #[cfg(debug_assertions)]
-        self.curr_owner
-            .relowering_checker
-            .assert_node_is_not_relowered(owner, hir::ItemLocalId::ZERO);
-
-        let item = f(self);
-        let completed_child_owner = mem::replace(&mut self.curr_owner, parent_owner);
-        let owner_id = completed_child_owner.owner_id;
-        let info = completed_child_owner.into_owner_info(self.tcx, item);
-
-        self.curr_owner
-            .children
-            .extend_unord(info.children.items().map(|(&def_id, &info)| (def_id, info)));
-
-        debug_assert!(!self.curr_owner.children.contains_key(&owner_id.def_id));
-        self.curr_owner.children.insert(owner_id.def_id, hir::MaybeOwner::Owner(info));
-    }
-
     /// This method allocates a new `HirId` for the given `NodeId`.
     /// Take care not to call this method if the resulting `HirId` is then not
     /// actually used in the HIR, as that would trigger an assertion in the
@@ -1002,8 +919,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_import_res(&mut self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
-        debug_assert_eq!(id, self.curr_owner.owner.id);
-        let per_ns = self.curr_owner.owner.import_res.map(|res| res.map(|res| self.lower_res(res)));
+        let per_ns = self
+            .curr_owner
+            .owner
+            .import_res
+            .get(&id)
+            .unwrap_or_else(|| {
+                let sp = self.tcx.source_span(self.curr_owner.owner.def_id);
+                self.tcx.dcx().span_delayed_bug(
+                    sp,
+                    "no import_res entry for import, \
+                        this should only happen if it already errored in resolve",
+                );
+                &PerNS { value_ns: None, type_ns: None, macro_ns: None }
+            })
+            .map(|res| res.map(|res| self.lower_res(res)));
+
         if per_ns.is_empty() {
             // Propagate the error to all namespaces, just to be sure.
             self.dcx().span_delayed_bug(span, "no resolution for an import");
