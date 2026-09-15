@@ -7978,6 +7978,7 @@ impl T for () {
             ```
 
             ```rust
+            impl T for ()
             fn func()
             ```
 
@@ -8192,6 +8193,7 @@ fn f() {
             ```
 
             ```rust
+            impl core::ops::Deref for Struct
             fn deref(&self) -> &Self::Target
             ```
         "#]],
@@ -11362,6 +11364,56 @@ fn bar(v: &Foo<i32>) {
 }
 
 #[test]
+fn show_impl_container_without_type_params() {
+    check(
+        r#"
+trait Trait { fn method(); }
+impl Trait for Foo { fn method() {} }
+struct Foo;
+
+fn main() {
+    Foo::$0method()
+}
+    "#,
+        expect![[r#"
+            *method*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            impl Trait for Foo
+            fn method()
+            ```
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: clone, derive
+#[derive(Clone)]
+struct Foo;
+
+fn main() {
+    Foo::$0clone()
+}
+    "#,
+        expect![[r#"
+            *clone*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            impl Clone for Foo
+            pub fn clone(&self) -> Self
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn extra_lifetime_param_on_trait_method_subst() {
     check(
         r#"
@@ -11387,6 +11439,7 @@ fn main() {
             ```
 
             ```rust
+            impl ValueEnum for AudioFormat
             fn to_possible_value<'a>(&'a self)
             ```
         "#]],
