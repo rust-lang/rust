@@ -456,9 +456,10 @@ extern "C" void LLVMRustAddLibraryInfo(LLVMTargetMachineRef T,
     TLII.disableAllFunctions();
   unwrap(PMR)->add(new TargetLibraryInfoWrapperPass(TLII));
 #if LLVM_VERSION_GE(24, 0)
+  // LLVM 24 removed TargetOptions::EABIVersion; the EABI version is now
+  // derived from the target triple instead.
   unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
-      Options->ExceptionModel, Options->EABIVersion, Options->MCOptions.ABIName,
-      Options->VecLib));
+      Options->ExceptionModel, Options->MCOptions.ABIName, Options->VecLib));
 #elif LLVM_VERSION_GE(22, 0)
   unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
       TargetTriple, Options->ExceptionModel, Options->FloatABIType,
