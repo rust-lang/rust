@@ -131,20 +131,24 @@ impl SocketAddr {
     where
         P: AsRef<Path>,
     {
-        sockaddr_un(path.as_ref()).map(|(addr, len)| SocketAddr { addr, len: len as _ })
+        no_code! {
+            sockaddr_un(path.as_ref()).map(|(addr, len)| SocketAddr { addr, len: len as _ })
+        }
     }
     fn address(&self) -> AddressKind<'_> {
-        let len = self.len as usize - SUN_PATH_OFFSET;
-        let path = unsafe { mem::transmute::<&[i8], &[u8]>(&self.addr.sun_path) };
+        no_code! {
+            let len = self.len as usize - SUN_PATH_OFFSET;
+            let path = unsafe { mem::transmute::<&[i8], &[u8]>(&self.addr.sun_path) };
 
-        if len == 0 {
-            AddressKind::Unnamed
-        } else if self.addr.sun_path[0] == 0 {
-            AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
-        } else {
-            AddressKind::Pathname(unsafe {
-                OsStr::from_encoded_bytes_unchecked(&path[..len - 1]).as_ref()
-            })
+            if len == 0 {
+                AddressKind::Unnamed
+            } else if self.addr.sun_path[0] == 0 {
+                AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
+            } else {
+                AddressKind::Pathname(unsafe {
+                    OsStr::from_encoded_bytes_unchecked(&path[..len - 1]).as_ref()
+                })
+            }
         }
     }
 
