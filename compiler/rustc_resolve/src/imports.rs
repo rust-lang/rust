@@ -1073,7 +1073,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         && !binding.vis().is_public()
                     {
                         let binding_id = match binding.kind {
-                            DeclKind::Def(res) => {
+                            DeclKind::Def(res, ..) => {
                                 Some(self.def_id_to_node_id(res.def_id().expect_local()))
                             }
                             DeclKind::Import { import, .. } => import.id(),
@@ -1513,7 +1513,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                             match source_decl.kind {
                                                 // Never suggest names that previously could not
                                                 // be resolved.
-                                                DeclKind::Def(Res::Err) => None,
+                                                DeclKind::Def(Res::Err, ..) => None,
                                                 _ => Some(i.name),
                                             }
                                         }
@@ -1697,7 +1697,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             match decl.kind {
                 // exclude decl_macro
-                DeclKind::Def(Res::Def(DefKind::Macro(_), def_id))
+                DeclKind::Def(Res::Def(DefKind::Macro(_), def_id), _)
                     if let SyntaxExtensionKind::MacroRules(mr) =
                         &self.get_macro_by_def_id(def_id).kind
                         && mr.is_macro_rules() =>
