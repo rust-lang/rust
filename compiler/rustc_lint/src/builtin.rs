@@ -48,8 +48,8 @@ use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 use crate::diagnostics::{
-    BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDerefNullptr, BuiltinDoubleNegations,
-    BuiltinDoubleNegationsAddParens, BuiltinEllipsisInclusiveRangePatterns,
+    BuiltinAnonymousParams, BuiltinCVariadicArgument, BuiltinConstNoMangle, BuiltinDerefNullptr,
+    BuiltinDoubleNegations, BuiltinDoubleNegationsAddParens, BuiltinEllipsisInclusiveRangePatterns,
     BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
     BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
     BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
@@ -3175,6 +3175,135 @@ impl<'tcx> LateLintPass<'tcx> for InternalEqTraitMethodImpls {
                 INTERNAL_EQ_TRAIT_METHOD_IMPLS,
                 item.span,
                 EqInternalMethodImplemented,
+            );
+        }
+    }
+}
+
+// Once we turn this into a hard error, we should delete the redundant check from
+// `rustc_hir_typeck::fn_ctxt::FnCtxt::check_argument_types`.
+// Turning this into a hard error should consist of adding a trait obligation
+// in the type-checking of function arguments.
+declare_lint! {
+    /// The `invalid_c_variadic_arguments` lint detects when a value of
+    /// an unsupported type is passed as a C-variadic argument (varargs).
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// unsafe extern "C" fn variadic(_: ...) {}
+    ///
+    /// pub fn foo<T>(x: T) {
+    ///     unsafe {
+    ///         variadic(x);
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Only certain types are supported in C-variadic arguments (varargs).
+    /// In particular, only types that implement the `core::ffi::VaArgSafe`
+    /// trait are supported.
+    ///
+    /// Using unsupported types causes undefined behavior. However, the compiler
+    /// previously didn't consistently check to prevent this from happening in
+    /// all cases.
+    ///
+    /// Currently, this lint does not warn on references to `Sized` types, despite
+    /// the fact that they (unlike raw pointers) don't implement `VaArgSafe`.
+    /// This is because we might decide to officially support them in the future,
+    /// by making them implement `VaArgSafe`, and there is too much existing code
+    /// that passes references as varargs.
+    ///
+    /// If you encounter this lint in a generic context which will be instantiated
+    /// only with supported types, consider adding a trait bound such as
+    /// `T: VaArgSafe`.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard
+    /// error in the future. See [issue #162483] for more details.
+    ///
+    /// [issue #162483]: https://github.com/rust-lang/rust/issues/162483
+    pub INVALID_C_VARIADIC_ARGUMENTS,
+    Warn,
+    "arguments passed as C variadic arguments that don't implement `VaArgSafe`",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #162483),
+    };
+}
+
+declare_lint_pass!(InvalidCVariadicArguments => [INVALID_C_VARIADIC_ARGUMENTS]);
+
+impl<'tcx> LateLintPass<'tcx> for InvalidCVariadicArguments {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+        let (fn_sig, args, is_method_syntax) = match expr.kind {
+            hir::ExprKind::Call(f, args) => {
+                let fn_ty = cx.typeck_results().expr_ty_adjusted(f);
+                if !matches!(fn_ty.kind(), ty::FnPtr(_, _) | ty::FnDef(_, _)) {
+                    // The call expression is done via one of the Fn traits.
+                    // Those don't support C variadics, so nothing to lint here.
+                    return;
+                }
+                (fn_ty.fn_sig(cx.tcx), args, false)
+            }
+            hir::ExprKind::MethodCall(_, _, args, _) => {
+                // This can be `None` if the receiver has a error in type-checking.
+                // For example: `tests/ui/consts/const-eval/infinite_loop.rs`
+                let Some(method_def) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+                else {
+                    cx.tcx.dcx().span_delayed_bug(expr.span, "method should have a DefId");
+                    return;
+                };
+                (cx.tcx.fn_sig(method_def).skip_binder(), args, true)
+            }
+            _ => {
+                return;
+            }
+        };
+
+        if !fn_sig.c_variadic() {
+            return;
+        }
+        let num_args = fn_sig.inputs().skip_binder().len();
+        // num_args includes the method receiver
+        let arg_offset = if is_method_syntax { num_args.strict_sub(1) } else { num_args };
+        let Some(va_arg_safe) = cx.tcx.lang_items().get(LangItem::VaArgSafe) else {
+            return;
+        };
+
+        for arg in &args[arg_offset..] {
+            let arg_ty = cx.typeck_results().expr_ty_adjusted(arg);
+            if cx
+                .tcx
+                .infer_ctxt()
+                .build(cx.typing_mode())
+                .type_implements_trait(va_arg_safe, [arg_ty], cx.param_env)
+                .must_apply_modulo_regions()
+            {
+                continue;
+            }
+            // Thin references technically do not implement `VaArgSafe`.
+            // However, we might make them implement `VaArgSafe` later,
+            // so, do not lint such arguments.
+            if let ty::Ref(_, referent_ty, _) = arg_ty.kind()
+                && referent_ty.is_sized(cx.tcx, cx.typing_env())
+            {
+                continue;
+            }
+            // TODO Remove this before merging. This is for crater only.
+            #[allow(rustc::symbol_intern_string_literal)]
+            if cx.tcx.sess.config.contains(&(Symbol::intern("crater_hack"), None)) {
+                cx.tcx.dcx().span_err(
+                    arg.span,
+                    format!("CRATER ERROR: C-variadic argument with type `{}`.", arg_ty),
+                );
+            }
+            cx.emit_span_lint(
+                INVALID_C_VARIADIC_ARGUMENTS,
+                arg.span,
+                BuiltinCVariadicArgument { arg_ty },
             );
         }
     }

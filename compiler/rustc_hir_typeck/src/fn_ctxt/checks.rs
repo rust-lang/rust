@@ -492,6 +492,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Make sure we've checked this expr at least once.
             let arg_ty = self.check_expr(arg);
 
+            // FIXME: Remove this redundant check once we turn the
+            // `invalid_c_variadic_arguments` FCW into a hard error.
+
             // If the function is c-style variadic, we skipped a bunch of arguments
             // so we need to check those, and write out the types
             // Ideally this would be folded into the above, for uniform style
