@@ -900,7 +900,14 @@ impl<'a> Linker for GccLinker<'a> {
     fn linker_plugin_lto(&mut self) {
         match self.sess.opts.cg.linker_plugin_lto {
             LinkerPluginLto::Disabled => {
-                // Nothing to do
+                // GCC, when used as a linker, will perform LTO even without -flto when it sees
+                // object files with the GCC IR (which can happen when using rustc_codegen_gcc).
+                // Since the std is compiled with -Cembed-bitcode=yes, any program using the std
+                // will have the linker do LTO.
+                // So, we disable this with -fno-lto when linker plugin LTO is not requested.
+                if self.is_cc() && self.codegen_backend == "gcc" {
+                    self.cc_arg("-fno-lto");
+                }
             }
             LinkerPluginLto::LinkerPluginAuto => {
                 self.push_linker_plugin_lto_args(None);
