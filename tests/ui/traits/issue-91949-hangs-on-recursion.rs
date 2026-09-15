@@ -1,4 +1,3 @@
-//~ ERROR overflow evaluating the requirement `<std::iter::Empty<()> as Iterator>::Item == ()`
 //@ build-fail
 //@ compile-flags: -Zinline-mir=no -Zwrite-long-types-to-disk=yes
 
@@ -24,6 +23,7 @@ where
     T: Iterator<Item = ()>,
 {
     recurse(IteratorOfWrapped(elements).map(|t| t.0))
+    //~^ ERROR reached the recursion limit while instantiating
 }
 
 fn main() {
