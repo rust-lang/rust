@@ -2983,7 +2983,8 @@ impl Path {
     #[must_use]
     #[inline]
     pub fn has_trailing_sep(&self) -> bool {
-        self.as_os_str().as_encoded_bytes().last().copied().is_some_and(is_sep_byte)
+        let comps = self.components();
+        self.as_os_str().as_encoded_bytes().last().copied().is_some_and(|b| comps.is_sep_byte(b))
     }
 
     /// Ensures that a path has a trailing [separator](MAIN_SEPARATOR),
@@ -3034,10 +3035,11 @@ impl Path {
     #[must_use]
     #[inline]
     pub fn trim_trailing_sep(&self) -> &Path {
+        let comps = self.components();
         if self.has_trailing_sep() && (!self.has_root() || self.parent().is_some()) {
             let mut bytes = self.inner.as_encoded_bytes();
             while let Some((last, init)) = bytes.split_last()
-                && is_sep_byte(*last)
+                && comps.is_sep_byte(*last)
             {
                 bytes = init;
             }
