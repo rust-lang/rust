@@ -8,7 +8,6 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Instance, ScalarInt, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
-use rustc_target::spec::{CfgAbi, Env, Os, Target};
 
 use crate::traits::*;
 
@@ -200,13 +199,8 @@ pub fn asm_const_ptr_clean<'tcx>(tcx: TyCtxt<'tcx>, scalar: Scalar) -> Scalar {
     }
 }
 
-pub fn is_using_dlltool(target: &Target) -> bool {
-    target.os == Os::Windows && target.env == Env::Gnu && target.cfg_abi == CfgAbi::Unspecified
-}
-
 pub fn i686_decorated_name(
     dll_import: &DllImport,
-    mingw: bool,
     disable_name_mangling: bool,
     force_fully_decorated: bool,
 ) -> String {
@@ -232,12 +226,10 @@ pub fn i686_decorated_name(
     let prefix = if add_prefix && dll_import.symbol_type == DllImportSymbolType::Function {
         match dll_import.calling_convention {
             DllCallingConvention::C | DllCallingConvention::Vectorcall(_) => None,
-            DllCallingConvention::Stdcall(_) => (!mingw
-                || dll_import.import_name_type == Some(PeImportNameType::Decorated))
-            .then_some('_'),
+            DllCallingConvention::Stdcall(_) => Some('_'),
             DllCallingConvention::Fastcall(_) => Some('@'),
         }
-    } else if dll_import.symbol_type != DllImportSymbolType::Function && !mingw {
+    } else if dll_import.symbol_type != DllImportSymbolType::Function {
         // For static variables, prefix with '_' on MSVC.
         Some('_')
     } else {
