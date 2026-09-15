@@ -40,3 +40,16 @@ The target supports C code.
 
 The illumos project makes available [prebuilt sysroot artefacts](https://github.com/illumos/sysroot) which can be used for cross compilation.
 The official Rust binaries are cross-compiled using these artefacts.
+
+## Target version requirements
+
+The host tools cross-compiled for this target should work on any
+illumos distribution based on illumos sources later than the
+date shown in the sysroot version tag.
+
+For details on illumos sysroot versions see:
+[sysroot versions](https://github.com/illumos/sysroot/releases)
+
+The actual sysroot version tag used is shown in the
+[illumos toolchain](../../../../ci/docker/scripts/illumos-toolchain.sh)
+script (see SYSROOT_VER).
