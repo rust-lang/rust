@@ -13,7 +13,7 @@ note: closures can only be coerced to `fn` types if they do not capture any vari
    |
 LL |     || a
    |        ^ `a` captured here
-help: change the return type to return a type-erased closure instead
+help: consider changing the return type to a type-erased closure instead
    |
 LL - fn no_args(a: i32) -> fn() -> i32 {
 LL + fn no_args(a: i32) -> impl Fn() -> i32 {
@@ -34,7 +34,7 @@ note: closures can only be coerced to `fn` types if they do not capture any vari
    |
 LL |     || println!("{}", a)
    |                       ^ `a` captured here
-help: change the return type to return a type-erased closure instead
+help: consider changing the return type to a type-erased closure instead
    |
 LL - fn no_args_no_return(a: i32) -> fn() {
 LL + fn no_args_no_return(a: i32) -> impl Fn() {
@@ -55,7 +55,7 @@ note: closures can only be coerced to `fn` types if they do not capture any vari
    |
 LL |     |x| x + a
    |             ^ `a` captured here
-help: change the return type to return a type-erased closure instead
+help: consider changing the return type to a type-erased closure instead
    |
 LL - fn one_arg(a: i32) -> fn(i32) -> i32 {
 LL + fn one_arg(a: i32) -> impl Fn(i32) -> i32 {
@@ -76,7 +76,7 @@ note: closures can only be coerced to `fn` types if they do not capture any vari
    |
 LL |     |x| x + a
    |             ^ `a` captured here
-help: change the return type to return a type-erased closure instead
+help: consider changing the return type to a type-erased closure instead
    |
 LL - fn one_arg_unsafe(a: i32) -> unsafe fn(i32) -> i32 {
 LL + fn one_arg_unsafe(a: i32) -> impl Fn(i32) -> i32 {
@@ -97,7 +97,7 @@ note: closures can only be coerced to `fn` types if they do not capture any vari
    |
 LL |     |x| x + a
    |             ^ `a` captured here
-help: change the return type to return a type-erased closure instead
+help: consider changing the return type to a type-erased closure instead
    |
 LL - fn one_arg_extern(a: i32) -> extern "C" fn(i32) -> i32 {
 LL + fn one_arg_extern(a: i32) -> impl Fn(i32) -> i32 {
@@ -118,7 +118,7 @@ note: closures can only be coerced to `fn` types if they do not capture any vari
    |
 LL |     |x| println!("{}", x + a)
    |                            ^ `a` captured here
-help: change the return type to return a type-erased closure instead
+help: consider changing the return type to a type-erased closure instead
    |
 LL - fn one_arg_no_return(a: i32) -> fn(i32) {
 LL + fn one_arg_no_return(a: i32) -> impl Fn(i32) {
@@ -139,7 +139,7 @@ note: closures can only be coerced to `fn` types if they do not capture any vari
    |
 LL |     |x| println!("{}", x + a)
    |                            ^ `a` captured here
-help: change the return type to return a type-erased closure instead
+help: consider changing the return type to a type-erased closure instead
    |
 LL - fn one_arg_return_unit(a: i32) -> fn(i32) -> () {
 LL + fn one_arg_return_unit(a: i32) -> impl Fn(i32) -> () {
@@ -164,10 +164,10 @@ note: closures can only be coerced to `fn` types if they do not capture any vari
    |
 LL |         println!("{}", a);
    |                        ^ `a` captured here
-help: change the return type to return a type-erased closure instead
+help: consider changing the return type to a type-erased closure instead
    |
 LL - fn one_arg_ref(a: i32) -> fn(&i32) -> &i32 {
-LL + fn one_arg_ref(a: i32) -> impl Fn(&'_ i32) -> &'_ i32 {
+LL + fn one_arg_ref(a: i32) -> impl Fn(&i32) -> &i32 {
    |
 
 error[E0308]: mismatched types
@@ -187,12 +187,54 @@ LL |     |x, y| x + y + a + b
    |                    ^   ^ `b` captured here
    |                    |
    |                    `a` captured here
-help: change the return type to return a type-erased closure instead
+help: consider changing the return type to a type-erased closure instead
    |
 LL - fn multi_args(a: i32, b: i32) -> fn(i32, i32) -> i32 {
 LL + fn multi_args(a: i32, b: i32) -> impl Fn(i32, i32) -> i32 {
    |
 
-error: aborting due to 9 previous errors
+error[E0308]: mismatched types
+  --> $DIR/suggest-impl-fn-return-for-capturing-closure.rs:56:5
+   |
+LL | fn hrtb(x: i32) -> for<'a> fn(&'a i32) -> &'a i32 {
+   |                    ------------------------------ expected `for<'a> fn(&'a i32) -> &'a i32` because of return type
+LL |     |y| &(x + y)
+   |     ^^^^^^^^^^^^ expected fn pointer, found closure
+   |
+   = note: expected fn pointer `for<'a> fn(&'a i32) -> &'a i32`
+                 found closure `{closure@$DIR/suggest-impl-fn-return-for-capturing-closure.rs:56:5: 56:8}`
+note: closures can only be coerced to `fn` types if they do not capture any variables
+  --> $DIR/suggest-impl-fn-return-for-capturing-closure.rs:56:11
+   |
+LL |     |y| &(x + y)
+   |           ^ `x` captured here
+help: consider changing the return type to a type-erased closure instead
+   |
+LL - fn hrtb(x: i32) -> for<'a> fn(&'a i32) -> &'a i32 {
+LL + fn hrtb(x: i32) -> impl for<'a> Fn(&'a i32) -> &'a i32 {
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-impl-fn-return-for-capturing-closure.rs:61:5
+   |
+LL | fn hrtb_out_of_order(x: i32) -> for<'b, 'a> fn(&'a i32, &'b i32) -> (&'b i32, &'a i32) {
+   |                                 ------------------------------------------------------ expected `for<'a, 'b> fn(&'a i32, &'b i32) -> (&'b i32, &'a i32)` because of return type
+LL |     |y, z| (&(x + y + z), unimplemented!())
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected fn pointer, found closure
+   |
+   = note: expected fn pointer `for<'a, 'b> fn(&'a i32, &'b i32) -> (&'b i32, &'a i32)`
+                 found closure `{closure@$DIR/suggest-impl-fn-return-for-capturing-closure.rs:61:5: 61:11}`
+note: closures can only be coerced to `fn` types if they do not capture any variables
+  --> $DIR/suggest-impl-fn-return-for-capturing-closure.rs:61:15
+   |
+LL |     |y, z| (&(x + y + z), unimplemented!())
+   |               ^ `x` captured here
+help: consider changing the return type to a type-erased closure instead
+   |
+LL - fn hrtb_out_of_order(x: i32) -> for<'b, 'a> fn(&'a i32, &'b i32) -> (&'b i32, &'a i32) {
+LL + fn hrtb_out_of_order(x: i32) -> impl for<'b, 'a> Fn(&'a i32, &'b i32) -> (&'b i32, &'a i32) {
+   |
+
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
