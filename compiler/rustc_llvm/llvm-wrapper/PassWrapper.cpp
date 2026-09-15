@@ -425,9 +425,11 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     }
   }
 
+#if LLVM_VERSION_LT(24, 0)
   if (Singlethread) {
     Options.ThreadModel = ThreadModel::Single;
   }
+#endif
 
   if (UseWasmEH)
     Options.ExceptionModel = ExceptionHandling::Wasm;
