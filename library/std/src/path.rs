@@ -83,6 +83,7 @@
 
 use core::clone::CloneToUninit;
 
+use crate::alloc::Allocator;
 use crate::borrow::{Borrow, Cow};
 use crate::collections::TryReserveError;
 use crate::error::Error;
@@ -1972,10 +1973,10 @@ impl From<PathBuf> for Box<Path> {
 }
 
 #[stable(feature = "more_box_slice_clone", since = "1.29.0")]
-impl Clone for Box<Path> {
+impl<A: Allocator + Clone> Clone for Box<Path, A> {
     #[inline]
     fn clone(&self) -> Self {
-        self.to_path_buf().into_boxed_path()
+        Box::clone_from_ref_in(&**self, Self::allocator(self).clone())
     }
 }
 
