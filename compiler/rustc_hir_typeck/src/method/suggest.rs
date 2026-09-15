@@ -426,12 +426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         ));
                                     } else {
                                         msg += &format!(" but {} not reachable", pluralize!("is", suggs.len()));
-                                        err.span_suggestions(
-                                            span,
-                                            msg,
-                                            suggs,
-                                            Applicability::MaybeIncorrect,
-                                        );
+                                        err.help(format!("{msg}:\n{}", suggs.join("").trim_end()));
                                     }
                                 };
                             if accessible_sugg.is_empty() {
@@ -4002,6 +3997,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             candidates.into_iter().partition(|id| {
                 let vis = self.tcx.visibility(*id);
                 vis.is_accessible_from(scope, self.tcx)
+                    // Visibility alone does not make `fn_name::Trait` an importable path.
+                    // We need to make sure all parent are modules, otherwise the path is not importable.
+                    && std::iter::successors(self.tcx.opt_parent(*id), |&id| self.tcx.opt_parent(id))
+                        .all(|id| self.tcx.def_kind(id) == DefKind::Mod)
             });
 
         let sugg = |candidates: Vec<_>, visible| {
@@ -4115,7 +4114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if suggs.len() == 1 {
                         err.help(msg);
                     } else {
-                        err.span_suggestions(span, msg, suggs, Applicability::MaybeIncorrect);
+                        err.help(format!("{msg}:\n{}", suggs.join("").trim_end()));
                     }
                 };
                 if accessible_sugg.is_empty() {
