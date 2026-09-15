@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html>
-<head><title>Polonius MIR dump</title></head>
+<head>
+<title>Polonius MIR dump</title>
+<style>
+.hidden {
+    display: none;
+}
+</style>
+</head>
+
 <body>
 
 <!-- The NLL + Polonius MIR -->
@@ -16,7 +24,7 @@
 </div>
 
 <!-- The reachability of loans while traversing the polonius constraint graph -->
-<div>
+<div class="traces">
     Loan Traces
     $SECTION_POLONIUS_REACHABILITY
 </div>
@@ -41,5 +49,19 @@
 
 <script src='https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js'></script>
 $SECTION_INITIALIZATION
+<script>
+// Set up the loan traces buttons.
+document.querySelectorAll(".traces button").forEach(button => {
+    button.addEventListener("click", e => {
+        // We remove the class hiding the trace by default.
+        let loan = button.getAttribute("data-loan");
+        let trace = document.getElementById(`trace-${loan}`);
+        trace.classList.remove("hidden");
+
+        // And we also remove the button's container.
+        button.parentElement.remove();
+    });
+});
+</script>
 </body>
 </html>

@@ -517,7 +517,13 @@ fn emit_loan_reachability(
             continue;
         };
         let loan = format!("L{}", loan.index());
-        writeln!(out, "<div>")?;
+
+        // The button to display the loan trace. The javascript event listener is hooked up in the
+        // template itself.
+        writeln!(out, "<div><button data-loan='{loan}'>Trace for loan {loan}</button></div>")?;
+
+        // The actual trace contents, hidden by default.
+        writeln!(out, "<div id='trace-{loan}' class='hidden'>")?;
         writeln!(out, "<div>Trace for loan {loan}</div>")?;
         writeln!(out, "<ul>")?;
         for (idx, node) in reachability.iter().enumerate() {
