@@ -160,7 +160,7 @@ pub struct PreloadMut<'a, T: ?Sized> {
 pub fn preload<'a, T: ?Sized>(x: &'a T) -> Preload<'a, T> {
     let p = Preload { cpu_ptr: x as *const T, _marker: PhantomData };
 
-    core::intrinsics::offload_preload(p.cpu_ptr, false);
+    core::intrinsics::offload_preload(p.cpu_ptr);
 
     p
 }
@@ -169,19 +169,19 @@ pub fn preload<'a, T: ?Sized>(x: &'a T) -> Preload<'a, T> {
 pub fn preload_mut<'a, T: ?Sized>(x: &'a mut T) -> PreloadMut<'a, T> {
     let p = PreloadMut { cpu_ptr: x as *mut T, _marker: PhantomData };
 
-    core::intrinsics::offload_preload(p.cpu_ptr, true);
+    core::intrinsics::offload_preload(p.cpu_ptr);
 
     p
 }
 
 impl<T: ?Sized> Drop for PreloadMut<'_, T> {
     fn drop(&mut self) {
-        core::intrinsics::offload_preload_end(self.cpu_ptr, true);
+        core::intrinsics::offload_preload_end(self.cpu_ptr);
     }
 }
 
 impl<T: ?Sized> Drop for Preload<'_, T> {
     fn drop(&mut self) {
-        core::intrinsics::offload_preload_end(self.cpu_ptr, false);
+        core::intrinsics::offload_preload_end(self.cpu_ptr);
     }
 }

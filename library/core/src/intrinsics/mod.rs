@@ -3802,13 +3802,16 @@ pub const fn offload<F, T: crate::marker::Tuple, R>(
 #[rustc_intrinsic]
 pub const fn offload_get_num_devices() -> i32;
 
+// May only be used via the preload and preload_mut functions, in which case it will be passed a
+// const or mut ptr. We use the mutability of this pointer to later deduce whether the data has to
+// be mapped back to the Host during drop calls.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn offload_preload<T: ?Sized>(ptr: *const T, is_mut: bool);
+pub fn offload_preload<P>(ptr: P);
 
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn offload_preload_end<T: ?Sized>(ptr: *const T, is_mut: bool);
+pub fn offload_preload_end<P>(ptr: P);
 
 /// Inform Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]

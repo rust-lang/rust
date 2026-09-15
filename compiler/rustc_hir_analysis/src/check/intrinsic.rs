@@ -395,7 +395,7 @@ pub(crate) fn check_intrinsic_type(
         ),
         sym::offload_get_num_devices => (0, 0, vec![], tcx.types.i32),
         sym::offload_preload | sym::offload_preload_end => {
-            (1, 0, vec![Ty::new_imm_ptr(tcx, param(0)), tcx.types.bool], tcx.types.unit)
+            (1, 0, vec![param(0)], tcx.types.unit)
         }
         sym::offset => (2, 0, vec![param(0), param(1)], param(0)),
         sym::arith_offset => (

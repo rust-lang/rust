@@ -20,7 +20,7 @@ use rustc_hir::find_attr;
 use rustc_lint_defs::builtin::DEPRECATED_LLVM_INTRINSIC;
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::offload_meta::{MappingFlags, OffloadMetadata};
+use rustc_middle::ty::offload_meta::OffloadMetadata;
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
@@ -1930,31 +1930,6 @@ fn codegen_autodiff<'ll, 'tcx>(
     )
 }
 
-fn offload_bool_arg<'ll, 'tcx>(args: &[OperandRef<'tcx, &'ll llvm::Value>], idx: usize) -> bool {
-    let arg = &args[idx];
-
-    if !arg.layout.ty.is_bool() {
-        bug!("expected bool argument at index {idx}, got {:?}", arg.layout.ty);
-    }
-
-    let OperandValue::Immediate(v) = arg.val else {
-        bug!("expected immediate bool argument at index {idx}");
-    };
-
-    let Some(ci) = (unsafe { llvm::LLVMIsAConstantInt(v) }) else {
-        bug!("expected constant bool argument at index {idx}");
-    };
-
-    let mut raw = 0u64;
-    let ok = unsafe { llvm::LLVMRustConstIntGetZExtValue(ci, &mut raw) };
-
-    if !ok {
-        bug!("failed to extract constant bool argument at index {idx}");
-    }
-
-    raw != 0
-}
-
 fn codegen_offload_preload_drop<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     tcx: TyCtxt<'tcx>,
@@ -1963,7 +1938,6 @@ fn codegen_offload_preload_drop<'ll, 'tcx>(
 ) {
     let cx = bx.cx;
     let ptr_arg = &args[0];
-    let is_mut: bool = offload_bool_arg(args, 1);
 
     let pointee_ty = match *ptr_arg.layout.ty.kind() {
         ty::RawPtr(pointee_ty, _) => pointee_ty,
@@ -1977,16 +1951,18 @@ fn codegen_offload_preload_drop<'ll, 'tcx>(
 
     let args = vec![ptr];
 
-    let mut meta = OffloadMetadata::from_ty(tcx, pointee_ty);
-    // We end a mut Mapper. Unless the user never mutated a mut variable passed in a mutable way, we
-    // must return it from the device to update the host version. If they never mutated it, they
-    // surely got a clippy or rustc warning, so it's up to them for wasting time.
-    if is_mut {
-        meta.mode |= MappingFlags::FROM;
-    } else {
-        // We still want the refcounter to go down, so the runtime nows when it can free the data.
-        meta.mode |= MappingFlags::NONE;
-    }
+    let meta = OffloadMetadata::from_ty(tcx, ptr_arg.layout.ty);
+    //let mut meta = OffloadMetadata::from_ty(tcx, pointee_ty);
+    //// We end a mut Mapper. Unless the user never mutated a mut variable passed in a mutable way, we
+    //// must return it from the device to update the host version. If they never mutated it, they
+    //// surely got a clippy or rustc warning, so it's up to them for wasting time.
+    //let meta.mode |= foo.mode;
+    //if is_mut {
+    //    meta.mode |= MappingFlags::FROM;
+    //} else {
+    //    // We still want the refcounter to go down, so the runtime nows when it can free the data.
+    //    meta.mode |= MappingFlags::NONE;
+    //}
     let metadata: &[OffloadMetadata; 1] = &[meta];
 
     let types: &Type = cx.layout_of(pointee_ty).llvm_type(cx);
@@ -2060,7 +2036,7 @@ fn codegen_offload_preload<'ll, 'tcx>(
         _ => bug!("expected preload argument to be a raw pointer, got {arg_ty:?}"),
     };
 
-    let meta = OffloadMetadata::from_ty(tcx, pointee_ty);
+    let meta = OffloadMetadata::from_ty(tcx, arg_ty);
     let metadata = &[meta];
     let types = cx.layout_of(pointee_ty).llvm_type(cx);
 
