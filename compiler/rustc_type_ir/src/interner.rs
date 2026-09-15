@@ -177,7 +177,7 @@ pub trait Interner:
     type Symbol: Symbol<Self>;
 
     // Things stored inside of tys
-    type ErrorGuaranteed: Copy + Debug + Hash + Eq;
+    type ErrorGuaranteed: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
     type BoundExistentialPredicates: BoundExistentialPredicates<Self>;
     type AllocId: Copy + Debug + Hash + Eq;
     type Pat: Copy
