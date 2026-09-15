@@ -8,17 +8,6 @@ LL |                 reuse foo;
    |
    = note: `foo` must be defined only once in the value namespace of this block
 
-error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/hir-crate-items-before-lowering-ices.rs:11:37
-   |
-LL |               core::direct_const_arg!({
-   |  _____________________________________^
-LL | |                 fn foo() {}
-LL | |                 reuse foo;
-LL | |                 2
-LL | |             }),
-   | |_____________^
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0428`.

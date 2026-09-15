@@ -14,7 +14,6 @@ trait FooMut {
         let collection = vec![_I].iter().map(|x| ());
         //~^ ERROR: cannot find value `_I` in this scope
         self.bar(collection);
-        //~^ ERROR: `&'b _` is not an iterator
     }
 }
 
