@@ -16,11 +16,16 @@ impl<A, B, C, D> Many<A, B, C, D> {
 }
 fn bar<A, B, C, D>(_: Many<A, B, C, D>) {}
 
+struct Tuple<A, B, C, D>(A, B, C, D);
+fn baz<A, B, C, D>(_: Tuple<A, B, C, D>) {}
+
 fn take_two(_: bool, _: bool) {}
 fn take_three(_: bool, _: bool, _: Many<i32, Many<(), i32, S, S>, i32, i32>) {}
 
 fn main() {
     let _ = bar(Many::<i32, Many<(), i32, S, S>, i32, i32>::new());
+    //~^ ERROR expected expression
+    baz(Tuple::<i32, Many<(), i32, S, S>, i32, i32>(1, Many::new(), 2, 3));
     //~^ ERROR expected expression
 
     // These are unambiguously comparisons and must keep compiling.

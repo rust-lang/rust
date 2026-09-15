@@ -93,8 +93,9 @@ impl<'a> Parser<'a> {
         self.parse_paren_comma_seq(|p| match p.parse_expr() {
             Ok(expr) => {
                 if p.may_recover()
-                    && let ExprKind::Binary(binop, _, _) = &expr.kind
+                    && let ExprKind::Binary(binop, lhs, _) = &expr.kind
                     && binop.node == BinOpKind::Lt
+                    && matches!(lhs.kind, ExprKind::Path(..))
                 {
                     candidates.push((p.create_snapshot_for_diagnostic(), binop.span));
                 }
