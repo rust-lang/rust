@@ -115,8 +115,8 @@ struct L2Lut {
     /// membership is tested.
     singles: Vec<(Range, i16)>,
 
-    /// Keyed by bits 0..=31 of the code point, value is the lower 16-bits of the 2 or 3 code points that the char expands to.
-    multis: Vec<(Hex<u32>, [Hex<u16>; 3])>,
+    /// Keyed by bits 0..=15 of the code point, value is the lower 16-bits of the 2 or 3 code points that the char expands to.
+    multis: Vec<(Hex<u16>, [Hex<u32>; 3])>,
 }
 
 /// A compact encoding of a `Range<u16>` in only 4 bytes.
@@ -209,6 +209,7 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, Strin
 
         let (input_high, input_low) = deconstruct(input);
         let l2_lut = &mut l1_lut.l2_luts[input_high as usize];
+        //let mut f=0;
 
         match output {
             [output, 0, 0] => {
@@ -222,25 +223,27 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, Strin
                 l2_lut.singles.push((range, delta));
             }
             _ => {
-                let output_lows = output.map(|output| {
-                    let (output_high, output_low) = deconstruct(output);
+                /*
+                                let output_lows = output.map(|output| {
+                                    let (output_high, output_low) = deconstruct(output);
+                                    if output_high != input_high {
+                                         println!("Output: {:#x}, high: {:#x}, low: {:#x}", output, output_high, output_low);
+                                         println!("Input: {:#x}, high: {:#x}, low: {:#x}", input, input_high, input_low);
+                                         f = f+1;
+                                    }
 
-                    // Title and upper case of LATIN SMALL LIGATURE LONG S WITH DESCENDER S (U+1DF95) (plane 1)
-                    // is mapped to U+0053 in plane 0
-                    if input != 0x1DF95 {
-                        assert_eq!(
-                            output_high, input_high,
-                            "Case-mapping a character should not change its plane"
-                        );
-                    }
 
-                    Hex(output_low)
-                });
-                if input == 0x1DF95 {
-                    l2_lut.multis.push((Hex(input), output_lows));
-                } else {
-                    l2_lut.multis.push((Hex(input_low as u32), output_lows));
-                }
+                                    assert_eq!(
+                                        output_high, input_high,
+                                        "Case-mapping a character should not change its plane"
+                                    );
+
+                                    assert_eq!(f, 0);
+                                    Hex(output_low)
+                                });
+                */
+                let outputs = output.map(|output| Hex(output));
+                l2_lut.multis.push((Hex(input_low), outputs));
             }
         }
     }
@@ -306,7 +309,7 @@ struct L1Lut {
 
 struct L2Lut {
     singles: &'static [(Range, i16)],
-    multis: &'static [(u32, [u16; 3])],
+    multis: &'static [(u16, [u32; 3])],
 }
 
 #[derive(Copy, Clone)]
@@ -385,18 +388,18 @@ fn lookup(input: char, l1_lut: &L1Lut) -> Option<[char; 3]> {
         let mask = range.parity as u16;
         if input_low & mask == range.start() & mask {
             let output_low = input_low.wrapping_add_signed(output_delta);
-            // SAFETY: Table data are guaranteed to be valid Unicode.
+           // SAFETY: Single-character mappings are guaranteed to remain
+            // in the input plane.
             let output = unsafe { reconstruct(input_high, output_low) };
             return Some([output, '\0', '\0']);
         }
     };
 
-    let my_input_low: u32 = input_low.into();
-    if let Ok(idx) = l2_lut.multis.binary_search_by_key(&my_input_low, |&(p, _)| p) {
+    if let Ok(idx) = l2_lut.multis.binary_search_by_key(&input_low, |&(p, _)| p) {
         // SAFETY: binary search guarantees that the index is in bounds.
         let &(_, output_lows) = unsafe { l2_lut.multis.get_unchecked(idx) };
         // SAFETY: Table data are guaranteed to be valid Unicode.
-        let output = output_lows.map(|output_low| unsafe { reconstruct(input_high, output_low) });
+        let output = output_lows.map(|c| unsafe { char::from_u32_unchecked(c) });
         return Some(output);
     };
 

@@ -34,25 +34,44 @@ fn test_case_mapping(
     fallback: fn(char) -> [char; 3],
 ) {
     let mut start = '\u{80}';
+    let mut f = 0;
     for &(key, val) in ranges {
         for c in start..key {
-            assert_eq!(lookup(c), fallback(c), "Reached 1: {:#x?} {:#x?}", lookup(c), fallback(c));
+            assert_eq!(
+                lookup(c),
+                fallback(c),
+                "Stage 1: {:#x?} {:#x?} {:#x?}",
+                c,
+                lookup(c),
+                fallback(c)
+            );
         }
-        print!("Lookup(key) ");
-        for c in &lookup(key) {
-		print!("{} ", c.escape_unicode());
-	}
-	println!();
-	print!("Val ");
-        for c in &val {
-		print!("{} ", c.escape_unicode());
-	}
-	println!();
-        assert_eq!(lookup(key), val, "Reached 2: {:#x?} {:#x?}", lookup(key), val);
+        if lookup(key) != val {
+            print!("Lookup(key) ");
+            for c in &lookup(key) {
+                print!("{} ", c.escape_unicode());
+            }
+            println!();
+            print!("Val ");
+            for c in &val {
+                print!("{} ", c.escape_unicode());
+            }
+            println!();
+            f = f + 1;
+        }
+        //assert_eq!(lookup(key), val, "Reached 2: {:#x?} {:#x?}", lookup(key), val);
         start = char::from_u32(key as u32 + 1).unwrap();
     }
+    assert_eq!(f, 0);
     for c in start..=char::MAX {
-        assert_eq!(lookup(c), fallback(c), "Reached 3: {:#x?} {:#x?}", lookup(c), fallback(c));
+        assert_eq!(
+            lookup(c),
+            fallback(c),
+            "Reached 3: {:#x?} {:#x?} {:#x?}",
+            c,
+            lookup(c),
+            fallback(c)
+        );
     }
 }
 
