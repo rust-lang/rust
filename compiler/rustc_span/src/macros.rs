@@ -14,7 +14,7 @@ use crate::Span;
 /// If the bug should only be emitted when compilation didn't fail,
 /// [`DiagCtxtHandle::span_delayed_bug`] may be useful.
 ///
-/// [`DiagCtxtHandle::span_delayed_bug`]: ../rustc_errors/struct.DiagCtxtHandle.html#method.span_delayed_bug
+/// [`DiagCtxtHandle::span_delayed_bug`]: ../../rustc_errors/struct.DiagCtxtHandle.html#method.span_delayed_bug
 /// [`span_bug`]: crate::span_bug
 pub macro bug {
     () => (
@@ -33,7 +33,7 @@ pub macro bug {
 /// If the bug should only be emitted when compilation didn't fail,
 /// [`DiagCtxtHandle::span_delayed_bug`] may be useful.
 ///
-/// [`DiagCtxtHandle::span_delayed_bug`]: ../rustc_errors/struct.DiagCtxtHandle.html#method.span_delayed_bug
+/// [`DiagCtxtHandle::span_delayed_bug`]: ../../rustc_errors/struct.DiagCtxtHandle.html#method.span_delayed_bug
 pub macro span_bug($span:expr, $($arg:tt)+){
    bug_impl(Some($span), std::format_args!($($arg)+), Location::caller())
 }
