@@ -236,6 +236,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::AllowInternalUnsafe(..) => (),
             AttributeKind::AllowInternalUnstable(..) => (),
             AttributeKind::AutomaticallyDerived => (),
+            AttributeKind::BtfRelocatable(..) => (),
             AttributeKind::CfgAttrTrace(..) => (),
             AttributeKind::CfgTrace(..) => (),
             AttributeKind::CfiEncoding { .. } => (),
