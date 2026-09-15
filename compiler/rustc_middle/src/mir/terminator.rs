@@ -3,7 +3,6 @@
 use std::slice;
 
 use rustc_ast::InlineAsmOptions;
-use rustc_data_structures::packed::Pu128;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
@@ -11,6 +10,7 @@ use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
 use super::*;
+use crate::ty::ScalarInt;
 
 impl SwitchTargets {
     /// Creates switch targets from an iterator of values and target blocks.
@@ -19,7 +19,7 @@ impl SwitchTargets {
     /// `goto otherwise;`.
     pub fn new(targets: impl Iterator<Item = (u128, BasicBlock)>, otherwise: BasicBlock) -> Self {
         let (values, mut targets): (SmallVec<_>, SmallVec<_>) =
-            targets.map(|(v, t)| (Pu128(v), t)).unzip();
+            targets.map(|(v, t)| (ScalarInt::from(v), t)).unzip();
         targets.push(otherwise);
         Self { values, targets }
     }
@@ -27,7 +27,7 @@ impl SwitchTargets {
     /// Builds a switch targets definition that jumps to `then` if the tested value equals `value`,
     /// and to `else_` if not.
     pub fn static_if(value: u128, then: BasicBlock, else_: BasicBlock) -> Self {
-        Self { values: smallvec![Pu128(value)], targets: smallvec![then, else_] }
+        Self { values: smallvec![ScalarInt::from(value)], targets: smallvec![then, else_] }
     }
 
     /// Inverse of `SwitchTargets::static_if`.
@@ -36,7 +36,7 @@ impl SwitchTargets {
         if let &[value] = &self.values[..]
             && let &[then, else_] = &self.targets[..]
         {
-            Some((value.get(), then, else_))
+            Some((value.to_u128(), then, else_))
         } else {
             None
         }
@@ -72,12 +72,12 @@ impl SwitchTargets {
 
     /// Returns a slice with all considered values (not including the fallback).
     #[inline]
-    pub fn all_values(&self) -> &[Pu128] {
+    pub fn all_values(&self) -> &[ScalarInt] {
         &self.values
     }
 
     #[inline]
-    pub fn all_values_mut(&mut self) -> &mut [Pu128] {
+    pub fn all_values_mut(&mut self) -> &mut [ScalarInt] {
         &mut self.values
     }
 
@@ -92,7 +92,7 @@ impl SwitchTargets {
     /// Adds a new target to the switch. Panics if you add an already present value.
     #[inline]
     pub fn add_target(&mut self, value: u128, bb: BasicBlock) {
-        let value = Pu128(value);
+        let value = ScalarInt::from(value);
         if self.values.contains(&value) {
             bug!("target value {:?} already present", value);
         }
@@ -108,7 +108,7 @@ impl SwitchTargets {
 }
 
 pub struct SwitchTargetsIter<'a> {
-    inner: iter::Zip<slice::Iter<'a, Pu128>, slice::Iter<'a, BasicBlock>>,
+    inner: iter::Zip<slice::Iter<'a, ScalarInt>, slice::Iter<'a, BasicBlock>>,
 }
 
 impl<'a> Iterator for SwitchTargetsIter<'a> {
@@ -116,7 +116,7 @@ impl<'a> Iterator for SwitchTargetsIter<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(|(val, bb)| (val.get(), *bb))
+        self.inner.next().map(|(val, bb)| (val.to_u128(), *bb))
     }
 
     #[inline]
