@@ -120,7 +120,7 @@ fn dfa() {
     // CHECK-LABEL: fn dfa(
     // CHECK: bb0: {
     // CHECK:     {{_.*}} = DFA::A;
-    // CHECK:     goto -> bb1;
+    // CHECK:     goto -> bb7;
     // CHECK: bb1: {
     // CHECK:     switchInt({{.*}}) -> [0: bb6, 1: bb5, 2: bb4, 3: bb3, otherwise: bb2];
     // CHECK: bb2: {
@@ -129,13 +129,21 @@ fn dfa() {
     // CHECK:     return;
     // CHECK: bb4: {
     // CHECK:     {{_.*}} = DFA::D;
-    // CHECK:     goto -> bb1;
+    // CHECK:     goto -> bb10;
     // CHECK: bb5: {
     // CHECK:     {{_.*}} = DFA::C;
-    // CHECK:     goto -> bb1;
+    // CHECK:     goto -> bb9;
     // CHECK: bb6: {
     // CHECK:     {{_.*}} = DFA::B;
-    // CHECK:     goto -> bb1;
+    // CHECK:     goto -> bb8;
+    // CHECK: bb7: {
+    // CHECK:     goto -> bb6;
+    // CHECK: bb8: {
+    // CHECK:     goto -> bb5;
+    // CHECK: bb9: {
+    // CHECK:     goto -> bb4;
+    // CHECK: bb10: {
+    // CHECK:     goto -> bb3;
     let mut state = DFA::A;
     loop {
         match state {
