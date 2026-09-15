@@ -1451,28 +1451,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     #[inline(always)]
     fn map_def_id(&self, def_id: impl Into<DefId>) -> DefId {
         let def_id = def_id.into();
-        match def_id.as_local() {
-            Some(def_id) => {
-                if let Some(index) =
-                    self.def_indexes_remapping.get(&def_id.local_def_index).copied()
-                {
-                    DefId { index, krate: LOCAL_CRATE }
-                } else {
-                    def_id.to_def_id()
-                }
-            }
-            None => def_id,
-        }
+        def_id
+            .as_local()
+            .and_then(|def_id| self.def_indexes_remapping.get(&def_id.local_def_index).copied())
+            .map(|index| DefId { index, krate: LOCAL_CRATE })
+            .unwrap_or(def_id)
     }
 
+    #[inline(always)]
     fn map_index(&self, index: DefIndex) -> DefIndex {
-        if self.can_remap_index
-            && let Some(index) = self.def_indexes_remapping.get(&index).copied()
-        {
-            index
-        } else {
-            index
-        }
+        self.def_indexes_remapping
+            .get(&index)
+            .filter(|_| self.can_remap_index)
+            .copied()
+            .unwrap_or(index)
     }
 
     fn encode_def_ids(&mut self) {
