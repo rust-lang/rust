@@ -49,7 +49,7 @@ fn kernel<T: Copy>(x: *mut [T; 256], value: T) {
 fn main() {
     let mut x = [0.0f64; 256];
     core::offload::offload! {
-        kernel = kernel,
+        kernel = kernel::<f64>,
         workgroup_dim = [256, 1, 1],
         args = (&mut x as *mut [f64; 256], 2.5),
     }
