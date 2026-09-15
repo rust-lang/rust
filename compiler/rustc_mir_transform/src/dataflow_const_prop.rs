@@ -12,7 +12,6 @@ use rustc_const_eval::interpret::{
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
-use rustc_middle::bug;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -23,7 +22,7 @@ use rustc_mir_dataflow::value_analysis::{
     Map, PlaceCollectionMode, PlaceIndex, State, TrackElem, ValueOrPlace, debug_with_context,
 };
 use rustc_mir_dataflow::{Analysis, ResultsVisitor, visit_results};
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, bug};
 use tracing::{debug, debug_span, instrument};
 
 use crate::PassPolicy;

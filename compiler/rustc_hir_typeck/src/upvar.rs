@@ -48,8 +48,7 @@ use rustc_middle::ty::{
     self, BorrowKind, ClosureSizeProfileData, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults,
     Unnormalized, UpvarArgs, UpvarCapture,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{BytePos, Pos, Span, Symbol, sym};
+use rustc_span::{BytePos, Pos, Span, Symbol, bug, span_bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 

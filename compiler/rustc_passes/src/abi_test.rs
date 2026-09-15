@@ -2,10 +2,9 @@ use rustc_hir::attrs::RustcAbiAttrKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
-use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{FnAbiError, LayoutError};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_span::{Span, span_bug};
 use rustc_target::callconv::FnAbi;
 
 use super::layout_test::ensure_wf;

@@ -38,8 +38,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, ExprId, LocalVarId, Param, ParamId, PatKind, Thir};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
-use rustc_middle::{bug, span_bug};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, bug, span_bug};
 
 use crate::builder::expr::as_place::PlaceBuilder;
 use crate::builder::scope::LintLevel;

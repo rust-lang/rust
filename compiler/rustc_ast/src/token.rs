@@ -969,7 +969,13 @@ impl Token {
     }
 
     pub fn is_non_reserved_ident(&self) -> bool {
-        self.ident().is_some_and(|(id, raw)| raw == IdentIsRaw::Yes || !sp::Ident::is_reserved(id))
+        self.non_reserved_ident().is_some()
+    }
+
+    pub fn non_reserved_ident(&self) -> Option<sp::Ident> {
+        self.ident()
+            .filter(|&(id, raw)| raw == IdentIsRaw::Yes || !sp::Ident::is_reserved(id))
+            .map(|(id, _)| id)
     }
 
     /// Returns `true` if the token is the identifier `true` or `false`.

@@ -24,7 +24,7 @@ use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
 use rustc_index::{IndexVec, newtype_index};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeVisitable};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, bug};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use tracing::instrument;
 

@@ -18,7 +18,6 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{Attribute, BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
 use rustc_index::IndexVec;
 use rustc_metadata::rendered_const;
-use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{
@@ -28,7 +27,7 @@ use rustc_session::Session;
 use rustc_span::def_id::{CRATE_DEF_ID, ModId};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, FileName, Ident, Loc, RemapPathScopeComponents};
+use rustc_span::{DUMMY_SP, FileName, Ident, Loc, RemapPathScopeComponents, span_bug};
 use tracing::{debug, trace};
 
 pub(crate) use self::ItemKind::*;
