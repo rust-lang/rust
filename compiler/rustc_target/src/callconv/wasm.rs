@@ -1,25 +1,55 @@
-use rustc_abi::{BackendRepr, Float, HasDataLayout, Integer, Primitive, TyAbiInterface};
+use rustc_abi::{
+    BackendRepr, Float, HasDataLayout, Integer, Primitive, Reg, RegKind, TyAbiInterface,
+    TyAndLayout,
+};
 
 use crate::callconv::{ArgAbi, FnAbi};
+
+fn singleton_scalar<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> Option<Reg>
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    // The base case: a single scalar is a singleton scalar.
+    if !layout.is_aggregate() {
+        let BackendRepr::Scalar(scalar) = layout.backend_repr else {
+            return None;
+        };
+        let kind = match scalar.primitive() {
+            Primitive::Int(..) | Primitive::Pointer(_) => RegKind::Integer,
+            Primitive::Float(_) => RegKind::Float,
+        };
+        return Some(Reg { kind, size: layout.size });
+    }
+
+    let mut found = None;
+    for i in 0..layout.fields.count() {
+        let field = layout.field(cx, i);
+        if field.is_zst() {
+            continue;
+        }
+        if found.is_some() {
+            // A second member, so not a singleton.
+            return None;
+        }
+        found = Some(singleton_scalar(cx, field)?);
+    }
+
+    // Reject over-aligned types.
+    found.filter(|scalar| scalar.size == layout.size)
+}
 
 fn unwrap_trivial_aggregate<'a, Ty, C>(cx: &C, val: &mut ArgAbi<'a, Ty>) -> bool
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if val.layout.is_aggregate() {
-        if let Some(unit) = val.layout.homogeneous_aggregate(cx).ok().and_then(|ha| ha.unit()) {
-            let size = val.layout.size;
-            // This size check also catches over-aligned scalars as `size` will be rounded up to a
-            // multiple of the alignment, and the default alignment of all scalar types on wasm
-            // equals their size.
-            if unit.size == size {
-                val.cast_to(unit);
-                return true;
-            }
-        }
-    }
-    false
+    let Some(scalar) = singleton_scalar(cx, val.layout) else {
+        return false;
+    };
+
+    val.cast_to(scalar);
+    true
 }
 
 fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>)
