@@ -1,24 +1,20 @@
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/linker-warning.rs:7:1
+warning: allow(linker_messages) is ignored unless specified at crate level
+  --> $DIR/linker-warning.rs:7:9
    |
 LL | #[allow(linker_messages)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/linker-warning.rs:3:9
    |
 LL | #![warn(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
-help: add a `!`
-   |
-LL | #![allow(linker_messages)]
-   |  +
 
 warning: unused attribute
-  --> $DIR/linker-warning.rs:4:1
+  --> $DIR/linker-warning.rs:4:10
    |
 LL | #![allow(linker_messages)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |          ^^^^^^^^^^^^^^^ help: remove this attribute
    |
    = note: the `linker_messages` and `linker_info` lints can only be controlled at the root of a crate that needs to be linked
 
