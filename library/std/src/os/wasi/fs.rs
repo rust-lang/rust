@@ -334,13 +334,19 @@ pub trait MetadataExt {
 
 impl MetadataExt for fs::Metadata {
     fn dev(&self) -> u64 {
-        self.as_inner().as_inner().st_dev
+        no_code! {
+            self.as_inner().as_inner().st_dev
+        }
     }
     fn ino(&self) -> u64 {
-        self.as_inner().as_inner().st_ino
+        no_code! {
+            self.as_inner().as_inner().st_ino
+        }
     }
     fn nlink(&self) -> u64 {
-        self.as_inner().as_inner().st_nlink
+        no_code! {
+            self.as_inner().as_inner().st_nlink
+        }
     }
 }
 
@@ -359,13 +365,19 @@ pub trait FileTypeExt {
 
 impl FileTypeExt for fs::FileType {
     fn is_block_device(&self) -> bool {
-        self.as_inner().is(libc::S_IFBLK)
+        no_code! {
+            self.as_inner().is(libc::S_IFBLK)
+        }
     }
     fn is_char_device(&self) -> bool {
-        self.as_inner().is(libc::S_IFCHR)
+        no_code! {
+            self.as_inner().is(libc::S_IFCHR)
+        }
     }
     fn is_socket(&self) -> bool {
-        self.as_inner().is(libc::S_IFSOCK)
+        no_code! {
+            self.as_inner().is(libc::S_IFSOCK)
+        }
     }
 }
 

@@ -173,9 +173,11 @@ impl TryFrom<HandleOrNull> for OwnedHandle {
 impl Drop for HandleOrNull {
     #[inline]
     fn drop(&mut self) {
-        if self.is_valid() {
-            unsafe {
-                let _ = sys::c::CloseHandle(self.0);
+        no_code! {
+            if self.is_valid() {
+                unsafe {
+                    let _ = sys::c::CloseHandle(self.0);
+                }
             }
         }
     }
@@ -195,7 +197,9 @@ impl BorrowedHandle<'_> {
     /// object as the existing `BorrowedHandle` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone_to_owned(&self) -> io::Result<OwnedHandle> {
-        self.duplicate(0, false, sys::c::DUPLICATE_SAME_ACCESS)
+        no_code! {
+            self.duplicate(0, false, sys::c::DUPLICATE_SAME_ACCESS)
+        }
     }
 
     pub(crate) fn duplicate(
@@ -204,30 +208,32 @@ impl BorrowedHandle<'_> {
         inherit: bool,
         options: u32,
     ) -> io::Result<OwnedHandle> {
-        let handle = self.as_raw_handle();
+        no_code! {
+            let handle = self.as_raw_handle();
 
-        // `Stdin`, `Stdout`, and `Stderr` can all hold null handles, such as
-        // in a process with a detached console. `DuplicateHandle` would fail
-        // if we passed it a null handle, but we can treat null as a valid
-        // handle which doesn't do any I/O, and allow it to be duplicated.
-        if handle.is_null() {
-            return unsafe { Ok(OwnedHandle::from_raw_handle(handle)) };
+            // `Stdin`, `Stdout`, and `Stderr` can all hold null handles, such as
+            // in a process with a detached console. `DuplicateHandle` would fail
+            // if we passed it a null handle, but we can treat null as a valid
+            // handle which doesn't do any I/O, and allow it to be duplicated.
+            if handle.is_null() {
+                return unsafe { Ok(OwnedHandle::from_raw_handle(handle)) };
+            }
+
+            let mut ret = ptr::null_mut();
+            cvt(unsafe {
+                let cur_proc = sys::c::GetCurrentProcess();
+                sys::c::DuplicateHandle(
+                    cur_proc,
+                    handle,
+                    cur_proc,
+                    &mut ret,
+                    access,
+                    inherit as sys::c::BOOL,
+                    options,
+                )
+            })?;
+            unsafe { Ok(OwnedHandle::from_raw_handle(ret)) }
         }
-
-        let mut ret = ptr::null_mut();
-        cvt(unsafe {
-            let cur_proc = sys::c::GetCurrentProcess();
-            sys::c::DuplicateHandle(
-                cur_proc,
-                handle,
-                cur_proc,
-                &mut ret,
-                access,
-                inherit as sys::c::BOOL,
-                options,
-            )
-        })?;
-        unsafe { Ok(OwnedHandle::from_raw_handle(ret)) }
     }
 }
 
@@ -251,9 +257,11 @@ impl TryFrom<HandleOrInvalid> for OwnedHandle {
 impl Drop for HandleOrInvalid {
     #[inline]
     fn drop(&mut self) {
-        if self.is_valid() {
-            unsafe {
-                let _ = sys::c::CloseHandle(self.0);
+        no_code! {
+            if self.is_valid() {
+                unsafe {
+                    let _ = sys::c::CloseHandle(self.0);
+                }
             }
         }
     }
@@ -471,7 +479,9 @@ impl<T: AsHandle + ?Sized> AsHandle for &mut T {
 impl<T: AsHandle + ?Sized> AsHandle for crate::sync::Arc<T> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        (**self).as_handle()
+        no_code! {
+            (**self).as_handle()
+        }
     }
 }
 
@@ -479,7 +489,9 @@ impl<T: AsHandle + ?Sized> AsHandle for crate::sync::Arc<T> {
 impl<T: AsHandle + ?Sized> AsHandle for crate::rc::Rc<T> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        (**self).as_handle()
+        no_code! {
+            (**self).as_handle()
+        }
     }
 }
 
@@ -487,7 +499,9 @@ impl<T: AsHandle + ?Sized> AsHandle for crate::rc::Rc<T> {
 impl<T: AsHandle + ?Sized> AsHandle for crate::rc::UniqueRc<T> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        (**self).as_handle()
+        no_code! {
+            (**self).as_handle()
+        }
     }
 }
 
@@ -495,7 +509,9 @@ impl<T: AsHandle + ?Sized> AsHandle for crate::rc::UniqueRc<T> {
 impl<T: AsHandle + ?Sized, A: Allocator> AsHandle for Box<T, A> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        (**self).as_handle()
+        no_code! {
+            (**self).as_handle()
+        }
     }
 }
 
@@ -522,7 +538,9 @@ impl AsHandle for OwnedHandle {
 impl AsHandle for fs::File {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        self.as_inner().as_handle()
+        no_code! {
+            self.as_inner().as_handle()
+        }
     }
 }
 
@@ -531,7 +549,9 @@ impl From<fs::File> for OwnedHandle {
     /// Takes ownership of a [`File`](fs::File)'s underlying file handle.
     #[inline]
     fn from(file: fs::File) -> OwnedHandle {
-        file.into_inner().into_inner().into_inner()
+        no_code! {
+            file.into_inner().into_inner().into_inner()
+        }
     }
 }
 
@@ -540,7 +560,9 @@ impl From<OwnedHandle> for fs::File {
     /// Returns a [`File`](fs::File) that takes ownership of the given handle.
     #[inline]
     fn from(owned: OwnedHandle) -> Self {
-        Self::from_inner(FromInner::from_inner(FromInner::from_inner(owned)))
+        no_code! {
+            Self::from_inner(FromInner::from_inner(FromInner::from_inner(owned)))
+        }
     }
 }
 
@@ -655,48 +677,62 @@ impl<T> AsHandle for crate::thread::JoinHandle<T> {
 impl<T> From<crate::thread::JoinHandle<T>> for OwnedHandle {
     #[inline]
     fn from(join_handle: crate::thread::JoinHandle<T>) -> OwnedHandle {
-        join_handle.into_inner().into_handle().into_inner()
+        no_code! {
+            join_handle.into_inner().into_handle().into_inner()
+        }
     }
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl AsHandle for io::PipeReader {
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        self.0.as_handle()
+        no_code! {
+            self.0.as_handle()
+        }
     }
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl From<io::PipeReader> for OwnedHandle {
     fn from(pipe: io::PipeReader) -> Self {
-        pipe.into_inner().into_inner()
+        no_code! {
+            pipe.into_inner().into_inner()
+        }
     }
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl AsHandle for io::PipeWriter {
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        self.0.as_handle()
+        no_code! {
+            self.0.as_handle()
+        }
     }
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl From<io::PipeWriter> for OwnedHandle {
     fn from(pipe: io::PipeWriter) -> Self {
-        pipe.into_inner().into_inner()
+        no_code! {
+            pipe.into_inner().into_inner()
+        }
     }
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl From<OwnedHandle> for io::PipeReader {
     fn from(owned_handle: OwnedHandle) -> Self {
-        Self::from_inner(FromInner::from_inner(owned_handle))
+        no_code! {
+            Self::from_inner(FromInner::from_inner(owned_handle))
+        }
     }
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl From<OwnedHandle> for io::PipeWriter {
     fn from(owned_handle: OwnedHandle) -> Self {
-        Self::from_inner(FromInner::from_inner(owned_handle))
+        no_code! {
+            Self::from_inner(FromInner::from_inner(owned_handle))
+        }
     }
 }

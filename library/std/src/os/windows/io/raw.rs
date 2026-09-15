@@ -94,7 +94,9 @@ pub trait IntoRawHandle {
 impl AsRawHandle for fs::File {
     #[inline]
     fn as_raw_handle(&self) -> RawHandle {
-        self.as_inner().as_raw_handle() as RawHandle
+        no_code! {
+            self.as_inner().as_raw_handle() as RawHandle
+        }
     }
 }
 
@@ -156,11 +158,13 @@ pub(super) fn stdio_handle(raw: RawHandle) -> RawHandle {
 impl FromRawHandle for fs::File {
     #[inline]
     unsafe fn from_raw_handle(handle: RawHandle) -> fs::File {
-        unsafe {
-            let handle = handle as sys::c::HANDLE;
-            fs::File::from_inner(sys::fs::File::from_inner(FromInner::from_inner(
-                OwnedHandle::from_raw_handle(handle),
-            )))
+        no_code! {
+            unsafe {
+                let handle = handle as sys::c::HANDLE;
+                fs::File::from_inner(sys::fs::File::from_inner(FromInner::from_inner(
+                    OwnedHandle::from_raw_handle(handle),
+                )))
+            }
         }
     }
 }
@@ -169,7 +173,9 @@ impl FromRawHandle for fs::File {
 impl IntoRawHandle for fs::File {
     #[inline]
     fn into_raw_handle(self) -> RawHandle {
-        self.into_inner().into_raw_handle() as *mut _
+        no_code! {
+            self.into_inner().into_raw_handle() as *mut _
+        }
     }
 }
 
@@ -238,21 +244,27 @@ pub trait IntoRawSocket {
 impl AsRawSocket for net::TcpStream {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
-        self.as_inner().socket().as_raw_socket()
+        no_code! {
+            self.as_inner().socket().as_raw_socket()
+        }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawSocket for net::TcpListener {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
-        self.as_inner().socket().as_raw_socket()
+        no_code! {
+            self.as_inner().socket().as_raw_socket()
+        }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawSocket for net::UdpSocket {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
-        self.as_inner().socket().as_raw_socket()
+        no_code! {
+            self.as_inner().socket().as_raw_socket()
+        }
     }
 }
 
@@ -260,9 +272,11 @@ impl AsRawSocket for net::UdpSocket {
 impl FromRawSocket for net::TcpStream {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpStream {
-        unsafe {
-            let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
-            net::TcpStream::from_inner(sys::net::TcpStream::from_inner(sock))
+        no_code! {
+            unsafe {
+                let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
+                net::TcpStream::from_inner(sys::net::TcpStream::from_inner(sock))
+            }
         }
     }
 }
@@ -270,9 +284,11 @@ impl FromRawSocket for net::TcpStream {
 impl FromRawSocket for net::TcpListener {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpListener {
-        unsafe {
-            let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
-            net::TcpListener::from_inner(sys::net::TcpListener::from_inner(sock))
+        no_code! {
+            unsafe {
+                let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
+                net::TcpListener::from_inner(sys::net::TcpListener::from_inner(sock))
+            }
         }
     }
 }
@@ -280,9 +296,11 @@ impl FromRawSocket for net::TcpListener {
 impl FromRawSocket for net::UdpSocket {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::UdpSocket {
-        unsafe {
-            let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
-            net::UdpSocket::from_inner(sys::net::UdpSocket::from_inner(sock))
+        no_code! {
+            unsafe {
+                let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
+                net::UdpSocket::from_inner(sys::net::UdpSocket::from_inner(sock))
+            }
         }
     }
 }
@@ -291,7 +309,9 @@ impl FromRawSocket for net::UdpSocket {
 impl IntoRawSocket for net::TcpStream {
     #[inline]
     fn into_raw_socket(self) -> RawSocket {
-        self.into_inner().into_socket().into_inner().into_raw_socket()
+        no_code! {
+            self.into_inner().into_socket().into_inner().into_raw_socket()
+        }
     }
 }
 
@@ -299,7 +319,9 @@ impl IntoRawSocket for net::TcpStream {
 impl IntoRawSocket for net::TcpListener {
     #[inline]
     fn into_raw_socket(self) -> RawSocket {
-        self.into_inner().into_socket().into_inner().into_raw_socket()
+        no_code! {
+            self.into_inner().into_socket().into_inner().into_raw_socket()
+        }
     }
 }
 
@@ -307,48 +329,62 @@ impl IntoRawSocket for net::TcpListener {
 impl IntoRawSocket for net::UdpSocket {
     #[inline]
     fn into_raw_socket(self) -> RawSocket {
-        self.into_inner().into_socket().into_inner().into_raw_socket()
+        no_code! {
+            self.into_inner().into_socket().into_inner().into_raw_socket()
+        }
     }
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl AsRawHandle for io::PipeReader {
     fn as_raw_handle(&self) -> RawHandle {
-        self.0.as_raw_handle()
+        no_code! {
+            self.0.as_raw_handle()
+        }
     }
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl FromRawHandle for io::PipeReader {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
-        unsafe { Self::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
+        no_code! {
+            unsafe { Self::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
+        }
     }
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl IntoRawHandle for io::PipeReader {
     fn into_raw_handle(self) -> RawHandle {
-        self.0.into_raw_handle()
+        no_code! {
+            self.0.into_raw_handle()
+        }
     }
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl AsRawHandle for io::PipeWriter {
     fn as_raw_handle(&self) -> RawHandle {
-        self.0.as_raw_handle()
+        no_code! {
+            self.0.as_raw_handle()
+        }
     }
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl FromRawHandle for io::PipeWriter {
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
-        unsafe { Self::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
+        no_code! {
+            unsafe { Self::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
+        }
     }
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl IntoRawHandle for io::PipeWriter {
     fn into_raw_handle(self) -> RawHandle {
-        self.0.into_raw_handle()
+        no_code! {
+            self.0.into_raw_handle()
+        }
     }
 }
