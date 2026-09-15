@@ -98,6 +98,7 @@ pub(crate) trait DocFolder: Sized {
             | AssocTypeItem(..)
             | KeywordItem
             | AttributeItem
+            | FeatureItem
             | PlaceholderImplItem => kind,
         }
     }
