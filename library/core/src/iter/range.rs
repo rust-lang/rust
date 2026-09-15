@@ -1382,33 +1382,35 @@ unsafe impl<A: TrustedStep> TrustedLen for ops::RangeFrom<A> {}
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::RangeFrom<A> {}
 
-trait RangeInclusiveIteratorImpl {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const trait RangeInclusiveIteratorImpl {
     type Item;
 
     // Iterator
     fn spec_try_fold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>;
+        F: [const] FnMut(B, Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = B>;
 
     // DoubleEndedIterator
     fn spec_try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>;
+        F: [const] FnMut(B, Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = B>;
 }
 
-impl<A: Step> RangeInclusiveIteratorImpl for ops::RangeInclusive<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const impl<A: [const] Step> RangeInclusiveIteratorImpl for ops::RangeInclusive<A> {
     type Item = A;
 
     #[inline]
     default fn spec_try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
-        F: FnMut(B, A) -> R,
-        R: Try<Output = B>,
+        F: [const] FnMut(B, A) -> R + [const] Destruct,
+        R: [const] Try<Output = B>,
     {
         if self.is_empty() {
             return try { init };
@@ -1436,8 +1438,8 @@ impl<A: Step> RangeInclusiveIteratorImpl for ops::RangeInclusive<A> {
     default fn spec_try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
-        F: FnMut(B, A) -> R,
-        R: Try<Output = B>,
+        F: [const] FnMut(B, A) -> R + [const] Destruct,
+        R: [const] Try<Output = B>,
     {
         if self.is_empty() {
             return try { init };
@@ -1462,13 +1464,14 @@ impl<A: Step> RangeInclusiveIteratorImpl for ops::RangeInclusive<A> {
     }
 }
 
-impl<T: TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const impl<T: [const] TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
     #[inline]
     fn spec_try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
-        F: FnMut(B, T) -> R,
-        R: Try<Output = B>,
+        F: [const] FnMut(B, T) -> R + [const] Destruct,
+        R: [const] Try<Output = B>,
     {
         if self.is_empty() {
             return try { init };
@@ -1496,8 +1499,8 @@ impl<T: TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
     fn spec_try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
-        F: FnMut(B, T) -> R,
-        R: Try<Output = B>,
+        F: [const] FnMut(B, T) -> R + [const] Destruct,
+        R: [const] Try<Output = B>,
     {
         if self.is_empty() {
             return try { init };
@@ -1523,7 +1526,8 @@ impl<T: TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<A: Step> Iterator for ops::RangeInclusive<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const impl<A: [const] Step + [const] Destruct> Iterator for ops::RangeInclusive<A> {
     type Item = A;
 
     #[inline]
@@ -1545,7 +1549,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         }
 
         let hint = Step::steps_between(&self.start, &self.end);
-        (hint.0.saturating_add(1), hint.1.and_then(|steps| steps.checked_add(1)))
+        (hint.0.saturating_add(1), hint.1.and_then(const |steps| steps.checked_add(1)))
     }
 
     #[inline]
@@ -1556,7 +1560,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
         Step::steps_between(&self.start, &self.end)
             .1
-            .and_then(|steps| steps.checked_add(1))
+            .and_then(const |steps| steps.checked_add(1))
             .expect("count overflowed usize")
     }
 
@@ -1579,16 +1583,19 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>,
+        F: [const] FnMut(B, Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = B>,
     {
         self.spec_try_fold(init, f)
     }
 
-    impl_fold_via_try_fold! { fold -> try_fold }
+    impl_fold_via_try_fold_const! { fold -> try_fold }
 
     #[inline]
-    fn last(mut self) -> Option<A> {
+    fn last(mut self) -> Option<A>
+    where
+        Self: [const] Destruct,
+    {
         self.next_back()
     }
 
@@ -1596,6 +1603,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     fn min(mut self) -> Option<A>
     where
         A: Ord,
+        Self: [const] Destruct,
     {
         self.next()
     }
@@ -1604,18 +1612,23 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     fn max(mut self) -> Option<A>
     where
         A: Ord,
+        Self: [const] Destruct,
     {
         self.next_back()
     }
 
     #[inline]
-    fn is_sorted(self) -> bool {
+    fn is_sorted(self) -> bool
+    where
+        Self: [const] Destruct,
+    {
         true
     }
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const impl<A: [const] Step + [const] Destruct> DoubleEndedIterator for ops::RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.is_empty() {
@@ -1647,13 +1660,13 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>,
+        F: [const] FnMut(B, Self::Item) -> R + [const] Destruct,
+        R: [const] Try<Output = B>,
     {
         self.spec_try_rfold(init, f)
     }
 
-    impl_fold_via_try_fold! { rfold -> try_rfold }
+    impl_fold_via_try_fold_const! { rfold -> try_rfold }
 }
 
 // Safety: See above implementation for `ops::Range<A>`
