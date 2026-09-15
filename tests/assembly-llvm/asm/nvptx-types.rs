@@ -3,7 +3,7 @@
 //@ compile-flags: --target nvptx64-nvidia-cuda
 //@ needs-llvm-components: nvptx
 
-#![feature(no_core, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch, f16)]
 #![crate_type = "rlib"]
 #![no_core]
 
@@ -48,6 +48,12 @@ check!(reg16_i8 i8 reg16 "mov.i16");
 // CHECK: // end inline asm
 check!(reg16_i16 i16 reg16 "mov.i16");
 
+// CHECK-LABEL: .visible .func (.param .align 2 .b8 func_retval0[2]) reg16_f16
+// CHECK: // begin inline asm
+// CHECK: mov.i16 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
+check!(reg16_f16 f16 reg16 "mov.i16");
+
 // CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg32_i8
 // CHECK: // begin inline asm
 // CHECK: mov.i32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
@@ -59,6 +65,12 @@ check!(reg32_i8 i8 reg32 "mov.i32");
 // CHECK: mov.i32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
 check!(reg32_i16 i16 reg32 "mov.i32");
+
+// CHECK-LABEL: .visible .func (.param .align 2 .b8 func_retval0[2]) reg32_f16
+// CHECK: // begin inline asm
+// CHECK: mov.i32 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
+check!(reg32_f16 f16 reg32 "mov.i32");
 
 // CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg32_i32
 // CHECK: // begin inline asm
@@ -83,6 +95,12 @@ check!(reg64_i8 i8 reg64 "mov.i64");
 // CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
 check!(reg64_i16 i16 reg64 "mov.i64");
+
+// CHECK-LABEL: .visible .func (.param .align 2 .b8 func_retval0[2]) reg64_f16
+// CHECK: // begin inline asm
+// CHECK: mov.i64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
+check!(reg64_f16 f16 reg64 "mov.i64");
 
 // CHECK-LABEL: .visible .func (.param .b32 func_retval0) reg64_i32
 // CHECK: // begin inline asm
