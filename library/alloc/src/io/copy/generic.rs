@@ -222,7 +222,9 @@ impl BufferedWriterSpec for Vec<u8> {
     }
 
     fn copy_from<R: Read + ?Sized>(&mut self, reader: &mut R) -> Result<u64> {
-        reader.read_to_end(self).map(|bytes| u64::try_from(bytes).expect("usize overflowed u64"))
+        reader
+            .read_to_end(self)
+            .map(|bytes| u64::try_from(bytes).expect("usize shouldn't overflow u64"))
     }
 }
 
