@@ -912,6 +912,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             || self.tcx.try_get_global_alloc(id).is_some()
     }
 
+    /// Check whether an allocation contains provenance.
+    pub fn has_provenance_in_alloc(&self, id: AllocId) -> InterpResult<'tcx, bool> {
+        let alloc = self.get_alloc_raw(id)?;
+        interp_ok(!alloc.provenance().range_empty(alloc_range(Size::ZERO, alloc.size()), &self.tcx))
+    }
+
     /// Obtain the size and alignment of an allocation, even if that allocation has
     /// been deallocated.
     pub fn get_alloc_info(&self, id: AllocId) -> AllocInfo {
