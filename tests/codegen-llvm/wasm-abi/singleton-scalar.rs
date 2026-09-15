@@ -3,7 +3,7 @@
 //@[wasm] compile-flags: --target wasm32-unknown-unknown
 //@[wasip1] compile-flags: --target wasm32-wasip1
 //@ needs-llvm-components: webassembly
-//@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
+//@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled -Ctarget-feature=+simd128
 #![feature(no_core, rustc_attrs, f128)]
 #![crate_type = "lib"]
 #![no_core]
@@ -165,6 +165,96 @@ mod pass_i32 {
     extern "C" fn pass_i32_recursive(
         x: ReprTransparent<ReprC<[i32; 1]>>,
     ) -> ReprTransparent<ReprC<[i32; 1]>> {
+        x
+    }
+
+    #[repr(i32)]
+    enum CLikeIntEnum {
+        A,
+        B,
+    }
+
+    // CHECK: define{{.*}} i32 @pass_i32_c_like_enum(i32 noundef returned range(i32 0, 2) %[[ARG:.*]])
+    #[unsafe(no_mangle)]
+    extern "C" fn pass_i32_c_like_enum(x: CLikeIntEnum) -> CLikeIntEnum {
+        x
+    }
+
+    // CHECK: define{{.*}} i32 @pass_transparent_i32_c_like_enum(i32 noundef returned range(i32 0, 2) %[[ARG:.*]])
+    #[unsafe(no_mangle)]
+    extern "C" fn pass_transparent_i32_c_like_enum(
+        x: ReprTransparent<CLikeIntEnum>,
+    ) -> ReprTransparent<CLikeIntEnum> {
+        x
+    }
+
+    #[repr(i32)]
+    enum IntEnumZstStructVariants {
+        A(()),
+        B(),
+    }
+
+    // Any field, even a ZST, disqualifies an enum from being passed as a scalar.
+    //
+    // CHECK: define{{.*}} void @pass_i32_enum_zst_struct_variants(ptr{{.*}}, ptr{{.*}})
+    #[unsafe(no_mangle)]
+    extern "C" fn pass_i32_enum_zst_struct_variants(
+        x: IntEnumZstStructVariants,
+    ) -> IntEnumZstStructVariants {
+        x
+    }
+
+    // CHECK: define{{.*}} void @pass_transparent_i32_enum_zst_struct_variants(ptr{{.*}}, ptr{{.*}})
+    #[unsafe(no_mangle)]
+    extern "C" fn pass_transparent_i32_enum_zst_struct_variants(
+        x: ReprTransparent<IntEnumZstStructVariants>,
+    ) -> ReprTransparent<IntEnumZstStructVariants> {
+        x
+    }
+
+    // CHECK: define{{.*}} void @pass_c_i32_enum_zst_struct_variants(ptr{{.*}}, ptr{{.*}})
+    #[unsafe(no_mangle)]
+    extern "C" fn pass_c_i32_enum_zst_struct_variants(
+        x: ReprC<IntEnumZstStructVariants>,
+    ) -> ReprC<IntEnumZstStructVariants> {
+        x
+    }
+}
+
+mod pass_ptr {
+    use super::*;
+
+    // The layout of `Option<&T>` is guaranteed to match `*const T`.
+    //
+    // CHECK: define{{.*}} ptr @pass_option_ref(ptr{{.*}} %[[ARG:.*]])
+    #[unsafe(no_mangle)]
+    extern "C" fn pass_option_ref(x: Option<&'static i32>) -> Option<&'static i32> {
+        x
+    }
+
+    // CHECK: define{{.*}} ptr @pass_transparent_option_ref(ptr{{.*}} %[[ARG:.*]])
+    #[unsafe(no_mangle)]
+    extern "C" fn pass_transparent_option_ref(
+        x: ReprTransparent<Option<&'static i32>>,
+    ) -> ReprTransparent<Option<&'static i32>> {
+        x
+    }
+}
+
+mod pass_simd {
+    use super::*;
+
+    // CHECK: define{{.*}} <4 x float> @pass_simd_f32x4(<4 x float> returned %[[ARG:.*]])
+    #[unsafe(no_mangle)]
+    extern "C" fn pass_simd_f32x4(x: simd::f32x4) -> simd::f32x4 {
+        x
+    }
+
+    // CHECK: define{{.*}} <4 x float> @pass_transparent_simd_f32x4(<4 x float> returned %[[ARG:.*]])
+    #[unsafe(no_mangle)]
+    extern "C" fn pass_transparent_simd_f32x4(
+        x: ReprTransparent<simd::f32x4>,
+    ) -> ReprTransparent<simd::f32x4> {
         x
     }
 }
