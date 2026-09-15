@@ -1344,15 +1344,17 @@ fn warn_on_confusing_output_filename_flag(
             || config::CG_OPTIONS.iter().any(|option| eq_ignore_separators(option.name(), filename))
             || fake_args.iter().any(|arg| eq_ignore_separators(arg, filename))
         {
-            early_dcx.early_warn(
-                "option `-o` has no space between flag name and value, which can be confusing",
-            );
-            early_dcx.early_note(format!(
-                "output filename `-o {name}` is applied instead of a flag named `o{name}`"
-            ));
-            early_dcx.early_help(format!(
-                "insert a space between `-o` and `{name}` if this is intentional: `-o {name}`"
-            ));
+            early_dcx
+                .early_struct_warn(
+                    "option `-o` has no space between flag name and value, which can be confusing",
+                )
+                .with_note(format!(
+                    "output filename `-o {name}` is applied instead of a flag named `o{name}`"
+                ))
+                .with_help(format!(
+                    "insert a space between `-o` and `{name}` if this is intentional: `-o {name}`"
+                ))
+                .emit();
         }
     }
 }

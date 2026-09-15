@@ -15,7 +15,7 @@ struct Parent<'a> {
 }
 
 impl<'a> Parent<'a> {
-    type const CT<T: 'a>: usize = 0;
+    const CT<T: 'a>: usize = core::direct_const_arg!(0);
 }
 
 fn check()

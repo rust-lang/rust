@@ -201,7 +201,7 @@ where
 
     lint_redundant_lifetimes(tcx, body_def_id, &outlives_env);
 
-    let errors = infcx.resolve_regions_with_outlives_env(&outlives_env, tcx.def_span(body_def_id));
+    let errors = infcx.resolve_regions_with_outlives_env(&outlives_env);
     if errors.is_empty() {
         return Ok(());
     }
@@ -215,8 +215,7 @@ where
         // the implied bounds hack if this contains `bevy_ecs`'s `ParamSet` type.
         false,
     );
-    let errors_compat =
-        infcx_compat.resolve_regions_with_outlives_env(&outlives_env, tcx.def_span(body_def_id));
+    let errors_compat = infcx_compat.resolve_regions_with_outlives_env(&outlives_env);
     if errors_compat.is_empty() {
         // FIXME: Once we fix bevy, this would be the place to insert a warning
         // to upgrade bevy.
@@ -2568,12 +2567,12 @@ fn lint_redundant_lifetimes<'tcx>(
         | DefKind::Trait
         | DefKind::TraitAlias
         | DefKind::Fn
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::Impl { of_trait: _ }
         | DefKind::TestBinderConstraints => {
             // Proceed
         }
-        DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst { .. } => {
+        DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
             if tcx.trait_impl_of_assoc(owner_id.to_def_id()).is_some() {
                 // Don't check for redundant lifetimes for associated items of trait
                 // implementations, since the signature is required to be compatible

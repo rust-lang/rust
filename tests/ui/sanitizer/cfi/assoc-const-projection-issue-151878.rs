@@ -8,7 +8,8 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-    type const N: usize = 0;
+    #[rustc_always_gca]
+    const N: usize = core::direct_const_arg!(0);
     fn process(&self, _: [u8; Self::N]) {}
 }
 

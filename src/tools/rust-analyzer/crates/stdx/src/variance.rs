@@ -70,12 +70,11 @@ macro_rules! phantom_type {
 
         impl<T> Eq for $name<T> where T: ?Sized {}
 
-        #[allow(clippy::non_canonical_partial_ord_impl)]
         impl<T> PartialOrd for $name<T>
             where T: ?Sized
         {
-            fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
-                Some(Ordering::Equal)
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                Some(self.cmp(other))
             }
         }
 

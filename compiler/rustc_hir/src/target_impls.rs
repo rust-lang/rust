@@ -54,7 +54,7 @@ impl From<DefKind> for Target {
             DefKind::ExternCrate => Target::ExternCrate,
             DefKind::Use => Target::Use,
             DefKind::Static { .. } => Target::Static,
-            DefKind::Const { .. } => Target::Const,
+            DefKind::Const => Target::Const,
             DefKind::Fn => Target::Fn,
             DefKind::Macro(..) => Target::MacroDef,
             DefKind::Mod => Target::Mod,

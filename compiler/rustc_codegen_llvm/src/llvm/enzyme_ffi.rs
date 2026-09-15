@@ -97,7 +97,7 @@ pub(crate) mod Enzyme_AD {
     use rustc_session::filesearch;
 
     use super::{CConcreteType, CTypeTreeRef, Context};
-    use crate::llvm::{EnzymeTypeTree, LLVMRustVersionMajor};
+    use crate::llvm::{self, EnzymeTypeTree};
 
     type EnzymeSetCLBoolFn = unsafe extern "C" fn(*mut c_void, u8);
     type EnzymeSetCLStringFn = unsafe extern "C" fn(*mut c_void, *const c_char);
@@ -434,7 +434,7 @@ pub(crate) mod Enzyme_AD {
         }
 
         fn get_enzyme_path(sysroot: &Sysroot) -> Result<String, EnzymeLibraryError> {
-            let llvm_version_major = unsafe { LLVMRustVersionMajor() };
+            let llvm_version_major = llvm::LLVMRustVersionMajor();
 
             let path_buf = sysroot
                 .all_paths()

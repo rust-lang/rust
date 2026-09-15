@@ -2,11 +2,12 @@
 #![expect(incomplete_features)]
 
 trait Foo {
-    type const ASSOC<const N: u32>: u32;
+    #[rustc_always_gca]
+    const ASSOC<const N: u32>: u32;
 }
 
 impl Foo for () {
-    type const ASSOC<const N: u32>: u32 = N;
+    const ASSOC<const N: u32>: u32 = core::direct_const_arg!(N);
 }
 
 fn bar<const N: u64, T: Foo<ASSOC<N> = { N }>>() {}

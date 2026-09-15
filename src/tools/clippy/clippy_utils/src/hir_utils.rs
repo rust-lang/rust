@@ -837,7 +837,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (Res::Local(_), _) | (_, Res::Local(_)) => false,
             (Res::Def(l_kind, l), Res::Def(r_kind, r))
                 if l_kind == r_kind
-                    && let DefKind::Const { .. }
+                    && let DefKind::Const
                     | DefKind::Static { .. }
                     | DefKind::Fn
                     | DefKind::TyAlias
@@ -1112,7 +1112,7 @@ pub fn eq_expr_value(cx: &LateContext<'_>, ctxt: SyntaxContext, left: &Expr<'_>,
 /// item, in which case it is the last two
 fn generic_path_segments<'tcx>(segments: &'tcx [PathSegment<'tcx>]) -> Option<&'tcx [PathSegment<'tcx>]> {
     match segments.last()?.res {
-        Res::Def(DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy, _) => {
+        Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _) => {
             // <Ty as module::Trait<T>>::assoc::<U>
             //        ^^^^^^^^^^^^^^^^   ^^^^^^^^^^ segments: [module, Trait<T>, assoc<U>]
             Some(&segments[segments.len().checked_sub(2)?..])

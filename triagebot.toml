@@ -1434,9 +1434,6 @@ cc = ["@Urgau"]
 [mentions."src/doc/rustc/src/check-cfg"]
 cc = ["@Urgau"]
 
-[mentions."src/doc/rustc/src/platform-support"]
-cc = ["@Noratrieb"]
-
 [mentions."tests/codegen-llvm/sanitizer"]
 cc = ["@rcvalle"]
 

@@ -720,6 +720,7 @@ unsafe extern "C" {
     pub type TargetMachine;
 }
 unsafe extern "C" {
+    pub(crate) type MCSubtargetInfo;
     pub(crate) type Twine;
     pub(crate) type DiagnosticInfo;
     pub(crate) type SMDiagnostic;
@@ -894,7 +895,11 @@ unsafe extern "C" {
         SLen: c_uint,
     ) -> MetadataKindId;
 
-    pub(crate) fn LLVMGetVersion(major: &mut c_uint, minor: &mut c_uint, patch: &mut c_uint);
+    /// Gets the actual version of LLVM that we are linked to at runtime.
+    ///
+    /// # Safety
+    /// Can be called without initializing LLVM.
+    pub(crate) safe fn LLVMGetVersion(major: &mut c_uint, minor: &mut c_uint, patch: &mut c_uint);
 
     pub(crate) fn LLVMDisposeTargetMachine(T: ptr::NonNull<TargetMachine>);
 
@@ -2176,9 +2181,9 @@ unsafe extern "C" {
     /// Returns the LLVM major version that the compiler was built with.
     ///
     /// Note that this is hard-coded as `LLVM_VERSION_MAJOR` when `RustWrapper.cpp` is built. This
-    /// could be different than what the runtime LLVM library reports in `LLVMGetVersion`, so we
+    /// could be different than what the runtime LLVM library reports in [`LLVMGetVersion`], so we
     /// assert their equality in `configure_llvm`.
-    pub(crate) fn LLVMRustVersionMajor() -> u32;
+    pub(crate) safe fn LLVMRustVersionMajor() -> u32;
 
     /// Add LLVM module flags.
     ///
@@ -2368,7 +2373,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
     pub(crate) fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
 
-    pub(crate) fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
     pub(crate) fn LLVMRustTargetHasMnemonic(T: &TargetMachine, s: *const c_char) -> bool;
 
     pub(crate) fn LLVMRustPrintTargetCPUs(TM: &TargetMachine, OutStr: &RustString);
@@ -2409,6 +2413,19 @@ unsafe extern "C" {
         UseWasmEH: bool,
         LargeDataThreshold: u64,
     ) -> *mut TargetMachine;
+
+    pub(crate) fn LLVMRustCreateMCSubtargetInfo(
+        TripleStr: *const c_char,
+        CPU: *const c_char,
+        Features: *const c_char,
+    ) -> *mut MCSubtargetInfo;
+
+    pub(crate) fn LLVMRustMCSubtargetInfoHasFeature(
+        MCInfo: &MCSubtargetInfo,
+        Feature: *const c_char,
+    ) -> bool;
+
+    pub(crate) fn LLVMRustDisposeMCSubtargetInfo(MCInfo: ptr::NonNull<MCSubtargetInfo>);
 
     pub(crate) fn LLVMRustAddLibraryInfo<'a>(
         T: &TargetMachine,

@@ -44,8 +44,7 @@ impl<T: PointeeSized, U: PointeeSized> ChangePointee<U> for *const T {
 ///
 /// # Safety
 /// Must actually *be* such a type.
-#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
-pub const unsafe trait FloatPrimitive: Sized + Copy {
+pub unsafe trait FloatPrimitive: Sized + Copy {
     type UInt: const core::ops::BitOr<Output = Self::UInt>
         + const core::ops::BitAnd<Output = Self::UInt>
         + const core::ops::Not<Output = Self::UInt>;
@@ -54,8 +53,7 @@ pub const unsafe trait FloatPrimitive: Sized + Copy {
     fn from_bits(bits: Self::UInt) -> Self;
 }
 
-#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
-const unsafe impl FloatPrimitive for f16 {
+unsafe impl FloatPrimitive for f16 {
     type UInt = u16;
     const SIGN_MASK: Self::UInt = f16::SIGN_MASK;
     #[inline]
@@ -68,8 +66,7 @@ const unsafe impl FloatPrimitive for f16 {
     }
 }
 
-#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
-const unsafe impl FloatPrimitive for f32 {
+unsafe impl FloatPrimitive for f32 {
     type UInt = u32;
     const SIGN_MASK: Self::UInt = f32::SIGN_MASK;
     #[inline]
@@ -82,8 +79,7 @@ const unsafe impl FloatPrimitive for f32 {
     }
 }
 
-#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
-const unsafe impl FloatPrimitive for f64 {
+unsafe impl FloatPrimitive for f64 {
     type UInt = u64;
     const SIGN_MASK: Self::UInt = f64::SIGN_MASK;
     #[inline]
@@ -96,8 +92,7 @@ const unsafe impl FloatPrimitive for f64 {
     }
 }
 
-#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
-const unsafe impl FloatPrimitive for f128 {
+unsafe impl FloatPrimitive for f128 {
     type UInt = u128;
     const SIGN_MASK: Self::UInt = f128::SIGN_MASK;
     #[inline]

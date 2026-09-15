@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::collections::hash_map::Entry;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::{fmt, mem};
 
@@ -16,6 +18,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{
     ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextKey,
+    raw_encode_syntax_context,
 };
 use rustc_span::{
     BlobDecoder, BytePos, ByteSymbol, CachingSourceMapView, ExpnData, ExpnHash, RelativeBytePos,
@@ -223,8 +226,6 @@ impl OnDiskCache {
                 (file_to_file_index, file_index_to_stable_id)
             };
 
-            let hygiene_encode_context = HygieneEncodeContext::default();
-
             let mut encoder = CacheEncoder {
                 tcx,
                 encoder,
@@ -233,7 +234,7 @@ impl OnDiskCache {
                 interpret_allocs: Default::default(),
                 caching_source_map_view: CachingSourceMapView::new(tcx.sess.source_map()),
                 file_to_file_index,
-                hygiene_context: &hygiene_encode_context,
+                hygiene_context: Default::default(),
                 symbol_index_table: Default::default(),
                 query_values_index: Default::default(),
                 side_effects_index: Default::default(),
@@ -278,7 +279,8 @@ impl OnDiskCache {
             // Encode all hygiene data (`SyntaxContextData` and `ExpnData`) from the current
             // session.
 
-            hygiene_encode_context.encode(
+            HygieneEncodeContext::encode(
+                &Rc::clone(&encoder.hygiene_context),
                 &mut encoder,
                 |encoder, index, ctxt_data| {
                     let pos = AbsoluteBytePos::new(encoder.position());
@@ -288,7 +290,7 @@ impl OnDiskCache {
                 |encoder, expn_id, data, hash| {
                     if expn_id.krate == LOCAL_CRATE {
                         let pos = AbsoluteBytePos::new(encoder.position());
-                        encoder.encode_tagged(TAG_EXPN_DATA, data);
+                        encoder.encode_tagged(TAG_EXPN_DATA, data.expect("local expn"));
                         expn_data.insert(hash, pos);
                     } else {
                         foreign_expn_data.insert(hash, expn_id.local_id.as_u32());
@@ -774,7 +776,7 @@ impl_ref_decoder! {<'tcx>
 //- ENCODING -------------------------------------------------------------------
 
 /// An encoder that can write to the incremental compilation cache.
-pub struct CacheEncoder<'a, 'tcx> {
+pub struct CacheEncoder<'tcx> {
     tcx: TyCtxt<'tcx>,
     encoder: FileEncoder<'static>,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
@@ -782,7 +784,7 @@ pub struct CacheEncoder<'a, 'tcx> {
     interpret_allocs: FxIndexSet<interpret::AllocId>,
     caching_source_map_view: CachingSourceMapView<'tcx>,
     file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
-    hygiene_context: &'a HygieneEncodeContext,
+    hygiene_context: Rc<RefCell<HygieneEncodeContext>>,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
 
@@ -790,14 +792,14 @@ pub struct CacheEncoder<'a, 'tcx> {
     side_effects_index: Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>,
 }
 
-impl<'a, 'tcx> fmt::Debug for CacheEncoder<'a, 'tcx> {
+impl<'tcx> fmt::Debug for CacheEncoder<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Add more details here if/when necessary.
         f.write_str("CacheEncoder")
     }
 }
 
-impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
+impl<'tcx> CacheEncoder<'tcx> {
     #[inline]
     fn source_file_index(&mut self, source_file: Arc<SourceFile>) -> SourceFileIndex {
         self.file_to_file_index[&(&raw const *source_file)]
@@ -866,13 +868,13 @@ impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
+impl<'tcx> SpanEncoder for CacheEncoder<'tcx> {
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
-        rustc_span::hygiene::raw_encode_syntax_context(syntax_context, self.hygiene_context, self);
+        raw_encode_syntax_context(syntax_context, Rc::clone(&self.hygiene_context), self);
     }
 
     fn encode_expn_id(&mut self, expn_id: ExpnId) {
-        self.hygiene_context.schedule_expn_data_for_encoding(expn_id);
+        self.hygiene_context.borrow_mut().schedule_expn_data_for_encoding(expn_id);
         expn_id.expn_hash().encode(self);
     }
 
@@ -944,7 +946,7 @@ impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyEncoder<'tcx> for CacheEncoder<'a, 'tcx> {
+impl<'tcx> TyEncoder<'tcx> for CacheEncoder<'tcx> {
     const CLEAR_CROSS_CRATE: bool = false;
 
     #[inline]
@@ -976,7 +978,7 @@ macro_rules! encoder_methods {
     }
 }
 
-impl<'a, 'tcx> Encoder for CacheEncoder<'a, 'tcx> {
+impl<'tcx> Encoder for CacheEncoder<'tcx> {
     encoder_methods! {
         emit_usize(usize);
         emit_u128(u128);
@@ -999,8 +1001,8 @@ impl<'a, 'tcx> Encoder for CacheEncoder<'a, 'tcx> {
 // is used when a `CacheEncoder` having an `opaque::FileEncoder` is passed to `Encodable::encode`.
 // Unfortunately, we have to manually opt into specializations this way, given how `CacheEncoder`
 // and the encoding traits currently work.
-impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for [u8] {
-    fn encode(&self, e: &mut CacheEncoder<'a, 'tcx>) {
+impl<'tcx> Encodable<CacheEncoder<'tcx>> for [u8] {
+    fn encode(&self, e: &mut CacheEncoder<'tcx>) {
         self.encode(&mut e.encoder);
     }
 }

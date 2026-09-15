@@ -2051,10 +2051,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 _ => None,
             },
             DefKind::AnonConst
-            | DefKind::AssocConst { .. }
+            | DefKind::AssocConst
             | DefKind::AssocFn
             | DefKind::Closure
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::ConstParam
             | DefKind::Ctor(..)
             | DefKind::ExternCrate

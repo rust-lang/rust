@@ -1,6 +1,3 @@
-// How to run this
-// $ RUSTBUILD_FORCE_CLANG_BASED_TESTS=1 ./x.py test tests/run-make/wasm-override-linker/
-
 //@ needs-force-clang-based-tests
 // FIXME(#126180): This test can only run on `x86_64-gnu-debug`, because that CI job sets
 // RUSTBUILD_FORCE_CLANG_BASED_TESTS and only runs tests which contain "clang" in their

@@ -1414,6 +1414,40 @@ macro_rules! nonzero_integer {
         #[stable(feature = "nonzero_parse", since = "1.35.0")]
         impl FromStr for NonZero<$Int> {
             type Err = ParseIntError;
+
+            /// Parses a non-zero integer from a string slice with decimal digits.
+            ///
+            /// The characters are expected to be an optional
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    " `+` or `-` "
+                }
+                if unsigned {
+                    " `+` "
+                }
+            }]
+            /// sign followed by only digits. Leading and trailing non-digit characters (including
+            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
+            /// also represent an error.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use std::num::NonZero;
+            /// use std::str::FromStr;
+            ///
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::from_str(\"+10\"), Ok(NonZero::new(10).unwrap()));")]
+            /// ```
+            ///
+            /// Trailing space returns error:
+            ///
+            /// ```
+            /// use std::num::NonZero;
+            /// use std::str::FromStr;
+            ///
+            #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_str(\"1 \").is_err());")]
+            /// ```
             fn from_str(src: &str) -> Result<Self, Self::Err> {
                 Self::from_str_radix(src, 10)
             }

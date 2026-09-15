@@ -52,10 +52,7 @@ unsafe impl<#[may_dangle] T> Drop for ArenaChunk<T> {
 impl<T> ArenaChunk<T> {
     #[inline]
     unsafe fn new(capacity: usize) -> ArenaChunk<T> {
-        ArenaChunk {
-            storage: NonNull::from(Box::leak(Box::new_uninit_slice(capacity))),
-            entries: 0,
-        }
+        ArenaChunk { storage: Box::into_non_null(Box::new_uninit_slice(capacity)), entries: 0 }
     }
 
     /// Destroys this arena chunk.

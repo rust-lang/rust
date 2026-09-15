@@ -93,7 +93,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         error_on_missing_defining_use: bool,
     ) {
         for entry in opaque_types.iter_mut() {
-            *entry = self.resolve_vars_if_possible(*entry);
+            *entry = self.deeply_resolve_ignoring_regions(*entry);
         }
         debug!(?opaque_types);
 

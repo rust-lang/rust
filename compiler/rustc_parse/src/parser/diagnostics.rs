@@ -1720,7 +1720,7 @@ impl<'a> Parser<'a> {
         );
         err.span_label(op_span, format!("not a valid {} operator", kind.fixity));
 
-        let help_base_case = |mut err: Diag<'_, _>, base| {
+        let help_base_case = |mut err: Diag<'_, ErrorGuaranteed>, base| {
             err.help(format!("use `{}= 1` instead", kind.op.chr()));
             err.emit();
             Ok(base)
@@ -2379,6 +2379,7 @@ impl<'a> Parser<'a> {
             target: match context {
                 FnContext::Trait => "methods without bodies",
                 FnContext::FunctionPtrType => "function pointer types",
+                FnContext::ParenthesizedArgumentList => "parenthesized argument list",
                 FnContext::Free => unreachable!("This method is not called in free functions, as patterns are always allowed there"),
                 FnContext::Impl => unreachable!("This method is not called in impls, as patterns are always allowed there"),
             },

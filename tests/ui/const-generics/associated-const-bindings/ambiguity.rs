@@ -6,21 +6,24 @@
 
 trait Trait0: Parent0<i32> + Parent0<u32> {}
 trait Parent0<T> {
-    type const K: ();
+    #[rustc_always_gca]
+    const K: ();
 }
 
-fn take0(_: impl Trait0<K = const { }>) {}
+fn take0(_: impl Trait0<K = const {}>) {}
 //~^ ERROR ambiguous associated constant `K` in bounds of `Trait0`
 
 trait Trait1: Parent1 + Parent2 {}
 trait Parent1 {
-    type const C: i32;
+    #[rustc_always_gca]
+    const C: i32;
 }
 trait Parent2 {
-    type const C: &'static str;
+    #[rustc_always_gca]
+    const C: &'static str;
 }
 
-fn take1(_: impl Trait1<C = "?">) {}
+fn take1(_: impl Trait1<C = { core::direct_const_arg!("?") }>) {}
 //~^ ERROR ambiguous associated constant `C` in bounds of `Trait1`
 
 fn main() {}

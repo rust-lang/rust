@@ -2,7 +2,7 @@ use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
+    IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Spanned, Symbol};
@@ -1380,7 +1380,7 @@ pub(crate) enum ItemWas {
 }
 
 impl Subdiagnostic for FoundItemConfigureOut {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         let mut multispan: MultiSpan = self.span.into();
         match self.item_was {
             ItemWas::BehindFeature { feature, span } => {
@@ -1522,7 +1522,7 @@ pub(crate) struct Ambiguity {
     pub is_error: bool,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for Ambiguity {
+impl<'a, G> Diagnostic<'a, G> for Ambiguity {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let Self {
             ident,

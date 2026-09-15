@@ -73,7 +73,7 @@ pub(crate) fn clone_and_resolve_opaque_types<'tcx>(
     let opaque_types = opaque_types
         .into_iter()
         .map(|entry| {
-            fold_regions(infcx.tcx, infcx.resolve_vars_if_possible(entry), |r, _| {
+            fold_regions(infcx.tcx, infcx.deeply_resolve_ignoring_regions(entry), |r, _| {
                 let vid = if let ty::RePlaceholder(placeholder) = r.kind() {
                     constraints.placeholder_region(infcx, placeholder).as_var()
                 } else {

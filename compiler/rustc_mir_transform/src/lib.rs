@@ -169,7 +169,7 @@ declare_passes! {
     mod prettify : ReorderBasicBlocks, ReorderLocals;
     mod promote_consts : PromoteTemps;
     mod ref_prop : ReferencePropagation;
-    pub mod remove_noop_landing_pads : RemoveNoopLandingPads;
+    mod remove_noop_landing_pads : RemoveNoopLandingPads;
     mod remove_place_mention : RemovePlaceMention;
     mod remove_storage_markers : RemoveStorageMarkers;
     mod remove_uninit_drops : RemoveUninitDrops;
@@ -215,6 +215,8 @@ pub fn provide(providers: &mut Providers) {
     ffi_unwind_calls::provide(&mut providers.queries);
     shim::provide(&mut providers.queries);
     cross_crate_inline::provide(&mut providers.queries);
+    providers.hooks.find_noop_landing_pads_for_instance =
+        remove_noop_landing_pads::find_noop_landing_pads_for_instance;
     providers.queries = query::Providers {
         mir_keys,
         mir_built,
@@ -445,10 +447,9 @@ fn mir_promoted(
         {
             tcx.mir_const_qualif(def)
         }
-        DefKind::AssocConst { .. }
-        | DefKind::Const { .. }
-        | DefKind::Static { .. }
-        | DefKind::AnonConst => tcx.mir_const_qualif(def),
+        DefKind::AssocConst | DefKind::Const | DefKind::Static { .. } | DefKind::AnonConst => {
+            tcx.mir_const_qualif(def)
+        }
         _ => ConstQualifs::default(),
     };
 
@@ -577,8 +578,8 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         DefKind::Fn
         | DefKind::AssocFn
         | DefKind::Static { .. }
-        | DefKind::Const { .. }
-        | DefKind::AssocConst { .. } => {
+        | DefKind::Const
+        | DefKind::AssocConst => {
             if let Err(guar) = tcx.ensure_result().check_well_formed(root) {
                 body.tainted_by_errors = Some(guar);
             }

@@ -7,11 +7,12 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-    type const A: ();
+    #[rustc_always_gca]
+    const A: ();
 }
 
 impl Trait for () {
-    type const A: () = <() as Trait>::A;
+    const A: () = core::direct_const_arg!(<() as Trait>::A);
     //~^ ERROR: overflow evaluating the requirement `<() as Trait>::A == _`
     //~| ERROR: overflow evaluating the requirement `the constant `<() as Trait>::A` has type `()``
 }

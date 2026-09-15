@@ -12,8 +12,8 @@
 pub mod specialization_graph;
 
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_errors::Diag;
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::Obligation;
 use rustc_lint_defs::builtin::COHERENCE_LEAK_CHECK;
@@ -215,7 +215,7 @@ fn fulfill_implication<'tcx>(
 
     // Now resolve the *generic parameters* we built for the target earlier, replacing
     // the inference variables inside with whatever we got from fulfillment.
-    Ok(infcx.resolve_vars_if_possible(target_args))
+    Ok(infcx.deeply_resolve_ignoring_regions(target_args))
 }
 
 pub(super) fn specialization_enabled_in(tcx: TyCtxt<'_>, _: LocalCrate) -> bool {
@@ -528,7 +528,7 @@ fn report_conflicting_impls<'tcx>(
     // Work to be done after we've built the Diag. We have to define it now
     // because the lint emit methods don't return back the Diag that's passed
     // in.
-    fn decorate<'tcx, G: EmissionGuarantee>(
+    fn decorate<'tcx, G>(
         tcx: TyCtxt<'tcx>,
         overlap: &OverlapError<'tcx>,
         impl_span: Span,
