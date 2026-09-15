@@ -19,6 +19,7 @@
 // ignore-tidy-file-linelength
 
 #![feature(
+    allow_internal_unstable,
     no_core,
     intrinsics,
     lang_items,
@@ -368,6 +369,11 @@ pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
     pub const fn align_of<T>() -> usize;
+
+    #[allow_internal_unstable(builtin_syntax)]
+    pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
+        const { builtin # offset_of($Container, $($fields)+) }
+    }
 }
 
 pub mod ptr {
