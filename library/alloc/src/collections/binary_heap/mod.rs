@@ -1673,6 +1673,9 @@ impl<T> ExactSizeIterator for Iter<'_, T> {
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T> TrustedLen for Iter<'_, T> {}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Iter<'_, T> {}
 
@@ -1735,6 +1738,9 @@ impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
         self.iter.is_empty()
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
@@ -1882,6 +1888,9 @@ impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {
         self.iter.is_empty()
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T, A: Allocator> TrustedLen for Drain<'_, T, A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator> FusedIterator for Drain<'_, T, A> {}
