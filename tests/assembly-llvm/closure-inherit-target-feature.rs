@@ -8,7 +8,6 @@
 
 use std::arch::x86_64::{__m128, _mm_blend_ps};
 
-// Use an explicit return pointer to prevent tail call optimization.
 #[no_mangle]
 pub unsafe fn sse41_blend_nofeature(x: __m128, y: __m128, ret: *mut __m128) {
     let f = {
