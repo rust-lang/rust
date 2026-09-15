@@ -22,6 +22,7 @@ impl AttributeKind {
             AllowInternalUnstable(..) => Yes,
             AlwaysGca => Yes,
             AutomaticallyDerived => Yes,
+            CBufferLength { .. } => Yes,
             CfgAttrTrace(..) => Yes,
             CfgTrace(..) => Yes,
             CfiEncoding { .. } => Yes,

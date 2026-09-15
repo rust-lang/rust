@@ -1,0 +1,41 @@
+error: invalid parameter `buffer` in `diagnostic::c_buffer_length`
+  --> $DIR/malformed_attr.rs:16:31
+   |
+LL | #[diagnostic::c_buffer_length(buffer, length)]
+   |                               ^^^^^^
+   |
+   = help: the buffer parameter must have a raw pointer type
+note: the lint level is defined here
+  --> $DIR/malformed_attr.rs:2:9
+   |
+LL | #![deny(malformed_diagnostic_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: invalid parameter `length` in `diagnostic::c_buffer_length`
+  --> $DIR/malformed_attr.rs:20:39
+   |
+LL | #[diagnostic::c_buffer_length(buffer, length)]
+   |                                       ^^^^^^
+   |
+   = help: the length parameter must have an integer type
+
+error: `#[diagnostic::c_buffer_length]` expects two distinct parameter names
+  --> $DIR/malformed_attr.rs:4:1
+   |
+LL | #[diagnostic::c_buffer_length]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[diagnostic::c_buffer_length]` expects two distinct parameter names
+  --> $DIR/malformed_attr.rs:8:1
+   |
+LL | #[diagnostic::c_buffer_length(buffer)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[diagnostic::c_buffer_length]` expects two distinct parameter names
+  --> $DIR/malformed_attr.rs:12:1
+   |
+LL | #[diagnostic::c_buffer_length(buffer, length, extra)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
