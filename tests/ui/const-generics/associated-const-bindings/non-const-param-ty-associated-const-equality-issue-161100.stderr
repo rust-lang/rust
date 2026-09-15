@@ -1,0 +1,15 @@
+error[E0741]: `Foo` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/non-const-param-ty-associated-const-equality-issue-161100.rs:17:23
+   |
+LL | fn unit(_: impl Trait<X = { Foo::Unit }>) {}
+   |                       ^^^^^^^^^^^^^^^^^
+   |
+help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the enum
+   |
+LL + #[derive(ConstParamTy, PartialEq, Eq)]
+LL | enum Foo {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0741`.
