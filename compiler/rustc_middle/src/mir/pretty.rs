@@ -566,8 +566,9 @@ fn write_coroutine_layout<'tcx>(
     w: &mut dyn io::Write,
     options: PrettyPrintMirOptions,
 ) -> io::Result<()> {
-    let CoroutineLayout { field_tys, variant_fields, variant_source_info, storage_conflicts } =
-        layout;
+    let CoroutineLayout {
+        field_tys, variant_fields, variant_source_info, storage_conflicts, ..
+    } = layout;
 
     writeln!(w, "{INDENT}coroutine layout {{")?;
 
