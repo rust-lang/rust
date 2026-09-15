@@ -29,7 +29,7 @@ issues where it does something you don't expect.
 Having a strong test suite for a tool like this is essential. It is very easy
 to create regressions. Any tests you can add are very much appreciated.
 
-The tests can be run with `cargo test`. This does a number of things:
+The tests can be run with `cargo test --locked`. This does a number of things:
 * runs the unit tests for a number of internal functions;
 * makes sure that rustfmt run on every file in `./tests/source/` is equal to its
   associated file in `./tests/target/`; this catches

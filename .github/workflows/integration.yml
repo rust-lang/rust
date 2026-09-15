@@ -70,5 +70,5 @@ jobs:
     - name: run integration tests
       env:
         TARGET: x86_64-unknown-linux-gnu
-      run: cargo run --manifest-path ci/Cargo.toml integration ${{ matrix.integration }}
+      run: cargo run --locked --manifest-path ci/Cargo.toml integration ${{ matrix.integration }}
       continue-on-error: ${{ matrix.allow-failure == true }}
