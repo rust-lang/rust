@@ -4076,8 +4076,9 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,ignore (needs CLI args, platform-specific)
-    /// #[warn(linker_messages)]
-    /// extern "C" {
+    /// #![warn(linker_messages)]
+    ///
+    /// unsafe extern "C" {
     ///   fn foo();
     /// }
     /// fn main () { unsafe { foo(); } }
@@ -4112,7 +4113,8 @@ declare_lint! {
     // Linker messages don't live up to the high standard people expect of rustc's errors.
     // Prevent `-D warnings` from applying to it.
     // It's still possible to pass `-D linker-messages` specifically.
-    ignore_deny_warnings
+    ignore_deny_warnings,
+    crate_level_only
 }
 
 declare_lint! {
@@ -4121,7 +4123,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,ignore (needs CLI args, platform-specific)
-    /// #[warn(linker_info)]
+    /// #![warn(linker_info)]
+    ///
     /// fn main () {}
     /// ```
     ///
@@ -4146,7 +4149,8 @@ declare_lint! {
     /// <https://github.com/rust-lang/rust/issues/136096>.
     pub LINKER_INFO,
     Allow,
-    "linker warnings known to be informational-only and not indicative of a problem"
+    "linker warnings known to be informational-only and not indicative of a problem",
+    crate_level_only
 }
 
 declare_lint! {

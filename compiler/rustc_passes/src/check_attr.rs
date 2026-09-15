@@ -9,7 +9,7 @@ use std::cell::Cell;
 use std::slice;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::{AttrStyle, MetaItemKind, ast};
+use rustc_ast::MetaItemKind;
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
@@ -137,9 +137,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             match attr {
                 Attribute::Parsed(attr_kind) => {
                     self.check_one_parsed_attribute(hir_id, span, target, item, attr_kind);
-                    self.check_unused_attribute(hir_id, attr, None);
+                    self.check_unused_attribute(hir_id, attr);
                 }
-                Attribute::Unparsed(attr_item) => {
+                Attribute::Unparsed(_) => {
                     match attr.path().as_slice() {
                         // ok
                         [sym::allow | sym::expect | sym::warn | sym::deny | sym::forbid, ..] => {}
@@ -166,7 +166,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [] => unreachable!(),
                     }
 
-                    self.check_unused_attribute(hir_id, attr, Some(attr_item.style));
+                    self.check_unused_attribute(hir_id, attr);
                 }
             }
         }
@@ -274,7 +274,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::LinkName { .. } => (),
             AttributeKind::LinkOrdinal { .. } => (),
             AttributeKind::LinkSection { .. } => (),
-            AttributeKind::LoopMatch(..) => {}
+            AttributeKind::LoopMatch(..) => (),
             AttributeKind::MacroEscape => (),
             AttributeKind::MacroUse { .. } => (),
             AttributeKind::Marker => (),
@@ -1315,7 +1315,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_unused_attribute(&self, hir_id: HirId, attr: &Attribute, style: Option<AttrStyle>) {
+    fn check_unused_attribute(&self, hir_id: HirId, attr: &Attribute) {
         // Warn on useless empty attributes.
         // FIXME(jdonszelmann): this lint should be moved to attribute parsing, see `AcceptContext::warn_empty_attribute`
         let note =
@@ -1350,34 +1350,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 })
             {
                 if hir_id != CRATE_HIR_ID {
-                    match style {
-                        Some(ast::AttrStyle::Outer) => {
-                            let attr_span = attr.span();
-                            let bang_position = self
-                                .tcx
-                                .sess
-                                .source_map()
-                                .span_until_char(attr_span, '[')
-                                .shrink_to_hi();
-
-                            self.tcx.emit_node_span_lint(
-                                UNUSED_ATTRIBUTES,
-                                hir_id,
-                                attr_span,
-                                diagnostics::OuterCrateLevelAttr {
-                                    suggestion: diagnostics::OuterCrateLevelAttrSuggestion {
-                                        bang_position,
-                                    },
-                                },
-                            )
-                        }
-                        Some(ast::AttrStyle::Inner) | None => self.tcx.emit_node_span_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            attr.span(),
-                            diagnostics::InnerCrateLevelAttr,
-                        ),
-                    };
                     return;
                 } else {
                     let never_needs_link = self
@@ -1400,8 +1372,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 && !self.tcx.crate_types().contains(&CrateType::Executable)
             {
                 diagnostics::UnusedNote::NoEffectDeadCodePubInBinary
-            } else if attr.has_name(sym::default_method_body_is_const) {
-                diagnostics::UnusedNote::DefaultMethodBodyConst
             } else {
                 return;
             };
