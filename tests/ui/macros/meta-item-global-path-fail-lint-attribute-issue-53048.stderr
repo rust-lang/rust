@@ -1,0 +1,8 @@
+error: expected unsuffixed literal, found `::`
+  --> $DIR/meta-item-global-path-fail-lint-attribute-issue-53048.rs:6:13
+   |
+LL | #[allow(a = ::b::c)]
+   |             ^^
+
+error: aborting due to 1 previous error
+
