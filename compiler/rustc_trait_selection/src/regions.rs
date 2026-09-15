@@ -99,9 +99,7 @@ pub fn ty_known_to_outlive<'tcx>(
 
     let ty = ty.skip_norm_wip();
 
-    // Unlike ordinary `TypeOutlives` goals, this helper directly registers a
-    // region obligation. Normalize non-rigid aliases before lexical region
-    // solving, while avoiding trait solving for inputs without non-rigid aliases.
+    // Types in region obligations should be normalized.
     let ty = if infcx.next_trait_solver() && ty.has_non_rigid_aliases() {
         let Ok(ty) = crate::solve::deeply_normalize::<_, ScrubbedTraitError<'tcx>>(
             infcx.at(&ObligationCause::dummy_with_span(DUMMY_SP), param_env),
