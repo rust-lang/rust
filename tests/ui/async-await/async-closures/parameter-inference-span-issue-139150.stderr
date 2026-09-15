@@ -1,0 +1,75 @@
+error[E0282]: type annotations needed
+  --> $DIR/parameter-inference-span-issue-139150.rs:7:12
+   |
+LL |     async |_| {};
+   |            ^  -- type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     async |_: /* Type */| {};
+   |             ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/parameter-inference-span-issue-139150.rs:12:20
+   |
+LL |     let _ = async |value| { let _ = value; };
+   |                    ^^^^^  ------------------ type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     let _ = async |value: /* Type */| { let _ = value; };
+   |                         ++++++++++++
+
+error[E0282]: type annotations needed for `(_, _)`
+  --> $DIR/parameter-inference-span-issue-139150.rs:17:20
+   |
+LL |     let _ = async |(first, second)| { let _ = (first, second); };
+   |                    ^^^^^^^^^^^^^^^            --------------- type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type, where the placeholders `_` are specified
+   |
+LL |     let _ = async |(first, second): (_, _)| { let _ = (first, second); };
+   |                                   ++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/parameter-inference-span-issue-139150.rs:22:20
+   |
+LL |     let _ = async |ref value| { let _ = value; };
+   |                    ^^^^^^^^^            ----- type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     let _ = async |ref value: /* Type */| { let _ = value; };
+   |                             ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/parameter-inference-span-issue-139150.rs:27:34
+   |
+LL |     let _ = async |_: Option<_>| {};
+   |                                  ^^ cannot infer type
+
+error[E0282]: type annotations needed
+  --> $DIR/parameter-inference-span-issue-139150.rs:32:14
+   |
+LL |     let _ = |_| {};
+   |              ^
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     let _ = |_: /* Type */| {};
+   |               ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/parameter-inference-span-issue-139150.rs:37:23
+   |
+LL |     () => { async |_| {} };
+   |                       ^^ cannot infer type
+...
+LL |     let _ = generated!();
+   |             ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `generated` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0282`.
