@@ -2214,7 +2214,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             impl_candidates
         };
 
-        if let [single] = &impl_candidates {
+        if let [single] = &impl_candidates
+            && !self.tcx.do_not_recommend_impl(single.impl_def_id)
+        {
             let self_ty = trait_pred.skip_binder().self_ty();
             if !self_ty.has_escaping_bound_vars() {
                 let self_ty = self.tcx.instantiate_bound_regions_with_erased(trait_pred.self_ty());
