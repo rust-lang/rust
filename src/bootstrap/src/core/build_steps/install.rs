@@ -324,7 +324,7 @@ impl CommandLineStep for Src {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src")
+        run.alias("rust-src")
     }
 
     fn is_default_step(builder: &Builder<'_>) -> bool {
