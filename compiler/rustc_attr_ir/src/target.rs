@@ -4,15 +4,33 @@ use std::fmt::{self, Display};
 
 use rustc_abi::ExternAbi;
 pub use rustc_ast::visit::AssocCtxt;
-use rustc_ast::{AssocItemKind, ForeignItemKind, Item, ast};
+use rustc_ast::{
+    Arm, AssocItemKind, Closure, Crate, Expr, ExprField, FieldDef, ForeignItemKind, GenericParam,
+    Item, Local, Param, Pat, Variant, WherePredicate, ast,
+};
 use rustc_macros::StableHash;
 
 // This enum lists all possible types of AST items.
-// FIXME: Currently, this enum only lists `Item` and `AssocItem`, but in the future, be exhaustive.
 #[derive(Clone, Copy, Debug)]
 pub enum AstTarget<'a> {
-    Item(&'a Item),
     AssocItem(&'a Item<AssocItemKind>),
+    ForeignItem(&'a Item<ForeignItemKind>),
+    Item(&'a Item),
+
+    Arm(&'a Arm),
+    Closure(&'a Closure),
+    Crate(&'a Crate),
+    Expr(&'a Expr),
+    ExprField(&'a ExprField),
+    FieldDef(&'a FieldDef),
+    GenericParam(&'a GenericParam),
+    Local(&'a Local),
+    Param(&'a Param),
+    Pat(&'a Pat),
+    Variant(&'a Variant),
+    WherePredicate(&'a WherePredicate),
+
+    None, // Used when it is not possible to get detailed information about the target.
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
@@ -89,6 +107,13 @@ impl AstTarget<'_> {
                 };
                 fn_item.sig.header.ext
             }
+            AstTarget::ForeignItem(foreign_item) => {
+                let ast::ForeignItemKind::Fn(fn_item) = &foreign_item.kind else {
+                    return None;
+                };
+                fn_item.sig.header.ext
+            }
+            _ => return None,
         };
 
         match ext {
@@ -112,6 +137,13 @@ impl AstTarget<'_> {
                 };
                 Some(&fn_item.sig)
             }
+            AstTarget::ForeignItem(foreign_item) => {
+                let ast::ForeignItemKind::Fn(fn_item) = &foreign_item.kind else {
+                    return None;
+                };
+                Some(&fn_item.sig)
+            }
+            _ => None,
         }
     }
 }
