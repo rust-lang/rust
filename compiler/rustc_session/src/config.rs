@@ -1201,7 +1201,7 @@ pub struct OutputFilenames {
     /// hard linked.
     // This does not affect incr comp outputs, only where temp files are stored.
     #[stable_hash(ignore)]
-    invocation_temp: Option<String>,
+    pub invocation_temp: Option<String>,
 
     explicit_dwo_out_directory: Option<PathBuf>,
     pub outputs: OutputTypes,

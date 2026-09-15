@@ -1141,6 +1141,12 @@ pub struct WorkProduct {
     /// By convention, file extensions are currently used as identifiers, i.e. the key "o" maps to
     /// the object file's path, and "dwo" to the dwarf object file's path.
     pub saved_files: UnordMap<String, String>,
+    /// The per-invocation string that is part of the temporaries' file names.
+    pub invocation_temp: Option<String>,
+    /// The extensions of temporaries this CGU left in the output directory
+    /// after linking because the linked artifact's debuginfo refers to them. A
+    /// later session deletes them once it has replaced that artifact.
+    pub preserved_debuginfo_extensions: Vec<String>,
 }
 
 pub type WorkProductMap = UnordMap<WorkProductId, WorkProduct>;

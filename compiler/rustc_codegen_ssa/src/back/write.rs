@@ -22,7 +22,8 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{
-    self, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
+    self, DWARF_OBJECT_EXT, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes,
+    SwitchWithOptPath,
 };
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::source_map::SourceMap;
@@ -31,7 +32,7 @@ use rustc_structures::CrateType;
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
 use tracing::debug;
 
-use crate::back::link::ensure_removed;
+use crate::back::link::{ensure_removed, preserve_objects_for_their_debuginfo};
 use crate::back::lto::{self, SerializedModule, check_lto_allowed};
 use crate::diagnostics::ErrorCreatingRemarkDir;
 use crate::traits::*;
@@ -463,6 +464,7 @@ pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
 fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     sess: &Session,
     incr_comp_session: Option<&IncrCompSession>,
+    output_filenames: &OutputFilenames,
     compiled_modules: &CompiledModules,
 ) -> WorkProductMap {
     let mut work_products = WorkProductMap::default();
@@ -474,16 +476,36 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
 
     let _timer = sess.timer("copy_all_cgu_workproducts_to_incr_comp_cache_dir");
 
+    let (preserved_objects, preserved_dwarf_objects) =
+        if sess.opts.cg.save_temps || !sess.opts.output_types.should_link() {
+            // With `-Csave-temps` the user wants these files kept, so don't schedule their removal.
+            // Without a linked output the objects are the requested outputs themselves rather than
+            // files kept for the debuginfo of a linked artifact.
+            (false, false)
+        } else {
+            preserve_objects_for_their_debuginfo(sess)
+        };
+
     for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
         let mut files = Vec::new();
+        let mut preserved_debuginfo_exts = Vec::new();
         if let Some(object_file_path) = &module.object {
             files.push((OutputType::Object.extension(), object_file_path.as_path()));
+            if preserved_objects {
+                preserved_debuginfo_exts.push(OutputType::Object.extension());
+            }
         }
         if let Some(global_asm_object_file_path) = &module.global_asm_object {
             files.push(("asm.o", global_asm_object_file_path.as_path()));
+            if preserved_objects {
+                preserved_debuginfo_exts.push("asm.o");
+            }
         }
         if let Some(dwarf_object_file_path) = &module.dwarf_object {
-            files.push(("dwo", dwarf_object_file_path.as_path()));
+            files.push((DWARF_OBJECT_EXT, dwarf_object_file_path.as_path()));
+            if preserved_dwarf_objects {
+                preserved_debuginfo_exts.push(DWARF_OBJECT_EXT);
+            }
         }
         if let Some(path) = &module.assembly {
             files.push((OutputType::Assembly.extension(), path.as_path()));
@@ -500,6 +522,8 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
             &module.name,
             files.as_slice(),
             &module.links_from_incr_cache,
+            output_filenames.invocation_temp.as_deref(),
+            &preserved_debuginfo_exts,
         );
         work_products.insert(id, product);
     }
@@ -2221,6 +2245,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
         let work_products = copy_all_cgu_workproducts_to_incr_comp_cache_dir(
             sess,
             incr_comp_session,
+            &self.output_filenames,
             &compiled_modules,
         );
         produce_final_output_artifacts(sess, &compiled_modules, &self.output_filenames);
