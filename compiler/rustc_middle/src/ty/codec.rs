@@ -10,9 +10,7 @@ use std::hash::Hash;
 use std::intrinsics;
 use std::marker::{DiscriminantKind, PointeeSized};
 
-use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::Const;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{Span, SpanDecoder, SpanEncoder, Spanned};
@@ -433,30 +431,6 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
         decoder.interner().mk_clauses_from_iter(
             (0..len).map::<ty::Clause<'tcx>, _>(|_| Decodable::decode(decoder)),
         )
-    }
-}
-
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<FieldIdx> {
-    fn decode(decoder: &mut D) -> &'tcx Self {
-        let len = decoder.read_usize();
-        decoder
-            .interner()
-            .mk_fields_from_iter((0..len).map::<FieldIdx, _>(|_| Decodable::decode(decoder)))
-    }
-}
-
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<LocalDefId> {
-    fn decode(decoder: &mut D) -> &'tcx Self {
-        let len = decoder.read_usize();
-        decoder.interner().mk_local_def_ids_from_iter(
-            (0..len).map::<LocalDefId, _>(|_| Decodable::decode(decoder)),
-        )
-    }
-}
-
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for &'tcx ty::List<LocalDefId> {
-    fn decode(d: &mut D) -> Self {
-        RefDecodable::decode(d)
     }
 }
 
