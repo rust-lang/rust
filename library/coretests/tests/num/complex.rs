@@ -42,3 +42,23 @@ fn complex_subtraction() {
     assert_eq!(a - b, Complex::new(a.re - b.re, a.im - b.im));
     assert_eq!(a - 8.0, Complex::new(a.re - 8.0, a.im));
 }
+
+#[test]
+fn complex_conjugate() {
+    assert_eq!(Complex::new(1, 2).conjugate(), Complex::new(1, -2));
+    assert_eq!(Complex::new(1, -2).conjugate(), Complex::new(1, 2));
+
+    assert_eq!(Complex::new(1.0, 2.0).conjugate(), Complex::new(1.0, -2.0));
+    assert_eq!(Complex::new(1.0, -2.0).conjugate(), Complex::new(1.0, 2.0));
+    assert_eq!(Complex::new(1.0, f32::INFINITY).conjugate(), Complex::new(1.0, f32::NEG_INFINITY));
+}
+
+#[test]
+fn complex_negation() {
+    assert_eq!(-Complex::new(1, 2), Complex::new(-1, -2));
+    assert_eq!(-Complex::new(1, -2), Complex::new(-1, 2));
+
+    assert_eq!(-Complex::new(1.0, 2.0), Complex::new(-1.0, -2.0));
+    assert_eq!(-Complex::new(1.0, -2.0), Complex::new(-1.0, 2.0));
+    assert_eq!(-Complex::new(1.0, f32::INFINITY), Complex::new(-1.0, f32::NEG_INFINITY),);
+}

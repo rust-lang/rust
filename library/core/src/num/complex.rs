@@ -1,4 +1,4 @@
-use crate::ops::{Add, Sub};
+use crate::ops::{Add, Neg, Sub};
 
 /// A complex number.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -18,6 +18,34 @@ impl<T> Complex<T> {
     #[must_use]
     pub const fn new(re: T, im: T) -> Complex<T> {
         Complex { re, im }
+    }
+}
+
+#[unstable(feature = "complex_numbers", issue = "154023")]
+impl<T> Complex<T>
+where
+    T: Neg<Output = T>,
+{
+    /// The complex conjugate of a complex number.
+    ///
+    /// The conjugate of `a + bi` is `a - bi`: the imaginary component is negated.
+    /// Geometrically, this is a reflection across the real axis.
+    #[must_use]
+    pub fn conjugate(self) -> Self {
+        Complex { re: self.re, im: -self.im }
+    }
+}
+
+#[unstable(feature = "complex_numbers", issue = "154023")]
+impl<T: Neg> Neg for Complex<T> {
+    type Output = Complex<T::Output>;
+
+    /// Negate a complex number.
+    ///
+    /// The negation of `a + bi` is `-a - bi`: both components are negated.
+    /// Geometrically this is a rotation of 180°.
+    fn neg(self) -> Self::Output {
+        Complex::new(-self.re, -self.im)
     }
 }
 
