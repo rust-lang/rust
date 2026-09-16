@@ -7,6 +7,8 @@
 #![feature(const_cmp)]
 #![feature(const_trait_impl)]
 
+use std::num::NonZero;
+use std::ptr::NonNull;
 use std::ffi::*;
 
 fn ignores_arguments() {
@@ -118,6 +120,12 @@ fn various_types() {
         continue_if!(compare_c_str(ap.next_arg::<*const c_char>(), "Hello"));
         continue_if!(ap.next_arg::<c_int>() == 42);
         continue_if!(compare_c_str(ap.next_arg::<*const c_char>(), "World"));
+        continue_if!(*ap.next_arg::<&u32>() == 1);
+        continue_if!(*ap.next_arg::<&mut u32>() == 27);
+        continue_if!(*ap.next_arg::<NonNull<u32>>().as_ptr() == 9);
+        continue_if!(ap.next_arg::<Option<NonNull<u32>>>().is_none());
+        continue_if!(ap.next_arg::<NonZero<u32>>() == NonZero::new(43u32).unwrap());
+        continue_if!(ap.next_arg::<Option<NonZero<u32>>>().is_none());
     }
 
     unsafe {
@@ -129,6 +137,12 @@ fn various_types() {
             c"Hello".as_ptr(),
             42 as c_int,
             c"World".as_ptr(),
+            &1u32,
+            &mut 27u32,
+            NonNull::new(&mut 9u32).unwrap(),
+            None::<NonNull<u32>>,
+            NonZero::new(43u32).unwrap(),
+            None::<NonZero<u32>>,
         );
         const {
             check_list_2(
@@ -139,6 +153,12 @@ fn various_types() {
                 c"Hello".as_ptr(),
                 42 as c_int,
                 c"World".as_ptr(),
+                &1u32,
+                &mut 27u32,
+                NonNull::new(&mut 9u32).unwrap(),
+                None::<NonNull<u32>>,
+                NonZero::new(43u32).unwrap(),
+                None::<NonZero<u32>>,
             )
         };
     }
