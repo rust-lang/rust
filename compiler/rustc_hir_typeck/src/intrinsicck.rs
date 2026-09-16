@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
+use rustc_middle::ty::offload_meta::is_region_ty;
 use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
 use rustc_span::ErrorGuaranteed;
 use rustc_span::def_id::LocalDefId;
@@ -135,6 +136,10 @@ fn check_transmute<'tcx>(
     }
 }
 
+fn contains_nested_offload_region<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.walk().skip(1).any(|arg| arg.as_type().is_some_and(|ty| is_region_ty(tcx, ty)))
+}
+
 fn check_offload<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
@@ -206,7 +211,23 @@ fn check_offload<'tcx>(
     {
         let norm_input_ty = normalize(input_ty);
         let norm_arg_ty = normalize(arg_ty);
-        if norm_input_ty != norm_arg_ty {
+
+        if contains_nested_offload_region(tcx, norm_input_ty)
+            || contains_nested_offload_region(tcx, norm_arg_ty)
+        {
+            let err = tcx
+                .sess
+                .dcx()
+                .struct_span_err(
+                    span,
+                    format!(
+                        "offload kernel argument {i} contains a `Region` nested inside another \
+                        type. Pass the `Region` by value so it can be mapped like a slice"
+                    ),
+                )
+                .emit();
+            result = Err(err);
+        } else if norm_input_ty != norm_arg_ty {
             let err = tcx
                 .sess
                 .dcx()
