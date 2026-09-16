@@ -2396,16 +2396,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // we have the ability to intermix typeck of anon const const args with the parent
             // bodies typeck.
 
-            // FIXME(min_generic_const_args): This check should be removed for mGCA, it is due to
-            // the lack of ConstParamTy rib-checking in nameres for directly represented const
-            // items.
-
             // We also error if the type contains any regions as effectively any region will wind
             // up as a region variable in mir borrowck. It would also be somewhat concerning if
             // hir typeck was using equality but mir borrowck wound up using subtyping as that could
             // result in a non-infer in hir typeck but a region variable in borrowck.
-            if (tcx.features().generic_const_parameter_types()
-                || tcx.features().min_generic_const_args())
+            if tcx.features().generic_const_parameter_types()
                 && (ty.has_free_regions() || ty.has_erased_regions())
             {
                 let e = self.dcx().span_err(
