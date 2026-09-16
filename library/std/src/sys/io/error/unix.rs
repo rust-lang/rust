@@ -1,5 +1,5 @@
 use crate::ffi::c_int;
-#[cfg(not(target_os = "teeos"))]
+#[cfg(not(any(target_os = "teeos", target_os = "qurt")))]
 use crate::ffi::{CStr, c_char};
 use crate::{fmt, io};
 
@@ -230,7 +230,7 @@ pub fn format_error(errno: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     }
 }
 
-#[cfg(target_os = "teeos")]
+#[cfg(any(target_os = "teeos", target_os = "qurt"))]
 pub fn format_error(_errno: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.write_str("error string unimplemented")
 }
