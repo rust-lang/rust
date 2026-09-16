@@ -185,6 +185,59 @@ pub trait FileExt {
     /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize>;
+
+    /// Seeks to a given position and attempts to write an entire buffer.
+    ///
+    /// The offset is relative to the start of the file and thus independent
+    /// from the current cursor. The current cursor **is** affected by this
+    /// function, it is set to the end of the write.
+    ///
+    /// This method will continuously call [`seek_write`] until there is no more data
+    /// to be written or an error of non-[`io::ErrorKind::Interrupted`] kind is
+    /// returned. This method will not return until the entire buffer has been
+    /// successfully written or such an error occurs. The first error that is
+    /// not of [`io::ErrorKind::Interrupted`] kind generated from this method will be
+    /// returned.
+    ///
+    /// # Errors
+    ///
+    /// This function will return the first error of
+    /// non-[`io::ErrorKind::Interrupted`] kind that [`seek_write`] returns.
+    ///
+    /// [`seek_write`]: FileExt::seek_write
+    ///
+    /// # Examples
+    ///
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
+    /// use std::fs::File;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let file = File::open("foo.txt")?;
+    ///
+    ///     // We now write at the offset 10.
+    ///     file.write_all_at(b"sushi", 10)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "seek_read_exact_seek_write_all", issue = "none")]
+    fn seek_write_all(&self, mut buf: &[u8], mut offset: u64) -> io::Result<()> {
+        while !buf.is_empty() {
+            match self.seek_write(buf, offset) {
+                Ok(0) => {
+                    return Err(io::Error::WRITE_ALL_EOF);
+                }
+                Ok(n) => {
+                    buf = &buf[n..];
+                    offset += n as u64
+                }
+                Err(ref e) if e.is_interrupted() => {}
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
+    }
 }
 
 #[stable(feature = "file_offset", since = "1.15.0")]
