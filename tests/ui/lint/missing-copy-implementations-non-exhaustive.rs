@@ -11,6 +11,7 @@ pub enum MyEnum {
     A,
 }
 
+#[expect(unused_attributes)]
 #[non_exhaustive]
 pub struct MyStruct {
     foo: usize,

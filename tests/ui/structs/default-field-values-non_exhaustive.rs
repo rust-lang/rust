@@ -1,6 +1,7 @@
 #![feature(default_field_values)]
 
 #[derive(Default)]
+#[expect(unused_attributes)]
 #[non_exhaustive] //~ ERROR `#[non_exhaustive]` can't be used to annotate items with default field values
 struct Foo {
     x: i32 = 42 + 3,
@@ -8,6 +9,7 @@ struct Foo {
 
 #[derive(Default)]
 enum Bar {
+    #[expect(unused_attributes)]
     #[non_exhaustive]
     #[default]
     Baz { //~ ERROR default variant must be exhaustive

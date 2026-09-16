@@ -19,7 +19,7 @@ LL | #[cfg_attr(target(os = "linux"), non_exhaustive)]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: compact `cfg(target(..))` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-target-compact.rs:7:19
+  --> $DIR/feature-gate-cfg-target-compact.rs:8:19
    |
 LL | #[cfg(not(any(all(target(os = "linux")))))]
    |                   ^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL | #[cfg(not(any(all(target(os = "linux")))))]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: compact `cfg(target(..))` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-target-compact.rs:11:10
+  --> $DIR/feature-gate-cfg-target-compact.rs:12:10
    |
 LL |     cfg!(target(os = "linux"));
    |          ^^^^^^^^^^^^^^^^^^^^
@@ -38,6 +38,14 @@ LL |     cfg!(target(os = "linux"));
    = help: add `#![feature(cfg_target_compact)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 4 previous errors
+warning: `#[non_exhaustive]` has no effect on an unreachable item
+  --> $DIR/feature-gate-cfg-target-compact.rs:4:34
+   |
+LL | #[cfg_attr(target(os = "linux"), non_exhaustive)]
+   |                                  ^^^^^^^^^^^^^^
+   |
+   = note: requested on the command line with `-W unused-attributes`
+
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.
