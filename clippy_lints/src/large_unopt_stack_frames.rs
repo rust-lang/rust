@@ -7,7 +7,7 @@ use clippy_utils::{fn_has_unsatisfiable_clauses, is_entrypoint_fn, is_in_test};
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, FnDecl};
+use rustc_hir::{Body, Constness, FnDecl};
 use rustc_lexer::is_ident;
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::{Span, SyntaxContext};
@@ -160,6 +160,7 @@ impl ops::Add<u64> for Space {
 }
 
 impl<'tcx> LateLintPass<'tcx> for LargeUnoptStackFrames {
+    #[expect(clippy::too_many_lines)]
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -171,7 +172,9 @@ impl<'tcx> LateLintPass<'tcx> for LargeUnoptStackFrames {
     ) {
         let def_id = local_def_id.to_def_id();
         // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-        if fn_has_unsatisfiable_clauses(cx, def_id) {
+        if fn_has_unsatisfiable_clauses(cx, def_id)
+            || matches!(cx.tcx.constness(def_id), Constness::Const { always: true })
+        {
             return;
         }
 
