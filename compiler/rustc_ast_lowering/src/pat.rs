@@ -293,7 +293,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             hir_id
                         } else {
                             hir::HirId {
-                                owner: self.curr_owner.owner_id,
+                                owner: self.curr_owner.owner_id(),
                                 local_id: self.curr_owner.ident_and_label_to_local_id[&id],
                             }
                         }
@@ -483,7 +483,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::PatTyRange,
             span,
-            Some(Arc::clone(&self.allow_pattern_type)),
+            Some(Arc::clone(&crate::ALLOW_PATTERN_TYPE)),
         );
         let anon_const = self.with_new_scopes(span, |this| {
             let def_id = this.local_def_id(e.id);
@@ -536,7 +536,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::PatTyRange,
             self.lower_span(span),
-            Some(Arc::clone(&self.allow_pattern_type)),
+            Some(Arc::clone(&crate::ALLOW_PATTERN_TYPE)),
         );
         let span = self.lower_span(base_type);
 
