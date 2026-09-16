@@ -5,15 +5,12 @@ error: internal compiler error: compiler/rustc_mir_transform/src/validate.rs:LL:
 LL |             Call(RET = bar(Move(a.0)), ReturnTo(retblock), UnwindContinue())
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: -Ztrack-diagnostics: created at compiler/rustc_interface/src/callbacks.rs:LL:CC
+   = note: -Ztrack-diagnostics: created at compiler/rustc_mir_transform/src/validate.rs:LL:CC
 
 
 thread 'rustc' ($TID) panicked at compiler/rustc_mir_transform/src/validate.rs:LL:CC:
-broken MIR in Item(DefId(0:6 ~ track7[HASH]::main)) (after pass LintAndRemoveUninhabited) at bb0[1]:
-encountered `Move` of a non-local, non-box place in `Call` terminator: _0 = bar(move (_1.0: i32)) -> [return: bb1, unwind continue]
+Box<dyn Any>
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
-error: the compiler unexpectedly panicked. This is a bug
 
 note: using internal features is not supported and expected to cause internal compiler errors when used incorrectly
 
