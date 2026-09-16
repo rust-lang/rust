@@ -1,6 +1,5 @@
 // ignore-tidy-file-linelength
 //@ add-minicore
-//@ only-pauthtest
 // Run it at O0, so that the compiler doesn't optimise the calls away.
 
 //@ revisions: DISC NO_DISC
@@ -327,8 +326,8 @@ pub fn test_7_tree_cast_mixed() {
     (dst.f1)(2, 3);
     // DISC: [[CALL2PTR:%.*]] = getelementptr inbounds i8, ptr [[DST]], i64 16
     // DISC: [[CALL2:%.*]] = load ptr, ptr [[CALL2PTR]],
-    // DISC: call void [[CALL2]](i64 4, i64 5, float 6.000000e+00) {{.*}} [ "ptrauth"(i32 0, i64 44485) ]
-    // NO_DISC: call void {{.*}}(i64 4, i64 5, float 6.000000e+00) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
+    // DISC: call void [[CALL2]](i64 4, i64 5, float {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 44485) ]
+    // NO_DISC: call void {{.*}}(i64 4, i64 5, float {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
     (dst.f2)(4, 5, 6.0);
     // DISC: [[CALL3PTR:%.*]] = getelementptr inbounds i8, ptr [[DST]], i64 24
     // DISC: [[CALL3:%.*]] = load ptr, ptr [[CALL3PTR]],
@@ -389,10 +388,12 @@ pub fn test_8_tuple_members() {
         ptr::read_volatile(&dst);
     }
 
-    // DISC: call void %{{.*}}(float 4.200000e-01) #[[#]] [ "ptrauth"(i32 0, i64 21613) ]
-    // DISC: call void %{{.*}}(double 4.242000e-01) #[[#]] [ "ptrauth"(i32 0, i64 7718) ]
-    // NO_DISC: call void %{{.*}}(float 4.200000e-01) #[[#]] [ "ptrauth"(i32 0, i64 0) ]
-    // NO_DISC: call void %{{.*}}(double 4.242000e-01) #[[#]] [ "ptrauth"(i32 0, i64 0) ]
+    // Don't bother with exact floating point values, as the seem to be differing across llvm
+    // versions, for example: float 4.200000e-01 versus: float 0x3FDAE147A0000000.
+    // DISC: call void %{{.*}}(float {{.*}}) #[[#]] [ "ptrauth"(i32 0, i64 21613) ]
+    // DISC: call void %{{.*}}(double {{.*}}) #[[#]] [ "ptrauth"(i32 0, i64 7718) ]
+    // NO_DISC: call void %{{.*}}(float {{.*}}) #[[#]] [ "ptrauth"(i32 0, i64 0) ]
+    // NO_DISC: call void %{{.*}}(double {{.*}}) #[[#]] [ "ptrauth"(i32 0, i64 0) ]
     (dst.pair.0)(0.42f32);
     (dst.pair.1)(0.4242f64);
 }
@@ -410,10 +411,10 @@ pub fn test_9_tuple() {
     // CHECK-NOT: call i64 @llvm.ptrauth.resign
     let dst: TupleDst = unsafe { mem::transmute(src) };
 
-    // DISC: call void %{{.*}}(float 4.200000e-01) #[[#]] [ "ptrauth"(i32 0, i64 21613) ]
-    // DISC: call void %{{.*}}(double 4.242000e-01) #[[#]] [ "ptrauth"(i32 0, i64 7718) ]
-    // NO_DISC: call void %{{.*}}(float 4.200000e-01) #[[#]] [ "ptrauth"(i32 0, i64 0) ]
-    // NO_DISC: call void %{{.*}}(double 4.242000e-01) #[[#]] [ "ptrauth"(i32 0, i64 0) ]
+    // DISC: call void %{{.*}}(float {{.*}}) #[[#]] [ "ptrauth"(i32 0, i64 21613) ]
+    // DISC: call void %{{.*}}(double {{.*}}) #[[#]] [ "ptrauth"(i32 0, i64 7718) ]
+    // NO_DISC: call void %{{.*}}(float {{.*}}) #[[#]] [ "ptrauth"(i32 0, i64 0) ]
+    // NO_DISC: call void %{{.*}}(double {{.*}}) #[[#]] [ "ptrauth"(i32 0, i64 0) ]
     (dst.pair.0)(0.42f32);
     (dst.pair.1)(0.4242f64);
 }
