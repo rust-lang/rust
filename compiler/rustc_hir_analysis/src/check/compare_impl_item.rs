@@ -1296,6 +1296,7 @@ fn check_region_late_boundedness<'tcx>(
                 .borrow_mut()
                 .unwrap_region_constraints()
                 .shallow_resolve_region_var(tcx, vid)
+                .reuse_if_unchanged(r)
             && let ty::ReLateParam(ty::LateParamRegion {
                 kind: ty::LateParamRegionKind::Named(trait_param_def_id),
                 ..
@@ -1321,6 +1322,7 @@ fn check_region_late_boundedness<'tcx>(
                 .borrow_mut()
                 .unwrap_region_constraints()
                 .shallow_resolve_region_var(tcx, vid)
+                .reuse_if_unchanged(r)
             && let ty::ReLateParam(ty::LateParamRegion {
                 kind: ty::LateParamRegionKind::Named(impl_param_def_id),
                 ..

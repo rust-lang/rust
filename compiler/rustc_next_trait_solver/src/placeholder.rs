@@ -248,7 +248,7 @@ where
 
     fn fold_region(&mut self, r0: Region<I>) -> Region<I> {
         let r1 = match r0.kind() {
-            ty::ReVar(vid) => self.infcx.shallow_resolve_region_var(vid),
+            ty::ReVar(vid) => self.infcx.shallow_resolve_region_var(vid).reuse_if_unchanged(r0),
             _ => r0,
         };
 

@@ -637,7 +637,8 @@ fn plug_infer_with_placeholders<'tcx>(
                     .inner
                     .borrow_mut()
                     .unwrap_region_constraints()
-                    .shallow_resolve_region_var(self.infcx.tcx, vid);
+                    .shallow_resolve_region_var(self.infcx.tcx, vid)
+                    .reuse_if_unchanged(r);
                 if r.is_var() {
                     let Ok(InferOk { value: (), obligations }) =
                         self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(

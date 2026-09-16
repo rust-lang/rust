@@ -1313,7 +1313,7 @@ where
 
     pub(super) fn eager_resolve_region(&self, r: Region<I>) -> Region<I> {
         if let ty::ReVar(vid) = r.kind() {
-            self.delegate.shallow_resolve_region_var(vid)
+            self.delegate.shallow_resolve_region_var(vid).reuse_if_unchanged(r)
         } else {
             r
         }

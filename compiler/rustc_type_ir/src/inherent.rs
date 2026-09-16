@@ -42,6 +42,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn new_infer(interner: I, var: ty::InferTy) -> Self;
 
     fn new_var(interner: I, var: ty::TyVid) -> Self;
+    fn new_int_var(interner: I, var: ty::IntVid) -> Self;
+    fn new_float_var(interner: I, var: ty::FloatVid) -> Self;
 
     fn new_param(interner: I, param: I::ParamTy) -> Self;
 
