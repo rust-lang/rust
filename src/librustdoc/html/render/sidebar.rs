@@ -548,7 +548,8 @@ fn sidebar_deref_methods<'a>(
             // Avoid infinite cycles
             return;
         }
-        let deref_mut = v.iter().any(|i| i.trait_did() == cx.tcx().lang_items().deref_mut_trait());
+        let tcx = cx.tcx();
+        let deref_mut = v.iter().any(|i| i.trait_did() == tcx.lang_items().deref_mut_trait());
         let inner_impl = target
             .def_id(c)
             .or_else(|| {
@@ -557,6 +558,8 @@ fn sidebar_deref_methods<'a>(
             .and_then(|did| c.impls.get(&did));
         if let Some(impls) = inner_impl {
             debug!("found inner_impl: {impls:?}");
+            let is_deref_target_copy =
+                super::compute_if_deref_target_implements_copy(tcx, impl_.def_id());
             let mut ret = impls
                 .iter()
                 .filter(|i| {
@@ -566,9 +569,9 @@ fn sidebar_deref_methods<'a>(
                 .flat_map(|i| {
                     get_methods(
                         i.inner_impl(),
-                        GetMethodsMode::Deref { deref_mut },
+                        GetMethodsMode::Deref { deref_mut, is_deref_target_copy },
                         used_links,
-                        cx.tcx(),
+                        tcx,
                     )
                     .collect::<Vec<_>>()
                 })
@@ -602,7 +605,7 @@ fn sidebar_deref_methods<'a>(
                 i.inner_impl()
                     .trait_
                     .as_ref()
-                    .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
+                    .map(|t| Some(t.def_id()) == tcx.lang_items().deref_trait())
                     .unwrap_or(false)
                     && !i.is_negative_trait_impl()
             })
@@ -757,7 +760,7 @@ fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
 }
 
 enum GetMethodsMode<'r, 'l> {
-    Deref { deref_mut: bool },
+    Deref { deref_mut: bool, is_deref_target_copy: bool },
     AlsoCollectAssocFns { assoc_fns: &'r mut Vec<Link<'l>> },
 }
 
@@ -778,8 +781,8 @@ fn get_methods<'a>(
                 )
             };
             match &mut mode {
-                &mut GetMethodsMode::Deref { deref_mut } => {
-                    if super::should_render_item(item, deref_mut, tcx) {
+                &mut GetMethodsMode::Deref { deref_mut, is_deref_target_copy } => {
+                    if super::should_render_item(item, deref_mut, tcx, is_deref_target_copy) {
                         Some(build_link())
                     } else {
                         None
