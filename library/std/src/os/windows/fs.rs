@@ -50,6 +50,69 @@ pub trait FileExt {
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize>;
 
+    /// Seeks to a given position and reads the exact number of bytes required to fill `buf`
+    ///
+    /// The offset is relative to the start of the file and thus independent
+    /// from the current cursor. The current cursor **is** affected by this
+    /// function, it is set to the end of the read.
+    ///
+    /// Similar to [`io::Read::read_exact`] but uses [`seek_read`] instead of `read`.
+    ///
+    /// [`seek_read`]: FileExt::seek_read
+    ///
+    /// # Errors
+    ///
+    /// If this function encounters an error of the kind
+    /// [`io::ErrorKind::Interrupted`] then the error is ignored and the operation
+    /// will continue.
+    ///
+    /// If this function encounters an "end of file" before completely filling
+    /// the buffer, it returns an error of the kind [`io::ErrorKind::UnexpectedEof`].
+    /// The contents of `buf` are unspecified in this case.
+    ///
+    /// If any other read error is encountered then this function immediately
+    /// returns. The contents of `buf` are unspecified in this case.
+    ///
+    /// If this function returns an error, it is unspecified how many bytes it
+    /// has read, but it will never read more than would be necessary to
+    /// completely fill the buffer.
+    ///
+    /// # Examples
+    ///
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
+    /// use std::io;
+    /// use std::fs::File;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut buf = [0u8; 8];
+    ///     let file = File::open("foo.txt")?;
+    ///
+    ///     // We now read exactly 8 bytes from the offset 10.
+    ///     file.seek_read_exact(&mut buf, 10)?;
+    ///     println!("read {} bytes: {:?}", buf.len(), buf);
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "seek_read_exact", issue = "none")]
+    fn seek_read_exact(&self, buf: &mut [u8], offset: u64) -> io::Result<()> {
+        let mut buf = buf;
+        let mut offset = offset;
+        while !buf.is_empty() {
+            match self.seek_read(buf, offset) {
+                Ok(0) => break,
+                Ok(n) => {
+                    buf = &mut buf[n..];
+                    offset += n as u64;
+                }
+                Err(ref e) if e.is_interrupted() => {}
+                Err(e) => return Err(e),
+            }
+        }
+        if !buf.is_empty() { Err(io::Error::READ_EXACT_EOF) } else { Ok(()) }
+    }
+
     /// Seeks to a given position and reads some bytes into the buffer.
     ///
     /// This is equivalent to the [`seek_read`](FileExt::seek_read) method, except that it is passed
