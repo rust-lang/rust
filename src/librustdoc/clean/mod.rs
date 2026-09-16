@@ -2771,6 +2771,11 @@ fn get_all_import_attributes<'hir>(
         .iter()
         .flat_map(|reexport| reexport.id())
     {
+        if cx.tcx.def_kind(def_id) == DefKind::ExternCrate {
+            // There is no attribute to query from an `DefKind::ExternCrate` item, only
+            // from `DefKind::Use`.
+            continue;
+        }
         let import_attrs = inline::load_attrs(cx.tcx, def_id);
         if first {
             // This is the "original" reexport so we get all its attributes without filtering them.
