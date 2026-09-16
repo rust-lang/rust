@@ -7,6 +7,8 @@ use crate::ffi::c_void;
 use crate::fmt;
 use crate::intrinsics::{va_arg, va_copy, va_end};
 use crate::marker::PhantomCovariantLifetime;
+use crate::num::{NonZero, ZeroablePrimitive};
+use crate::ptr::NonNull;
 
 // There are currently three flavors of how a C `va_list` is implemented for
 // targets that Rust supports:
@@ -417,9 +419,22 @@ cfg_select! {
 unsafe impl VaArgSafe for f64 {}
 
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+unsafe impl<T: ZeroablePrimitive + VaArgSafe> VaArgSafe for NonZero<T> {}
+#[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+unsafe impl<T: ZeroablePrimitive + VaArgSafe> VaArgSafe for Option<NonZero<T>> {}
+
+#[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+unsafe impl<T> VaArgSafe for NonNull<T> {}
+#[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+unsafe impl<T> VaArgSafe for Option<NonNull<T>> {}
+#[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
 unsafe impl<T> VaArgSafe for *mut T {}
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
 unsafe impl<T> VaArgSafe for *const T {}
+#[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+unsafe impl<T> VaArgSafe for &mut T {}
+#[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+unsafe impl<T> VaArgSafe for &T {}
 
 // Check that relevant `core::ffi` types implement `VaArgSafe`.
 const _: () = {
@@ -457,15 +472,18 @@ impl<'f> VaList<'f> {
     /// representable in both types.
     /// - If `T` is not [`Copy`], then it must not have already been read using `next_arg`
     /// on a [`clone`][VaList::clone]d copy of this `VaList`.
-    /// (Currently, all types implementing [`VaArgSafe`] also implement [`Copy`],
-    /// but this may change in the future.)
+    /// - If `T` is not valid for all bit patterns, you assert that the argument is one of
+    /// the valid bit patterns.
     ///
     /// Types `T` and `U` are compatible when:
     ///
     /// - `T` and `U` are the same type.
-    /// - `T` and `U` are integer types of the same size.
-    /// - `T` and `U` are both pointers, and their target types are compatible.
-    /// - `T` is a pointer to [`c_void`] and `U` is a pointer to [`i8`] or [`u8`], or vice versa.
+    /// - `T` and `U` are integer types of the same size,
+    ///   which also applies for `NonZero<_>` and `Option<NonZero<_>>`.
+    /// - `T` and `U` are both pointer-like, and their target types are compatible.
+    ///   This includes pointers, references, `NonNull<_>`, and `Option<NonNull<_>>`.
+    /// - `T` is a pointer to [`c_void`] and `U` is a pointer to a size-1 integer type,
+    ///   or vice versa.
     ///
     /// [`c_void`]: core::ffi::c_void
     #[inline] // Avoid codegen when not used to help backends that don't support VaList.
