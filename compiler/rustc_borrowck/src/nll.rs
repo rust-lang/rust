@@ -88,6 +88,8 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
     location_map: Rc<DenseLocationMap>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     constraints: &MirTypeckRegionConstraints<'tcx>,
+    move_data: &MoveData<'tcx>,
+    borrow_set: &BorrowSet<'tcx>,
 ) -> Option<ClosureRegionRequirements<'tcx>> {
     // FIXME(#146079): we shouldn't have to clone all this stuff here.
     // Computing the region graph should take at least some of it by reference/`Rc`.
@@ -102,6 +104,9 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
         universal_region_relations.clone(),
         location_map,
         body,
+        None,
+        move_data,
+        borrow_set,
         None,
     );
 
@@ -127,7 +132,7 @@ pub(crate) fn compute_regions<'tcx>(
     let polonius_output = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_output())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
 
-    let mut lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
+    let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
         constraints,
         &universal_region_relations,
         infcx,
@@ -144,23 +149,6 @@ pub(crate) fn compute_regions<'tcx>(
         &universal_region_relations,
         &lowered_constraints,
     );
-
-    // If requested for `-Zpolonius=next`, compute loan liveness information.
-    // This is done prior to `RegionInferenceContext::new`, because we may add
-    // additional liveness constraints.
-    if let Some(polonius_context) = polonius_context.as_mut() {
-        let _timer = infcx.tcx.prof.generic_activity("borrowck_polonius_loan_liveness");
-        polonius_context.compute_loan_liveness(
-            infcx,
-            &mut lowered_constraints.liveness_constraints,
-            lowered_constraints.outlives_constraints.outlives().iter().copied(),
-            &universal_region_relations.universal_regions,
-            body,
-            move_data,
-            &location_map,
-            borrow_set,
-        );
-    }
 
     // If requested: dump NLL facts, and run legacy polonius analysis.
     let polonius_output = polonius_facts.as_ref().and_then(|polonius_facts| {
@@ -191,6 +179,9 @@ pub(crate) fn compute_regions<'tcx>(
         location_map,
         body,
         polonius_output.clone(),
+        move_data,
+        borrow_set,
+        polonius_context.as_mut(),
     );
 
     NllOutput {
