@@ -14,6 +14,10 @@ type TypeWalkerStack<I> = SmallVec<[<I as Interner>::GenericArg; 8]>;
 
 /// An iterator for walking the type tree.
 ///
+/// Visits the value's types, lifetimes, and consts, including the trait arguments
+/// of evidence projections. Binder declarations and proof recipes are not
+/// traversed; use [`ty::TypeVisitor`] to visit those as well.
+///
 /// It's very easy to produce a deeply
 /// nested type tree with a lot of
 /// identical subtrees. In order to work efficiently
@@ -108,6 +112,9 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
             }
             ty::Alias(_, alias) => {
                 stack.extend(alias.args.iter().rev());
+                if let ty::AliasTyKind::EvidenceProjection { projection } = alias.kind {
+                    stack.extend(projection.trait_ref().args.iter().rev());
+                }
             }
             ty::Dynamic(obj, lt) => {
                 stack.push(lt.into());
@@ -164,6 +171,9 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
             ty::ConstKind::Expr(expr) => stack.extend(expr.args().iter().rev()),
             ty::ConstKind::Alias(_, ct) => {
                 stack.extend(ct.args.iter().rev());
+                if let ty::AliasConstKind::EvidenceProjection { projection } = ct.kind {
+                    stack.extend(projection.trait_ref().args.iter().rev());
+                }
             }
         },
     }

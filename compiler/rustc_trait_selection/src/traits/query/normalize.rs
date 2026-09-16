@@ -271,6 +271,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                 }
             }
 
+            ty::EvidenceProjection { .. } => return Err(NoSolution),
             kind @ (ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. }) => self
                 .try_fold_free_or_assoc(ty::AliasTerm::new(self.cx(), kind.into(), data.args))?
                 .expect_type(),
@@ -294,6 +295,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
         };
 
         let constant = match alias_const.kind {
+            ty::AliasConstKind::EvidenceProjection { .. } => return Err(NoSolution),
             ty::AliasConstKind::Anon { .. } => crate::traits::with_replaced_escaping_bound_vars(
                 self.infcx,
                 &mut self.universes,
@@ -345,6 +347,8 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
             ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. } => {
                 tcx.normalize_canonicalized_projection(c_term)
             }
+            ty::AliasTermKind::EvidenceProjectionTy { .. }
+            | ty::AliasTermKind::EvidenceProjectionConst { .. } => return Err(NoSolution),
             ty::AliasTermKind::FreeTy { .. } | ty::AliasTermKind::FreeConst { .. } => {
                 tcx.normalize_canonicalized_free_alias(c_term)
             }

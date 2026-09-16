@@ -458,7 +458,7 @@ impl RustcInternal for BoundVariableKind {
                 }
                 BoundRegionKind::BrEnv => rustc_ty::BoundRegionKind::ClosureEnv,
             }),
-            BoundVariableKind::Const => rustc_ty::BoundVariableKind::Const,
+            BoundVariableKind::Const => rustc_ty::BoundVariableKind::Const(None),
         }
     }
 }

@@ -183,7 +183,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector<'tcx> {
                 // inputs to a projection as they may not appear in the normalized form.
                 ty::Alias(_, alias_ty) => {
                     match alias_ty.kind {
-                        ty::Projection { .. } | ty::Inherent { .. } | ty::Opaque { .. } => return,
+                        ty::Projection { .. }
+                        | ty::EvidenceProjection { .. }
+                        | ty::Inherent { .. }
+                        | ty::Opaque { .. } => return,
 
                         // All free alias types should've been expanded beforehand.
                         ty::Free { .. } => {

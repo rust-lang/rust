@@ -1,4 +1,12 @@
+use std::cell::RefCell;
+use std::ptr;
+
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
+use rustc_data_structures::stable_hash::{
+    StableHash, StableHashControls, StableHashCtxt, StableHasher,
+};
 use rustc_macros::StableHash;
 use rustc_type_ir as ir;
 pub use rustc_type_ir::solve::*;
@@ -21,6 +29,142 @@ pub type GoalStalledOnOpaques<'tcx> = ir::solve::GoalStalledOnOpaques<TyCtxt<'tc
 pub type SucceededInErased<'tcx> = ir::solve::SucceededInErased<TyCtxt<'tcx>>;
 
 pub type PredefinedOpaques<'tcx> = &'tcx ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>;
+pub type TraitEvidences<'tcx> = &'tcx ty::List<TraitEvidence<'tcx>>;
+
+/// Interned source contract rebased into one dependent binder telescope.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, StableHash)]
+pub struct BoundRequiredContract<'tcx>(
+    pub(crate) Interned<'tcx, ty::BoundRequiredContractData<TyCtxt<'tcx>>>,
+);
+
+impl<'tcx> std::ops::Deref for BoundRequiredContract<'tcx> {
+    type Target = ty::BoundRequiredContractData<TyCtxt<'tcx>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for BoundRequiredContract<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        folder.try_fold_bound_required_contract(self)
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        folder.fold_bound_required_contract(self)
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for BoundRequiredContract<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        (**self).visit_with(visitor)
+    }
+}
+
+/// Interned compiler-internal trait evidence value.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct TraitEvidence<'tcx>(pub(crate) Interned<'tcx, TraitEvidenceData<TyCtxt<'tcx>>>);
+
+impl StableHash for TraitEvidence<'_> {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        // Like interned lists, shared proof recipes must not be expanded into a tree.
+        thread_local! {
+            static CACHE: RefCell<FxHashMap<(*const (), StableHashControls), Fingerprint>> =
+                RefCell::new(Default::default());
+        }
+
+        let hash = CACHE.with(|cache| {
+            let key = (ptr::from_ref(self.0.0).cast::<()>(), hcx.stable_hash_controls());
+            if let Some(&hash) = cache.borrow().get(&key) {
+                return hash;
+            }
+
+            let mut hasher = StableHasher::new();
+            self.0.0.stable_hash(hcx, &mut hasher);
+            let hash: Fingerprint = hasher.finish();
+            cache.borrow_mut().insert(key, hash);
+            hash
+        });
+
+        hash.stable_hash(hcx, hasher);
+    }
+}
+
+impl<'tcx> std::ops::Deref for TraitEvidence<'tcx> {
+    type Target = TraitEvidenceData<TyCtxt<'tcx>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for TraitEvidence<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        folder.try_fold_trait_evidence(self)
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        folder.fold_trait_evidence(self)
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for TraitEvidence<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        visitor.visit_trait_evidence(*self)
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for TraitEvidences<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        ty::util::try_fold_list(self, folder, |tcx, values| tcx.mk_trait_evidences(values))
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        ty::util::fold_list(self, folder, |tcx, values| tcx.mk_trait_evidences(values))
+    }
+}
+
+/// Interned payload shared by evidence-aware type and const projections.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, StableHash)]
+pub struct EvidenceProjection<'tcx>(
+    pub(crate) Interned<'tcx, ty::EvidenceProjectionData<TyCtxt<'tcx>>>,
+);
+
+impl<'tcx> std::ops::Deref for EvidenceProjection<'tcx> {
+    type Target = ty::EvidenceProjectionData<TyCtxt<'tcx>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for EvidenceProjection<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        folder.try_fold_evidence_projection(self)
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        folder.fold_evidence_projection(self)
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for EvidenceProjection<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        visitor.visit_evidence_projection(*self)
+    }
+}
 
 // Interning CanonicalInput drastically reduces max memory usage when compiling a crate that has
 // trait solver recursion depth overflows with next-solver deduplicating individual inputs.

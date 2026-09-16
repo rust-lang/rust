@@ -948,7 +948,7 @@ impl TyCoercionStability {
                 | ty::Alias(
                     _,
                     ty::AliasTy {
-                        kind: ty::Opaque { .. },
+                        kind: ty::Opaque { .. } | ty::EvidenceProjection { .. },
                         ..
                     },
                 )

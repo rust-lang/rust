@@ -282,6 +282,9 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
             ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
                 panic!("unexpected inherent projection")
             }
+            ty::Alias(_, ty::AliasTy { kind: ty::EvidenceProjection { .. }, .. }) => {
+                panic!("evidence projection in symbol mangling")
+            }
 
             _ => self.pretty_print_type(ty),
         }

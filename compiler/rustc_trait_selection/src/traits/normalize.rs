@@ -7,12 +7,12 @@ use rustc_infer::traits::{
     FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine, TraitErrors,
 };
 use rustc_macros::extension;
-use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{
     self, AliasTerm, PredicateProxy, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitable, TypeVisitableExt, TypingMode, Unnormalized,
 };
+use rustc_middle::{bug, span_bug};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
@@ -453,6 +453,9 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             }
 
             ty::Projection { .. } => self.normalize_trait_projection(data.into()).expect_type(),
+            ty::EvidenceProjection { .. } => {
+                bug!("evidence projection in the old trait solver normalizer")
+            }
             ty::Inherent { .. } => self.normalize_inherent_projection(data.into()).expect_type(),
             ty::Free { .. } => self.normalize_free_alias(data.into()).expect_type(),
         }
@@ -486,6 +489,9 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
         // if it was marked with `type const`. Using this attribute without the mgca
         // feature gate causes a parse error.
         let ct = match alias_const.kind {
+            ty::AliasConstKind::EvidenceProjection { .. } => {
+                bug!("evidence projection in the old trait solver normalizer")
+            }
             ty::AliasConstKind::Projection { .. } => {
                 self.normalize_trait_projection(alias_const.into()).expect_const()
             }

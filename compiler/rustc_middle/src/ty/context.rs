@@ -64,8 +64,9 @@ use crate::query::{IntoQueryKey, LocalCrate, Providers, QuerySystem, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{
-    CanonicalInput, CanonicalInputData, ExternalConstraints, ExternalConstraintsData,
-    PredefinedOpaques,
+    BoundRequiredContract, CandidateEvidence, CanonicalInput, CanonicalInputData,
+    EvidenceProjection, ExternalConstraints, ExternalConstraintsData, PredefinedOpaques,
+    TraitEvidence, TraitEvidenceData, TraitEvidenceKind, TraitEvidences,
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
@@ -165,6 +166,10 @@ pub struct CtxtInterners<'tcx> {
     patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
     outlives: InternedSet<'tcx, List<ty::ArgOutlivesClause<'tcx>>>,
     canonical_inputs: InternedSet<'tcx, CanonicalInputData<TyCtxt<'tcx>>>,
+    bound_required_contract: InternedSet<'tcx, ty::BoundRequiredContractData<TyCtxt<'tcx>>>,
+    trait_evidence: InternedSet<'tcx, TraitEvidenceData<TyCtxt<'tcx>>>,
+    trait_evidences: InternedSet<'tcx, List<TraitEvidence<'tcx>>>,
+    evidence_projection: InternedSet<'tcx, ty::EvidenceProjectionData<TyCtxt<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -204,6 +209,10 @@ impl<'tcx> CtxtInterners<'tcx> {
             patterns: InternedSet::with_capacity(N),
             outlives: InternedSet::with_capacity(N),
             canonical_inputs: InternedSet::with_capacity(N),
+            bound_required_contract: InternedSet::with_capacity(N / 2),
+            trait_evidence: InternedSet::with_capacity(N),
+            trait_evidences: InternedSet::with_capacity(N),
+            evidence_projection: InternedSet::with_capacity(N),
         }
     }
 
@@ -667,6 +676,7 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 pub struct GlobalCaches<'tcx> {
     // Internal caches for metadata decoding. No need to track deps on this.
     pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
+    pub trait_evidence_rcache: Lock<FxHashMap<ty::CReaderCacheKey, TraitEvidence<'tcx>>>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
@@ -1718,6 +1728,9 @@ nop_lift! { predicate; Predicate<'a> => Predicate<'tcx> }
 nop_lift! { predicate; Clause<'a> => Clause<'tcx> }
 nop_lift! { layout; Layout<'a> => Layout<'tcx> }
 nop_lift! { valtree; ValTree<'a> => ValTree<'tcx> }
+nop_lift! { bound_required_contract; BoundRequiredContract<'a> => BoundRequiredContract<'tcx> }
+nop_lift! { trait_evidence; TraitEvidence<'a> => TraitEvidence<'tcx> }
+nop_lift! { evidence_projection; EvidenceProjection<'a> => EvidenceProjection<'tcx> }
 
 impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Interned<'a, RegionKind<'a>> {
     type Lifted = Interned<'tcx, RegionKind<'tcx>>;
@@ -1732,6 +1745,7 @@ impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Interned<'a, RegionKind<'a>> {
 }
 
 nop_list_lift! { type_lists; Ty<'a> => Ty<'tcx> }
+nop_list_lift! { trait_evidences; TraitEvidence<'a> => TraitEvidence<'tcx> }
 nop_list_lift! { clauses: ListWithCachedTypeInfo; Clause<'a> => Clause<'tcx> }
 nop_list_lift! {
     poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>
@@ -1995,6 +2009,69 @@ direct_interners! {
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<TyCtxt<'tcx>>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
     canonical_inputs: intern_canonical_input(CanonicalInputData<TyCtxt<'tcx>>): CanonicalInput -> CanonicalInput<'tcx>,
+    bound_required_contract: pub(crate) intern_bound_required_contract(
+        ty::BoundRequiredContractData<TyCtxt<'tcx>>
+    ):
+        BoundRequiredContract -> BoundRequiredContract<'tcx>,
+    trait_evidence: pub(crate) intern_trait_evidence(TraitEvidenceData<TyCtxt<'tcx>>):
+        TraitEvidence -> TraitEvidence<'tcx>,
+    evidence_projection: pub(crate) intern_evidence_projection(
+        ty::EvidenceProjectionData<TyCtxt<'tcx>>
+    ):
+        EvidenceProjection -> EvidenceProjection<'tcx>,
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn mk_bound_required_contract(
+        self,
+        data: ty::BoundRequiredContractData<TyCtxt<'tcx>>,
+    ) -> BoundRequiredContract<'tcx> {
+        data.assert_well_formed();
+        self.intern_bound_required_contract(data)
+    }
+
+    /// Interns a selected proof recipe as a trait evidence value.
+    pub fn mk_trait_evidence(self, recipe: CandidateEvidence<TyCtxt<'tcx>>) -> TraitEvidence<'tcx> {
+        self.mk_trait_evidence_data(TraitEvidenceData::selected(recipe))
+    }
+
+    /// Interns a trait evidence value with the supplied state for `trait_ref`.
+    /// The state may be a selected proof, a bound value, a placeholder, or an error marker.
+    pub fn mk_trait_evidence_kind(
+        self,
+        trait_ref: ty::TraitRef<'tcx>,
+        kind: TraitEvidenceKind<TyCtxt<'tcx>>,
+    ) -> TraitEvidence<'tcx> {
+        self.mk_trait_evidence_data(TraitEvidenceData { trait_ref, kind })
+    }
+
+    /// Interns a complete first-class trait evidence value. Selected proof
+    /// recipes and their nested nodes are validated before interning.
+    pub fn mk_trait_evidence_data(
+        self,
+        data: TraitEvidenceData<TyCtxt<'tcx>>,
+    ) -> TraitEvidence<'tcx> {
+        data.assert_well_formed();
+        self.intern_trait_evidence(data)
+    }
+
+    /// Interns an associated projection after checking that its evidence
+    /// predicate belongs to the trait which owns the associated item.
+    pub fn mk_evidence_projection(
+        self,
+        data: ty::EvidenceProjectionData<TyCtxt<'tcx>>,
+    ) -> EvidenceProjection<'tcx> {
+        data.evidence.assert_well_formed();
+        let item_def_id = data.item_def_id;
+        let evidence_trait_def_id = data.trait_ref().def_id;
+        assert_eq!(
+            self.trait_of_assoc(item_def_id),
+            Some(evidence_trait_def_id),
+            "evidence projection item {item_def_id:?} is not owned by evidence trait \
+             {evidence_trait_def_id:?}"
+        );
+        self.intern_evidence_projection(data)
+    }
 }
 
 macro_rules! slice_interners {
@@ -2021,6 +2098,7 @@ slice_interners!(
     args: pub mk_args(GenericArg<'tcx>),
     type_lists: pub mk_type_list(Ty<'tcx>),
     canonical_var_kinds: pub mk_canonical_var_kinds(CanonicalVarKind<'tcx>),
+    trait_evidences: pub mk_trait_evidences(TraitEvidence<'tcx>),
     poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
     projs: pub mk_projs(ProjectionKind),
     place_elems: pub mk_place_elems(PlaceElem<'tcx>),
@@ -2139,6 +2217,13 @@ impl<'tcx> TyCtxt<'tcx> {
         args: &'tcx [ty::GenericArg<'tcx>],
     ) -> bool {
         let (def_id, is_self_args) = match kind {
+            ty::AliasTermKind::EvidenceProjectionTy { projection }
+            | ty::AliasTermKind::EvidenceProjectionConst { projection } => {
+                let full_args = self.mk_args_from_iter(
+                    projection.trait_ref().args.iter().chain(args.iter().copied()),
+                );
+                return self.check_args_compatible_inner(projection.item_def_id, full_args, false);
+            }
             ty::AliasTermKind::ProjectionTy { def_id }
             | ty::AliasTermKind::OpaqueTy { def_id }
             | ty::AliasTermKind::FreeTy { def_id }
@@ -2220,9 +2305,28 @@ impl<'tcx> TyCtxt<'tcx> {
         args: ty::GenericArgsRef<'tcx>,
     ) {
         if cfg!(debug_assertions) {
+            let source_kind = match kind {
+                ty::AliasTermKind::EvidenceProjectionTy { projection } => Some((
+                    ty::AliasTermKind::ProjectionTy { def_id: projection.item_def_id },
+                    projection,
+                )),
+                ty::AliasTermKind::EvidenceProjectionConst { projection } => Some((
+                    ty::AliasTermKind::ProjectionConst { def_id: projection.item_def_id },
+                    projection,
+                )),
+                _ => None,
+            };
+            if let Some((source_kind, projection)) = source_kind {
+                let full_args =
+                    self.mk_args_from_iter(projection.trait_ref().args.iter().chain(args.iter()));
+                self.debug_assert_alias_term_args_compatible(source_kind, full_args);
+                return;
+            }
             self.debug_assert_alias_term_kind_matches_def_kind(kind);
             if !self.check_alias_term_args_compatible(kind, args) {
                 let (def_id, is_self_args) = match kind {
+                    ty::AliasTermKind::EvidenceProjectionTy { .. }
+                    | ty::AliasTermKind::EvidenceProjectionConst { .. } => unreachable!(),
                     ty::AliasTermKind::ProjectionTy { def_id }
                     | ty::AliasTermKind::OpaqueTy { def_id }
                     | ty::AliasTermKind::FreeTy { def_id }
@@ -2240,6 +2344,16 @@ impl<'tcx> TyCtxt<'tcx> {
 
     fn debug_assert_alias_term_kind_matches_def_kind(self, kind: ty::AliasTermKind<'tcx>) {
         match kind {
+            ty::AliasTermKind::EvidenceProjectionTy { projection } => {
+                self.debug_assert_alias_term_kind_matches_def_kind(
+                    ty::AliasTermKind::ProjectionTy { def_id: projection.item_def_id },
+                );
+            }
+            ty::AliasTermKind::EvidenceProjectionConst { projection } => {
+                self.debug_assert_alias_term_kind_matches_def_kind(
+                    ty::AliasTermKind::ProjectionConst { def_id: projection.item_def_id },
+                );
+            }
             ty::AliasTermKind::ProjectionTy { def_id } => {
                 debug_assert_matches!(self.def_kind(def_id), DefKind::AssocTy);
                 debug_assert_matches!(
@@ -2556,6 +2670,14 @@ impl<'tcx> TyCtxt<'tcx> {
         T: CollectAndApply<CanonicalVarKind<'tcx>, &'tcx List<CanonicalVarKind<'tcx>>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_canonical_var_kinds(xs))
+    }
+
+    pub fn mk_trait_evidences_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<TraitEvidence<'tcx>, TraitEvidences<'tcx>>,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_trait_evidences(xs))
     }
 
     pub fn mk_place_elems_from_iter<I, T>(self, iter: I) -> T::Output

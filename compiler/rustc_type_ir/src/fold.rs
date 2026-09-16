@@ -148,6 +148,37 @@ pub trait TypeFolder<I: Interner>: Sized {
         c.super_fold_with(self)
     }
 
+    /// Folds the identity, clauses, and substitution of an interned contract.
+    fn fold_bound_required_contract(
+        &mut self,
+        contract: I::BoundRequiredContract,
+    ) -> I::BoundRequiredContract {
+        self.cx().mk_bound_required_contract((*contract).clone().fold_with(self))
+    }
+
+    /// Folds one compiler-internal trait evidence value.
+    ///
+    /// Bound and placeholder evidence are not represented by ordinary generic
+    /// arguments. This hook lets binder substitution replace those values
+    /// without teaching every evidence consumer about the traversal.
+    fn fold_trait_evidence(&mut self, evidence: I::TraitEvidence) -> I::TraitEvidence {
+        self.cx().mk_trait_evidence_data((*evidence).clone().fold_with(self))
+    }
+
+    /// Folds the proof payload of an evidence-indexed projection.
+    ///
+    /// This hook is separate from [`TypeFolder::fold_ty`] and
+    /// [`TypeFolder::fold_const`] because an [`ty::AliasTerm`] may carry an
+    /// evidence projection without first being wrapped in either one. It also
+    /// lets folders distinguish the selected proof recipe from the associated
+    /// item's own arguments in `Alias::args`.
+    fn fold_evidence_projection(
+        &mut self,
+        projection: I::EvidenceProjection,
+    ) -> I::EvidenceProjection {
+        self.cx().mk_evidence_projection((*projection).fold_with(self))
+    }
+
     fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         p.super_fold_with(self)
     }
@@ -215,6 +246,30 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
 
     fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Self::Error> {
         c.try_super_fold_with(self)
+    }
+
+    /// Fallible counterpart of [`TypeFolder::fold_bound_required_contract`].
+    fn try_fold_bound_required_contract(
+        &mut self,
+        contract: I::BoundRequiredContract,
+    ) -> Result<I::BoundRequiredContract, Self::Error> {
+        Ok(self.cx().mk_bound_required_contract((*contract).clone().try_fold_with(self)?))
+    }
+
+    /// Fallible counterpart of [`TypeFolder::fold_trait_evidence`].
+    fn try_fold_trait_evidence(
+        &mut self,
+        evidence: I::TraitEvidence,
+    ) -> Result<I::TraitEvidence, Self::Error> {
+        Ok(self.cx().mk_trait_evidence_data((*evidence).clone().try_fold_with(self)?))
+    }
+
+    /// Fallible counterpart of [`TypeFolder::fold_evidence_projection`].
+    fn try_fold_evidence_projection(
+        &mut self,
+        projection: I::EvidenceProjection,
+    ) -> Result<I::EvidenceProjection, Self::Error> {
+        Ok(self.cx().mk_evidence_projection((*projection).try_fold_with(self)?))
     }
 
     fn try_fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> Result<P, Self::Error> {
@@ -460,6 +515,27 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
         }
     }
 
+    fn fold_trait_evidence(&mut self, evidence: I::TraitEvidence) -> I::TraitEvidence {
+        match &evidence.kind {
+            ty::solve::TraitEvidenceKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound)
+                if *debruijn >= self.current_index =>
+            {
+                let trait_ref = evidence.trait_ref.fold_with(self);
+                self.cx.mk_trait_evidence_kind(
+                    trait_ref,
+                    ty::solve::TraitEvidenceKind::Bound(
+                        ty::BoundVarIndexKind::Bound(debruijn.shifted_in(self.amount)),
+                        *bound,
+                    ),
+                )
+            }
+            _ if evidence.has_vars_bound_at_or_above(self.current_index) => {
+                self.cx.mk_trait_evidence_data((*evidence).clone().fold_with(self))
+            }
+            _ => evidence,
+        }
+    }
+
     fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
     }
@@ -664,6 +740,15 @@ impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
     #[inline]
     fn cx(&self) -> I {
         self.cx
+    }
+
+    fn fold_evidence_projection(
+        &mut self,
+        projection: I::EvidenceProjection,
+    ) -> I::EvidenceProjection {
+        // Rigidity belongs to the alias, not its selected proof. Preserve the
+        // interned recipe while folding the associated item's own arguments.
+        projection
     }
 
     fn fold_binder<T: TypeFoldable<I>>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T> {

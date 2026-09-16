@@ -234,7 +234,12 @@ pub fn compute_alias_components_recursive<I: Interner>(
 
     let mut visitor = OutlivesCollector { cx, out, visited: Default::default() };
 
-    for (index, child) in alias_ty.args.iter().enumerate() {
+    // Evidence projections store trait and `Self` arguments exclusively in
+    // their proof recipe. Outlives decomposition must nevertheless consider
+    // the same full argument list as a surface projection; using `args` alone
+    // would make a non-GAT associated type have no components and therefore
+    // vacuously outlive every region.
+    for (index, child) in alias_ty.full_args(cx).iter().enumerate() {
         if opt_variances.and_then(|variances| variances.get(index)) == Some(ty::Bivariant) {
             continue;
         }
@@ -268,16 +273,19 @@ pub fn declared_bounds_from_definition<I: Interner>(
     cx: I,
     alias_ty: AliasTy<I>,
 ) -> impl Iterator<Item = Region<I>> {
-    let def_id = match alias_ty.kind {
-        ty::AliasTyKind::Projection { def_id } => def_id.into(),
-        ty::AliasTyKind::Inherent { def_id } => def_id.into(),
-        ty::AliasTyKind::Opaque { def_id } => def_id.into(),
-        ty::AliasTyKind::Free { def_id } => def_id.into(),
+    let (def_id, args) = match alias_ty.kind {
+        ty::AliasTyKind::Projection { def_id } => (def_id.into(), alias_ty.args),
+        ty::AliasTyKind::EvidenceProjection { projection } => {
+            (projection.item_def_id.into(), alias_ty.full_args(cx))
+        }
+        ty::AliasTyKind::Inherent { def_id } => (def_id.into(), alias_ty.args),
+        ty::AliasTyKind::Opaque { def_id } => (def_id.into(), alias_ty.args),
+        ty::AliasTyKind::Free { def_id } => (def_id.into(), alias_ty.args),
     };
 
     let bounds = cx.item_self_bounds(def_id);
     bounds
-        .iter_instantiated(cx, alias_ty.args)
+        .iter_instantiated(cx, args)
         .map(Unnormalized::skip_norm_wip)
         .filter_map(|c| c.as_type_outlives_clause())
         .filter_map(|c| c.no_bound_vars())

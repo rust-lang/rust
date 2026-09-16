@@ -24,6 +24,10 @@ where
         goal: Goal<I, ProjectionClause<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         match goal.predicate.projection_term.kind {
+            ty::AliasTermKind::EvidenceProjectionTy { .. }
+            | ty::AliasTermKind::EvidenceProjectionConst { .. } => {
+                Err(crate::solve::NoSolution.into())
+            }
             ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. } => {
                 self.normalize_associated_term(goal)
             }

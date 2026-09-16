@@ -51,8 +51,9 @@ use rustc_index::{Idx, IndexVec};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
+use crate::fold::PredicateProxy;
 use crate::inherent::*;
-use crate::{self as ty, Interner, PredicateProxy, Region, TypeFlags};
+use crate::{self as ty, Interner, Region, TypeFlags};
 
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.
@@ -114,6 +115,25 @@ pub trait TypeVisitor<I: Interner>: Sized {
 
     fn visit_const(&mut self, c: I::Const) -> Self::Result {
         c.super_visit_with(self)
+    }
+
+    /// Visits one compiler-internal trait evidence value.
+    ///
+    /// This is a separate hook because evidence is not a generic argument and
+    /// its bound, placeholder, selected, and error states need
+    /// custom handling by binder-aware visitors.
+    fn visit_trait_evidence(&mut self, evidence: I::TraitEvidence) -> Self::Result {
+        (*evidence).visit_with(self)
+    }
+
+    /// Visits the identity-bearing payload of an evidence-indexed projection.
+    ///
+    /// Unlike an evidence projection nested in an interned `Ty` or `Const`, an
+    /// `AliasTerm` stores this payload directly. Giving it a dedicated visitor
+    /// hook lets flag queries observe the projection itself instead of seeing
+    /// only the types contained in its proof recipe.
+    fn visit_evidence_projection(&mut self, projection: I::EvidenceProjection) -> Self::Result {
+        (*projection).visit_with(self)
     }
 
     fn visit_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> Self::Result {
@@ -379,6 +399,11 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
     fn has_non_rigid_aliases(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_NON_RIGID_ALIAS)
     }
+
+    /// True if this value contains an evidence-indexed projection.
+    fn has_evidence_projections(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_EVIDENCE_PROJECTION)
+    }
 }
 
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitableExt<I> for T {
@@ -481,6 +506,39 @@ impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::Continue(())
+        }
+    }
+
+    #[inline]
+    fn visit_trait_evidence(&mut self, evidence: I::TraitEvidence) -> Self::Result {
+        // Trait evidence uses the existing type-state flags so all generic
+        // pruning continues to account for unresolved proof values without
+        // spending another bit in `TypeFlags`.
+        let evidence_flags = match &evidence.kind {
+            ty::solve::TraitEvidenceKind::Selected(_) => TypeFlags::empty(),
+            ty::solve::TraitEvidenceKind::Bound(index, _) => {
+                let mut flags = TypeFlags::HAS_TY_BOUND;
+                if matches!(index, ty::BoundVarIndexKind::Canonical) {
+                    flags.insert(TypeFlags::HAS_CANONICAL_BOUND);
+                }
+                flags
+            }
+            ty::solve::TraitEvidenceKind::Placeholder(_) => TypeFlags::HAS_TY_PLACEHOLDER,
+            ty::solve::TraitEvidenceKind::Error(_) => TypeFlags::HAS_NON_REGION_ERROR,
+        };
+        if self.flags.intersects(evidence_flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            (*evidence).visit_with(self)
+        }
+    }
+
+    #[inline]
+    fn visit_evidence_projection(&mut self, projection: I::EvidenceProjection) -> Self::Result {
+        if self.flags.intersects(TypeFlags::HAS_EVIDENCE_PROJECTION) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            (*projection).visit_with(self)
         }
     }
 
@@ -593,6 +651,18 @@ impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor {
             ControlFlow::Break(FoundEscapingVars)
         } else {
             ControlFlow::Continue(())
+        }
+    }
+
+    #[inline]
+    fn visit_trait_evidence(&mut self, evidence: I::TraitEvidence) -> Self::Result {
+        if let ty::solve::TraitEvidenceKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), _) =
+            &evidence.kind
+            && *debruijn >= self.outer_index
+        {
+            ControlFlow::Break(FoundEscapingVars)
+        } else {
+            (*evidence).visit_with(self)
         }
     }
 

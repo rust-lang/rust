@@ -358,6 +358,7 @@ pub(crate) fn print_const(tcx: TyCtxt<'_>, n: ty::Const<'_>) -> String {
         ty::ConstKind::Alias(_, ty::AliasConst { kind, .. }) => {
             let def_id: DefId = match kind {
                 ty::AliasConstKind::Projection { def_id } => def_id.into(),
+                ty::AliasConstKind::EvidenceProjection { projection } => projection.item_def_id,
                 ty::AliasConstKind::InherentSelf { def_id } => def_id.into(),
                 ty::AliasConstKind::InherentImpl { def_id } => def_id.into(),
                 ty::AliasConstKind::Free { def_id } => def_id.into(),

@@ -8,10 +8,10 @@
 
 use std::hash::Hash;
 use std::intrinsics;
-use std::marker::{DiscriminantKind, PointeeSized};
+use std::marker::{DiscriminantKind, PhantomData, PointeeSized};
 
 use rustc_abi::FieldIdx;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::Const;
 use rustc_serialize::{Decodable, Encodable};
@@ -20,6 +20,7 @@ use rustc_span::{Span, SpanDecoder, SpanEncoder, Spanned};
 use crate::infer::canonical::{CanonicalVarKind, CanonicalVarKinds};
 use crate::mir::interpret::{AllocId, ConstAllocation, CtfeProvenance};
 use crate::mono::MonoItem;
+use crate::traits::solve::{BoundRequiredContract, TraitEvidence, TraitEvidences};
 use crate::ty::{self, AdtDef, GenericArgsRef, Ty, TyCtxt};
 use crate::{mir, traits};
 
@@ -37,6 +38,8 @@ pub trait TyEncoder<'tcx>: SpanEncoder {
 
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize>;
 
+    fn trait_evidence_shorthands(&mut self) -> &mut FxHashMap<TraitEvidence<'tcx>, usize>;
+
     fn encode_alloc_id(&mut self, alloc_id: &AllocId);
 }
 
@@ -48,6 +51,16 @@ pub trait TyDecoder<'tcx>:
     fn cached_ty_for_shorthand<F>(&mut self, shorthand: usize, or_insert_with: F) -> Ty<'tcx>
     where
         F: FnOnce(&mut Self) -> Ty<'tcx>;
+
+    fn cached_trait_evidence_for_shorthand<F>(
+        &mut self,
+        shorthand: usize,
+        or_insert_with: F,
+    ) -> TraitEvidence<'tcx>
+    where
+        F: FnOnce(&mut Self) -> TraitEvidence<'tcx>;
+
+    fn trait_evidence_in_progress(&mut self) -> &mut FxHashSet<usize>;
 
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
     where
@@ -208,6 +221,36 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::ParamEnv<'tcx> {
     }
 }
 
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for BoundRequiredContract<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.0.0.encode(e);
+    }
+}
+
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for TraitEvidence<'tcx> {
+    fn encode(&self, e: &mut E) {
+        if let Some(&shorthand) = e.trait_evidence_shorthands().get(self) {
+            e.emit_usize(shorthand);
+            return;
+        }
+
+        self.assert_well_formed();
+        let start = e.position();
+        // The data starts with a trait ref, so use an explicit inline marker instead
+        // of relying on the enum discriminant as type shorthands do.
+        e.emit_usize(0);
+        self.0.0.encode(e);
+        e.trait_evidence_shorthands().insert(*self, start + SHORTHAND_OFFSET);
+    }
+}
+
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for traits::solve::EvidenceProjection<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.evidence.assert_well_formed();
+        self.0.0.encode(e);
+    }
+}
+
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
     #[allow(rustc::usage_of_ty_tykind)]
     fn decode(decoder: &mut D) -> Ty<'tcx> {
@@ -284,6 +327,15 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for CanonicalVarKinds<'tcx> {
     }
 }
 
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for TraitEvidences<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        let len = decoder.read_usize();
+        decoder.interner().mk_trait_evidences_from_iter(
+            (0..len).map::<traits::solve::TraitEvidence<'tcx>, _>(|_| Decodable::decode(decoder)),
+        )
+    }
+}
+
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for AllocId {
     fn decode(decoder: &mut D) -> Self {
         decoder.decode_alloc_id()
@@ -307,6 +359,62 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::ParamEnv<'tcx> {
     fn decode(d: &mut D) -> Self {
         let caller_bounds = Decodable::decode(d);
         ty::ParamEnv { caller_bounds }
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for BoundRequiredContract<'tcx> {
+    fn decode(d: &mut D) -> Self {
+        let data: ty::BoundRequiredContractData<TyCtxt<'tcx>> = Decodable::decode(d);
+        d.interner().mk_bound_required_contract(data)
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for TraitEvidence<'tcx> {
+    fn decode(d: &mut D) -> Self {
+        let start = d.position();
+        let marker = d.read_usize();
+        if marker != 0 {
+            assert!(marker >= SHORTHAND_OFFSET);
+            let shorthand = marker - SHORTHAND_OFFSET;
+            assert!(shorthand < start, "trait evidence shorthand must refer to earlier data");
+            assert!(
+                !d.trait_evidence_in_progress().contains(&shorthand),
+                "cycle in trait evidence shorthands"
+            );
+            d.cached_trait_evidence_for_shorthand(shorthand, |d| {
+                d.with_position(shorthand, Self::decode)
+            })
+        } else {
+            struct ActiveEvidence<'a, 'tcx, D: TyDecoder<'tcx>> {
+                decoder: &'a mut D,
+                position: usize,
+                marker: PhantomData<&'tcx ()>,
+            }
+            impl<'tcx, D: TyDecoder<'tcx>> Drop for ActiveEvidence<'_, 'tcx, D> {
+                fn drop(&mut self) {
+                    self.decoder.trait_evidence_in_progress().remove(&self.position);
+                }
+            }
+
+            assert!(
+                d.trait_evidence_in_progress().insert(start),
+                "cycle in trait evidence shorthands"
+            );
+            let guard = ActiveEvidence { decoder: d, position: start, marker: PhantomData };
+            let d = &mut *guard.decoder;
+            let data: traits::solve::TraitEvidenceData<TyCtxt<'tcx>> = Decodable::decode(d);
+            let evidence = d.interner().mk_trait_evidence_data(data);
+            // Cache inline entries too, so the next edge to a shared proof never
+            // needs to decode its nested proofs again.
+            d.cached_trait_evidence_for_shorthand(start, |_| evidence)
+        }
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for traits::solve::EvidenceProjection<'tcx> {
+    fn decode(d: &mut D) -> Self {
+        let data: ty::EvidenceProjectionData<TyCtxt<'tcx>> = Decodable::decode(d);
+        d.interner().mk_evidence_projection(data)
     }
 }
 

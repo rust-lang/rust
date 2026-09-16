@@ -1071,10 +1071,12 @@ where
     ) -> I::Term {
         match alias_term.kind {
             ty::AliasTermKind::ProjectionTy { .. }
+            | ty::AliasTermKind::EvidenceProjectionTy { .. }
             | ty::AliasTermKind::InherentTy { .. }
             | ty::AliasTermKind::OpaqueTy { .. }
             | ty::AliasTermKind::FreeTy { .. } => self.next_ty_infer().into(),
             ty::AliasTermKind::FreeConst { .. }
+            | ty::AliasTermKind::EvidenceProjectionConst { .. }
             | ty::AliasTermKind::InherentConstSelf { .. }
             | ty::AliasTermKind::InherentConstImpl { .. }
             | ty::AliasTermKind::AnonConst { .. }

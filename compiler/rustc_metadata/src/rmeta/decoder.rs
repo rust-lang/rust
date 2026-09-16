@@ -10,7 +10,7 @@ pub(super) use cstore_impl::provide;
 use rustc_ast as ast;
 use rustc_crate_store::{CrateSource, ExternCrate};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
@@ -25,6 +25,7 @@ use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_index::Idx;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
+use rustc_middle::traits::solve::TraitEvidence;
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::{RestrictionKind, Visibility};
 use rustc_middle::{bug, implement_ty_decoder};
@@ -228,6 +229,7 @@ impl<'a> LazyDecoder for BlobDecodeContext<'a> {
 pub(super) struct MetadataDecodeContext<'a, 'tcx> {
     blob_decoder: BlobDecodeContext<'a>,
     cdata: &'a CrateMetadata,
+    trait_evidence_in_progress: FxHashSet<usize>,
     tcx: TyCtxt<'tcx>,
 
     // Used for decoding interpret::AllocIds in a cached & thread-safe manner.
@@ -306,6 +308,7 @@ impl<'a, 'tcx> MetaDecoder for (&'a CrateMetadata, TyCtxt<'tcx>) {
         MetadataDecodeContext {
             blob_decoder: self.0.blob().decoder(pos),
             cdata: self.0,
+            trait_evidence_in_progress: Default::default(),
             tcx: self.1,
             alloc_decoding_session: self.0.alloc_decoding_state.new_decoding_session(),
         }
@@ -418,6 +421,29 @@ impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
         let ty = or_insert_with(self);
         tcx.caches.ty_rcache.borrow_mut().insert(key, ty);
         ty
+    }
+
+    fn cached_trait_evidence_for_shorthand<F>(
+        &mut self,
+        shorthand: usize,
+        or_insert_with: F,
+    ) -> TraitEvidence<'tcx>
+    where
+        F: FnOnce(&mut Self) -> TraitEvidence<'tcx>,
+    {
+        let tcx = self.tcx;
+        let key = ty::CReaderCacheKey { cnum: Some(self.cdata.cnum), pos: shorthand };
+        if let Some(&evidence) = tcx.caches.trait_evidence_rcache.borrow().get(&key) {
+            return evidence;
+        }
+
+        let evidence = or_insert_with(self);
+        tcx.caches.trait_evidence_rcache.borrow_mut().insert(key, evidence);
+        evidence
+    }
+
+    fn trait_evidence_in_progress(&mut self) -> &mut FxHashSet<usize> {
+        &mut self.trait_evidence_in_progress
     }
 
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R

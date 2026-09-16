@@ -853,6 +853,10 @@ where
 
             ty::Alias(ty::IsRigid::No, _) => unreachable!("non-rigid self type: {self_ty:?}"),
 
+            ty::Alias(ty::IsRigid::Yes, AliasTy { kind: ty::EvidenceProjection { .. }, .. }) => {
+                unreachable!("evidence projection in alias bound candidate assembly")
+            }
+
             ty::Alias(
                 ty::IsRigid::Yes,
                 AliasTy { kind: ty::Inherent { .. } | ty::Free { .. }, .. },

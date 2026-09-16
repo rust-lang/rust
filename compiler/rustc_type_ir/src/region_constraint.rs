@@ -950,23 +950,7 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
     //
     // we don't care about this when rewriting in the root universe as we know the complete set of assumptions
     if max_universe(infcx, bound_outlives) == u {
-        let mut replacer = PlaceholderReplacer {
-            cx: infcx.cx(),
-            existing_var_count: bound_outlives.bound_vars().len(),
-            bound_vars: IndexMap::default(),
-            universe: u,
-            current_index: DebruijnIndex::ZERO,
-        };
-        let escaping_outlives = bound_outlives.skip_binder().fold_with(&mut replacer);
-        let bound_vars = bound_outlives.bound_vars().iter().chain(
-            core::mem::take(&mut replacer.bound_vars)
-                .into_iter()
-                .map(|(_, bound_region)| BoundVariableKind::Region(bound_region.kind)),
-        );
-        let bound_outlives = Binder::bind_with_vars(
-            escaping_outlives,
-            I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
-        );
+        let bound_outlives = bind_placeholder_regions(infcx.cx(), bound_outlives, u);
         let candidate = Or::new_leaf(AliasTyOutlivesViaEnv(bound_outlives, ()));
         if max_universe(infcx, candidate.clone()) < u {
             candidates.push(candidate);
@@ -994,25 +978,10 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
     // given a list of regions which outlive `'u2`
     //
     // we don't care about this when rewriting in the root universe as we know the complete set of assumptions
-    let (escaping_alias, escaping_r) = bound_outlives.skip_binder();
+    let (_, escaping_r) = bound_outlives.skip_binder();
     if max_universe(infcx, escaping_r) == u {
-        let mut replacer = PlaceholderReplacer {
-            cx: infcx.cx(),
-            existing_var_count: bound_outlives.bound_vars().len(),
-            bound_vars: IndexMap::default(),
-            universe: u,
-            current_index: DebruijnIndex::ZERO,
-        };
-        let escaping_alias = escaping_alias.fold_with(&mut replacer);
-        let bound_vars = bound_outlives.bound_vars().iter().chain(
-            core::mem::take(&mut replacer.bound_vars)
-                .into_iter()
-                .map(|(_, bound_region)| BoundVariableKind::Region(bound_region.kind)),
-        );
-        let bound_alias = Binder::bind_with_vars(
-            escaping_alias,
-            I::BoundVarKinds::from_vars(infcx.cx(), bound_vars),
-        );
+        let bound_alias =
+            bind_placeholder_regions(infcx.cx(), bound_outlives.map_bound(|(alias, _)| alias), u);
 
         // while we did skip the binder, bound vars aren't in any universe so
         // this can't be an escaping bound var
@@ -1090,6 +1059,85 @@ pub fn regions_outlived_by_placeholder<I: Interner>(
         Some(OutlivesClause(ty, r)) => (ty == t).then_some(r),
         None => Some(Region::new_static(cx)),
     })
+}
+
+fn bind_placeholder_regions<I: Interner, T: TypeFoldable<I>>(
+    cx: I,
+    binder: Binder<I, T>,
+    universe: UniverseIndex,
+) -> Binder<I, T> {
+    let ordinary_count = binder.ordinary_bound_var_count();
+    let mut replacer = PlaceholderReplacer {
+        cx,
+        existing_var_count: ordinary_count,
+        bound_vars: IndexMap::default(),
+        universe,
+        current_index: DebruijnIndex::ZERO,
+    };
+    // Declarations and value share the same mapping, including placeholders
+    // occurring only in a declaration's predicate or required contract.
+    let original_bound_vars = binder.bound_vars();
+    let value = binder.skip_binder().fold_with(&mut replacer);
+    let entries: Vec<_> =
+        original_bound_vars.iter().map(|entry| entry.fold_with(&mut replacer)).collect();
+    let new_regions: Vec<_> = replacer
+        .bound_vars
+        .into_iter()
+        .map(|(_, region)| BoundVariableKind::Region(region.kind))
+        .collect();
+    let mut reindex = ReindexEvidence {
+        cx,
+        ordinary_count,
+        amount: new_regions.len(),
+        current_index: DebruijnIndex::ZERO,
+    };
+    let value = value.fold_with(&mut reindex);
+    let entries: Vec<_> = entries.into_iter().map(|entry| entry.fold_with(&mut reindex)).collect();
+    let bound_vars = I::BoundVarKinds::from_vars(
+        cx,
+        entries[..ordinary_count]
+            .iter()
+            .copied()
+            .chain(new_regions)
+            .chain(entries[ordinary_count..].iter().copied()),
+    );
+    Binder::bind_with_vars(value, bound_vars)
+}
+
+/// Inserting regions before the evidence suffix moves only that binder's
+/// evidence slots. Nested binders' own slots and canonical scopes stay intact.
+struct ReindexEvidence<I: Interner> {
+    cx: I,
+    ordinary_count: usize,
+    amount: usize,
+    current_index: DebruijnIndex,
+}
+
+impl<I: Interner> TypeFolder<I> for ReindexEvidence<I> {
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn fold_binder<T: TypeFoldable<I>>(&mut self, binder: Binder<I, T>) -> Binder<I, T> {
+        self.current_index.shift_in(1);
+        let binder = binder.super_fold_with(self);
+        self.current_index.shift_out(1);
+        binder
+    }
+
+    fn fold_trait_evidence(&mut self, evidence: I::TraitEvidence) -> I::TraitEvidence {
+        let mut data = (*evidence).clone().fold_with(self);
+        if let crate::solve::TraitEvidenceKind::Bound(crate::BoundVarIndexKind::Bound(index), bound) =
+            &mut data.kind
+            && *index == self.current_index
+        {
+            assert!(bound.var().as_usize() >= self.ordinary_count);
+            *bound = crate::BoundEvidence::new(BoundVar::from_usize(
+                bound.var().as_usize() + self.amount,
+            ));
+        }
+        self.cx.mk_trait_evidence_data(data)
+    }
 }
 
 pub struct PlaceholderReplacer<I: Interner> {

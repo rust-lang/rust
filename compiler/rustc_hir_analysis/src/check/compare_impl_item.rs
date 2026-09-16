@@ -2702,7 +2702,7 @@ fn param_env_with_gat_bounds<'tcx>(
                     .into()
                 }
                 GenericParamDefKind::Const { .. } => {
-                    let bound_var = ty::BoundVariableKind::Const;
+                    let bound_var = ty::BoundVariableKind::Const(None);
                     bound_vars.push(bound_var);
                     ty::Const::new_bound(
                         tcx,

@@ -163,9 +163,14 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::FreshTy(_)) => "fresh type".into(),
             ty::Infer(ty::FreshIntTy(_)) => "fresh integral type".into(),
             ty::Infer(ty::FreshFloatTy(_)) => "fresh floating-point type".into(),
-            ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. } | ty::Inherent { .. }, .. }) => {
-                "associated type".into()
-            }
+            ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind:
+                        ty::Projection { .. } | ty::EvidenceProjection { .. } | ty::Inherent { .. },
+                    ..
+                },
+            ) => "associated type".into(),
             ty::Param(p) => format!("type parameter `{p}`").into(),
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
                 if tcx.ty_is_opaque_future(self) { "future".into() } else { "opaque type".into() }
@@ -222,9 +227,14 @@ impl<'tcx> Ty<'tcx> {
             ty::Tuple(..) => "tuple".into(),
             ty::Placeholder(..) => "higher-ranked type".into(),
             ty::Bound(..) => "bound type variable".into(),
-            ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. } | ty::Inherent { .. }, .. }) => {
-                "associated type".into()
-            }
+            ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind:
+                        ty::Projection { .. } | ty::EvidenceProjection { .. } | ty::Inherent { .. },
+                    ..
+                },
+            ) => "associated type".into(),
             ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. }) => "type alias".into(),
             ty::Param(_) => "type parameter".into(),
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => "opaque type".into(),
@@ -336,6 +346,10 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::AliasTermKind::FreeConst { def_id }
             | ty::AliasTermKind::InherentConstSelf { def_id }
             | ty::AliasTermKind::InherentConstImpl { def_id } => self.def_path_str(def_id),
+            ty::AliasTermKind::EvidenceProjectionTy { projection }
+            | ty::AliasTermKind::EvidenceProjectionConst { projection } => {
+                self.def_path_str(projection.item_def_id)
+            }
         }
     }
 }

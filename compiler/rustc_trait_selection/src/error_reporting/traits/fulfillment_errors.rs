@@ -2011,7 +2011,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::Closure(..) => Some(9),
                 ty::Tuple(..) => Some(10),
                 ty::Param(..) => Some(11),
-                ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. }, .. }) => Some(12),
+                ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Projection { .. } | ty::EvidenceProjection { .. }, ..
+                    },
+                ) => Some(12),
                 ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }) => Some(13),
                 ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => Some(14),
                 ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. }) => Some(15),

@@ -178,11 +178,13 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
                 // The old solver only accepts projection predicates for associated types.
                 ty::AliasTermKind::InherentTy { .. }
+                | ty::AliasTermKind::EvidenceProjectionTy { .. }
                 | ty::AliasTermKind::FreeTy { .. }
                 | ty::AliasTermKind::OpaqueTy { .. } => {
                     return Err(TypeError::CyclicTy(source_term.expect_type()));
                 }
                 ty::AliasTermKind::InherentConstSelf { .. }
+                | ty::AliasTermKind::EvidenceProjectionConst { .. }
                 | ty::AliasTermKind::InherentConstImpl { .. }
                 | ty::AliasTermKind::FreeConst { .. }
                 | ty::AliasTermKind::AnonConst { .. } => {

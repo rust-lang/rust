@@ -7,6 +7,31 @@ use rustc_type_ir_macros::{
 
 use crate::{AliasConstKind, AliasTermKind, AliasTyKind, Interner};
 
+/// Interned identity of an associated type or const projection whose trait
+/// proof has already been elaborated.
+///
+/// The associated item's own generic arguments remain in [`Alias::args`].
+/// Trait and `Self` arguments are obtained exclusively from `evidence`, so the
+/// projection cannot drift to a different trait candidate during normalization.
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
+)]
+pub struct EvidenceProjectionData<I: Interner> {
+    pub item_def_id: I::TraitAssocTermId,
+    pub evidence: I::TraitEvidence,
+}
+
+impl<I: Interner> Eq for EvidenceProjectionData<I> {}
+
+impl<I: Interner> EvidenceProjectionData<I> {
+    pub fn trait_ref(self) -> crate::TraitRef<I> {
+        self.evidence.trait_ref
+    }
+}
+
 /// Represents an alias of a type, constant, or other term-like item.
 ///
 /// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
