@@ -2,15 +2,38 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
+use rustc_infer::infer::{SubregionOrigin, TypeOutlivesConstraint};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Flags, ImplTraitInTraitData, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
+use rustc_span::DUMMY_SP;
 
 use crate::infer::outlives::test_type_match;
 use crate::infer::region_constraints::VerifyIfEq;
-use crate::regions::{region_known_to_outlive, ty_known_to_outlive};
+use crate::regions::{region_known_to_outlive, test_region_obligations};
+
+// no normalization is needed because only identity params reach here
+fn param_known_to_outlive<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    id: LocalDefId,
+    param_env: ty::ParamEnv<'tcx>,
+    wf_tys: &FxIndexSet<Ty<'tcx>>,
+    ty: Ty<'tcx>,
+    region: ty::Region<'tcx>,
+) -> bool {
+    debug_assert!(matches!(ty.kind(), ty::Param(_)));
+
+    test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
+        infcx.register_type_outlives_constraint_inner(TypeOutlivesConstraint {
+            sub_region: region,
+            sup_type: ty,
+            origin: SubregionOrigin::RelateParamBound(DUMMY_SP, ty, None),
+        });
+        true
+    })
+}
 
 /// For a given alias type, this returns the set of indices into the identity generic args that
 /// are relevant for liveness, that can be inferred from outlives bounds on the
@@ -235,7 +258,7 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
                 ty::GenericArgKind::Const(_) => continue,
                 // Lifetimes should be captured
                 ty::GenericArgKind::Lifetime(_) => continue,
-                ty::GenericArgKind::Type(t) => ty_known_to_outlive(
+                ty::GenericArgKind::Type(t) => param_known_to_outlive(
                     tcx,
                     def_id,
                     parent_param_env,
@@ -296,7 +319,7 @@ pub(crate) fn args_known_to_outlive_non_opaque_params<'tcx>(
                     region_known_to_outlive(tcx, def_id, param_env, &wf_tys, r, outlived_region)
                 }
                 ty::GenericArgKind::Type(t) => {
-                    ty_known_to_outlive(tcx, def_id, param_env, &wf_tys, t, outlived_region)
+                    param_known_to_outlive(tcx, def_id, param_env, &wf_tys, t, outlived_region)
                 }
                 ty::GenericArgKind::Const(_) => false,
             };
