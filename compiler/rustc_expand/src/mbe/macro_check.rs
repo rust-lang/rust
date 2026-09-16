@@ -105,7 +105,7 @@
 //! stored when entering a macro definition starting from the state in which the meta-variable is
 //! bound.
 
-use rustc_ast::token::{Delimiter, IdentIsRaw, Token, TokenKind};
+use rustc_ast::token::{Delimiter, IdentKind, Token, TokenKind};
 use rustc_ast::{DUMMY_NODE_ID, NodeId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DecorateDiagCompat;
@@ -396,7 +396,10 @@ fn check_nested_occurrences(
         match (state, tt) {
             (
                 NestedMacroState::Empty,
-                &TokenTree::Token(Token { kind: TokenKind::Ident(name, IdentIsRaw::No), .. }),
+                &TokenTree::Token(Token {
+                    kind: TokenKind::Ident(name, IdentKind::Normal | IdentKind::ForcedKeyword),
+                    ..
+                }),
             ) => {
                 if name == kw::MacroRules {
                     state = NestedMacroState::MacroRules;

@@ -1,4 +1,5 @@
-#![feature(builtin_syntax)]
+//@ edition: 2021..
+#![feature(forced_keywords, internal_syntax)]
 
 use std::mem::offset_of;
 
@@ -9,10 +10,10 @@ fn main() {
     offset_of!((u8, u8), 1_u8); //~ ERROR no field `1_`
     //~| ERROR suffixes on a tuple index
 
-    builtin # offset_of((u8, u8), 1e2); //~ ERROR no field `1e2`
-    builtin # offset_of((u8, u8), _0); //~ ERROR no field `_0`
-    builtin # offset_of((u8, u8), 01); //~ ERROR no field `01`
-    builtin # offset_of((u8, u8), 1_u8); //~ ERROR no field `1_`
+    k#offset_of((u8, u8), 1e2); //~ ERROR no field `1e2`
+    k#offset_of((u8, u8), _0); //~ ERROR no field `_0`
+    k#offset_of((u8, u8), 01); //~ ERROR no field `01`
+    k#offset_of((u8, u8), 1_u8); //~ ERROR no field `1_`
     //~| ERROR suffixes on a tuple index
 
     offset_of!(((u8, u16), (u32, u16, u8)), 0.2); //~ ERROR no field `2`

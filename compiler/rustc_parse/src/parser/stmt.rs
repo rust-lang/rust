@@ -126,11 +126,7 @@ impl<'a> Parser<'a> {
                 diagnostics::InvalidVariableDeclarationSub::UseLetNotVar,
                 force_collect,
             )?
-        } else if self.check_path()
-            && !self.token.is_qpath_start()
-            && !self.is_path_start_item()
-            && !self.is_builtin()
-        {
+        } else if self.check_path() && !self.token.is_qpath_start() && !self.is_path_start_item() {
             // We have avoided contextual keywords like `union`, items with `crate` visibility,
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
             // that starts like a path (1 token), but it fact not a path.
@@ -1021,13 +1017,13 @@ impl<'a> Parser<'a> {
                                     if self.token == token::Colon
                                         && self.look_ahead(1, |token| {
                                             token.is_metavar_block()
-                                                || matches!(
-                                                    token.kind,
-                                                    token::Ident(
-                                                        kw::For | kw::Loop | kw::While,
-                                                        token::IdentIsRaw::No
-                                                    ) | token::OpenBrace
-                                                )
+                                                || token.kind == token::OpenBrace
+                                                || token.non_raw_ident().is_some_and(|id| {
+                                                    matches!(
+                                                        id.name,
+                                                        kw::For | kw::Loop | kw::While
+                                                    )
+                                                })
                                         })
                                     {
                                         let snapshot = self.create_snapshot_for_diagnostic();
