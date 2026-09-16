@@ -777,6 +777,61 @@ fn file_test_io_seek_read_write() {
 
 #[test]
 #[cfg(windows)]
+fn file_test_io_seek_read_exact_write_all() {
+    use crate::os::windows::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_rt_io_file_test_seek_read_exact_write_all.txt");
+    let mut buf = [0; 256];
+    let write1 = "asdf";
+    let write2 = "qwer-";
+    let write3 = "-zxcv";
+    let content = "qwer-asdf-zxcv";
+    {
+        let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+        let mut rw = check!(oo.open(&filename));
+        check!(rw.seek_write_all(write1.as_bytes(), 5));
+        assert_eq!(check!(rw.stream_position()), 9);
+        check!(rw.seek_read_exact(&mut buf[..write1.len()], 5));
+        assert_eq!(str::from_utf8(&buf[..write1.len()]), Ok(write1));
+        assert_eq!(check!(rw.stream_position()), 9);
+        assert_eq!(check!(rw.seek(SeekFrom::Start(0))), 0);
+        assert_eq!(check!(rw.write(write2.as_bytes())), write2.len());
+        assert_eq!(check!(rw.stream_position()), 5);
+        assert_eq!(check!(rw.read(&mut buf)), write1.len());
+        assert_eq!(str::from_utf8(&buf[..write1.len()]), Ok(write1));
+        assert_eq!(check!(rw.stream_position()), 9);
+        check!(rw.seek_read_exact(&mut buf[..write2.len()], 0));
+        assert_eq!(str::from_utf8(&buf[..write2.len()]), Ok(write2));
+        assert_eq!(check!(rw.stream_position()), 5);
+        check!(rw.seek_write_all(write3.as_bytes(), 9));
+        assert_eq!(check!(rw.stream_position()), 14);
+    }
+    {
+        let mut read = check!(File::open(&filename));
+        check!(read.seek_read_exact(&mut buf[..content.len()], 0));
+        assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
+        assert_eq!(check!(read.stream_position()), 14);
+        assert_eq!(check!(read.seek(SeekFrom::End(-5))), 9);
+        check!(read.seek_read_exact(&mut buf[..content.len()], 0));
+        assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
+        assert_eq!(check!(read.stream_position()), 14);
+        assert_eq!(check!(read.seek(SeekFrom::End(-5))), 9);
+        assert_eq!(check!(read.read(&mut buf)), write3.len());
+        assert_eq!(str::from_utf8(&buf[..write3.len()]), Ok(write3));
+        assert_eq!(check!(read.stream_position()), 14);
+        check!(read.seek_read_exact(&mut buf[..content.len()], 0));
+        assert_eq!(str::from_utf8(&buf[..content.len()]), Ok(content));
+        assert_eq!(check!(read.stream_position()), 14);
+        assert!(read.seek_read_exact(&mut buf, 14).is_err());
+        assert!(read.seek_read_exact(&mut buf, 15).is_err());
+    }
+    check!(fs::remove_file(&filename));
+}
+
+
+#[test]
+#[cfg(windows)]
 fn test_seek_read_buf() {
     use crate::os::windows::fs::FileExt;
 
