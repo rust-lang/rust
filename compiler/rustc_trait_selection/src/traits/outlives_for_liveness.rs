@@ -48,22 +48,16 @@ pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
     let outlives_regions: Vec<_> = bounds
         .iter()
         .filter_map(|clause| {
-            let outlives = clause.as_type_outlives_clause()?;
-            if let Some(outlives) = outlives.no_bound_vars()
-                && outlives.0 == alias_ty
-            {
-                Some(outlives.1)
-            } else {
-                test_type_match::extract_verify_if_eq(
-                    tcx,
-                    &outlives.map_bound(|ty::OutlivesClause(ty, bound)| VerifyIfEq { ty, bound }),
-                    // FIXME(#155345): Region handling should generally only
-                    // deal with rigid aliases, making sure we do so correctly
-                    // everywhere is effort, so we're just using `No` everywhere
-                    // for now. This should change soon.
-                    alias_ty,
-                )
+            let ty::OutlivesClause(ty, region) = clause.as_type_outlives_clause()?.skip_binder();
+            if ty != alias_ty {
+                return None;
             }
+
+            // Opaques can't have higher-ranked outlives item bounds. Higher-ranked item bounds
+            // for GATs are instantiated with the GAT identity params, so the alias doesn't
+            // contain any bound regions. If the region is bound, the alias outlives everything.
+            // For example: `for<'a> Self::Assoc<'non_bound>: 'a`.
+            if region.is_bound() { Some(tcx.lifetimes.re_static) } else { Some(region) }
         })
         .collect();
     tracing::debug!(?outlives_regions);
