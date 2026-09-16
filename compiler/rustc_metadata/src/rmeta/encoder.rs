@@ -43,7 +43,7 @@ use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::*;
 
 pub(super) struct EncodeContext<'a, 'tcx> {
-    opaque: opaque::FileEncoder<'a>,
+    pub(super) opaque: opaque::FileEncoder<'a>,
     pub(super) tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
     tables: TableBuilders,
@@ -71,7 +71,6 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
     pub(super) def_indexes_remapping: FxHashMap<DefIndex, DefIndex>,
-    can_remap_index: bool,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -546,6 +545,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             {
                 let def_key = defs.def_key(def_id);
                 let def_path_hash = defs.def_path_hash(def_id);
+                let def_id = def_id.to_def_id();
+
                 record!(self.tables.def_keys[def_id] <- def_key);
                 record_defaulted!(self.tables.def_path_hashes[def_id] <- def_path_hash.local_hash().as_u64())
             }
@@ -555,7 +556,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             data.sort_by_key(|(idx, ..)| self.map_index(*idx));
 
             for (def_index, def_key, def_path_hash) in data {
-                let def_id = LocalDefId { local_def_index: def_index };
+                let def_id = LocalDefId { local_def_index: def_index }.to_def_id();
 
                 record!(self.tables.def_keys[def_id] <- def_key);
                 record_defaulted!(self.tables.def_path_hashes[def_id] <- def_path_hash.local_hash().as_u64())
@@ -1468,26 +1469,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             attr_flags |= AttrFlags::IS_DOC_HIDDEN;
         }
 
-        record_defaulted!(self.tables.attr_flags[def_id] <- attr_flags)
+        record_defaulted!(self.tables.attr_flags[def_id.to_def_id()] <- attr_flags)
     }
 
-    #[inline(always)]
-    fn map_def_id(&self, def_id: impl Into<DefId>) -> DefId {
-        let def_id = def_id.into();
-        def_id
-            .as_local()
-            .and_then(|def_id| self.def_indexes_remapping.get(&def_id.local_def_index).copied())
-            .map(|index| DefId { index, krate: LOCAL_CRATE })
-            .unwrap_or(def_id)
+    fn map_def_id(&self, def_id: DefId) -> DefId {
+        if def_id.is_local() {
+            DefId { krate: LOCAL_CRATE, index: self.map_index(def_id.index) }
+        } else {
+            def_id
+        }
     }
 
-    #[inline(always)]
+    #[inline]
     fn map_index(&self, index: DefIndex) -> DefIndex {
-        self.def_indexes_remapping
-            .get(&index)
-            .filter(|_| self.can_remap_index)
-            .copied()
-            .unwrap_or(index)
+        self.def_indexes_remapping.get(&index).copied().unwrap_or(index)
     }
 
     fn encode_def_ids(&mut self) {
@@ -1929,7 +1924,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if encode_opt {
                 record!(self.tables.optimized_mir[def_id.to_def_id()] <- tcx.optimized_mir(def_id));
 
-                record_defaulted!(self.tables.cross_crate_inlinable[def_id] <- self.tcx.cross_crate_inlinable(def_id));
+                record_defaulted!(self.tables.cross_crate_inlinable[def_id.to_def_id()] <- self.tcx.cross_crate_inlinable(def_id));
 
                 record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
@@ -2038,7 +2033,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
 
         let (_, macro_def, _) = tcx.hir_expect_item(def_id).expect_macro();
-        record_defaulted!(self.tables.is_macro_rules[def_id] <- macro_def.macro_rules);
+        record_defaulted!(self.tables.is_macro_rules[def_id.to_def_id()] <- macro_def.macro_rules);
         record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body);
     }
 
@@ -2331,7 +2326,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 trait_impls
                     .entry(trait_ref.def_id)
                     .or_default()
-                    .push((self.map_def_id(id.owner_id.def_id).index, simplified_self_ty));
+                    .push((id.owner_id.def_id.local_def_index, simplified_self_ty));
 
                 let trait_def = tcx.trait_def(trait_ref.def_id);
                 if let Ok(mut an) = trait_def.ancestors(tcx, def_id)
@@ -2349,19 +2344,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
         }
 
-        self.can_remap_index = false;
         let trait_impls: Vec<_> = trait_impls
             .into_iter()
             .map(|(trait_def_id, impls)| TraitImpls {
-                trait_id: (trait_def_id.krate.as_u32(), self.map_def_id(trait_def_id).index),
+                trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
                 impls: self.lazy_array(&impls),
             })
             .collect();
 
-        let result = self.lazy_array(&trait_impls);
-        self.can_remap_index = true;
-
-        result
+        self.lazy_array(&trait_impls)
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -2682,7 +2673,6 @@ fn with_encode_metadata_header(
         hygiene_ctxt: Default::default(),
         symbol_index_table: Default::default(),
         def_indexes_remapping: Default::default(),
-        can_remap_index: true,
     };
 
     // Encode the rustc version string in a predictable location.
