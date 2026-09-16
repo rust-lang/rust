@@ -1537,8 +1537,7 @@ pub(crate) enum CsFold {
 
 /// Folds over fields, combining the expressions for each field in a sequence.
 /// Statics may not be folded over.
-pub(crate) fn cs_fold<F>(
-    use_foldl: bool,
+pub(crate) fn cs_foldr<F>(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     substructure: Substructure<'_>,
@@ -1550,8 +1549,7 @@ where
     match substructure.fields {
         EnumMatching(.., all_fields) | Struct(_, all_fields) => {
             let mut fields = all_fields.into_iter();
-
-            let base_field = if use_foldl { fields.next() } else { fields.next_back() };
+            let base_field = fields.next_back();
 
             let Some(base_field) = base_field else {
                 return f(cx, CsFold::Fieldless);
@@ -1565,16 +1563,12 @@ where
                 f(cx, CsFold::Combine(span, old, new))
             };
 
-            if use_foldl { fields.fold(base_expr, op) } else { fields.rfold(base_expr, op) }
+            fields.rfold(base_expr, op)
         }
         EnumDiscr(discr_field, match_expr) => {
             let discr_check_expr = f(cx, CsFold::Single(discr_field));
             if let Some(match_expr) = match_expr {
-                if use_foldl {
-                    f(cx, CsFold::Combine(trait_span, discr_check_expr, match_expr))
-                } else {
-                    f(cx, CsFold::Combine(trait_span, match_expr, discr_check_expr))
-                }
+                f(cx, CsFold::Combine(trait_span, match_expr, discr_check_expr))
             } else {
                 discr_check_expr
             }
