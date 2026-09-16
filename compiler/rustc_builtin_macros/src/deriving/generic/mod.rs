@@ -1519,56 +1519,44 @@ impl<'a> TraitDef<'a> {
     }
 }
 
-/// The function passed to `cs_fold` is called repeatedly with a value of this
-/// type. It describes one part of the code generation. The result is always an
-/// expression.
-pub(crate) enum CsFold {
-    /// The basic case: a field expression for one or more selflike args. E.g.
-    /// for `PartialEq::eq` this is something like `self.x == other.x`.
-    Single(FieldInfo),
-
-    /// The combination of two field expressions. E.g. for `PartialEq::eq` this
-    /// is something like `<field1 equality> && <field2 equality>`.
-    Combine(Span, Box<Expr>, Box<Expr>),
-
-    // The fallback case for a struct or enum variant with no fields.
-    Fieldless,
-}
-
 /// Folds over fields, combining the expressions for each field in a sequence.
 /// Statics may not be folded over.
-pub(crate) fn cs_foldr<F>(
+pub(crate) fn cs_foldr(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     substructure: Substructure<'_>,
-    mut f: F,
-) -> Box<Expr>
-where
-    F: FnMut(&ExtCtxt<'_>, CsFold) -> Box<Expr>,
-{
+    // The basic case: a field expression for one or more selflike args. E.g.
+    // for `PartialEq::eq` this is something like `self.x == other.x`.
+    single: impl Fn(FieldInfo) -> Box<Expr>,
+    // The combination of two field expressions. E.g. for `PartialEq::eq` this
+    // is something like `<field1 equality> && <field2 equality>`.
+    combine: impl Fn(Span, Box<Expr>, Box<Expr>) -> Box<Expr>,
+    // The fallback case for a struct or enum variant with no fields.
+    fieldless: impl Fn() -> Box<Expr>,
+) -> Box<Expr> {
     match substructure.fields {
         EnumMatching(.., all_fields) | Struct(_, all_fields) => {
             let mut fields = all_fields.into_iter();
             let base_field = fields.next_back();
 
             let Some(base_field) = base_field else {
-                return f(cx, CsFold::Fieldless);
+                return fieldless();
             };
 
-            let base_expr = f(cx, CsFold::Single(base_field));
+            let base_expr = single(base_field);
 
             let op = |old, field: FieldInfo| {
                 let span = field.span;
-                let new = f(cx, CsFold::Single(field));
-                f(cx, CsFold::Combine(span, old, new))
+                let new = single(field);
+                combine(span, old, new)
             };
 
             fields.rfold(base_expr, op)
         }
         EnumDiscr(discr_field, match_expr) => {
-            let discr_check_expr = f(cx, CsFold::Single(discr_field));
+            let discr_check_expr = single(discr_field);
             if let Some(match_expr) = match_expr {
-                f(cx, CsFold::Combine(trait_span, match_expr, discr_check_expr))
+                combine(trait_span, match_expr, discr_check_expr)
             } else {
                 discr_check_expr
             }

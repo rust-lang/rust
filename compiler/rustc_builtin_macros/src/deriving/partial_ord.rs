@@ -124,15 +124,18 @@ fn cs_partial_cmp(
     //         ::core::cmp::PartialOrd::partial_cmp(&self.y, &other.y),
     //     cmp => cmp,
     // }
-    let expr = cs_foldr(cx, span, substr, |cx, fold| match fold {
-        CsFold::Single(field) => {
+    let expr = cs_foldr(
+        cx,
+        span,
+        substr,
+        |field| {
             let [other_expr] = &field.other_selflike_exprs[..] else {
                 cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(PartialOrd)`");
             };
             let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
             cx.expr_call_global(field.span, partial_cmp_path.clone(), args)
-        }
-        CsFold::Combine(span, mut expr1, expr2) => {
+        },
+        |span, mut expr1, expr2| {
             // When the item is an enum, this expands to
             // ```
             // match (expr2) {
@@ -177,8 +180,8 @@ fn cs_partial_cmp(
                     cx.arm(span, cx.pat_ident(span, test_id), cx.expr_ident(span, test_id));
                 cx.expr_match(span, expr2, thin_vec![eq_arm, neq_arm])
             }
-        }
-        CsFold::Fieldless => cx.expr_some(span, cx.expr_path(equal_path.clone())),
-    });
+        },
+        || cx.expr_some(span, cx.expr_path(equal_path.clone())),
+    );
     BlockOrExpr::new_expr(expr)
 }
