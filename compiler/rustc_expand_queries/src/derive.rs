@@ -4,7 +4,7 @@ use rustc_middle::ty::{TyCtxt, tls};
 use rustc_proc_macro as pm;
 use rustc_span::LocalExpnId;
 
-type DeriveClient = pm::bridge::client::Client;
+type DeriveClient = pm::bridge::server::DynClient;
 
 /// Stores the context necessary to expand a derive proc macro via a query.
 struct QueryDeriveExpandCtx {
@@ -29,7 +29,7 @@ impl QueryDeriveExpandCtx {
     /// Must be called while the `enter` function is active.
     fn with<F, R>(f: F) -> R
     where
-        F: for<'a, 'b> FnOnce(&'b mut ExtCtxt<'a>, DeriveClient) -> R,
+        F: for<'a, 'b> FnOnce(&'b mut ExtCtxt<'a>, &DeriveClient) -> R,
     {
         DERIVE_EXPAND_CTX.with(|ctx| {
             let ectx = {
@@ -42,7 +42,7 @@ impl QueryDeriveExpandCtx {
                 unsafe { casted.as_mut().unwrap() }
             };
 
-            f(ectx, ctx.client)
+            f(ectx, &ctx.client)
         })
     }
 }

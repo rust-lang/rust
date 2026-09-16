@@ -1,3 +1,11 @@
+```
+WASI_SDK_PATH=../wasi-sdk-33.0-x86_64-linux ./x.py build library --target wasm32-wasip1,x86_64-unknown-linux-gnu
+echo 'extern crate proc_macro; #[proc_macro] pub fn foo(a: proc_macro::TokenStream) -> proc_macro::TokenStream { println!("foo"); (a.to_string() + ";println!(\"Hello from wasm proc macro!\");").parse().unwrap() }' | rustc +stage1 - --crate-type proc-macro --target wasm32-wasip1 -Zwasm-proc-macros
+echo 'fn main() { foo::foo!(println!("Hello World")); }' | rustc +stage1 --extern foo=rust_out.wasm - --edition 2024 && ./rust_out
+WASI_SDK_PATH=../wasi-sdk-33.0-x86_64-linux ./x.py test tests/ui/proc-macro --set rust.wasm-proc-macros=true
+```
+
+
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rust-lang/www.rust-lang.org/master/static/images/rust-social-wide-dark.svg">
