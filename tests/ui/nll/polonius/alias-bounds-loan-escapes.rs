@@ -18,8 +18,6 @@
 //@ revisions: nll polonius
 //@ [nll] compile-flags: -Z polonius=off
 //@ [polonius] compile-flags: -Z polonius=next
-//@ [polonius] known-bug: unknown
-//@ [polonius] check-pass
 #![forbid(unsafe_code)]
 
 fn require_static<T: 'static>(_: T) {}
@@ -40,7 +38,7 @@ mod observable_ub {
         {
             let x = 42u8;
             y = make(&x);
-            //[nll]~^ ERROR `x` does not live long enough
+            //~^ ERROR `x` does not live long enough
             escaped = Box::new(y);
         }
         println!("{escaped:?}");
@@ -61,7 +59,7 @@ mod ordered_bounds {
         {
             let x = 42u8;
             y = make(&x);
-            //[nll]~^ ERROR `x` does not live long enough
+            //~^ ERROR `x` does not live long enough
             require_static(y);
         }
     }
@@ -85,7 +83,7 @@ mod unrelated_bounds {
         {
             let x = 42u8;
             y = make(&x);
-            //[nll]~^ ERROR `x` does not live long enough
+            //~^ ERROR `x` does not live long enough
             require_static(y);
         }
     }
@@ -104,7 +102,7 @@ mod universal_param {
         {
             let x = 42u8;
             y = make(&x);
-            //[nll]~^ ERROR `x` does not live long enough
+            //~^ ERROR `x` does not live long enough
             require::<'p, _>(y);
         }
     }
@@ -124,8 +122,27 @@ mod projection {
         {
             let x = 42u8;
             y = <T as Tr<'_, '_>>::mk(&x);
-            //[nll]~^ ERROR `x` does not live long enough
+            //~^ ERROR `x` does not live long enough
             require_static(y);
+        }
+    }
+}
+
+
+// Like `ordered_bounds`, but doesn't actually *require* that the alias outlives
+// `'static`. NLL fails here, but polonius can pass because of location-sensitive
+// outlives bounds.
+mod no_bounds {
+    fn make<'a: 'b, 'b>(x: &'a u8) -> impl Copy + 'a + 'b {
+        x
+    }
+
+    pub fn test() {
+        let mut y = make::<'static, 'static>(&0);
+        {
+            let x = 42u8;
+            y = make(&x);
+            //[nll]~^ ERROR `x` does not live long enough
         }
     }
 }

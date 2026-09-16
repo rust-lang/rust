@@ -70,20 +70,6 @@ LL |             y = <T as Tr<'_, '_>>::mk(&x);
 LL |         }
    |         - `x` dropped here while still borrowed
 
-error[E0597]: `x` does not live long enough
-  --> $DIR/alias-bounds-loan-escapes.rs:144:22
-   |
-LL |         let mut y = make::<'static, 'static>(&0);
-   |                     ---------------------------- assignment requires that `x` is borrowed for `'static`
-LL |         {
-LL |             let x = 42u8;
-   |                 - binding `x` declared here
-LL |             y = make(&x);
-   |                      ^^ borrowed value does not live long enough
-LL |
-LL |         }
-   |         - `x` dropped here while still borrowed
-
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0597`.
