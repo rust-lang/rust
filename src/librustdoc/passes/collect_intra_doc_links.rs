@@ -21,8 +21,8 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
 use rustc_resolve::rustdoc::{
-    MalformedGenerics, has_primitive_or_keyword_or_attribute_docs, prepare_to_doc_link_resolution,
-    source_span_for_markdown_range, strip_generics_from_path,
+    Docs, MalformedGenerics, has_primitive_or_keyword_or_attribute_docs,
+    prepare_to_doc_link_resolution, source_span_for_markdown_range, strip_generics_from_path,
 };
 use rustc_span::BytePos;
 use rustc_span::def_id::ModId;
@@ -1095,14 +1095,7 @@ impl LinkCollector<'_, '_> {
             return;
         }
 
-        let mut try_insert_links = |item_id, doc: &str| {
-            if should_skip_link_resolution(item_id) {
-                return;
-            }
-            let module_id = match tcx.def_kind(item_id) {
-                DefKind::Mod if item.inner_docs(tcx) => ModId::new_unchecked(item_id),
-                _ => find_nearest_parent_module(tcx, item_id).unwrap(),
-            };
+        let mut try_insert_links_inner = |item_id, module_id, doc: &str| {
             for md_link in preprocessed_markdown_links(&doc) {
                 let link = self.resolve_link(&doc, item, item_id, module_id, &md_link);
                 if let Some(link) = link {
@@ -1116,16 +1109,45 @@ impl LinkCollector<'_, '_> {
             }
         };
 
+        let mut try_insert_links = |item_id, docs: &Docs| {
+            if should_skip_link_resolution(item_id) {
+                return;
+            }
+            match tcx.def_kind(item_id) {
+                DefKind::Mod => {
+                    if !docs.outer.is_empty() {
+                        try_insert_links_inner(
+                            item_id,
+                            find_nearest_parent_module(tcx, item_id).unwrap(),
+                            &docs.outer,
+                        );
+                    }
+                    if !docs.inner.is_empty() {
+                        try_insert_links_inner(item_id, ModId::new_unchecked(item_id), &docs.inner);
+                    }
+                }
+                _ => {
+                    // It's the same handling for non-module items.
+                    let module_id = find_nearest_parent_module(tcx, item_id).unwrap();
+                    try_insert_links_inner(
+                        item_id,
+                        module_id,
+                        &format!("{}{}", docs.outer, docs.inner),
+                    );
+                }
+            }
+        };
+
         // We want to resolve in the lexical scope of the documentation.
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
         // so we know which module it came from.
         for (item_id, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
-            if !may_have_doc_links(&doc) {
+            if !may_have_doc_links(&doc.inner) && !may_have_doc_links(&doc.outer) {
                 continue;
             }
 
-            debug!("combined_docs={doc}");
+            debug!("combined_docs=outer: {} inner: {}", doc.outer, doc.inner);
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
             let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
@@ -1167,7 +1189,7 @@ impl LinkCollector<'_, '_> {
             } else {
                 item.item_id.expect_def_id()
             };
-            try_insert_links(item_id, note)
+            try_insert_links(item_id, &Docs { outer: note.to_owned(), inner: String::new() });
         }
     }
 

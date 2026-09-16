@@ -22,7 +22,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{
-    DocFragment, add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments,
+    DocFragment, add_doc_fragment, attrs_to_doc_fragments, span_of_fragments,
 };
 use rustc_session::Session;
 use rustc_span::def_id::{CRATE_DEF_ID, ModId};
@@ -482,13 +482,15 @@ impl Item {
     }
 
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
+        use rustc_ast::attr::AttributeExt;
+
         self.item_id
             .as_def_id()
             .map(|did| {
-                inner_docs(
-                    #[allow(deprecated)]
-                    tcx.get_all_attrs(did),
-                )
+                #[allow(deprecated)]
+                tcx.get_all_attrs(did).iter().any(|attr| {
+                    attr.doc_resolution_scope().is_some_and(|style| style == ast::AttrStyle::Inner)
+                })
             })
             .unwrap_or(false)
     }
