@@ -651,8 +651,8 @@ impl CStr {
     #[must_use = "this does not display the `CStr`; \
                   it returns an object that can be displayed"]
     #[inline]
-    pub fn display(&self) -> impl fmt::Display {
-        crate::bstr::ByteStr::from_bytes(self.to_bytes())
+    pub fn display(&self) -> Display<'_> {
+        Display { c_str: self }
     }
 
     /// Returns the same string as a string slice `&CStr`.
@@ -847,3 +847,41 @@ impl Iterator for Bytes<'_> {
 
 #[unstable(feature = "cstr_bytes", issue = "112115")]
 impl FusedIterator for Bytes<'_> {}
+
+/// Helper struct for safely printing a [`CStr`] with [`format!`] and `{}`.
+///
+/// A [`CStr`] might contain non-Unicode data. This `struct` implements the
+/// [`Display`] trait in a way that mitigates that. It is created by the
+/// [`display`](CStr::display) method on [`CStr`]. This may perform lossy
+/// conversion, depending on the platform. If you would like an implementation
+/// which escapes the [`CStr`] please use [`Debug`] instead.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cstr_display)]
+///
+/// let s = c"Hello, world!";
+/// println!("{}", s.display());
+/// ```
+///
+/// [`Display`]: fmt::Display
+/// [`format!`]: ../../../std/macro.format.html
+#[unstable(feature = "cstr_display", issue = "139984")]
+pub struct Display<'a> {
+    c_str: &'a CStr,
+}
+
+#[unstable(feature = "cstr_display", issue = "139984")]
+impl fmt::Debug for Display<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.c_str, f)
+    }
+}
+
+#[unstable(feature = "cstr_display", issue = "139984")]
+impl fmt::Display for Display<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(crate::bstr::ByteStr::from_bytes(self.c_str.to_bytes()), f)
+    }
+}
