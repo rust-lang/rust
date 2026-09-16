@@ -1,9 +1,8 @@
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::canonical::QueryRegionConstraint;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
-use rustc_infer::infer::resolve::DeepRegionResolver;
 use rustc_infer::traits::{Obligation, ObligationCause};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, fold_regions};
 use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits::{ObligationCtxt, with_replaced_escaping_bound_vars};
 
@@ -80,13 +79,14 @@ fn compute_assumptions<'tcx>(
         let region_assumptions = infcx.take_registered_region_assumptions();
         let region_constraints = infcx.take_and_reset_region_constraints();
 
-        let constraints = make_query_region_constraints(
-            region_obligations,
-            &region_constraints,
-            region_assumptions,
-        )
-        .constraints
-        .fold_with(&mut DeepRegionResolver::new(&infcx));
+        let constraints = infcx.deeply_resolve_via_unification_table(
+            make_query_region_constraints(
+                region_obligations,
+                &region_constraints,
+                region_assumptions,
+            )
+            .constraints,
+        );
 
         tcx.mk_outlives_from_iter(
             constraints
