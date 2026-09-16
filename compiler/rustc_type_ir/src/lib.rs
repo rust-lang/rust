@@ -105,7 +105,6 @@ pub use predicate::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
-use rustc_type_ir_macros::GenericTypeVisitable;
 #[cfg(feature = "nightly")]
 pub use serialize::*;
 pub use sty::*;
@@ -251,7 +250,7 @@ pub fn debug_bound_var<T: std::fmt::Write>(
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, GenericTypeVisitable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(Decodable, Encodable, StableHash))]
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum Variance {

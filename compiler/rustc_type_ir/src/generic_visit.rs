@@ -172,56 +172,9 @@ unsafe impl<V, T: GenericTypeVisitable<V>, S: GenericTypeVisitable<V>> GenericTy
     }
 }
 
-macro_rules! trivial_impls {
-    ( $($ty:ty),* $(,)? ) => {
-        $(
-            unsafe impl<V>
-                GenericTypeVisitable<V> for $ty
-            {
-                fn generic_visit_with(&self, _visitor: &mut V) {}
-            }
-        )*
-    };
-}
-
 unsafe impl<T: ?Sized, V> GenericTypeVisitable<V> for std::marker::PhantomData<T> {
     fn generic_visit_with(&self, _visitor: &mut V) {}
 }
-
-trivial_impls!(
-    (),
-    rustc_ast_ir::Mutability,
-    bool,
-    i8,
-    i16,
-    i32,
-    i64,
-    i128,
-    isize,
-    u8,
-    u16,
-    u32,
-    u64,
-    u128,
-    usize,
-    crate::ClausePolarity,
-    crate::BoundConstness,
-    crate::DebruijnIndex,
-    crate::solve::Certainty,
-    crate::UniverseIndex,
-    crate::BoundVar,
-    crate::InferTy,
-    crate::IntTy,
-    crate::UintTy,
-    crate::FloatTy,
-    crate::InferConst,
-    crate::RegionVid,
-    rustc_hash::FxBuildHasher,
-    crate::TypeFlags,
-    crate::solve::GoalSource,
-    crate::solve::VisibleForLeakCheck,
-    rustc_abi::ExternAbi,
-);
 
 // SAFETY: `FnSigKind` is a packed representation, therefore visiting its fields doesn't make sense
 unsafe impl<I: Interner, V> GenericTypeVisitable<V> for crate::FnSigKind<I> {
