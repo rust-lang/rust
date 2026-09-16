@@ -9,7 +9,7 @@ use std::assert_matches;
 
 use rustc_abi::{FieldIdx, HasDataLayout, Size, VariantIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
-use rustc_ast::{IntTy, UintTy};
+use rustc_hir::attrs::LangItem;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty;
@@ -73,6 +73,21 @@ pub enum VarArgCompatible {
     /// `T` and `U` are corresponding signed and unsigned integer types.
     /// This is compatible only if the value can be represented in both types.
     CastIntTo { source_is_signed: bool },
+}
+
+// Kinds of types that are allowed for var-args
+enum CoercibleVarArgTy<'tcx> {
+    /// Integer type.
+    ///
+    /// This represents one of the primitive integer types (`iN`, `uN`, `isize`, `usize`)
+    /// or one of the ABI-equivalent `NonZero` types (`NonZeroIN`, `NonZeroUN`, `NonZeroIsize`, `NonZeroUsize`)
+    /// or one of the equivalent `NonZero` types wrapped in `Option`.
+    Int { signed: bool },
+
+    /// Pointer type.
+    ///
+    /// This represents a raw pointer, a reference, `NonNull`, or `NonNull` wrapped in `Option`.
+    Ptr { target_ty: Ty<'tcx> },
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
@@ -852,6 +867,80 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
+    /// First pass for [`Self::validate_c_variadic_compatible_ty`] that operates on a single type.
+    ///
+    /// By this point, we have covered the cases of *identical* types (always compatible) and
+    /// *differently-sized* types (never compatible), and we're only looking for cases where they
+    /// don't have to be *exactly* the same type, and might still be compatible.
+    ///
+    /// Those particular cases are integer types and pointer types, which can be "coerced" into
+    /// each other based upon a few rules.
+    fn coercible_c_variadic_compatible_ty(&self, ty: Ty<'tcx>) -> Option<CoercibleVarArgTy<'tcx>> {
+        match ty.kind() {
+            // Integers might be cast into different signs
+            ty::Int(_) => Some(CoercibleVarArgTy::Int { signed: true }),
+            ty::Uint(_) => Some(CoercibleVarArgTy::Int { signed: false }),
+
+            // Pointers might be cast into similar types
+            &ty::RawPtr(target_ty, _) => Some(CoercibleVarArgTy::Ptr { target_ty }),
+            &ty::Ref(_, target_ty, _) => Some(CoercibleVarArgTy::Ptr { target_ty }),
+
+            // If aliases *aren't* normalized by this point, then we wouldn't be able to distinguish
+            // aliases like `NonZeroU8` from `NonZero<u8>`, which would break the below logic
+            ty::Alias(_, _) => {
+                bug!("aliases should be normalized by this point? got {ty:?}");
+            }
+
+            // Specifically account for three different ADTs which are all lang items:
+            // * `Option`
+            // * `NonNull`
+            // * `NonZero`
+            &ty::Adt(mut adt, mut generics) => {
+                // Both `NonNull` and `NonZero` are valid if wrapped in an `Option`, so, first
+                // unwrap an `Option` type
+                if let Some(LangItem::Option) = self.tcx.tcx.as_lang_item(adt.did()) {
+                    (adt, generics) = match generics.type_at(0).kind() {
+                        // `NonNull` and `NonZero` are both themselves ADTs, so, just abuse that to
+                        // directly unwrap the option
+                        &ty::Adt(adt, generics) => (adt, generics),
+
+                        // Again, normalization ensures `NonZeroU8` is identified as `NonZero<u8>`
+                        // instead of as an alias
+                        ty @ ty::Alias(_, _) => {
+                            bug!("aliases should be normalized by this point? got {ty:?}")
+                        }
+
+                        // If the `Option` wraps any other type, it certainly isn't `NonNull` or `NonZero`
+                        _ => return None,
+                    };
+                }
+
+                match self.tcx.tcx.as_lang_item(adt.did()) {
+                    // `NonNull` is allowed as just a pointer with fewer an alid values
+                    Some(LangItem::NonNull) => {
+                        Some(CoercibleVarArgTy::Ptr { target_ty: generics.type_at(0) })
+                    }
+
+                    // `NonZero` is allowed as just an integer with fewer valid values
+                    Some(LangItem::NonZero) => match generics.type_at(0).kind() {
+                        ty::Int(_) => Some(CoercibleVarArgTy::Int { signed: true }),
+                        ty::Uint(_) => Some(CoercibleVarArgTy::Int { signed: false }),
+
+                        // this could happen for something like `NonZero<char>`,
+                        // so, it's not strictly a bug
+                        _ => None,
+                    },
+
+                    // Any other type is disallowed
+                    _ => None,
+                }
+            }
+
+            // All other types are definitely not valid here
+            _ => None,
+        }
+    }
+
     /// Check whether the caller and callee type are compatible for c-variadic calls. Further
     /// validation of the argument value may be needed to detect all UB.
     ///
@@ -878,29 +967,33 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return interp_ok(VarArgCompatible::Compatible);
         }
 
-        if self.layout_of(caller_type)?.size != self.layout_of(callee_type)?.size {
+        // All other cases require that the layout of the types match;
+        // in practice, since the only types that could get to this point are integers and pointers,
+        // the alignment check isn't necessary, but might as well verify
+        if self.layout_of(caller_type)?.size != self.layout_of(callee_type)?.size
+            || self.layout_of(caller_type)?.align != self.layout_of(callee_type)?.align
+        {
             return interp_ok(VarArgCompatible::Incompatible);
         }
 
-        // Any character type (`char`, `unsigned char` and `signed char`) is compatible with
-        // `void*`, so the signedness of `c_char` is irrelevant here.
-        let is_c_char = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(UintTy::U8) | ty::Int(IntTy::I8));
+        // Since we've already checked for identical types and have narrowed down the layouts as
+        // being identical, we can filter out any non-integer, non-pointer types and similarly
+        // normalize integer and pointer types to make matching easier
+        let Some(caller_type) = self.coercible_c_variadic_compatible_ty(caller_type) else {
+            return interp_ok(VarArgCompatible::Incompatible);
+        };
+        let Some(callee_type) = self.coercible_c_variadic_compatible_ty(callee_type) else {
+            return interp_ok(VarArgCompatible::Incompatible);
+        };
 
-        match (caller_type.kind(), callee_type.kind()) {
-            // Some types look different but are actually the same for ABI purposes.
-            (ty::Int(_), ty::Int(_)) | (ty::Uint(_), ty::Uint(_)) => {
-                // E.g. cast between `usize` and `u64` on a 64-bit platform.
-                interp_ok(VarArgCompatible::Compatible)
-            }
+        match (caller_type, callee_type) {
             // C allows different types if...
             // - "both types are pointers to qualified or unqualified versions of compatible types"
             // - "one type is pointer to qualified or unqualified void and the other is a pointer to a qualified or
             //   unqualified character type"
-            //
-            // As usual for the ABI, we treat references and raw pointers alike.
             (
-                ty::RawPtr(caller_target_ty, _) | ty::Ref(_, caller_target_ty, _),
-                ty::RawPtr(callee_target_ty, _) | ty::Ref(_, callee_target_ty, _),
+                CoercibleVarArgTy::Ptr { target_ty: caller_target_ty },
+                CoercibleVarArgTy::Ptr { target_ty: callee_target_ty },
             ) => {
                 // In C, types can be qualified by a combination of `const`, `volatile` and
                 // `restrict`. These properties are irrelevant for the ABI, and don't have an
@@ -908,17 +1001,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Accept the cast if one type is pointer to void, and the other is a pointer to
                 // a character type (`char`, `unsigned char` and `signed char`).
-                if caller_target_ty.is_c_void(self.tcx.tcx) && is_c_char(*callee_target_ty) {
-                    return interp_ok(VarArgCompatible::Compatible);
-                }
-                if callee_target_ty.is_c_void(self.tcx.tcx) && is_c_char(*caller_target_ty) {
+                if (caller_target_ty.is_c_void(self.tcx.tcx)
+                    || callee_target_ty.is_c_void(self.tcx.tcx))
+                    && (caller_target_ty.is_byte_sized_integral()
+                        || callee_target_ty.is_byte_sized_integral())
+                {
                     return interp_ok(VarArgCompatible::Compatible);
                 }
 
                 // Accept the cast if both types are pointers to compatible types.
-                match self
-                    .validate_c_variadic_compatible_ty(*caller_target_ty, *callee_target_ty)?
-                {
+                match self.validate_c_variadic_compatible_ty(caller_target_ty, callee_target_ty)? {
                     VarArgCompatible::Incompatible => interp_ok(VarArgCompatible::Incompatible),
                     VarArgCompatible::Compatible => interp_ok(VarArgCompatible::Compatible),
                     VarArgCompatible::CastIntTo { source_is_signed: _ } => {
@@ -929,16 +1021,26 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             // - "one type is a signed integer type, the other type is the corresponding unsigned integer type,
             //   and the value is representable in both types"
-            (ty::Int(_), ty::Uint(_)) => {
-                interp_ok(VarArgCompatible::CastIntTo { source_is_signed: true })
+            (
+                CoercibleVarArgTy::Int { signed: caller_signed },
+                CoercibleVarArgTy::Int { signed: callee_signed },
+            ) => {
+                // Note: we already know that the layout is identical
+                if caller_signed == callee_signed {
+                    // So, if the signedness is the same, this means that one of the types is
+                    // `usize` or `isize`, which have the same ABI as their same-layout counterparts
+                    interp_ok(VarArgCompatible::Compatible)
+                } else {
+                    // And if the signedness is different, this means that we're casting by changing
+                    // the sign but not the size of the integer type, which is fine
+                    interp_ok(VarArgCompatible::CastIntTo { source_is_signed: caller_signed })
+                }
             }
-            (ty::Uint(_), ty::Int(_)) => {
-                interp_ok(VarArgCompatible::CastIntTo { source_is_signed: false })
-            }
+            // (integer-pointer conversion is explicitly not allowed)
+            _ => interp_ok(VarArgCompatible::Incompatible),
             // - "or, the type of the next argument is nullptr_t and type is a pointer type that has the same
             //   representation and alignment requirements as a pointer to a character type"
             //   This one does not have an equivalent form in Rust.
-            _ => interp_ok(VarArgCompatible::Incompatible),
         }
     }
 
