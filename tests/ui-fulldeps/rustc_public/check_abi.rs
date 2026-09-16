@@ -15,8 +15,8 @@ extern crate rustc_middle;
 extern crate rustc_public;
 
 use rustc_public::abi::{
-    ArgAbi, CallConvention, FieldsShape, IntegerLength, PassMode, Primitive, Scalar, ValueAbi,
-    VariantsShape,
+    ArgAbi, ArgExtension, CallConvention, FieldsShape, IntegerLength, PassMode, Primitive, Scalar,
+    ValueRepr, VariantsShape,
 };
 use rustc_public::mir::MirVisitor;
 use rustc_public::mir::mono::Instance;
@@ -106,7 +106,13 @@ fn check_ignore(abi: &ArgAbi) {
 /// Check the primitive argument: `primitive: char`.
 fn check_primitive(abi: &ArgAbi) {
     assert!(abi.ty.kind().is_char());
-    assert_matches!(abi.mode, PassMode::Direct(_));
+    let PassMode::Direct(ref attrs) = abi.mode else {
+        panic!("Expected PassMode::Direct for char, got: {:?}", abi.mode);
+    };
+    // A char (32-bit) doesn't need sign/zero extension on most platforms.
+    assert_eq!(attrs.arg_extension(), ArgExtension::None);
+    // Direct arguments are not pointers, so no pointee alignment.
+    assert_eq!(attrs.pointee_align(), None);
     let layout = abi.layout.shape();
     assert!(layout.is_sized());
     assert!(!layout.is_1zst());
@@ -116,7 +122,14 @@ fn check_primitive(abi: &ArgAbi) {
 /// Check the return value: `Result<usize, &str>`.
 fn check_result(abi: &ArgAbi) {
     assert!(abi.ty.kind().is_enum());
-    assert_matches!(abi.mode, PassMode::Indirect { .. });
+    let PassMode::Indirect { ref attrs, ref meta_attrs, on_stack } = abi.mode else {
+        panic!("Expected PassMode::Indirect for Result, got: {:?}", abi.mode);
+    };
+    // Indirect arguments have a pointee alignment (the pointer must be aligned).
+    assert!(attrs.pointee_align().is_some());
+    // Result is a sized type, so no metadata pointer.
+    assert!(meta_attrs.is_none());
+    assert!(!on_stack);
     let layout = abi.layout.shape();
     assert!(layout.is_sized());
     assert_matches!(layout.fields, FieldsShape::Arbitrary { .. });
@@ -131,7 +144,7 @@ fn check_niche(abi: &ArgAbi) {
     assert!(layout.is_sized());
     assert_eq!(layout.size.bytes(), 1);
 
-    let ValueAbi::Scalar(scalar) = layout.abi else { unreachable!() };
+    let ValueRepr::Scalar(scalar) = layout.value_repr else { unreachable!() };
     assert!(scalar.has_niche(&MachineInfo::target()), "Opps: {:?}", scalar);
 
     let Scalar::Initialized { value, valid_range } = scalar else { unreachable!() };
