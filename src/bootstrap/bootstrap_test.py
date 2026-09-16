@@ -260,7 +260,25 @@ class GetTomlDottedKeys(unittest.TestCase):
 class BuildBootstrap(unittest.TestCase):
     """Test that we generate the appropriate arguments when building bootstrap"""
 
-    def build_args(self, configure_args=None, args=None, env=None):
+    def setUp(self):
+        # build_bootstrap_cmd only checks that Cargo exists; these tests never
+        # execute Cargo or rustc. Use temporary stand-ins so the tests can run
+        # directly from a clean checkout without downloading the stage0 tools.
+        self.tool_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tool_dir.cleanup)
+
+        self.test_cargo = os.path.join(
+            self.tool_dir.name, "cargo" + bootstrap.EXE_SUFFIX
+        )
+        self.test_rustc = os.path.join(
+            self.tool_dir.name, "rustc" + bootstrap.EXE_SUFFIX
+        )
+
+        for tool in (self.test_cargo, self.test_rustc):
+            with open(tool, "w"):
+                pass
+    
+    def build_args(self, configure_args=None, args=None, env=None): 
         if configure_args is None:
             configure_args = []
         if args is None:
@@ -268,37 +286,36 @@ class BuildBootstrap(unittest.TestCase):
         if env is None:
             env = {}
 
-        # This test ends up invoking build_bootstrap_cmd, which searches for
-        # the Cargo binary and errors out if it cannot be found. This is not a
-        # problem in most cases, but there is a scenario where it would cause
-        # the test to fail.
-        #
-        # When a custom local Cargo is configured in bootstrap.toml (with the
-        # build.cargo setting), no Cargo is downloaded to any location known by
-        # bootstrap, and bootstrap relies on that setting to find it.
-        #
-        # In this test though we are not using the bootstrap.toml of the caller:
-        # we are generating a blank one instead. If we don't set build.cargo in
-        # it, the test will have no way to find Cargo, failing the test.
-        cargo_bin = os.environ.get("BOOTSTRAP_TEST_CARGO_BIN")
-        if cargo_bin is not None:
-            configure_args += ["--set", "build.cargo=" + cargo_bin]
-        rustc_bin = os.environ.get("BOOTSTRAP_TEST_RUSTC_BIN")
-        if rustc_bin is not None:
-            configure_args += ["--set", "build.rustc=" + rustc_bin]
+        # `x test bootstrap` provides the real stage0 Cargo and rustc paths.
+        # When these tests are run directly, those tools may not exist yet, so use
+        # the temporary stand-ins created in `setUp()`. These tests only inspect the
+        # generated command and do not execute Cargo or rustc.
+        cargo_bin = os.environ.get(
+            "BOOTSTRAP_TEST_CARGO_BIN",
+            self.test_cargo,
+        )
+        configure_args += ["--set", "build.cargo=" + cargo_bin]
+
+        rustc_bin = os.environ.get(
+            "BOOTSTRAP_TEST_RUSTC_BIN",
+            self.test_rustc,
+        )
+        configure_args += ["--set", "build.rustc=" + rustc_bin]
 
         env = env.copy()
         env["PATH"] = os.environ["PATH"]
 
         parsed = bootstrap.parse_args(args)
         build = serialize_and_parse(configure_args, parsed)
-        # Make these optional so that `python -m unittest` works when run manually.
+
         build_dir = os.environ.get("BUILD_DIR")
         if build_dir is not None:
             build.build_dir = build_dir
+
         build_platform = os.environ.get("BUILD_PLATFORM")
         if build_platform is not None:
             build.build = build_platform
+
         return build.build_bootstrap_cmd(env), env
 
     def test_cargoflags(self):
