@@ -1196,6 +1196,10 @@ where
         matches!(this.ty.kind(), ty::Adt(..))
     }
 
+    fn is_enum(this: TyAndLayout<'tcx>) -> bool {
+        matches!(this.ty.kind(), ty::Adt(def, _) if def.is_enum())
+    }
+
     fn is_never(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Never)
     }
