@@ -62,6 +62,9 @@ fn stashed_diagnostics_keep_order_after_steal() {
         handle.emit_stashed_diagnostics();
         drop(dcx);
 
-        assert_eq!(messages.lock().clone(), vec!["A".to_string(), "B".to_string(), "C".to_string()]);
+        assert_eq!(
+            messages.lock().clone(),
+            vec!["A".to_string(), "B".to_string(), "C".to_string()]
+        );
     });
 }

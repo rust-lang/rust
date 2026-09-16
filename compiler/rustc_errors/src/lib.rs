@@ -1744,4 +1744,3 @@ pub enum TerminalUrl {
 
 #[cfg(test)]
 mod tests;
-
