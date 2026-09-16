@@ -7,7 +7,7 @@ pub struct MyStruct<'a> {
 
 impl MyStruct<'_> {
     pub fn new<'a>(field: &'a [u32]) -> MyStruct<'a> {
-        Self { field }
+        MyStruct { field }
         //~^ ERROR lifetime may not live long enough
         //~| ERROR lifetime may not live long enough
     }
@@ -19,7 +19,7 @@ trait Trait<'a> {
 
 impl<'a> Trait<'a> for MyStruct<'_> {
     fn new(field: &'a [u32]) -> MyStruct<'a> {
-        Self { field }
+        MyStruct { field }
         //~^ ERROR lifetime may not live long enough
         //~| ERROR lifetime may not live long enough
     }
