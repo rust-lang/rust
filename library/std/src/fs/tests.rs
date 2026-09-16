@@ -829,7 +829,6 @@ fn file_test_io_seek_read_exact_write_all() {
     check!(fs::remove_file(&filename));
 }
 
-
 #[test]
 #[cfg(windows)]
 fn test_seek_read_buf() {
