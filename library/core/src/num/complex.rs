@@ -16,7 +16,7 @@ pub struct Complex<T> {
 impl<T> Complex<T> {
     /// Create a new complex number from a real and imaginary component.
     #[must_use]
-    pub fn new(re: T, im: T) -> Complex<T> {
+    pub const fn new(re: T, im: T) -> Complex<T> {
         Complex { re, im }
     }
 }
