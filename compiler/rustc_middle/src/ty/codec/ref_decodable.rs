@@ -91,6 +91,8 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
 /// For references to types not defined in this crate, including slices/tuples/collections
 /// of local types, [`Decodable`] cannot use a blanket impl and must be implemented for
 /// specific decoders instead.
+///
+/// See invocations of `impl_decodable_via_ref_decodable_for_foreign_types!` for examples.
 macro_rules! impl_decodable_via_ref_decodable_for_local_types {
     (
         $(
@@ -111,6 +113,7 @@ impl_decodable_via_ref_decodable_for_local_types! {
     // tidy-alphabetical-start
     &'tcx mir::Body<'tcx>,
     &'tcx traits::ImplSource<'tcx, ()>,
+    &'tcx traits::specialization_graph::Graph,
     &'tcx ty::List<Ty<'tcx>>,
     &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
     &'tcx ty::List<ty::Const<'tcx>>,
