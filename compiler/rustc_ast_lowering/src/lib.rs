@@ -828,6 +828,14 @@ enum GenericArgsMode {
     Silence,
 }
 
+#[derive(Debug, Copy, Clone)]
+enum DiscardParams {
+    /// Should be used for functions without a body. Lowers the attributes on the parameter and then discards them.
+    Yes,
+    /// Should be used for functions with a body. Does not lower the attributes, as lowering of the parameters is done by `lower_body`.
+    No,
+}
+
 impl<'hir> LoweringContext<'_, 'hir> {
     fn create_def(
         &mut self,
@@ -1597,14 +1605,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::TyKind::Path(path)
             }
             TyKind::FnPtr(f) => {
+                let hir_id = self.lower_node_id(t.id);
                 let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
-                hir::TyKind::FnPtr(self.arena.alloc(hir::FnPtrTy {
+                let kind = hir::TyKind::FnPtr(self.arena.alloc(hir::FnPtrTy {
                     generic_params,
                     safety: self.lower_safety(f.safety, hir::Safety::Safe),
                     abi: self.lower_extern(f.ext),
-                    decl: self.lower_fn_decl(&f.decl, t.id, FnDeclKind::Pointer, None),
+                    decl: self.lower_fn_decl(
+                        &f.decl,
+                        t.id,
+                        hir_id,
+                        FnDeclKind::Pointer,
+                        None,
+                        DiscardParams::Yes,
+                    ),
                     param_idents: self.lower_fn_params_to_idents(&f.decl),
-                }))
+                }));
+                return hir::Ty { kind, span: self.lower_span(t.span), hir_id };
             }
             TyKind::UnsafeBinder(f) => {
                 let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
@@ -1952,18 +1969,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///
     /// `decl`: the unlowered (AST) function declaration.
     ///
-    /// `fn_node_id`: `impl Trait` arguments are lowered into generic parameters on the given
-    /// `NodeId`.
+    /// `fn_node_id`: Node Id of the function.
     ///
-    /// `transform_return_type`: if `Some`, applies some conversion to the return type, such as is
-    /// needed for `async fn` and `gen fn`. See [`CoroutineKind`] for more details.
+    /// `fn_hir_id`: Hir Id of the function. Used for attribute parsing.
+    ///
+    /// `kind`: The kind of function.
+    ///
+    /// `coro`: If the function is a coroutine, information about the coroutine.
+    ///
+    /// `discard_params`: if `DiscardParams::Yes`, the parameters are lowered and then discarded. Set this to `DiscardParams::Yes`
+    /// for functions without bodies, as attributes on parameters are otherwise not validated.
+    /// Set this to `DiscardParams::No` for functions with bodies, as lowering of the parameters is done by `lower_body`.
     #[instrument(level = "debug", skip(self))]
     fn lower_fn_decl(
         &mut self,
         decl: &FnDecl,
         fn_node_id: NodeId,
+        fn_hir_id: HirId,
         kind: FnDeclKind,
         coro: Option<CoroutineMarker>,
+        discard_params: DiscardParams,
     ) -> &'hir hir::FnDecl<'hir> {
         let c_variadic = decl.c_variadic();
         let mut splatted = decl.splatted();
@@ -1978,6 +2003,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             inputs = &inputs[..inputs.len() - 1];
         }
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|param| {
+            if let DiscardParams::Yes = discard_params {
+                // FIXME This uses `fn_hir_id`, which is not correct, it should use the parameter hir id instead
+                // The parameter is currently not lowered for functions without bodies, so there is no place to store the lowered hir id
+                // This should be fixed by storing function parameters in the `hir::FnSig` instead of `hir::Body`
+                self.lower_attrs(fn_hir_id, &param.attrs, param.span, Target::Param);
+            }
             let itctx = match kind {
                 FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait => {
                     ImplTraitContext::Universal
