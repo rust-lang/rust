@@ -78,12 +78,11 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
     }
 }
 
-static URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+static URL_SCHEME_HOST_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(concat!(
         r"https?://",                          // url scheme
         r"([-a-zA-Z0-9@:%._\+~#=]{2,256}\.)+", // one or more subdomains
         r"[a-zA-Z]{2,63}",                     // root domain
-        r"\b([-a-zA-Z0-9@:%_\+.~#?&/=]*)",     // optional query or url fragments
     ))
     .expect("failed to build regex")
 });
@@ -97,8 +96,48 @@ fn find_raw_urls(
 ) {
     trace!("looking for raw urls in {text}");
     // For now, we only check "full" URLs (meaning, starting with "http://" or "https://").
-    for match_ in URL_REGEX.find_iter(text) {
+    for match_ in URL_SCHEME_HOST_REGEX.find_iter(text) {
         let mut url_range = match_.range();
+        // We found the scheme and host. Find the path, now.
+        // We want to check for matching, balanced parens,
+        // but regex isn't powerful enough for that.
+        let mut paren_stack = Vec::with_capacity(3);
+        while let Some(&c) = text.as_bytes().get(url_range.end) {
+            if c == b'(' {
+                paren_stack.push(url_range.end);
+            } else if c == b')' {
+                if paren_stack.pop().is_none() {
+                    break;
+                }
+            } else if !matches!(
+                c,
+                b'-'
+                | b'a'..=b'z'
+                | b'A'..=b'Z'
+                | b'0'..=b'9'
+                | b'@'
+                | b':'
+                | b'%'
+                | b'_'
+                | b'\\'
+                | b'+'
+                | b'.'
+                | b'~'
+                | b'#'
+                | b'?'
+                | b'&'
+                | b'/'
+                | b'='
+            ) {
+                break;
+            }
+            url_range.end += 1;
+        }
+        if let Some(&end) = paren_stack.first() {
+            url_range.end = end;
+        }
+        // We have a range within `text`.
+        // We need a range within `dox` to report the diagnostic.
         url_range.start += range.start;
         url_range.end += range.start;
         let mut without_brackets = None;
@@ -117,7 +156,7 @@ fn find_raw_urls(
             // period out of the link, so that `Visit https://example.com/docs.` is linkified as
             // `Visit <https://example.com/docs>.`.
             let trailing_periods =
-                match_.as_str().len() - match_.as_str().trim_end_matches('.').len();
+                dox[url_range.clone()].len() - dox[url_range.clone()].trim_end_matches('.').len();
             url_range.end -= trailing_periods;
         }
         f(cx, "this URL is not a hyperlink", url_range, without_brackets);
