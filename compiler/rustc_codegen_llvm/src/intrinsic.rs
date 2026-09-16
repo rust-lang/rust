@@ -20,7 +20,7 @@ use rustc_hir::find_attr;
 use rustc_lint_defs::builtin::DEPRECATED_LLVM_INTRINSIC;
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::offload_meta::OffloadMetadata;
+use rustc_middle::ty::offload_meta::{OffloadMetadata, MappingFlags};
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
@@ -235,12 +235,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             sym::offload_preload => {
-                codegen_offload_preload(self, tcx, instance, args);
+                codegen_offload_preload(self, tcx, args, TransferType::Begin);
                 return IntrinsicResult::WroteIntoPlace;
             }
 
             sym::offload_preload_end => {
-                codegen_offload_preload_drop(self, tcx, instance, args);
+                codegen_offload_preload(self, tcx, args, TransferType::End);
                 return IntrinsicResult::WroteIntoPlace;
             }
             sym::offload => {
@@ -1930,77 +1930,7 @@ fn codegen_autodiff<'ll, 'tcx>(
     )
 }
 
-fn codegen_offload_preload_drop<'ll, 'tcx>(
-    bx: &mut Builder<'_, 'll, 'tcx>,
-    tcx: TyCtxt<'tcx>,
-    _instance: ty::Instance<'tcx>,
-    args: &[OperandRef<'tcx, &'ll llvm::Value>],
-) {
-    let cx = bx.cx;
-    let ptr_arg = &args[0];
-
-    let pointee_ty = match *ptr_arg.layout.ty.kind() {
-        ty::RawPtr(pointee_ty, _) => pointee_ty,
-        _ => bug!("expected raw pointer argument"),
-    };
-
-    let ptr = match ptr_arg.val {
-        OperandValue::Immediate(ptr) => ptr,
-        _ => bug!("not handled"),
-    };
-
-    let args = vec![ptr];
-
-    let meta = OffloadMetadata::from_ty(tcx, ptr_arg.layout.ty);
-    //let mut meta = OffloadMetadata::from_ty(tcx, pointee_ty);
-    //// We end a mut Mapper. Unless the user never mutated a mut variable passed in a mutable way, we
-    //// must return it from the device to update the host version. If they never mutated it, they
-    //// surely got a clippy or rustc warning, so it's up to them for wasting time.
-    //let meta.mode |= foo.mode;
-    //if is_mut {
-    //    meta.mode |= MappingFlags::FROM;
-    //} else {
-    //    // We still want the refcounter to go down, so the runtime nows when it can free the data.
-    //    meta.mode |= MappingFlags::NONE;
-    //}
-    let metadata: &[OffloadMetadata; 1] = &[meta];
-
-    let types: &Type = cx.layout_of(pointee_ty).llvm_type(cx);
-
-    let offload_globals_ref = cx.offload_globals.borrow();
-    let offload_globals = match offload_globals_ref.as_ref() {
-        Some(globals) => globals,
-        None => {
-            return;
-        }
-    };
-
-    let target_symbol = cx.generate_local_symbol_name("");
-    let offload_data =
-        gen_define_handling(&cx, metadata, target_symbol, offload_globals, TransferType::End);
-    let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
-    let (ty, ty2, a1, a2, a4) = crate::builder::gpu_helper::preper_datatransfers(
-        bx,
-        &args,
-        &[types],
-        offload_data.offload_sizes,
-        metadata,
-        has_dynamic,
-    );
-    let geps = crate::builder::gpu_helper::get_geps(bx, ty, ty2, a1, a2, a4, has_dynamic);
-
-    crate::builder::gpu_helper::generate_mapper_call(
-        bx,
-        geps,
-        offload_data.memtransfer_end,
-        offload_globals.end_mapper,
-        offload_globals.mapper_fn_ty,
-        1,
-        offload_globals.ident_t_global,
-    );
-}
-
-// For each PreLoad *call*, we now use some of our previous declared globals to move data to the gpu.
+// For each preload{_mut} *call*, we now use some of our previous declared globals to move data to the gpu.
 // For now, we only handle the data transfer part of it. Consecutive calls become a no-op on the
 // LLVM side.
 //
@@ -2018,25 +1948,25 @@ fn codegen_offload_preload_drop<'ll, 'tcx>(
 fn codegen_offload_preload<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     tcx: TyCtxt<'tcx>,
-    _instance: ty::Instance<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
+    transfer_type: TransferType,
 ) {
     let cx = bx.cx;
+    let ptr_arg = &args[0];
 
-    let arg: &OperandRef<'_, &'ll Value> = &args[0];
-    let args = match arg.val {
-        OperandValue::Immediate(val) => vec![val],
-        _ => bug!("not yet handled"),
-    };
-
-    let arg_ty = arg.layout.ty;
-
-    let pointee_ty: Ty<'tcx> = match *arg_ty.kind() {
+    let pointee_ty = match *ptr_arg.layout.ty.kind() {
         ty::RawPtr(pointee_ty, _) => pointee_ty,
-        _ => bug!("expected preload argument to be a raw pointer, got {arg_ty:?}"),
+        _ => bug!("expected raw pointer argument"),
     };
 
-    let meta = OffloadMetadata::from_ty(tcx, arg_ty);
+    let ptr = match ptr_arg.val {
+        OperandValue::Immediate(ptr) => ptr,
+        _ => bug!("not handled"),
+    };
+
+    let args = vec![ptr];
+
+    let meta = OffloadMetadata::from_ty(tcx, ptr_arg.layout.ty);
     let metadata = &[meta];
     let types = cx.layout_of(pointee_ty).llvm_type(cx);
 
@@ -2048,9 +1978,16 @@ fn codegen_offload_preload<'ll, 'tcx>(
             return;
         }
     };
+
     let target_symbol = cx.generate_local_symbol_name("");
     let offload_data =
-        gen_define_handling(&cx, metadata, target_symbol, offload_globals, TransferType::Begin);
+        gen_define_handling(&cx, metadata, target_symbol, offload_globals, transfer_type);
+    let (b,c) = match transfer_type {
+        TransferType::Begin => (offload_data.memtransfer_begin, offload_globals.begin_mapper),
+        TransferType::End => (offload_data.memtransfer_end, offload_globals.end_mapper),
+        // logic bug
+        TransferType::Kernel => bug!("Kernel transfer type is not valid for preload"),
+    };
     let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
     let (ty, ty2, a1, a2, a4) = crate::builder::gpu_helper::preper_datatransfers(
         bx,
@@ -2065,8 +2002,7 @@ fn codegen_offload_preload<'ll, 'tcx>(
     crate::builder::gpu_helper::generate_mapper_call(
         bx,
         geps,
-        offload_data.memtransfer_begin,
-        offload_globals.begin_mapper,
+        b,c,
         offload_globals.mapper_fn_ty,
         1,
         offload_globals.ident_t_global,
