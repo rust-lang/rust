@@ -148,9 +148,9 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
         }
     }
 
-    fn check_imports_as_underscore(&mut self, items: &[(ast::UseTree, ast::NodeId)]) {
-        for (item, id) in items {
-            self.check_import_as_underscore(item, *id);
+    fn check_imports_as_underscore(&mut self, items: &[ast::UseTreeAndId]) {
+        for use_tree in items {
+            self.check_import_as_underscore(&use_tree.inner, use_tree.id);
         }
     }
 
@@ -275,9 +275,9 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
         visit::walk_item(self, item);
     }
 
-    fn visit_nested_use_tree(&mut self, use_tree: &'a ast::UseTree, id: ast::NodeId) {
-        self.check_use_tree(use_tree, id);
-        visit::walk_use_tree(self, use_tree);
+    fn visit_use_tree_and_id(&mut self, tree: &'a ast::UseTreeAndId) {
+        self.check_use_tree(&tree.inner, tree.id);
+        visit::walk_use_tree_and_id(self, tree);
     }
 }
 
@@ -320,8 +320,8 @@ fn calc_unused_spans(
             let mut used_children = 0;
             let mut contains_self = false;
             let mut previous_unused = false;
-            for (pos, (use_tree, use_tree_id)) in nested.iter().enumerate() {
-                let remove = match calc_unused_spans(unused_import, use_tree, *use_tree_id) {
+            for (pos, use_tree) in nested.iter().enumerate() {
+                let remove = match calc_unused_spans(unused_import, &use_tree.inner, use_tree.id) {
                     UnusedSpanResult::Used => {
                         used_children += 1;
                         None
@@ -343,10 +343,11 @@ fn calc_unused_spans(
                     } else if pos == nested.len() - 1 || used_children > 0 {
                         // Delete everything from the end of the last import, to delete the
                         // previous comma
-                        nested[pos - 1].0.hi_span().shrink_to_hi().to(use_tree.hi_span())
+                        nested[pos - 1].inner.hi_span().shrink_to_hi().to(use_tree.inner.hi_span())
                     } else {
                         // Delete everything until the next import, to delete the trailing commas
-                        use_tree.prefix.span.to(nested[pos + 1].0.prefix.span.shrink_to_lo())
+                        let inner = &nested[pos + 1].inner;
+                        use_tree.inner.prefix.span.to(inner.prefix.span.shrink_to_lo())
                     };
 
                     // Try to collapse adjacent spans into a single one. This prevents all cases of
@@ -358,9 +359,9 @@ fn calc_unused_spans(
                         to_remove.push(remove_span);
                     }
                 }
-                contains_self |= use_tree.prefix == kw::SelfLower
-                    && matches!(use_tree.kind, ast::UseTreeKind::Simple(_))
-                    && !unused_import.unused.contains(&use_tree_id);
+                contains_self |= use_tree.inner.prefix == kw::SelfLower
+                    && matches!(use_tree.inner.kind, ast::UseTreeKind::Simple(_))
+                    && !unused_import.unused.contains(&use_tree.id);
                 previous_unused = remove.is_some();
             }
             if unused_spans.is_empty() {
@@ -385,7 +386,7 @@ fn calc_unused_spans(
                         tree_span.shrink_to_lo().to(nested
                             .first()
                             .unwrap()
-                            .0
+                            .inner
                             .prefix
                             .span
                             .shrink_to_lo()),
@@ -395,7 +396,7 @@ fn calc_unused_spans(
                         nested
                             .last()
                             .unwrap()
-                            .0
+                            .inner
                             .hi_span()
                             .shrink_to_hi()
                             .to(tree_span.shrink_to_hi()),

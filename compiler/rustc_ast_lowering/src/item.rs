@@ -680,7 +680,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let prefix = Path { segments, span };
 
                 // Add all the nested `PathListItem`s to the HIR.
-                for &(ref use_tree, id) in trees {
+                for use_tree in trees {
+                    let id = use_tree.id;
                     let owner_id = self.owner_id(id);
 
                     // Each `use` import is an item and thus are owners of the
@@ -692,7 +693,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         // `prefix` is lowered multiple times, but in different HIR owners.
                         // So each segment gets renewed `HirId` with the same
                         // `ItemLocalId` and the new owner. (See `lower_node_id`)
-                        let kind = this.lower_use_tree(use_tree, &prefix, id, vis_span, attrs);
+                        let kind =
+                            this.lower_use_tree(&use_tree.inner, &prefix, id, vis_span, attrs);
                         if !attrs.is_empty() {
                             this.curr_owner.attrs.insert(hir::ItemLocalId::ZERO, attrs);
                         }
@@ -701,7 +703,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             owner_id,
                             kind,
                             vis_span,
-                            span: this.lower_span(use_tree.span()),
+                            span: this.lower_span(use_tree.inner.span()),
                             eii: find_attr!(attrs, EiiImpl(..) | EiiDeclaration(..)),
                         };
                         hir::OwnerNode::Item(this.arena.alloc(item))
