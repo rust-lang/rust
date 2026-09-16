@@ -73,7 +73,9 @@ impl<'a> DescriptionCtx<'a> {
 
             ty::ReStatic => (alt_span, "restatic", String::new()),
 
-            ty::RePlaceholder(_) | ty::ReError(_) | ty::ReErased => return None,
+            ty::RePlaceholder(_) | ty::ReError(_) => return None,
+
+            ty::ReErased => (alt_span, "reerased", String::new()),
 
             ty::ReVar(_) => (alt_span, "revar", region.to_string()),
 

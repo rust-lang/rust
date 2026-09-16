@@ -1,4 +1,7 @@
 // Regression test for https://github.com/rust-lang/rust/issues/161864
+//@ revisions: current next
+//[next] compile-flags: -Znext-solver=coherence
+//@ compile-flags: -Znext-solver
 
 use std::fmt::Display;
 
@@ -28,7 +31,6 @@ where
 
 trait Trait: Super {}
 impl Trait for () {} //~ ERROR the type `&'b str` does not fulfill the required lifetime
-
 fn main() {
     let _ = (&() as &dyn Trait).yeet();
 }
