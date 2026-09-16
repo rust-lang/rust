@@ -12,6 +12,7 @@ fn create_doc_fragment(s: &str) -> Vec<DocFragment> {
         kind: DocFragmentKind::Sugared(CommentKind::Line),
         indent: 0,
         from_expansion: false,
+        style: rustc_ast::AttrStyle::Outer,
     }]
 }
 
