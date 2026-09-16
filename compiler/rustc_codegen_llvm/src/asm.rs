@@ -502,13 +502,13 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         }
 
         // Globally-enabled features that are already in the backend format.
-        let global_features = self.tcx.global_backend_features(()).iter().map(String::as_str);
+        let global_features = self.tcx.sess.global_backend_features.iter().map(String::as_str);
 
         // Features enabled on a particular instance, in the rust format.
         // These need to be translated to the LLVM format.
         let function_features: Vec<_> = extra_rust_target_features
             .iter()
-            .flat_map(|feat| llvm_util::to_llvm_features(self.tcx.sess, feat))
+            .flat_map(|feat| llvm_util::to_llvm_features(&self.tcx.sess.target, feat))
             .flat_map(|feat| feat.into_iter().map(|f| format!("+{f}")))
             .collect();
 
