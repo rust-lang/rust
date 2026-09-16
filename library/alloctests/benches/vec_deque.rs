@@ -22,6 +22,141 @@ fn bench_grow_1025(b: &mut Bencher) {
     })
 }
 
+/// first_len is the length of the first slice returned by as_slices
+fn clone_fixture<T: Clone>(value: &T, (len, first_len): (usize, usize)) -> VecDeque<T> {
+    let mut deque = VecDeque::with_capacity(len);
+    let push_front = if first_len == len { 0 } else { first_len };
+    deque.resize_with(len - push_front, || value.clone());
+    for _ in 0..push_front {
+        deque.push_front(value.clone());
+    }
+    let (first, second) = deque.as_slices();
+    assert_eq!((first.len(), second.len()), (first_len, len - first_len));
+    deque
+}
+
+/// times allocation and drop as well as cloning
+fn do_bench_clone<T: Clone>(b: &mut Bencher, value: T, layout: (usize, usize)) {
+    let src = clone_fixture(&value, layout);
+
+    b.iter(|| black_box(black_box(&src).clone()));
+}
+
+fn do_bench_clone_batch_32<T: Clone>(b: &mut Bencher, value: T, layout: (usize, usize)) {
+    let src = clone_fixture(&value, layout);
+
+    b.iter(|| {
+        // keep all clones alive so the allocator can't reuse the same buffer for each clone
+        let clones: [VecDeque<T>; 32] = std::array::from_fn(|_| black_box(&src).clone());
+        black_box(&clones);
+    });
+}
+
+/// clone_from may make the destination contiguous even when the source is wrapped
+fn do_bench_clone_from<T: Clone>(b: &mut Bencher, value: T, layout: (usize, usize)) {
+    let src = clone_fixture(&value, layout);
+    let mut dst = clone_fixture(&value, layout);
+
+    b.iter(|| {
+        dst.clone_from(black_box(&src));
+        black_box(&dst);
+    });
+}
+
+/// shrink and grow through clone_from so the timing doesn't include a separate reset
+fn do_bench_clone_from_alternating<T: Clone>(
+    b: &mut Bencher,
+    value: T,
+    long: (usize, usize),
+    short: (usize, usize),
+) {
+    let long_src = clone_fixture(&value, long);
+    let short_src = clone_fixture(&value, short);
+    let mut dst = clone_fixture(&value, long);
+
+    b.iter(|| {
+        dst.clone_from(black_box(&short_src));
+        dst.clone_from(black_box(&long_src));
+        black_box(&dst);
+    });
+}
+
+fn do_bench_clone_from_empty<T: Clone>(b: &mut Bencher, value: T, layout: (usize, usize)) {
+    let src = clone_fixture(&value, layout);
+
+    b.iter(|| {
+        let mut dst = VecDeque::new();
+        dst.clone_from(black_box(&src));
+        black_box(dst);
+    });
+}
+
+macro_rules! clone_benches {
+    ($($name:ident, $value:expr, $layout:expr;)*) => {
+        $(
+            #[bench]
+            fn ${concat(bench_clone_, $name)}(b: &mut Bencher) {
+                do_bench_clone(b, $value, $layout);
+            }
+
+            #[bench]
+            fn ${concat(bench_clone_from_, $name)}(b: &mut Bencher) {
+                do_bench_clone_from(b, $value, $layout);
+            }
+        )*
+    };
+}
+
+clone_benches! {
+    u64_empty, 42u64, (0, 0);
+    u64_one, 42u64, (1, 1);
+    u64_small, 42u64, (16, 16);
+    u64_small_wrapped, 42u64, (16, 5);
+    u64_contiguous, 42u64, (1024, 1024);
+    u64_wrapped, 42u64, (1024, 384);
+    string_contiguous, "abcdefgh".repeat(15), (1024, 1024);
+    string_wrapped, "abcdefgh".repeat(15), (1024, 384);
+    zst, (), (1024, 1024);
+}
+
+#[bench]
+fn bench_clone_u64_small_batch_32(b: &mut Bencher) {
+    do_bench_clone_batch_32(b, 42u64, (16, 16));
+}
+
+#[bench]
+fn bench_clone_u64_small_wrapped_batch_32(b: &mut Bencher) {
+    do_bench_clone_batch_32(b, 42u64, (16, 5));
+}
+
+macro_rules! clone_from_benches {
+    ($($name:ident, $value:expr, $long:expr, $short:expr;)*) => {
+        $(
+            #[bench]
+            fn ${concat(bench_clone_from_, $name)}(b: &mut Bencher) {
+                do_bench_clone_from_alternating(b, $value, $long, $short);
+            }
+        )*
+    };
+}
+
+clone_from_benches! {
+    u64_alternating_contiguous, 42u64, (1024, 1024), (512, 512);
+    u64_alternating_wrapped, 42u64, (1024, 384), (512, 192);
+    string_alternating_contiguous, "abcdefgh".repeat(15), (1024, 1024), (512, 512);
+    string_alternating_wrapped, "abcdefgh".repeat(15), (1024, 384), (512, 192);
+}
+
+#[bench]
+fn bench_clone_from_u64_from_empty(b: &mut Bencher) {
+    do_bench_clone_from_empty(b, 42u64, (1024, 1024));
+}
+
+#[bench]
+fn bench_clone_from_string_from_empty(b: &mut Bencher) {
+    do_bench_clone_from_empty(b, "abcdefgh".repeat(15), (1024, 1024));
+}
+
 #[bench]
 fn bench_iter_1000(b: &mut Bencher) {
     let ring: VecDeque<_> = (0..1000).collect();
