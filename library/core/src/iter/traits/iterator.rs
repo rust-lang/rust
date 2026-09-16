@@ -306,14 +306,22 @@ pub const trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "iter_advance_by", issue = "77404")]
-    #[rustc_non_const_trait_method]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>>
+    where
+        Self::Item: [const] Destruct,
+    {
         /// Helper trait to specialize `advance_by` via `try_fold` for `Sized` iterators.
-        trait SpecAdvanceBy {
+
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const trait SpecAdvanceBy {
             fn spec_advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>>;
         }
 
-        impl<I: Iterator + ?Sized> SpecAdvanceBy for I {
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const impl<I: [const] Iterator + ?Sized> SpecAdvanceBy for I
+        where
+            I::Item: [const] Destruct,
+        {
             default fn spec_advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
                 for i in 0..n {
                     if self.next().is_none() {
@@ -325,13 +333,17 @@ pub const trait Iterator {
             }
         }
 
-        impl<I: Iterator> SpecAdvanceBy for I {
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const impl<I: [const] Iterator> SpecAdvanceBy for I
+        where
+            I::Item: [const] Destruct,
+        {
             fn spec_advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
                 let Some(n) = NonZero::new(n) else {
                     return Ok(());
                 };
 
-                let res = self.try_fold(n, |n, _| NonZero::new(n.get() - 1));
+                let res = self.try_fold(n, const |n, _| NonZero::new(n.get() - 1));
 
                 match res {
                     None => Ok(()),
@@ -384,8 +396,10 @@ pub const trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_non_const_trait_method]
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+    fn nth(&mut self, n: usize) -> Option<Self::Item>
+    where
+        Self::Item: [const] Destruct,
+    {
         self.advance_by(n).ok()?;
         self.next()
     }
