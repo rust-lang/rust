@@ -12,7 +12,7 @@ use rustc_hir::{
     self as hir, BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
     OwnerId,
 };
-use rustc_index::IndexVec;
+use rustc_index::{IndexVec, StableIdx};
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::Session;
 use rustc_span::Span;
@@ -812,6 +812,8 @@ rustc_index::newtype_index! {
         const START_INDEX = 0;
     }
 }
+
+impl StableIdx for UserTypeAnnotationIndex {}
 
 /// Mapping of type annotation indices to canonical user type annotations.
 pub type CanonicalUserTypeAnnotations<'tcx> =

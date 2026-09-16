@@ -1,5 +1,5 @@
 use rustc_hir::def::CtorOf;
-use rustc_index::Idx;
+use rustc_index::{Idx, StableIdx};
 
 use crate::rmeta::decoder::MetaBlob;
 use crate::rmeta::*;
@@ -484,12 +484,14 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
             }
         }
     }
+}
 
+impl<I: StableIdx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBuilder<I, T> {
     pub(crate) fn encode(&self, buf: &mut FileEncoder<'_>) -> LazyTable<I, T> {
         let pos = buf.position();
 
         let width = self.width;
-        for block in &self.blocks {
+        for block in self.blocks.iter() {
             buf.write_with(|dest| {
                 *dest = *block;
                 width
