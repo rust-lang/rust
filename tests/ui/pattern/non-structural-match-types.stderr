@@ -2,7 +2,6 @@ error: constant of non-structural type `Option<fn() {uwu}>` in a pattern
   --> $DIR/non-structural-match-types.rs:10:9
    |
 LL | impl<T> AnyOption<T> {
-   | --------------------
 LL |     const NONE: Option<T> = None;
    |     --------------------- constant defined here
 ...
@@ -15,7 +14,6 @@ error: constant of non-structural type `Option<{closure@$DIR/non-structural-matc
   --> $DIR/non-structural-match-types.rs:16:9
    |
 LL | impl<T> AnyOption<T> {
-   | --------------------
 LL |     const NONE: Option<T> = None;
    |     --------------------- constant defined here
 ...
