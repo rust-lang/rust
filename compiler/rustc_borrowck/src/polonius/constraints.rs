@@ -5,6 +5,7 @@ use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
+use tracing::debug;
 
 use crate::BorrowSet;
 use crate::constraints::OutlivesConstraint;
@@ -255,6 +256,7 @@ fn compute_forward_successor(
 
     // 2. Otherwise, gather the edges due to explicit region liveness, when applicable.
     if !live_regions.contains(region, next_point) {
+        debug!(?region, ?next_point, "region isn't live at successor");
         return None;
     }
 
@@ -270,6 +272,8 @@ fn compute_forward_successor(
     // FIXME: add the missing variance information and remove this fallback bidirectional edge.
     let direction =
         live_region_variances.get(&region).unwrap_or(&ConstraintDirection::Bidirectional);
+
+    debug!(?direction);
 
     match direction {
         ConstraintDirection::Backward => {
@@ -299,6 +303,7 @@ fn compute_backward_successor(
     // Liveness flows into the regions live at the next point. So, in a backwards view, we'll link
     // the region from the current point, if it's live there, to the previous point.
     if !live_regions.contains(region, current_point) {
+        debug!(?region, ?current_point, "region isn't live at current point");
         return None;
     }
 
