@@ -87,6 +87,10 @@ impl<'sess> AttributeParser<'sess> {
             diag.note(*note);
         }
 
-        diag.emit();
+        if gate_name == sym::rustc_attrs {
+            diag.upgrade_to_fatal().emit();
+        } else {
+            diag.emit();
+        }
     }
 }

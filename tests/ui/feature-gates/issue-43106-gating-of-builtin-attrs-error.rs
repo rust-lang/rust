@@ -8,11 +8,6 @@
 
 #![macro_export]
 //~^ ERROR: the `macro_export` attribute cannot be used on crates
-#![rustc_main]
-//~^ ERROR: the `rustc_main` attribute cannot be used on crates
-//~| ERROR: use of an internal attribute [E0658]
-//~| NOTE: the `rustc_main` attribute is an internal implementation detail that will never be stable
-//~| NOTE: the `rustc_main` attribute is used internally to specify test entry point function
 #![repr()]
 //~^ ERROR: attribute cannot be used
 //~| WARN unused attribute

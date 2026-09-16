@@ -1,0 +1,13 @@
+error[E0658]: use of an internal attribute
+  --> $DIR/no-unstable-2.rs:2:22
+   |
+LL |     #[cfg_attr(true, rustc_dummy = 17)]
+   |                      ^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `rustc_dummy` attribute is an internal implementation detail that will never be stable
+   = note: the `rustc_dummy` attribute is used for rustc unit tests
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

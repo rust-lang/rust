@@ -7,10 +7,4 @@
 //~| NOTE the compiler does not even check whether the type indeed is being non-null-optimized; it is your responsibility to ensure that the attribute is only used on types that are optimized
 struct Foo {}
 
-#[rustc_dump_variances]
-//~^ ERROR use of an internal attribute [E0658]
-//~| NOTE the `rustc_dump_variances` attribute is an internal implementation detail that will never be stable
-//~| NOTE the `rustc_dump_variances` attribute is used for rustc unit tests
-enum E {}
-
 fn main() {}
