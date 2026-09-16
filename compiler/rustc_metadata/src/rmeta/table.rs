@@ -1,5 +1,6 @@
 use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
+use rustc_serialize::opaque::FileEncoder;
 
 use crate::rmeta::decoder::MetaBlob;
 use crate::rmeta::*;
