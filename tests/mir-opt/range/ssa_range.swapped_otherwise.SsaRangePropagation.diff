@@ -1,0 +1,30 @@
+- // MIR for `swapped_otherwise` before SsaRangePropagation
++ // MIR for `swapped_otherwise` after SsaRangePropagation
+  
+  fn swapped_otherwise(_1: u8) -> u8 {
+      let mut _0: u8;
+      let mut _2: bool;
+      let mut _3: bool;
+  
+      bb0: {
+          _2 = Lt(const 9_u8, copy _1);
+          switchInt(copy _2) -> [1: bb3, otherwise: bb1];
+      }
+  
+      bb1: {
+          _3 = Gt(const 9_u8, copy _1);
+          switchInt(copy _3) -> [1: bb3, otherwise: bb2];
+      }
+  
+      bb2: {
+-         _0 = copy _1;
++         _0 = const 9_u8;
+          return;
+      }
+  
+      bb3: {
+          _0 = const 0_u8;
+          return;
+      }
+  }
+  

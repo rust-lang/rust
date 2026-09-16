@@ -1,0 +1,36 @@
+- // MIR for `unsigned_boundaries` before SsaRangePropagation
++ // MIR for `unsigned_boundaries` after SsaRangePropagation
+  
+  fn unsigned_boundaries(_1: u8) -> u8 {
+      let mut _0: u8;
+      let mut _2: bool;
+      let mut _3: bool;
+  
+      bb0: {
+          _2 = Le(copy _1, const 0_u8);
+          switchInt(copy _2) -> [1: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+-         _0 = copy _1;
++         _0 = const 0_u8;
+          return;
+      }
+  
+      bb2: {
+          _3 = Ge(copy _1, const u8::MAX);
+          switchInt(copy _3) -> [1: bb3, otherwise: bb4];
+      }
+  
+      bb3: {
+-         _0 = copy _1;
++         _0 = const u8::MAX;
+          return;
+      }
+  
+      bb4: {
+          _0 = const 1_u8;
+          return;
+      }
+  }
+  

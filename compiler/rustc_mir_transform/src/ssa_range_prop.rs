@@ -5,10 +5,12 @@
 //!   let b = a < 9; // the integer representation of b is within the full range [0, 2).
 //!   if b {
 //!     let c = b; // c is true since b is within the range [1, 2).
-//!     let d = a < 8; // d is true since a is within the range [0, 9).
+//!     let d = a; // a is within the range [0, 9), but is not a known constant.
 //!   }
 //! }
 //! ```
+//! Dominating comparison facts are intersected to discover singleton ranges.
+//! Non-singleton ranges are not yet used to fold comparisons directly.
 use rustc_abi::WrappingRange;
 use rustc_const_eval::interpret::Scalar;
 use rustc_data_structures::fx::FxHashMap;
@@ -45,6 +47,33 @@ impl<'tcx> crate::MirPass<'tcx> for SsaRangePropagation {
     }
 }
 
+#[derive(Clone, Copy)]
+struct Comparison<'tcx> {
+    op: BinOp,
+    input: Place<'tcx>,
+    value: u128,
+    max: u128,
+}
+
+impl<'tcx> Comparison<'tcx> {
+    fn range(self, expected: bool) -> Option<WrappingRange> {
+        let (start, end) = match (self.op, expected) {
+            (BinOp::Eq, true) | (BinOp::Ne, false) => (self.value, self.value),
+            (BinOp::Lt, true) => (0, self.value.checked_sub(1)?),
+            (BinOp::Lt, false) => (self.value, self.max),
+            (BinOp::Le, true) => (0, self.value),
+            (BinOp::Le, false) => (self.value.checked_add(1)?, self.max),
+            (BinOp::Gt, true) => (self.value.checked_add(1)?, self.max),
+            (BinOp::Gt, false) => (0, self.value),
+            (BinOp::Ge, true) => (self.value, self.max),
+            (BinOp::Ge, false) => (0, self.value.checked_sub(1)?),
+            _ => return None,
+        };
+
+        (start <= end).then_some(WrappingRange { start, end })
+    }
+}
+
 struct RangeSet<'tcx, 'body, 'a> {
     tcx: TyCtxt<'tcx>,
     typing_env: TypingEnv<'tcx>,
@@ -53,6 +82,8 @@ struct RangeSet<'tcx, 'body, 'a> {
     dominators: Dominators<BasicBlock>,
     /// Known ranges at each locations.
     ranges: FxHashMap<Place<'tcx>, Vec<(Location, WrappingRange)>>,
+    /// Comparisons whose boolean result is an SSA place.
+    comparisons: FxHashMap<Place<'tcx>, Comparison<'tcx>>,
     /// Determines if the basic block has a single unique predecessor.
     unique_predecessors: DenseBitSet<BasicBlock>,
 }
@@ -80,6 +111,7 @@ impl<'tcx, 'body, 'a> RangeSet<'tcx, 'body, 'a> {
             local_decls,
             dominators,
             ranges: FxHashMap::default(),
+            comparisons: FxHashMap::default(),
             unique_predecessors,
         }
     }
@@ -90,15 +122,98 @@ impl<'tcx, 'body, 'a> RangeSet<'tcx, 'body, 'a> {
         self.ranges.entry(place).or_default().push((location, range));
     }
 
-    /// Get the known range at the location.
-    fn get_range(&self, place: &Place<'tcx>, location: Location) -> Option<WrappingRange> {
-        let Some(ranges) = self.ranges.get(place) else {
+    fn insert_comparison_range(
+        &mut self,
+        condition: Place<'tcx>,
+        location: Location,
+        expected: bool,
+    ) {
+        let Some(comparison) = self.comparisons.get(&condition).copied() else {
+            return;
+        };
+        let Some(range) = comparison.range(expected) else {
+            return;
+        };
+        self.insert_range(comparison.input, location, range);
+    }
+
+    fn comparison_from_rvalue(&self, rvalue: &Rvalue<'tcx>) -> Option<Comparison<'tcx>> {
+        let Rvalue::BinaryOp(op, operands) = rvalue else {
             return None;
         };
-        // FIXME: This should use the intersection of all valid ranges.
-        let (_, range) =
-            ranges.iter().find(|(range_loc, _)| range_loc.dominates(location, &self.dominators))?;
-        Some(*range)
+        let (lhs, rhs) = &**operands;
+        if !matches!(op, BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge | BinOp::Eq | BinOp::Ne) {
+            return None;
+        }
+
+        let (op, lhs, rhs) = match (lhs, rhs) {
+            (_, Operand::Constant(rhs)) => (*op, lhs, rhs),
+            (Operand::Constant(lhs), rhs) => {
+                let op = match op {
+                    BinOp::Lt => BinOp::Gt,
+                    BinOp::Le => BinOp::Ge,
+                    BinOp::Gt => BinOp::Lt,
+                    BinOp::Ge => BinOp::Le,
+                    BinOp::Eq | BinOp::Ne => *op,
+                    _ => return None,
+                };
+                (op, rhs, lhs)
+            }
+            _ => return None,
+        };
+
+        let input = lhs.place()?;
+        if !self.is_ssa(input) {
+            return None;
+        }
+
+        let ty = lhs.ty(self.local_decls, self.tcx);
+        if !ty.is_integral() || ty.is_signed() {
+            return None;
+        }
+
+        let layout = self.tcx.layout_of(self.typing_env.as_query_input(ty)).ok()?;
+        if rhs.const_.ty() != ty {
+            return None;
+        }
+        let scalar = rhs.const_.try_eval_scalar_int(self.tcx, self.typing_env)?;
+        // Check the size explicitly: ScalarInt::to_bits panics on a mismatch.
+        if scalar.size() != layout.size {
+            return None;
+        }
+        let value = scalar.to_bits(layout.size);
+
+        Some(Comparison { op, input, value, max: layout.size.unsigned_int_max() })
+    }
+
+    /// Get the known range at the location.
+    fn get_range(&self, place: &Place<'tcx>, location: Location) -> Option<WrappingRange> {
+        let ranges = self.ranges.get(place)?;
+        let mut result: Option<WrappingRange> = None;
+
+        for (_, range) in
+            ranges.iter().filter(|(range_loc, _)| range_loc.dominates(location, &self.dominators))
+        {
+            result = Some(match result {
+                None => *range,
+                Some(current) => {
+                    // This pass currently creates singleton ranges and non-wrapping unsigned
+                    // ranges. Bail out rather than incorrectly intersect a wrapping range.
+                    if current.start > current.end || range.start > range.end {
+                        return None;
+                    }
+
+                    let start = current.start.max(range.start);
+                    let end = current.end.min(range.end);
+                    if start > end {
+                        return None;
+                    }
+                    WrappingRange { start, end }
+                }
+            });
+        }
+
+        result
     }
 
     fn try_as_constant(
@@ -138,7 +253,17 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
     }
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
+        // Fold known singleton operands first so they can serve as comparison constants.
         self.super_statement(statement, location);
+        if let StatementKind::Assign(assign) = &statement.kind {
+            let (destination, rvalue) = &**assign;
+            if self.is_ssa(*destination)
+                && let Some(comparison) = self.comparison_from_rvalue(rvalue)
+            {
+                self.comparisons.insert(*destination, comparison);
+            }
+        }
+
         match &statement.kind {
             StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(operand))
                 if let Some(place) = operand.place()
@@ -147,6 +272,7 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                 let successor = location.successor_within_block();
                 let range = WrappingRange { start: 1, end: 1 };
                 self.insert_range(place, successor, range);
+                self.insert_comparison_range(place, successor, true);
             }
             _ => {}
         }
@@ -164,6 +290,7 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                     let val = *expected as u128;
                     let range = WrappingRange { start: val, end: val };
                     self.insert_range(place, successor, range);
+                    self.insert_comparison_range(place, successor, *expected);
                 }
             }
             TerminatorKind::SwitchInt { discr, targets }
@@ -187,6 +314,7 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                         assert_ne!(location.block, successor.block);
                         let range = WrappingRange { start: val, end: val };
                         self.insert_range(place, successor, range);
+                        self.insert_comparison_range(place, successor, val != 0);
                     }
                 }
 
@@ -203,7 +331,9 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                     } else {
                         WrappingRange { start: 0, end: 0 }
                     };
+                    let expected = range.start != 0;
                     self.insert_range(place, otherwise, range);
+                    self.insert_comparison_range(place, otherwise, expected);
                 }
             }
             _ => {}

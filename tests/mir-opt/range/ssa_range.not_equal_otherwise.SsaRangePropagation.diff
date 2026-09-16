@@ -1,0 +1,24 @@
+- // MIR for `not_equal_otherwise` before SsaRangePropagation
++ // MIR for `not_equal_otherwise` after SsaRangePropagation
+  
+  fn not_equal_otherwise(_1: u8) -> u8 {
+      let mut _0: u8;
+      let mut _2: bool;
+  
+      bb0: {
+          _2 = Ne(const u8::MAX, copy _1);
+          switchInt(copy _2) -> [1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+-         _0 = copy _1;
++         _0 = const u8::MAX;
+          return;
+      }
+  
+      bb2: {
+          _0 = const 0_u8;
+          return;
+      }
+  }
+  

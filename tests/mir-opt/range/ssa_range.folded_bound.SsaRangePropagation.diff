@@ -1,0 +1,29 @@
+- // MIR for `folded_bound` before SsaRangePropagation
++ // MIR for `folded_bound` after SsaRangePropagation
+  
+  fn folded_bound(_1: u8, _2: u8) -> u8 {
+      let mut _0: u8;
+      let mut _3: bool;
+  
+      bb0: {
+          switchInt(copy _2) -> [9: bb1, otherwise: bb3];
+      }
+  
+      bb1: {
+-         _3 = Eq(copy _1, copy _2);
++         _3 = Eq(copy _1, const 9_u8);
+          switchInt(copy _3) -> [1: bb2, otherwise: bb3];
+      }
+  
+      bb2: {
+-         _0 = copy _1;
++         _0 = const 9_u8;
+          return;
+      }
+  
+      bb3: {
+          _0 = const 0_u8;
+          return;
+      }
+  }
+  
