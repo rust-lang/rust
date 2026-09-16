@@ -321,9 +321,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let kind = match t.kind() {
             ty::Infer(i) => match i {
                 ty::TyVar(vid) => {
-                    debug_assert_eq!(
-                        self.delegate.shallow_resolve_ty_var(vid),
-                        t,
+                    debug_assert!(
+                        self.delegate.shallow_resolve_ty_var(vid).is_unchanged(),
                         "ty vid should have been resolved fully before canonicalization"
                     );
 
@@ -338,17 +337,15 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     CanonicalVarKind::Ty { ui, sub_root }
                 }
                 ty::IntVar(vid) => {
-                    debug_assert_eq!(
-                        self.delegate.shallow_resolve_int_var(vid),
-                        t,
+                    debug_assert!(
+                        self.delegate.shallow_resolve_int_var(vid).is_unchanged(),
                         "ty vid should have been resolved fully before canonicalization"
                     );
                     CanonicalVarKind::Int
                 }
                 ty::FloatVar(vid) => {
-                    debug_assert_eq!(
-                        self.delegate.shallow_resolve_float_var(vid),
-                        t,
+                    debug_assert!(
+                        self.delegate.shallow_resolve_float_var(vid).is_unchanged(),
                         "ty vid should have been resolved fully before canonicalization"
                     );
                     CanonicalVarKind::Float
@@ -488,9 +485,8 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             },
 
             ty::ReVar(vid) => {
-                debug_assert_eq!(
-                    self.delegate.shallow_resolve_region_var(vid),
-                    r,
+                debug_assert!(
+                    self.delegate.shallow_resolve_region_var(vid).is_unchanged(),
                     "region vid should have been resolved fully before canonicalization"
                 );
                 match self.canonicalize_mode {
@@ -533,9 +529,8 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
         let kind = match c.kind() {
             ty::ConstKind::Infer(i) => match i {
                 ty::InferConst::Var(vid) => {
-                    debug_assert_eq!(
-                        self.delegate.shallow_resolve_const_var(vid),
-                        c,
+                    debug_assert!(
+                        self.delegate.shallow_resolve_const_var(vid).is_unchanged(),
                         "const vid should have been resolved fully before canonicalization"
                     );
 
