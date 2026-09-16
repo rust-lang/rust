@@ -168,11 +168,12 @@ impl<'tcx> Stable<'tcx> for callconv::PassMode {
             callconv::PassMode::Cast { pad_i32_count, cast } => {
                 PassMode::Cast { pad_i32_count: *pad_i32_count, cast: opaque(cast) }
             }
-            callconv::PassMode::Indirect { attrs, meta_attrs, on_stack } => PassMode::Indirect {
-                attrs: opaque(attrs),
-                meta_attrs: opaque(meta_attrs),
-                on_stack: *on_stack,
-            },
+            callconv::PassMode::Indirect { attrs, on_stack } => {
+                PassMode::Indirect { attrs: opaque(attrs), on_stack: *on_stack }
+            }
+            callconv::PassMode::IndirectUnsized { attrs, meta_attrs } => {
+                PassMode::IndirectUnsized { attrs: opaque(attrs), meta_attrs: opaque(meta_attrs) }
+            }
         }
     }
 }

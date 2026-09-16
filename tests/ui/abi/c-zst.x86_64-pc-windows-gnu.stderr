@@ -34,7 +34,6 @@ error: fn_abi_of(pass_zst) = FnAbi {
                                Align(1 bytes),
                            ),
                        },
-                       meta_attrs: None,
                        on_stack: false,
                    },
                },
