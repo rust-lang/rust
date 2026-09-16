@@ -15,7 +15,6 @@ use crate::diagnostics::{
     InvalidAttrAtCrateLevel, InvalidTarget, InvalidTargetHelp, ItemFollowingInnerAttr,
     UnsupportedAttributesInWhere,
 };
-use crate::target_checking::Policy::Allow;
 use crate::{AttributeParser, ShouldEmit};
 
 #[derive(Debug)]
@@ -35,6 +34,19 @@ pub(crate) enum AllowedResult {
 }
 
 impl AllowedTargets<'_> {
+    pub(crate) fn is_only_crate_level_allowed(&self) -> bool {
+        let (AllowedTargets::AllowList(policies) | AllowedTargets::AllowListWarnRest(policies)) =
+            self
+        else {
+            return false;
+        };
+        policies.iter().all(|p| match p {
+            Policy::Allow(Target::Crate) => true,
+            Policy::Allow(_) => false,
+            _ => true,
+        })
+    }
+
     pub(crate) fn is_allowed(&self, target: Target) -> AllowedResult {
         match self {
             AllowedTargets::AllowList(list) => {
@@ -113,12 +125,11 @@ impl<'sess> AttributeParser<'sess> {
 
         // For crate-level attributes we emit a specific set of lints to warn
         // people about accidentally not using them on the crate.
-        if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
-            Self::check_crate_level(cx, false);
-            return;
-        }
-        if let &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]) = allowed_targets {
-            Self::check_crate_level(cx, true);
+        if allowed_targets.is_only_crate_level_allowed() {
+            Self::check_crate_level(
+                cx,
+                matches!(allowed_targets, AllowedTargets::AllowListWarnRest(..)),
+            );
             return;
         }
 

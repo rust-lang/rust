@@ -30,6 +30,7 @@ impl SingleAttributeParser for LinkNameParser {
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
+        Error(Target::Param),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",
@@ -72,7 +73,7 @@ impl CombineAttributeParser for LinkParser {
             r#"name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated""#,
         ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::ForeignMod)]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::ForeignMod), Error(Target::Param)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn extend(
@@ -506,6 +507,7 @@ impl SingleAttributeParser for LinkSectionParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
+        Error(Target::Param),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",
