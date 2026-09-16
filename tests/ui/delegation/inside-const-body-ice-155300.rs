@@ -6,7 +6,6 @@ pub struct S<const N: usize>;
 impl
     S<
         core::direct_const_arg!({
-            //~^ ERROR: complex const arguments must be placed inside of a `const` block
             fn foo() {}
             reuse foo::<> as bar;
             reuse bar;

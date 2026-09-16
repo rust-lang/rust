@@ -8,21 +8,6 @@ LL | trait Foo {}
    |
    = note: `Foo` must be defined only once in the type namespace of this module
 
-error[E0782]: expected a type, found a trait
-  --> $DIR/issue-106072.rs:2:8
-   |
-LL | #[derive(Clone)]
-   |          ----- in this derive macro expansion
-LL | struct Foo;
-   |        ^^^
+error: aborting due to 1 previous error
 
-error[E0782]: expected a type, found a trait
-  --> $DIR/issue-106072.rs:1:10
-   |
-LL | #[derive(Clone)]
-   |          ^^^^^
-
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0428, E0782.
-For more information about an error, try `rustc --explain E0428`.
+For more information about this error, try `rustc --explain E0428`.
