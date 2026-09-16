@@ -243,29 +243,40 @@ macro_rules! compare_and_swap {
     ($ordering:ident, $bytes:tt, $name:ident) => {
         intrinsics! {
             #[maybe_use_optimized_c_shim]
-            #[unsafe(naked)]
             pub unsafe extern "C" fn $name (
                 expected: int_ty!($bytes), desired: int_ty!($bytes), ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
-                // We can't use `AtomicI8::compare_and_swap`; we *are* compare_and_swap.
-                core::arch::naked_asm! {
-                    // CAS    s(0), s(1), [x2]; if LSE supported.
-                    try_lse_op!("cas", $ordering, $bytes, 0, 1, [x2]),
-                    // UXT    s(tmp0), s(0)
-                    concat!(uxt!($bytes), " ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
-                    "0:",
-                    // LDXR   s(0), [x2]
-                    concat!(ldxr!($ordering, $bytes), " ", reg!($bytes, 0), ", [x2]"),
-                    // cmp    s(0), s(tmp0)
-                    concat!("cmp ", reg!($bytes, 0), ", ", reg!($bytes, 16)),
-                    "bne    1f",
-                    // STXR   w(tmp1), s(1), [x2]
-                    concat!(stxr!($ordering, $bytes), " w17, ", reg!($bytes, 1), ", [x2]"),
-                    "cbnz   w17, 0b",
-                    "1:",
-                    "ret",
-                    have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
+                let mut expected = expected;
+                unsafe {
+                    if HAVE_LSE_ATOMICS.load(Ordering::Relaxed) != 0 {
+                        core::arch::asm!(
+                            ".arch_extension lse",
+                            concat!(lse!("cas", $ordering, $bytes), " ", reg!($bytes, 0), ", ", reg!($bytes, 1),", [x2]"),
+                            inlateout ( "x0" ) expected,
+                            in("x1") desired,
+                            in("x2") ptr,
+                            options(nostack),
+                        );
+                    } else {
+                        core::arch::asm!(
+                            concat!(uxt!($bytes), " ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
+                            "1:",
+                            concat!(ldxr!($ordering, $bytes), " ", reg!($bytes, 0), ", [x2]"),
+                            concat!("cmp ", reg!($bytes, 0), ", ", reg!($bytes, 16)),
+                            "bne 2f",
+                            concat!(stxr!($ordering, $bytes), " w17, ", reg!($bytes, 1), ", [x2]"),
+                            "cbnz w17, 1b",
+                            "2:",
+                            inlateout("x0") expected,
+                            in("x1") desired,
+                            in("x2") ptr,
+                            out("x16") _,
+                            out("w17") _,
+                            options(nostack),
+                        );
+                    }
                 }
+                expected
             }
         }
     };
