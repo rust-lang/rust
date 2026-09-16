@@ -172,16 +172,16 @@ macro_rules! impl_ref_decodable_into_arena {
         )*
     ) => {
         $(
-            impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for $ty {
+            impl<'tcx> RefDecodable<'tcx> for $ty {
                 #[inline]
-                fn decode(decoder: &mut D) -> &'tcx Self {
+                fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
                     decode_arena_allocatable(decoder)
                 }
             }
 
-            impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [$ty] {
+            impl<'tcx> RefDecodable<'tcx> for [$ty] {
                 #[inline]
-                fn decode(decoder: &mut D) -> &'tcx Self {
+                fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
                     decode_arena_allocatable_slice(decoder)
                 }
             }

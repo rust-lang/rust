@@ -22,12 +22,12 @@ use crate::{mir, traits};
 #[diagnostic::on_unimplemented(
     note = "consider adding `{Self}` to the list in `impl_ref_decodable_into_arena!`"
 )]
-pub trait RefDecodable<'tcx, D: TyDecoder<'tcx>>: PointeeSized {
-    fn decode(d: &mut D) -> &'tcx Self;
+pub trait RefDecodable<'tcx>: PointeeSized {
+    fn decode(d: &mut impl TyDecoder<'tcx>) -> &'tcx Self;
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<Ty<'tcx>> {
-    fn decode(decoder: &mut D) -> &'tcx Self {
+impl<'tcx> RefDecodable<'tcx> for ty::List<Ty<'tcx>> {
+    fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
         let len = decoder.read_usize();
         decoder
             .interner()
@@ -35,10 +35,8 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<Ty<'tcx>> {
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
-    for ty::List<ty::PolyExistentialPredicate<'tcx>>
-{
-    fn decode(decoder: &mut D) -> &'tcx Self {
+impl<'tcx> RefDecodable<'tcx> for ty::List<ty::PolyExistentialPredicate<'tcx>> {
+    fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
         let len = decoder.read_usize();
         decoder.interner().mk_poly_existential_predicates_from_iter(
             (0..len).map::<ty::Binder<'tcx, _>, _>(|_| Decodable::decode(decoder)),
@@ -46,8 +44,8 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::BoundVariableKind<'tcx>> {
-    fn decode(decoder: &mut D) -> &'tcx Self {
+impl<'tcx> RefDecodable<'tcx> for ty::List<ty::BoundVariableKind<'tcx>> {
+    fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
         let len = decoder.read_usize();
         decoder.interner().mk_bound_variable_kinds_from_iter(
             (0..len).map::<ty::BoundVariableKind<'tcx>, _>(|_| Decodable::decode(decoder)),
@@ -55,8 +53,8 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::BoundVaria
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::Pattern<'tcx>> {
-    fn decode(decoder: &mut D) -> &'tcx Self {
+impl<'tcx> RefDecodable<'tcx> for ty::List<ty::Pattern<'tcx>> {
+    fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
         let len = decoder.read_usize();
         decoder.interner().mk_patterns_from_iter(
             (0..len).map::<ty::Pattern<'tcx>, _>(|_| Decodable::decode(decoder)),
@@ -64,8 +62,8 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::Pattern<'t
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::Const<'tcx>> {
-    fn decode(decoder: &mut D) -> &'tcx Self {
+impl<'tcx> RefDecodable<'tcx> for ty::List<ty::Const<'tcx>> {
+    fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
         let len = decoder.read_usize();
         decoder.interner().mk_const_list_from_iter(
             (0..len).map::<ty::Const<'tcx>, _>(|_| Decodable::decode(decoder)),
@@ -73,10 +71,8 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::Const<'tcx
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
-    for ty::ListWithCachedTypeInfo<ty::Clause<'tcx>>
-{
-    fn decode(decoder: &mut D) -> &'tcx Self {
+impl<'tcx> RefDecodable<'tcx> for ty::ListWithCachedTypeInfo<ty::Clause<'tcx>> {
+    fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
         let len = decoder.read_usize();
         decoder.interner().mk_clauses_from_iter(
             (0..len).map::<ty::Clause<'tcx>, _>(|_| Decodable::decode(decoder)),
