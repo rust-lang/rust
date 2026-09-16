@@ -1,7 +1,7 @@
 use std::mem;
 
 use rustc_ast::token::{
-    self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, MetaVarKind, Token, TokenKind,
+    self, Delimiter, IdentKind, InvisibleOrigin, Lit, LitKind, MetaVarKind, Token, TokenKind,
 };
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{ExprKind, StmtKind, TyKind, UnOp};
@@ -25,7 +25,7 @@ use crate::diagnostics::{
 };
 use crate::mbe::macro_parser::NamedMatch;
 use crate::mbe::macro_parser::NamedMatch::*;
-use crate::mbe::metavar_expr::{MetaVarExprConcatElem, RAW_IDENT_ERR};
+use crate::mbe::metavar_expr::{MetaVarExprConcatElem, validate_ident_kind};
 use crate::mbe::{self, KleeneOp, MetaVarExpr};
 
 /// Context needed to perform transcription of metavariable expressions.
@@ -489,10 +489,10 @@ fn transcribe_pnr<'tx>(
             // parsing priorities.
             maybe_use_metavar_location(tscx.psess, &tscx.stack, sp, tt, &mut tscx.marker)
         }
-        ParseNtResult::Ident(ident, is_raw) => {
+        ParseNtResult::Ident(ident, kind) => {
             tscx.marker.mark_span(&mut sp);
             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
-            let kind = token::NtIdent(*ident, *is_raw);
+            let kind = token::NtIdent(*ident, *kind);
             TokenTree::token_alone(kind, sp)
         }
         ParseNtResult::Lifetime(ident, is_raw) => {
@@ -566,7 +566,7 @@ fn transcribe_pnr<'tx>(
             let leading_if_span =
                 guard.span_with_leading_if.with_hi(guard.span_with_leading_if.lo() + BytePos(2));
             let ts = std::iter::once(TokenTree::token_alone(
-                token::Ident(kw::If, IdentIsRaw::No),
+                token::Ident(kw::If, IdentKind::Normal),
                 leading_if_span,
             ))
             .chain(TokenStream::from_ast(&guard.cond).iter().cloned())
@@ -995,22 +995,16 @@ fn extract_symbol_from_pnr<'a>(
     span_err: Span,
 ) -> PResult<'a, Symbol> {
     match pnr {
-        ParseNtResult::Ident(nt_ident, is_raw) => {
-            if let IdentIsRaw::Yes = is_raw {
-                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
-            } else {
-                Ok(nt_ident.name)
-            }
+        ParseNtResult::Ident(nt_ident, kind) => {
+            validate_ident_kind(dcx, *kind, span_err)?;
+            Ok(nt_ident.name)
         }
         ParseNtResult::Tt(TokenTree::Token(
-            Token { kind: TokenKind::Ident(symbol, is_raw), .. },
+            Token { kind: TokenKind::Ident(symbol, kind), .. },
             _,
         )) => {
-            if let IdentIsRaw::Yes = is_raw {
-                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
-            } else {
-                Ok(*symbol)
-            }
+            validate_ident_kind(dcx, *kind, span_err)?;
+            Ok(*symbol)
         }
         ParseNtResult::Tt(TokenTree::Token(
             Token {

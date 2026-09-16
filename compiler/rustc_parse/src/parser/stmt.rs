@@ -1021,13 +1021,13 @@ impl<'a> Parser<'a> {
                                     if self.token == token::Colon
                                         && self.look_ahead(1, |token| {
                                             token.is_metavar_block()
-                                                || matches!(
-                                                    token.kind,
-                                                    token::Ident(
-                                                        kw::For | kw::Loop | kw::While,
-                                                        token::IdentIsRaw::No
-                                                    ) | token::OpenBrace
-                                                )
+                                                || token.kind == token::OpenBrace
+                                                || token.non_raw_ident().is_some_and(|id| {
+                                                    matches!(
+                                                        id.name,
+                                                        kw::For | kw::Loop | kw::While
+                                                    )
+                                                })
                                         })
                                     {
                                         let snapshot = self.create_snapshot_for_diagnostic();
