@@ -92,3 +92,15 @@ pub fn trailing_period() {}
 /// https://bloob.blob]
 //~^ ERROR this URL is not a hyperlink
 pub fn lint_with_brackets() {}
+
+/// See https://example.com/test_.html
+//~^ ERROR this URL is not a hyperlink
+pub fn underscore_without_parens_1() {}
+
+/// See https://example.com/test._html
+//~^ ERROR this URL is not a hyperlink
+pub fn underscore_without_parens_2() {}
+
+/// See _https://example.com/test.html_
+//~^ ERROR this URL is not a hyperlink
+pub fn underscore_emphasis_without_parens() {}

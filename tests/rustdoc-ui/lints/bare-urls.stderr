@@ -364,5 +364,41 @@ help: use an automatic link instead
 LL | /// <https://bloob.blob>]
    |     +                  +
 
-error: aborting due to 30 previous errors
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:96:9
+   |
+LL | /// See https://example.com/test_.html
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See <https://example.com/test_.html>
+   |         +                              +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:100:9
+   |
+LL | /// See https://example.com/test._html
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See <https://example.com/test._html>
+   |         +                              +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:104:10
+   |
+LL | /// See _https://example.com/test.html_
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See _<https://example.com/test.html>_
+   |          +                             +
+
+error: aborting due to 33 previous errors
 
