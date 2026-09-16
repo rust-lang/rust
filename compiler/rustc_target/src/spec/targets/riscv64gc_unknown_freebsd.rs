@@ -18,6 +18,7 @@ pub(crate) fn target() -> Target {
             features: "+m,+a,+f,+d,+c,+zicsr,+zifencei".into(),
             llvm_abiname: LlvmAbi::Lp64d,
             max_atomic_width: Some(64),
+            pre_link_args: base::riscv::pre_link_args(),
             ..base::freebsd::opts()
         },
     }

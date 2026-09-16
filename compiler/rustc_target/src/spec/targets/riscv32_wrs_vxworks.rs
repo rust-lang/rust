@@ -18,6 +18,7 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(32),
             features: "+m,+a,+f,+d,+c,+zicsr,+zifencei".into(),
             stack_probes: StackProbeType::Inline,
+            pre_link_args: base::riscv::pre_link_args(),
             ..base::vxworks::opts()
         },
     }
