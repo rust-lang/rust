@@ -337,66 +337,46 @@ impl<'a> Parser<'a> {
             HelpIdentifierStartsWithNumber { num_span: invalid }
         });
 
-        let err = ExpectedIdentifier {
+        let mut err = self.dcx().create_err(ExpectedIdentifier {
             span: bad_token.span,
             token: bad_token,
             suggest_raw,
             suggest_remove_comma,
             help_cannot_start_number,
-        };
-        let mut err = self.dcx().create_err(err);
+        });
 
-        // if the token we have is a `<`
-        // it *might* be a misplaced generic
-        // FIXME: could we recover with this?
+        // If the token we have is a `<` it *might* be a misplaced generic
+        // parameter list as in `fn <T>id(x: T) -> T { x }`.
+        // FIXME: Could we recover with this?
         if self.token == token::Lt {
-            // all keywords that could have generic applied
-            let valid_prev_keywords =
-                [kw::Fn, kw::Type, kw::Struct, kw::Enum, kw::Union, kw::Trait];
-
-            // If we've expected an identifier,
-            // and the current token is a '<'
-            // if the previous token is a valid keyword
-            // that might use a generic, then suggest a correct
-            // generic placement (later on)
-            let maybe_keyword = self.prev_token;
-            if valid_prev_keywords.into_iter().any(|x| maybe_keyword.is_keyword(x)) {
-                // if we have a valid keyword, attempt to parse generics
-                // also obtain the keywords symbol
+            // Let's check if the previous token could denote the start of an item
+            // whose kind can have generics.
+            if let Some((Ident { name, .. }, IdentIsRaw::No)) = self.prev_token.ident()
+                && let kw::Fn | kw::Type | kw::Struct | kw::Enum | kw::Union | kw::Trait = name
+            {
                 match self.parse_generics() {
-                    Ok(generic) => {
-                        if let TokenKind::Ident(symbol, _) = maybe_keyword.kind {
-                            let ident_name = symbol;
-                            // at this point, we've found something like
-                            // `fn <T>id`
-                            // and current token should be Ident with the item name (i.e. the function name)
-                            // if there is a `<` after the fn name, then don't show a suggestion, show help
-
-                            if !self.look_ahead(1, |t| *t == token::Lt)
-                                && let Ok(snippet) =
-                                    self.psess.source_map().span_to_snippet(generic.span)
-                            {
-                                err.multipart_suggestion(
-                                        format!("place the generic parameter name after the {ident_name} name"),
-                                        vec![
-                                            (self.token.span.shrink_to_hi(), snippet),
-                                            (generic.span, String::new())
-                                        ],
-                                        Applicability::MaybeIncorrect,
-                                    );
-                            } else {
-                                err.help(format!(
-                                    "place the generic parameter name after the {ident_name} name"
-                                ));
-                            }
+                    Ok(generics) => {
+                        if !self.look_ahead(1, |t| *t == token::Lt)
+                            && let Ok(snippet) =
+                                self.psess.source_map().span_to_snippet(generics.span)
+                        {
+                            err.multipart_suggestion(
+                                format!("place the generic parameter name after the {name} name"),
+                                vec![
+                                    (self.token.span.shrink_to_hi(), snippet),
+                                    (generics.span, String::new()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            err.help(format!(
+                                "place the generic parameter name after the {name} name"
+                            ));
                         }
                     }
-                    Err(err) => {
-                        // if there's an error parsing the generics,
-                        // then don't do a misplaced generics suggestion
-                        // and emit the expected ident error instead;
-                        err.cancel();
-                    }
+                    // It's unlikely that the user meant to write a generic parameter list.
+                    // Let's not show them errors specific to generics.
+                    Err(err) => err.cancel(),
                 }
             }
         }
@@ -602,15 +582,15 @@ impl<'a> Parser<'a> {
             );
         }
 
-        if let TokenKind::Ident(symbol, _) = &self.prev_token.kind {
-            if ["def", "fun", "func", "function"].contains(&symbol.as_str()) {
-                err.span_suggestion_short(
-                    self.prev_token.span,
-                    format!("write `fn` instead of `{symbol}` to declare a function"),
-                    "fn",
-                    Applicability::MachineApplicable,
-                );
-            }
+        if let Some((ident, IdentIsRaw::No)) = self.prev_token.ident()
+            && let "def" | "fun" | "func" | "function" = ident.name.as_str()
+        {
+            err.span_suggestion_short(
+                self.prev_token.span,
+                format!("write `fn` instead of `{}` to declare a function", ident.name),
+                "fn",
+                Applicability::MachineApplicable,
+            );
         }
 
         if let TokenKind::Ident(prev, _) = &self.prev_token.kind
