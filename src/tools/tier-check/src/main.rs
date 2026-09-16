@@ -49,6 +49,8 @@ fn main() {
         "thumbv8m.base-none-eabi",
         "thumbv8m.main-none-eabi",
         "thumbv8m.main-none-eabihf",
+        "thumbv8.1m.main-none-eabi",
+        "thumbv8.1m.main-none-eabihf",
         "thumbv8m.base-nuttx-eabi",
         "thumbv8m.main-nuttx-eabi",
         "thumbv8m.main-nuttx-eabihf",
