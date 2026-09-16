@@ -1434,22 +1434,18 @@ macro_rules! nonzero_integer {
             /// # Examples
             ///
             /// ```
-            /// # use std::num::NonZero;
+            /// use std::num::NonZero;
             /// use std::str::FromStr;
-            /// #
-            /// # fn main() { test().unwrap(); }
-            /// # fn test() -> Option<()> {
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::from_str(\"+10\"), Ok(NonZero::new(10)?));")]
-            /// # Some(())
-            /// # }
+            ///
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::from_str(\"+10\"), Ok(NonZero::new(10).unwrap()));")]
             /// ```
             ///
             /// Trailing space returns error:
             ///
             /// ```
-            /// # use std::num::NonZero;
-            /// # use std::str::FromStr;
-            /// #
+            /// use std::num::NonZero;
+            /// use std::str::FromStr;
+            ///
             #[doc = concat!("assert!(NonZero::<", stringify!($Int), ">::from_str(\"1 \").is_err());")]
             /// ```
             fn from_str(src: &str) -> Result<Self, Self::Err> {
