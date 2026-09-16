@@ -1,6 +1,5 @@
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::os::unix::prelude::*;
-use std::path::Path;
 use std::{io, mem};
 
 #[derive(Debug)]
@@ -9,14 +8,7 @@ pub struct Lock {
 }
 
 impl Lock {
-    pub fn new(p: &Path, wait: bool, create: bool, exclusive: bool) -> io::Result<Lock> {
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(create)
-            .mode(libc::S_IRWXU as u32)
-            .open(p)?;
-
+    pub fn new(file: File, wait: bool, exclusive: bool) -> io::Result<Lock> {
         let lock_type = if exclusive { libc::F_WRLCK } else { libc::F_RDLCK };
 
         let mut flock: libc::flock = unsafe { mem::zeroed() };

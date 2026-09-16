@@ -42,7 +42,7 @@ impl Lock {
         match res {
             Ok(()) => Ok(Lock::FdLocked { _file: file }),
             Err(err) if matches!(err.kind(), io::ErrorKind::Unsupported) => {
-                Ok(Lock::Fallback(fallback::Lock::new(p, wait, create, exclusive)?))
+                Ok(Lock::Fallback(fallback::Lock::new(file, wait, exclusive)?))
             }
             Err(err) => Err(err),
         }
