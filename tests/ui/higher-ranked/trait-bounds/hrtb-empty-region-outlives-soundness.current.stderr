@@ -1,8 +1,10 @@
 error[E0477]: the type `&'b str` does not fulfill the required lifetime
-  --> $DIR/hrtb-empty-region-outlives-soundness.rs:30:16
+  --> $DIR/hrtb-empty-region-outlives-soundness.rs:33:16
    |
 LL | impl Trait for () {}
    |                ^^
+   |
+   = note: type must outlive [reerased]
 
 error: aborting due to 1 previous error
 
