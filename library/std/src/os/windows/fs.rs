@@ -96,9 +96,7 @@ pub trait FileExt {
     /// }
     /// ```
     #[unstable(feature = "seek_read_exact", issue = "none")]
-    fn seek_read_exact(&self, buf: &mut [u8], offset: u64) -> io::Result<()> {
-        let mut buf = buf;
-        let mut offset = offset;
+    fn seek_read_exact(&self, mut buf: &mut [u8], mut offset: u64) -> io::Result<()> {
         while !buf.is_empty() {
             match self.seek_read(buf, offset) {
                 Ok(0) => break,
