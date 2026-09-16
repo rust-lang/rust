@@ -6,6 +6,7 @@
     target_os = "hurd",
     target_os = "aix",
     target_os = "wasi",
+    target_os = "qurt",
 )))]
 use crate::ffi::CStr;
 use crate::mem::{self, DropGuard, ManuallyDrop};
@@ -136,7 +137,7 @@ impl Thread {
         assert!(ret == 0, "failed to join thread: {}", io::Error::from_raw_os_error(ret));
     }
 
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
     pub fn id(&self) -> libc::pthread_t {
         self.id
     }

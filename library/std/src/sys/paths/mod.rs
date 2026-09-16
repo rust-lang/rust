@@ -22,6 +22,17 @@ cfg_select! {
             };
         }
     }
+    target_os = "qurt" => {
+        mod unix;
+        #[expect(dead_code)]
+        mod unsupported;
+        mod imp {
+            pub use super::unix::{
+                JoinPathsError, SplitPaths, getcwd, home_dir, join_paths, split_paths, temp_dir,
+            };
+            pub use super::unsupported::{chdir, current_exe};
+        }
+    }
     all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;
         #[expect(dead_code)]

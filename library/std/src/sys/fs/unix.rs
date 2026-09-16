@@ -415,6 +415,7 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
 
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
+    #[cfg(not(target_os = "qurt"))]
     entry: dirent64_min,
     // We need to store an owned copy of the entry name on platforms that use
     // readdir() (not readdir_r()), because a) struct dirent may use a flexible
@@ -425,6 +426,7 @@ pub struct DirEntry {
 // Define a minimal subset of fields we need from `dirent64`, especially since
 // we're not using the immediate `d_name` on these targets. Keeping this as an
 // `entry` field in `DirEntry` helps reduce the `cfg` boilerplate elsewhere.
+#[cfg(not(target_os = "qurt"))]
 struct dirent64_min {
     d_ino: u64,
     #[cfg(not(any(
@@ -752,7 +754,7 @@ impl FilePermissions {
             self.mode |= 0o222;
         }
     }
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
     pub fn mode(&self) -> u32 {
         self.mode as u32
     }
@@ -969,6 +971,7 @@ impl Iterator for ReadDir {
                 // When loading from a field, we can skip the `&raw const`; `(*entry_ptr).d_ino` as
                 // a value expression will do the right thing: `byte_offset` to the field and then
                 // only access those bytes.
+                #[cfg(not(target_os = "qurt"))]
                 let entry = dirent64_min {
                     #[cfg(any(
                         target_os = "dragonfly",
@@ -1003,6 +1006,7 @@ impl Iterator for ReadDir {
                 };
 
                 return Some(Ok(DirEntry {
+                    #[cfg(not(target_os = "qurt"))]
                     entry,
                     name: name.to_owned(),
                     dir: Arc::clone(&self.inner),
@@ -1131,6 +1135,7 @@ impl DirEntry {
         self.metadata().map(|m| m.file_type())
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino
     }
@@ -1175,10 +1180,11 @@ impl OpenOptions {
         self.create_new = create_new;
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn custom_flags(&mut self, flags: i32) {
         self.custom_flags = flags;
     }
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
     pub fn mode(&mut self, mode: u32) {
         self.mode = mode as mode_t;
     }
@@ -1525,6 +1531,7 @@ impl File {
         self.0.is_read_vectored()
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.0.read_at(buf, offset)
     }
@@ -1533,10 +1540,12 @@ impl File {
         self.0.read_buf(cursor)
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn read_buf_at(&self, cursor: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         self.0.read_buf_at(cursor, offset)
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         self.0.read_vectored_at(bufs, offset)
     }
@@ -1554,10 +1563,12 @@ impl File {
         self.0.is_write_vectored()
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         self.0.write_at(buf, offset)
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         self.0.write_vectored_at(bufs, offset)
     }
@@ -1781,7 +1792,7 @@ impl DirBuilder {
         run_path_with_cstr(p, &|p| cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }).map(|_| ()))
     }
 
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
     pub fn set_mode(&mut self, mode: u32) {
         self.mode = mode as mode_t;
     }
