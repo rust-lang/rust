@@ -1,6 +1,5 @@
 // ignore-tidy-file-linelength
 //@ add-minicore
-//@ only-pauthtest
 // Run it at O0, so that the compiler doesn't optimise the calls away.
 //@ revisions: DISC NO_DISC
 //@ [DISC] needs-llvm-components: aarch64
