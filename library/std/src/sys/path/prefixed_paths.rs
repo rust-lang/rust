@@ -87,7 +87,7 @@ impl<'a> Components<'a> {
     }
 
     #[inline]
-    fn is_sep_byte(&self, b: u8) -> bool {
+    pub fn is_sep_byte(&self, b: u8) -> bool {
         if self.prefix_verbatim() { is_verbatim_sep(b) } else { is_sep_byte(b) }
     }
 
