@@ -4,6 +4,7 @@ use rustc_hir::HirId;
 use rustc_middle::middle::region::{Scope, ScopeData, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use rustc_middle::ty;
 use tracing::{debug, instrument};
 
 use crate::builder::scope::LintLevel;
@@ -57,9 +58,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     assert!(this.tcx.is_thread_local_static(def_id));
                     LocalInfo::StaticRef { def_id, is_thread_local: true }
                 }
-                ExprKind::NamedConst { def_id, .. } | ExprKind::ConstParam { def_id, .. } => {
+                ExprKind::NamedConst { ct, .. } => {
+                    let def_id = match ct.kind {
+                        ty::AliasConstKind::Projection { def_id }
+                        | ty::AliasConstKind::InherentSelf { def_id }
+                        | ty::AliasConstKind::InherentImpl { def_id }
+                        | ty::AliasConstKind::Free { def_id }
+                        | ty::AliasConstKind::Anon { def_id } => def_id,
+                    };
                     LocalInfo::ConstRef { def_id }
                 }
+                ExprKind::ConstParam { def_id, .. } => LocalInfo::ConstRef { def_id },
                 // Find out whether this temp is being created within the
                 // tail expression of a block whose result is ignored.
                 _ if let Some(tail_info) = this.block_context.currently_in_block_tail() => {

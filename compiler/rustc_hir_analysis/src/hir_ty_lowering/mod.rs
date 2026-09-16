@@ -1609,12 +1609,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
         }
 
-        Ok(TypeRelativePath::AssocItem(ty::AliasTerm::new_from_def_id(
-            tcx,
-            item_def_id,
-            args,
-            ty::AliasConstInherentArgsKind::WithSelf,
-        )))
+        let kind = match mode {
+            LowerTypeRelativePathMode::Type(..) => {
+                ty::AliasTermKind::ProjectionTy { def_id: item_def_id }
+            }
+            LowerTypeRelativePathMode::Const => {
+                ty::AliasTermKind::ProjectionConst { def_id: item_def_id }
+            }
+        };
+
+        Ok(TypeRelativePath::AssocItem(ty::AliasTerm::new_from_args(tcx, kind, args)))
     }
 
     /// Resolve a [type-relative](hir::QPath::TypeRelative) (and type-level) path.
@@ -1948,11 +1952,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self.check_const_item_in_type_system(item_def_id, span)?;
         let alias_const = ty::AliasConst::new(
             tcx,
-            ty::AliasConstKind::new_from_def_id(
-                tcx,
-                item_def_id,
-                ty::AliasConstInherentArgsKind::WithSelf,
-            ),
+            ty::AliasConstKind::Projection { def_id: item_def_id },
             item_args,
         );
         Ok(Const::new_alias(tcx, ty::IsRigid::No, alias_const))
@@ -2912,15 +2912,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::Const::new_alias(
                     tcx,
                     ty::IsRigid::No,
-                    ty::AliasConst::new(
-                        tcx,
-                        ty::AliasConstKind::new_from_def_id(
-                            tcx,
-                            did,
-                            ty::AliasConstInherentArgsKind::WithSelf,
-                        ),
-                        args,
-                    ),
+                    ty::AliasConst::new(tcx, ty::AliasConstKind::Free { def_id: did }, args),
                 )
             }
             Res::Def(kind @ DefKind::Ctor(ctor_of, CtorKind::Const), did) => {

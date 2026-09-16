@@ -564,11 +564,10 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             ZstLiteral { user_ty } => {
                 print_indented!(self, format!("ZstLiteral(user_ty: {:?})", user_ty), depth_lvl);
             }
-            NamedConst { def_id, args, user_ty } => {
+            NamedConst { ct, user_ty } => {
                 print_indented!(self, "NamedConst {", depth_lvl);
-                print_indented!(self, format!("def_id: {:?}", def_id), depth_lvl + 1);
+                print_indented!(self, format!("ct: {:?}", ct), depth_lvl + 1);
                 print_indented!(self, format!("user_ty: {:?}", user_ty), depth_lvl + 1);
-                print_indented!(self, format!("args: {:?}", args), depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl);
             }
             ConstParam { param, def_id } => {

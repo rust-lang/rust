@@ -69,18 +69,7 @@ fn recurse_build<'tcx>(
             ty::Const::new_value(tcx, val, node.ty)
         }
         &ExprKind::ZstLiteral { user_ty: _ } => ty::Const::zero_sized(tcx, node.ty),
-        &ExprKind::NamedConst { def_id, args, user_ty: _ } => {
-            let uneval = ty::AliasConst::new(
-                tcx,
-                ty::AliasConstKind::new_from_def_id(
-                    tcx,
-                    def_id,
-                    ty::AliasConstInherentArgsKind::Impl,
-                ),
-                args,
-            );
-            ty::Const::new_alias(tcx, ty::IsRigid::No, uneval)
-        }
+        &ExprKind::NamedConst { ct, user_ty: _ } => ty::Const::new_alias(tcx, ty::IsRigid::No, ct),
         ExprKind::ConstParam { param, .. } => ty::Const::new_param(tcx, *param),
 
         ExprKind::Call { fun, args, .. } => {
@@ -262,9 +251,8 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
         }
 
         match expr.kind {
-            thir::ExprKind::NamedConst { args, .. } | thir::ExprKind::ConstBlock { args, .. } => {
-                args.has_non_region_param()
-            }
+            thir::ExprKind::NamedConst { ct: ty::AliasConst { args, .. }, .. }
+            | thir::ExprKind::ConstBlock { args, .. } => args.has_non_region_param(),
             thir::ExprKind::ConstParam { .. } => true,
             thir::ExprKind::Repeat { value, count } => {
                 self.visit_expr(&self.thir()[value]);

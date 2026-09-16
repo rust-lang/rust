@@ -328,7 +328,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         } else if let hir::ExprKind::Path(ref qpath) = source.kind
             && let res = self.typeck_results.qpath_res(qpath, source.hir_id)
             && let ty = self.typeck_results.node_type(source.hir_id)
-            && let ty::Adt(adt_def, args) = ty.kind()
+            && let ty::Adt(adt_def, _) = ty.kind()
             && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), variant_ctor_id) = res
         {
             // Check whether this is casting an enum variant discriminant.
@@ -370,7 +370,14 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 // in case we are offsetting from a computed discriminant
                 // and not the beginning of discriminants (which is always `0`)
                 Some(did) => {
-                    let kind = ExprKind::NamedConst { def_id: did, args, user_ty: None };
+                    let kind = ExprKind::NamedConst {
+                        ct: ty::AliasConst::new(
+                            self.tcx,
+                            ty::AliasConstKind::Anon { def_id: did },
+                            self.tcx.mk_args(&[]),
+                        ),
+                        user_ty: None,
+                    };
                     let lhs =
                         self.thir.exprs.push(Expr { temp_scope_id, ty: discr_ty, span, kind });
                     let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
@@ -1448,9 +1455,24 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 ExprKind::ConstParam { param, def_id }
             }
 
-            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
+            Res::Def(DefKind::Const, def_id) => {
                 let user_ty = self.user_args_applied_to_res(expr.hir_id, res);
-                ExprKind::NamedConst { def_id, args, user_ty }
+                ExprKind::NamedConst {
+                    ct: ty::AliasConst::new(self.tcx, ty::AliasConstKind::Free { def_id }, args),
+                    user_ty,
+                }
+            }
+
+            Res::Def(DefKind::AssocConst, def_id) => {
+                let user_ty = self.user_args_applied_to_res(expr.hir_id, res);
+                let kind = if let DefKind::Impl { of_trait: false } =
+                    self.tcx.def_kind(self.tcx.parent(def_id))
+                {
+                    ty::AliasConstKind::InherentImpl { def_id }
+                } else {
+                    ty::AliasConstKind::Projection { def_id }
+                };
+                ExprKind::NamedConst { ct: ty::AliasConst::new(self.tcx, kind, args), user_ty }
             }
 
             Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id) => {
