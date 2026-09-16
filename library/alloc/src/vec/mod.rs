@@ -2729,7 +2729,24 @@ impl<T, A: Allocator> Vec<T, A> {
         if first_duplicate_idx == len {
             return;
         }
+        // SAFETY: first_duplicate_idx always in range [1..len)
+        unsafe {
+            self.dedup_tail(same_bucket, first_duplicate_idx);
+        }
+    }
 
+    /// Dedup from `first_duplicate`.
+    ///
+    /// The function would treat `self[first_duplicate]` as the first duplicated
+    /// element and drop the `self[first_duplicate]` unconditionally.
+    ///
+    /// # Safety
+    ///
+    /// `1 <= first_duplicate < self.len()`
+    unsafe fn dedup_tail<F>(&mut self, mut same_bucket: F, first_duplicate: usize)
+    where
+        F: FnMut(&mut T, &mut T) -> bool,
+    {
         /* INVARIANT: vec.len() > read > write > write-1 >= 0 */
         struct FillGapOnDrop<'a, T, A: core::alloc::Allocator> {
             /* Offset of the element we want to check if it is duplicate */
@@ -2776,16 +2793,20 @@ impl<T, A: Allocator> Vec<T, A> {
             }
         }
 
+        let start = self.as_mut_ptr();
+        let len = self.len();
+
         /* Drop items while going through Vec, it should be more efficient than
          * doing slice partition_dedup + truncate */
 
         // Construct gap first and then drop item to avoid memory corruption if `T::drop` panics.
         let mut gap =
-            FillGapOnDrop { read: first_duplicate_idx + 1, write: first_duplicate_idx, vec: self };
-        // SAFETY: we checked that first_duplicate_idx in bounds before.
+            FillGapOnDrop { read: first_duplicate + 1, write: first_duplicate, vec: self };
+
+        // SAFETY: By this function's safety contract, `first_duplicate < self.len()`.
         // If drop panics, `gap` would remove this item without drop.
         unsafe {
-            ptr::drop_in_place(start.add(first_duplicate_idx));
+            ptr::drop_in_place(start.add(first_duplicate));
         }
 
         // SAFETY: Because of the invariant, read_ptr, prev_ptr and write_ptr
@@ -3800,7 +3821,64 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn dedup(&mut self) {
-        self.dedup_by(|a, b| a == b)
+        let Some(first_duplicate) = Self::dedup_prescan_chunked(self.as_slice()) else {
+            return;
+        };
+
+        // SAFETY: `1 <= first_duplicate < self.len()`
+        unsafe {
+            self.dedup_tail(|a, b| a == b, first_duplicate);
+        }
+    }
+
+    fn dedup_prescan_chunked(v: &[T]) -> Option<usize> {
+        // A small N to avoid large regression for expensive `PartialEq` by chunk
+        const N: usize = 8;
+        const _: () = assert!(
+            N <= u8::BITS as usize,
+            "The bit width of `mask` in the loop below should be >= `N`"
+        );
+        const SCALAR_PREFIX: usize = 8;
+
+        let len = v.len();
+        if len <= 1 {
+            return None;
+        }
+        let mut i = 1;
+        let end = cmp::min(len, 1 + SCALAR_PREFIX);
+
+        // The prefix scanning avoids vectorization instructions loading for small slices
+        while i < end {
+            // It keeps the same comparison order as `dedup_tail`
+            //
+            // SAFETY: i always in range [1..len)
+            if unsafe { v.get_unchecked(i) == v.get_unchecked(i - 1) } {
+                return Some(i);
+            }
+            i += 1;
+        }
+
+        while i + N <= len {
+            let mut mask: u8 = 0;
+            for j in 0..N {
+                // SAFETY: i + j always in range [1..len)
+                let eq = unsafe { v.get_unchecked(i + j) == v.get_unchecked(i + j - 1) };
+                mask |= (eq as u8) << j;
+            }
+            if mask != 0 {
+                return Some(i + mask.trailing_zeros() as usize);
+            }
+            i += N;
+        }
+        while i < len {
+            // SAFETY: i always in range [1..len)
+            if unsafe { v.get_unchecked(i) == v.get_unchecked(i - 1) } {
+                return Some(i);
+            }
+            i += 1;
+        }
+
+        None
     }
 }
 
