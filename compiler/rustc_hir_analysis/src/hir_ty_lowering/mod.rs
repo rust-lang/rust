@@ -2492,8 +2492,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        let (elem_ty, len) = match ty.kind() {
-            ty::Array(elem_ty, len) => (elem_ty, len),
+        let elem_ty = match ty.kind() {
+            ty::Array(elem_ty, _) => elem_ty,
             ty::Error(e) => return Const::new_error(tcx, *e),
             _ => {
                 let e = tcx
@@ -2509,28 +2509,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|elem| self.lower_const_arg(elem, *elem_ty))
             .collect::<Vec<_>>();
 
-        let len = tcx
-            .try_normalize_erasing_regions(
-                ty::TypingEnv::new(ty::ParamEnv::empty(), TypingMode::non_body_analysis()),
-                Unnormalized::new_wip(*len),
-            )
-            .unwrap_or(*len);
-        if let Some(expected_len) = len.try_to_target_usize(tcx)
-            && expected_len != elems.len() as u64
-        {
-            let e = tcx.dcx().span_err(
-                array_expr.span,
-                format!(
-                    "expected array with {expected_len} elements, found {} elements",
-                    array_expr.elems.len()
-                ),
-            );
-            return Const::new_error(tcx, e);
-        }
-
+        // The array len passed in the type might be an infer var, or a const param, or it could
+        // just be an incorrect constant. So, construct the resulting valtree's type based on the
+        // provided syntax rather than the expected type. The surrounding typeck will catch any
+        // mismatches.
+        let valtree_ty = Ty::new_array(tcx, *elem_ty, elems.len() as u64);
         let valtree = ty::ValTree::from_branches(tcx, elems);
-
-        ty::Const::new_value(tcx, valtree, ty)
+        ty::Const::new_value(tcx, valtree, valtree_ty)
     }
 
     fn try_recover_misrepresented_function_call(
