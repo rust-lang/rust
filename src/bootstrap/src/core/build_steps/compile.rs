@@ -1370,6 +1370,8 @@ fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
         // We want to enable Polonius Alpha and Next Trait Solver by default on nighty
         cargo.env("CFG_DEFAULT_POLONIUS_NEXT", "1");
         cargo.env("CFG_DEFAULT_NEXT_SOLVER_GLOBALLY", "1");
+        // Enable 2 threads for the parallel frontend by default on nightly
+        cargo.env("CFG_DEFAULT_FRONTEND_JOBS", "2");
     }
 
     // These conditionals represent a tension between three forces:
