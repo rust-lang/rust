@@ -673,12 +673,13 @@ fn index_ast<'tcx>(
             match tree.kind {
                 UseTreeKind::Glob(_) | UseTreeKind::Simple(_) => {}
                 UseTreeKind::Nested { items: ref nested_vec, span } => {
-                    for &(ref nested, id) in nested_vec {
+                    for nested in nested_vec {
+                        let id = nested.id;
                         self.insert(id, AstOwner::NestedUseTree(parent));
                         items.push(self.make_dummy(id, span, ItemKind::MacCall));
 
                         let def_id = self.owners[&id].def_id;
-                        self.visit_item_id_use_tree(nested, def_id, items);
+                        self.visit_item_id_use_tree(&nested.inner, def_id, items);
                     }
                 }
             }

@@ -911,14 +911,15 @@ impl<'a> State<'a> {
                 }
                 if items.is_empty() {
                     self.word("{}");
-                } else if let [(item, _)] = items.as_slice()
+                } else if let [item] = items.as_slice()
                     && !item
+                        .inner
                         .prefix
                         .segments
                         .first()
                         .is_some_and(|seg| seg.ident.name == rustc_span::symbol::kw::SelfLower)
                 {
-                    self.print_use_tree(item);
+                    self.print_use_tree(&item.inner);
                 } else {
                     let cb = self.cbox(INDENT_UNIT);
                     self.word("{");
@@ -926,10 +927,10 @@ impl<'a> State<'a> {
                     let ib = self.ibox(0);
                     for (idx, use_tree) in items.iter().enumerate() {
                         let is_last = idx == items.len() - 1;
-                        self.print_use_tree(&use_tree.0);
+                        self.print_use_tree(&use_tree.inner);
                         if !is_last {
                             self.word(",");
-                            if let ast::UseTreeKind::Nested { .. } = use_tree.0.kind {
+                            if let ast::UseTreeKind::Nested { .. } = use_tree.inner.kind {
                                 self.hardbreak();
                             } else {
                                 self.space();
