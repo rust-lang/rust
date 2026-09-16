@@ -69,7 +69,7 @@ impl<'hir> ItemLowerer<'_, 'hir> {
     #[instrument(level = "debug", skip(self, c))]
     pub(super) fn lower_crate(&mut self, c: &Crate) -> hir::MaybeOwner<'hir> {
         self.with_lctx(CRATE_NODE_ID, |lctx| {
-            debug_assert_eq!(lctx.curr_owner.owner_id, CRATE_OWNER_ID);
+            debug_assert_eq!(lctx.curr_owner.owner_id(), CRATE_OWNER_ID);
             let module = lctx.lower_mod(&c.items, &c.spans);
             lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs, c.spans.inner_span, Target::Crate);
             hir::OwnerNode::Crate(module)
@@ -204,7 +204,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_item(&mut self, i: &Item) -> &'hir hir::Item<'hir> {
-        let owner_id = self.curr_owner.owner_id;
+        let owner_id = self.curr_owner.owner_id();
         let hir_id: HirId = owner_id.into();
         let vis_span = self.lower_span(i.vis.span);
 
@@ -731,7 +731,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
-        let owner_id = self.curr_owner.owner_id;
+        let owner_id = self.curr_owner.owner_id();
         let hir_id: HirId = owner_id.into();
         let attrs =
             self.lower_attrs(hir_id, &i.attrs, i.span, Target::from_foreign_item_kind(&i.kind));
@@ -912,7 +912,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_trait_item(&mut self, i: &AssocItem) -> &'hir hir::TraitItem<'hir> {
-        let trait_item_def_id = self.curr_owner.owner_id;
+        let trait_item_def_id = self.curr_owner.owner_id();
         let hir_id: HirId = trait_item_def_id.into();
         let attrs = self.lower_attrs(
             hir_id,
@@ -1161,7 +1161,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_impl_item(&mut self, i: &AssocItem) -> &'hir hir::ImplItem<'hir> {
-        let owner_id = self.curr_owner.owner_id;
+        let owner_id = self.curr_owner.owner_id();
         let hir_id: HirId = owner_id.into();
         let parent_id = self.tcx.local_parent(owner_id.def_id);
         let is_in_trait_impl =
@@ -1322,7 +1322,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::BodyId {
         let body = hir::Body { params, value: self.arena.alloc(value) };
         let id = body.id();
-        assert_eq!(id.hir_id.owner, self.curr_owner.owner_id);
+        assert_eq!(id.hir_id.owner, self.curr_owner.owner_id());
         self.curr_owner.bodies.push((id.hir_id.local_id, self.arena.alloc(body)));
         id
     }
