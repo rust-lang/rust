@@ -1068,13 +1068,25 @@ where
         else {
             return Err(NoSolution.into());
         };
-        let def_id = goal.predicate.alias.expect_projection_ty_def_id();
-        let ty = match ecx.cx().as_projection_lang_item(def_id) {
-            Some(SolverProjectionLangItem::FieldBase) => base,
-            Some(SolverProjectionLangItem::FieldType) => ty,
-            _ => panic!("unexpected associated type {:?} in `Field`", goal.predicate),
-        };
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            let ty = match goal.predicate.alias.kind {
+                ty::AliasTermKind::ProjectionTy { def_id } => {
+                    match ecx.cx().as_projection_lang_item(def_id) {
+                        Some(SolverProjectionLangItem::FieldBase) => base,
+                        Some(SolverProjectionLangItem::FieldType) => ty,
+                        _ => panic!("unexpected associated type {:?} in `Field`", goal.predicate),
+                    }
+                }
+                ty::AliasTermKind::ProjectionConst { .. } => {
+                    return ecx.evaluate_const_and_instantiate_projection_term(
+                        goal.param_env,
+                        goal.predicate.alias,
+                        goal.predicate.term,
+                        goal.predicate.alias.expect_ct(),
+                    );
+                }
+                kind => panic!("expected projection, found {kind:?}"),
+            };
             ecx.instantiate_normalizes_to_term(goal, ty.into())?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
