@@ -1,4 +1,6 @@
-//@ known-bug: #123690
+// Regression test for #123690. If we allow the compiler to advance past `rustc_resolve`, it causes
+// an ICE.
+
 
 fn more_discriminant_overflow() {
     pub enum Infallible {}
@@ -229,7 +231,7 @@ fn more_discriminant_overflow() {
         _D5(X),
         _D6(X),
         _D7(X),
-        _D8(X),
+        _D8(X), //~ ERROR: the name `_D8` is defined multiple times
         _D9(X),
         _DA(X),
         _DB(X),
@@ -276,3 +278,5 @@ fn more_discriminant_overflow() {
 
     if let E2::V1 { .. } = E2::V3::<Infallible> {}
 }
+
+fn main() {}
