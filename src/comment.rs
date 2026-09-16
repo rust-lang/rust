@@ -174,8 +174,9 @@ pub(crate) fn combine_strs_with_missing_comments(
         } else {
             " "
         };
-    let mut one_line_width =
-        last_line_width(prev_str) + first_line_width(next_str) + first_sep.len();
+    let mut one_line_width = last_line_width(prev_str, context.config.tab_spaces())
+        + first_line_width(next_str)
+        + first_sep.len();
 
     let config = context.config;
     let indent = shape.indent;
@@ -207,7 +208,9 @@ pub(crate) fn combine_strs_with_missing_comments(
     let first_sep = if prev_str.is_empty() || missing_comment.is_empty() {
         Cow::from("")
     } else {
-        let one_line_width = last_line_width(prev_str) + first_line_width(&missing_comment) + 1;
+        let one_line_width = last_line_width(prev_str, context.config.tab_spaces())
+            + first_line_width(&missing_comment)
+            + 1;
         if prefer_same_line && one_line_width <= shape.width {
             Cow::from(" ")
         } else {
@@ -879,7 +882,8 @@ impl<'a> CommentRewrite<'a> {
 
             self.fmt.shape = if self.is_prev_line_multi_line {
                 // 1 = " "
-                let offset = 1 + last_line_width(&self.result) - self.line_start.len();
+                let offset = 1 + last_line_width(&self.result, self.fmt.config.tab_spaces())
+                    - self.line_start.len();
                 Shape {
                     width: self.max_width.saturating_sub(offset),
                     indent: self.fmt_indent,

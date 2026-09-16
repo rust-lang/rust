@@ -1380,7 +1380,12 @@ impl MacroBranch {
             }
         };
 
-        if !filtered_str_fits(&new_body_snippet.snippet, config.max_width(), shape) {
+        if !filtered_str_fits(
+            &new_body_snippet.snippet,
+            config.max_width(),
+            context.config.tab_spaces(),
+            shape,
+        ) {
             return Err(RewriteError::ExceedsMaxWidth {
                 configured_width: shape.width,
                 span: self.span,
