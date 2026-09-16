@@ -537,7 +537,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_def_path_table(&mut self) {
+    fn encode_def_path_table(&mut self, sorted_ids: &[LocalDefId]) {
         let defs = self.tcx.definitions();
         if self.is_proc_macro {
             for def_id in std::iter::once(CRATE_DEF_ID)
@@ -551,15 +551,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record_defaulted!(self.tables.def_path_hashes[def_id] <- def_path_hash.local_hash().as_u64())
             }
         } else {
-            let mut data = defs.enumerated_keys_and_path_hashes().collect::<Vec<_>>();
+            for &def_id in sorted_ids {
+                let def_key = defs.def_key(def_id);
+                let hash = defs.def_path_hash(def_id).local_hash().as_u64();
 
-            data.sort_by_key(|(idx, ..)| self.map_index(*idx));
-
-            for (def_index, def_key, def_path_hash) in data {
-                let def_id = LocalDefId { local_def_index: def_index }.to_def_id();
+                let def_id = def_id.to_def_id();
 
                 record!(self.tables.def_keys[def_id] <- def_key);
-                record_defaulted!(self.tables.def_path_hashes[def_id] <- def_path_hash.local_hash().as_u64())
+                record_defaulted!(self.tables.def_path_hashes[def_id] <- hash);
             }
         }
     }
@@ -636,40 +635,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         adapted.encode(&mut self.opaque)
     }
 
-    fn create_def_index_remapping(&mut self) {
-        let tcx = self.tcx;
-        let defs = tcx.untracked().definitions.read();
-
-        let mut to_remap = vec![];
-        let mut def_ids = vec![];
-        for idx in 0..defs.num_definitions() {
-            let def_id = LocalDefId { local_def_index: idx.into() };
-            if let Some(data) = defs.def_path(def_id).data.last()
-                && matches!(
-                    data.data,
-                    DefPathData::SyntheticCoroutineBody
-                        | DefPathData::OpaqueLifetime(..)
-                        | DefPathData::NestedStatic
-                        | DefPathData::AnonAssocTy(..)
-                )
-            {
-                to_remap.push((def_id, defs.def_path_hash(def_id).local_hash()));
-                def_ids.push(def_id);
-            }
-        }
-
-        to_remap.sort_by_key(|(_, hash)| *hash);
-
-        let mut remapping = FxHashMap::default();
-        for ((orig_id, _), remapped_id) in to_remap.into_iter().zip(def_ids) {
-            remapping.insert(orig_id.local_def_index, remapped_id.local_def_index);
-        }
-
+    fn encode_crate_root(
+        &mut self,
+        remapping: FxHashMap<DefIndex, DefIndex>,
+        sorted_ids: Vec<LocalDefId>,
+    ) -> LazyValue<CrateRoot> {
         self.def_indexes_remapping = remapping;
-    }
-
-    fn encode_crate_root(&mut self) -> LazyValue<CrateRoot> {
-        self.create_def_index_remapping();
 
         let tcx = self.tcx;
         let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
@@ -713,7 +684,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let foreign_modules = stat!("foreign-modules", || self.encode_foreign_modules());
 
-        _ = stat!("def-path-table", || self.encode_def_path_table());
+        _ = stat!("def-path-table", || self.encode_def_path_table(&sorted_ids));
 
         // Encode the def IDs of traits, for rustdoc and diagnostics.
         let traits = stat!("traits", || self.encode_traits());
@@ -725,7 +696,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         _ = stat!("mir", || self.encode_mir());
 
-        _ = stat!("def-ids", || self.encode_def_ids());
+        _ = stat!("def-ids", || self.encode_def_ids(&sorted_ids));
 
         let interpret_alloc_index = stat!("interpret-alloc-index", || {
             let mut interpret_alloc_index = Vec::new();
@@ -1485,7 +1456,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.def_indexes_remapping.get(&index).copied().unwrap_or(index)
     }
 
-    fn encode_def_ids(&mut self) {
+    fn encode_def_ids(&mut self, sorted_ids: &[LocalDefId]) {
         self.encode_info_for_mod(CRATE_DEF_ID);
 
         // Proc-macro crates only export proc-macro items, which are looked
@@ -1495,16 +1466,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
 
         let tcx = self.tcx;
-
-        let mut def_ids = (0..tcx.untracked().definitions.read().num_definitions())
-            .into_iter()
-            .collect::<Vec<_>>();
-
-        def_ids.sort_by_key(|idx| self.map_index(DefIndex::from(*idx)));
-
-        for local_id in
-            def_ids.into_iter().map(|idx| LocalDefId { local_def_index: DefIndex::from(idx) })
-        {
+        for &local_id in sorted_ids {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.def_kind(local_id);
             record_non_lazy!(self.tables.def_kind[def_id] <- def_kind);
@@ -2622,7 +2584,9 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
             with_encode_metadata_header(tcx, path, |ecx| {
                 // Encode all the entries and extra information in the crate,
                 // culminating in the `CrateRoot` which points to all of it.
-                let root = ecx.encode_crate_root();
+                let (remapping, sequence) = create_def_index_remapping(tcx);
+
+                let root = ecx.encode_crate_root(remapping, sequence);
 
                 // Flush buffer to ensure backing file has the correct size.
                 ecx.opaque.flush();
@@ -2638,6 +2602,47 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         },
         None,
     );
+}
+
+fn create_def_index_remapping(tcx: TyCtxt<'_>) -> (FxHashMap<DefIndex, DefIndex>, Vec<LocalDefId>) {
+    let defs = tcx.untracked().definitions.read();
+
+    let mut to_remap = vec![];
+    let mut def_ids = vec![];
+    for idx in 0..defs.num_definitions() {
+        let def_id = LocalDefId { local_def_index: idx.into() };
+        if let Some(data) = defs.def_path(def_id).data.last()
+            && matches!(
+                data.data,
+                DefPathData::SyntheticCoroutineBody
+                    | DefPathData::OpaqueLifetime(..)
+                    | DefPathData::NestedStatic
+                    | DefPathData::AnonAssocTy(..)
+            )
+        {
+            to_remap.push((def_id, defs.def_path_hash(def_id).local_hash()));
+            def_ids.push(def_id);
+        }
+    }
+
+    to_remap.sort_by_key(|(_, hash)| *hash);
+
+    let mut remapping = FxHashMap::default();
+    for ((orig_id, _), remapped_id) in to_remap.into_iter().zip(def_ids) {
+        remapping.insert(orig_id.local_def_index, remapped_id.local_def_index);
+    }
+
+    let mut sorted_def_ids = (0..defs.num_definitions())
+        .into_iter()
+        .map(|idx| LocalDefId { local_def_index: DefIndex::new(idx) })
+        .collect::<Vec<_>>();
+
+    sorted_def_ids.sort_by_key(|id| {
+        let def_index = id.local_def_index;
+        remapping.get(&def_index).copied().unwrap_or(def_index)
+    });
+
+    (remapping, sorted_def_ids)
 }
 
 fn with_encode_metadata_header(
