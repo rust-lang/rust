@@ -223,25 +223,6 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, Strin
                 l2_lut.singles.push((range, delta));
             }
             _ => {
-                /*
-                                let output_lows = output.map(|output| {
-                                    let (output_high, output_low) = deconstruct(output);
-                                    if output_high != input_high {
-                                         println!("Output: {:#x}, high: {:#x}, low: {:#x}", output, output_high, output_low);
-                                         println!("Input: {:#x}, high: {:#x}, low: {:#x}", input, input_high, input_low);
-                                         f = f+1;
-                                    }
-
-
-                                    assert_eq!(
-                                        output_high, input_high,
-                                        "Case-mapping a character should not change its plane"
-                                    );
-
-                                    assert_eq!(f, 0);
-                                    Hex(output_low)
-                                });
-                */
                 let outputs = output.map(|output| Hex(output));
                 l2_lut.multis.push((Hex(input_low), outputs));
             }
