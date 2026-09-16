@@ -20,7 +20,7 @@ fn doc_comment_between_if_else(num: u8) -> bool {
 }
 
 fn doc_comment_on_expr(num: u8) -> bool {
-    /// useless doc comment
+    /// useless doc comment //~ ERROR attributes on some expressions are unstable
     //~^ ERROR: attributes on expressions are experimental
     //~| ERROR: unused doc comment
     num == 3

@@ -481,6 +481,17 @@ error: expected statement after outer attribute
 LL | #[cfg(false)] fn e() { { fn foo() { #[attr] } } }
    |                                     ^^^^^^^
 
-error: aborting due to 53 previous errors
+error[E0658]: attributes on some expressions are unstable
+  --> $DIR/attr-stmt-expr-attr-bad.rs:31:42
+   |
+LL | #[cfg(false)] fn e() { let _ = #[attr] ..#[attr] 0; }
+   |                                          ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-For more information about this error, try `rustc --explain E0586`.
+error: aborting due to 54 previous errors
+
+Some errors have detailed explanations: E0586, E0658.
+For more information about an error, try `rustc --explain E0586`.

@@ -460,6 +460,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "`fn(#[rustc_splat] (a, ...))` is incomplete",
         "call as func((a, ...)) instead"
     );
+    gate_all!(stmt_expr_attributes, "attributes on some expressions are unstable");
     gate_all!(super_let, "`super let` is experimental");
     gate_all!(try_blocks_heterogeneous, "`try bikeshed` expression is experimental");
     gate_all!(unnamed_enum_variants, "unnamed enum variants are experimental");
