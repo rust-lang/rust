@@ -2005,24 +2005,40 @@ impl BackendRepr {
     }
 }
 
+/// Describes the variants of a type.
 // NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
-    /// A type with no valid variants. Must be uninhabited.
+    /// The type has no valid variants. Must be uninhabited.
+    ///
+    /// This is the case for:
+    /// 1. enums with no inhabited variants
+    /// 2. the never type
     Empty,
 
-    /// Single enum variants, structs/tuples, unions, and all non-ADTs.
+    /// The type has a single valid variant.
+    ///
+    /// This is the case for:
+    /// 1. enums with a single inhabited variant
+    /// 2. structs, unions, and non-ADTs (except coroutines; see below),
+    ///    as those can't have multiple variants
     Single {
-        /// Always `0` for types that cannot have multiple variants.
+        /// - for case 1, this is the index of the inhabited variant
+        /// - for case 2, this is always `0` (a dummy value)
         index: VariantIdx,
     },
 
-    /// Enum-likes with more than one variant: each variant comes with
-    /// a *discriminant* (usually the same as the variant index but the user can
-    /// assign explicit discriminant values). That discriminant is encoded
-    /// as a *tag* on the machine. The layout of each variant is
-    /// a struct, and they all have space reserved for the tag.
+    /// The type has multiple valid variants.
+    ///
+    /// This is the case for:
+    /// 1. enums with multiple inhabited variants
+    /// 2. coroutines
+    ///
+    /// Each variant comes with a *discriminant* (usually the same as the
+    /// variant index but the user can assign explicit discriminant values).
+    /// That discriminant is encoded as a *tag* on the machine. The layout of
+    /// each variant is a struct, and they all have space reserved for the tag.
     /// For enums, the tag is the sole field of the layout.
     Multiple {
         tag: Scalar,
