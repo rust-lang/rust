@@ -143,7 +143,7 @@ pub fn trait_obligations<'tcx>(
         item: Some(item),
         visited_tys: Default::default(),
     };
-    wf.add_wf_preds_for_trait_pred(trait_pred, Elaborate::All);
+    wf.add_wf_preds_for_trait_pred(trait_pred, Elaborate::All, None);
     debug!(obligations = ?wf.out);
     wf.normalize(infcx)
 }
@@ -160,7 +160,7 @@ pub fn clause_obligations<'tcx>(
     body_def_id: LocalDefId,
     clause: ty::Clause<'tcx>,
     span: Span,
-) -> PredicateObligations<'tcx> {
+) -> (PredicateObligations<'tcx>, PredicateObligations<'tcx>) {
     let mut wf = WfPredicates {
         infcx,
         param_env,
@@ -171,11 +171,12 @@ pub fn clause_obligations<'tcx>(
         item: None,
         visited_tys: Default::default(),
     };
+    let mut fcw_obligations = PredicateObligations::new();
 
     // It's ok to skip the binder here because wf code is prepared for it
     match clause.kind().skip_binder() {
         ty::ClauseKind::Trait(t) => {
-            wf.add_wf_preds_for_trait_pred(t, Elaborate::None);
+            wf.add_wf_preds_for_trait_pred(t, Elaborate::None, Some(&mut fcw_obligations));
         }
         ty::ClauseKind::HostEffect(..) => {
             // Technically the well-formedness of this clause is implied by
@@ -186,7 +187,7 @@ pub fn clause_obligations<'tcx>(
             wf.add_wf_preds_for_term(ty.into());
         }
         ty::ClauseKind::Projection(t) => {
-            wf.add_wf_preds_for_projection_term(t.projection_term);
+            wf.add_wf_preds_for_projection_term(t.projection_term, &mut fcw_obligations);
             wf.add_wf_preds_for_term(t.term);
         }
         ty::ClauseKind::ConstArgHasType(ct, ty) => {
@@ -203,7 +204,9 @@ pub fn clause_obligations<'tcx>(
         ty::ClauseKind::UnstableFeature(_) => {}
     }
 
-    wf.normalize(infcx)
+    // `fcw_obligations` is already normalized, since everything that writes to it
+    // goes through `obligations()`, which calls `wf.normalize()` at the end.
+    (wf.normalize(infcx), fcw_obligations)
 }
 
 struct WfPredicates<'a, 'tcx> {
@@ -381,6 +384,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         &mut self,
         trait_pred: ty::TraitClause<'tcx>,
         elaborate: Elaborate,
+        mut fcw_obligations: Option<&mut PredicateObligations<'tcx>>,
     ) {
         let tcx = self.tcx();
         let trait_ref = trait_pred.trait_ref;
@@ -424,32 +428,45 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             });
         }
 
-        self.out.extend(
-            trait_ref
-                .args
-                .iter()
-                .enumerate()
-                .filter_map(|(i, arg)| arg.as_term().map(|t| (i, t)))
-                .filter(|(_, term)| !term.has_escaping_bound_vars())
-                .map(|(i, term)| {
-                    let mut cause = traits::ObligationCause::misc(self.span, self.body_def_id);
-                    // The first arg is the self ty - use the correct span for it.
-                    if i == 0 {
-                        if let Some(hir::ItemKind::Impl(hir::Impl { self_ty, .. })) =
-                            item.map(|i| &i.kind)
-                        {
-                            cause.span = self_ty.span;
-                        }
+        self.out.extend(trait_ref.args.iter().enumerate().filter_map(|(i, arg)| {
+            let term = arg.as_term()?;
+
+            if term.has_escaping_bound_vars() {
+                let obligations = obligations(
+                    self.infcx,
+                    param_env,
+                    self.body_def_id,
+                    depth + 1,
+                    term,
+                    self.span,
+                )
+                .expect("inference vars shouldn't have escaping bound vars");
+
+                fcw_obligations
+                    .as_deref_mut()
+                    .expect("impl trait refs shouldn't have escaping bound vars")
+                    .extend(obligations);
+
+                None
+            } else {
+                let mut cause = traits::ObligationCause::misc(self.span, self.body_def_id);
+                // The first arg is the self ty - use the correct span for it.
+                if i == 0 {
+                    if let Some(hir::ItemKind::Impl(hir::Impl { self_ty, .. })) =
+                        item.map(|i| &i.kind)
+                    {
+                        cause.span = self_ty.span;
                     }
-                    traits::Obligation::with_depth(
-                        tcx,
-                        cause,
-                        depth,
-                        param_env,
-                        ty::ClauseKind::WellFormed(term),
-                    )
-                }),
-        );
+                }
+                Some(traits::Obligation::with_depth(
+                    tcx,
+                    cause,
+                    depth,
+                    param_env,
+                    ty::ClauseKind::WellFormed(term),
+                ))
+            }
+        }));
     }
 
     // Compute the obligations that are required for `trait_ref` to be WF,
@@ -463,7 +480,11 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     }
 
     /// Pushes the obligations required for a projection to be WF into `self.out`.
-    fn add_wf_preds_for_projection_term(&mut self, data: ty::AliasTerm<'tcx>) {
+    fn add_wf_preds_for_projection_term(
+        &mut self,
+        data: ty::AliasTerm<'tcx>,
+        fcw_obligations: &mut PredicateObligations<'tcx>,
+    ) {
         // A projection is well-formed if
         //
         // (a) its predicates hold (*)
@@ -489,7 +510,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             this.out.push(obligation)
         });
 
-        self.add_wf_preds_for_projection_args(data.args);
+        self.add_wf_preds_for_projection_args(data.args, fcw_obligations);
     }
 
     /// Pushes the obligations required for an inherent alias to be WF
@@ -531,26 +552,42 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         data.args.visit_with(self);
     }
 
-    fn add_wf_preds_for_projection_args(&mut self, args: GenericArgsRef<'tcx>) {
+    fn add_wf_preds_for_projection_args(
+        &mut self,
+        args: GenericArgsRef<'tcx>,
+        fcw_obligations: &mut PredicateObligations<'tcx>,
+    ) {
         let tcx = self.tcx();
         let cause = self.cause(ObligationCauseCode::WellFormed(None));
         let param_env = self.param_env;
         let depth = self.recursion_depth;
 
-        self.out.extend(
-            args.iter()
-                .filter_map(|arg| arg.as_term())
-                .filter(|term| !term.has_escaping_bound_vars())
-                .map(|term| {
-                    traits::Obligation::with_depth(
-                        tcx,
-                        cause.clone(),
-                        depth,
+        self.out.extend(args.iter().filter_map(|arg| {
+            let term = arg.as_term()?;
+
+            if term.has_escaping_bound_vars() {
+                fcw_obligations.extend(
+                    obligations(
+                        self.infcx,
                         param_env,
-                        ty::ClauseKind::WellFormed(term),
+                        self.body_def_id,
+                        depth + 1,
+                        term,
+                        self.span,
                     )
-                }),
-        );
+                    .expect("inference vars shouldn't have escaping bound vars"),
+                );
+                None
+            } else {
+                Some(traits::Obligation::with_depth(
+                    tcx,
+                    cause.clone(),
+                    depth,
+                    param_env,
+                    ty::ClauseKind::WellFormed(term),
+                ))
+            }
+        }));
     }
 
     fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>) {

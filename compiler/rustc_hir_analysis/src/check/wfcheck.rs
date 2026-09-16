@@ -1,4 +1,4 @@
-use std::cell::LazyCell;
+use std::cell::{LazyCell, RefCell};
 use std::ops::{ControlFlow, Deref};
 
 use hir::intravisit::{self, Visitor};
@@ -15,9 +15,13 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{AmbigArg, ItemKind, find_attr};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{BoundRegionConversionTime, SolverRegionConstraint, TyCtxtInferExt};
+use rustc_infer::infer::{
+    BoundRegionConversionTime, RegionResolutionError, SolverRegionConstraint, TyCtxtInferExt,
+};
 use rustc_infer::traits::{PredicateObligations, TraitErrors};
-use rustc_lint_defs::builtin::{REDUNDANT_LIFETIMES, SHADOWING_SUPERTRAIT_ITEMS};
+use rustc_lint_defs::builtin::{
+    REDUNDANT_LIFETIMES, SHADOWING_SUPERTRAIT_ITEMS, UNSATISFIED_HRTB_ARG,
+};
 use rustc_macros::{Diagnostic, TypeFoldable, TypeVisitable};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::solve::NoSolution;
@@ -55,6 +59,11 @@ pub(super) struct WfCheckingCtxt<'a, 'tcx> {
     pub(super) ocx: ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>,
     body_def_id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
+
+    /// Obligations with escaping bound vars. As emitting a hard error if such
+    /// obligations fail would cause significant crater breakage, we instead
+    /// prove them in a forked infcx and emit a FCW if any fail.
+    fcw_obligations: RefCell<PredicateObligations<'tcx>>,
 }
 impl<'a, 'tcx> Deref for WfCheckingCtxt<'a, 'tcx> {
     type Target = ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>;
@@ -140,6 +149,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         ));
     }
 
+    pub(super) fn register_fcw_obligations(&self, obligations: PredicateObligations<'tcx>) {
+        self.fcw_obligations.borrow_mut().extend(obligations);
+    }
+
     pub(super) fn unnormalized_obligations(
         &self,
         span: Span,
@@ -166,8 +179,9 @@ where
     let param_env = tcx.param_env(body_def_id);
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
+    let fcw_obligations = RefCell::new(PredicateObligations::new());
 
-    let mut wfcx = WfCheckingCtxt { ocx, body_def_id, param_env };
+    let mut wfcx = WfCheckingCtxt { ocx, body_def_id, param_env, fcw_obligations };
 
     // As of now, bounds are only enforced on checked type aliases, they're ignored for most type
     // aliases. So, only check for false global bounds if we're not ignoring bounds altogether.
@@ -188,6 +202,77 @@ where
     debug!(?assumed_wf_types);
 
     let infcx_compat = infcx.fork();
+    let infcx_fcw = infcx.fork();
+
+    let check_escaping_bound_vars_fcw = || {
+        if wfcx.fcw_obligations.borrow().is_empty() {
+            return;
+        }
+
+        let ocx = ObligationCtxt::new_with_diagnostics(&infcx_fcw);
+        ocx.register_obligations(wfcx.fcw_obligations.into_inner());
+        let trait_errors = ocx.try_evaluate_obligations();
+
+        let outlives_env = OutlivesEnvironment::new_with_implied_bounds_compat(
+            &infcx_fcw,
+            body_def_id,
+            param_env,
+            assumed_wf_types.iter().copied(),
+            true,
+        );
+        let mut region_errors =
+            infcx_fcw.resolve_regions_with_outlives_env(&outlives_env, tcx.def_span(body_def_id));
+
+        if let TraitErrors::HasErrors(errors) = trait_errors {
+            for error in errors {
+                tcx.emit_node_span_lint(
+                    UNSATISFIED_HRTB_ARG,
+                    tcx.local_def_id_to_hir_id(body_def_id),
+                    error.obligation.cause.span,
+                    rustc_errors::DiagDecorator(|err| {
+                        let predicate =
+                            tcx.short_string(error.obligation.predicate, err.long_ty_path());
+                        err.primary_message(format!(
+                            "the trait bound `{predicate}` is not satisfied"
+                        ));
+                    }),
+                );
+            }
+        } else if !region_errors.is_empty() {
+            let is_bound_failure = |e: &RegionResolutionError<'tcx>| {
+                matches!(e, RegionResolutionError::GenericBoundFailure(..))
+            };
+            if !region_errors.iter().all(&is_bound_failure) {
+                region_errors.retain(|e| !is_bound_failure(e));
+            }
+            region_errors.sort_by_key(|e| e.origin().span());
+
+            for error in &region_errors {
+                let span = error.origin().span();
+                tcx.emit_node_span_lint(
+                    UNSATISFIED_HRTB_ARG,
+                    tcx.local_def_id_to_hir_id(body_def_id),
+                    span,
+                    rustc_errors::DiagDecorator(|err| match error {
+                        RegionResolutionError::GenericBoundFailure(_, kind, sub) => {
+                            let desc = kind.to_ty(tcx).prefix_string(tcx);
+                            err.primary_message(format!(
+                                "the {desc} `{kind}` may not live long enough"
+                            ));
+                            err.span_label(span, format!("`{kind}` must outlive `{sub}`"));
+                        }
+                        RegionResolutionError::ConcreteFailure(_, sub, sup) => {
+                            err.primary_message("lifetime may not live long enough");
+                            err.span_label(span, format!("`{sup}` must outlive `{sub}`"));
+                        }
+                        _ => {
+                            err.primary_message("unsatisfied lifetime requirements");
+                        }
+                    }),
+                );
+            }
+        }
+    };
 
     // We specifically want to *disable* the implied bounds hack, first,
     // so we can detect when failures are due to bevy's implied bounds.
@@ -203,6 +288,7 @@ where
 
     let errors = infcx.resolve_regions_with_outlives_env(&outlives_env);
     if errors.is_empty() {
+        check_escaping_bound_vars_fcw();
         return Ok(());
     }
 
@@ -210,13 +296,15 @@ where
         &infcx_compat,
         body_def_id,
         param_env,
-        assumed_wf_types,
+        assumed_wf_types.iter().copied(),
         // Don't *disable* the implied bounds hack; though this will only apply
         // the implied bounds hack if this contains `bevy_ecs`'s `ParamSet` type.
         false,
     );
     let errors_compat = infcx_compat.resolve_regions_with_outlives_env(&outlives_env);
     if errors_compat.is_empty() {
+        check_escaping_bound_vars_fcw();
+
         // FIXME: Once we fix bevy, this would be the place to insert a warning
         // to upgrade bevy.
         Ok(())
@@ -1116,13 +1204,15 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
     debug!("check_associated_type_bounds: bounds={:?}", bounds);
     let wf_obligations = bounds.iter_identity_copied().map(Unnormalized::skip_norm_wip).flat_map(
         |(bound, bound_span)| {
-            traits::wf::clause_obligations(
+            let (obligations, fcw_obligations) = traits::wf::clause_obligations(
                 wfcx.infcx,
                 wfcx.param_env,
                 wfcx.body_def_id,
                 bound,
                 bound_span,
-            )
+            );
+            wfcx.register_fcw_obligations(fcw_obligations);
+            obligations
         },
     );
 
@@ -1579,13 +1669,40 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
 
     assert_eq!(gen_clauses.clauses.len(), gen_clauses.spans.len());
     let wf_obligations = gen_clauses.into_iter().flat_map(|(p, sp)| {
-        traits::wf::clause_obligations(
-            infcx,
-            wfcx.param_env,
-            wfcx.body_def_id,
-            p.skip_norm_wip(),
-            sp,
-        )
+        let clause = p.skip_norm_wip();
+        let (obligations, mut fcw_obligations) =
+            traits::wf::clause_obligations(infcx, wfcx.param_env, wfcx.body_def_id, clause, sp);
+
+        // On a where-clause like `for<'a> W<'a, T>: Sized`, we want to point to the entire
+        // clause including the self ty, not just the `Sized` bound.
+        let self_ty_span_for_fcw = || {
+            // A self ty that has no escaping bound vars, like the one in
+            // `for<'a> X: Trait<W<'a, T>>`, already has the correct span.
+            if clause.as_trait_clause().is_none_or(|trait_pred| {
+                !trait_pred.skip_binder().trait_ref.self_ty().has_escaping_bound_vars()
+            }) {
+                return None;
+            }
+
+            for pred in tcx.hir_node_by_def_id(def_id).generics()?.predicates {
+                if let hir::WherePredicateKind::BoundPredicate(bound_pred) = pred.kind
+                    && bound_pred.bounds.iter().any(|bound| bound.span() == sp)
+                {
+                    return Some(pred.span);
+                }
+            }
+            None
+        };
+        if !fcw_obligations.is_empty()
+            && let Some(span) = self_ty_span_for_fcw()
+        {
+            for obligation in &mut fcw_obligations {
+                obligation.cause.span = span;
+            }
+        }
+        wfcx.register_fcw_obligations(fcw_obligations);
+
+        obligations
     });
     let obligations: Vec<_> =
         wf_obligations.chain(default_obligations).chain(assoc_const_obligations).collect();
