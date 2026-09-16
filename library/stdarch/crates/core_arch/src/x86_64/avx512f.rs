@@ -9579,6 +9579,14 @@ mod tests {
         let r = _mm_srav_epi64(a, count);
         let e = _mm_set_epi64x(1 << 4, 0);
         assert_eq_m128i(r, e);
+
+        let a = _mm_set_epi64x(-1, -2);
+        let b = _mm_set_epi64x(64, 65);
+        let r = _mm_srav_epi64(a, b);
+        let e = _mm_set_epi64x((-1i64).unbounded_shl(64), (-2i64).unbounded_shl(65));
+        assert_eq_m128i(r, e);
+        let e = _mm_set_epi64x(-1, -1);
+        assert_eq_m128i(r, e);
     }
 
     #[simd_test(enable = "avx512f,avx512vl")]
