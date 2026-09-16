@@ -10,14 +10,13 @@ use rustc_ast_pretty::pprust as pprust_ast;
 use rustc_hir::intravisit;
 use rustc_hir_pretty as pprust_hir;
 use rustc_hir_pretty::PpAnn;
-use rustc_middle::bug;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_build::thir::print::{thir_flat, thir_tree};
 use rustc_public::rustc_internal::pretty::write_smir_pretty;
 use rustc_session::Session;
 use rustc_session::config::{OutFileName, OutputType, PpHirMode, PpMode, PpSourceMode};
-use rustc_span::{FileName, Ident};
+use rustc_span::{FileName, Ident, bug};
 use tracing::debug;
 
 pub use self::PpMode::*;

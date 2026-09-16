@@ -1,9 +1,8 @@
 use rustc_abi::{Align, FieldIdx, WrappingRange};
 use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::{ErrorGuaranteed, sym};
+use rustc_span::{ErrorGuaranteed, bug, span_bug, sym};
 use rustc_target::spec::Arch;
 
 use super::operand::{OperandRef, OperandValue};

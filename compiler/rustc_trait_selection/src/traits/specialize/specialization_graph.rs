@@ -1,10 +1,10 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_macros::extension;
-use rustc_middle::bug;
 pub use rustc_middle::traits::specialization_graph::*;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
 use super::OverlapError;

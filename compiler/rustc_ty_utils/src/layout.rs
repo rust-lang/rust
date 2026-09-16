@@ -13,7 +13,6 @@ use rustc_hashes::Hash64;
 use rustc_hir as hir;
 use rustc_hir::find_attr;
 use rustc_index::{Idx as _, IndexVec};
-use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::layout::{
@@ -25,7 +24,7 @@ use rustc_middle::ty::{
     TypeVisitableExt, Unnormalized,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
-use rustc_span::{Symbol, sym};
+use rustc_span::{Symbol, bug, sym};
 use rustc_structures::Limit;
 use tracing::{debug, instrument};
 
