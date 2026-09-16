@@ -238,12 +238,15 @@ impl SerializedDepGraph {
     #[inline]
     pub fn node_to_index_opt(&self, dep_node: &DepNode) -> Option<SerializedDepNodeIndex> {
         let kind = self.reverse_index.kinds.get(dep_node.kind.as_usize())?;
-        let map = kind.fingerprint_map(
-            dep_node.kind,
-            &self.nodes,
-            &self.reverse_index.nodes_by_kind,
-            &self.profiler,
-        );
+        let map = match kind.map.get() {
+            Some(map) => map,
+            None => kind.fingerprint_map(
+                dep_node.kind,
+                &self.nodes,
+                &self.reverse_index.nodes_by_kind,
+                &self.profiler,
+            ),
+        };
         map.get(&dep_node.key_fingerprint).copied()
     }
 
