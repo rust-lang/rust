@@ -1,6 +1,17 @@
 use core::num::{Complex, Wrapping};
 
 #[test]
+fn complex_default() {
+    assert_eq!(Complex::<i32>::default(), Complex::new(0, 0));
+    assert_eq!(Complex::<f32>::default(), Complex::new(0.0, 0.0));
+
+    // The default is the additive unit.
+    let a = Complex::new(1, 2);
+    assert_eq!(a + Complex::<i32>::default(), a);
+    assert_eq!(Complex::<i32>::default() + a, a);
+}
+
+#[test]
 fn complex_addition() {
     let a = Complex::new(1, 2);
     let b = Complex::new(3, 4);

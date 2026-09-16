@@ -22,6 +22,13 @@ impl<T> Complex<T> {
 }
 
 #[unstable(feature = "complex_numbers", issue = "154023")]
+impl<T: Default> Default for Complex<T> {
+    fn default() -> Self {
+        Self { re: Default::default(), im: Default::default() }
+    }
+}
+
+#[unstable(feature = "complex_numbers", issue = "154023")]
 impl<T> Complex<T>
 where
     T: Neg<Output = T>,
