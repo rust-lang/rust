@@ -101,7 +101,7 @@ declare_clippy_lint! {
     /// represent the actual size of a function's stack frame.
     #[clippy::version = "1.72.0"]
     pub LARGE_UNOPT_STACK_FRAMES,
-    nursery,
+    suspicious,
     "checks for functions that allocate a lot of stack space"
 }
 
