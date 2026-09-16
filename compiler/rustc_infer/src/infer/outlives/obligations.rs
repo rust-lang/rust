@@ -335,7 +335,6 @@ impl<'tcx> InferCtxt<'tcx> {
     /// right before lexical region resolution.
     #[instrument(level = "debug", skip(self, outlives_env))]
     pub fn process_registered_region_obligations(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
-        use rustc_type_ir::InferCtxtLike;
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
 
         if self.tcx.assumptions_on_binders() {
