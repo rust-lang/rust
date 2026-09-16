@@ -1522,7 +1522,9 @@ impl CrateMetadata {
 
     fn get_proc_macro_quoted_span(&self, tcx: TyCtxt<'_>, index: usize) -> Span {
         self.root
-            .tables
+            .proc_macro_data
+            .as_ref()
+            .unwrap()
             .proc_macro_quoted_spans
             .get(self, index)
             .unwrap_or_else(|| panic!("Missing proc macro quoted span: {index:?}"))
