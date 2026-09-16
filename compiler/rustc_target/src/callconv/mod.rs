@@ -280,6 +280,12 @@ pub struct CastTarget {
     pub rest_offset: Option<Size>,
     pub rest: Uniform,
     pub attrs: ArgAttributes,
+    /// If `true`, indicates that this type will be passed on the x87 floating point stack on
+    /// 32-bit x86, changing the LLVM type to `x86_fp80`. This is needed as LLVM needs to generate
+    /// extra code to ensure that signalling NaNs are passed losslessly on the x87 floating point
+    /// stack. Only valid on return types on 32-bit x86 with a cast target of either `Reg::f32()` or
+    /// `Reg::f64()`.
+    pub x87_floating_point_stack: bool,
 }
 
 impl From<Reg> for CastTarget {
@@ -296,7 +302,13 @@ impl From<Uniform> for CastTarget {
 
 impl CastTarget {
     pub fn prefixed(prefix: ArrayVec<Reg, 8>, rest: Uniform) -> Self {
-        Self { prefix, rest_offset: None, rest, attrs: ArgAttributes::new() }
+        Self {
+            prefix,
+            rest_offset: None,
+            rest,
+            attrs: ArgAttributes::new(),
+            x87_floating_point_stack: false,
+        }
     }
 
     pub fn offset_pair(a: Reg, offset_from_start: Size, b: Reg) -> Self {
@@ -307,6 +319,7 @@ impl CastTarget {
             rest_offset: Some(offset_from_start),
             rest: b.into(),
             attrs: ArgAttributes::new(),
+            x87_floating_point_stack: false,
         }
     }
 
@@ -358,17 +371,20 @@ impl CastTarget {
             rest_offset: rest_offset_l,
             rest: rest_l,
             attrs: attrs_l,
+            x87_floating_point_stack: x87_l,
         } = self;
         let CastTarget {
             prefix: prefix_r,
             rest_offset: rest_offset_r,
             rest: rest_r,
             attrs: attrs_r,
+            x87_floating_point_stack: x87_r,
         } = other;
         prefix_l == prefix_r
             && rest_offset_l == rest_offset_r
             && rest_l == rest_r
             && attrs_l.eq_abi(attrs_r)
+            && x87_l == x87_r
     }
 }
 
@@ -659,9 +675,8 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         match &spec.arch {
             Arch::X86 => {
                 let (flavor, regparm) = match abi {
-                    ExternAbi::Fastcall { .. } | ExternAbi::Vectorcall { .. } => {
-                        (x86::Flavor::FastcallOrVectorcall, None)
-                    }
+                    ExternAbi::Fastcall { .. } => (x86::Flavor::Fastcall, None),
+                    ExternAbi::Vectorcall { .. } => (x86::Flavor::Vectorcall, None),
                     ExternAbi::C { .. } | ExternAbi::Cdecl { .. } | ExternAbi::Stdcall { .. } => {
                         (x86::Flavor::General, cx.x86_abi_opt().regparm)
                     }
