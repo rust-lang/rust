@@ -185,7 +185,7 @@ mod large_enum_variant;
 mod large_futures;
 mod large_include_file;
 mod large_stack_arrays;
-mod large_stack_frames;
+mod large_unopt_stack_frames;
 mod legacy_numeric_constants;
 mod len_without_is_empty;
 mod len_zero;
@@ -793,7 +793,7 @@ rustc_lint::late_lint_methods!(
         ArcWithNonSendSync: arc_with_non_send_sync::ArcWithNonSendSync = arc_with_non_send_sync::ArcWithNonSendSync,
         NeedlessIfs: needless_ifs::NeedlessIfs = needless_ifs::NeedlessIfs,
         MinIdentChars: min_ident_chars::MinIdentChars = min_ident_chars::MinIdentChars::new(conf),
-        LargeStackFrames: large_stack_frames::LargeStackFrames = large_stack_frames::LargeStackFrames::new(conf),
+        LargeUnoptStackFrames: large_unopt_stack_frames::LargeUnoptStackFrames = large_unopt_stack_frames::LargeUnoptStackFrames::new(conf),
         SingleRangeInVecInit: single_range_in_vec_init::SingleRangeInVecInit = single_range_in_vec_init::SingleRangeInVecInit,
         NeedlessPassByRefMut: needless_pass_by_ref_mut::NeedlessPassByRefMut<'tcx> = needless_pass_by_ref_mut::NeedlessPassByRefMut::new(conf),
         NonCanonicalImpls: non_canonical_impls::NonCanonicalImpls = non_canonical_impls::NonCanonicalImpls::new(tcx),

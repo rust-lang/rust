@@ -1,5 +1,5 @@
 error: this function may allocate 250$PTR bytes on the stack
-  --> tests/ui/large_stack_frames.rs:20:4
+  --> tests/ui/large_unopt_stack_frames.rs:20:4
    |
 LL | fn many_small_arrays() {
    |    ^^^^^^^^^^^^^^^^^
@@ -9,11 +9,11 @@ LL |     let x5 = [0u8; 500_000];
    |
    = note: 250$PTR bytes is larger than Clippy's configured `stack-size-threshold` of 512000
    = note: allocating large amounts of stack space can overflow the stack and cause the program to abort
-   = note: `-D clippy::large-stack-frames` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::large_stack_frames)]`
+   = note: `-D clippy::large-unopt-stack-frames` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_unopt_stack_frames)]`
 
 error: this function may allocate 1000000 bytes on the stack
-  --> tests/ui/large_stack_frames.rs:31:4
+  --> tests/ui/large_unopt_stack_frames.rs:31:4
    |
 LL | fn large_return_value() -> ArrayDefault<1_000_000> {
    |    ^^^^^^^^^^^^^^^^^^      ----------------------- this is the largest part, at 1000000 bytes for type `ArrayDefault<1000000>`
@@ -21,7 +21,7 @@ LL | fn large_return_value() -> ArrayDefault<1_000_000> {
    = note: 1000000 bytes is larger than Clippy's configured `stack-size-threshold` of 512000
 
 error: this function may allocate 100$PTR bytes on the stack
-  --> tests/ui/large_stack_frames.rs:37:4
+  --> tests/ui/large_unopt_stack_frames.rs:37:4
    |
 LL | fn large_fn_arg(x: ArrayDefault<1_000_000>) {
    |    ^^^^^^^^^^^^ - `x` is the largest part, at 1000000 bytes for type `ArrayDefault<1000000>`
@@ -29,7 +29,7 @@ LL | fn large_fn_arg(x: ArrayDefault<1_000_000>) {
    = note: 100$PTR bytes is larger than Clippy's configured `stack-size-threshold` of 512000
 
 error: this function may allocate 100$PTR bytes on the stack
-  --> tests/ui/large_stack_frames.rs:44:13
+  --> tests/ui/large_unopt_stack_frames.rs:44:13
    |
 LL |     let f = || black_box(&[0u8; 1_000_000]);
    |             ^^^^^^^^^^^^^^----------------^

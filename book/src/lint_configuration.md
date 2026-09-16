@@ -118,7 +118,7 @@ Whether functions inside `#[cfg(test)]` modules or test functions should be chec
 
 ---
 **Affected lints:**
-* [`large_stack_frames`](https://clippy.rust-lang.org/main/index.html#large_stack_frames)
+* [`large_unopt_stack_frames`](https://clippy.rust-lang.org/main/index.html#large_unopt_stack_frames)
 
 
 ## `allow-mixed-uninlined-format-args`
@@ -1101,7 +1101,7 @@ The maximum allowed stack size for functions in bytes
 
 ---
 **Affected lints:**
-* [`large_stack_frames`](https://clippy.rust-lang.org/main/index.html#large_stack_frames)
+* [`large_unopt_stack_frames`](https://clippy.rust-lang.org/main/index.html#large_unopt_stack_frames)
 
 
 ## `standard-macro-braces`
