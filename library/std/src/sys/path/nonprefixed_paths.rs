@@ -48,6 +48,12 @@ impl<'a> Components<'a> {
         self.state == State::Absolute
     }
 
+    /// Checks if the provided byte is a separator byte (i.e. '/')
+    #[inline]
+    pub fn is_sep_byte(&self, b: u8) -> bool {
+        is_sep_byte(b)
+    }
+
     /// Normalizes away trailing separators and current directory ('.') components
     /// in the forward direction. Returns the 0-index `self.path` should start at
     /// to subslice at in the front direction.

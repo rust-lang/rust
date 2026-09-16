@@ -626,6 +626,8 @@ impl fmt::Debug for Components<'_> {
 
 impl<'a> Components<'a> {
     /// Extracts a slice corresponding to the portion of the path remaining for iteration.
+    /// This function also normalizes away trailing separator bytes and non-starting current
+    /// directory components.
     ///
     /// # Examples
     ///
@@ -637,6 +639,10 @@ impl<'a> Components<'a> {
     /// components.next();
     ///
     /// assert_eq!(Path::new("foo/bar.txt"), components.as_path());
+    ///
+    /// let comp_with_trailing_seps = Path::new("/tmp/foo/baz.txt///").components();
+    ///
+    /// assert_eq!(Path::new("/tmp/foo/baz.txt"), comp_with_trailing_seps.as_path());
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -2590,7 +2596,7 @@ impl Path {
     #[inline]
     pub fn has_trailing_sep(&self) -> bool {
         let comps = self.components();
-        self.as_os_str().as_encoded_bytes().last().copied().is_some_and(|b| comps.is_sep_byte(b))
+        self.as_os_str().as_encoded_bytes().last().copied().is_some_and(|b| comps.0.is_sep_byte(b))
     }
 
     /// Ensures that a path has a trailing [separator](MAIN_SEPARATOR),
@@ -2645,7 +2651,7 @@ impl Path {
         if self.has_trailing_sep() && (!self.has_root() || self.parent().is_some()) {
             let mut bytes = self.inner.as_encoded_bytes();
             while let Some((last, init)) = bytes.split_last()
-                && comps.is_sep_byte(*last)
+                && comps.0.is_sep_byte(*last)
             {
                 bytes = init;
             }
