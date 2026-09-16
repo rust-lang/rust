@@ -1392,7 +1392,7 @@ pub fn parse_remap_path_scope(
                     }
 
                     RemapPathScopeComponents::DOCUMENTATION
-                },
+                }
                 "debuginfo" => RemapPathScopeComponents::DEBUGINFO,
                 "coverage" => RemapPathScopeComponents::COVERAGE,
                 "object" => RemapPathScopeComponents::OBJECT,
@@ -1735,7 +1735,7 @@ fn parse_jobs_all(
             early_dcx.early_fatal(format!("`{opt_name}` cannot be larger than `--jobs`"));
         }
     };
-    let frontend = match matches.opt_str("jobs-frontend") {
+    let mut frontend = match matches.opt_str("jobs-frontend") {
         Some(jobs_frontend) => {
             let opt_name = "--jobs-frontend";
             let frontend =
@@ -1757,6 +1757,14 @@ fn parse_jobs_all(
             None => None, // default to 1 thread irrespectively of `jobs` for now
         },
     };
+
+    // Build-time override to opt into a different default for the frontend thread count
+    if frontend.is_none()
+        && let Some(default_frontend_jobs) = option_env!("CFG_DEFAULT_FRONTEND_JOBS")
+    {
+        frontend = Some(NonZero::new(default_frontend_jobs.parse::<usize>().unwrap()).unwrap());
+    }
+
     let backend = match matches.opt_str("jobs-backend") {
         Some(jobs_backend) => {
             let opt_name = "--jobs-backend";
