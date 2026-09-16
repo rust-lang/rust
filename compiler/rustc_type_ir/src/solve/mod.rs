@@ -456,7 +456,7 @@ pub enum GoalSource {
 pub struct QueryInput<I: Interner, P> {
     pub goal: Goal<I, P>,
     pub predefined_opaques_in_body: I::PredefinedOpaques,
-    pub hidden_types_of_opaques_in_body: I::OpaqueHiddenTyBounds,
+    pub pseudo_rigid_due_to_opaques_bounds_in_body: I::PseudoRigidDueToOpaquesBounds,
 }
 
 impl<I: Interner, P: Eq> Eq for QueryInput<I, P> {}
@@ -634,7 +634,7 @@ impl<I: Interner> ExternalRegionConstraints<I> {
 pub struct ExternalConstraintsData<I: Interner> {
     pub region_constraints: ExternalRegionConstraints<I>,
     pub opaque_types: I::PredefinedOpaques,
-    pub opaque_hidden_ty_bounds: I::OpaqueHiddenTyBounds,
+    pub pseudo_rigid_due_to_opaques_bounds: I::PseudoRigidDueToOpaquesBounds,
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
 
@@ -650,7 +650,8 @@ impl<I: Interner> ExternalConstraintsData<I> {
         Self {
             region_constraints,
             opaque_types: cx.mk_predefined_opaques_in_body(&[]),
-            opaque_hidden_ty_bounds: cx.mk_opaque_hidden_ty_bounds_in_body(&[]),
+            pseudo_rigid_due_to_opaques_bounds: cx
+                .mk_pseudo_rigid_due_to_opaques_bounds_in_body(&[]),
             normalization_nested_goals: NestedNormalizationGoals::default(),
         }
     }
@@ -659,12 +660,12 @@ impl<I: Interner> ExternalConstraintsData<I> {
         let ExternalConstraintsData {
             region_constraints,
             opaque_types,
-            opaque_hidden_ty_bounds,
+            pseudo_rigid_due_to_opaques_bounds,
             normalization_nested_goals,
         } = self;
         region_constraints.is_empty()
             && opaque_types.is_empty()
-            && opaque_hidden_ty_bounds.is_empty()
+            && pseudo_rigid_due_to_opaques_bounds.is_empty()
             && normalization_nested_goals.is_empty()
     }
 }

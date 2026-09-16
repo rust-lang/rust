@@ -1122,7 +1122,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
     ) -> (
         Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>,
-        Vec<(Ty<'tcx>, FxIndexSet<ty::OpaqueHiddenTyBound<'tcx>>)>,
+        Vec<(Ty<'tcx>, FxIndexSet<ty::PseudoRigidDueToOpaquesBound<'tcx>>)>,
     ) {
         let mut inner = self.inner.borrow_mut();
         let (opaques, hiddens) = inner.opaque_type_storage.take_opaque_types();
@@ -1134,7 +1134,10 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().opaque_type_storage.iter_opaque_types().collect()
     }
 
-    pub fn has_hidden_types_of_opaques_modulo_sub_unification(&self, ty_vid: TyVid) -> bool {
+    /// In the next solver, we normalize alias types by replacing them with infer vars and
+    /// registering/evaluating projection goals
+    /// They often but when we are in the defining scope of an opaque type and we haven't fully
+    pub fn is_pseudo_rigid_due_to_opaques_modulo_sub_unification(&self, ty_vid: TyVid) -> bool {
         if !self.next_trait_solver() {
             return false;
         }
@@ -1142,7 +1145,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let ty_sub_vid = self.sub_unification_table_root_var(ty_vid);
         let inner = &mut *self.inner.borrow_mut();
         let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
-        inner.opaque_type_storage.iter_hidden_types_of_opaques().any(|(hidden_ty, _)| {
+        inner.opaque_type_storage.iter_pseudo_rigids_due_to_opaques().any(|(hidden_ty, _)| {
             if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.kind() {
                 let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
                 if opaque_sub_vid == ty_sub_vid {
@@ -1191,10 +1194,10 @@ impl<'tcx> InferCtxt<'tcx> {
             .collect()
     }
 
-    pub fn hidden_types_of_opaques_modulo_sub_unification(
+    pub fn pseudo_rigids_due_to_opaques_modulo_self_unification(
         &self,
         ty_vid: TyVid,
-    ) -> Vec<(Ty<'tcx>, Vec<ty::OpaqueHiddenTyBound<'tcx>>)> {
+    ) -> Vec<(Ty<'tcx>, Vec<ty::PseudoRigidDueToOpaquesBound<'tcx>>)> {
         // Avoid accidentally allowing more code to compile with the old solver.
         if !self.next_trait_solver() {
             return vec![];
@@ -1207,12 +1210,12 @@ impl<'tcx> InferCtxt<'tcx> {
         let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
         inner
             .opaque_type_storage
-            .iter_hidden_types_of_opaques()
-            .filter_map(|(hidden_ty, bounds)| {
-                if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.kind() {
+            .iter_pseudo_rigids_due_to_opaques()
+            .filter_map(|(pseudo_rigid, bounds)| {
+                if let ty::Infer(ty::TyVar(hidden_vid)) = *pseudo_rigid.kind() {
                     let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
                     if opaque_sub_vid == ty_sub_vid {
-                        return Some((hidden_ty, bounds.iter().copied().collect()));
+                        return Some((pseudo_rigid, bounds.iter().copied().collect()));
                     }
                 }
 

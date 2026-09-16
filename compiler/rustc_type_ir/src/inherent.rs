@@ -643,8 +643,8 @@ pub trait Span<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 pub trait OpaqueTypeStorageEntries: Debug + Clone + Copy + Default + PartialEq + Eq {
     /// Whether the number of opaques has changed in a way that necessitates
     /// reevaluating a goal. For now, this is only when the number of non-duplicated
-    /// entries and bounds for hidden types of opaques changed.
-    fn needs_reevaluation(self, opaques: usize, hidden_ty_bounds: usize) -> bool;
+    /// entries and bounds for pseudo-rigids due to opaques changed.
+    fn needs_reevaluation(self, opaques: usize, pseudo_rigid_bounds: usize) -> bool;
 }
 
 pub trait BoundVarKinds<I: Interner>:

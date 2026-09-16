@@ -57,7 +57,7 @@ pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
     opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
-    opaque_hidden_ty_bounds: &[(I::Ty, ty::OpaqueHiddenTyBound<I>)],
+    pseudo_rigid_due_to_opaques_bounds: &[(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)],
     typing_mode: TypingMode<I>,
 ) -> (ThinVec<I::GenericArg>, I::CanonicalInput)
 where
@@ -69,9 +69,9 @@ where
         QueryInput {
             goal,
             predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
-            hidden_types_of_opaques_in_body: delegate
+            pseudo_rigid_due_to_opaques_bounds_in_body: delegate
                 .cx()
-                .mk_opaque_hidden_ty_bounds_in_body(opaque_hidden_ty_bounds),
+                .mk_pseudo_rigid_due_to_opaques_bounds_in_body(pseudo_rigid_due_to_opaques_bounds),
         },
     );
 
@@ -131,7 +131,7 @@ where
     let ExternalConstraintsData {
         region_constraints,
         opaque_types,
-        opaque_hidden_ty_bounds,
+        pseudo_rigid_due_to_opaques_bounds,
         normalization_nested_goals,
     } = &*external_constraints;
 
@@ -154,7 +154,9 @@ where
         }
     };
     register_new_opaque_types(delegate, opaque_types.as_slice(), span);
-    delegate.add_opaque_hidden_ty_bounds_in_storage(opaque_hidden_ty_bounds.as_slice());
+    delegate.register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(
+        pseudo_rigid_due_to_opaques_bounds.as_slice(),
+    );
 
     (normalization_nested_goals.clone(), certainty)
 }

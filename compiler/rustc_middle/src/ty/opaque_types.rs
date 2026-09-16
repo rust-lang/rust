@@ -10,7 +10,8 @@ use crate::ty::{
 
 pub type OpaqueTypeKey<'tcx> = rustc_type_ir::OpaqueTypeKey<TyCtxt<'tcx>>;
 
-pub type OpaqueHiddenTyBound<'tcx> = rustc_type_ir::OpaqueHiddenTyBound<TyCtxt<'tcx>>;
+pub type PseudoRigidDueToOpaquesBound<'tcx> =
+    rustc_type_ir::PseudoRigidDueToOpaquesBound<TyCtxt<'tcx>>;
 
 /// Converts generic params of a TypeFoldable from one
 /// item's generics to another. Usually from a function's generics

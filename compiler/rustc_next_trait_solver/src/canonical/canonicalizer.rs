@@ -116,7 +116,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let RawExternalConstraintsData {
             region_constraints,
             opaque_types,
-            opaque_hidden_ty_bounds: mut opaque_hidden_ty_bounds_candidates,
+            pseudo_rigid_due_to_opaques_bounds,
             normalization_nested_goals,
         } = external_constraints;
         let region_constraints = if region_constraints.has_type_flags(NEEDS_CANONICAL) {
@@ -135,28 +135,10 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             } else {
                 normalization_nested_goals
             };
-
-        // Filter out irrelevant hidden tys, in a fixed-point iteration to make them less bulky.
-        let mut opaque_hidden_ty_bounds = vec![];
-        while !opaque_hidden_ty_bounds_candidates.is_empty() {
-            let prev_len = opaque_hidden_ty_bounds.len();
-            opaque_hidden_ty_bounds_candidates.retain(|bounds @ (hidden_ty, _)| {
-                if let ty::Infer(ty::TyVar(vid)) = hidden_ty.kind()
-                    && canonicalizer
-                        .state
-                        .sub_root_lookup_table
-                        .contains_key(&delegate.sub_unification_table_root_var(vid))
-                {
-                    opaque_hidden_ty_bounds.push(bounds.clone().fold_with(&mut canonicalizer));
-                    false
-                } else {
-                    true
-                }
-            });
-            if opaque_hidden_ty_bounds.len() == prev_len {
-                break;
-            }
-        }
+        let pseudo_rigid_due_to_opaques_bounds = canonicalizer
+            .filter_and_canonicalize_pseudo_rigids_due_to_opaques_bounds(
+                pseudo_rigid_due_to_opaques_bounds,
+            );
 
         let value = Response {
             certainty,
@@ -164,9 +146,11 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             external_constraints: delegate.cx().mk_external_constraints(ExternalConstraintsData {
                 region_constraints,
                 opaque_types: delegate.cx().mk_predefined_opaques_in_body(&opaque_types),
-                opaque_hidden_ty_bounds: delegate
+                pseudo_rigid_due_to_opaques_bounds: delegate
                     .cx()
-                    .mk_opaque_hidden_ty_bounds_in_body(&opaque_hidden_ty_bounds),
+                    .mk_pseudo_rigid_due_to_opaques_bounds_in_body(
+                        &pseudo_rigid_due_to_opaques_bounds,
+                    ),
                 normalization_nested_goals,
             }),
         };
@@ -302,36 +286,21 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 predefined_opaques_in_body
             };
 
-        // Filter out irrelevant hidden tys, in a fixed-point iteration. Otherwise it would make
-        // the query heavy and less cache-friendly.
-        let mut hidden_types_of_opaques_in_body_candidates =
-            input.hidden_types_of_opaques_in_body.to_vec();
-        let mut hidden_types_of_opaques_in_body = vec![];
-        while !hidden_types_of_opaques_in_body_candidates.is_empty() {
-            let prev_len = hidden_types_of_opaques_in_body.len();
-            hidden_types_of_opaques_in_body_candidates.retain(|bound @ (hidden_ty, _)| {
-                if let ty::Infer(ty::TyVar(vid)) = hidden_ty.kind()
-                    && rest_canonicalizer
-                        .state
-                        .sub_root_lookup_table
-                        .contains_key(&delegate.sub_unification_table_root_var(vid))
-                {
-                    hidden_types_of_opaques_in_body.push(bound.fold_with(&mut rest_canonicalizer));
-                    false
-                } else {
-                    true
-                }
-            });
-            if hidden_types_of_opaques_in_body.len() == prev_len {
-                break;
-            }
-        }
+        let pseudo_rigid_due_to_opaques_bounds_in_body = rest_canonicalizer
+            .filter_and_canonicalize_pseudo_rigids_due_to_opaques_bounds(
+                input.pseudo_rigid_due_to_opaques_bounds_in_body.to_vec(),
+            );
 
-        let hidden_types_of_opaques_in_body =
-            delegate.cx().mk_opaque_hidden_ty_bounds_in_body(&hidden_types_of_opaques_in_body);
+        let pseudo_rigid_due_to_opaques_bounds_in_body =
+            delegate.cx().mk_pseudo_rigid_due_to_opaques_bounds_in_body(
+                &pseudo_rigid_due_to_opaques_bounds_in_body,
+            );
 
-        let value =
-            QueryInput { goal, predefined_opaques_in_body, hidden_types_of_opaques_in_body };
+        let value = QueryInput {
+            goal,
+            predefined_opaques_in_body,
+            pseudo_rigid_due_to_opaques_bounds_in_body,
+        };
 
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
@@ -520,6 +489,44 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let var = self.get_or_insert_bound_var(t, kind);
 
         Ty::new_canonical_bound(self.cx(), var)
+    }
+
+    /// After canonicalizing all the other relevant values, filter out pseudo-rigids that
+    /// sub-unified with no other existing vars and canonicalize the remaining ones.
+    fn filter_and_canonicalize_pseudo_rigids_due_to_opaques_bounds(
+        &mut self,
+        mut pseudo_rigid_due_to_opaques_bounds: Vec<(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)>,
+    ) -> Vec<(I::Ty, ty::PseudoRigidDueToOpaquesBound<I>)> {
+        let mut filtered = vec![];
+
+        // This should be done in fixed-point iteration, because we may have some pseudo-rigid
+        // that sub-unified with an infer var in another one's bounds.
+        // Fox example, suppose that we have `[?x]` for `var_values` and
+        // `[(?y, ^self: Foo), (?x, ^self: Bar<?y>)]` for pseudo-rigids. If we check them just
+        // once in order, we accidentally filter out the first `(?y, ^self: foo)` as `?y`
+        // appears nowhere in preexisting `var_values` when we check it, but it becomes relevant
+        // after we check and canonicalize the second one.
+        while !pseudo_rigid_due_to_opaques_bounds.is_empty() {
+            let prev_len = filtered.len();
+            pseudo_rigid_due_to_opaques_bounds.retain(|bounds @ (hidden_ty, _)| {
+                if let ty::Infer(ty::TyVar(vid)) = hidden_ty.kind()
+                    && self
+                        .state
+                        .sub_root_lookup_table
+                        .contains_key(&self.delegate.sub_unification_table_root_var(vid))
+                {
+                    filtered.push(bounds.clone().fold_with(self));
+                    false
+                } else {
+                    true
+                }
+            });
+            if filtered.len() == prev_len {
+                break;
+            }
+        }
+
+        filtered
     }
 }
 

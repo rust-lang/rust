@@ -21,7 +21,8 @@ pub type GoalStalledOnOpaques<'tcx> = ir::solve::GoalStalledOnOpaques<TyCtxt<'tc
 pub type SucceededInErased<'tcx> = ir::solve::SucceededInErased<TyCtxt<'tcx>>;
 
 pub type PredefinedOpaques<'tcx> = &'tcx ty::List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>;
-pub type OpaqueHiddenTyBounds<'tcx> = &'tcx ty::List<(Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)>;
+pub type PseudoRigidDueToOpaquesBounds<'tcx> =
+    &'tcx ty::List<(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)>;
 
 // Interning CanonicalInput drastically reduces max memory usage when compiling a crate that has
 // trait solver recursion depth overflows with next-solver deduplicating individual inputs.
@@ -74,7 +75,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         Ok(FallibleTypeFolder::cx(folder).mk_external_constraints(ExternalConstraintsData {
             region_constraints: self.region_constraints.clone().try_fold_with(folder)?,
             opaque_types: self.opaque_types.try_fold_with(folder)?,
-            opaque_hidden_ty_bounds: self.opaque_hidden_ty_bounds.try_fold_with(folder)?,
+            pseudo_rigid_due_to_opaques_bounds: self
+                .pseudo_rigid_due_to_opaques_bounds
+                .try_fold_with(folder)?,
             normalization_nested_goals: self
                 .normalization_nested_goals
                 .clone()
@@ -93,7 +96,9 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         TypeFolder::cx(folder).mk_external_constraints(ExternalConstraintsData {
             region_constraints: self.region_constraints.clone().fold_with(folder),
             opaque_types: self.opaque_types.fold_with(folder),
-            opaque_hidden_ty_bounds: self.opaque_hidden_ty_bounds.fold_with(folder),
+            pseudo_rigid_due_to_opaques_bounds: self
+                .pseudo_rigid_due_to_opaques_bounds
+                .fold_with(folder),
             normalization_nested_goals: self.normalization_nested_goals.clone().fold_with(folder),
         })
     }
@@ -104,13 +109,13 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         let ExternalConstraintsData {
             region_constraints,
             opaque_types,
-            opaque_hidden_ty_bounds,
+            pseudo_rigid_due_to_opaques_bounds,
             normalization_nested_goals,
         } = &**self;
 
         try_visit!(region_constraints.visit_with(visitor));
         try_visit!(opaque_types.visit_with(visitor));
-        try_visit!(opaque_hidden_ty_bounds.visit_with(visitor));
+        try_visit!(pseudo_rigid_due_to_opaques_bounds.visit_with(visitor));
         normalization_nested_goals.visit_with(visitor)
     }
 }

@@ -14,18 +14,23 @@ use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, UndoLog};
 pub struct OpaqueTypeStorage<'tcx> {
     opaque_types: FxIndexMap<OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>>,
     duplicate_entries: Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>,
-    // Note:
-    //   OpaqueHiddenTy ::= OpaqueTy
-    //                    | Projection<OpaqueHiddenTy>
-    //
-    // When we normalize a `OpaqueHiddenTy`, we store its self-bounds here, to support non-defining
-    // usages of sucu hidden types. The key is an expected term for the normalization and the value
-    // is those self-bounds.
-    hidden_types_of_opaques: FxIndexMap<Ty<'tcx>, FxIndexSet<ty::OpaqueHiddenTyBound<'tcx>>>,
-    // The flattened version of the above `hidden_types_of_opaques`. This is a pure duplication
-    // but we need this to track things linearly, so that we can track the number of those bounds
-    // in `OpaqueTypeStorageEntries` without a map and can lookup `opaque_hidden_ty_bounds` in O(1).
-    opaque_hidden_ty_bounds: Vec<(Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)>,
+    /// Note:
+    ///   ```text
+    ///   PseudoRigid ::= OpaqueTy
+    ///                   | Projection(<PseudoRigid as Trait>::AssocTy),
+    ///                       where PseudoRigid: Trait is from PseudoRigid's bound
+    ///   ```
+    ///
+    /// When we normalize a `PseudoRigid`, we store its self-bounds here, to support non-defining
+    /// usages of sucu hidden types. The key is an expected term for the normalization and the value
+    /// is those self-bounds.
+    pseudo_rigids_due_to_opaques:
+        FxIndexMap<Ty<'tcx>, FxIndexSet<ty::PseudoRigidDueToOpaquesBound<'tcx>>>,
+    /// The flattened version of the above `pseudo_rigids_due_to_opaques`. This is a pure duplication
+    /// but we need this to track things linearly, so that we can track the number of those bounds
+    /// in [`OpaqueTypeStorageEntries`] without a map and can lookup `pseudo_rigid_due_to_opaques_bounds`
+    /// in O(1).
+    pseudo_rigid_due_to_opaques_bounds: Vec<(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)>,
 }
 
 /// The number of entries in the opaque type storage at a given point.
@@ -36,17 +41,17 @@ pub struct OpaqueTypeStorage<'tcx> {
 pub struct OpaqueTypeStorageEntries {
     opaque_types: usize,
     duplicate_entries: usize,
-    opaque_hidden_ty_bounds: usize,
+    pseudo_rigid_due_to_opaques_bounds: usize,
 }
 
 impl rustc_type_ir::inherent::OpaqueTypeStorageEntries for OpaqueTypeStorageEntries {
-    fn needs_reevaluation(self, opaques: usize, hidden_ty_bounds: usize) -> bool {
+    fn needs_reevaluation(self, opaques: usize, pseudo_rigid_bounds: usize) -> bool {
         let OpaqueTypeStorageEntries {
             opaque_types,
             duplicate_entries: _,
-            opaque_hidden_ty_bounds,
+            pseudo_rigid_due_to_opaques_bounds,
         } = self;
-        opaques != opaque_types || hidden_ty_bounds != opaque_hidden_ty_bounds
+        opaques != opaque_types || pseudo_rigid_bounds != pseudo_rigid_due_to_opaques_bounds
     }
 }
 
@@ -72,62 +77,64 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         assert!(entry.is_some());
     }
 
-    pub(crate) fn truncate_hidden_types_of_opaques(
+    pub(crate) fn truncate_pseudo_rigids_due_to_opaques(
         &mut self,
         hidden_ty: Ty<'tcx>,
         len: Option<usize>,
     ) {
         let removed = if let Some(len) = len {
-            let bounds = self.hidden_types_of_opaques.get_mut(&hidden_ty).unwrap();
+            let bounds = self.pseudo_rigids_due_to_opaques.get_mut(&hidden_ty).unwrap();
             let removed = bounds.len() - len;
             bounds.truncate(len);
             removed
         } else {
-            match self.hidden_types_of_opaques.swap_remove(&hidden_ty) {
+            match self.pseudo_rigids_due_to_opaques.swap_remove(&hidden_ty) {
                 None => bug!(
-                    "reverted opaque hidden type inference that was never registered: {:?}",
+                    "reverted pseudo-rigid type inference that was never registered: {:?}",
                     hidden_ty
                 ),
                 Some(bounds) => bounds.len(),
             }
         };
 
-        let truncate_to = self.opaque_hidden_ty_bounds.len() - removed;
+        let truncate_to = self.pseudo_rigid_due_to_opaques_bounds.len() - removed;
         debug_assert!(
-            (&self.opaque_hidden_ty_bounds[truncate_to..]).iter().all(|(h, _)| *h == hidden_ty)
+            (&self.pseudo_rigid_due_to_opaques_bounds[truncate_to..])
+                .iter()
+                .all(|(h, _)| *h == hidden_ty)
         );
-        self.opaque_hidden_ty_bounds.truncate(truncate_to);
+        self.pseudo_rigid_due_to_opaques_bounds.truncate(truncate_to);
     }
 
     pub fn is_empty(&self) -> bool {
         let OpaqueTypeStorage {
             opaque_types,
             duplicate_entries,
-            hidden_types_of_opaques,
-            opaque_hidden_ty_bounds,
+            pseudo_rigids_due_to_opaques,
+            pseudo_rigid_due_to_opaques_bounds,
         } = self;
         opaque_types.is_empty()
             && duplicate_entries.is_empty()
-            && hidden_types_of_opaques.is_empty()
-            && opaque_hidden_ty_bounds.is_empty()
+            && pseudo_rigids_due_to_opaques.is_empty()
+            && pseudo_rigid_due_to_opaques_bounds.is_empty()
     }
 
     pub(crate) fn take_opaque_types(
         &mut self,
     ) -> (
         impl Iterator<Item = (OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>,
-        impl Iterator<Item = (Ty<'tcx>, FxIndexSet<ty::OpaqueHiddenTyBound<'tcx>>)>,
+        impl Iterator<Item = (Ty<'tcx>, FxIndexSet<ty::PseudoRigidDueToOpaquesBound<'tcx>>)>,
     ) {
         let OpaqueTypeStorage {
             opaque_types,
             duplicate_entries,
-            hidden_types_of_opaques,
-            opaque_hidden_ty_bounds,
+            pseudo_rigids_due_to_opaques,
+            pseudo_rigid_due_to_opaques_bounds,
         } = self;
-        let _ = std::mem::take(opaque_hidden_ty_bounds);
+        let _ = std::mem::take(pseudo_rigid_due_to_opaques_bounds);
         (
             std::mem::take(opaque_types).into_iter().chain(std::mem::take(duplicate_entries)),
-            std::mem::take(hidden_types_of_opaques).into_iter(),
+            std::mem::take(pseudo_rigids_due_to_opaques).into_iter(),
         )
     }
 
@@ -135,12 +142,12 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         OpaqueTypeStorageEntries {
             opaque_types: self.opaque_types.len(),
             duplicate_entries: self.duplicate_entries.len(),
-            opaque_hidden_ty_bounds: self.opaque_hidden_ty_bounds.len(),
+            pseudo_rigid_due_to_opaques_bounds: self.pseudo_rigid_due_to_opaques_bounds.len(),
         }
     }
 
-    pub fn num_opaque_hidden_ty_bounds(&self) -> usize {
-        self.opaque_hidden_ty_bounds.len()
+    pub fn num_pseudo_rigid_due_to_opaques_bounds(&self) -> usize {
+        self.pseudo_rigid_due_to_opaques_bounds.len()
     }
 
     pub fn opaque_types_added_since(
@@ -154,12 +161,16 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
             .chain(self.duplicate_entries.iter().skip(prev_entries.duplicate_entries).copied())
     }
 
-    pub fn opaque_hidden_ty_bounds_added_since(
+    pub fn pseudo_rigid_due_to_opaques_bounds_added_since(
         &self,
         prev_entries: OpaqueTypeStorageEntries,
-    ) -> impl Iterator<Item = (Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)> {
-        self.opaque_hidden_ty_bounds.iter().skip(prev_entries.opaque_hidden_ty_bounds).copied()
+    ) -> impl Iterator<Item = (Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)> {
+        self.pseudo_rigid_due_to_opaques_bounds
+            .iter()
+            .skip(prev_entries.pseudo_rigid_due_to_opaques_bounds)
+            .copied()
     }
+
     /// Only returns the opaque types from the lookup table. These are used
     /// when normalizing opaque types and have a unique key.
     ///
@@ -188,34 +199,34 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         let OpaqueTypeStorage {
             opaque_types,
             duplicate_entries,
-            hidden_types_of_opaques: _,
-            opaque_hidden_ty_bounds: _,
+            pseudo_rigids_due_to_opaques: _,
+            pseudo_rigid_due_to_opaques_bounds: _,
         } = self;
         opaque_types.iter().map(|(k, v)| (*k, *v)).chain(duplicate_entries.iter().copied())
     }
 
-    pub fn iter_hidden_types_of_opaques(
+    pub fn iter_pseudo_rigids_due_to_opaques(
         &self,
-    ) -> impl Iterator<Item = (Ty<'tcx>, &FxIndexSet<ty::OpaqueHiddenTyBound<'tcx>>)> {
+    ) -> impl Iterator<Item = (Ty<'tcx>, &FxIndexSet<ty::PseudoRigidDueToOpaquesBound<'tcx>>)> {
         let OpaqueTypeStorage {
             opaque_types: _,
             duplicate_entries: _,
-            hidden_types_of_opaques,
-            opaque_hidden_ty_bounds: _,
+            pseudo_rigids_due_to_opaques,
+            pseudo_rigid_due_to_opaques_bounds: _,
         } = self;
-        hidden_types_of_opaques.iter().map(|(hidden, bounds)| (*hidden, bounds))
+        pseudo_rigids_due_to_opaques.iter().map(|(pr, bounds)| (*pr, bounds))
     }
 
-    pub fn iter_opaque_hidden_ty_bounds(
+    pub fn iter_pseudo_rigid_due_to_opaques_bounds(
         &self,
-    ) -> impl Iterator<Item = (Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)> {
+    ) -> impl Iterator<Item = (Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)> {
         let OpaqueTypeStorage {
             opaque_types: _,
             duplicate_entries: _,
-            hidden_types_of_opaques: _,
-            opaque_hidden_ty_bounds,
+            pseudo_rigids_due_to_opaques: _,
+            pseudo_rigid_due_to_opaques_bounds,
         } = self;
-        opaque_hidden_ty_bounds.iter().copied()
+        pseudo_rigid_due_to_opaques_bounds.iter().copied()
     }
 
     #[inline]
@@ -265,18 +276,18 @@ impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
         self.undo_log.push(UndoLog::DuplicateOpaqueType);
     }
 
-    pub fn add_hidden_type_of_opaque(
+    pub fn add_pseudo_rigid_due_to_opaques(
         &mut self,
-        hidden_ty: Ty<'tcx>,
-        bounds: impl IntoIterator<Item = ty::OpaqueHiddenTyBound<'tcx>>,
+        pseudo_rigid: Ty<'tcx>,
+        bounds: impl IntoIterator<Item = ty::PseudoRigidDueToOpaquesBound<'tcx>>,
     ) {
         let OpaqueTypeStorage {
             opaque_types: _,
             duplicate_entries: _,
-            hidden_types_of_opaques,
-            opaque_hidden_ty_bounds,
+            pseudo_rigids_due_to_opaques,
+            pseudo_rigid_due_to_opaques_bounds,
         } = self.storage;
-        let prev_len = match hidden_types_of_opaques.entry(hidden_ty) {
+        let prev_len = match pseudo_rigids_due_to_opaques.entry(pseudo_rigid) {
             Entry::Occupied(mut entry) => {
                 let entry = entry.get_mut();
                 let len = entry.len();
@@ -284,8 +295,8 @@ impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
                 if entry.len() == len {
                     return;
                 }
-                opaque_hidden_ty_bounds
-                    .extend(iter::repeat(hidden_ty).zip(entry.iter().skip(len).copied()));
+                pseudo_rigid_due_to_opaques_bounds
+                    .extend(iter::repeat(pseudo_rigid).zip(entry.iter().skip(len).copied()));
                 Some(len)
             }
             Entry::Vacant(vacant) => {
@@ -294,10 +305,11 @@ impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
                     return;
                 }
                 let entry = vacant.insert(bounds);
-                opaque_hidden_ty_bounds.extend(iter::repeat(hidden_ty).zip(entry.iter().copied()));
+                pseudo_rigid_due_to_opaques_bounds
+                    .extend(iter::repeat(pseudo_rigid).zip(entry.iter().copied()));
                 None
             }
         };
-        self.undo_log.push(UndoLog::HiddenTypesOfOpaques(hidden_ty, prev_len));
+        self.undo_log.push(UndoLog::PseudoRigidDueToOpaques(pseudo_rigid, prev_len));
     }
 }

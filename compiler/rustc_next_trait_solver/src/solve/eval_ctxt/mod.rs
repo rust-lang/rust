@@ -24,7 +24,9 @@ use rustc_type_ir::{
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
 
-use super::{RawExternalConstraintsData, has_only_region_constraints_or_opaque_hidden_ty_bounds};
+use super::{
+    RawExternalConstraintsData, has_only_region_constraints_or_pseudo_rigid_due_to_opaques_bounds,
+};
 use crate::canonical::{
     canonicalize_goal, canonicalize_response, instantiate_and_apply_query_response,
     response_no_constraints_raw,
@@ -544,8 +546,8 @@ where
             }
         }
 
-        delegate.add_opaque_hidden_ty_bounds_in_storage(
-            input.hidden_types_of_opaques_in_body.as_slice(),
+        delegate.register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(
+            input.pseudo_rigid_due_to_opaques_bounds_in_body.as_slice(),
         );
 
         let initial_opaque_types_storage_num_entries = delegate.opaque_types_storage_num_entries();
@@ -770,21 +772,26 @@ where
         // so we only canonicalize the lookup table and ignore
         // duplicate entries.
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
-        let hidden_types_of_opaques = self.delegate.clone_opaque_hidden_ty_bounds();
+        let pseudo_rigid_due_to_opaques_bounds =
+            self.delegate.clone_pseudo_rigid_due_to_opaques_bounds();
 
-        let (goal, opaque_types, opaque_hidden_ty_bounds) = self
-            .delegate
-            .deeply_resolve_via_unification_table((goal, opaque_types, hidden_types_of_opaques));
+        let (goal, opaque_types, pseudo_rigid_due_to_opaques_bounds) =
+            self.delegate.deeply_resolve_via_unification_table((
+                goal,
+                opaque_types,
+                pseudo_rigid_due_to_opaques_bounds,
+            ));
         let typing_mode = self.typing_mode();
         let step_kind = self.step_kind_for_source(source);
 
         let tracing_span = tracing::span!(
             Level::DEBUG,
             "evaluate_goal_raw in typing mode",
-            "{:?} opaques={:?}, opaque_hidden_ty_bounds={:?}",
+            "{:?} opaques={:?}, pseudo_rigid_due_to_opques_bounds={:?}, goal={:?}",
             typing_mode,
             opaque_types,
-            opaque_hidden_ty_bounds,
+            pseudo_rigid_due_to_opaques_bounds,
+            goal,
         )
         .entered();
 
@@ -872,7 +879,7 @@ where
                 self.delegate,
                 goal,
                 &opaque_types,
-                &opaque_hidden_ty_bounds,
+                &pseudo_rigid_due_to_opaques_bounds,
                 typing_mode,
             );
 
@@ -900,7 +907,7 @@ where
 
         drop(tracing_span);
 
-        let before_instantiate_response = self.delegate.num_opaque_hidden_ty_bounds();
+        let before_instantiate_response = self.delegate.num_pseudo_rigid_due_to_opaques_bounds();
 
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
@@ -909,18 +916,20 @@ where
             self.origin_span,
         );
 
-        // `opaque_hidden_ty_bounds` may vary modulo regions which might be able to be unified in
+        // `pseudo_rigid_due_to_opaques_bounds` may vary modulo regions which might be able to be unified in
         // the caller in the end. So, instead of the response has any, check whether the storage
         // entries actually changed.
         //
         // See `tests/ui/traits/next-solver/opaques/non-defining-use-stall-on-no-actual-change-in-the-caller.rs`
-        let has_changed = if !has_only_region_constraints_or_opaque_hidden_ty_bounds(response)
-            || self.delegate.num_opaque_hidden_ty_bounds() != before_instantiate_response
-        {
-            HasChanged::Yes
-        } else {
-            HasChanged::No
-        };
+        let has_changed =
+            if !has_only_region_constraints_or_pseudo_rigid_due_to_opaques_bounds(response)
+                || self.delegate.num_pseudo_rigid_due_to_opaques_bounds()
+                    != before_instantiate_response
+            {
+                HasChanged::Yes
+            } else {
+                HasChanged::No
+            };
 
         // FIXME: We previously had an assert here that checked that recomputing
         // a goal after applying its constraints did not change its response.
@@ -992,7 +1001,7 @@ where
         let num_opaques_in_storage =
             canonical_goal.canonical.value.predefined_opaques_in_body.len();
         let num_hidden_ty_bounds_in_storage =
-            canonical_goal.canonical.value.hidden_types_of_opaques_in_body.len();
+            canonical_goal.canonical.value.pseudo_rigid_due_to_opaques_bounds_in_body.len();
 
         GoalStalledOn {
             stalled_vars,
@@ -1517,15 +1526,9 @@ where
     pub(super) fn add_hidden_type_of_opaque_in_storage(
         &self,
         hidden_ty: I::Ty,
-        bounds: impl IntoIterator<Item = ty::OpaqueHiddenTyBound<I>>,
+        bounds: impl IntoIterator<Item = ty::PseudoRigidDueToOpaquesBound<I>>,
     ) {
-        self.delegate.add_hidden_type_of_opaque_in_storage(hidden_ty, bounds);
-    }
-    pub(super) fn add_opaque_hidden_ty_bounds_in_storage(
-        &self,
-        bounds: &[(I::Ty, ty::OpaqueHiddenTyBound<I>)],
-    ) {
-        self.delegate.add_opaque_hidden_ty_bounds_in_storage(bounds);
+        self.delegate.register_pseudo_rigid_due_to_opaques_in_storage(hidden_ty, bounds);
     }
 
     pub(super) fn add_item_bounds_for_hidden_type(
@@ -1640,12 +1643,12 @@ where
         Ok(may_use_unstable_feature(&**self.delegate, param_env, symbol))
     }
 
-    pub(crate) fn hidden_types_of_opaques_modulo_sub_unification(
+    pub(crate) fn pseudo_rigids_due_to_opaques_modulo_sub_unification(
         &self,
         self_ty: I::Ty,
-    ) -> Vec<(I::Ty, Vec<ty::OpaqueHiddenTyBound<I>>)> {
+    ) -> Vec<(I::Ty, Vec<ty::PseudoRigidDueToOpaquesBound<I>>)> {
         if let ty::Infer(ty::TyVar(vid)) = self_ty.kind() {
-            self.delegate.hidden_types_of_opaques_modulo_sub_unification(vid)
+            self.delegate.pseudo_rigids_due_to_opaques_modulo_sub_unification(vid)
         } else {
             vec![]
         }
@@ -1761,7 +1764,7 @@ where
 
         filter_irrelevant_region_constraints(self.delegate, &var_values, &mut external_constraints);
 
-        external_constraints.opaque_hidden_ty_bounds.retain(|(hidden_ty, _)| hidden_ty.is_ty_var());
+        external_constraints.pseudo_rigid_due_to_opaques_bounds.retain(|(pr, _)| pr.is_ty_var());
 
         let canonical = canonicalize_response(
             self.delegate,
@@ -1832,17 +1835,17 @@ where
         // to the `var_values`.
         let initial_entries = self.initial_opaque_types_storage_num_entries;
         let opaque_types = self.delegate.clone_opaque_types_added_since(initial_entries);
-        let opaque_hidden_ty_bounds =
-            self.delegate.clone_opaque_hidden_ty_bounds_added_since(initial_entries);
+        let pseudo_rigid_due_to_opaques_bounds =
+            self.delegate.clone_pseudo_rigid_due_to_opaques_bounds_added_since(initial_entries);
 
         if self.typing_mode().is_erased_not_coherence() {
-            assert!(opaque_types.is_empty() && opaque_hidden_ty_bounds.is_empty());
+            assert!(opaque_types.is_empty() && pseudo_rigid_due_to_opaques_bounds.is_empty());
         }
 
         RawExternalConstraintsData {
             region_constraints,
             opaque_types,
-            opaque_hidden_ty_bounds,
+            pseudo_rigid_due_to_opaques_bounds,
             normalization_nested_goals,
         }
     }
@@ -1924,7 +1927,7 @@ fn filter_irrelevant_region_constraints<D, I>(
     let RawExternalConstraintsData {
         region_constraints,
         opaque_types,
-        opaque_hidden_ty_bounds,
+        pseudo_rigid_due_to_opaques_bounds,
         normalization_nested_goals,
     } = external_constraints;
 
@@ -1941,7 +1944,7 @@ fn filter_irrelevant_region_constraints<D, I>(
         // because we skip the RHS of outlives constraints, and `TypeVisitor` doesn't
         // have a method we can easily override in order to do this.
         opaque_types.visit_with(&mut vis);
-        opaque_hidden_ty_bounds.visit_with(&mut vis);
+        pseudo_rigid_due_to_opaques_bounds.visit_with(&mut vis);
         normalization_nested_goals.visit_with(&mut vis);
         for (constraint, _) in r.iter() {
             match constraint {
@@ -2097,16 +2100,20 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     root_depth: usize,
 ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {
     let opaque_types = delegate.clone_opaque_types_lookup_table();
-    let opaque_hidden_ty_bounds = delegate.clone_opaque_hidden_ty_bounds();
-    let (goal, opaque_types, opaque_hidden_ty_bounds) = delegate
-        .deeply_resolve_via_unification_table((goal, opaque_types, opaque_hidden_ty_bounds));
+    let pseudo_rigid_due_to_opaques_bounds = delegate.clone_pseudo_rigid_due_to_opaques_bounds();
+    let (goal, opaque_types, pseudo_rigid_due_to_opaques_bounds) = delegate
+        .deeply_resolve_via_unification_table((
+            goal,
+            opaque_types,
+            pseudo_rigid_due_to_opaques_bounds,
+        ));
     let typing_mode = delegate.typing_mode_raw().assert_not_erased();
 
     let (orig_values, canonical_goal) = canonicalize_goal(
         delegate,
         goal,
         &opaque_types,
-        &opaque_hidden_ty_bounds,
+        &pseudo_rigid_due_to_opaques_bounds,
         typing_mode.into(),
     );
 

@@ -53,22 +53,24 @@ impl<I: Interner> OpaqueTypeKey<I> {
     }
 }
 
-/// An item self bound for a hidden type(either an opaque or projection onto another hidden type).
-/// This is meant to be instantiated inside the solver into an assumption for a goal with the goal's
-/// self ty to support non-defining usages.
+/// When we are in a defining scope of an opaque type we consider either that opaque type
+/// or (chains of) projection types on it as pseudo-rigid even though it is not fully
+/// resolved into a rigid type yet, to support non-defining usages (e.g. method calls) of
+/// them. We register item self bounds for such pseudo-rigid alias types when we try to
+/// normalize them, with the form of this struct.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
-pub struct OpaqueHiddenTyBound<I: Interner> {
+pub struct PseudoRigidDueToOpaquesBound<I: Interner> {
     bound: Binder<I, I::Clause>,
 }
 
-impl<I: Interner> Eq for OpaqueHiddenTyBound<I> {}
+impl<I: Interner> Eq for PseudoRigidDueToOpaquesBound<I> {}
 
-impl<I: Interner> OpaqueHiddenTyBound<I> {
+impl<I: Interner> PseudoRigidDueToOpaquesBound<I> {
     /// Iterate through the item self bounds of a hidden type for either an opaque
     /// or a projection onto another hidden ty.
     pub fn iter_item_self_bounds_for_hidden_ty(
@@ -92,7 +94,7 @@ impl<I: Interner> OpaqueHiddenTyBound<I> {
                     .fold_with(&mut ReplaceSelfTyWithAnonBound::new(cx, alias)),
                 I::BoundVarKinds::from_vars(cx, [ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon)]),
             );
-            OpaqueHiddenTyBound { bound }
+            PseudoRigidDueToOpaquesBound { bound }
         })
     }
 
@@ -111,11 +113,14 @@ impl<I: Interner> OpaqueHiddenTyBound<I> {
     /// }
     /// ```
     ///
-    /// We need to prove `<{opaque} as IntoIterator>::IntoIter: Iterator` to select the
-    /// method `collect()` on it. But as the given bounds in the scope don't mention the
-    /// assoc type `IntoIterator::IntoIter` at all, we can't assemble a candidate for
-    /// that trait goal. So, we have manually conjure a bound for such unmentioned
-    /// projections.
+    /// We need to solve a projection goal `<{opaque} as IntoIterator>::IntoIter = ?x` to
+    /// infer the self type for a method call `collect()`. But as the given bounds in the
+    /// scope don't mention the assoc type `IntoIterator::IntoIter` at all, we just get an
+    /// ambiguous response with unconstrained infer var, from no candidate. This is rejected
+    /// for being a self type for a method call because we allow self type being an infer
+    /// var if and only if it's considered as a pseudo-rigid due to opaques, i.e. we have
+    /// a bound for it in opaque ty storage.
+    /// So we conjure up one via its method and register it to the sol
     pub fn opt_unmentioned_projection_bound(
         cx: I,
         existing_bounds: impl IntoIterator<Item = Self>,
@@ -153,11 +158,11 @@ impl<I: Interner> OpaqueHiddenTyBound<I> {
             bound.fold_with(&mut ReplaceSelfTyWithAnonBound::new(cx, proj.self_ty())),
             I::BoundVarKinds::from_vars(cx, [ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon)]),
         );
-        Some(OpaqueHiddenTyBound { bound })
+        Some(PseudoRigidDueToOpaquesBound { bound })
     }
 
     pub fn instantiate(self, cx: I, self_ty: I::Ty) -> I::Clause {
-        let OpaqueHiddenTyBound { bound } = self;
+        let PseudoRigidDueToOpaquesBound { bound } = self;
 
         debug_assert_eq!(
             bound.bound_vars().as_slice(),

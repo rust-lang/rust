@@ -207,12 +207,12 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().opaque_types().register(opaque_type_key, hidden_ty)
     }
 
-    pub fn add_hidden_type_of_opaque_in_storage(
+    pub fn register_pseudo_rigid_due_to_opaques_in_storage(
         &self,
-        hidden_ty: Ty<'tcx>,
-        bounds: impl IntoIterator<Item = ty::OpaqueHiddenTyBound<'tcx>>,
+        pseudo_rigid: Ty<'tcx>,
+        bounds: impl IntoIterator<Item = ty::PseudoRigidDueToOpaquesBound<'tcx>>,
     ) {
-        let ty::Infer(ty::TyVar(vid)) = *hidden_ty.kind() else {
+        let ty::Infer(ty::TyVar(vid)) = *pseudo_rigid.kind() else {
             return;
         };
         if self.try_resolve_ty_var(vid).is_ok() {
@@ -225,35 +225,35 @@ impl<'tcx> InferCtxt<'tcx> {
         // borrowing the `opaque_type_storage` here.
         let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
 
-        // Since we lookup `hidden_types_of_opaques` modulo sub-roots,
+        // Since we lookup `pseudo_rigids_due_to_opaques` modulo sub-roots,
         // it's okay to save them with the preexisting key that
-        // sub-unified with the given `hidden_ty`.
+        // sub-unified with the given `pseudo_rigid`.
         //
         // And doing so helps avoiding possibly duplicates (modulo sub roots)
         // which is not so good for caching and goal evaluation progress
         // heuristics.
-        let hidden_ty = inner
+        let pseudo_rigid = inner
             .opaque_type_storage
-            .iter_hidden_types_of_opaques()
-            .map(|(hidden_ty, _)| hidden_ty)
-            .find(|hidden_ty| {
-                if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.kind() {
-                    type_variables.sub_unification_table_root_var(hidden_vid) == ty_sub_vid
+            .iter_pseudo_rigids_due_to_opaques()
+            .map(|(pr, _)| pr)
+            .find(|pr| {
+                if let ty::Infer(ty::TyVar(ty_vid)) = *pr.kind() {
+                    type_variables.sub_unification_table_root_var(ty_vid) == ty_sub_vid
                 } else {
                     false
                 }
             })
-            .unwrap_or(hidden_ty);
+            .unwrap_or(pseudo_rigid);
 
-        inner.opaque_types().add_hidden_type_of_opaque(hidden_ty, bounds);
+        inner.opaque_types().add_pseudo_rigid_due_to_opaques(pseudo_rigid, bounds);
     }
 
-    pub fn add_opaque_hidden_ty_bounds_in_storage(
+    pub fn register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(
         &self,
-        bounds: &[(Ty<'tcx>, ty::OpaqueHiddenTyBound<'tcx>)],
+        bounds: &[(Ty<'tcx>, ty::PseudoRigidDueToOpaquesBound<'tcx>)],
     ) {
         for chunk in bounds.chunk_by(|a, b| a.0 == b.0) {
-            self.add_hidden_type_of_opaque_in_storage(
+            self.register_pseudo_rigid_due_to_opaques_in_storage(
                 chunk[0].0,
                 chunk.iter().map(|(_, bound)| *bound),
             );

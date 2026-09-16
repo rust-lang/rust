@@ -418,16 +418,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             ty::List::empty()
         };
-        let opaque_hidden_ty_bounds_in_body = if self.next_trait_solver() {
-            self.tcx.mk_opaque_hidden_ty_bounds_in_body_from_iter(
-                self.inner.borrow_mut().opaque_types().iter_opaque_hidden_ty_bounds(),
+        let pseudo_rigid_due_to_opaques_bounds_in_body = if self.next_trait_solver() {
+            self.tcx.mk_pseudo_rigid_due_to_opaques_bounds_in_body_from_iter(
+                self.inner.borrow_mut().opaque_types().iter_pseudo_rigid_due_to_opaques_bounds(),
             )
         } else {
             ty::List::empty()
         };
         let value = query::MethodAutoderefSteps {
             predefined_opaques_in_body,
-            opaque_hidden_ty_bounds_in_body,
+            pseudo_rigid_due_to_opaques_bounds_in_body,
             self_ty,
         };
         let query_input = self
@@ -446,7 +446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     infcx.instantiate_canonical(span, &query_input.canonical);
                 let query::MethodAutoderefSteps {
                     predefined_opaques_in_body: _,
-                    opaque_hidden_ty_bounds_in_body: _,
+                    pseudo_rigid_due_to_opaques_bounds_in_body: _,
                     self_ty,
                 } = value;
                 debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
@@ -458,7 +458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self_ty,
                             prev_opaque_entries,
                         ),
-                        self_ty_is_hidden_ty_of_opaque: false,
+                        self_ty_is_pseudo_rigid_opaques: false,
                         autoderefs: 0,
                         from_unsafe_deref: false,
                         unsize: false,
@@ -659,7 +659,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
         value:
             query::MethodAutoderefSteps {
                 predefined_opaques_in_body,
-                opaque_hidden_ty_bounds_in_body,
+                pseudo_rigid_due_to_opaques_bounds_in_body,
                 self_ty,
             },
     } = goal;
@@ -681,15 +681,17 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             debug!(?key, ?ty, ?prev, "ignore duplicate in `opaque_types_storage`");
         }
     }
-    infcx.add_opaque_hidden_ty_bounds_in_storage(opaque_hidden_ty_bounds_in_body);
+    infcx.register_pseudo_rigid_due_to_opaques_in_storage_with_flattened(
+        pseudo_rigid_due_to_opaques_bounds_in_body,
+    );
     let prev_opaque_entries = infcx.inner.borrow_mut().opaque_types().num_entries();
 
     // We accept not-yet-defined opaque types in the autoderef
     // chain to support recursive calls. We do error if the final
     // infer var is not an opaque.
-    let self_ty_is_hidden_ty_of_opaque = |ty: Ty<'_>| {
+    let self_ty_is_pseudo_rigid_due_to_opaques = |ty: Ty<'_>| {
         if let &ty::Infer(ty::TyVar(vid)) = ty.kind() {
-            infcx.has_hidden_types_of_opaques_modulo_sub_unification(vid)
+            infcx.is_pseudo_rigid_due_to_opaques_modulo_sub_unification(vid)
         } else {
             false
         }
@@ -731,7 +733,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
                         ty,
                         prev_opaque_entries,
                     ),
-                    self_ty_is_hidden_ty_of_opaque: self_ty_is_hidden_ty_of_opaque(ty),
+                    self_ty_is_pseudo_rigid_opaques: self_ty_is_pseudo_rigid_due_to_opaques(ty),
                     autoderefs: d,
                     from_unsafe_deref: reached_raw_pointer,
                     unsize: false,
@@ -755,7 +757,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
                         ty,
                         prev_opaque_entries,
                     ),
-                    self_ty_is_hidden_ty_of_opaque: self_ty_is_hidden_ty_of_opaque(ty),
+                    self_ty_is_pseudo_rigid_opaques: self_ty_is_pseudo_rigid_due_to_opaques(ty),
                     autoderefs: d,
                     from_unsafe_deref: reached_raw_pointer,
                     unsize: false,
@@ -772,7 +774,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
     };
     let final_ty = autoderef_via_deref.final_ty();
     let opt_bad_ty = match final_ty.kind() {
-        ty::Infer(ty::TyVar(_)) if !self_ty_is_hidden_ty_of_opaque(final_ty) => {
+        ty::Infer(ty::TyVar(_)) if !self_ty_is_pseudo_rigid_due_to_opaques(final_ty) => {
             Some(MethodAutoderefBadTy {
                 reached_raw_pointer,
                 ty: infcx.make_query_response_ignoring_pending_obligations(
@@ -798,7 +800,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
                     Ty::new_slice(infcx.tcx, *elem_ty),
                     prev_opaque_entries,
                 ),
-                self_ty_is_hidden_ty_of_opaque: false,
+                self_ty_is_pseudo_rigid_opaques: false,
                 autoderefs,
                 // this could be from an unsafe deref if we had
                 // a *mut/const [T; N]
@@ -2340,7 +2342,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // Check whether any hidden type of opaque in the autoderef chain have been
         // constrained.
         for step in self.steps {
-            if step.self_ty_is_hidden_ty_of_opaque {
+            if step.self_ty_is_pseudo_rigid_opaques {
                 debug!(?step.autoderefs, ?step.self_ty, "self_type_is_opaque");
                 let constrained_opaque = self.probe(|_| {
                     // If we fail to instantiate the self type of this

@@ -57,6 +57,8 @@ where
 
     fn trait_def_id(self, cx: I) -> I::TraitId;
 
+    fn as_normalizes_to(self) -> Option<ty::NormalizesTo<I>>;
+
     /// Consider a clause, which consists of a "assumption" and some "requirements",
     /// to satisfy a goal. If the requirements hold, then attempt to satisfy our
     /// goal by equating it with the assumption.
@@ -431,25 +433,6 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
-
-    fn consider_hidden_types_of_opaques_bound_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-        bound: ty::OpaqueHiddenTyBound<I>,
-    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        let assumption = bound.instantiate(ecx.cx(), goal.predicate.self_ty());
-        Self::probe_and_match_goal_against_assumption(
-            ecx,
-            CandidateSource::AliasBound(AliasBoundKind::SelfBounds),
-            goal,
-            assumption,
-            |ecx| {
-                // We want to reprove this goal once we've inferred the
-                // hidden type, so we force the certainty to `Maybe`.
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-            },
-        )
-    }
 }
 
 /// Allows callers of `assemble_and_evaluate_candidates` to choose whether to limit
@@ -1146,11 +1129,61 @@ where
         assemble_from: AssembleCandidatesFrom,
         candidates: &mut Vec<Candidate<I>>,
     ) -> Result<(), RerunNonErased> {
+        fn consider_pseudo_rigid_due_to_opaques_bound<D, I, G>(
+            ecx: &mut EvalCtxt<'_, D>,
+            goal: Goal<I, G>,
+            bound: ty::PseudoRigidDueToOpaquesBound<I>,
+        ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>
+        where
+            D: SolverDelegate<Interner = I>,
+            I: Interner,
+            G: GoalKind<D>,
+        {
+            let cx = ecx.cx();
+            let assumption = bound.instantiate(cx, goal.predicate.self_ty());
+            G::probe_and_match_goal_against_assumption(
+                ecx,
+                CandidateSource::AliasBound(AliasBoundKind::SelfBounds),
+                goal,
+                assumption,
+                |ecx| {
+                    let cx = ecx.cx();
+                    // If we are normalzing a projection onto a pseudo-rigid, register it as a new
+                    // pseudo-rigid with its bounds.
+                    // This new pseudo-rigid should be added to storage in this scope, when we actually
+                    // use the bound as a candidate, otherwise it may prevent us from considering blanket impl
+                    // candidate when we should.
+                    // See `tests/ui/impl-trait/non-defining-uses/use-blanket-impl.rs` as an example of  such case.
+                    if let Some(ty::NormalizesTo { alias, term }) =
+                        G::as_normalizes_to(goal.predicate)
+                        && let ty::AliasTermKind::ProjectionTy { def_id } = alias.kind
+                        && ecx.typing_mode().should_register_pseudo_rigids_due_to_opaques()
+                    {
+                        ecx.add_hidden_type_of_opaque_in_storage(
+                            term.expect_ty(),
+                            ty::PseudoRigidDueToOpaquesBound::iter_item_self_bounds_for_hidden_ty(
+                                cx,
+                                ty::AliasTy::new_from_args(
+                                    cx,
+                                    ty::AliasTyKind::Projection { def_id },
+                                    alias.args,
+                                ),
+                            ),
+                        );
+                    }
+
+                    // We want to reprove this goal once we've inferred the
+                    // hidden type, so we force the certainty to `Maybe`.
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                },
+            )
+        }
+
         let self_ty = goal.predicate.self_ty();
         // We only use this hack during HIR typeck.
-        let hidden_types_of_opaques = match self.typing_mode() {
+        let hidden_tys_of_opaques = match self.typing_mode() {
             TypingMode::Typeck { .. } => {
-                self.hidden_types_of_opaques_modulo_sub_unification(self_ty)
+                self.pseudo_rigids_due_to_opaques_modulo_sub_unification(self_ty)
             }
             TypingMode::Coherence
             | TypingMode::PostTypeckUntilBorrowck { .. }
@@ -1165,15 +1198,15 @@ where
             }
         };
 
-        if hidden_types_of_opaques.is_empty() {
+        if hidden_tys_of_opaques.is_empty() {
             candidates.extend(self.forced_ambiguity(MaybeInfo::AMBIGUOUS));
             return Ok(());
         }
 
-        for (hidden_ty, bounds) in hidden_types_of_opaques {
+        for (hidden_ty, bounds) in &hidden_tys_of_opaques {
             debug!("self ty is sub unified with {hidden_ty:?}");
 
-            // We look at all item-bounds of the hidden types, replacing the
+            // We look at all item-bounds of the type being pseudo rigid due to opaques,
             // instantiating the self type of the bound with the current self
             // type before considering them as a candidate. Imagine we've got
             // `?x: Trait<?y>` and `?x` has been sub-unified with the hidden
@@ -1181,9 +1214,27 @@ where
             // and replace all occurrences of `opaque` with `?x`. This results
             // in a `?x: Trait<u32>` alias-bound candidate.
             for bound in bounds {
-                candidates
-                    .extend(G::consider_hidden_types_of_opaques_bound_candidate(self, goal, bound));
+                candidates.extend(consider_pseudo_rigid_due_to_opaques_bound(self, goal, *bound));
             }
+        }
+
+        // This is rather hacky and unprincipled, but we nee this anyway :(
+        // See the comments on
+        // `[ty::PseudoRigidDueToOpaquesBound::opt_unmentioned_projection_bound]`
+        // for details.
+        if self.typing_mode().should_register_pseudo_rigids_due_to_opaques()
+            && candidates.is_empty()
+            && let Some(ty::NormalizesTo { alias, term }) = G::as_normalizes_to(goal.predicate)
+            && term.as_type().is_some()
+            && let Some(unmentioned) =
+                ty::PseudoRigidDueToOpaquesBound::opt_unmentioned_projection_bound(
+                    self.cx(),
+                    hidden_tys_of_opaques.into_iter().flat_map(|(_, bounds)| bounds),
+                    ty::ProjectionClause { projection_term: alias, term },
+                )
+        {
+            self.add_hidden_type_of_opaque_in_storage(goal.predicate.self_ty(), [unmentioned]);
+            candidates.extend(consider_pseudo_rigid_due_to_opaques_bound(self, goal, unmentioned));
         }
 
         // If the self type is sub unified with any opaque type, we also look at blanket

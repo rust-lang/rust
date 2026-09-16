@@ -336,7 +336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Infer(ty::TyVar(vid)) => {
                 // If we end up with an inference variable which is not the hidden type of
                 // an opaque, emit an error.
-                if !self.has_hidden_types_of_opaques_modulo_sub_unification(vid) {
+                if !self.is_pseudo_rigid_due_to_opaques_modulo_sub_unification(vid) {
                     self.type_must_be_known_at_this_point(autoderef.span(), adjusted_ty);
                     return None;
                 }
