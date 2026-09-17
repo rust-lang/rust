@@ -838,9 +838,9 @@ fn file_test_windows_fileext_trait() {
     const MSG: &[u8] =
         b"The Rust programming language helps you write faster, more reliable software.";
 
-    // Test when seek_read_exact(), seek_write_all() are called with empty bufferes.
+    // Test when seek_read_exact(), seek_write_all() are called with empty buffers.
     // Importantly, no calls to seek_read() or seek_write() should be made, and therefore
-    // no syscalls should be made.
+    // no system calls should be made.
     {
         struct MockFile {}
 
