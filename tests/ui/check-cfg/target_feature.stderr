@@ -479,6 +479,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `zksed`
 `zksh`
 `zkt`
+`zmmul`
 `zreg`
 `ztso`
 `zvbb`
