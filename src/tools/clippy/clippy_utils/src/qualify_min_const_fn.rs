@@ -4,9 +4,9 @@
 // differ from the time of `rustc` even if the name stays the same.
 
 use crate::msrvs::{self, Msrv};
+use rustc_attr_ir::RustcVersion;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_const_eval::check_consts::ConstCx;
-use rustc_hir::attrs::RustcVersion;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, StableSince};
 use rustc_infer::infer::TyCtxtInferExt as _;
@@ -442,7 +442,7 @@ pub fn is_stable_const_fn_at(tcx: TyCtxt<'_>, node: HirId, def_id: DefId, msrv: 
                     .and_then(|trait_def_id| tcx.lookup_const_stability(trait_def_id))
             })
             .is_none_or(|const_stab| {
-                if let rustc_hir::StabilityLevel::Stable { since, .. } = const_stab.level {
+                if let rustc_attr_ir::StabilityLevel::Stable { since, .. } = const_stab.level {
                     // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
                     // function could be removed if `rustc` provided a MSRV-aware version of `is_stable_const_fn`.
                     // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.

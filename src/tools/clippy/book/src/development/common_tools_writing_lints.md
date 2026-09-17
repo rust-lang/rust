@@ -87,7 +87,7 @@ arguments have to be checked separately.
 ```rust
 use clippy_utils::{paths, sym};
 use clippy_utils::res::MaybeDef;
-use rustc_hir::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 
 impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
