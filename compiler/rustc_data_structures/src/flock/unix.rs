@@ -1,3 +1,4 @@
+use std::collections::hash_map::Entry;
 use std::fs::File;
 use std::os::unix::prelude::*;
 use std::path::{Path, PathBuf};
@@ -31,35 +32,38 @@ impl Lock {
     pub fn try_lock(p: &Path, file: File, exclusive: bool) -> io::Result<Lock> {
         let mut locks = LOCK_REGISTRY.lock().unwrap();
 
-        let file = if let Some(state) = locks.get_mut(p) {
-            // We must not open the file again if there is an existing lock to prevent the close
-            // from unlocking the file even when another `Lock` already had the lock held before
-            // this `Lock::try_lock` call.
-            match state {
-                LockState::Exclusive { extra_files } => {
-                    // Retain file to prevent unlock on close
-                    extra_files.push(file);
+        let file = match locks.entry(p.to_owned()) {
+            Entry::Occupied(mut state) => {
+                // We must not open the file again if there is an existing lock to prevent the close
+                // from unlocking the file even when another `Lock` already had the lock held before
+                // this `Lock::try_lock` call.
+                match state.get_mut() {
+                    LockState::Exclusive { extra_files } => {
+                        // Retain file to prevent unlock on close
+                        extra_files.push(file);
 
-                    return Err(io::ErrorKind::WouldBlock.into());
-                }
-                LockState::Shared(file) => {
-                    if exclusive {
                         return Err(io::ErrorKind::WouldBlock.into());
-                    } else {
-                        Arc::clone(file)
+                    }
+                    LockState::Shared(file) => {
+                        if exclusive {
+                            return Err(io::ErrorKind::WouldBlock.into());
+                        } else {
+                            Arc::clone(file)
+                        }
                     }
                 }
             }
-        } else {
-            let file = Arc::new(UnlockGuard::try_lock(file, exclusive)?);
+            Entry::Vacant(vacant) => {
+                let file = Arc::new(UnlockGuard::try_lock(file, exclusive)?);
 
-            if exclusive {
-                locks.insert(p.to_owned(), LockState::Exclusive { extra_files: vec![] });
-            } else {
-                locks.insert(p.to_owned(), LockState::Shared(Arc::clone(&file)));
+                if exclusive {
+                    vacant.insert(LockState::Exclusive { extra_files: vec![] });
+                } else {
+                    vacant.insert(LockState::Shared(Arc::clone(&file)));
+                }
+
+                file
             }
-
-            file
         };
 
         Ok(Lock { path: p.to_owned(), file: Some(file) })
