@@ -820,11 +820,11 @@ fn document_full_inner(
         }
 
         let kind = match &item.kind {
-            ItemKind::StrippedItem(kind) => kind,
+            ItemKind::Stripped(kind) => kind,
             kind => kind,
         };
 
-        if let ItemKind::FunctionItem(..) | ItemKind::MethodItem(..) = kind {
+        if let ItemKind::Fn(..) | ItemKind::AssocFn(..) = kind {
             render_call_locations(f, cx, item)?;
         }
         Ok(())
@@ -1321,11 +1321,11 @@ fn render_assoc_item(
     render_mode: RenderMode,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| match &item.kind {
-        ItemKind::StrippedItem(..) => Ok(()),
-        ItemKind::RequiredMethodItem(m, _) | ItemKind::MethodItem(m, _) => {
+        ItemKind::Stripped(..) => Ok(()),
+        ItemKind::RequiredAssocFn(m, _) | ItemKind::AssocFn(m, _) => {
             assoc_method(item, &m.generics, &m.decl, link, parent, cx, render_mode).fmt(f)
         }
-        ItemKind::RequiredAssocConstItem(generics, ty) => assoc_const(
+        ItemKind::RequiredAssocConst(generics, ty) => assoc_const(
             item,
             generics,
             ty,
@@ -1335,7 +1335,7 @@ fn render_assoc_item(
             cx,
         )
         .fmt(f),
-        ItemKind::ProvidedAssocConstItem(ci) => assoc_const(
+        ItemKind::ProvidedAssocConst(ci) => assoc_const(
             item,
             &ci.generics,
             &ci.type_,
@@ -1345,7 +1345,7 @@ fn render_assoc_item(
             cx,
         )
         .fmt(f),
-        ItemKind::ImplAssocConstItem(ci) => assoc_const(
+        ItemKind::ImplAssocConst(ci) => assoc_const(
             item,
             &ci.generics,
             &ci.type_,
@@ -1355,7 +1355,7 @@ fn render_assoc_item(
             cx,
         )
         .fmt(f),
-        ItemKind::RequiredAssocTypeItem(generics, bounds) => assoc_type(
+        ItemKind::RequiredAssocTy(generics, bounds) => assoc_type(
             item,
             generics,
             bounds,
@@ -1365,7 +1365,7 @@ fn render_assoc_item(
             cx,
         )
         .fmt(f),
-        ItemKind::AssocTypeItem(ty, bounds) => assoc_type(
+        ItemKind::AssocTy(ty, bounds) => assoc_type(
             item,
             &ty.generics,
             bounds,
@@ -1612,7 +1612,7 @@ fn render_deref_methods(
         .items
         .iter()
         .find_map(|item| match item.kind {
-            ItemKind::AssocTypeItem(ref t, _) => Some(match *t {
+            ItemKind::AssocTy(ref t, _) => Some(match *t {
                 clean::TypeAlias { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),
@@ -1644,8 +1644,8 @@ fn render_deref_methods(
 
 fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> bool {
     let self_type_opt = match item.kind {
-        ItemKind::MethodItem(ref method, _) => method.decl.receiver_type(),
-        ItemKind::RequiredMethodItem(ref method, _) => method.decl.receiver_type(),
+        ItemKind::AssocFn(ref method, _) => method.decl.receiver_type(),
+        ItemKind::RequiredAssocFn(ref method, _) => method.decl.receiver_type(),
         _ => None,
     };
 
@@ -1756,7 +1756,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
         for (impl_, trait_did) in notable_impls {
             write!(f, "<div class=\"where\">{}</div>", print_impl(impl_, false, cx))?;
             for it in &impl_.items {
-                let ItemKind::AssocTypeItem(tydef, ..) = &it.kind else {
+                let ItemKind::AssocTy(tydef, ..) = &it.kind else {
                     continue;
                 };
 
@@ -1961,7 +1961,7 @@ fn render_impl(
                 deprecation_class = "";
             }
             match &item.kind {
-                ItemKind::MethodItem(..) | ItemKind::RequiredMethodItem(..) => {
+                ItemKind::AssocFn(..) | ItemKind::RequiredAssocFn(..) => {
                     // Only render when the method is not static or we allow static methods
                     if render_method_item {
                         let id = cx.derive_id(format!("{item_type}.{name}"));
@@ -1996,7 +1996,7 @@ fn render_impl(
                         )?;
                     }
                 }
-                ItemKind::RequiredAssocConstItem(generics, ty) => {
+                ItemKind::RequiredAssocConst(generics, ty) => {
                     let source_id = format!("{item_type}.{name}");
                     let id = cx.derive_id(&source_id);
                     write!(
@@ -2023,7 +2023,7 @@ fn render_impl(
                         ),
                     )?;
                 }
-                ItemKind::ProvidedAssocConstItem(ci) | ItemKind::ImplAssocConstItem(ci) => {
+                ItemKind::ProvidedAssocConst(ci) | ItemKind::ImplAssocConst(ci) => {
                     let source_id = format!("{item_type}.{name}");
                     let id = cx.derive_id(&source_id);
                     write!(
@@ -2044,9 +2044,9 @@ fn render_impl(
                             &ci.generics,
                             &ci.type_,
                             match item.kind {
-                                ItemKind::ProvidedAssocConstItem(_) =>
+                                ItemKind::ProvidedAssocConst(_) =>
                                     AssocConstValue::TraitDefault(&ci.kind),
-                                ItemKind::ImplAssocConstItem(_) => AssocConstValue::Impl(&ci.kind),
+                                ItemKind::ImplAssocConst(_) => AssocConstValue::Impl(&ci.kind),
                                 _ => unreachable!(),
                             },
                             link.anchor(if trait_.is_some() { &source_id } else { &id }),
@@ -2055,7 +2055,7 @@ fn render_impl(
                         ),
                     )?;
                 }
-                ItemKind::RequiredAssocTypeItem(generics, bounds) => {
+                ItemKind::RequiredAssocTy(generics, bounds) => {
                     let source_id = format!("{item_type}.{name}");
                     let id = cx.derive_id(&source_id);
                     write!(
@@ -2082,7 +2082,7 @@ fn render_impl(
                         ),
                     )?;
                 }
-                ItemKind::AssocTypeItem(tydef, _bounds) => {
+                ItemKind::AssocTy(tydef, _bounds) => {
                     let source_id = format!("{item_type}.{name}");
                     let id = cx.derive_id(&source_id);
                     write!(
@@ -2109,7 +2109,7 @@ fn render_impl(
                         ),
                     )?;
                 }
-                ItemKind::StrippedItem(..) => return Ok(()),
+                ItemKind::Stripped(..) => return Ok(()),
                 _ => panic!("can't make docs for trait item with name {:?}", item.name),
             }
 
@@ -2139,15 +2139,15 @@ fn render_impl(
         if !impl_.is_negative_trait_impl() {
             for impl_item in &impl_.items {
                 match impl_item.kind {
-                    ItemKind::MethodItem(..) | ItemKind::RequiredMethodItem(..) => {
+                    ItemKind::AssocFn(..) | ItemKind::RequiredAssocFn(..) => {
                         methods.push(impl_item)
                     }
-                    ItemKind::RequiredAssocTypeItem(..) | ItemKind::AssocTypeItem(..) => {
+                    ItemKind::RequiredAssocTy(..) | ItemKind::AssocTy(..) => {
                         assoc_types.push(impl_item)
                     }
-                    ItemKind::RequiredAssocConstItem(..)
-                    | ItemKind::ProvidedAssocConstItem(_)
-                    | ItemKind::ImplAssocConstItem(_) => {
+                    ItemKind::RequiredAssocConst(..)
+                    | ItemKind::ProvidedAssocConst(_)
+                    | ItemKind::ImplAssocConst(_) => {
                         // We render it directly since they're supposed to come first.
                         doc_impl_item(
                             &mut default_impl_items,
@@ -2409,7 +2409,7 @@ fn render_impl_summary(
             write!(w, "{}", print_impl(inner_impl, use_absolute, cx))?;
             if show_def_docs {
                 for it in &inner_impl.items {
-                    if let ItemKind::AssocTypeItem(ref tydef, ref _bounds) = it.kind {
+                    if let ItemKind::AssocTy(ref tydef, ref _bounds) = it.kind {
                         write!(
                             w,
                             "<div class=\"where\">  {};</div>",
@@ -2543,7 +2543,7 @@ fn get_id_for_impl(tcx: TyCtxt<'_>, impl_id: ItemId) -> String {
 
 fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
     match item.kind {
-        clean::ItemKind::ImplItem(ref i) if i.trait_.is_some() => {
+        clean::ItemKind::Impl(ref i) if i.trait_.is_some() => {
             // Alternative format produces no URLs,
             // so this parameter does nothing.
             Some((

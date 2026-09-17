@@ -221,16 +221,16 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
 
         match i.kind {
             // Don't count items in stripped modules.
-            ItemKind::StrippedItem(..) => return,
+            ItemKind::Stripped(..) => return,
             // The "real" impl items are handled below.
-            ItemKind::PlaceholderImplItem => return,
+            ItemKind::PlaceholderImpl => return,
             // docs on `use` and `extern crate` statements are not displayed, so they're not
             // worth counting
-            ItemKind::ImportItem(..) | ItemKind::ExternCrateItem { .. } => {}
+            ItemKind::Import(..) | ItemKind::ExternCrate { .. } => {}
             // Don't count trait impls, the missing-docs lint doesn't so we shouldn't either.
             // Inherent impls *can* be documented, and those docs show up, but in most cases it
             // doesn't make sense, as all methods on a type are in one single impl block
-            ItemKind::ImplItem(_) => {}
+            ItemKind::Impl(_) => {}
             _ => {
                 let has_docs = !i.attrs.doc_strings.is_empty();
                 let mut tests = Tests { found_tests: 0 };
