@@ -156,26 +156,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty::ty_and_layout_pointee_info_at(self, cx, offset)
     }
 
-    pub fn is_single_fp_element<C>(self, cx: &C) -> bool
-    where
-        Ty: TyAbiInterface<'a, C>,
-        C: HasDataLayout,
-    {
-        match self.backend_repr {
-            BackendRepr::Scalar(scalar) => {
-                matches!(scalar.primitive(), Primitive::Float(Float::F32 | Float::F64))
-            }
-            BackendRepr::Memory { .. } => {
-                if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
-                    self.field(cx, 0).is_single_fp_element(cx)
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        }
-    }
-
     pub fn is_single_vector_element<C>(self, cx: &C, expected_size: Size) -> bool
     where
         Ty: TyAbiInterface<'a, C>,
@@ -302,6 +282,29 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             }
             if found.is_some() {
                 // More than one non-1-ZST field.
+                return None;
+            }
+            found = Some((FieldIdx::from_usize(field_idx), field));
+        }
+        found
+    }
+
+    /// Finds the one field that is not a ZST.
+    /// Returns `None` if there are multiple non-ZST fields or only ZST-fields.
+    ///
+    /// Note that this function checks for ZSTs, not just 1-ZSTs.
+    pub fn non_zst_field_ignore_alignment<C>(&self, cx: &C) -> Option<(FieldIdx, Self)>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let mut found = None;
+        for field_idx in 0..self.fields.count() {
+            let field = self.field(cx, field_idx);
+            if field.is_zst() {
+                continue;
+            }
+            if found.is_some() {
+                // More than one non-ZST field.
                 return None;
             }
             found = Some((FieldIdx::from_usize(field_idx), field));
