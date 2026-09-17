@@ -832,7 +832,7 @@ fn file_test_io_seek_read_exact_write_all() {
 #[test]
 #[cfg(windows)]
 fn file_test_windows_fileext_trait() {
-    use crate::io::Result;
+    use crate::io;
     use crate::os::windows::fs::FileExt;
 
     const MSG: &[u8] =
@@ -845,11 +845,11 @@ fn file_test_windows_fileext_trait() {
         struct MockFile {}
 
         impl FileExt for MockFile {
-            fn seek_read(&self, _buf: &mut [u8], _offset: u64) -> Result<usize> {
+            fn seek_read(&self, _buf: &mut [u8], _offset: u64) -> io::Result<usize> {
                 panic!("should not be called");
             }
 
-            fn seek_write(&self, _buf: &[u8], _offset: u64) -> Result<usize> {
+            fn seek_write(&self, _buf: &[u8], _offset: u64) -> io::Result<usize> {
                 panic!("should not be called");
             }
         }
@@ -861,6 +861,48 @@ fn file_test_windows_fileext_trait() {
         check!(mock_file.seek_write_all(&[], 42));
     }
 
+    // Test when only one call is made to seek_read() or seek_write()
+    {
+        struct MockFile {
+            expected_offset: u64,
+        }
+
+        impl FileExt for MockFile {
+            fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+                assert_eq!(offset, self.expected_offset);
+                assert_eq!(buf.len(), MSG.len());
+                assert_eq!(buf, &[0; MSG.len()]);
+                buf.copy_from_slice(MSG);
+                Ok(MSG.len())
+            }
+
+            fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+                assert_eq!(offset, self.expected_offset);
+                assert_eq!(buf.len(), MSG.len());
+                assert_eq!(buf, MSG);
+                Ok(MSG.len())
+            }
+        }
+
+        // Offset is 0
+        {
+            let mock_file = MockFile { expected_offset: 0 };
+            let mut buf = [0; MSG.len()];
+            check!(mock_file.seek_read_exact(&mut buf, 0));
+            assert_eq!(&buf, MSG);
+            check!(mock_file.seek_write_all(&buf, 0));
+        }
+
+        // Offset is 420
+        {
+            let mock_file = MockFile { expected_offset: 420 };
+            let mut buf = [0; MSG.len()];
+            check!(mock_file.seek_read_exact(&mut buf, 420));
+            assert_eq!(&buf, MSG);
+            check!(mock_file.seek_write_all(&buf, 420));
+        }
+    }
+
     // Test pathological case where seek_read(), seek_write() only do 1 byte per call.
     {
         struct MockFile {
@@ -868,13 +910,13 @@ fn file_test_windows_fileext_trait() {
         }
 
         impl FileExt for MockFile {
-            fn seek_read(&self, buf: &mut [u8], offset: u64) -> Result<usize> {
+            fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
                 let offset = (offset - self.base_offset) as usize;
                 buf[0..1].copy_from_slice(&MSG[offset..offset + 1]);
                 Ok(1)
             }
 
-            fn seek_write(&self, buf: &[u8], offset: u64) -> Result<usize> {
+            fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
                 let offset = (offset - self.base_offset) as usize;
                 assert_eq!(buf[0..1], MSG[offset..offset + 1]);
                 Ok(1)
@@ -899,6 +941,76 @@ fn file_test_windows_fileext_trait() {
             check!(mock_file.seek_write_all(&buf, 420));
         }
     }
+
+    // Test when seek_read(), seek_write() return Ok(0)
+    {
+        struct MockFile {}
+
+        impl FileExt for MockFile {
+            fn seek_read(&self, _buf: &mut [u8], _offset: u64) -> io::Result<usize> {
+                Ok(0)
+            }
+
+            fn seek_write(&self, _buf: &[u8], _offset: u64) -> io::Result<usize> {
+                Ok(0)
+            }
+        }
+
+        let mock_file = MockFile {};
+        let mut buf = [0; 256];
+        assert_eq!(
+            mock_file.seek_read(&mut buf, 0).unwrap_err().kind(),
+            crate::io::ErrorKind::UnexpectedEof
+        );
+        assert_eq!(
+            mock_file.seek_read(&mut buf, 420).unwrap_err().kind(),
+            crate::io::ErrorKind::UnexpectedEof
+        );
+        assert_eq!(
+            mock_file.seek_write(&buf, 0).unwrap_err().kind(),
+            crate::io::ErrorKind::WriteZero
+        );
+        assert_eq!(
+            mock_file.seek_write(&buf, 420).unwrap_err().kind(),
+            crate::io::ErrorKind::WriteZero
+        );
+    }
+
+    // Test that Err other than io::ErrorKind::Interrupted are propagated up.
+    {
+        struct MockFile {}
+
+        impl FileExt for MockFile {
+            fn seek_read(&self, _buf: &mut [u8], _offset: u64) -> io::Result<usize> {
+                Err(io::Error::new(io::ErrorKind::PermissionDenied, "seek_read"))
+            }
+
+            fn seek_write(&self, _buf: &[u8], _offset: u64) -> io::Result<usize> {
+                Err(io::Error::new(io::ErrorKind::ConnectionRefused, "seek_write"))
+            }
+        }
+
+        let mock_file = MockFile {};
+        let mut buf = [0; 256];
+        assert_eq!(
+            mock_file.seek_read(&mut buf, 0).unwrap_err().kind(),
+            crate::io::ErrorKind::PermissionDenied
+        );
+        assert_eq!(
+            mock_file.seek_read(&mut buf, 420).unwrap_err().kind(),
+            crate::io::ErrorKind::PermissionDenied
+        );
+        assert_eq!(
+            mock_file.seek_write(&buf, 0).unwrap_err().kind(),
+            crate::io::ErrorKind::ConnectionRefused
+        );
+        assert_eq!(
+            mock_file.seek_write(&buf, 420).unwrap_err().kind(),
+            crate::io::ErrorKind::ConnectionRefused
+        );
+    }
+
+    // FIXME: Cover io::ErrorKind::Interrupted, but don't infinite loop ;)
 }
 
 #[test]
