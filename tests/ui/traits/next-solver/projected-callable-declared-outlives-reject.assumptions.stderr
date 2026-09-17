@@ -1,0 +1,47 @@
+error: lifetime may not live long enough
+  --> $DIR/projected-callable-declared-outlives-reject.rs:16:5
+   |
+LL | fn unrelated<'a, C, T>(value: &'a T) -> &'static T
+   |              -- lifetime `'a` defined here
+...
+LL |     value
+   |     ^^^^^ returning this value requires that `'a` must outlive `'static`
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-declared-outlives-reject.rs:24:5
+   |
+LL |     Box::new(value)
+   |     ^^^^^^^^^^^^^^^
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-declared-outlives-reject.rs:36:5
+   |
+LL |     Box::new(value)
+   |     ^^^^^^^^^^^^^^^
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-declared-outlives-reject.rs:48:5
+   |
+LL |     Box::new(value)
+   |     ^^^^^^^^^^^^^^^
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-declared-outlives-reject.rs:61:5
+   |
+LL |     Box::new(value)
+   |     ^^^^^^^^^^^^^^^
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-declared-outlives-reject.rs:73:5
+   |
+LL |     Box::new(value)
+   |     ^^^^^^^^^^^^^^^
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-declared-outlives-reject.rs:83:5
+   |
+LL |     Box::new(value)
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

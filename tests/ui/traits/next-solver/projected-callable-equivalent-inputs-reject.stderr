@@ -1,0 +1,46 @@
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/projected-callable-equivalent-inputs-reject.rs:13:35
+   |
+LL |     F: for<'a> Fn(T::View<'a>) -> &'a (),
+   |                                   ^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/projected-callable-equivalent-inputs-reject.rs:20:35
+   |
+LL |     F: for<'a> Fn(T::View<'a>) -> U::View<'a>,
+   |                                   ^^^^^^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'b`, which does not appear in the trait input types
+  --> $DIR/projected-callable-equivalent-inputs-reject.rs:29:39
+   |
+LL |     F: for<'a, 'b> Fn(T::View<'a>) -> U::View<'b>,
+   |                                       ^^^^^^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/projected-callable-equivalent-inputs-reject.rs:38:35
+   |
+LL |     F: for<'a> Fn(T::View<'a>) -> (U::View<'a>, &'a ()),
+   |                                   ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0581]: return type references lifetime `'a`, which is not constrained by the fn input types
+  --> $DIR/projected-callable-equivalent-inputs-reject.rs:43:53
+   |
+LL | type Unused<T: Family> = for<'a> fn(T::View<'a>) -> &'a ();
+   |                                                     ^^^^^^
+
+error[E0581]: return type references lifetime `'a`, which is not constrained by the fn input types
+  --> $DIR/projected-callable-equivalent-inputs-reject.rs:47:41
+   |
+LL |     pointer: for<'a> fn(T::View<'a>) -> &'a (),
+   |                                         ^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/projected-callable-equivalent-inputs-reject.rs:53:47
+   |
+LL |     F: for<'a> Fn(for<'b> fn(T::View<'b>)) -> T::View<'a>,
+   |                                               ^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0581, E0582.
+For more information about an error, try `rustc --explain E0581`.

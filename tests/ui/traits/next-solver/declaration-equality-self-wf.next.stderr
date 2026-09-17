@@ -1,0 +1,14 @@
+error: unable to satisfy outlives constraints
+  --> $DIR/declaration-equality-self-wf.rs:18:5
+   |
+LL |     require_static::<T>();
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: unable to satisfy outlives constraints
+  --> $DIR/declaration-equality-self-wf.rs:37:5
+   |
+LL |     require_static::<T>();
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

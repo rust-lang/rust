@@ -1,5 +1,9 @@
 // Weak alias types only constrain late-bound regions if their normalized form constrains them.
 
+//@ revisions: current next
+//@[current] compile-flags: -Znext-solver=coherence
+//@[next] compile-flags: -Znext-solver=globally
+
 #![feature(checked_type_aliases)]
 #![allow(incomplete_features)]
 
@@ -8,7 +12,8 @@ type NotInjective<'a> = <() as Discard>::Output<'a>;
 type FnPtr0 = for<'a> fn(NotInjective<'a>) -> &'a ();
 //~^ ERROR references lifetime `'a`, which is not constrained by the fn input types
 type FnPtr1 = for<'a> fn(NotInjectiveEither<'a, ()>) -> NotInjectiveEither<'a, ()>;
-//~^ ERROR references lifetime `'a`, which is not constrained by the fn input types
+//[current]~^ ERROR references lifetime `'a`, which is not constrained by the fn input types
+//[next]~^^ ERROR expected an `Fn()` closure, found `()`
 type DynCl = dyn for<'a> Fn(NotInjective<'a>) -> &'a ();
 //~^ ERROR references lifetime `'a`, which does not appear in the trait input types
 
