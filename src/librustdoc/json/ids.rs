@@ -107,7 +107,7 @@ impl JsonRenderer<'_> {
 
     pub(crate) fn id_from_item(&self, item: &clean::Item) -> types::Id {
         match item.kind {
-            clean::ItemKind::ImportItem(ref import) => {
+            clean::ItemKind::Import(ref import) => {
                 let imported_id = import.source.did;
                 self.id_from_item_inner(item.item_id, item.name, imported_id)
             }

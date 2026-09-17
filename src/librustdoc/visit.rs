@@ -14,51 +14,51 @@ pub(crate) trait DocVisitor<'a>: Sized {
     /// Don't override!
     fn visit_inner_recur(&mut self, kind: &'a ItemKind) {
         match kind {
-            ItemKind::StrippedItem(..) => unreachable!(),
-            ItemKind::ModuleItem(i) => {
+            ItemKind::Stripped(..) => unreachable!(),
+            ItemKind::Module(i) => {
                 self.visit_mod(i);
             }
-            ItemKind::StructItem(i) => i.fields.iter().for_each(|x| self.visit_item(x)),
-            ItemKind::UnionItem(i) => i.fields.iter().for_each(|x| self.visit_item(x)),
-            ItemKind::EnumItem(i) => i.variants.iter().for_each(|x| self.visit_item(x)),
-            ItemKind::TraitItem(i) => i.items.iter().for_each(|x| self.visit_item(x)),
-            ItemKind::ImplItem(i) => i.items.iter().for_each(|x| self.visit_item(x)),
-            ItemKind::VariantItem(i) => match &i.kind {
+            ItemKind::Struct(i) => i.fields.iter().for_each(|x| self.visit_item(x)),
+            ItemKind::Union(i) => i.fields.iter().for_each(|x| self.visit_item(x)),
+            ItemKind::Enum(i) => i.variants.iter().for_each(|x| self.visit_item(x)),
+            ItemKind::Trait(i) => i.items.iter().for_each(|x| self.visit_item(x)),
+            ItemKind::Impl(i) => i.items.iter().for_each(|x| self.visit_item(x)),
+            ItemKind::Variant(i) => match &i.kind {
                 VariantKind::Struct(j) => j.fields.iter().for_each(|x| self.visit_item(x)),
                 VariantKind::Tuple(fields) => fields.iter().for_each(|x| self.visit_item(x)),
                 VariantKind::CLike => {}
             },
-            ItemKind::ExternCrateItem { src: _ }
-            | ItemKind::ImportItem(_)
-            | ItemKind::FunctionItem(_)
-            | ItemKind::TypeAliasItem(_)
-            | ItemKind::StaticItem(_)
-            | ItemKind::ConstantItem(..)
-            | ItemKind::TraitAliasItem(_)
-            | ItemKind::RequiredMethodItem(..)
-            | ItemKind::MethodItem(..)
-            | ItemKind::StructFieldItem(_)
-            | ItemKind::ForeignFunctionItem(..)
-            | ItemKind::ForeignStaticItem(..)
-            | ItemKind::ForeignTypeItem
-            | ItemKind::MacroItem(..)
-            | ItemKind::ProcMacroItem(_)
-            | ItemKind::PrimitiveItem(_)
-            | ItemKind::RequiredAssocConstItem(..)
-            | ItemKind::ProvidedAssocConstItem(..)
-            | ItemKind::ImplAssocConstItem(..)
-            | ItemKind::RequiredAssocTypeItem(..)
-            | ItemKind::AssocTypeItem(..)
-            | ItemKind::KeywordItem
-            | ItemKind::AttributeItem
-            | ItemKind::PlaceholderImplItem => {}
+            ItemKind::ExternCrate { src: _ }
+            | ItemKind::Import(_)
+            | ItemKind::Fn(_)
+            | ItemKind::TyAlias(_)
+            | ItemKind::Static(_)
+            | ItemKind::Const(..)
+            | ItemKind::TraitAlias(_)
+            | ItemKind::RequiredAssocFn(..)
+            | ItemKind::AssocFn(..)
+            | ItemKind::StructField(_)
+            | ItemKind::ForeignFn(..)
+            | ItemKind::ForeignStatic(..)
+            | ItemKind::ForeignTy
+            | ItemKind::DeclMacro(..)
+            | ItemKind::ProcMacro(_)
+            | ItemKind::Primitive(_)
+            | ItemKind::RequiredAssocConst(..)
+            | ItemKind::ProvidedAssocConst(..)
+            | ItemKind::ImplAssocConst(..)
+            | ItemKind::RequiredAssocTy(..)
+            | ItemKind::AssocTy(..)
+            | ItemKind::Keyword
+            | ItemKind::Attribute
+            | ItemKind::PlaceholderImpl => {}
         }
     }
 
     /// Don't override!
     fn visit_item_recur(&mut self, item: &'a Item) {
         match &item.kind {
-            ItemKind::StrippedItem(i) => self.visit_inner_recur(i),
+            ItemKind::Stripped(i) => self.visit_inner_recur(i),
             _ => self.visit_inner_recur(&item.kind),
         }
     }
