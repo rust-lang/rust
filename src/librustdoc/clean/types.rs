@@ -475,11 +475,7 @@ impl Item {
 
     /// Returns true if item is an associated function with a `self` parameter.
     pub(crate) fn has_self_param(&self) -> bool {
-        if let ItemKind::AssocFunction(Function { decl, .. }, _) = &self.inner.kind {
-            decl.receiver_type().is_some()
-        } else {
-            false
-        }
+        matches!(&self.inner.kind, ItemKind::AssocFunction(f) if f.decl.receiver_type().is_some())
     }
 
     pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
@@ -661,11 +657,11 @@ impl Item {
     pub(crate) fn is_assoc_const_without_body(&self) -> bool {
         matches!(self.kind.unstripped(), ItemKind::AssocConstant(AssocConstant { body: None, .. }))
     }
-    pub(crate) fn is_method(&self) -> bool {
-        self.type_() == ItemType::Method
+    pub(crate) fn is_assoc_fn_with_body(&self) -> bool {
+        self.type_() == ItemType::AssocFnWithBody
     }
-    pub(crate) fn is_ty_method(&self) -> bool {
-        self.type_() == ItemType::TyMethod
+    pub(crate) fn is_assoc_fn_without_body(&self) -> bool {
+        self.type_() == ItemType::AssocFnWithoutBody
     }
     pub(crate) fn is_primitive(&self) -> bool {
         self.type_() == ItemType::Primitive
@@ -769,14 +765,6 @@ impl Item {
         matches!(self.kind, ItemKind::DeclMacro(..))
     }
 
-    pub(crate) fn defaultness(&self) -> Option<Defaultness> {
-        match self.kind {
-            ItemKind::AssocFunction(_, defaultness)
-            | ItemKind::RequiredAssocFunction(_, defaultness) => Some(defaultness),
-            _ => None,
-        }
-    }
-
     /// Generates the HTML file name based on the item kind.
     pub(crate) fn html_filename(&self) -> String {
         format!("{type_}.{name}.html", type_ = self.type_(), name = self.name.unwrap())
@@ -836,9 +824,7 @@ impl Item {
                     asyncness: hir::IsAsync::NotAsync,
                 }
             }
-            ItemKind::Function(_)
-            | ItemKind::AssocFunction(..)
-            | ItemKind::RequiredAssocFunction(..) => {
+            ItemKind::Function(_) | ItemKind::AssocFunction(..) => {
                 let def_id = self.def_id().unwrap();
                 build_fn_header(def_id, tcx, tcx.asyncness(def_id))
             }
@@ -873,7 +859,6 @@ impl Item {
             ItemKind::AssocConstant(..)
             | ItemKind::AssocType(..)
             | ItemKind::RequiredAssocType(..)
-            | ItemKind::RequiredAssocFunction(..)
             | ItemKind::AssocFunction(..) => {
                 match tcx.associated_item(def_id).container {
                     // Trait impl items always inherit the impl's visibility --
@@ -922,12 +907,7 @@ pub(crate) enum ItemKind {
     /// This variant is used only as a placeholder for trait impls in order to correctly compute
     /// `doc_cfg` as trait impls are added to `clean::Crate` after we went through the whole tree.
     PlaceholderImpl,
-    /// A required assoc function in a trait.
-    RequiredAssocFunction(Box<Function>, Defaultness),
-    /// An associated function in an impl or a provided associated function in a trait.
-    ///
-    /// Compared to [`ItemKind::RequiredAssocFn`], it also contains a method body.
-    AssocFunction(Box<Function>, Defaultness),
+    AssocFunction(Box<AssocFunction>),
     StructField(Type),
     Variant(Variant),
     /// `fn`s from an extern block
@@ -986,7 +966,6 @@ impl ItemKind {
             | Self::Static(_)
             | Self::Constant(_)
             | Self::TraitAlias(_)
-            | Self::RequiredAssocFunction(..)
             | Self::AssocFunction(..)
             | Self::StructField(_)
             | Self::ForeignFunction(_, _)
@@ -1296,8 +1275,15 @@ impl Generics {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Function {
-    pub(crate) decl: FnDecl,
     pub(crate) generics: Generics,
+    pub(crate) decl: FnDecl,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AssocFunction {
+    pub(crate) generics: Generics,
+    pub(crate) decl: FnDecl,
+    pub(crate) body: Option<Defaultness>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]

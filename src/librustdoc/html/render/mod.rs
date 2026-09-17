@@ -828,7 +828,10 @@ fn document_full_inner(
             }
         }
 
-        if let ItemKind::Function(..) | ItemKind::AssocFunction(..) = item.kind.unstripped() {
+        if let ItemKind::Function(..)
+        | ItemKind::AssocFunction(clean::AssocFunction { body: Some(_), .. }) =
+            item.kind.unstripped()
+        {
             render_call_locations(f, cx, item)?;
         }
         Ok(())
@@ -1030,17 +1033,13 @@ fn assoc_href_attr(
             // We're creating a link from the implementation of an associated item to its
             // declaration in the trait declaration.
             let item_type = match item_type {
-                // For historical but not technical reasons, the item type of methods in
-                // trait declarations depends on whether the method is required (`TyMethod`) or
-                // provided (`Method`).
-                ItemType::Method | ItemType::TyMethod => {
+                ItemType::AssocFnWithBody | ItemType::AssocFnWithoutBody => {
                     if provided_methods.contains(&name) {
-                        ItemType::Method
+                        ItemType::AssocFnWithBody
                     } else {
-                        ItemType::TyMethod
+                        ItemType::AssocFnWithoutBody
                     }
                 }
-                // For associated types and constants, no such distinction exists.
                 item_type => item_type,
             };
 
@@ -1149,10 +1148,9 @@ fn assoc_type(
     })
 }
 
-fn assoc_method(
-    meth: &clean::Item,
-    g: &clean::Generics,
-    d: &clean::FnDecl,
+fn assoc_fn(
+    it: &clean::Item,
+    fn_: &clean::AssocFunction,
     link: AssocItemLink<'_>,
     indent: usize,
     ending: Ending,
@@ -1160,36 +1158,36 @@ fn assoc_method(
     cx: &Context<'_>,
 ) -> impl fmt::Display {
     let tcx = cx.tcx();
-    let header = meth.fn_header(tcx).expect("Trying to get header from a non-function item");
-    let name = meth.name.as_ref().unwrap();
-    let vis = visibility_print_with_space(meth, cx).to_string();
-    let defaultness = match meth.defaultness().expect("Expected assoc method to have defaultness") {
-        Defaultness::Implicit => "",
-        Defaultness::Final => "final ",
-        Defaultness::Default => "default ",
+    let header = it.fn_header(tcx).expect("Trying to get header from a non-function item");
+    let name = it.name.as_ref().unwrap();
+    let vis = visibility_print_with_space(it, cx).to_string();
+    let defaultness = match fn_.body {
+        Some(Defaultness::Implicit) | None => "",
+        Some(Defaultness::Final) => "final ",
+        Some(Defaultness::Default) => "default ",
     };
     // FIXME: Once https://github.com/rust-lang/rust/issues/143874 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
         RenderMode::Normal => print_constness_with_space(
             &header.constness,
-            meth.stable_since(tcx),
-            meth.const_stability(tcx),
+            it.stable_since(tcx),
+            it.const_stability(tcx),
         ),
         RenderMode::ForDeref { .. } => "",
     };
 
     fmt::from_fn(move |w| {
         let indent_str = " ".repeat(indent);
-        render_attributes_in_code(w, meth, &indent_str, cx)?;
+        render_attributes_in_code(w, it, &indent_str, cx)?;
 
         let asyncness = header.asyncness.print_with_space();
         let safety = header.safety.print_with_space();
         let abi = print_abi_with_space(header.abi).to_string();
-        let href = assoc_href_attr(meth, link, cx).maybe_display();
+        let href = assoc_href_attr(it, link, cx).maybe_display();
 
         // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
-        let generics_len = format!("{:#}", print_generics(g, cx)).len();
+        let generics_len = format!("{:#}", print_generics(&fn_.generics, cx)).len();
         let header_len = indent
             + "fn ".len()
             + vis.len()
@@ -1201,16 +1199,16 @@ fn assoc_method(
             + name.as_str().len()
             + generics_len;
 
-        let notable_traits = notable_traits_button(&d.output, cx).maybe_display();
+        let notable_traits = notable_traits_button(&fn_.decl.output, cx).maybe_display();
 
         write!(
             w,
             "{indent}{vis}{defaultness}{constness}{asyncness}{safety}{abi}fn \
             <a{href} class=\"fn\">{name}</a>{generics}{decl}{notable_traits}{where_clause}",
             indent = indent_str,
-            generics = print_generics(g, cx),
-            decl = full_print_fn_decl(d, header_len, indent, cx),
-            where_clause = print_where_clause(g, cx, indent, ending).maybe_display(),
+            generics = print_generics(&fn_.generics, cx),
+            decl = full_print_fn_decl(&fn_.decl, header_len, indent, cx),
+            where_clause = print_where_clause(&fn_.generics, cx, indent, ending).maybe_display(),
         )
     })
 }
@@ -1315,8 +1313,8 @@ fn render_assoc_item(
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| match &item.kind {
         ItemKind::Stripped(..) => Ok(()),
-        ItemKind::RequiredAssocFunction(m, _) | ItemKind::AssocFunction(m, _) => {
-            assoc_method(item, &m.generics, &m.decl, link, indent, ending, render_mode, cx).fmt(f)
+        ItemKind::AssocFunction(fn_) => {
+            assoc_fn(item, fn_, link, indent, ending, render_mode, cx).fmt(f)
         }
         ItemKind::AssocConstant(ct) => {
             assoc_const(item, ct, parent, link, indent, ending, cx).fmt(f)
@@ -1606,19 +1604,15 @@ fn render_deref_methods(
     Ok(())
 }
 
-fn should_render_item(
+fn should_render_item_for_deref(
     item: &clean::Item,
     deref_mut_: bool,
     tcx: TyCtxt<'_>,
     target_is_copy: bool,
 ) -> bool {
-    let self_type_opt = match item.kind {
-        ItemKind::AssocFunction(ref method, _) => method.decl.receiver_type(),
-        ItemKind::RequiredAssocFunction(ref method, _) => method.decl.receiver_type(),
-        _ => None,
-    };
+    let ItemKind::AssocFunction(fn_) = &item.kind else { return false };
+    let Some(self_ty) = fn_.decl.receiver_type() else { return false };
 
-    let Some(self_ty) = self_type_opt else { return false };
     let (by_mut_ref, by_box, by_value) = match *self_ty {
         clean::Type::BorrowedRef { mutability, .. } => {
             (mutability == Mutability::Mut, false, false)
@@ -1899,7 +1893,12 @@ fn render_impl(
                 && match render_mode {
                     RenderMode::Normal => true,
                     RenderMode::ForDeref { mut_: deref_mut_, is_deref_target_copy } => {
-                        should_render_item(item, deref_mut_, cx.tcx(), is_deref_target_copy)
+                        should_render_item_for_deref(
+                            item,
+                            deref_mut_,
+                            cx.tcx(),
+                            is_deref_target_copy,
+                        )
                     }
                 };
 
@@ -1964,7 +1963,8 @@ fn render_impl(
 
             let toggled = !doc_buffer.is_empty();
             if toggled {
-                let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
+                let method_toggle_class =
+                    if item_type.is_assoc_fn() { " method-toggle" } else { "" };
                 write!(
                     w,
                     "<details class=\"toggle{method_toggle_class}{deprecation_class}\" open><summary>"
@@ -1972,7 +1972,7 @@ fn render_impl(
                 deprecation_class = "";
             }
             match &item.kind {
-                ItemKind::AssocFunction(..) | ItemKind::RequiredAssocFunction(..) => {
+                ItemKind::AssocFunction(..) => {
                     // Only render when the method is not static or we allow static methods
                     if render_method_item {
                         let id = cx.derive_id(format!("{item_type}.{name}"));
@@ -2123,14 +2123,12 @@ fn render_impl(
         // length), and both in associated functions. So with this order, when reading from top to
         // bottom, you should see items definitions before they're actually used most of the time.
         let mut assoc_types = Vec::new();
-        let mut methods = Vec::new();
+        let mut assoc_fns = Vec::new();
 
         if !impl_.is_negative_trait_impl() {
             for impl_item in &impl_.items {
                 match impl_item.kind {
-                    ItemKind::AssocFunction(..) | ItemKind::RequiredAssocFunction(..) => {
-                        methods.push(impl_item)
-                    }
+                    ItemKind::AssocFunction(..) => assoc_fns.push(impl_item),
                     ItemKind::RequiredAssocType(..) | ItemKind::AssocType(..) => {
                         assoc_types.push(impl_item)
                     }
@@ -2167,12 +2165,12 @@ fn render_impl(
                     rendering_params,
                 )?;
             }
-            for method in methods {
+            for assoc_fn in assoc_fns {
                 doc_impl_item(
                     &mut default_impl_items,
                     &mut impl_items,
                     cx,
-                    method,
+                    assoc_fn,
                     if trait_.is_some() { &i.impl_item } else { parent },
                     link,
                     render_mode,
@@ -2590,8 +2588,8 @@ pub(crate) enum ItemSection {
     TypeAliases,
     Unions,
     Implementations,
-    TypeMethods,
-    Methods,
+    AssocFnsWithoutBody,
+    AssocFnsWithBody,
     StructFields,
     Variants,
     AssociatedTypes,
@@ -2623,8 +2621,8 @@ impl ItemSection {
             TypeAliases,
             Unions,
             Implementations,
-            TypeMethods,
-            Methods,
+            AssocFnsWithoutBody,
+            AssocFnsWithBody,
             StructFields,
             Variants,
             AssociatedTypes,
@@ -2651,8 +2649,8 @@ impl ItemSection {
             Self::Constants => "constants",
             Self::Traits => "traits",
             Self::Implementations => "impls",
-            Self::TypeMethods => "tymethods",
-            Self::Methods => "methods",
+            Self::AssocFnsWithoutBody => "tymethods",
+            Self::AssocFnsWithBody => "methods",
             Self::StructFields => "fields",
             Self::Variants => "variants",
             Self::Macros => "macros",
@@ -2681,8 +2679,8 @@ impl ItemSection {
             Self::Constants => "Constants",
             Self::Traits => "Traits",
             Self::Implementations => "Implementations",
-            Self::TypeMethods => "Type Methods",
-            Self::Methods => "Methods",
+            Self::AssocFnsWithoutBody => "Type Methods",
+            Self::AssocFnsWithBody => "Methods",
             Self::StructFields => "Struct Fields",
             Self::Variants => "Variants",
             Self::Macros => "Macros",
@@ -2712,8 +2710,8 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
         ItemType::Constant => ItemSection::Constants,
         ItemType::Trait => ItemSection::Traits,
         ItemType::Impl => ItemSection::Implementations,
-        ItemType::TyMethod => ItemSection::TypeMethods,
-        ItemType::Method => ItemSection::Methods,
+        ItemType::AssocFnWithoutBody => ItemSection::AssocFnsWithoutBody,
+        ItemType::AssocFnWithBody => ItemSection::AssocFnsWithBody,
         ItemType::StructField => ItemSection::StructFields,
         ItemType::Variant => ItemSection::Variants,
         ItemType::Macro => ItemSection::Macros,

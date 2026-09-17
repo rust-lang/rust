@@ -310,14 +310,16 @@ fn sidebar_trait<'a>(
         res
     }
 
-    let req_assoc = filter_items(&t.items, |m| m.is_required_associated_type(), "associatedtype");
-    let prov_assoc = filter_items(&t.items, |m| m.is_associated_type(), "associatedtype");
-    let req_assoc_const =
+    let req_assoc_tys =
+        filter_items(&t.items, |m| m.is_required_associated_type(), "associatedtype");
+    let prov_assoc_tys = filter_items(&t.items, |m| m.is_associated_type(), "associatedtype");
+    let req_assoc_consts =
         filter_items(&t.items, |m| m.is_assoc_const_without_body(), "associatedconstant");
-    let prov_assoc_const =
+    let prov_assoc_consts =
         filter_items(&t.items, |m| m.is_assoc_const_with_body(), "associatedconstant");
-    let req_method = filter_items(&t.items, |m| m.is_ty_method(), "tymethod");
-    let prov_method = filter_items(&t.items, |m| m.is_method(), "method");
+    let req_assoc_fns = filter_items(&t.items, |m| m.is_assoc_fn_without_body(), "tymethod");
+    let prov_assoc_fns = filter_items(&t.items, |m| m.is_assoc_fn_with_body(), "method");
+
     let mut foreign_impls = vec![];
     if let Some(implementors) = cx.cache().implementors.get(&it.item_id.expect_def_id()) {
         foreign_impls.extend(
@@ -332,25 +334,29 @@ fn sidebar_trait<'a>(
 
     blocks.extend(
         [
-            ("required-associated-consts", "Required Associated Constants", req_assoc_const),
-            ("provided-associated-consts", "Provided Associated Constants", prov_assoc_const),
-            ("required-associated-types", "Required Associated Types", req_assoc),
-            ("provided-associated-types", "Provided Associated Types", prov_assoc),
+            ("required-associated-consts", "Required Associated Constants", req_assoc_consts),
+            ("provided-associated-consts", "Provided Associated Constants", prov_assoc_consts),
+            ("required-associated-types", "Required Associated Types", req_assoc_tys),
+            ("provided-associated-types", "Provided Associated Types", prov_assoc_tys),
         ]
         .into_iter()
         .map(|(id, title, items)| LinkBlock::new(Link::new(id, title), "", items)),
     );
 
     let tcx = cx.tcx();
-    // Because of `rustc_must_implement_one_of`, we might have a trait with no "required methods"
+    // Because of `rustc_must_implement_one_of`, we might have a trait with no "required" assoc fns
     // but still want the link in the sidebar, so we handle it on its own.
-    let mut req_method_link =
-        LinkBlock::new(Link::new("required-methods", "Required Methods"), "", req_method);
+    let mut req_assoc_fns_link =
+        LinkBlock::new(Link::new("required-methods", "Required Methods"), "", req_assoc_fns);
     let rustc_middle::ty::TraitDef { must_implement_one_of, .. } = tcx.trait_def(t.def_id);
-    req_method_link.force_render = must_implement_one_of.is_some();
-    blocks.push(req_method_link);
+    req_assoc_fns_link.force_render = must_implement_one_of.is_some();
+    blocks.push(req_assoc_fns_link);
 
-    blocks.push(LinkBlock::new(Link::new("provided-methods", "Provided Methods"), "", prov_method));
+    blocks.push(LinkBlock::new(
+        Link::new("provided-methods", "Provided Methods"),
+        "",
+        prov_assoc_fns,
+    ));
 
     sidebar_assoc_items(cx, it, blocks, deref_id_map);
 
@@ -778,17 +784,25 @@ fn get_methods<'a>(
 ) -> impl Iterator<Item = Link<'a>> {
     i.items.iter().filter_map(move |item| {
         if let Some(ref name) = item.name
-            && item.is_method()
+            && item.is_assoc_fn_with_body()
         {
             let mut build_link = || {
                 Link::new(
-                    get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::Method)),
+                    get_next_url(
+                        used_links,
+                        format!("{typ}.{name}", typ = ItemType::AssocFnWithBody),
+                    ),
                     format!("{} ({:#})", name.as_str(), print_type(&i.for_, cx)),
                 )
             };
             match &mut mode {
                 &mut GetMethodsMode::Deref { deref_mut, is_deref_target_copy } => {
-                    if super::should_render_item(item, deref_mut, cx.tcx(), is_deref_target_copy) {
+                    if super::should_render_item_for_deref(
+                        item,
+                        deref_mut,
+                        cx.tcx(),
+                        is_deref_target_copy,
+                    ) {
                         Some(build_link())
                     } else {
                         None

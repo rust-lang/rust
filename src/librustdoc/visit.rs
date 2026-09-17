@@ -35,7 +35,6 @@ pub(crate) trait DocVisitor<'a>: Sized {
             | ItemKind::Static(_)
             | ItemKind::Constant(..)
             | ItemKind::TraitAlias(_)
-            | ItemKind::RequiredAssocFunction(..)
             | ItemKind::AssocFunction(..)
             | ItemKind::StructField(_)
             | ItemKind::ForeignFunction(..)
