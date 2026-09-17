@@ -97,7 +97,10 @@ pub(crate) fn try_inline(
         Res::Def(DefKind::Fn, did) => {
             record_extern_fqn(cx, did, ItemType::Function);
             cx.with_param_env(did, |cx| {
-                clean::enter_impl_trait(cx, |cx| ItemKind::Fn(build_function(cx, did)))
+                clean::enter_impl_trait(cx, |cx| {
+                    let (generics, decl) = build_function(cx, did);
+                    ItemKind::Fn(Box::new(clean::Function { generics, decl }))
+                })
             })
         }
         Res::Def(DefKind::Struct, did) => {
@@ -324,7 +327,10 @@ fn build_trait_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::TraitAlias {
     clean::TraitAlias { generics, bounds }
 }
 
-pub(super) fn build_function(cx: &mut DocContext<'_>, def_id: DefId) -> Box<clean::Function> {
+pub(super) fn build_function(
+    cx: &mut DocContext<'_>,
+    def_id: DefId,
+) -> (clean::Generics, clean::FnDecl) {
     let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
     // The generics need to be cleaned before the signature.
     let mut generics = clean_ty_generics(cx, def_id);
@@ -352,7 +358,7 @@ pub(super) fn build_function(cx: &mut DocContext<'_>, def_id: DefId) -> Box<clea
 
     let decl = clean_poly_fn_sig(cx, Some(def_id), sig);
 
-    Box::new(clean::Function { decl, generics })
+    (generics, decl)
 }
 
 fn build_enum(cx: &mut DocContext<'_>, did: DefId) -> clean::Enum {

@@ -94,7 +94,6 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                     // Don't inherit the parent's stability for these items, because they
                     // are potentially accessible even if the parent is more unstable.
                     ItemKind::Impl(..)
-                    | ItemKind::RequiredAssocFn(..)
                     | ItemKind::AssocFn(..)
                     | ItemKind::AssocConst(..)
                     | ItemKind::RequiredAssocTy(..)

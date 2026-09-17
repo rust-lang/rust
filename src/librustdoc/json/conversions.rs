@@ -365,25 +365,29 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
         ItemKind::StructField(f) => ItemEnum::StructField(f.into_json(renderer)),
         ItemKind::Enum(e) => ItemEnum::Enum(e.into_json(renderer)),
         ItemKind::Variant(v) => ItemEnum::Variant(v.into_json(renderer)),
-        ItemKind::Fn(f) => {
-            ItemEnum::Function(from_clean_function(f, true, None, header.unwrap(), renderer))
-        }
-        ItemKind::ForeignFn(f, _) => {
-            ItemEnum::Function(from_clean_function(f, false, None, header.unwrap(), renderer))
-        }
+        ItemKind::Fn(f) | ItemKind::ForeignFn(f, _) => ItemEnum::Function(Function {
+            sig: f.decl.into_json(renderer),
+            generics: f.generics.into_json(renderer),
+            header: header.unwrap().into_json(renderer),
+            has_body: match item.kind {
+                ItemKind::Fn(_) => true,
+                ItemKind::ForeignFn(..) => false,
+                _ => unreachable!(),
+            },
+            default_unstable: None,
+        }),
         ItemKind::Trait(t) => ItemEnum::Trait(t.into_json(renderer)),
         ItemKind::TraitAlias(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
-        ItemKind::AssocFn(m, _) => ItemEnum::Function(from_clean_function(
-            m,
-            true,
-            default_body_stability_for_def_id(renderer.tcx, item.item_id.expect_def_id())
-                .map(|stab| stab.into_json(renderer)),
-            header.unwrap(),
-            renderer,
-        )),
-        ItemKind::RequiredAssocFn(m, _) => {
-            ItemEnum::Function(from_clean_function(m, false, None, header.unwrap(), renderer))
-        }
+        ItemKind::AssocFn(f) => ItemEnum::Function(Function {
+            sig: f.decl.into_json(renderer),
+            generics: f.generics.into_json(renderer),
+            header: header.unwrap().into_json(renderer),
+            has_body: f.body.is_some(),
+            default_unstable: f.body.as_ref().and_then(|_| {
+                default_body_stability_for_def_id(renderer.tcx, item.item_id.expect_def_id())
+                    .map(|stab| stab.into_json(renderer))
+            }),
+        }),
         ItemKind::Impl(i) => ItemEnum::Impl(i.into_json(renderer)),
         ItemKind::Static(s) => {
             ItemEnum::Static(from_clean_static(s, rustc_hir::Safety::Safe, renderer))
@@ -840,22 +844,6 @@ impl FromClean<clean::Impl> for Impl {
     }
 }
 
-pub(crate) fn from_clean_function(
-    clean::Function { decl, generics }: &clean::Function,
-    has_body: bool,
-    default_unstable: Option<Box<ProvidedDefaultUnstable>>,
-    header: rustc_hir::FnHeader,
-    renderer: &JsonRenderer<'_>,
-) -> Function {
-    Function {
-        sig: decl.into_json(renderer),
-        generics: generics.into_json(renderer),
-        header: header.into_json(renderer),
-        has_body,
-        default_unstable,
-    }
-}
-
 impl FromClean<clean::Enum> for Enum {
     fn from_clean(enum_: &clean::Enum, renderer: &JsonRenderer<'_>) -> Self {
         let has_stripped_variants = enum_.has_stripped_entries();
@@ -980,7 +968,7 @@ impl FromClean<ItemType> for ItemKind {
             Struct => ItemKind::Struct,
             Union => ItemKind::Union,
             Enum => ItemKind::Enum,
-            Function | TyMethod | Method => ItemKind::Function,
+            Function | AssocFnWithoutBody | AssocFnWithBody => ItemKind::Function,
             TypeAlias => ItemKind::TypeAlias,
             Static => ItemKind::Static,
             Constant => ItemKind::Constant,

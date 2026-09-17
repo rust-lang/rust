@@ -1105,15 +1105,16 @@ fn clean_fn_or_proc_macro<'tcx>(
     match macro_kind {
         Some(kind) => clean_proc_macro(item, name, kind, cx.tcx),
         None => {
-            let mut func = clean_function(
+            let (generics, decl) = clean_function(
                 cx,
                 sig,
                 generics,
                 ParamsSrc::Body(body_id),
                 item.owner_id.to_def_id(),
             );
+            let mut func = Function { generics, decl };
             clean_fn_decl_legacy_const_generics(&mut func, attrs);
-            ItemKind::Fn(func)
+            ItemKind::Fn(Box::new(func))
         }
     }
 }
@@ -1151,8 +1152,8 @@ fn clean_function<'tcx>(
     generics: &hir::Generics<'tcx>,
     params: ParamsSrc<'tcx>,
     def_id: DefId,
-) -> Box<Function> {
-    let (generics, decl) = enter_impl_trait(cx, |cx| {
+) -> (Generics, FnDecl) {
+    enter_impl_trait(cx, |cx| {
         // NOTE: Generics must be cleaned before params.
         let generics = clean_generics(generics, cx);
         let decl = if sig.decl.opt_delegation_sig_id().is_some() {
@@ -1175,8 +1176,7 @@ fn clean_function<'tcx>(
             clean_fn_decl_with_params(cx, sig.decl, Some(&sig.header), params)
         };
         (generics, decl)
-    });
-    Box::new(Function { decl, generics })
+    })
 }
 
 fn clean_params<'tcx>(
@@ -1303,20 +1303,17 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                 ty: clean_ty(ty, cx),
                 rhs: default.map(|default| clean_const_item_rhs(default, local_did)),
             })),
-            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                let m =
-                    clean_function(cx, sig, trait_item.generics, ParamsSrc::Body(body), local_did);
-                ItemKind::AssocFn(m, Defaultness::from_trait_item(trait_item.defaultness))
-            }
-            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(idents)) => {
-                let m = clean_function(
-                    cx,
-                    sig,
-                    trait_item.generics,
-                    ParamsSrc::Idents(idents),
-                    local_did,
-                );
-                ItemKind::RequiredAssocFn(m, Defaultness::from_trait_item(trait_item.defaultness))
+            hir::TraitItemKind::Fn(ref sig, body) => {
+                let (params, body) = match body {
+                    hir::TraitFn::Provided(body) => (
+                        ParamsSrc::Body(body),
+                        Some(Defaultness::from_trait_item(trait_item.defaultness)),
+                    ),
+                    hir::TraitFn::Required(idents) => (ParamsSrc::Idents(idents), None),
+                };
+                let (generics, decl) =
+                    clean_function(cx, sig, trait_item.generics, params, local_did);
+                ItemKind::AssocFn(Box::new(AssocFn { generics, decl, body }))
             }
             hir::TraitItemKind::Type(bounds, Some(default)) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
@@ -1356,12 +1353,16 @@ pub(crate) fn clean_impl_item<'tcx>(
                 rhs: Some(clean_const_item_rhs(expr, local_did)),
             })),
             hir::ImplItemKind::Fn(ref sig, body) => {
-                let m = clean_function(cx, sig, impl_.generics, ParamsSrc::Body(body), local_did);
-                let defaultness = match impl_.impl_kind {
-                    hir::ImplItemImplKind::Inherent { .. } => hir::Defaultness::Final,
-                    hir::ImplItemImplKind::Trait { defaultness, .. } => defaultness,
-                };
-                ItemKind::AssocFn(m, Defaultness::from_impl_item(defaultness))
+                let (generics, decl) =
+                    clean_function(cx, sig, impl_.generics, ParamsSrc::Body(body), local_did);
+                ItemKind::AssocFn(Box::new(AssocFn {
+                    generics,
+                    decl,
+                    body: Some(Defaultness::from_impl_item(match impl_.impl_kind {
+                        hir::ImplItemImplKind::Inherent { .. } => hir::Defaultness::Final,
+                        hir::ImplItemImplKind::Trait { defaultness, .. } => defaultness,
+                    })),
+                }))
             }
             hir::ImplItemKind::Type(hir_ty) => {
                 let type_ = clean_ty(hir_ty, cx);
@@ -1410,7 +1411,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             }))
         }
         ty::AssocKind::Fn { has_self, .. } => {
-            let mut item = inline::build_function(cx, assoc_item.def_id);
+            let (generics, mut decl) = inline::build_function(cx, assoc_item.def_id);
 
             if has_self {
                 let self_ty = match assoc_item.container {
@@ -1427,11 +1428,11 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                     .input(0)
                     .skip_binder();
                 if self_param_ty == self_ty {
-                    item.decl.inputs[0].type_ = SelfTy;
+                    decl.inputs[0].type_ = SelfTy;
                 } else if let ty::Ref(_, ty, _) = *self_param_ty.kind()
                     && ty == self_ty
                 {
-                    match item.decl.inputs[0].type_ {
+                    match decl.inputs[0].type_ {
                         BorrowedRef { ref mut type_, .. } => **type_ = SelfTy,
                         _ => unreachable!(),
                     }
@@ -1439,20 +1440,14 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             }
 
             let defaultness = assoc_item.defaultness(tcx);
-            let (provided, defaultness) = match assoc_item.container {
-                ty::AssocContainer::Trait => {
-                    (defaultness.has_value(), Defaultness::from_trait_item(defaultness))
-                }
+            let body = match assoc_item.container {
+                ty::AssocContainer::Trait if !defaultness.has_value() => None,
+                ty::AssocContainer::Trait => Some(Defaultness::from_trait_item(defaultness)),
                 ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
-                    (true, Defaultness::from_impl_item(defaultness))
+                    Some(Defaultness::from_impl_item(defaultness))
                 }
             };
-
-            if provided {
-                ItemKind::AssocFn(item, defaultness)
-            } else {
-                ItemKind::RequiredAssocFn(item, defaultness)
-            }
+            ItemKind::AssocFn(Box::new(AssocFn { generics, decl, body }))
         }
         ty::AssocKind::Type { .. } => {
             let my_name = assoc_item.name();
@@ -3377,10 +3372,11 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            hir::ForeignItemKind::Fn(sig, idents, generics) => ItemKind::ForeignFn(
-                clean_function(cx, &sig, generics, ParamsSrc::Idents(idents), def_id),
-                sig.header.safety(),
-            ),
+            hir::ForeignItemKind::Fn(sig, idents, generics) => {
+                let (generics, decl) =
+                    clean_function(cx, &sig, generics, ParamsSrc::Idents(idents), def_id);
+                ItemKind::ForeignFn(Box::new(Function { generics, decl }), sig.header.safety())
+            }
             hir::ForeignItemKind::Static(ty, mutability, safety) => ItemKind::ForeignStatic(
                 Static { type_: Box::new(clean_ty(ty, cx)), mutability, expr: None },
                 safety,

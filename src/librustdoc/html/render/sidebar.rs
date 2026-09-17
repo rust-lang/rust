@@ -311,14 +311,16 @@ fn sidebar_trait<'a>(
         res
     }
 
-    let req_assoc = filter_items(&t.items, |m| m.is_required_associated_type(), "associatedtype");
-    let prov_assoc = filter_items(&t.items, |m| m.is_associated_type(), "associatedtype");
-    let req_assoc_const =
+    let req_assoc_tys =
+        filter_items(&t.items, |m| m.is_required_associated_type(), "associatedtype");
+    let prov_assoc_tys = filter_items(&t.items, |m| m.is_associated_type(), "associatedtype");
+    let req_assoc_consts =
         filter_items(&t.items, |m| m.is_assoc_const_without_body(), "associatedconstant");
-    let prov_assoc_const =
+    let prov_assoc_consts =
         filter_items(&t.items, |m| m.is_assoc_const_with_body(), "associatedconstant");
-    let req_method = filter_items(&t.items, |m| m.is_ty_method(), "tymethod");
-    let prov_method = filter_items(&t.items, |m| m.is_method(), "method");
+    let req_assoc_fns = filter_items(&t.items, |m| m.is_assoc_fn_without_body(), "tymethod");
+    let prov_assoc_fns = filter_items(&t.items, |m| m.is_assoc_fn_with_body(), "method");
+
     let mut foreign_impls = vec![];
     if let Some(implementors) = cx.cache().implementors.get(&it.item_id.expect_def_id()) {
         foreign_impls.extend(
@@ -333,12 +335,12 @@ fn sidebar_trait<'a>(
 
     blocks.extend(
         [
-            ("required-associated-consts", "Required Associated Constants", req_assoc_const),
-            ("provided-associated-consts", "Provided Associated Constants", prov_assoc_const),
-            ("required-associated-types", "Required Associated Types", req_assoc),
-            ("provided-associated-types", "Provided Associated Types", prov_assoc),
-            ("required-methods", "Required Methods", req_method),
-            ("provided-methods", "Provided Methods", prov_method),
+            ("required-associated-consts", "Required Associated Constants", req_assoc_consts),
+            ("provided-associated-consts", "Provided Associated Constants", prov_assoc_consts),
+            ("required-associated-types", "Required Associated Types", req_assoc_tys),
+            ("provided-associated-types", "Provided Associated Types", prov_assoc_tys),
+            ("required-methods", "Required Methods", req_assoc_fns),
+            ("provided-methods", "Provided Methods", prov_assoc_fns),
             ("foreign-impls", "Implementations on Foreign Types", foreign_impls),
         ]
         .into_iter()
@@ -768,11 +770,14 @@ fn get_methods<'a>(
 ) -> impl Iterator<Item = Link<'a>> {
     i.items.iter().filter_map(move |item| {
         if let Some(ref name) = item.name
-            && item.is_method()
+            && item.is_assoc_fn_with_body()
         {
             let mut build_link = || {
                 Link::new(
-                    get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::Method)),
+                    get_next_url(
+                        used_links,
+                        format!("{typ}.{name}", typ = ItemType::AssocFnWithBody),
+                    ),
                     name.as_str(),
                 )
             };
