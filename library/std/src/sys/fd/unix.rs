@@ -72,13 +72,19 @@ pub struct FileDesc(OwnedFd);
 //
 // On Apple targets however, apparently the 64-bit libc is either buggy or
 // intentionally showing odd behavior by rejecting any read with a size
-// larger than INT_MAX. To handle both of these the read size is capped on
-// both platforms.
-const READ_LIMIT: usize = if cfg!(target_vendor = "apple") {
-    libc::c_int::MAX as usize
-} else {
-    libc::ssize_t::MAX as usize
-};
+// larger than INT_MAX.
+//
+// Meanwhile on QNX, reads/writes/sends larger than INT_MAX return the wrong
+// number of bytes written (eg, writing 2^31 bytes returns (2^64 - 2^31) instead
+// of the correct byte count).
+//
+// To handle both of these the read/write/send size is capped on both platforms.
+const READ_LIMIT: usize =
+    if cfg!(any(target_vendor = "apple", target_os = "nto", target_os = "qnx")) {
+        libc::c_int::MAX as usize
+    } else {
+        libc::ssize_t::MAX as usize
+    };
 
 #[cfg(any(
     target_os = "dragonfly",

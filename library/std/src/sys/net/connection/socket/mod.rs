@@ -44,15 +44,22 @@ use netc as c;
 // intentionally showing odd behavior by rejecting send calls with a size
 // larger than INT_MAX. So cap the send size to INT_MAX.
 //
+// Meanwhile on QNX, reads/writes/sends larger than INT_MAX return the wrong
+// number of bytes written (eg, writing 2^31 bytes returns (2^64 - 2^31) instead
+// of the correct byte count).
+//
+// To handle both of these the read/write/send size is capped on both platforms.
+//
 // On Windows, the relevant syscall takes an `i32` (unlike for read/write!),
 // so we need to clamp to i32::MAX.
-const MAX_SEND_LEN: usize = if cfg!(target_vendor = "apple") {
-    c_int::MAX as usize
-} else if cfg!(target_os = "windows") {
-    i32::MAX as usize
-} else {
-    libc::ssize_t::MAX as usize
-};
+const MAX_SEND_LEN: usize =
+    if cfg!(any(target_vendor = "apple", target_os = "nto", target_os = "qnx")) {
+        c_int::MAX as usize
+    } else if cfg!(target_os = "windows") {
+        i32::MAX as usize
+    } else {
+        libc::ssize_t::MAX as usize
+    };
 
 cfg_select! {
     any(

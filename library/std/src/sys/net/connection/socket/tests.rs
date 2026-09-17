@@ -26,13 +26,16 @@ fn no_lookup_host_duplicates() {
 // On Apple (per 115325), `send` takes a `size_t` length, but rejects any
 // length > `c_int::MAX` with `EINVAL`.
 //
+// On QNX, `send` with length > `c_int::MAX` returns an incorrect count of bytes
+// written.
+//
 // On Windows, `send` takes an `i32` length and returns an `i32`.
 //
 // On other platforms, `send` takes a `size_t` and returns an `ssize_t`, so
 // sends larger then `ssize_t::MAX` will (maybe silently) return bad lengths.
 #[test]
 fn max_send_len_within_platform_limit() {
-    if cfg!(target_vendor = "apple") {
+    if cfg!(any(target_vendor = "apple", target_os = "nto", target_os = "qnx")) {
         assert_eq!(MAX_SEND_LEN, c_int::MAX as usize);
     } else if cfg!(target_os = "windows") {
         assert_eq!(MAX_SEND_LEN, i32::MAX as usize);
