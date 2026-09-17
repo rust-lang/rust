@@ -1,4 +1,4 @@
-# LLDB Python script to handle Cargo `<exe>.trim-paths.jsonl` files from the trim-paths feature
+# LLDB Python script to handle Cargo `<exe>.trim-paths.json` files from the trim-paths feature
 #  - https://github.com/rust-lang/cargo/issues/12137
 #  - https://github.com/rust-lang/rust/issues/111540
 
@@ -9,51 +9,29 @@ import lldb
 import threading
 
 
-def _process_v1_trim_paths(debugger, lines, trim_paths_path):
-    for idx, line in enumerate(lines[2:], start=3):
-        try:
-            entry = json.loads(line)
-            if "from" in entry and "to" in entry:
-                # LLDB syntax: settings append target.source-map <from> <to>
-                cmd = f'settings append target.source-map "{entry["from"]}" "{entry["to"]}"'
-                debugger.HandleCommand(cmd)
-        except json.JSONDecodeError:
-            print(
-                f"(rust-lldb) warning: invalid JSON on line {idx} of {trim_paths_path}",
-                file=sys.stderr,
-            )
+def _process_v1_trim_paths(debugger, doc):
+    for entry in doc.get("remaps", []):
+        if "from" in entry and "to" in entry:
+            # LLDB syntax: settings append target.source-map <from> <to>
+            cmd = f'settings append target.source-map "{entry["from"]}" "{entry["to"]}"'
+            debugger.HandleCommand(cmd)
 
 
 def _load_trim_paths(debugger, filepath):
-    trim_paths_path = f"{filepath}.trim-paths.jsonl"
+    trim_paths_path = f"{filepath}.trim-paths.json"
 
     if not os.path.isfile(trim_paths_path):
         return
 
     try:
-        # Load all the lines of the trim-paths file
         with open(trim_paths_path, "r", encoding="utf-8") as f:
-            lines = [line.strip() for line in f]
+            doc = json.load(f)
 
-        # Abort if we have less than 3 lines as that means that we cannot have any
-        # substitutions (header + metadata is already 2 lines)
-        if not lines or len(lines) < 3:
-            return
-
-        # Try loading the header line, which contains the version (v) field
-        try:
-            header = json.loads(lines[0])
-            ver = header.get("v")
-        except json.JSONDecodeError:
-            print(
-                f"(rust-lldb) warning: header line 1 of {trim_paths_path} is not valid JSON",
-                file=sys.stderr,
-            )
-            return
+        ver = doc.get("v")
 
         # We only handle version 1
         if ver == 1:
-            _process_v1_trim_paths(debugger, lines, trim_paths_path)
+            _process_v1_trim_paths(debugger, doc)
         else:
             print(
                 f"(rust-lldb) warning: unsupported trim-paths version {ver}: {trim_paths_path}",

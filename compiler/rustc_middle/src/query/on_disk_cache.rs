@@ -18,11 +18,10 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{
     ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextKey,
-    raw_encode_syntax_context,
 };
 use rustc_span::{
     BlobDecoder, BytePos, ByteSymbol, CachingSourceMapView, ExpnData, ExpnHash, RelativeBytePos,
-    SourceFile, Span, SpanDecoder, SpanEncoder, Spanned, StableSourceFileId, Symbol,
+    SourceFile, Span, SpanDecoder, SpanEncoder, Spanned, StableSourceFileId, Symbol, bug,
 };
 
 use crate::dep_graph::{DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
@@ -689,88 +688,44 @@ impl<'a, 'tcx> BlobDecoder for CacheDecoder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx UnordSet<LocalDefId> {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx UnordMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>
-{
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>
-{
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, Span)] {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [rustc_ast::InlineAsmTemplatePiece] {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [Spanned<MonoItem<'tcx>>] {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx crate::traits::specialization_graph::Graph
-{
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx rustc_ast::tokenstream::TokenStream {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-macro_rules! impl_ref_decoder {
-    (<$tcx:tt> $($ty:ty,)*) => {
-        $(impl<'a, $tcx> Decodable<CacheDecoder<'a, $tcx>> for &$tcx [$ty] {
-            #[inline]
-            fn decode(d: &mut CacheDecoder<'a, $tcx>) -> Self {
-                RefDecodable::decode(d)
+/// Implements [`Decodable`] for `&'tcx T`, where [`T: RefDecodable`](RefDecodable).
+///
+/// Due to orphan-rule restrictions, these foreign impls cannot use a blanket
+/// [`D: TyDecoder`](TyDecoder), and must instead specify a specific decoder.
+///
+/// For impls on types defined in `rustc_middle`, see
+/// `impl_decodable_via_ref_decodable_for_local_type!` instead.
+macro_rules! impl_decodable_via_ref_decodable_for_foreign_types {
+    (
+        $(
+            &'tcx $T:ty,
+        )*
+    ) => {
+        $(
+            impl<'tcx> Decodable<CacheDecoder<'_, 'tcx>> for &'tcx $T {
+                fn decode(decoder: &mut CacheDecoder<'_, 'tcx>) -> Self {
+                    RefDecodable::decode(decoder)
+                }
             }
-        })*
-    };
+        )*
+    }
 }
 
-impl_ref_decoder! {<'tcx>
-    Span,
-    rustc_hir::Attribute,
-    rustc_span::Ident,
-    ty::Variance,
-    rustc_span::def_id::DefId,
-    rustc_span::def_id::LocalDefId,
-    (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
-    rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs,
+impl_decodable_via_ref_decodable_for_foreign_types! {
+    // tidy-alphabetical-start
+    &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>,
+    &'tcx UnordMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>,
+    &'tcx UnordSet<LocalDefId>,
+    &'tcx [(
+        rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>,
+        rustc_middle::middle::exported_symbols::SymbolExportInfo,
+    )],
+    &'tcx [(ty::Clause<'tcx>, Span)],
+    &'tcx [DefId],
+    &'tcx [Spanned<MonoItem<'tcx>>],
+    &'tcx [ty::Variance],
+    &'tcx rustc_ast::tokenstream::TokenStream,
+    // tidy-alphabetical-end
 }
 
 //- ENCODING -------------------------------------------------------------------
@@ -870,7 +825,8 @@ impl<'tcx> CacheEncoder<'tcx> {
 
 impl<'tcx> SpanEncoder for CacheEncoder<'tcx> {
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
-        raw_encode_syntax_context(syntax_context, Rc::clone(&self.hygiene_context), self);
+        let idx = self.hygiene_context.borrow_mut().get_syntax_ctxt_encoding_index(syntax_context);
+        idx.encode(self);
     }
 
     fn encode_expn_id(&mut self, expn_id: ExpnId) {

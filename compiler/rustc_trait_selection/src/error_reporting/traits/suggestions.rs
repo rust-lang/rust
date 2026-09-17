@@ -35,10 +35,10 @@ use rustc_middle::ty::{
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, TypeckResults,
     Unnormalized, Upcast, suggest_arbitrary_trait_bound, suggest_constraining_type_param,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{
-    BytePos, DUMMY_SP, DesugaringKind, ExpnKind, Ident, MacroKind, Span, Symbol, kw, sym,
+    BytePos, DUMMY_SP, DesugaringKind, ExpnKind, Ident, MacroKind, Span, Symbol, bug, kw, span_bug,
+    sym,
 };
 use tracing::{debug, instrument};
 
@@ -2530,7 +2530,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .sess
                         .source_map()
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
-                    if points_at_arg && mutability.is_not() && refs_number > 0 {
+                    if points_at_arg
+                        && mutability.is_not()
+                        && refs_number > 0
+                        // The borrow can sit in a macro body, where rewriting it would edit the
+                        // macro definition and so every one of its call sites, or a crate the user
+                        // does not own. Fall through to the note in that case.
+                        && span.can_be_used_for_suggestions()
+                    {
                         // If we have a call like foo(&mut buf), then don't suggest foo(&mut mut buf)
                         if snippet
                             .trim_start_matches(|c: char| c.is_whitespace() || c == '&')

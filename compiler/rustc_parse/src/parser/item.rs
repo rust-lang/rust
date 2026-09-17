@@ -1368,7 +1368,7 @@ impl<'a> Parser<'a> {
         &mut self,
         use_token_span: Span,
         prefix: Option<&'b UsePathList<'b>>,
-    ) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
+    ) -> PResult<'a, ThinVec<UseTreeAndId>> {
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |p| {
             p.recover_vcs_conflict_marker();
 
@@ -1386,7 +1386,7 @@ impl<'a> Parser<'a> {
                 p.emit_error_attr_in_use_tree(use_token_span, prefix, use_tree.span(), attr_span);
             }
 
-            Ok((use_tree, DUMMY_NODE_ID))
+            Ok(UseTreeAndId { inner: use_tree, id: DUMMY_NODE_ID })
         })
         .map(|(r, _)| r)
     }

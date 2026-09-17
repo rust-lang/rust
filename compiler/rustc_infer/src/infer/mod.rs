@@ -21,7 +21,6 @@ use rustc_hir::{self as hir, HirId};
 use rustc_index::IndexVec;
 use rustc_macros::extension;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
-use rustc_middle::bug;
 use rustc_middle::infer::canonical::{CanonicalQueryInput, CanonicalVarValues};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
@@ -33,7 +32,7 @@ use rustc_middle::ty::{
     PseudoCanonicalInput, Term, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Span, Symbol, bug};
 use rustc_type_ir::{CanonicalizerState, MayBeErased};
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
@@ -1458,6 +1457,20 @@ impl<'tcx> InferCtxt<'tcx> {
         }
         let mut r = resolve::DeepResolverIgnoringRegions::new(self);
         value.fold_with(&mut r)
+    }
+
+    /// Where possible, replaces type/const/region variables in `value` with their final value.
+    /// If a type/const/region variable has not (yet) been unified, it is left as is.
+    ///
+    /// This is an idempotent operation that does not affect inference state in any way,
+    /// which means it's safe to call this function at will.
+    pub fn deeply_resolve_via_unification_table<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        use rustc_middle::ty::InferCtxtLike;
+        #[allow(rustc::usage_of_type_ir_traits)]
+        InferCtxtLike::deeply_resolve_via_unification_table(self, value)
     }
 
     pub fn resolve_numeric_literals_with_default<T>(&self, value: T) -> T
