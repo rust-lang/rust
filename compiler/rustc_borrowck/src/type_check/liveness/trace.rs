@@ -6,7 +6,7 @@ use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::traits::TraitErrors;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
-use rustc_middle::ty::{GenericArg, Ty, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
@@ -553,7 +553,7 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     /// points `live_at`.
     fn add_use_live_facts_for(&mut self, value: Ty<'tcx>, live_at: &IntervalSet<PointIndex>) {
         debug!("add_use_live_facts_for(value={:?})", value);
-        Self::make_all_regions_live(self.location_map, self.typeck, value.into(), live_at);
+        Self::make_all_regions_live(self.location_map, self.typeck, value, live_at);
 
         // When using `-Zpolonius=next`, we also record the variance of regions in this live type.
         if let Some(polonius_context) = self.typeck.polonius_context.as_mut() {
@@ -633,7 +633,7 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     fn make_all_regions_live(
         location_map: &DenseLocationMap,
         typeck: &mut TypeChecker<'_, 'tcx>,
-        value: GenericArg<'tcx>,
+        value: impl TypeVisitable<TyCtxt<'tcx>>,
         live_at: &IntervalSet<PointIndex>,
     ) {
         debug!("make_all_regions_live(value={:?})", value);
