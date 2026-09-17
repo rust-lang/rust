@@ -850,7 +850,7 @@ fn build_const_item(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
         None,
         None,
     );
-    clean::Constant { generics, type_: ty, kind: clean::ConstantKind::Extern { def_id } }
+    clean::Constant { generics, ty, rhs: clean::ConstantKind::Extern { def_id } }
 }
 
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {

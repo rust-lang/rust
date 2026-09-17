@@ -314,9 +314,9 @@ fn sidebar_trait<'a>(
     let req_assoc = filter_items(&t.items, |m| m.is_required_associated_type(), "associatedtype");
     let prov_assoc = filter_items(&t.items, |m| m.is_associated_type(), "associatedtype");
     let req_assoc_const =
-        filter_items(&t.items, |m| m.is_required_associated_const(), "associatedconstant");
+        filter_items(&t.items, |m| m.is_assoc_const_without_body(), "associatedconstant");
     let prov_assoc_const =
-        filter_items(&t.items, |m| m.is_associated_const(), "associatedconstant");
+        filter_items(&t.items, |m| m.is_assoc_const_with_body(), "associatedconstant");
     let req_method = filter_items(&t.items, |m| m.is_ty_method(), "tymethod");
     let prov_method = filter_items(&t.items, |m| m.is_method(), "method");
     let mut foreign_impls = vec![];
@@ -806,7 +806,7 @@ fn get_associated_constants<'a>(
 ) -> impl Iterator<Item = Link<'a>> {
     i.items.iter().filter_map(|item| {
         if let Some(ref name) = item.name
-            && item.is_associated_const()
+            && item.is_assoc_const_with_body()
         {
             Some(Link::new(
                 get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocConst)),

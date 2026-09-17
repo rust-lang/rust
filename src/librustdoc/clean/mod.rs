@@ -1276,17 +1276,11 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
     let local_did = trait_item.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match trait_item.kind {
-            hir::TraitItemKind::Const(ty, Some(default)) => {
-                ItemKind::AssocConst(Box::new(Constant {
-                    generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
-                    kind: clean_const_item_rhs(default, local_did),
-                    type_: clean_ty(ty, cx),
-                }))
-            }
-            hir::TraitItemKind::Const(ty, None) => {
-                let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
-                ItemKind::RequiredAssocConst(generics, Box::new(clean_ty(ty, cx)))
-            }
+            hir::TraitItemKind::Const(ty, default) => ItemKind::AssocConst(Box::new(AssocConst {
+                generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
+                ty: clean_ty(ty, cx),
+                rhs: default.map(|default| clean_const_item_rhs(default, local_did)),
+            })),
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let m =
                     clean_function(cx, sig, trait_item.generics, ParamsSrc::Body(body), local_did);
@@ -1334,10 +1328,10 @@ pub(crate) fn clean_impl_item<'tcx>(
     let local_did = impl_.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match impl_.kind {
-            hir::ImplItemKind::Const(ty, expr) => ItemKind::AssocConst(Box::new(Constant {
+            hir::ImplItemKind::Const(ty, expr) => ItemKind::AssocConst(Box::new(AssocConst {
                 generics: clean_generics(impl_.generics, cx),
-                kind: clean_const_item_rhs(expr, local_did),
-                type_: clean_ty(ty, cx),
+                ty: clean_ty(ty, cx),
+                rhs: Some(clean_const_item_rhs(expr, local_did)),
             })),
             hir::ImplItemKind::Fn(ref sig, body) => {
                 let m = clean_function(cx, sig, impl_.generics, ParamsSrc::Body(body), local_did);
@@ -1384,26 +1378,14 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             let mut generics = clean_ty_generics(cx, assoc_item.def_id);
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
-            match assoc_item.container {
-                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
-                    ItemKind::AssocConst(Box::new(Constant {
-                        generics,
-                        kind: ConstantKind::Extern { def_id: assoc_item.def_id },
-                        type_: ty,
-                    }))
-                }
-                ty::AssocContainer::Trait => {
-                    if tcx.defaultness(assoc_item.def_id).has_value() {
-                        ItemKind::AssocConst(Box::new(Constant {
-                            generics,
-                            kind: ConstantKind::Extern { def_id: assoc_item.def_id },
-                            type_: ty,
-                        }))
-                    } else {
-                        ItemKind::RequiredAssocConst(generics, Box::new(ty))
-                    }
-                }
-            }
+            ItemKind::AssocConst(Box::new(AssocConst {
+                generics,
+                ty,
+                rhs: assoc_item
+                    .defaultness(tcx)
+                    .has_value()
+                    .then_some(ConstantKind::Extern { def_id: assoc_item.def_id }),
+            }))
         }
         ty::AssocKind::Fn { has_self, .. } => {
             let mut item = inline::build_function(cx, assoc_item.def_id);
@@ -2914,8 +2896,8 @@ fn clean_maybe_renamed_item<'tcx>(
             }),
             hir::ItemKind::Const(_, generics, ty, rhs) => ItemKind::Const(Box::new(Constant {
                 generics: clean_generics(generics, cx),
-                type_: clean_ty(ty, cx),
-                kind: clean_const_item_rhs(rhs, def_id),
+                ty: clean_ty(ty, cx),
+                rhs: clean_const_item_rhs(rhs, def_id),
             })),
             hir::ItemKind::TyAlias(_, generics, ty) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;

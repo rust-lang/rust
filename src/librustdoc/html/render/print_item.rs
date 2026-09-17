@@ -195,7 +195,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
                 write!(buf, "{}", item_static(cx, item, i, Some(*safety)))
             }
             ItemKind::Const(ci) => {
-                write!(buf, "{}", item_constant(cx, item, &ci.generics, &ci.type_, &ci.kind))
+                write!(buf, "{}", item_constant(cx, item, &ci.generics, &ci.ty, &ci.rhs))
             }
             ItemKind::ForeignTy => {
                 write!(buf, "{}", item_foreign_type(cx, item))
@@ -644,9 +644,9 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
             t.items.iter().filter(|m| m.is_required_associated_type()).collect::<Vec<_>>();
         let provided_types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
         let required_consts =
-            t.items.iter().filter(|m| m.is_required_associated_const()).collect::<Vec<_>>();
+            t.items.iter().filter(|m| m.is_assoc_const_without_body()).collect::<Vec<_>>();
         let provided_consts =
-            t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
+            t.items.iter().filter(|m| m.is_assoc_const_with_body()).collect::<Vec<_>>();
         let required_methods = t.items.iter().filter(|m| m.is_ty_method()).collect::<Vec<_>>();
         let provided_methods = t.items.iter().filter(|m| m.is_method()).collect::<Vec<_>>();
         let count_types = required_types.len() + provided_types.len();
