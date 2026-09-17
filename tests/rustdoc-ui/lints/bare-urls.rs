@@ -155,3 +155,9 @@ pub fn equal_sign_after_host() {}
 //~^ ERROR this URL is not a hyperlink
 //~| ERROR this URL is not a hyperlink
 pub fn hash_or_question_after_host() {}
+
+/// This URL contains italics,
+/// but should still produce a suggestion that wraps the whole thing.
+/// https://example.com/_foo_/bar
+//~^ ERROR this URL is not a hyperlink
+pub fn italics() {}

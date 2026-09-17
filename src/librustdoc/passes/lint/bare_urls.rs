@@ -63,7 +63,7 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
 
     while let Some((event, range)) = p.next() {
         match event {
-            Event::Text(s) => find_raw_urls(cx, dox, &s, range, &report_diag),
+            Event::Text(_s) => find_raw_urls(cx, dox, range, &report_diag),
             // We don't want to check the text inside code blocks or links.
             Event::Start(tag @ (Tag::CodeBlock(_) | Tag::Link { .. })) => {
                 let end = tag.to_end();
@@ -90,26 +90,29 @@ static URL_SCHEME_HOST_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 fn find_raw_urls(
     cx: &DocContext<'_>,
     dox: &str,
-    text: &str,
     range: Range<usize>,
     f: &impl Fn(&DocContext<'_>, &'static str, Range<usize>, Option<&str>),
 ) {
-    trace!("looking for raw urls in {text}");
+    trace!("looking for raw urls in {text}", text = &dox[range.clone()]);
     // For now, we only check "full" URLs (meaning, starting with "http://" or "https://").
-    for match_ in URL_SCHEME_HOST_REGEX.find_iter(text) {
+    for match_ in URL_SCHEME_HOST_REGEX.find_iter(&dox[range.clone()]) {
         let mut url_range = match_.range();
+        // We have a range within `dox[range]`.
+        // We need a range within `dox` to report the diagnostic.
+        url_range.start += range.start;
+        url_range.end += range.start;
         // We found the scheme and host. Find the path, query, or fragment.
         // We want to check for matching, balanced parens,
         // but regex isn't powerful enough for that.
         let mut paren_stack = Vec::with_capacity(3);
-        'parts: while let Some(&sep) = text.as_bytes().get(url_range.end) {
+        'parts: while let Some(&sep) = dox.as_bytes().get(url_range.end) {
             // The hostname must be immediately followed by a path, query,
             // or fragment-declaring separator.
             if !matches!(sep, b'/' | b'?' | b'#') {
                 break;
             }
             url_range.end += 1;
-            while let Some(&c) = text.as_bytes().get(url_range.end) {
+            while let Some(&c) = dox.as_bytes().get(url_range.end) {
                 if c == b'(' {
                     paren_stack.push(url_range.end);
                 } else if c == b')' {
@@ -145,10 +148,6 @@ fn find_raw_urls(
         if let Some(&end) = paren_stack.first() {
             url_range.end = end;
         }
-        // We have a range within `text`.
-        // We need a range within `dox` to report the diagnostic.
-        url_range.start += range.start;
-        url_range.end += range.start;
         let mut without_brackets = None;
         // If the link is contained inside `[]`, then we need to replace the brackets and
         // not just add `<>`.
