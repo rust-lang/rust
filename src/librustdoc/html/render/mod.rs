@@ -1078,22 +1078,10 @@ fn assoc_href_attr(
     Some(fmt::from_fn(move |f| write!(f, " href=\"{href}\"")))
 }
 
-#[derive(Debug)]
-enum AssocConstValue<'a> {
-    // In trait definitions, it is relevant for the public API whether an
-    // associated constant comes with a default value, so even if we cannot
-    // render its value, the presence of a value must be shown using `= _`.
-    TraitDefault(&'a clean::ConstantExpr),
-    // In impls, there is no need to show `= _`.
-    Impl(&'a clean::ConstantExpr),
-    None,
-}
-
 fn assoc_const(
     it: &clean::Item,
-    generics: &clean::Generics,
-    ty: &clean::Type,
-    value: AssocConstValue<'_>,
+    ct: &clean::AssocConstant,
+    parent: ItemType,
     link: AssocItemLink<'_>,
     indent: usize,
     ending: Ending,
@@ -1109,22 +1097,23 @@ fn assoc_const(
             vis = visibility_print_with_space(it, cx),
             href = assoc_href_attr(it, link, cx).maybe_display(),
             name = it.name.as_ref().unwrap(),
-            generics = print_generics(generics, cx),
-            ty = print_type(ty, cx),
+            generics = print_generics(&ct.generics, cx),
+            ty = print_type(&ct.type_, cx),
         )?;
-        if let AssocConstValue::TraitDefault(konst) | AssocConstValue::Impl(konst) = value {
-            let repr = konst.rendered(tcx);
-            if match value {
-                AssocConstValue::TraitDefault(_) => true, // always show
-                // FIXME: Comparing against the special string "_" denoting overly complex const exprs
-                //        is rather hacky; `ConstKind::expr` should have a richer return type.
-                AssocConstValue::Impl(_) => repr != "_", // show if there is a meaningful value to show
-                AssocConstValue::None => unreachable!(),
-            } {
-                write!(w, " = {}", Escape(&repr))?;
+        if let Some(body) = &ct.body {
+            let body = body.rendered(tcx);
+            // In trait definitions, it is relevant for the public API whether an assoc const comes
+            // with a default value, so even if we cannot render its value, the presence of a value
+            // must be shown using `= _`. In impls, there is no need to show `= _`.
+            //
+            // FIXME: Comparing against the special string "_" (which denotes overly complex const
+            //        exprs) is rather hacky; `ConstantKind::expr` should have a richer return type.
+            if parent == ItemType::Trait || body != "_" {
+                write!(w, " = {}", Escape(&body))?;
             }
         }
-        write!(w, "{}", print_where_clause(generics, cx, indent, ending).maybe_display())
+        let where_clause = print_where_clause(&ct.generics, cx, indent, ending).maybe_display();
+        write!(w, "{where_clause}")
     })
 }
 
@@ -1329,21 +1318,9 @@ fn render_assoc_item(
         ItemKind::RequiredAssocFunction(m, _) | ItemKind::AssocFunction(m, _) => {
             assoc_method(item, &m.generics, &m.decl, link, indent, ending, render_mode, cx).fmt(f)
         }
-        ItemKind::AssocConstant(ct) => assoc_const(
-            item,
-            &ct.generics,
-            &ct.type_,
-            match (&ct.body, parent) {
-                (Some(body), ItemType::Trait) => AssocConstValue::TraitDefault(body),
-                (Some(body), _) => AssocConstValue::Impl(body),
-                (None, _) => AssocConstValue::None,
-            },
-            link,
-            indent,
-            ending,
-            cx,
-        )
-        .fmt(f),
+        ItemKind::AssocConstant(ct) => {
+            assoc_const(item, ct, parent, link, indent, ending, cx).fmt(f)
+        }
         ItemKind::RequiredAssocType(generics, bounds) => {
             assoc_type(item, generics, bounds, None, link, indent, ending, cx).fmt(f)
         }
@@ -2051,12 +2028,8 @@ fn render_impl(
                             "<h4 class=\"code-header\">{}</h4></section>",
                             assoc_const(
                                 item,
-                                &ct.generics,
-                                &ct.type_,
-                                match &ct.body {
-                                    Some(body) => AssocConstValue::Impl(body),
-                                    None => AssocConstValue::None,
-                                },
+                                ct,
+                                ItemType::Impl,
                                 link.anchor(if trait_.is_some() { &source_id } else { &id }),
                                 0,
                                 Ending::Newline,
