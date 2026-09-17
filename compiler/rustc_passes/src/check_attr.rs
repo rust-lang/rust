@@ -39,7 +39,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};
-use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
 use rustc_structures::CrateType;
@@ -202,7 +201,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcAllowConstFnUnstable(_, first_span) => {
                 self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
             }
-            AttributeKind::Naked(..) => self.check_naked(hir_id, target),
             AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
             AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, target),
             AttributeKind::MacroExport { span, .. } => {
@@ -278,6 +276,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::MoveSizeLimit { .. } => (),
             AttributeKind::MustNotSupend { .. } => (),
             AttributeKind::MustUse { .. } => (),
+            AttributeKind::Naked(..) => (),
             AttributeKind::NeedsAllocator => (),
             AttributeKind::NeedsPanicRuntime => (),
             AttributeKind::NoBuiltins => (),
@@ -734,32 +733,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     }
                 });
             }
-        }
-    }
-
-    /// Checks if `#[naked]` is applied to a function definition.
-    fn check_naked(&self, hir_id: HirId, target: Target) {
-        match target {
-            Target::Fn
-            | Target::Method(
-                MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
-            ) => {
-                let fn_sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
-                let abi = fn_sig.header.abi;
-                if abi.is_rustic_abi() && !self.tcx.features().naked_functions_rustic_abi() {
-                    feature_err(
-                        &self.tcx.sess,
-                        sym::naked_functions_rustic_abi,
-                        fn_sig.span,
-                        format!(
-                            "`#[naked]` is currently unstable on `extern \"{}\"` functions",
-                            abi.as_str()
-                        ),
-                    )
-                    .emit();
-                }
-            }
-            _ => {}
         }
     }
 
