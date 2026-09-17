@@ -448,7 +448,6 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | ItemKind::RequiredAssocFn(..)
             | ItemKind::AssocFn(..)
             | ItemKind::StructField(..)
-            | ItemKind::RequiredAssocConst(..)
             | ItemKind::AssocConst(..)
             | ItemKind::RequiredAssocTy(..)
             | ItemKind::AssocTy(..)
@@ -549,14 +548,14 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     let item_def_id = item.item_id.as_def_id().unwrap();
     let (parent_did, parent_path) = match item.kind {
         ItemKind::Stripped(..) => return,
-        ItemKind::AssocConst(..) | ItemKind::AssocTy(..)
+        ItemKind::AssocConst(clean::AssocConst { rhs: Some(_), .. }) | ItemKind::AssocTy(..)
             if cache.parent_stack.last().is_some_and(|parent| parent.is_trait_impl()) =>
         {
             // skip associated items in trait impls
             return;
         }
         ItemKind::RequiredAssocFn(..)
-        | ItemKind::RequiredAssocConst(..)
+        | ItemKind::AssocConst(clean::AssocConst { rhs: None, .. })
         | ItemKind::RequiredAssocTy(..)
         | ItemKind::StructField(..)
         | ItemKind::Variant(..) => {

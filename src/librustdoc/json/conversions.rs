@@ -395,8 +395,8 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
         ItemKind::TyAlias(t) => ItemEnum::TypeAlias(t.into_json(renderer)),
         // FIXME(generic_const_items): Add support for generic free consts
         ItemKind::Const(ci) => ItemEnum::Constant {
-            type_: ci.type_.into_json(renderer),
-            const_: ci.kind.into_json(renderer),
+            type_: ci.ty.into_json(renderer),
+            const_: ci.rhs.into_json(renderer),
         },
         ItemKind::DeclMacro(m, _) => ItemEnum::Macro(m.source.clone()),
         ItemKind::ProcMacro(m) => ItemEnum::ProcMacro(m.into_json(renderer)),
@@ -407,20 +407,13 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             })
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
-        ItemKind::RequiredAssocConst(_generics, ty) => ItemEnum::AssocConst {
-            type_: ty.into_json(renderer),
-            value: None,
-            default_unstable: None,
-        },
-        // FIXME(generic_const_items): Add support for generic associated consts.
-        ItemKind::AssocConst(ci) => ItemEnum::AssocConst {
-            type_: ci.type_.into_json(renderer),
-            value: Some(ci.kind.expr(renderer.tcx)),
-            default_unstable: default_body_stability_for_def_id(
-                renderer.tcx,
-                item.item_id.expect_def_id(),
-            )
-            .map(|stab| stab.into_json(renderer)),
+        ItemKind::AssocConst(ct) => ItemEnum::AssocConst {
+            type_: ct.ty.into_json(renderer),
+            value: ct.rhs.as_ref().map(|rhs| rhs.expr(renderer.tcx)),
+            default_unstable: ct.rhs.as_ref().and_then(|_| {
+                default_body_stability_for_def_id(renderer.tcx, item.item_id.expect_def_id())
+                    .map(|stab| stab.into_json(renderer))
+            }),
         },
         ItemKind::RequiredAssocTy(g, b) => ItemEnum::AssocType {
             generics: g.into_json(renderer),

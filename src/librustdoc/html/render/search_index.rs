@@ -2015,7 +2015,7 @@ pub(crate) fn get_function_type_for_search(
         | ItemKind::RequiredAssocFn(ref f, _) => {
             get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
         }
-        ItemKind::Const(ref c) => make_nullary_fn(&c.type_),
+        ItemKind::Const(ref c) => make_nullary_fn(&c.ty),
         ItemKind::Static(ref s) => make_nullary_fn(&s.type_),
         ItemKind::StructField(ref t) if let Some(parent) = parent => {
             let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> =
