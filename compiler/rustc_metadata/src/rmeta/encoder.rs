@@ -2318,9 +2318,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let trait_impls: Vec<_> = trait_impls
             .into_iter()
-            .map(|(trait_def_id, impls)| TraitImpls {
-                trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
-                impls: self.lazy_array(&impls),
+            .map(|(trait_id, impls)| {
+                let trait_id = self.map_def_id(trait_id);
+                TraitImpls {
+                    trait_id: (trait_id.krate.as_u32(), trait_id.index.as_u32()),
+                    impls: self.lazy_array(&impls),
+                }
             })
             .collect();
 
