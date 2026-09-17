@@ -1,7 +1,6 @@
 // Decoding metadata from a single crate's metadata
 
 use std::iter::TrustedLen;
-use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use std::{io, mem};
@@ -23,10 +22,9 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_index::Idx;
-use rustc_middle::implement_ty_decoder;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::ty::codec::TyDecoder;
+use rustc_middle::ty::codec::{TyDecoder, forward_all_decoder_methods_to};
 use rustc_middle::ty::{RestrictionKind, Visibility};
 use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_serialize::opaque::MemDecoder;
@@ -236,25 +234,11 @@ pub(super) struct MetadataDecodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> LazyDecoder for MetadataDecodeContext<'a, 'tcx> {
     fn set_lazy_state(&mut self, state: LazyState) {
-        self.lazy_state = state;
+        self.blob_decoder.lazy_state = state;
     }
 
     fn get_lazy_state(&self) -> LazyState {
-        self.lazy_state
-    }
-}
-
-impl<'a, 'tcx> DerefMut for MetadataDecodeContext<'a, 'tcx> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.blob_decoder
-    }
-}
-
-impl<'a, 'tcx> Deref for MetadataDecodeContext<'a, 'tcx> {
-    type Target = BlobDecodeContext<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.blob_decoder
+        self.blob_decoder.lazy_state
     }
 }
 
@@ -689,13 +673,12 @@ impl<I: Idx, D: LazyDecoder, T> Decodable<D> for LazyTable<I, T> {
     }
 }
 
-mod meta {
-    use super::*;
-    implement_ty_decoder!(MetadataDecodeContext<'a, 'tcx>);
+impl<'a, 'tcx> Decoder for MetadataDecodeContext<'a, 'tcx> {
+    forward_all_decoder_methods_to!(|self| self.blob_decoder.opaque);
 }
-mod blob {
-    use super::*;
-    implement_ty_decoder!(BlobDecodeContext<'a>);
+
+impl<'a> Decoder for BlobDecodeContext<'a> {
+    forward_all_decoder_methods_to!(|self| self.opaque);
 }
 
 impl MetadataBlob {
