@@ -652,11 +652,14 @@ impl Item {
     pub(crate) fn is_required_associated_type(&self) -> bool {
         matches!(self.kind.unstripped(), ItemKind::RequiredAssocType(..))
     }
-    pub(crate) fn is_associated_const(&self) -> bool {
-        matches!(self.kind.unstripped(), ItemKind::AssocConstant(..))
+    pub(crate) fn is_assoc_const_with_body(&self) -> bool {
+        matches!(
+            self.kind.unstripped(),
+            ItemKind::AssocConstant(AssocConstant { body: Some(_), .. })
+        )
     }
-    pub(crate) fn is_required_associated_const(&self) -> bool {
-        matches!(self.kind.unstripped(), ItemKind::RequiredAssocConstant(..))
+    pub(crate) fn is_assoc_const_without_body(&self) -> bool {
+        matches!(self.kind.unstripped(), ItemKind::AssocConstant(AssocConstant { body: None, .. }))
     }
     pub(crate) fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
@@ -867,8 +870,7 @@ impl Item {
             // Variants always inherit visibility
             ItemKind::Variant(..) | ItemKind::Impl(..) => return None,
             // Trait items inherit the trait's visibility
-            ItemKind::RequiredAssocConstant(..)
-            | ItemKind::AssocConstant(..)
+            ItemKind::AssocConstant(..)
             | ItemKind::AssocType(..)
             | ItemKind::RequiredAssocType(..)
             | ItemKind::RequiredAssocFunction(..)
@@ -944,10 +946,7 @@ pub(crate) enum ItemKind {
     ProcMacro(ProcMacro),
     PrimitiveType(PrimitiveType),
     Constant(Box<Constant>),
-    /// A required associated constant in a trait.
-    RequiredAssocConstant(Generics, Box<Type>),
-    /// An associated constant in an impl or a provided associated constant in a trait.
-    AssocConstant(Box<Constant>),
+    AssocConstant(Box<AssocConstant>),
     /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
@@ -996,7 +995,6 @@ impl ItemKind {
             | Self::DeclMacro(..)
             | Self::ProcMacro(_)
             | Self::PrimitiveType(_)
-            | Self::RequiredAssocConstant(..)
             | Self::AssocConstant(..)
             | Self::RequiredAssocType(..)
             | Self::AssocType(..)
@@ -2285,11 +2283,18 @@ pub(crate) struct Static {
     pub(crate) expr: Option<BodyId>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Constant {
     pub(crate) generics: Generics,
-    pub(crate) body: ConstantExpr,
     pub(crate) type_: Type,
+    pub(crate) body: ConstantExpr,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AssocConstant {
+    pub(crate) generics: Generics,
+    pub(crate) type_: Type,
+    pub(crate) body: Option<ConstantExpr>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
