@@ -74,20 +74,6 @@ pub(super) struct DescribePlaceOpt {
 
 pub(super) struct IncludingTupleField(pub(super) bool);
 
-pub(crate) enum BufferedDiag<'diag> {
-    Error(Diag<'diag>),
-    NonError(Diag<'diag, ()>),
-}
-
-impl<'diag> BufferedDiag<'diag> {
-    fn sort_span(&self) -> Span {
-        match self {
-            BufferedDiag::Error(diag) => diag.sort_span,
-            BufferedDiag::NonError(diag) => diag.sort_span,
-        }
-    }
-}
-
 #[derive(Default)]
 pub(crate) struct BorrowckDiagnosticsBuffer<'diag, 'tcx> {
     /// This field keeps track of move errors that are to be reported for given move indices.
@@ -108,16 +94,13 @@ pub(crate) struct BorrowckDiagnosticsBuffer<'diag, 'tcx> {
 
     buffered_mut_errors: FxIndexMap<Span, (Diag<'diag>, usize)>,
 
-    /// Buffer of diagnostics to be reported. A mixture of error and non-error diagnostics.
-    buffered_diags: Vec<BufferedDiag<'diag>>,
+    /// Buffer of diagnostics to be reported.
+    buffered_diags: Vec<Diag<'diag>>,
 }
 
 impl<'diag, 'tcx> BorrowckDiagnosticsBuffer<'diag, 'tcx> {
-    pub(crate) fn buffer_non_error(&mut self, diag: Diag<'diag, ()>) {
-        self.buffered_diags.push(BufferedDiag::NonError(diag));
-    }
     pub(crate) fn buffer_error(&mut self, diag: Diag<'diag>) {
-        self.buffered_diags.push(BufferedDiag::Error(diag));
+        self.buffered_diags.push(diag);
     }
 
     pub(crate) fn emit_errors(&mut self) {
@@ -134,14 +117,9 @@ impl<'diag, 'tcx> BorrowckDiagnosticsBuffer<'diag, 'tcx> {
         }
 
         if !self.buffered_diags.is_empty() {
-            self.buffered_diags.sort_by_key(|buffered_diag| buffered_diag.sort_span());
-            for buffered_diag in self.buffered_diags.drain(..) {
-                match buffered_diag {
-                    BufferedDiag::Error(diag) => {
-                        diag.emit();
-                    }
-                    BufferedDiag::NonError(diag) => diag.emit(),
-                }
+            self.buffered_diags.sort_by_key(|diag| diag.sort_span);
+            for diag in self.buffered_diags.drain(..) {
+                diag.emit();
             }
         }
     }
@@ -150,10 +128,6 @@ impl<'diag, 'tcx> BorrowckDiagnosticsBuffer<'diag, 'tcx> {
 impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     pub(crate) fn buffer_error(&mut self, diag: Diag<'_>) {
         self.diags_buffer.buffer_error(diag.with_dcx(self.dcx()));
-    }
-
-    pub(crate) fn buffer_non_error(&mut self, diag: Diag<'_, ()>) {
-        self.diags_buffer.buffer_non_error(diag.with_dcx(self.dcx()));
     }
 
     pub(crate) fn buffer_move_error(

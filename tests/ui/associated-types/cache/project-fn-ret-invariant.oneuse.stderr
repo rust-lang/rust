@@ -1,11 +1,11 @@
 error: lifetime may not live long enough
-  --> $DIR/project-fn-ret-invariant.rs:40:13
+  --> $DIR/project-fn-ret-invariant.rs:41:13
    |
 LL | fn baz<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
    |        --  -- lifetime `'b` defined here
    |        |
    |        lifetime `'a` defined here
-LL |     let f = foo; // <-- No consistent type can be inferred for `f` here.
+...
 LL |     let a = bar(f, x);
    |             ^^^^^^^^^ argument requires that `'b` must outlive `'a`
    |
@@ -15,7 +15,7 @@ LL |     let a = bar(f, x);
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/project-fn-ret-invariant.rs:42:13
+  --> $DIR/project-fn-ret-invariant.rs:43:13
    |
 LL | fn baz<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
    |        --  -- lifetime `'b` defined here
@@ -30,7 +30,13 @@ LL |     let b = bar(f, y);
    = note: the struct `Type<'a>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-help: `'a` and `'b` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/project-fn-ret-invariant.rs:38:4
+   |
+LL | fn baz<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
+   |    ^^^
+   |
+   = help: `'a` and `'b` must be the same: replace one with the other
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
