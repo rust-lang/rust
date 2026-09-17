@@ -17,8 +17,8 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
 use crate::context::{
-    ATTRIBUTE_PARSERS, AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext,
-    FinalizeFn, FinalizeOutput, SharedContext,
+    ATTRIBUTE_PARSERS, AcceptContext, AttrResolution, FinalizeCheckContext, FinalizeCheckFn,
+    FinalizeContext, FinalizeFn, FinalizeOutput, SharedContext,
 };
 use crate::diagnostics::ParsedDescription;
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
@@ -162,6 +162,7 @@ impl<'sess> AttributeParser<'sess> {
             target_span,
             target,
             rustc_attr_ir::target::AstTarget::None,
+            None,
             std::convert::identity,
             |lint_id, span, kind| {
                 sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, kind.0)
@@ -256,6 +257,7 @@ impl<'sess> AttributeParser<'sess> {
                 emit_lint: &mut emit_lint,
                 #[cfg(debug_assertions)]
                 has_lint_been_emitted: AtomicBool::new(false),
+                resolve: None,
             },
             attr_span,
             inner_span,
@@ -317,6 +319,7 @@ impl<'sess> AttributeParser<'sess> {
         target_span: Span,
         target: Target,
         ast_target: rustc_attr_ir::target::AstTarget<'_>,
+        resolve: Option<&dyn AttrResolution>,
         lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) -> Vec<Attribute> {
@@ -430,6 +433,7 @@ impl<'sess> AttributeParser<'sess> {
                                 emit_lint: &mut emit_lint,
                                 #[cfg(debug_assertions)]
                                 has_lint_been_emitted: AtomicBool::new(false),
+                                resolve,
                             },
                             attr_span,
                             inner_span,
@@ -497,6 +501,7 @@ impl<'sess> AttributeParser<'sess> {
                     emit_lint: &mut emit_lint,
                     #[cfg(debug_assertions)]
                     has_lint_been_emitted: AtomicBool::new(false),
+                    resolve,
                 },
                 all_attrs: &attr_paths,
             });
@@ -520,6 +525,7 @@ impl<'sess> AttributeParser<'sess> {
                         emit_lint: &mut emit_lint,
                         #[cfg(debug_assertions)]
                         has_lint_been_emitted: AtomicBool::new(false),
+                        resolve,
                     },
                     all_attrs: &attr_paths,
                     parsed_attrs: &attributes,

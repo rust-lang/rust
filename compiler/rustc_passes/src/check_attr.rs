@@ -15,7 +15,6 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
 use rustc_feature::BUILTIN_ATTRIBUTE_SET;
 use rustc_hir::attrs::diagnostic::Directive;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{
     AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
     OptimizeAttr, ReprAttr,
@@ -24,7 +23,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, AssocCtxt, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
+    self as hir, AssocCtxt, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem,
     GenericParamKind, HirId, Item, ItemKind, MethodKind, Mod, Node, ParamName, Target, TraitItem,
     find_attr,
 };
@@ -201,7 +200,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcAllowConstFnUnstable(_, first_span) => {
                 self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
             }
-            AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
             AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, target),
             AttributeKind::MacroExport { span, .. } => {
                 self.check_macro_export(hir_id, *span, target)
@@ -273,6 +271,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::MacroEscape => (),
             AttributeKind::MacroUse { .. } => (),
             AttributeKind::Marker => (),
+            AttributeKind::MayDangle(_) => (),
             AttributeKind::MoveSizeLimit { .. } => (),
             AttributeKind::MustNotSupend { .. } => (),
             AttributeKind::MustUse { .. } => (),
@@ -1010,33 +1009,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if let Some(span) = masked {
             self.check_doc_masked(*span, hir_id, target);
         }
-    }
-
-    /// Checks if `#[may_dangle]` is applied to a lifetime or type generic parameter in `Drop` impl.
-    fn check_may_dangle(&self, hir_id: HirId, attr_span: Span) {
-        let hir::Node::GenericParam(
-            param @ GenericParam {
-                kind: hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. },
-                ..
-            },
-        ) = self.tcx.hir_node(hir_id)
-        else {
-            self.dcx().delayed_bug("Checked in attr parser");
-            return;
-        };
-
-        if matches!(param.source, hir::GenericParamSource::Generics)
-            && let parent_hir_id = self.tcx.parent_hir_id(hir_id)
-            && let hir::Node::Item(item) = self.tcx.hir_node(parent_hir_id)
-            && let hir::ItemKind::Impl(impl_) = item.kind
-            && let Some(of_trait) = impl_.of_trait
-            && let Some(def_id) = of_trait.trait_ref.trait_def_id()
-            && self.tcx.is_lang_item(def_id, LangItem::Drop)
-        {
-            return;
-        }
-
-        self.dcx().emit_err(diagnostics::InvalidMayDangle { attr_span });
     }
 
     /// Checks if `#[link]` is applied to an item other than a foreign module.

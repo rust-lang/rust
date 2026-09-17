@@ -1,7 +1,10 @@
-use rustc_attr_ir::target::GenericParamKind;
+use rustc_ast::ItemKind;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::target::{AstTarget, GenericParamKind};
 use rustc_feature::AttributeStability;
 
 use super::prelude::*;
+use crate::diagnostics::InvalidMayDangle;
 
 pub(crate) struct MayDangleParser;
 impl NoArgsAttributeParser for MayDangleParser {
@@ -14,6 +17,25 @@ impl NoArgsAttributeParser for MayDangleParser {
     ]);
     const STABILITY: AttributeStability = unstable!(dropck_eyepatch);
     const CREATE: fn(span: Span) -> AttributeKind = AttributeKind::MayDangle;
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        if matches!(
+            cx.target,
+            Target::GenericParam { kind: GenericParamKind::Type | GenericParamKind::Lifetime, .. }
+        ) && !matches!(
+            cx.ast_target,
+            AstTarget::GenericParam { owner: Some(item), .. }
+                if matches!(
+                    &item.kind,
+                    ItemKind::Impl(impl_)
+                        if impl_.of_trait.as_deref().is_some_and(|header| {
+                            cx.is_lang_item(header.trait_ref.ref_id, LangItem::Drop)
+                        })
+                )
+        ) {
+            cx.emit_err(InvalidMayDangle { attr_span });
+        }
+    }
 }
 
 pub(crate) struct ComptimeParser;

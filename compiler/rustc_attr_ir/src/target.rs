@@ -23,7 +23,11 @@ pub enum AstTarget<'a> {
     Expr(&'a Expr),
     ExprField(&'a ExprField),
     FieldDef(&'a FieldDef),
-    GenericParam(&'a GenericParam),
+    /// `owner` is the item whose `<>` list this param belongs to.
+    GenericParam {
+        param: &'a GenericParam,
+        owner: Option<&'a Item>,
+    },
     Local(&'a Local),
     Param(&'a Param),
     Pat(&'a Pat),

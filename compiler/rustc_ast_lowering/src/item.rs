@@ -225,7 +225,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &extra_hir_attributes,
         );
 
-        let kind = self.lower_item_kind(i.span, i.id, hir_id, attrs, vis_span, &i.kind);
+        let kind = self.lower_item_kind(i.span, i.id, hir_id, attrs, vis_span, &i.kind, Some(i));
         let item = hir::Item {
             owner_id,
             kind,
@@ -244,6 +244,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &'hir [hir::Attribute],
         vis_span: Span,
         i: &ItemKind,
+        owner: Option<&Item>,
     ) -> hir::ItemKind<'hir> {
         match i {
             ItemKind::ExternCrate(orig_name, ident) => {
@@ -285,6 +286,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, (ty, rhs)) = self.lower_generics(
                     generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    owner,
                     |this| {
                         let ty = this.lower_ty_alloc(
                             ty,
@@ -337,7 +339,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     );
 
                     let itctx = ImplTraitContext::Universal;
-                    let (generics, decl) = this.lower_generics(generics, itctx, |this| {
+                    let (generics, decl) = this.lower_generics(generics, itctx, owner, |this| {
                         this.lower_fn_decl(decl, id, FnDeclKind::Fn, coroutine_marker)
                     });
                     let sig = hir::FnSig {
@@ -392,6 +394,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, ty) = self.lower_generics(
                     &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    owner,
                     |this| match ty {
                         None => {
                             let guar = this.dcx().span_delayed_bug(
@@ -418,6 +421,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, variants) = self.lower_generics(
                     generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    owner,
                     |this| {
                         this.arena.alloc_from_iter(
                             enum_definition.variants.iter().map(|x| this.lower_variant(i, x)),
@@ -431,6 +435,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, struct_def) = self.lower_generics(
                     generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    owner,
                     |this| this.lower_variant_data(hir_id, i, struct_def),
                 );
                 hir::ItemKind::Struct(ident, generics, struct_def)
@@ -440,6 +445,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, vdata) = self.lower_generics(
                     generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    owner,
                     |this| this.lower_variant_data(hir_id, i, vdata),
                 );
                 hir::ItemKind::Union(ident, generics, vdata)
@@ -466,7 +472,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // parent lifetime.
                 let itctx = ImplTraitContext::Universal;
                 let (generics, (of_trait, lowered_ty)) =
-                    self.lower_generics(ast_generics, itctx, |this| {
+                    self.lower_generics(ast_generics, itctx, owner, |this| {
                         let of_trait = of_trait
                             .as_deref()
                             .map(|of_trait| this.lower_trait_impl_header(of_trait));
@@ -509,6 +515,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, (safety, items, bounds)) = self.lower_generics(
                     generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    owner,
                     |this| {
                         let bounds = this.lower_param_bounds(
                             bounds,
@@ -539,6 +546,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, bounds) = self.lower_generics(
                     generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    owner,
                     |this| {
                         this.lower_param_bounds(
                             bounds,
@@ -584,6 +592,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, body) = self.lower_generics(
                     generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                    owner,
                     |this| this.lower_test_binder_body(body),
                 );
                 hir::ItemKind::TestBinderConstraints { generics, body: self.arena.alloc(body) }
@@ -751,13 +760,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ForeignItemKind::Fn(Fn { sig, ident, generics, define_opaque, .. }) => {
                 let fdec = &sig.decl;
                 let itctx = ImplTraitContext::Universal;
-                let (generics, (decl, fn_args)) = self.lower_generics(generics, itctx, |this| {
-                    (
-                        // Disallow `impl Trait` in foreign items.
-                        this.lower_fn_decl(fdec, i.id, FnDeclKind::ExternFn, None),
-                        this.lower_fn_params_to_idents(fdec),
-                    )
-                });
+                let (generics, (decl, fn_args)) =
+                    self.lower_generics(generics, itctx, None, |this| {
+                        (
+                            // Disallow `impl Trait` in foreign items.
+                            this.lower_fn_decl(fdec, i.id, FnDeclKind::ExternFn, None),
+                            this.lower_fn_params_to_idents(fdec),
+                        )
+                    });
 
                 // Unmarked safety in unsafe block defaults to unsafe.
                 let header = self.lower_fn_header(sig.header, hir::Safety::Unsafe, attrs);
@@ -941,6 +951,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, kind) = self.lower_generics(
                     generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    None,
                     |this| {
                         let ty = this.lower_ty_alloc(
                             ty,
@@ -1042,6 +1053,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, kind) = self.lower_generics(
                     &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    None,
                     |this| {
                         let ty = ty.as_ref().map(|x| {
                             this.lower_ty_alloc(
@@ -1200,6 +1212,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_generics(
                     generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    None,
                     |this| {
                         let ty = this.lower_ty_alloc(
                             ty,
@@ -1244,6 +1257,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_generics(
                         &generics,
                         ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                        None,
                         |this| match ty {
                             None => {
                                 let guar = this.dcx().span_delayed_bug(
@@ -1680,7 +1694,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
-        let (generics, decl) = self.lower_generics(generics, itctx, |this| {
+        let (generics, decl) = self.lower_generics(generics, itctx, None, |this| {
             this.lower_fn_decl(&sig.decl, id, kind, coroutine_marker)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
@@ -1881,6 +1895,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         generics: &Generics,
         itctx: ImplTraitContext,
+        owner: Option<&Item>,
         f: impl FnOnce(&mut Self) -> T,
     ) -> (&'hir hir::Generics<'hir>, T) {
         assert!(self.curr_owner.impl_trait_defs.is_empty());
@@ -1910,7 +1925,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }));
 
         let mut params: SmallVec<[hir::GenericParam<'hir>; 4]> = self
-            .lower_generic_params_mut(&generics.params, hir::GenericParamSource::Generics)
+            .lower_generic_params_mut(&generics.params, hir::GenericParamSource::Generics, owner)
             .collect();
 
         // Introduce extra lifetimes if late resolution tells us to.
@@ -2136,6 +2151,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (generics, body) = self.lower_generics(
             &forall.generics,
             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+            None,
             |this| this.lower_test_binder_body(&forall.body),
         );
         let assert_on_exit = forall.assert_on_exit.as_ref().map(|assert_on_exit| {
@@ -2161,6 +2177,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span: exists.span,
             },
             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+            None,
             |this| this.lower_test_binder_body(&exists.body),
         );
         let params = generics.params;
@@ -2233,6 +2250,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (generics, (lhs, rhs)) = self.lower_generics(
             &Generics { params: params.clone(), where_clause: Default::default(), span: *span },
             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+            None,
             |this| {
                 let lhs = this
                     .lower_ty_alloc(lhs, ImplTraitContext::Disallowed(ImplTraitPosition::Bound));

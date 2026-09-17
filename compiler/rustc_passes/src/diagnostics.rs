@@ -247,13 +247,6 @@ pub(crate) struct NonExportedMacroInvalidAttrs {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl")]
-pub(crate) struct InvalidMayDangle {
-    #[primary_span]
-    pub attr_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[panic_handler]` function required, but not found")]
 pub(crate) struct MissingPanicHandler;
 
