@@ -18,7 +18,7 @@ use rustc_hir::{self as hir, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_session::DataTypeKind;
-use rustc_span::sym;
+use rustc_span::{bug, sym};
 use rustc_type_ir::FieldInfo;
 use rustc_type_ir::solve::AdtDestructorKind;
 use tracing::{debug, info, trace};

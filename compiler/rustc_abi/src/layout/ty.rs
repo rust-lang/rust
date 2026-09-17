@@ -116,6 +116,7 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug + std::fmt::Display {
         offset: Size,
     ) -> Option<PointeeInfo>;
     fn is_adt(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_enum(this: TyAndLayout<'a, Self>) -> bool;
     fn is_never(this: TyAndLayout<'a, Self>) -> bool;
     fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
@@ -198,6 +199,13 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
     {
         Ty::is_adt(self)
+    }
+
+    pub fn is_enum<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_enum(self)
     }
 
     pub fn is_never<C>(self) -> bool

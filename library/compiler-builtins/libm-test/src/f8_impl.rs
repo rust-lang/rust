@@ -31,9 +31,11 @@ impl Float for f8 {
     const MIN: Self = Self(0b1_1110_111);
 
     const NAN: Self = Self(0b0_1111_100);
-    const SNAN: Self = Self(0b0_1111_001);
+    const SNAN: Self = Self(0b0_1111_010);
+    const QSNAN: Self = Self(0b0_1111_110);
     const NEG_NAN: Self = Self(0b1_1111_100);
-    const NEG_SNAN: Self = Self(0b1_1111_001);
+    const NEG_SNAN: Self = Self(0b1_1111_010);
+    const NEG_QSNAN: Self = Self(0b1_1111_110);
 
     const MIN_POSITIVE_NORMAL: Self = Self(1 << Self::SIG_BITS);
     const MIN_POSITIVE_SUBNORMAL: Self = Self(1);

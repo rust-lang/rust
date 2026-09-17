@@ -11,10 +11,11 @@ use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
-use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::diagnostics::report_lit_error;
-use rustc_span::{ByteSymbol, DUMMY_SP, DesugaringKind, Ident, Span, Spanned, Symbol, respan, sym};
+use rustc_span::{
+    ByteSymbol, DUMMY_SP, DesugaringKind, Ident, Span, Spanned, Symbol, respan, span_bug, sym,
+};
 use thin_vec::{ThinVec, thin_vec};
 mod closure;
 
@@ -741,7 +742,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     this.mark_span_with_reason(
                         DesugaringKind::TryBlock,
                         expr.span,
-                        Some(Arc::clone(&this.allow_try_trait)),
+                        Some(Arc::clone(&crate::ALLOW_TRY_TRAIT)),
                     ),
                     expr,
                 )
@@ -749,7 +750,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let try_span = this.mark_span_with_reason(
                     DesugaringKind::TryBlock,
                     this.tcx.sess.source_map().end_point(body.span),
-                    Some(Arc::clone(&this.allow_try_trait)),
+                    Some(Arc::clone(&crate::ALLOW_TRY_TRAIT)),
                 );
 
                 (try_span, this.expr_unit(try_span))
@@ -877,7 +878,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let unstable_span = self.mark_span_with_reason(
                     DesugaringKind::Async,
                     self.lower_span(span),
-                    Some(Arc::clone(&self.allow_gen_future)),
+                    Some(Arc::clone(self.allow_gen_future())),
                 );
                 let resume_ty = self.make_lang_item_qpath(LangItem::ResumeTy, unstable_span, None);
                 let input_ty = hir::Ty {
@@ -1036,15 +1037,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         let features = match await_kind {
-            FutureKind::Future if is_async_gen => Some(Arc::clone(&self.allow_async_gen)),
+            FutureKind::Future if is_async_gen => Some(Arc::clone(&crate::ALLOW_ASYNC_GEN)),
             FutureKind::Future => None,
-            FutureKind::AsyncIterator => Some(Arc::clone(&self.allow_for_await)),
+            FutureKind::AsyncIterator => Some(Arc::clone(&crate::ALLOW_FOR_AWAIT)),
         };
         let span = self.mark_span_with_reason(DesugaringKind::Await, await_kw_span, features);
         let gen_future_span = self.mark_span_with_reason(
             DesugaringKind::Await,
             full_span,
-            Some(Arc::clone(&self.allow_gen_future)),
+            Some(Arc::clone(self.allow_gen_future())),
         );
         let expr_hir_id = expr.hir_id;
 
@@ -1593,7 +1594,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some((id, _)) => {
                 if let Some(loop_id) = self.curr_owner.owner.get_label_res(id) {
                     let local_id = self.curr_owner.ident_and_label_to_local_id[&loop_id];
-                    let loop_hir_id = HirId { owner: self.curr_owner.owner_id, local_id };
+                    let loop_hir_id = HirId { owner: self.curr_owner.owner_id(), local_id };
                     Ok(loop_hir_id)
                 } else {
                     Err(hir::LoopIdError::UnresolvedLabel)
@@ -1726,7 +1727,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let desugar_span = self.mark_span_with_reason(
                 DesugaringKind::Async,
                 span,
-                Some(Arc::clone(&self.allow_async_gen)),
+                Some(Arc::clone(&crate::ALLOW_ASYNC_GEN)),
             );
             let wrapped_yielded = self.expr_call_lang_item_fn(
                 desugar_span,
@@ -1945,13 +1946,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::QuestionMark,
             span,
-            Some(Arc::clone(&self.allow_try_trait)),
+            Some(Arc::clone(&crate::ALLOW_TRY_TRAIT)),
         );
         let try_span = self.tcx.sess.source_map().end_point(span);
         let try_span = self.mark_span_with_reason(
             DesugaringKind::QuestionMark,
             try_span,
-            Some(Arc::clone(&self.allow_try_trait)),
+            Some(Arc::clone(&crate::ALLOW_TRY_TRAIT)),
         );
 
         // `Try::branch(<expr>)`
@@ -2048,7 +2049,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::YeetExpr,
             span,
-            Some(Arc::clone(&self.allow_try_trait)),
+            Some(Arc::clone(&crate::ALLOW_TRY_TRAIT)),
         );
 
         let from_yeet_expr = self.wrap_in_try_constructor(

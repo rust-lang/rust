@@ -14,7 +14,6 @@ use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::bug;
 use rustc_middle::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -26,7 +25,7 @@ use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
 use rustc_session::{PointerAuthSchema, Session};
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, bug, sym};
 use rustc_structures::CrateType;
 use rustc_target::spec::{
     Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport,
@@ -1015,9 +1014,9 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             return llpersonality;
         }
 
-        let name = if wants_msvc_seh(self.sess()) {
+        let name = if wants_msvc_seh(&self.sess().target) {
             Some("__CxxFrameHandler3")
-        } else if wants_wasm_eh(self.sess()) {
+        } else if wants_wasm_eh(&self.sess().target) {
             // LLVM specifically tests for the name of the personality function
             // There is no need for this function to exist anywhere, it will
             // not be called. However, its name has to be "__gxx_wasm_personality_v0"

@@ -714,9 +714,11 @@ impl<'a> Parser<'a> {
     }
 
     fn check_const_closure(&self) -> bool {
+        // FIXME(#146122): Parse `const async ...`, `const gen ...` & `const async gen ...`
+        //                 closures. We already parse `const static async ...` ones etc.
+
         self.is_keyword_ahead(0, &[kw::Const])
-            && self.look_ahead(1, |t| match &t.kind {
-                // async closures do not work with const closures, so we do not parse that here.
+            && self.look_ahead(1, |t| match t.uninterpolate().kind {
                 token::Ident(kw::Move | kw::Use | kw::Static, IdentIsRaw::No)
                 | token::OrOr
                 | token::Or => true,

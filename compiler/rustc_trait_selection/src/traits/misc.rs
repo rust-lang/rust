@@ -5,9 +5,8 @@ use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::TraitErrors;
-use rustc_middle::bug;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
-use rustc_span::{Span, sym};
+use rustc_span::{Span, bug, sym};
 use thin_vec::ThinVec;
 
 use crate::regions::InferCtxtRegionExt;

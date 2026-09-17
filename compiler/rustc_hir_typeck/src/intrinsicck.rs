@@ -5,11 +5,10 @@ use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_index::Idx;
-use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
 use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
-use rustc_span::ErrorGuaranteed;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::{ErrorGuaranteed, bug};
 use tracing::trace;
 
 /// If the type is `Option<T>`, it will return `T`, otherwise

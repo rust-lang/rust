@@ -12,6 +12,10 @@ cd rust
 ./configure --enable-llvm-link-shared --release-channel=nightly --enable-llvm-assertions --enable-llvm-offload --enable-llvm-enzyme --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
 ```
 
+If you would rather reuse an existing clang than build one, drop `--enable-clang` and pass
+`--enable-llvm-offload-clang-dir=<absolute path to the directory holding ClangConfig.cmake>`
+instead. It should match the (major version of the) LLVM in `src/llvm-project`.
+
 Afterwards you can build rustc using:
 ```console
 ./x build --stage 1 library

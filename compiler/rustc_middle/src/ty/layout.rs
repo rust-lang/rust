@@ -12,7 +12,7 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, Symbol, bug, span_bug, sym};
 use rustc_structures::Limit;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
@@ -1194,6 +1194,10 @@ where
 
     fn is_adt(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Adt(..))
+    }
+
+    fn is_enum(this: TyAndLayout<'tcx>) -> bool {
+        matches!(this.ty.kind(), ty::Adt(def, _) if def.is_enum())
     }
 
     fn is_never(this: TyAndLayout<'tcx>) -> bool {

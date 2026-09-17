@@ -19,6 +19,7 @@
 #![allow(internal_features)]
 #![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
 #![feature(core_io_borrowed_buf)]
+#![feature(decl_macro)]
 #![feature(diagnostic_on_unknown)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
@@ -71,6 +72,7 @@ pub mod fatal_error;
 
 pub mod profiling;
 
+pub mod macros;
 use std::borrow::Cow;
 use std::cmp::{self, Ordering};
 use std::fmt::Display;
@@ -82,6 +84,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::{fmt, iter};
 
+pub use macros::{bug, span_bug};
 use md5::{Digest, Md5};
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock};

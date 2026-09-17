@@ -24,7 +24,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Encodable};
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, bug};
 use tracing::{debug, trace};
 
 pub use self::query::*;

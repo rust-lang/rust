@@ -1,8 +1,8 @@
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Const, DelayedMap, FallibleTypeFolder, InferConst, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,
 };
+use rustc_span::bug;
 use rustc_type_ir::PredicateProxy;
 
 use super::{FixupError, FixupResult, InferCtxt};
@@ -64,57 +64,6 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for DeepResolverIgnoringRegions<'a, 'tcx
 
     fn fold_clauses(&mut self, c: ty::Clauses<'tcx>) -> ty::Clauses<'tcx> {
         if !c.has_non_region_infer() { c } else { c.super_fold_with(self) }
-    }
-}
-
-/// The region resolver resolves region variables to the variable with the
-/// least variable id. It is used when normalizing projections to avoid
-/// hitting the recursion limit by creating many versions of a predicate
-/// for types that in the end have to unify.
-///
-/// If you want to resolve type and const variables as well, call
-/// [InferCtxt::deeply_resolve_ignoring_regions] first.
-pub struct DeepRegionResolver<'a, 'tcx> {
-    infcx: &'a InferCtxt<'tcx>,
-}
-
-impl<'a, 'tcx> DeepRegionResolver<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
-        DeepRegionResolver { infcx }
-    }
-}
-
-impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for DeepRegionResolver<'a, 'tcx> {
-    fn cx(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
-    }
-
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.has_infer_regions() {
-            t // micro-optimize -- if there is nothing in this type that this fold affects...
-        } else {
-            t.super_fold_with(self)
-        }
-    }
-
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match r.kind() {
-            ty::ReVar(vid) => self
-                .infcx
-                .inner
-                .borrow_mut()
-                .unwrap_region_constraints()
-                .shallow_resolve_region_var(TypeFolder::cx(self), vid),
-            _ => r,
-        }
-    }
-
-    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if !ct.has_infer_regions() {
-            ct // micro-optimize -- if there is nothing in this const that this fold affects...
-        } else {
-            ct.super_fold_with(self)
-        }
     }
 }
 

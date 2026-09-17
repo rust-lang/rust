@@ -24,8 +24,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
-use rustc_middle::{bug, span_bug};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::{ArgAbi, PassMode};
 
 #[cfg(feature = "master")]
@@ -1353,7 +1352,7 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(
         // we can never unwind.
         OperandValue::Immediate(bx.const_bool(false)).store(bx, dest);
     } else {
-        if wants_msvc_seh(bx.sess()) {
+        if wants_msvc_seh(&bx.sess().target) {
             unimplemented!();
         }
         #[cfg(feature = "master")]

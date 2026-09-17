@@ -102,11 +102,7 @@ fn write_output_file<'ll>(
 
 pub(crate) fn create_informational_target_machine(sess: &Session) -> OwnedTargetMachine {
     let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
-    // Can't use query system here quite yet because this function is invoked before the query
-    // system/tcx is set up.
-    let features = llvm_util::global_llvm_features(sess, /* for_cfg */ false);
-
-    target_machine_factory(sess, config::OptLevel::No, &features)(sess.dcx(), config)
+    target_machine_factory(sess, config::OptLevel::No)(sess.dcx(), config)
 }
 
 pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMachine {
@@ -124,11 +120,7 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
         Some(tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, mod_name));
     let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
 
-    target_machine_factory(
-        tcx.sess,
-        tcx.backend_optimization_level(()),
-        tcx.global_backend_features(()),
-    )(tcx.dcx(), config)
+    target_machine_factory(tcx.sess, tcx.backend_optimization_level(()))(tcx.dcx(), config)
 }
 
 fn to_llvm_opt_settings(cfg: config::OptLevel) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize) {
@@ -190,7 +182,6 @@ fn to_llvm_float_abi(float_abi: Option<FloatAbi>) -> llvm::FloatAbi {
 pub(crate) fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
-    target_features: &[String],
 ) -> TargetMachineFactoryFn<LlvmCodegenBackend> {
     // Self-profile timer for creating a _factory_.
     let _prof_timer = sess.prof.generic_activity("target_machine_factory");
@@ -211,7 +202,7 @@ pub(crate) fn target_machine_factory(
 
     let triple = SmallCStr::new(&versioned_llvm_target(sess));
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
-    let features = CString::new(target_features.join(",")).unwrap();
+    let features = CString::new(sess.global_backend_features.join(",")).unwrap();
     let abi = SmallCStr::new(sess.target.llvm_abiname.desc());
     let trap_unreachable =
         sess.opts.unstable_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);
@@ -249,7 +240,7 @@ pub(crate) fn target_machine_factory(
         }
     };
 
-    let use_wasm_eh = wants_wasm_eh(sess);
+    let use_wasm_eh = wants_wasm_eh(&sess.target);
 
     let large_data_threshold = sess.opts.unstable_opts.large_data_threshold.unwrap_or(0);
 
