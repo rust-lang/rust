@@ -199,7 +199,7 @@ pub(crate) fn find_dep_kind_root<'tcx>(
 }
 
 /// The locaton of a resumable waiter. The usize is the index into waiters in the query's latch.
-/// We'll use this to remove the waiter using `QueryLatch::extract_waiter` if we're waking it up.
+/// We'll use this to remove the waiter if we're waking it up in `find_and_process_cycle`.
 type ResumableWaiterLocation = (QueryJobId, usize);
 
 /// This abstracts over non-resumable waiters which are found in `QueryJob`'s `parent` field
@@ -410,8 +410,14 @@ fn find_and_process_cycle<'tcx>(
         // edge which is resumable / waited using a query latch
         let (waitee_query, waiter_idx) = resumable.unwrap();
 
-        // Extract the waiter we want to resume
-        let waiter = job_map.latch_of(waitee_query).unwrap().extract_waiter(waiter_idx);
+        // Extract the waiter we want to resume.
+        let waiter = {
+            let latch = job_map.latch_of(waitee_query).unwrap();
+            let mut waiters_guard = latch.waiters.lock();
+            let waiters = waiters_guard.as_mut().expect("non-empty waiters vec");
+            // Remove the waiter from the list of waiters.
+            waiters.remove(waiter_idx)
+        };
 
         // Set the cycle error so it will be picked up when resumed
         *waiter.cycle.lock() = Some(error);
