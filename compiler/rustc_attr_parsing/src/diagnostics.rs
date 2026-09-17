@@ -904,6 +904,13 @@ pub(crate) struct InlineForceInlineConflict {
 pub(crate) struct InlineIgnoredForExported;
 
 #[derive(Diagnostic)]
+#[diag("`#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl")]
+pub(crate) struct InvalidMayDangle {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
 pub(crate) struct BothFfiConstAndPure {
     #[primary_span]

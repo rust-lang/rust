@@ -48,7 +48,7 @@ use rustc_ast::{self as ast, *};
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::target::{AstTarget, Target};
-use rustc_attr_parsing::{AttributeParser, Recovery, ShouldEmit};
+use rustc_attr_parsing::{AttrResolution, AttributeParser, Recovery, ShouldEmit};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
@@ -390,6 +390,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             &ALLOW_GEN_FUTURE
         }
+    }
+}
+
+struct LoweringAttrResolution<'a, 'hir> {
+    tcx: TyCtxt<'hir>,
+    resolver: &'a ResolverAstLowering<'hir>,
+    partial_res_overrides: &'a NodeMap<NodeId>,
+}
+
+impl AttrResolution for LoweringAttrResolution<'_, '_> {
+    fn resolve_def_id(&self, id: NodeId) -> Option<DefId> {
+        let partial = match self.partial_res_overrides.get(&id) {
+            Some(self_param_id) => PartialRes::new(Res::Local(*self_param_id)),
+            None => self.resolver.partial_res_map.get(&id).copied()?,
+        };
+        partial.full_res()?.opt_def_id()
+    }
+
+    fn is_lang_item(&self, def_id: DefId, item: LangItem) -> bool {
+        self.tcx.is_lang_item(def_id, item)
     }
 }
 
@@ -1098,7 +1118,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .collect();
         let arena = self.arena;
         let explicit_generic_params =
-            self.lower_generic_params_mut(generic_params, hir::GenericParamSource::Binder);
+            self.lower_generic_params_mut(generic_params, hir::GenericParamSource::Binder, None);
         arena.alloc_from_iter(explicit_generic_params.chain(extra_lifetimes.into_iter()))
     }
 
@@ -1191,11 +1211,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         ast_target: AstTarget<'_>,
     ) -> Vec<rustc_attr_ir::Attribute> {
         let l = self.span_lowerer();
+        let resolve = LoweringAttrResolution {
+            tcx: self.tcx,
+            resolver: self.resolver,
+            partial_res_overrides: &self.partial_res_overrides,
+        };
         self.attribute_parser.parse_attribute_list(
             attrs,
             target_span,
             target,
             ast_target,
+            Some(&resolve),
             |s| l.lower(s),
             |lint_id, span, kind| {
                 self.curr_owner.delayed_lints.push(DelayedLint {
@@ -2225,8 +2251,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         params: &[GenericParam],
         source: hir::GenericParamSource,
+        owner: Option<&ast::Item>,
     ) -> impl Iterator<Item = hir::GenericParam<'hir>> {
-        params.iter().map(move |param| self.lower_generic_param(param, source))
+        params.iter().map(move |param| self.lower_generic_param(param, source, owner))
     }
 
     fn lower_generic_params(
@@ -2234,7 +2261,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         params: &[GenericParam],
         source: hir::GenericParamSource,
     ) -> &'hir [hir::GenericParam<'hir>] {
-        self.arena.alloc_from_iter(self.lower_generic_params_mut(params, source))
+        self.arena.alloc_from_iter(self.lower_generic_params_mut(params, source, None))
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -2242,6 +2269,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         param: &GenericParam,
         source: hir::GenericParamSource,
+        owner: Option<&ast::Item>,
     ) -> hir::GenericParam<'hir> {
         let (name, kind) = self.lower_generic_param_kind(param, source);
 
@@ -2258,12 +2286,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             colon_span: param.colon_span.map(|s| self.lower_span(s)),
             source,
         };
-        self.lower_attrs(
+        let owner = matches!(source, hir::GenericParamSource::Generics).then_some(owner).flatten();
+        self.lower_attrs_with_extra(
             hir_id,
             param_attrs,
             param_span,
             Target::from(&param_hir),
-            AstTarget::GenericParam(param),
+            AstTarget::GenericParam { param, owner },
+            &[],
         );
         param_hir
     }

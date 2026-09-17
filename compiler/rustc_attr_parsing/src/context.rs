@@ -8,7 +8,8 @@ use std::sync::LazyLock;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use rustc_ast::{AttrStyle, MetaItemLit, Safety};
+use rustc_ast::{AttrStyle, MetaItemLit, NodeId, Safety};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{AttrPath, Attribute, AttributeKind};
 use rustc_data_structures::sync::{DynSend, DynSync};
@@ -18,6 +19,7 @@ use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
 use rustc_lint_defs::{Lint, LintId};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
+use rustc_span::def_id::DefId;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 
 // Glob imports to avoid big, bitrotty import lists
@@ -782,6 +784,25 @@ pub struct SharedContext<'p, 'sess> {
     /// This is used for the arguments-used check.
     #[cfg(debug_assertions)]
     pub(crate) has_lint_been_emitted: AtomicBool,
+
+    /// Resolution from AST lowering. Early parse leaves this unset.
+    pub(crate) resolve: Option<&'p dyn AttrResolution>,
+}
+
+/// Name resolution and lang-item lookup for attribute parsers.
+///
+/// Implemented by AST lowering; this crate cannot depend on `TyCtxt`.
+pub trait AttrResolution {
+    fn resolve_def_id(&self, id: NodeId) -> Option<DefId>;
+    fn is_lang_item(&self, def_id: DefId, item: LangItem) -> bool;
+}
+
+impl SharedContext<'_, '_> {
+    pub(crate) fn is_lang_item(&self, id: NodeId, item: LangItem) -> bool {
+        self.resolve.is_some_and(|resolve| {
+            resolve.resolve_def_id(id).is_some_and(|def_id| resolve.is_lang_item(def_id, item))
+        })
+    }
 }
 
 /// Context given to every attribute parser during finalization.
