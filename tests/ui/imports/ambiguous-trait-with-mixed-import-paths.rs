@@ -21,6 +21,8 @@ impl vis1::Visitor for Impl {
 
     fn visit_c(&self) {
         self.visit_b();
+        //~^ WARN: use of ambiguously glob imported trait `Visitor` [ambiguous_glob_imported_traits]
+        //~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     }
 }
 
