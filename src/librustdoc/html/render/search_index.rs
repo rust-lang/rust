@@ -22,7 +22,7 @@ use rustc_span::symbol::{Symbol, kw};
 use stringdex::internals as stringdex_internals;
 use tracing::instrument;
 
-use crate::clean::types::{Function, Generics, ItemId, ItemKind, Type, WherePredicate};
+use crate::clean::types::{ItemId, ItemKind, Type, WherePredicate};
 use crate::clean::{self, ExternalLocation, utils};
 use crate::config::ShouldMerge;
 use crate::error::Error;
@@ -2009,11 +2009,11 @@ pub(crate) fn get_function_type_for_search(
         }
     });
     let (mut inputs, mut output, param_names, where_clause) = match item.kind {
-        ItemKind::ForeignFn(ref f, _)
-        | ItemKind::Fn(ref f)
-        | ItemKind::AssocFn(ref f, _)
-        | ItemKind::RequiredAssocFn(ref f, _) => {
-            get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
+        ItemKind::Fn(ref f) | ItemKind::ForeignFn(ref f, _) => {
+            get_fn_inputs_and_outputs(&f.generics, &f.decl, tcx, impl_or_trait_generics, cache)
+        }
+        ItemKind::AssocFn(ref f) => {
+            get_fn_inputs_and_outputs(&f.generics, &f.decl, tcx, impl_or_trait_generics, cache)
         }
         ItemKind::Const(ref c) => make_nullary_fn(&c.ty),
         ItemKind::Static(ref s) => make_nullary_fn(&s.type_),
@@ -2117,7 +2117,7 @@ enum SimplifiedParam {
 #[instrument(level = "trace", skip(tcx, rgen, cache))]
 fn simplify_fn_type<'a, 'tcx>(
     self_: Option<&'a Type>,
-    generics: &Generics,
+    generics: &clean::Generics,
     arg: &'a Type,
     tcx: TyCtxt<'tcx>,
     recurse: usize,
@@ -2402,7 +2402,7 @@ fn simplify_fn_type<'a, 'tcx>(
 
 fn simplify_fn_constraint<'a>(
     self_: Option<&'a Type>,
-    generics: &Generics,
+    generics: &clean::Generics,
     constraint: &'a clean::AssocItemConstraint,
     tcx: TyCtxt<'_>,
     recurse: usize,
@@ -2497,25 +2497,22 @@ fn make_nullary_fn(
 /// i.e. `fn foo<A: Display, B: Option<A>>(x: u32, y: B)` will return
 /// `[u32, Display, Option]`.
 fn get_fn_inputs_and_outputs(
-    func: &Function,
+    generics: &clean::Generics,
+    decl: &clean::FnDecl,
     tcx: TyCtxt<'_>,
     impl_or_trait_generics: Option<&(clean::Type, clean::Generics)>,
     cache: &Cache,
 ) -> (Vec<RenderType>, Vec<RenderType>, Vec<Option<Symbol>>, Vec<Vec<RenderType>>) {
-    let decl = &func.decl;
-
     let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
 
     let combined_generics;
     let (self_, generics) = if let Some((impl_self, impl_generics)) = impl_or_trait_generics {
-        match (impl_generics.is_empty(), func.generics.is_empty()) {
-            (true, _) => (Some(impl_self), &func.generics),
+        match (impl_generics.is_empty(), generics.is_empty()) {
+            (true, _) => (Some(impl_self), generics),
             (_, true) => (Some(impl_self), impl_generics),
             (false, false) => {
-                let params =
-                    func.generics.params.iter().chain(&impl_generics.params).cloned().collect();
-                let where_predicates = func
-                    .generics
+                let params = generics.params.iter().chain(&impl_generics.params).cloned().collect();
+                let where_predicates = generics
                     .where_predicates
                     .iter()
                     .chain(&impl_generics.where_predicates)
@@ -2526,7 +2523,7 @@ fn get_fn_inputs_and_outputs(
             }
         }
     } else {
-        (None, &func.generics)
+        (None, generics)
     };
 
     let param_types = decl

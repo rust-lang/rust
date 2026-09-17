@@ -445,7 +445,6 @@ impl DocFolder for CacheBuilder<'_, '_> {
             ItemKind::ExternCrate { .. }
             | ItemKind::Import(..)
             | ItemKind::Impl(..)
-            | ItemKind::RequiredAssocFn(..)
             | ItemKind::AssocFn(..)
             | ItemKind::StructField(..)
             | ItemKind::AssocConst(..)
@@ -554,7 +553,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             // skip associated items in trait impls
             return;
         }
-        ItemKind::RequiredAssocFn(..)
+        ItemKind::AssocFn(clean::AssocFn { body: None, .. })
         | ItemKind::AssocConst(clean::AssocConst { rhs: None, .. })
         | ItemKind::RequiredAssocTy(..)
         | ItemKind::StructField(..)
