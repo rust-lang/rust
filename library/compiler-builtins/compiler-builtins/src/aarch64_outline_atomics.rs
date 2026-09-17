@@ -148,77 +148,6 @@ macro_rules! stxp {
     };
 }
 
-// The AArch64 assembly syntax for relocation specifiers
-// when accessing symbols changes depending on the target executable format.
-// In ELF (used in Linux), we have a prefix notation surrounded by colons (:specifier:sym),
-// while in Mach-O object files (used in MacOS), a postfix notation is used (sym@specifier).
-
-/// AArch64 ELF position-independent addressing:
-///
-///   adrp xN, symbol
-///   add  xN, xN, :lo12:symbol
-///
-/// The :lo12: modifier selects the low 12 bits of the symbol address
-/// and emits an ELF relocation such as R_AARCH64_ADD_ABS_LO12_NC.
-///
-/// Defined by the AArch64 ELF psABI.
-/// See: <https://github.com/ARM-software/abi-aa/blob/main/aaelf64/aaelf64.rst#static-miscellaneous-relocations>.
-#[cfg(not(target_vendor = "apple"))]
-macro_rules! sym {
-    ($sym:literal) => {
-        $sym
-    };
-}
-
-#[cfg(not(target_vendor = "apple"))]
-macro_rules! sym_off {
-    ($sym:literal) => {
-        concat!(":lo12:", $sym)
-    };
-}
-
-/// Mach-O ARM64 relocation types:
-///   ARM64_RELOC_PAGE21
-///   ARM64_RELOC_PAGEOFF12
-///
-/// These relocations implement the @PAGE / @PAGEOFF split used by
-/// adrp + add sequences on Apple platforms.
-///
-///   adrp xN, symbol@PAGE      -> ARM64_RELOC_PAGE21
-///   add  xN, xN, symbol@PAGEOFF -> ARM64_RELOC_PAGEOFF12
-///
-/// Relocation types defined by Apple in XNU: <mach-o/arm64/reloc.h>.
-/// See: <https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/EXTERNAL_HEADERS/mach-o/arm64/reloc.h>.
-#[cfg(target_vendor = "apple")]
-macro_rules! sym {
-    ($sym:literal) => {
-        concat!($sym, "@PAGE")
-    };
-}
-
-#[cfg(target_vendor = "apple")]
-macro_rules! sym_off {
-    ($sym:literal) => {
-        concat!($sym, "@PAGEOFF")
-    };
-}
-
-// If supported, perform the requested LSE op and return, or fallthrough.
-macro_rules! try_lse_op {
-    ($op: literal, $ordering:ident, $bytes:tt, $($reg:literal,)* [ $mem:ident ] ) => {
-        concat!(
-            ".arch_extension lse\n",
-            concat!("adrp    x16, ", sym!("{have_lse}"), "\n"),
-            concat!("ldrb    w16, [x16, ", sym_off!("{have_lse}"), "]\n"),
-            "cbz     w16, 8f\n",
-            // LSE_OP  s(reg),* [$mem]
-            concat!(lse!($op, $ordering, $bytes), $( " ", reg!($bytes, $reg), ", " ,)* "[", stringify!($mem), "]\n",),
-            "ret
-            8:"
-        )
-    };
-}
-
 // Translate memory ordering to the LSE suffix
 #[rustfmt::skip]
 macro_rules! lse_mem_sfx {
@@ -243,29 +172,45 @@ macro_rules! compare_and_swap {
     ($ordering:ident, $bytes:tt, $name:ident) => {
         intrinsics! {
             #[maybe_use_optimized_c_shim]
-            #[unsafe(naked)]
             pub unsafe extern "C" fn $name (
                 expected: int_ty!($bytes), desired: int_ty!($bytes), ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
-                // We can't use `AtomicI8::compare_and_swap`; we *are* compare_and_swap.
-                core::arch::naked_asm! {
-                    // CAS    s(0), s(1), [x2]; if LSE supported.
-                    try_lse_op!("cas", $ordering, $bytes, 0, 1, [x2]),
-                    // UXT    s(tmp0), s(0)
-                    concat!(uxt!($bytes), " ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
-                    "0:",
-                    // LDXR   s(0), [x2]
-                    concat!(ldxr!($ordering, $bytes), " ", reg!($bytes, 0), ", [x2]"),
-                    // cmp    s(0), s(tmp0)
-                    concat!("cmp ", reg!($bytes, 0), ", ", reg!($bytes, 16)),
-                    "bne    1f",
-                    // STXR   w(tmp1), s(1), [x2]
-                    concat!(stxr!($ordering, $bytes), " w17, ", reg!($bytes, 1), ", [x2]"),
-                    "cbnz   w17, 0b",
-                    "1:",
-                    "ret",
-                    have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
+                let mut expected = expected;
+                unsafe {
+                    if HAVE_LSE_ATOMICS.load(Ordering::Relaxed) != 0 {
+                        core::arch::asm!(
+                            ".arch_extension lse",
+                            // CAS    s(0), s(1), [x2]; if LSE supported.
+                            concat!(lse!("cas", $ordering, $bytes), " ", reg!($bytes, 0), ", ", reg!($bytes, 1),", [x2]"),
+                            inlateout("x0") expected,
+                            in("x1") desired,
+                            in("x2") ptr,
+                            options(nostack, preserves_flags),
+                        );
+                    } else {
+                        core::arch::asm!(
+                            // UXT    s(tmp0), s(0)
+                            concat!(uxt!($bytes), " ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
+                            "1:",
+                            // LDXR   s(0), [x2]
+                            concat!(ldxr!($ordering, $bytes), " ", reg!($bytes, 0), ", [x2]"),
+                            // cmp    s(0), s(tmp0)
+                            concat!("cmp ", reg!($bytes, 0), ", ", reg!($bytes, 16)),
+                            "bne 2f",
+                            // STXR   w(tmp1), s(1), [x2]
+                            concat!(stxr!($ordering, $bytes), " w17, ", reg!($bytes, 1), ", [x2]"),
+                            "cbnz w17, 1b",
+                            "2:",
+                            inlateout("x0") expected,
+                            in("x1") desired,
+                            in("x2") ptr,
+                            out("x16") _,
+                            out("w17") _,
+                            options(nostack),
+                        );
+                    }
                 }
+                expected
             }
         }
     };
@@ -276,28 +221,54 @@ macro_rules! compare_and_swap_u128 {
     ($ordering:ident, $name:ident) => {
         intrinsics! {
             #[maybe_use_optimized_c_shim]
-            #[unsafe(naked)]
             pub unsafe extern "C" fn $name (
                 expected: u128, desired: u128, ptr: *mut u128
             ) -> u128 {
-                core::arch::naked_asm! {
-                    // CASP   x0, x1, x2, x3, [x4]; if LSE supported.
-                    try_lse_op!("cas", $ordering, 16, 0, 1, 2, 3, [x4]),
-                    "mov    x16, x0",
-                    "mov    x17, x1",
-                    "0:",
-                    // LDXP   x0, x1, [x4]
-                    concat!(ldxp!($ordering), " x0, x1, [x4]"),
-                    "cmp    x0, x16",
-                    "ccmp   x1, x17, #0, eq",
-                    "bne    1f",
-                    // STXP   w(tmp2), x2, x3, [x4]
-                    concat!(stxp!($ordering), " w15, x2, x3, [x4]"),
-                    "cbnz   w15, 0b",
-                    "1:",
-                    "ret",
-                    have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
+                let mut expected_lo = expected as u64;
+                let mut expected_hi = (expected >> 64) as u64;
+                let desired_lo = desired as u64;
+                let desired_hi = (desired >> 64) as u64;
+
+                unsafe {
+                    if HAVE_LSE_ATOMICS.load(Ordering::Relaxed) != 0 {
+                        core::arch::asm!(
+                            ".arch_extension lse",
+                            // CASP   x0, x1, x2, x3, [x4]; if LSE supported.
+                            concat!(lse!("cas", $ordering, 16), " x0, x1, x2, x3, [x4]"),
+                            inlateout("x0") expected_lo,
+                            inlateout("x1") expected_hi,
+                            in("x2") desired_lo,
+                            in("x3") desired_hi,
+                            in("x4") ptr,
+                            options(nostack, preserves_flags),
+                        );
+                    } else {
+                        core::arch::asm!(
+                            "mov x16, x0",
+                            "mov x17, x1",
+                            "1:",
+                            // LDXP   x0, x1, [x4]
+                            concat!(ldxp!($ordering), " x0, x1, [x4]"),
+                            "cmp x0, x16",
+                            "ccmp x1, x17, #0x0, eq",
+                            "b.ne 2f",
+                            // STXP   w(tmp2), x2, x3, [x4]
+                            concat!(stxp!($ordering), " w15, x2, x3, [x4]"),
+                            "cbnz w15, 1b",
+                            "2:",
+                            inlateout("x0") expected_lo,
+                            inlateout("x1") expected_hi,
+                            in("x2") desired_lo,
+                            in("x3") desired_hi,
+                            in("x4") ptr,
+                            out("w15") _,
+                            out("x16") _,
+                            out("x17") _,
+                            options(nostack),
+                        );
+                    }
                 }
+                return ((expected_hi as u128) << 64) | expected_lo as u128;
             }
         }
     };
@@ -308,24 +279,38 @@ macro_rules! swap {
     ($ordering:ident, $bytes:tt, $name:ident) => {
         intrinsics! {
             #[maybe_use_optimized_c_shim]
-            #[unsafe(naked)]
             pub unsafe extern "C" fn $name (
                 left: int_ty!($bytes), right_ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
-                core::arch::naked_asm! {
-                    // SWP    s(0), s(0), [x1]; if LSE supported.
-                    try_lse_op!("swp", $ordering, $bytes, 0, 0, [x1]),
-                    // mov    s(tmp0), s(0)
-                    concat!("mov ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
-                    "0:",
-                    // LDXR   s(0), [x1]
-                    concat!(ldxr!($ordering, $bytes), " ", reg!($bytes, 0), ", [x1]"),
-                    // STXR   w(tmp1), s(tmp0), [x1]
-                    concat!(stxr!($ordering, $bytes), " w17, ", reg!($bytes, 16), ", [x1]"),
-                    "cbnz   w17, 0b",
-                    "ret",
-                    have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
+                let mut left = left;
+                unsafe {
+                    if HAVE_LSE_ATOMICS.load(Ordering::Relaxed) != 0 {
+                        core::arch::asm! {
+                            ".arch_extension lse",
+                            // SWP    s(0), s(0), [x1]; if LSE supported.
+                            concat!(lse!("swp", $ordering, $bytes), " ", reg!($bytes, 0), ", ", reg!($bytes, 0), ", [x1]"),
+                            inlateout("x0") left,
+                            in("x1") right_ptr,
+                            options(nostack, preserves_flags),
+                        };
+                    } else {
+                        core::arch::asm! {
+                            concat!("mov ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
+                            "1:",
+                            // LDXR   s(0), [x1]
+                            concat!(ldxr!($ordering, $bytes), " ", reg!($bytes, 0), ", [x1]"),
+                            // STXR   w(tmp1), s(tmp0), [x1]
+                            concat!(stxr!($ordering, $bytes), " w17, ", reg!($bytes, 16), ", [x1]"),
+                            "cbnz w17, 1b",
+                            inlateout("x0") left,
+                            in("x1") right_ptr,
+                            out("x16") _,
+                            out("w17") _,
+                            options(nostack, preserves_flags),
+                        };
+                    }
                 }
+                left
             }
         }
     };
@@ -336,26 +321,42 @@ macro_rules! fetch_op {
     ($ordering:ident, $bytes:tt, $name:ident, $op:literal, $lse_op:literal) => {
         intrinsics! {
             #[maybe_use_optimized_c_shim]
-            #[unsafe(naked)]
             pub unsafe extern "C" fn $name (
                 val: int_ty!($bytes), ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
-                core::arch::naked_asm! {
-                    // LSEOP  s(0), s(0), [x1]; if LSE supported.
-                    try_lse_op!($lse_op, $ordering, $bytes, 0, 0, [x1]),
-                    // mov    s(tmp0), s(0)
-                    concat!("mov ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
-                    "0:",
-                    // LDXR   s(0), [x1]
-                    concat!(ldxr!($ordering, $bytes), " ", reg!($bytes, 0), ", [x1]"),
-                    // OP     s(tmp1), s(0), s(tmp0)
-                    concat!($op, " ", reg!($bytes, 17), ", ", reg!($bytes, 0), ", ", reg!($bytes, 16)),
-                    // STXR   w(tmp2), s(tmp1), [x1]
-                    concat!(stxr!($ordering, $bytes), " w15, ", reg!($bytes, 17), ", [x1]"),
-                    "cbnz  w15, 0b",
-                    "ret",
-                    have_lse = sym crate::aarch64_outline_atomics::HAVE_LSE_ATOMICS,
+                let mut val = val;
+                unsafe {
+                    if HAVE_LSE_ATOMICS.load(Ordering::Relaxed) != 0 {
+                        core::arch::asm! {
+                            ".arch_extension lse",
+                            // LSEOP  s(0), s(0), [x1]; if LSE supported.
+                            concat!(lse!($lse_op, $ordering, $bytes), " ", reg!($bytes, 0), ", ", reg!($bytes, 0),", [x1]"),
+                            inlateout("x0") val,
+                            in("x1") ptr,
+                            options(nostack, preserves_flags),
+                        };
+                    } else {
+                        core::arch::asm! {
+                            // mov    s(tmp0), s(0)
+                            concat!("mov ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
+                            "1:",
+                            // LDXR   s(0), [x1]
+                            concat!(ldxr!($ordering, $bytes), " ", reg!($bytes, 0), ", [x1]"),
+                            // OP     s(tmp1), s(0), s(tmp0)
+                            concat!($op, " ", reg!($bytes, 17), ", ", reg!($bytes, 0), ", ", reg!($bytes, 16)),
+                            // STXR   w(tmp2), s(tmp1), [x1]
+                            concat!(stxr!($ordering, $bytes), " w15, ", reg!($bytes, 17), ", [x1]"),
+                            "cbnz w15, 1b",
+                            inlateout("x0") val,
+                            in("x1") ptr,
+                            out("w15") _,
+                            out("x16") _,
+                            out("x17") _,
+                            options(nostack, preserves_flags),
+                        }
+                    }
                 }
+                val
             }
         }
     }
