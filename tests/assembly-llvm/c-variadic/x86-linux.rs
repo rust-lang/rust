@@ -4,13 +4,11 @@
 //@ revisions: X86_64 X86_64_GNUX32 I686
 //@ [X86_64] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel
 //@ [X86_64] compile-flags: --target x86_64-unknown-linux-gnu
-//@ [X86_64] needs-llvm-components: x86
 //@ [X86_64_GNUX32] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel
 //@ [X86_64_GNUX32] compile-flags: --target x86_64-unknown-linux-gnux32
-//@ [X86_64_GNUX32] needs-llvm-components: x86
 //@ [I686] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel
 //@ [I686] compile-flags: --target i686-unknown-linux-gnu
-//@ [I686] needs-llvm-components: x86
+//@ needs-llvm-components: x86
 #![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![no_core]
 #![crate_type = "lib"]

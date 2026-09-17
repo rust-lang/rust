@@ -1,13 +1,14 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
 //
-//@ revisions: WINDOWS_GNU WINDOWS_MSVC
-//@ [WINDOWS_GNU] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel
-//@ [WINDOWS_GNU] compile-flags: --target x86_64-pc-windows-gnu
-//@ [WINDOWS_GNU] needs-llvm-components: x86
-//@ [WINDOWS_MSVC] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel
-//@ [WINDOWS_MSVC] compile-flags: --target x86_64-pc-windows-msvc
-//@ [WINDOWS_MSVC] needs-llvm-components: x86
+//@ revisions: X86_64_GNU X86_64_MSVC
+//@ [X86_64_GNU] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel
+//@ [X86_64_GNU] compile-flags: --target x86_64-pc-windows-gnu
+//@ [X86_64_GNU] filecheck-flags: --check-prefix X86_64
+//@ [X86_64_MSVC] compile-flags: -Copt-level=3 -Cllvm-args=-x86-asm-syntax=intel
+//@ [X86_64_MSVC] compile-flags: --target x86_64-pc-windows-msvc
+//@ [X86_64_MSVC] filecheck-flags: --check-prefix X86_64
+//@ needs-llvm-components: x86
 #![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![no_core]
 #![crate_type = "lib"]
@@ -51,50 +52,50 @@ pub const unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
     // CHECK-LABEL: read_f64:
-    // CHECK: mov rax, qword ptr [rcx]
-    // CHECK-NEXT: lea rdx, [rax + 8]
-    // CHECK-NEXT: mov qword ptr [rcx], rdx
-    // CHECK-NEXT: movsd xmm0, qword ptr [rax]
-    // CHECK-NEXT: ret
+    // X86_64: mov rax, qword ptr [rcx]
+    // X86_64-NEXT: lea rdx, [rax + 8]
+    // X86_64-NEXT: mov qword ptr [rcx], rdx
+    // X86_64-NEXT: movsd xmm0, qword ptr [rax]
+    // X86_64-NEXT: ret
     va_arg(ap)
 }
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
     // CHECK-LABEL: read_i32:
-    // CHECK: mov rax, qword ptr [rcx]
-    // CHECK-NEXT: lea rdx, [rax + 8]
-    // CHECK-NEXT: mov qword ptr [rcx], rdx
-    // CHECK-NEXT: mov eax, dword ptr [rax]
-    // CHECK-NEXT: ret
+    // X86_64: mov rax, qword ptr [rcx]
+    // X86_64-NEXT: lea rdx, [rax + 8]
+    // X86_64-NEXT: mov qword ptr [rcx], rdx
+    // X86_64-NEXT: mov eax, dword ptr [rax]
+    // X86_64-NEXT: ret
     va_arg(ap)
 }
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // CHECK-LABEL: read_i64:
-    // CHECK: mov rax, qword ptr [rcx]
-    // CHECK-NEXT: lea rdx, [rax + 8]
-    // CHECK-NEXT: mov qword ptr [rcx], rdx
-    // CHECK-NEXT: mov rax, qword ptr [rax]
-    // CHECK-NEXT: ret
+    // X86_64: mov rax, qword ptr [rcx]
+    // X86_64-NEXT: lea rdx, [rax + 8]
+    // X86_64-NEXT: mov qword ptr [rcx], rdx
+    // X86_64-NEXT: mov rax, qword ptr [rax]
+    // X86_64-NEXT: ret
     va_arg(ap)
 }
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
-    // CHECK-LABEL: read_i128:
-    // CHECK: mov rax, qword ptr [rcx]
-    // CHECK-NEXT: lea rdx, [rax + 8]
-    // CHECK-NEXT: mov qword ptr [rcx], rdx
-    // CHECK-NEXT: mov rax, qword ptr [rax]
-    // CHECK-NEXT: movups xmm0, xmmword ptr [rax]
-    // CHECK-NEXT: ret
+    // X86_64-LABEL: read_i128:
+    // X86_64: mov rax, qword ptr [rcx]
+    // X86_64-NEXT: lea rdx, [rax + 8]
+    // X86_64-NEXT: mov qword ptr [rcx], rdx
+    // X86_64-NEXT: mov rax, qword ptr [rax]
+    // X86_64-NEXT: movups xmm0, xmmword ptr [rax]
+    // X86_64-NEXT: ret
     va_arg(ap)
 }
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_ptr(ap: &mut VaList<'_>) -> *const u8 {
-    // CHECK: read_ptr = read_i64
+    // X86_64: read_ptr = read_i64
     va_arg(ap)
 }
