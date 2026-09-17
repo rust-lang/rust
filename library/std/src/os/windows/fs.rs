@@ -215,7 +215,7 @@ pub trait FileExt {
     ///     let file = File::open("foo.txt")?;
     ///
     ///     // We now write at the offset 10.
-    ///     file.write_all_at(b"sushi", 10)?;
+    ///     file.seek_write_all(b"sushi", 10)?;
     ///     Ok(())
     /// }
     /// ```
