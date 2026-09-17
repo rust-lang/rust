@@ -4,7 +4,7 @@
 use std::iter::once;
 
 pub(crate) use Ty::*;
-use rustc_ast::{self as ast, GenericArg, Generics, TyKind};
+use rustc_ast::{self as ast, GenericArg, TyKind};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
 use thin_vec::ThinVec;
@@ -25,15 +25,9 @@ impl Path {
         Path { path, params }
     }
 
-    pub(crate) fn to_path(
-        &self,
-        cx: &ExtCtxt<'_>,
-        span: Span,
-        self_ty: Ident,
-        self_generics: &Generics,
-    ) -> ast::Path {
+    pub(crate) fn to_path(&self, cx: &ExtCtxt<'_>, span: Span) -> ast::Path {
         let idents = self.path.iter().map(|s| Ident::new(*s, span));
-        let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics));
+        let tys = self.params.iter().map(|t| t.to_ty(cx, span));
         let params = tys.map(GenericArg::Type).collect();
 
         let def_site = cx.with_def_site_ctxt(DUMMY_SP);
@@ -62,20 +56,14 @@ pub(crate) fn self_ref() -> Ty {
 }
 
 impl Ty {
-    pub(crate) fn to_ty(
-        &self,
-        cx: &ExtCtxt<'_>,
-        span: Span,
-        self_ty: Ident,
-        self_generics: &Generics,
-    ) -> Box<ast::Ty> {
+    pub(crate) fn to_ty(&self, cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Ty> {
         match self {
             Ref(ty, mutbl) => {
-                let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
+                let raw_ty = ty.to_ty(cx, span);
                 cx.ty_ref(span, raw_ty, None, *mutbl)
             }
-            Path(p) => cx.ty_path(p.to_path(cx, span, self_ty, self_generics)),
-            Self_ => cx.ty_path(self.to_path(cx, span, self_ty, self_generics)),
+            Path(p) => cx.ty_path(p.to_path(cx, span)),
+            Self_ => cx.ty_path(self.to_path(cx, span)),
             Unit => {
                 let ty = ast::TyKind::Tup(ThinVec::new());
                 cx.ty(span, ty)
@@ -84,16 +72,10 @@ impl Ty {
         }
     }
 
-    pub(crate) fn to_path(
-        &self,
-        cx: &ExtCtxt<'_>,
-        span: Span,
-        self_ty: Ident,
-        generics: &Generics,
-    ) -> ast::Path {
+    pub(crate) fn to_path(&self, cx: &ExtCtxt<'_>, span: Span) -> ast::Path {
         match self {
             Self_ => cx.path_ident(span, Ident::new(kw::SelfUpper, span)),
-            Path(p) => p.to_path(cx, span, self_ty, generics),
+            Path(p) => p.to_path(cx, span),
             AstTy(ty) => match &ty.kind {
                 TyKind::Path(_, path) => path.clone(),
                 _ => cx.dcx().span_bug(span, "non-path in a path in generic `derive`"),
