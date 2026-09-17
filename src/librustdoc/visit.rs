@@ -44,7 +44,6 @@ pub(crate) trait DocVisitor<'a>: Sized {
             | ItemKind::DeclMacro(..)
             | ItemKind::ProcMacro(_)
             | ItemKind::Primitive(_)
-            | ItemKind::RequiredAssocConst(..)
             | ItemKind::AssocConst(..)
             | ItemKind::RequiredAssocTy(..)
             | ItemKind::AssocTy(..)

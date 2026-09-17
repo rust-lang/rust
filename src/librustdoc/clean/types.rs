@@ -659,14 +659,13 @@ impl Item {
             ItemKind::RequiredAssocTy(..) | ItemKind::Stripped(ItemKind::RequiredAssocTy(..))
         )
     }
-    pub(crate) fn is_associated_const(&self) -> bool {
-        matches!(self.kind, ItemKind::AssocConst(..) | ItemKind::Stripped(ItemKind::AssocConst(..)))
+    pub(crate) fn is_assoc_const_with_body(&self) -> bool {
+        let kind = if let ItemKind::Stripped(kind) = &self.kind { kind } else { &self.kind };
+        matches!(kind, ItemKind::AssocConst(AssocConst { rhs: Some(_), .. }))
     }
-    pub(crate) fn is_required_associated_const(&self) -> bool {
-        matches!(
-            self.kind,
-            ItemKind::RequiredAssocConst(..) | ItemKind::Stripped(ItemKind::RequiredAssocConst(..))
-        )
+    pub(crate) fn is_assoc_const_without_body(&self) -> bool {
+        let kind = if let ItemKind::Stripped(kind) = &self.kind { kind } else { &self.kind };
+        matches!(kind, ItemKind::AssocConst(AssocConst { rhs: None, .. }))
     }
     pub(crate) fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
@@ -875,8 +874,7 @@ impl Item {
             // Variants always inherit visibility
             ItemKind::Variant(..) | ItemKind::Impl(..) => return None,
             // Trait items inherit the trait's visibility
-            ItemKind::RequiredAssocConst(..)
-            | ItemKind::AssocConst(..)
+            ItemKind::AssocConst(..)
             | ItemKind::AssocTy(..)
             | ItemKind::RequiredAssocTy(..)
             | ItemKind::RequiredAssocFn(..)
@@ -952,10 +950,7 @@ pub(crate) enum ItemKind {
     ProcMacro(ProcMacro),
     Primitive(PrimitiveType),
     Const(Box<Constant>),
-    /// A required associated constant in a trait.
-    RequiredAssocConst(Generics, Box<Type>),
-    /// An associated constant in an impl or a provided associated constant in a trait.
-    AssocConst(Box<Constant>),
+    AssocConst(Box<AssocConst>),
     /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
@@ -1004,7 +999,6 @@ impl ItemKind {
             | Self::DeclMacro(..)
             | Self::ProcMacro(_)
             | Self::Primitive(_)
-            | Self::RequiredAssocConst(..)
             | Self::AssocConst(..)
             | Self::RequiredAssocTy(..)
             | Self::AssocTy(..)
@@ -2286,11 +2280,18 @@ pub(crate) struct Static {
     pub(crate) expr: Option<BodyId>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Constant {
     pub(crate) generics: Generics,
-    pub(crate) kind: ConstantKind,
-    pub(crate) type_: Type,
+    pub(crate) ty: Type,
+    pub(crate) rhs: ConstantKind,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AssocConst {
+    pub(crate) generics: Generics,
+    pub(crate) ty: Type,
+    pub(crate) rhs: Option<ConstantKind>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
