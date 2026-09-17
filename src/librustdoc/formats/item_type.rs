@@ -129,8 +129,8 @@ impl<'a> From<&'a clean::Item> for ItemType {
             ItemKind::Const(..) => ItemType::Constant,
             ItemKind::Trait(..) => ItemType::Trait,
             ItemKind::Impl(..) | ItemKind::PlaceholderImpl => ItemType::Impl,
-            ItemKind::RequiredAssocFn(..) => ItemType::TyMethod,
-            ItemKind::AssocFn(..) => ItemType::Method,
+            ItemKind::AssocFn(_, None) => ItemType::TyMethod,
+            ItemKind::AssocFn(_, Some(_)) => ItemType::Method,
             ItemKind::StructField(..) => ItemType::StructField,
             ItemKind::Variant(..) => ItemType::Variant,
             ItemKind::ForeignFn(..) => ItemType::Function, // no ForeignFunction

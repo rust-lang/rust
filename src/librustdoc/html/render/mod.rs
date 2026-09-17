@@ -1144,9 +1144,9 @@ fn assoc_type(
 }
 
 fn assoc_method(
-    meth: &clean::Item,
-    g: &clean::Generics,
-    d: &clean::FnDecl,
+    it: &clean::Item,
+    fn_: &clean::Function,
+    body: Option<clean::Defaultness>,
     link: AssocItemLink<'_>,
     indent: usize,
     ending: Ending,
@@ -1154,36 +1154,36 @@ fn assoc_method(
     cx: &Context<'_>,
 ) -> impl fmt::Display {
     let tcx = cx.tcx();
-    let header = meth.fn_header(tcx).expect("Trying to get header from a non-function item");
-    let name = meth.name.as_ref().unwrap();
-    let vis = visibility_print_with_space(meth, cx).to_string();
-    let defaultness = match meth.defaultness().expect("Expected assoc method to have defaultness") {
-        Defaultness::Implicit => "",
-        Defaultness::Final => "final ",
-        Defaultness::Default => "default ",
+    let header = it.fn_header(tcx).expect("Trying to get header from a non-function item");
+    let name = it.name.as_ref().unwrap();
+    let vis = visibility_print_with_space(it, cx).to_string();
+    let defaultness = match body {
+        Some(Defaultness::Implicit) | None => "",
+        Some(Defaultness::Final) => "final ",
+        Some(Defaultness::Default) => "default ",
     };
     // FIXME: Once https://github.com/rust-lang/rust/issues/143874 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
         RenderMode::Normal => print_constness_with_space(
             &header.constness,
-            meth.stable_since(tcx),
-            meth.const_stability(tcx),
+            it.stable_since(tcx),
+            it.const_stability(tcx),
         ),
         RenderMode::ForDeref { .. } => "",
     };
 
     fmt::from_fn(move |w| {
         let indent_str = " ".repeat(indent);
-        render_attributes_in_code(w, meth, &indent_str, cx)?;
+        render_attributes_in_code(w, it, &indent_str, cx)?;
 
         let asyncness = header.asyncness.print_with_space();
         let safety = header.safety.print_with_space();
         let abi = print_abi_with_space(header.abi).to_string();
-        let href = assoc_href_attr(meth, link, cx).maybe_display();
+        let href = assoc_href_attr(it, link, cx).maybe_display();
 
         // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
-        let generics_len = format!("{:#}", print_generics(g, cx)).len();
+        let generics_len = format!("{:#}", print_generics(&fn_.generics, cx)).len();
         let header_len = indent
             + "fn ".len()
             + vis.len()
@@ -1195,16 +1195,16 @@ fn assoc_method(
             + name.as_str().len()
             + generics_len;
 
-        let notable_traits = notable_traits_button(&d.output, cx).maybe_display();
+        let notable_traits = notable_traits_button(&fn_.decl.output, cx).maybe_display();
 
         write!(
             w,
             "{indent}{vis}{defaultness}{constness}{asyncness}{safety}{abi}fn \
             <a{href} class=\"fn\">{name}</a>{generics}{decl}{notable_traits}{where_clause}",
             indent = indent_str,
-            generics = print_generics(g, cx),
-            decl = full_print_fn_decl(d, header_len, indent, cx),
-            where_clause = print_where_clause(g, cx, indent, ending).maybe_display(),
+            generics = print_generics(&fn_.generics, cx),
+            decl = full_print_fn_decl(&fn_.decl, header_len, indent, cx),
+            where_clause = print_where_clause(&fn_.generics, cx, indent, ending).maybe_display(),
         )
     })
 }
@@ -1309,8 +1309,8 @@ fn render_assoc_item(
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| match &item.kind {
         ItemKind::Stripped(..) => Ok(()),
-        ItemKind::RequiredAssocFn(m, _) | ItemKind::AssocFn(m, _) => {
-            assoc_method(item, &m.generics, &m.decl, link, indent, ending, render_mode, cx).fmt(f)
+        ItemKind::AssocFn(fn_, body) => {
+            assoc_method(item, fn_, *body, link, indent, ending, render_mode, cx).fmt(f)
         }
         ItemKind::AssocConst(ct) => assoc_const(item, ct, parent, link, indent, ending, cx).fmt(f),
         ItemKind::RequiredAssocTy(generics, bounds) => {
@@ -1595,28 +1595,21 @@ fn render_deref_methods(
 }
 
 fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> bool {
-    let self_type_opt = match item.kind {
-        ItemKind::AssocFn(ref method, _) => method.decl.receiver_type(),
-        ItemKind::RequiredAssocFn(ref method, _) => method.decl.receiver_type(),
-        _ => None,
+    let ItemKind::AssocFn(item, _) = &item.kind else { return false };
+    let Some(self_ty) = item.decl.receiver_type() else { return false };
+
+    let (by_mut_ref, by_box, by_value) = match *self_ty {
+        clean::Type::BorrowedRef { mutability, .. } => {
+            (mutability == Mutability::Mut, false, false)
+        }
+        clean::Type::Path { ref path } => {
+            (false, Some(path.def_id()) == tcx.lang_items().owned_box(), false)
+        }
+        clean::Type::SelfTy => (false, false, true),
+        _ => (false, false, false),
     };
 
-    if let Some(self_ty) = self_type_opt {
-        let (by_mut_ref, by_box, by_value) = match *self_ty {
-            clean::Type::BorrowedRef { mutability, .. } => {
-                (mutability == Mutability::Mut, false, false)
-            }
-            clean::Type::Path { ref path } => {
-                (false, Some(path.def_id()) == tcx.lang_items().owned_box(), false)
-            }
-            clean::Type::SelfTy => (false, false, true),
-            _ => (false, false, false),
-        };
-
-        (deref_mut_ || !by_mut_ref) && !by_box && !by_value
-    } else {
-        false
-    }
+    (deref_mut_ || !by_mut_ref) && !by_box && !by_value
 }
 
 /// `Box` has pass-through impls for `Read`, `Write`, `Iterator`, and `Future` when the
@@ -1914,7 +1907,7 @@ fn render_impl(
                 deprecation_class = "";
             }
             match &item.kind {
-                ItemKind::AssocFn(..) | ItemKind::RequiredAssocFn(..) => {
+                ItemKind::AssocFn(..) => {
                     // Only render when the method is not static or we allow static methods
                     if render_method_item {
                         let id = cx.derive_id(format!("{item_type}.{name}"));
@@ -2064,9 +2057,7 @@ fn render_impl(
         if !impl_.is_negative_trait_impl() {
             for impl_item in &impl_.items {
                 match impl_item.kind {
-                    ItemKind::AssocFn(..) | ItemKind::RequiredAssocFn(..) => {
-                        methods.push(impl_item)
-                    }
+                    ItemKind::AssocFn(..) => methods.push(impl_item),
                     ItemKind::RequiredAssocTy(..) | ItemKind::AssocTy(..) => {
                         assoc_types.push(impl_item)
                     }

@@ -2009,10 +2009,7 @@ pub(crate) fn get_function_type_for_search(
         }
     });
     let (mut inputs, mut output, param_names, where_clause) = match item.kind {
-        ItemKind::ForeignFn(ref f, _)
-        | ItemKind::Fn(ref f)
-        | ItemKind::AssocFn(ref f, _)
-        | ItemKind::RequiredAssocFn(ref f, _) => {
+        ItemKind::ForeignFn(ref f, _) | ItemKind::Fn(ref f) | ItemKind::AssocFn(ref f, _) => {
             get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
         }
         ItemKind::Const(ref c) => make_nullary_fn(&c.ty),

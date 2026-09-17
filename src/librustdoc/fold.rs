@@ -82,7 +82,6 @@ pub(crate) trait DocFolder: Sized {
             | ItemKind::Static(_)
             | ItemKind::Const(..)
             | ItemKind::TraitAlias(_)
-            | ItemKind::RequiredAssocFn(..)
             | ItemKind::AssocFn(..)
             | ItemKind::StructField(_)
             | ItemKind::ForeignFn(..)

@@ -769,15 +769,6 @@ impl Item {
         matches!(self.kind, ItemKind::DeclMacro(..))
     }
 
-    pub(crate) fn defaultness(&self) -> Option<Defaultness> {
-        match self.kind {
-            ItemKind::AssocFn(_, defaultness) | ItemKind::RequiredAssocFn(_, defaultness) => {
-                Some(defaultness)
-            }
-            _ => None,
-        }
-    }
-
     /// Generates the HTML file name based on the item kind.
     pub(crate) fn html_filename(&self) -> String {
         format!("{type_}.{name}.html", type_ = self.type_(), name = self.name.unwrap())
@@ -837,7 +828,7 @@ impl Item {
                     asyncness: hir::IsAsync::NotAsync,
                 }
             }
-            ItemKind::Fn(_) | ItemKind::AssocFn(..) | ItemKind::RequiredAssocFn(..) => {
+            ItemKind::Fn(_) | ItemKind::AssocFn(..) => {
                 let def_id = self.def_id().unwrap();
                 build_fn_header(def_id, tcx, tcx.asyncness(def_id))
             }
@@ -872,7 +863,6 @@ impl Item {
             ItemKind::AssocConst(..)
             | ItemKind::AssocTy(..)
             | ItemKind::RequiredAssocTy(..)
-            | ItemKind::RequiredAssocFn(..)
             | ItemKind::AssocFn(..) => {
                 match tcx.associated_item(def_id).container {
                     // Trait impl items always inherit the impl's visibility --
@@ -921,12 +911,7 @@ pub(crate) enum ItemKind {
     /// This variant is used only as a placeholder for trait impls in order to correctly compute
     /// `doc_cfg` as trait impls are added to `clean::Crate` after we went through the whole tree.
     PlaceholderImpl,
-    /// A required assoc function in a trait.
-    RequiredAssocFn(Box<Function>, Defaultness),
-    /// An associated function in an impl or a provided associated function in a trait.
-    ///
-    /// Compared to [`ItemKind::RequiredAssocFn`], it also contains a method body.
-    AssocFn(Box<Function>, Defaultness),
+    AssocFn(Box<Function>, Option<Defaultness>),
     StructField(Type),
     Variant(Variant),
     /// `fn`s from an extern block
@@ -985,7 +970,6 @@ impl ItemKind {
             | Self::Static(_)
             | Self::Const(_)
             | Self::TraitAlias(_)
-            | Self::RequiredAssocFn(..)
             | Self::AssocFn(..)
             | Self::StructField(_)
             | Self::ForeignFn(_, _)

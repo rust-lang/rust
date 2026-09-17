@@ -79,7 +79,7 @@ impl DocFolder for Stripper<'_, '_> {
                 }
             }
 
-            ItemKind::AssocFn(..)
+            ItemKind::AssocFn(_, Some(_))
             | ItemKind::AssocConst(clean::AssocConst { rhs: Some(_), .. })
             | ItemKind::AssocTy(..) => {
                 let item_id = i.item_id;
@@ -124,7 +124,7 @@ impl DocFolder for Stripper<'_, '_> {
             ItemKind::PlaceholderImpl => return None,
 
             // They have no control over privacy
-            ItemKind::RequiredAssocFn(..)
+            ItemKind::AssocFn(_, None)
             | ItemKind::AssocConst(clean::AssocConst { rhs: None, .. })
             | ItemKind::RequiredAssocTy(..) => {}
 

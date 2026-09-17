@@ -373,17 +373,14 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
         }
         ItemKind::Trait(t) => ItemEnum::Trait(t.into_json(renderer)),
         ItemKind::TraitAlias(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
-        ItemKind::AssocFn(m, _) => ItemEnum::Function(from_clean_function(
+        ItemKind::AssocFn(m, body) => ItemEnum::Function(from_clean_function(
             m,
-            true,
+            body.is_some(),
             default_body_stability_for_def_id(renderer.tcx, item.item_id.expect_def_id())
                 .map(|stab| stab.into_json(renderer)),
             header.unwrap(),
             renderer,
         )),
-        ItemKind::RequiredAssocFn(m, _) => {
-            ItemEnum::Function(from_clean_function(m, false, None, header.unwrap(), renderer))
-        }
         ItemKind::Impl(i) => ItemEnum::Impl(i.into_json(renderer)),
         ItemKind::Static(s) => {
             ItemEnum::Static(from_clean_static(s, rustc_hir::Safety::Safe, renderer))
