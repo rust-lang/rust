@@ -25,9 +25,8 @@ struct ImportFinder {
 impl DocFolder for ImportFinder {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.kind {
-            clean::ItemKind::ImportItem(Import {
-                source: ImportSource { did: Some(did), .. },
-                ..
+            clean::ItemKind::Import(Import {
+                source: ImportSource { did: Some(did), .. }, ..
             }) => {
                 self.imported.insert(did);
                 Some(i)

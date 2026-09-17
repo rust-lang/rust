@@ -56,31 +56,31 @@ impl crate::doctest::DocTestVisitor for Tests {
 
 pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
     if !(cx.cache.effective_visibilities.is_directly_public(cx.tcx, item.item_id.expect_def_id())
-        || item.is_exported_macro())
+        || item.is_exported_decl_macro())
         || matches!(
             item.kind,
-            ItemKind::StructFieldItem(_)
-                | ItemKind::VariantItem(_)
-                | ItemKind::TypeAliasItem(_)
-                | ItemKind::StaticItem(_)
-                | ItemKind::ConstantItem(..)
-                | ItemKind::ExternCrateItem { .. }
-                | ItemKind::ImportItem(_)
-                | ItemKind::PrimitiveItem(_)
-                | ItemKind::KeywordItem
-                | ItemKind::AttributeItem
-                | ItemKind::ModuleItem(_)
-                | ItemKind::TraitAliasItem(_)
-                | ItemKind::ForeignFunctionItem(..)
-                | ItemKind::ForeignStaticItem(..)
-                | ItemKind::ForeignTypeItem
-                | ItemKind::AssocTypeItem(..)
-                | ItemKind::RequiredAssocConstItem(..)
-                | ItemKind::ProvidedAssocConstItem(..)
-                | ItemKind::ImplAssocConstItem(..)
-                | ItemKind::RequiredAssocTypeItem(..)
-                | ItemKind::ImplItem(_)
-                | ItemKind::PlaceholderImplItem
+            ItemKind::StructField(_)
+                | ItemKind::Variant(_)
+                | ItemKind::TypeAlias(_)
+                | ItemKind::Static(_)
+                | ItemKind::Constant(..)
+                | ItemKind::ExternCrate { .. }
+                | ItemKind::Import(_)
+                | ItemKind::PrimitiveType(_)
+                | ItemKind::Keyword
+                | ItemKind::Attribute
+                | ItemKind::Module(_)
+                | ItemKind::TraitAlias(_)
+                | ItemKind::ForeignFunction(..)
+                | ItemKind::ForeignStatic(..)
+                | ItemKind::ForeignType
+                | ItemKind::AssocType(..)
+                | ItemKind::RequiredAssocConstant(..)
+                | ItemKind::ProvidedAssocConstant(..)
+                | ItemKind::ImplAssocConstant(..)
+                | ItemKind::RequiredAssocType(..)
+                | ItemKind::Impl(_)
+                | ItemKind::PlaceholderImpl
         )
     {
         return false;
