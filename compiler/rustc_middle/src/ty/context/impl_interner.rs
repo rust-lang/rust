@@ -383,6 +383,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.assumptions_on_binders()
     }
 
+    fn uses_solver_region_constraints(self) -> bool {
+        self.uses_solver_region_constraints()
+    }
+
     fn renormalize_rigid_aliases(self) -> bool {
         self.renormalize_rigid_aliases()
     }
@@ -396,6 +400,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn fn_sig(self, def_id: DefId) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
         self.fn_sig(def_id)
+    }
+
+    fn fn_sig_for_fn_traits(self, def_id: DefId) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
+        self.fn_sig_for_fn_traits(def_id)
     }
 
     fn coroutine_movability(self, def_id: DefId) -> rustc_ast::Movability {
@@ -429,6 +437,14 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
         self.item_non_self_bounds(def_id).map_bound(IntoIterator::into_iter)
+    }
+
+    fn explicit_item_self_bounds(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
+        self.explicit_item_self_bounds(def_id)
+            .map_bound(|bounds| bounds.iter().map(|&(clause, _)| clause))
     }
 
     fn clauses_of(

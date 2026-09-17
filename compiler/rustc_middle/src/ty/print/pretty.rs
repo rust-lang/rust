@@ -3267,6 +3267,9 @@ define_print! {
             }
             ty::PredicateKind::Ambiguous => write!(p, "ambiguous")?,
             ty::PredicateKind::NormalizesTo(data) => data.print(p)?,
+            ty::PredicateKind::BoundFromClause(alias, predicate) => {
+                write!(p, "{predicate} from {alias}")?;
+            }
         }
     }
 

@@ -94,6 +94,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::NormalizesTo(..)
+                | ty::PredicateKind::BoundFromClause(..)
                 | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => {}
 
                 // We need to search through *all* WellFormed predicates

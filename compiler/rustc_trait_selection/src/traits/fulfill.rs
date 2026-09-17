@@ -460,7 +460,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     ProcessResult::Changed(mk_pending(obligation, obligations))
                 }
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
-                ty::PredicateKind::NormalizesTo(..) => {
+                ty::PredicateKind::NormalizesTo(..) | ty::PredicateKind::BoundFromClause(..) => {
                     bug!("NormalizesTo is only used by the new solver")
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => {
@@ -531,7 +531,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
-                ty::PredicateKind::NormalizesTo(..) => {
+                ty::PredicateKind::NormalizesTo(..) | ty::PredicateKind::BoundFromClause(..) => {
                     bug!("NormalizesTo is only used by the new solver")
                 }
                 // Compute `ConstArgHasType` above the overflow check below.

@@ -355,6 +355,10 @@ pub trait Interner:
 
     fn assumptions_on_binders(self) -> bool;
 
+    fn uses_solver_region_constraints(self) -> bool {
+        self.assumptions_on_binders()
+    }
+
     fn renormalize_rigid_aliases(self) -> bool;
 
     fn coroutine_hidden_types(
@@ -366,6 +370,13 @@ pub trait Interner:
         self,
         def_id: Self::FunctionId,
     ) -> ty::EarlyBinder<Self, ty::Binder<Self, ty::FnSig<Self>>>;
+
+    fn fn_sig_for_fn_traits(
+        self,
+        def_id: Self::FunctionId,
+    ) -> ty::EarlyBinder<Self, ty::Binder<Self, ty::FnSig<Self>>> {
+        self.fn_sig(def_id)
+    }
 
     fn coroutine_movability(self, def_id: Self::CoroutineId) -> Movability;
 
@@ -384,6 +395,11 @@ pub trait Interner:
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
 
     fn item_non_self_bounds(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+
+    fn explicit_item_self_bounds(
         self,
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;

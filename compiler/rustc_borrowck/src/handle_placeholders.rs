@@ -30,6 +30,7 @@ pub(crate) struct LoweredConstraints<'tcx> {
     pub(crate) scc_annotations: IndexVec<ConstraintSccIndex, RegionTracker>,
     pub(crate) outlives_constraints: Frozen<OutlivesConstraintSet<'tcx>>,
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
+    pub(crate) verify_bounds: Vec<rustc_infer::infer::region_constraints::VerifyBoundCheck<'tcx>>,
     pub(crate) liveness_constraints: LivenessValues,
     pub(crate) universe_causes: FxIndexMap<UniverseIndex, UniverseInfo<'tcx>>,
     pub(crate) placeholder_indices: PlaceholderIndices<'tcx>,
@@ -246,7 +247,10 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         mut outlives_constraints,
         universe_causes,
         type_tests,
+        verify_bounds,
+        solver_region_constraints,
     } = constraints;
+    assert!(solver_region_constraints.is_empty(), "unconverted solver region constraints");
 
     let fr_static = universal_regions.fr_static;
     let compute_sccs =
@@ -269,6 +273,7 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
 
         return LoweredConstraints {
             type_tests,
+            verify_bounds,
             constraint_sccs,
             scc_annotations: scc_annotations.scc_to_annotation,
             definitions,
@@ -307,6 +312,7 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         scc_annotations,
         outlives_constraints: Frozen::freeze(outlives_constraints),
         type_tests,
+        verify_bounds,
         liveness_constraints,
         universe_causes,
         placeholder_indices,

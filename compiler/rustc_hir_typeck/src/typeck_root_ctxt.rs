@@ -43,6 +43,10 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
     pub(super) deferred_sized_obligations:
         RefCell<Vec<(Ty<'tcx>, Span, traits::ObligationCauseCode<'tcx>)>>,
 
+    pub(super) deferred_late_bound_region_checks: RefCell<
+        Vec<rustc_hir_analysis::hir_ty_lowering::bound_regions::LateBoundRegionCheck<'tcx>>,
+    >,
+
     /// When we process a call like `c()` where `c` is a closure type,
     /// we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
     /// `FnOnce` closure. In that case, we defer full resolution of the
@@ -95,6 +99,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
             fulfillment_cx,
             checked_opaque_types_storage_entries: Cell::new(None),
             deferred_sized_obligations: RefCell::new(Vec::new()),
+            deferred_late_bound_region_checks: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),
             deferred_cast_checks: RefCell::new(Vec::new()),
             deferred_transmute_checks: RefCell::new(Vec::new()),

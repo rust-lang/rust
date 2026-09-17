@@ -83,6 +83,7 @@ pub enum RegionResolutionError<'tcx> {
     /// The parameter/associated-type `p` must be known to outlive the lifetime
     /// `a` (but none of the known bounds are sufficient).
     GenericBoundFailure(SubregionOrigin<'tcx>, GenericKind<'tcx>, Region<'tcx>),
+    CannotSatisfyConstraint(SubregionOrigin<'tcx>),
 
     /// `SubSupConflict(v, v_origin, sub_origin, sub_r, sup_origin, sup_r)`:
     ///
@@ -119,7 +120,8 @@ impl<'tcx> RegionResolutionError<'tcx> {
             | RegionResolutionError::GenericBoundFailure(origin, _, _)
             | RegionResolutionError::SubSupConflict(_, _, origin, _, _, _, _)
             | RegionResolutionError::UpperBoundUniverseConflict(_, _, _, origin, _)
-            | RegionResolutionError::CannotNormalize(_, origin) => origin,
+            | RegionResolutionError::CannotNormalize(_, origin)
+            | RegionResolutionError::CannotSatisfyConstraint(origin) => origin,
         }
     }
 }
@@ -623,6 +625,18 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 sub,
             ));
         }
+        for check in &self.data.verify_bounds {
+            if !self.bound_is_met(
+                &check.bound,
+                var_data,
+                self.tcx().types.unit,
+                self.tcx().lifetimes.re_static,
+            ) {
+                errors.push(RegionResolutionError::CannotSatisfyConstraint(
+                    SubregionOrigin::SolverRegionConstraint(check.span),
+                ));
+            }
+        }
     }
 
     /// Go over the variables that were declared to be error variables
@@ -948,6 +962,13 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
             VerifyBound::AllBounds(bs) => {
                 bs.iter().all(|b| self.bound_is_met(b, var_values, generic_ty, min))
+            }
+            VerifyBound::RegionOutlives(ty::OutlivesClause(sup, sub)) => {
+                self.bound_is_met(&VerifyBound::OutlivedBy(*sup), var_values, generic_ty, *sub)
+            }
+            VerifyBound::TypeOutlives { subject, region, bound } => {
+                let subject = var_values.normalize(self.tcx(), *subject);
+                self.bound_is_met(bound, var_values, subject, *region)
             }
         }
     }

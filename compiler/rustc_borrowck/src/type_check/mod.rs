@@ -111,6 +111,8 @@ pub(crate) fn type_check<'tcx>(
         liveness_constraints: LivenessValues::with_specific_points(Rc::clone(&location_map)),
         outlives_constraints: OutlivesConstraintSet::default(),
         type_tests: Vec::default(),
+        solver_region_constraints: Vec::new(),
+        verify_bounds: Vec::new(),
         universe_causes: FxIndexMap::default(),
     };
 
@@ -171,25 +173,6 @@ pub(crate) fn type_check<'tcx>(
     liveness::generate(&mut typeck, &location_map, move_data);
 
     let polonius_context = typeck.polonius_context;
-
-    if infcx.tcx.assumptions_on_binders() {
-        let mut converter = constraint_conversion::ConstraintConversion::new(
-            typeck.infcx,
-            typeck.universal_regions,
-            typeck.region_bound_pairs,
-            typeck.known_type_outlives_obligations,
-            Locations::All(rustc_span::DUMMY_SP),
-            rustc_span::DUMMY_SP,
-            ConstraintCategory::Boring,
-            typeck.constraints,
-        );
-        typeck.infcx.destructure_solver_region_constraints_for_borrowck(
-            &mut converter,
-            typeck.known_type_outlives_obligations,
-            typeck.region_bound_pairs,
-            universal_region_relations.outlives.clone(),
-        );
-    }
 
     // In case type check encountered an error region, we suppress unhelpful extra
     // errors in by clearing out all outlives bounds that we may end up checking.
@@ -293,9 +276,46 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     pub(crate) universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
+    pub(crate) solver_region_constraints: Vec<rustc_infer::infer::SolverRegionConstraint<'tcx>>,
+    pub(crate) verify_bounds: Vec<rustc_infer::infer::region_constraints::VerifyBoundCheck<'tcx>>,
 }
 
 impl<'tcx> MirTypeckRegionConstraints<'tcx> {
+    pub(crate) fn flush_solver_region_constraints(
+        &mut self,
+        infcx: &BorrowckInferCtxt<'tcx>,
+        universal_region_relations: &UniversalRegionRelations<'tcx>,
+        region_bound_pairs: &RegionBoundPairs<'tcx>,
+        known_type_outlives: &[ty::PolyTypeOutlivesClause<'tcx>],
+    ) {
+        if !infcx.tcx.uses_solver_region_constraints() {
+            return;
+        }
+        let pending = std::mem::take(&mut self.solver_region_constraints);
+        if pending.is_empty() && !infcx.has_solver_region_constraints() {
+            return;
+        }
+        let universal_regions = &universal_region_relations.universal_regions;
+        let mut converter = constraint_conversion::ConstraintConversion::new(
+            infcx,
+            universal_regions,
+            region_bound_pairs,
+            known_type_outlives,
+            Locations::All(rustc_span::DUMMY_SP),
+            rustc_span::DUMMY_SP,
+            ConstraintCategory::Boring,
+            self,
+        );
+        infcx.destructure_solver_region_constraints_for_borrowck(
+            &mut converter,
+            known_type_outlives,
+            region_bound_pairs,
+            universal_region_relations.outlives.clone(),
+            ty::Region::new_var(infcx.tcx, universal_regions.implicit_region_bound()),
+            pending,
+        );
+    }
+
     /// Creates a `Region` for a given `PlaceholderRegion`, or returns the
     /// region that corresponds to a previously created one.
     pub(crate) fn placeholder_region(
@@ -1044,7 +1064,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     ) => {
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         let src_ty = op.ty(self.body, tcx);
-                        let mut src_sig = src_ty.fn_sig(tcx);
+                        let mut src_sig = match *src_ty.kind() {
+                            ty::FnDef(def_id, args) => tcx
+                                .fn_sig_for_fn_traits(def_id)
+                                .instantiate(tcx, args.no_bound_vars().unwrap())
+                                .skip_norm_wip(),
+                            _ => src_ty.fn_sig(tcx),
+                        };
                         if let ty::FnDef(def_id, _) = *src_ty.kind()
                             && let ty::FnPtr(_, target_hdr) = *ty.kind()
                             && tcx.codegen_fn_attrs(def_id).safe_target_features

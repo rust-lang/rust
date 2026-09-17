@@ -753,6 +753,7 @@ impl<'tcx> Stable<'tcx> for ty::PredicateKind<'tcx> {
             }
             PredicateKind::Ambiguous => crate::ty::PredicateKind::Ambiguous,
             PredicateKind::NormalizesTo(_pred) => unimplemented!(),
+            PredicateKind::BoundFromClause(..) => unreachable!("solver-internal goal"),
         }
     }
 }

@@ -92,6 +92,11 @@ impl CurrentGoalKind {
             ty::PredicateKind::NormalizesTo(_) => {
                 CurrentGoalKind::ProjectionComputeAssocTermCandidate
             }
+            ty::PredicateKind::BoundFromClause(_, predicate)
+                if matches!(predicate.kind().skip_binder(), ty::PredicateKind::NormalizesTo(_)) =>
+            {
+                CurrentGoalKind::ProjectionComputeAssocTermCandidate
+            }
             _ => CurrentGoalKind::Misc,
         }
     }
@@ -931,6 +936,9 @@ where
                 ty::PredicateKind::NormalizesTo(predicate) => {
                     ecx.compute_normalizes_to_goal(Goal { param_env, predicate })?
                 }
+                ty::PredicateKind::BoundFromClause(alias, predicate) => {
+                    ecx.compute_bound_from_clause(Goal { param_env, predicate }, alias)?
+                }
                 ty::PredicateKind::Ambiguous => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)?
                 }
@@ -1292,6 +1300,8 @@ where
             let u = self.delegate.universe();
             let assumptions = if self.cx().assumptions_on_binders() {
                 self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)
+            } else if self.cx().uses_solver_region_constraints() {
+                Some(rustc_type_ir::region_constraint::Assumptions::empty())
             } else {
                 None
             };
@@ -1610,7 +1620,10 @@ where
 
         // Remove any trivial or duplicated region constraints once we've resolved regions
         let mut unique = HashSet::default();
-        if let ExternalRegionConstraints::Old(r) = &mut external_constraints.region_constraints {
+        if let ExternalRegionConstraints::Old(r)
+        | ExternalRegionConstraints::Combined { constraints: r, .. } =
+            &mut external_constraints.region_constraints
+        {
             r.retain(|(outlives, _)| !outlives.is_trivial() && unique.insert(*outlives));
         }
 
@@ -1678,11 +1691,22 @@ where
                 RegionConstraint::new_true()
             })
         } else {
-            ExternalRegionConstraints::Old(if let Certainty::Yes = certainty {
+            let constraints = if let Certainty::Yes = certainty {
                 self.delegate.make_deduplicated_region_constraints()
             } else {
                 vec![]
-            })
+            };
+            let solver_constraints =
+                if self.cx().uses_solver_region_constraints() && certainty == Certainty::Yes {
+                    self.delegate.get_solver_region_constraint()
+                } else {
+                    RegionConstraint::new_true()
+                };
+            if solver_constraints.is_true() {
+                ExternalRegionConstraints::Old(constraints)
+            } else {
+                ExternalRegionConstraints::Combined { constraints, solver_constraints }
+            }
         };
 
         // We only return *newly defined* opaque types from canonical queries.
@@ -1781,7 +1805,14 @@ fn filter_irrelevant_region_constraints<D, I>(
     // only on the RHS of region constraints, then this kind of constraint is also trivial,
     // since we're able to pick '?1 := glb('re, other_regions), and by definition of glb,
     // `'re: glb`.
-    if let ExternalRegionConstraints::Old(r) = region_constraints
+    let additional = match region_constraints {
+        ExternalRegionConstraints::Combined { solver_constraints, .. } => {
+            Some(solver_constraints.clone())
+        }
+        _ => None,
+    };
+    if let ExternalRegionConstraints::Old(r)
+    | ExternalRegionConstraints::Combined { constraints: r, .. } = region_constraints
         && !r.is_empty()
     {
         let mut vis = NonTrivialVars::default();
@@ -1791,6 +1822,7 @@ fn filter_irrelevant_region_constraints<D, I>(
         // have a method we can easily override in order to do this.
         opaque_types.visit_with(&mut vis);
         normalization_nested_goals.visit_with(&mut vis);
+        additional.visit_with(&mut vis);
         for (constraint, _) in r.iter() {
             match constraint {
                 ty::RegionConstraint::Outlives(ty::OutlivesClause(sup, _)) => {

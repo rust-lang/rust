@@ -519,8 +519,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
                 let late_bound_in_projection_ty =
                     tcx.collect_constrained_late_bound_regions(projection_term);
-                let late_bound_in_term =
-                    tcx.collect_referenced_late_bound_regions(trait_ref.rebind(term));
+                let late_bound_in_term = if tcx.next_trait_solver_globally() {
+                    tcx.collect_output_late_bound_regions(
+                        projection_term.map_bound(|alias| {
+                            alias.args.iter().filter_map(|arg| arg.as_type()).collect()
+                        }),
+                        trait_ref.rebind(term),
+                    )
+                } else {
+                    tcx.collect_referenced_late_bound_regions(trait_ref.rebind(term))
+                };
                 debug!(?late_bound_in_projection_ty);
                 debug!(?late_bound_in_term);
 
@@ -528,21 +536,32 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // struct S1<F: for<'a> Fn(&i32, &i32) -> &'a i32>(F);
                 //                         ----  ----     ^^^^^^^
                 // NOTE(mgca): This error should be impossible to trigger with assoc const bindings.
-                self.validate_late_bound_regions(
-                    late_bound_in_projection_ty,
-                    late_bound_in_term,
-                    |br_name| {
-                        struct_span_code_err!(
-                            self.dcx(),
-                            constraint.span,
-                            E0582,
-                            "binding for associated type `{}` references {}, \
-                             which does not appear in the trait input types",
-                            constraint.ident,
-                            br_name
-                        )
-                    },
+                let dependency_check = super::bound_regions::LateBoundRegionCheck::projection(
+                    projection_term.map_bound(|projection_term| ty::ProjectionClause {
+                        projection_term,
+                        term,
+                    }),
+                    constraint.span,
                 );
+                if dependency_check.needs_context(tcx) {
+                    self.defer_late_bound_region_check(dependency_check);
+                } else {
+                    self.validate_late_bound_regions(
+                        late_bound_in_projection_ty,
+                        late_bound_in_term,
+                        |br_name| {
+                            struct_span_code_err!(
+                                self.dcx(),
+                                constraint.span,
+                                E0582,
+                                "binding for associated type `{}` references {}, \
+                             which does not appear in the trait input types",
+                                constraint.ident,
+                                br_name
+                            )
+                        },
+                    );
+                }
 
                 match predicate_filter {
                     PredicateFilter::All

@@ -15,6 +15,7 @@
 //! [^1]: This includes types, lifetimes / regions, constants in type positions,
 //! trait references and bounds.
 
+pub mod bound_regions;
 mod bounds;
 mod cmse;
 mod dyn_trait;
@@ -227,6 +228,11 @@ pub trait HirTyLowerer<'tcx> {
 
     /// The inference context of the lowering context if applicable.
     fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
+
+    /// Check dependencies involving aliases after the complete environment is
+    /// available. Item signatures are checked by the item well-formedness pass;
+    /// bodies retain these checks until type inference has completed.
+    fn defer_late_bound_region_check(&self, check: bound_regions::LateBoundRegionCheck<'tcx>);
 
     /// Convenience method for coercing the lowering context into a trait object type.
     ///
@@ -3743,7 +3749,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // reject function types that violate cmse ABI requirements
         cmse::validate_cmse_abi(self.tcx(), self.dcx(), hir_id, abi, fn_ptr_ty);
 
-        if !fn_ptr_ty.references_error() {
+        let dependency_check = tcx.next_trait_solver_globally().then(|| {
+            bound_regions::LateBoundRegionCheck::function(tcx, fn_ptr_ty, decl.output.span())
+        });
+        if let Some(dependency_check) = dependency_check
+            && dependency_check.needs_context(tcx)
+        {
+            self.defer_late_bound_region_check(dependency_check);
+        } else if !fn_ptr_ty.references_error() {
             // Find any late-bound regions declared in return type that do
             // not appear in the arguments. These are not well-formed.
             //
@@ -3754,7 +3767,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let late_bound_in_args =
                 tcx.collect_constrained_late_bound_regions(inputs.map_bound(|i| i.to_owned()));
             let output = fn_ptr_ty.output();
-            let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(output);
+            let late_bound_in_ret = if tcx.next_trait_solver_globally() {
+                tcx.collect_output_late_bound_regions(
+                    inputs.map_bound(|inputs| inputs.to_vec()),
+                    output,
+                )
+            } else {
+                tcx.collect_referenced_late_bound_regions(output)
+            };
 
             self.validate_late_bound_regions(late_bound_in_args, late_bound_in_ret, |br_name| {
                 struct_span_code_err!(

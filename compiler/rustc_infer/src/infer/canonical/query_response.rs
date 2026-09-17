@@ -24,8 +24,8 @@ use crate::infer::canonical::{
 };
 use crate::infer::region_constraints::{ConstraintKind, RegionConstraintData};
 use crate::infer::{
-    DefineOpaqueTypes, InferCtxt, InferOk, InferResult, OpaqueTypeStorageEntries, SubregionOrigin,
-    TypeOutlivesConstraint,
+    DefineOpaqueTypes, InferCtxt, InferOk, InferResult, OpaqueTypeStorageEntries,
+    SolverRegionConstraint, SubregionOrigin, TypeOutlivesConstraint,
 };
 use crate::traits::query::NoSolution;
 use crate::traits::{
@@ -110,6 +110,7 @@ impl<'tcx> InferCtxt<'tcx> {
         self.canonicalize_response(QueryResponse {
             var_values: inference_vars,
             region_constraints: QueryRegionConstraints::default(),
+            solver_region_constraints: Vec::new(),
             certainty: Certainty::Proven, // Ambiguities are OK!
             opaque_types,
             value: answer,
@@ -154,6 +155,7 @@ impl<'tcx> InferCtxt<'tcx> {
             )
         });
         debug!(?region_constraints);
+        let solver_region_constraints = self.get_solver_region_constraints();
 
         let opaque_types = self
             .inner
@@ -166,6 +168,7 @@ impl<'tcx> InferCtxt<'tcx> {
         Ok(QueryResponse {
             var_values: inference_vars,
             region_constraints,
+            solver_region_constraints,
             certainty,
             value: answer,
             opaque_types,
@@ -212,6 +215,14 @@ impl<'tcx> InferCtxt<'tcx> {
         for assumption in &query_response.value.region_constraints.assumptions {
             let assumption = instantiate_value(self.tcx, &result_args, *assumption);
             self.register_region_assumption(assumption);
+        }
+
+        for constraint in self.instantiate_query_solver_region_constraints(
+            cause,
+            &result_args,
+            &query_response.value.solver_region_constraints,
+        ) {
+            self.register_solver_region_constraint(constraint);
         }
 
         let user_result: R =
@@ -347,10 +358,43 @@ impl<'tcx> InferCtxt<'tcx> {
                 .map(|&r_c| instantiate_value(self.tcx, &result_args, r_c)),
         );
 
+        output_query_region_constraints.solver_region_constraints.extend(
+            self.instantiate_query_solver_region_constraints(
+                cause,
+                &result_args,
+                &query_response.value.solver_region_constraints,
+            ),
+        );
+
         let user_result: R =
             query_response.instantiate_projected(self.tcx, &result_args, |q_r| q_r.value.clone());
 
         Ok(InferOk { value: user_result, obligations })
+    }
+
+    fn instantiate_query_solver_region_constraints(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        result_args: &CanonicalVarValues<'tcx>,
+        constraints: &[SolverRegionConstraint<'tcx>],
+    ) -> Vec<SolverRegionConstraint<'tcx>> {
+        constraints
+            .iter()
+            .map(|constraints| {
+                let mut constraints = instantiate_value(self.tcx, result_args, constraints.clone());
+                for leaf in
+                    constraints.and_constraint.0.iter_mut().chain(
+                        constraints.or_constraint.0.iter_mut().flat_map(|and| and.0.iter_mut()),
+                    )
+                {
+                    if leaf.span().is_dummy() {
+                        *leaf = leaf.clone().without_span().with_span(cause.span);
+                    }
+                }
+                debug!(?constraints, "instantiated solver region constraints from canonical query");
+                constraints
+            })
+            .collect()
     }
 
     /// Given the original values and the (canonicalized) result from
@@ -620,9 +664,10 @@ pub fn make_query_region_constraints<'tcx>(
     region_constraints: &RegionConstraintData<'tcx>,
     assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
 ) -> QueryRegionConstraints<'tcx> {
-    let RegionConstraintData { constraints, verifys } = region_constraints;
+    let RegionConstraintData { constraints, verifys, verify_bounds } = region_constraints;
 
     assert!(verifys.is_empty());
+    assert!(verify_bounds.is_empty());
 
     debug!(?constraints);
 
@@ -663,5 +708,5 @@ pub fn make_query_region_constraints<'tcx>(
         ))
         .collect();
 
-    QueryRegionConstraints { constraints, assumptions }
+    QueryRegionConstraints { constraints, assumptions, solver_region_constraints: Vec::new() }
 }

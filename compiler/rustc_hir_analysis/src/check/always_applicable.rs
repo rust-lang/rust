@@ -346,6 +346,17 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
                     format!("{b}: {a}", a = ty::Region::new_var(tcx, a))
                 }
                 RegionResolutionError::CannotNormalize(..) => unreachable!(),
+                RegionResolutionError::CannotSatisfyConstraint(ref origin) => {
+                    guar = Some(
+                        tcx.dcx()
+                            .struct_span_err(
+                                origin.span(),
+                                "unable to satisfy outlives constraints",
+                            )
+                            .emit(),
+                    );
+                    continue;
+                }
             };
             guar = Some(
                 struct_span_code_err!(

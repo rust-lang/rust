@@ -443,6 +443,13 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         Some(&self.infcx)
     }
 
+    fn defer_late_bound_region_check(
+        &self,
+        check: rustc_hir_analysis::hir_ty_lowering::bound_regions::LateBoundRegionCheck<'tcx>,
+    ) {
+        self.deferred_late_bound_region_checks.borrow_mut().push(check);
+    }
+
     fn lower_fn_sig(
         &self,
         decl: &rustc_hir::FnDecl<'_>,

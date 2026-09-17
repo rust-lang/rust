@@ -229,6 +229,7 @@ pub(super) fn check_well_formed(
     def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
     let mut res = crate::check::check::check_item_type(tcx, def_id);
+    super::bound_regions::check_item(tcx, def_id);
 
     for param in &tcx.generics_of(def_id).own_params {
         res = res.and(check_param_wf(tcx, param));
@@ -2398,27 +2399,35 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn check_test_binder_forall(&self, forall: TestBinderForall<'tcx>) {
+        let outer_universe = self.infcx.universe();
         self.infcx.enter_forall(forall.binder, |body| {
             let u = self.infcx.universe();
-            let mut builder = TransitiveRelationBuilder::default();
-            for &(r1, r2) in &body.region_outlives {
-                builder.add(r1, r2);
+            let introduced_universe = u != outer_universe;
+            if introduced_universe {
+                let mut builder = TransitiveRelationBuilder::default();
+                for &(r1, r2) in &body.region_outlives {
+                    builder.add(r1, r2);
+                }
+                // Deliberately unelaborated: the assumptions of a `forall` are exactly the ones
+                // written down in the test, no extra ones hidden behind the scenes.
+                let assumptions = ty::region_constraint::Assumptions::new_unelaborated(
+                    body.type_outlives,
+                    builder.freeze(),
+                );
+                self.infcx.insert_placeholder_assumptions(u, Some(assumptions));
             }
-            // Deliberately unelaborated: the assumptions of a `forall` are exactly the ones
-            // written down in the test, no extra ones hidden behind the scenes.
-            let assumptions = ty::region_constraint::Assumptions::new_unelaborated(
-                body.type_outlives,
-                builder.freeze(),
-            );
-            self.infcx.insert_placeholder_assumptions(u, Some(assumptions));
             self.check_test_binder_body(body.value);
             let solver_region_constraint = self.infcx.get_solver_region_constraint();
-            let constraint = ty::region_constraint::eagerly_handle_placeholders_in_universe(
-                self.infcx,
-                solver_region_constraint.without_spans(),
-                u,
-            )
-            .with_spans(forall.span);
+            let constraint = if introduced_universe {
+                ty::region_constraint::eagerly_handle_placeholders_in_universe(
+                    self.infcx,
+                    solver_region_constraint.without_spans(),
+                    u,
+                )
+                .with_spans(forall.span)
+            } else {
+                solver_region_constraint
+            };
             if let Some(assert_on_exit) = &forall.assert_on_exit {
                 self.check_test_binder_region_constraints(forall.span, assert_on_exit, &constraint);
             }

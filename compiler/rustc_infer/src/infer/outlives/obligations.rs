@@ -141,19 +141,12 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn register_solver_region_constraint(&self, c: SolverRegionConstraint<'tcx>) {
+        if c.is_true() {
+            return;
+        }
         let mut inner = self.inner.borrow_mut();
-
-        let old_constraint = inner.solver_region_constraint_storage.get_constraint();
-        let new_constraint = rustc_type_ir::region_constraint::RegionConstraint::build_and(
-            c,
-            old_constraint.clone(),
-        );
-
-        // FIXME(-Zassumptions-on-binders): This is pretty bad for perf, we don't make incremental
-        // changes to the region constraints, instead we just rewrite the entire thing every time
-        // and store the old version.
-        inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });
-        inner.solver_region_constraint_storage.overwrite(new_constraint);
+        inner.undo_log.push(UndoLog::PushSolverRegionConstraint);
+        inner.solver_region_constraint_storage.push(c);
     }
 
     pub fn register_type_outlives_constraint(
@@ -250,16 +243,27 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.freeze(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, self);
+        for constraint in self.take_solver_region_constraints() {
+            let outlives = TypeOutlives::new(
+                self,
+                self.tcx,
+                outlives_env.region_bound_pairs(),
+                None,
+                outlives_env.known_type_outlives(),
+            );
+            self.destructure_solver_region_constraints(assumptions.clone(), outlives, constraint);
+        }
     }
 
     pub fn destructure_solver_region_constraints_for_borrowck(
         &self,
         // this is always ConstraintConversion but lol
-        conversion: impl TypeOutlivesDelegate<'tcx>,
+        mut conversion: impl TypeOutlivesDelegate<'tcx>,
         known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
         region_bound_pairs: &RegionBoundPairs<'tcx>,
         region_outlives: TransitiveRelation<RegionVid>,
+        implicit_region_bound: ty::Region<'tcx>,
+        pending: Vec<SolverRegionConstraint<'tcx>>,
     ) {
         let assumptions = region_constraint::Assumptions::new(
             self,
@@ -267,59 +271,166 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, conversion);
+        for constraint in pending.into_iter().chain(self.take_solver_region_constraints()) {
+            let outlives = TypeOutlives::new(
+                &mut conversion,
+                self.tcx,
+                region_bound_pairs,
+                Some(implicit_region_bound),
+                known_type_outlives,
+            );
+            self.destructure_solver_region_constraints(assumptions.clone(), outlives, constraint);
+        }
     }
 
-    #[instrument(level = "debug", skip(self, conversion))]
+    #[instrument(level = "debug", skip(self, outlives))]
     pub fn destructure_solver_region_constraints(
         &self,
-        assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
-        mut conversion: impl TypeOutlivesDelegate<'tcx>,
+        assumptions: region_constraint::Assumptions<TyCtxt<'tcx>>,
+        mut outlives: TypeOutlives<'_, 'tcx, impl TypeOutlivesDelegate<'tcx>>,
+        constraint: SolverRegionConstraint<'tcx>,
     ) {
-        assert!(self.tcx.assumptions_on_binders());
+        assert!(self.tcx.uses_solver_region_constraints());
         assert!(self.next_trait_solver());
 
-        let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
-        debug!(?constraint);
-        let constraint = region_constraint::destructure_type_outlives_constraints_in_root(
-            self,
-            constraint,
-            &assumptions,
-        );
-        debug!(?constraint);
-        let constraint = region_constraint::propagate_ambiguity(constraint);
-        debug!(?constraint);
+        for leaf in constraint.and_constraint.0 {
+            if let Some((ty, region, span)) = self.root_type_outlives_from_solver_leaf(&leaf) {
+                let origin = SubregionOrigin::SolverRegionConstraint(span);
+                let category = origin.to_constraint_category();
+                outlives.type_must_outlive(origin, ty, region, category);
+            } else if let LeafRegionConstraint::RegionOutlives(sup, sub, span) = leaf {
+                let origin = SubregionOrigin::SolverRegionConstraint(span);
+                let category = origin.to_constraint_category();
+                outlives.delegate.push_sub_region_constraint(
+                    origin, // we flip these because regionck is silly :>
+                    sub, sup, category,
+                );
+            } else {
+                let span = leaf.span();
+                let bound = self.solver_leaf_as_verify_bound(leaf, &assumptions, &mut outlives);
+                if !bound.must_hold() {
+                    outlives
+                        .delegate
+                        .push_verify_bound(SubregionOrigin::SolverRegionConstraint(span), bound);
+                }
+            }
+        }
 
-        // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
-        for c in constraint.and_constraint.0.into_iter().chain(
-            constraint
+        if !constraint.or_constraint.is_true() {
+            let span = constraint
                 .or_constraint
                 .0
-                .into_iter()
-                .flat_map(|and_constraint| and_constraint.0.into_iter()),
-        ) {
-            use LeafRegionConstraint::*;
-
-            match c {
-                Ambiguity(span) => {
-                    self.dcx()
-                        .struct_span_err(
-                            span,
-                            "unable to satisfy constraints involving placeholders due to unknown implied bounds",
+                .iter()
+                .flat_map(|and| and.0.iter())
+                .map(|leaf| leaf.span())
+                .find(|span| !span.is_dummy())
+                .unwrap_or(rustc_span::DUMMY_SP);
+            let bound = VerifyBound::AnyBound(
+                constraint
+                    .or_constraint
+                    .0
+                    .into_iter()
+                    .map(|and| {
+                        VerifyBound::AllBounds(
+                            and.0
+                                .into_iter()
+                                .map(|leaf| {
+                                    self.solver_leaf_as_verify_bound(
+                                        leaf,
+                                        &assumptions,
+                                        &mut outlives,
+                                    )
+                                })
+                                .collect(),
                         )
-                        .emit();
-                }
-                RegionOutlives(a, b, span) => {
-                    let origin = SubregionOrigin::SolverRegionConstraint(span);
-                    let category = origin.to_constraint_category();
-                    conversion.push_sub_region_constraint(
-                        origin, // we flip these because regionck is silly :>
-                        b, a, category,
-                    );
-                }
-                AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => {
-                    unreachable!()
-                }
+                    })
+                    .collect(),
+            );
+            if !bound.must_hold() {
+                outlives
+                    .delegate
+                    .push_verify_bound(SubregionOrigin::SolverRegionConstraint(span), bound);
+            }
+        }
+    }
+
+    fn root_type_outlives_from_solver_leaf(
+        &self,
+        leaf: &LeafRegionConstraint<TyCtxt<'tcx>, rustc_span::Span>,
+    ) -> Option<(Ty<'tcx>, Region<'tcx>, rustc_span::Span)> {
+        let (ty, region, span) = match leaf {
+            LeafRegionConstraint::PlaceholderTyOutlives(ty, region, span) => (*ty, *region, *span),
+            LeafRegionConstraint::AliasTyOutlivesViaEnv(bound, span) => {
+                let (alias, region) = bound.no_bound_vars()?;
+                (alias.to_ty(self.tcx, ty::IsRigid::yes_if_next_solver(self.tcx)), region, *span)
+            }
+            _ => return None,
+        };
+        let (ty, region) = self.deeply_resolve_via_unification_table((ty, region));
+        // A region variable created under a binder can still be related to an
+        // outer region. Keep its outlives obligation for ordinary region
+        // inference; its creation universe does not make it a placeholder.
+        // Variables already resolved to placeholders were replaced above.
+        (!(ty, region).has_escaping_bound_vars()
+            && !ty.has_non_region_infer()
+            && !ty.has_non_rigid_aliases()
+            && rustc_type_ir::max_universe_of_placeholders(self, (ty, region)).is_root())
+        .then_some((ty, region, span))
+    }
+
+    fn solver_leaf_as_verify_bound(
+        &self,
+        leaf: LeafRegionConstraint<TyCtxt<'tcx>, rustc_span::Span>,
+        assumptions: &region_constraint::Assumptions<TyCtxt<'tcx>>,
+        outlives: &mut TypeOutlives<'_, 'tcx, impl TypeOutlivesDelegate<'tcx>>,
+    ) -> VerifyBound<'tcx> {
+        if let Some((ty, region, span)) = self.root_type_outlives_from_solver_leaf(&leaf) {
+            return outlives.verify_type_outlives(
+                SubregionOrigin::SolverRegionConstraint(span),
+                ty,
+                region,
+            );
+        }
+        match leaf {
+            LeafRegionConstraint::RegionOutlives(sup, sub, _) => {
+                VerifyBound::RegionOutlives(ty::OutlivesClause(sup, sub))
+            }
+            LeafRegionConstraint::Ambiguity(_) => VerifyBound::AnyBound(vec![]),
+            leaf @ (LeafRegionConstraint::AliasTyOutlivesViaEnv(..)
+            | LeafRegionConstraint::PlaceholderTyOutlives(..)) => {
+                let constraint = region_constraint::destructure_type_outlives_constraints_in_root(
+                    self,
+                    SolverRegionConstraint::new_leaf(leaf),
+                    assumptions,
+                );
+                let mut bounds = constraint
+                    .and_constraint
+                    .0
+                    .into_iter()
+                    .map(|leaf| self.solver_leaf_as_verify_bound(leaf, assumptions, outlives))
+                    .collect::<Vec<_>>();
+                bounds.push(VerifyBound::AnyBound(
+                    constraint
+                        .or_constraint
+                        .0
+                        .into_iter()
+                        .map(|and| {
+                            VerifyBound::AllBounds(
+                                and.0
+                                    .into_iter()
+                                    .map(|leaf| {
+                                        self.solver_leaf_as_verify_bound(
+                                            leaf,
+                                            assumptions,
+                                            outlives,
+                                        )
+                                    })
+                                    .collect(),
+                            )
+                        })
+                        .collect(),
+                ));
+                VerifyBound::AllBounds(bounds)
             }
         }
     }
@@ -337,14 +448,16 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn process_registered_region_obligations(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
 
-        if self.tcx.assumptions_on_binders() {
-            self.destructure_solver_region_constraints_for_regionck(outlives_env);
-        }
-
         // Must loop since the process of normalizing may itself register region obligations.
         for iteration in 0.. {
+            if self.tcx.uses_solver_region_constraints() && self.has_solver_region_constraints() {
+                self.destructure_solver_region_constraints_for_regionck(outlives_env);
+            }
             let my_region_obligations = self.take_registered_region_obligations();
-            if my_region_obligations.is_empty() {
+            if my_region_obligations.is_empty()
+                && (!self.tcx.uses_solver_region_constraints()
+                    || !self.has_solver_region_constraints())
+            {
                 break;
             }
 
@@ -447,12 +560,31 @@ pub trait TypeOutlivesDelegate<'tcx> {
         a: ty::Region<'tcx>,
         bound: VerifyBound<'tcx>,
     );
+
+    fn push_verify_bound(&mut self, origin: SubregionOrigin<'tcx>, bound: VerifyBound<'tcx>);
 }
 
 impl<'cx, 'tcx, D> TypeOutlives<'cx, 'tcx, D>
 where
     D: TypeOutlivesDelegate<'tcx>,
 {
+    fn verify_type_outlives(
+        &mut self,
+        origin: SubregionOrigin<'tcx>,
+        ty: Ty<'tcx>,
+        region: Region<'tcx>,
+    ) -> VerifyBound<'tcx> {
+        let mut bounds = Vec::new();
+        {
+            let delegate = VerifyOutlivesDelegate { tcx: self.tcx, bounds: &mut bounds };
+            let mut outlives =
+                TypeOutlives { delegate, tcx: self.tcx, verify_bound: self.verify_bound.clone() };
+            let category = origin.to_constraint_category();
+            outlives.type_must_outlive(origin, ty, region, category);
+        }
+        VerifyBound::AllBounds(bounds)
+    }
+
     pub fn new(
         delegate: D,
         tcx: TyCtxt<'tcx>,
@@ -739,5 +871,72 @@ impl<'cx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'tcx> {
         bound: VerifyBound<'tcx>,
     ) {
         self.verify_generic_bound(origin, kind, a, bound)
+    }
+
+    fn push_verify_bound(&mut self, origin: SubregionOrigin<'tcx>, bound: VerifyBound<'tcx>) {
+        self.inner.borrow_mut().unwrap_region_constraints().add_verify_bound(
+            crate::infer::region_constraints::VerifyBoundCheck { span: origin.span(), bound },
+        );
+    }
+}
+
+struct VerifyOutlivesDelegate<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    bounds: &'a mut Vec<VerifyBound<'tcx>>,
+}
+
+impl<'tcx> TypeOutlivesDelegate<'tcx> for VerifyOutlivesDelegate<'_, 'tcx> {
+    fn push_sub_region_constraint(
+        &mut self,
+        _origin: SubregionOrigin<'tcx>,
+        sub: Region<'tcx>,
+        sup: Region<'tcx>,
+        _category: ConstraintCategory<'tcx>,
+    ) {
+        self.bounds.push(VerifyBound::RegionOutlives(ty::OutlivesClause(sup, sub)));
+    }
+
+    fn push_verify(
+        &mut self,
+        _origin: SubregionOrigin<'tcx>,
+        kind: GenericKind<'tcx>,
+        region: Region<'tcx>,
+        bound: VerifyBound<'tcx>,
+    ) {
+        self.bounds.push(VerifyBound::TypeOutlives {
+            subject: kind.to_ty(self.tcx),
+            region,
+            bound: Box::new(bound),
+        });
+    }
+
+    fn push_verify_bound(&mut self, _origin: SubregionOrigin<'tcx>, bound: VerifyBound<'tcx>) {
+        self.bounds.push(bound);
+    }
+}
+
+impl<'tcx, D: TypeOutlivesDelegate<'tcx> + ?Sized> TypeOutlivesDelegate<'tcx> for &mut D {
+    fn push_sub_region_constraint(
+        &mut self,
+        origin: SubregionOrigin<'tcx>,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+        constraint_category: ConstraintCategory<'tcx>,
+    ) {
+        (**self).push_sub_region_constraint(origin, a, b, constraint_category)
+    }
+
+    fn push_verify(
+        &mut self,
+        origin: SubregionOrigin<'tcx>,
+        kind: GenericKind<'tcx>,
+        a: ty::Region<'tcx>,
+        bound: VerifyBound<'tcx>,
+    ) {
+        (**self).push_verify(origin, kind, a, bound)
+    }
+
+    fn push_verify_bound(&mut self, origin: SubregionOrigin<'tcx>, bound: VerifyBound<'tcx>) {
+        (**self).push_verify_bound(origin, bound)
     }
 }

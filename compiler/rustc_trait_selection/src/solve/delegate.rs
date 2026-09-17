@@ -224,6 +224,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 Outcome::TriviallyHolds
             }
             ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(outlives)) => {
+                if self.tcx.next_trait_solver_globally()
+                    && goal
+                        .param_env
+                        .caller_bounds()
+                        .any(|clause| clause.as_projection_clause().is_some())
+                {
+                    return Outcome::NoFastPath;
+                }
                 if outlives.has_escaping_bound_vars() {
                     return Outcome::NoFastPath;
                 }

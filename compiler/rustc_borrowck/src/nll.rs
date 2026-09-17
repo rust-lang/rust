@@ -91,8 +91,13 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
 ) -> Option<ClosureRegionRequirements<'tcx>> {
     // FIXME(#146079): we shouldn't have to clone all this stuff here.
     // Computing the region graph should take at least some of it by reference/`Rc`.
+    let mut constraints = constraints.clone();
+    // Standalone alternatives do not produce closure requirements. Check them
+    // only after opaque equalities have been applied; the original constraints
+    // retain them for the final solve.
+    constraints.verify_bounds.clear();
     let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
-        constraints.clone(),
+        constraints,
         &universal_region_relations,
         infcx,
     );
