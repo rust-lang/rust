@@ -28,7 +28,7 @@ use crate::dep_graph::{DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::mono::MonoItem;
-use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
+use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder, forward_all_decoder_methods_to};
 use crate::ty::{self, Ty, TyCtxt};
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
@@ -529,7 +529,9 @@ impl<'a, 'tcx> rustc_type_ir::InternerDecoder for CacheDecoder<'a, 'tcx> {
     }
 }
 
-crate::implement_ty_decoder!(CacheDecoder<'a, 'tcx>);
+impl<'a, 'tcx> Decoder for CacheDecoder<'a, 'tcx> {
+    forward_all_decoder_methods_to!(|self| self.opaque);
+}
 
 // This ensures that the `Decodable<opaque::Decoder>::decode` specialization for `Vec<u8>` is used
 // when a `CacheDecoder` is passed to `Decodable::decode`. Unfortunately, we have to manually opt
