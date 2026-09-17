@@ -571,7 +571,7 @@ impl<'a> TraitDef<'a> {
         methods: impl Iterator<Item = Box<ast::AssocItem>>,
         is_packed: bool,
     ) -> Box<ast::Item> {
-        let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
+        let trait_path = self.path.to_path(cx, self.span);
 
         // Transform associated types from `deriving::ty::Ty` into `ast::AssocItem`
         let associated_types = self.associated_types.iter().map(|&(ident, ref type_def)| {
@@ -589,7 +589,7 @@ impl<'a> TraitDef<'a> {
                     generics: Generics::default(),
                     after_where_clause: ast::WhereClause::default(),
                     bounds: ThinVec::new(),
-                    ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
+                    ty: Some(type_def.to_ty(cx, self.span)),
                 })),
                 tokens: None,
             })
@@ -613,9 +613,7 @@ impl<'a> TraitDef<'a> {
                     let bounds: ThinVec<_> = self
                         .additional_bounds
                         .iter()
-                        .map(|p| {
-                            cx.trait_bound(p.to_path(cx, span, type_ident, generics), self.is_const)
-                        })
+                        .map(|p| cx.trait_bound(p.to_path(cx, span), self.is_const))
                         .chain(
                             // Add a bound for the current trait.
                             self.skip_path_as_bound.not().then(|| {
@@ -628,10 +626,7 @@ impl<'a> TraitDef<'a> {
                             // Add a `Copy` bound if required.
                             if is_packed && self.needs_copy_as_bound_if_packed {
                                 let p = deriving::path_std!(marker::Copy);
-                                Some(cx.trait_bound(
-                                    p.to_path(cx, span, type_ident, generics),
-                                    self.is_const,
-                                ))
+                                Some(cx.trait_bound(p.to_path(cx, span), self.is_const))
                             } else {
                                 None
                             }
@@ -697,12 +692,7 @@ impl<'a> TraitDef<'a> {
                     let mut bounds: ThinVec<_> = self
                         .additional_bounds
                         .iter()
-                        .map(|p| {
-                            cx.trait_bound(
-                                p.to_path(cx, self.span, type_ident, generics),
-                                self.is_const,
-                            )
-                        })
+                        .map(|p| cx.trait_bound(p.to_path(cx, self.span), self.is_const))
                         .collect();
 
                     // Require the current trait.
@@ -713,10 +703,7 @@ impl<'a> TraitDef<'a> {
                     // Add a `Copy` bound if required.
                     if is_packed && self.needs_copy_as_bound_if_packed {
                         let p = deriving::path_std!(marker::Copy);
-                        bounds.push(cx.trait_bound(
-                            p.to_path(cx, self.span, type_ident, generics),
-                            self.is_const,
-                        ));
+                        bounds.push(cx.trait_bound(p.to_path(cx, self.span), self.is_const));
                     }
 
                     if !bounds.is_empty() {
@@ -862,7 +849,7 @@ impl<'a> TraitDef<'a> {
                 )
             };
 
-            method_def.create_method(cx, self, type_ident, generics, body)
+            method_def.create_method(cx, self, body)
         });
 
         self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
@@ -905,7 +892,7 @@ impl<'a> TraitDef<'a> {
                 )
             };
 
-            method_def.create_method(cx, self, type_ident, generics, body)
+            method_def.create_method(cx, self, body)
         });
 
         let is_packed = false; // enums are never packed
@@ -969,8 +956,6 @@ impl<'a> MethodDef<'a> {
         &self,
         cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
-        type_ident: Ident,
-        generics: &Generics,
         body: BlockOrExpr,
     ) -> Option<Box<ast::AssocItem>> {
         // `assert_fields_are_eq` has an empty default implementation
@@ -992,7 +977,7 @@ impl<'a> MethodDef<'a> {
         let args = self_arg
             .into_iter()
             .chain(self.nonself_args.iter().map(|(ty, name)| {
-                let ast_ty = ty.to_ty(cx, span, type_ident, generics);
+                let ast_ty = ty.to_ty(cx, span);
                 let ident = Ident::new(*name, span);
                 cx.param(span, ident, ast_ty)
             }))
@@ -1001,7 +986,7 @@ impl<'a> MethodDef<'a> {
         let ret_type = if let Ty::Unit = &self.ret_ty {
             ast::FnRetTy::Default(span)
         } else {
-            ast::FnRetTy::Ty(self.ret_ty.to_ty(cx, span, type_ident, generics))
+            ast::FnRetTy::Ty(self.ret_ty.to_ty(cx, span))
         };
 
         let method_ident = Ident::new(self.name, span);
