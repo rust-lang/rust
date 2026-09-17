@@ -72,6 +72,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
     pub(super) def_indexes_remapping: FxHashMap<DefIndex, DefIndex>,
+    last_deterministic_index: u32,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -1453,8 +1454,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     #[inline]
-    fn map_index(&self, index: DefIndex) -> DefIndex {
-        self.def_indexes_remapping.get(&index).copied().unwrap_or(index)
+    fn map_index(&self, def_index: DefIndex) -> DefIndex {
+        let index = def_index.as_u32();
+
+        if index <= self.last_deterministic_index {
+            def_index
+        } else {
+            self.def_indexes_remapping.get(&def_index).copied().unwrap_or(def_index)
+        }
     }
 
     fn encode_def_ids(&mut self, sorted_ids: &[LocalDefId]) {
@@ -2621,7 +2628,9 @@ fn create_def_index_remapping(tcx: TyCtxt<'_>) -> (FxHashMap<DefIndex, DefIndex>
 
     let mut to_remap = vec![];
     let mut def_ids = vec![];
-    for idx in 0..defs.num_definitions() {
+
+    let start = tcx.definitions().last_deterministic_index().as_usize() + 1;
+    for idx in start..defs.num_definitions() {
         let def_id = LocalDefId { local_def_index: idx.into() };
         if let Some(data) = defs.def_path(def_id).data.last()
             && matches!(
@@ -2690,6 +2699,7 @@ fn with_encode_metadata_header(
         hygiene_ctxt: Default::default(),
         symbol_index_table: Default::default(),
         def_indexes_remapping: Default::default(),
+        last_deterministic_index: tcx.definitions().last_deterministic_index().as_u32(),
     };
 
     // Encode the rustc version string in a predictable location.
