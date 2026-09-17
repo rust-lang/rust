@@ -1297,7 +1297,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
     cx.with_param_env(local_did, |cx| {
         let inner = match trait_item.kind {
             hir::TraitItemKind::Const(ty, Some(default)) => {
-                ItemKind::ProvidedAssocConstant(Box::new(Constant {
+                ItemKind::AssocConstant(Box::new(Constant {
                     generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
                     body: clean_const_item_rhs(default, local_did),
                     type_: clean_ty(ty, cx),
@@ -1357,7 +1357,7 @@ pub(crate) fn clean_impl_item<'tcx>(
     let local_did = impl_.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match impl_.kind {
-            hir::ImplItemKind::Const(ty, expr) => ItemKind::ImplAssocConstant(Box::new(Constant {
+            hir::ImplItemKind::Const(ty, expr) => ItemKind::AssocConstant(Box::new(Constant {
                 generics: clean_generics(impl_.generics, cx),
                 body: clean_const_item_rhs(expr, local_did),
                 type_: clean_ty(ty, cx),
@@ -1409,7 +1409,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
 
             match assoc_item.container {
                 ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
-                    ItemKind::ImplAssocConstant(Box::new(Constant {
+                    ItemKind::AssocConstant(Box::new(Constant {
                         generics,
                         body: ConstantExpr::Extern { def_id: assoc_item.def_id },
                         type_: ty,
@@ -1417,7 +1417,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 }
                 ty::AssocContainer::Trait => {
                     if tcx.defaultness(assoc_item.def_id).has_value() {
-                        ItemKind::ProvidedAssocConstant(Box::new(Constant {
+                        ItemKind::AssocConstant(Box::new(Constant {
                             generics,
                             body: ConstantExpr::Extern { def_id: assoc_item.def_id },
                             type_: ty,

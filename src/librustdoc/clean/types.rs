@@ -653,10 +653,7 @@ impl Item {
         matches!(self.kind.unstripped(), ItemKind::RequiredAssocType(..))
     }
     pub(crate) fn is_associated_const(&self) -> bool {
-        matches!(
-            self.kind.unstripped(),
-            ItemKind::ProvidedAssocConstant(..) | ItemKind::ImplAssocConstant(..)
-        )
+        matches!(self.kind.unstripped(), ItemKind::AssocConstant(..))
     }
     pub(crate) fn is_required_associated_const(&self) -> bool {
         matches!(self.kind.unstripped(), ItemKind::RequiredAssocConstant(..))
@@ -871,8 +868,7 @@ impl Item {
             ItemKind::Variant(..) | ItemKind::Impl(..) => return None,
             // Trait items inherit the trait's visibility
             ItemKind::RequiredAssocConstant(..)
-            | ItemKind::ProvidedAssocConstant(..)
-            | ItemKind::ImplAssocConstant(..)
+            | ItemKind::AssocConstant(..)
             | ItemKind::AssocType(..)
             | ItemKind::RequiredAssocType(..)
             | ItemKind::RequiredAssocFunction(..)
@@ -924,9 +920,9 @@ pub(crate) enum ItemKind {
     /// This variant is used only as a placeholder for trait impls in order to correctly compute
     /// `doc_cfg` as trait impls are added to `clean::Crate` after we went through the whole tree.
     PlaceholderImpl,
-    /// A required method in a trait declaration meaning it's only a function signature.
+    /// A required assoc function in a trait.
     RequiredAssocFunction(Box<Function>, Defaultness),
-    /// A method in a trait impl or a provided method in a trait declaration.
+    /// An associated function in an impl or a provided associated function in a trait.
     ///
     /// Compared to [`ItemKind::RequiredAssocFn`], it also contains a method body.
     AssocFunction(Box<Function>, Defaultness),
@@ -947,13 +943,11 @@ pub(crate) enum ItemKind {
     DeclMacro(DeclMacro, MacroKinds),
     ProcMacro(ProcMacro),
     PrimitiveType(PrimitiveType),
-    /// A required associated constant in a trait declaration.
-    RequiredAssocConstant(Generics, Box<Type>),
     Constant(Box<Constant>),
-    /// An associated constant in a trait declaration with provided default value.
-    ProvidedAssocConstant(Box<Constant>),
-    /// An associated constant in an inherent impl or trait impl.
-    ImplAssocConstant(Box<Constant>),
+    /// A required associated constant in a trait.
+    RequiredAssocConstant(Generics, Box<Type>),
+    /// An associated constant in an impl or a provided associated constant in a trait.
+    AssocConstant(Box<Constant>),
     /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
@@ -1003,8 +997,7 @@ impl ItemKind {
             | Self::ProcMacro(_)
             | Self::PrimitiveType(_)
             | Self::RequiredAssocConstant(..)
-            | Self::ProvidedAssocConstant(..)
-            | Self::ImplAssocConstant(..)
+            | Self::AssocConstant(..)
             | Self::RequiredAssocType(..)
             | Self::AssocType(..)
             | Self::Stripped(_)

@@ -132,9 +132,9 @@ impl<'a> From<&'a clean::Item> for ItemType {
             ItemKind::ForeignStatic(..) => ItemType::Static,     // no ForeignStatic
             ItemKind::DeclMacro(..) => ItemType::Macro,
             ItemKind::PrimitiveType(..) => ItemType::Primitive,
-            ItemKind::RequiredAssocConstant(..)
-            | ItemKind::ProvidedAssocConstant(..)
-            | ItemKind::ImplAssocConstant(..) => ItemType::AssocConst,
+            ItemKind::RequiredAssocConstant(..) | ItemKind::AssocConstant(..) => {
+                ItemType::AssocConst
+            }
             ItemKind::RequiredAssocType(..) | ItemKind::AssocType(..) => ItemType::AssocType,
             ItemKind::ForeignType => ItemType::ForeignType,
             ItemKind::Keyword => ItemType::Keyword,

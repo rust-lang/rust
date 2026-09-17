@@ -76,8 +76,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | ItemKind::ForeignType
                 | ItemKind::AssocType(..)
                 | ItemKind::RequiredAssocConstant(..)
-                | ItemKind::ProvidedAssocConstant(..)
-                | ItemKind::ImplAssocConstant(..)
+                | ItemKind::AssocConstant(..)
                 | ItemKind::RequiredAssocType(..)
                 | ItemKind::Impl(_)
                 | ItemKind::PlaceholderImpl
