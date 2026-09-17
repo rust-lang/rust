@@ -85,7 +85,7 @@ fn check_method_is_structurally_compatible<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     compare_self_type(tcx, impl_m, trait_m, impl_trait_ref, delay)?;
     compare_number_of_generics(tcx, impl_m, trait_m, delay)?;
-    compare_generic_param_kinds(tcx, impl_m, trait_m, delay)?;
+    compare_generic_param_kinds(tcx, impl_m, trait_m, impl_trait_ref, delay)?;
     compare_number_of_method_arguments(tcx, impl_m, trait_m, delay)?;
     compare_synthetic_generics(tcx, impl_m, trait_m, delay)?;
     check_region_bounds_on_impl_item(tcx, impl_m, trait_m, delay)?;
@@ -2063,6 +2063,7 @@ fn compare_generic_param_kinds<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_item: ty::AssocItem,
     trait_item: ty::AssocItem,
+    impl_trait_ref: ty::TraitRef<'tcx>,
     delay: bool,
 ) -> Result<(), ErrorGuaranteed> {
     assert_eq!(impl_item.tag(), trait_item.tag());
@@ -2076,20 +2077,61 @@ fn compare_generic_param_kinds<'tcx>(
         })
     };
 
+    // Map the trait item's generic parameters into the impl item's generic context.
+    let trait_to_impl_args = ty::GenericArgs::identity_for_item(tcx, impl_item.def_id).rebase_onto(
+        tcx,
+        impl_item.container_id(tcx),
+        impl_trait_ref.args,
+    );
+
+    let const_param_tys_match = |param_impl_def_id, param_trait_def_id| {
+        let unnormalized_impl_ty = tcx.type_of(param_impl_def_id);
+        let unnormalized_trait_ty = tcx.type_of(param_trait_def_id);
+
+        if unnormalized_impl_ty == unnormalized_trait_ty {
+            return true;
+        }
+
+        let unnormalized_impl_ty = unnormalized_impl_ty.instantiate_identity();
+        let unnormalized_trait_ty = unnormalized_trait_ty.instantiate(tcx, trait_to_impl_args);
+
+        if unnormalized_impl_ty.skip_norm_wip() == unnormalized_trait_ty.skip_norm_wip() {
+            return true;
+        }
+
+        let param_env = tcx.param_env(impl_item.def_id);
+        let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+        let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+        let cause = ObligationCause::new(
+            tcx.def_span(param_impl_def_id),
+            impl_item.def_id.expect_local(),
+            ObligationCauseCode::CompareImplItem {
+                impl_item_def_id: impl_item.def_id.expect_local(),
+                trait_item_def_id: trait_item.def_id,
+                kind: impl_item.kind,
+            },
+        );
+
+        let impl_ty = ocx.normalize(&cause, param_env, unnormalized_impl_ty);
+        let trait_ty = ocx.normalize(&cause, param_env, unnormalized_trait_ty);
+        if (impl_ty, trait_ty).references_error() {
+            return false;
+        }
+        ocx.eq(&cause, param_env, trait_ty, impl_ty).is_ok()
+    };
+
     for (param_impl, param_trait) in
         iter::zip(ty_const_params_of(impl_item.def_id), ty_const_params_of(trait_item.def_id))
     {
         use GenericParamDefKind::*;
         if match (&param_impl.kind, &param_trait.kind) {
-            (Const { .. }, Const { .. })
-                if tcx.type_of(param_impl.def_id) != tcx.type_of(param_trait.def_id) =>
-            {
-                true
+            (Const { .. }, Const { .. }) => {
+                !const_param_tys_match(param_impl.def_id, param_trait.def_id)
             }
             (Const { .. }, Type { .. }) | (Type { .. }, Const { .. }) => true,
             // this is exhaustive so that anyone adding new generic param kinds knows
             // to make sure this error is reported for them.
-            (Const { .. }, Const { .. }) | (Type { .. }, Type { .. }) => false,
+            (Type { .. }, Type { .. }) => false,
             (Lifetime { .. }, _) | (_, Lifetime { .. }) => {
                 bug!("lifetime params are expected to be filtered by `ty_const_params_of`")
             }
@@ -2146,7 +2188,7 @@ fn compare_impl_const<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     compare_const_directness(tcx, impl_const_item, trait_const_item)?;
     compare_number_of_generics(tcx, impl_const_item, trait_const_item, false)?;
-    compare_generic_param_kinds(tcx, impl_const_item, trait_const_item, false)?;
+    compare_generic_param_kinds(tcx, impl_const_item, trait_const_item, impl_trait_ref, false)?;
     check_region_bounds_on_impl_item(tcx, impl_const_item, trait_const_item, false)?;
     compare_const_clause_entailment(tcx, impl_const_item, trait_const_item, impl_trait_ref)
 }
@@ -2324,7 +2366,7 @@ fn compare_impl_ty<'tcx>(
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     compare_number_of_generics(tcx, impl_ty, trait_ty, false)?;
-    compare_generic_param_kinds(tcx, impl_ty, trait_ty, false)?;
+    compare_generic_param_kinds(tcx, impl_ty, trait_ty, impl_trait_ref, false)?;
     check_region_bounds_on_impl_item(tcx, impl_ty, trait_ty, false)?;
     compare_type_clause_entailment(tcx, impl_ty, trait_ty, impl_trait_ref)?;
     check_type_bounds(tcx, trait_ty, impl_ty, impl_trait_ref)
