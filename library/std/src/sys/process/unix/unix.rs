@@ -754,10 +754,12 @@ impl Command {
                     old_fd.as_raw_fd(),
                     new_fd,
                 ))?;
-                cvt_nz(libc::posix_spawn_file_actions_addclose(
-                    file_actions.0.get(),
-                    old_fd.as_raw_fd(),
-                ))?;
+                if old_fd.as_raw_fd() != new_fd {
+                    cvt_nz(libc::posix_spawn_file_actions_addclose(
+                        file_actions.0.get(),
+                        old_fd.as_raw_fd(),
+                    ))?;
+                }
             }
             if let Some((f, cwd)) = addchdir {
                 cvt_nz(f(file_actions.0.get(), cwd.as_ptr()))?;
