@@ -633,8 +633,9 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
         let bounds = print_bounds(&t.bounds, false, cx);
 
         let required_types =
-            t.items.iter().filter(|m| m.is_required_associated_type()).collect::<Vec<_>>();
-        let provided_types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
+            t.items.iter().filter(|m| m.is_assoc_ty_without_body()).collect::<Vec<_>>();
+        let provided_types =
+            t.items.iter().filter(|m| m.is_assoc_ty_with_body()).collect::<Vec<_>>();
         let required_consts =
             t.items.iter().filter(|m| m.is_assoc_const_without_body()).collect::<Vec<_>>();
         let provided_consts =

@@ -405,12 +405,7 @@ fn build_type_alias(
     let type_ = clean_middle_ty(ty::Binder::dummy(ty), cx, Some(did), None);
     let inner_type = clean_ty_alias_inner_type(ty, cx, ret);
 
-    Box::new(clean::TypeAlias {
-        type_,
-        generics: clean_ty_generics(cx, did),
-        inner_type,
-        item_type: None,
-    })
+    Box::new(clean::TypeAlias { type_, generics: clean_ty_generics(cx, did), inner_type })
 }
 
 /// Builds all inherent implementations of an ADT (struct/union/enum) or Trait item/path/reexport.

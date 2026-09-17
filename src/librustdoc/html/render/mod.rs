@@ -1116,11 +1116,9 @@ fn assoc_const(
     })
 }
 
-fn assoc_type(
+fn assoc_ty(
     it: &clean::Item,
-    generics: &clean::Generics,
-    bounds: &[clean::GenericBound],
-    default: Option<&clean::Type>,
+    ty: &clean::AssocType,
     link: AssocItemLink<'_>,
     indent: usize,
     ending: Ending,
@@ -1135,16 +1133,17 @@ fn assoc_type(
             vis = visibility_print_with_space(it, cx),
             href = assoc_href_attr(it, link, cx).maybe_display(),
             name = it.name.as_ref().unwrap(),
-            generics = print_generics(generics, cx),
+            generics = print_generics(&ty.generics, cx),
         )?;
-        if !bounds.is_empty() {
-            write!(w, ": {}", print_generic_bounds(bounds, cx))?;
+        if !ty.bounds.is_empty() {
+            write!(w, ": {}", print_generic_bounds(&ty.bounds, cx))?;
         }
-        // Render the default before the where-clause which aligns with the new recommended style. See #89122.
-        if let Some(default) = default {
-            write!(w, " = {}", print_type(default, cx))?;
+        // Render the aliased type before the where-clause which aligns with the new recommended style. See #89122.
+        if let Some(type_) = &ty.type_ {
+            let type_ = type_.middle_type.as_ref().unwrap_or(&type_.type_);
+            write!(w, " = {}", print_type(type_, cx))?;
         }
-        write!(w, "{}", print_where_clause(generics, cx, indent, ending).maybe_display())
+        write!(w, "{}", print_where_clause(&ty.generics, cx, indent, ending).maybe_display())
     })
 }
 
@@ -1319,20 +1318,7 @@ fn render_assoc_item(
         ItemKind::AssocConstant(ct) => {
             assoc_const(item, ct, parent, link, indent, ending, cx).fmt(f)
         }
-        ItemKind::RequiredAssocType(generics, bounds) => {
-            assoc_type(item, generics, bounds, None, link, indent, ending, cx).fmt(f)
-        }
-        ItemKind::AssocType(ty, bounds) => assoc_type(
-            item,
-            &ty.generics,
-            bounds,
-            Some(ty.item_type.as_ref().unwrap_or(&ty.type_)),
-            link,
-            indent,
-            ending,
-            cx,
-        )
-        .fmt(f),
+        ItemKind::AssocType(ty) => assoc_ty(item, ty, link, indent, ending, cx).fmt(f),
         _ => panic!("render_assoc_item called on non-associated-item"),
     })
 }
@@ -1569,11 +1555,10 @@ fn render_deref_methods(
         .inner_impl()
         .items
         .iter()
-        .find_map(|item| match item.kind {
-            ItemKind::AssocType(ref t, _) => Some(match *t {
-                clean::TypeAlias { item_type: Some(ref type_), .. } => (type_, &t.type_),
-                _ => (&t.type_, &t.type_),
-            }),
+        .find_map(|item| match &item.kind {
+            ItemKind::AssocType(clean::AssocType { type_: Some(type_), .. }) => {
+                Some((type_.middle_type.as_ref().unwrap_or(&type_.type_), &type_.type_))
+            }
             _ => None,
         })
         .expect("Expected associated type binding");
@@ -1695,7 +1680,9 @@ fn notable_traits_decl_write_html<'cx>(
     for (impl_, trait_did) in notable_impls {
         write!(f, "<div class=\"where\">{}</div>", print_impl(impl_, false, cx))?;
         for it in &impl_.items {
-            let ItemKind::AssocType(tydef, ..) = &it.kind else { continue };
+            let ItemKind::AssocType(ty @ clean::AssocType { type_: Some(_), .. }) = &it.kind else {
+                continue;
+            };
 
             let empty_set = FxIndexSet::default();
             let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
@@ -1703,16 +1690,7 @@ fn notable_traits_decl_write_html<'cx>(
             write!(
                 f,
                 "<div class=\"where\">    {};</div>",
-                assoc_type(
-                    it,
-                    &tydef.generics,
-                    &[], // intentionally leaving out bounds
-                    Some(&tydef.type_),
-                    src_link,
-                    0,
-                    Ending::Newline,
-                    cx,
-                )
+                assoc_ty(it, ty, src_link, 0, Ending::Newline, cx)
             )?;
         }
     }
@@ -2038,14 +2016,14 @@ fn render_impl(
                         )?;
                     }
                 }
-                ItemKind::RequiredAssocType(generics, bounds) => {
+                ItemKind::AssocType(ty) => {
                     if !matches!(render_mode, RenderMode::ForDeref { .. }) {
                         let source_id = format!("{item_type}.{name}");
                         let id = cx.derive_id(&source_id);
                         write!(
                             w,
                             "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
-                                {}",
+                            {}",
                             render_rightside(cx, item, render_mode),
                         )?;
                         if trait_.is_some() {
@@ -2055,41 +2033,9 @@ fn render_impl(
                         write!(
                             w,
                             "<h4 class=\"code-header\">{}</h4></section>",
-                            assoc_type(
+                            assoc_ty(
                                 item,
-                                generics,
-                                bounds,
-                                None,
-                                link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                                0,
-                                Ending::Newline,
-                                cx,
-                            ),
-                        )?;
-                    }
-                }
-                ItemKind::AssocType(tydef, _bounds) => {
-                    if !matches!(render_mode, RenderMode::ForDeref { .. }) {
-                        let source_id = format!("{item_type}.{name}");
-                        let id = cx.derive_id(&source_id);
-                        write!(
-                            w,
-                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
-                                {}",
-                            render_rightside(cx, item, render_mode),
-                        )?;
-                        if trait_.is_some() {
-                            // Anchors are only used on trait impls.
-                            write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
-                        }
-                        write!(
-                            w,
-                            "<h4 class=\"code-header\">{}</h4></section>",
-                            assoc_type(
-                                item,
-                                &tydef.generics,
-                                &[], // intentionally leaving out bounds
-                                Some(tydef.item_type.as_ref().unwrap_or(&tydef.type_)),
+                                ty,
                                 link.anchor(if trait_.is_some() { &source_id } else { &id }),
                                 0,
                                 Ending::Newline,
@@ -2122,16 +2068,14 @@ fn render_impl(
         // This order is because you can have associated constants used in associated types (like array
         // length), and both in associated functions. So with this order, when reading from top to
         // bottom, you should see items definitions before they're actually used most of the time.
-        let mut assoc_types = Vec::new();
+        let mut assoc_tys = Vec::new();
         let mut assoc_fns = Vec::new();
 
         if !impl_.is_negative_trait_impl() {
             for impl_item in &impl_.items {
                 match impl_item.kind {
                     ItemKind::AssocFunction(..) => assoc_fns.push(impl_item),
-                    ItemKind::RequiredAssocType(..) | ItemKind::AssocType(..) => {
-                        assoc_types.push(impl_item)
-                    }
+                    ItemKind::AssocType(..) => assoc_tys.push(impl_item),
                     ItemKind::AssocConstant(_) => {
                         // We render it directly since they're supposed to come first.
                         doc_impl_item(
@@ -2151,12 +2095,12 @@ fn render_impl(
                 }
             }
 
-            for assoc_type in assoc_types {
+            for assoc_ty in assoc_tys {
                 doc_impl_item(
                     &mut default_impl_items,
                     &mut impl_items,
                     cx,
-                    assoc_type,
+                    assoc_ty,
                     if trait_.is_some() { &i.impl_item } else { parent },
                     link,
                     render_mode,
@@ -2394,20 +2338,11 @@ fn render_impl_summary(
             write!(w, "{}", print_impl(inner_impl, use_absolute, cx))?;
             if show_def_docs {
                 for it in &inner_impl.items {
-                    if let ItemKind::AssocType(ref tydef, ref _bounds) = it.kind {
+                    if let ItemKind::AssocType(ty) = &it.kind {
                         write!(
                             w,
                             "<div class=\"where\">  {};</div>",
-                            assoc_type(
-                                it,
-                                &tydef.generics,
-                                &[], // intentionally leaving out bounds
-                                Some(&tydef.type_),
-                                AssocItemLink::Anchor(None),
-                                0,
-                                Ending::Newline,
-                                cx,
-                            )
+                            assoc_ty(it, ty, AssocItemLink::Anchor(None), 0, Ending::Newline, cx,)
                         )?;
                     }
                 }
