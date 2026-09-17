@@ -2,13 +2,14 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::Msrv;
+use clippy_utils::paths::{PathNS, lookup_path};
 use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Block, Body, HirId, Path, PathSegment, StabilityLevel, StableSince};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext as _, impl_lint_pass};
 use rustc_span::symbol::kw;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -148,6 +149,14 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                 },
             };
 
+            // Only the crate name is replaced, so the rest of the path has to name the same item in
+            // the target crate. `std::collections::Bound` for instance reaches `core::ops::Bound`
+            // through a legacy re-export, and `core::collections` does not exist.
+            if !resolves_in(cx, path, def_kind, def_id, replace_with) {
+                self.lint_if_finish(cx, first_segment.ident.span, LintPoint::Conflict);
+                return;
+            }
+
             self.lint_if_finish(
                 cx,
                 first_segment.ident.span,
@@ -216,6 +225,31 @@ fn emit_lints(cx: &LateContext<'_>, lint_points: Option<(Span, Vec<LintPoint>)>)
             format!("consider importing the item from `{replace_with}`"),
         );
     }
+}
+
+/// Checks whether `path` still resolves to `def_id` once its crate name is replaced with
+/// `replace_with`.
+///
+/// [`lookup_path`] is expensive, so this is only called once a path is about to be linted.
+fn resolves_in(cx: &LateContext<'_>, path: &Path<'_>, def_kind: DefKind, def_id: DefId, replace_with: &str) -> bool {
+    let ns = match def_kind.ns() {
+        Some(Namespace::TypeNS) => PathNS::Type,
+        Some(Namespace::ValueNS) => PathNS::Value,
+        Some(Namespace::MacroNS) => PathNS::Macro,
+        None => PathNS::Arbitrary,
+    };
+
+    let mut segments = Vec::with_capacity(path.segments.len());
+    segments.push(Symbol::intern(replace_with));
+    segments.extend(
+        path.segments
+            .iter()
+            .skip_while(|segment| segment.ident.name == kw::PathRoot)
+            .skip(1)
+            .map(|segment| segment.ident.name),
+    );
+
+    lookup_path(cx.tcx, ns, &segments).contains(&def_id)
 }
 
 /// Returns the first named segment of a [`Path`].

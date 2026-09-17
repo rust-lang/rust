@@ -288,9 +288,7 @@ impl SuggestedType {
         let maybe_args = maybe_args.as_deref().unwrap_or_default();
         let maybe_len = len_span
             .map(|sp| sp.get_text(cx).expect("spans are always crate-local"))
-            .map(|st| format!("; {st}"))
-            .unwrap_or_default();
-
+            .map_or_default(|st| format!("; {st}"));
         match self {
             Self::SliceRef(Mutability::Mut) => format!("&mut [{maybe_args}{maybe_len}]"),
             Self::SliceRef(Mutability::Not) => format!("&[{maybe_args}{maybe_len}]"),

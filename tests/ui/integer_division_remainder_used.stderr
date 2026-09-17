@@ -1,5 +1,5 @@
 error: use of `/` has been disallowed in this context
-  --> tests/ui/integer_division_remainder_used.rs:9:14
+  --> tests/ui/integer_division_remainder_used.rs:10:14
    |
 LL |         Self(self.0 / rhs.0)
    |              ^^^^^^^^^^^^^^
@@ -8,64 +8,75 @@ LL |         Self(self.0 / rhs.0)
    = help: to override `-D warnings` add `#[allow(clippy::integer_division_remainder_used)]`
 
 error: use of `%` has been disallowed in this context
-  --> tests/ui/integer_division_remainder_used.rs:17:14
+  --> tests/ui/integer_division_remainder_used.rs:18:14
    |
 LL |         Self(self.0 % rhs.0)
    |              ^^^^^^^^^^^^^^
 
 error: use of `/` has been disallowed in this context
-  --> tests/ui/integer_division_remainder_used.rs:26:13
+  --> tests/ui/integer_division_remainder_used.rs:27:13
    |
 LL |     let c = a / b;
    |             ^^^^^
 
 error: use of `%` has been disallowed in this context
-  --> tests/ui/integer_division_remainder_used.rs:28:13
+  --> tests/ui/integer_division_remainder_used.rs:29:13
    |
 LL |     let d = a % b;
    |             ^^^^^
 
 error: use of `/` has been disallowed in this context
-  --> tests/ui/integer_division_remainder_used.rs:30:13
+  --> tests/ui/integer_division_remainder_used.rs:31:13
    |
 LL |     let e = &a / b;
    |             ^^^^^^
 
 error: use of `%` has been disallowed in this context
-  --> tests/ui/integer_division_remainder_used.rs:32:13
+  --> tests/ui/integer_division_remainder_used.rs:33:13
    |
 LL |     let f = a % &b;
    |             ^^^^^^
 
 error: use of `/` has been disallowed in this context
-  --> tests/ui/integer_division_remainder_used.rs:34:13
+  --> tests/ui/integer_division_remainder_used.rs:35:13
    |
 LL |     let g = &a / &b;
    |             ^^^^^^^
 
 error: use of `%` has been disallowed in this context
-  --> tests/ui/integer_division_remainder_used.rs:36:13
+  --> tests/ui/integer_division_remainder_used.rs:37:13
    |
 LL |     let h = &10 % b;
    |             ^^^^^^^
 
 error: use of `/` has been disallowed in this context
-  --> tests/ui/integer_division_remainder_used.rs:38:13
+  --> tests/ui/integer_division_remainder_used.rs:39:13
    |
 LL |     let i = a / &4;
    |             ^^^^^^
 
 error: use of `/` has been disallowed in this context
-  --> tests/ui/integer_division_remainder_used.rs:43:5
+  --> tests/ui/integer_division_remainder_used.rs:44:5
    |
 LL |     j /= 2;
    |     ^^^^^^
 
 error: use of `%` has been disallowed in this context
-  --> tests/ui/integer_division_remainder_used.rs:45:5
+  --> tests/ui/integer_division_remainder_used.rs:46:5
    |
 LL |     j %= 3;
    |     ^^^^^^
 
-error: aborting due to 11 previous errors
+error: use of `%` has been disallowed in this context
+  --> tests/ui/integer_division_remainder_used.rs:60:13
+   |
+LL |             $a % $b
+   |             ^^^^^^^
+...
+LL |     let issue17048 = mac!(a, b);
+   |                      ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 12 previous errors
 

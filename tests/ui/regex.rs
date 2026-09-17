@@ -1,6 +1,6 @@
 //@require-annotations-for-level: WARN
 #![warn(clippy::invalid_regex, clippy::regex_creation_in_loops, clippy::trivial_regex)]
-#![expect(clippy::needless_borrows_for_generic_args)]
+#![expect(clippy::needless_borrows_for_generic_args, clippy::never_loop)]
 
 extern crate regex;
 
@@ -143,6 +143,112 @@ fn regex_creation_in_loops() {
 
     for i in 0..10 {
         let dependant_regex = Regex::new(&format!("{i}"));
+    }
+
+    // https://github.com/rust-lang/rust-clippy/issues/15484
+
+    fn issue_15484_break_noloop() {
+        loop {
+            let nested_regex = Regex::new("a.b.1");
+            break;
+        }
+    }
+
+    fn issue_15484_break_doublenest() {
+        loop {
+            loop {
+                let nested_regex = Regex::new("a.b.2");
+                //~^ ERROR: compiling a regex in a loop
+                break;
+            }
+        }
+    }
+
+    fn issue_15484_break_doublenest_print() {
+        loop {
+            println!("foo");
+            loop {
+                let nested_regex = Regex::new("a.b.2");
+                //~^ ERROR: compiling a regex in a loop
+                break;
+            }
+        }
+    }
+
+    fn issue_15484_break_doublenest_fncall() {
+        loop {
+            regex_creation_in_loops();
+            loop {
+                let nested_regex = Regex::new("a.b.2");
+                //~^ ERROR: compiling a regex in a loop
+                break;
+            }
+        }
+    }
+
+    // neither loop loops, so no lint
+    fn issue_15484_break_noloop_doublenest() {
+        'outer: loop {
+            loop {
+                let nested_regex = Regex::new("a.b.3");
+                break 'outer;
+            }
+        }
+    }
+
+    // neither loop loops, so no lint
+    fn issue_15484_panic_noloop_doublenest() {
+        loop {
+            loop {
+                let nested_regex = Regex::new("a.b.4");
+                panic!();
+            }
+        }
+    }
+
+    // the outer loop doesn't loop, but the inner loop does
+    fn issue_15484_panic_doublenest() {
+        loop {
+            loop {
+                let nested_regex = Regex::new("a.b.5");
+                //~^ ERROR: compiling a regex in a loop
+            }
+            panic!();
+        }
+    }
+
+    fn issue_15484_continue_doublenest() {
+        loop {
+            loop {
+                let nested_regex = Regex::new("a.b.6");
+                //~^ ERROR: compiling a regex in a loop
+                continue;
+            }
+        }
+    }
+
+    fn issue_15484_continue_outer_doublenest() {
+        'outer: loop {
+            regex_creation_in_loops();
+            loop {
+                let nested_regex = Regex::new("a.b.6");
+                //~^ ERROR: compiling a regex in a loop
+                continue 'outer;
+            }
+        }
+    }
+
+    fn issue_15484_if() {
+        loop {
+            if true {
+                let nested_regex = Regex::new("a.b.6");
+                //~^ ERROR: compiling a regex in a loop
+                if true {
+                    continue;
+                }
+                break;
+            }
+        }
     }
 }
 

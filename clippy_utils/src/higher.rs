@@ -7,7 +7,7 @@ use crate::res::MaybeDef as _;
 use crate::{is_expn_of, sym};
 
 use rustc_ast::ast;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, Arm, Block, Expr, ExprKind, HirId, LetStmt, LocalSource, LoopSource, MatchSource, Node, Pat, QPath,
     StructTailExpr,

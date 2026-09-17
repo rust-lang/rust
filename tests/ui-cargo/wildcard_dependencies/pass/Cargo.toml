@@ -7,3 +7,6 @@ publish = false
 
 [dependencies]
 regex = "1"
+
+[lints.cargo]
+unused_dependencies = "allow"

@@ -778,9 +778,7 @@ fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
     match (l, r) {
         (Glob(_), Glob(_)) => true,
         (Simple(l), Simple(r)) => both(l.as_ref(), r.as_ref(), |l, r| eq_id(*l, *r)),
-        (Nested { items: l, .. }, Nested { items: r, .. }) => {
-            over(l, r, |l, r| eq_use_tree(&l.inner, &r.inner))
-        }
+        (Nested { items: l, .. }, Nested { items: r, .. }) => over(l, r, |l, r| eq_use_tree(&l.inner, &r.inner)),
         _ => false,
     }
 }

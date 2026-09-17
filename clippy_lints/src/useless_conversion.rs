@@ -3,9 +3,9 @@ use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _, Maybe
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
 use clippy_utils::ty::{is_copy, same_type_modulo_regions};
-use clippy_utils::{get_parent_expr, is_ty_alias, sym};
+use clippy_utils::{get_parent_expr, in_automatically_derived, is_ty_alias, sym};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, PatKind};
 use rustc_infer::infer::TyCtxtInferExt as _;
@@ -435,7 +435,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             None,
                             hint,
                         );
-                    } else if name == sym::from_fn && same_type_modulo_regions(a, b) {
+                    } else if name == sym::from_fn
+                        && same_type_modulo_regions(a, b)
+                        && !in_automatically_derived(cx.tcx, e.hir_id)
+                    {
                         let mut app = Applicability::MachineApplicable;
                         let sugg = Sugg::hir_with_context(cx, arg, e.span.ctxt(), "<expr>", &mut app).maybe_paren();
                         let sugg_msg = format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));

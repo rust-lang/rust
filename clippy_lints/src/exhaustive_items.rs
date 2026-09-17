@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::indent_of;
+use rustc_attr_ir::find_attr;
 use rustc_errors::Applicability;
-use rustc_hir::{Item, ItemKind, find_attr};
+use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {

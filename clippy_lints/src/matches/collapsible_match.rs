@@ -7,6 +7,7 @@ use clippy_utils::usage::mutated_variables;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
     SpanlessEq, get_ref_operators, is_none_pattern, is_unit_expr, peel_blocks_with_stmt, peel_ref_operators,
+    span_contains_non_whitespace,
 };
 use rustc_ast::BorrowKind;
 use rustc_errors::{Applicability, MultiSpan};
@@ -34,6 +35,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, ar
                 arm.body,
                 arm.guard,
                 Some(els_arm.body),
+                arm.hir_id,
                 msrv,
                 only_wildcards_after,
             );
@@ -41,16 +43,30 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, ar
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 pub(super) fn check_if_let<'tcx>(
     cx: &LateContext<'tcx>,
     ctxt: SyntaxContext,
+    expr: &'tcx Expr<'_>,
     pat: &'tcx Pat<'_>,
     body: &'tcx Expr<'_>,
     else_expr: Option<&'tcx Expr<'_>>,
     let_expr: &'tcx Expr<'_>,
     msrv: Msrv,
 ) {
-    check_arm(cx, ctxt, false, pat, let_expr, body, None, else_expr, msrv, false);
+    check_arm(
+        cx,
+        ctxt,
+        false,
+        pat,
+        let_expr,
+        body,
+        None,
+        else_expr,
+        expr.hir_id,
+        msrv,
+        false,
+    );
 }
 
 #[expect(clippy::too_many_arguments, clippy::too_many_lines)]
@@ -63,6 +79,7 @@ fn check_arm<'tcx>(
     outer_then_body: &'tcx Expr<'tcx>,
     outer_guard: Option<&'tcx Expr<'tcx>>,
     outer_else_body: Option<&'tcx Expr<'tcx>>,
+    outer_hir_id: HirId,
     msrv: Msrv,
     only_wildcards_after: bool,
 ) {
@@ -151,10 +168,21 @@ fn check_arm<'tcx>(
         }
         && !pat_bindings_moved_or_mutated(cx, outer_pat, inner.cond)
     {
+        let outer_then_open_bracket = outer_then_body
+            .span
+            .split_at(1)
+            .0
+            .with_leading_whitespace(cx)
+            .into_span();
+        let contains_block = matches!(outer_then_body.kind, ExprKind::Block(..));
+        if contains_block && span_contains_non_whitespace(cx, outer_then_open_bracket.between(inner_expr.span), false) {
+            return;
+        }
+
         span_lint_hir_and_then(
             cx,
             COLLAPSIBLE_MATCH,
-            inner_expr.hir_id,
+            outer_hir_id,
             inner_expr.span,
             "this `if` can be collapsed into the outer `match`",
             |diag| {
@@ -166,13 +194,7 @@ fn check_arm<'tcx>(
                 let (paren_start, inner_if_span, paren_end) = peel_parens(cx, inner_expr.span);
                 let inner_if = inner_if_span.split_at(2).0;
                 let mut sugg = vec![(inner.then.span.shrink_to_lo(), "=> ".to_string())];
-                if matches!(outer_then_body.kind, ExprKind::Block(..)) {
-                    let outer_then_open_bracket = outer_then_body
-                        .span
-                        .split_at(1)
-                        .0
-                        .with_leading_whitespace(cx)
-                        .into_span();
+                if contains_block {
                     let outer_then_closing_bracket = {
                         let end = outer_then_body.span.shrink_to_hi();
                         end.with_lo(end.lo() - BytePos(1))

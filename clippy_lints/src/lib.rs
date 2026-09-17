@@ -26,6 +26,7 @@ extern crate rustc_abi;
 extern crate rustc_arena;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
+extern crate rustc_attr_ir;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
@@ -629,7 +630,7 @@ rustc_lint::late_lint_methods!(
         CopyAndPaste: ifs::CopyAndPaste<'tcx> = ifs::CopyAndPaste::new(tcx, conf),
         CopyIterator: copy_iterator::CopyIterator = copy_iterator::CopyIterator,
         UselessFormat: format::UselessFormat = format::UselessFormat::new(format_args.clone()),
-        Swap: swap::Swap = swap::Swap,
+        Swap: swap::Swap = swap::Swap::new(conf),
         PanickingOverflowChecks: panicking_overflow_checks::PanickingOverflowChecks = panicking_overflow_checks::PanickingOverflowChecks,
         NewWithoutDefault: new_without_default::NewWithoutDefault = <new_without_default::NewWithoutDefault>::default(),
         DisallowedNames: disallowed_names::DisallowedNames = disallowed_names::DisallowedNames::new(conf),
@@ -692,7 +693,7 @@ rustc_lint::late_lint_methods!(
         ToDigitIsSome: to_digit_is_some::ToDigitIsSome = to_digit_is_some::ToDigitIsSome::new(conf),
         LargeStackArrays: large_stack_arrays::LargeStackArrays = large_stack_arrays::LargeStackArrays::new(conf),
         LargeConstArrays: large_const_arrays::LargeConstArrays = large_const_arrays::LargeConstArrays::new(conf),
-        FloatingPointArithmetic: floating_point_arithmetic::FloatingPointArithmetic = floating_point_arithmetic::FloatingPointArithmetic,
+        FloatingPointArithmetic: floating_point_arithmetic::FloatingPointArithmetic = floating_point_arithmetic::FloatingPointArithmetic::new(conf),
         AsConversions: as_conversions::AsConversions = as_conversions::AsConversions,
         LetUnderscore: let_underscore::LetUnderscore = let_underscore::LetUnderscore,
         ExcessiveBools: excessive_bools::ExcessiveBools = excessive_bools::ExcessiveBools::new(conf),
@@ -747,7 +748,6 @@ rustc_lint::late_lint_methods!(
         UnnecessaryOwnedEmptyStrings: unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings = unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings,
         FormatPushString: format_push_string::FormatPushString = format_push_string::FormatPushString::new(format_args.clone()),
         LargeIncludeFile: large_include_file::LargeIncludeFile = large_include_file::LargeIncludeFile::new(conf),
-        TrimSplitWhitespace: strings::TrimSplitWhitespace = strings::TrimSplitWhitespace,
         RcCloneInVecInit: rc_clone_in_vec_init::RcCloneInVecInit = rc_clone_in_vec_init::RcCloneInVecInit,
         SwapPtrToRef: swap_ptr_to_ref::SwapPtrToRef = swap_ptr_to_ref::SwapPtrToRef,
         TypeParamMismatch: mismatching_type_param_order::TypeParamMismatch = mismatching_type_param_order::TypeParamMismatch,
