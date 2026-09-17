@@ -8,13 +8,12 @@ use rustc_errors::{Applicability, Diag, struct_span_code_err};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, AssignOpKind, BinOpKind, Expr, ExprKind};
 use rustc_infer::traits::ObligationCauseCode;
-use rustc_middle::bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::{Span, Spanned, Symbol, sym};
+use rustc_span::{Span, Spanned, Symbol, bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, Obligation, ObligationCtxt};
 use tracing::debug;

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Polonius MIR dump</title>
+<style>
+.hidden {
+    display: none;
+}
+
+.section + .section {
+    margin-top: 20px;
+    border-top: 1px solid #aaa;
+    padding-top: 10px;
+}
+
+.traces .section-header {
+    margin-bottom: 10px;
+}
+
+.trace + .trace {
+    margin-top: 15px;
+}
+
+.trace ul {
+    margin: 5px 0px;
+    padding-left: 15px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- The NLL + Polonius MIR -->
+<div class="section">
+    <div class="section-header">Raw MIR dump</div>
+    <pre><code>$SECTION_MIR</code></pre>
+</div>
+
+<!-- Mermaid visualization of the polonius constraint graph -->
+<div class="section">
+    <div class="section-header">Polonius constraint graph</div>
+    <pre class='mermaid'>$SECTION_POLONIUS_CONSTRAINTS</pre>
+</div>
+
+<!-- The reachability of loans while traversing the polonius constraint graph -->
+<div class="section traces">
+    <div class="section-header">Loan Traces</div>
+    $SECTION_POLONIUS_REACHABILITY
+</div>
+
+<!-- Mermaid visualization of the CFG -->
+<div class="section">
+    <div class="section-header">Control-flow graph</div>
+    <pre class='mermaid'>$SECTION_CFG</pre>
+</div>
+
+<!-- Mermaid visualization of the NLL region graph -->
+<div class="section">
+    <div class="section-header">NLL regions</div>
+    <pre class='mermaid'>$SECTION_NLL_CONSTRAINTS</pre>
+</div>
+
+<!-- Mermaid visualization of the NLL SCC graph -->
+<div class="section">
+    <div class="section-header">NLL SCCs</div>
+    <pre class='mermaid'>$SECTION_NLL_SCCS</pre>
+</div>
+
+<script src='https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js'></script>
+$SECTION_INITIALIZATION
+<script>
+// Set up the loan traces buttons.
+document.querySelectorAll(".traces button").forEach(button => {
+    button.addEventListener("click", e => {
+        // We remove the class hiding the trace by default.
+        let loan = button.getAttribute("data-loan");
+        let trace = document.getElementById(`trace-${loan}`);
+        trace.classList.remove("hidden");
+
+        // And we also remove the button's container.
+        button.parentElement.remove();
+    });
+});
+</script>
+</body>
+</html>

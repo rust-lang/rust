@@ -495,6 +495,17 @@ impl<I: Interner> ExistentialProjection<I> {
         ExistentialTraitRef::new_from_args(interner, def_id, args)
     }
 
+    pub fn alias_kind(&self) -> ty::AliasTermKind<I> {
+        match self.term.kind() {
+            ty::TermKind::Ty(_) => {
+                ty::AliasTermKind::ProjectionTy { def_id: self.def_id.try_into().unwrap() }
+            }
+            ty::TermKind::Const(_) => {
+                ty::AliasTermKind::ProjectionConst { def_id: self.def_id.try_into().unwrap() }
+            }
+        }
+    }
+
     pub fn with_self_ty(&self, interner: I, self_ty: I::Ty) -> ProjectionClause<I> {
         // otherwise the escaping regions would be captured by the binders
         debug_assert!(!self_ty.has_escaping_bound_vars());
@@ -502,10 +513,7 @@ impl<I: Interner> ExistentialProjection<I> {
         ProjectionClause {
             projection_term: ty::AliasTerm::new(
                 interner,
-                interner.alias_term_kind_from_def_id(
-                    self.def_id.into(),
-                    ty::AliasConstInherentArgsKind::WithSelf,
-                ),
+                self.alias_kind(),
                 [self_ty.into()].iter().chain(self.args.iter()),
             ),
             term: self.term,

@@ -1,16 +1,16 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_index::bit_set::DenseBitSet;
+use rustc_index::IndexVec;
+use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::traits::TraitErrors;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
-use rustc_middle::ty::relate::Relate;
-use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{GenericArg, Ty, TypeVisitable, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
-use rustc_mir_dataflow::{Analysis, ResultsCursor};
+use rustc_mir_dataflow::{Analysis, MaybeReachable, ResultsCursor};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -55,6 +55,8 @@ pub(super) fn trace<'tcx>(
         location_map,
         local_use_map,
         move_data,
+        term_states: IndexVec::new(),
+        exit_states: IndexVec::new(),
         drop_data: FxIndexMap::default(),
     };
 
@@ -90,6 +92,10 @@ struct LivenessContext<'a, 'typeck, 'tcx> {
     /// Index indicating where each variable is assigned, used, or
     /// dropped.
     local_use_map: &'a LocalUseMap,
+
+    // Caches for the results of `initialized_at_terminator` and `initialized_at_exit`.
+    term_states: IndexVec<BasicBlock, Option<MaybeReachable<MixedBitSet<MovePathIndex>>>>,
+    exit_states: IndexVec<BasicBlock, Option<MaybeReachable<MixedBitSet<MovePathIndex>>>>,
 }
 
 struct DropData<'tcx> {
@@ -302,9 +308,11 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
             let location = self.cx.location_map.to_location(drop_point);
             debug_assert_eq!(self.cx.body().terminator_loc(location.block), location,);
 
-            if self.cx.initialized_at_terminator(location.block, mpi)
-                && self.drop_live_at.insert(drop_point)
-            {
+            if self.cx.initialized_at_terminator(location.block, mpi) {
+                let inserted = self.drop_live_at.insert(drop_point);
+                // Right now, we should not visit a drop_point twice.
+                // If we do, this will trigger a debug assert so we know we can optimize.
+                debug_assert!(inserted, "drop point should not have been visited yet");
                 self.drop_locations.push(location);
                 self.stack.push(drop_point);
             }
@@ -457,18 +465,31 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
     }
 }
 
-impl<'a, 'typeck, 'tcx> LivenessContext<'a, 'typeck, 'tcx> {
-    /// Computes the `MaybeInitializedPlaces` dataflow analysis if it hasn't been done already.
-    ///
-    /// In practice, the results of this dataflow analysis are rarely needed but can be expensive to
-    /// compute on big functions, so we compute them lazily as a fast path when:
-    /// - there are relevant live locals
-    /// - there are drop points for these relevant live locals.
-    ///
-    /// This happens as part of the drop-liveness computation: it's the only place checking for
-    /// maybe-initializedness of `MovePathIndex`es.
-    fn flow_inits(&mut self) -> &mut ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>> {
-        self.flow_inits.get_or_insert_with(|| {
+enum InitAtLocation {
+    Terminator,
+    Exit,
+}
+
+impl<'tcx> LivenessContext<'_, '_, 'tcx> {
+    fn body(&self) -> &Body<'tcx> {
+        self.typeck.body
+    }
+
+    /// Returns `true` if the local variable (or some part of it) is initialized
+    /// at the location defined by `init_at_location`.
+    fn initialized_at(
+        &mut self,
+        block: BasicBlock,
+        mpi: MovePathIndex,
+        init_at_location: InitAtLocation,
+    ) -> bool {
+        // Computes the `MaybeInitializedPlaces` dataflow analysis if it hasn't been done already.
+        //
+        // In practice, the results of this dataflow analysis are rarely needed but can be expensive to
+        // compute on big functions, so we compute them lazily as a fast path when:
+        // - there are relevant live locals
+        // - there are drop points for these relevant live locals.
+        let flow_inits = self.flow_inits.get_or_insert_with(|| {
             let tcx = self.typeck.tcx();
             let body = self.typeck.body;
             // FIXME: reduce the `MaybeInitializedPlaces` domain to the useful `MovePath`s.
@@ -488,21 +509,21 @@ impl<'a, 'typeck, 'tcx> LivenessContext<'a, 'typeck, 'tcx> {
                 .iterate_to_fixpoint(tcx, body, Some("borrowck"))
                 .into_results_cursor(body);
             flow_inits
-        })
-    }
-}
-
-impl<'tcx> LivenessContext<'_, '_, 'tcx> {
-    fn body(&self) -> &Body<'tcx> {
-        self.typeck.body
-    }
-
-    /// Returns `true` if the local variable (or some part of it) is initialized at the current
-    /// cursor position. Callers should call one of the `seek` methods immediately before to point
-    /// the cursor to the desired location.
-    fn initialized_at_curr_loc(&mut self, mpi: MovePathIndex) -> bool {
-        let flow_inits = self.flow_inits();
-        let state = flow_inits.get();
+        });
+        let states = match init_at_location {
+            InitAtLocation::Terminator => &mut self.term_states,
+            InitAtLocation::Exit => &mut self.exit_states,
+        };
+        let state = states.get_or_insert_with(block, || {
+            let terminator_location = self.typeck.body.terminator_loc(block);
+            match init_at_location {
+                InitAtLocation::Terminator => {
+                    flow_inits.seek_before_primary_effect(terminator_location)
+                }
+                InitAtLocation::Exit => flow_inits.seek_after_primary_effect(terminator_location),
+            }
+            flow_inits.get().clone()
+        });
         if state.contains(mpi) {
             return true;
         }
@@ -516,9 +537,7 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     /// DROP of some local variable will have an effect -- note that
     /// drops, as they may unwind, are always terminators.
     fn initialized_at_terminator(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        let terminator_location = self.body().terminator_loc(block);
-        self.flow_inits().seek_before_primary_effect(terminator_location);
-        self.initialized_at_curr_loc(mpi)
+        self.initialized_at(block, mpi, InitAtLocation::Terminator)
     }
 
     /// Returns `true` if the path `mpi` (or some part of it) is initialized at
@@ -527,16 +546,15 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     /// **Warning:** Does not account for the result of `Call`
     /// instructions.
     fn initialized_at_exit(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        let terminator_location = self.body().terminator_loc(block);
-        self.flow_inits().seek_after_primary_effect(terminator_location);
-        self.initialized_at_curr_loc(mpi)
+        self.initialized_at(block, mpi, InitAtLocation::Exit)
     }
 
     /// Stores the result that all regions in `value` are live for the
     /// points `live_at`.
     fn add_use_live_facts_for(&mut self, value: Ty<'tcx>, live_at: &IntervalSet<PointIndex>) {
         debug!("add_use_live_facts_for(value={:?})", value);
-        Self::make_all_regions_live(self.location_map, self.typeck, value, live_at);
+        Self::record_region_variance(self.typeck, value.into());
+        Self::make_all_regions_live(self.location_map, self.typeck, value.into(), live_at);
     }
 
     /// Some variable with type `live_ty` is "drop live" at `location`
@@ -577,6 +595,9 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
             }
         }
 
+        // Since the entire dropped local is live, record the variance of its regions.
+        Self::record_region_variance(self.typeck, dropped_ty.into());
+
         // All things in the `outlives` array may be touched by
         // the destructor and must be live at this point.
         for &kind in &drop_data.dropck_result.kinds {
@@ -591,10 +612,25 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
         }
     }
 
+    /// `live_kind` is the type of a  (use- or drop-) live local.
+    /// Record the variance of any region(s) appearing in it for Polonius. Does
+    /// nothing if Polonius is not active.
+    fn record_region_variance(typeck: &mut TypeChecker<'_, 'tcx>, live_kind: GenericArg<'tcx>) {
+        // When using `-Zpolonius=next`, we record the variance of each live region.
+        if let Some(polonius_context) = typeck.polonius_context.as_mut() {
+            record_live_region_variance(
+                typeck.infcx.tcx,
+                &mut polonius_context.live_region_variances,
+                typeck.universal_regions,
+                live_kind,
+            );
+        }
+    }
+
     fn make_all_regions_live(
         location_map: &DenseLocationMap,
         typeck: &mut TypeChecker<'_, 'tcx>,
-        value: impl TypeVisitable<TyCtxt<'tcx>> + Relate<TyCtxt<'tcx>>,
+        value: GenericArg<'tcx>,
         live_at: &IntervalSet<PointIndex>,
     ) {
         debug!("make_all_regions_live(value={:?})", value);
@@ -608,20 +644,10 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
             param_env: typeck.infcx.param_env,
             op: |r| {
                 let live_region_vid = typeck.universal_regions.to_region_vid(r);
-
                 typeck.constraints.liveness_constraints.add_points(live_region_vid, live_at);
             },
         });
-
-        // When using `-Zpolonius=next`, we record the variance of each live region.
-        if let Some(polonius_context) = typeck.polonius_context.as_mut() {
-            record_live_region_variance(
-                typeck.infcx.tcx,
-                &mut polonius_context.live_region_variances,
-                typeck.universal_regions,
-                value,
-            );
-        }
+        Self::record_region_variance(typeck, value);
     }
 }
 

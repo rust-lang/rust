@@ -2,7 +2,6 @@ error: could not evaluate constant pattern
   --> $DIR/type_const_in_pattern_too_generic.rs:10:12
    |
 LL | trait Trait {
-   | -----------
 LL |     #[rustc_always_gca]
 LL |     const ASSOC: usize;
    |     ------------------ constant defined here

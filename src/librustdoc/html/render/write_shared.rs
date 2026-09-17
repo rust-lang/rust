@@ -26,7 +26,6 @@ use std::{fmt, fs};
 
 use indexmap::IndexMap;
 use rustc_ast::join_path_syms;
-use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
@@ -57,6 +56,8 @@ use crate::html::static_files::{self, suffix_path};
 use crate::visit::DocVisitor;
 use crate::{DOC_RUST_LANG_ORG_VERSION, try_err, try_none};
 
+mod flock;
+
 pub(crate) fn write_shared(
     cx: &mut Context<'_>,
     krate: &Crate,
@@ -67,7 +68,7 @@ pub(crate) fn write_shared(
     cx.shared.fs.set_sync_only(true);
     let lock_file = cx.dst.join(".lock");
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
-    let _lock = try_err!(flock::Lock::new(&lock_file, true, true, true), &lock_file);
+    let _lock = try_err!(flock::Lock::new(&lock_file), &lock_file);
 
     let search_index = build_index(
         krate,

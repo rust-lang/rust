@@ -1,0 +1,85 @@
+error[E0038]: the trait `std::ops::Receiver` is not dyn compatible
+  --> $DIR/arbitrary-self-types-dyn-receiver.rs:14:5
+   |
+LL |     fn foo(self: &dyn Receiver<Target=Self>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::ops::Receiver` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/ops/deref.rs:LL:COL
+   |
+   = note: the trait is not dyn compatible because it opted out of dyn-compatibility
+
+error[E0038]: the trait `std::ops::Receiver` is not dyn compatible
+  --> $DIR/arbitrary-self-types-dyn-receiver.rs:14:18
+   |
+LL |     fn foo(self: &dyn Receiver<Target=Self>) {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::ops::Receiver` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/ops/deref.rs:LL:COL
+   |
+   = note: the trait is not dyn compatible because it opted out of dyn-compatibility
+
+error[E0038]: the trait `std::ops::Receiver` is not dyn compatible
+  --> $DIR/arbitrary-self-types-dyn-receiver.rs:14:19
+   |
+LL |     fn foo(self: &dyn Receiver<Target=Self>) {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ `std::ops::Receiver` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/ops/deref.rs:LL:COL
+   |
+   = note: the trait is not dyn compatible because it opted out of dyn-compatibility
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL -     fn foo(self: &dyn Receiver<Target=Self>) {
+LL +     fn foo(self: &Self) {
+   |
+
+error[E0038]: the trait `std::ops::Receiver` is not dyn compatible
+  --> $DIR/arbitrary-self-types-dyn-receiver.rs:7:18
+   |
+LL |     fn foo(self: &dyn Receiver<Target=Self>);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::ops::Receiver` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/ops/deref.rs:LL:COL
+   |
+   = note: the trait is not dyn compatible because it opted out of dyn-compatibility
+
+error[E0038]: the trait `std::ops::Receiver` is not dyn compatible
+  --> $DIR/arbitrary-self-types-dyn-receiver.rs:7:19
+   |
+LL |     fn foo(self: &dyn Receiver<Target=Self>);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ `std::ops::Receiver` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/ops/deref.rs:LL:COL
+   |
+   = note: the trait is not dyn compatible because it opted out of dyn-compatibility
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL -     fn foo(self: &dyn Receiver<Target=Self>);
+LL +     fn foo(self: &Self);
+   |
+
+error[E0038]: the trait `std::ops::Receiver` is not dyn compatible
+  --> $DIR/arbitrary-self-types-dyn-receiver.rs:24:17
+   |
+LL |     let y: &dyn Receiver<Target=Thing> = &x;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ `std::ops::Receiver` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/ops/deref.rs:LL:COL
+   |
+   = note: the trait is not dyn compatible because it opted out of dyn-compatibility
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

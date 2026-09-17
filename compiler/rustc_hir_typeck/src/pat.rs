@@ -22,11 +22,10 @@ use rustc_infer::infer::RegionVariableOrigin;
 use rustc_lint_defs::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt, Unnormalized};
-use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, bug, kw, span_bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use tracing::{debug, instrument, trace};
@@ -1915,9 +1914,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             last_subpat_span,
             format!("expected {} field{}, found {}", fields.len(), fields_ending, subpats.len()),
         );
-        if self.tcx.sess.source_map().is_multiline(qpath.span().between(last_subpat_span)) {
-            err.span_label(qpath.span(), "");
-        }
+        err.span_context(qpath.span());
         if self.tcx.sess.source_map().is_multiline(def_ident_span.between(last_field_def_span)) {
             err.span_label(def_ident_span, format!("{} defined here", res.descr()));
         }

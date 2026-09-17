@@ -241,6 +241,7 @@
 // Lints:
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
+#![warn(unreachable_pub)]
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
@@ -389,7 +390,6 @@
 #![feature(str_internals)]
 #![feature(sync_unsafe_cell)]
 #![feature(temporary_niche_types)]
-#![feature(trim_prefix_suffix)]
 #![feature(ub_checks)]
 #![feature(uint_carryless_mul)]
 #![feature(unsafe_pinned)]
@@ -640,6 +640,7 @@ pub mod hash;
 pub mod io;
 pub mod net;
 pub mod num;
+#[allow(unreachable_pub)]
 pub mod os;
 pub mod panic;
 #[unstable(feature = "pattern_type_macro", issue = "123646")]
@@ -730,6 +731,7 @@ pub mod arch {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub use std_detect::is_x86_feature_detected;
 
+#[allow(unreachable_pub)]
 mod sys;
 
 pub mod alloc;

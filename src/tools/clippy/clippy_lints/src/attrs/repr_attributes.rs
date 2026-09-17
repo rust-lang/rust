@@ -1,5 +1,4 @@
-use rustc_hir::attrs::ReprAttr;
-use rustc_hir::{Attribute, find_attr};
+use rustc_attr_ir::{Attribute, ReprAttr, find_attr};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 

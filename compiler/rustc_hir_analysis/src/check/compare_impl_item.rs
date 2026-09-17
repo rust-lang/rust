@@ -18,8 +18,7 @@ use rustc_middle::ty::{
     TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
     Unnormalized, Upcast,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{BytePos, DUMMY_SP, Span};
+use rustc_span::{BytePos, DUMMY_SP, Span, bug, span_bug};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -2124,11 +2123,11 @@ fn compare_generic_param_kinds<'tcx>(
             };
 
             let trait_header_span = tcx.def_ident_span(tcx.parent(trait_item.def_id)).unwrap();
-            err.span_label(trait_header_span, "");
+            err.span_context(trait_header_span);
             err.span_label(param_trait_span, make_param_message("expected", param_trait));
 
             let impl_header_span = tcx.def_span(tcx.parent(impl_item.def_id));
-            err.span_label(impl_header_span, "");
+            err.span_context(impl_header_span);
             err.span_label(param_impl_span, make_param_message("found", param_impl));
 
             let reported = err.emit_unless_delay(delay);

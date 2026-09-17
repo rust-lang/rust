@@ -281,16 +281,7 @@ impl<I: Interner> Relate<I> for ty::ExistentialProjection<I> {
         b: ty::ExistentialProjection<I>,
     ) -> RelateResult<I, ty::ExistentialProjection<I>> {
         if a.def_id != b.def_id {
-            Err(TypeError::ProjectionMismatched(ExpectedFound::new(
-                relation.cx().alias_term_kind_from_def_id(
-                    a.def_id.into(),
-                    ty::AliasConstInherentArgsKind::WithSelf,
-                ),
-                relation.cx().alias_term_kind_from_def_id(
-                    b.def_id.into(),
-                    ty::AliasConstInherentArgsKind::WithSelf,
-                ),
-            )))
+            Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.alias_kind(), b.alias_kind())))
         } else {
             let term = relation.relate_with_variance(
                 ty::Invariant,

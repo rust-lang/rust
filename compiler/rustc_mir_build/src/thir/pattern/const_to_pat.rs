@@ -11,13 +11,12 @@ use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::span_bug;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, Unnormalized,
 };
 use rustc_span::def_id::DefId;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, span_bug};
 use rustc_trait_selection::error_reporting::traits::ambiguity::{
     CandidateSource, compute_applicable_impls_for_diagnostics,
 };
@@ -85,7 +84,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 && let Some(def_id) = def_id.as_local()
             {
                 // Include the container item in the output.
-                err.span_label(self.tcx.def_span(self.tcx.local_parent(def_id)), "");
+                err.span_context(self.tcx.def_span(self.tcx.local_parent(def_id)));
             }
             if let ty::AliasConstKind::Projection { def_id }
             | ty::AliasConstKind::InherentSelf { def_id }
@@ -129,7 +128,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     {
                         // Display the `fn` name as well in the diagnostic, as the generic isn't
                         // in the same line and it could be confusing otherwise.
-                        err.span_label(ident, "");
+                        err.span_context(ident);
                     }
                 }
             }

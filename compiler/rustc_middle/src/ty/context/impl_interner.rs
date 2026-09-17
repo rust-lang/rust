@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Span, Symbol, bug};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::CanonicalInputData;
 use rustc_type_ir::{
@@ -218,71 +218,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type AdtDef = ty::AdtDef<'tcx>;
     fn adt_def(self, adt_def_id: DefId) -> Self::AdtDef {
         self.adt_def(adt_def_id)
-    }
-
-    fn alias_const_kind_from_def_id(
-        self,
-        def_id: Self::DefId,
-        inherent_args: ty::AliasConstInherentArgsKind,
-    ) -> ty::AliasConstKind<'tcx> {
-        match self.def_kind(def_id) {
-            DefKind::AssocConst => {
-                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) {
-                    match inherent_args {
-                        ty::AliasConstInherentArgsKind::WithSelf => {
-                            ty::AliasConstKind::InherentSelf { def_id }
-                        }
-                        ty::AliasConstInherentArgsKind::Impl => {
-                            ty::AliasConstKind::InherentImpl { def_id }
-                        }
-                    }
-                } else {
-                    ty::AliasConstKind::Projection { def_id }
-                }
-            }
-            DefKind::Const => ty::AliasConstKind::Free { def_id },
-            DefKind::AnonConst | DefKind::Ctor(_, CtorKind::Const) => {
-                ty::AliasConstKind::Anon { def_id }
-            }
-            kind => bug!("unexpected DefKind in AliasConst: {kind:?}"),
-        }
-    }
-
-    fn alias_term_kind_from_def_id(
-        self,
-        def_id: DefId,
-        inherent_args: ty::AliasConstInherentArgsKind,
-    ) -> ty::AliasTermKind<'tcx> {
-        match self.def_kind(def_id) {
-            DefKind::AssocTy => {
-                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) {
-                    ty::AliasTermKind::InherentTy { def_id }
-                } else {
-                    ty::AliasTermKind::ProjectionTy { def_id }
-                }
-            }
-            DefKind::AssocConst => {
-                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(def_id)) {
-                    match inherent_args {
-                        ty::AliasConstInherentArgsKind::WithSelf => {
-                            ty::AliasTermKind::InherentConstSelf { def_id }
-                        }
-                        ty::AliasConstInherentArgsKind::Impl => {
-                            ty::AliasTermKind::InherentConstImpl { def_id }
-                        }
-                    }
-                } else {
-                    ty::AliasTermKind::ProjectionConst { def_id }
-                }
-            }
-            DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy { def_id },
-            DefKind::TyAlias => ty::AliasTermKind::FreeTy { def_id },
-            DefKind::Const => ty::AliasTermKind::FreeConst { def_id },
-            DefKind::AnonConst | DefKind::Ctor(_, CtorKind::Const) => {
-                ty::AliasTermKind::AnonConst { def_id }
-            }
-            kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
-        }
     }
 
     fn trait_ref_and_own_args_for_alias(

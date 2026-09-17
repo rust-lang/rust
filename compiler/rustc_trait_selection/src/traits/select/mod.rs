@@ -9,7 +9,7 @@ use std::ops::ControlFlow;
 
 use hir::def::DefKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_errors::{Diag, EmissionGuarantee};
+use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
@@ -19,7 +19,6 @@ use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::relate::TypeRelation;
 use rustc_infer::traits::{ImplSource, PredicateObligations, TraitObligation};
 use rustc_macros::{TypeFoldable, TypeVisitable};
-use rustc_middle::bug;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -31,6 +30,7 @@ use rustc_middle::ty::{
     Unnormalized, Upcast, elaborate, may_use_unstable_feature,
 };
 use rustc_next_trait_solver::solve::AliasBoundKind;
+use rustc_span::bug;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -63,7 +63,7 @@ pub enum IntercrateAmbiguityCause<'tcx> {
 impl<'tcx> IntercrateAmbiguityCause<'tcx> {
     /// Emits notes when the overlap is caused by complex intercrate ambiguities.
     /// See #23980 for details.
-    pub fn add_intercrate_ambiguity_hint<G: EmissionGuarantee>(&self, err: &mut Diag<'_, G>) {
+    pub fn add_intercrate_ambiguity_hint<G>(&self, err: &mut Diag<'_, G>) {
         err.note(self.intercrate_ambiguity_hint());
     }
 
@@ -570,7 +570,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut result = EvaluatedToOk;
         for mut obligation in predicates {
             obligation.set_depth_from_parent(stack.depth());
-            let eval = self.evaluate_predicate_recursively(stack, obligation.clone())?;
+            let eval = self.evaluate_predicate_recursively(stack, obligation)?;
             if let EvaluatedToErr = eval {
                 // fast-path - EvaluatedToErr is the top of the lattice,
                 // so we don't need to look on the other predicates.
