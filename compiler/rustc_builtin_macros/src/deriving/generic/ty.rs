@@ -4,7 +4,7 @@
 use std::iter::once;
 
 pub(crate) use Ty::*;
-use rustc_ast::{self as ast, GenericArg, GenericParamKind, Generics, TyKind};
+use rustc_ast::{self as ast, GenericArg, Generics, TyKind};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
 use thin_vec::ThinVec;
@@ -106,25 +106,7 @@ impl Ty {
         generics: &Generics,
     ) -> ast::Path {
         match self {
-            Self_ => {
-                let params: Vec<_> = generics
-                    .params
-                    .iter()
-                    .map(|param| match param.kind {
-                        GenericParamKind::Lifetime => {
-                            GenericArg::Lifetime(ast::Lifetime { id: param.id, ident: param.ident })
-                        }
-                        GenericParamKind::Type { .. } => {
-                            GenericArg::Type(cx.ty_ident(span, param.ident))
-                        }
-                        GenericParamKind::Const { .. } => {
-                            GenericArg::Const(cx.const_ident(span, param.ident))
-                        }
-                    })
-                    .collect();
-
-                cx.path_all(span, false, vec![self_ty], params)
-            }
+            Self_ => cx.path_ident(span, Ident::new(kw::SelfUpper, span)),
             Path(p) => p.to_path(cx, span, self_ty, generics),
             AstTy(ty) => match &ty.kind {
                 TyKind::Path(_, path) => path.clone(),
