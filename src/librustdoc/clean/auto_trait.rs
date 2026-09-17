@@ -121,7 +121,7 @@ fn synthesize_auto_trait_impl<'tcx>(
             name: None,
             attrs: Default::default(),
             stability: None,
-            kind: clean::ItemKind::ImplItem(Box::new(clean::Impl {
+            kind: clean::ItemKind::Impl(Box::new(clean::Impl {
                 safety: hir::Safety::Safe,
                 generics,
                 trait_: Some(clean_trait_ref_with_constraints(cx, trait_ref, ThinVec::new())),
