@@ -831,6 +831,78 @@ fn file_test_io_seek_read_exact_write_all() {
 
 #[test]
 #[cfg(windows)]
+fn file_test_windows_fileext_trait() {
+    use crate::io::Result;
+    use crate::os::windows::fs::FileExt;
+
+    const MSG: &[u8] =
+        b"The Rust programming language helps you write faster, more reliable software.";
+
+    // Test when seek_read_exact(), seek_write_all() are called with empty bufferes.
+    // Importantly, no calls to seek_read() or seek_write() should be made, and therefore
+    // no syscalls should be made.
+    {
+        struct MockFile {}
+
+        impl FileExt for MockFile {
+            fn seek_read(&self, _buf: &mut [u8], _offset: u64) -> Result<usize> {
+                panic!("should not be called");
+            }
+
+            fn seek_write(&self, _buf: &[u8], _offset: u64) -> Result<usize> {
+                panic!("should not be called");
+            }
+        }
+
+        let mock_file = MockFile {};
+        check!(mock_file.seek_read_exact(&mut [], 0));
+        check!(mock_file.seek_read_exact(&mut [], 42));
+        check!(mock_file.seek_write_all(&[], 0));
+        check!(mock_file.seek_write_all(&[], 42));
+    }
+
+    // Test pathological case where seek_read(), seek_write() only do 1 byte per call.
+    {
+        struct MockFile {
+            base_offset: u64,
+        }
+
+        impl FileExt for MockFile {
+            fn seek_read(&self, buf: &mut [u8], offset: u64) -> Result<usize> {
+                let offset = (offset - self.base_offset) as usize;
+                buf[0..1].copy_from_slice(&MSG[offset..offset + 1]);
+                Ok(1)
+            }
+
+            fn seek_write(&self, buf: &[u8], offset: u64) -> Result<usize> {
+                let offset = (offset - self.base_offset) as usize;
+                assert_eq!(buf[0..1], MSG[offset..offset + 1]);
+                Ok(1)
+            }
+        }
+
+        // Offset is 0
+        {
+            let mock_file = MockFile { base_offset: 0 };
+            let mut buf = [0; MSG.len()];
+            check!(mock_file.seek_read_exact(&mut buf, 0));
+            assert_eq!(&buf, MSG);
+            check!(mock_file.seek_write_all(&buf, 0));
+        }
+
+        // Offset is 420
+        {
+            let mock_file = MockFile { base_offset: 420 };
+            let mut buf = [0; MSG.len()];
+            check!(mock_file.seek_read_exact(&mut buf, 420));
+            assert_eq!(&buf, MSG);
+            check!(mock_file.seek_write_all(&buf, 420));
+        }
+    }
+}
+
+#[test]
+#[cfg(windows)]
 fn test_seek_read_buf() {
     use crate::os::windows::fs::FileExt;
 
