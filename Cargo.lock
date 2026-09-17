@@ -734,7 +734,6 @@ dependencies = [
 name = "clippy_lints_internal"
 version = "0.0.1"
 dependencies = [
- "clippy_config",
  "clippy_utils",
  "itertools",
  "regex",
