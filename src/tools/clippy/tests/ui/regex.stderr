@@ -245,5 +245,89 @@ help: move the regex construction outside this loop
 LL |         for _ in 0..10 {
    |         ^^^^^^^^^^^^^^
 
-error: aborting due to 28 previous errors
+error: compiling a regex in a loop
+  --> tests/ui/regex.rs:160:36
+   |
+LL |                 let nested_regex = Regex::new("a.b.2");
+   |                                    ^^^^^^^^^^
+   |
+help: move the regex construction outside this loop
+  --> tests/ui/regex.rs:159:13
+   |
+LL |             loop {
+   |             ^^^^
+
+error: compiling a regex in a loop
+  --> tests/ui/regex.rs:171:36
+   |
+LL |                 let nested_regex = Regex::new("a.b.2");
+   |                                    ^^^^^^^^^^
+   |
+help: move the regex construction outside this loop
+  --> tests/ui/regex.rs:170:13
+   |
+LL |             loop {
+   |             ^^^^
+
+error: compiling a regex in a loop
+  --> tests/ui/regex.rs:182:36
+   |
+LL |                 let nested_regex = Regex::new("a.b.2");
+   |                                    ^^^^^^^^^^
+   |
+help: move the regex construction outside this loop
+  --> tests/ui/regex.rs:181:13
+   |
+LL |             loop {
+   |             ^^^^
+
+error: compiling a regex in a loop
+  --> tests/ui/regex.rs:213:36
+   |
+LL |                 let nested_regex = Regex::new("a.b.5");
+   |                                    ^^^^^^^^^^
+   |
+help: move the regex construction outside this loop
+  --> tests/ui/regex.rs:212:13
+   |
+LL |             loop {
+   |             ^^^^
+
+error: compiling a regex in a loop
+  --> tests/ui/regex.rs:223:36
+   |
+LL |                 let nested_regex = Regex::new("a.b.6");
+   |                                    ^^^^^^^^^^
+   |
+help: move the regex construction outside this loop
+  --> tests/ui/regex.rs:222:13
+   |
+LL |             loop {
+   |             ^^^^
+
+error: compiling a regex in a loop
+  --> tests/ui/regex.rs:234:36
+   |
+LL |                 let nested_regex = Regex::new("a.b.6");
+   |                                    ^^^^^^^^^^
+   |
+help: move the regex construction outside this loop
+  --> tests/ui/regex.rs:233:13
+   |
+LL |             loop {
+   |             ^^^^
+
+error: compiling a regex in a loop
+  --> tests/ui/regex.rs:244:36
+   |
+LL |                 let nested_regex = Regex::new("a.b.6");
+   |                                    ^^^^^^^^^^
+   |
+help: move the regex construction outside this loop
+  --> tests/ui/regex.rs:242:9
+   |
+LL |         loop {
+   |         ^^^^
+
+error: aborting due to 35 previous errors
 

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{eq_expr_value, sym};
+use clippy_utils::{eq_expr_value, is_in_const_context, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment};
 use rustc_lint::LateContext;
@@ -22,6 +22,10 @@ fn are_same_base_logs(cx: &LateContext<'_>, ctxt: SyntaxContext, expr_a: &Expr<'
 }
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    if is_in_const_context(cx) {
+        return;
+    }
+
     // check if expression of the form x.logN() / y.logN()
     if let ExprKind::Binary(
         Spanned {
