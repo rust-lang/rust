@@ -965,6 +965,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -980,6 +981,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -999,6 +1001,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -1014,6 +1017,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -1029,6 +1033,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -1044,6 +1049,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -1064,6 +1070,7 @@ fn f() {}
             expect![[r#"
                 ba all
                 ba any
+                ba false
                 ba feature
                 ba not
                 ba true

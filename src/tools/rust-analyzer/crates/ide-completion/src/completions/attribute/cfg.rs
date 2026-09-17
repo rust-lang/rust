@@ -87,8 +87,12 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_, '_
     }
 }
 
-const CFG_CONDITION: &[(&str, &str)] =
-    &[("all", "all($0)"), ("any", "any($0)"), ("not", "not($0)")];
+const CFG_CONDITION: &[(&str, &str)] = &[
+    ("all", "all($0)"),
+    ("any", "any($0)"),
+    ("not", "not($0)"),
+    ("false", "false"), // 'true' in 'potential_cfg'
+];
 
 const KNOWN_ARCH: [&str; 20] = [
     "aarch64",
