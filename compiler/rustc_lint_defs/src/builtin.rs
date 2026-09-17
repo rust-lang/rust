@@ -2964,7 +2964,7 @@ declare_lint! {
     "trailing semicolon in macro body used as expression",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #79813),
-        report_in_deps: true,
+        report_in_deps: false,
     };
 }
 
