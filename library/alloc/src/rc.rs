@@ -431,10 +431,11 @@ impl<T> Rc<T> {
         // the allocation while the strong destructor is running, even
         // if the weak pointer is stored inside the strong one.
         unsafe {
-            Self::from_inner(
-                Box::leak(Box::new(RcInner { strong: Cell::new(1), weak: Cell::new(1), value }))
-                    .into(),
-            )
+            Self::from_inner(Box::into_non_null(Box::new(RcInner {
+                strong: Cell::new(1),
+                weak: Cell::new(1),
+                value,
+            })))
         }
     }
 
@@ -578,14 +579,11 @@ impl<T> Rc<T> {
         // the allocation while the strong destructor is running, even
         // if the weak pointer is stored inside the strong one.
         unsafe {
-            Ok(Self::from_inner(
-                Box::leak(Box::try_new(RcInner {
-                    strong: Cell::new(1),
-                    weak: Cell::new(1),
-                    value,
-                })?)
-                .into(),
-            ))
+            Ok(Self::from_inner(Box::into_non_null(Box::try_new(RcInner {
+                strong: Cell::new(1),
+                weak: Cell::new(1),
+                value,
+            })?)))
         }
     }
 
@@ -2656,13 +2654,10 @@ impl<T: Default> Default for Rc<T> {
     fn default() -> Self {
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            Self::from_inner(
-                Box::leak(Box::write(
-                    Box::new_uninit(),
-                    RcInner { strong: Cell::new(1), weak: Cell::new(1), value: T::default() },
-                ))
-                .into(),
-            )
+            Self::from_inner(Box::into_non_null(Box::write(
+                Box::new_uninit(),
+                RcInner { strong: Cell::new(1), weak: Cell::new(1), value: T::default() },
+            )))
         }
     }
 }

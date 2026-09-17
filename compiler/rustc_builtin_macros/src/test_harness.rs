@@ -38,6 +38,7 @@ struct TestCtxt<'a> {
     def_site: Span,
     test_cases: Vec<Test>,
     reexport_test_harness_main: Option<Symbol>,
+    /// Value of a `#[test_runner]` attribute, if present.
     test_runner: Option<ast::Path>,
 }
 
@@ -266,7 +267,7 @@ fn generate_test_harness(
 /// #[rustc_main]
 /// pub fn main() {
 ///     extern crate test;
-///     test::test_main_static(&[
+///     test::test_main_env_args(&[
 ///         &test_const1,
 ///         &test_const2,
 ///         &test_const3,
@@ -286,16 +287,16 @@ fn generate_test_harness(
 ///
 /// [`TestCtxt::reexport_test_harness_main`] provides a different name for the `main`
 /// function and [`TestCtxt::test_runner`] provides a path that replaces
-/// `test::test_main_static`.
+/// `test::test_main_env_args`.
 fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
     let sp = cx.def_site;
     let ecx = &cx.ext_cx;
     let test_ident = Ident::new(sym::test, sp);
 
     let runner_name =
-        if cx.panic_strategy.unwinds() { "test_main_static" } else { "test_main_static_abort" };
+        if cx.panic_strategy.unwinds() { "test_main_env_args" } else { "test_main_env_args_abort" };
 
-    // test::test_main_static(...)
+    // test::test_main_env_args(...)
     let mut test_runner = cx.test_runner.clone().unwrap_or_else(|| {
         ecx.path(sp, vec![test_ident, Ident::from_str_and_span(runner_name, sp)])
     });
@@ -320,6 +321,10 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
     let doc_hidden_attr = ecx.attr_nested_word(sym::doc, sym::hidden, sp);
 
     // pub fn main() { ... }
+    // FIXME: it would be nice if we could use `std::process::ExitCode` as return type here, and
+    // remove all early-exit from libtest itself. Or rather, it should be `test::ExitCode` so we
+    // don't depend on whatever `std` may be. This needs the `extern crate test` to be *outside*
+    // `main`. But naively moving it out causes ICEs that give no hint as to what is wrong.
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(ThinVec::new()));
 
     // If no test runner is provided we need to import the test crate

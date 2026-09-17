@@ -1,7 +1,7 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::CONST_EVALUATABLE_UNCHECKED;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, bug};
 use tracing::{debug, instrument};
 
 use super::{

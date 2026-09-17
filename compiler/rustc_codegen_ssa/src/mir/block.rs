@@ -16,9 +16,8 @@ use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindT
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
-use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::{Span, Spanned};
+use rustc_span::{Span, Spanned, bug, span_bug};
 use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode};
 use tracing::{debug, info};
 
@@ -98,7 +97,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
         if is_cleanupret {
             // Cross-funclet jump - need a trampoline
-            assert!(base::wants_new_eh_instructions(fx.cx.tcx().sess));
+            assert!(base::wants_new_eh_instructions(&fx.cx.tcx().sess.target));
             debug!("llbb_with_cleanup: creating cleanup trampoline for {:?}", target);
             let name = &format!("{:?}_cleanup_trampoline_{:?}", self.bb, target);
             let trampoline_llbb = Bx::append_block(fx.cx, fx.llfn, name);
@@ -232,12 +231,12 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             mir::UnwindAction::Continue => None,
             mir::UnwindAction::Unreachable => None,
             mir::UnwindAction::Terminate(reason) => {
-                if fx.mir[self.bb].is_cleanup && base::wants_wasm_eh(fx.cx.tcx().sess) {
+                if fx.mir[self.bb].is_cleanup && base::wants_wasm_eh(&fx.cx.tcx().sess.target) {
                     // For wasm, we need to generate a nested `cleanuppad within %outer_pad`
                     // to catch exceptions during cleanup and call `panic_in_cleanup`.
                     Some(fx.terminate_block(reason, Some(self.bb)))
                 } else if fx.mir[self.bb].is_cleanup
-                    && base::wants_new_eh_instructions(fx.cx.tcx().sess)
+                    && base::wants_new_eh_instructions(&fx.cx.tcx().sess.target)
                 {
                     // MSVC SEH will abort automatically if an exception tries to
                     // propagate out from cleanup.
@@ -2206,7 +2205,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     // FIXME(eddyb) rename this to `eh_pad_for_uncached`.
     fn landing_pad_for_uncached(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
         let llbb = self.llbb(bb);
-        if base::wants_new_eh_instructions(self.cx.sess()) {
+        if base::wants_new_eh_instructions(&self.cx.sess().target) {
             let cleanup_bb = Bx::append_block(self.cx, self.llfn, &format!("funclet_{bb:?}"));
             let mut cleanup_bx = Bx::build(self.cx, cleanup_bb);
             let funclet = cleanup_bx.cleanup_pad(None, &[]);
@@ -2250,7 +2249,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // what outer catch_pad it is contained in.
         debug_assert!(
             outer_catchpad_bb.is_some()
-                == (base::wants_wasm_eh(self.cx.tcx().sess)
+                == (base::wants_wasm_eh(&self.cx.tcx().sess.target)
                     && reason == UnwindTerminateReason::InCleanup)
         );
 
@@ -2280,7 +2279,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let funclet;
         let llbb;
         let mut bx;
-        if base::wants_new_eh_instructions(self.cx.sess()) {
+        if base::wants_new_eh_instructions(&self.cx.sess().target) {
             // This is a basic block that we're aborting the program for,
             // notably in an `extern` function. These basic blocks are inserted
             // so that we assert that `extern` functions do indeed not panic,
@@ -2346,7 +2345,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // The `null` in first argument here is actually a RTTI type
             // descriptor for the C++ personality function, but `catch (...)`
             // has no type so it's null.
-            let args = if base::wants_msvc_seh(self.cx.sess()) {
+            let args = if base::wants_msvc_seh(&self.cx.sess().target) {
                 // This bitmask is a single `HT_IsStdDotDot` flag, which
                 // represents that this is a C++-style `catch (...)` block that
                 // only captures programmatic exceptions, not all SEH

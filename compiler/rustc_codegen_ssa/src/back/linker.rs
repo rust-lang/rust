@@ -7,7 +7,6 @@ use std::{env, iter, mem, str};
 use find_msvc_tools;
 use rustc_hir::attrs::WindowsSubsystemKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
     self, ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
@@ -15,6 +14,7 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::ty::{SymbolName, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::{self, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
+use rustc_span::bug;
 use rustc_structures::CrateType;
 use rustc_target::spec::{Arch, Cc, CfgAbi, LinkOutputKind, LinkerFlavor, Lld, Os};
 use tracing::{debug, warn};

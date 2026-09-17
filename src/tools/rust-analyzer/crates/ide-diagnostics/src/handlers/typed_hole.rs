@@ -467,4 +467,18 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn term_search_lookup_const() {
+        check_diagnostics(
+            r#"
+struct S { f: i32 }
+const C: i32 = 0;
+fn main() {
+    let _: S = _;
+             //^ 💡 error: invalid `_` expression, expected type `S`
+}
+"#,
+        );
+    }
 }

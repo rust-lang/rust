@@ -1144,7 +1144,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if let Some((mod_def_id, node_id)) = invoc_in_mod_inert_attr
             && let Some(decl) = decl
             // This is a `macro_rules` itself, not some import.
-            && let DeclKind::Def(res) = decl.kind
+            && let DeclKind::Def(res, _) = decl.kind
             && let Res::Def(DefKind::Macro(kinds), def_id) = res
             && kinds.contains(MacroKinds::BANG)
             // And the `macro_rules` is defined inside the attribute's module,

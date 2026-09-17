@@ -1349,16 +1349,16 @@ impl<'a> Parser<'a> {
         self.bump(); // `[`
         let index = self.parse_expr()?;
         self.suggest_missing_semicolon_before_array(prev_token.span, open_delim_span)?;
-        self.expect(exp!(CloseBracket)).map_err(|mut e| {
-            if let TokenKind::Ident(_, _) = prev_token.kind {
-                e.span_suggestion_verbose(
+        self.expect(exp!(CloseBracket)).map_err(|mut err| {
+            if prev_token.is_non_reserved_ident() {
+                err.span_suggestion_verbose(
                     prev_token.span.shrink_to_hi(),
                     "you might have meant to call a macro",
                     "!".to_string(),
                     Applicability::MaybeIncorrect,
                 );
             }
-            e
+            err
         })?;
         Ok(self.mk_expr(
             lo.to(self.prev_token.span),
@@ -3688,9 +3688,7 @@ impl<'a> Parser<'a> {
     fn is_try_block(&self) -> bool {
         self.token.is_keyword(kw::Try)
             && self.look_ahead(1, |t| {
-                *t == token::OpenBrace
-                    || t.is_metavar_block()
-                    || t.kind == TokenKind::Ident(sym::bikeshed, IdentIsRaw::No)
+                *t == token::OpenBrace || t.is_metavar_block() || t.is_keyword(sym::bikeshed)
             })
             && self.token_uninterpolated_span().at_least_rust_2018()
     }
@@ -3875,12 +3873,8 @@ impl<'a> Parser<'a> {
             // Peek the field's ident before parsing its expr in order to emit better diagnostics.
             let peek = self
                 .token
-                .ident()
-                .filter(|(ident, is_raw)| {
-                    (!ident.is_reserved() || matches!(is_raw, IdentIsRaw::Yes))
-                        && self.look_ahead(1, |tok| *tok == token::Colon)
-                })
-                .map(|(ident, _)| ident);
+                .non_reserved_ident()
+                .filter(|_| self.look_ahead(1, |&tok| tok == token::Colon));
 
             // We still want a field even if its expr didn't parse.
             let field_ident = |this: &Self, guar: ErrorGuaranteed| {

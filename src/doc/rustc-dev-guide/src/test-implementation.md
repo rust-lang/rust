@@ -90,7 +90,7 @@ something with them using [`rustc_ast`][ast] generates a module like so:
 #[main]
 pub fn main() {
     extern crate test;
-    test::test_main_static(&[&path::to::test1, /*...*/]);
+    test::test_main_env_args(&[&path::to::test1, /*...*/]);
 }
 ```
 
@@ -98,7 +98,7 @@ Here `path::to::test1` is a constant of type [`test::TestDescAndFn`][tdaf].
 
 While this transformation is simple, it gives us a lot of insight into how
 tests are actually run. The tests are aggregated into an array and passed to
-a test runner called `test_main_static`. We'll come back to exactly what
+a test runner called `test_main_env_args`. We'll come back to exactly what
 [`TestDescAndFn`][tdaf] is, but for now, the key takeaway is that there is a crate
 called [`test`][test] that is part of Rust core, that implements all of the
 runtime for testing. [`test`][test]'s interface is unstable, so the only stable way
@@ -124,7 +124,7 @@ configuration information as well. `test` encodes this configuration data into
 a `struct` called [`TestDesc`]. For each test function in a crate,
 [`rustc_ast`][rustc_ast] will parse its attributes and generate a [`TestDesc`]
 instance. It then combines the [`TestDesc`] and test function into the
-predictably named [`TestDescAndFn`][tdaf] `struct`, that [`test_main_static`]
+predictably named [`TestDescAndFn`][tdaf] `struct`, that [`test_main_env_args`]
 operates on.
 For a given test, the generated [`TestDescAndFn`][tdaf] instance looks like so:
 
@@ -161,4 +161,4 @@ $ rustc my_mod.rs -Z unpretty=hir
 [Symbol]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html
 [test]: https://doc.rust-lang.org/test/index.html
 [tdaf]: https://doc.rust-lang.org/test/struct.TestDescAndFn.html
-[`test_main_static`]: https://doc.rust-lang.org/test/fn.test_main_static.html
+[`test_main_env_args`]: https://doc.rust-lang.org/test/fn.test_main_env_args.html
