@@ -981,23 +981,21 @@ impl<'a> MethodDef<'a> {
         // Create the generics that aren't for `Self`.
         let fn_generics = self.generics.clone();
 
-        let args = {
-            let self_arg = self.explicit_self.then(|| {
-                let ident = Ident::new(kw::SelfLower, span);
-                ast::Param::from_self(
-                    ast::AttrVec::default(),
-                    respan(span, SelfKind::Region(None, ast::Mutability::Not)),
-                    ident,
-                )
-            });
-            let mut nonself_args = Vec::new();
-            for (ty, name) in self.nonself_args.iter() {
-                let ast_ty = ty.to_ty(cx, span, type_ident, generics);
-                let ident = Ident::new(*name, span);
-                nonself_args.push(cx.param(span, ident, ast_ty));
-            }
-            self_arg.into_iter().chain(nonself_args).collect()
-        };
+        let mut args = ThinVec::new();
+        if self.explicit_self {
+            let ident = Ident::new(kw::SelfLower, span);
+            let self_arg = ast::Param::from_self(
+                ast::AttrVec::default(),
+                respan(span, SelfKind::Region(None, ast::Mutability::Not)),
+                ident,
+            );
+            args.push(self_arg);
+        }
+        for (ty, name) in &self.nonself_args {
+            let ast_ty = ty.to_ty(cx, span, type_ident, generics);
+            let ident = Ident::new(*name, span);
+            args.push(cx.param(span, ident, ast_ty));
+        }
 
         let ret_type = if let Ty::Unit = &self.ret_ty {
             ast::FnRetTy::Default(span)
