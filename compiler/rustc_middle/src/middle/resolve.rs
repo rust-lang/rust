@@ -207,8 +207,8 @@ pub struct PerOwnerResolverData<'tcx> {
 
     pub trait_map: NodeMap<&'tcx [TraitCandidate<'tcx>]> = Default::default(),
 
-    /// Resolution for import nodes, which have multiple resolutions in different namespaces.
-    pub import_res: PerNS<Option<Res<NodeId>>> = Default::default(),
+    /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
+    pub import_res: NodeMap<PerNS<Option<Res<NodeId>>>> = Default::default(),
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, MissingLifetimeKind)>> =
         Default::default(),
@@ -330,9 +330,6 @@ pub type DocLinkResMap = FxIndexMap<(Symbol, Namespace), Option<Res<NodeId>>>;
 pub enum AstOwner {
     /// This definition does not correspond to a HIR owner.
     NonOwner,
-    /// This definition corresponds to a nested `use` tree.
-    /// The `LocalDefId` points to its HIR owner.
-    NestedUseTree(LocalDefId),
     Crate(Box<ast::Crate>),
     Item(Box<ast::Item>),
     TraitItem(Box<ast::AssocItem>),
