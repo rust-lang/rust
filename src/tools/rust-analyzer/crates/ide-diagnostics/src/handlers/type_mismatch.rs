@@ -2021,6 +2021,22 @@ fn test(_: Result<foo::T, baz::E>) {
     }
 
     #[test]
+    fn type_match_cfg_macros() {
+        check_diagnostics(
+            r#"
+//- minicore: cfg
+fn main() {
+    let _: bool = cfg!(true);
+    match true {
+        cfg!(true) => (),
+        false => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn regression_23313() {
         check_diagnostics(
             r#"

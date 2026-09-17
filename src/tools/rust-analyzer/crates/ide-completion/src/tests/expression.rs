@@ -4210,6 +4210,84 @@ fn foo(t: T) {
 }
 
 #[test]
+fn complete_cfg_macro() {
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn main() {
+    if cfg!(a$0)
+}
+        "#,
+        expect![[r#"
+            ba all
+            ba any
+            ba dbg
+            ba not
+            ba opt_level
+            ba test
+            ba true
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn main() {
+    if cfg!($0)
+}
+        "#,
+        expect![[r#"
+            ba all
+            ba any
+            ba dbg
+            ba not
+            ba opt_level
+            ba test
+            ba true
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn main() {
+    if cfg!(all($0))
+}
+        "#,
+        expect![[r#"
+            ba all
+            ba any
+            ba dbg
+            ba not
+            ba opt_level
+            ba test
+            ba true
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn main() {
+    match true {
+        cfg!(all($0)) => (),
+    }
+}
+        "#,
+        expect![[r#"
+            ba all
+            ba any
+            ba dbg
+            ba not
+            ba opt_level
+            ba test
+            ba true
+        "#]],
+    );
+}
+
+#[test]
 fn const_is_type_owner() {
     check(
         r#"
