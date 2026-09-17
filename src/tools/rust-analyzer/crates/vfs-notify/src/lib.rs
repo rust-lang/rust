@@ -319,6 +319,7 @@ impl NotifyActor {
                         let depth = entry.depth();
                         let is_dir = entry.file_type().is_dir();
                         let is_file = entry.file_type().is_file();
+                        let is_symlink = entry.path_is_symlink();
                         let abs_path = AbsPathBuf::try_from(
                             Utf8PathBuf::from_path_buf(entry.into_path()).ok()?,
                         )
@@ -326,7 +327,9 @@ impl NotifyActor {
                         if depth < 2 && is_dir {
                             send_message(abs_path.clone());
                         }
-                        if is_dir && do_watch {
+                        // Recursively watch each include root (depth = 0). Also watch any symlinked
+                        // directories because macOS fsevent does not follow symlinks on its own.
+                        if is_dir && do_watch && (depth == 0 || is_symlink) {
                             watch(abs_path.as_ref());
                         }
                         if !is_file {
