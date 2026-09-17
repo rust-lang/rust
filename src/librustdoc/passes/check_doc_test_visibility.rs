@@ -69,7 +69,6 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | ItemKind::ForeignStatic(..)
                 | ItemKind::ForeignTy
                 | ItemKind::AssocTy(..)
-                | ItemKind::RequiredAssocConst(..)
                 | ItemKind::AssocConst(..)
                 | ItemKind::RequiredAssocTy(..)
                 | ItemKind::Impl(_)
