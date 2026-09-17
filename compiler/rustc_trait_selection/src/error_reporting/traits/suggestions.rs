@@ -5088,6 +5088,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ty::Adt(adt, args) if adt.did().is_local() => (adt, args),
             _ => return false,
         };
+        if !self.tcx.def_span(adt.did()).can_be_used_for_suggestions() {
+            return false;
+        }
         let is_derivable_trait = match diagnostic_name {
             sym::Copy | sym::Clone => true,
             _ if adt.is_union() => false,
