@@ -1730,9 +1730,7 @@ impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Interned<'a, RegionKind<'a>> {
     }
 }
 
-// `rustc_type_ir::Const<I>` is only the generic wrapper; lifting it delegates
-// to `I::InternedConstKind`, so the concrete interned const representation
-// must itself implement `Lift`.
+// FIXME: unclear why exactly the macro doesn't work.
 impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Interned<'a, WithCachedTypeInfo<ConstKind<'a>>> {
     type Lifted = Interned<'tcx, WithCachedTypeInfo<ConstKind<'tcx>>>;
 
