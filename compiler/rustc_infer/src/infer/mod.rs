@@ -253,11 +253,31 @@ impl<'tcx> InferCtxtInner<'tcx> {
         self.stalled_goal_generation
     }
 
+    /// mark the generation dirty after an inference change
+    ///
+    /// once it's dirty we don't need to update it again until fulfillment
+    /// starts another pass
     #[inline]
     fn bump_stalled_goal_generation(&mut self) {
-        if let Some(generation) = &mut self.stalled_goal_generation {
+        if let Some(generation) = &mut self.stalled_goal_generation
+            && *generation & 1 == 0
+        {
             *generation = generation.wrapping_add(1);
         }
+    }
+
+    /// start a fulfillment pass and make the current generation clean
+    ///
+    /// changes during the pass will dirty it again
+    #[inline]
+    fn start_stalled_goal_generation_pass(&mut self) -> Option<u64> {
+        let generation = self.stalled_goal_generation.as_mut()?;
+
+        if *generation & 1 != 0 {
+            *generation = generation.wrapping_add(1);
+        }
+
+        Some(*generation)
     }
 
     #[inline]
@@ -1797,6 +1817,15 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner
             .borrow()
             .stalled_goal_generation()
+            .expect("stalled-goal generation requires the next trait solver")
+    }
+
+    /// start a fulfillment pass and return the clean generation
+    #[inline]
+    pub fn start_stalled_goal_generation_pass(&self) -> u64 {
+        self.inner
+            .borrow_mut()
+            .start_stalled_goal_generation_pass()
             .expect("stalled-goal generation requires the next trait solver")
     }
 

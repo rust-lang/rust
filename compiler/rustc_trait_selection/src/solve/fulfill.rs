@@ -111,7 +111,7 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
             "new trait solver fulfillment context created when \
             infcx is set up for old trait solver"
         );
-        let generation = infcx.stalled_goal_generation();
+        let generation = infcx.start_stalled_goal_generation_pass();
 
         FulfillmentCtxt {
             obligations: Default::default(),
@@ -214,7 +214,11 @@ where
         let generation = infcx.stalled_goal_generation();
 
         if self.obligations.pending.is_empty() {
-            self.last_stalled_goal_generation = generation;
+            self.last_stalled_goal_generation = if generation & 1 == 0 {
+                generation
+            } else {
+                infcx.start_stalled_goal_generation_pass()
+            };
             self.stalled_on_empty_opaques = false;
             self.all_pending_trackable = true;
             return errors;
@@ -233,7 +237,7 @@ where
         }
 
         loop {
-            let pass_generation = infcx.stalled_goal_generation();
+            let pass_generation = infcx.start_stalled_goal_generation_pass();
 
             let mut any_changed = false;
             let mut all_pending_trackable = true;
