@@ -75,7 +75,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let bound_modifier_allowed_features = if let Res::Def(DefKind::Trait, async_def_id) = res
             && self.tcx.async_fn_trait_kind_from_def_id(async_def_id).is_some()
         {
-            Some(Arc::clone(&self.allow_async_fn_traits))
+            Some(Arc::clone(&crate::ALLOW_ASYNC_FN_TRAITS))
         } else {
             None
         };

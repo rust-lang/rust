@@ -39,7 +39,7 @@
 // tidy-alphabetical-end
 
 use std::mem;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeMap;
@@ -154,7 +154,6 @@ pub(crate) mod re_lowering {
 struct PerOwnerLoweringState<'a, 'hir> {
     // -- Identity --
     owner: &'a PerOwnerResolverData<'hir>,
-    owner_id: hir::OwnerId,
     disambiguator: PerParentDisambiguatorState,
 
     // -- HirId allocation --
@@ -196,7 +195,6 @@ impl<'a, 'hir> PerOwnerLoweringState<'a, 'hir> {
 
         PerOwnerLoweringState {
             owner,
-            owner_id: hir::OwnerId { def_id: owner.def_id },
             disambiguator,
             // 0 corresponds to `owner` lowered as `owner_id`, and we never call
             // `lower_node_id(owner)`.
@@ -215,12 +213,16 @@ impl<'a, 'hir> PerOwnerLoweringState<'a, 'hir> {
         }
     }
 
+    fn owner_id(&self) -> hir::OwnerId {
+        hir::OwnerId { def_id: self.owner.def_id }
+    }
+
     fn into_owner_info(
         self,
         tcx: TyCtxt<'hir>,
         node: hir::OwnerNode<'hir>,
     ) -> &'hir hir::OwnerInfo<'hir> {
-        assert_eq!(self.owner_id, node.def_id());
+        assert_eq!(self.owner_id(), node.def_id());
         assert!(self.impl_trait_defs.is_empty());
         assert!(self.impl_trait_bounds.is_empty());
 
@@ -312,15 +314,6 @@ struct LoweringContext<'a, 'hir> {
     /// so we only store `self_param_id`.
     partial_res_overrides: NodeMap<NodeId>,
 
-    allow_contracts: Arc<[Symbol]>,
-    allow_try_trait: Arc<[Symbol]>,
-    allow_gen_future: Arc<[Symbol]>,
-    allow_pattern_type: Arc<[Symbol]>,
-    allow_async_gen: Arc<[Symbol]>,
-    allow_async_iterator: Arc<[Symbol]>,
-    allow_for_await: Arc<[Symbol]>,
-    allow_async_fn_traits: Arc<[Symbol]>,
-
     /// Stack of `move(...)` collection states. A closure-like body pushes
     /// `Some`, so `move(...)` expressions can record the generated locals they
     /// should lower to. Nested bodies that cannot use `move(...)` push `None`.
@@ -330,6 +323,26 @@ struct LoweringContext<'a, 'hir> {
     lowering_move_expr_initializer: bool,
 
     attribute_parser: AttributeParser<'hir>,
+}
+
+macro_rules! allow {
+    ($($name:ident: $list:expr;)*) => {
+        $( static $name: LazyLock<Arc<[Symbol]>> = LazyLock::new(|| $list.into()); )*
+    }
+}
+
+allow! {
+    ALLOW_CONTRACTS: [sym::contracts_internals];
+    ALLOW_TRY_TRAIT: [sym::try_trait_v2, sym::try_trait_v2_residual, sym::yeet_desugar_details];
+    ALLOW_PATTERN_TYPE: [sym::pattern_types, sym::pattern_type_range_trait];
+    ALLOW_GEN_FUTURE: [sym::gen_future];
+    ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER: [sym::gen_future, sym::closure_track_caller];
+    ALLOW_FOR_AWAIT: [sym::async_gen_internals, sym::async_iterator];
+    ALLOW_ASYNC_FN_TRAITS: [sym::async_fn_traits];
+    ALLOW_ASYNC_GEN: [sym::async_gen_internals];
+    // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
+    // interact with `gen`/`async gen` blocks
+    ALLOW_ASYNC_ITERATOR: [sym::gen_future, sym::async_iterator];
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
@@ -354,25 +367,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             coroutine_kind: None,
             task_context: None,
             current_item: None,
-            allow_contracts: [sym::contracts_internals].into(),
-            allow_try_trait: [
-                sym::try_trait_v2,
-                sym::try_trait_v2_residual,
-                sym::yeet_desugar_details,
-            ]
-            .into(),
-            allow_pattern_type: [sym::pattern_types, sym::pattern_type_range_trait].into(),
-            allow_gen_future: if tcx.features().async_fn_track_caller() {
-                [sym::gen_future, sym::closure_track_caller].into()
-            } else {
-                [sym::gen_future].into()
-            },
-            allow_for_await: [sym::async_gen_internals, sym::async_iterator].into(),
-            allow_async_fn_traits: [sym::async_fn_traits].into(),
-            allow_async_gen: [sym::async_gen_internals].into(),
-            // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
-            // interact with `gen`/`async gen` blocks
-            allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
 
             move_expr_bindings: Vec::new(),
             lowering_move_expr_initializer: false,
@@ -387,6 +381,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'hir> {
         self.tcx.dcx()
+    }
+
+    fn allow_gen_future(&self) -> &Arc<[Symbol]> {
+        if self.tcx.features().async_fn_track_caller() {
+            &ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER
+        } else {
+            &ALLOW_GEN_FUTURE
+        }
     }
 }
 
@@ -836,7 +838,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         def_kind: DefKind,
         span: Span,
     ) -> LocalDefId {
-        let parent = self.curr_owner.owner_id.def_id;
+        let parent = self.curr_owner.owner_id().def_id;
         assert_ne!(node_id, ast::DUMMY_NODE_ID);
         assert!(
             self.opt_local_def_id(node_id).is_none(),
@@ -928,7 +930,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let item = f(self);
         let completed_child_owner = mem::replace(&mut self.curr_owner, parent_owner);
-        let owner_id = completed_child_owner.owner_id;
+        let owner_id = completed_child_owner.owner_id();
         let info = completed_child_owner.into_owner_info(self.tcx, item);
 
         self.curr_owner
@@ -948,7 +950,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_node_id(&mut self, ast_node_id: NodeId) -> HirId {
         assert_ne!(ast_node_id, DUMMY_NODE_ID);
 
-        let owner = self.curr_owner.owner_id;
+        let owner = self.curr_owner.owner_id();
         let local_id = self.curr_owner.item_local_id_counter;
         assert_ne!(local_id, hir::ItemLocalId::ZERO);
         self.curr_owner.item_local_id_counter.increment_by(1);
@@ -972,7 +974,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Generate a new `HirId` without a backing `NodeId`.
     #[instrument(level = "debug", skip(self), ret)]
     fn next_id(&mut self) -> HirId {
-        let owner = self.curr_owner.owner_id;
+        let owner = self.curr_owner.owner_id();
         let local_id = self.curr_owner.item_local_id_counter;
         assert_ne!(local_id, hir::ItemLocalId::ZERO);
         self.curr_owner.item_local_id_counter.increment_by(1);
@@ -982,7 +984,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     #[instrument(level = "trace", skip(self))]
     fn lower_res(&mut self, res: Res<NodeId>) -> Res {
         let res: Result<Res, ()> = res.apply_id(|id| {
-            let owner = self.curr_owner.owner_id;
+            let owner = self.curr_owner.owner_id();
             let local_id =
                 self.curr_owner.ident_and_label_to_local_id.get(&id).copied().ok_or(())?;
             Ok(HirId { owner, local_id })
@@ -1061,7 +1063,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn span_lowerer(&self) -> SpanLowerer {
         SpanLowerer {
             is_incremental: self.tcx.sess.opts.incremental.is_some(),
-            def_id: self.curr_owner.owner_id.def_id,
+            def_id: self.curr_owner.owner_id().def_id,
         }
     }
 
@@ -1201,7 +1203,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_attrs_vec(attrs, self.lower_span(target_span), id, target, target_item);
             lowered_attrs.extend(extra_hir_attributes.iter().cloned());
 
-            assert_eq!(id.owner, self.curr_owner.owner_id);
+            assert_eq!(id.owner, self.curr_owner.owner_id());
             let ret = self.arena.alloc_from_iter(lowered_attrs);
 
             // this is possible if an item contained syntactical attribute,
@@ -1251,8 +1253,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn alias_attrs(&mut self, id: HirId, target_id: HirId) {
-        assert_eq!(id.owner, self.curr_owner.owner_id);
-        assert_eq!(target_id.owner, self.curr_owner.owner_id);
+        assert_eq!(id.owner, self.curr_owner.owner_id());
+        assert_eq!(target_id.owner, self.curr_owner.owner_id());
         if let Some(&a) = self.curr_owner.attrs.get(&target_id.local_id) {
             assert!(!a.is_empty());
             self.curr_owner.attrs.insert(id.local_id, a);
@@ -2093,7 +2095,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (opaque_ty_node_id, allowed_features) = match coro.kind {
             CoroutineKind::Async | CoroutineKind::Gen => (coro.return_impl_trait_id, None),
             CoroutineKind::AsyncGen => {
-                (coro.return_impl_trait_id, Some(Arc::clone(&self.allow_async_iterator)))
+                (coro.return_impl_trait_id, Some(Arc::clone(&ALLOW_ASYNC_ITERATOR)))
             }
         };
 

@@ -397,8 +397,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Record primary definitions.
         let mut define_extern = |ns| {
             let orig_ident_span = orig_ident.span;
+            let reexport_chain: &[Reexport] = if !reexport_chain.is_empty() {
+                self.arenas.dropless.alloc_slice(reexport_chain)
+            } else {
+                &[]
+            };
             let decl = self.arenas.alloc_decl(DeclData {
-                kind: DeclKind::Def(res),
+                kind: DeclKind::Def(res, reexport_chain),
                 ambiguity: CmCell::new(ambig),
                 initial_vis: vis,
                 ambiguity_vis_max: CmCell::new(None),
