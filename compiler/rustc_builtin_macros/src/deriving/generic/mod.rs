@@ -839,7 +839,7 @@ impl<'a> TraitDef<'a> {
         let field_tys = struct_def.fields().iter().map(|field| &*field.ty);
 
         let methods = self.methods.iter().filter_map(|method_def| {
-            let ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys } =
+            let ArgDetails { selflike_args, nonselflike_args, nonself_arg_tys } =
                 method_def.extract_arg_details(cx, self, type_ident, generics);
 
             let body = if from_scratch || method_def.is_static() {
@@ -862,15 +862,7 @@ impl<'a> TraitDef<'a> {
                 )
             };
 
-            method_def.create_method(
-                cx,
-                self,
-                type_ident,
-                generics,
-                explicit_self,
-                nonself_arg_tys,
-                body,
-            )
+            method_def.create_method(cx, self, type_ident, generics, nonself_arg_tys, body)
         });
 
         self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
@@ -891,7 +883,7 @@ impl<'a> TraitDef<'a> {
             .map(|field| &*field.ty);
 
         let methods = self.methods.iter().filter_map(|method_def| {
-            let ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys } =
+            let ArgDetails { selflike_args, nonselflike_args, nonself_arg_tys } =
                 method_def.extract_arg_details(cx, self, type_ident, generics);
 
             let body = if from_scratch || method_def.is_static() {
@@ -913,15 +905,7 @@ impl<'a> TraitDef<'a> {
                 )
             };
 
-            method_def.create_method(
-                cx,
-                self,
-                type_ident,
-                generics,
-                explicit_self,
-                nonself_arg_tys,
-                body,
-            )
+            method_def.create_method(cx, self, type_ident, generics, nonself_arg_tys, body)
         });
 
         let is_packed = false; // enums are never packed
@@ -930,8 +914,6 @@ impl<'a> TraitDef<'a> {
 }
 
 struct ArgDetails {
-    /// The `&self` arg, if present.
-    explicit_self: Option<ast::ExplicitSelf>,
     /// Expressions for `&self` (if present) and also any other
     /// args with the same type (e.g. the `other` arg in `PartialEq::eq`).
     selflike_args: ThinVec<Box<Expr>>,
@@ -972,11 +954,10 @@ impl<'a> MethodDef<'a> {
         let mut nonself_arg_tys = Vec::new();
         let span = trait_.span;
 
-        let explicit_self = self.explicit_self.then(|| {
+        if self.explicit_self {
             // This constructs a fresh `self` path.
             selflike_args.push(cx.expr_self(span));
-            respan(span, SelfKind::Region(None, ast::Mutability::Not))
-        });
+        }
 
         for (ty, name) in self.nonself_args.iter() {
             let ast_ty = ty.to_ty(cx, span, type_ident, generics);
@@ -993,7 +974,7 @@ impl<'a> MethodDef<'a> {
             }
         }
 
-        ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys }
+        ArgDetails { selflike_args, nonselflike_args, nonself_arg_tys }
     }
 
     fn create_method(
@@ -1002,7 +983,6 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         generics: &Generics,
-        explicit_self: Option<ast::ExplicitSelf>,
         nonself_arg_tys: Vec<(Ident, Box<ast::Ty>)>,
         body: BlockOrExpr,
     ) -> Option<Box<ast::AssocItem>> {
@@ -1015,9 +995,13 @@ impl<'a> MethodDef<'a> {
         let fn_generics = self.generics.clone();
 
         let args = {
-            let self_arg = explicit_self.map(|explicit_self| {
+            let self_arg = self.explicit_self.then(|| {
                 let ident = Ident::new(kw::SelfLower, span);
-                ast::Param::from_self(ast::AttrVec::default(), explicit_self, ident)
+                ast::Param::from_self(
+                    ast::AttrVec::default(),
+                    respan(span, SelfKind::Region(None, ast::Mutability::Not)),
+                    ident,
+                )
             });
             let nonself_args =
                 nonself_arg_tys.into_iter().map(|(name, ty)| cx.param(span, name, ty));
