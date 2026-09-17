@@ -10,10 +10,15 @@ use rustc_session::config::MirIncludeSpans;
 
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraint;
+use crate::dataflow::BorrowIndex;
 use crate::polonius::{LocalizedConstraintGraphVisitor, LocalizedNode, PoloniusContext};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
 use crate::{BorrowckInferCtxt, ClosureRegionRequirements, RegionInferenceContext};
+
+/// The polonius MIR dump template: a regular HTML file for easy editing, with special dummy
+/// sections to be replaced by real contents.
+const TEMPLATE: &str = include_str!("./dump/polonius-mir-dump.template.html");
 
 /// `-Zdump-mir=polonius` dumps MIR annotated with NLL and polonius specific information.
 pub(crate) fn dump_polonius_mir<'tcx>(
@@ -36,7 +41,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 
     // If we have a polonius graph to dump along the rest of the MIR and NLL info, we extract its
     // constraints here.
-    let mut collector = LocalizedOutlivesConstraintCollector { constraints: Vec::new() };
+    let mut collector = MirDumpCollector::default();
     if let Some(graph) = &polonius_context.graph {
         graph.traverse(
             body,
@@ -72,7 +77,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 
     let _ = try {
         let mut file = dumper.create_dump_file("html", body)?;
-        emit_polonius_dump(&dumper, body, regioncx, borrow_set, &collector.constraints, &mut file)?;
+        emit_polonius_dump(&dumper, body, regioncx, borrow_set, &collector, &mut file)?;
     };
 }
 
@@ -84,12 +89,19 @@ struct LocalizedOutlivesConstraint {
     to: PointIndex,
 }
 
-/// Visitor to record constraints encountered when traversing the localized constraint graph.
-struct LocalizedOutlivesConstraintCollector {
+/// Visitor to record constraints encountered when traversing the localized constraint graph, as
+/// well as the reachability of each loan.
+#[derive(Default)]
+struct MirDumpCollector {
     constraints: Vec<LocalizedOutlivesConstraint>,
+    reachability: FxIndexMap<BorrowIndex, Vec<LocalizedNode>>,
 }
 
-impl LocalizedConstraintGraphVisitor for LocalizedOutlivesConstraintCollector {
+impl LocalizedConstraintGraphVisitor for MirDumpCollector {
+    fn on_node_traversed(&mut self, loan: BorrowIndex, node: LocalizedNode) {
+        self.reachability.entry(loan).or_default().push(node);
+    }
+
     fn on_successor_discovered(&mut self, current_node: LocalizedNode, successor: LocalizedNode) {
         self.constraints.push(LocalizedOutlivesConstraint {
             source: current_node.region,
@@ -111,75 +123,77 @@ fn emit_polonius_dump<'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    localized_outlives_constraints: &[LocalizedOutlivesConstraint],
+    collector: &MirDumpCollector,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
-    // Prepare the HTML dump file prologue.
-    writeln!(out, "<!DOCTYPE html>")?;
-    writeln!(out, "<html>")?;
-    writeln!(out, "<head><title>Polonius MIR dump</title></head>")?;
-    writeln!(out, "<body>")?;
+    let mut edge_count = 0;
 
-    // Section 1: the NLL + Polonius MIR.
-    writeln!(out, "<div>")?;
-    writeln!(out, "Raw MIR dump")?;
-    writeln!(out, "<pre><code>")?;
-    emit_html_mir(dumper, body, out)?;
-    writeln!(out, "</code></pre>")?;
-    writeln!(out, "</div>")?;
+    // We replace the dummy $SECTION tokens from the HTML polonius dump template, and emit the
+    // result into the given writer.
+    for chunk in TEMPLATE.split("$SECTION") {
+        match chunk.strip_prefix("_") {
+            None => {
+                // We're at the beginning of the template: this is the prologue to emit as-is.
+                writeln!(out, "{}", chunk)?;
+            }
+            Some(section) => {
+                // This is the start of a prefixed section, we look for its identifier.
+                let dummy_section_end = section
+                    .find("<")
+                    .expect("the template section end boundary needs to be present");
+                let section_identifier = section[..dummy_section_end].trim();
 
-    // Section 2: mermaid visualization of the polonius constraint graph.
-    writeln!(out, "<div>")?;
-    writeln!(out, "Polonius constraint graph")?;
-    writeln!(out, "<pre class='mermaid'>")?;
-    let edge_count = emit_mermaid_constraint_graph(
-        borrow_set,
-        regioncx.liveness_constraints(),
-        &localized_outlives_constraints,
-        out,
-    )?;
-    writeln!(out, "</pre>")?;
-    writeln!(out, "</div>")?;
+                // Emit the real section instead of the dummy token.
+                match section_identifier {
+                    "MIR" => {
+                        emit_html_mir(dumper, body, out)?;
+                    }
+                    "POLONIUS_CONSTRAINTS" => {
+                        edge_count = emit_mermaid_constraint_graph(
+                            borrow_set,
+                            regioncx.liveness_constraints(),
+                            &collector.constraints,
+                            out,
+                        )?;
+                    }
+                    "POLONIUS_REACHABILITY" => {
+                        emit_loan_reachability(
+                            borrow_set,
+                            regioncx.liveness_constraints(),
+                            &collector.reachability,
+                            out,
+                        )?;
+                    }
+                    "CFG" => {
+                        emit_mermaid_cfg(body, out)?;
+                    }
+                    "NLL_CONSTRAINTS" => {
+                        emit_mermaid_nll_regions(dumper.tcx(), regioncx, out)?;
+                    }
+                    "NLL_SCCS" => {
+                        emit_mermaid_nll_sccs(dumper.tcx(), regioncx, out)?;
+                    }
+                    "INITIALIZATION" => {
+                        writeln!(out, "<script>")?;
+                        writeln!(
+                            out,
+                            "mermaid.initialize({{ startOnLoad: false, maxEdges: {} }});",
+                            edge_count.max(100),
+                        )?;
+                        writeln!(out, "mermaid.run({{ querySelector: '.mermaid' }})")?;
+                        writeln!(out, "</script>")?;
+                    }
 
-    // Section 3: mermaid visualization of the CFG.
-    writeln!(out, "<div>")?;
-    writeln!(out, "Control-flow graph")?;
-    writeln!(out, "<pre class='mermaid'>")?;
-    emit_mermaid_cfg(body, out)?;
-    writeln!(out, "</pre>")?;
-    writeln!(out, "</div>")?;
+                    _ => {
+                        unreachable!("unexpected dummy section identifier {:?}", section_identifier)
+                    }
+                }
 
-    // Section 4: mermaid visualization of the NLL region graph.
-    writeln!(out, "<div>")?;
-    writeln!(out, "NLL regions")?;
-    writeln!(out, "<pre class='mermaid'>")?;
-    emit_mermaid_nll_regions(dumper.tcx(), regioncx, out)?;
-    writeln!(out, "</pre>")?;
-    writeln!(out, "</div>")?;
-
-    // Section 5: mermaid visualization of the NLL SCC graph.
-    writeln!(out, "<div>")?;
-    writeln!(out, "NLL SCCs")?;
-    writeln!(out, "<pre class='mermaid'>")?;
-    emit_mermaid_nll_sccs(dumper.tcx(), regioncx, out)?;
-    writeln!(out, "</pre>")?;
-    writeln!(out, "</div>")?;
-
-    // Finalize the dump with the HTML epilogue.
-    writeln!(
-        out,
-        "<script src='https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js'></script>"
-    )?;
-    writeln!(out, "<script>")?;
-    writeln!(
-        out,
-        "mermaid.initialize({{ startOnLoad: false, maxEdges: {} }});",
-        edge_count.max(100),
-    )?;
-    writeln!(out, "mermaid.run({{ querySelector: '.mermaid' }})")?;
-    writeln!(out, "</script>")?;
-    writeln!(out, "</body>")?;
-    writeln!(out, "</html>")?;
+                // And finally, emit the contents that followed the dummy token.
+                writeln!(out, "{}", &section[dummy_section_end..])?;
+            }
+        }
+    }
 
     Ok(())
 }
@@ -431,15 +445,9 @@ fn emit_mermaid_constraint_graph<'tcx>(
     localized_outlives_constraints: &[LocalizedOutlivesConstraint],
     out: &mut dyn io::Write,
 ) -> io::Result<usize> {
-    let location_name = |location: Location| {
-        // A MIR location looks like `bb5[2]`. As that is not a syntactically valid mermaid node id,
-        // transform it into `BB5_2`.
-        format!("BB{}_{}", location.block.index(), location.statement_index)
-    };
-    let region_name = |region: RegionVid| format!("'{}", region.index());
-    let node_name = |region: RegionVid, point: PointIndex| {
+    let node_label = |region: RegionVid, point: PointIndex| {
         let location = liveness.location_from_point(point);
-        format!("{}_{}", region_name(region), location_name(location))
+        node_name(region, location)
     };
 
     // The mermaid chart type: a top-down flowchart, which supports subgraphs.
@@ -474,7 +482,7 @@ fn emit_mermaid_constraint_graph<'tcx>(
     for (region, points) in points_per_region {
         writeln!(out, "    subgraph \"{}\"", region_name(region))?;
         for point in points {
-            writeln!(out, "        {}", node_name(region, point))?;
+            writeln!(out, "        {}", node_label(region, point))?;
         }
         writeln!(out, "    end\n")?;
     }
@@ -485,8 +493,8 @@ fn emit_mermaid_constraint_graph<'tcx>(
         writeln!(
             out,
             "    {} --> {}",
-            node_name(constraint.source, constraint.from),
-            node_name(constraint.target, constraint.to),
+            node_label(constraint.source, constraint.from),
+            node_label(constraint.target, constraint.to),
         )?;
     }
 
@@ -494,4 +502,71 @@ fn emit_mermaid_constraint_graph<'tcx>(
     // mermaid's max edge count to support.
     let edge_count = borrow_set.len() + localized_outlives_constraints.len();
     Ok(edge_count)
+}
+
+/// Emits the reachability of loans: a list of all nodes reached while traversing the polonius
+/// constraint graph.
+fn emit_loan_reachability(
+    borrow_set: &BorrowSet<'_>,
+    liveness: &LivenessValues,
+    reachability: &FxIndexMap<BorrowIndex, Vec<LocalizedNode>>,
+    out: &mut dyn io::Write,
+) -> io::Result<()> {
+    for (loan, _) in borrow_set.iter_enumerated() {
+        let Some(reachability) = reachability.get(&loan) else {
+            continue;
+        };
+        let loan = format!("L{}", loan.index());
+
+        // The button to display the loan trace. The javascript event listener is hooked up in the
+        // template itself.
+        writeln!(
+            out,
+            "<div class='trace'><button data-loan='{loan}'>Trace for loan {loan}</button></div>"
+        )?;
+
+        // The actual trace contents, hidden by default.
+        writeln!(out, "<div id='trace-{loan}' class='trace hidden'>")?;
+        writeln!(out, "<div>Trace for loan {loan}</div>")?;
+        writeln!(out, "<ul>")?;
+        for (idx, node) in reachability.iter().enumerate() {
+            writeln!(out, "<li>")?;
+
+            let location = liveness.location_from_point(node.point);
+            let kind = if idx == 0 { "starts in" } else { "reaches" };
+            writeln!(
+                out,
+                "<code>{loan}</code> {kind} <code>{}</code>",
+                node_name(node.region, location),
+            )?;
+
+            // It's useful to know whether the region we're reaching is live at this point.
+            let node_liveness =
+                if liveness.is_live_at(node.region, location) { "live" } else { "not live" };
+            writeln!(
+                out,
+                "/ at <code>{:?}</code>: <code>'{}</code> is {}",
+                location,
+                node.region.index(),
+                node_liveness,
+            )?;
+            writeln!(out, "</li>")?;
+        }
+        writeln!(out, "</ul>")?;
+        writeln!(out, "</div>")?;
+    }
+
+    Ok(())
+}
+
+fn region_name(region: RegionVid) -> String {
+    format!("'{}", region.index())
+}
+/// A MIR location looks like `bb5[2]`. As that is not a syntactically valid mermaid node id,
+/// transform it into `BB5_2`.
+fn location_name(location: Location) -> String {
+    format!("BB{}_{}", location.block.index(), location.statement_index)
+}
+fn node_name(region: RegionVid, location: Location) -> String {
+    format!("{}_{}", region_name(region), location_name(location))
 }
