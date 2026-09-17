@@ -1296,16 +1296,12 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
     let local_did = trait_item.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match trait_item.kind {
-            hir::TraitItemKind::Const(ty, Some(default)) => {
-                ItemKind::AssocConstant(Box::new(Constant {
+            hir::TraitItemKind::Const(ty, default) => {
+                ItemKind::AssocConstant(Box::new(AssocConstant {
                     generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
-                    body: clean_const_item_rhs(default, local_did),
                     type_: clean_ty(ty, cx),
+                    body: default.map(|default| clean_const_item_rhs(default, local_did)),
                 }))
-            }
-            hir::TraitItemKind::Const(ty, None) => {
-                let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
-                ItemKind::RequiredAssocConstant(generics, Box::new(clean_ty(ty, cx)))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let m =
@@ -1357,11 +1353,13 @@ pub(crate) fn clean_impl_item<'tcx>(
     let local_did = impl_.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match impl_.kind {
-            hir::ImplItemKind::Const(ty, expr) => ItemKind::AssocConstant(Box::new(Constant {
-                generics: clean_generics(impl_.generics, cx),
-                body: clean_const_item_rhs(expr, local_did),
-                type_: clean_ty(ty, cx),
-            })),
+            hir::ImplItemKind::Const(ty, expr) => {
+                ItemKind::AssocConstant(Box::new(AssocConstant {
+                    generics: clean_generics(impl_.generics, cx),
+                    type_: clean_ty(ty, cx),
+                    body: Some(clean_const_item_rhs(expr, local_did)),
+                }))
+            }
             hir::ImplItemKind::Fn(ref sig, body) => {
                 let m = clean_function(cx, sig, impl_.generics, ParamsSrc::Body(body), local_did);
                 let defaultness = match impl_.impl_kind {
@@ -1395,7 +1393,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
     let tcx = cx.tcx;
     let kind = match assoc_item.kind {
         ty::AssocKind::Const { .. } => {
-            let ty = clean_middle_ty(
+            let type_ = clean_middle_ty(
                 ty::Binder::dummy(
                     tcx.type_of(assoc_item.def_id).instantiate_identity().skip_norm_wip(),
                 ),
@@ -1407,26 +1405,14 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             let mut generics = clean_ty_generics(cx, assoc_item.def_id);
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
-            match assoc_item.container {
-                ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
-                    ItemKind::AssocConstant(Box::new(Constant {
-                        generics,
-                        body: ConstantExpr::Extern { def_id: assoc_item.def_id },
-                        type_: ty,
-                    }))
-                }
-                ty::AssocContainer::Trait => {
-                    if tcx.defaultness(assoc_item.def_id).has_value() {
-                        ItemKind::AssocConstant(Box::new(Constant {
-                            generics,
-                            body: ConstantExpr::Extern { def_id: assoc_item.def_id },
-                            type_: ty,
-                        }))
-                    } else {
-                        ItemKind::RequiredAssocConstant(generics, Box::new(ty))
-                    }
-                }
-            }
+            ItemKind::AssocConstant(Box::new(AssocConstant {
+                generics,
+                type_,
+                body: assoc_item
+                    .defaultness(tcx)
+                    .has_value()
+                    .then_some(ConstantExpr::Extern { def_id: assoc_item.def_id }),
+            }))
         }
         ty::AssocKind::Fn { has_self, .. } => {
             let mut item = inline::build_function(cx, assoc_item.def_id);

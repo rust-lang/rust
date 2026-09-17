@@ -1329,17 +1329,14 @@ fn render_assoc_item(
         ItemKind::RequiredAssocFunction(m, _) | ItemKind::AssocFunction(m, _) => {
             assoc_method(item, &m.generics, &m.decl, link, indent, ending, render_mode, cx).fmt(f)
         }
-        ItemKind::RequiredAssocConstant(generics, ty) => {
-            assoc_const(item, generics, ty, AssocConstValue::None, link, indent, ending, cx).fmt(f)
-        }
-        ItemKind::AssocConstant(ci) => assoc_const(
+        ItemKind::AssocConstant(ct) => assoc_const(
             item,
-            &ci.generics,
-            &ci.type_,
-            if parent == ItemType::Trait {
-                AssocConstValue::TraitDefault(&ci.body)
-            } else {
-                AssocConstValue::Impl(&ci.body)
+            &ct.generics,
+            &ct.type_,
+            match (&ct.body, parent) {
+                (Some(body), ItemType::Trait) => AssocConstValue::TraitDefault(body),
+                (Some(body), _) => AssocConstValue::Impl(body),
+                (None, _) => AssocConstValue::None,
             },
             link,
             indent,
@@ -2035,44 +2032,14 @@ fn render_impl(
                         )?;
                     }
                 }
-                ItemKind::RequiredAssocConstant(generics, ty) => {
+                ItemKind::AssocConstant(ct) => {
                     if !matches!(render_mode, RenderMode::ForDeref { .. }) {
                         let source_id = format!("{item_type}.{name}");
                         let id = cx.derive_id(&source_id);
                         write!(
                             w,
                             "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
-                                {}",
-                            render_rightside(cx, item, render_mode)
-                        )?;
-                        if trait_.is_some() {
-                            // Anchors are only used on trait impls.
-                            write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
-                        }
-                        write!(
-                            w,
-                            "<h4 class=\"code-header\">{}</h4></section>",
-                            assoc_const(
-                                item,
-                                generics,
-                                ty,
-                                AssocConstValue::None,
-                                link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                                0,
-                                Ending::Newline,
-                                cx,
-                            ),
-                        )?;
-                    }
-                }
-                ItemKind::AssocConstant(ci) => {
-                    if !matches!(render_mode, RenderMode::ForDeref { .. }) {
-                        let source_id = format!("{item_type}.{name}");
-                        let id = cx.derive_id(&source_id);
-                        write!(
-                            w,
-                            "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
-                                {}",
+                            {}",
                             render_rightside(cx, item, render_mode),
                         )?;
                         if trait_.is_some() {
@@ -2084,9 +2051,12 @@ fn render_impl(
                             "<h4 class=\"code-header\">{}</h4></section>",
                             assoc_const(
                                 item,
-                                &ci.generics,
-                                &ci.type_,
-                                AssocConstValue::Impl(&ci.body),
+                                &ct.generics,
+                                &ct.type_,
+                                match &ct.body {
+                                    Some(body) => AssocConstValue::Impl(body),
+                                    None => AssocConstValue::None,
+                                },
                                 link.anchor(if trait_.is_some() { &source_id } else { &id }),
                                 0,
                                 Ending::Newline,
@@ -2191,7 +2161,7 @@ fn render_impl(
                     ItemKind::RequiredAssocType(..) | ItemKind::AssocType(..) => {
                         assoc_types.push(impl_item)
                     }
-                    ItemKind::RequiredAssocConstant(..) | ItemKind::AssocConstant(_) => {
+                    ItemKind::AssocConstant(_) => {
                         // We render it directly since they're supposed to come first.
                         doc_impl_item(
                             &mut default_impl_items,

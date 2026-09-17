@@ -855,13 +855,13 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
 fn build_const_item(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     let mut generics = clean_ty_generics(cx, def_id);
     clean::simplify::move_bounds_to_generic_parameters(&mut generics);
-    let ty = clean_middle_ty(
+    let type_ = clean_middle_ty(
         ty::Binder::dummy(cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip()),
         cx,
         None,
         None,
     );
-    clean::Constant { generics, type_: ty, body: clean::ConstantExpr::Extern { def_id } }
+    clean::Constant { generics, type_, body: clean::ConstantExpr::Extern { def_id } }
 }
 
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
