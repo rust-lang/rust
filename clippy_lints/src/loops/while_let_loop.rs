@@ -110,9 +110,7 @@ fn could_be_while_let<'tcx>(
         && let Some(pat_str) = snippet_opt(cx, pat.span)
         && let Some(init_str) = snippet_opt(cx, peel_blocks(inner_expr).span)
     {
-        let ty_str = ty
-            .map(|ty| format!(": {}", snippet(cx, ty.span, "_")))
-            .unwrap_or_default();
+        let ty_str = ty.map_or_default(|ty| format!(": {}", snippet(cx, ty.span, "_")));
         format!(
             "\n{indent}    let {pat_str}{ty_str} = {init_str};\n{indent}    ..\n{indent}",
             indent = snippet_indent(cx, expr.span).unwrap_or_default(),

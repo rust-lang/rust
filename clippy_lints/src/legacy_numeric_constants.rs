@@ -138,7 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
                     expr.span,
                     "use the associated constant instead",
                     sugg,
-                    Applicability::MaybeIncorrect,
+                    Applicability::MachineApplicable,
                 );
             });
         }

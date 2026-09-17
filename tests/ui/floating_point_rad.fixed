@@ -1,7 +1,14 @@
 #![warn(clippy::suboptimal_flops)]
 
-/// Allow suboptimal_flops in constant context
-pub const fn const_context() {
+#[clippy::msrv = "1.85.0"]
+pub const fn in_const_context() {
+    let x = 3f32;
+    let _ = x.to_degrees();
+    //~^ suboptimal_flops
+}
+
+#[clippy::msrv = "1.84.0"]
+const fn just_under_msrv() {
     let x = 3f32;
     let _ = x * 180f32 / std::f32::consts::PI;
 }

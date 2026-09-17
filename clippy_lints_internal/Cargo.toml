@@ -4,7 +4,6 @@ version = "0.0.1"
 edition = "2024"
 
 [dependencies]
-clippy_config = { path = "../clippy_config" }
 clippy_utils = { path = "../clippy_utils" }
 itertools = "0.15"
 regex = { version = "1.5" }

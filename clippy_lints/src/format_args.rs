@@ -19,12 +19,12 @@ use rustc_ast::{
     BorrowKind, FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount,
     FormatOptions, FormatPlaceholder, Mutability,
 };
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{RustcVersion, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
-use rustc_hir::attrs::RustcVersion;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::{Expr, ExprKind, find_attr};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Unnormalized, Upcast as _};

@@ -1101,9 +1101,8 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 assign_op_pattern::check(cx, e, lhs, rhs, self.msrv);
                 self_assignment::check(cx, e, lhs, rhs);
             },
-            ExprKind::Unary(op, arg) =>
-            {
-                #[expect(clippy::collapsible_match)]
+            #[expect(clippy::collapsible_match)]
+            ExprKind::Unary(op, arg) => {
                 if op == UnOp::Neg {
                     self.arithmetic_context.check_negate(cx, e, arg);
                 }

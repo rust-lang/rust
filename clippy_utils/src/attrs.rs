@@ -3,8 +3,8 @@
 use crate::source::SpanExt as _;
 use crate::{sym, tokenize_with_text};
 use rustc_ast::attr::AttributeExt;
+use rustc_attr_ir::find_attr;
 use rustc_errors::Applicability;
-use rustc_hir::find_attr;
 use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{AdtDef, TyCtxt};

@@ -501,3 +501,43 @@ fn after_question_mark() -> Result<(), ()> {
     //~^ useless_conversion
     Ok(())
 }
+
+mod issue17083 {
+    trait FromU32: From<u32> {}
+
+    trait HasType {
+        type Type: FromU32;
+    }
+
+    trait HasNestedType {
+        type Type: HasType;
+    }
+
+    trait CanWrite
+    where
+        Self: HasNestedType,
+    {
+        fn write(output: &mut <<Self as HasNestedType>::Type as HasType>::Type);
+    }
+
+    enum Test<T> {
+        Add(T),
+    }
+
+    impl<T> HasNestedType for Test<T>
+    where
+        T: HasType,
+    {
+        type Type = T;
+    }
+
+    #[automatically_derived]
+    impl<T> CanWrite for Test<T>
+    where
+        T: HasType<Type = u32>,
+    {
+        fn write(output: &mut T::Type) {
+            *output = !T::Type::from(1u32);
+        }
+    }
+}

@@ -1,9 +1,9 @@
 use crate::{is_in_const_context, sym};
 use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
+use rustc_attr_ir::RustcVersion;
 use rustc_attr_parsing::parse_version;
 use rustc_data_structures::smallvec::SmallVec;
-use rustc_hir::attrs::RustcVersion;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Constness, HirId, StabilityLevel, StableSince};
@@ -25,15 +25,16 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
+    1,98,0 { MAP_OR_DEFAULT }
     1,97,0 { ISOLATE_LOWEST_ONE, BIT_WIDTH }
-    1,94,0 { EULER_GAMMA, GOLDEN_RATIO }
+    1,94,0 { EULER_GAMMA, GOLDEN_RATIO, MUL_ADD_CONST }
     1,93,0 { VEC_DEQUE_POP_BACK_IF, VEC_DEQUE_POP_FRONT_IF }
     1,91,0 { DURATION_FROM_MINUTES_HOURS }
     1,89,0 { NONNULL_FROM_MUT }
     1,88,0 { LET_CHAINS, AS_CHUNKS, RAW_PTR_DEFAULT }
     1,87,0 { OS_STR_DISPLAY, INT_MIDPOINT, CONST_CHAR_IS_DIGIT, UNSIGNED_IS_MULTIPLE_OF, INTEGER_SIGN_CAST }
     1,86,0 { VEC_POP_IF }
-    1,85,0 { UINT_FLOAT_MIDPOINT, CONST_SIZE_OF_VAL, WAKER_NOOP }
+    1,85,0 { UINT_FLOAT_MIDPOINT, CONST_SIZE_OF_VAL, WAKER_NOOP, ABS_CONST, RADIANS_CONST, CONST_MEM_SWAP }
     1,84,0 { CONST_OPTION_AS_SLICE, MANUAL_DANGLING_PTR }
     1,83,0 { CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY, CONST_MUT_REFS, CONST_UNWRAP }
     1,82,0 { IS_NONE_OR, REPEAT_N, RAW_REF_OP, SPECIALIZED_TO_STRING_FOR_REFS }

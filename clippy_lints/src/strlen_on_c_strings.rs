@@ -5,8 +5,8 @@ use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::visitors::is_expr_unsafe;
 use clippy_utils::{match_libc_symbol, sym};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, Node, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 
