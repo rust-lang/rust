@@ -49,6 +49,10 @@ pub trait SupportedArchitecture: Sized {
     const C_PRELUDE: &str;
     const RUST_PRELUDE: &str;
 
+    /// Per-architecture prefix used to convert a Rust intrinsic name to the
+    /// corresponding C intrinsic name by prepending it to the Rust name.
+    const C_NAME_PREFIX: &str;
+
     fn c_compiler_flags(&self, cli_options: &ProcessedCli) -> Vec<&str>;
 
     fn generate_c_file(&self) {
@@ -137,4 +141,9 @@ pub fn manual_chunk(intrinsic_count: usize) -> (usize, usize) {
     let max_intrinsics_per_chunk = intrinsic_count.div_ceil(ncores);
     let number_of_chunks = intrinsic_count.div_ceil(max_intrinsics_per_chunk);
     (max_intrinsics_per_chunk, number_of_chunks)
+}
+
+pub fn imm_value_to_ident(value: impl std::fmt::Display) -> String {
+    let value = value.to_string();
+    value.replace('-', "neg")
 }
