@@ -84,8 +84,8 @@ item_type! {
     Static = 9,
     Trait = 10,
     Impl = 11,
-    TyMethod = 12,
-    Method = 13,
+    AssocFnWithoutBody = 12, // "tymethod" in search.js & URLs
+    AssocFnWithBody = 13, // "method" in search.js & URLs
     StructField = 14,
     Variant = 15,
     Macro = 16,
@@ -124,8 +124,10 @@ impl<'a> From<&'a clean::Item> for ItemType {
             ItemKind::Constant(..) => ItemType::Constant,
             ItemKind::Trait(..) => ItemType::Trait,
             ItemKind::Impl(..) | ItemKind::PlaceholderImpl => ItemType::Impl,
-            ItemKind::RequiredAssocFunction(..) => ItemType::TyMethod,
-            ItemKind::AssocFunction(..) => ItemType::Method,
+            ItemKind::AssocFunction(f) => match f.body {
+                Some(_) => ItemType::AssocFnWithBody,
+                None => ItemType::AssocFnWithoutBody,
+            },
             ItemKind::StructField(..) => ItemType::StructField,
             ItemKind::Variant(..) => ItemType::Variant,
             ItemKind::ForeignFunction(..) => ItemType::Function, // no ForeignFunction
@@ -171,9 +173,9 @@ impl ItemType {
             DefKind::AssocTy => Self::AssocType,
             DefKind::AssocFn => {
                 if tcx.associated_item(def_id).defaultness(tcx).has_value() {
-                    Self::Method
+                    Self::AssocFnWithBody
                 } else {
-                    Self::TyMethod
+                    Self::AssocFnWithoutBody
                 }
             }
             DefKind::Ctor(CtorOf::Struct, _) => Self::Struct,
@@ -208,8 +210,8 @@ impl ItemType {
             ItemType::Static => "static",
             ItemType::Trait => "trait",
             ItemType::Impl => "impl",
-            ItemType::TyMethod => "tymethod",
-            ItemType::Method => "method",
+            ItemType::AssocFnWithoutBody => "tymethod",
+            ItemType::AssocFnWithBody => "method",
             ItemType::StructField => "structfield",
             ItemType::Variant => "variant",
             ItemType::Macro => "macro",
@@ -225,15 +227,18 @@ impl ItemType {
             ItemType::Attribute => "attribute",
         }
     }
-    pub(crate) fn is_method(&self) -> bool {
-        matches!(self, ItemType::Method | ItemType::TyMethod)
+    pub(crate) fn is_assoc_fn(&self) -> bool {
+        matches!(self, ItemType::AssocFnWithBody | ItemType::AssocFnWithoutBody)
     }
     pub(crate) fn is_adt(&self) -> bool {
         matches!(self, ItemType::Struct | ItemType::Union | ItemType::Enum)
     }
     /// Keep this the same as isFnLikeTy in search.js
     pub(crate) fn is_fn_like(&self) -> bool {
-        matches!(self, ItemType::Function | ItemType::Method | ItemType::TyMethod)
+        matches!(
+            self,
+            ItemType::Function | ItemType::AssocFnWithBody | ItemType::AssocFnWithoutBody
+        )
     }
 }
 
