@@ -449,7 +449,6 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | ItemKind::AssocFunction(..)
             | ItemKind::StructField(..)
             | ItemKind::AssocConstant(..)
-            | ItemKind::RequiredAssocType(..)
             | ItemKind::AssocType(..)
             | ItemKind::Stripped(..)
             | ItemKind::Keyword
@@ -549,15 +548,15 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     let (parent_did, parent_path) = match item.kind {
         ItemKind::Stripped(..) => return,
         ItemKind::AssocConstant(clean::AssocConstant { body: Some(_), .. })
-        | ItemKind::AssocType(..)
+        | ItemKind::AssocType(clean::AssocType { type_: Some(_), .. })
             if cache.parent_stack.last().is_some_and(|parent| parent.is_trait_impl()) =>
         {
-            // skip associated items in trait impls
+            // Skip associated consts & types in trait impls.
             return;
         }
         ItemKind::AssocFunction(clean::AssocFunction { body: None, .. })
         | ItemKind::AssocConstant(clean::AssocConstant { body: None, .. })
-        | ItemKind::RequiredAssocType(..)
+        | ItemKind::AssocType(clean::AssocType { type_: None, .. })
         | ItemKind::StructField(..)
         | ItemKind::Variant(..) => {
             // Don't index if containing module is stripped (i.e., private),

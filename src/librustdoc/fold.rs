@@ -91,7 +91,6 @@ pub(crate) trait DocFolder: Sized {
             | ItemKind::ProcMacro(_)
             | ItemKind::PrimitiveType(_)
             | ItemKind::AssocConstant(..)
-            | ItemKind::RequiredAssocType(..)
             | ItemKind::AssocType(..)
             | ItemKind::Keyword
             | ItemKind::Attribute

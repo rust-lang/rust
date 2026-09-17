@@ -81,7 +81,7 @@ impl DocFolder for Stripper<'_, '_> {
 
             ItemKind::AssocFunction(clean::AssocFunction { body: Some(_), .. })
             | ItemKind::AssocConstant(clean::AssocConstant { body: Some(_), .. })
-            | ItemKind::AssocType(..) => {
+            | ItemKind::AssocType(clean::AssocType { type_: Some(_), .. }) => {
                 let item_id = i.item_id;
                 if item_id.is_local()
                     && !self.effective_visibilities.is_reachable(self.tcx, item_id.expect_def_id())
@@ -126,7 +126,7 @@ impl DocFolder for Stripper<'_, '_> {
             // They have no control over privacy
             ItemKind::AssocFunction(clean::AssocFunction { body: None, .. })
             | ItemKind::AssocConstant(clean::AssocConstant { body: None, .. })
-            | ItemKind::RequiredAssocType(..) => {}
+            | ItemKind::AssocType(clean::AssocType { type_: None, .. }) => {}
 
             // Proc-macros are always public
             ItemKind::ProcMacro(..) => {}

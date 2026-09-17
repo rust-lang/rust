@@ -642,11 +642,11 @@ impl Item {
     pub(crate) fn is_variant(&self) -> bool {
         self.type_() == ItemType::Variant
     }
-    pub(crate) fn is_associated_type(&self) -> bool {
-        matches!(self.kind.unstripped(), ItemKind::AssocType(..))
+    pub(crate) fn is_assoc_ty_with_body(&self) -> bool {
+        matches!(self.kind.unstripped(), ItemKind::AssocType(AssocType { type_: Some(_), .. }))
     }
-    pub(crate) fn is_required_associated_type(&self) -> bool {
-        matches!(self.kind.unstripped(), ItemKind::RequiredAssocType(..))
+    pub(crate) fn is_assoc_ty_without_body(&self) -> bool {
+        matches!(self.kind.unstripped(), ItemKind::AssocType(AssocType { type_: None, .. }))
     }
     pub(crate) fn is_assoc_const_with_body(&self) -> bool {
         matches!(
@@ -856,10 +856,7 @@ impl Item {
             // Variants always inherit visibility
             ItemKind::Variant(..) | ItemKind::Impl(..) => return None,
             // Trait items inherit the trait's visibility
-            ItemKind::AssocConstant(..)
-            | ItemKind::AssocType(..)
-            | ItemKind::RequiredAssocType(..)
-            | ItemKind::AssocFunction(..) => {
+            ItemKind::AssocConstant(..) | ItemKind::AssocType(..) | ItemKind::AssocFunction(..) => {
                 match tcx.associated_item(def_id).container {
                     // Trait impl items always inherit the impl's visibility --
                     // we don't want to show `pub`.
@@ -927,12 +924,7 @@ pub(crate) enum ItemKind {
     PrimitiveType(PrimitiveType),
     Constant(Box<Constant>),
     AssocConstant(Box<AssocConstant>),
-    /// A required associated type in a trait declaration.
-    ///
-    /// The bounds may be non-empty if there is a `where` clause.
-    RequiredAssocType(Generics, Vec<GenericBound>),
-    /// An associated type in a trait impl or a provided one in a trait declaration.
-    AssocType(Box<TypeAlias>, Vec<GenericBound>),
+    AssocType(Box<AssocType>),
     /// An item that has been stripped by a rustdoc pass
     Stripped(Box<ItemKind>),
     /// This item represents an anonymous constant with a `#[doc(keyword = "...")]` attribute which is used
@@ -975,7 +967,6 @@ impl ItemKind {
             | Self::ProcMacro(_)
             | Self::PrimitiveType(_)
             | Self::AssocConstant(..)
-            | Self::RequiredAssocType(..)
             | Self::AssocType(..)
             | Self::Stripped(_)
             | Self::Keyword
@@ -2234,18 +2225,27 @@ impl TypeAliasInnerType {
 
 #[derive(Clone, Debug)]
 pub(crate) struct TypeAlias {
-    pub(crate) type_: Type,
     pub(crate) generics: Generics,
+    pub(crate) type_: Type,
     /// Inner `AdtDef` type, ie `type TyKind = IrTyKind<Adt, Ty>`,
     /// to be shown directly on the typedef page.
     pub(crate) inner_type: Option<TypeAliasInnerType>,
-    /// `type_` can come from either the HIR or from metadata. If it comes from HIR, it may be a type
-    /// alias instead of the final type. This will always have the final type, regardless of whether
-    /// `type_` came from HIR or from metadata.
-    ///
-    /// If `item_type.is_none()`, `type_` is guaranteed to come from metadata (and therefore hold the
-    /// final type).
-    pub(crate) item_type: Option<Type>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AssocType {
+    pub(crate) generics: Generics,
+    pub(crate) bounds: Vec<GenericBound>,
+    pub(crate) type_: Option<AliasedType>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct AliasedType {
+    pub(crate) type_: Type,
+    // FIXME: Somehow get rid of this field.
+    /// Iff [`Self::type_`] was cleaned from the HIR, this contains
+    /// the corresponding type cleaned from the middle::ty IR.
+    pub(crate) middle_type: Option<Type>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
