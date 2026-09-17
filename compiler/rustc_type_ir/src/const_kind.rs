@@ -146,20 +146,7 @@ pub enum AliasConstKind<I: Interner> {
     Anon { def_id: I::AnonConstId },
 }
 
-pub enum AliasConstInherentArgsKind {
-    WithSelf,
-    Impl,
-}
-
 impl<I: Interner> AliasConstKind<I> {
-    pub fn new_from_def_id(
-        interner: I,
-        def_id: I::DefId,
-        inherent_args: AliasConstInherentArgsKind,
-    ) -> Self {
-        interner.alias_const_kind_from_def_id(def_id, inherent_args)
-    }
-
     pub fn is_direct_const(self, interner: I) -> bool {
         interner.is_direct_const(self)
     }
