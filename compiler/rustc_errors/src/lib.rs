@@ -1258,7 +1258,11 @@ impl DiagCtxtInner {
                     };
                 }
             }
-            ForceWarning if diagnostic.lint_id.is_none() => {} // `ForceWarning(Some(...))` is below, with `Expect`
+            ForceWarning => {
+                if let Some(lint_id) = diagnostic.lint_id {
+                    self.fulfilled_expectations.insert(lint_id);
+                }
+            }
             Warning => {
                 if !self.flags.can_emit_warnings {
                     // We are not emitting warnings.
@@ -1279,14 +1283,12 @@ impl DiagCtxtInner {
                 }
                 return None;
             }
-            Expect | ForceWarning => {
+            Expect => {
                 self.fulfilled_expectations.insert(diagnostic.lint_id.unwrap());
-                if let Expect = diagnostic.level {
-                    // Nothing emitted here for expected lints.
-                    TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
-                    self.suppressed_expected_diag = true;
-                    return None;
-                }
+                // Nothing emitted here for expected lints.
+                TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
+                self.suppressed_expected_diag = true;
+                return None;
             }
         }
 
@@ -1313,7 +1315,7 @@ impl DiagCtxtInner {
                     ) && mem::replace(&mut self.emitted_recursion_depth_exceeding_limit, true)
                 });
 
-            // Only emit the diagnostic if we've been asked to deduplicate or
+            // Only emit the diagnostic if deduplication is disabled or we
             // haven't already emitted an equivalent diagnostic.
             if !silence_recursion_depth_exceeded_limit
                 && !(self.flags.deduplicate_diagnostics && already_emitted)
@@ -1580,8 +1582,8 @@ pub enum Level {
     /// A `force-warn` lint warning about the code being compiled. Does not prevent compilation
     /// from finishing.
     ///
-    /// Requires a [`LintExpectationId`] for expected lint diagnostics. In all other cases this
-    /// should be `None`.
+    /// Requires the corresponding `DiagInner::lint_id` to be `Some` for expected lint diagnostics,
+    /// and `None` in all other cases.
     ForceWarning,
 
     /// A warning about the code being compiled. Does not prevent compilation from finishing.
@@ -1605,7 +1607,8 @@ pub enum Level {
     /// Only used for lints.
     Allow,
 
-    /// Only used for lints. Requires a [`LintExpectationId`] for silencing the lints.
+    /// Only used for lints. Requires the corresponding `DiagInner::lint_id` to be `Some` to
+    /// silence the lints.
     Expect,
 }
 

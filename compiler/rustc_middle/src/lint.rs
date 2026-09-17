@@ -477,7 +477,7 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
         // emitted or we'll get a `must_produce_diag` ICE.
         //
         // When is a diagnostic *eventually* emitted? Well, that is determined by 2 factors:
-        // 1. If the corresponding `rustc_errors::Level` is beyond warning, i.e. `ForceWarning(_)`
+        // 1. If the corresponding `rustc_errors::Level` is beyond warning, i.e. `ForceWarning`
         //    or `Error`, then the diagnostic will be emitted regardless of CLI options.
         // 2. If the corresponding `rustc_errors::Level` is warning, then that can be affected by
         //    `-A warnings` or `--cap-lints=xxx` on the command line. In which case, the diagnostic
