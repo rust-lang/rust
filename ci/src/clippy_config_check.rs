@@ -4,6 +4,7 @@ use itertools::Itertools;
 
 const CARGO_TOMLS: &[&'static str] = &[
     "Cargo.toml",
+    "check_diff/Cargo.toml",
     "ci/Cargo.toml",
     "config_proc_macro/Cargo.toml",
 ];
