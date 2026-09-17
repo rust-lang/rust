@@ -617,6 +617,12 @@ impl<'a, G> Diag<'a, G> {
         self
     } }
 
+    with_fn! { with_span_context,
+    pub fn span_context(&mut self, span: Span) -> &mut Self {
+        self.span.push_span_context(span);
+        self
+    } }
+
     with_fn! { with_span_labels,
     /// Labels all the given spans with the provided label.
     /// See [`Self::span_label()`] for more information.

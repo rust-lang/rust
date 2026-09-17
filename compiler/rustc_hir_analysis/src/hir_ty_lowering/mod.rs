@@ -1608,12 +1608,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
         }
 
-        Ok(TypeRelativePath::AssocItem(ty::AliasTerm::new_from_def_id(
-            tcx,
-            item_def_id,
-            args,
-            ty::AliasConstInherentArgsKind::WithSelf,
-        )))
+        let kind = match mode {
+            LowerTypeRelativePathMode::Type(..) => {
+                ty::AliasTermKind::ProjectionTy { def_id: item_def_id }
+            }
+            LowerTypeRelativePathMode::Const => {
+                ty::AliasTermKind::ProjectionConst { def_id: item_def_id }
+            }
+        };
+
+        Ok(TypeRelativePath::AssocItem(ty::AliasTerm::new_from_args(tcx, kind, args)))
     }
 
     /// Resolve a [type-relative](hir::QPath::TypeRelative) (and type-level) path.
@@ -1947,11 +1951,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self.check_const_item_in_type_system(item_def_id, span)?;
         let alias_const = ty::AliasConst::new(
             tcx,
-            ty::AliasConstKind::new_from_def_id(
-                tcx,
-                item_def_id,
-                ty::AliasConstInherentArgsKind::WithSelf,
-            ),
+            ty::AliasConstKind::Projection { def_id: item_def_id },
             item_args,
         );
         Ok(Const::new_alias(tcx, ty::IsRigid::No, alias_const))
@@ -2396,16 +2396,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // we have the ability to intermix typeck of anon const const args with the parent
             // bodies typeck.
 
-            // FIXME(min_generic_const_args): This check should be removed for mGCA, it is due to
-            // the lack of ConstParamTy rib-checking in nameres for directly represented const
-            // items.
-
             // We also error if the type contains any regions as effectively any region will wind
             // up as a region variable in mir borrowck. It would also be somewhat concerning if
             // hir typeck was using equality but mir borrowck wound up using subtyping as that could
             // result in a non-infer in hir typeck but a region variable in borrowck.
-            if (tcx.features().generic_const_parameter_types()
-                || tcx.features().min_generic_const_args())
+            if tcx.features().generic_const_parameter_types()
                 && (ty.has_free_regions() || ty.has_erased_regions())
             {
                 let e = self.dcx().span_err(
@@ -2492,8 +2487,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        let (elem_ty, len) = match ty.kind() {
-            ty::Array(elem_ty, len) => (elem_ty, len),
+        let elem_ty = match ty.kind() {
+            ty::Array(elem_ty, _) => elem_ty,
             ty::Error(e) => return Const::new_error(tcx, *e),
             _ => {
                 let e = tcx
@@ -2509,28 +2504,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|elem| self.lower_const_arg(elem, *elem_ty))
             .collect::<Vec<_>>();
 
-        let len = tcx
-            .try_normalize_erasing_regions(
-                ty::TypingEnv::new(ty::ParamEnv::empty(), TypingMode::non_body_analysis()),
-                Unnormalized::new_wip(*len),
-            )
-            .unwrap_or(*len);
-        if let Some(expected_len) = len.try_to_target_usize(tcx)
-            && expected_len != elems.len() as u64
-        {
-            let e = tcx.dcx().span_err(
-                array_expr.span,
-                format!(
-                    "expected array with {expected_len} elements, found {} elements",
-                    array_expr.elems.len()
-                ),
-            );
-            return Const::new_error(tcx, e);
-        }
-
+        // The array len passed in the type might be an infer var, or a const param, or it could
+        // just be an incorrect constant. So, construct the resulting valtree's type based on the
+        // provided syntax rather than the expected type. The surrounding typeck will catch any
+        // mismatches.
+        let valtree_ty = Ty::new_array(tcx, *elem_ty, elems.len() as u64);
         let valtree = ty::ValTree::from_branches(tcx, elems);
-
-        ty::Const::new_value(tcx, valtree, ty)
+        ty::Const::new_value(tcx, valtree, valtree_ty)
     }
 
     fn try_recover_misrepresented_function_call(
@@ -2911,15 +2891,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::Const::new_alias(
                     tcx,
                     ty::IsRigid::No,
-                    ty::AliasConst::new(
-                        tcx,
-                        ty::AliasConstKind::new_from_def_id(
-                            tcx,
-                            did,
-                            ty::AliasConstInherentArgsKind::WithSelf,
-                        ),
-                        args,
-                    ),
+                    ty::AliasConst::new(tcx, ty::AliasConstKind::Free { def_id: did }, args),
                 )
             }
             Res::Def(kind @ DefKind::Ctor(ctor_of, CtorKind::Const), did) => {

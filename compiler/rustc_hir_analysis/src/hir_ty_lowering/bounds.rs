@@ -476,12 +476,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 debug!(?alias_args);
 
-                ty::AliasTerm::new_from_def_id(
-                    tcx,
-                    assoc_item.def_id,
-                    alias_args,
-                    ty::AliasConstInherentArgsKind::WithSelf,
-                )
+                let kind = if let ty::AssocTag::Const = assoc_tag {
+                    ty::AliasTermKind::ProjectionConst { def_id: assoc_item.def_id }
+                } else {
+                    ty::AliasTermKind::ProjectionTy { def_id: assoc_item.def_id }
+                };
+                ty::AliasTerm::new_from_args(tcx, kind, alias_args)
             })
         };
 

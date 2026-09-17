@@ -1,0 +1,34 @@
+- // MIR for `union_fields` before MatchBranchSimplification
++ // MIR for `union_fields` after MatchBranchSimplification
+  
+  fn union_fields(_1: Foo) -> Foo {
+      let mut _0: Foo;
+      let mut _2: U;
+      let mut _3: u8;
+  
+      bb0: {
+          (_2.1: Foo) = copy _1;
+          _3 = discriminant((_2.1: Foo));
+          switchInt(copy _3) -> [0: bb2, 1: bb3, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          (_2.0: Foo) = Foo::A;
+          goto -> bb4;
+      }
+  
+      bb3: {
+          (_2.0: Foo) = Foo::B;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          _0 = copy (_2.0: Foo);
+          return;
+      }
+  }
+  

@@ -1346,7 +1346,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     kind: hir::ImplItemKind::Fn(sig, _),
                     ..
                 }) => {
-                    err.span_label(ident.span, "");
+                    err.span_context(ident.span);
                     err.span_label(
                         sig.decl.output.span(),
                         "change this to return `FnMut` instead of `Fn`",

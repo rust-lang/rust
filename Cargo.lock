@@ -4716,6 +4716,7 @@ name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
  "measureme",
+ "parking_lot",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",

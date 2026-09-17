@@ -715,6 +715,18 @@ fn collect_annotations(
         }
     }
 
+    for span in msp.span_context() {
+        let file = sm.lookup_source_file(span.lo());
+        let ann = Annotation { kind: AnnotationKind::Visible, span: *span, label: None };
+        if let Some((_, annotations)) =
+            output.iter_mut().find(|(f, _)| f.stable_id == file.stable_id)
+        {
+            annotations.push(ann);
+        } else {
+            output.push((file, vec![ann]));
+        }
+    }
+
     // Sort annotations within each file by line number
     for (_, ann) in output.iter_mut() {
         ann.sort_by_key(|a| {

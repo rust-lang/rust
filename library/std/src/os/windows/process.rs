@@ -188,7 +188,7 @@ pub impl(self) trait CommandExt {
     /// <https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow>
     ///
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/ns-processthreadsapi-startupinfow>
-    #[unstable(feature = "windows_process_extensions_show_window", issue = "127544")]
+    #[stable(feature = "windows_process_extensions_show_window", since = "CURRENT_RUSTC_VERSION")]
     fn show_window(&mut self, cmd_show: u16) -> &mut process::Command;
 
     /// Forces all arguments to be wrapped in quote (`"`) characters.
@@ -451,14 +451,23 @@ impl CommandExt for process::Command {
     }
 }
 
-#[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+#[stable(
+    feature = "windows_process_extensions_main_thread_handle",
+    since = "CURRENT_RUSTC_VERSION"
+)]
 pub impl(self) trait ChildExt {
     /// Extracts the main thread raw handle, without taking ownership
-    #[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+    #[stable(
+        feature = "windows_process_extensions_main_thread_handle",
+        since = "CURRENT_RUSTC_VERSION"
+    )]
     fn main_thread_handle(&self) -> BorrowedHandle<'_>;
 }
 
-#[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+#[stable(
+    feature = "windows_process_extensions_main_thread_handle",
+    since = "CURRENT_RUSTC_VERSION"
+)]
 impl ChildExt for process::Child {
     fn main_thread_handle(&self) -> BorrowedHandle<'_> {
         self.handle.main_thread_handle()
