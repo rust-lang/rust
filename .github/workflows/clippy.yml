@@ -17,7 +17,6 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
           sh rustup-init.sh -y --default-toolchain none
-          rustup target add x86_64-unknown-linux-gnu
       - name: Check clippy configs all match
         run: cargo run --locked --manifest-path ci/Cargo.toml -- clippy-config-check
 
