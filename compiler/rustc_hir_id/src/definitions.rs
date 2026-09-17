@@ -6,6 +6,7 @@
 
 use std::fmt::{self, Write};
 use std::hash::Hash;
+use std::sync::OnceLock;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hash::StableHasher;
@@ -53,6 +54,7 @@ pub struct Definitions {
     // We do only store the local hash, as all the definitions are from the current crate.
     def_path_hashes: IndexVec<LocalDefId, Hash64>,
     def_path_hash_to_index: DefPathHashMap,
+    last_deterministic_index: OnceLock<DefIndex>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -249,6 +251,18 @@ pub enum DefPathData {
 }
 
 impl Definitions {
+    pub fn commit_last_deterministic_index(&mut self) {
+        self.last_deterministic_index
+            .set(
+                if self.def_id_to_key.is_empty() { 0 } else { self.def_id_to_key.len() - 1 }.into(),
+            )
+            .expect("must be called once");
+    }
+
+    pub fn last_deterministic_index(&self) -> DefIndex {
+        self.last_deterministic_index.get().copied().expect("must contain index")
+    }
+
     #[inline(always)]
     pub fn def_key(&self, id: LocalDefId) -> DefKey {
         self.def_id_to_key[id]
@@ -300,6 +314,7 @@ impl Definitions {
             def_path_hashes: Default::default(),
             def_id_to_key: Default::default(),
             def_path_hash_to_index: Default::default(),
+            last_deterministic_index: Default::default(),
         };
 
         // Create the root definition.
