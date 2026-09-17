@@ -2,8 +2,8 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_index::Idx;
-use rustc_middle::span_bug;
 use rustc_middle::ty::error::TypeError;
+use rustc_span::span_bug;
 use tracing::{debug, instrument};
 
 use super::*;

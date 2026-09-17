@@ -734,7 +734,6 @@ dependencies = [
 name = "clippy_lints_internal"
 version = "0.0.1"
 dependencies = [
- "clippy_config",
  "clippy_utils",
  "itertools",
  "regex",
@@ -4716,6 +4715,7 @@ name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
  "measureme",
+ "parking_lot",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -5055,6 +5055,7 @@ dependencies = [
  "expect-test",
  "indexmap",
  "itertools",
+ "libc",
  "minifier",
  "proc-macro2",
  "pulldown-cmark-escape",

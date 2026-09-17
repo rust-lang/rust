@@ -380,8 +380,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                                     && let arg_ty = cx.tcx.erase_and_anonymize_regions(adjusted_ty)
                                     && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
-                                    && let args =
-                                        typeck.node_args_opt(hir_id).map(|args| &args[1..]).unwrap_or_default()
+                                    && let args = typeck.node_args_opt(hir_id).map_or_default(|args| &args[1..])
                                     && let impl_ty = if cx
                                         .tcx
                                         .fn_sig(fn_id)

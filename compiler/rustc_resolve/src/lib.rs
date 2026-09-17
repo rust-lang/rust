@@ -8,6 +8,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
 #![feature(arbitrary_self_types)]
 #![feature(const_default)]
 #![feature(const_trait_impl)]
@@ -17,7 +18,6 @@
 #![feature(iter_intersperse)]
 #![feature(option_into_flat_iter)]
 #![feature(rustc_attrs)]
-#![feature(trim_prefix_suffix)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
@@ -67,10 +67,9 @@ use rustc_middle::middle::resolve::{
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, RegisteredTools, TyCtxt, TyCtxtFeed, Visibility};
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{LocalModId, ModId};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
 use rustc_structures::CrateType;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -1040,7 +1039,9 @@ type Decl<'ra> = Interned<'ra, DeclData<'ra>>;
 enum DeclKind<'ra> {
     /// The name declaration is a definition (possibly without a `DefId`),
     /// can be provided by source code or built into the language.
-    Def(Res),
+    ///
+    /// The reexports are only added for declarations in external modules.
+    Def(Res, &'ra [Reexport]),
     /// The name declaration is a link to another name declaration.
     Import { source_decl: Decl<'ra>, import: Import<'ra> },
 }
@@ -1152,7 +1153,7 @@ impl<'ra> DeclData<'ra> {
 
     fn res(&self) -> Res {
         match self.kind {
-            DeclKind::Def(res) => res,
+            DeclKind::Def(res, ..) => res,
             DeclKind::Import { source_decl, .. } => source_decl.res(),
         }
     }
@@ -1185,9 +1186,10 @@ impl<'ra> DeclData<'ra> {
     fn is_possibly_imported_variant(&self) -> bool {
         match self.kind {
             DeclKind::Import { source_decl, .. } => source_decl.is_possibly_imported_variant(),
-            DeclKind::Def(Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), _)) => {
-                true
-            }
+            DeclKind::Def(
+                Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), _),
+                _,
+            ) => true,
             DeclKind::Def(..) => false,
         }
     }
@@ -1197,7 +1199,7 @@ impl<'ra> DeclData<'ra> {
             DeclKind::Import { import, .. } => {
                 matches!(import.kind, ImportKind::ExternCrate { .. })
             }
-            DeclKind::Def(Res::Def(_, def_id)) => def_id.is_crate_root(),
+            DeclKind::Def(Res::Def(_, def_id), _) => def_id.is_crate_root(),
             _ => false,
         }
     }
@@ -1229,13 +1231,21 @@ impl<'ra> DeclData<'ra> {
     }
 
     fn reexport_chain(self: Decl<'ra>) -> SmallVec<[Reexport; 2]> {
-        let mut reexport_chain = SmallVec::new();
+        let mut full_reexport_chain: SmallVec<[Reexport; 2]> = SmallVec::new();
         let mut next_binding = self;
-        while let DeclKind::Import { source_decl, import, .. } = next_binding.kind {
-            reexport_chain.push(import.simplify());
-            next_binding = source_decl;
+        loop {
+            match next_binding.kind {
+                DeclKind::Import { source_decl, import, .. } => {
+                    full_reexport_chain.push(import.simplify());
+                    next_binding = source_decl;
+                }
+                DeclKind::Def(_, reexport_chain) => {
+                    full_reexport_chain.extend(reexport_chain.iter().copied());
+                    break;
+                }
+            }
         }
-        reexport_chain
+        full_reexport_chain
     }
 
     // Suppose that we resolved macro invocation with `invoc_parent_expansion` to binding `binding`
@@ -1582,7 +1592,7 @@ impl<'ra> ResolverArenas<'ra> {
         parent_module: Option<Module<'ra>>,
     ) -> Decl<'ra> {
         self.alloc_decl(DeclData {
-            kind: DeclKind::Def(res),
+            kind: DeclKind::Def(res, &[]),
             ambiguity: CmCell::new(None),
             initial_vis: vis,
             ambiguity_vis_max: CmCell::new(None),

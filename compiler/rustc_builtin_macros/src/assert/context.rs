@@ -2,7 +2,7 @@ use rustc_ast::token::{self, Delimiter, IdentIsRaw};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{
     BinOpKind, BorrowKind, DUMMY_NODE_ID, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MethodCall,
-    Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind,
+    Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeAndId, UseTreeKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -97,14 +97,12 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///
     /// use ::core::asserting::{ ... };
     fn build_initial_imports(&self) -> Stmt {
-        let nested_tree = |this: &Self, sym| {
-            (
-                UseTree {
-                    prefix: this.cx.path(this.span, vec![Ident::with_dummy_span(sym)]),
-                    kind: UseTreeKind::Simple(None),
-                },
-                DUMMY_NODE_ID,
-            )
+        let nested_tree = |this: &Self, sym| UseTreeAndId {
+            inner: UseTree {
+                prefix: this.cx.path(this.span, vec![Ident::with_dummy_span(sym)]),
+                kind: UseTreeKind::Simple(None),
+            },
+            id: DUMMY_NODE_ID,
         };
         self.cx.stmt_item(
             self.span,

@@ -3,8 +3,6 @@
 //! Specifically, it generates the `SyntaxKind` enum and a number of newtype
 //! wrappers around `SyntaxNode` which implement `syntax::AstNode`.
 
-#![allow(clippy::disallowed_types)]
-
 use std::{
     collections::{BTreeSet, HashSet},
     fmt::Write,

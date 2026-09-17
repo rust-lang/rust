@@ -1,32 +1,62 @@
-error: expected array with 2 elements, found 0 elements
-  --> $DIR/array-const-arg-len-mismatch.rs:30:20
+error: the constant `*b""` is not of type `[u8; 2]`
+  --> $DIR/array-const-arg-len-mismatch.rs:30:11
    |
 LL |     foo::<u8, 2, { [] }>();
-   |                    ^^
+   |           ^^ expected `[u8; 2]`, found `[u8; 0]`
+   |
+note: required by a const generic parameter in `foo`
+  --> $DIR/array-const-arg-len-mismatch.rs:11:42
+   |
+LL | fn foo<T: ConstParamTy_, const N: usize, const M: [T; N]>() -> [T; N] {
+   |                                          ^^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
 
-error: expected array with 2 elements, found 3 elements
-  --> $DIR/array-const-arg-len-mismatch.rs:32:20
+error: the constant `*b"\x00\x00\x00"` is not of type `[u8; 2]`
+  --> $DIR/array-const-arg-len-mismatch.rs:32:11
    |
 LL |     foo::<u8, 2, { [0, 0, 0] }>();
-   |                    ^^^^^^^^^
+   |           ^^ expected `[u8; 2]`, found `[u8; 3]`
+   |
+note: required by a const generic parameter in `foo`
+  --> $DIR/array-const-arg-len-mismatch.rs:11:42
+   |
+LL | fn foo<T: ConstParamTy_, const N: usize, const M: [T; N]>() -> [T; N] {
+   |                                          ^^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
 
-error: expected array with 2 elements, found 0 elements
+error: the constant `*b""` is not of type `[u8; 2]`
   --> $DIR/array-const-arg-len-mismatch.rs:34:13
    |
 LL |     bar::<{ [] }>();
-   |             ^^
+   |             ^^ expected `[u8; 2]`, found `[u8; 0]`
+   |
+note: required by a const generic parameter in `bar`
+  --> $DIR/array-const-arg-len-mismatch.rs:15:8
+   |
+LL | fn bar<const A: [u8; 2]>() {}
+   |        ^^^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
 
-error: expected array with 2 elements, found 3 elements
+error: the constant `*b"\x01\x02\x03"` is not of type `[u8; 2]`
   --> $DIR/array-const-arg-len-mismatch.rs:36:13
    |
 LL |     bar::<{ [1, 2, 3] }>();
-   |             ^^^^^^^^^
+   |             ^^^^^^^^^ expected `[u8; 2]`, found `[u8; 3]`
+   |
+note: required by a const generic parameter in `bar`
+  --> $DIR/array-const-arg-len-mismatch.rs:15:8
+   |
+LL | fn bar<const A: [u8; 2]>() {}
+   |        ^^^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
 
-error: expected array with 3 elements, found 1 elements
+error: the constant `*b"*"` is not of type `[u8; 3]`
   --> $DIR/array-const-arg-len-mismatch.rs:38:13
    |
 LL |     baz::<{ [42] }>();
-   |             ^^^^
+   |             ^^^^ expected `[u8; 3]`, found `[u8; 1]`
+   |
+note: required by a const generic parameter in `baz`
+  --> $DIR/array-const-arg-len-mismatch.rs:27:8
+   |
+LL | fn baz<const A: [u8; <S as Trait>::LEN]>() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this const generic parameter in `baz`
 
 error: aborting due to 5 previous errors
 

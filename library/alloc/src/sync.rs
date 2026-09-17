@@ -450,7 +450,7 @@ impl<T> Arc<T> {
             data,
         });
         // SAFETY: Pointer is valid.
-        unsafe { Self::from_inner(Box::leak(x).into()) }
+        unsafe { Self::from_inner(Box::into_non_null(x)) }
     }
 
     /// Constructs a new `Arc<T>` while giving you a `Weak<T>` to the allocation,
@@ -618,7 +618,7 @@ impl<T> Arc<T> {
             data,
         })?;
         // SAFETY: Pointer is valid.
-        unsafe { Ok(Self::from_inner(Box::leak(x).into())) }
+        unsafe { Ok(Self::from_inner(Box::into_non_null(x))) }
     }
 
     /// Constructs a new `Arc` with uninitialized contents, returning an error
@@ -3916,17 +3916,14 @@ impl<T: Default> Default for Arc<T> {
     fn default() -> Arc<T> {
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            Self::from_inner(
-                Box::leak(Box::write(
-                    Box::new_uninit(),
-                    ArcInner {
-                        strong: atomic::AtomicUsize::new(1),
-                        weak: atomic::AtomicUsize::new(1),
-                        data: T::default(),
-                    },
-                ))
-                .into(),
-            )
+            Self::from_inner(Box::into_non_null(Box::write(
+                Box::new_uninit(),
+                ArcInner {
+                    strong: atomic::AtomicUsize::new(1),
+                    weak: atomic::AtomicUsize::new(1),
+                    data: T::default(),
+                },
+            )))
         }
     }
 }

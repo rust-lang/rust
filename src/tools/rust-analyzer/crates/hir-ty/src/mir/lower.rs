@@ -324,7 +324,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             db,
             infer,
             store,
-            types: crate::next_solver::default_types(db),
+            types: crate::next_solver::default_types(),
             owner,
             store_owner,
             resolver,
@@ -547,7 +547,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                             const_id.into(),
                             current,
                             place,
-                            GenericArgs::empty(self.interner()),
+                            GenericArgs::empty(),
                             expr_id.into(),
                         )?;
                         Ok(Some(current))
@@ -1377,10 +1377,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 match pr {
                     ResolveValueResult::ValueNs(v) => {
                         if let ValueNs::ConstId(c) = v {
-                            self.lower_const_to_operand(
-                                GenericArgs::empty(self.interner()),
-                                c.into(),
-                            )
+                            self.lower_const_to_operand(GenericArgs::empty(), c.into())
                         } else {
                             not_supported!("bad path in range pattern");
                         }

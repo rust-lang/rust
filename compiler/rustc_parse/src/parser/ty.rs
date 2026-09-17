@@ -915,18 +915,15 @@ impl<'a> Parser<'a> {
 
     /// Parses an `impl B0 + ... + Bn` type.
     fn parse_impl_ty(&mut self, impl_dyn_multi: &mut bool) -> PResult<'a, TyKind> {
-        if self.token.is_lifetime() {
-            self.look_ahead(1, |t| {
-                if let token::Ident(sym, _) = t.kind {
-                    // parse pattern with "'a Sized" we're supposed to give suggestion like
-                    // "'a + Sized"
-                    self.dcx().emit_err(diagnostics::MissingPlusBounds {
-                        span: self.token.span,
-                        hi: self.token.span.shrink_to_hi(),
-                        sym,
-                    });
-                }
-            })
+        // If we encounter a type like `impl 'a Sized`, suggest `impl 'a + Sized`.
+        if self.token.is_lifetime()
+            && let Some(ident) = self.look_ahead(1, |t| t.non_reserved_ident())
+        {
+            self.dcx().emit_err(diagnostics::MissingPlusBounds {
+                span: self.token.span,
+                hi: self.token.span.shrink_to_hi(),
+                sym: ident.name,
+            });
         }
 
         // Always parse bounds greedily for better error recovery.

@@ -3,8 +3,7 @@
 use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, listify, msg,
+    Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, Level, MultiSpan, listify, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
@@ -468,7 +467,7 @@ pub(crate) struct MissingGenericParams {
 }
 
 // FIXME: This doesn't need to be a manual impl!
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for MissingGenericParams {
+impl<'a, G> Diagnostic<'a, G> for MissingGenericParams {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let mut err = Diag::new(
@@ -2070,7 +2069,7 @@ pub(crate) struct UncoveredTyParam<'tcx> {
     pub(crate) local_ty: Option<Ty<'tcx>>,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for UncoveredTyParam<'_> {
+impl<G> Diagnostic<'_, G> for UncoveredTyParam<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let Self { param, local_ty } = self;
 

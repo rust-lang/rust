@@ -6,7 +6,7 @@ fn unique_to_const<'a, 'b>(x: &mut &'a i32) -> *const &'b i32 {
     x   //~ ERROR
 }
 
-fn unique_to_mut<'a, 'b>(x: &mut &'a i32) -> *mut &'b i32 {
+fn unique_to_mut<'a, 'b>(x: &mut &'a i32) -> *mut &'b i32 { //~ ERROR one or more lifetime errors
     // Two errors because *mut is invariant
     x   //~ ERROR
         //~| ERROR

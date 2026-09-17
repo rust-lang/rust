@@ -115,7 +115,10 @@ impl ExprScopes {
     }
 
     /// If `scope` refers to a macro def scope, returns the corresponding `MacroId`.
-    #[allow(clippy::borrowed_box)] // If we return `&MacroDefId` we need to move it, this way we just clone the `Box`.
+    #[expect(
+        clippy::borrowed_box,
+        reason = "If we return `&MacroDefId` we need to move it, this way we just clone the `Box`."
+    )]
     pub fn macro_def(&self, scope: ScopeId) -> Option<&Box<MacroDefId>> {
         match &self.scopes[scope].kind {
             ScopeKind::MacroDef(macro_def) => Some(macro_def),
@@ -816,68 +819,6 @@ fn test() {
 }
 "#,
             100,
-        );
-    }
-    #[test]
-    fn pattern_const_block_expressions_have_scopes() {
-        do_check(
-            r#"
-fn foo() {
-    match () {
-        const { |x: i32| { let y = x; $0 } } => (),
-    }
-}
-"#,
-            &["y", "x"],
-        );
-    }
-
-    #[test]
-    fn let_pattern_expr_scope() {
-        do_check(
-            r#"
-fn foo(param: usize) {
-    let local = 0;
-    let const { $0 } = ();
-}
-"#,
-            &["param"],
-        );
-    }
-
-    #[test]
-    fn closure_param_pattern_expr_scope() {
-        do_check(
-            r#"
-fn foo(param: usize) {
-    let local = 0;
-    let _ = |const { $0 }: ()| ();
-}
-"#,
-            &["param"],
-        );
-    }
-
-    #[test]
-    fn fn_param_pattern_expr_scope() {
-        do_check(
-            r#"
-fn foo(param: usize, const { $0 }: ()) {}
-"#,
-            &["param"],
-        );
-    }
-
-    #[test]
-    fn if_let_pattern_expr_scope() {
-        do_check(
-            r#"
-fn foo(param: usize) {
-    let local = 0;
-    if let const { $0 } = () {}
-}
-"#,
-            &["param"],
         );
     }
 }

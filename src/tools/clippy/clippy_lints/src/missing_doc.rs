@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{is_doc_hidden, is_from_proc_macro};
-use rustc_hir::attrs::AttributeKind;
+use rustc_attr_ir::AttributeKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{
     AttrArgs, Attribute, Body, BodyId, FieldDef, HirId, ImplItem, Item, ItemKind, Node, TraitItem, Variant,

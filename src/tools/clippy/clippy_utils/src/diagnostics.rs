@@ -10,7 +10,7 @@
 
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, Diagnostic, Level, MultiSpan};
 #[cfg(debug_assertions)]
-use rustc_errors::{EmissionGuarantee, SubstitutionPart, Suggestions};
+use rustc_errors::{SubstitutionPart, Suggestions};
 use rustc_hir::HirId;
 use rustc_lint::{LateContext, Lint, LintContext};
 use rustc_span::Span;
@@ -43,7 +43,7 @@ fn docs_link(diag: &mut Diag<'_, ()>, lint: &'static Lint) {
 ///
 /// This function makes sure we also validate them in debug clippy builds.
 #[cfg(debug_assertions)]
-fn validate_diag(diag: &Diag<'_, impl EmissionGuarantee>) {
+fn validate_diag<G>(diag: &Diag<'_, G>) {
     let suggestions = match &diag.suggestions {
         Suggestions::Enabled(suggs) => &**suggs,
         Suggestions::Sealed(suggs) => &**suggs,

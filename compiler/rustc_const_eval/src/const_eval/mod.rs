@@ -1,9 +1,9 @@
 // Not in interpret to make sure we do not use private implementation details
 
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::{bug, mir};
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, bug};
 use tracing::instrument;
 
 use crate::interpret::InterpCx;
