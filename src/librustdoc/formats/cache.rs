@@ -449,8 +449,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | ItemKind::AssocFn(..)
             | ItemKind::StructField(..)
             | ItemKind::RequiredAssocConst(..)
-            | ItemKind::ProvidedAssocConst(..)
-            | ItemKind::ImplAssocConst(..)
+            | ItemKind::AssocConst(..)
             | ItemKind::RequiredAssocTy(..)
             | ItemKind::AssocTy(..)
             | ItemKind::Stripped(..)
@@ -550,7 +549,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     let item_def_id = item.item_id.as_def_id().unwrap();
     let (parent_did, parent_path) = match item.kind {
         ItemKind::Stripped(..) => return,
-        ItemKind::ProvidedAssocConst(..) | ItemKind::ImplAssocConst(..) | ItemKind::AssocTy(..)
+        ItemKind::AssocConst(..) | ItemKind::AssocTy(..)
             if cache.parent_stack.last().is_some_and(|parent| parent.is_trait_impl()) =>
         {
             // skip associated items in trait impls
@@ -574,10 +573,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             let parent_path = &cache.stack[..cache.stack.len() - 1];
             (Some(parent_did), parent_path)
         }
-        ItemKind::AssocFn(..)
-        | ItemKind::ProvidedAssocConst(..)
-        | ItemKind::ImplAssocConst(..)
-        | ItemKind::AssocTy(..) => {
+        ItemKind::AssocFn(..) | ItemKind::AssocConst(..) | ItemKind::AssocTy(..) => {
             let last = cache.parent_stack.last().expect("parent_stack is empty 2");
             let parent_did = match last {
                 // impl Trait for &T { fn method(self); }

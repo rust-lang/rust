@@ -413,7 +413,7 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
             default_unstable: None,
         },
         // FIXME(generic_const_items): Add support for generic associated consts.
-        ItemKind::ProvidedAssocConst(ci) => ItemEnum::AssocConst {
+        ItemKind::AssocConst(ci) => ItemEnum::AssocConst {
             type_: ci.type_.into_json(renderer),
             value: Some(ci.kind.expr(renderer.tcx)),
             default_unstable: default_body_stability_for_def_id(
@@ -421,11 +421,6 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
                 item.item_id.expect_def_id(),
             )
             .map(|stab| stab.into_json(renderer)),
-        },
-        ItemKind::ImplAssocConst(ci) => ItemEnum::AssocConst {
-            type_: ci.type_.into_json(renderer),
-            value: Some(ci.kind.expr(renderer.tcx)),
-            default_unstable: None,
         },
         ItemKind::RequiredAssocTy(g, b) => ItemEnum::AssocType {
             generics: g.into_json(renderer),
