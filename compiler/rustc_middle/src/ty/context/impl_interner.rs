@@ -13,7 +13,7 @@ use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, Sol
 use rustc_type_ir::solve::CanonicalInputData;
 use rustc_type_ir::{
     BoundVar, CollectAndApply, DebruijnIndex, Interner, RegionVid, TypeFoldable, Unnormalized,
-    VisitorResult, search_graph, try_visit,
+    VisitorResult, WithCachedTypeInfo, search_graph, try_visit,
 };
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
@@ -109,8 +109,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Pat = Pattern<'tcx>;
     type PatList = &'tcx List<Pattern<'tcx>>;
     type Safety = hir::Safety;
-    type Const = ty::Const<'tcx>;
-    type Consts = &'tcx List<Self::Const>;
+    type Consts = &'tcx List<ty::Const<'tcx>>;
 
     type ParamConst = ty::ParamConst;
     type ValueConst = ty::Value<'tcx>;
@@ -118,6 +117,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ValTree = ty::ValTree<'tcx>;
     type ScalarInt = ty::ScalarInt;
     type InternedRegionKind = Interned<'tcx, ty::RegionKind<'tcx>>;
+    type InternedConstKind = Interned<'tcx, WithCachedTypeInfo<ty::ConstKind<'tcx>>>;
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegionKind = ty::LateParamRegionKind;
 
@@ -355,6 +355,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         T: CollectAndApply<Ty<'tcx>, &'tcx List<Ty<'tcx>>>,
     {
         self.mk_type_list_from_iter(args)
+    }
+
+    fn mk_ct_from_kind(self, kind: ty::ConstKind<'tcx>) -> ty::Const<'tcx> {
+        self.mk_ct_from_kind(kind)
     }
 
     fn projection_parent(self, def_id: Self::TraitAssocTermId) -> Self::TraitId {
@@ -794,9 +798,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 }
 
-impl<'tcx, T: std::fmt::Debug + Clone + Copy> rustc_type_ir::intern::Interned<TyCtxt<'tcx>>
-    for Interned<'tcx, T>
-{
+impl<'tcx, T: Clone + Copy> rustc_type_ir::intern::Interned<TyCtxt<'tcx>> for Interned<'tcx, T> {
     type Value = T;
     fn get(self) -> T {
         *self.0
