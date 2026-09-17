@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/method-resolution5-deref-no-constrain.rs:20:5
    |
 LL | fn via_deref() -> impl Deref<Target = Foo> {
-   |                                       --- expected `&Foo` because of return type
+   |                   ------------------------ expected a single type implementing `Deref` because of return type
 ...
 LL |     Box::new(Foo)
    |     ^^^^^^^^^^^^^ expected `&Foo`, found `Box<Foo>`
