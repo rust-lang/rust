@@ -3908,7 +3908,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
         if tcx.sess.source_map().is_multiline(sugg_span) {
-            err.span_label(sugg_span.with_hi(span.lo()), "");
+            err.span_context(sugg_span.with_hi(span.lo()));
         }
         if let Some(within_macro_span) = within_macro_span {
             err.span_label(within_macro_span, "due to this macro variable");

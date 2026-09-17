@@ -1289,7 +1289,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
         report_adt_defined_here(cx.tcx, scrut_ty, &witnesses, true)
     {
         let mut multi_span = MultiSpan::from_span(adt_def_span);
-        multi_span.push_span_label(adt_def_span, "");
+        multi_span.push_span_context(adt_def_span);
         for Variant { span } in variants {
             multi_span.push_span_label(span, "not covered");
         }
