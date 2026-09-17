@@ -769,7 +769,12 @@ const unsafe fn strlen(ptr: *const c_char) -> usize {
             }
 
             // SAFETY: Outer caller has provided a pointer to a valid C string.
-            unsafe { strlen(s) }
+            let len = unsafe { strlen(s) };
+            // SAFETY: The length is at most the size of the allocation containing the string, which
+            // must fit in `isize::MAX`. Since the nul-terminator is not included in `len`, it's <
+            // rather than <=.
+            unsafe { crate::hint::assert_unchecked(len < isize::MAX as usize) };
+            len
         }
     )
 }
