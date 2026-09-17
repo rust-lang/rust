@@ -5,6 +5,7 @@
 
 #![crate_type = "lib"]
 
+#[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
 pub fn f(x: *const usize) -> &'static usize {
     let mut a = unsafe { &*x };
     a = unsafe { &*x };

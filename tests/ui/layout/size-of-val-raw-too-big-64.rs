@@ -17,6 +17,7 @@ pub struct Example([u8; isize::MAX as usize], [u16]);
 // The `size_of_val` intrinsic is the first thing to ask for the layout of `Example` when there is
 // no debuginfo, while with full debuginfo the type is described for the signature of `check`
 // first. Both point at the code that requires the layout.
+#[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
 pub fn check(x: *const Example) -> usize {
     //[full-debuginfo]~^ ERROR are too big for the target architecture
     unsafe { std::intrinsics::size_of_val(x) }

@@ -1188,6 +1188,7 @@ impl f16 {
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
     #[allow(unnecessary_transmutes)]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub const fn from_bits(v: u16) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         // SAFETY: `u16` is a plain old datatype so we can always transmute from it.

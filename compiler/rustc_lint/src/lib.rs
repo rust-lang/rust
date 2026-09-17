@@ -232,6 +232,7 @@ late_lint_methods!(
             DropTraitConstraints: DropTraitConstraints,
             EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
             ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
+            FnDirectUseOfUnsafeOpOnArgs: FnDirectUseOfUnsafeOpOnArgs,
             ForLoopsOverFallibles: ForLoopsOverFallibles,
             FunctionCastsAsInteger: FunctionCastsAsInteger,
             IfLetRescope: IfLetRescope::default(),

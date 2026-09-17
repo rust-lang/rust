@@ -374,6 +374,7 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
     /// Panics if there are less than `n` elements initialized.
     #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn advance_checked(&mut self, n: usize) -> &mut Self {
         // The subtraction cannot underflow by invariant of this type.
         let init_unfilled = if self.is_buf_init() { self.buf_len() - self.filled() } else { 0 };

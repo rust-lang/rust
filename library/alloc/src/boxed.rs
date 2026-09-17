@@ -904,6 +904,7 @@ impl<T> Box<[T]> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "new_uninit", since = "1.82.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[must_use]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         // SAFETY: `len` is exactly the capacity of this `RawVec`.
@@ -928,6 +929,7 @@ impl<T> Box<[T]> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         // SAFETY: `len` is exactly the capacity of this `RawVec`.
@@ -953,6 +955,7 @@ impl<T> Box<[T]> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[inline]
     pub fn try_new_uninit_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {
         let ptr = if T::IS_ZST || len == 0 {
@@ -991,6 +994,7 @@ impl<T> Box<[T]> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[inline]
     pub fn try_new_zeroed_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {
         let ptr = if T::IS_ZST || len == 0 {
@@ -1031,6 +1035,7 @@ impl<T, A: Allocator> Box<[T], A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[must_use]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
         // SAFETY: `len` is exactly the capacity of this `RawVec`.
@@ -1059,6 +1064,7 @@ impl<T, A: Allocator> Box<[T], A> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[must_use]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
         // SAFETY: `len` is exactly the capacity of this `RawVec`.
@@ -1086,6 +1092,7 @@ impl<T, A: Allocator> Box<[T], A> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[inline]
     pub fn try_new_uninit_slice_in(
         len: usize,
@@ -1129,6 +1136,7 @@ impl<T, A: Allocator> Box<[T], A> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[inline]
     pub fn try_new_zeroed_slice_in(
         len: usize,

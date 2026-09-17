@@ -1323,6 +1323,7 @@ impl<T> Arc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "new_uninit", since = "1.82.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[must_use]
     pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         // ignore-tidy-undocumented-unsafe
@@ -1391,6 +1392,7 @@ impl<T, A: Allocator> Arc<[T], A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[inline]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Arc<[mem::MaybeUninit<T>], A> {
         // ignore-tidy-undocumented-unsafe

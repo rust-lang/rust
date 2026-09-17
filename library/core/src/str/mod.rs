@@ -897,6 +897,7 @@ impl str {
     #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
     #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub const fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -937,6 +938,7 @@ impl str {
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub const fn split_at_checked(&self, mid: usize) -> Option<(&str, &str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -978,6 +980,7 @@ impl str {
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub const fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {

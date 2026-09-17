@@ -294,6 +294,7 @@ impl<'a> MemDecoder<'a> {
     }
 
     #[inline]
+    #[cfg_attr(not(bootstrap), allow(safe_fn_direct_use_of_unsafe_op_on_args))]
     pub fn split_at(&self, position: usize) -> MemDecoder<'a> {
         assert!(position <= self.len());
         // SAFETY: We checked above that this offset is within the original slice
@@ -328,6 +329,7 @@ impl<'a> MemDecoder<'a> {
     /// all current users of that method would need to reset the position later,
     /// incurring the bounds check of set_position twice.
     #[inline]
+    #[cfg_attr(not(bootstrap), allow(safe_fn_direct_use_of_unsafe_op_on_args))]
     pub fn with_position<F, T>(&mut self, pos: usize, func: F) -> T
     where
         F: Fn(&mut MemDecoder<'a>) -> T,
@@ -399,6 +401,7 @@ impl<'a> Decoder for MemDecoder<'a> {
     }
 
     #[inline]
+    #[cfg_attr(not(bootstrap), allow(safe_fn_direct_use_of_unsafe_op_on_args))]
     fn read_raw_bytes(&mut self, bytes: usize) -> &'a [u8] {
         if bytes > self.remaining() {
             Self::decoder_exhausted();

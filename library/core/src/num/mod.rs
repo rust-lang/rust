@@ -2,6 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![expect(clippy::manual_is_ascii_check, reason = "this module implements various is_ascii checks")]
+#![allow(safe_fn_direct_use_of_unsafe_op_on_args)]
 
 use crate::convert::{BoundedCastFromInt, CheckedCastFromInt};
 use crate::panic::const_panic;

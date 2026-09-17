@@ -28,8 +28,11 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
+use rustc_hir::intravisit::FnKind::{self as HirFnKind};
+use rustc_hir::intravisit::Visitor;
+use rustc_hir::{
+    self as hir, Body, FnDecl, HirIdSet, ImplItemImplKind, PatKind, PredicateOrigin, find_attr,
+};
 // Lints from rustc_lint_defs
 pub use rustc_lint_defs::builtin::*;
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw, impl_lint_pass};
@@ -37,7 +40,8 @@ use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, AssocContainer, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast, VariantDef,
+    self, AssocContainer, Ty, TyCtxt, TypeVisitableExt, TypeckResults, Unnormalized, Upcast,
+    VariantDef,
 };
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Spanned, Symbol, bug, kw, sym};
@@ -54,11 +58,11 @@ use crate::diagnostics::{
     BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
     BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
     BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinMutablesTransmutes,
-    BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds,
-    BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
-    BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures,
-    BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub, BuiltinWhileTrue,
-    EqInternalMethodImplemented, InvalidAsmLabel,
+    BuiltinNonShorthandFieldPatterns, BuiltinSafeFnDirectUseOfUnsafeOpOnArgs,
+    BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasBounds,
+    BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub,
+    BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
+    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -2600,6 +2604,132 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         tcx: cx.tcx,
                     },
                 );
+            }
+        }
+    }
+}
+
+declare_lint! {
+    /// The `safe_fn_direct_use_of_unsafe_op_on_args` lint detects when unsafe operations
+    /// are trivially used on a function's arguments, and this function is safe and pub.
+    /// which might cause [undefined behavior].
+    pub SAFE_FN_DIRECT_USE_OF_UNSAFE_OP_ON_ARGS,
+    Warn,
+    "detects when a trivial unsafe operation is used on arguments, from a safe fn"
+}
+
+declare_lint_pass!(FnDirectUseOfUnsafeOpOnArgs => [SAFE_FN_DIRECT_USE_OF_UNSAFE_OP_ON_ARGS]);
+
+pub fn for_each_expr<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    node: &'tcx hir::Expr<'tcx>,
+    f: impl FnMut(&'tcx hir::Expr<'tcx>),
+) {
+    struct V<'tcx, F> {
+        _tcx: TyCtxt<'tcx>,
+        f: F,
+    }
+
+    impl<'tcx, F: FnMut(&'tcx hir::Expr<'tcx>)> Visitor<'tcx> for V<'tcx, F> {
+        fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Self::Result {
+            (self.f)(expr);
+            hir::intravisit::walk_expr(self, expr)
+        }
+    }
+
+    let mut v = V { _tcx: tcx, f };
+    v.visit_expr(node)
+}
+
+impl<'tcx> LateLintPass<'tcx> for FnDirectUseOfUnsafeOpOnArgs {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        fnkind: HirFnKind<'tcx>,
+        _: &'tcx FnDecl<'tcx>,
+        body: &'tcx Body<'tcx>,
+        _: Span,
+        def_id: LocalDefId,
+    ) {
+        fn is_unsafe_call<'tcx>(
+            cx: &LateContext<'tcx>,
+            typeck: &TypeckResults<'tcx>,
+            expr: &'tcx hir::Expr<'tcx>,
+        ) -> bool {
+            match expr.kind {
+                hir::ExprKind::Call(f, _) => {
+                    let ty = typeck.expr_ty(f);
+                    ty.is_fn() && ty.fn_sig(cx.tcx).safety().is_unsafe()
+                }
+                hir::ExprKind::MethodCall(..) => {
+                    let def_id = typeck.type_dependent_def_id(expr.hir_id).unwrap();
+                    cx.tcx.fn_sig(def_id).skip_binder().skip_binder().safety().is_unsafe()
+                }
+                _ => false,
+            }
+        }
+
+        fn check_arg(cx: &LateContext<'_>, raw_ptrs: &HirIdSet, arg: &hir::Expr<'_>) {
+            if let hir::ExprKind::Path(hir::QPath::Resolved(.., path)) = arg.kind
+                && let Res::Local(hir_id) = path.res
+                && raw_ptrs.contains(&hir_id)
+            {
+                cx.emit_span_lint(
+                    SAFE_FN_DIRECT_USE_OF_UNSAFE_OP_ON_ARGS,
+                    arg.span,
+                    BuiltinSafeFnDirectUseOfUnsafeOpOnArgs { label: arg.span },
+                );
+            }
+        }
+
+        let safety = match fnkind {
+            HirFnKind::ItemFn(_, _, header) => header.safety(),
+            HirFnKind::Method(_, sig) => sig.header.safety(),
+            HirFnKind::Closure => return,
+        };
+
+        if safety.is_safe() && cx.effective_visibilities.is_exported(def_id) {
+            let raw_ptrs_and_int_params = body
+                .params
+                .iter()
+                .filter_map(|arg| {
+                    if let (
+                        &hir::PatKind::Binding(_, id, _, _),
+                        Some(&ty::RawPtr(_, _) | &ty::Uint(_) | &ty::Int(_)),
+                    ) = (
+                        &arg.pat.kind,
+                        cx.typeck_results
+                            .map(|typeck_results| typeck_results.pat_ty(arg.pat).kind()),
+                    ) {
+                        Some(id)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<HirIdSet>();
+
+            if !raw_ptrs_and_int_params.is_empty() {
+                let typeck = cx.tcx.typeck_body(body.id());
+
+                for_each_expr(cx.tcx, body.value, |e: &'tcx hir::Expr<'tcx>| match e.kind {
+                    hir::ExprKind::Call(_, args) if is_unsafe_call(cx, typeck, e) => {
+                        for arg in args {
+                            check_arg(cx, &raw_ptrs_and_int_params, arg);
+                        }
+                    }
+                    hir::ExprKind::MethodCall(_, recv, args, _)
+                        if is_unsafe_call(cx, typeck, e) =>
+                    {
+                        check_arg(cx, &raw_ptrs_and_int_params, recv);
+                        for arg in args {
+                            check_arg(cx, &raw_ptrs_and_int_params, arg);
+                        }
+                    }
+                    hir::ExprKind::Unary(hir::UnOp::Deref, arg) => {
+                        check_arg(cx, &raw_ptrs_and_int_params, arg)
+                    }
+                    _ => {}
+                });
             }
         }
     }

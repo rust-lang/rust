@@ -11,6 +11,7 @@ pub trait A {
 
 pub struct S<T: A>(T::B);
 
+#[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
 pub fn foo<T: A>(p: *mut S<T>) {
     unsafe { core::ptr::drop_in_place(p) };
 }

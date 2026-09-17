@@ -3,11 +3,13 @@
 #![allow(unused_unsafe, unused_imports, unused_variables, unused_parens)]
 use std::mem::transmute;
 
+#[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
 pub fn bytes_at_home(x: u32) -> [u8; 4] {
     unsafe { transmute(x) }
     //~^ ERROR
 }
 
+#[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
 pub const fn intinator_const(from: bool) -> u8 {
     unsafe { transmute(from) }
     //~^ ERROR

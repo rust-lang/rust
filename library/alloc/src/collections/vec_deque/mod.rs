@@ -2608,6 +2608,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "push_mut", since = "1.95.0")]
     #[must_use = "if you don't need a reference to the value, use `VecDeque::insert` instead"]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn insert_mut(&mut self, index: usize, value: T) -> &mut T {
         assert!(index <= self.len(), "index out of bounds");
 
@@ -2662,6 +2663,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("delete", "take")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn remove(&mut self, index: usize) -> Option<T> {
         if self.len <= index {
             return None;
@@ -2716,6 +2718,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn split_off(&mut self, at: usize) -> Self
     where
         A: Clone,
@@ -3194,6 +3197,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     /// ```
     #[stable(feature = "vecdeque_rotate", since = "1.36.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn rotate_left(&mut self, n: usize) {
         assert!(n <= self.len());
         let k = self.len - n;
@@ -3239,6 +3243,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     /// ```
     #[stable(feature = "vecdeque_rotate", since = "1.36.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn rotate_right(&mut self, n: usize) {
         assert!(n <= self.len());
         let k = self.len - n;
