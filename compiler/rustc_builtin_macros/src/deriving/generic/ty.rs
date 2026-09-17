@@ -4,7 +4,7 @@
 use std::iter::once;
 
 pub(crate) use Ty::*;
-use rustc_ast::{self as ast, GenericArg, TyKind};
+use rustc_ast::{self as ast, GenericArg};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
 use thin_vec::ThinVec;
@@ -63,25 +63,9 @@ impl Ty {
                 cx.ty_ref(span, raw_ty, None, *mutbl)
             }
             Path(p) => cx.ty_path(p.to_path(cx, span)),
-            Self_ => cx.ty_path(self.to_path(cx, span)),
-            Unit => {
-                let ty = ast::TyKind::Tup(ThinVec::new());
-                cx.ty(span, ty)
-            }
+            Self_ => cx.ty_path(cx.path_ident(span, Ident::new(kw::SelfUpper, span))),
+            Unit => cx.ty(span, ast::TyKind::Tup(ThinVec::new())),
             AstTy(ty) => ty.clone(),
-        }
-    }
-
-    pub(crate) fn to_path(&self, cx: &ExtCtxt<'_>, span: Span) -> ast::Path {
-        match self {
-            Self_ => cx.path_ident(span, Ident::new(kw::SelfUpper, span)),
-            Path(p) => p.to_path(cx, span),
-            AstTy(ty) => match &ty.kind {
-                TyKind::Path(_, path) => path.clone(),
-                _ => cx.dcx().span_bug(span, "non-path in a path in generic `derive`"),
-            },
-            Ref(..) => cx.dcx().span_bug(span, "ref in a path in generic `derive`"),
-            Unit => cx.dcx().span_bug(span, "unit in a path in generic `derive`"),
         }
     }
 }

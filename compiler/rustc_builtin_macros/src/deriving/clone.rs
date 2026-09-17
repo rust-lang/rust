@@ -50,7 +50,7 @@ pub(crate) fn expand_deriving_clone(
             }
         }
         ItemKind::Union(..) => {
-            bounds = smallvec![Path(path_std!(marker::Copy))];
+            bounds = smallvec![path_std!(marker::Copy)];
             is_simple = true;
             substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, true));
         }

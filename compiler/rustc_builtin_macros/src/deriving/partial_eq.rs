@@ -24,7 +24,7 @@ pub(crate) fn expand_deriving_partial_eq(
         // The `StructuralPartialEq` impl must have the *same* bounds as the `PartialEq` impl,
         // or it will apply in situations where it should not, such as in the bug
         // <https://github.com/rust-lang/rust/issues/147714>.
-        additional_bounds: smallvec![ty::Ty::Path(path_std!(cmp::PartialEq))],
+        additional_bounds: smallvec![path_std!(cmp::PartialEq)],
         // We really don't support unions, but that's already checked by the impl generated below;
         // a second check here would lead to redundant error messages.
         supports_unions: true,

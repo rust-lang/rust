@@ -212,7 +212,7 @@ pub(crate) struct TraitDef<'a> {
 
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
-    pub additional_bounds: SmallVec<[Ty; 1]>,
+    pub additional_bounds: SmallVec<[Path; 1]>,
 
     /// Can this trait be derived for unions?
     pub supports_unions: bool,
