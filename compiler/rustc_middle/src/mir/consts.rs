@@ -3,7 +3,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 use rustc_abi::{HasDataLayout, Size};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_span::{DUMMY_SP, RemapPathScopeComponents, Span, Symbol};
+use rustc_span::{DUMMY_SP, RemapPathScopeComponents, Span, Symbol, bug};
 use rustc_type_ir::TypeVisitableExt;
 
 use super::interpret::ReportedErrorInfo;

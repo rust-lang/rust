@@ -14,11 +14,11 @@ use std::assert_matches;
 use rustc_infer::infer::InferCtxt;
 use rustc_macros::extension;
 use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, NoSolution, QueryResult};
+use rustc_middle::ty;
 use rustc_middle::ty::{RequiredDepth, TyCtxt, VisitorResult, try_visit};
-use rustc_middle::{bug, ty};
 use rustc_next_trait_solver::canonical::instantiate_canonical_state;
 use rustc_next_trait_solver::solve::{MaybeCause, MaybeInfo, SolverDelegateEvalExt as _, inspect};
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
@@ -142,8 +142,6 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         fields(goal = ?self.goal.goal, steps = ?self.steps)
     )]
     pub fn instantiate_impl_args(&self, span: Span) -> ty::GenericArgsRef<'tcx> {
-        use rustc_middle::ty::InferCtxtLike;
-
         let infcx = self.goal.infcx;
         let mut orig_values = self.goal.orig_values.clone();
 
@@ -166,9 +164,6 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                         self.final_state,
                     );
 
-                    // We *want* this folder to live in `rustc_type_ir`. Our best way to call into it is
-                    // through `InferCtxtLike` and it is not defined as an inherent method on `InferCtxt`.
-                    #[allow(rustc::usage_of_type_ir_traits)]
                     return infcx.deeply_resolve_via_unification_table(impl_args);
                 }
                 inspect::ProbeStep::AddGoal(..) => {}
@@ -341,8 +336,6 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         root: inspect::GoalEvaluation<TyCtxt<'tcx>>,
         source: GoalSource,
     ) -> Self {
-        use rustc_middle::ty::InferCtxtLike;
-
         let infcx = <&SolverDelegate<'tcx>>::from(infcx);
         let prev_universe = infcx.universe();
 
@@ -362,9 +355,6 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             depth,
             orig_values,
             prev_universe,
-            // We *want* this folder to live in `rustc_type_ir`. Our best way to call into it is
-            // through `InferCtxtLike` and it is not defined as an inherent method on `InferCtxt`.
-            #[allow(rustc::usage_of_type_ir_traits)]
             goal: infcx.deeply_resolve_via_unification_table(uncanonicalized_goal),
             result,
             final_revision,

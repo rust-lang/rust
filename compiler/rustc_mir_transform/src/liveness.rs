@@ -6,7 +6,6 @@ use rustc_hir::find_attr;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_lint_defs::builtin::{UNUSED_ASSIGNMENTS, UNUSED_VARIABLES};
-use rustc_middle::bug;
 use rustc_middle::mir::visit::{
     MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
 };
@@ -15,9 +14,9 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::{Analysis, Backward, ResultsCursor};
-use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, bug};
 
 use crate::diagnostics;
 

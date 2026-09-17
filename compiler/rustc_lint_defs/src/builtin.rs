@@ -17,6 +17,7 @@ pub mod hardwired {
             // tidy-alphabetical-start
             AARCH64_SOFTFLOAT_NEON,
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
+            ALIGNED_FIELDS_IN_PACKED,
             AMBIGUOUS_ASSOCIATED_ITEMS,
             AMBIGUOUS_DERIVE_HELPERS,
             AMBIGUOUS_GLOB_IMPORTED_TRAITS,
@@ -4075,8 +4076,9 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,ignore (needs CLI args, platform-specific)
-    /// #[warn(linker_messages)]
-    /// extern "C" {
+    /// #![warn(linker_messages)]
+    ///
+    /// unsafe extern "C" {
     ///   fn foo();
     /// }
     /// fn main () { unsafe { foo(); } }
@@ -4111,7 +4113,8 @@ declare_lint! {
     // Linker messages don't live up to the high standard people expect of rustc's errors.
     // Prevent `-D warnings` from applying to it.
     // It's still possible to pass `-D linker-messages` specifically.
-    ignore_deny_warnings
+    ignore_deny_warnings,
+    crate_level_only
 }
 
 declare_lint! {
@@ -4120,7 +4123,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,ignore (needs CLI args, platform-specific)
-    /// #[warn(linker_info)]
+    /// #![warn(linker_info)]
+    ///
     /// fn main () {}
     /// ```
     ///
@@ -4145,7 +4149,8 @@ declare_lint! {
     /// <https://github.com/rust-lang/rust/issues/136096>.
     pub LINKER_INFO,
     Allow,
-    "linker warnings known to be informational-only and not indicative of a problem"
+    "linker warnings known to be informational-only and not indicative of a problem",
+    crate_level_only
 }
 
 declare_lint! {
@@ -5823,4 +5828,33 @@ declare_lint! {
     Deny,
     "duplicate tools found in crate-level `#[register_tools]` directives",
     @feature_gate = register_tool;
+}
+
+declare_lint! {
+    /// The `aligned_fields_in_packed` lint detects fields with `align` representation hints
+    /// inside `repr(C)` types with `packed` representation hint.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #[repr(C, align(16))]
+    /// struct Aligned(i32);
+    ///
+    /// #[repr(C, packed)] // error!
+    /// struct Packed(Aligned);
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The behavior of this combination of hints is inconsistent across C compilers. The layout
+    /// computed for these types by Rust may thus not match the layout actually used by C.
+    /// Specifically, Rust always follows the GCC convention, which makes it incompatible with MSVC
+    /// for these types. This may change in the future for targets where GCC is not the default C
+    /// compiler.
+    pub ALIGNED_FIELDS_IN_PACKED,
+    Deny,
+    "`repr(C, align)` types nested inside `repr(C, packed)` types \
+    do not always have a C-compatible layout",
 }

@@ -45,11 +45,10 @@ use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_middle::bug;
 use rustc_middle::dep_graph::{DepKind, DepNode, DepNodeFilter, EdgeFilter, RetainedDepGraph};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol, bug, sym};
 use tracing::debug;
 
 use crate::diagnostics;

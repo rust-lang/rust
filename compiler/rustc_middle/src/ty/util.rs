@@ -13,7 +13,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
-use rustc_span::sym;
+use rustc_span::{bug, span_bug, sym};
 use rustc_structures::Limit;
 use rustc_type_ir::PredicateProxy;
 use rustc_type_ir::solve::SizedTraitKind;
@@ -1720,7 +1720,7 @@ pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Intrinsi
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id),
             must_be_overridden,
-            const_stable: find_attr!(tcx, def_id, RustcIntrinsicConstStableIndirect),
+            const_stable_indirect: find_attr!(tcx, def_id, RustcIntrinsicConstStableIndirect),
         })
     } else {
         None

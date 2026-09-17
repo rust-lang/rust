@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 use rustc_abi::{ExternAbi, FieldIdx, MAX_SIMD_LANES, ScalableElt};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::attrs::ReprAttr::ReprPacked;
 use rustc_hir::attrs::lang_items::LangItem;
@@ -12,7 +12,9 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{Node, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, TraitErrors, WellFormedLoc};
-use rustc_lint_defs::builtin::{DEAD_CODE, UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
+use rustc_lint_defs::builtin::{
+    ALIGNED_FIELDS_IN_PACKED, DEAD_CODE, UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS,
+};
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
@@ -41,7 +43,7 @@ use crate::check::wfcheck::{
 use crate::collect::ItemCtxt;
 use crate::diagnostics;
 
-fn add_abi_diag_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T>) {
+fn add_abi_diag_help<G>(abi: ExternAbi, diag: &mut Diag<'_, G>) {
     if let ExternAbi::Cdecl { unwind } = abi {
         let c_abi = ExternAbi::C { unwind };
         diag.help(format!("use `extern {c_abi}` instead",));
@@ -105,7 +107,7 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuarante
     }
 
     check_transparent(tcx, def);
-    check_packed(tcx, span, def);
+    check_packed(tcx, span, def_id);
     check_type_defn(tcx, def_id, false)
 }
 
@@ -115,7 +117,7 @@ fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuarantee
     def.destructor(tcx); // force the destructor to be evaluated
     check_transparent(tcx, def);
     check_union_fields(tcx, span, def_id);
-    check_packed(tcx, span, def);
+    check_packed(tcx, span, def_id);
     check_type_defn(tcx, def_id, true)
 }
 
@@ -256,7 +258,7 @@ fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 }
 
 /// Checks that an opaque type does not contain cycles.
-pub(super) fn check_opaque_for_cycles<'tcx>(
+fn check_opaque_for_cycles<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
@@ -1207,7 +1209,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
     })
 }
 
-pub(super) fn check_specialization_validity<'tcx>(
+fn check_specialization_validity<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def: &ty::TraitDef,
     trait_item: ty::AssocItem,
@@ -1560,7 +1562,7 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
             return;
         }
         ScalableElt::ElementCount(..) if fields.len() >= 2 => {
-            tcx.dcx().struct_span_err(span, "scalable vectors cannot have multiple fields").emit();
+            tcx.dcx().span_err(span, "scalable vectors cannot have multiple fields");
             return;
         }
         ScalableElt::Container if fields.is_empty() => {
@@ -1644,7 +1646,8 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
     }
 }
 
-pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
+fn check_packed(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
+    let def = tcx.adt_def(def_id);
     let repr = def.repr();
     if repr.packed() {
         // `#[pin_v2]` on a packed type is unsound: drop glue for a packed type moves an
@@ -1673,6 +1676,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
                 }
             }
         }
+
         if repr.align.is_some() {
             struct_span_code_err!(
                 tcx.dcx(),
@@ -1681,51 +1685,62 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
                 "type has conflicting packed and align representation hints"
             )
             .emit();
-        } else if let Some(def_spans) = check_packed_inner(tcx, def.did(), &mut vec![]) {
-            let mut err = struct_span_code_err!(
-                tcx.dcx(),
+        } else if repr.c()
+            && let Some(def_spans) = check_packed_inner(tcx, def.did(), &mut vec![])
+        {
+            tcx.emit_node_span_lint(
+                ALIGNED_FIELDS_IN_PACKED,
+                tcx.local_def_id_to_hir_id(def_id),
                 sp,
-                E0588,
-                "packed type cannot transitively contain a `#[repr(align)]` type"
-            );
-
-            err.span_note(
-                tcx.def_span(def_spans[0].0),
-                format!("`{}` has a `#[repr(align)]` attribute", tcx.item_name(def_spans[0].0)),
-            );
-
-            if def_spans.len() > 2 {
-                let mut first = true;
-                for (adt_def, span) in def_spans.iter().skip(1).rev() {
-                    let ident = tcx.item_name(*adt_def);
-                    err.span_note(
-                        *span,
-                        if first {
-                            format!(
-                                "`{}` contains a field of type `{}`",
-                                tcx.type_of(def.did()).instantiate_identity().skip_norm_wip(),
-                                ident
-                            )
-                        } else {
-                            format!("...which contains a field of type `{ident}`")
-                        },
+                rustc_errors::DiagDecorator(|diag| {
+                    diag.primary_message(
+                        "packed type cannot transitively contain a `#[repr(align)]` type",
                     );
-                    first = false;
-                }
-            }
 
-            err.emit();
+                    diag.span_note(
+                        tcx.def_span(def_spans[0].0),
+                        format!(
+                            "`{}` has a `#[repr(align)]` attribute",
+                            tcx.item_name(def_spans[0].0)
+                        ),
+                    );
+
+                    if def_spans.len() <= 2 {
+                        // 2 spans means aligned type is directly inside packed type, no need to add
+                        // extra notes.
+                        return;
+                    }
+
+                    let mut first = true;
+                    for (adt_def, span) in def_spans.iter().skip(1).rev() {
+                        let ident = tcx.item_name(*adt_def);
+                        diag.span_note(
+                            *span,
+                            if first {
+                                format!(
+                                    "`{}` contains a field of type `{}`",
+                                    tcx.type_of(def.did()).instantiate_identity().skip_norm_wip(),
+                                    ident
+                                )
+                            } else {
+                                format!("...which contains a field of type `{ident}`")
+                            },
+                        );
+                        first = false;
+                    }
+                }),
+            );
         }
     }
 }
 
-pub(super) fn check_packed_inner(
+fn check_packed_inner(
     tcx: TyCtxt<'_>,
     def_id: DefId,
     stack: &mut Vec<DefId>,
 ) -> Option<Vec<(DefId, Span)>> {
     if let ty::Adt(def, args) = tcx.type_of(def_id).instantiate_identity().skip_norm_wip().kind() {
-        if def.is_struct() || def.is_union() {
+        if def.repr().c() && (def.is_struct() || def.is_union()) {
             if def.repr().align.is_some() {
                 return Some(vec![(def.did(), DUMMY_SP)]);
             }
@@ -1747,7 +1762,7 @@ pub(super) fn check_packed_inner(
     None
 }
 
-pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
+fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
     if !adt.repr().transparent() {
         return;
     }

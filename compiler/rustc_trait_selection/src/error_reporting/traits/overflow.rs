@@ -1,6 +1,6 @@
 use std::fmt;
 
-use rustc_errors::{Diag, E0275, EmissionGuarantee, ErrorGuaranteed, struct_span_code_err};
+use rustc_errors::{Diag, E0275, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_infer::traits::{Obligation, PredicateObligation};
@@ -17,10 +17,7 @@ pub enum OverflowCause<'tcx> {
     TraitSolver(ty::Predicate<'tcx>),
 }
 
-pub fn suggest_new_overflow_limit<'tcx, G: EmissionGuarantee>(
-    tcx: TyCtxt<'tcx>,
-    err: &mut Diag<'_, G>,
-) {
+pub fn suggest_new_overflow_limit<'tcx, G>(tcx: TyCtxt<'tcx>, err: &mut Diag<'_, G>) {
     let suggested_limit = match tcx.recursion_limit() {
         Limit(0) => Limit(2),
         limit => limit * 2,

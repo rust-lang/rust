@@ -41,7 +41,7 @@ use rustc_lint_defs::builtin::UNUSED_FEATURES;
 use rustc_macros::Diagnostic;
 use rustc_session::{IncrCompSession, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, sym};
 use rustc_structures::{CrateType, Limit};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
@@ -2622,9 +2622,9 @@ impl<'tcx> TyCtxt<'tcx> {
         m.spans.inject_use_span.shrink_to_lo()
     }
 
-    pub fn disabled_nightly_features<E: rustc_errors::EmissionGuarantee>(
+    pub fn disabled_nightly_features<G>(
         self,
-        diag: &mut Diag<'_, E>,
+        diag: &mut Diag<'_, G>,
         features: impl IntoIterator<Item = (String, Symbol)>,
     ) {
         if !self.sess.is_nightly_build() {

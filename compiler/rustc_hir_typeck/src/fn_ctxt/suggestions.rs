@@ -18,13 +18,12 @@ use rustc_hir::{
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::suggest_impl_trait;
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::span_bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_suggestion};
 use rustc_middle::ty::{
     self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
     suggest_constraining_type_params,
 };
-use rustc_span::{ExpnKind, Ident, MacroKind, Span, Spanned, Symbol, sym};
+use rustc_span::{ExpnKind, Ident, MacroKind, Span, Spanned, Symbol, span_bug, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;

@@ -26,15 +26,14 @@ use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
-use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{OptLevel, TargetModifier};
 use rustc_span::def_id::CRATE_MOD_ID;
-use rustc_span::hygiene::{HygieneEncodeContext, raw_encode_syntax_context};
+use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
     ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
-    Symbol, SyntaxContext, sym,
+    Symbol, SyntaxContext, bug, span_bug, sym,
 };
 use rustc_structures::CrateType;
 use tracing::{debug, instrument, trace};
@@ -158,7 +157,8 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
-        raw_encode_syntax_context(syntax_context, Rc::clone(&self.hygiene_ctxt), self)
+        let idx = self.hygiene_ctxt.borrow_mut().get_syntax_ctxt_encoding_index(syntax_context);
+        idx.encode(self);
     }
 
     fn encode_expn_id(&mut self, expn_id: ExpnId) {
