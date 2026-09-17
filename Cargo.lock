@@ -5056,6 +5056,7 @@ dependencies = [
  "expect-test",
  "indexmap",
  "itertools",
+ "libc",
  "minifier",
  "proc-macro2",
  "pulldown-cmark-escape",
