@@ -9,7 +9,7 @@
 
 use core::ops::RangeBounds;
 
-#[cfg(any(not(target_arch = "wasm32"), target_os = "emscripten"))]
+#[cfg(any(not(target_arch = "wasm32"), target_os = "emscripten", target_os = "wasi"))]
 #[lang = "eh_personality"]
 extern "C" fn eh_personality() {}
 

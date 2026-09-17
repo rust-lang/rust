@@ -212,7 +212,7 @@ macro_rules! acquire {
 ///
 /// Sharing some immutable data between threads:
 ///
-/// ```
+/// ```ignore-wasm
 /// use std::sync::Arc;
 /// use std::thread;
 ///
@@ -231,7 +231,7 @@ macro_rules! acquire {
 ///
 /// [`AtomicUsize`]: core::sync::atomic::AtomicUsize "sync::atomic::AtomicUsize"
 ///
-/// ```
+/// ```ignore-wasm
 /// use std::sync::Arc;
 /// use std::sync::atomic::{AtomicUsize, Ordering};
 /// use std::thread;
@@ -1087,7 +1087,7 @@ impl<T, A: Allocator> Arc<T, A> {
     /// # Examples
     ///
     /// Minimal example demonstrating the guarantee that `Arc::into_inner` gives.
-    /// ```
+    /// ```ignore-wasm
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new(3);
@@ -1110,7 +1110,7 @@ impl<T, A: Allocator> Arc<T, A> {
     /// ```
     ///
     /// A more practical example demonstrating the need for `Arc::into_inner`:
-    /// ```
+    /// ```ignore-wasm
     /// use std::sync::Arc;
     ///
     /// // Definition of a simple singly linked list using `Arc`:
