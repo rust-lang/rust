@@ -3,8 +3,9 @@
 <head>
 <title>Polonius MIR dump</title>
 <style>
-.hidden {
-    display: none;
+pre {
+    margin-top: 0;
+    white-space: pre-wrap;
 }
 
 .section + .section {
@@ -13,8 +14,8 @@
     padding-top: 10px;
 }
 
-.traces .section-header {
-    margin-bottom: 10px;
+.section-header {
+    margin-bottom: 6px;
 }
 
 .trace + .trace {
@@ -24,6 +25,15 @@
 .trace ul {
     margin: 5px 0px;
     padding-left: 15px;
+}
+
+.trace-suffix {
+    opacity: 0.8;
+    margin-left: 10px;
+}
+
+.hidden {
+    display: none;
 }
 </style>
 </head>
