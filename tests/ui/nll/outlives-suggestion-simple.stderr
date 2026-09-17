@@ -42,7 +42,13 @@ LL |     (x, y)
    |
    = help: consider adding the following bound: `'b: 'a`
 
-help: `'a` and `'b` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/outlives-suggestion-simple.rs:11:4
+   |
+LL | fn foo3<'a, 'b>(x: &'a usize, y: &'b usize) -> (&'b usize, &'a usize) {
+   |    ^^^^
+   |
+   = help: `'a` and `'b` must be the same: replace one with the other
 
 error: lifetime may not live long enough
   --> $DIR/outlives-suggestion-simple.rs:20:5
@@ -104,5 +110,5 @@ LL |         Bar2::new(&self)
    = note: the struct `Foo2<'a>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
