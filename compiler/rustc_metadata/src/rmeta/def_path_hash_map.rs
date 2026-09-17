@@ -1,5 +1,6 @@
-use rustc_data_structures::owned_slice::OwnedSlice;
-use rustc_hir::def_path_hash_map::{Config as HashMapConfig, DefPathHashMap};
+use rustc_hashes::Hash64;
+use rustc_hir::def_path_hash_map::Config as HashMapConfig;
+use rustc_hir::definitions::DefPathToIndexMap;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::def_id::{DefIndex, DefPathHash};
 
@@ -7,8 +8,8 @@ use crate::rmeta::EncodeContext;
 use crate::rmeta::decoder::BlobDecodeContext;
 
 pub(crate) enum DefPathHashMapRef<'tcx> {
-    OwnedFromMetadata(odht::HashTable<HashMapConfig, OwnedSlice>),
-    BorrowedFromTcx(&'tcx DefPathHashMap),
+    OwnedFromMetadata(odht::HashTableOwned<HashMapConfig>),
+    BorrowedFromTcx(&'tcx DefPathToIndexMap),
 }
 
 impl DefPathHashMapRef<'_> {
@@ -29,10 +30,21 @@ impl DefPathHashMapRef<'_> {
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefPathHashMapRef<'tcx> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
         match *self {
-            DefPathHashMapRef::BorrowedFromTcx(def_path_hash_map) => {
-                let bytes = def_path_hash_map.raw_bytes();
+            DefPathHashMapRef::BorrowedFromTcx(map) => {
+                #[allow(rustc::potential_query_instability)]
+                let bytes = map.det_part.raw_bytes();
                 e.emit_usize(bytes.len());
                 e.emit_raw_bytes(bytes);
+
+                #[allow(rustc::potential_query_instability)]
+                let mut vec = map.non_det_part.iter().collect::<Vec<_>>();
+                vec.sort_by_key(|(hash, _)| *hash);
+
+                e.emit_usize(vec.len());
+                for (hash, index) in vec {
+                    hash.encode(e);
+                    index.encode(e);
+                }
             }
             DefPathHashMapRef::OwnedFromMetadata(_) => {
                 panic!("DefPathHashMap::OwnedFromMetadata variant only exists for deserialization")
@@ -52,9 +64,15 @@ impl<'a> Decodable<BlobDecodeContext<'a>> for DefPathHashMapRef<'static> {
         // the method. We use `read_raw_bytes()` for that.
         let _ = d.read_raw_bytes(len);
 
-        let inner = odht::HashTable::from_raw_bytes(o).unwrap_or_else(|e| {
+        let mut inner = odht::HashTableOwned::from_raw_bytes(o.as_ref()).unwrap_or_else(|e| {
             panic!("decode error: {e}");
         });
+
+        let non_det_size = d.read_usize();
+        for _ in 0..non_det_size {
+            inner.insert(&Hash64::decode(d), &DefIndex::decode(d));
+        }
+
         DefPathHashMapRef::OwnedFromMetadata(inner)
     }
 }

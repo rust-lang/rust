@@ -6,6 +6,8 @@
 
 use std::fmt::{self, Write};
 use std::hash::Hash;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hash::StableHasher;
@@ -46,13 +48,49 @@ impl LocalDefIdMap<PerParentDisambiguatorState> {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct DefPathToIndexMap {
+    pub det_part: DefPathHashMap,
+    pub non_det_part: FxHashMap<Hash64, DefIndex>,
+    non_det_mode: AtomicBool,
+}
+
+impl DefPathToIndexMap {
+    #[inline]
+    pub fn get(&self, hash: &Hash64) -> Option<DefIndex> {
+        match self.det_part.get(hash) {
+            Some(index) => Some(index),
+            None => {
+                if self.non_det_mode.load(Relaxed) {
+                    self.non_det_part.get(hash).copied()
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    #[inline]
+    pub fn insert(&mut self, hash: Hash64, index: DefIndex) -> Option<DefIndex> {
+        match self.non_det_mode.load(Relaxed) {
+            true => self.non_det_part.insert(hash, index),
+            false => self.det_part.insert(&hash, &index),
+        }
+    }
+
+    #[inline]
+    pub fn switch_to_non_det_mode(&mut self) {
+        self.non_det_mode.store(true, Relaxed);
+    }
+}
+
 #[derive(Debug)]
 pub struct Definitions {
     stable_crate_id: StableCrateId,
     def_id_to_key: IndexVec<LocalDefId, DefKey>,
     // We do only store the local hash, as all the definitions are from the current crate.
     def_path_hashes: IndexVec<LocalDefId, Hash64>,
-    def_path_hash_to_index: DefPathHashMap,
+    def_path_hash_to_index: DefPathToIndexMap,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -249,6 +287,10 @@ pub enum DefPathData {
 }
 
 impl Definitions {
+    pub fn commit_last_deterministic_index(&mut self) {
+        self.def_path_hash_to_index.switch_to_non_det_mode();
+    }
+
     #[inline(always)]
     pub fn def_key(&self, id: LocalDefId) -> DefKey {
         self.def_id_to_key[id]
@@ -322,9 +364,7 @@ impl Definitions {
 
         // Check for hash collisions of DefPathHashes. These should be
         // exceedingly rare.
-        if let Some(existing) =
-            self.def_path_hash_to_index.insert(&local_hash, &def_id.local_def_index)
-        {
+        if let Some(existing) = self.def_path_hash_to_index.get(&local_hash) {
             let def_path1 = self.def_path(LocalDefId { local_def_index: existing });
             let def_path2 = self.def_path(def_id);
 
@@ -340,6 +380,8 @@ impl Definitions {
                 "found DefPathHash collision between {def_path1:#?} and {def_path2:#?}. \
                     Compilation cannot continue."
             );
+        } else {
+            self.def_path_hash_to_index.insert(local_hash, def_id.local_def_index);
         }
 
         def_id
@@ -415,7 +457,7 @@ impl Definitions {
             .map(|local_def_index| LocalDefId { local_def_index })
     }
 
-    pub fn def_path_hash_to_def_index_map(&self) -> &DefPathHashMap {
+    pub fn def_path_hash_to_def_index_map(&self) -> &DefPathToIndexMap {
         &self.def_path_hash_to_index
     }
 
