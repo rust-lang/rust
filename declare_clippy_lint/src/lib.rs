@@ -46,7 +46,8 @@ impl LintListBuilder {
 
     pub fn register(self, store: &mut LintStore) {
         store.register_lints(&self.lints);
-        store.register_group(true, "clippy::all", Some("clippy_all"), self.all);
+        store.register_group(true, "clippy::default", Some("clippy_all"), self.all);
+        store.register_group_alias("clippy::default", "clippy::all");
         store.register_group(true, "clippy::cargo", Some("clippy_cargo"), self.cargo);
         store.register_group(true, "clippy::complexity", Some("clippy_complexity"), self.complexity);
         store.register_group(
