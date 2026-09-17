@@ -4241,7 +4241,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// In those cases, the `TryInto` and `TryFrom` trait implementation is a blanket impl that forwards
     /// to `Into` or `From`, which always succeeds.
-    /// The returned `Result<_, Infallible>` requires error handling to get the contained value
+    /// The returned `Result<_, !>` requires error handling to get the contained value
     /// even though the conversion can never fail.
     ///
     /// ### Example

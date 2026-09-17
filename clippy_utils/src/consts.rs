@@ -19,11 +19,10 @@ use rustc_hir::{
 };
 use rustc_lexer::{FrontmatterAllowed, tokenize};
 use rustc_lint::LateContext;
-use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::{Scalar, alloc_range};
+use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::{self, FloatTy, IntTy, ScalarInt, Ty, TyCtxt, TypeckResults, UintTy};
-use rustc_middle::{bug, mir, span_bug};
-use rustc_span::{Symbol, SyntaxContext};
+use rustc_span::{Symbol, SyntaxContext, bug, span_bug};
 use std::cell::Cell;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
@@ -778,7 +777,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             QPath::Resolved(None, path)
                 if path.span.ctxt() == self.ctxt.get()
                     && path.segments.iter().all(|s| self.ctxt.get() == s.ident.span.ctxt())
-                    && let Res::Def(DefKind::Const { .. }, did) = path.res
+                    && let Res::Def(DefKind::Const, did) = path.res
                     && (matches!(
                         self.tcx.get_diagnostic_name(did),
                         Some(
@@ -866,7 +865,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                     && ty.span.ctxt() == self.ctxt.get()
                     && ty_name.ident.span.ctxt() == self.ctxt.get()
                     && matches!(ty_path.res, Res::PrimTy(_))
-                    && let Some((DefKind::AssocConst { .. }, did)) = self.typeck.type_dependent_def(id)
+                    && let Some((DefKind::AssocConst, did)) = self.typeck.type_dependent_def(id)
                     && self.tcx.inherent_impl_of_assoc(did).is_some() =>
             {
                 did
@@ -874,10 +873,8 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             // TODO: revisit when feature `min_generic_const_args` is stabilized. In the meantime,
             // `TyCtxt::const_eval_resolve()` will trigger an ICE when evaluating the body of the
             // `type const` definition.
-            _ if let Res::Def(
-                DefKind::Const { is_type_const: false } | DefKind::AssocConst { is_type_const: false },
-                did,
-            ) = self.typeck.qpath_res(qpath, id) =>
+            _ if let Res::Def(DefKind::Const | DefKind::AssocConst, did) = self.typeck.qpath_res(qpath, id)
+                && !self.tcx.is_direct_const(did) =>
             {
                 self.source.set(ConstantSource::NonLocal);
                 did
@@ -1187,7 +1184,7 @@ pub fn is_zero_integer_const(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: Syntax
 pub fn const_item_rhs_to_expr<'tcx>(tcx: TyCtxt<'tcx>, ct_rhs: ConstItemRhs<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match ct_rhs {
         ConstItemRhs::Body(body_id) => Some(tcx.hir_body(body_id).value),
-        ConstItemRhs::TypeConst(const_arg) => match const_arg.kind {
+        ConstItemRhs::Direct(const_arg) => match const_arg.kind {
             ConstArgKind::Anon(anon) => Some(tcx.hir_body(anon.body).value),
             ConstArgKind::Struct(..)
             | ConstArgKind::Tup(..)
