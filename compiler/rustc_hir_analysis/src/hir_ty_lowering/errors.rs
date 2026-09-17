@@ -480,12 +480,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                             &item_segment,
                                             trait_ref.args,
                                         );
-                                        ty::AliasTerm::new_from_def_id(
-                                            tcx,
-                                            assoc_item.def_id,
-                                            alias_args,
-                                            ty::AliasConstInherentArgsKind::WithSelf,
-                                        )
+                                        let kind = ty::AliasTermKind::ProjectionConst {
+                                            def_id: assoc_item.def_id,
+                                        };
+                                        ty::AliasTerm::new_from_args(tcx, kind, alias_args)
                                     });
 
                                     // FIXME(mgca): code duplication with other places we lower
