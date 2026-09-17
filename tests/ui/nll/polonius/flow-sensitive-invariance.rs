@@ -16,6 +16,8 @@ fn create_invariant<'l>() -> Invariant<'l> {
 }
 
 fn use_it<'a, 'b>(choice: bool) -> Result<Invariant<'a>, Invariant<'b>> {
+    //[nll]~^ ERROR one or more lifetime errors
+    //[polonius]~^^ ERROR one or more lifetime errors
     let returned_value = create_invariant();
     if choice { Ok(returned_value) } else { Err(returned_value) }
     //[nll]~^ ERROR lifetime may not live long enough

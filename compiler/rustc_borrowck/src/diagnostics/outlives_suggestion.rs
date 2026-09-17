@@ -193,45 +193,36 @@ impl OutlivesSuggestionBuilder {
             return;
         }
 
-        // If there is exactly one suggestable constraints, then just suggest it. Otherwise, emit a
-        // list of diagnostics.
-        let mut diag = if let [constraint] = suggested.as_slice() {
-            mbcx.dcx().struct_help(match constraint {
-                SuggestedConstraint::Equal(a, b) => {
-                    format!("`{a}` and `{b}` must be the same: replace one with the other")
-                }
-                SuggestedConstraint::Static(a) => format!("replace `{a}` with `'static`"),
-            })
-        } else {
-            // Create a new diagnostic.
-            let mut diag = mbcx
-                .infcx
-                .tcx
-                .dcx()
-                .struct_help("the following changes may resolve your lifetime errors");
+        // Emit an error with a list of one or more help suggestions. This is a weird error because
+        // it's just there to provide somewhere to put the help suggestions that describe how to
+        // fix the one or more borrow errors already reported within the item.
+        let tcx = mbcx.infcx.tcx;
+        let def_id = mbcx.mir_def_id();
+        let span = tcx.def_ident_span(def_id).unwrap_or_else(|| tcx.def_span(def_id));
+        let mut diag = tcx
+            .dcx()
+            .struct_err("one or more lifetime errors were found in this item")
+            .with_span(span);
 
-            // Add suggestions.
-            for constraint in suggested {
-                match constraint {
-                    SuggestedConstraint::Equal(a, b) => {
-                        diag.help(format!(
-                            "`{a}` and `{b}` must be the same: replace one with the other",
-                        ));
-                    }
-                    SuggestedConstraint::Static(a) => {
-                        diag.help(format!("replace `{a}` with `'static`"));
-                    }
+        // Add suggestions.
+        for constraint in suggested {
+            match constraint {
+                SuggestedConstraint::Equal(a, b) => {
+                    diag.help(format!(
+                        "`{a}` and `{b}` must be the same: replace one with the other",
+                    ));
+                }
+                SuggestedConstraint::Static(a) => {
+                    diag.help(format!("replace `{a}` with `'static`"));
                 }
             }
-
-            diag
-        };
+        }
 
         // We want this message to appear after other messages on the mir def.
         let mir_span = mbcx.body.span;
         diag.sort_span = mir_span.shrink_to_hi();
 
         // Buffer the diagnostic
-        mbcx.buffer_non_error(diag);
+        mbcx.buffer_error(diag);
     }
 }
