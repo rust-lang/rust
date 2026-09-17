@@ -1143,6 +1143,13 @@ pub struct WorkProduct {
     pub saved_files: UnordMap<String, String>,
 }
 
+impl WorkProduct {
+    /// The metadata work product is not produced by any CGU and thus its
+    /// name cannot be derived from `CodegenUnit`. Both the writers and readers
+    /// of the metadata work product use this constant to agree on the name.
+    pub const METADATA_WORKPRODUCT_CGU_NAME: &str = "metadata";
+}
+
 pub type WorkProductMap = UnordMap<WorkProductId, WorkProduct>;
 
 // Index type for `DepNodeData`'s edges.
