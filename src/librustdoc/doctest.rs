@@ -163,7 +163,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         search_paths: options.libs.clone(),
         crate_types,
         lint_opts,
-        lint_cap: options.lint_cap,
+        lint_cap: None,
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
         unstable_features: options.unstable_features,
