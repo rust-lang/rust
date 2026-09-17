@@ -1,38 +1,57 @@
-error: anonymous constants referencing generics are not yet supported
-  --> $DIR/type_const-generic-param-in-type.rs:8:77
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:12:1
    |
-LL | const FOO<T: core::marker::ConstParamTy_>: [T; 0] = core::direct_const_arg!(const { [] });
-   |                                                                             ^^^^^^^^^^^^
+LL | const FOO<T: core::marker::ConstParamTy_>: [T; 0] = core::direct_const_arg!([]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `[T; 0]` must not depend on other generic parameter
 
-error: anonymous constants referencing generics are not yet supported
-  --> $DIR/type_const-generic-param-in-type.rs:11:62
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:15:1
    |
-LL | const BAR<const N: usize>: [(); N] = core::direct_const_arg!(const { [] });
-   |                                                              ^^^^^^^^^^^^
+LL | const BAR<const N: usize>: StructWithConstParam<N> =
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `StructWithConstParam<N>` must not depend on other generic parameter
 
-error: anonymous constants with lifetimes in their type are not yet supported
-  --> $DIR/type_const-generic-param-in-type.rs:14:54
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:19:1
    |
-LL | const BAZ<'a>: [&'a (); 0] = core::direct_const_arg!(const { [] });
-   |                                                      ^^^^^^^^^^^^
+LL | const BAZ<'a>: [&'a (); 0] = core::direct_const_arg!([]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `[&'a (); 0]` must not depend on other generic parameter
 
-error: anonymous constants referencing generics are not yet supported
-  --> $DIR/type_const-generic-param-in-type.rs:30:83
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:37:5
    |
-LL |     const ASSOC<T: core::marker::ConstParamTy_>: [T; 0] = core::direct_const_arg!(const { [] });
-   |                                                                                   ^^^^^^^^^^^^
+LL |     const ASSOC<T: core::marker::ConstParamTy_>: [T; 0] = core::direct_const_arg!([]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `[T; 0]` must not depend on other generic parameter
 
-error: anonymous constants referencing generics are not yet supported
-  --> $DIR/type_const-generic-param-in-type.rs:33:74
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:40:5
    |
-LL |     const ASSOC_CONST<const N: usize>: [(); N] = core::direct_const_arg!(const { [] });
-   |                                                                          ^^^^^^^^^^^^
+LL |     const ASSOC_CONST<const N: usize>: StructWithConstParam<N> =
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `StructWithConstParam<N>` must not depend on other generic parameter
 
-error: anonymous constants with lifetimes in their type are not yet supported
-  --> $DIR/type_const-generic-param-in-type.rs:36:63
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:44:5
    |
-LL |     const ASSOC_LT<'a>: [&'a (); 0] = core::direct_const_arg!(const { [] });
-   |                                                               ^^^^^^^^^^^^
+LL |     const ASSOC_LT<'a>: [&'a (); 0] = core::direct_const_arg!([]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `[&'a (); 0]` must not depend on other generic parameter
 
-error: aborting due to 6 previous errors
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:24:5
+   |
+LL |     const ASSOC<T: core::marker::ConstParamTy_>: [T; 0];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `[T; 0]` must not depend on other generic parameter
 
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:28:5
+   |
+LL |     const ASSOC_CONST<const N: usize>: StructWithConstParam<N>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `StructWithConstParam<N>` must not depend on other generic parameter
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/type_const-generic-param-in-type.rs:32:5
+   |
+LL |     const ASSOC_LT<'a>: [&'a (); 0];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `[&'a (); 0]` must not depend on other generic parameter
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0770`.

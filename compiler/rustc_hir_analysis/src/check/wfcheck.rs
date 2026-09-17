@@ -47,8 +47,7 @@ use tracing::{debug, instrument};
 use super::compare_eii::{compare_eii_function_types, compare_eii_statics};
 use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
-use crate::diagnostics;
-use crate::diagnostics::InvalidReceiverTyHint;
+use crate::diagnostics::{self, InvalidReceiverTyHint, ParamInTyOfConstParam};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
     pub(super) ocx: ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>,
@@ -927,7 +926,6 @@ pub(crate) fn check_associated_item(
                 let ty = tcx.type_of(def_id).instantiate_identity();
                 let ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), ty);
                 wfcx.register_wf_obligation(span, loc, ty.into());
-                check_const_item(wfcx, def_id, ty);
 
                 if item.defaultness(tcx).has_value() {
                     let code = ObligationCauseCode::SizedConstOrStatic;
@@ -939,7 +937,7 @@ pub(crate) fn check_associated_item(
                     );
                 }
 
-                Ok(())
+                check_const_item(wfcx, def_id, ty)
             }
             ty::AssocKind::Fn { .. } => {
                 let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
@@ -1259,22 +1257,33 @@ pub(crate) fn check_static_item<'tcx>(
 }
 
 /// Runs checks common to both free consts and associated consts
-#[instrument(level = "debug", skip(wfcx))]
+#[instrument(level = "debug", skip(wfcx), ret)]
 pub(super) fn check_const_item<'tcx>(
     wfcx: &WfCheckingCtxt<'_, 'tcx>,
     def_id: LocalDefId,
     item_ty: Ty<'tcx>,
-) {
+) -> Result<(), ErrorGuaranteed> {
     let tcx = wfcx.tcx();
     let span = tcx.def_span(def_id);
 
-    if tcx.is_direct_const(def_id.into()) && !tcx.features().const_param_ty_unchecked() {
-        wfcx.register_bound(
-            ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(item_ty)),
-            wfcx.param_env,
-            item_ty,
-            tcx.require_lang_item(LangItem::ConstParamTy, span),
-        );
+    let mut res = Ok(());
+
+    if tcx.is_direct_const(def_id.into()) {
+        if !tcx.features().const_param_ty_unchecked() {
+            wfcx.register_bound(
+                ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(item_ty)),
+                wfcx.param_env,
+                item_ty,
+                tcx.require_lang_item(LangItem::ConstParamTy, span),
+            );
+        }
+        // FIXME(min_generic_const_args): We *might* want to move this check to `type_of`, so we can
+        // return `ty::Error` if it references invalid params. However, doing so is hard, because
+        // `type_of` doesn't know if it's a direct const - `const_of_item` determines that, and
+        // `const_of_item` calls `type_of`.
+        if !tcx.features().generic_const_parameter_types() && item_ty.has_param() {
+            res = Err(tcx.dcx().emit_err(ParamInTyOfConstParam { span, ty: item_ty }));
+        }
     }
 
     if let Some(direct_rhs) = tcx.const_of_item(def_id) {
@@ -1289,6 +1298,8 @@ pub(super) fn check_const_item<'tcx>(
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(norm_ct, item_ty)),
         ));
     }
+
+    res
 }
 
 #[instrument(level = "debug", skip(tcx, impl_))]
