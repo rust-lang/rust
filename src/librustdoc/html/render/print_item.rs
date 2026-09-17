@@ -701,17 +701,17 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                 }
                 for types in [&required_types, &provided_types] {
                     for t in types {
-                        writeln!(
-                            w,
-                            "{};",
-                            render_assoc_item(
-                                t,
-                                AssocItemLink::Anchor(None),
-                                ItemType::Trait,
-                                cx,
-                                RenderMode::Normal,
-                            )
-                        )?;
+                        render_assoc_item(
+                            t,
+                            AssocItemLink::Anchor(None),
+                            ItemType::Trait,
+                            4,
+                            Ending::NoNewline,
+                            RenderMode::Normal,
+                            cx,
+                        )
+                        .fmt(w)?;
+                        w.write_str(";\n")?;
                     }
                 }
                 // If there are too many associated constants, hide everything after them
@@ -735,17 +735,17 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                 }
                 for consts in [&required_consts, &provided_consts] {
                     for c in consts {
-                        writeln!(
-                            w,
-                            "{};",
-                            render_assoc_item(
-                                c,
-                                AssocItemLink::Anchor(None),
-                                ItemType::Trait,
-                                cx,
-                                RenderMode::Normal,
-                            )
-                        )?;
+                        render_assoc_item(
+                            c,
+                            AssocItemLink::Anchor(None),
+                            ItemType::Trait,
+                            4,
+                            Ending::NoNewline,
+                            RenderMode::Normal,
+                            cx,
+                        )
+                        .fmt(w)?;
+                        w.write_str(";\n")?;
                     }
                 }
                 if !toggle && should_hide_fields(count_methods) {
@@ -760,17 +760,17 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                     writeln!(w, "    // Required method{}", pluralize(required_methods.len()))?;
                 }
                 for (pos, m) in required_methods.iter().enumerate() {
-                    writeln!(
-                        w,
-                        "{};",
-                        render_assoc_item(
-                            m,
-                            AssocItemLink::Anchor(None),
-                            ItemType::Trait,
-                            cx,
-                            RenderMode::Normal,
-                        )
-                    )?;
+                    render_assoc_item(
+                        m,
+                        AssocItemLink::Anchor(None),
+                        ItemType::Trait,
+                        4,
+                        Ending::NoNewline,
+                        RenderMode::Normal,
+                        cx,
+                    )
+                    .fmt(w)?;
+                    w.write_str(";\n")?;
 
                     if pos < required_methods.len() - 1 {
                         w.write_str("<span class=\"item-spacer\"></span>")?;
@@ -791,8 +791,10 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                             m,
                             AssocItemLink::Anchor(None),
                             ItemType::Trait,
-                            cx,
+                            4,
+                            Ending::NoNewline,
                             RenderMode::Normal,
+                            cx,
                         )
                     )?;
 
@@ -860,9 +862,11 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                     render_assoc_item(
                         m,
                         AssocItemLink::Anchor(Some(&id)),
-                        ItemType::Impl,
-                        cx,
+                        ItemType::Trait,
+                        0,
+                        Ending::Newline,
                         RenderMode::Normal,
+                        cx,
                     )
                 )?;
                 document_item_info(cx, m, Some(t)).render_into(w).unwrap();
