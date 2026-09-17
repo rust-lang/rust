@@ -143,3 +143,15 @@ pub fn nested_parens_unbalanced_5() {}
 
 /// See http://ex(amp)le.com/
 pub fn nested_parens_cannot_appear_in_host() {}
+
+/// The path component of a URL must be separated from the rest by a `/`,
+/// so the `=a` isn't part of the URL.
+/// <https://foo.bar>=a
+//~^ ERROR this URL is not a hyperlink
+pub fn equal_sign_after_host() {}
+
+/// A URL can, however, have a fragment or query without a slash.
+/// <https://foo.bar#a> or <https://foo.bar?a>
+//~^ ERROR this URL is not a hyperlink
+//~| ERROR this URL is not a hyperlink
+pub fn hash_or_question_after_host() {}

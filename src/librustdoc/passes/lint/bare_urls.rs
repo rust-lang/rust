@@ -98,41 +98,50 @@ fn find_raw_urls(
     // For now, we only check "full" URLs (meaning, starting with "http://" or "https://").
     for match_ in URL_SCHEME_HOST_REGEX.find_iter(text) {
         let mut url_range = match_.range();
-        // We found the scheme and host. Find the path, now.
+        // We found the scheme and host. Find the path, query, or fragment.
         // We want to check for matching, balanced parens,
         // but regex isn't powerful enough for that.
         let mut paren_stack = Vec::with_capacity(3);
-        while let Some(&c) = text.as_bytes().get(url_range.end) {
-            if c == b'(' {
-                paren_stack.push(url_range.end);
-            } else if c == b')' {
-                if paren_stack.pop().is_none() {
-                    break;
-                }
-            } else if !matches!(
-                c,
-                b'-'
-                | b'a'..=b'z'
-                | b'A'..=b'Z'
-                | b'0'..=b'9'
-                | b'@'
-                | b':'
-                | b'%'
-                | b'_'
-                | b'\\'
-                | b'+'
-                | b'.'
-                | b'~'
-                | b'#'
-                | b'?'
-                | b'&'
-                | b'/'
-                | b'='
-            ) {
+        'parts: while let Some(&sep) = text.as_bytes().get(url_range.end) {
+            // The hostname must be immediately followed by a path, query,
+            // or fragment-declaring separator.
+            if !matches!(sep, b'/' | b'?' | b'#') {
                 break;
             }
             url_range.end += 1;
+            while let Some(&c) = text.as_bytes().get(url_range.end) {
+                if c == b'(' {
+                    paren_stack.push(url_range.end);
+                } else if c == b')' {
+                    // We assume the first unmatched parenthesis marks the end of the url,
+                    // as urls rarely contain unbalanced parenthesis in practice.
+                    if paren_stack.pop().is_none() {
+                        break 'parts;
+                    }
+                } else if !matches!(
+                    c,
+                    b'-'
+                    | b'a'..=b'z'
+                    | b'A'..=b'Z'
+                    | b'0'..=b'9'
+                    | b'@'
+                    | b':'
+                    | b'%'
+                    | b'_'
+                    | b'\\'
+                    | b'+'
+                    | b'.'
+                    | b'~'
+                    | b'&'
+                    | b'='
+                ) {
+                    break;
+                }
+                url_range.end += 1;
+            }
         }
+        // We assume the first unmatched parenthesis marks the end of the url,
+        // as urls rarely contain unbalanced parenthesis in practice.
         if let Some(&end) = paren_stack.first() {
             url_range.end = end;
         }

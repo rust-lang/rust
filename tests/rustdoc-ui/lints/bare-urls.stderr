@@ -508,5 +508,41 @@ help: use an automatic link instead
 LL | /// See <http://example.com/test>.)
    |         +                       +
 
-error: aborting due to 42 previous errors
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:149:5
+   |
+LL | /// https://foo.bar=a
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// <https://foo.bar>=a
+   |     +               +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:154:5
+   |
+LL | /// https://foo.bar#a or https://foo.bar?a
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// <https://foo.bar#a> or https://foo.bar?a
+   |     +                 +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:154:26
+   |
+LL | /// https://foo.bar#a or https://foo.bar?a
+   |                          ^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// https://foo.bar#a or <https://foo.bar?a>
+   |                          +                 +
+
+error: aborting due to 45 previous errors
 
