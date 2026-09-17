@@ -40,7 +40,7 @@ fn is_item_reachable(
 impl DocFolder for Stripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.kind {
-            ItemKind::StrippedItem(..) => {
+            ItemKind::Stripped(..) => {
                 // We need to recurse into stripped modules to strip things
                 // like impl methods but when doing so we must not add any
                 // items to the `retained` set.
@@ -51,20 +51,20 @@ impl DocFolder for Stripper<'_, '_> {
                 return Some(ret);
             }
             // These items can all get re-exported
-            ItemKind::TypeAliasItem(..)
-            | ItemKind::StaticItem(..)
-            | ItemKind::StructItem(..)
-            | ItemKind::EnumItem(..)
-            | ItemKind::TraitItem(..)
-            | ItemKind::FunctionItem(..)
-            | ItemKind::VariantItem(..)
-            | ItemKind::ForeignFunctionItem(..)
-            | ItemKind::ForeignStaticItem(..)
-            | ItemKind::ConstantItem(..)
-            | ItemKind::UnionItem(..)
-            | ItemKind::TraitAliasItem(..)
-            | ItemKind::MacroItem(..)
-            | ItemKind::ForeignTypeItem => {
+            ItemKind::TyAlias(..)
+            | ItemKind::Static(..)
+            | ItemKind::Struct(..)
+            | ItemKind::Enum(..)
+            | ItemKind::Trait(..)
+            | ItemKind::Fn(..)
+            | ItemKind::Variant(..)
+            | ItemKind::ForeignFn(..)
+            | ItemKind::ForeignStatic(..)
+            | ItemKind::Const(..)
+            | ItemKind::Union(..)
+            | ItemKind::TraitAlias(..)
+            | ItemKind::DeclMacro(..)
+            | ItemKind::ForeignTy => {
                 let item_id = i.item_id;
                 if item_id.is_local()
                     && !is_item_reachable(
@@ -79,10 +79,10 @@ impl DocFolder for Stripper<'_, '_> {
                 }
             }
 
-            ItemKind::MethodItem(..)
-            | ItemKind::ProvidedAssocConstItem(..)
-            | ItemKind::ImplAssocConstItem(..)
-            | ItemKind::AssocTypeItem(..) => {
+            ItemKind::AssocFn(..)
+            | ItemKind::ProvidedAssocConst(..)
+            | ItemKind::ImplAssocConst(..)
+            | ItemKind::AssocTy(..) => {
                 let item_id = i.item_id;
                 if item_id.is_local()
                     && !self.effective_visibilities.is_reachable(self.tcx, item_id.expect_def_id())
@@ -92,13 +92,13 @@ impl DocFolder for Stripper<'_, '_> {
                 }
             }
 
-            ItemKind::StructFieldItem(..) => {
+            ItemKind::StructField(..) => {
                 if i.visibility(self.tcx) != Some(Visibility::Public) {
                     return Some(strip_item(i));
                 }
             }
 
-            ItemKind::ModuleItem(..) => {
+            ItemKind::Module(..) => {
                 if i.item_id.is_local()
                     && !is_item_reachable(
                         self.tcx,
@@ -116,40 +116,40 @@ impl DocFolder for Stripper<'_, '_> {
             }
 
             // handled in the `strip-priv-imports` pass
-            ItemKind::ExternCrateItem { .. } | ItemKind::ImportItem(_) => {}
+            ItemKind::ExternCrate { .. } | ItemKind::Import(_) => {}
 
-            ItemKind::ImplItem(..) => {}
+            ItemKind::Impl(..) => {}
 
             // Since the `doc_cfg` propagation was handled before the current pass, we can (and
             // should) remove all placeholder impl items.
-            ItemKind::PlaceholderImplItem => return None,
+            ItemKind::PlaceholderImpl => return None,
 
             // tymethods etc. have no control over privacy
-            ItemKind::RequiredMethodItem(..)
-            | ItemKind::RequiredAssocConstItem(..)
-            | ItemKind::RequiredAssocTypeItem(..) => {}
+            ItemKind::RequiredAssocFn(..)
+            | ItemKind::RequiredAssocConst(..)
+            | ItemKind::RequiredAssocTy(..) => {}
 
             // Proc-macros are always public
-            ItemKind::ProcMacroItem(..) => {}
+            ItemKind::ProcMacro(..) => {}
 
             // Primitives are never stripped
-            ItemKind::PrimitiveItem(..) => {}
+            ItemKind::Primitive(..) => {}
 
             // Keywords are never stripped
-            ItemKind::KeywordItem => {}
+            ItemKind::Keyword => {}
             // Attributes are never stripped
-            ItemKind::AttributeItem => {}
+            ItemKind::Attribute => {}
         }
 
         let fastreturn = match i.kind {
             // nothing left to do for traits (don't want to filter their
             // methods out, visibility controlled by the trait)
-            ItemKind::TraitItem(..) => true,
+            ItemKind::Trait(..) => true,
 
             // implementations of traits are always public.
-            ItemKind::ImplItem(ref imp) if imp.trait_.is_some() => true,
+            ItemKind::Impl(ref imp) if imp.trait_.is_some() => true,
             // Variant fields have inherited visibility
-            ItemKind::VariantItem(clean::Variant {
+            ItemKind::Variant(clean::Variant {
                 kind: clean::VariantKind::Struct(..) | clean::VariantKind::Tuple(..),
                 ..
             }) => true,
@@ -206,7 +206,7 @@ impl ImplStripper<'_, '_> {
 
 impl DocFolder for ImplStripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        if let ItemKind::ImplItem(ref imp) = i.kind {
+        if let ItemKind::Impl(ref imp) = i.kind {
             // Impl blocks can be skipped if they are: empty; not a trait impl; and have no
             // documentation.
             //
@@ -284,14 +284,14 @@ impl ImportStripper<'_> {
 impl DocFolder for ImportStripper<'_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match &i.kind {
-            ItemKind::ImportItem(imp)
+            ItemKind::Import(imp)
                 if !self.document_hidden && self.import_should_be_hidden(&i, imp) =>
             {
                 debug!("ImportStripper: stripping {:?}", i.name);
                 None
             }
             // ItemKind::ImportItem(_) if !self.document_hidden && i.is_doc_hidden() => None,
-            ItemKind::ExternCrateItem { .. } | ItemKind::ImportItem(..)
+            ItemKind::ExternCrate { .. } | ItemKind::Import(..)
                 if i.visibility(self.tcx) != Some(Visibility::Public) =>
             {
                 debug!("ImportStripper: stripping {:?}", i.name);

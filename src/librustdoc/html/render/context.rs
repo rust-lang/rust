@@ -748,8 +748,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         // Render sidebar-items.js used throughout this module.
         if !self.info.render_redirect_pages {
-            let (ItemKind::StrippedItem(ItemKind::ModuleItem(ref module))
-            | ItemKind::ModuleItem(ref module)) = item.kind
+            let (ItemKind::Stripped(ItemKind::Module(ref module)) | ItemKind::Module(ref module)) =
+                item.kind
             else {
                 unreachable!()
             };

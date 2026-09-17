@@ -77,7 +77,7 @@ impl CfgPropagator<'_, '_> {
         // Same if it's an inlined item: we need to get the full original `cfg`.
         //
         // Otherwise, `cfg_info` already tracks everything we need so nothing else to do!
-        if matches!(item.kind, ItemKind::ImplItem(_)) || item.inline_stmt_id.is_some() {
+        if matches!(item.kind, ItemKind::Impl(_)) || item.inline_stmt_id.is_some() {
             if let Some(mut next_def_id) = item.item_id.as_local_def_id() {
                 while let Some(parent_def_id) = self.cx.tcx.opt_local_parent(next_def_id) {
                     let x = load_attrs(self.cx.tcx, parent_def_id.to_def_id());
@@ -88,7 +88,7 @@ impl CfgPropagator<'_, '_> {
         }
         // We also need to merge an item attributes with its parent's in case it's a macro with
         // the `#[macro_export]` attribute, because it might not be defined at crate root.
-        else if matches!(item.kind, ItemKind::MacroItem(_, _))
+        else if matches!(item.kind, ItemKind::DeclMacro(_, _))
             && item.inner.attrs.other_attrs.iter().any(|attr| {
                 matches!(
                     attr,
@@ -124,12 +124,12 @@ impl DocFolder for CfgPropagator<'_, '_> {
 
         // If we have an impl, we check if it has an associated `cfg` "context", and if so we will
         // use that context instead of the actual (wrong) one.
-        if let ItemKind::ImplItem(_) = item.kind
+        if let ItemKind::Impl(_) = item.kind
             && let Some(cfg_info) = self.impl_cfg_info.remove(&item.item_id)
         {
             self.cfg_info = cfg_info;
         }
-        if let ItemKind::PlaceholderImplItem = item.kind {
+        if let ItemKind::PlaceholderImpl = item.kind {
             if let Some(impl_def_id) = item.item_id.as_def_id() {
                 let tcx = self.cx.tcx;
                 let expn_data = tcx.expn_that_defined(impl_def_id).expn_data();

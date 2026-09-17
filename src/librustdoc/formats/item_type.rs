@@ -112,47 +112,45 @@ item_type! {
 impl<'a> From<&'a clean::Item> for ItemType {
     fn from(item: &'a clean::Item) -> ItemType {
         let kind = match &item.kind {
-            ItemKind::StrippedItem(item) => item,
+            ItemKind::Stripped(item) => item,
             kind => kind,
         };
 
         match kind {
-            ItemKind::ModuleItem(..) => ItemType::Module,
-            ItemKind::ExternCrateItem { .. } => ItemType::ExternCrate,
-            ItemKind::ImportItem(..) => ItemType::Import,
-            ItemKind::StructItem(..) => ItemType::Struct,
-            ItemKind::UnionItem(..) => ItemType::Union,
-            ItemKind::EnumItem(..) => ItemType::Enum,
-            ItemKind::FunctionItem(..) => ItemType::Function,
-            ItemKind::TypeAliasItem(..) => ItemType::TypeAlias,
-            ItemKind::StaticItem(..) => ItemType::Static,
-            ItemKind::ConstantItem(..) => ItemType::Constant,
-            ItemKind::TraitItem(..) => ItemType::Trait,
-            ItemKind::ImplItem(..) | ItemKind::PlaceholderImplItem => ItemType::Impl,
-            ItemKind::RequiredMethodItem(..) => ItemType::TyMethod,
-            ItemKind::MethodItem(..) => ItemType::Method,
-            ItemKind::StructFieldItem(..) => ItemType::StructField,
-            ItemKind::VariantItem(..) => ItemType::Variant,
-            ItemKind::ForeignFunctionItem(..) => ItemType::Function, // no ForeignFunction
-            ItemKind::ForeignStaticItem(..) => ItemType::Static,     // no ForeignStatic
-            ItemKind::MacroItem(..) => ItemType::Macro,
-            ItemKind::PrimitiveItem(..) => ItemType::Primitive,
-            ItemKind::RequiredAssocConstItem(..)
-            | ItemKind::ProvidedAssocConstItem(..)
-            | ItemKind::ImplAssocConstItem(..) => ItemType::AssocConst,
-            ItemKind::RequiredAssocTypeItem(..) | ItemKind::AssocTypeItem(..) => {
-                ItemType::AssocType
-            }
-            ItemKind::ForeignTypeItem => ItemType::ForeignType,
-            ItemKind::KeywordItem => ItemType::Keyword,
-            ItemKind::AttributeItem => ItemType::Attribute,
-            ItemKind::TraitAliasItem(..) => ItemType::TraitAlias,
-            ItemKind::ProcMacroItem(mac) => match mac.kind {
+            ItemKind::Module(..) => ItemType::Module,
+            ItemKind::ExternCrate { .. } => ItemType::ExternCrate,
+            ItemKind::Import(..) => ItemType::Import,
+            ItemKind::Struct(..) => ItemType::Struct,
+            ItemKind::Union(..) => ItemType::Union,
+            ItemKind::Enum(..) => ItemType::Enum,
+            ItemKind::Fn(..) => ItemType::Function,
+            ItemKind::TyAlias(..) => ItemType::TypeAlias,
+            ItemKind::Static(..) => ItemType::Static,
+            ItemKind::Const(..) => ItemType::Constant,
+            ItemKind::Trait(..) => ItemType::Trait,
+            ItemKind::Impl(..) | ItemKind::PlaceholderImpl => ItemType::Impl,
+            ItemKind::RequiredAssocFn(..) => ItemType::TyMethod,
+            ItemKind::AssocFn(..) => ItemType::Method,
+            ItemKind::StructField(..) => ItemType::StructField,
+            ItemKind::Variant(..) => ItemType::Variant,
+            ItemKind::ForeignFn(..) => ItemType::Function, // no ForeignFunction
+            ItemKind::ForeignStatic(..) => ItemType::Static, // no ForeignStatic
+            ItemKind::DeclMacro(..) => ItemType::Macro,
+            ItemKind::Primitive(..) => ItemType::Primitive,
+            ItemKind::RequiredAssocConst(..)
+            | ItemKind::ProvidedAssocConst(..)
+            | ItemKind::ImplAssocConst(..) => ItemType::AssocConst,
+            ItemKind::RequiredAssocTy(..) | ItemKind::AssocTy(..) => ItemType::AssocType,
+            ItemKind::ForeignTy => ItemType::ForeignType,
+            ItemKind::Keyword => ItemType::Keyword,
+            ItemKind::Attribute => ItemType::Attribute,
+            ItemKind::TraitAlias(..) => ItemType::TraitAlias,
+            ItemKind::ProcMacro(mac) => match mac.kind {
                 MacroKind::Bang => ItemType::Macro,
                 MacroKind::Attr => ItemType::ProcAttribute,
                 MacroKind::Derive => ItemType::ProcDerive,
             },
-            ItemKind::StrippedItem(..) => unreachable!(),
+            ItemKind::Stripped(..) => unreachable!(),
         }
     }
 }

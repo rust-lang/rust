@@ -79,27 +79,27 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
 
     fmt::from_fn(|buf| {
         let typ = match item.kind {
-            ItemKind::ModuleItem(_) if item.is_crate() => "Crate ",
-            ItemKind::ModuleItem(_) => "Module ",
-            ItemKind::FunctionItem(..) | ItemKind::ForeignFunctionItem(..) => "Function ",
-            ItemKind::TraitItem(..) => "Trait ",
-            ItemKind::StructItem(..) => "Struct ",
-            ItemKind::UnionItem(..) => "Union ",
-            ItemKind::EnumItem(..) => "Enum ",
-            ItemKind::TypeAliasItem(..) => "Type Alias ",
-            ItemKind::MacroItem(..) => "Macro ",
-            ItemKind::ProcMacroItem(ref mac) => match mac.kind {
+            ItemKind::Module(_) if item.is_crate() => "Crate ",
+            ItemKind::Module(_) => "Module ",
+            ItemKind::Fn(..) | ItemKind::ForeignFn(..) => "Function ",
+            ItemKind::Trait(..) => "Trait ",
+            ItemKind::Struct(..) => "Struct ",
+            ItemKind::Union(..) => "Union ",
+            ItemKind::Enum(..) => "Enum ",
+            ItemKind::TyAlias(..) => "Type Alias ",
+            ItemKind::DeclMacro(..) => "Macro ",
+            ItemKind::ProcMacro(ref mac) => match mac.kind {
                 MacroKind::Bang => "Macro ",
                 MacroKind::Attr => "Attribute Macro ",
                 MacroKind::Derive => "Derive Macro ",
             },
-            ItemKind::PrimitiveItem(..) => "Primitive Type ",
-            ItemKind::StaticItem(..) | ItemKind::ForeignStaticItem(..) => "Static ",
-            ItemKind::ConstantItem(..) => "Constant ",
-            ItemKind::ForeignTypeItem => "Foreign Type ",
-            ItemKind::KeywordItem => "Keyword ",
-            ItemKind::AttributeItem => "Attribute ",
-            ItemKind::TraitAliasItem(..) => "Trait Alias ",
+            ItemKind::Primitive(..) => "Primitive Type ",
+            ItemKind::Static(..) | ItemKind::ForeignStatic(..) => "Static ",
+            ItemKind::Const(..) => "Constant ",
+            ItemKind::ForeignTy => "Foreign Type ",
+            ItemKind::Keyword => "Keyword ",
+            ItemKind::Attribute => "Attribute ",
+            ItemKind::TraitAlias(..) => "Trait Alias ",
             _ => {
                 // We don't generate pages for any other type.
                 unreachable!();
@@ -168,42 +168,42 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
         item_vars.render_into(buf).unwrap();
 
         match &item.kind {
-            ItemKind::ModuleItem(m) => {
+            ItemKind::Module(m) => {
                 write!(buf, "{}", item_module(cx, item, &m.items))
             }
-            ItemKind::FunctionItem(f) | ItemKind::ForeignFunctionItem(f, _) => {
+            ItemKind::Fn(f) | ItemKind::ForeignFn(f, _) => {
                 write!(buf, "{}", item_function(cx, item, f))
             }
-            ItemKind::TraitItem(t) => write!(buf, "{}", item_trait(cx, item, t)),
-            ItemKind::StructItem(s) => {
+            ItemKind::Trait(t) => write!(buf, "{}", item_trait(cx, item, t)),
+            ItemKind::Struct(s) => {
                 write!(buf, "{}", item_struct(cx, item, s))
             }
-            ItemKind::UnionItem(s) => write!(buf, "{}", item_union(cx, item, s)),
-            ItemKind::EnumItem(e) => write!(buf, "{}", item_enum(cx, item, e)),
-            ItemKind::TypeAliasItem(t) => {
+            ItemKind::Union(s) => write!(buf, "{}", item_union(cx, item, s)),
+            ItemKind::Enum(e) => write!(buf, "{}", item_enum(cx, item, e)),
+            ItemKind::TyAlias(t) => {
                 write!(buf, "{}", item_type_alias(cx, item, t))
             }
-            ItemKind::MacroItem(m, kinds) => write!(buf, "{}", item_macro(cx, item, m, *kinds)),
-            ItemKind::ProcMacroItem(m) => {
+            ItemKind::DeclMacro(m, kinds) => write!(buf, "{}", item_macro(cx, item, m, *kinds)),
+            ItemKind::ProcMacro(m) => {
                 write!(buf, "{}", item_proc_macro(cx, item, m))
             }
-            ItemKind::PrimitiveItem(_) => write!(buf, "{}", item_primitive(cx, item)),
-            ItemKind::StaticItem(i) => {
+            ItemKind::Primitive(_) => write!(buf, "{}", item_primitive(cx, item)),
+            ItemKind::Static(i) => {
                 write!(buf, "{}", item_static(cx, item, i, None))
             }
-            ItemKind::ForeignStaticItem(i, safety) => {
+            ItemKind::ForeignStatic(i, safety) => {
                 write!(buf, "{}", item_static(cx, item, i, Some(*safety)))
             }
-            ItemKind::ConstantItem(ci) => {
+            ItemKind::Const(ci) => {
                 write!(buf, "{}", item_constant(cx, item, &ci.generics, &ci.type_, &ci.kind))
             }
-            ItemKind::ForeignTypeItem => {
+            ItemKind::ForeignTy => {
                 write!(buf, "{}", item_foreign_type(cx, item))
             }
-            ItemKind::KeywordItem | ItemKind::AttributeItem => {
+            ItemKind::Keyword | ItemKind::Attribute => {
                 write!(buf, "{}", item_keyword_or_attribute(cx, item))
             }
-            ItemKind::TraitAliasItem(ta) => {
+            ItemKind::TraitAlias(ta) => {
                 write!(buf, "{}", item_trait_alias(cx, item, ta))
             }
             // We don't generate pages for any other type.
@@ -379,7 +379,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                 };
 
                 match myitem.kind {
-                    ItemKind::ExternCrateItem { ref src } => {
+                    ItemKind::ExternCrate { ref src } => {
                         use crate::html::format::print_anchor;
 
                         let visibility_and_hidden = visibility_and_hidden(myitem);
@@ -417,7 +417,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                         }
                         write!(w, "</code>{visibility_and_hidden}</dt>")?
                     }
-                    ItemKind::ImportItem(ref import) => {
+                    ItemKind::Import(ref import) => {
                         let (stab_tags, deprecation) = match import.source.did {
                             Some(import_def_id) => {
                                 let stab_tags =
@@ -457,13 +457,13 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                         let Some(item_name) = myitem.name else { continue };
 
                         let unsafety_flag = match myitem.kind {
-                            ItemKind::FunctionItem(_) | ItemKind::ForeignFunctionItem(..)
+                            ItemKind::Fn(_) | ItemKind::ForeignFn(..)
                                 if myitem.fn_header(tcx).unwrap().safety
                                     == hir::HeaderSafety::Normal(hir::Safety::Unsafe) =>
                             {
                                 "<sup title=\"unsafe function\">⚠</sup>"
                             }
-                            ItemKind::ForeignStaticItem(_, hir::Safety::Unsafe) => {
+                            ItemKind::ForeignStatic(_, hir::Safety::Unsafe) => {
                                 "<sup title=\"unsafe static\">⚠</sup>"
                             }
                             _ => "",
@@ -1535,7 +1535,7 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
     // And update `item_union.html`.
     fn fields_iter(&self) -> impl Iterator<Item = (&'a clean::Item, &'a clean::Type)> {
         self.fields.iter().filter_map(|f| match f.kind {
-            ItemKind::StructFieldItem(ref ty) => Some((f, ty)),
+            ItemKind::StructField(ref ty) => Some((f, ty)),
             _ => None,
         })
     }
@@ -1559,9 +1559,8 @@ fn item_union(cx: &Context<'_>, it: &clean::Item, s: &clean::Union) -> impl fmt:
 fn print_tuple_struct_fields(cx: &Context<'_>, s: &[clean::Item]) -> impl Display {
     fmt::from_fn(|f| {
         if !s.is_empty()
-            && s.iter().all(|field| {
-                matches!(field.kind, ItemKind::StrippedItem(ItemKind::StructFieldItem(..)))
-            })
+            && s.iter()
+                .all(|field| matches!(field.kind, ItemKind::Stripped(ItemKind::StructField(..))))
         {
             return f.write_str("<span class=\"comment\">/* private fields */</span>");
         }
@@ -1569,8 +1568,8 @@ fn print_tuple_struct_fields(cx: &Context<'_>, s: &[clean::Item]) -> impl Displa
         s.iter()
             .map(|ty| {
                 fmt::from_fn(|f| match ty.kind {
-                    ItemKind::StrippedItem(ItemKind::StructFieldItem(_)) => f.write_str("_"),
-                    ItemKind::StructFieldItem(ref ty) => write!(f, "{}", print_type(ty, cx)),
+                    ItemKind::Stripped(ItemKind::StructField(_)) => f.write_str("_"),
+                    ItemKind::StructField(ref ty) => write!(f, "{}", print_type(ty, cx)),
                     _ => unreachable!(),
                 })
             })
@@ -1666,7 +1665,7 @@ fn should_show_enum_discriminant(
 ) -> bool {
     let mut has_variants_with_value = false;
     for variant in variants {
-        if let ItemKind::VariantItem(ref var) = variant.kind
+        if let ItemKind::Variant(ref var) = variant.kind
             && matches!(var.kind, clean::VariantKind::CLike)
         {
             has_variants_with_value |= var.discriminant.is_some();
@@ -1744,7 +1743,7 @@ fn render_enum_fields(
                 render_attributes_in_code(w, v, TAB, cx)?;
                 w.write_str(TAB)?;
                 match v.kind {
-                    ItemKind::VariantItem(ref var) => match var.kind {
+                    ItemKind::Variant(ref var) => match var.kind {
                         clean::VariantKind::CLike => {
                             write!(
                                 w,
@@ -1826,7 +1825,7 @@ fn item_variants(
                 .maybe_display()
             )?;
             render_attributes_in_code(w, variant, "", cx)?;
-            let ItemKind::VariantItem(variant_data) = &variant.kind else { unreachable!() };
+            let ItemKind::Variant(variant_data) = &variant.kind else { unreachable!() };
             if let clean::VariantKind::CLike = variant_data.kind {
                 write!(
                     w,
@@ -1884,8 +1883,8 @@ fn item_variants(
                 )?;
                 for field in fields {
                     match field.kind {
-                        ItemKind::StrippedItem(ItemKind::StructFieldItem(_)) => {}
-                        ItemKind::StructFieldItem(ref ty) => {
+                        ItemKind::Stripped(ItemKind::StructField(_)) => {}
+                        ItemKind::StructField(ref ty) => {
                             let id = cx.derive_id(format!(
                                 "variant.{}.field.{}",
                                 variant.name.unwrap(),
@@ -2118,7 +2117,7 @@ fn item_fields(
         let mut fields = fields
             .iter()
             .filter_map(|f| match f.kind {
-                ItemKind::StructFieldItem(ref ty) => Some((f, ty)),
+                ItemKind::StructField(ref ty) => Some((f, ty)),
                 _ => None,
             })
             .peekable();
@@ -2314,7 +2313,7 @@ pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
 
 pub(super) fn print_item_path(item: &clean::Item) -> impl Display {
     fmt::from_fn(move |f| match item.kind {
-        ItemKind::ModuleItem(..) => {
+        ItemKind::Module(..) => {
             write!(f, "{}index.html", ensure_trailing_slash(item.name.unwrap().as_str()))
         }
         _ => f.write_str(&item.html_filename()),
@@ -2463,17 +2462,15 @@ fn render_union(
         }
 
         writeln!(f, "{{")?;
-        let count_fields = fields
-            .iter()
-            .filter(|field| matches!(field.kind, ItemKind::StructFieldItem(..)))
-            .count();
+        let count_fields =
+            fields.iter().filter(|field| matches!(field.kind, ItemKind::StructField(..))).count();
         let toggle = should_hide_fields(count_fields);
         if toggle {
             toggle_open(&mut f, format_args!("{count_fields} fields"));
         }
 
         for field in fields {
-            if let ItemKind::StructFieldItem(ref ty) = field.kind {
+            if let ItemKind::StructField(ref ty) = field.kind {
                 render_attributes_in_code(&mut f, field, "    ", cx)?;
                 writeln!(
                     f,
@@ -2559,10 +2556,8 @@ fn render_struct_fields(
                 } else {
                     w.write_str("{")?;
                 }
-                let count_fields = fields
-                    .iter()
-                    .filter(|f| matches!(f.kind, ItemKind::StructFieldItem(..)))
-                    .count();
+                let count_fields =
+                    fields.iter().filter(|f| matches!(f.kind, ItemKind::StructField(..))).count();
                 let has_visible_fields = count_fields > 0;
                 let toggle = should_hide_fields(count_fields);
                 if toggle {
@@ -2572,7 +2567,7 @@ fn render_struct_fields(
                     writeln!(w)?;
                 }
                 for field in fields {
-                    if let ItemKind::StructFieldItem(ref ty) = field.kind {
+                    if let ItemKind::StructField(ref ty) = field.kind {
                         render_attributes_in_code(w, field, format_args!("{tab}    "), cx)?;
                         writeln!(
                             w,
@@ -2604,7 +2599,7 @@ fn render_struct_fields(
                 w.write_str("(")?;
                 if !fields.is_empty()
                     && fields.iter().all(|field| {
-                        matches!(field.kind, ItemKind::StrippedItem(ItemKind::StructFieldItem(..)))
+                        matches!(field.kind, ItemKind::Stripped(ItemKind::StructField(..)))
                     })
                 {
                     write!(w, "<span class=\"comment\">/* private fields */</span>")?;
@@ -2614,10 +2609,10 @@ fn render_struct_fields(
                             w.write_str(", ")?;
                         }
                         match field.kind {
-                            ItemKind::StrippedItem(ItemKind::StructFieldItem(..)) => {
+                            ItemKind::Stripped(ItemKind::StructField(..)) => {
                                 write!(w, "_")?;
                             }
-                            ItemKind::StructFieldItem(ref ty) => {
+                            ItemKind::StructField(ref ty) => {
                                 write!(
                                     w,
                                     "{}{}",
