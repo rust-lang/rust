@@ -345,7 +345,7 @@ pub(crate) struct CrateDep {
 
 #[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct TraitImpls {
-    trait_id: (u32, DefIndex),
+    trait_id: (u32 /* crate */, u32 /* def index */),
     impls: LazyArray<(DefIndex, Option<SimplifiedType>)>,
 }
 
