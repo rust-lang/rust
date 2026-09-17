@@ -148,10 +148,5 @@ LL |         false => foo::<&'a ()>,
    = note: the function `foo` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-help: the following changes may resolve your lifetime errors
-   |
-   = help: add bound `'a: 'c`
-   = help: add bound `'b: 'a`
-
 error: aborting due to 9 previous errors
 

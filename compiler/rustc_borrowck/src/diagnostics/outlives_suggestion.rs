@@ -14,9 +14,6 @@ use crate::MirBorrowckCtxt;
 
 /// The different things we could suggest.
 enum SuggestedConstraint {
-    /// Outlives(a, [b, c, d, ...]) => 'a: 'b + 'c + 'd + ...
-    Outlives(RegionName, SmallVec<[RegionName; 2]>),
-
     /// 'a = 'b
     Equal(RegionName, RegionName),
 
@@ -106,11 +103,10 @@ impl OutlivesSuggestionBuilder {
                 continue;
             }
 
-            // There are three types of suggestions we can make:
-            // 1) Suggest a bound: 'a: 'b
-            // 2) Suggest replacing 'a with 'static. If any of `outlived` is `'static`, then we
+            // There are two types of suggestions we can make:
+            // 1) Suggest replacing 'a with 'static. If any of `outlived` is `'static`, then we
             //    should just replace 'a with 'static.
-            // 3) Suggest unifying 'a with 'b if we have both 'a: 'b and 'b: 'a
+            // 2) Suggest unifying 'a with 'b if we have both 'a: 'b and 'b: 'a
 
             if outlived
                 .iter()
@@ -121,7 +117,7 @@ impl OutlivesSuggestionBuilder {
                 // We want to isolate out all lifetimes that should be unified and print out
                 // separate messages for them.
 
-                let (unified, other): (Vec<_>, Vec<_>) = outlived.into_iter().partition(
+                let unified = outlived.into_iter().filter(
                     // Do we have both 'fr: 'r and 'r: 'fr?
                     |(r, _)| {
                         self.constraints_to_add
@@ -130,16 +126,11 @@ impl OutlivesSuggestionBuilder {
                     },
                 );
 
-                for (r, bound) in unified.into_iter() {
+                for (r, bound) in unified {
                     if !unified_already.contains(fr) {
                         suggested.push(SuggestedConstraint::Equal(fr_name, bound));
                         unified_already.insert(r);
                     }
-                }
-
-                if !other.is_empty() {
-                    let other = other.iter().map(|(_, rname)| *rname).collect::<SmallVec<_>>();
-                    suggested.push(SuggestedConstraint::Outlives(fr_name, other))
                 }
             }
         }
@@ -206,11 +197,6 @@ impl OutlivesSuggestionBuilder {
         // list of diagnostics.
         let mut diag = if let [constraint] = suggested.as_slice() {
             mbcx.dcx().struct_help(match constraint {
-                SuggestedConstraint::Outlives(a, bs) => {
-                    let bs: SmallVec<[String; 2]> = bs.iter().map(|r| r.to_string()).collect();
-                    format!("add bound `{a}: {}`", bs.join(" + "))
-                }
-
                 SuggestedConstraint::Equal(a, b) => {
                     format!("`{a}` and `{b}` must be the same: replace one with the other")
                 }
@@ -227,10 +213,6 @@ impl OutlivesSuggestionBuilder {
             // Add suggestions.
             for constraint in suggested {
                 match constraint {
-                    SuggestedConstraint::Outlives(a, bs) => {
-                        let bs: SmallVec<[String; 2]> = bs.iter().map(|r| r.to_string()).collect();
-                        diag.help(format!("add bound `{a}: {}`", bs.join(" + ")));
-                    }
                     SuggestedConstraint::Equal(a, b) => {
                         diag.help(format!(
                             "`{a}` and `{b}` must be the same: replace one with the other",

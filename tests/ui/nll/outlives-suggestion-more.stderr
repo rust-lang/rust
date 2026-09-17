@@ -22,11 +22,6 @@ LL |     (x, y)
    |
    = help: consider adding the following bound: `'b: 'd`
 
-help: the following changes may resolve your lifetime errors
-   |
-   = help: add bound `'a: 'c`
-   = help: add bound `'b: 'd`
-
 error: lifetime may not live long enough
   --> $DIR/outlives-suggestion-more.rs:11:5
    |
@@ -47,10 +42,7 @@ LL | fn foo2<'a, 'b, 'c>(x: &'a usize, y: &'b usize) -> (&'c usize, &'static usi
 LL |     (x, y)
    |     ^^^^^^ returning this value requires that `'b` must outlive `'static`
 
-help: the following changes may resolve your lifetime errors
-   |
-   = help: add bound `'a: 'c`
-   = help: replace `'b` with `'static`
+help: replace `'b` with `'static`
 
 error: lifetime may not live long enough
   --> $DIR/outlives-suggestion-more.rs:21:5
