@@ -177,6 +177,10 @@ pub trait Interner:
     type Symbol: Symbol<Self>;
 
     // Things stored inside of tys
+
+    // `TypeVisitable<Self>` is required to prevent a problem where the flags
+    // on `Const` indicated that an error was present, as the visitor could no
+    // longer reach the corresponding ErrorGuaranteed
     type ErrorGuaranteed: Copy + Debug + Hash + Eq + TypeVisitable<Self>;
     type BoundExistentialPredicates: BoundExistentialPredicates<Self>;
     type AllocId: Copy + Debug + Hash + Eq;
