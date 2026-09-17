@@ -24,8 +24,8 @@ use crate::clean::auto_trait::synthesize_auto_trait_impls;
 use crate::clean::blanket_impl::synthesize_blanket_impls;
 use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
-    AssocItemConstraint, AssocItemConstraintKind, Crate, ExternalCrate, Generic, GenericArg,
-    GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path, PathSegment, Primitive,
+    AssocItemConstraint, AssocItemConstraintKind, AssocTy, Crate, ExternalCrate, Generic,
+    GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path, PathSegment, Primitive,
     PrimitiveType, Term, Type, clean_doc_module, clean_middle_const, clean_middle_region,
     clean_middle_ty, inline,
 };
@@ -276,19 +276,16 @@ pub(crate) fn build_deref_target_impls(
     let tcx = cx.tcx;
 
     for item in items {
-        let target = match item.kind {
-            ItemKind::AssocTy(ref t, _) => &t.type_,
-            _ => continue,
-        };
+        let ItemKind::AssocTy(AssocTy { ty: Some(target), .. }) = &item.kind else { continue };
 
-        if let Some(prim) = target.primitive_type() {
+        if let Some(prim) = target.ty.primitive_type() {
             let _prof_timer = tcx.sess.prof.generic_activity("build_primitive_inherent_impls");
             for did in prim.impls(tcx).filter(|did| !did.is_local()) {
                 cx.with_param_env(did, |cx| {
                     inline::build_impl(cx, did, None, ret);
                 });
             }
-        } else if let Type::Path { path } = target {
+        } else if let Type::Path { path } = &target.ty {
             let did = path.def_id();
             if !did.is_local() {
                 cx.with_param_env(did, |cx| {

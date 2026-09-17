@@ -642,8 +642,9 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
         let bounds = print_bounds(&t.bounds, false, cx);
 
         let required_types =
-            t.items.iter().filter(|m| m.is_required_associated_type()).collect::<Vec<_>>();
-        let provided_types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
+            t.items.iter().filter(|m| m.is_assoc_ty_without_body()).collect::<Vec<_>>();
+        let provided_types =
+            t.items.iter().filter(|m| m.is_assoc_ty_with_body()).collect::<Vec<_>>();
         let required_consts =
             t.items.iter().filter(|m| m.is_assoc_const_without_body()).collect::<Vec<_>>();
         let provided_consts =
@@ -1291,7 +1292,7 @@ fn item_trait_alias(
     })
 }
 
-fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> impl fmt::Display {
+fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TyAlias) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             render_attributes_in_code(w, it, "", cx)?;
@@ -1303,7 +1304,7 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
                 generics = print_generics(&t.generics, cx),
                 where_clause =
                     print_where_clause(&t.generics, cx, 0, Ending::Newline).maybe_display(),
-                type_ = print_type(&t.type_, cx),
+                type_ = print_type(&t.ty, cx),
             )
         })?;
 
@@ -1451,7 +1452,7 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
         // [JSONP]: https://en.wikipedia.org/wiki/JSONP
         // [^115718]: https://github.com/rust-lang/rust/issues/115718
         let cache = &cx.shared.cache;
-        if let Some(target_did) = t.type_.def_id(cache)
+        if let Some(target_did) = t.ty.def_id(cache)
             && let get_extern = { || cache.external_paths.get(&target_did).map(|(fqp, shortty)| (fqp, *shortty)) }
             && let Some((target_fqp, target_type)) =
                 cache.paths.get(&target_did).map(|info| (&info.parts, info.ty)).or_else(get_extern)

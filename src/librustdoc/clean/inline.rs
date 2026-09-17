@@ -390,17 +390,12 @@ fn build_type_alias(
     cx: &mut DocContext<'_>,
     did: DefId,
     ret: &mut Vec<Item>,
-) -> Box<clean::TypeAlias> {
+) -> Box<clean::TyAlias> {
     let ty = cx.tcx.type_of(did).instantiate_identity().skip_norm_wip();
     let type_ = clean_middle_ty(ty::Binder::dummy(ty), cx, Some(did), None);
     let inner_type = clean_ty_alias_inner_type(ty, cx, ret);
 
-    Box::new(clean::TypeAlias {
-        type_,
-        generics: clean_ty_generics(cx, did),
-        inner_type,
-        item_type: None,
-    })
+    Box::new(clean::TyAlias { ty: type_, generics: clean_ty_generics(cx, did), inner_type })
 }
 
 /// Builds all inherent implementations of an ADT (struct/union/enum) or Trait item/path/reexport.

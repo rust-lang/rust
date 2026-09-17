@@ -138,7 +138,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             ItemKind::DeclMacro(..) => ItemType::Macro,
             ItemKind::Primitive(..) => ItemType::Primitive,
             ItemKind::AssocConst(..) => ItemType::AssocConst,
-            ItemKind::RequiredAssocTy(..) | ItemKind::AssocTy(..) => ItemType::AssocType,
+            ItemKind::AssocTy(..) => ItemType::AssocType,
             ItemKind::ForeignTy => ItemType::ForeignType,
             ItemKind::Keyword => ItemType::Keyword,
             ItemKind::Attribute => ItemType::Attribute,

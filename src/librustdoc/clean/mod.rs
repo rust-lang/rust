@@ -1315,25 +1315,18 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                     clean_function(cx, sig, trait_item.generics, params, local_did);
                 ItemKind::AssocFn(Box::new(AssocFn { generics, decl, body }))
             }
-            hir::TraitItemKind::Type(bounds, Some(default)) => {
+            hir::TraitItemKind::Type(bounds, ty) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
                 let bounds = bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect();
-                let item_type =
-                    clean_middle_ty(ty::Binder::dummy(lower_ty(cx.tcx, default)), cx, None, None);
-                ItemKind::AssocTy(
-                    Box::new(TypeAlias {
-                        type_: clean_ty(default, cx),
-                        generics,
-                        inner_type: None,
-                        item_type: Some(item_type),
-                    }),
+                ItemKind::AssocTy(Box::new(AssocTy {
+                    generics,
                     bounds,
-                )
-            }
-            hir::TraitItemKind::Type(bounds, None) => {
-                let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
-                let bounds = bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect();
-                ItemKind::RequiredAssocTy(generics, bounds)
+                    ty: ty.map(|ty| {
+                        let middle_ty = ty::Binder::dummy(lower_ty(cx.tcx, ty));
+                        let middle_ty = Some(clean_middle_ty(middle_ty, cx, None, None));
+                        AliasedTy { ty: clean_ty(ty, cx), middle_ty }
+                    }),
+                }))
             }
         };
         Item::from_def_id_and_parts(local_did, Some(trait_item.ident.name), inner, cx.tcx)
@@ -1364,20 +1357,16 @@ pub(crate) fn clean_impl_item<'tcx>(
                     })),
                 }))
             }
-            hir::ImplItemKind::Type(hir_ty) => {
-                let type_ = clean_ty(hir_ty, cx);
+            hir::ImplItemKind::Type(ty) => {
                 let generics = clean_generics(impl_.generics, cx);
-                let item_type =
-                    clean_middle_ty(ty::Binder::dummy(lower_ty(cx.tcx, hir_ty)), cx, None, None);
-                ItemKind::AssocTy(
-                    Box::new(TypeAlias {
-                        type_,
-                        generics,
-                        inner_type: None,
-                        item_type: Some(item_type),
-                    }),
-                    Vec::new(),
-                )
+                let middle_ty =
+                    clean_middle_ty(ty::Binder::dummy(lower_ty(cx.tcx, ty)), cx, None, None);
+                let ty = clean_ty(ty, cx);
+                ItemKind::AssocTy(Box::new(AssocTy {
+                    generics,
+                    bounds: Vec::new(),
+                    ty: Some(AliasedTy { ty, middle_ty: Some(middle_ty) }),
+                }))
             }
         };
 
@@ -1487,7 +1476,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             );
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
-            if let ty::AssocContainer::Trait = assoc_item.container {
+            let (bounds, ty) = if let ty::AssocContainer::Trait = assoc_item.container {
                 // Move bounds that are (likely) directly attached to the associated type
                 // from the where-clause to the associated type.
                 // There is no guarantee that this is what the user actually wrote but we have
@@ -1555,50 +1544,24 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                     None => bounds.push(GenericBound::maybe_sized(cx)),
                 }
 
-                if tcx.defaultness(assoc_item.def_id).has_value() {
-                    ItemKind::AssocTy(
-                        Box::new(TypeAlias {
-                            type_: clean_middle_ty(
-                                ty::Binder::dummy(
-                                    tcx.type_of(assoc_item.def_id)
-                                        .instantiate_identity()
-                                        .skip_norm_wip(),
-                                ),
-                                cx,
-                                Some(assoc_item.def_id),
-                                None,
-                            ),
-                            generics,
-                            inner_type: None,
-                            item_type: None,
-                        }),
-                        bounds,
-                    )
-                } else {
-                    ItemKind::RequiredAssocTy(generics, bounds)
-                }
+                let ty = tcx.defaultness(assoc_item.def_id).has_value().then(|| {
+                    let ty = tcx.type_of(assoc_item.def_id).instantiate_identity().skip_norm_wip();
+                    clean_middle_ty(ty::Binder::dummy(ty), cx, Some(assoc_item.def_id), None)
+                });
+
+                (bounds, ty)
             } else {
-                ItemKind::AssocTy(
-                    Box::new(TypeAlias {
-                        type_: clean_middle_ty(
-                            ty::Binder::dummy(
-                                tcx.type_of(assoc_item.def_id)
-                                    .instantiate_identity()
-                                    .skip_norm_wip(),
-                            ),
-                            cx,
-                            Some(assoc_item.def_id),
-                            None,
-                        ),
-                        generics,
-                        inner_type: None,
-                        item_type: None,
-                    }),
-                    // Associated types inside trait or inherent impls are not allowed to have
-                    // item bounds. Thus we don't attempt to move any bounds there.
-                    Vec::new(),
-                )
-            }
+                let ty = tcx.type_of(assoc_item.def_id).instantiate_identity().skip_norm_wip();
+                let ty = clean_middle_ty(ty::Binder::dummy(ty), cx, Some(assoc_item.def_id), None);
+                // Associated types inside trait or inherent impls are not allowed to have
+                // item bounds. Thus we don't attempt to move any bounds there.
+                (Vec::new(), Some(ty))
+            };
+            ItemKind::AssocTy(Box::new(AssocTy {
+                generics,
+                bounds,
+                ty: ty.map(|ty| AliasedTy { ty, middle_ty: None }),
+            }))
         }
     };
 
@@ -2946,10 +2909,10 @@ fn clean_maybe_renamed_item<'tcx>(
             })),
             hir::ItemKind::TyAlias(_, generics, ty) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
-                let rustdoc_ty = clean_ty(ty, cx);
-                let type_ =
-                    clean_middle_ty(ty::Binder::dummy(lower_ty(cx.tcx, ty)), cx, None, None);
+
                 let generics = clean_generics(generics, cx);
+                let type_ = clean_ty(ty, cx);
+
                 if let Some(count) = cx.current_type_aliases.get_mut(&def_id) {
                     *count -= 1;
                     if *count == 0 {
@@ -2958,18 +2921,12 @@ fn clean_maybe_renamed_item<'tcx>(
                 }
 
                 let ty = cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
-
                 let mut ret = Vec::new();
                 let inner_type = clean_ty_alias_inner_type(ty, cx, &mut ret);
 
                 ret.push(generate_item_with_correct_attrs(
                     cx,
-                    ItemKind::TyAlias(Box::new(TypeAlias {
-                        generics,
-                        inner_type,
-                        type_: rustdoc_ty,
-                        item_type: Some(type_),
-                    })),
+                    ItemKind::TyAlias(Box::new(TyAlias { generics, inner_type, ty: type_ })),
                     item.owner_id.def_id.to_def_id(),
                     name,
                     import_ids,

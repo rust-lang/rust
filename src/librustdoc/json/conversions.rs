@@ -419,21 +419,17 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
                     .map(|stab| stab.into_json(renderer))
             }),
         },
-        ItemKind::RequiredAssocTy(g, b) => ItemEnum::AssocType {
-            generics: g.into_json(renderer),
-            bounds: b.into_json(renderer),
-            type_: None,
-            default_unstable: None,
-        },
-        ItemKind::AssocTy(t, b) => ItemEnum::AssocType {
-            generics: t.generics.into_json(renderer),
-            bounds: b.into_json(renderer),
-            type_: Some(t.item_type.as_ref().unwrap_or(&t.type_).into_json(renderer)),
-            default_unstable: default_body_stability_for_def_id(
-                renderer.tcx,
-                item.item_id.expect_def_id(),
-            )
-            .map(|stab| stab.into_json(renderer)),
+        ItemKind::AssocTy(ty) => ItemEnum::AssocType {
+            generics: ty.generics.into_json(renderer),
+            bounds: ty.bounds.into_json(renderer),
+            type_: ty
+                .ty
+                .as_ref()
+                .map(|ty| ty.middle_ty.as_ref().unwrap_or(&ty.ty).into_json(renderer)),
+            default_unstable: ty.ty.as_ref().and_then(|_| {
+                default_body_stability_for_def_id(renderer.tcx, item.item_id.expect_def_id())
+                    .map(|stab| stab.into_json(renderer))
+            }),
         },
         // `convert_item` early returns `None` for stripped items, keywords, attributes and
         // "special" macro rules.
@@ -925,9 +921,9 @@ impl FromClean<rustc_span::hygiene::MacroKind> for MacroKind {
     }
 }
 
-impl FromClean<clean::TypeAlias> for TypeAlias {
-    fn from_clean(type_alias: &clean::TypeAlias, renderer: &JsonRenderer<'_>) -> Self {
-        let clean::TypeAlias { type_, generics, item_type: _, inner_type: _ } = type_alias;
+impl FromClean<clean::TyAlias> for TypeAlias {
+    fn from_clean(type_alias: &clean::TyAlias, renderer: &JsonRenderer<'_>) -> Self {
+        let clean::TyAlias { ty: type_, generics, inner_type: _ } = type_alias;
         TypeAlias { type_: type_.into_json(renderer), generics: generics.into_json(renderer) }
     }
 }

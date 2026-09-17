@@ -304,7 +304,7 @@ impl DocVisitor<'_> for ItemAndAliasCollector<'_> {
         self.items.insert(i.item_id);
 
         if let ItemKind::TyAlias(alias) = &i.inner.kind
-            && let Some(did) = alias.type_.def_id(self.cache)
+            && let Some(did) = alias.ty.def_id(self.cache)
         {
             self.items.insert(ItemId::DefId(did));
         }
