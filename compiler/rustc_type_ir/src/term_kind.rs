@@ -8,7 +8,7 @@ use rustc_type_ir_macros::{
 };
 
 use crate::inherent::*;
-use crate::{self as ty, AliasTerm, Interner};
+use crate::{self as ty, AliasTerm, Const, Interner};
 
 #[derive_where(Clone, Copy, PartialEq, Debug; I: Interner)]
 #[derive(GenericTypeVisitable)]
@@ -18,7 +18,7 @@ use crate::{self as ty, AliasTerm, Interner};
 )]
 pub enum TermKind<I: Interner> {
     Ty(I::Ty),
-    Const(I::Const),
+    Const(Const<I>),
 }
 
 impl<I: Interner> Eq for TermKind<I> {}
@@ -223,7 +223,7 @@ impl<I: Interner> AliasTerm<I> {
                 .into()
         };
         let alias_const = |kind| {
-            I::Const::new_alias(interner, is_rigid, ty::AliasConst::new(interner, kind, self.args))
+            Const::new_alias(interner, is_rigid, ty::AliasConst::new(interner, kind, self.args))
                 .into()
         };
         match self.kind {

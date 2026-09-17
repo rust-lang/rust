@@ -23,7 +23,7 @@ mod trait_goals;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner, Region, TypeVisitableExt};
+use rustc_type_ir::{self as ty, Const, Interner, Region, TypeVisitableExt};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -205,7 +205,7 @@ where
     #[instrument(level = "trace", skip(self))]
     fn compute_const_evaluatable_goal(
         &mut self,
-        Goal { param_env, predicate: ct }: Goal<I, I::Const>,
+        Goal { param_env, predicate: ct }: Goal<I, Const<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         match ct.kind() {
             ty::ConstKind::Alias(ty::IsRigid::Yes, _)
@@ -248,7 +248,7 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     fn compute_const_arg_has_type_goal(
         &mut self,
-        goal: Goal<I, (I::Const, I::Ty)>,
+        goal: Goal<I, (Const<I>, I::Ty)>,
     ) -> QueryResultOrRerunNonErased<I> {
         let (ct, ty) = goal.predicate;
         let ct = self.structurally_normalize_const(goal.param_env, ct)?;
@@ -375,8 +375,8 @@ where
     fn structurally_normalize_const(
         &mut self,
         param_env: I::ParamEnv,
-        ct: I::Const,
-    ) -> Result<I::Const, NoSolutionOrRerunNonErased> {
+        ct: Const<I>,
+    ) -> Result<Const<I>, NoSolutionOrRerunNonErased> {
         self.structurally_normalize_term(param_env, ct.into()).map(|term| term.expect_const())
     }
 
