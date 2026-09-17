@@ -96,7 +96,6 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                     ItemKind::Impl(..)
                     | ItemKind::AssocFn(..)
                     | ItemKind::AssocConst(..)
-                    | ItemKind::RequiredAssocTy(..)
                     | ItemKind::AssocTy(..)
                     | ItemKind::Primitive(..)
                     | ItemKind::Keyword

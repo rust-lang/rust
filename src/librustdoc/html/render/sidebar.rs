@@ -311,9 +311,8 @@ fn sidebar_trait<'a>(
         res
     }
 
-    let req_assoc_tys =
-        filter_items(&t.items, |m| m.is_required_associated_type(), "associatedtype");
-    let prov_assoc_tys = filter_items(&t.items, |m| m.is_associated_type(), "associatedtype");
+    let req_assoc_tys = filter_items(&t.items, |m| m.is_assoc_ty_without_body(), "associatedtype");
+    let prov_assoc_tys = filter_items(&t.items, |m| m.is_assoc_ty_with_body(), "associatedtype");
     let req_assoc_consts =
         filter_items(&t.items, |m| m.is_assoc_const_without_body(), "associatedconstant");
     let prov_assoc_consts =
@@ -389,7 +388,7 @@ fn sidebar_primitive<'a>(
 fn sidebar_type_alias<'a>(
     cx: &'a Context<'_>,
     it: &'a clean::Item,
-    t: &'a clean::TypeAlias,
+    t: &'a clean::TyAlias,
     items: &mut Vec<LinkBlock<'a>>,
     deref_id_map: &'a DefIdMap<String>,
 ) {
@@ -533,11 +532,10 @@ fn sidebar_deref_methods<'a>(
 
     debug!("found Deref: {impl_:?}");
     if let Some((target, real_target)) =
-        impl_.inner_impl().items.iter().find_map(|item| match item.kind {
-            ItemKind::AssocTy(ref t, _) => Some(match *t {
-                clean::TypeAlias { item_type: Some(ref type_), .. } => (type_, &t.type_),
-                _ => (&t.type_, &t.type_),
-            }),
+        impl_.inner_impl().items.iter().find_map(|item| match &item.kind {
+            ItemKind::AssocTy(clean::AssocTy { ty: Some(ty), .. }) => {
+                Some((ty.middle_ty.as_ref().unwrap_or(&ty.ty), &ty.ty))
+            }
             _ => None,
         })
     {
@@ -828,7 +826,7 @@ fn get_associated_types<'a>(
 ) -> impl Iterator<Item = Link<'a>> {
     i.items.iter().filter_map(|item| {
         if let Some(ref name) = item.name
-            && item.is_associated_type()
+            && item.is_assoc_ty_with_body()
         {
             Some(Link::new(
                 get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocType)),
