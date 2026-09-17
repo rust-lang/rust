@@ -15,7 +15,7 @@
 //@ needs-unwind
 //@ ignore-backends: gcc
 //@ compile-flags: -g -Copt-level=0 -Cstrip=none -Cforce-frame-pointers=yes
-//@ ignore-emscripten Requires custom symbolization code
+//@ ignore-wasm Requires custom symbolization code
 //@ aux-crate: dylib_dep_helper=dylib-dep-helper.rs
 //@ aux-crate: auxiliary=dylib-dep-helper-aux.rs
 //@ run-pass

@@ -60,12 +60,23 @@ pub(crate) fn options() -> TargetOptions {
 
         max_atomic_width: Some(64),
 
-        // Unwinding doesn't work right now, so the whole target unconditionally
-        // defaults to panic=abort. Note that this is guaranteed to change in
-        // the future once unwinding is implemented. Don't rely on this as we're
-        // basically guaranteed to change it once WebAssembly supports
-        // exceptions.
-        panic_strategy: PanicStrategy::Abort,
+        // WebAssembly targets all started out originally as `-Cpanic=abort`
+        // since that was all that worked. Since then, however, the WebAssembly
+        // exception-handling proposal has been finalized/implemented and is now
+        // supported in both LLVM & rustc & libstd & co. The default still
+        // remains at `-Cpanic=abort` for now for historical compatibility,
+        // but `bootstrap.toml` can be used to configure a local build to
+        // use `-Cpanic=unwind` instead. This is used in CI, for example, to
+        // test wasm targets with `-Cpanic=unwind`.
+        //
+        // In the future this might change where preexisting targets migrate,
+        // but that's not going to be as easy as just changing this, so for now
+        // this is just a local build configuration option.
+        panic_strategy: if option_env!("CFG_WASM_PANIC_UNWIND_DEFAULT") == Some("1") {
+            PanicStrategy::Unwind
+        } else {
+            PanicStrategy::Abort
+        },
 
         // Wasm doesn't have atomics yet, so tell LLVM that we're in a single
         // threaded model which will legalize atomics to normal operations.

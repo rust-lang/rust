@@ -1417,6 +1417,12 @@ fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
             cargo.env("JEMALLOC_SYS_WITH_LG_PAGE", "14");
         }
     }
+
+    // Plumb the `rust.wasm-panic-unwind-default` configuration option into the
+    // `rustc_target` crate.
+    if builder.config.wasm_panic_unwind_default {
+        cargo.env("CFG_WASM_PANIC_UNWIND_DEFAULT", "1");
+    }
 }
 
 /// Pass down configuration from the LLVM build into the build of

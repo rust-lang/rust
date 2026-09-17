@@ -345,6 +345,8 @@ pub(crate) struct Config {
     pub exec_ctx: ExecutionContext,
 
     pub wasm_proc_macros: bool,
+
+    pub wasm_panic_unwind_default: bool,
 }
 
 impl Config {
@@ -621,6 +623,7 @@ impl Config {
             rustflags: rust_rustflags,
             stdlib_semver_baseline: rust_stdlib_semver_baseline,
             wasm_proc_macros,
+            wasm_panic_unwind_default,
         } = toml_rust.unwrap_or_default();
 
         let Llvm {
@@ -1606,6 +1609,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .unwrap_or(rust_debug == Some(true)),
             vendor,
             verbose_tests,
+            wasm_panic_unwind_default: wasm_panic_unwind_default.unwrap_or(false),
             wasm_proc_macros: wasm_proc_macros.unwrap_or(false),
             windows_rc: build_windows_rc.map(PathBuf::from),
             yarn: build_yarn.map(PathBuf::from),

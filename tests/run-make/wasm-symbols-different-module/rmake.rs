@@ -1,4 +1,4 @@
-//@ only-wasm32-wasip1
+//@ only-wasm32
 
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -22,7 +22,7 @@ fn test_file(file: &str, expected_imports: &[(&str, &[&str])]) {
 fn test(file: &str, args: &[&str], expected_imports: &[(&str, &[&str])]) {
     println!("test {file:?} {args:?} for {expected_imports:?}");
 
-    rustc().input(file).target("wasm32-wasip1").args(args).run();
+    rustc().input(file).emit_wasm_core_module().args(args).run();
 
     let file = rfs::read(Path::new(file).with_extension("wasm"));
 
@@ -32,6 +32,11 @@ fn test(file: &str, args: &[&str], expected_imports: &[(&str, &[&str])]) {
         if let wasmparser::Payload::ImportSection(s) = payload {
             for i in s.into_imports() {
                 let i = i.unwrap();
+                // Ignore intrinsics like `__wasm_{get,set}_stack_pointer` as
+                // well as standard library dependencies
+                if i.name.starts_with("__wasm_") || i.module.starts_with("wasi:") {
+                    continue;
+                }
                 imports.entry(i.module).or_insert(HashSet::new()).insert(i.name);
             }
         }
