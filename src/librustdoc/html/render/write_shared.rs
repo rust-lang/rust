@@ -991,7 +991,7 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
         if !self.visited_aliases.insert(self_did) {
             return;
         }
-        let Some(target_did) = t.type_.def_id(cache) else { return };
+        let Some(target_did) = t.ty.def_id(cache) else { return };
         let get_extern =
             { || cache.external_paths.get(&target_did).map(|(parts, ty)| (parts, *ty)) };
         let Some((target_fqp, target_type)) =
