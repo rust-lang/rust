@@ -640,6 +640,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
     fmt::from_fn(|w| {
         let tcx = cx.tcx();
         let bounds = print_bounds(&t.bounds, false, cx);
+
         let required_types =
             t.items.iter().filter(|m| m.is_required_associated_type()).collect::<Vec<_>>();
         let provided_types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
@@ -647,11 +648,13 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
             t.items.iter().filter(|m| m.is_assoc_const_without_body()).collect::<Vec<_>>();
         let provided_consts =
             t.items.iter().filter(|m| m.is_assoc_const_with_body()).collect::<Vec<_>>();
-        let required_methods = t.items.iter().filter(|m| m.is_ty_method()).collect::<Vec<_>>();
-        let provided_methods = t.items.iter().filter(|m| m.is_method()).collect::<Vec<_>>();
+        let required_fns =
+            t.items.iter().filter(|m| m.is_assoc_fn_without_body()).collect::<Vec<_>>();
+        let provided_fns = t.items.iter().filter(|m| m.is_assoc_fn_with_body()).collect::<Vec<_>>();
+
         let count_types = required_types.len() + provided_types.len();
         let count_consts = required_consts.len() + provided_consts.len();
-        let count_methods = required_methods.len() + provided_methods.len();
+        let count_fns = required_fns.len() + provided_fns.len();
         let &rustc_middle::ty::TraitDef {
             must_implement_one_of: ref must_implement_one_of_functions,
             impl_restriction,
@@ -693,10 +696,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                     toggle = true;
                     toggle_open(
                         &mut w,
-                        format_args!(
-                            "{} associated items",
-                            count_types + count_consts + count_methods
-                        ),
+                        format_args!("{} associated items", count_types + count_consts + count_fns),
                     );
                 }
                 for types in [&required_types, &provided_types] {
@@ -724,13 +724,13 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                         &mut w,
                         format_args!(
                             "{count_consts} associated constant{plural_const} and \
-                         {count_methods} method{plural_method}",
+                         {count_fns} method{plural_method}",
                             plural_const = pluralize(count_consts),
-                            plural_method = pluralize(count_methods),
+                            plural_method = pluralize(count_fns),
                         ),
                     );
                 }
-                if count_types != 0 && (count_consts != 0 || count_methods != 0) {
+                if count_types != 0 && (count_consts != 0 || count_fns != 0) {
                     w.write_str("\n")?;
                 }
                 for consts in [&required_consts, &provided_consts] {
@@ -748,18 +748,18 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                         w.write_str(";\n")?;
                     }
                 }
-                if !toggle && should_hide_fields(count_methods) {
+                if !toggle && should_hide_fields(count_fns) {
                     toggle = true;
-                    toggle_open(&mut w, format_args!("{count_methods} methods"));
+                    toggle_open(&mut w, format_args!("{count_fns} methods"));
                 }
-                if count_consts != 0 && count_methods != 0 {
+                if count_consts != 0 && count_fns != 0 {
                     w.write_str("\n")?;
                 }
 
-                if !required_methods.is_empty() {
-                    writeln!(w, "    // Required method{}", pluralize(required_methods.len()))?;
+                if !required_fns.is_empty() {
+                    writeln!(w, "    // Required method{}", pluralize(required_fns.len()))?;
                 }
-                for (pos, m) in required_methods.iter().enumerate() {
+                for (pos, m) in required_fns.iter().enumerate() {
                     render_assoc_item(
                         m,
                         AssocItemLink::Anchor(None),
@@ -772,18 +772,18 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                     .fmt(w)?;
                     w.write_str(";\n")?;
 
-                    if pos < required_methods.len() - 1 {
+                    if pos < required_fns.len() - 1 {
                         w.write_str("<span class=\"item-spacer\"></span>")?;
                     }
                 }
-                if !required_methods.is_empty() && !provided_methods.is_empty() {
+                if !required_fns.is_empty() && !provided_fns.is_empty() {
                     w.write_str("\n")?;
                 }
 
-                if !provided_methods.is_empty() {
-                    writeln!(w, "    // Provided method{}", pluralize(provided_methods.len()))?;
+                if !provided_fns.is_empty() {
+                    writeln!(w, "    // Provided method{}", pluralize(provided_fns.len()))?;
                 }
-                for (pos, m) in provided_methods.iter().enumerate() {
+                for (pos, m) in provided_fns.iter().enumerate() {
                     writeln!(
                         w,
                         "{} {{ ... }}",
@@ -798,7 +798,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                         )
                     )?;
 
-                    if pos < provided_methods.len() - 1 {
+                    if pos < provided_fns.len() - 1 {
                         w.write_str("<span class=\"item-spacer\"></span>")?;
                     }
                 }
@@ -844,7 +844,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                 let toggled = !content.is_empty();
                 if toggled {
                     let method_toggle_class =
-                        if item_type.is_method() { " method-toggle" } else { "" };
+                        if item_type.is_assoc_fn() { " method-toggle" } else { "" };
                     write!(
                         w,
                         "<details \
@@ -944,7 +944,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
         }
 
         // Output the documentation for each function individually
-        if !required_methods.is_empty() || must_implement_one_of_functions.is_some() {
+        if !required_fns.is_empty() || must_implement_one_of_functions.is_some() {
             write!(
                 w,
                 "{}",
@@ -964,12 +964,12 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                 )?;
             }
 
-            for m in required_methods {
+            for m in required_fns {
                 write!(w, "{}", trait_item(cx, m, it))?;
             }
             w.write_str("</div>")?;
         }
-        if !provided_methods.is_empty() {
+        if !provided_fns.is_empty() {
             write!(
                 w,
                 "{}",
@@ -980,7 +980,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
                     "<div class=\"methods\">",
                 )
             )?;
-            for m in provided_methods {
+            for m in provided_fns {
                 write!(w, "{}", trait_item(cx, m, it))?;
             }
             w.write_str("</div>")?;
