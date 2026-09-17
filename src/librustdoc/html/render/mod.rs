@@ -1101,6 +1101,7 @@ fn assoc_const(
     value: AssocConstValue<'_>,
     link: AssocItemLink<'_>,
     indent: usize,
+    ending: Ending,
     cx: &Context<'_>,
 ) -> impl fmt::Display {
     let tcx = cx.tcx();
@@ -1128,7 +1129,7 @@ fn assoc_const(
                 write!(w, " = {}", Escape(&repr))?;
             }
         }
-        write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline).maybe_display())
+        write!(w, "{}", print_where_clause(generics, cx, indent, ending).maybe_display())
     })
 }
 
@@ -1139,6 +1140,7 @@ fn assoc_type(
     default: Option<&clean::Type>,
     link: AssocItemLink<'_>,
     indent: usize,
+    ending: Ending,
     cx: &Context<'_>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
@@ -1159,7 +1161,7 @@ fn assoc_type(
         if let Some(default) = default {
             write!(w, " = {}", print_type(default, cx))?;
         }
-        write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline).maybe_display())
+        write!(w, "{}", print_where_clause(generics, cx, indent, ending).maybe_display())
     })
 }
 
@@ -1168,9 +1170,10 @@ fn assoc_method(
     g: &clean::Generics,
     d: &clean::FnDecl,
     link: AssocItemLink<'_>,
-    parent: ItemType,
-    cx: &Context<'_>,
+    indent: usize,
+    ending: Ending,
     render_mode: RenderMode,
+    cx: &Context<'_>,
 ) -> impl fmt::Display {
     let tcx = cx.tcx();
     let header = meth.fn_header(tcx).expect("Trying to get header from a non-function item");
@@ -1193,6 +1196,9 @@ fn assoc_method(
     };
 
     fmt::from_fn(move |w| {
+        let indent_str = " ".repeat(indent);
+        render_attributes_in_code(w, meth, &indent_str, cx)?;
+
         let asyncness = header.asyncness.print_with_space();
         let safety = header.safety.print_with_space();
         let abi = print_abi_with_space(header.abi).to_string();
@@ -1200,7 +1206,8 @@ fn assoc_method(
 
         // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
         let generics_len = format!("{:#}", print_generics(g, cx)).len();
-        let mut header_len = "fn ".len()
+        let header_len = indent
+            + "fn ".len()
             + vis.len()
             + defaultness.len()
             + constness.len()
@@ -1212,15 +1219,6 @@ fn assoc_method(
 
         let notable_traits = notable_traits_button(&d.output, cx).maybe_display();
 
-        let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
-            header_len += 4;
-            let indent_str = "    ";
-            render_attributes_in_code(w, meth, indent_str, cx)?;
-            (4, indent_str, Ending::NoNewline)
-        } else {
-            render_attributes_in_code(w, meth, "", cx)?;
-            (0, "", Ending::Newline)
-        };
         write!(
             w,
             "{indent}{vis}{defaultness}{constness}{asyncness}{safety}{abi}fn \
@@ -1228,7 +1226,7 @@ fn assoc_method(
             indent = indent_str,
             generics = print_generics(g, cx),
             decl = full_print_fn_decl(d, header_len, indent, cx),
-            where_clause = print_where_clause(g, cx, indent, end_newline).maybe_display(),
+            where_clause = print_where_clause(g, cx, indent, ending).maybe_display(),
         )
     })
 }
@@ -1326,61 +1324,45 @@ fn render_assoc_item(
     item: &clean::Item,
     link: AssocItemLink<'_>,
     parent: ItemType,
-    cx: &Context<'_>,
+    indent: usize,
+    ending: Ending,
     render_mode: RenderMode,
+    cx: &Context<'_>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| match &item.kind {
         ItemKind::Stripped(..) => Ok(()),
         ItemKind::RequiredAssocFn(m, _) | ItemKind::AssocFn(m, _) => {
-            assoc_method(item, &m.generics, &m.decl, link, parent, cx, render_mode).fmt(f)
+            assoc_method(item, &m.generics, &m.decl, link, indent, ending, render_mode, cx).fmt(f)
         }
-        ItemKind::RequiredAssocConst(generics, ty) => assoc_const(
-            item,
-            generics,
-            ty,
-            AssocConstValue::None,
-            link,
-            if parent == ItemType::Trait { 4 } else { 0 },
-            cx,
-        )
-        .fmt(f),
-        ItemKind::ProvidedAssocConst(ci) => assoc_const(
+        ItemKind::RequiredAssocConst(generics, ty) => {
+            assoc_const(item, generics, ty, AssocConstValue::None, link, indent, ending, cx).fmt(f)
+        }
+        ItemKind::AssocConst(ci) => assoc_const(
             item,
             &ci.generics,
             &ci.type_,
-            AssocConstValue::TraitDefault(&ci.kind),
+            if parent == ItemType::Trait {
+                AssocConstValue::TraitDefault(&ci.kind)
+            } else {
+                AssocConstValue::Impl(&ci.kind)
+            },
             link,
-            if parent == ItemType::Trait { 4 } else { 0 },
+            indent,
+            ending,
             cx,
         )
         .fmt(f),
-        ItemKind::ImplAssocConst(ci) => assoc_const(
-            item,
-            &ci.generics,
-            &ci.type_,
-            AssocConstValue::Impl(&ci.kind),
-            link,
-            if parent == ItemType::Trait { 4 } else { 0 },
-            cx,
-        )
-        .fmt(f),
-        ItemKind::RequiredAssocTy(generics, bounds) => assoc_type(
-            item,
-            generics,
-            bounds,
-            None,
-            link,
-            if parent == ItemType::Trait { 4 } else { 0 },
-            cx,
-        )
-        .fmt(f),
+        ItemKind::RequiredAssocTy(generics, bounds) => {
+            assoc_type(item, generics, bounds, None, link, indent, ending, cx).fmt(f)
+        }
         ItemKind::AssocTy(ty, bounds) => assoc_type(
             item,
             &ty.generics,
             bounds,
             Some(ty.item_type.as_ref().unwrap_or(&ty.type_)),
             link,
-            if parent == ItemType::Trait { 4 } else { 0 },
+            indent,
+            ending,
             cx,
         )
         .fmt(f),
@@ -1788,6 +1770,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                         Some(&tydef.type_),
                         src_link,
                         0,
+                        Ending::Newline,
                         cx,
                     )
                 )?;
@@ -2005,8 +1988,10 @@ fn render_impl(
                                 item,
                                 link.anchor(source_id.as_ref().unwrap_or(&id)),
                                 ItemType::Impl,
-                                cx,
+                                0,
+                                Ending::Newline,
                                 render_mode,
+                                cx,
                             ),
                         )?;
                     }
@@ -2035,12 +2020,13 @@ fn render_impl(
                                 AssocConstValue::None,
                                 link.anchor(if trait_.is_some() { &source_id } else { &id }),
                                 0,
+                                Ending::Newline,
                                 cx,
                             ),
                         )?;
                     }
                 }
-                ItemKind::ProvidedAssocConst(ci) | ItemKind::ImplAssocConst(ci) => {
+                ItemKind::AssocConst(ci) => {
                     if !matches!(render_mode, RenderMode::ForDeref { .. }) {
                         let source_id = format!("{item_type}.{name}");
                         let id = cx.derive_id(&source_id);
@@ -2061,14 +2047,10 @@ fn render_impl(
                                 item,
                                 &ci.generics,
                                 &ci.type_,
-                                match item.kind {
-                                    clean::ProvidedAssocConstItem(_) =>
-                                        AssocConstValue::TraitDefault(&ci.kind),
-                                    clean::ImplAssocConstItem(_) => AssocConstValue::Impl(&ci.kind),
-                                    _ => unreachable!(),
-                                },
+                                AssocConstValue::Impl(&ci.kind),
                                 link.anchor(if trait_.is_some() { &source_id } else { &id }),
                                 0,
+                                EndingNewline,
                                 cx,
                             ),
                         )?;
@@ -2098,6 +2080,7 @@ fn render_impl(
                                 None,
                                 link.anchor(if trait_.is_some() { &source_id } else { &id }),
                                 0,
+                                Ending::Newline,
                                 cx,
                             ),
                         )?;
@@ -2127,6 +2110,7 @@ fn render_impl(
                                 Some(tydef.item_type.as_ref().unwrap_or(&tydef.type_)),
                                 link.anchor(if trait_.is_some() { &source_id } else { &id }),
                                 0,
+                                Ending::Newline,
                                 cx,
                             ),
                         )?;
@@ -2168,9 +2152,7 @@ fn render_impl(
                     ItemKind::RequiredAssocTy(..) | ItemKind::AssocTy(..) => {
                         assoc_types.push(impl_item)
                     }
-                    ItemKind::RequiredAssocConst(..)
-                    | ItemKind::ProvidedAssocConst(_)
-                    | ItemKind::ImplAssocConst(_) => {
+                    ItemKind::RequiredAssocConst(..) | ItemKind::AssocConst(_) => {
                         // We render it directly since they're supposed to come first.
                         doc_impl_item(
                             &mut default_impl_items,
@@ -2443,6 +2425,7 @@ fn render_impl_summary(
                                 Some(&tydef.type_),
                                 AssocItemLink::Anchor(None),
                                 0,
+                                Ending::Newline,
                                 cx,
                             )
                         )?;
