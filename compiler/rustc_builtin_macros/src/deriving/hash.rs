@@ -18,7 +18,7 @@ pub(crate) fn expand_deriving_hash(
 
     let typaram = sym::__H;
 
-    let arg = Path::new_local(typaram);
+    let arg = cx.ty_path(cx.path_ident(span, Ident::new(typaram, span)));
 
     let param = {
         let path = cx.path_all(span, false, cx.std_path(&[sym::hash, sym::Hasher]), Vec::new());
@@ -42,7 +42,7 @@ pub(crate) fn expand_deriving_hash(
             name: sym::hash,
             generics,
             explicit_self: true,
-            nonself_args: smallvec![(Ref(Box::new(Path(arg)), Mutability::Mut), sym::state)],
+            nonself_args: smallvec![(Ref(Box::new(AstTy(arg)), Mutability::Mut), sym::state)],
             ret_ty: Unit,
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,

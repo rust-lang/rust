@@ -15,24 +15,14 @@ use thin_vec::ThinVec;
 pub(crate) struct Path {
     path: Vec<Symbol>,
     params: Vec<Box<Ty>>,
-    kind: PathKind,
-}
-
-#[derive(Clone)]
-pub(crate) enum PathKind {
-    Local,
-    Std,
 }
 
 impl Path {
     pub(crate) fn new(path: Vec<Symbol>) -> Path {
-        Path::new_(path, Vec::new(), PathKind::Std)
+        Path::new_(path, Vec::new())
     }
-    pub(crate) fn new_local(path: Symbol) -> Path {
-        Path::new_(vec![path], Vec::new(), PathKind::Local)
-    }
-    pub(crate) fn new_(path: Vec<Symbol>, params: Vec<Box<Ty>>, kind: PathKind) -> Path {
-        Path { path, params, kind }
+    pub(crate) fn new_(path: Vec<Symbol>, params: Vec<Box<Ty>>) -> Path {
+        Path { path, params }
     }
 
     pub(crate) fn to_path(&self, cx: &ExtCtxt<'_>, span: Span) -> ast::Path {
@@ -40,12 +30,8 @@ impl Path {
         let tys = self.params.iter().map(|t| t.to_ty(cx, span));
         let params = tys.map(GenericArg::Type).collect();
 
-        let idents = if let PathKind::Std = self.kind {
-            let def_site = cx.with_def_site_ctxt(DUMMY_SP);
-            once(Ident::new(kw::DollarCrate, def_site)).chain(idents).collect()
-        } else {
-            idents.collect()
-        };
+        let def_site = cx.with_def_site_ctxt(DUMMY_SP);
+        let idents = once(Ident::new(kw::DollarCrate, def_site)).chain(idents).collect();
         cx.path_all(span, false, idents, params)
     }
 }

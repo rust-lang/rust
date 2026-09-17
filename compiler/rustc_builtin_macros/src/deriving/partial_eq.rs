@@ -1,10 +1,10 @@
 use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, Mutability, Safety};
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Span, sym};
+use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::ty::*;
-use crate::deriving::generic::{self, *};
+use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 /// Expands a `#[derive(PartialEq)]` attribute into an implementation for the
@@ -43,7 +43,7 @@ pub(crate) fn expand_deriving_partial_eq(
         generics: cx.empty_generics(span),
         explicit_self: true,
         nonself_args: smallvec![(self_ref(), sym::other)],
-        ret_ty: Path(generic::ty::Path::new_local(sym::bool)),
+        ret_ty: AstTy(cx.ty_path(cx.path_ident(span, Ident::new(sym::bool, span)))),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(get_substructure_equality_expr),
