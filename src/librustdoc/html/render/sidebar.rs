@@ -148,16 +148,16 @@ pub(super) fn print_sidebar(
     let mut blocks: Vec<LinkBlock<'_>> = docblock_toc(cx, it, &mut ids).into_iter().collect();
     let deref_id_map = cx.deref_id_map.borrow();
     match it.kind {
-        ItemKind::StructItem(ref s) => sidebar_struct(cx, it, s, &mut blocks, &deref_id_map),
-        ItemKind::TraitItem(ref t) => sidebar_trait(cx, it, t, &mut blocks, &deref_id_map),
-        ItemKind::PrimitiveItem(_) => sidebar_primitive(cx, it, &mut blocks, &deref_id_map),
-        ItemKind::UnionItem(ref u) => sidebar_union(cx, it, u, &mut blocks, &deref_id_map),
-        ItemKind::EnumItem(ref e) => sidebar_enum(cx, it, e, &mut blocks, &deref_id_map),
-        ItemKind::TypeAliasItem(ref t) => sidebar_type_alias(cx, it, t, &mut blocks, &deref_id_map),
-        ItemKind::ModuleItem(ref m) => {
+        ItemKind::Struct(ref s) => sidebar_struct(cx, it, s, &mut blocks, &deref_id_map),
+        ItemKind::Trait(ref t) => sidebar_trait(cx, it, t, &mut blocks, &deref_id_map),
+        ItemKind::Primitive(_) => sidebar_primitive(cx, it, &mut blocks, &deref_id_map),
+        ItemKind::Union(ref u) => sidebar_union(cx, it, u, &mut blocks, &deref_id_map),
+        ItemKind::Enum(ref e) => sidebar_enum(cx, it, e, &mut blocks, &deref_id_map),
+        ItemKind::TyAlias(ref t) => sidebar_type_alias(cx, it, t, &mut blocks, &deref_id_map),
+        ItemKind::Module(ref m) => {
             blocks.push(sidebar_module(&m.items, &mut ids, ModuleLike::from(it)))
         }
-        ItemKind::ForeignTypeItem => sidebar_foreign_type(cx, it, &mut blocks, &deref_id_map),
+        ItemKind::ForeignTy => sidebar_foreign_type(cx, it, &mut blocks, &deref_id_map),
         _ => {}
     }
     // The sidebar is designed to display sibling functions, modules and
@@ -172,7 +172,7 @@ pub(super) fn print_sidebar(
     let (title_prefix, title) = if !blocks.is_empty() && !it.is_crate() {
         (
             match it.kind {
-                ItemKind::ModuleItem(..) => "Module ",
+                ItemKind::Module(..) => "Module ",
                 _ => "",
             },
             it.name.as_ref().unwrap().as_str(),
@@ -210,7 +210,7 @@ pub(super) fn print_sidebar(
 fn get_struct_fields_name<'a>(fields: &'a [clean::Item]) -> Vec<Link<'a>> {
     let mut fields = fields
         .iter()
-        .filter(|f| matches!(f.kind, ItemKind::StructFieldItem(..)))
+        .filter(|f| matches!(f.kind, ItemKind::StructField(..)))
         .filter_map(|f| {
             f.name.as_ref().map(|name| Link::new(format!("structfield.{name}"), name.as_str()))
         })
@@ -532,7 +532,7 @@ fn sidebar_deref_methods<'a>(
     debug!("found Deref: {impl_:?}");
     if let Some((target, real_target)) =
         impl_.inner_impl().items.iter().find_map(|item| match item.kind {
-            ItemKind::AssocTypeItem(ref t, _) => Some(match *t {
+            ItemKind::AssocTy(ref t, _) => Some(match *t {
                 clean::TypeAlias { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),
@@ -672,7 +672,7 @@ fn sidebar_module(
             && it
                 .name
                 .or_else(|| {
-                    if let ItemKind::ImportItem(ref i) = it.kind
+                    if let ItemKind::Import(ref i) = it.kind
                         && let clean::ImportKind::Simple(s) = i.kind
                     {
                         Some(s)

@@ -89,7 +89,7 @@ pub(crate) fn synthesize_blanket_impls(
                     item_id: clean::ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
                     attrs: Default::default(),
                     stability: None,
-                    kind: clean::ItemKind::ImplItem(Box::new(clean::Impl {
+                    kind: clean::ItemKind::Impl(Box::new(clean::Impl {
                         safety: hir::Safety::Safe,
                         generics: clean_ty_generics(cx, impl_def_id),
                         // FIXME(eddyb) compute both `trait_` and `for_` from
