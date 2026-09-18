@@ -1289,18 +1289,18 @@ where
         f: impl FnOnce(&mut Self, T) -> U,
     ) -> U {
         self.delegate.enter_forall_without_assumptions(value, |value| {
+            // Invariant: we shouldn't insert empty assumptions if assumptions computation fails.
+            // When handling placeholder constraints, we rely on vacancies to force ambiguity.
             let u = self.delegate.universe();
-            if self.cx().assumptions_on_binders() {
-                if let Some(assumptions) = self.region_assumptions_for_placeholders_in_universe(
+            if self.cx().assumptions_on_binders()
+                && let Some(assumptions) = self.region_assumptions_for_placeholders_in_universe(
                     value.clone(),
                     u,
                     param_env,
-                ) {
-                    self.delegate.insert_placeholder_assumptions(u, assumptions);
-                } else {
-                    todo!("shoudl retun ambiguity")
-                }
-            };
+                )
+            {
+                self.delegate.insert_placeholder_assumptions(u, assumptions);
+            }
 
             f(self, value)
         })

@@ -115,12 +115,20 @@ where
     pub(super) fn eagerly_handle_placeholders(&mut self) -> Result<Certainty, NoSolution> {
         let constraint = self.delegate.get_solver_region_constraint();
 
-        let smallest_universe = self.max_input_universe.index();
-        let largest_universe = self.delegate.universe().index();
-        debug!(?smallest_universe, largest_universe);
+        let smallest_universe = self.max_input_universe;
+        let largest_universe = self.delegate.universe();
+        debug!("smallest_universe={smallest_universe:#?}, largest_universe={largest_universe:#?}");
 
-        let constraint = ((smallest_universe + 1)..=largest_universe)
-            .map(|u| UniverseIndex::from_usize(u))
+        if !self
+            .delegate
+            .has_placeholder_assumptions(((smallest_universe + 1)..=largest_universe).into())
+        {
+            return Ok(Certainty::AMBIGUOUS);
+        }
+
+        // Walk around that `Step` trait is nightly only.
+        let constraint = ((smallest_universe.index() + 1)..=largest_universe.index())
+            .map(UniverseIndex::from_usize)
             .rev()
             .fold(constraint, |constraint, u| {
                 eagerly_handle_placeholders_in_universe(&**self.delegate, constraint, u)

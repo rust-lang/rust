@@ -1,5 +1,6 @@
 use std::cell::{Cell, RefCell};
 use std::fmt;
+use std::range::RangeInclusive;
 
 pub use at::DefineOpaqueTypes;
 use free_regions::RegionRelations;
@@ -1539,6 +1540,14 @@ impl<'tcx> InferCtxt<'tcx> {
         u: ty::UniverseIndex,
     ) -> rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>> {
         self.placeholder_assumptions_for_next_solver.borrow().get(&u).unwrap().clone()
+    }
+
+    pub fn has_placeholder_assumptions(&self, range: RangeInclusive<ty::UniverseIndex>) -> bool {
+        let assumptions = self.placeholder_assumptions_for_next_solver.borrow();
+        // Walk around that `Step` trait is nightly only.
+        (range.start.index()..=range.last.index())
+            .map(ty::UniverseIndex::from_usize)
+            .all(|u| assumptions.get(&u).is_some())
     }
 
     pub fn get_solver_region_constraint(&self) -> SolverRegionConstraint<'tcx> {
