@@ -73,15 +73,15 @@ To explain, we need to understand how Rust's [Abstract Syntax Tree][ast]
 represents [identifiers][Ident].
 The name of every function, variable, module,
 etc.
-is not stored as a string, but rather as an opaque [Symbol][Symbol] which
+is not stored as a string, but rather as an opaque [Symbol] which
 is essentially an ID number for each identifier.
 The compiler keeps a separate
 hashtable that allows us to recover the human-readable name of a Symbol when
 necessary (such as when printing a syntax error).
 When the compiler generates the `__test_reexports` module,
-it generates a new [Symbol][Symbol] for the
+it generates a new [Symbol] for the
 identifier, so while the compiler-generated `__test_reexports` may share a name
-with your hand-written one, it will not share a [Symbol][Symbol].
+with your hand-written one, it will not share a [Symbol].
 This technique prevents name collision during code generation and is the foundation
 of Rust's [`macro`] hygiene.
 
