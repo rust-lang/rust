@@ -132,12 +132,19 @@ fn reformat(text: String) -> String {
     let rustfmt_toml = project_root().join("rustfmt.toml");
     let toolchain = &std::env::var("RUSTFMT_TOOLCHAIN").unwrap_or("stable".to_owned());
     let version = cmd!(sh, "rustup run {toolchain} rustfmt --version").read().unwrap_or_default();
+    let toolchain_matches = |version: &str| {
+        if version.contains(toolchain) {
+            return true;
+        }
+        // Nightly date cannot be accurately matched
+        toolchain.starts_with("nightly-") && version.contains("nightly")
+    };
 
     // First try explicitly requesting the stable channel via rustup in case nightly is being used by default,
     // then plain rustfmt in case rustup isn't being used to manage the compiler (e.g. when using Nix).
-    let mut stdout = if !version.contains(toolchain) {
+    let mut stdout = if !toolchain_matches(&version) {
         let version = cmd!(sh, "rustfmt --version").read().unwrap_or_default();
-        if !version.contains(toolchain) {
+        if !toolchain_matches(&version) {
             panic!(
                 "Failed to run rustfmt from toolchain '{toolchain}'. \
                  Please run `rustup component add rustfmt --toolchain {toolchain}` to install it.",
