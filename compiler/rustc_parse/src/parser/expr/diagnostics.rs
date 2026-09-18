@@ -1,5 +1,6 @@
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{BinOpKind, Expr, ExprKind, token};
+use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{Span, Spanned, respan, sym};
 
@@ -7,6 +8,51 @@ use crate::parser::Parser;
 use crate::{diagnostics, exp};
 
 impl<'a> Parser<'a> {
+    /// Recover from a binary operator after complete statement expression as in `{ 4 } / 2`.
+    pub(super) fn recover_from_bin_op_after_complete_stmt_expr(&self, lhs: &Expr) -> bool {
+        use BinOpKind::*;
+
+        // Starting point: We've just parsed a *complete* stmt expr (e.g., a block like `{ 4 }`).
+
+        let Some(op) = AssocOp::from_token(&self.token) else { return false };
+
+        // We've now encountered a token that could(!) be interpreted as a binary operator. This
+        // could mean that the user intended to write a binary operation where the left operand is
+        // block-like. In that case they would need to parenthesize the LHS or the entire operation
+        // (e.g., `{ 4 } / 2` -> `({ 4 }) / 2` or `({ 4 } / 2)`).
+
+        if op_can_continue_stmt_expr_unambiguously(op) {
+            // We know that the token (e.g., `/`) can't possibly begin a new statement or pattern.
+            // Instead of letting the stmt/pat parser emit a generic & rather confusing diagnostic,
+            // let's emit a more targeted one, and continue parsing the expression.
+
+            self.dcx().emit_err(diagnostics::FoundExprWouldBeStmt {
+                span: self.token.span,
+                token: pprust::token_to_string(&self.token),
+                suggestion: diagnostics::ExprParenthesesNeeded::surrounding(lhs.span),
+            });
+            return true;
+        }
+
+        // The token can begin a new statement or pattern; this means we're on the happy path!
+        // Still, the user might've meant to write a bin op here but we can't tell at this stage of
+        // compilation. So if it's a "common lookalike" let's proactively register it somewhere for
+        // later stages of compilation to potentially retrieve (e.g., in typeck).
+        //
+        // We've left out `BitAnd` because guessing its intent is hard. We can make suggestions
+        // based on the assumption that double-refs are rarely intentional, and closures are
+        // distinct enough that they don't get mixed up with their return value.
+        if let AssocOp::Binary(Add | And | BitOr | Mul | Or | Sub) = op {
+            let sp = self.psess.source_map().start_point(self.token.span);
+            self.psess
+                .complete_stmt_exprs_before_bin_op_lookalike
+                .borrow_mut()
+                .insert(sp, lhs.span);
+        }
+
+        false
+    }
+
     /// Recover from alphabetic logic operators `and` and `or` as found in e.g., Python and PHP.
     pub(super) fn recover_from_alpha_logic_op(&self) -> Option<Spanned<AssocOp>> {
         if self.may_recover()
@@ -247,6 +293,33 @@ impl<'a> Parser<'a> {
                 None
             }
         }
+    }
+}
+
+/// Whether this operator could be used to follow a complete statement expression unambiguously
+/// during parse error recovery.
+pub(in crate::parser) fn op_can_continue_stmt_expr_unambiguously(op: AssocOp) -> bool {
+    // NOTE: At the time of writing, it's only safe to return `true` for tokens that don't share a
+    //       prefix with statements or patterns. For context, statement lists and match arm bodies
+    //       are (the only two) places that use `Restriction::STMT_EXPR` (in the happy path).
+
+    use BinOpKind::*;
+    match op {
+        AssocOp::Assign | AssocOp::AssignOp(_) | AssocOp::Cast => true,
+        AssocOp::Binary(bin_op) => match bin_op {
+            | BitXor | Div | Ge | Gt | Le | Rem | Shr => true,
+            | Add // unambiguous but would inhibit our recovery from unary plus
+            | And // `&&` starts repeated borrow (e.g., `&&x`)
+            | BitAnd // `&` starts borrow (e.g., `&x`)
+            | BitOr // `|` starts closure (e.g., `|_| ()`) or leading vert (e.g., `| Some(_)`)
+            | Eq | Ne // unambiguous but would inhibit our recovery from bad struct literals
+            | Lt // `<` starts qualified path (e.g., `<T as X>::P`)
+            | Mul // `*` starts unary deref (e.g., `*x`, `*x = 0`)
+            | Or // `||` starts parameterless closure (e.g. `|| 0`)
+            | Shl // `<<` starts repeated qualified path (e.g., `<<T>::Q as X>::P`)
+            | Sub => false, // `-` starts unary negation (e.g, `-x`)
+        },
+        AssocOp::Range(_) => false, // `..`/`..=` start ranges w/o lower bound (e.g., `..`, `..=1`)
     }
 }
 

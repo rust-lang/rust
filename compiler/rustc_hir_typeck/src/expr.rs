@@ -431,7 +431,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut err =
                     self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
                 let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
-                if let Some(sp) = tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
+                if let Some(sp) =
+                    tcx.sess.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&sp)
+                {
                     err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                 }
                 // The operand may be an uncalled function, in which case it is its return type
