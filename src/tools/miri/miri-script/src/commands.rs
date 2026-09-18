@@ -163,7 +163,7 @@ impl Command {
         // Cleanup.
         cmd!(sh, "cargo clean").run()?;
         // Call `cargo metadata` on the sources in case that changes the lockfile
-        // (which fails under some setups when it is done from inside vscode).
+        // (works around <https://github.com/rust-lang/rust-analyzer/issues/23392>).
         let sysroot = cmd!(sh, "rustc --print sysroot").read()?;
         let sysroot = sysroot.trim();
         cmd!(sh, "cargo metadata --format-version 1 --manifest-path {sysroot}/lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml").ignore_stdout().run()?;
