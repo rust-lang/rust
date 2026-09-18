@@ -8,7 +8,7 @@ use rustc_abi::{
 use rustc_macros::StableHash;
 
 pub use crate::spec::AbiMap;
-use crate::spec::{Arch, HasTargetSpec, HasX86AbiOpt};
+use crate::spec::{Arch, HasTargetSpec, HasX86AbiOpt, RustcAbi};
 
 mod aarch64;
 mod amdgpu;
@@ -745,6 +745,23 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             _ => {}
         };
 
+        // Decides whether we can pass the given SIMD argument via `PassMode::Direct`.
+        // May only return `true` if the target will always pass those arguments the same way,
+        // no matter what the user does with `-Ctarget-feature`! In other words, whatever
+        // target features are required to pass a SIMD value in registers must be listed in
+        // the `abi_required_features` for the current target and ABI.
+        let can_pass_simd_directly = |arg: &ArgAbi<'_, Ty>| match &spec.arch {
+            // On x86, if we have SSE2 (which we have by default for x86_64), we can always pass up
+            // to 128-bit-sized vectors.
+            Arch::X86 if spec.rustc_abi == Some(RustcAbi::X86Sse2) => arg.layout.size.bits() <= 128,
+            Arch::X86_64 if spec.rustc_abi != Some(RustcAbi::Softfloat) => {
+                // x86-64 non-softfloat targets all require SSE2 so we can use SSE registers.
+                arg.layout.size.bits() <= 128
+            }
+            // So far, we haven't implemented this logic for any other target.
+            _ => false,
+        };
+
         for (arg_idx, arg) in self
             .args
             .iter_mut()
@@ -862,16 +879,12 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     // enabled but the callee does, then passing an AVX argument
                     // across this boundary would cause corrupt data to show up.
                     //
-                    // This problem is fixed by unconditionally passing SIMD
-                    // arguments through memory between callers and callees
-                    // which should get them all to agree on ABI regardless of
-                    // target feature sets. Some more information about this
-                    // issue can be found in #44367.
-                    //
-                    // We *could* do better in some cases, e.g. on x86_64 targets where SSE2 is
-                    // required. However, it turns out that that makes LLVM worse at optimizing this
-                    // code, so we pass things indirectly even there. See #139029 for more on that.
-                    if spec.simd_types_indirect {
+                    // This problem is fixed by passing most SIMD arguments through memory between
+                    // callers and callees which should get them all to agree on ABI regardless of
+                    // target feature sets, except for those that rely on target features that we
+                    // know to be always available. Some more information about this issue can be
+                    // found in #44367 and the comment on `can_pass_simd_directly`.
+                    if spec.simd_types_indirect && !can_pass_simd_directly(arg) {
                         arg.make_indirect();
                     }
                 }

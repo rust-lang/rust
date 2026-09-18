@@ -1,5 +1,6 @@
 //@ only-x86_64
 //@ compile-flags: -C opt-level=3
+//@ min-llvm-version: 23
 
 //! Regression test for https://github.com/rust-lang/rust/issues/139029
 //!
@@ -11,7 +12,7 @@ use std::arch::x86_64 as arch;
 
 // CHECK-LABEL: @reduce128_caller
 // CHECK-NEXT: start
-// CHECK-COUNT-3: load
+// CHECK-NOT: load
 // CHECK-NEXT: call <2 x i64> @llvm.x86.pclmulqdq
 // CHECK-NEXT: call <2 x i64> @llvm.x86.pclmulqdq
 #[target_feature(enable = "pclmulqdq", enable = "sse2", enable = "sse4.1")]
