@@ -30,7 +30,7 @@ pub unsafe fn cma_u8(a: u8, b: u8, c: u8, d: u8) -> (u8, u8) {
     // RAW-SAME: [[ABC]], [[D]]
     // CHECK: [[LOW:%.+]] = trunc i16 [[ABCD]] to i8
     // CHECK: [[HIGHW:%.+]] = lshr i16 [[ABCD]], 8
-    // RAW: [[HIGH:%.+]] = trunc i16 [[HIGHW]] to i8
+    // RAW: [[HIGH:%.+]] = trunc nuw i16 [[HIGHW]] to i8
     // OPT: [[HIGH:%.+]] = trunc nuw i16 [[HIGHW]] to i8
     // CHECK: [[PAIR0:%.+]] = insertvalue { i8, i8 } poison, i8 [[LOW]], 0
     // CHECK: [[PAIR1:%.+]] = insertvalue { i8, i8 } [[PAIR0]], i8 [[HIGH]], 1
@@ -53,7 +53,7 @@ pub unsafe fn cma_u32(a: u32, b: u32, c: u32, d: u32) -> (u32, u32) {
     // RAW-SAME: [[ABC]], [[D]]
     // CHECK: [[LOW:%.+]] = trunc i64 [[ABCD]] to i32
     // CHECK: [[HIGHW:%.+]] = lshr i64 [[ABCD]], 32
-    // RAW: [[HIGH:%.+]] = trunc i64 [[HIGHW]] to i32
+    // RAW: [[HIGH:%.+]] = trunc nuw i64 [[HIGHW]] to i32
     // OPT: [[HIGH:%.+]] = trunc nuw i64 [[HIGHW]] to i32
     // CHECK: [[PAIR0:%.+]] = insertvalue { i32, i32 } poison, i32 [[LOW]], 0
     // CHECK: [[PAIR1:%.+]] = insertvalue { i32, i32 } [[PAIR0]], i32 [[HIGH]], 1
@@ -77,7 +77,7 @@ pub unsafe fn cma_u128(a: u128, b: u128, c: u128, d: u128) -> (u128, u128) {
     // RAW-SAME: [[ABC]], [[D]]
     // CHECK: [[LOW:%.+]] = trunc i256 [[ABCD]] to i128
     // CHECK: [[HIGHW:%.+]] = lshr i256 [[ABCD]], 128
-    // RAW: [[HIGH:%.+]] = trunc i256 [[HIGHW]] to i128
+    // RAW: [[HIGH:%.+]] = trunc nuw i256 [[HIGHW]] to i128
     // OPT: [[HIGH:%.+]] = trunc nuw i256 [[HIGHW]] to i128
     // RAW: [[PAIR0:%.+]] = insertvalue { i128, i128 } poison, i128 [[LOW]], 0
     // RAW: [[PAIR1:%.+]] = insertvalue { i128, i128 } [[PAIR0]], i128 [[HIGH]], 1
@@ -104,7 +104,7 @@ pub unsafe fn cma_i128(a: i128, b: i128, c: i128, d: i128) -> (u128, i128) {
     // RAW-SAME: [[ABC]], [[D]]
     // CHECK: [[LOW:%.+]] = trunc i256 [[ABCD]] to i128
     // CHECK: [[HIGHW:%.+]] = lshr i256 [[ABCD]], 128
-    // RAW: [[HIGH:%.+]] = trunc i256 [[HIGHW]] to i128
+    // RAW: [[HIGH:%.+]] = trunc nuw i256 [[HIGHW]] to i128
     // OPT: [[HIGH:%.+]] = trunc nuw i256 [[HIGHW]] to i128
     // RAW: [[PAIR0:%.+]] = insertvalue { i128, i128 } poison, i128 [[LOW]], 0
     // RAW: [[PAIR1:%.+]] = insertvalue { i128, i128 } [[PAIR0]], i128 [[HIGH]], 1

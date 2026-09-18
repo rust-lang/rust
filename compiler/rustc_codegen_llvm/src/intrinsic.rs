@@ -444,8 +444,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let bits_const = self.const_uint(wide_llty, size.bits());
                 // No need for ashr when signed; LLVM changes it to lshr anyway.
                 let high = self.lshr(wide, bits_const);
-                // FIXME: could be `trunc nuw`, even for signed.
-                let high = self.trunc(high, narrow_llty);
+
+                let high = self.unchecked_utrunc(high, narrow_llty);
 
                 let pair_llty = self.type_struct(&[narrow_llty, narrow_llty], false);
                 let pair = self.const_poison(pair_llty);
