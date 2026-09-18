@@ -150,7 +150,7 @@ use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, ptr};
 
-use crate::alloc::Global;
+use crate::alloc::{AllocatorNightly, Global};
 use crate::collections::TryReserveError;
 use crate::slice;
 #[cfg(not(test))]
@@ -1491,7 +1491,10 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<'_, T, A> {
+    pub fn drain(&mut self) -> Drain<'_, T, A>
+    where
+        A: AllocatorNightly, // needed for the `Vec::drain` call
+    {
         Drain { iter: self.data.drain(..) }
     }
 
@@ -1512,7 +1515,10 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// assert!(heap.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {
+    pub fn clear(&mut self)
+    where
+        A: AllocatorNightly,
+    {
         self.drain();
     }
 }
@@ -1956,7 +1962,7 @@ impl<T: Ord, A: Allocator> FusedIterator for DrainSorted<'_, T, A> {}
 unsafe impl<T: Ord, A: Allocator> TrustedLen for DrainSorted<'_, T, A> {}
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
-impl<T: Ord, A: Allocator> From<Vec<T, A>> for BinaryHeap<T, A> {
+impl<T: Ord, A: AllocatorNightly> From<Vec<T, A>> for BinaryHeap<T, A> {
     /// Converts a `Vec<T>` into a `BinaryHeap<T>`.
     ///
     /// This conversion happens in-place, and has *O*(*n*) time complexity.
