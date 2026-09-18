@@ -186,19 +186,19 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         }
         const SEP: &str = ", ";
         if next_line.contains(SEP) {
-            let (before_comma, after_comma) = next_line.split_once(SEP).unwrap();
-            if line.len() + before_comma.len() < limit - SEP.len() {
-                new_content[new_n] = format!("{line} {before_comma}{}", SEP.trim_end());
+            let (before_sep, after_sep) = next_line.split_once(SEP).unwrap();
+            if line.len() + before_sep.len() < limit - SEP.len() {
+                new_content[new_n] = format!("{line} {before_sep}{}", SEP.trim_end());
                 new_n += 1;
-                new_content[new_n] = after_comma.to_owned();
+                new_content[new_n] = after_sep.to_owned();
                 skip_next = true;
             }
         } else if line.contains(SEP) {
-            let (before_comma, after_comma) = line.rsplit_once(SEP).unwrap();
-            if after_comma.len() + next_line.len() < limit {
-                new_content[new_n] = format!("{before_comma}{}", SEP.trim_end());
+            let (before_sep, after_sep) = line.rsplit_once(SEP).unwrap();
+            if after_sep.len() + next_line.len() < limit {
+                new_content[new_n] = format!("{before_sep}{}", SEP.trim_end());
                 new_n += 1;
-                new_content[new_n] = format!("{after_comma} {next_line}");
+                new_content[new_n] = format!("{after_sep} {next_line}");
                 skip_next = true;
             }
         }
