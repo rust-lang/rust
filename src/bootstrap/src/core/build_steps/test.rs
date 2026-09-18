@@ -4097,8 +4097,9 @@ impl CommandLineStep for Bootstrap {
     }
 }
 
-fn get_compiler_to_test(builder: &Builder<'_>, target: TargetSelection) -> Compiler {
-    builder.compiler(builder.top_stage, target)
+/// `host` is the platform the compiler runs on, not the platform it compiles for.
+fn get_compiler_to_test(builder: &Builder<'_>, host: TargetSelection) -> Compiler {
+    builder.compiler(builder.top_stage, host)
 }
 
 /// Tests the Platform Support page in the rustc book.
@@ -4607,7 +4608,7 @@ pub struct TestFloatParse {
 
 impl CommandLineStep for TestFloatParse {
     type Output = ();
-    const IS_HOST: bool = true;
+    const IS_HOST: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/test-float-parse")
@@ -4618,9 +4619,22 @@ impl CommandLineStep for TestFloatParse {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Self {
-            build_compiler: get_compiler_to_test(run.builder, run.target),
-            target: run.target,
+        let builder = run.builder;
+        let target = run.target;
+
+        // The tool needs std, and it is executed on `target`.
+        if builder.no_std(target) == Some(true) {
+            builder.info(&format!("{target} has no std. skipping test-float-parse"));
+            return;
+        }
+        if !builder.can_run_binaries(target) {
+            builder.info(&format!("cannot run binaries for {target}. skipping test-float-parse"));
+            return;
+        }
+
+        builder.ensure(Self {
+            build_compiler: get_compiler_to_test(builder, run.build_triple()),
+            target,
         });
     }
 
