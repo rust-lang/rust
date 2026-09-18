@@ -326,25 +326,19 @@ struct LoweringContext<'a, 'hir> {
     attribute_parser: AttributeParser<'hir>,
 }
 
-macro_rules! allow {
-    ($($name:ident: $list:expr;)*) => {
-        $( const $name: &[Symbol] = &$list; )*
-    }
-}
-
-allow! {
-    ALLOW_CONTRACTS: [sym::contracts_internals];
-    ALLOW_TRY_TRAIT: [sym::try_trait_v2, sym::try_trait_v2_residual, sym::yeet_desugar_details];
-    ALLOW_PATTERN_TYPE: [sym::pattern_types, sym::pattern_type_range_trait];
-    ALLOW_GEN_FUTURE: [sym::gen_future];
-    ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER: [sym::gen_future, sym::closure_track_caller];
-    ALLOW_FOR_AWAIT: [sym::async_gen_internals, sym::async_iterator];
-    ALLOW_ASYNC_FN_TRAITS: [sym::async_fn_traits];
-    ALLOW_ASYNC_GEN: [sym::async_gen_internals];
-    // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
-    // interact with `gen`/`async gen` blocks
-    ALLOW_ASYNC_ITERATOR: [sym::gen_future, sym::async_iterator];
-}
+const ALLOW_CONTRACTS: &[Symbol] = &[sym::contracts_internals];
+const ALLOW_TRY_TRAIT: &[Symbol] =
+    &[sym::try_trait_v2, sym::try_trait_v2_residual, sym::yeet_desugar_details];
+const ALLOW_PATTERN_TYPE: &[Symbol] = &[sym::pattern_types, sym::pattern_type_range_trait];
+const ALLOW_GEN_FUTURE: &[Symbol] = &[sym::gen_future];
+const ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER: &[Symbol] =
+    &[sym::gen_future, sym::closure_track_caller];
+const ALLOW_FOR_AWAIT: &[Symbol] = &[sym::async_gen_internals, sym::async_iterator];
+const ALLOW_ASYNC_FN_TRAITS: &[Symbol] = &[sym::async_fn_traits];
+const ALLOW_ASYNC_GEN: &[Symbol] = &[sym::async_gen_internals];
+// FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
+// interact with `gen`/`async gen` blocks
+const ALLOW_ASYNC_ITERATOR: &[Symbol] = &[sym::gen_future, sym::async_iterator];
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn new(tcx: TyCtxt<'hir>, resolver: &'a ResolverAstLowering<'hir>, owner: NodeId) -> Self {
