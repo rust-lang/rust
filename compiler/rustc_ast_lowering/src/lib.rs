@@ -39,7 +39,7 @@
 // tidy-alphabetical-end
 
 use std::mem;
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeMap;
@@ -71,6 +71,7 @@ use rustc_middle::middle::resolve::{
 use rustc_middle::queries::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::diagnostics::add_feature_diagnostics;
+use rustc_span::hygiene::AllowInternalUnstable;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span, span_bug};
 use smallvec::{SmallVec, smallvec};
@@ -327,7 +328,7 @@ struct LoweringContext<'a, 'hir> {
 
 macro_rules! allow {
     ($($name:ident: $list:expr;)*) => {
-        $( static $name: LazyLock<Arc<[Symbol]>> = LazyLock::new(|| $list.into()); )*
+        $( const $name: &[Symbol] = &$list; )*
     }
 }
 
@@ -383,11 +384,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.tcx.dcx()
     }
 
-    fn allow_gen_future(&self) -> &Arc<[Symbol]> {
+    fn allow_gen_future(&self) -> AllowInternalUnstable {
         if self.tcx.features().async_fn_track_caller() {
-            &ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER
+            AllowInternalUnstable::Static(ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER)
         } else {
-            &ALLOW_GEN_FUTURE
+            AllowInternalUnstable::Static(ALLOW_GEN_FUTURE)
         }
     }
 }
@@ -1053,7 +1054,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &self,
         reason: DesugaringKind,
         span: Span,
-        allow_internal_unstable: Option<Arc<[Symbol]>>,
+        allow_internal_unstable: Option<AllowInternalUnstable>,
     ) -> Span {
         self.tcx.with_stable_hashing_context(|hcx| {
             span.mark_with_reason(allow_internal_unstable, reason, span.edition(), hcx)
@@ -2094,9 +2095,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (opaque_ty_node_id, allowed_features) = match coro.kind {
             CoroutineKind::Async | CoroutineKind::Gen => (coro.return_impl_trait_id, None),
-            CoroutineKind::AsyncGen => {
-                (coro.return_impl_trait_id, Some(Arc::clone(&ALLOW_ASYNC_ITERATOR)))
-            }
+            CoroutineKind::AsyncGen => (
+                coro.return_impl_trait_id,
+                Some(AllowInternalUnstable::Static(ALLOW_ASYNC_ITERATOR)),
+            ),
         };
 
         let opaque_ty_span =

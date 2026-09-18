@@ -22,7 +22,9 @@ use rustc_session::Session;
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId, ModId};
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
+use rustc_span::hygiene::{
+    AllowInternalUnstable, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind,
+};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
 use rustc_structures::{CollapseMacroDebuginfo, Limit};
@@ -777,7 +779,7 @@ pub struct SyntaxExtension {
     /// Span of the macro definition.
     pub span: Span,
     /// List of unstable features that are treated as stable inside this macro.
-    pub allow_internal_unstable: Option<Arc<[Symbol]>>,
+    pub allow_internal_unstable: Option<AllowInternalUnstable>,
     /// The macro's stability info.
     pub stability: Option<Stability>,
     /// The macro's deprecation info.
@@ -913,7 +915,11 @@ impl SyntaxExtension {
             span,
             allow_internal_unstable: (!allow_internal_unstable.is_empty())
                 // FIXME(jdonszelmann): avoid the into_iter/collect?
-                .then(|| allow_internal_unstable.iter().map(|i| i.0).collect::<Vec<_>>().into()),
+                .then(|| {
+                    AllowInternalUnstable::Dynamic(
+                        allow_internal_unstable.iter().map(|i| i.0).collect::<Vec<_>>().into(),
+                    )
+                }),
             stability,
             deprecation: find_attr!(
                 attrs,
@@ -1045,7 +1051,7 @@ pub trait ResolverExpand {
         &mut self,
         call_site: Span,
         pass: AstPass,
-        features: &[Symbol],
+        features: &'static [Symbol],
         parent_module_id: Option<NodeId>,
     ) -> LocalExpnId;
 
