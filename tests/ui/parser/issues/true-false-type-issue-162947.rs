@@ -1,3 +1,5 @@
+//@ run-rustfix
+
 struct A;
 
 impl A {
@@ -9,8 +11,7 @@ impl A {
 
 fn main() {
     let a = A;
-    a.b(); //~ ERROR E0599
+    a.b();
 
     let _b: true = true; //~ ERROR: expected type, found keyword `true`
-    //~^ ERROR E0070
 }
