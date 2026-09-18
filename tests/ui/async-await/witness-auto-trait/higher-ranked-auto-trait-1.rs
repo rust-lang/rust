@@ -5,7 +5,7 @@
 //@[assumptions_next] compile-flags: -Zhigher-ranked-assumptions -Znext-solver
 //@[assumptions] check-pass
 //@[assumptions_next] check-pass
-//@[min_coroutines] compile-flags: -Zassumptions-on-binders=min_coroutines
+//@[min_coroutines] compile-flags: -Zassumptions-on-binders=min_coroutines -Znext-solver=globally
 //@[min_coroutines] check-pass
 //@[no_assumptions] known-bug: #110338
 

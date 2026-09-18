@@ -220,7 +220,7 @@ impl<I: Interner, S: Clone> std::fmt::Debug for LeafRegionConstraint<I, S> {
                 f.write_str(": ")?;
                 r.fmt(f)
             }
-            Self::PlaceholderTyOutlives(ty, r, _span) => {
+            Self::TypeOutlives(ty, r, _span) | Self::PlaceholderTyOutlives(ty, r, _span) => {
                 ty.fmt(f)?;
                 f.write_str(": ")?;
                 r.fmt(f)

@@ -1,4 +1,4 @@
-//@ compile-flags: -Zassumptions-on-binders=min_coroutines
+//@ compile-flags: -Zassumptions-on-binders=min_coroutines -Znext-solver=globally
 //@ normalize-stderr: "\n\n$" -> "\n"
 
 #![feature(test_binder_constraints)]

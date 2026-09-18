@@ -1,4 +1,4 @@
-//@ compile-flags: -Zassumptions-on-binders=min_coroutines
+//@ compile-flags: -Zassumptions-on-binders=min_coroutines -Znext-solver=globally
 
 use std::marker::PhantomData;
 

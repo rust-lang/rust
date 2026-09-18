@@ -1,4 +1,4 @@
-//@ compile-flags: -Zassumptions-on-binders=min_coroutines
+//@ compile-flags: -Zassumptions-on-binders=min_coroutines -Znext-solver=globally
 //@ normalize-stderr: "\[[0-9a-f]{4}\]" -> "[HASH]"
 
 #![feature(test_binder_constraints)]
@@ -23,7 +23,7 @@ core::test_binder_constraints! {
     impl<T> {
         forall<'a> where T: 'a {
             //~^ ERROR forall expect clause failed
-            where (T,): 'a
+            predicates (T,): 'a
         } expect {}
     }
 }
@@ -39,7 +39,7 @@ core::test_binder_constraints! {
     impl<T: Trait> {
         forall<'a> where T::Assoc: 'a {
             //~^ ERROR forall expect clause failed
-            where T::Assoc: 'a
+            predicates T::Assoc: 'a
         } expect {}
     }
 }

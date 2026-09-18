@@ -3,7 +3,7 @@
 //@ revisions: assumptions min_coroutines no_assumptions
 //@[assumptions] compile-flags: -Zhigher-ranked-assumptions
 //@[assumptions] check-pass
-//@[min_coroutines] compile-flags: -Zassumptions-on-binders=min_coroutines
+//@[min_coroutines] compile-flags: -Zassumptions-on-binders=min_coroutines -Znext-solver=globally
 //@[min_coroutines] check-pass
 //@[no_assumptions] known-bug: #110338
 

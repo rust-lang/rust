@@ -1,7 +1,7 @@
 //@ check-pass
 //@ revisions: assumptions min_coroutines
-//@[assumptions] compile-flags: -Zassumptions-on-binders
-//@[min_coroutines] compile-flags: -Zassumptions-on-binders=min_coroutines
+//@[assumptions] compile-flags: -Zassumptions-on-binders -Znext-solver=globally
+//@[min_coroutines] compile-flags: -Zassumptions-on-binders=min_coroutines -Znext-solver=globally
 
 #![feature(test_binder_constraints, non_lifetime_binders)]
 #![expect(incomplete_features)]
@@ -120,7 +120,7 @@ core::test_binder_constraints! {
 core::test_binder_constraints! {
     impl<T> {
         forall<'a> where T: 'a {
-            where T: 'a
+            predicates T: 'a
         } expect {}
     }
 }
