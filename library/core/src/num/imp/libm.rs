@@ -76,6 +76,27 @@ unsafe extern "C" {
     pub(crate) safe fn truncf16(x: f16) -> f16;
 }
 
+/// These symbols are always provided by compiler-builtins.
+pub(crate) mod complex {
+    use crate::num::Complex;
+
+    unsafe extern "C" {
+        pub(crate) safe fn __mulsc3(a: f32, b: f32, c: f32, d: f32) -> Complex<f32>;
+        pub(crate) safe fn __muldc3(a: f64, b: f64, c: f64, d: f64) -> Complex<f64>;
+
+        pub(crate) safe fn __divsc3(a: f32, b: f32, c: f32, d: f32) -> Complex<f32>;
+        pub(crate) safe fn __divdc3(a: f64, b: f64, c: f64, d: f64) -> Complex<f64>;
+    }
+
+    unsafe extern "Rust" {
+        pub(crate) safe fn __rust_mulhc3(a: f16, b: f16, c: f16, d: f16) -> Complex<f16>;
+        pub(crate) safe fn __rust_multc3(a: f128, b: f128, c: f128, d: f128) -> Complex<f128>;
+
+        pub(crate) safe fn __rust_divhc3(a: f16, b: f16, c: f16, d: f16) -> Complex<f16>;
+        pub(crate) safe fn __rust_divtc3(a: f128, b: f128, c: f128, d: f128) -> Complex<f128>;
+    }
+}
+
 /// These symbols will be available when `std` is available, and on many no-std platforms. However,
 /// since this isn't a guarantee, we cannot rely on them for stable implementations.
 pub(crate) mod likely_available {
