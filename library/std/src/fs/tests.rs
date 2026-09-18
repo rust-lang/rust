@@ -889,11 +889,11 @@ fn file_test_windows_fileext_trait_case_2() {
     {
         let mock_file = MockFile { expected_offset: 420 };
         let mut buf = [0; 256];
-        assert_eq!(mock_file.seek_write(&buf, 420).unwrap_err().kind(), io::ErrorKind::WriteZero);
         assert_eq!(
             mock_file.seek_read(&mut buf, 420).unwrap_err().kind(),
             io::ErrorKind::UnexpectedEof
         );
+        assert_eq!(mock_file.seek_write(&buf, 420).unwrap_err().kind(), io::ErrorKind::WriteZero);
     }
 }
 
