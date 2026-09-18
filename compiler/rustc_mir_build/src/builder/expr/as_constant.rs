@@ -80,9 +80,8 @@ pub(crate) fn as_constant_inner<'tcx>(
             // FIXME(generic_const_args): there's a lot to consider here! `Const::Ty` uses valtrees
             // and `Const::Unevaluated` does not, we should revisit this before stabilization.
             let def_kind = tcx.def_kind(def_id);
-            if tcx.features().generic_const_args()
-                || matches!(def_kind, DefKind::Const | DefKind::AssocConst)
-                    && tcx.is_direct_const(def_id)
+            if matches!(def_kind, DefKind::Const | DefKind::AssocConst)
+                && (tcx.features().generic_const_args() || tcx.is_direct_const(def_id))
             {
                 let kind = match def_kind {
                     DefKind::AssocConst => {
@@ -94,7 +93,7 @@ pub(crate) fn as_constant_inner<'tcx>(
                         }
                     }
                     DefKind::Const => ty::AliasConstKind::Free { def_id },
-                    _ => unreachable!(),
+                    kind => bug!("unexpected DefKind in THIR ExprKind::NamedConst: {kind:?}"),
                 };
                 let alias = ty::AliasConst::new(tcx, kind, args);
                 let ct = ty::Const::new_alias(tcx, ty::IsRigid::No, alias);
