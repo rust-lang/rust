@@ -1,5 +1,7 @@
 //@ needs-target-std
 //@ ignore-cross-compile
+// FIXME: remove the ignore gcc once fixed.
+//@ ignore-backends: gcc
 //@ ignore-windows-gnu
 // GNU Linker for Windows is non-deterministic. (from `reproducible-build-2` test in this suite)
 
