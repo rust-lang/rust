@@ -145,6 +145,9 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
             self.typeck.polonius_context.as_mut().map(|c| &mut c.live_region_variances),
             &mut self.typeck.constraints.liveness_constraints,
             || {
+                if self.comp.local_use_map.drops(local).next().is_none() {
+                    return &[];
+                }
                 let local_ty = self.comp.body.local_decls[local].ty;
                 let local_span = self.comp.body.local_decls[local].source_info.span;
                 let drop_data =
@@ -305,14 +308,18 @@ impl<'a, 'tcx> LivenessComputation<'a, 'tcx> {
         universal_regions: &UniversalRegions<'tcx>,
         live_region_variances: Option<&mut LiveRegionVariances>,
         liveness_constraints: &mut LivenessValues,
-        get_drop_args: impl FnOnce() -> &'drop_data Vec<GenericArg<'tcx>>,
+        get_drop_args: impl FnOnce() -> &'drop_data [GenericArg<'tcx>],
     ) where
         'tcx: 'drop_data,
     {
         self.reset_local_state();
         self.add_defs_for(local);
         self.compute_use_live_points_for(local);
-        self.compute_drop_live_points_for(local);
+
+        let drop_args = get_drop_args();
+        if !drop_args.is_empty() {
+            self.compute_drop_live_points_for(local);
+        }
 
         let local_ty = self.body.local_decls[local].ty;
 
@@ -338,8 +345,6 @@ impl<'a, 'tcx> LivenessComputation<'a, 'tcx> {
             );
         }
         if !self.drop_live_at.is_empty() {
-            let drop_data = get_drop_args();
-
             // `drop_live_at` is using a DenseBitSet, but `make_all_regions_live`
             // expects an IntervalSet. We thus convert between those two here.
             // Using a `DenseBitSet` has better performance, but storing liveness
@@ -353,7 +358,7 @@ impl<'a, 'tcx> LivenessComputation<'a, 'tcx> {
                 drop_live_at.append(item);
             }
 
-            for &kind in drop_data {
+            for &kind in drop_args {
                 make_all_regions_live(
                     self.infcx,
                     universal_regions,
