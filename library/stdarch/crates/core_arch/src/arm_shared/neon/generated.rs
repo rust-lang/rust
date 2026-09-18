@@ -70649,7 +70649,7 @@ pub fn vzip_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -70679,7 +70679,7 @@ pub fn vzipq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -70714,7 +70714,7 @@ pub fn vzipq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -70752,7 +70752,7 @@ pub fn vzipq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -70805,7 +70805,7 @@ pub fn vzipq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -70835,7 +70835,7 @@ pub fn vzipq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -70870,7 +70870,7 @@ pub fn vzipq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -70900,7 +70900,7 @@ pub fn vzipq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -70935,7 +70935,7 @@ pub fn vzipq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -70973,7 +70973,7 @@ pub fn vzipq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -71026,7 +71026,7 @@ pub fn vzipq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -71056,7 +71056,7 @@ pub fn vzipq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -71091,7 +71091,7 @@ pub fn vzipq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -71121,7 +71121,7 @@ pub fn vzipq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -71156,7 +71156,7 @@ pub fn vzipq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -71194,7 +71194,7 @@ pub fn vzipq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -71247,7 +71247,7 @@ pub fn vzipq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
 #[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
@@ -71277,7 +71277,7 @@ pub fn vzipq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
 #[cfg(target_endian = "big")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vorr))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vzip))]
 #[cfg_attr(
     all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
     assert_instr(zip1)
