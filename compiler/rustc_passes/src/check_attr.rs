@@ -15,7 +15,6 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
 use rustc_feature::BUILTIN_ATTRIBUTE_SET;
 use rustc_hir::attrs::diagnostic::Directive;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{
     AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
     OptimizeAttr, ReprAttr,
@@ -24,7 +23,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, AssocCtxt, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
+    self as hir, AssocCtxt, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem,
     GenericParamKind, HirId, Item, ItemKind, MethodKind, Mod, Node, ParamName, Target, TraitItem,
     find_attr,
 };
@@ -39,7 +38,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};
-use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
 use rustc_structures::CrateType;
@@ -199,15 +197,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ProcMacroDerive { .. } => {
                 self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
             }
-            AttributeKind::Inline(InlineAttr::Force { .. }, ..) => {} // handled separately below
-            AttributeKind::Inline(kind, attr_span) => {
-                self.check_inline(hir_id, *attr_span, kind, target)
-            }
             AttributeKind::RustcAllowConstFnUnstable(_, first_span) => {
                 self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
             }
-            AttributeKind::Naked(..) => self.check_naked(hir_id, target),
-            AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
             AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, target),
             AttributeKind::MacroExport { span, .. } => {
                 self.check_macro_export(hir_id, *span, target)
@@ -268,6 +260,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::FfiPure(..) => (),
             AttributeKind::Fundamental => (),
             AttributeKind::Ignore { .. } => (),
+            AttributeKind::Inline(..) => (),
             AttributeKind::InstructionSet(..) => (),
             AttributeKind::InstrumentFn(..) => (),
             AttributeKind::Lang(..) => (),
@@ -278,9 +271,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::MacroEscape => (),
             AttributeKind::MacroUse { .. } => (),
             AttributeKind::Marker => (),
+            AttributeKind::MayDangle(_) => (),
             AttributeKind::MoveSizeLimit { .. } => (),
             AttributeKind::MustNotSupend { .. } => (),
             AttributeKind::MustUse { .. } => (),
+            AttributeKind::Naked(..) => (),
             AttributeKind::NeedsAllocator => (),
             AttributeKind::NeedsPanicRuntime => (),
             AttributeKind::NoBuiltins => (),
@@ -740,61 +735,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if an `#[inline]` is applied to a function or a closure.
-    fn check_inline(&self, hir_id: HirId, attr_span: Span, kind: &InlineAttr, target: Target) {
-        match target {
-            Target::Fn
-            | Target::Closure
-            | Target::Method(
-                MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
-            ) => {
-                // `#[inline]` is ignored if the symbol must be codegened upstream because it's exported.
-                if let Some(did) = hir_id.as_owner()
-                    && self.tcx.def_kind(did).has_codegen_attrs()
-                    && kind != &InlineAttr::Never
-                {
-                    let attrs = self.tcx.codegen_fn_attrs(did);
-                    // Not checking naked as `#[inline]` is forbidden for naked functions anyways.
-                    if attrs.contains_extern_indicator() {
-                        self.tcx.emit_node_span_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            attr_span,
-                            diagnostics::InlineIgnoredForExported,
-                        );
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
-    /// Checks if `#[naked]` is applied to a function definition.
-    fn check_naked(&self, hir_id: HirId, target: Target) {
-        match target {
-            Target::Fn
-            | Target::Method(
-                MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
-            ) => {
-                let fn_sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
-                let abi = fn_sig.header.abi;
-                if abi.is_rustic_abi() && !self.tcx.features().naked_functions_rustic_abi() {
-                    feature_err(
-                        &self.tcx.sess,
-                        sym::naked_functions_rustic_abi,
-                        fn_sig.span,
-                        format!(
-                            "`#[naked]` is currently unstable on `extern \"{}\"` functions",
-                            abi.as_str()
-                        ),
-                    )
-                    .emit();
-                }
-            }
-            _ => {}
-        }
-    }
-
     fn check_doc_alias_value(&self, span: Span, hir_id: HirId, target: Target, alias: Symbol) {
         if let Some(location) = match target {
             Target::AssocTy(_) => {
@@ -1069,33 +1009,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if let Some(span) = masked {
             self.check_doc_masked(*span, hir_id, target);
         }
-    }
-
-    /// Checks if `#[may_dangle]` is applied to a lifetime or type generic parameter in `Drop` impl.
-    fn check_may_dangle(&self, hir_id: HirId, attr_span: Span) {
-        let hir::Node::GenericParam(
-            param @ GenericParam {
-                kind: hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. },
-                ..
-            },
-        ) = self.tcx.hir_node(hir_id)
-        else {
-            self.dcx().delayed_bug("Checked in attr parser");
-            return;
-        };
-
-        if matches!(param.source, hir::GenericParamSource::Generics)
-            && let parent_hir_id = self.tcx.parent_hir_id(hir_id)
-            && let hir::Node::Item(item) = self.tcx.hir_node(parent_hir_id)
-            && let hir::ItemKind::Impl(impl_) = item.kind
-            && let Some(of_trait) = impl_.of_trait
-            && let Some(def_id) = of_trait.trait_ref.trait_def_id()
-            && self.tcx.is_lang_item(def_id, LangItem::Drop)
-        {
-            return;
-        }
-
-        self.dcx().emit_err(diagnostics::InvalidMayDangle { attr_span });
     }
 
     /// Checks if `#[link]` is applied to an item other than a foreign module.

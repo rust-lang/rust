@@ -8,6 +8,7 @@ use rustc_structures::SanitizerSet;
 
 use super::prelude::*;
 use crate::attributes::AttributeSafety;
+use crate::context::FinalizeCheckFn;
 use crate::diagnostics::{
     EmptyExportName, EmptySection, NakedFunctionIncompatibleAttribute, NullOnExport,
     NullOnObjcClass, NullOnObjcSelector, NullOnSection, ObjcClassExpectedStringLiteral,
@@ -327,6 +328,38 @@ impl AttributeParser for NakedParser {
 
         Some(AttributeKind::Naked(span))
     }
+
+    fn deferred_finalize_check(&self) -> Option<(FinalizeCheckFn, Span)> {
+        Some((
+            |cx, _| match cx.target {
+                Target::Fn
+                | Target::Method(
+                    MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
+                ) => {
+                    let fn_sig =
+                        cx.ast_target.get_fn_sig().expect("missing fn signature for AST target");
+                    let Some(abi) = cx.ast_target.get_abi() else {
+                        return;
+                    };
+
+                    if abi.is_rustic_abi() && !cx.features().naked_functions_rustic_abi() {
+                        feature_err(
+                            cx.sess(),
+                            sym::naked_functions_rustic_abi,
+                            fn_sig.span,
+                            format!(
+                                "`#[naked]` is currently unstable on `extern \"{}\"` functions",
+                                abi.as_str()
+                            ),
+                        )
+                        .emit();
+                    }
+                }
+                _ => {}
+            },
+            self.span?,
+        ))
+    }
 }
 
 pub(crate) struct TrackCallerParser;
@@ -349,7 +382,7 @@ impl NoArgsAttributeParser for TrackCallerParser {
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::TrackCaller;
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         match cx.target {
             Target::Fn => {
                 // `#[track_caller]` is not valid on weak lang items because they are called via
@@ -571,7 +604,7 @@ impl CombineAttributeParser for TargetFeatureParser {
         parse_tf_attribute(cx, args)
     }
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         // `#[target_feature]` is incompatible with lang item functions,
         // except on WASM where calling target-feature functions is safe (see #84988).
         if !cx.sess().target.is_like_wasm && !cx.sess().opts.actually_rustdoc {

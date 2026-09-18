@@ -17,8 +17,8 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
 use crate::context::{
-    ATTRIBUTE_PARSERS, AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext,
-    FinalizeFn, FinalizeOutput, SharedContext,
+    ATTRIBUTE_PARSERS, AcceptContext, AttrResolution, FinalizeCheckContext, FinalizeCheckFn,
+    FinalizeContext, FinalizeFn, FinalizeOutput, SharedContext,
 };
 use crate::diagnostics::ParsedDescription;
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
@@ -161,6 +161,7 @@ impl<'sess> AttributeParser<'sess> {
             attrs,
             target_span,
             target,
+            rustc_attr_ir::target::AstTarget::None,
             None,
             std::convert::identity,
             |lint_id, span, kind| {
@@ -256,6 +257,7 @@ impl<'sess> AttributeParser<'sess> {
                 emit_lint: &mut emit_lint,
                 #[cfg(debug_assertions)]
                 has_lint_been_emitted: AtomicBool::new(false),
+                resolve: None,
             },
             attr_span,
             inner_span,
@@ -316,7 +318,8 @@ impl<'sess> AttributeParser<'sess> {
         attrs: &[ast::Attribute],
         target_span: Span,
         target: Target,
-        target_item: Option<&ast::Item>,
+        ast_target: rustc_attr_ir::target::AstTarget<'_>,
+        resolve: Option<&dyn AttrResolution>,
         lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) -> Vec<Attribute> {
@@ -430,6 +433,7 @@ impl<'sess> AttributeParser<'sess> {
                                 emit_lint: &mut emit_lint,
                                 #[cfg(debug_assertions)]
                                 has_lint_been_emitted: AtomicBool::new(false),
+                                resolve,
                             },
                             attr_span,
                             inner_span,
@@ -497,6 +501,7 @@ impl<'sess> AttributeParser<'sess> {
                     emit_lint: &mut emit_lint,
                     #[cfg(debug_assertions)]
                     has_lint_been_emitted: AtomicBool::new(false),
+                    resolve,
                 },
                 all_attrs: &attr_paths,
             });
@@ -512,7 +517,7 @@ impl<'sess> AttributeParser<'sess> {
         // inspect the fully parsed attributes via `FinalizeCheckContext::parsed_attrs`.
         for (check, attr_span) in deferred_checks {
             check(
-                &FinalizeCheckContext {
+                &mut FinalizeCheckContext {
                     shared: SharedContext {
                         cx: self,
                         target_span,
@@ -520,10 +525,11 @@ impl<'sess> AttributeParser<'sess> {
                         emit_lint: &mut emit_lint,
                         #[cfg(debug_assertions)]
                         has_lint_been_emitted: AtomicBool::new(false),
+                        resolve,
                     },
                     all_attrs: &attr_paths,
                     parsed_attrs: &attributes,
-                    target_item,
+                    ast_target,
                 },
                 attr_span,
             );

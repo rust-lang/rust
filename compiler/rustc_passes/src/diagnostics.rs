@@ -247,13 +247,6 @@ pub(crate) struct NonExportedMacroInvalidAttrs {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl")]
-pub(crate) struct InvalidMayDangle {
-    #[primary_span]
-    pub attr_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[panic_handler]` function required, but not found")]
 pub(crate) struct MissingPanicHandler;
 
@@ -561,13 +554,6 @@ pub(crate) struct UselessAssignment<'a> {
     pub is_field_assign: bool,
     pub ty: Ty<'a>,
 }
-
-#[derive(Diagnostic)]
-#[diag("`#[inline]` is ignored on externally exported functions")]
-#[help(
-    "externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`"
-)]
-pub(crate) struct InlineIgnoredForExported;
 
 #[derive(Diagnostic)]
 #[diag("transparent {$target} cannot have other repr hints", code = E0692)]
