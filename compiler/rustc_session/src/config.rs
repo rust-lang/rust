@@ -1735,7 +1735,7 @@ fn parse_jobs_all(
             early_dcx.early_fatal(format!("`{opt_name}` cannot be larger than `--jobs`"));
         }
     };
-    let mut frontend = match matches.opt_str("jobs-frontend") {
+    let frontend = match matches.opt_str("jobs-frontend") {
         Some(jobs_frontend) => {
             let opt_name = "--jobs-frontend";
             let frontend =
@@ -1754,16 +1754,31 @@ fn parse_jobs_all(
                 check_upper_limit(frontend, opt_name);
                 frontend
             }
-            None => None, // default to 1 thread irrespectively of `jobs` for now
+            None => {
+                // Build-time override to opt into a different default for the frontend thread count
+                if let Some(default_frontend_jobs) = option_env!("CFG_DEFAULT_FRONTEND_JOBS") {
+                    let mut frontend_jobs = parse_jobs_one(
+                        early_dcx,
+                        "CFG_DEFAULT_FRONTEND_JOBS",
+                        default_frontend_jobs,
+                        true,
+                        &mut available,
+                    )
+                    .expect("CFG_DEFAULT_FRONTEND_JOBS must be larger than 0");
+
+                    // CFG_DEFAULT_FRONTEND_JOBS is a build-time config, so we cannot use
+                    // `check_upper_limit` here. Instead, we cap the frontend jobs to the value of
+                    // --jobs, if it was passed.
+                    if let Some(jobs) = jobs.flatten() {
+                        frontend_jobs = frontend_jobs.min(jobs);
+                    }
+                    Some(frontend_jobs)
+                } else {
+                    None // default to 1 thread irrespectively of `jobs` for now
+                }
+            }
         },
     };
-
-    // Build-time override to opt into a different default for the frontend thread count
-    if frontend.is_none()
-        && let Some(default_frontend_jobs) = option_env!("CFG_DEFAULT_FRONTEND_JOBS")
-    {
-        frontend = Some(NonZero::new(default_frontend_jobs.parse::<usize>().unwrap()).unwrap());
-    }
 
     let backend = match matches.opt_str("jobs-backend") {
         Some(jobs_backend) => {
