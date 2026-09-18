@@ -266,9 +266,9 @@ use core::ptr::{self, NonNull, drop_in_place};
 use core::slice::from_raw_parts_mut;
 use core::{borrow, fmt, hint};
 
-#[cfg(not(no_global_oom_handling))]
-use crate::alloc::handle_alloc_error;
 use crate::alloc::{AllocError, Allocator, AllocatorClone, Global, Layout};
+#[cfg(not(no_global_oom_handling))]
+use crate::alloc::{AllocatorNightly, handle_alloc_error};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
@@ -3085,7 +3085,7 @@ impl From<String> for Rc<str> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<T: ?Sized, A: Allocator> From<Box<T, A>> for Rc<T, A> {
+impl<T: ?Sized, A: AllocatorNightly> From<Box<T, A>> for Rc<T, A> {
     /// Move a boxed object to a new, reference counted, allocation.
     ///
     /// # Example
@@ -3104,7 +3104,7 @@ impl<T: ?Sized, A: Allocator> From<Box<T, A>> for Rc<T, A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<T, A: AllocatorClone> From<Vec<T, A>> for Rc<[T], A> {
+impl<T, A: AllocatorNightly> From<Vec<T, A>> for Rc<[T], A> {
     /// Allocates a reference-counted slice and moves `v`'s items into it.
     ///
     /// # Example
