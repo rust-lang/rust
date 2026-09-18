@@ -224,10 +224,15 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, Strin
             _ => {
                 let output_lows = output.map(|output| {
                     let (output_high, output_low) = deconstruct(output);
-                    assert_eq!(
-                        output_high, input_high,
-                        "Case-mapping a character should not change its plane"
-                    );
+                    // U+1DF95 (plane 1) decomposes to plane 0 codepoints in case mapping
+                    if input == 0x1DF95 {
+                        assert_eq!(output_high, 0);
+                    } else {
+                        assert_eq!(
+                            output_high, input_high,
+                            "Case-mapping a character should not change its plane"
+                        );
+                    }
                     Hex(output_low)
                 });
                 l2_lut.multis.push((Hex(input_low), output_lows));
@@ -383,9 +388,11 @@ fn lookup(input: char, l1_lut: &L1Lut) -> Option<[char; 3]> {
 
     if let Ok(idx) = l2_lut.multis.binary_search_by_key(&input_low, |&(p, _)| p) {
         // SAFETY: binary search guarantees that the index is in bounds.
+        // Exception: U+1DF95 (plane 1) decomposes to plane 0 codepoints in case mapping
         let &(_, output_lows) = unsafe { l2_lut.multis.get_unchecked(idx) };
+        let output_high = if input == '\u{1DF95}' { 0 } else { input_high };
         // SAFETY: Table data are guaranteed to be valid Unicode.
-        let output = output_lows.map(|output_low| unsafe { reconstruct(input_high, output_low) });
+        let output = output_lows.map(|output_low| unsafe { reconstruct(output_high, output_low) });
         return Some(output);
     };
 
