@@ -1600,7 +1600,7 @@ fn report_ice(
 
     let limit_frames = if backtrace { None } else { Some(2) };
 
-    interface::try_print_query_stack(dcx, limit_frames, file);
+    interface::try_print_query_stack(limit_frames, file);
 
     // We don't trust this callback not to panic itself, so run it at the end after we're sure we've
     // printed all the relevant info.

@@ -6,7 +6,7 @@ use rustc_ast::{LitKind, MetaItemKind, token};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::jobserver;
-use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
+use rustc_errors::ErrorGuaranteed;
 use rustc_lint::LintStore;
 use rustc_lint_defs::{Level, LintId};
 use rustc_middle::ty;
@@ -536,11 +536,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     )
 }
 
-pub fn try_print_query_stack(
-    dcx: DiagCtxtHandle<'_>,
-    limit_frames: Option<usize>,
-    file: Option<std::fs::File>,
-) {
+pub fn try_print_query_stack(limit_frames: Option<usize>, file: Option<std::fs::File>) {
     eprintln!("query stack during panic:");
 
     // Be careful relying on global state here: this code is called from
@@ -548,13 +544,7 @@ pub fn try_print_query_stack(
     // state if it was responsible for triggering the panic.
     let all_frames = ty::tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
-            ty::print::with_no_queries!(print_query_stack(
-                icx.tcx,
-                icx.query,
-                dcx,
-                limit_frames,
-                file,
-            ))
+            ty::print::with_no_queries!(print_query_stack(icx.tcx, icx.query, limit_frames, file))
         } else {
             0
         }
