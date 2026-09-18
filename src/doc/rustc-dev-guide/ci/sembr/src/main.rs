@@ -182,15 +182,15 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
             new_content[new_n] = format!("{line} {}", next_line.trim_start());
             new_content.remove(new_n + 1);
             skip_next = true;
-        } else {
-            const SEP: &str = ", ";
-            let Some((before_comma, after_comma)) = next_line.split_once(SEP) else { continue };
-            if line.len() + before_comma.len() < limit - SEP.len() {
-                new_content[new_n] = format!("{line} {before_comma}{}", SEP.trim_end());
-                new_n += 1;
-                new_content[new_n] = after_comma.to_owned();
-                skip_next = true;
-            }
+            continue;
+        }
+        const SEP: &str = ", ";
+        let Some((before_comma, after_comma)) = next_line.split_once(SEP) else { continue };
+        if line.len() + before_comma.len() < limit - SEP.len() {
+            new_content[new_n] = format!("{line} {before_comma}{}", SEP.trim_end());
+            new_n += 1;
+            new_content[new_n] = after_comma.to_owned();
+            skip_next = true;
         }
     }
     new_content.join("\n") + "\n"
