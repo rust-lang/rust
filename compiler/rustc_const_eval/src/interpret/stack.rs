@@ -656,10 +656,12 @@ impl<'a, 'tcx: 'a, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // provided so it should not be possible to get a mismatch here.
             let (_idx, callee_abi) = callee_abis.next().unwrap();
             assert!(self.check_argument_compat(caller_abi, callee_abi)?);
-            // FIXME: do we have to worry about in-place argument passing?
             let op = fn_arg.copy_fn_arg();
             let mplace = self.allocate(op.layout, MemoryKind::Stack)?;
             self.copy_op(&op, &mplace)?;
+            if let FnArg::InPlace(mplace) = fn_arg {
+                M::protect_in_place_function_argument(self, mplace)?;
+            }
 
             varargs.push(mplace);
         }
