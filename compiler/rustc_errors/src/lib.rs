@@ -1149,11 +1149,6 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     #[track_caller]
-    pub fn struct_failure_note(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
-        Diag::new(self, FailureNote, msg)
-    }
-
-    #[track_caller]
     pub fn struct_allow(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
         Diag::new(self, Allow, msg)
     }
