@@ -1,0 +1,46 @@
+error: expected type, found keyword `true`
+  --> $DIR/true-false-type-issue-162947.rs:4:15
+   |
+LL | impl A {
+   |        - while parsing this item list starting here
+LL |     fn a() -> true {
+   |               ^^^^ expected type
+...
+LL | }
+   | - the item list ends here
+
+error: expected type, found keyword `true`
+  --> $DIR/true-false-type-issue-162947.rs:14:12
+   |
+LL |     let b: true = true;
+   |          - ^^^^ expected type
+   |          |
+   |          while parsing the type for `b`
+   |
+help: use `=` if you meant to assign
+   |
+LL -     let b: true = true;
+LL +     let b = true = true;
+   |
+
+error[E0599]: no method named `b` found for struct `A` in the current scope
+  --> $DIR/true-false-type-issue-162947.rs:12:7
+   |
+LL | struct A;
+   | -------- method `b` not found for this struct
+...
+LL |     a.b();
+   |       ^ method not found in `A`
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/true-false-type-issue-162947.rs:14:17
+   |
+LL |     let b: true = true;
+   |            ---- ^
+   |            |
+   |            cannot assign to this expression
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0070, E0599.
+For more information about an error, try `rustc --explain E0070`.
