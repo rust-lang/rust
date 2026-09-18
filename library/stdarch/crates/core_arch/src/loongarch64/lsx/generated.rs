@@ -91,6 +91,22 @@ unsafe extern "llvm-intrinsic" {
     fn __lsx_vsat_wu(a: __v4u32, b: u32) -> __v4u32;
     #[link_name = "llvm.loongarch.lsx.vsat.du"]
     fn __lsx_vsat_du(a: __v2u64, b: u32) -> __v2u64;
+    #[link_name = "llvm.loongarch.lsx.vdiv.b"]
+    fn __lsx_vdiv_b(a: __v16i8, b: __v16i8) -> __v16i8;
+    #[link_name = "llvm.loongarch.lsx.vdiv.h"]
+    fn __lsx_vdiv_h(a: __v8i16, b: __v8i16) -> __v8i16;
+    #[link_name = "llvm.loongarch.lsx.vdiv.w"]
+    fn __lsx_vdiv_w(a: __v4i32, b: __v4i32) -> __v4i32;
+    #[link_name = "llvm.loongarch.lsx.vdiv.d"]
+    fn __lsx_vdiv_d(a: __v2i64, b: __v2i64) -> __v2i64;
+    #[link_name = "llvm.loongarch.lsx.vdiv.bu"]
+    fn __lsx_vdiv_bu(a: __v16u8, b: __v16u8) -> __v16u8;
+    #[link_name = "llvm.loongarch.lsx.vdiv.hu"]
+    fn __lsx_vdiv_hu(a: __v8u16, b: __v8u16) -> __v8u16;
+    #[link_name = "llvm.loongarch.lsx.vdiv.wu"]
+    fn __lsx_vdiv_wu(a: __v4u32, b: __v4u32) -> __v4u32;
+    #[link_name = "llvm.loongarch.lsx.vdiv.du"]
+    fn __lsx_vdiv_du(a: __v2u64, b: __v2u64) -> __v2u64;
     #[link_name = "llvm.loongarch.lsx.vhaddw.h.b"]
     fn __lsx_vhaddw_h_b(a: __v16i8, b: __v16i8) -> __v8i16;
     #[link_name = "llvm.loongarch.lsx.vhaddw.w.h"]
@@ -115,6 +131,22 @@ unsafe extern "llvm-intrinsic" {
     fn __lsx_vhsubw_wu_hu(a: __v8u16, b: __v8u16) -> __v4i32;
     #[link_name = "llvm.loongarch.lsx.vhsubw.du.wu"]
     fn __lsx_vhsubw_du_wu(a: __v4u32, b: __v4u32) -> __v2i64;
+    #[link_name = "llvm.loongarch.lsx.vmod.b"]
+    fn __lsx_vmod_b(a: __v16i8, b: __v16i8) -> __v16i8;
+    #[link_name = "llvm.loongarch.lsx.vmod.h"]
+    fn __lsx_vmod_h(a: __v8i16, b: __v8i16) -> __v8i16;
+    #[link_name = "llvm.loongarch.lsx.vmod.w"]
+    fn __lsx_vmod_w(a: __v4i32, b: __v4i32) -> __v4i32;
+    #[link_name = "llvm.loongarch.lsx.vmod.d"]
+    fn __lsx_vmod_d(a: __v2i64, b: __v2i64) -> __v2i64;
+    #[link_name = "llvm.loongarch.lsx.vmod.bu"]
+    fn __lsx_vmod_bu(a: __v16u8, b: __v16u8) -> __v16u8;
+    #[link_name = "llvm.loongarch.lsx.vmod.hu"]
+    fn __lsx_vmod_hu(a: __v8u16, b: __v8u16) -> __v8u16;
+    #[link_name = "llvm.loongarch.lsx.vmod.wu"]
+    fn __lsx_vmod_wu(a: __v4u32, b: __v4u32) -> __v4u32;
+    #[link_name = "llvm.loongarch.lsx.vmod.du"]
+    fn __lsx_vmod_du(a: __v2u64, b: __v2u64) -> __v2u64;
     #[link_name = "llvm.loongarch.lsx.vreplve.b"]
     fn __lsx_vreplve_b(a: __v16i8, b: i32) -> __v16i8;
     #[link_name = "llvm.loongarch.lsx.vreplve.h"]
@@ -1174,6 +1206,62 @@ pub fn lsx_vsat_du<const IMM6: u32>(a: m128i) -> m128i {
 #[inline]
 #[target_feature(enable = "lsx")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vdiv_b(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_b(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vdiv_h(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_h(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vdiv_w(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_w(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vdiv_d(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_d(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vdiv_bu(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_bu(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vdiv_hu(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_hu(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vdiv_wu(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_wu(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vdiv_du(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vdiv_du(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lsx_vhaddw_h_b(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhaddw_h_b(transmute(a), transmute(b))) }
 }
@@ -1253,6 +1341,62 @@ pub fn lsx_vhsubw_wu_hu(a: m128i, b: m128i) -> m128i {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lsx_vhsubw_du_wu(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vhsubw_du_wu(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vmod_b(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_b(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vmod_h(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_h(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vmod_w(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_w(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vmod_d(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_d(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vmod_bu(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_bu(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vmod_hu(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_hu(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vmod_wu(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_wu(transmute(a), transmute(b))) }
+}
+
+#[inline]
+#[target_feature(enable = "lsx")]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub fn lsx_vmod_du(a: m128i, b: m128i) -> m128i {
+    unsafe { transmute(__lsx_vmod_du(transmute(a), transmute(b))) }
 }
 
 #[inline]
