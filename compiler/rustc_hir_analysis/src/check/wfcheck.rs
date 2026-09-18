@@ -2412,7 +2412,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 body.type_outlives,
                 builder.freeze(),
             );
-            self.infcx.insert_placeholder_assumptions(u, Some(assumptions));
+            self.infcx.insert_placeholder_assumptions(u, assumptions);
             self.check_test_binder_body(body.value);
             let solver_region_constraint = self.infcx.get_solver_region_constraint();
             let constraint = ty::region_constraint::eagerly_handle_placeholders_in_universe(

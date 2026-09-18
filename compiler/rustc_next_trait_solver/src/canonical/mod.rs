@@ -174,7 +174,7 @@ where
             // recreated universes here.
             delegate.insert_placeholder_assumptions(
                 new_universe,
-                Some(rustc_type_ir::region_constraint::Assumptions::empty()),
+                rustc_type_ir::region_constraint::Assumptions::empty(),
             );
         }
     }

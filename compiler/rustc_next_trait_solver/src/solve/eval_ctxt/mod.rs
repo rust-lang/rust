@@ -1290,12 +1290,18 @@ where
     ) -> U {
         self.delegate.enter_forall_without_assumptions(value, |value| {
             let u = self.delegate.universe();
-            let assumptions = if self.cx().assumptions_on_binders() {
-                self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)
-            } else {
-                None
+            if self.cx().assumptions_on_binders() {
+                if let Some(assumptions) = self.region_assumptions_for_placeholders_in_universe(
+                    value.clone(),
+                    u,
+                    param_env,
+                ) {
+                    self.delegate.insert_placeholder_assumptions(u, assumptions);
+                } else {
+                    todo!("shoudl retun ambiguity")
+                }
             };
-            self.delegate.insert_placeholder_assumptions(u, assumptions);
+
             f(self, value)
         })
     }

@@ -685,7 +685,7 @@ fn pull_region_outlives_constraints_out_of_universe<
     infcx: &Infcx,
     constraint: RegionConstraint<I>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> RegionConstraint<I> {
     assert!(max_universe(infcx, constraint.clone()) <= u);
 
@@ -714,14 +714,6 @@ fn pull_region_outlives_constraints_out_of_universe<
                         pulled_constraints.push(Or::new_leaf(c));
                         continue;
                     }
-
-                    let assumptions = match assumptions {
-                        Some(assumptions) => assumptions,
-                        None => {
-                            pulled_constraints.push(Or::new_ambig(()));
-                            continue;
-                        }
-                    };
 
                     let mut candidates = vec![];
 
@@ -837,7 +829,7 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
     infcx: &Infcx,
     constraint: RegionConstraint<I>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> RegionConstraint<I> {
     use LeafRegionConstraint::*;
 
@@ -882,7 +874,7 @@ fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder
     ty: I::Ty,
     region: Region<I>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> Or<I> {
     use LeafRegionConstraint::*;
 
@@ -892,11 +884,6 @@ fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder
     if region_u != u && ty_u != u {
         return Or::new_leaf(PlaceholderTyOutlives(ty, region, ()));
     }
-
-    let assumptions = match assumptions {
-        Some(assumptions) => assumptions,
-        None => return Or::new_ambig(()),
-    };
 
     let mut candidates = vec![];
 
@@ -928,7 +915,7 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
     infcx: &Infcx,
     bound_outlives: Binder<I, (AliasTy<I>, Region<I>)>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> Or<I> {
     use LeafRegionConstraint::*;
 
@@ -977,14 +964,6 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
             candidates.push(Or::new_ambig(()));
         }
     }
-
-    let assumptions = match assumptions {
-        Some(assumptions) => assumptions,
-        None => {
-            candidates.push(Or::new_ambig(()));
-            return candidates.into_iter().fold(Or::new_false(), |acc, c| Or::build_or(acc, c));
-        }
-    };
 
     // Actually look at the assumptions and matching our higher ranked alias outlives goal
     // against potentially higher ranked type outlives assumptions.
@@ -1237,14 +1216,14 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
     {
         self.infcx.enter_forall_with_empty_assumptions(a, |a| {
             let u = self.infcx.universe();
-            self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
+            self.infcx.insert_placeholder_assumptions(u, Assumptions::empty());
             let b = self.infcx.instantiate_binder_with_infer(b);
             self.relate(a, b)
         })?;
 
         self.infcx.enter_forall_with_empty_assumptions(b, |b| {
             let u = self.infcx.universe();
-            self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
+            self.infcx.insert_placeholder_assumptions(u, Assumptions::empty());
             let a = self.infcx.instantiate_binder_with_infer(a);
             self.relate(a, b)
         })?;
