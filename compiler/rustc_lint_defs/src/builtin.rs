@@ -5129,7 +5129,7 @@ declare_lint! {
     /// [issue #162200]: https://github.com/rust-lang/rust/issues/162200
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub UNSATISFIED_HRTB_ARG,
-    Warn,
+    Forbid,
     "arguments of higher-ranked trait bounds that don't satisfy the bounds their types declare",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #162200),
