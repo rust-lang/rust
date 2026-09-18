@@ -367,9 +367,11 @@ pub fn finalize_session_directory(
         }
     }
 
-    drop(incr_comp_session); // Unlock incr comp session dir
-
-    let _ = garbage_collect_session_directories(sess, &new_path);
+    let _ = garbage_collect_session_directories(
+        sess,
+        &incr_comp_session,
+        false, // keep_most_recent
+    );
 }
 
 pub(crate) fn delete_all_session_dir_contents(
@@ -616,9 +618,12 @@ fn is_old_enough_to_be_collected(timestamp: SystemTime) -> bool {
 /// Runs garbage collection for the current session.
 pub(crate) fn garbage_collect_session_directories(
     sess: &Session,
-    session_directory: &Path,
+    incr_comp_session: &IncrCompSession,
+    keep_most_recent: bool,
 ) -> io::Result<()> {
     debug!("garbage_collect_session_directories() - begin");
+
+    let session_directory = &*incr_comp_session.session_directory;
 
     debug!(
         "garbage_collect_session_directories() - session directory: {}",
@@ -721,9 +726,6 @@ pub(crate) fn garbage_collect_session_directories(
         }
     }
 
-    let current_session_directory_name =
-        session_directory.file_name().expect("session directory is not `..`");
-
     // Now garbage collect the valid session directories.
     let deletion_candidates =
         lock_file_to_session_dir.items().filter_map(|(lock_file_name, directory_name)| {
@@ -771,31 +773,6 @@ pub(crate) fn garbage_collect_session_directories(
                     }
                 }
             } else if is_old_enough_to_be_collected(timestamp) {
-                if directory_name.as_str() == current_session_directory_name {
-                    // Skipping our own active directory is important for correctness.
-                    //
-                    // To summarize #147821: we will try to lock directories before deciding they can be
-                    // garbage collected, but the ability of `flock::Lock` to detect a lock held *by the
-                    // same process* varies across file locking APIs. Then, if our own session directory
-                    // has become old enough to be eligible for GC, we are beholden to platform-specific
-                    // details about detecting the our own lock on the session directory.
-                    //
-                    // POSIX `fcntl(F_SETLK)`-style file locks are maintained across a process. On
-                    // systems where this is the mechanism for `flock::Lock`, there is no way to
-                    // discover if an `flock::Lock` has been created in the same process on the same
-                    // file. Attempting to set a lock on the lockfile again will succeed, even if the
-                    // lock was set by another thread, on another file descriptor. Then we would
-                    // garbage collect our own live directory, unable to tell it was locked perhaps by
-                    // this same thread.
-                    //
-                    // It's not clear that `flock::Lock` can be fixed for this in general, and our own
-                    // incremental session directory is the only one which this process may own, so skip
-                    // it here and avoid the problem. We know it's not garbage anyway: we're using it.
-                    // Once finalized, its lock is released. Include it in collection so we keep
-                    // the newest completed session.
-                    return None;
-                }
-
                 // When cleaning out "-working" session directories, i.e.
                 // session directories that might still be in use by another
                 // compiler instance, we only look a directories that are
@@ -844,24 +821,22 @@ pub(crate) fn garbage_collect_session_directories(
     let deletion_candidates = deletion_candidates.into();
 
     // Delete all but the most recent of the candidates
-    all_except_most_recent(deletion_candidates).into_items().all(|(path, lock)| {
-        if path.file_name() == Some(current_session_directory_name) {
-            return true;
-        }
+    all_except_maybe_most_recent(deletion_candidates, keep_most_recent).into_items().all(
+        |(path, lock)| {
+            debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
-        debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
+            if let Err(err) = std_fs::remove_dir_all(&path) {
+                sess.dcx().emit_warn(diagnostics::FinalizedGcFailed { path: &path, err });
+            } else {
+                delete_session_dir_lock_file(sess, &lock_file_path(&path));
+            }
 
-        if let Err(err) = std_fs::remove_dir_all(&path) {
-            sess.dcx().emit_warn(diagnostics::FinalizedGcFailed { path: &path, err });
-        } else {
-            delete_session_dir_lock_file(sess, &lock_file_path(&path));
-        }
-
-        // Let's make it explicit that the file lock is released at this point,
-        // or rather, that we held on to it until here
-        drop(lock);
-        true
-    });
+            // Let's make it explicit that the file lock is released at this point,
+            // or rather, that we held on to it until here
+            drop(lock);
+            true
+        },
+    );
 
     Ok(())
 }
@@ -876,20 +851,19 @@ fn delete_old(sess: &Session, path: &Path) {
     }
 }
 
-fn all_except_most_recent(
+fn all_except_maybe_most_recent(
     deletion_candidates: UnordMap<(SystemTime, PathBuf), Option<flock::Lock>>,
+    keep_most_recent: bool,
 ) -> UnordMap<PathBuf, Option<flock::Lock>> {
-    let most_recent = deletion_candidates.items().map(|(&(timestamp, _), _)| timestamp).max();
+    let most_recent = keep_most_recent
+        .then(|| deletion_candidates.items().map(|(&(timestamp, _), _)| timestamp).max())
+        .flatten();
 
-    if let Some(most_recent) = most_recent {
-        deletion_candidates
-            .into_items()
-            .filter(|&((timestamp, _), _)| timestamp != most_recent)
-            .map(|((_, path), lock)| (path, lock))
-            .collect()
-    } else {
-        UnordMap::default()
-    }
+    deletion_candidates
+        .into_items()
+        .filter(|&((timestamp, _), _)| Some(timestamp) != most_recent)
+        .map(|((_, path), lock)| (path, lock))
+        .collect()
 }
 
 fn safe_remove_file(p: &Path) -> io::Result<()> {
