@@ -542,6 +542,12 @@ def f16SummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     )
 
 
+def f128SummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
+    from lldb import eBasicTypeFloat128
+
+    return valobj.Cast(valobj.GetTarget().GetBasicType(eBasicTypeFloat128)).GetValue()
+
+
 def sequence_formatter(output: str, valobj: SBValue, _dict: LLDBOpaque):
     length: int = valobj.GetNumChildren()
 
