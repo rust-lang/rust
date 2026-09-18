@@ -4319,6 +4319,13 @@ impl<T> UniqueRc<T> {
     pub fn new(value: T) -> Self {
         Self::new_in(value, Global)
     }
+
+    /// Like [`new`](Self::new), but returns an error if the allocation
+    /// fails, instead of calling [`handle_alloc_error`].
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn try_new(value: T) -> Result<Self, AllocError> {
+        Self::try_new_in(value, Global)
+    }
 }
 
 impl<T, A: Allocator> UniqueRc<T, A> {
@@ -4330,8 +4337,8 @@ impl<T, A: Allocator> UniqueRc<T, A> {
     /// point to the new [`Rc`].
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "unique_rc_arc", issue = "112566")]
-    #[must_use]
     // #[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
     pub fn new_in(value: T, alloc: A) -> Self {
         let (ptr, alloc) = Box::into_non_null_with_allocator(Box::new_in(
             RcInner {
@@ -4346,8 +4353,29 @@ impl<T, A: Allocator> UniqueRc<T, A> {
         Self { ptr, _marker: PhantomData, _marker2: PhantomData, alloc }
     }
 
-    #[cfg(not(no_global_oom_handling))]
-    fn unwrap_with_allocator(this: Self) -> (T, A) {
+    /// Like [`new_in`](Self::new_in), but returns an error if the allocation
+    /// fails, instead of calling [`handle_alloc_error`].
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    // #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn try_new_in(value: T, alloc: A) -> Result<Self, AllocError> {
+        let (ptr, alloc) = Box::into_non_null_with_allocator(Box::try_new_in(
+            RcInner {
+                strong: Cell::new(0),
+                // keep one weak reference so if all the weak pointers that are created are dropped
+                // the UniqueRc still stays valid.
+                weak: Cell::new(1),
+                value,
+            },
+            alloc,
+        )?);
+        Ok(Self { ptr, _marker: PhantomData, _marker2: PhantomData, alloc })
+    }
+
+    /// Consumes the `UniqueRc`, returning its wrapped value and allocator.
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    // #[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
+    pub fn unwrap_with_allocator(this: Self) -> (T, A) {
         let inner_ptr = this.ptr;
         let (data_ptr, alloc) = Self::into_raw_with_allocator(this);
 
@@ -4359,6 +4387,13 @@ impl<T, A: Allocator> UniqueRc<T, A> {
         drop(Weak { ptr: inner_ptr, alloc: &alloc });
 
         (val, alloc)
+    }
+
+    /// Consumes the `UniqueRc`, returning its wrapped value.
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    #[must_use]
+    pub fn unwrap(this: Self) -> T {
+        Self::unwrap_with_allocator(this).0
     }
 
     /// Maps the value in a `UniqueRc`, reusing the allocation if possible.
@@ -4392,11 +4427,10 @@ impl<T, A: Allocator> UniqueRc<T, A> {
             unsafe {
                 let (ptr, alloc) = UniqueRc::into_raw_with_allocator(this);
                 let value = ptr.read();
-                let mut allocation =
+                let allocation =
                     UniqueRc::from_raw_with_allocator(ptr.cast::<mem::MaybeUninit<U>>(), alloc);
 
-                allocation.write(f(value));
-                allocation.assume_init()
+                UniqueRc::write(allocation, f(value))
             }
         } else {
             let (val, alloc) = UniqueRc::unwrap_with_allocator(this);
@@ -4443,13 +4477,12 @@ impl<T, A: Allocator> UniqueRc<T, A> {
             unsafe {
                 let (ptr, alloc) = UniqueRc::into_raw_with_allocator(this);
                 let value = ptr.read();
-                let mut allocation = UniqueRc::from_raw_with_allocator(
+                let allocation = UniqueRc::from_raw_with_allocator(
                     ptr.cast::<mem::MaybeUninit<R::Output>>(),
                     alloc,
                 );
 
-                allocation.write(f(value)?);
-                try { allocation.assume_init() }
+                try { UniqueRc::write(allocation, f(value)?) }
             }
         } else {
             let (val, alloc) = UniqueRc::unwrap_with_allocator(this);
@@ -4477,7 +4510,6 @@ impl<T: ?Sized, A: Allocator> UniqueRc<T, A> {
         }
     }
 
-    #[cfg(not(no_global_oom_handling))]
     fn into_raw_with_allocator(this: Self) -> (*const T, A) {
         let this = ManuallyDrop::new(this);
         // SAFETY: The copy of the allocator stored in `this` is forgotten
@@ -4519,7 +4551,6 @@ impl<T: ?Sized, A: Allocator> UniqueRc<T, A> {
         unsafe { self.ptr.as_ref() }
     }
 
-    #[cfg(not(no_global_oom_handling))]
     fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut RcInner<T> = NonNull::as_ptr(this.ptr);
 
@@ -4530,7 +4561,6 @@ impl<T: ?Sized, A: Allocator> UniqueRc<T, A> {
     }
 
     #[inline]
-    #[cfg(not(no_global_oom_handling))]
     fn into_inner_with_allocator(this: Self) -> (NonNull<RcInner<T>>, A) {
         let this = mem::ManuallyDrop::new(this);
         // SAFETY: Pointer is valid for reads.
@@ -4538,7 +4568,6 @@ impl<T: ?Sized, A: Allocator> UniqueRc<T, A> {
     }
 
     #[inline]
-    #[cfg(not(no_global_oom_handling))]
     unsafe fn from_inner_in(ptr: NonNull<RcInner<T>>, alloc: A) -> Self {
         Self { ptr, _marker: PhantomData, _marker2: PhantomData, alloc }
     }
@@ -4560,9 +4589,35 @@ impl<T: ?Sized, A: AllocatorClone> UniqueRc<T, A> {
     }
 }
 
-#[cfg(not(no_global_oom_handling))]
 impl<T, A: Allocator> UniqueRc<mem::MaybeUninit<T>, A> {
-    unsafe fn assume_init(self) -> UniqueRc<T, A> {
+    /// Writes the value and converts to `UniqueRc<T, A>`.
+    ///
+    /// This method converts similarly to [`assume_init`](Self::assume_init) but
+    /// writes `value` into it before conversion, thus guaranteeing safety.
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    #[must_use]
+    pub fn write(mut this: Self, value: T) -> UniqueRc<T, A> {
+        // SAFETY: Writing initialises the wrapped value.
+        unsafe {
+            this.write(value);
+            this.assume_init()
+        }
+    }
+
+    /// Converts to `UniqueRc<T, A>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the value
+    /// really is in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// [`MaybeUninit::assume_init`]: mem::MaybeUninit::assume_init
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    #[must_use]
+    pub unsafe fn assume_init(self) -> UniqueRc<T, A> {
         let (ptr, alloc) = UniqueRc::into_inner_with_allocator(self);
         // SAFETY: Upheld by caller.
         unsafe { UniqueRc::from_inner_in(ptr.cast(), alloc) }
