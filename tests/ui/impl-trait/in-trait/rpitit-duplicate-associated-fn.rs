@@ -5,7 +5,7 @@ trait Bar {
     fn method() -> impl Sized;  //~ ERROR: the name `method` is defined multiple times
 }
 
-impl Bar for () {
+impl Bar for () {               //~ ERROR: not all trait items implemented, missing: `method`
     fn method() -> impl Sized {
         42
     }

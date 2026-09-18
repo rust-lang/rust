@@ -470,17 +470,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 false => E0260,
             },
             _ => match (old_binding.is_import_user_facing(), new_binding.is_import_user_facing()) {
-                (false, false) => {
-                    // Duplicated types wreak havoc on other errors, like impls selecting the wrong
-                    // type causing wrong number of generic params and other assorted number of
-                    // irrelevant nonsense, so avoid advancing to the next compiler stage.
-                    self.raise_fatal_after_resolve = true;
-                    E0428
-                }
+                (false, false) => E0428,
                 (true, true) => E0252,
                 _ => E0255,
             },
         };
+
+        if ns == TypeNS {
+            // Duplicated types wreak havoc on other errors, like impls selecting the wrong
+            // type causing wrong number of generic params and other assorted number of
+            // irrelevant nonsense, so avoid advancing to the next compiler stage.
+            self.raise_fatal_after_resolve = true;
+        }
 
         let label = match new_binding.is_import_user_facing() {
             true => diagnostics::NameDefinedMultipleTimeLabel::Reimported { span, name },

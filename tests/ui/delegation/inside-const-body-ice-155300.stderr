@@ -1,5 +1,5 @@
 error[E0428]: the name `bar` is defined multiple times
-  --> $DIR/inside-const-body-ice-155300.rs:11:13
+  --> $DIR/inside-const-body-ice-155300.rs:12:13
    |
 LL |             reuse foo::<> as bar;
    |             --------------------- previous definition of the value `bar` here
@@ -8,6 +8,18 @@ LL |             reuse bar;
    |
    = note: `bar` must be defined only once in the value namespace of this block
 
-error: aborting due to 1 previous error
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/inside-const-body-ice-155300.rs:8:33
+   |
+LL |           core::direct_const_arg!({
+   |  _________________________________^
+LL | |
+LL | |             fn foo() {}
+LL | |             reuse foo::<> as bar;
+...  |
+LL | |         }),
+   | |_________^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0428`.
