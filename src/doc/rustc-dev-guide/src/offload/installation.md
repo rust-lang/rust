@@ -4,11 +4,11 @@
 For now, everyone however still needs to build rustc from source to use all features of it.
 
 ## Rustup installation.
+
 If you are on `x86_64` Linux, you can install the nightly toolchain with:
 ```console
 rustup +nightly component add offload
 ```
-
 
 ## Build instructions
 
@@ -35,9 +35,8 @@ rustup toolchain link offload build/host/stage1
 rustup toolchain install nightly # enables -Z unstable-options
 ```
 
-
-
 ## Build instruction for LLVM itself
+
 ```console
 git clone git@github.com:llvm/llvm-project
 cd llvm-project
@@ -49,8 +48,8 @@ ninja install
 ```
 This gives you a working LLVM build.
 
-
 ## Testing
+
 Run this test script for offload-specific tests:
 ```console
 ./x test --stage 1 tests/codegen-llvm/gpu_offload
