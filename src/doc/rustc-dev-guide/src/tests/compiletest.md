@@ -642,7 +642,7 @@ This avoids having to build rustdoc when only running the main `coverage` suite.
 ### Crash tests
 
 [`tests/crashes`] serve as a collection of tests that are expected to cause the compiler to ICE,
-panic or crash in some other way, so that accidental fixes are tracked.
+panic, or crash in some other way, so that accidental fixes are tracked.
 Formerly, this was done at <https://github.com/rust-lang/glacier> but
 doing it inside the rust-lang/rust testsuite is more convenient.
 
