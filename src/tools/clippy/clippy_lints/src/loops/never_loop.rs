@@ -451,6 +451,7 @@ fn never_loop_expr<'tcx>(
         | ExprKind::Path(_)
         | ExprKind::ConstBlock(_)
         | ExprKind::Lit(_)
+        | ExprKind::BtfFieldInfo(..)
         | ExprKind::Err(_) => NeverLoopResult::Normal,
     };
 
@@ -547,6 +548,7 @@ fn find_non_obvious_spans<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> 
                 | ExprKind::Repeat(..)
                 | ExprKind::Yield(..)
                 | ExprKind::UnsafeBinderCast(..)
+                | ExprKind::BtfFieldInfo(..)
                 | ExprKind::Err(..) => {
                     spans.push(expr.span);
                     return ControlFlow::Continue(Descend::No);

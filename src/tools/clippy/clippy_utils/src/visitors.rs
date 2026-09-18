@@ -775,6 +775,7 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
             | ExprKind::Continue(_)
             | ExprKind::InlineAsm(_)
             | ExprKind::OffsetOf(..)
+            | ExprKind::BtfFieldInfo(..)
             | ExprKind::Err(_) => (),
         }
         ControlFlow::Continue(())
