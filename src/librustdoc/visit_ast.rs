@@ -481,51 +481,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemKind::GlobalAsm { .. } => {}
             hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
             hir::ItemKind::Use(path, kind) => {
-                for res in path.res.present_items() {
-                    // Struct and variant constructors and proc macro stubs always show up alongside
-                    // their definitions, we've already processed them so just discard these.
-                    if should_ignore_res(res) {
-                        continue;
-                    }
-
-                    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(item.owner_id.def_id));
-
-                    // If there was a private module in the current path then don't bother inlining
-                    // anything as it will probably be stripped anyway.
-                    if is_pub && self.inside_public_path {
-                        let please_inline = if let Some(res_did) = res.opt_def_id()
-                            && matches!(tcx.def_kind(res_did), DefKind::Macro(MacroKinds::BANG))
-                        {
-                            crate::clean::macro_reexport_is_inline(
-                                tcx,
-                                item.owner_id.def_id,
-                                res_did,
-                            )
-                        } else {
-                            find_attr!(
-                                attrs,
-                                Doc(d)
-                                if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
-                            )
-                        };
-                        let ident = match kind {
-                            hir::UseKind::Single(ident) => Some(ident.name),
-                            hir::UseKind::Glob => None,
-                            hir::UseKind::ListStem => unreachable!(),
-                        };
-                        if self.maybe_inline_local(
-                            item.owner_id.def_id,
-                            res,
-                            ident,
-                            please_inline,
-                            import_id,
-                        ) {
-                            debug!("Inlining {:?}", item.owner_id.def_id);
-                            continue;
-                        }
-                    }
-                    self.add_to_current_mod(item, renamed, import_id);
-                }
+                self.visit_tree_inner(item, renamed, import_id, is_pub, path, kind);
             }
             hir::ItemKind::Macro(_, macro_def, _) => {
                 // `#[macro_export] macro_rules!` items are handled separately in `visit()`,
@@ -576,6 +532,59 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 }
             }
             hir::ItemKind::TestBinderConstraints { .. } => {}
+        }
+    }
+
+    fn visit_tree_inner(
+        &mut self,
+        item: &'tcx hir::Item<'tcx>,
+        renamed: Option<Symbol>,
+        import_id: Option<LocalDefId>,
+        is_pub: bool,
+        path: &hir::UsePath<'_>,
+        kind: hir::UseKind,
+    ) {
+        let tcx = self.cx.tcx;
+        for res in path.res.present_items() {
+            // Struct and variant constructors and proc macro stubs always show up alongside
+            // their definitions, we've already processed them so just discard these.
+            if should_ignore_res(res) {
+                continue;
+            }
+
+            let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(item.owner_id.def_id));
+
+            // If there was a private module in the current path then don't bother inlining
+            // anything as it will probably be stripped anyway.
+            if is_pub && self.inside_public_path {
+                let please_inline = if let Some(res_did) = res.opt_def_id()
+                    && matches!(tcx.def_kind(res_did), DefKind::Macro(MacroKinds::BANG))
+                {
+                    crate::clean::macro_reexport_is_inline(tcx, item.owner_id.def_id, res_did)
+                } else {
+                    find_attr!(
+                        attrs,
+                        Doc(d)
+                        if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
+                    )
+                };
+                let ident = match kind {
+                    hir::UseKind::Single(ident) => Some(ident.name),
+                    hir::UseKind::Glob => None,
+                    hir::UseKind::ListStem => unreachable!(),
+                };
+                if self.maybe_inline_local(
+                    item.owner_id.def_id,
+                    res,
+                    ident,
+                    please_inline,
+                    import_id,
+                ) {
+                    debug!("Inlining {:?}", item.owner_id.def_id);
+                    continue;
+                }
+            }
+            self.add_to_current_mod(item, renamed, import_id);
         }
     }
 
