@@ -702,6 +702,7 @@ topic = "#{number}: {title}"
 message_on_add = """\
 @*T-types* issue #{number} "{title}" has been nominated for team discussion.
 """
+github_comment = ":robot: A [dedicated `#t-types/nominated` topic]({zulip_topic_url}) has been opened for humans to discuss this issue :robot:"
 message_on_remove = "Issue #{number}'s nomination has been removed. Thanks all for participating!"
 message_on_close = "Issue #{number} has been closed. Thanks for participating!"
 message_on_reopen = "Issue #{number} has been reopened. Pinging @*T-types*."
