@@ -1,0 +1,34 @@
+error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
+  --> tests/fail/move_elimination/call_move_then_copy_varargs.rs:LL:CC
+   |
+LL | unsafe extern "C" fn consume(_: ...) {
+   |                              ^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+help: ALLOC was allocated here:
+  --> tests/fail/move_elimination/call_move_then_copy_varargs.rs:LL:CC
+   |
+LL | /     mir! {
+LL | |         let ptr: *const u64;
+LL | |         let unit: ();
+...  |
+LL | |         done = { Return() }
+LL | |     }
+   | |_____^
+help: ALLOC was deallocated here:
+  --> tests/fail/move_elimination/call_move_then_copy_varargs.rs:LL:CC
+   |
+LL | unsafe extern "C" fn consume(_: ...) {
+   |                              ^
+   = note: stack backtrace:
+           0: consume
+               at tests/fail/move_elimination/call_move_then_copy_varargs.rs:LL:CC
+           1: main
+               at tests/fail/move_elimination/call_move_then_copy_varargs.rs:LL:CC
+   = note: this error originates in the macro `::core::intrinsics::mir::__internal_extract_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

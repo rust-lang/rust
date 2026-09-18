@@ -1,7 +1,9 @@
 //! Ensure we detect aliasing of two in-place arguments for the tricky case where they do not
-//! live in memory.
-//@revisions: stack tree
+//! live in memory. Move elimination must also reject this when whole moves free their source.
+//@revisions: stack tree stack_move_elimination tree_move_elimination
 //@[tree]compile-flags: -Zmiri-tree-borrows
+//@[stack_move_elimination]compile-flags: -Zmir-move-elimination
+//@[tree_move_elimination]compile-flags: -Zmiri-tree-borrows -Zmir-move-elimination
 
 #![feature(custom_mir, core_intrinsics)]
 
@@ -17,7 +19,7 @@ fn main() {
             let staging = S(42); // This forces `staging` into memory...
             let non_copy = staging; // ... so we move it to a non-inmemory local here.
             // This specifically uses a type with scalar representation to tempt Miri to use the
-            // efficient way of storing local variables (outside adressable memory).
+            // efficient way of storing local variables (outside addressable memory).
             Call(_unit = callee(Move(non_copy), Move(non_copy)), ReturnTo(after_call), UnwindContinue())
         }
         after_call = {
@@ -30,6 +32,8 @@ fn main() {
 fn callee(x: S, mut y: S) {
     //~[stack]^ ERROR: not granting access
     //~[tree]| ERROR: /read access .* forbidden/
+    //~[stack_move_elimination]| ERROR: has been freed
+    //~[tree_move_elimination]| ERROR: has been freed
     // With the setup above, if `x` and `y` are both moved,
     // then writing to `y` will change the value stored in `x`!
     y.0 = 0;

@@ -1,8 +1,8 @@
 //! Manages calling a concrete function (with known MIR body) with argument passing,
 //! and returning the return value to the caller.
 
-use std::assert_matches;
 use std::borrow::Cow;
+use std::{assert_matches, debug_assert_matches};
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
@@ -17,8 +17,8 @@ use tracing::{info, instrument, trace};
 
 use super::{
     CtfeProvenance, EnteredTraceSpan, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine,
-    OpTy, PlaceTy, Projectable, Provenance, RetagMode, ReturnAction, ReturnContinuation, Scalar,
-    interp_ok, throw_ub, throw_ub_format,
+    MemoryKind, OpTy, PlaceTy, Projectable, Provenance, RetagMode, ReturnAction,
+    ReturnContinuation, Scalar, interp_ok, throw_ub, throw_ub_format,
 };
 use crate::enter_trace_span;
 
@@ -31,21 +31,27 @@ pub enum FnArg<'tcx, Prov: Provenance = CtfeProvenance> {
     /// place and make the place inaccessible for the duration of the function call. This *must* be
     /// an in-memory place so that we can do the proper alias checks.
     InPlace(MPlaceTy<'tcx, Prov>),
+    /// Similar to `InPlace`, but used when moving a whole local. The main
+    /// difference is that the local is reset to `LiveUnallocated` and its
+    /// allocation detached into `source` after arguments are evaluated.
+    ///
+    /// ABI adaptation may change `op` while retaining the original `source`.
+    MoveLocal { op: OpTy<'tcx, Prov>, source: Option<MPlaceTy<'tcx, Prov>> },
 }
 
 impl<'tcx, Prov: Provenance> FnArg<'tcx, Prov> {
     pub fn layout(&self) -> &TyAndLayout<'tcx> {
         match self {
-            FnArg::Copy(op) => &op.layout,
+            FnArg::Copy(op) | FnArg::MoveLocal { op, .. } => &op.layout,
             FnArg::InPlace(mplace) => &mplace.layout,
         }
     }
 
     /// Make a copy of the given fn_arg. Any `InPlace` are degenerated to copies, no protection of the
-    /// original memory occurs.
+    /// original memory occurs. A `MoveLocal` is only borrowed: this does not consume its allocation.
     pub fn copy_fn_arg(&self) -> OpTy<'tcx, Prov> {
         match self {
-            FnArg::Copy(op) => op.clone(),
+            FnArg::Copy(op) | FnArg::MoveLocal { op, .. } => op.clone(),
             FnArg::InPlace(mplace) => mplace.clone().into(),
         }
     }
@@ -59,14 +65,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Helper function for argument untupling.
+    ///
+    /// `is_last` identifies the last field to be passed, which takes
+    /// responsibility for freeing the source if the tuple is passed as a
+    /// `MoveLocal`.
     fn fn_arg_project_field(
         &self,
         arg: &FnArg<'tcx, M::Provenance>,
         field: FieldIdx,
+        is_last: bool,
     ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
         interp_ok(match arg {
             FnArg::Copy(op) => FnArg::Copy(self.project_field(op, field)?),
             FnArg::InPlace(mplace) => FnArg::InPlace(self.project_field(mplace, field)?),
+            FnArg::MoveLocal { op, source } => {
+                let field_op = self.project_field(op, field)?;
+                if is_last {
+                    FnArg::MoveLocal { op: field_op, source: source.clone() }
+                } else {
+                    FnArg::Copy(field_op)
+                }
+            }
         })
     }
 
@@ -385,16 +404,43 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.storage_live_dyn(local, meta)?;
         }
         // Now we can finally actually evaluate the callee place.
-        let callee_arg =
-            self.eval_place(*callee_arg, /* skip_validity_for_simple_deref */ false)?;
+        let callee_arg = self
+            .eval_place_for_write(*callee_arg, /* skip_validity_for_simple_deref */ false)?;
         // We allow some transmutes here.
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
         // specifically.)
         self.copy_op_allow_transmute(&caller_arg_copy, &callee_arg)?;
-        // If this was an in-place pass, protect the place it comes from for the duration of the call.
-        if let FnArg::InPlace(mplace) = caller_arg {
-            M::protect_in_place_function_argument(self, mplace)?;
+        self.finish_fn_arg(caller_arg)
+    }
+
+    /// Finish consuming an argument: `InPlace` arguments are protected for the
+    /// duration of the call, and `MoveLocal` arguments have their backing
+    /// allocation freed.
+    pub(super) fn finish_fn_arg(
+        &mut self,
+        caller_arg: &FnArg<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        match caller_arg {
+            FnArg::InPlace(mplace) => M::protect_in_place_function_argument(self, mplace)?,
+            FnArg::MoveLocal { source: Some(source), .. } => {
+                self.deallocate_ptr(source.ptr(), None, MemoryKind::Stack)?;
+            }
+            FnArg::Copy(_) | FnArg::MoveLocal { source: None, .. } => {}
+        }
+        interp_ok(())
+    }
+
+    /// Free `MoveLocal` allocations after an emulated call has consumed its
+    /// arguments.
+    fn finish_emulated_call_args(
+        &mut self,
+        args: &[FnArg<'tcx, M::Provenance>],
+    ) -> InterpResult<'tcx> {
+        for arg in args {
+            if let FnArg::MoveLocal { source: Some(source), .. } = arg {
+                self.deallocate_ptr(source.ptr(), None, MemoryKind::Stack)?;
+            }
         }
         interp_ok(())
     }
@@ -480,6 +526,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     arg.layout().ty,
                     match arg {
                         FnArg::Copy(op) => format!("copy({op:?})"),
+                        FnArg::MoveLocal { op, .. } => format!("move-local({op:?})"),
                         FnArg::InPlace(mplace) => format!("in-place({mplace:?})"),
                     }
                 ))
@@ -550,6 +597,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     let (callee_arg_idx, callee_abi) = callee_args_abis.next().unwrap();
                     assert!(callee_abi.layout.is_1zst() && callee_abi.is_ignore());
                     ecx.storage_live(local)?;
+                    ecx.allocate_local_for_write(local)?;
                     // And skip it in the caller, if present. We can tell whether it is present by
                     // comparing the number of arguments on the caller and callee side.
                     if caller_fn_abi.args.len() == callee_fn_abi.args.len() {
@@ -569,8 +617,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // This argument is a VaList holding the remaining caller-side arguments.
                     ecx.storage_live(local)?;
 
-                    let place =
-                        ecx.eval_place(dest, /* skip_validity_for_simple_deref */ false)?;
+                    let place = ecx.eval_place_for_write(
+                        dest, /* skip_validity_for_simple_deref */ false,
+                    )?;
                     let mplace = ecx.force_allocation(&place)?;
 
                     // Consume the remaining arguments by putting them into the variable argument
@@ -596,6 +645,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 } else if Some(local) == body.spread_arg {
                     // Make the local live once, then fill in the value field by field.
                     ecx.storage_live(local)?;
+                    // Function arguments start allocated, including an empty spread tuple for
+                    // which the loop below has no fields to initialize.
+                    ecx.allocate_local_for_write(local)?;
                     // Must be a tuple
                     let ty::Tuple(fields) = ty.kind() else {
                         span_bug!(ecx.cur_span(), "non-tuple type for `spread_arg`: {ty}")
@@ -687,15 +739,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             FnVal::Other(extra) => {
                 let caller_fn_abi =
                     caller_fn_abi.expect("FnAbi should have been computed for this call");
-                return M::call_extra_fn(
-                    self,
-                    extra,
-                    caller_fn_abi,
-                    args,
-                    destination,
-                    target,
-                    unwind,
-                );
+                M::call_extra_fn(self, extra, caller_fn_abi, args, destination, target, unwind)?;
+                return self.finish_emulated_call_args(args);
             }
         };
 
@@ -723,7 +768,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         unwind,
                     );
                 } else {
-                    interp_ok(())
+                    self.finish_emulated_call_args(args)
                 }
             }
             ty::InstanceKind::LlvmIntrinsic(_) => {
@@ -734,7 +779,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     &Self::copy_fn_args(args),
                     destination,
                     target,
-                )
+                )?;
+                self.finish_emulated_call_args(args)
             }
             ty::InstanceKind::Shim(ty::ShimKind::VTable(..))
             | ty::InstanceKind::Shim(ty::ShimKind::Reify(..))
@@ -764,7 +810,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     unwind,
                 )?
                 else {
-                    return interp_ok(());
+                    return self.finish_emulated_call_args(args);
                 };
 
                 // Special handling for the closure ABI: untuple the last argument.
@@ -783,7 +829,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                                 .map(|a| interp_ok(a.clone()))
                                 // The fields of the untupled argument.
                                 .chain((0..untuple_fields.len()).map(|i| {
-                                    self.fn_arg_project_field(untuple_arg, FieldIdx::from_usize(i))
+                                    self.fn_arg_project_field(
+                                        untuple_arg,
+                                        FieldIdx::from_usize(i),
+                                        /* is_last */ i + 1 == untuple_fields.len(),
+                                    )
                                 }))
                                 .collect::<InterpResult<'_, Vec<_>>>()?,
                         )
@@ -867,14 +917,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Adjust receiver argument. Layout can be any (thin) ptr.
                 let receiver_ty = Ty::new_mut_ptr(self.tcx.tcx, dyn_ty);
-                args[0] = FnArg::Copy(
-                    ImmTy::from_immediate(
-                        Scalar::from_maybe_pointer(adjusted_recv, self).into(),
-                        self.layout_of(receiver_ty)?,
-                    )
-                    .into(),
-                );
+                let adjusted_receiver = ImmTy::from_immediate(
+                    Scalar::from_maybe_pointer(adjusted_recv, self).into(),
+                    self.layout_of(receiver_ty)?,
+                )
+                .into();
+                args[0] = match &args[0] {
+                    FnArg::MoveLocal { source, .. } => {
+                        FnArg::MoveLocal { op: adjusted_receiver, source: source.clone() }
+                    }
+                    _ => FnArg::Copy(adjusted_receiver),
+                };
                 trace!("Patched receiver operand to {:#?}", args[0]);
+
                 // Need to also adjust the type in the ABI. Strangely, the layout there is actually
                 // already fine! Just the type is bogus. This is due to what `force_thin_self_ptr`
                 // does in `fn_abi_new_uncached`; supposedly, codegen relies on having the bogus
@@ -942,10 +997,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // as that "executes" the goto to the return block, but we don't want to,
         // only the tail called function should return to the current return block.
 
-        // The arguments need to all be copied since the current stack frame will be removed
-        // before the callee even starts executing.
-        // FIXME(explicit_tail_calls,#144855): does this match what codegen does?
-        let args = args.iter().map(|fn_arg| FnArg::Copy(fn_arg.copy_fn_arg())).collect::<Vec<_>>();
+        // Tail-call arguments are evaluated as ordinary operands, so none of them may donate a
+        // place in the frame that is about to be destroyed.
+        for arg in args {
+            debug_assert_matches!(arg, FnArg::Copy(_));
+        }
         // Remove the frame from the stack.
         let frame = self.pop_stack_frame_raw()?;
         // Remember where this frame would have returned to.
@@ -962,7 +1018,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.init_fn_call(
             fn_val,
             (caller_abi, caller_fn_abi),
-            &*args,
+            args,
             with_caller_location,
             frame.return_place(),
             ret,
@@ -1072,11 +1128,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Get out the return value. Must happen *before* the frame is popped as we have to get the
         // local's value out.
         let return_op =
-            self.local_to_op(mir::RETURN_PLACE, None).expect("return place should always be live");
+            if unwinding { None } else { Some(self.local_to_op(mir::RETURN_PLACE, None)?) };
         // Remove the frame from the stack.
         let frame = self.pop_stack_frame_raw()?;
         // Copy the return value and remember the return continuation.
-        if !unwinding {
+        if let Some(return_op) = return_op {
             self.copy_op_allow_transmute(&return_op, frame.return_place())?;
             trace!("return value: {:?}", self.dump_place(frame.return_place()));
         }

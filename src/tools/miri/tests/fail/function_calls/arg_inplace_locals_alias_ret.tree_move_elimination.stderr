@@ -1,0 +1,34 @@
+error: Undefined Behavior: pointer not dereferenceable: ALLOC has been freed, so this pointer is dangling
+  --> tests/fail/function_calls/arg_inplace_locals_alias_ret.rs:LL:CC
+   |
+LL | fn callee(x: S) -> S {
+   |                    ^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+help: ALLOC was allocated here:
+  --> tests/fail/function_calls/arg_inplace_locals_alias_ret.rs:LL:CC
+   |
+LL | /     mir! {
+LL | |         let _unit: ();
+LL | |         {
+LL | |             let staging = S(42); // This forces `staging` into memory...
+...  |
+LL | |     }
+   | |_____^
+help: ALLOC was deallocated here:
+  --> tests/fail/function_calls/arg_inplace_locals_alias_ret.rs:LL:CC
+   |
+LL | fn callee(x: S) -> S {
+   |           ^
+   = note: stack backtrace:
+           0: callee
+               at tests/fail/function_calls/arg_inplace_locals_alias_ret.rs:LL:CC
+           1: main
+               at tests/fail/function_calls/arg_inplace_locals_alias_ret.rs:LL:CC
+   = note: this error originates in the macro `::core::intrinsics::mir::__internal_extract_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

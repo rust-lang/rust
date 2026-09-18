@@ -69,6 +69,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if let Some(stmt) = basic_block.statements.get(loc.statement_index) {
             let old_frames = self.frame_idx();
             self.eval_statement(stmt)?;
+            self.clear_operand_temps()?;
             // Make sure we are not updating `statement_index` of the wrong frame.
             assert_eq!(old_frames, self.frame_idx());
             // Advance the program counter.
@@ -80,6 +81,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         let terminator = basic_block.terminator();
         self.eval_terminator(terminator)?;
+        self.clear_operand_temps()?;
         if !self.stack().is_empty() {
             if let Either::Left(loc) = self.frame().loc {
                 info!("// executing {:?}", loc.block);
@@ -108,8 +110,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Assign((place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
 
             SetDiscriminant { place, variant_index } => {
-                let dest =
-                    self.eval_place(**place, /* skip_validity_for_simple_deref */ false)?;
+                let dest = self.eval_place_for_write(
+                    **place, /* skip_validity_for_simple_deref */ false,
+                )?;
                 self.write_discriminant(*variant_index, &dest)?;
             }
 
@@ -173,12 +176,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         rvalue: &mir::Rvalue<'tcx>,
         place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx> {
-        // We can skip validity because we'll write to the place which checks everything we care
-        // about for references, and the pointee must be sized so there's nothing to check for raw
-        // pointers.
-        let dest = self.eval_place(place, /* skip_validity_for_simple_deref */ true)?;
-        let value = self.eval_rvalue(rvalue, dest.layout)?;
-        self.write_rvalue(value, dest)
+        // We can skip validity when evaluating the destination place because
+        // we'll write to it which checks everything we care about for
+        // references, and the pointee must be sized so there's nothing to check
+        // for raw pointers.
+        if M::move_elimination_semantics(self) {
+            // Evaluate the destination place last with move-elimination semantics.
+            let ty = self.instantiate_from_current_frame_and_normalize_erasing_regions(
+                place.ty(&self.frame().body.local_decls, *self.tcx).ty,
+            )?;
+            let layout = self.layout_of(ty)?;
+            let value = self.eval_rvalue(rvalue, layout)?;
+            let dest =
+                self.eval_place_for_write(place, /* skip_validity_for_simple_deref */ true)?;
+            self.write_rvalue(value, dest)
+        } else {
+            // Preserve destination-first evaluation without move-elimination semantics.
+            let dest =
+                self.eval_place_for_write(place, /* skip_validity_for_simple_deref */ true)?;
+            let value = self.eval_rvalue(rvalue, dest.layout)?;
+            self.write_rvalue(value, dest)
+        }
     }
 
     /// Evaluate an rvalue, leaving destination-dependent operations for `write_rvalue`.
@@ -189,10 +207,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, EvaluatedRvalue<'tcx, M::Provenance>> {
         use rustc_middle::mir::Rvalue::*;
         interp_ok(match *rvalue {
-            Use(ref operand, with_retag) => {
-                EvaluatedRvalue::Use(self.eval_operand(operand, Some(layout))?, with_retag)
+            Use(ref operand, with_retag) => EvaluatedRvalue::Use(
+                self.eval_operand_no_snapshot(operand, Some(layout))?,
+                with_retag,
+            ),
+            Repeat(ref operand, _) => {
+                EvaluatedRvalue::Repeat(self.eval_operand_no_snapshot(operand, None)?)
             }
-            Repeat(ref operand, _) => EvaluatedRvalue::Repeat(self.eval_operand(operand, None)?),
             Ref(_, borrow_kind, place) => {
                 // `x = &*ptr` does not need a validity check on `ptr` because we will already
                 // check `x` when writing to the destination.
@@ -224,22 +245,25 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ))
             }
             Cast(kind, ref operand, ty) => {
-                let op = self.eval_operand(operand, None)?;
+                let op = self.eval_operand_no_snapshot(operand, None)?;
                 let ty = self.instantiate_from_current_frame_and_normalize_erasing_regions(ty)?;
                 EvaluatedRvalue::Cast(op, kind, ty)
             }
             BinaryOp(bin_op, (ref left, ref right)) => {
                 let operand_layout = util::binop_left_homogeneous(bin_op).then_some(layout);
-                let left = self.read_immediate(&self.eval_operand(left, operand_layout)?)?;
+                let left = self.eval_operand(left, operand_layout)?;
+                let left = self.read_immediate(&left)?;
                 let operand_layout = util::binop_right_homogeneous(bin_op).then_some(left.layout);
-                let right = self.read_immediate(&self.eval_operand(right, operand_layout)?)?;
+                let right = self.eval_operand(right, operand_layout)?;
+                let right = self.read_immediate(&right)?;
                 let result = self.binary_op(bin_op, &left, &right)?;
                 assert_eq!(result.layout, layout, "layout mismatch for result of {bin_op:?}");
                 EvaluatedRvalue::Immediate(result)
             }
             UnaryOp(un_op, ref operand) => {
                 let operand_layout = util::unop_homogeneous(un_op).then_some(layout);
-                let val = self.read_immediate(&self.eval_operand(operand, operand_layout)?)?;
+                let val = self.eval_operand(operand, operand_layout)?;
+                let val = self.read_immediate(&val)?;
                 let result = self.unary_op(un_op, &val)?;
                 assert_eq!(result.layout, layout, "layout mismatch for result of {un_op:?}");
                 EvaluatedRvalue::Immediate(result)
@@ -268,7 +292,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Constructing an unsafe binder acts like a transmute
                 // since the operand's layout does not change.
                 EvaluatedRvalue::Copy {
-                    op: self.eval_operand(operand, None)?,
+                    op: self.eval_operand_no_snapshot(operand, None)?,
                     allow_transmute: true,
                 }
             }
@@ -425,7 +449,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(())
     }
 
-    /// Evaluate the arguments of a function call
+    /// Evaluate the arguments of a function call.
+    ///
+    /// This is not used for tail calls: those always use normal operand
+    /// evaluation since they cannot use `FnArg::InPlace`.
     fn eval_fn_call_argument(
         &mut self,
         op: &mir::Operand<'tcx>,
@@ -433,16 +460,33 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
         interp_ok(match op {
             mir::Operand::Copy(_) | mir::Operand::Constant(_) | mir::Operand::RuntimeChecks(_) => {
-                // Make a regular copy.
-                let op = self.eval_operand(op, None)?;
+                // We explicitly don't snapshot operands here because move operands in calls are
+                // fundamentally different from normal move operands. Fully moved locals are later
+                // detached in eval_terminator after all operands have been processed.
+                let op = self.eval_operand_no_snapshot(op, None)?;
                 FnArg::Copy(op)
             }
-            mir::Operand::Move(place) => {
+            mir::Operand::Move(mir_place) => {
                 // We will read from this place, which checks everything there is to check,
                 // so we can skip the extra validity check here.
                 let place =
-                    self.eval_place(*place, /* skip_validity_for_simple_deref */ true)?;
-                if move_definitely_disjoint {
+                    self.eval_place(*mir_place, /* skip_validity_for_simple_deref */ true)?;
+                if M::move_elimination_semantics(self)
+                    && mir_place.projection.is_empty()
+                    && !place.layout.is_zst()
+                {
+                    // Whole-local non-ZST moves use MoveLocal. The local
+                    // becomes LiveUnallocated after arguments and the
+                    // destination are evaluated; any backing allocation is
+                    // freed once argument passing consumes it.
+                    let op = if move_definitely_disjoint {
+                        self.place_to_op(&place)?
+                    } else {
+                        self.force_allocation(&place)?.into()
+                    };
+                    let source = op.as_mplace_or_imm().left();
+                    FnArg::MoveLocal { op, source }
+                } else if move_definitely_disjoint {
                     // We still have to ensure that no *other* pointers are used to access this place,
                     // so *if* it is in memory then we have to treat it as `InPlace`.
                     // Use `place_to_op` to guarantee that we notice it being in memory.
@@ -464,46 +508,54 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn eval_callee_and_args(
         &mut self,
         terminator: &mir::Terminator<'tcx>,
+        is_tail_call: bool,
         func: &mir::Operand<'tcx>,
         args: &[Spanned<mir::Operand<'tcx>>],
         dest: &mir::Place<'tcx>,
     ) -> InterpResult<'tcx, EvaluatedCalleeAndArgs<'tcx, M>> {
         let func = self.eval_operand(func, None)?;
 
-        // Evaluating function call arguments. The tricky part here is dealing with `Move`
-        // arguments: we have to ensure no two such arguments alias. This would be most easily done
-        // by just forcing them all into memory and then doing the usual in-place argument
-        // protection, but then we'd force *a lot* of arguments into memory. So we do some syntactic
-        // pre-processing here where if all `move` arguments are syntactically distinct local
-        // variables (and none is indirect), we can skip the in-memory forcing.
-        // We have to include `dest` in that list so that we can detect aliasing of an in-place
-        // argument with the return place.
-        let move_definitely_disjoint = 'move_definitely_disjoint: {
-            let mut previous_locals = FxHashSet::<mir::Local>::default();
-            for place in args
-                .iter()
-                .filter_map(|a| {
-                    // We only have to care about `Move` arguments.
-                    if let mir::Operand::Move(place) = &a.node { Some(place) } else { None }
-                })
-                .chain(iter::once(dest))
-            {
-                if place.is_indirect_first_projection() {
-                    // An indirect in-place argument could alias with anything else...
-                    break 'move_definitely_disjoint false;
+        let args = if is_tail_call {
+            // The current frame is destroyed by a tail call, so its argument places cannot be
+            // donated to the callee. Evaluate them as ordinary operands instead.
+            args.iter()
+                .map(|arg| self.eval_operand(&arg.node, None).map(FnArg::Copy))
+                .collect::<InterpResult<'tcx, Vec<_>>>()?
+        } else {
+            // Evaluating function call arguments. The tricky part here is dealing with `Move`
+            // arguments: we have to ensure no two such arguments alias. This would be most easily
+            // done by just forcing them all into memory and then doing the usual in-place argument
+            // protection, but then we'd force *a lot* of arguments into memory. So we do some
+            // syntactic pre-processing here where if all `move` arguments are syntactically
+            // distinct local variables (and none is indirect), we can skip the in-memory forcing.
+            // We have to include `dest` in that list so that we can detect aliasing of an in-place
+            // argument with the return place.
+            let move_definitely_disjoint = 'move_definitely_disjoint: {
+                let mut previous_locals = FxHashSet::<mir::Local>::default();
+                for place in args
+                    .iter()
+                    .filter_map(|a| {
+                        // We only have to care about `Move` arguments.
+                        if let mir::Operand::Move(place) = &a.node { Some(place) } else { None }
+                    })
+                    .chain(iter::once(dest))
+                {
+                    if place.is_indirect_first_projection() {
+                        // An indirect in-place argument could alias with anything else...
+                        break 'move_definitely_disjoint false;
+                    }
+                    if !previous_locals.insert(place.local) {
+                        // This local is the base for two arguments! They might overlap.
+                        break 'move_definitely_disjoint false;
+                    }
                 }
-                if !previous_locals.insert(place.local) {
-                    // This local is the base for two arguments! They might overlap.
-                    break 'move_definitely_disjoint false;
-                }
-            }
-            // We found no violation so they are all definitely disjoint.
-            true
+                // We found no violation so they are all definitely disjoint.
+                true
+            };
+            args.iter()
+                .map(|arg| self.eval_fn_call_argument(&arg.node, move_definitely_disjoint))
+                .collect::<InterpResult<'tcx, Vec<_>>>()?
         };
-        let args = args
-            .iter()
-            .map(|arg| self.eval_fn_call_argument(&arg.node, move_definitely_disjoint))
-            .collect::<InterpResult<'tcx, Vec<_>>>()?;
 
         let fn_sig_binder = {
             let _trace = enter_trace_span!(M, "fn_sig", ty = ?func.layout.ty.kind());
@@ -561,7 +613,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Goto { target } => self.go_to_block(target),
 
             SwitchInt { ref discr, ref targets } => {
-                let discr = self.read_immediate(&self.eval_operand(discr, None)?)?;
+                let discr = self.eval_operand(discr, None)?;
+                let discr = self.read_immediate(&discr)?;
                 trace!("SwitchInt({:?})", *discr);
 
                 // Branch to the `otherwise` case by default, if no match is found.
@@ -596,16 +649,73 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
 
-                // Evaluation order consistent with assignment: destination first.
-                let dest_place =
-                    self.eval_place(destination, /* skip_validity_for_simple_deref */ false)?;
-                let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
-                    self.eval_callee_and_args(terminator, func, args, &destination)?;
+                let (mut dest_place, evaluated) = if M::move_elimination_semantics(self) {
+                    // With move-elimination semantics, evaluate the destination last.
+                    let evaluated = self.eval_callee_and_args(
+                        terminator,
+                        /* is_tail_call */ false,
+                        func,
+                        args,
+                        &destination,
+                    )?;
+                    let dest_place = self.eval_place_for_write(
+                        destination,
+                        /* skip_validity_for_simple_deref */ false,
+                    )?;
+                    (dest_place, evaluated)
+                } else {
+                    // Without move-elimination semantics, evaluate the destination first.
+                    let dest_place = self.eval_place_for_write(
+                        destination,
+                        /* skip_validity_for_simple_deref */ false,
+                    )?;
+                    let evaluated = self.eval_callee_and_args(
+                        terminator,
+                        /* is_tail_call */ false,
+                        func,
+                        args,
+                        &destination,
+                    )?;
+                    (dest_place, evaluated)
+                };
+                let EvaluatedCalleeAndArgs {
+                    callee,
+                    args: evaluated_args,
+                    fn_sig,
+                    fn_abi,
+                    with_caller_location,
+                } = evaluated;
+
+                // With move elimination semantics, moved locals must be
+                // `LiveUnallocated` when the caller resumes. Now that argument
+                // and destination evaluation is complete, detach them. Their
+                // backing allocations are freed when the callee frame is setup.
+                if M::move_elimination_semantics(self) {
+                    for arg in args {
+                        // Don't do this for ZST locals.
+                        let mir::Operand::Move(place) = &arg.node else { continue };
+                        let Some(local) = place.as_local() else { continue };
+                        if self.layout_of_local(self.frame(), local, None)?.is_zst() {
+                            continue;
+                        }
+
+                        // If this local overlaps the destination place, force
+                        // the destination place into memory so it doesn't refer
+                        // to the local that is about to be detached.
+                        if let Either::Right((dest_local, ..)) = dest_place.as_mplace_or_local()
+                            && dest_local == local
+                        {
+                            dest_place = self.force_allocation(&dest_place)?.into();
+                        }
+
+                        self.detach_local(local);
+                    }
+                }
 
                 self.init_fn_call(
                     callee,
                     (fn_sig.abi(), fn_abi),
-                    &args,
+                    &evaluated_args,
                     with_caller_location,
                     &dest_place,
                     target,
@@ -630,7 +740,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let old_frame_idx = self.frame_idx();
 
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
-                    self.eval_callee_and_args(terminator, func, args, &mir::Place::return_place())?;
+                    self.eval_callee_and_args(
+                        terminator,
+                        /* is_tail_call */ true,
+                        func,
+                        args,
+                        &mir::Place::return_place(),
+                    )?;
 
                 self.init_fn_tail_call(
                     callee,
@@ -674,7 +790,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Assert { ref cond, expected, ref msg, target, unwind } => {
                 let ignored =
                     M::ignore_optional_overflow_checks(self) && msg.is_optional_overflow_check();
-                let cond_val = self.read_scalar(&self.eval_operand(cond, None)?)?.to_bool()?;
+                let cond = self.eval_operand(cond, None)?;
+                let cond_val = self.read_scalar(&cond)?.to_bool()?;
                 if ignored || expected == cond_val {
                     self.go_to_block(target);
                 } else {

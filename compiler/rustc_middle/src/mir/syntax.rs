@@ -378,6 +378,12 @@ pub enum StatementKind<'tcx> {
     /// If the local is already allocated, calling `StorageLive` again will implicitly free the
     /// local and then allocate fresh uninitialized memory. If a local is already deallocated,
     /// calling `StorageDead` again is a NOP.
+    ///
+    /// With `-Zmir-move-elimination`, `StorageLive` leaves non-zero-sized locals live but
+    /// unallocated. Storage is allocated when a destination place directly based on the local is
+    /// evaluated. See [RFC 3943].
+    ///
+    /// [RFC 3943]: https://github.com/rust-lang/rfcs/pull/3943
     StorageLive(Local),
 
     /// See `StorageLive` above.
@@ -782,7 +788,11 @@ pub enum TerminatorKind<'tcx> {
     /// The evaluation order is currently "first compute destination place, then `func` operand,
     /// then the arguments in left-to-right order".
     ///
+    /// [RFC 3943] semantics (enabled with -Z mir-move-elimination) changes the
+    /// evaluation order to evaluate the destination place last instead.
+    ///
     /// [#71117]: https://github.com/rust-lang/rust/issues/71117
+    /// [RFC 3943]: https://github.com/rust-lang/rfcs/pull/3943
     Call {
         /// The function that’s being called.
         func: Operand<'tcx>,
@@ -1301,7 +1311,11 @@ pub enum Operand<'tcx> {
     /// inherently tied to a function call. Are these the semantics we want for MIR? Is this
     /// something we can even decide without knowing more about Rust's memory model?
     ///
+    /// With `-Zmir-move-elimination`, moving a whole non-zero-sized local leaves it live but
+    /// unallocated. See [RFC 3943].
+    ///
     /// [UCG#188]: https://github.com/rust-lang/unsafe-code-guidelines/issues/188
+    /// [RFC 3943]: https://github.com/rust-lang/rfcs/pull/3943
     Move(Place<'tcx>),
 
     /// Constants are already semantically values, and remain unchanged.

@@ -1,7 +1,7 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
-use std::assert_matches;
+use std::{assert_matches, mem};
 
 use either::{Either, Left, Right};
 use rustc_abi as abi;
@@ -17,7 +17,7 @@ use tracing::trace;
 
 use super::{
     CtfeProvenance, Frame, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta,
-    OffsetMode, PlaceTy, Pointer, Projectable, Provenance, Scalar, alloc_range, err_ub,
+    MemoryKind, OffsetMode, PlaceTy, Pointer, Projectable, Provenance, Scalar, alloc_range, err_ub,
     from_known_layout, interp_ok, mir_assign_valid_types, throw_ub,
 };
 use crate::enter_trace_span;
@@ -824,21 +824,90 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(op)
     }
 
-    /// Evaluate the operand, returning a place where you can then find the data.
-    /// If you already know the layout, you can save two table lookups
-    /// by passing it in here.
+    /// Capture a fixed copy of an operand that is independent of any further
+    /// changes to its backing allocation.
+    pub(super) fn snapshot_operand(
+        &mut self,
+        op: OpTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        // Not needed for ZSTs and immediates.
+        if matches!(*op.op(), Operand::Immediate(_)) || op.layout.is_zst() {
+            return interp_ok(op);
+        }
+
+        // Load into an immediate if possible.
+        if let Right(imm) = self.read_immediate_raw(&op)? {
+            return interp_ok(imm.into());
+        }
+
+        // Otherwise use a temporary allocation that is freed at the end of the
+        // machine step.
+        let temp = self.allocate(op.layout, MemoryKind::Stack)?;
+        self.copy_op_no_validate(&op, &temp, /*allow_transmute*/ false)?;
+        self.operand_temps.push(temp.clone());
+        interp_ok(temp.into())
+    }
+
+    /// Deallocate operand snapshots created in the current MIR step.
+    pub(super) fn clear_operand_temps(&mut self) -> InterpResult<'tcx> {
+        for temp in mem::take(&mut self.operand_temps) {
+            self.deallocate_ptr(temp.ptr(), None, MemoryKind::Stack)?;
+        }
+        interp_ok(())
+    }
+
+    /// Evaluate the operand, returning a place where you can then find the
+    /// data.
+    ///
+    /// If you already know the layout, you can save two table lookups by
+    /// passing it in here.
+    ///
+    /// Under move-elimination semantics, the result is a snapshot that remains
+    /// valid if later operand evaluation frees its source storage.
     #[inline]
     pub fn eval_operand(
-        &self,
+        &mut self,
         mir_op: &mir::Operand<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let _trace =
-            enter_trace_span!(M, step::eval_operand, ?mir_op, tracing_separate_thread = Empty);
+        let op = self.eval_operand_no_snapshot(mir_op, layout)?;
+        // Whole-local moves already detached their values; constants cannot change.
+        let needs_snapshot = match mir_op {
+            mir::Operand::Copy(_) => true,
+            mir::Operand::Move(place) => !place.projection.is_empty(),
+            mir::Operand::Constant(_) | mir::Operand::RuntimeChecks(_) => false,
+        };
+        if M::move_elimination_semantics(self) && needs_snapshot {
+            self.snapshot_operand(op)
+        } else {
+            interp_ok(op)
+        }
+    }
+
+    /// Evaluate an operand without snapshotting.
+    ///
+    /// Whole-local moves still copy out the value and deallocate the local.
+    ///
+    /// The caller must not evaluate any other operand before consuming the
+    /// result, since those may cause this operand's backing local to be freed.
+    #[inline]
+    pub fn eval_operand_no_snapshot(
+        &mut self,
+        mir_op: &mir::Operand<'tcx>,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        let _trace = enter_trace_span!(
+            M,
+            step::eval_operand_no_snapshot,
+            ?mir_op,
+            tracing_separate_thread = Empty
+        );
 
         use rustc_middle::mir::Operand::*;
         let op = match mir_op {
-            // FIXME: do some more logic on `move` to invalidate the old location
+            &Move(place) if M::move_elimination_semantics(self) && place.projection.is_empty() => {
+                self.move_out_local(place.local, layout)?
+            }
             &Copy(place) | &Move(place) => self.eval_place_to_op(place, layout)?,
 
             &RuntimeChecks(checks) => {
