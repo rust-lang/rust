@@ -14,6 +14,8 @@ LL | #![deny(unsafe_code)]
 error: usage of `core::arch::global_asm`
   --> $DIR/lint-global-asm-as-unsafe.rs:13:9
    |
+LL | macro_rules! unsafe_in_macro {
+LL |     () => {
 LL |         global_asm!("");
    |         ^^^^^^^^^^^^^^^
 ...
@@ -21,7 +23,6 @@ LL | unsafe_in_macro!();
    | ------------------ in this macro invocation
    |
    = note: using this macro is unsafe even though it does not need an `unsafe` block
-   = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

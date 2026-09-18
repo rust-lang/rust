@@ -32,10 +32,9 @@ use rustc_middle::ty::{
     SizedTraitKind, SplattedDef, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt,
     Unnormalized, UserArgs, UserSelfTy,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
+use rustc_span::{Span, bug, span_bug};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCauseCode, StructurallyNormalizeExt, TraitEngine,
@@ -108,11 +107,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Resolves type and const variables in `t` if possible. Unlike the infcx
-    /// version (resolve_vars_if_possible), this version will
+    /// version (deeply_resolve_ignoring_regions), this version will
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
     #[instrument(skip(self), level = "debug", ret)]
-    pub(crate) fn resolve_vars_with_obligations<T: TypeFoldable<TyCtxt<'tcx>>>(
+    pub(crate) fn deeply_resolve_ignoring_regions_with_obligations<
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    >(
         &self,
         mut t: T,
     ) -> T {
@@ -123,7 +124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // If `t` is a type variable, see whether we already know what it is.
-        t = self.resolve_vars_if_possible(t);
+        t = self.deeply_resolve_ignoring_regions(t);
         if !t.has_non_region_infer() {
             debug!(?t);
             return t;
@@ -134,7 +135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // indirect dependencies that don't seem worth tracking
         // precisely.
         self.select_obligations_where_possible(|_| {});
-        self.resolve_vars_if_possible(t)
+        self.deeply_resolve_ignoring_regions(t)
     }
 
     pub(crate) fn record_deferred_call_resolution(
@@ -166,7 +167,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     #[inline]
     pub(crate) fn write_ty(&self, id: HirId, ty: Ty<'tcx>) {
-        debug!("write_ty({:?}, {:?}) in fcx {}", id, self.resolve_vars_if_possible(ty), self.tag());
+        debug!(
+            "write_ty({:?}, {:?}) in fcx {}",
+            id,
+            self.deeply_resolve_ignoring_regions(ty),
+            self.tag()
+        );
         let mut typeck = self.typeck_results.borrow_mut();
         let mut node_ty = typeck.node_types_mut();
 
@@ -228,7 +234,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn write_splatted_call(
         &self,
         hir_id: HirId,
-        span: Span,
         fn_id: SplatLoweringInfo<'tcx>,
         callee_generic_args: Option<GenericArgsRef<'tcx>>,
         first_tupled_arg_index: u16,
@@ -1001,6 +1006,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         path_span: Span,
         hir_id: HirId,
+        has_args: bool,
     ) -> (Ty<'tcx>, Res) {
         let tcx = self.tcx;
 
@@ -1039,7 +1045,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Res::Def(DefKind::Ctor(CtorOf::Variant, _), _) => {
                 err_extend = GenericsArgsErrExtend::DefVariant(segments);
             }
-            Res::Def(DefKind::AssocFn | DefKind::AssocConst { .. }, def_id) => {
+            Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
                 let assoc_item = tcx.associated_item(def_id);
                 let container = assoc_item.container;
                 let container_id = assoc_item.container_id(tcx);
@@ -1233,7 +1239,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (ctor_kind, ctor_def_id) = adt_def.non_enum_variant().ctor.unwrap();
                     // Check the visibility of the ctor.
                     let vis = tcx.visibility(ctor_def_id);
-                    if !vis.is_accessible_from(tcx.parent_module(hir_id).to_def_id(), tcx) {
+                    if !vis.is_accessible_from(self.mod_id, tcx) {
                         self.dcx()
                             .emit_err(CtorIsPrivate { span, def: tcx.def_path_str(adt_def.did()) });
                     }
@@ -1248,17 +1254,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "the `Self` constructor can only be used with tuple or unit structs",
                     );
                     if let Some(adt_def) = ty.normalized.ty_adt_def() {
-                        match adt_def.adt_kind() {
-                            AdtKind::Enum => {
-                                err.help("did you mean to use one of the enum's variants?");
-                            }
-                            AdtKind::Struct | AdtKind::Union => {
-                                err.span_suggestion(
-                                    span,
-                                    "use curly brackets",
-                                    "Self { /* fields */ }",
-                                    Applicability::HasPlaceholders,
-                                );
+                        let def_id = self.body_def_id.to_def_id();
+                        if !has_args
+                            && let Some(assoc) = tcx.opt_associated_item(def_id)
+                            && assoc.is_method()
+                        {
+                            let self_ty =
+                                tcx.fn_sig(def_id).instantiate_identity().skip_binder().inputs()[0];
+                            let applicability = if let ty::Adt(..) = self_ty.kind() {
+                                // We're within a method that takes ownership of `Self`, likely a
+                                // builder, so this is most likely a typo.
+                                Applicability::MachineApplicable
+                            } else {
+                                // We still might have meant `self` instead of `Self`.
+                                Applicability::MaybeIncorrect
+                            };
+                            err.span_suggestion_verbose(
+                                span,
+                                format!(
+                                    "you might have meant to refer to the `self` binding of type \
+                                     `{self_ty}`",
+                                ),
+                                "self".to_string(),
+                                applicability,
+                            );
+                        } else {
+                            match adt_def.adt_kind() {
+                                AdtKind::Enum => {
+                                    err.span_help(
+                                        tcx.def_span(adt_def.did()),
+                                        if adt_def.variants().is_empty() {
+                                            "the enum is unconstructable because it has no variants"
+                                        } else {
+                                            "you might have meant to use one of the enum's variants"
+                                        },
+                                    );
+                                }
+                                AdtKind::Struct | AdtKind::Union => {
+                                    err.span_suggestion_verbose(
+                                        span,
+                                        "use curly brackets",
+                                        "Self { /* fields */ }",
+                                        Applicability::HasPlaceholders,
+                                    );
+                                }
                             }
                         }
                     }
@@ -1473,7 +1512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         ct: ty::Const<'tcx>,
     ) -> ty::Const<'tcx> {
-        let ct = self.resolve_vars_with_obligations(ct);
+        let ct = self.deeply_resolve_ignoring_regions_with_obligations(ct);
 
         if self.next_trait_solver()
             && let ty::ConstKind::Alias(..) = ct.kind()
@@ -1508,7 +1547,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// If no resolution is possible, then an error is reported.
     /// Numeric inference variables may be left unresolved.
     pub(crate) fn structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty = self.resolve_vars_with_obligations(ty);
+        let ty = self.deeply_resolve_ignoring_regions_with_obligations(ty);
 
         if !ty.is_ty_var() { ty } else { self.type_must_be_known_at_this_point(sp, ty) }
     }

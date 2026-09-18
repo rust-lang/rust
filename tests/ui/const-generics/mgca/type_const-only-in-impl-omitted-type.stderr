@@ -1,22 +1,32 @@
 error: missing type for `const` item
-  --> $DIR/type_const-only-in-impl-omitted-type.rs:11:20
+  --> $DIR/type_const-only-in-impl-omitted-type.rs:11:15
    |
-LL |     type const NUM: = 84;
-   |                    ^ help: provide a type for the associated constant: `usize`
+LL |     const NUM: = core::direct_const_arg!(84);
+   |               ^ help: provide a type for the associated constant: `usize`
 
-error: use of trait associated const not defined as `type const`
+error: type annotations needed for the literal
+  --> $DIR/type_const-only-in-impl-omitted-type.rs:11:42
+   |
+LL |     const NUM: = core::direct_const_arg!(84);
+   |                                          ^^
+
+error: implementation of a regular const cannot have a `direct_const_arg!` RHS
+  --> $DIR/type_const-only-in-impl-omitted-type.rs:11:5
+   |
+LL |     const NUM: = core::direct_const_arg!(84);
+   |     ^^^^^^^^^^
+   |
+note: trait declaration of const is not marked as `#[rustc_always_gca]`
+  --> $DIR/type_const-only-in-impl-omitted-type.rs:5:5
+   |
+LL |     const NUM: usize;
+   |     ^^^^^^^^^^^^^^^^
+
+error: use of trait associated const not defined as `#[rustc_always_gca]`
   --> $DIR/type_const-only-in-impl-omitted-type.rs:17:43
    |
 LL | fn accept_bad_tr<const N: usize, T: BadTr<NUM = { N }>>(_x: &T) {}
    |                                           ^^^^^^^^^^^
-   |
-   = note: the declaration in the trait must begin with `type const` not just `const` alone
 
-error: type annotations needed for the literal
-  --> $DIR/type_const-only-in-impl-omitted-type.rs:11:23
-   |
-LL |     type const NUM: = 84;
-   |                       ^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

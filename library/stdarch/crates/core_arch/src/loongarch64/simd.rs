@@ -304,6 +304,44 @@ pub(super) const unsafe fn simd_ext_stx<T: Copy>(a: T, b: *mut i8, c: i64) {
     core::ptr::write_unaligned(b, a);
 }
 
+macro_rules! impl_vavg {
+    ($ft:literal, $name:ident, $oty:ty, $ity:ty, $wty:ty) => {
+        #[inline]
+        #[target_feature(enable = $ft)]
+        #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+        pub fn $name(a: $oty, b: $oty) -> $oty {
+            unsafe {
+                let a: $wty = simd_cast(transmute::<_, $ity>(a));
+                let b: $wty = simd_cast(transmute::<_, $ity>(b));
+                let r: $ity = simd_cast(simd_shr(simd_add(a, b), <$wty>::splat(1)));
+                transmute(r)
+            }
+        }
+    };
+}
+
+macro_rules! impl_vavgr {
+    ($ft:literal, $name:ident, $oty:ty, $ity:ty, $wty:ty) => {
+        #[inline]
+        #[target_feature(enable = $ft)]
+        #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+        pub fn $name(a: $oty, b: $oty) -> $oty {
+            unsafe {
+                let a: $wty = simd_cast(transmute::<_, $ity>(a));
+                let b: $wty = simd_cast(transmute::<_, $ity>(b));
+                let r: $ity = simd_cast(simd_shr(
+                    simd_add(simd_add(a, b), <$wty>::splat(1)),
+                    <$wty>::splat(1),
+                ));
+                transmute(r)
+            }
+        }
+    };
+}
+
+pub(super) use impl_vavg;
+pub(super) use impl_vavgr;
+
 macro_rules! impl_vv {
     ($ft:literal, $name:ident, $op:ident, $oty:ty, $ity:ty) => {
         #[inline]

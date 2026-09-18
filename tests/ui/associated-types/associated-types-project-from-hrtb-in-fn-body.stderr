@@ -24,7 +24,13 @@ LL |     let z: I::A = if cond { x } else { y };
    |
    = help: consider adding the following bound: `'a: 'b`
 
-help: `'a` and `'b` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/associated-types-project-from-hrtb-in-fn-body.rs:16:4
+   |
+LL | fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>(
+   |    ^^^
+   |
+   = help: `'a` and `'b` must be the same: replace one with the other
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 

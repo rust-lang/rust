@@ -171,7 +171,6 @@ impl<'db> InferenceContext<'db> {
             &Expr::Assignment { target, value } => {
                 self.store.walk_pats(target, &mut |pat| match self.store[pat] {
                     Pat::Expr(expr) => self.infer_mut_expr(expr, Mutability::Mut),
-                    Pat::ConstBlock(block) => self.infer_mut_expr(block, Mutability::Not),
                     _ => {}
                 });
                 self.infer_mut_expr(value, Mutability::Not);

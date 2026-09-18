@@ -5,18 +5,19 @@ struct S;
 
 // FIXME(mgca): need support for ctors without anon const
 // (we use a const-block to trigger an anon const here)
-type const FREE: S = const { S };
+const FREE: S = core::direct_const_arg!(const { S });
 //~^ ERROR `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
 
 trait Tr {
-    type const N: S;
+    #[rustc_always_gca]
+    const N: S;
     //~^ ERROR `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
 }
 
 impl Tr for S {
     // FIXME(mgca): need support for ctors without anon const
     // (we use a const-block to trigger an anon const here)
-    type const N: S = const { S };
+    const N: S = core::direct_const_arg!(const { S });
     //~^ ERROR `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
 }
 

@@ -44,7 +44,7 @@ note: required because it appears within the type `MyPinType`
   --> $DIR/pin-impl-deref.rs:15:8
    |
 LL | struct MyPinType(core::marker::PhantomPinned);
-   |        ^^^^^^^^^
+   |        ^^^^^^^^^ --------------------------- required by this field
    = note: required for `Pin<&MyPinType>` to implement `DerefMut`
 note: required by a bound in `impl_deref_mut`
   --> $DIR/pin-impl-deref.rs:22:27
@@ -66,7 +66,7 @@ note: required because it appears within the type `MyPinType`
   --> $DIR/pin-impl-deref.rs:15:8
    |
 LL | struct MyPinType(core::marker::PhantomPinned);
-   |        ^^^^^^^^^
+   |        ^^^^^^^^^ --------------------------- required by this field
    = note: required for `Pin<&mut MyPinType>` to implement `DerefMut`
 note: required by a bound in `impl_deref_mut`
   --> $DIR/pin-impl-deref.rs:22:27

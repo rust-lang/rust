@@ -11,33 +11,8 @@
 // Check that rustc and clang output match, see https://godbolt.org/z/1MvxoceeT.
 
 extern crate minicore;
+use minicore::ffi::VaList;
 use minicore::*;
-
-#[lang = "va_arg_safe"]
-pub unsafe trait VaArgSafe {}
-
-unsafe impl VaArgSafe for i16 {}
-unsafe impl VaArgSafe for i32 {}
-unsafe impl VaArgSafe for i64 {}
-unsafe impl VaArgSafe for f32 {}
-unsafe impl VaArgSafe for f64 {}
-unsafe impl<T> VaArgSafe for *const T {}
-
-#[repr(transparent)]
-struct VaListInner {
-    ptr: *const c_void,
-}
-
-#[repr(transparent)]
-#[lang = "va_list"]
-pub struct VaList<'a> {
-    inner: VaListInner,
-    _marker: PhantomData<&'a mut ()>,
-}
-
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_f32(ap: &mut VaList<'_>) -> f32 {
@@ -63,7 +38,7 @@ unsafe extern "C" fn read_f32(ap: &mut VaList<'_>) -> f32 {
     // AVR-NEXT: ldd r24, Z+2
     // AVR-NEXT: ldd r25, Z+3
     // AVR-NEXT: ret
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -114,7 +89,7 @@ unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
     // AVR-NEXT: pop r15
     // AVR-NEXT: pop r14
     // AVR-NEXT: ret
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -132,7 +107,7 @@ unsafe extern "C" fn read_i16(ap: &mut VaList<'_>) -> i16 {
     // AVR-NEXT: ld r24, Z
     // AVR-NEXT: ldd r25, Z+1
     // AVR-NEXT: ret
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -159,7 +134,7 @@ unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
     // AVR-NEXT: ldd r24, Z+2
     // AVR-NEXT: ldd r25, Z+3
     // AVR-NEXT: ret
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -210,11 +185,11 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // AVR-NEXT: pop r15
     // AVR-NEXT: pop r14
     // AVR-NEXT: ret
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_ptr(ap: &mut VaList<'_>) -> *const u8 {
     // AVR: read_ptr = pm(read_i16)
-    va_arg(ap)
+    ap.next_arg()
 }

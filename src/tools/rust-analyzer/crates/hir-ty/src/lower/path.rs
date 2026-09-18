@@ -576,7 +576,6 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         lowering_assoc_type_generics: bool,
         span: Span,
     ) -> GenericArgs<'db> {
-        let interner = self.ctx.interner;
         let prev_current_segment_idx = self.current_segment_idx;
         let prev_current_segment = self.current_or_prev_segment;
 
@@ -586,7 +585,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
             ValueTyDefId::UnionId(it) => it.into(),
             ValueTyDefId::ConstId(it) => it.into(),
             ValueTyDefId::StaticId(_) => {
-                return GenericArgs::empty(interner);
+                return GenericArgs::empty();
             }
             ValueTyDefId::EnumVariantId(var) => {
                 // the generic args for an enum variant may be either specified

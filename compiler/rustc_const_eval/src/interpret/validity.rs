@@ -18,14 +18,13 @@ use rustc_abi::{
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_middle::bug;
 use rustc_middle::mir::interpret::{
     InterpErrorKind, InvalidMetaKind, Misalignment, PointerArithmetic, Provenance, alloc_range,
     interp_ok,
 };
 use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{Symbol, sym};
+use rustc_span::{Symbol, bug, sym};
 use tracing::trace;
 
 use super::machine::AllocMap;

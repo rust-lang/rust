@@ -413,7 +413,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                             break 'b (c, x.1);
                         }
                         if let ResolveValueResult::ValueNs(ValueNs::ConstId(c)) = pr {
-                            break 'b (c, GenericArgs::empty(self.interner()));
+                            break 'b (c, GenericArgs::empty());
                         }
                         not_supported!("path in pattern position that is not const or variant")
                     };
@@ -519,7 +519,6 @@ impl<'db> MirLowerCtx<'_, 'db> {
             }
             Pat::Box { .. } => not_supported!("box pattern"),
             Pat::Deref { .. } => not_supported!("deref pattern"),
-            Pat::ConstBlock(_) => not_supported!("const block pattern"),
         })
     }
 

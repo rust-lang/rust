@@ -162,6 +162,11 @@ impl Command {
         cmd!(sh, "rustup override set miri").run()?;
         // Cleanup.
         cmd!(sh, "cargo clean").run()?;
+        // Call `cargo metadata` on the sources in case that changes the lockfile
+        // (works around <https://github.com/rust-lang/rust-analyzer/issues/23392>).
+        let sysroot = cmd!(sh, "rustc --print sysroot").read()?;
+        let sysroot = sysroot.trim();
+        cmd!(sh, "cargo metadata --format-version 1 --manifest-path {sysroot}/lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml").ignore_stdout().run()?;
         Ok(())
     }
 

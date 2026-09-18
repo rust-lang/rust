@@ -24,7 +24,7 @@ use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_session::config::{
     Cfg, Jobs, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
 };
-use rustc_session::{EarlyDiagCtxt, IncrCompSession, Session, filesearch};
+use rustc_session::{EarlyDiagCtxt, EarlySession, IncrCompSession, Session, filesearch};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
 use rustc_span::{SessionGlobals, Symbol, sym};
@@ -104,7 +104,9 @@ pub(crate) fn check_abi_required_features(sess: &Session) {
 
     // Make this a hard error on ARM since starting with LLVM24, the backend will otherwise
     // emit a (less friendly) hard error.
-    let hard_error = matches!(sess.target.arch, Arch::Arm);
+    // Also make it a hard error on x86, where we use SSE registers for the "Rust" ABI. The
+    // post-mono ABI check only systematically checks "C" calls, so we better reject this here.
+    let hard_error = matches!(sess.target.arch, Arch::Arm | Arch::X86);
 
     for feature in abi_feature_constraints.required {
         if !sess.internal_target_features.contains(&Symbol::intern(feature)) {
@@ -399,7 +401,7 @@ impl CodegenBackend for DummyCodegenBackend {
         "dummy"
     }
 
-    fn target_config(&self, sess: &Session) -> TargetConfig {
+    fn target_config(&self, sess: &EarlySession) -> TargetConfig {
         let abi_required_features = sess.target.abi_required_features();
         let internal_target_features = internal_target_features::<0>(
             sess,

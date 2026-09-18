@@ -3136,22 +3136,6 @@ fn f() -> impl Sized {
 }
 
 #[test]
-fn regression_22836() {
-    check(
-        r#"
-fn main() {
-  match () {
-    const {
-      async | v | ()
-   // ^^^^^^^^^^^^^^ expected (), got impl AsyncFn({unknown})
-    }
-  }
-}
-    "#,
-    );
-}
-
-#[test]
 fn regression_22986() {
     check_no_mismatches(
         r#"

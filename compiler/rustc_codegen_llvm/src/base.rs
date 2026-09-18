@@ -27,12 +27,11 @@ use rustc_session::config::{DebugInfo, Offload};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
-use super::ModuleLlvm;
-use crate::attributes;
 use crate::builder::Builder;
 use crate::builder::gpu_offload::OffloadGlobals;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Value};
+use crate::{ModuleLlvm, attributes};
 
 pub(crate) struct ValueIter<'ll> {
     cur: Option<&'ll Value>,

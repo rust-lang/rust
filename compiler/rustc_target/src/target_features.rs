@@ -680,9 +680,9 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("a", Stable, &["zaamo", "zalrsc"]),
     ("b", Stable, &["zba", "zbb", "zbs"]),
     ("c", Stable, &["zca"]),
-    ("d", Unstable(sym::riscv_target_feature), &["f"]),
-    ("e", Unstable(sym::riscv_target_feature), &[]),
-    ("f", Unstable(sym::riscv_target_feature), &["zicsr"]),
+    ("d", Stable, &["f"]),
+    ("e", Unstable(sym::riscv_target_feature), &[]), // negative feature! needs special care.
+    ("f", Stable, &["zicsr"]),
     (
         "forced-atomics",
         // Not implied by any CPU model or other feature.
@@ -692,7 +692,14 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
         },
         &[],
     ),
-    ("m", Stable, &[]),
+    // According to the RISC-V spec, the M ISA extension (integer multiplication/division) is supported only when the M bit
+    // of the misa register is 1, while Zmmul means integer multiplication is always supported.
+    //
+    // The Rust/LLVM "m" target feature means something slightly different: with "m" enabled, it is assumed that integer
+    // multiplication and division will always be available (M bit will be 1 in misa), so "m" implies "zmmul".
+    //
+    // See discussion in the PR adding Zmmul: https://github.com/rust-lang/rust/pull/162552
+    ("m", Stable, &["zmmul"]),
     ("relax", Unstable(sym::riscv_target_feature), &[]),
     (
         "rva23u64",
@@ -793,6 +800,7 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("zksed", Stable, &[]),
     ("zksh", Stable, &[]),
     ("zkt", Stable, &[]),
+    ("zmmul", Unstable(sym::riscv_target_feature), &[]),
     ("ztso", Stable, &[]),
     ("zvbb", Unstable(sym::riscv_target_feature), &["zvkb"]), // Zvbb ⊃ Zvkb
     ("zvbc", Unstable(sym::riscv_target_feature), &["zve64x"]),

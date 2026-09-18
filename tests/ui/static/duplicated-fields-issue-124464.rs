@@ -3,8 +3,6 @@
 
 enum TestOption<T> {
     TestSome(T),
-    TestSome(T),
-//~^ ERROR the name `TestSome` is defined multiple times
 }
 
 pub struct Request {

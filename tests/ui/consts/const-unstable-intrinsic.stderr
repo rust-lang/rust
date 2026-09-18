@@ -65,7 +65,7 @@ LL | const fn const_main() {
    |
 
 error: intrinsic `copy::copy` cannot be (indirectly) exposed to stable
-  --> $DIR/const-unstable-intrinsic.rs:48:14
+  --> $DIR/const-unstable-intrinsic.rs:47:14
    |
 LL |     unsafe { copy(src, dst, count) }
    |              ^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL |     unsafe { copy(src, dst, count) }
    = help: mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_intrinsic_const_stable_indirect]` (but this requires team approval)
 
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
-  --> $DIR/const-unstable-intrinsic.rs:56:9
+  --> $DIR/const-unstable-intrinsic.rs:55:9
    |
 LL |         super::size_of_val(src);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,6 +84,20 @@ LL +     #[rustc_const_unstable(feature = "...", issue = "...")]
 LL |     const unsafe fn copy<T>(src: *const T, _dst: *mut T, _count: usize) {
    |
 
-error: aborting due to 8 previous errors
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
+  --> $DIR/const-unstable-intrinsic.rs:65:9
+   |
+LL |         super::align_of_val(x)
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: intrinsic `non_const_fallback::size_of_val` cannot be (indirectly) exposed to stable
+  --> $DIR/const-unstable-intrinsic.rs:84:18
+   |
+LL |         unsafe { size_of_val(x) }
+   |                  ^^^^^^^^^^^^^^
+   |
+   = help: mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_intrinsic_const_stable_indirect]` (but this requires team approval)
+
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

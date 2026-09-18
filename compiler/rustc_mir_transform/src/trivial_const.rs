@@ -53,7 +53,7 @@ where
     B: Deref<Target = Body<'tcx>>,
 {
     match tcx.def_kind(def) {
-        DefKind::AssocConst { .. } | DefKind::Const { .. } => (),
+        DefKind::AssocConst | DefKind::Const => (),
         DefKind::AnonConst if tcx.anon_const_kind(def) != AnonConstKind::NonTypeSystemInline => (),
         _ => return None,
     }

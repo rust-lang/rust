@@ -63,6 +63,8 @@ LL |     // SAFETY:
 error: impl has unnecessary safety comment
   --> tests/ui/unnecessary_safety_comment.rs:42:13
    |
+LL |     macro_rules! with_safety_comment {
+...
 LL |             impl T for $t {}
    |             ^^^^^^^^^^^^^^^^
 ...
@@ -74,7 +76,6 @@ help: consider removing the safety comment
    |
 LL |             // Safety: unnecessary
    |                ^^^^^^^
-   = note: this error originates in the macro `with_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expression has unnecessary safety comment
   --> tests/ui/unnecessary_safety_comment.rs:60:5

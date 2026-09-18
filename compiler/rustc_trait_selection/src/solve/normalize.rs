@@ -42,7 +42,7 @@ where
 {
     let infcx = at.infcx;
     let value = value.skip_normalization();
-    let value = infcx.resolve_vars_if_possible(value);
+    let value = infcx.deeply_resolve_ignoring_regions(value);
 
     if !infcx.tcx.renormalize_rigid_aliases() && !value.has_non_rigid_aliases() {
         return Normalized { value, obligations: Default::default() };
@@ -59,7 +59,7 @@ where
             Ok(result) => result,
             Err(err) => return Err(err),
         };
-        let normalized = infcx.resolve_vars_if_possible(infer_term);
+        let normalized = infcx.deeply_resolve_ignoring_regions(infer_term);
         let normalization_was_ambiguous = match result.certainty {
             Certainty::Yes => NormalizationWasAmbiguous::No,
             Certainty::Maybe { .. } => {

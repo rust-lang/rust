@@ -29,7 +29,13 @@ LL |     x = foo::<&'b ()>;
    = note: the function `foo` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-help: `'a` and `'b` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/fn_def_coercion.rs:9:4
+   |
+LL | fn f<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) {
+   |    ^
+   |
+   = help: `'a` and `'b` must be the same: replace one with the other
 
 error: lifetime may not live long enough
   --> $DIR/fn_def_coercion.rs:20:12
@@ -76,9 +82,13 @@ LL |     x = foo::<&'a ()>;
    = note: the function `foo` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-help: `'a` and `'b` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/fn_def_coercion.rs:28:4
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+LL | fn i<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) {
+   |    ^
+   |
+   = help: `'a` and `'b` must be the same: replace one with the other
 
 error: lifetime may not live long enough
   --> $DIR/fn_def_coercion.rs:39:17
@@ -112,9 +122,13 @@ LL |         false => foo::<&'a ()>,
    = note: the function `foo` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-help: `'a` and `'b` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/fn_def_coercion.rs:37:4
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+LL | fn j<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) {
+   |    ^
+   |
+   = help: `'a` and `'b` must be the same: replace one with the other
 
 error: lifetime may not live long enough
   --> $DIR/fn_def_coercion.rs:49:17
@@ -148,10 +162,5 @@ LL |         false => foo::<&'a ()>,
    = note: the function `foo` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-help: the following changes may resolve your lifetime errors
-   |
-   = help: add bound `'a: 'c`
-   = help: add bound `'b: 'a`
-
-error: aborting due to 9 previous errors
+error: aborting due to 12 previous errors
 

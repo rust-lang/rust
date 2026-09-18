@@ -60,21 +60,21 @@ fn complex_mul<F: Float>(mut a: F, mut b: F, mut c: F, mut d: F) -> Complex<F> {
 }
 
 intrinsics! {
-    #[cfg(all(f16_enabled, not(x86_no_sse2)))]
-    pub extern "C" fn __rust_mulhc3(a: f16, b: f16, c: f16, d: f16) -> core::num::Complex<f16> {
+    #[cfg(f16_enabled)]
+    pub extern "Rust" fn __rust_mulhc3(a: f16, b: f16, c: f16, d: f16) -> core::num::Complex<f16> {
         complex_mul(a, b, c, d)
     }
 
-    pub extern "C" fn __rust_mulsc3(a: f32, b: f32, c: f32, d: f32) -> core::num::Complex<f32> {
+    pub extern "C" fn __mulsc3(a: f32, b: f32, c: f32, d: f32) -> core::num::Complex<f32> {
         complex_mul(a, b, c, d)
     }
 
-    pub extern "C" fn __rust_muldc3(a: f64, b: f64, c: f64, d: f64) -> core::num::Complex<f64> {
+    pub extern "C" fn __muldc3(a: f64, b: f64, c: f64, d: f64) -> core::num::Complex<f64> {
         complex_mul(a, b, c, d)
     }
 
     #[cfg(f128_enabled)]
-    pub extern "C" fn __rust_multc3(a: f128, b: f128, c: f128, d: f128) -> core::num::Complex<f128> {
+    pub extern "Rust" fn __rust_multc3(a: f128, b: f128, c: f128, d: f128) -> core::num::Complex<f128> {
         complex_mul(a, b, c, d)
     }
 }

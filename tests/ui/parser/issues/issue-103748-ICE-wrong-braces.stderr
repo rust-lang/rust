@@ -16,5 +16,13 @@ error: unexpected token: `Citron`
 LL | struct Apple((Apple, Option(Banana ? Citron)));
    |                                      ^^^^^^ unexpected token after this
 
-error: aborting due to 2 previous errors
+error: expected a pattern, found an expression
+  --> $DIR/issue-103748-ICE-wrong-braces.rs:3:29
+   |
+LL | struct Apple((Apple, Option(Banana ? Citron)));
+   |                             ^^^^^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+
+error: aborting due to 3 previous errors
 

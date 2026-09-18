@@ -1,7 +1,6 @@
 // Decoding metadata from a single crate's metadata
 
 use std::iter::TrustedLen;
-use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use std::{io, mem};
@@ -25,9 +24,8 @@ use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_index::Idx;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::ty::codec::TyDecoder;
+use rustc_middle::ty::codec::{TyDecoder, forward_all_decoder_methods_to};
 use rustc_middle::ty::{RestrictionKind, Visibility};
-use rustc_middle::{bug, implement_ty_decoder};
 use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
@@ -37,7 +35,7 @@ use rustc_span::def_id::ModId;
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
     BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, Pos, RemapPathScopeComponents, SpanData,
-    SpanDecoder, Symbol, SyntaxContext, kw,
+    SpanDecoder, Symbol, SyntaxContext, bug, kw,
 };
 use tracing::debug;
 
@@ -236,25 +234,11 @@ pub(super) struct MetadataDecodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> LazyDecoder for MetadataDecodeContext<'a, 'tcx> {
     fn set_lazy_state(&mut self, state: LazyState) {
-        self.lazy_state = state;
+        self.blob_decoder.lazy_state = state;
     }
 
     fn get_lazy_state(&self) -> LazyState {
-        self.lazy_state
-    }
-}
-
-impl<'a, 'tcx> DerefMut for MetadataDecodeContext<'a, 'tcx> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.blob_decoder
-    }
-}
-
-impl<'a, 'tcx> Deref for MetadataDecodeContext<'a, 'tcx> {
-    type Target = BlobDecodeContext<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.blob_decoder
+        self.blob_decoder.lazy_state
     }
 }
 
@@ -667,12 +651,6 @@ impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for SpanData {
     }
 }
 
-impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, Span)] {
-    fn decode(d: &mut MetadataDecodeContext<'a, 'tcx>) -> Self {
-        ty::codec::RefDecodable::decode(d)
-    }
-}
-
 impl<D: LazyDecoder, T> Decodable<D> for LazyValue<T> {
     fn decode(decoder: &mut D) -> Self {
         decoder.read_lazy()
@@ -695,13 +673,12 @@ impl<I: Idx, D: LazyDecoder, T> Decodable<D> for LazyTable<I, T> {
     }
 }
 
-mod meta {
-    use super::*;
-    implement_ty_decoder!(MetadataDecodeContext<'a, 'tcx>);
+impl<'a, 'tcx> Decoder for MetadataDecodeContext<'a, 'tcx> {
+    forward_all_decoder_methods_to!(|self| self.blob_decoder.opaque);
 }
-mod blob {
-    use super::*;
-    implement_ty_decoder!(BlobDecodeContext<'a>);
+
+impl<'a> Decoder for BlobDecodeContext<'a> {
+    forward_all_decoder_methods_to!(|self| self.opaque);
 }
 
 impl MetadataBlob {
@@ -1308,6 +1285,18 @@ impl CrateMetadata {
         canonical_symbols
     }
 
+    /// Iterates over the fake_doc_items in the given crate.
+    fn get_fake_doc_items(&self, tcx: TyCtxt<'_>) -> Vec<DefId> {
+        let mut fake_doc_items = Vec::new();
+
+        for def_index in self.root.fake_doc_items.decode((self, tcx)) {
+            let id = self.local_def_id(def_index);
+            fake_doc_items.push(id);
+        }
+
+        fake_doc_items
+    }
+
     fn get_mod_child(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ModChild {
         let ident = self.item_ident(tcx, id);
         let res = Res::Def(self.def_kind(id), self.local_def_id(id));
@@ -1399,9 +1388,7 @@ impl CrateMetadata {
 
     fn get_associated_item(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ty::AssocItem {
         let kind = match self.def_kind(id) {
-            DefKind::AssocConst { is_type_const } => {
-                ty::AssocKind::Const { name: self.item_name(id), is_type_const }
-            }
+            DefKind::AssocConst => ty::AssocKind::Const { name: self.item_name(id) },
             DefKind::AssocFn => ty::AssocKind::Fn {
                 name: self.item_name(id),
                 has_self: self.get_fn_has_self_parameter(tcx, id),

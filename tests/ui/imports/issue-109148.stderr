@@ -1,17 +1,19 @@
 error: macro-expanded `extern crate` items cannot shadow names passed with `--extern`
   --> $DIR/issue-109148.rs:6:9
    |
+LL | macro_rules! m {
+LL |     () => {
 LL |         extern crate core as std;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | m!();
    | ---- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `std` is ambiguous
   --> $DIR/issue-109148.rs:13:5
    |
+LL | macro_rules! m {
+...
 LL | use std::mem;
    |     ^^^ ambiguous name
    |
@@ -26,11 +28,12 @@ LL |         extern crate core as std;
 LL | m!();
    | ---- in this macro invocation
    = help: use `crate::std` to refer to this crate unambiguously
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `std` is ambiguous
   --> $DIR/issue-109148.rs:14:7
    |
+LL | macro_rules! m {
+...
 LL | use ::std::mem as _;
    |       ^^^ ambiguous name
    |
@@ -44,7 +47,6 @@ LL |         extern crate core as std;
 ...
 LL | m!();
    | ---- in this macro invocation
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

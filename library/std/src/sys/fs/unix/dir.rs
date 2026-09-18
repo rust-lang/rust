@@ -47,6 +47,10 @@ impl Dir {
         run_path_with_cstr(path, &|path| Self::open_traversal_c(path))
     }
 
+    pub fn duplicate(&self) -> io::Result<Self> {
+        Ok(Self(self.0.try_clone()?))
+    }
+
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
         run_path_with_cstr(path.as_ref(), &|path| self.open_file_c(path, opts, 0))
             .map(FileDesc::from_inner)

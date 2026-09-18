@@ -4,7 +4,7 @@ use crate::spec::{Arch, CfgAbi, FloatAbi, Target, TargetMetadata, TargetOptions,
 
 pub(crate) fn target() -> Target {
     Target {
-        llvm_target: "armv7-unknown-linux-musleabihf".into(),
+        llvm_target: "arm-unknown-linux-musleabihf".into(),
         metadata: TargetMetadata {
             description: Some("Armv7-A Linux with musl 1.2.5, hardfloat".into()),
             tier: Some(2),
@@ -20,7 +20,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             cfg_abi: CfgAbi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
-            features: "+v7,+vfp3d16,+thumb2,-neon".into(),
+            features: "+v7,+db,+dsp,+aclass,+perfmon,+vfp3d16,+thumb2".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),
             // FIXME(compiler-team#422): musl targets should be dynamically linked by default.

@@ -530,9 +530,6 @@ impl<'db> InferenceContext<'db> {
                 self.infer_slice_pat(pat, before, slice, after, expected, pat_info)
             }
             Pat::Expr(expr) => self.infer_destructuring_assignment_expr(expr, expected),
-            Pat::ConstBlock(expr) => {
-                self.infer_expr(expr, &Expectation::has_type(expected), ExprIsRead::Yes)
-            }
         }
     }
 
@@ -634,9 +631,8 @@ impl<'db> InferenceContext<'db> {
             // All other literals result in non-reference types.
             // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo" {}` unless
             // `deref_patterns` is enabled.
-            &Pat::Lit(expr) | &Pat::ConstBlock(expr) => {
+            &Pat::Lit(expr) => {
                 let lit_ty = self.infer_expr_pat_unadjusted(expr);
-                // Call `resolve_vars_if_possible` here for inline const blocks.
                 let lit_ty = self.infcx().resolve_vars_if_possible(lit_ty);
                 // If `deref_patterns` is enabled, allow `if let "foo" = &&"foo" {}`.
                 if self.features.deref_patterns {

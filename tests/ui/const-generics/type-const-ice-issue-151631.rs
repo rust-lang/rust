@@ -5,10 +5,12 @@
 
 trait SuperTrait {}
 trait Trait: SuperTrait {
-    type const K: u32;
+    #[rustc_always_gca]
+    const K: u32;
 }
-impl Trait for () { //~ ERROR: the trait bound `(): SuperTrait` is not satisfied
-    type const K: u32 = const { 1 };
+impl Trait for () {
+    //~^ ERROR: the trait bound `(): SuperTrait` is not satisfied
+    const K: u32 = core::direct_const_arg!(const { 1 });
 }
 
 fn check(_: impl Trait<K = 0>) {}

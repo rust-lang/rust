@@ -7,7 +7,6 @@ use crate::*;
 pub enum ThreadNameResult {
     Ok,
     NameTooLong,
-    ThreadNotFound,
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -32,7 +31,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             start_routine,
             ExternAbi::C { unwind: false },
             func_arg,
-            this.machine.layouts.mut_raw_ptr,
+            this.machine.layouts.unit_ptr_mut,
         )?;
 
         interp_ok(())
@@ -55,10 +54,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Joining a terminated thread is valid.
         let thread = match this.thread_id_try_from(thread) {
             Ok(id) | Err(ThreadLookupError::Terminated(id)) => id,
-            Err(ThreadLookupError::InvalidId) => {
-                this.write_scalar(this.eval_libc("ESRCH"), return_dest)?;
-                return interp_ok(());
-            }
+            Err(ThreadLookupError::InvalidId) =>
+                throw_ub_format!("pthread_join: invalid pthread_t handle"),
         };
 
         this.join_thread_exclusive(
@@ -75,7 +72,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Detaching a terminated thread is valid.
         let thread = match this.thread_id_try_from(thread) {
             Ok(id) | Err(ThreadLookupError::Terminated(id)) => id,
-            Err(ThreadLookupError::InvalidId) => return interp_ok(this.eval_libc("ESRCH")),
+            Err(ThreadLookupError::InvalidId) =>
+                throw_ub_format!("pthread_detach: invalid pthread_t handle"),
         };
         this.detach_thread(thread, /*allow_terminated_joined*/ false)?;
 
@@ -92,7 +90,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Set the name of the specified thread. If the name including the null terminator
     /// is longer or equals to `name_max_len`, then if `truncate` is set the truncated name
     /// is used as the thread name, otherwise [`ThreadNameResult::NameTooLong`] is returned.
-    /// If the specified thread wasn't found, [`ThreadNameResult::ThreadNotFound`] is returned.
+    /// If the specified thread wasn't found, UB is raised.
     fn pthread_setname_np(
         &mut self,
         thread: Scalar,
@@ -104,7 +102,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let thread = thread.to_int(this.libc_ty_layout("pthread_t").size)?;
         let Ok(thread) = this.thread_id_try_from(thread) else {
-            return interp_ok(ThreadNameResult::ThreadNotFound);
+            // On Linux this has been observed to segfault. FreeBSD documents an error code
+            // for this condition but it is not clear whether they *guarantee* that error.
+            throw_ub_format!("pthread_setname_np: invalid pthread_t handle");
         };
         let name = name.to_pointer(this);
         let mut name = this.read_c_str(name)?.to_owned();
@@ -126,7 +126,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Get the name of the specified thread. If the thread name doesn't fit
     /// the buffer, then if `truncate` is set the truncated name is written out,
     /// otherwise [`ThreadNameResult::NameTooLong`] is returned. If the specified
-    /// thread wasn't found, [`ThreadNameResult::ThreadNotFound`] is returned.
+    /// thread wasn't found, UB is raised.
     fn pthread_getname_np(
         &mut self,
         thread: Scalar,
@@ -138,7 +138,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let thread = thread.to_int(this.libc_ty_layout("pthread_t").size)?;
         let Ok(thread) = this.thread_id_try_from(thread) else {
-            return interp_ok(ThreadNameResult::ThreadNotFound);
+            // On Linux this has been observed to segfault. FreeBSD documents an error code
+            // for this condition but it is not clear whether they *guarantee* that error.
+            throw_ub_format!("pthread_getname_np: invalid pthread_t handle");
         };
         let name_out = name_out.to_pointer(this);
         let len = len.to_target_usize(this)?;

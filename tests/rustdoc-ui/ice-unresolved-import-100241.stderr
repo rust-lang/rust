@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `inner`
-  --> $DIR/ice-unresolved-import-100241.rs:9:13
+  --> $DIR/ice-unresolved-import-100241.rs:8:13
    |
 LL |     pub use inner::S;
    |             ^^^^^ use of unresolved module or unlinked crate `inner`

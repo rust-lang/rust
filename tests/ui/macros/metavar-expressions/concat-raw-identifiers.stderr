@@ -83,13 +83,13 @@ LL |         let ${concat($lhs, $rhs)}: () = ();
 error: expected pattern, found `$`
   --> $DIR/concat-raw-identifiers.rs:28:13
    |
+LL | macro_rules! no_params {
+LL |     () => {
 LL |         let ${concat(r#abc, abc)}: () = ();
    |             ^ expected pattern
 ...
 LL |     no_params!();
    |     ------------ in this macro invocation
-   |
-   = note: this error originates in the macro `no_params` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 14 previous errors
 

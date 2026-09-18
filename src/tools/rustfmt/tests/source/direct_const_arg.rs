@@ -5,7 +5,8 @@
 #![feature(min_generic_const_args)]
 
 trait Trait {
-    type const TYPE_CONST: usize;
+    #[rustc_always_gca]
+    const TYPE_CONST: usize;
 }
 
 struct S<const N: usize>;

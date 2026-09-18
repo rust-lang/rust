@@ -6,11 +6,10 @@ use rustc_codegen_ssa::debuginfo::{tag_base_type, wants_c_like_enum_debuginfo};
 use rustc_codegen_ssa::traits::MiscCodegenMethods;
 use rustc_hir::def::CtorKind;
 use rustc_index::IndexSlice;
-use rustc_middle::bug;
 use rustc_middle::mir::CoroutineLayout;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, CoroutineArgs, CoroutineArgsExt, Ty, VariantDef};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, bug};
 
 use super::type_map::{DINodeCreationResult, UniqueTypeId};
 use super::{SmallVec, size_and_align_of};

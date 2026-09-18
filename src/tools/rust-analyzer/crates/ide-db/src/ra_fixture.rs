@@ -307,7 +307,7 @@ impl<T, const N: usize> IsEmpty for SmallVec<[T; N]> {
     }
 }
 
-#[allow(clippy::disallowed_types)]
+#[expect(clippy::disallowed_types, reason = "generic allows for `FxHashMap`")]
 impl<K, V, S> IsEmpty for std::collections::HashMap<K, V, S> {
     fn is_empty(&self) -> bool {
         self.is_empty()
@@ -376,7 +376,7 @@ impl<T: UpmapFromRaFixture, const N: usize> UpmapFromRaFixture for SmallVec<[T; 
     }
 }
 
-#[allow(clippy::disallowed_types)]
+#[expect(clippy::disallowed_types, reason = "generic allows for `FxHashMap`")]
 impl<K: UpmapFromRaFixture + Hash + Eq, V: UpmapFromRaFixture, S: BuildHasher + Default>
     UpmapFromRaFixture for std::collections::HashMap<K, V, S>
 {
@@ -391,7 +391,7 @@ impl<K: UpmapFromRaFixture + Hash + Eq, V: UpmapFromRaFixture, S: BuildHasher + 
 }
 
 // A map of `FileId`s is treated as associating the ranges in the values with the keys.
-#[allow(clippy::disallowed_types)]
+#[expect(clippy::disallowed_types, reason = "generic allows for `FxHashMap`")]
 impl<V: UpmapFromRaFixture, S: BuildHasher + Default> UpmapFromRaFixture
     for std::collections::HashMap<FileId, V, S>
 {

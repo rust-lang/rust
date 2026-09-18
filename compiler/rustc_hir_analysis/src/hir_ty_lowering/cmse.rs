@@ -1,10 +1,9 @@
 use rustc_abi::ExternAbi;
 use rustc_errors::{DiagCtxtHandle, E0781, struct_span_code_err};
 use rustc_hir::{self as hir, HirId};
-use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutCx, LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 
 use crate::diagnostics;
 

@@ -2,14 +2,15 @@
 #![feature(min_generic_const_args)]
 
 trait GoodTr {
-    type const NUM: usize;
+    #[rustc_always_gca]
+    const NUM: usize;
 }
 
 struct BadS;
 
 impl GoodTr for BadS {
     const NUM: usize = 42;
-    //~^ ERROR implementation of a `type const` must also be marked as `type const`
+    //~^ ERROR implementation of a `#[rustc_always_gca]` must have a `direct_const_arg!` RHS
 }
 
 fn accept_good_tr<const N: usize, T: GoodTr<NUM = { N }>>(_x: &T) {}

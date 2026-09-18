@@ -41,14 +41,13 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, ParamEnv, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypingMode, fold_regions,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::move_paths::{
     InitIndex, InitLocation, LookupResult, MoveData, MovePathIndex,
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, bug, span_bug};
 use rustc_trait_selection::traits::query::type_op::{QueryTypeOp, TypeOp, TypeOpOutput};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -362,7 +361,6 @@ fn borrowck_collect_region_constraints<'tcx>(
         deferred_closure_requirements,
         polonius_context,
     } = type_check::type_check(
-        root_cx,
         &infcx,
         body,
         &promoted,

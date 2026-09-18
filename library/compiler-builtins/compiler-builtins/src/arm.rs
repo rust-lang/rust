@@ -277,4 +277,265 @@ intrinsics! {
         // SAFETY: memclr preconditions apply, less strict alignment.
         unsafe { __aeabi_memset4(dst, n, 0) };
     }
+
+    // =================================
+    // Unaligned memory access functions
+    // see https://github.com/ARM-software/abi-aa/blob/main/rtabi32/rtabi32.rst#533unaligned-memory-access
+
+    // Read a `u32` from a possibly unaligned address.
+    //
+    // # Safety
+    //
+    // `address` must be valid for reading four bytes.
+    #[unsafe(naked)]
+    #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
+    pub unsafe extern "aapcs" fn __aeabi_uread4(address: *const u8) -> u32 {
+        core::cfg_select! {
+            all(thumb1_only, target_endian = "little") => {
+                core::arch::naked_asm!(
+                    "ldrb r1, [r0]",
+                    "ldrb r2, [r0, #1]",
+                    "lsls r2, r2, #8",
+                    "adds r1, r2, r1",
+                    "ldrb r2, [r0, #2]",
+                    "lsls r2, r2, #16",
+                    "ldrb r0, [r0, #3]",
+                    "lsls r0, r0, #24",
+                    "adds r0, r0, r2",
+                    "adds r0, r0, r1",
+                    "bx lr",
+                );
+            }
+            all(thumb1_only, target_endian = "big") => {
+                core::arch::naked_asm!(
+                    "ldrb r1, [r0, #3]",
+                    "ldrb r2, [r0, #2]",
+                    "lsls r2, r2, #8",
+                    "adds r1, r2, r1",
+                    "ldrb r2, [r0, #1]",
+                    "lsls r2, r2, #16",
+                    "ldrb r0, [r0]",
+                    "lsls r0, r0, #24",
+                    "adds r0, r0, r2",
+                    "adds r0, r0, r1",
+                    "bx lr",
+                );
+            }
+            all(not(thumb1_only), target_endian = "little") => {
+                core::arch::naked_asm!(
+                    "ldrb r1, [r0]",
+                    "ldrb r2, [r0, #1]",
+                    "ldrb r3, [r0, #2]",
+                    "ldrb r0, [r0, #3]",
+                    "orr r0, r3, r0, lsl #8",
+                    "orr r1, r1, r2, lsl #8",
+                    "orr r0, r1, r0, lsl #16",
+                    "bx lr",
+                );
+            }
+            all(not(thumb1_only), target_endian = "big") => {
+                core::arch::naked_asm!(
+                    "ldrb r1, [r0]",
+                    "ldrb r2, [r0, #1]",
+                    "ldrb r3, [r0, #2]",
+                    "ldrb r0, [r0, #3]",
+                    "orr r1, r2, r1, lsl #8",
+                    "orr r0, r0, r3, lsl #8",
+                    "orr r0, r0, r1, lsl #16",
+                    "bx lr",
+                );
+            }
+        }
+    }
+
+    // Read a `u64` from a possibly unaligned address.
+    //
+    // # Safety
+    //
+    // `address` must be valid for reading eight bytes.
+    #[unsafe(naked)]
+    #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
+    pub unsafe extern "aapcs" fn __aeabi_uread8(address: *const u8) -> u64 {
+        core::cfg_select! {
+            all(thumb1_only, target_endian = "little") => {
+                core::arch::naked_asm!(
+                    "ldrb r1, [r0]",
+                    "ldrb r2, [r0, #1]",
+                    "lsls r2, r2, #8",
+                    "adds r1, r2, r1",
+                    "ldrb r2, [r0, #2]",
+                    "lsls r2, r2, #16",
+                    "ldrb r3, [r0, #3]",
+                    "lsls r3, r3, #24",
+                    "adds r2, r3, r2",
+                    "adds r2, r2, r1",
+                    "ldrb r1, [r0, #4]",
+                    "ldrb r3, [r0, #5]",
+                    "lsls r3, r3, #8",
+                    "adds r1, r3, r1",
+                    "ldrb r3, [r0, #6]",
+                    "lsls r3, r3, #16",
+                    "ldrb r0, [r0, #7]",
+                    "lsls r0, r0, #24",
+                    "adds r0, r0, r3",
+                    "adds r1, r0, r1",
+                    "movs r0, r2",
+                    "bx lr",
+                );
+            }
+            all(thumb1_only, target_endian = "big") => {
+                core::arch::naked_asm!(
+                    "ldrb r1, [r0, #3]",
+                    "ldrb r2, [r0, #2]",
+                    "lsls r2, r2, #8",
+                    "adds r1, r2, r1",
+                    "ldrb r2, [r0, #1]",
+                    "lsls r2, r2, #16",
+                    "ldrb r3, [r0]",
+                    "lsls r3, r3, #24",
+                    "adds r2, r3, r2",
+                    "adds r2, r2, r1",
+                    "ldrb r1, [r0, #7]",
+                    "ldrb r3, [r0, #6]",
+                    "lsls r3, r3, #8",
+                    "adds r1, r3, r1",
+                    "ldrb r3, [r0, #5]",
+                    "lsls r3, r3, #16",
+                    "ldrb r0, [r0, #4]",
+                    "lsls r0, r0, #24",
+                    "adds r0, r0, r3",
+                    "adds r1, r0, r1",
+                    "movs r0, r2",
+                    "bx lr",
+                );
+            }
+            all(not(thumb1_only), target_endian = "little") => {
+                core::arch::naked_asm!(
+                    "ldrb r12, [r0]",
+                    "ldrb r2, [r0, #1]",
+                    "ldrb r3, [r0, #2]",
+                    "ldrb r1, [r0, #3]",
+                    "orr r1, r3, r1, lsl #8",
+                    "orr r2, r12, r2, lsl #8",
+                    "orr r2, r2, r1, lsl #16",
+                    "ldrb r1, [r0, #5]",
+                    "ldrb r3, [r0, #4]!",
+                    "orr r1, r3, r1, lsl #8",
+                    "ldrb r3, [r0, #2]",
+                    "ldrb r0, [r0, #3]",
+                    "orr r0, r3, r0, lsl #8",
+                    "orr r1, r1, r0, lsl #16",
+                    "mov r0, r2",
+                    "bx lr",
+                );
+            }
+            all(not(thumb1_only), target_endian = "big") => {
+                core::arch::naked_asm!(
+                    "ldrb r12, [r0]",
+                    "ldrb r2, [r0, #1]",
+                    "ldrb r3, [r0, #2]",
+                    "ldrb r1, [r0, #3]",
+                    "orr r2, r2, r12, lsl #8",
+                    "orr r1, r1, r3, lsl #8",
+                    "orr r2, r1, r2, lsl #16",
+                    "mov r1, r0",
+                    "ldrb r0, [r0, #5]",
+                    "ldrb r3, [r1, #4]!",
+                    "orr r0, r0, r3, lsl #8",
+                    "ldrb r3, [r1, #2]",
+                    "ldrb r1, [r1, #3]",
+                    "orr r1, r1, r3, lsl #8",
+                    "orr r1, r1, r0, lsl #16",
+                    "mov r0, r2",
+                    "bx lr",
+                );
+            }
+        }
+    }
+
+    // Write a `u32` to a possibly unaligned address, returning the value written.
+    //
+    // # Safety
+    //
+    // `address` must be valid for writing four bytes.
+    #[unsafe(naked)]
+    #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
+    pub unsafe extern "aapcs" fn __aeabi_uwrite4(value: u32, address: *mut u8) -> u32 {
+        core::cfg_select! {
+            target_endian = "little" => {
+                core::arch::naked_asm!(
+                    "lsrs r2, r0, #24",
+                    "strb r0, [r1]",
+                    "strb r2, [r1, #3]",
+                    "lsrs r2, r0, #16",
+                    "strb r2, [r1, #2]",
+                    "lsrs r2, r0, #8",
+                    "strb r2, [r1, #1]",
+                    "bx lr",
+                );
+            }
+            target_endian = "big" => {
+                core::arch::naked_asm!(
+                    "lsrs r2, r0, #8",
+                    "strb r0, [r1, #3]",
+                    "strb r2, [r1, #2]",
+                    "lsrs r2, r0, #16",
+                    "strb r2, [r1, #1]",
+                    "lsrs r2, r0, #24",
+                    "strb r2, [r1]",
+                    "bx lr",
+                );
+            }
+        }
+    }
+
+    // Write a `u64` to a possibly unaligned address, returning the value written.
+    //
+    // # Safety
+    //
+    // `address` must be valid for writing eight bytes.
+    #[unsafe(naked)]
+    #[cfg(not(any(target_vendor = "apple", target_env = "msvc")))]
+    pub unsafe extern "aapcs" fn __aeabi_uwrite8(value: u64, address: *mut u8) -> u64 {
+        core::cfg_select! {
+            target_endian = "little" => {
+                core::arch::naked_asm!(
+                    "strb r0, [r2, #0]",
+                    "lsrs r3, r0, #8",
+                    "strb r3, [r2, #1]",
+                    "lsrs r3, r0, #16",
+                    "strb r3, [r2, #2]",
+                    "lsrs r3, r0, #24",
+                    "strb r3, [r2, #3]",
+                    "strb r1, [r2, #4]",
+                    "lsrs r3, r1, #8",
+                    "strb r3, [r2, #5]",
+                    "lsrs r3, r1, #16",
+                    "strb r3, [r2, #6]",
+                    "lsrs r3, r1, #24",
+                    "strb r3, [r2, #7]",
+                    "bx lr",
+                );
+            }
+            target_endian = "big" => {
+                core::arch::naked_asm!(
+                    "lsrs r3, r0, #24",
+                    "strb r3, [r2, #0]",
+                    "lsrs r3, r0, #16",
+                    "strb r3, [r2, #1]",
+                    "lsrs r3, r0, #8",
+                    "strb r3, [r2, #2]",
+                    "strb r0, [r2, #3]",
+                    "lsrs r3, r1, #24",
+                    "strb r3, [r2, #4]",
+                    "lsrs r3, r1, #16",
+                    "strb r3, [r2, #5]",
+                    "lsrs r3, r1, #8",
+                    "strb r3, [r2, #6]",
+                    "strb r1, [r2, #7]",
+                    "bx lr",
+                );
+            }
+        }
+    }
 }

@@ -10,6 +10,8 @@ note: required because it appears within the type `Foo`
    |
 LL | pub struct Foo {
    |            ^^^
+LL |     bar: *const Bar,
+   |     --------------- required by this field
 note: required by a bound in `AssertSync`
   --> $DIR/recursive-requirements.rs:3:22
    |
@@ -28,6 +30,8 @@ note: required because it appears within the type `Bar`
    |
 LL | pub struct Bar {
    |            ^^^
+LL |     foo: *const Foo,
+   |     --------------- required by this field
 note: required because it appears within the type `PhantomData<Bar>`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
 note: required because it appears within the type `Foo`
@@ -35,6 +39,9 @@ note: required because it appears within the type `Foo`
    |
 LL | pub struct Foo {
    |            ^^^
+LL |     bar: *const Bar,
+LL |     phantom: PhantomData<Bar>,
+   |     ------------------------- required by this field
 note: required by a bound in `AssertSync`
   --> $DIR/recursive-requirements.rs:3:22
    |

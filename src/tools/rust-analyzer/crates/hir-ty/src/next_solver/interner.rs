@@ -90,8 +90,8 @@ macro_rules! interned_slice {
 
         impl<'db> $name<'db> {
             #[inline]
-            pub fn empty(interner: DbInterner<'db>) -> Self {
-                interner.default_types().empty.$default_types_field
+            pub fn empty() -> Self {
+                $crate::next_solver::default_types().empty.$default_types_field
             }
 
             #[inline]
@@ -168,7 +168,7 @@ macro_rules! interned_slice {
         impl<'db> Default for $name<'db> {
             #[inline]
             fn default() -> Self {
-                $name::empty(DbInterner::conjure())
+                $name::empty()
             }
         }
 
@@ -399,7 +399,7 @@ impl<'db> DbInterner<'db> {
 
     #[inline]
     pub fn default_types(&self) -> &'db crate::next_solver::DefaultAny<'db> {
-        crate::next_solver::default_types(self.db)
+        crate::next_solver::default_types()
     }
 
     #[inline]
@@ -1092,7 +1092,7 @@ impl<'db> Interner for DbInterner<'db> {
             | SolverDefId::InternedCoroutineId(_)
             | SolverDefId::InternedCoroutineClosureId(_)
             | SolverDefId::AnonConstId(_) => {
-                return VariancesOf::empty(self);
+                return VariancesOf::empty();
             }
         };
         self.db.variances_of(generic_def)
@@ -1345,7 +1345,7 @@ impl<'db> Interner for DbInterner<'db> {
         let own_bounds: FxHashSet<_> =
             self.item_self_bounds(def_id).skip_binder().into_iter().collect();
         if all_bounds.len() == own_bounds.len() {
-            EarlyBinder::bind(Clauses::empty(self))
+            EarlyBinder::bind(Clauses::empty())
         } else {
             EarlyBinder::bind(Clauses::new_from_iter(
                 self,
@@ -2172,7 +2172,7 @@ impl<'db> Interner for DbInterner<'db> {
         };
         EarlyBinder::bind(Const::new_unevaluated(
             self,
-            UnevaluatedConst { def: GeneralConstIdWrapper(id), args: GenericArgs::empty(self) },
+            UnevaluatedConst { def: GeneralConstIdWrapper(id), args: GenericArgs::empty() },
         ))
     }
 

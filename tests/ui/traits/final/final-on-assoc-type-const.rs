@@ -5,7 +5,8 @@
 trait Uwu {
     final type Ovo;
     //~^ error: `final` is only allowed on associated functions in traits
-    final type const QwQ: ();
+    #[rustc_always_gca]
+    final const QwQ: ();
     //~^ error: `final` is only allowed on associated functions in traits
 }
 

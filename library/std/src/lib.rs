@@ -241,6 +241,7 @@
 // Lints:
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
+#![warn(unreachable_pub)]
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
@@ -337,7 +338,6 @@
 #![feature(cstr_display)]
 #![feature(cursor_split)]
 #![feature(derive_const)]
-#![feature(drop_guard)]
 #![feature(duration_constants)]
 #![feature(error_generic_member_access)]
 #![feature(error_iter)]
@@ -390,7 +390,6 @@
 #![feature(str_internals)]
 #![feature(sync_unsafe_cell)]
 #![feature(temporary_niche_types)]
-#![feature(trim_prefix_suffix)]
 #![feature(ub_checks)]
 #![feature(uint_carryless_mul)]
 #![feature(unsafe_pinned)]
@@ -641,6 +640,7 @@ pub mod hash;
 pub mod io;
 pub mod net;
 pub mod num;
+#[allow(unreachable_pub)]
 pub mod os;
 pub mod panic;
 #[unstable(feature = "pattern_type_macro", issue = "123646")]
@@ -713,9 +713,9 @@ pub mod arch {
     pub use std_detect::is_aarch64_feature_detected;
     #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
     pub use std_detect::is_arm_feature_detected;
-    #[unstable(feature = "is_loongarch_feature_detected", issue = "117425")]
+    #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")]
     pub use std_detect::is_loongarch_feature_detected;
-    #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
+    #[stable(feature = "riscv_ratified", since = "1.78.0")]
     pub use std_detect::is_riscv_feature_detected;
     #[stable(feature = "stdarch_s390x_feature_detection", since = "1.93.0")]
     pub use std_detect::is_s390x_feature_detected;
@@ -731,6 +731,7 @@ pub mod arch {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub use std_detect::is_x86_feature_detected;
 
+#[allow(unreachable_pub)]
 mod sys;
 
 pub mod alloc;
@@ -751,6 +752,11 @@ pub use core::cfg_select;
     reason = "`concat_bytes` is not stable enough for use and is subject to change"
 )]
 pub use core::concat_bytes;
+#[allow(clippy::useless_attribute)]
+#[expect(
+    ineffective_unstable_reexports,
+    reason = "accepted as stable after accidental stabilization in 1.96, see #154645"
+)]
 #[unstable(feature = "derive_macro_global_path", issue = "154645")]
 pub use core::derive;
 #[stable(feature = "matches_macro", since = "1.42.0")]

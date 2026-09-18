@@ -7,7 +7,7 @@ use rustc_middle::thir::visit::Visitor;
 use rustc_middle::ty::abstract_const::CastKind;
 use rustc_middle::ty::{self, Expr, LitToConstInput, TyCtxt, TypeVisitableExt};
 use rustc_middle::{mir, thir};
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use tracing::instrument;
 
 use crate::diagnostics::{GenericConstantTooComplex, GenericConstantTooComplexSub};
@@ -70,16 +70,21 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::ZstLiteral { user_ty: _ } => ty::Const::zero_sized(tcx, node.ty),
         &ExprKind::NamedConst { def_id, args, user_ty: _ } => {
-            let uneval = ty::AliasConst::new(
-                tcx,
-                ty::AliasConstKind::new_from_def_id(
-                    tcx,
-                    def_id,
-                    ty::AliasConstInherentArgsKind::Impl,
-                ),
-                args,
-            );
-            ty::Const::new_alias(tcx, ty::IsRigid::No, uneval)
+            let kind = match tcx.def_kind(def_id) {
+                DefKind::AssocConst => {
+                    if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(def_id)) {
+                        ty::AliasConstKind::InherentImpl { def_id }
+                    } else {
+                        ty::AliasConstKind::Projection { def_id }
+                    }
+                }
+                DefKind::Const => ty::AliasConstKind::Free { def_id },
+                DefKind::AnonConst => ty::AliasConstKind::Anon { def_id },
+                kind => bug!("unexpected DefKind in THIR ExprKind::NamedConst: {kind:?}"),
+            };
+
+            let alias = ty::AliasConst::new(tcx, kind, args);
+            ty::Const::new_alias(tcx, ty::IsRigid::No, alias)
         }
         ExprKind::ConstParam { param, .. } => ty::Const::new_param(tcx, *param),
 

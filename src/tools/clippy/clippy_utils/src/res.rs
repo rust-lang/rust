@@ -1,4 +1,4 @@
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
@@ -576,7 +576,7 @@ pub trait MaybeDef: Copy {
     #[inline]
     fn assoc_parent<'tcx>(self, tcx: &impl HasTyCtxt<'tcx>) -> Option<DefId> {
         match self.opt_def(tcx) {
-            Some((DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy, id)) => tcx.tcx().opt_parent(id),
+            Some((DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, id)) => tcx.tcx().opt_parent(id),
             _ => None,
         }
     }

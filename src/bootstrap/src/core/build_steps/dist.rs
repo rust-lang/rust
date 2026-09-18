@@ -2890,10 +2890,10 @@ impl CommandLineStep for Offload {
         tarball.set_overlay(OverlayKind::Offload);
         tarball.is_preview(true);
 
-        let omp_offload_libdir = builder.out.join(target).join("offload").join("lib");
+        let omp_offload_libdir = omp_offload.lib_dir();
 
         for path in omp_offload.artifact_paths_with_symlink_targets() {
-            let relative = t!(path.strip_prefix(&omp_offload_libdir));
+            let relative = t!(path.strip_prefix(omp_offload_libdir));
             let destdir = target_libdir.join(relative.parent().unwrap());
 
             tarball.add_file(path, destdir, FileType::NativeLibrary);

@@ -8,6 +8,7 @@
 //! or constant found within. (This underlying query is what is cached.)
 
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
 use crate::traits::query::NoSolution;

@@ -10,7 +10,6 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint_defs::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
-use rustc_middle::bug;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -22,7 +21,7 @@ use rustc_pattern_analysis::rustc::{
 };
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{Ident, Span};
+use rustc_span::{Ident, Span, bug};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::instrument;
 
@@ -156,7 +155,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 self.check_match(scrutinee, arms, MatchSource::Normal, span);
             }
             ExprKind::Let { ref pat, expr } => {
-                self.check_let(pat, Some(expr), ex.span, None);
+                self.check_let(pat, Some(expr), ex.span);
             }
             ExprKind::LogicalOp { op: LogicalOp::And, .. }
                 if !matches!(self.let_source, LetSource::None) =>
@@ -180,9 +179,8 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 self.with_hir_source(hir_id, |this| {
                     let let_source =
                         if else_block.is_some() { LetSource::LetElse } else { LetSource::PlainLet };
-                    let else_span = else_block.map(|bid| this.thir.blocks[bid].span);
                     this.with_let_source(let_source, |this| {
-                        this.check_let(pattern, initializer, span, else_span)
+                        this.check_let(pattern, initializer, span)
                     });
                     visit::walk_stmt(this, stmt);
                 });
@@ -424,13 +422,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn check_let(
-        &mut self,
-        pat: &'p Pat<'tcx>,
-        scrutinee: Option<ExprId>,
-        span: Span,
-        else_span: Option<Span>,
-    ) {
+    fn check_let(&mut self, pat: &'p Pat<'tcx>, scrutinee: Option<ExprId>, span: Span) {
         assert!(self.let_source != LetSource::None);
         let scrut = scrutinee.map(|id| &self.thir[id]);
         if let LetSource::PlainLet = self.let_source {
@@ -1074,7 +1066,7 @@ fn find_fallback_pattern_typo<'tcx>(
                     continue;
                 };
                 if let Some(value_ns) = path.res.value_ns
-                    && let Res::Def(DefKind::Const { .. }, id) = value_ns
+                    && let Res::Def(DefKind::Const, id) = value_ns
                     && infcx.can_eq(
                         param_env,
                         ty,
@@ -1095,7 +1087,7 @@ fn find_fallback_pattern_typo<'tcx>(
                     }
                 }
             }
-            if let DefKind::Const { .. } = cx.tcx.def_kind(item.owner_id)
+            if let DefKind::Const = cx.tcx.def_kind(item.owner_id)
                 && infcx.can_eq(
                     param_env,
                     ty,
@@ -1237,8 +1229,7 @@ fn is_const_pat_that_looks_like_binding<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat<'tcx>
     // The pattern must be a named constant, and the name that appears in
     // the pattern's source text must resemble a plain identifier without any
     // `::` namespace separators or other non-identifier characters.
-    if let Some(def_id) = try { pat.extra.as_deref()?.expanded_const? }
-        && matches!(tcx.def_kind(def_id), DefKind::Const { .. })
+    if let ty::AliasConstKind::Free { def_id } = pat.extra.as_deref()?.expanded_const?
         && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(pat.span)
         && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
     {
@@ -1297,7 +1288,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
         report_adt_defined_here(cx.tcx, scrut_ty, &witnesses, true)
     {
         let mut multi_span = MultiSpan::from_span(adt_def_span);
-        multi_span.push_span_label(adt_def_span, "");
+        multi_span.push_span_context(adt_def_span);
         for Variant { span } in variants {
             multi_span.push_span_label(span, "not covered");
         }

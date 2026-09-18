@@ -1,4 +1,5 @@
 use rustc_macros::StableHash;
+use rustc_span::bug;
 use rustc_span::def_id::{LocalModId, ModId};
 use smallvec::SmallVec;
 use tracing::instrument;

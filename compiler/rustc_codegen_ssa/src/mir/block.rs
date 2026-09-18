@@ -16,9 +16,8 @@ use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindT
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
-use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
-use rustc_span::{Span, Spanned};
+use rustc_span::{Span, Spanned, bug, span_bug};
 use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode};
 use tracing::{debug, info};
 
@@ -98,7 +97,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
         if is_cleanupret {
             // Cross-funclet jump - need a trampoline
-            assert!(base::wants_new_eh_instructions(fx.cx.tcx().sess));
+            assert!(base::wants_new_eh_instructions(&fx.cx.tcx().sess.target));
             debug!("llbb_with_cleanup: creating cleanup trampoline for {:?}", target);
             let name = &format!("{:?}_cleanup_trampoline_{:?}", self.bb, target);
             let trampoline_llbb = Bx::append_block(fx.cx, fx.llfn, name);
@@ -165,12 +164,16 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
     /// Call `fn_ptr` of `fn_abi` with the arguments `llargs`, the optional
     /// return destination `destination` and the unwind action `unwind`.
+    /// The `return_slot` is [`ReturnSlot::Indirect`] for functions returning
+    /// via `PassMode::Indirect`, and points to a buffer where the return value
+    /// shall be stored.
     fn do_call<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         bx: &mut Bx,
         fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
         fn_ptr: Bx::Value,
+        return_slot: ReturnSlot<Bx::Value>,
         llargs: &[Bx::Value],
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
         mut unwind: mir::UnwindAction,
@@ -228,12 +231,12 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             mir::UnwindAction::Continue => None,
             mir::UnwindAction::Unreachable => None,
             mir::UnwindAction::Terminate(reason) => {
-                if fx.mir[self.bb].is_cleanup && base::wants_wasm_eh(fx.cx.tcx().sess) {
+                if fx.mir[self.bb].is_cleanup && base::wants_wasm_eh(&fx.cx.tcx().sess.target) {
                     // For wasm, we need to generate a nested `cleanuppad within %outer_pad`
                     // to catch exceptions during cleanup and call `panic_in_cleanup`.
                     Some(fx.terminate_block(reason, Some(self.bb)))
                 } else if fx.mir[self.bb].is_cleanup
-                    && base::wants_new_eh_instructions(fx.cx.tcx().sess)
+                    && base::wants_new_eh_instructions(&fx.cx.tcx().sess.target)
                 {
                     // MSVC SEH will abort automatically if an exception tries to
                     // propagate out from cleanup.
@@ -244,8 +247,23 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
         };
 
+        debug_assert_eq!(
+            return_slot.is_indirect(),
+            fn_abi.ret.is_indirect(),
+            "a return slot must be provided if and only if the return is `PassMode::Indirect`",
+        );
+
         if kind == CallKind::Tail {
-            bx.tail_call(fn_ty, caller_attrs, fn_abi, fn_ptr, llargs, self.funclet(fx), instance);
+            bx.tail_call(
+                fn_ty,
+                caller_attrs,
+                fn_abi,
+                fn_ptr,
+                return_slot,
+                llargs,
+                self.funclet(fx),
+                instance,
+            );
             return MergingSucc::False;
         }
 
@@ -260,6 +278,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 caller_attrs,
                 Some(fn_abi),
                 fn_ptr,
+                return_slot,
                 llargs,
                 ret_llbb,
                 unwind_block,
@@ -291,6 +310,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 caller_attrs,
                 Some(fn_abi),
                 fn_ptr,
+                return_slot,
                 llargs,
                 self.funclet(fx),
                 instance,
@@ -718,6 +738,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx,
             fn_abi,
             drop_fn,
+            ReturnSlot::Direct,
             args,
             Some((ReturnDest::Nothing, target)),
             unwind,
@@ -822,6 +843,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx,
             fn_abi,
             llfn,
+            ReturnSlot::Direct,
             &args,
             None,
             unwind,
@@ -853,6 +875,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx,
             fn_abi,
             llfn,
+            ReturnSlot::Direct,
             &[],
             None,
             mir::UnwindAction::Unreachable,
@@ -922,6 +945,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx,
             fn_abi,
             llfn,
+            ReturnSlot::Direct,
             &[msg.0, msg.1],
             target.as_ref().map(|bb| (ReturnDest::Nothing, *bb)),
             unwind,
@@ -1202,21 +1226,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // We still need to call `make_return_dest` even if there's no `target`, since
         // `fn_abi.ret` could be `PassMode::Indirect`, even if it is uninhabited,
         // and `make_return_dest` adds the return-place indirect pointer to `llargs`.
-        let destination = match kind {
+        let (destination, return_slot) = match kind {
             CallKind::Normal => {
-                let return_dest = self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs);
-                target.map(|target| (return_dest, target))
+                let (return_dest, return_slot) =
+                    self.make_return_dest(bx, destination, &fn_abi.ret);
+                (target.map(|target| (return_dest, target)), return_slot)
             }
             CallKind::Tail => {
-                if fn_abi.ret.is_indirect() {
-                    match self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs) {
-                        ReturnDest::Nothing => {}
+                let return_slot = if fn_abi.ret.is_indirect() {
+                    match self.make_return_dest(bx, destination, &fn_abi.ret) {
+                        (ReturnDest::Nothing, return_slot) => return_slot,
                         _ => bug!(
                             "tail calls to functions with indirect returns cannot store into a destination"
                         ),
                     }
-                }
-                None
+                } else {
+                    ReturnSlot::Direct
+                };
+                (None, return_slot)
             }
         };
 
@@ -1441,6 +1468,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx,
             fn_abi,
             fn_ptr,
+            return_slot,
             &llargs,
             destination,
             unwind,
@@ -2177,7 +2205,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     // FIXME(eddyb) rename this to `eh_pad_for_uncached`.
     fn landing_pad_for_uncached(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
         let llbb = self.llbb(bb);
-        if base::wants_new_eh_instructions(self.cx.sess()) {
+        if base::wants_new_eh_instructions(&self.cx.sess().target) {
             let cleanup_bb = Bx::append_block(self.cx, self.llfn, &format!("funclet_{bb:?}"));
             let mut cleanup_bx = Bx::build(self.cx, cleanup_bb);
             let funclet = cleanup_bx.cleanup_pad(None, &[]);
@@ -2221,7 +2249,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // what outer catch_pad it is contained in.
         debug_assert!(
             outer_catchpad_bb.is_some()
-                == (base::wants_wasm_eh(self.cx.tcx().sess)
+                == (base::wants_wasm_eh(&self.cx.tcx().sess.target)
                     && reason == UnwindTerminateReason::InCleanup)
         );
 
@@ -2251,7 +2279,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let funclet;
         let llbb;
         let mut bx;
-        if base::wants_new_eh_instructions(self.cx.sess()) {
+        if base::wants_new_eh_instructions(&self.cx.sess().target) {
             // This is a basic block that we're aborting the program for,
             // notably in an `extern` function. These basic blocks are inserted
             // so that we assert that `extern` functions do indeed not panic,
@@ -2317,7 +2345,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // The `null` in first argument here is actually a RTTI type
             // descriptor for the C++ personality function, but `catch (...)`
             // has no type so it's null.
-            let args = if base::wants_msvc_seh(self.cx.sess()) {
+            let args = if base::wants_msvc_seh(&self.cx.sess().target) {
                 // This bitmask is a single `HT_IsStdDotDot` flag, which
                 // represents that this is a C++-style `catch (...)` block that
                 // only captures programmatic exceptions, not all SEH
@@ -2360,7 +2388,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             let fn_ty = bx.fn_decl_backend_type(fn_abi);
 
-            let llret = bx.call(fn_ty, None, Some(fn_abi), fn_ptr, &[], funclet.as_ref(), None);
+            let llret = bx.call(
+                fn_ty,
+                None,
+                Some(fn_abi),
+                fn_ptr,
+                ReturnSlot::Direct,
+                &[],
+                funclet.as_ref(),
+                None,
+            );
             bx.apply_attrs_to_cleanup_callsite(llret);
         }
 
@@ -2396,11 +2433,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         dest: mir::Place<'tcx>,
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
-        llargs: &mut Vec<Bx::Value>,
-    ) -> ReturnDest<'tcx, Bx::Value> {
+    ) -> (ReturnDest<'tcx, Bx::Value>, ReturnSlot<Bx::Value>) {
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {
-            return ReturnDest::Nothing;
+            return (ReturnDest::Nothing, ReturnSlot::Direct);
         }
         let dest = if let Some(index) = dest.as_local() {
             match self.locals[index] {
@@ -2414,10 +2450,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // but the calling convention has an indirect return.
                         let tmp = PlaceRef::alloca(bx, fn_ret.layout);
                         tmp.storage_live(bx);
-                        llargs.push(tmp.val.llval);
-                        ReturnDest::IndirectOperand(tmp, index)
+                        (
+                            ReturnDest::IndirectOperand(tmp, index),
+                            ReturnSlot::Indirect(tmp.val.llval),
+                        )
                     } else {
-                        ReturnDest::DirectOperand(index)
+                        (ReturnDest::DirectOperand(index), ReturnSlot::Direct)
                     };
                 }
                 LocalRef::Operand(_) => {
@@ -2437,10 +2475,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // to create a temporary.
                 span_bug!(self.mir.span, "can't directly store to unaligned value");
             }
-            llargs.push(dest.val.llval);
-            ReturnDest::Nothing
+            (ReturnDest::Nothing, ReturnSlot::Indirect(dest.val.llval))
         } else {
-            ReturnDest::Store(dest)
+            (ReturnDest::Store(dest), ReturnSlot::Direct)
         }
     }
 

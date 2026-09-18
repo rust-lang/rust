@@ -3,7 +3,7 @@
 #![no_core]
 #![crate_type = "lib"]
 #![feature(no_core, unsized_fn_params)]
-#![allow(improper_ctypes_definitions, improper_ctypes)]
+#![expect(improper_ctypes_definitions, improper_ctypes)]
 
 extern crate minicore;
 use minicore::*;

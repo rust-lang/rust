@@ -10,7 +10,6 @@ use rustc_errors::{
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId};
-use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
 use rustc_middle::ty::{
@@ -19,7 +18,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, bug, kw, sym};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::traits::{
     FulfillmentError, dyn_compatibility_violations_for_assoc_item,
@@ -97,7 +96,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Do not suggest the other syntax if we are in trait impl:
             // the desugaring would contain an associated type constraint.
             if !is_impl {
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     span,
                     "use parenthetical notation instead",
                     fn_trait_to_string(self.tcx(), trait_segment, true),
@@ -200,8 +199,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .visible_traits()
             .filter(|trait_def_id| {
                 let viz = tcx.visibility(*trait_def_id);
-                let def_id = self.item_def_id();
-                viz.is_accessible_from(def_id, tcx)
+                viz.is_accessible_from(self.mod_id(), tcx)
             })
             .collect();
 
@@ -481,12 +479,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                             &item_segment,
                                             trait_ref.args,
                                         );
-                                        ty::AliasTerm::new_from_def_id(
-                                            tcx,
-                                            assoc_item.def_id,
-                                            alias_args,
-                                            ty::AliasConstInherentArgsKind::WithSelf,
-                                        )
+                                        let kind = ty::AliasTermKind::ProjectionConst {
+                                            def_id: assoc_item.def_id,
+                                        };
+                                        ty::AliasTerm::new_from_args(tcx, kind, alias_args)
                                     });
 
                                     // FIXME(mgca): code duplication with other places we lower
@@ -571,7 +567,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .map(|impl_def_id| tcx.impl_trait_header(impl_def_id))
                 .filter(|header| {
                     // Consider only accessible traits
-                    tcx.visibility(trait_def_id).is_accessible_from(self.item_def_id(), tcx)
+                    tcx.visibility(trait_def_id).is_accessible_from(self.mod_id(), tcx)
                         && header.polarity != ty::ImplPolarity::Negative
                 })
                 .map(|header| header.trait_ref.instantiate_identity().skip_norm_wip().self_ty())
@@ -2039,7 +2035,7 @@ impl<'a, 'tcx> rustc_errors::Diagnostic<'a, ()> for AmbiguityBetweenVariantAndAs
         could_refer_to(DefKind::Variant, variant_def_id, "");
         could_refer_to(mode.def_kind_for_diagnostics(), item_def_id, " also");
 
-        lint.span_suggestion(
+        lint.span_suggestion_verbose(
             span,
             "use fully-qualified syntax",
             format!("<{} as {}>::{}", self_ty, tcx.item_name(bound_def_id), segment_ident),

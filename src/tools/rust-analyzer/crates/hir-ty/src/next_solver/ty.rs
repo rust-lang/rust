@@ -70,8 +70,10 @@ const _: () = {
 };
 
 impl<'db> Ty<'db> {
+    /// You should avoid using this if you can, since we want `Const` to be defined in `rustc_type_ir` and then this method
+    /// will become more difficult to use.
     #[inline]
-    pub fn new(_interner: DbInterner<'db>, kind: TyKind<'db>) -> Self {
+    pub fn new_without_interner(kind: TyKind<'db>) -> Self {
         let kind = unsafe { std::mem::transmute::<TyKind<'db>, TyKind<'static>>(kind) };
         let flags = FlagComputation::for_kind(&kind);
         let cached = WithCachedTypeInfo {
@@ -80,6 +82,11 @@ impl<'db> Ty<'db> {
             outer_exclusive_binder: flags.outer_exclusive_binder,
         };
         Self { interned: Interned::new_gc(TyInterned(cached)) }
+    }
+
+    #[inline]
+    pub fn new(_interner: DbInterner<'db>, kind: TyKind<'db>) -> Self {
+        Self::new_without_interner(kind)
     }
 
     #[inline]
@@ -784,7 +791,7 @@ impl<'db> Ty<'db> {
                     let impl_bound = TraitRef::new_from_args(
                         interner,
                         future_trait.into(),
-                        GenericArgs::empty(interner),
+                        GenericArgs::empty(),
                     )
                     .upcast(interner);
                     Some(vec![impl_bound])

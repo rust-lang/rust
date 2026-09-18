@@ -608,6 +608,7 @@ fn expand_doc_macro_call<'db>(
         ExpandTo::Expr,
         expander.krate,
         expander.macro_depth + 1,
+        expander.recursion_limit,
         |path| {
             expander.resolver.resolve_path_as_macro_def(expander.db, path, Some(MacroSubNs::Bang))
         },

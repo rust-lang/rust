@@ -11,7 +11,8 @@ use tracing::debug;
 use crate::common::CodegenCx;
 use crate::coverageinfo::llvm_cov;
 use crate::coverageinfo::mapgen::covfun::prepare_covfun_record;
-use crate::{TryFromU32, llvm};
+use crate::llvm;
+use crate::macros::TryFromU32;
 
 mod covfun;
 mod spans;

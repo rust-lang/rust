@@ -1,0 +1,27 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/use-self-at-end-2.rs:14:18
+   |
+LL |         type H = super::Struct::self;
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `self` implemented for `x::Struct`, you could use the fully-qualified path
+   |
+LL -         type H = super::Struct::self;
+LL +         type H = <x::Struct as Example>::self;
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/use-self-at-end-2.rs:15:18
+   |
+LL |         type J = super::Trait::self;
+   |                  ^^^^^^^^^^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |         type J = dyn super::Trait::self;
+   |                  +++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0223, E0782.
+For more information about an error, try `rustc --explain E0223`.

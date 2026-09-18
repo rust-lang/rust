@@ -74,7 +74,7 @@ impl Tool {
 // Prevent rustup from automatically installing toolchains, see https://github.com/rust-lang/rust-analyzer/issues/20719.
 pub const NO_RUSTUP_AUTO_INSTALL_ENV: (&str, &str) = ("RUSTUP_AUTO_INSTALL", "0");
 
-#[allow(clippy::disallowed_types)] /* generic parameter allows for FxHashMap */
+#[expect(clippy::disallowed_types, reason = "generic parameter allows for `FxHashMap`")]
 pub fn command<H>(
     cmd: impl AsRef<OsStr>,
     working_directory: impl AsRef<Path>,

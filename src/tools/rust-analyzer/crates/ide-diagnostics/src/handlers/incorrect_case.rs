@@ -248,6 +248,16 @@ struct SCREAMING_CASE {}
     }
 
     #[test]
+    fn incorrect_raw_struct_name() {
+        check_diagnostics(
+            r#"
+struct r#pub {}
+    // ^^^^^ 💡 warn: Structure `r#pub` should have UpperCamelCase name, e.g. `Pub`
+"#,
+        );
+    }
+
+    #[test]
     fn no_diagnostic_for_camel_cased_acronyms_in_struct_name() {
         check_diagnostics(
             r#"
@@ -336,6 +346,16 @@ enum AABB {}
             r#"
 enum SomeEnum { SOME_VARIANT(u8) }
              // ^^^^^^^^^^^^ 💡 warn: Variant `SOME_VARIANT` should have UpperCamelCase name, e.g. `SomeVariant`
+"#,
+        );
+    }
+
+    #[test]
+    fn incorrect_raw_enum_variant_name() {
+        check_diagnostics(
+            r#"
+enum SomeEnum { r#pub }
+             // ^^^^^ 💡 warn: Variant `r#pub` should have UpperCamelCase name, e.g. `Pub`
 "#,
         );
     }

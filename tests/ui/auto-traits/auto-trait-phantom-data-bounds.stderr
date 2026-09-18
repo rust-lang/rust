@@ -18,6 +18,8 @@ note: required because it appears within the type `Guard<'_, T>`
    |
 LL | struct Guard<'a, T: 'a> {
    |        ^^^^^
+LL |     _marker: PhantomData<&'a T>,
+   |     --------------------------- required by this field
 note: required by a bound in `is_zen`
   --> $DIR/auto-trait-phantom-data-bounds.rs:18:14
    |
@@ -48,11 +50,13 @@ note: required because it appears within the type `Guard<'_, T>`
    |
 LL | struct Guard<'a, T: 'a> {
    |        ^^^^^
+LL |     _marker: PhantomData<&'a T>,
+   |     --------------------------- required by this field
 note: required because it appears within the type `Nested<Guard<'_, T>>`
   --> $DIR/auto-trait-phantom-data-bounds.rs:16:8
    |
 LL | struct Nested<T>(T);
-   |        ^^^^^^
+   |        ^^^^^^    - required by this field
 note: required by a bound in `is_zen`
   --> $DIR/auto-trait-phantom-data-bounds.rs:18:14
    |

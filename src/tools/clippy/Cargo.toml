@@ -26,7 +26,6 @@ clippy_utils = { path = "clippy_utils" }
 declare_clippy_lint = { path = "declare_clippy_lint" }
 rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
 clippy_lints_internal = { path = "clippy_lints_internal", optional = true }
-tempfile = { version = "3.20", optional = true }
 color-print = "0.3.4"
 anstream = "0.6.18"
 
@@ -40,6 +39,7 @@ walkdir = "2.3"
 itertools = "0.15"
 pulldown-cmark = { version = "0.11", default-features = false, features = ["html"] }
 askama = { version = "0.16.1", default-features = false, features = ["alloc", "config", "derive"] }
+tempfile = "3.20"
 
 [dev-dependencies.toml]
 version = "1.1"
@@ -51,8 +51,8 @@ features = ["parse", "preserve_order"]
 rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
 
 [features]
-integration = ["dep:tempfile"]
-internal = ["dep:clippy_lints_internal", "dep:tempfile"]
+integration = []
+internal = ["dep:clippy_lints_internal"]
 
 [package.metadata.rust-analyzer]
 # This package uses #[feature(rustc_private)]

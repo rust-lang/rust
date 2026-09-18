@@ -217,6 +217,8 @@ pub(crate) struct TestProps {
     pub(crate) compare_output_by_lines: bool,
     /// Use CCI (`--read-doc-meta` and `--write-doc-meta`) merge mode.
     pub(crate) use_rustdoc_cci_doc_meta_merge: bool,
+    /// Where the `//@ should-fail` instruction is present.
+    pub(crate) should_fail: bool,
 }
 
 mod directives {
@@ -323,6 +325,7 @@ impl TestProps {
             disable_gdb_pretty_printers: false,
             compare_output_by_lines: false,
             use_rustdoc_cci_doc_meta_merge: false,
+            should_fail: false,
         }
     }
 

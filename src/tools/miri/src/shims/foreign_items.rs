@@ -324,7 +324,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Miri-specific extern functions
             "miri_alloc" => {
                 let [size, align] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(usize, usize) -> *_),
+                    shim_sig!(extern "Rust" fn(usize, usize) -> *()),
                     (link_name, abi, args),
                 )?;
                 let size = this.read_target_usize(size)?;
@@ -343,7 +343,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_dealloc" => {
                 let [ptr, old_size, align] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_, usize, usize) -> ()),
+                    shim_sig!(extern "Rust" fn(*(), usize, usize) -> ()),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
@@ -359,7 +359,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_track_alloc" => {
                 let [ptr] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_) -> ()),
+                    shim_sig!(extern "Rust" fn(*()) -> ()),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
@@ -376,8 +376,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
             "miri_start_unwind" => {
-                let [payload] = this
-                    .check_shim_sig(shim_sig!(extern "Rust" fn(*_) -> !), (link_name, abi, args))?;
+                let [payload] = this.check_shim_sig(
+                    shim_sig!(extern "Rust" fn(*()) -> !),
+                    (link_name, abi, args),
+                )?;
                 this.handle_miri_start_unwind(payload)?;
                 return interp_ok(EmulateItemResult::NeedsUnwind);
             }
@@ -388,7 +390,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_get_alloc_id" => {
                 let [ptr] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_) -> u64),
+                    shim_sig!(extern "Rust" fn(*()) -> u64),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
@@ -418,7 +420,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // This associates a name to a tag. Very useful for debugging, and also makes
                 // tests more strict.
                 let [ptr, nth_parent, name] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_, u8, &[u8]) -> ()),
+                    shim_sig!(extern "Rust" fn(*(), u8, &[u8]) -> ()),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
@@ -434,7 +436,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_static_root" => {
                 let [ptr] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_) -> ()),
+                    shim_sig!(extern "Rust" fn(*()) -> ()),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
@@ -448,7 +450,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "miri_host_to_target_path" => {
                 let [ptr, out, out_size] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_, *_, usize) -> usize),
+                    shim_sig!(extern "Rust" fn(*(), *(), usize) -> usize),
                     (link_name, abi, args),
                 )?;
                 let ptr = this.read_pointer(ptr)?;
@@ -468,7 +470,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "miri_thread_spawn" => {
                 let [start_routine, func_arg] = this.check_shim_sig(
                     // FIXME: The first argument is actually a function pointer.
-                    shim_sig!(extern "Rust" fn(fn(..) -> _, *_) -> usize),
+                    shim_sig!(extern "Rust" fn(fn(..) -> _, *()) -> usize),
                     (link_name, abi, args),
                 )?;
                 let start_routine = this.read_pointer(start_routine)?;
@@ -551,7 +553,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 use rustc_abi::AlignFromBytesError;
 
                 let [ptr, align] = this.check_shim_sig(
-                    shim_sig!(extern "Rust" fn(*_, usize) -> ()),
+                    shim_sig!(extern "Rust" fn(*(), usize) -> ()),
                     (link_name, abi, args),
                 )?;
 

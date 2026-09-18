@@ -4,7 +4,7 @@ error[E0596]: cannot borrow as mutable inside an `&` pattern
 LL |     if let Some(&Some(ref mut x)) = &mut Some(Some(0)) {
    |                 -             ^
    |                 |
-   |                 help: replace this `&` with `&mut`: `&mut`
+   |                 help: replace this `&` with `&mut`
 
 error[E0596]: cannot borrow as mutable inside an `&` pattern
   --> $DIR/ref-mut-inside-shared-ref-pat.rs:22:31
@@ -12,7 +12,7 @@ error[E0596]: cannot borrow as mutable inside an `&` pattern
 LL |     if let &Some(Some(ref mut x)) = &mut Some(Some(0)) {
    |            -                  ^
    |            |
-   |            help: replace this `&` with `&mut`: `&mut`
+   |            help: replace this `&` with `&mut`
 
 error[E0596]: cannot borrow as mutable inside an `&` pattern
   --> $DIR/ref-mut-inside-shared-ref-pat.rs:31:15
@@ -20,7 +20,7 @@ error[E0596]: cannot borrow as mutable inside an `&` pattern
 LL |     let &pat!(x) = &mut 0;
    |         -     ^
    |         |
-   |         help: replace this `&` with `&mut`: `&mut`
+   |         help: replace this `&` with `&mut`
 
 error[E0596]: cannot borrow as mutable inside an `&` pattern
   --> $DIR/ref-mut-inside-shared-ref-pat.rs:36:19
@@ -28,7 +28,7 @@ error[E0596]: cannot borrow as mutable inside an `&` pattern
 LL |     let &(ref mut a, ref mut b) = &mut (true, false);
    |         -         ^
    |         |
-   |         help: replace this `&` with `&mut`: `&mut`
+   |         help: replace this `&` with `&mut`
 
 error[E0596]: cannot borrow as mutable inside an `&` pattern
   --> $DIR/ref-mut-inside-shared-ref-pat.rs:36:30
@@ -36,7 +36,7 @@ error[E0596]: cannot borrow as mutable inside an `&` pattern
 LL |     let &(ref mut a, ref mut b) = &mut (true, false);
    |         -                    ^
    |         |
-   |         help: replace this `&` with `&mut`: `&mut`
+   |         help: replace this `&` with `&mut`
 
 error[E0596]: cannot borrow as mutable inside an `&` pattern
   --> $DIR/ref-mut-inside-shared-ref-pat.rs:43:11
@@ -44,7 +44,7 @@ error[E0596]: cannot borrow as mutable inside an `&` pattern
 LL |     let &[x] = &mut &mut [0];
    |         - ^
    |         |
-   |         help: replace this `&` with `&mut`: `&mut`
+   |         help: replace this `&` with `&mut`
 
 error: aborting due to 6 previous errors
 

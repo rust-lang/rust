@@ -312,7 +312,10 @@ impl DocCommentToken {
         let DocCommentToken { prefix_len, doc_token } = self;
         // offset relative to the comments contents
         let original_start = doc_token.text_range().start();
-        let relative_comment_offset = offset - original_start - prefix_len;
+        // If the cursor points inside the comment like `///` or to the first quote in `#[doc = "..."]`
+        // (i.e. relative_comment_offset is None) then we return w/o definition.
+        let relative_comment_offset =
+            offset.checked_sub(original_start)?.checked_sub(prefix_len)?;
 
         sema.descend_into_macros(doc_token).into_iter().find_map(|t| {
             let (node, descended_prefix_len, is_inner) = match_ast!{

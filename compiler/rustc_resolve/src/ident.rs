@@ -7,11 +7,10 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PerNS};
 use rustc_lint_defs::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_middle::middle::resolve::PartialRes;
-use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Ident, Span, bug, kw, span_bug, sym};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -143,11 +142,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // used to avoid long scope chains, see the comments on `MacroRulesScopeRef`.
                     // As another consequence of this optimization visitors never observe invocation
                     // scopes for macros that were already expanded.
-                    let mut scope = macro_rules_scope.get();
+                    // We need to lock this scope, such that the compression is always final.
+                    let mut write_scope = macro_rules_scope.write();
+                    let mut scope = *write_scope;
                     while let MacroRulesScope::Invocation(invoc_id) = scope {
                         if let Some(next) = self.output_macro_rules_scopes.get(&invoc_id) {
-                            scope = next.get();
-                            macro_rules_scope.set(scope);
+                            scope = *next.borrow();
+                            *write_scope = scope;
                         } else {
                             break;
                         }
@@ -188,7 +189,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
                 Scope::DeriveHelpersCompat => Scope::MacroRules(parent_scope.macro_rules),
-                Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
+                Scope::MacroRules(macro_rules_scope) => match *macro_rules_scope.read() {
                     MacroRulesScope::Def(binding) => {
                         Scope::MacroRules(binding.parent_macro_rules_scope)
                     }
@@ -593,7 +594,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 result
             }
-            Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
+            Scope::MacroRules(macro_rules_scope) => match *macro_rules_scope.read() {
                 MacroRulesScope::Def(macro_rules_def) if ident == macro_rules_def.ident => {
                     Ok(macro_rules_def.decl)
                 }

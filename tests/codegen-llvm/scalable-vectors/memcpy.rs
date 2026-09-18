@@ -5,12 +5,13 @@
 #![crate_type = "lib"]
 #![feature(simd_ffi)]
 #![feature(stdarch_aarch64_sve)]
+#![deny(unfulfilled_lint_expectations)]
 
 // Test that `vscale * size` is generated for `memcpy` of scalable vector types
 
 use std::arch::aarch64::*;
 
-#[allow(improper_ctypes)]
+#[expect(improper_ctypes)]
 unsafe extern "C" {
     fn svcreate2_s16_wrapper(__dst: *mut svint16x2_t, x0: *const svint16_t, x1: *const svint16_t);
     fn svcreate3_s16_wrapper(

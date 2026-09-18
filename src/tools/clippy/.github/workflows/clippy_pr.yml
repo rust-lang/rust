@@ -62,10 +62,62 @@ jobs:
       env:
         OS: ${{ runner.os }}
 
+  doc:
+    # NOTE: If you modify this job, make sure you copy the changes to clippy_mq.yml
+    runs-on: ubuntu-latest
+
+    env:
+      RUSTDOCFLAGS: "-D rustdoc::broken-intra-doc-links"
+
+    steps:
+    # Setup
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        # Unsetting this would make so that any malicious package could get our Github Token
+        persist-credentials: false
+
+    - name: Install toolchain
+      run: |
+        # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
+        rustup show active-toolchain || rustup toolchain install
+
+    # Run
+    - name: Rustdoc top-level
+      run: cargo doc --no-deps
+
+    - name: Rustdoc clippy_config
+      run: cargo doc --no-deps
+      working-directory: clippy_config
+
+    - name: Rustdoc clippy_dev
+      run: cargo doc --no-deps
+      working-directory: clippy_dev
+
+    - name: Rustdoc clippy_lints
+      run: cargo doc --no-deps
+      working-directory: clippy_lints
+
+    - name: Rustdoc clippy_lints_internal
+      run: cargo doc --no-deps
+      working-directory: clippy_lints_internal
+
+    - name: Rustdoc clippy_utils
+      run: cargo doc --no-deps
+      working-directory: clippy_utils
+
+    - name: Rustdoc declare_clippy_lint
+      run: cargo doc --no-deps
+      working-directory: declare_clippy_lint
+
+    - name: Rustdoc lintcheck
+      run: cargo doc --no-deps
+      working-directory: lintcheck
+
   # We need to have the "conclusion" job also on PR CI, to make it possible
   # to add PRs to a merge queue.
   conclusion:
-    needs: [ base ]
+    needs: [ base, doc ]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run

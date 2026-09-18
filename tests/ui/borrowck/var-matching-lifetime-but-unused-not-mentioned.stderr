@@ -4,7 +4,7 @@ error[E0521]: borrowed data escapes outside of function
 LL | fn foo<'a>(
    |        -- lifetime `'a` defined here
 LL |     used_arg: &'a u8,
-   |     -------- `used_arg` is a reference that is only valid in the function body
+   |     -------- `used_arg` is only valid in the function body
 ...
 LL |     consume(c);
    |     ^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0658]: C-variadic function definitions on this target are unstable
-  --> $DIR/feature-gate-c_variadic_experimental_arch.rs:39:39
+  --> $DIR/feature-gate-c_variadic_experimental_arch.rs:28:39
    |
 LL | pub unsafe extern "C" fn test(_: i32, ap: ...) {}
    |                                       ^^^^^^^
@@ -9,7 +9,7 @@ LL | pub unsafe extern "C" fn test(_: i32, ap: ...) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: C-variadic function definitions on this target are unstable
-  --> $DIR/feature-gate-c_variadic_experimental_arch.rs:43:45
+  --> $DIR/feature-gate-c_variadic_experimental_arch.rs:32:45
    |
 LL |     unsafe extern "C" fn trait_test(_: i32, ap: ...) {}
    |                                             ^^^^^^^

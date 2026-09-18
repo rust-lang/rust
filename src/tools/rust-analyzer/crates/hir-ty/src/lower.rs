@@ -252,7 +252,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             db,
             // Can provide no block since we don't use it for trait solving.
             interner,
-            types: crate::next_solver::default_types(db),
+            types: crate::next_solver::default_types(),
             lang_items: interner.lang_items(),
             resolver,
             def,
@@ -635,7 +635,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         // place even if we encounter more opaque types while
                         // lowering the bounds
                         let idx = self.impl_trait_mode.opaque_type_data.alloc(ImplTrait {
-                            predicates: StoredEarlyBinder::bind(Clauses::empty(interner).store()),
+                            predicates: StoredEarlyBinder::bind(Clauses::empty().store()),
                             assoc_ty_bounds_start: 0,
                         });
 
@@ -2372,12 +2372,12 @@ impl<'db> GenericPredicates {
 
 /// A cycle can occur from malformed code.
 fn generic_predicates_cycle_result<'db>(
-    db: &'db dyn HirDatabase,
+    _db: &'db dyn HirDatabase,
     _: salsa::Id,
     _def: GenericDefId,
 ) -> TyLoweringResult<'db, GenericPredicates> {
     TyLoweringResult::empty(GenericPredicates::from_explicit_own_predicates(
-        StoredEarlyBinder::bind(Clauses::empty(DbInterner::new_no_crate(db)).store()),
+        StoredEarlyBinder::bind(Clauses::empty().store()),
     ))
 }
 

@@ -38,9 +38,15 @@ const _: () = {
 };
 
 impl<'db> Region<'db> {
-    pub fn new(_interner: DbInterner<'db>, kind: RegionKind<'db>) -> Self {
+    /// You should avoid using this if you can, since we want `Region` to be defined in `rustc_type_ir` and then this method
+    /// will become more difficult to use.
+    pub fn new_without_interner(kind: RegionKind<'db>) -> Self {
         let kind = unsafe { std::mem::transmute::<RegionKind<'db>, RegionKind<'static>>(kind) };
         Self { interned: Interned::new_gc(RegionInterned(kind)) }
+    }
+
+    pub fn new(_interner: DbInterner<'db>, kind: RegionKind<'db>) -> Self {
+        Self::new_without_interner(kind)
     }
 
     pub fn inner(&self) -> &RegionKind<'db> {

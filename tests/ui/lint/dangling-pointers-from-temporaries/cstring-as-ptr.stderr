@@ -27,6 +27,8 @@ LL | #![deny(temporary_cstring_as_ptr)]
 error: this creates a dangling pointer because temporary `CString` is dropped at end of statement
   --> $DIR/cstring-as-ptr.rs:9:52
    |
+LL | macro_rules! mymacro {
+LL |     () => {
 LL |         let s = CString::new("some text").unwrap().as_ptr();
    |                 ---------------------------------- ^^^^^^ pointer created here
    |                 |
@@ -39,7 +41,6 @@ LL |     mymacro!();
    = note: a dangling pointer is safe, but dereferencing one is undefined behavior
    = note: returning a pointer to a local variable will always result in a dangling pointer
    = note: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
-   = note: this error originates in the macro `mymacro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

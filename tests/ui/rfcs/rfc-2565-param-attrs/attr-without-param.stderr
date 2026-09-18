@@ -10,11 +10,11 @@ error: expected parameter name, found `)`
 LL |     fn f(#[attr]) {}
    |                 ^ expected parameter name
 
-error: expected argument name, found `)`
+error: expected type, found `)`
   --> $DIR/attr-without-param.rs:14:17
    |
 LL |     fn f(#[attr]);
-   |                 ^ expected argument name
+   |                 ^ expected type
 
 error: aborting due to 3 previous errors
 

@@ -5,7 +5,7 @@ use rustc_macros::Subdiagnostic;
 use rustc_span::{Span, Symbol};
 
 use crate::diagnostic::DiagLocation;
-use crate::{Diag, EmissionGuarantee, Subdiagnostic};
+use crate::{Diag, Subdiagnostic};
 
 impl IntoDiagArg for DiagLocation {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
@@ -42,7 +42,7 @@ pub struct SingleLabelManySpans {
     pub label: &'static str,
 }
 impl Subdiagnostic for SingleLabelManySpans {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         diag.span_labels(self.spans, self.label);
     }
 }

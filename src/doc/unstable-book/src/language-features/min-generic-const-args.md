@@ -1,6 +1,6 @@
 # min_generic_const_args
 
-Enables the generic const args MVP (paths to type const items and constructors for ADTs and primitives).
+Enables the generic const args MVP (paths to direct const items and constructors for ADTs and primitives).
 
 The tracking issue for this feature is: [#132980]
 
@@ -38,21 +38,21 @@ See [macroless_generic_const_args] as a feature to disable the requirement of wr
 
 [macroless_generic_const_args]: macroless-generic-const-args.md
 
-## `type const` syntax
+## direct const items
 
-This feature introduces new syntax: `type const`.
-Constants marked as `type const` are allowed to be used in type contexts, e.g.:
+This feature introduces a new item kind: consts with a `direct_const_arg!` right-hand side.
+Constants with a direct right-hand side are allowed to be used in type contexts, e.g.:
 
 ```compile_fail
 #![allow(incomplete_features)]
 #![feature(min_generic_const_args)]
 
-type const X: usize = 1;
+const X: usize = core::direct_const_arg!(1);
 const Y: usize = 1;
 
 struct Foo {
     good_arr: [(); core::direct_const_arg!(X)], // Allowed
-    bad_arr: [(); core::direct_const_arg!(Y)], // Will not compile, `Y` must be `type const`.
+    bad_arr: [(); core::direct_const_arg!(Y)], // Will not compile
 }
 ```
 
@@ -63,15 +63,17 @@ struct Foo {
 #![feature(min_generic_const_args)]
 
 trait Bar {
-    type const VAL: usize;
-    type const VAL2: usize;
+    #[rustc_always_gca]
+    const VAL: usize;
+    #[rustc_always_gca]
+    const VAL2: usize;
 }
 
 struct Baz;
 
 impl Bar for Baz {
-    type const VAL: usize = 2;
-    type const VAL2: usize = const { Self::VAL * 2 };
+    const VAL: usize = core::direct_const_arg!(2);
+    const VAL2: usize = core::direct_const_arg!(const { Self::VAL * 2 });
 }
 
 struct Foo<B: Bar> {
@@ -120,7 +122,7 @@ const fn inc(val: usize) -> usize {
     val + 1
 }
 
-type const INC: usize = const { inc(VAL) };
+const INC: usize = core::direct_const_arg!(const { inc(VAL) });
 
 const ARR: [usize; INC] = [0; INC];
 ```

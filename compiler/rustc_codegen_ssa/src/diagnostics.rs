@@ -9,8 +9,7 @@ use std::process::ExitStatus;
 use rustc_abi::NumScalableVectors;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, IntoDiagArg,
-    Level, msg,
+    Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic, IntoDiagArg, Level, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -203,7 +202,7 @@ pub enum LinkRlibError {
 
 pub(crate) struct ThorinErrorWrapper(pub thorin::Error);
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for ThorinErrorWrapper {
+impl<G> Diagnostic<'_, G> for ThorinErrorWrapper {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let build = |msg| Diag::new(dcx, level, msg);
         match self.0 {
@@ -335,7 +334,7 @@ pub(crate) struct LinkingFailed<'a> {
     pub sysroot_dir: PathBuf,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
+impl<G> Diagnostic<'_, G> for LinkingFailed<'_> {
     fn into_diag(mut self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag =
             Diag::new(dcx, level, msg!("linking with `{$linker_path}` failed: {$exit_status}"));
@@ -464,7 +463,7 @@ pub(crate) struct LinkExeUnexpectedError;
 
 pub(crate) struct LinkExeStatusStackBufferOverrun;
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for LinkExeStatusStackBufferOverrun {
+impl<'a, G> Diagnostic<'a, G> for LinkExeStatusStackBufferOverrun {
     fn into_diag(self, dcx: rustc_errors::DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let mut diag = Diag::new(dcx, level, msg!("0xc0000409 is `STATUS_STACK_BUFFER_OVERRUN`"));
         diag.note(msg!(
@@ -1266,7 +1265,7 @@ pub(crate) struct TargetFeatureDisableOrEnable<'a> {
 #[help("add the missing features in a `target_feature` attribute")]
 pub(crate) struct MissingFeatures;
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
+impl<G> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(
             dcx,

@@ -5,8 +5,8 @@
 #![expect(incomplete_features)]
 
 // Anon consts must be the root of the RHS to be GCA.
-type const FOO<const N: usize>: usize = ID::<const { N + 1 }>;
+const FOO<const N: usize>: usize = core::direct_const_arg!(ID::<const { N + 1 }>);
 //~^ ERROR generic parameters in const blocks are not allowed; use a named `const` item instead
-type const ID<const N: usize>: usize = N;
+const ID<const N: usize>: usize = core::direct_const_arg!(N);
 
 fn main() {}

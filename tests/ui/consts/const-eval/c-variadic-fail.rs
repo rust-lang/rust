@@ -1,5 +1,5 @@
 //@ build-fail
-
+#![feature(c_variadic_va_arg_safe)]
 #![feature(const_c_variadic)]
 #![feature(const_trait_impl)]
 #![feature(const_destruct)]

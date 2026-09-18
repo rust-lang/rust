@@ -3,7 +3,8 @@
 #![feature(min_generic_const_args)]
 
 trait AssocConstTrait {
-    type const ASSOC: usize;
+    #[rustc_always_gca]
+    const ASSOC: usize;
 }
 fn assoc_const_args<T>()
 where

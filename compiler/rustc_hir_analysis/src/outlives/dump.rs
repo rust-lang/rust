@@ -1,7 +1,6 @@
 use rustc_hir::find_attr;
-use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::sym;
+use rustc_span::{bug, sym};
 
 pub(crate) fn inferred_outlives(tcx: TyCtxt<'_>) {
     for id in tcx.hir_free_items() {

@@ -1,3 +1,5 @@
+//@ ignore-msvc: https://github.com/llvm/llvm-project/issues/221696
+
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc

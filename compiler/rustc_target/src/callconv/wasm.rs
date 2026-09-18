@@ -1,24 +1,81 @@
-use rustc_abi::{BackendRepr, Float, HasDataLayout, Integer, Primitive, TyAbiInterface};
+use rustc_abi::{
+    BackendRepr, Float, HasDataLayout, Integer, Primitive, Reg, RegKind, TagEncoding,
+    TyAbiInterface, TyAndLayout, Variants,
+};
 
 use crate::callconv::{ArgAbi, FnAbi};
 
-fn unwrap_trivial_aggregate<'a, Ty, C>(cx: &C, val: &mut ArgAbi<'a, Ty>) -> bool
+fn singleton_scalar<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> Option<Reg>
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if val.layout.is_aggregate() {
-        if let Some(unit) = val.layout.homogeneous_aggregate(cx).ok().and_then(|ha| ha.unit()) {
-            let size = val.layout.size;
-            // This size check also catches over-aligned scalars as `size` will be rounded up to a
-            // multiple of the alignment, and the default alignment of all scalar types on wasm
-            // equals their size.
-            if unit.size == size {
-                val.cast_to(unit);
-                return true;
-            }
-        }
+    // The base case: a single scalar is a singleton scalar.
+    if !(layout.is_aggregate() || layout.peel_transparent_wrappers(cx).is_enum()) {
+        let BackendRepr::Scalar(scalar) = layout.backend_repr else {
+            return None;
+        };
+        return Some(Reg { kind: RegKind::from_primitive(scalar.primitive()), size: layout.size });
     }
+
+    // Enums that are represented as scalars need special care:
+    //
+    // - `#[repr(u8)] enum { A, B }` is a singleton scalar
+    // - `#[repr(u8)] enum { A(()), B }` is not
+    //
+    // To rust their representation is the same, but clang looks at the syntax.
+    // Niches have custom behavior too, so `Option<&i32>` is a singleton scalar.
+    if let Variants::Multiple { tag, tag_encoding: TagEncoding::Direct, variants, .. } =
+        &layout.variants
+    {
+        if variants.iter().all(|x| x.field_offsets.is_empty()) {
+            return Some(Reg { kind: RegKind::from_primitive(tag.primitive()), size: layout.size });
+        }
+        return None;
+    }
+
+    let mut found = None;
+    for i in 0..layout.fields.count() {
+        let field = layout.field(cx, i);
+        if field.is_zst() {
+            continue;
+        }
+        if found.is_some() {
+            // A second member, so not a singleton.
+            return None;
+        }
+        found = Some(singleton_scalar(cx, field)?);
+    }
+
+    // Reject over-aligned types.
+    found.filter(|scalar| scalar.size == layout.size)
+}
+
+/// Return whether the value should be passed as an aggregate (i.e. indirectly).
+///
+/// - Enums with integer layout and variants with only zst members are passed as aggregates
+/// - Aggregate wrappers around a single scalar are passed as scalars
+fn is_aggregate_for_abi<'a, Ty, C>(cx: &C, val: &mut ArgAbi<'a, Ty>) -> bool
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    // An enum that is represented as an integer is not an aggregate to rust, but may still
+    // need to be passed as one if its variants have any (even ZST) fields.
+    if !(val.layout.is_aggregate() || val.layout.peel_transparent_wrappers(cx).is_enum()) {
+        return false;
+    }
+
+    let Some(scalar) = singleton_scalar(cx, val.layout) else {
+        return true;
+    };
+
+    // This is an enum with integer layout, no need to cast.
+    if !val.layout.is_aggregate() {
+        return false;
+    }
+
+    val.cast_to(scalar);
     false
 }
 
@@ -27,19 +84,20 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    ret.extend_integer_width_to(32);
-    if ret.layout.is_aggregate() && !unwrap_trivial_aggregate(cx, ret) {
+    // `long double`, `__int128_t` and `__uint128_t` use an indirect return
+    if let BackendRepr::Scalar(scalar) = ret.layout.backend_repr
+        && matches!(
+            scalar.primitive(),
+            Primitive::Int(Integer::I128, _) | Primitive::Float(Float::F128)
+        )
+    {
         ret.make_indirect();
+        return;
     }
 
-    // `long double`, `__int128_t` and `__uint128_t` use an indirect return
-    if let BackendRepr::Scalar(scalar) = ret.layout.backend_repr {
-        match scalar.primitive() {
-            Primitive::Int(Integer::I128, _) | Primitive::Float(Float::F128) => {
-                ret.make_indirect();
-            }
-            _ => {}
-        }
+    ret.extend_integer_width_to(32);
+    if is_aggregate_for_abi(cx, ret) {
+        ret.make_indirect();
     }
 }
 
@@ -57,7 +115,7 @@ where
         return;
     }
     arg.extend_integer_width_to(32);
-    if arg.layout.is_aggregate() && !unwrap_trivial_aggregate(cx, arg) {
+    if is_aggregate_for_abi(cx, arg) {
         arg.make_indirect();
     }
 }

@@ -27,15 +27,15 @@ pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
     SeedableRng::from_seed(seed)
 }
 
-pub struct TempDir(PathBuf);
+pub(crate) struct TempDir(PathBuf);
 
 impl TempDir {
-    pub fn join(&self, path: &str) -> PathBuf {
+    pub(crate) fn join(&self, path: &str) -> PathBuf {
         let TempDir(ref p) = *self;
         p.join(path)
     }
 
-    pub fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Path {
         let TempDir(ref p) = *self;
         p
     }
@@ -56,7 +56,7 @@ impl Drop for TempDir {
 }
 
 #[track_caller] // for `test_rng`
-pub fn tmpdir() -> TempDir {
+pub(crate) fn tmpdir() -> TempDir {
     let p = env::temp_dir();
     let mut r = test_rng();
     let ret = p.join(&format!("rust-{}", r.next_u32()));

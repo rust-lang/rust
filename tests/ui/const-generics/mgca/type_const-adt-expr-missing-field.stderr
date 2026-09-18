@@ -1,27 +1,27 @@
 error[E0573]: cannot find type `ADD1` in this scope
-  --> $DIR/type_const-adt-expr-missing-field.rs:10:27
+  --> $DIR/type_const-adt-expr-missing-field.rs:10:22
    |
-LL | type const AliasFnUnused: ADD1 = ADD1::<{ Some::<usize> {} }>;
-   |                           ^^^^ not found in this scope
+LL | const AliasFnUnused: ADD1 = core::direct_const_arg!(ADD1::<{ Some::<usize> {} }>);
+   |                      ^^^^ not found in this scope
    |
    = note: a constant named `ADD1` exists in another namespace
 
 error: unconstrained generic constant
   --> $DIR/type_const-adt-expr-missing-field.rs:8:1
    |
-LL | type const ADD1<const N: usize>: usize = const { N + 1 };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const ADD1<const N: usize>: usize = core::direct_const_arg!(const { N + 1 });
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: try adding a `where` bound
    |
-LL | type const ADD1<const N: usize>: usize where [(); const { N + 1 }]: = const { N + 1 };
-   |                                        ++++++++++++++++++++++++++++
+LL | const ADD1<const N: usize>: usize where [(); const { N + 1 }]: = core::direct_const_arg!(const { N + 1 });
+   |                                   ++++++++++++++++++++++++++++
 
 error: struct expression with missing field initialiser for `0`
-  --> $DIR/type_const-adt-expr-missing-field.rs:10:43
+  --> $DIR/type_const-adt-expr-missing-field.rs:10:62
    |
-LL | type const AliasFnUnused: ADD1 = ADD1::<{ Some::<usize> {} }>;
-   |                                           ^^^^^^^^^^^^^^^^
+LL | const AliasFnUnused: ADD1 = core::direct_const_arg!(ADD1::<{ Some::<usize> {} }>);
+   |                                                              ^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

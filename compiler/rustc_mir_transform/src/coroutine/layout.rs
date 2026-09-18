@@ -33,15 +33,14 @@ use rustc_index::{Idx, IndexVec};
 use rustc_infer::traits::TraitErrors;
 use rustc_lint_defs::builtin::MUST_NOT_SUSPEND;
 use rustc_middle::mir::*;
-use rustc_middle::span_bug;
 use rustc_middle::ty::{self, CoroutineArgs, CoroutineArgsExt, Ty, TyCtxt, TypingMode};
 use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
     always_storage_live_locals,
 };
 use rustc_mir_dataflow::{Analysis, Results, ResultsCursor, ResultsVisitor, visit_results};
-use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::{Span, span_bug};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};

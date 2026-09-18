@@ -10,7 +10,8 @@ pub enum ParseMode {
     Raw,
 }
 pub trait Parse {
-    type const PARSE_MODE: ParseMode;
+    #[rustc_always_gca]
+    const PARSE_MODE: ParseMode;
 }
 pub trait RenderRaw {}
 

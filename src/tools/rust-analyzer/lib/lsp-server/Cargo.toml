@@ -8,6 +8,7 @@ edition = "2024"
 
 [dependencies]
 log = "0.4.27"
+rustc-hash.workspace = true
 serde_json = "1.0.140"
 serde = { version = "1.0.219" }
 serde_derive = { version = "1.0.219" }
@@ -19,7 +20,6 @@ lsp-types = { version = "0.11.0", package = "gen-lsp-types", features = [
 ] }
 ctrlc = "3.4.7"
 anyhow.workspace = true
-rustc-hash.workspace = true
 toolchain.workspace = true
 
 [lints]

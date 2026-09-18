@@ -3,7 +3,7 @@ use std::collections::hash_map::Entry;
 use std::sync::Arc;
 use std::{mem, slice};
 
-use ast::token::IdentIsRaw;
+use ast::token::IdentKind;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::TokenKind::*;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
@@ -244,7 +244,7 @@ impl MacroRulesMacroExpander {
             trace_macros_note(&mut cx.expansions, sp, msg);
         }
 
-        match try_match_macro_derive(psess, name, body, rules, &mut NoopTracker) {
+        match try_match_macro_derive(psess, body, rules, &mut NoopTracker) {
             Ok((rule_index, rule, named_matches)) => {
                 let MacroRule::Derive { rhs, .. } = rule else {
                     panic!("try_match_macro_derive returned non-derive rule");
@@ -447,7 +447,7 @@ fn expand_macro<'cx, 'a: 'cx>(
     }
 
     // Track nothing for the best performance.
-    let try_success_result = try_match_macro(psess, name, &arg, rules, &mut NoopTracker);
+    let try_success_result = try_match_macro(psess, &arg, rules, &mut NoopTracker);
 
     match try_success_result {
         Ok((rule_index, rule, named_matches)) => {
@@ -538,7 +538,7 @@ fn expand_macro_attr(
     }
 
     // Track nothing for the best performance.
-    match try_match_macro_attr(psess, name, &args, &body, rules, &mut NoopTracker) {
+    match try_match_macro_attr(psess, &args, &body, rules, &mut NoopTracker) {
         Ok((i, rule, named_matches)) => {
             let MacroRule::Attr { rhs, unsafe_rule, .. } = rule else {
                 panic!("try_macro_match_attr returned non-attr rule");
@@ -606,7 +606,6 @@ pub(super) enum CanRetry {
 #[instrument(level = "debug", skip(psess, arg, rules, track), fields(tracking = %T::description()))]
 pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     psess: &ParseSess,
-    name: Ident,
     arg: &TokenStream,
     rules: &'matcher [MacroRule],
     track: &mut T,
@@ -686,7 +685,6 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 #[instrument(level = "debug", skip(psess, attr_args, attr_body, rules, track), fields(tracking = %T::description()))]
 pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
     psess: &ParseSess,
-    name: Ident,
     attr_args: &TokenStream,
     attr_body: &TokenStream,
     rules: &'matcher [MacroRule],
@@ -743,7 +741,6 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
 #[instrument(level = "debug", skip(psess, body, rules, track), fields(tracking = %T::description()))]
 pub(super) fn try_match_macro_derive<'matcher, T: Tracker<'matcher>>(
     psess: &ParseSess,
-    name: Ident,
     body: &TokenStream,
     rules: &'matcher [MacroRule],
     track: &mut T,
@@ -1753,7 +1750,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq | Or => IsInFollow::Yes,
-                        Ident(name, IdentIsRaw::No) if name == kw::If || name == kw::In => {
+                        Ident(name, IdentKind::Normal) if name == kw::If || name == kw::In => {
                             IsInFollow::Yes
                         }
                         _ => IsInFollow::No(TOKENS),
@@ -1767,7 +1764,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq => IsInFollow::Yes,
-                        Ident(name, IdentIsRaw::No) if name == kw::If || name == kw::In => {
+                        Ident(name, IdentKind::Normal) if name == kw::If || name == kw::In => {
                             IsInFollow::Yes
                         }
                         _ => IsInFollow::No(TOKENS),
@@ -1795,7 +1792,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     TokenTree::Token(token) => match token.kind {
                         OpenBrace | OpenBracket | Comma | FatArrow | Colon | Eq | Gt | Shr
                         | Semi | Or => IsInFollow::Yes,
-                        Ident(name, IdentIsRaw::No) if name == kw::As || name == kw::Where => {
+                        Ident(name, IdentKind::Normal) if name == kw::As || name == kw::Where => {
                             IsInFollow::Yes
                         }
                         _ => IsInFollow::No(TOKENS),
@@ -1823,7 +1820,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         Comma => IsInFollow::Yes,
-                        Ident(_, IdentIsRaw::Yes) => IsInFollow::Yes,
+                        Ident(_, IdentKind::Raw) => IsInFollow::Yes,
                         Ident(name, _) if name != kw::Priv => IsInFollow::Yes,
                         _ => {
                             if token.can_begin_type() {

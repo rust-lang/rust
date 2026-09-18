@@ -1442,6 +1442,7 @@ pub fn macro_call_as_call_id(
     expand_to: ExpandTo,
     krate: Crate,
     macro_depth: u32,
+    recursion_limit: u32,
     resolver: impl Fn(&ModPath) -> Option<MacroDefId> + Copy,
     eager_callback: &mut dyn FnMut(
         InFile<(syntax::AstPtr<ast::MacroCall>, span::FileAstId<ast::MacroCall>)>,
@@ -1459,6 +1460,7 @@ pub fn macro_call_as_call_id(
             def,
             call_site,
             macro_depth,
+            recursion_limit,
             &|path| resolver(path).filter(MacroDefId::is_fn_like),
             eager_callback,
         ),

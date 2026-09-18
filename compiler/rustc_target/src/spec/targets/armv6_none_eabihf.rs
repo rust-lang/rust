@@ -18,7 +18,7 @@ pub(crate) fn target() -> Target {
             cfg_abi: CfgAbi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             asm_args: cvs!["-mthumb-interwork", "-march=armv6", "-mlittle-endian",],
-            features: "+strict-align,+v6k,+vfp2,-d32".into(),
+            features: "+strict-align,+v6k,+vfp2".into(),
             atomic_cas: true,
             has_thumb_interworking: true,
             // LDREXD/STREXD available as of ARMv6K

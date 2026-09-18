@@ -1,7 +1,9 @@
 use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::consts::Constant::{F32, F64};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::Msrv;
 use clippy_utils::sugg::Sugg;
+use clippy_utils::{is_in_const_context, msrvs};
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
@@ -12,7 +14,11 @@ use std::f64::consts as f64_consts;
 
 use super::SUBOPTIMAL_FLOPS;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
+    if is_in_const_context(cx) && !msrv.meets(cx, msrvs::RADIANS_CONST) {
+        return;
+    }
+
     if let ExprKind::Binary(
         Spanned {
             node: BinOpKind::Div, ..

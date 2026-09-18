@@ -424,12 +424,10 @@ def StdStringSummaryProvider(valobj: SBValue, dict: LLDBOpaque):
         .GetNonSyntheticValue()
     )
 
-    pointer = (
+    pointer = unwrap_unique_or_non_null(
         inner_vec.GetChildMemberWithName("buf")
         .GetChildMemberWithName("inner")
         .GetChildMemberWithName("ptr")
-        .GetChildMemberWithName("pointer")
-        .GetChildMemberWithName("pointer")
     )
 
     length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
@@ -462,12 +460,10 @@ def StdOsStringSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     if is_windows:
         inner_vec = inner_vec.GetChildAtIndex(0)
 
-    pointer = (
+    pointer = unwrap_unique_or_non_null(
         inner_vec.GetChildMemberWithName("buf")
         .GetChildMemberWithName("inner")
         .GetChildMemberWithName("ptr")
-        .GetChildMemberWithName("pointer")
-        .GetChildMemberWithName("pointer")
     )
 
     length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
@@ -540,6 +536,12 @@ def f16SummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
         .Cast(valobj.GetTarget().GetBasicType(eBasicTypeHalf))
         .GetValue()
     )
+
+
+def f128SummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
+    from lldb import eBasicTypeFloat128
+
+    return valobj.Cast(valobj.GetTarget().GetBasicType(eBasicTypeFloat128)).GetValue()
 
 
 def sequence_formatter(output: str, valobj: SBValue, _dict: LLDBOpaque):
@@ -621,12 +623,10 @@ class StdStringSyntheticProvider:
 
     def update(self):
         inner_vec = self.valobj.GetChildMemberWithName("vec").GetNonSyntheticValue()
-        self.data_ptr = (
+        self.data_ptr = unwrap_unique_or_non_null(
             inner_vec.GetChildMemberWithName("buf")
             .GetChildMemberWithName("inner")
             .GetChildMemberWithName("ptr")
-            .GetChildMemberWithName("pointer")
-            .GetChildMemberWithName("pointer")
         )
 
         self.capacity = (
@@ -1132,6 +1132,10 @@ class StdVecSyntheticProvider:
     rust 1.62.0: struct Unique<T: ?Sized> { pointer: NonNull<T>, ... }
     struct NonZero<T>(T)
     struct NonNull<T> { pointer: *const T }
+
+    FIXME: This version history has been incomplete for a long time.
+    Maybe either update it to reflect all the version changes,
+    including addition of RawVecInner and allocators, or just delete it entirely.
     """
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):

@@ -2,10 +2,9 @@
 
 use rustc_abi::{Align, WrappingRange};
 use rustc_hir::attrs::lang_items::LangItem;
-use rustc_middle::bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, bug};
 use tracing::{debug, trace};
 
 use crate::common::IntPredicate;
@@ -78,6 +77,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 /* fn_attrs */ None,
                 Some(fn_abi),
                 llfn,
+                ReturnSlot::Direct, // we know the ABI here
                 &[msg.0, msg.1],
                 None,
                 None,

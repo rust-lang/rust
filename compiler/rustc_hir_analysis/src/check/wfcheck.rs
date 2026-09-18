@@ -28,9 +28,8 @@ use rustc_middle::ty::{
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
     Upcast,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
-use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_span::{DUMMY_SP, Span, bug, span_bug, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::{
     OutlivesEnvironmentBuildExt, region_known_to_outlive, ty_known_to_outlive,
@@ -48,8 +47,7 @@ use tracing::{debug, instrument};
 use super::compare_eii::{compare_eii_function_types, compare_eii_statics};
 use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
-use crate::diagnostics;
-use crate::diagnostics::InvalidReceiverTyHint;
+use crate::diagnostics::{self, InvalidReceiverTyHint, ParamInTyOfConstParam};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
     pub(super) ocx: ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>,
@@ -201,7 +199,7 @@ where
 
     lint_redundant_lifetimes(tcx, body_def_id, &outlives_env);
 
-    let errors = infcx.resolve_regions_with_outlives_env(&outlives_env, tcx.def_span(body_def_id));
+    let errors = infcx.resolve_regions_with_outlives_env(&outlives_env);
     if errors.is_empty() {
         return Ok(());
     }
@@ -215,8 +213,7 @@ where
         // the implied bounds hack if this contains `bevy_ecs`'s `ParamSet` type.
         false,
     );
-    let errors_compat =
-        infcx_compat.resolve_regions_with_outlives_env(&outlives_env, tcx.def_span(body_def_id));
+    let errors_compat = infcx_compat.resolve_regions_with_outlives_env(&outlives_env);
     if errors_compat.is_empty() {
         // FIXME: Once we fix bevy, this would be the place to insert a warning
         // to upgrade bevy.
@@ -519,9 +516,14 @@ pub(crate) fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId)
                         b,
                     )
                 }
-                ty::ClauseKind::TypeOutlives(ty::OutlivesClause(a, b)) => {
-                    !ty_known_to_outlive(tcx, gat_def_id, param_env, &FxIndexSet::default(), a, b)
-                }
+                ty::ClauseKind::TypeOutlives(ty::OutlivesClause(a, b)) => !ty_known_to_outlive(
+                    tcx,
+                    gat_def_id,
+                    param_env,
+                    &FxIndexSet::default(),
+                    Unnormalized::new_wip(a),
+                    b,
+                ),
                 _ => bug!("Unexpected ClauseKind"),
             })
             .map(|clause| clause.to_string())
@@ -625,7 +627,14 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
         // reflected in a where clause on the GAT itself.
         for (ty, ty_idx) in &types {
             // In our example, requires that `Self: 'a`
-            if ty_known_to_outlive(tcx, item_def_id, param_env, wf_tys, *ty, *region_a) {
+            if ty_known_to_outlive(
+                tcx,
+                item_def_id,
+                param_env,
+                wf_tys,
+                Unnormalized::new_wip(*ty),
+                *region_a,
+            ) {
                 debug!(?ty_idx, ?region_a_idx);
                 debug!("required clause: {ty} must outlive {region_a}");
                 // Translate into the generic parameters of the GAT. In
@@ -929,7 +938,6 @@ pub(crate) fn check_associated_item(
                 let ty = tcx.type_of(def_id).instantiate_identity();
                 let ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), ty);
                 wfcx.register_wf_obligation(span, loc, ty.into());
-                check_const_item(wfcx, def_id, ty);
 
                 if item.defaultness(tcx).has_value() {
                     let code = ObligationCauseCode::SizedConstOrStatic;
@@ -941,7 +949,7 @@ pub(crate) fn check_associated_item(
                     );
                 }
 
-                Ok(())
+                check_const_item(wfcx, def_id, ty)
             }
             ty::AssocKind::Fn { .. } => {
                 let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
@@ -1261,22 +1269,33 @@ pub(crate) fn check_static_item<'tcx>(
 }
 
 /// Runs checks common to both free consts and associated consts
-#[instrument(level = "debug", skip(wfcx))]
+#[instrument(level = "debug", skip(wfcx), ret)]
 pub(super) fn check_const_item<'tcx>(
     wfcx: &WfCheckingCtxt<'_, 'tcx>,
     def_id: LocalDefId,
     item_ty: Ty<'tcx>,
-) {
+) -> Result<(), ErrorGuaranteed> {
     let tcx = wfcx.tcx();
     let span = tcx.def_span(def_id);
 
-    if tcx.is_direct_const(def_id.into()) && !tcx.features().const_param_ty_unchecked() {
-        wfcx.register_bound(
-            ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(item_ty)),
-            wfcx.param_env,
-            item_ty,
-            tcx.require_lang_item(LangItem::ConstParamTy, span),
-        );
+    let mut res = Ok(());
+
+    if tcx.is_direct_const(def_id.into()) {
+        if !tcx.features().const_param_ty_unchecked() {
+            wfcx.register_bound(
+                ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(item_ty)),
+                wfcx.param_env,
+                item_ty,
+                tcx.require_lang_item(LangItem::ConstParamTy, span),
+            );
+        }
+        // FIXME(min_generic_const_args): We *might* want to move this check to `type_of`, so we can
+        // return `ty::Error` if it references invalid params. However, doing so is hard, because
+        // `type_of` doesn't know if it's a direct const - `const_of_item` determines that, and
+        // `const_of_item` calls `type_of`.
+        if !tcx.features().generic_const_parameter_types() && item_ty.has_param() {
+            res = Err(tcx.dcx().emit_err(ParamInTyOfConstParam { span, ty: item_ty }));
+        }
     }
 
     if let Some(direct_rhs) = tcx.const_of_item(def_id) {
@@ -1291,6 +1310,8 @@ pub(super) fn check_const_item<'tcx>(
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(norm_ct, item_ty)),
         ));
     }
+
+    res
 }
 
 #[instrument(level = "debug", skip(tcx, impl_))]
@@ -2568,12 +2589,12 @@ fn lint_redundant_lifetimes<'tcx>(
         | DefKind::Trait
         | DefKind::TraitAlias
         | DefKind::Fn
-        | DefKind::Const { .. }
+        | DefKind::Const
         | DefKind::Impl { of_trait: _ }
         | DefKind::TestBinderConstraints => {
             // Proceed
         }
-        DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst { .. } => {
+        DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
             if tcx.trait_impl_of_assoc(owner_id.to_def_id()).is_some() {
                 // Don't check for redundant lifetimes for associated items of trait
                 // implementations, since the signature is required to be compatible

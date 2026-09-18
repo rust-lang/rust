@@ -15,8 +15,7 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance};
-use rustc_middle::{bug, span_bug};
-use rustc_span::Symbol;
+use rustc_span::{Symbol, bug, span_bug};
 use rustc_target::spec::Arch;
 use tracing::{debug, instrument, trace};
 

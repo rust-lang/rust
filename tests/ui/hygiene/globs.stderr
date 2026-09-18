@@ -22,6 +22,8 @@ LL + use foo::f;
 error[E0425]: cannot find function `g` in this scope
   --> $DIR/globs.rs:16:5
    |
+LL |   macro m($($t:tt)*) {
+...
 LL |       g();
    |       ^ not found in this scope
 ...
@@ -37,7 +39,6 @@ note: similarly named function `f` defined here
    |
 LL |     pub fn f() {}
    |     ^^^^^^^^^^
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a function with a similar name exists
    |
 LL -     g();
@@ -56,14 +57,13 @@ LL | n!(f);
    | |  |
    | |  you might have meant to refer to this function
    | in this macro invocation
+LL | macro n($i:ident) {
 ...
 LL |                     $j();
    |                     -- due to this macro variable
 ...
 LL |         n!(f);
    |            ^ not found in this scope
-   |
-   = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:66:17
@@ -73,14 +73,13 @@ LL | n!(f);
    | |  |
    | |  you might have meant to refer to this function
    | in this macro invocation
+LL | macro n($i:ident) {
 ...
 LL |                     $j();
    |                     -- due to this macro variable
 ...
 LL |                 f
    |                 ^ not found in this scope
-   |
-   = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

@@ -333,7 +333,7 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
                     }
                     return false; // no need to walk further *on the variable*
                 },
-                Res::Def(DefKind::Static { .. } | DefKind::Const { .. }, ..) => {
+                Res::Def(DefKind::Static { .. } | DefKind::Const, ..) => {
                     if index_used_directly {
                         self.indexed_directly.insert(
                             (

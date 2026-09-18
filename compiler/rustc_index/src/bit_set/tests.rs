@@ -555,6 +555,35 @@ fn grow() {
 }
 
 #[test]
+fn growable_union() {
+    // Create two input sets with partly-overlapping values, and different sizes.
+    let mut twos = GrowableBitSet::<usize>::new_empty();
+    for i in (0usize..100).map(|x| x * 2) {
+        twos.insert(i);
+    }
+
+    let mut threes = GrowableBitSet::<usize>::new_empty();
+    for i in (0usize..100).map(|x| x * 3) {
+        threes.insert(i);
+    }
+
+    // Double-check that we did end up with input sets of different sizes.
+    assert_ne!(twos.words.len(), threes.words.len());
+
+    // Perform a union in both directions, and check that the resulting contents are correct.
+    for (mut lhs, rhs) in [(twos.clone(), threes.clone()), (threes.clone(), twos.clone())] {
+        lhs.union(&rhs);
+
+        for i in 0..400 {
+            assert_eq!(
+                lhs.contains(i),
+                (i.is_multiple_of(2) && i < 200) || (i.is_multiple_of(3) && i < 300)
+            );
+        }
+    }
+}
+
+#[test]
 fn matrix_intersection() {
     let mut matrix: BitMatrix<usize, usize> = BitMatrix::new(200, 200);
 

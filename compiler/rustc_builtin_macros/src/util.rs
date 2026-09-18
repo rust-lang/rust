@@ -106,7 +106,7 @@ pub(crate) fn expr_to_spanned_string<'a>(
             Ok(ast::LitKind::ByteStr(..)) => {
                 let mut err = cx.dcx().struct_span_err(expr.span, err_msg);
                 let span = expr.span.shrink_to_lo();
-                err.span_suggestion(
+                err.span_suggestion_short(
                     span.with_hi(span.lo() + BytePos(1)),
                     "consider removing the leading `b`",
                     "",

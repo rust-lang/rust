@@ -1,4 +1,6 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
+#![cfg_attr(not(bootstrap), feature(exitcode_exit_method))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/"
@@ -10,9 +12,9 @@
 #![feature(formatting_options)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
+#![feature(iter_partition_in_place)]
 #![feature(rustc_private)]
 #![feature(test)]
-#![feature(trim_prefix_suffix)]
 #![feature(variant_count)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]

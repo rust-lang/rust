@@ -25,11 +25,12 @@ trait B: A {
         "B"
     }
     type Assoc;
-    type const CONST: i32;
+    #[rustc_always_gca]
+    const CONST: i32;
 }
 impl<T> B for T {
     type Assoc = i16;
-    type const CONST: i32 = 2;
+    const CONST: i32 = core::direct_const_arg!(2);
 }
 
 fn foo<T>() -> &'static str {

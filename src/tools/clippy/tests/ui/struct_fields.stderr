@@ -210,6 +210,8 @@ LL |     proxy: i32,
 error: all fields have the same prefix: `some`
   --> tests/ui/struct_fields.rs:225:13
    |
+LL |       macro_rules! mk_struct {
+LL |           () => {
 LL | /             struct MacroStruct {
 LL | |
 LL | |                 some_a: i32,
@@ -222,33 +224,34 @@ LL |       mk_struct!();
    |       ------------ in this macro invocation
    |
    = help: remove the prefixes
-   = note: this error originates in the macro `mk_struct` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: field name starts with the struct's name
   --> tests/ui/struct_fields.rs:238:17
    |
+LL |     macro_rules! mk_struct2 {
+...
 LL |                 macrobaz_a: i32,
    |                 ^^^^^^^^^^^^^^^
 ...
 LL |     mk_struct2!();
    |     ------------- in this macro invocation
-   |
-   = note: this error originates in the macro `mk_struct2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: field name starts with the struct's name
   --> tests/ui/struct_fields.rs:250:17
    |
+LL |     macro_rules! mk_struct_with_names {
+...
 LL |                 $field: i32,
    |                 ^^^^^^^^^^^
 ...
 LL |     mk_struct_with_names!(Foo, foo);
    |     ------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `mk_struct_with_names` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: all fields have the same prefix: `some`
   --> tests/ui/struct_fields.rs:290:13
    |
+LL |       macro_rules! mk_struct_full_def {
+LL |           ($struct_name:ident, $field1:ident, $field2:ident, $field3:ident) => {
 LL | /             struct $struct_name {
 LL | |
 LL | |                 $field1: i32,
@@ -261,7 +264,6 @@ LL |       mk_struct_full_def!(PrefixData, some_data, some_meta, some_other);
    |       ----------------------------------------------------------------- in this macro invocation
    |
    = help: remove the prefixes
-   = note: this error originates in the macro `mk_struct_full_def` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: field name starts with the struct's name
   --> tests/ui/struct_fields.rs:338:5

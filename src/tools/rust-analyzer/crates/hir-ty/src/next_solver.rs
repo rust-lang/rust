@@ -43,7 +43,6 @@ use rustc_type_ir::MayBeErased;
 pub use solver::*;
 pub use ty::*;
 
-use crate::db::HirDatabase;
 pub use crate::lower::ImplTraitIdx;
 pub use rustc_ast_ir::Mutability;
 
@@ -143,25 +142,24 @@ impl std::fmt::Debug for DefaultAny<'_> {
 }
 
 #[inline]
-pub fn default_types<'db>(db: &'db dyn HirDatabase) -> &'db DefaultAny<'db> {
+pub fn default_types<'db>() -> &'db DefaultAny<'db> {
     static TYPES: OnceLock<DefaultAny<'static>> = OnceLock::new();
 
-    let interner = DbInterner::new_no_crate(db);
     TYPES.get_or_init(|| {
         let create_ty = |kind| {
-            let ty = Ty::new(interner, kind);
+            let ty = Ty::new_without_interner(kind);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_const = |kind| {
-            let ty = Const::new(interner, kind);
+            let ty = Const::new_without_interner(kind);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
         };
         let create_region = |kind| {
-            let ty = Region::new(interner, kind);
+            let ty = Region::new_without_interner(kind);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()

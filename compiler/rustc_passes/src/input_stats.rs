@@ -9,7 +9,7 @@ use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{LocalDefId, LocalModId};
 
 struct NodeStats {
     count: usize,
@@ -277,7 +277,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_body(self, b);
     }
 
-    fn visit_mod(&mut self, m: &'v hir::Mod<'v>, _s: Span, _n: HirId) {
+    fn visit_mod(&mut self, m: &'v hir::Mod<'v>, _s: Span, _id: LocalModId) {
         self.record("Mod", None, m);
         hir_visit::walk_mod(self, m)
     }

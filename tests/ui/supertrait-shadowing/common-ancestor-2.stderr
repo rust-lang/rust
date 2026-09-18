@@ -34,10 +34,10 @@ LL |     type Assoc;
    |     ^^^^^^^^^^
 
 warning: trait item `CONST` from `C` shadows identically named item from supertrait
-  --> $DIR/common-ancestor-2.rs:42:5
+  --> $DIR/common-ancestor-2.rs:43:5
    |
-LL |     type const CONST: i32;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |     const CONST: i32;
+   |     ^^^^^^^^^^^^^^^^
    |
 note: items from several supertraits are shadowed: `B` and `A`
   --> $DIR/common-ancestor-2.rs:16:5
@@ -49,7 +49,7 @@ LL |     const CONST: i32;
    |     ^^^^^^^^^^^^^^^^
 
 warning: trait item `hello` from `C` shadows identically named item from supertrait
-  --> $DIR/common-ancestor-2.rs:51:19
+  --> $DIR/common-ancestor-2.rs:52:19
    |
 LL |     assert_eq!(().hello(), "C");
    |                   ^^^^^

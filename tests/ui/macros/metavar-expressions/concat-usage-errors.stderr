@@ -141,6 +141,8 @@ LL |         const ${concat(FOO, $foo)}: i32 = 2;
 error: `${concat(..)}` is not generating a valid identifier
   --> $DIR/concat-usage-errors.rs:45:14
    |
+LL | macro_rules! starting_number {
+LL |     ($ident:ident) => {{
 LL |         let ${concat("1", $ident)}: () = ();
    |              ^^^^^^^^^^^^^^^^^^^^^
 ...
@@ -149,11 +151,12 @@ LL |     starting_number!(_abc);
    |
    = note: this `${concat(..)}` invocation generated `1_abc`, but '1' is neither '_' nor XID_Start
    = note: see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers
-   = note: this error originates in the macro `starting_number` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `${concat(..)}` is not generating a valid identifier
   --> $DIR/concat-usage-errors.rs:59:14
    |
+LL | macro_rules! starting_invalid_unicode {
+LL |     ($ident:ident) => {{
 LL |         let ${concat("\u{00BD}", $ident)}: () = ();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
@@ -162,11 +165,12 @@ LL |     starting_invalid_unicode!(_abc);
    |
    = note: this `${concat(..)}` invocation generated `\u{00BD}_abc`, but '\' is neither '_' nor XID_Start
    = note: see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers
-   = note: this error originates in the macro `starting_invalid_unicode` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `${concat(..)}` is not generating a valid identifier
   --> $DIR/concat-usage-errors.rs:80:14
    |
+LL | macro_rules! ending_invalid_unicode {
+LL |     ($ident:ident) => {{
 LL |         let ${concat($ident, "\u{00BD}")}: () = ();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
@@ -175,22 +179,23 @@ LL |     ending_invalid_unicode!(_abc);
    |
    = note: this `${concat(..)}` invocation generated `_abc\u{00BD}`, but '\' is not XID_Continue
    = note: see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers
-   = note: this error originates in the macro `ending_invalid_unicode` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected pattern, found `$`
   --> $DIR/concat-usage-errors.rs:96:13
    |
+LL | macro_rules! unsupported_literals {
+LL |     ($ident:ident) => {{
 LL |         let ${concat(_a, 'b')}: () = ();
    |             ^ expected pattern
 ...
 LL |     unsupported_literals!(_abc);
    |     --------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `unsupported_literals` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `${concat(..)}` is not generating a valid identifier
   --> $DIR/concat-usage-errors.rs:88:14
    |
+LL | macro_rules! empty {
+LL |     () => {{
 LL |         let ${concat("", "")}: () = ();
    |              ^^^^^^^^^^^^^^^^
 ...
@@ -198,11 +203,12 @@ LL |     empty!();
    |     -------- in this macro invocation
    |
    = note: this `${concat(..)}` invocation generated an empty ident
-   = note: this error originates in the macro `empty` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `${concat(..)}` is not generating a valid identifier
   --> $DIR/concat-usage-errors.rs:131:16
    |
+LL | macro_rules! bad_literal_string {
+LL |     ($literal:literal) => {
 LL |         const ${concat(_foo, $literal)}: () = ();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
 ...
@@ -211,11 +217,12 @@ LL |     bad_literal_string!("\u{00BD}");
    |
    = note: this `${concat(..)}` invocation generated `_foo\u{00BD}`, but '\' is not XID_Continue
    = note: see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `${concat(..)}` is not generating a valid identifier
   --> $DIR/concat-usage-errors.rs:131:16
    |
+LL | macro_rules! bad_literal_string {
+LL |     ($literal:literal) => {
 LL |         const ${concat(_foo, $literal)}: () = ();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
 ...
@@ -224,11 +231,12 @@ LL |     bad_literal_string!("\x41");
    |
    = note: this `${concat(..)}` invocation generated `_foo\x41`, but '\' is not XID_Continue
    = note: see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `${concat(..)}` is not generating a valid identifier
   --> $DIR/concat-usage-errors.rs:131:16
    |
+LL | macro_rules! bad_literal_string {
+LL |     ($literal:literal) => {
 LL |         const ${concat(_foo, $literal)}: () = ();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
 ...
@@ -237,11 +245,12 @@ LL |     bad_literal_string!("🤷");
    |
    = note: this `${concat(..)}` invocation generated `_foo🤷`, but '🤷' is not XID_Continue
    = note: see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `${concat(..)}` is not generating a valid identifier
   --> $DIR/concat-usage-errors.rs:131:16
    |
+LL | macro_rules! bad_literal_string {
+LL |     ($literal:literal) => {
 LL |         const ${concat(_foo, $literal)}: () = ();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
 ...
@@ -250,11 +259,12 @@ LL |     bad_literal_string!("d[-_-]b");
    |
    = note: this `${concat(..)}` invocation generated `_food[-_-]b`, but '[' is not XID_Continue
    = note: see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `${concat(..)}` is not generating a valid identifier
   --> $DIR/concat-usage-errors.rs:131:16
    |
+LL | macro_rules! bad_literal_string {
+LL |     ($literal:literal) => {
 LL |         const ${concat(_foo, $literal)}: () = ();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
 ...
@@ -263,11 +273,12 @@ LL |     bad_literal_string!("-1");
    |
    = note: this `${concat(..)}` invocation generated `_foo-1`, but '-' is not XID_Continue
    = note: see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `${concat(..)}` is not generating a valid identifier
   --> $DIR/concat-usage-errors.rs:131:16
    |
+LL | macro_rules! bad_literal_string {
+LL |     ($literal:literal) => {
 LL |         const ${concat(_foo, $literal)}: () = ();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
 ...
@@ -276,11 +287,12 @@ LL |     bad_literal_string!("1.0");
    |
    = note: this `${concat(..)}` invocation generated `_foo1.0`, but '.' is not XID_Continue
    = note: see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `${concat(..)}` is not generating a valid identifier
   --> $DIR/concat-usage-errors.rs:131:16
    |
+LL | macro_rules! bad_literal_string {
+LL |     ($literal:literal) => {
 LL |         const ${concat(_foo, $literal)}: () = ();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
 ...
@@ -289,7 +301,6 @@ LL |     bad_literal_string!("'1'");
    |
    = note: this `${concat(..)}` invocation generated `_foo'1'`, but '\'' is not XID_Continue
    = note: see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers
-   = note: this error originates in the macro `bad_literal_string` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`
   --> $DIR/concat-usage-errors.rs:146:31

@@ -2,7 +2,7 @@ use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::consts::Constant::{F32, F64};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::sym;
+use clippy_utils::{is_in_const_context, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -13,6 +13,10 @@ use super::IMPRECISE_FLOPS;
 // TODO: Lint expressions of the form `x.exp() - y` where y > 1
 // and suggest usage of `x.exp_m1() - (y - 1)` instead
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    if is_in_const_context(cx) {
+        return;
+    }
+
     if let ExprKind::Binary(
         Spanned {
             node: BinOpKind::Sub, ..

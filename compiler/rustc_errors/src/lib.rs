@@ -3,8 +3,6 @@
 //! This module contains the code for creating and emitting diagnostics.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(never_type))]
-#![feature(associated_type_defaults)]
 #![feature(default_field_values)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(negative_impls)]
@@ -35,7 +33,7 @@ pub use codes::*;
 pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
     BugAbort, Diag, DiagDecorator, DiagInner, DiagLocation, DiagStyledString, Diagnostic,
-    EmissionGuarantee, FatalAbort, StringPart, Subdiag, Subdiagnostic,
+    FatalAbort, StringPart, Subdiag, Subdiagnostic,
 };
 pub use diagnostic_impls::{
     DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
@@ -59,6 +57,7 @@ pub use rustc_macros::msg;
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker, catch_fatal_errors};
+pub use rustc_span::macros::ExplicitBug;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
@@ -257,10 +256,6 @@ fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a s
         None
     }
 }
-
-/// Signifies that the compiler died with an explicit call to `.bug`
-/// or `.span_bug` rather than a failed assertion, etc.
-pub struct ExplicitBug;
 
 /// Signifies that the compiler died due to a delayed bug rather than a failed
 /// assertion, etc.
@@ -1151,16 +1146,6 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     #[track_caller]
-    pub fn struct_help(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
-        Diag::new(self, Help, msg)
-    }
-
-    #[track_caller]
-    pub fn struct_failure_note(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
-        Diag::new(self, FailureNote, msg)
-    }
-
-    #[track_caller]
     pub fn struct_allow(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
         Diag::new(self, Allow, msg)
     }
@@ -1565,19 +1550,19 @@ impl DelayedDiagInner {
     }
 }
 
-/// | Level        | is_error | EmissionGuarantee | Top-level | Used in lints?
-/// | -----        | -------- | ----------------- | --------- | --------------
-/// | Bug          | yes      | BugAbort          | yes       | -
-/// | Fatal        | yes      | FatalAbort        | yes       | -
-/// | Error        | yes      | ErrorGuaranteed   | yes       | yes
-/// | DelayedBug   | yes      | ErrorGuaranteed   | yes       | -
-/// | ForceWarning | -        | ()                | yes       | lint-only
-/// | Warning      | -        | ()                | yes       | yes
-/// | Note         | -        | ()                | rare      | -
-/// | Help         | -        | ()                | rare      | -
-/// | FailureNote  | -        | ()                | rare      | -
-/// | Allow        | -        | ()                | yes       | lint-only
-/// | Expect       | -        | ()                | yes       | lint-only
+/// | Level        | is_error | emit return type | Top-level | Used in lints?
+/// | -----        | -------- | ---------------- | --------- | --------------
+/// | Bug          | yes      | BugAbort         | yes       | -
+/// | Fatal        | yes      | FatalAbort       | yes       | -
+/// | Error        | yes      | ErrorGuaranteed  | yes       | yes
+/// | DelayedBug   | yes      | ErrorGuaranteed  | yes       | -
+/// | ForceWarning | -        | ()               | yes       | lint-only
+/// | Warning      | -        | ()               | yes       | yes
+/// | Note         | -        | ()               | rare      | -
+/// | Help         | -        | ()               | don't use | -
+/// | FailureNote  | -        | ()               | rare      | -
+/// | Allow        | -        | ()               | yes       | lint-only
+/// | Expect       | -        | ()               | yes       | lint-only
 ///
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Encodable, Decodable)]
 pub enum Level {
@@ -1609,14 +1594,18 @@ pub enum Level {
     /// Will be skipped if `can_emit_warnings` is false.
     Warning,
 
-    /// A message giving additional context.
+    /// A rarely-used level for output that isn't an error or a warning.
     Note,
 
     /// A message suggesting how to fix something.
+    ///
+    /// FIXME(nnethercote) Do not use this! Currently only exists to support `proc_macro::Help`,
+    /// part of the unstable `proc_macro_diagnostic` feature (see #54140). Should be removed
+    /// because help messages are fine as subdiagnostics but are silly as top-level diagnostics.
     Help,
 
-    /// Similar to `Note`, but used in cases where compilation has failed. When printed for human
-    /// consumption, it doesn't have any kind of `note:` label.
+    /// Similar to `Note`, but even rarer. Lacks the a trailing blank line that all other
+    /// diagnostics have. Also, when printed for human consumption it doesn't have a `note:` label.
     FailureNote,
 
     /// Only used for lints.
@@ -1668,13 +1657,13 @@ pub enum Sublevel {
     /// See `Level::Warning`.
     Warning,
 
-    /// See `Level::Note`.
+    /// A message giving additional context.
     Note,
 
     /// A note that is only emitted once.
     OnceNote,
 
-    /// See `Level::Help`.
+    /// A message suggesting how to fix something.
     Help,
 
     /// A help that is only emitted once.

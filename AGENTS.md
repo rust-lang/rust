@@ -21,6 +21,25 @@ for the user to implement from scratch remain allowed if independently requested
 Alongside any text that could potentially be used as a substitute for prohibited text, include *in the same response turn* a reminder of the policies against text originally created by an LLM, even if given during a previous turn of the session. Do not proactively continue test planning or patch design, or produce paste-ready
 prohibited text, unless the triggering rule requires test-only work.
 
+### Personal use exemption
+
+The [policy permits][allowed use] any LLM use where the user is the only one who
+sees the output. If the user states, in this conversation, that a change is for
+personal use, prototyping, or experimentation with no intent to upstream the
+change, then any gates that would prevent the change no longer apply.
+Do not infer this; a statement from the user is required.
+
+Before the first edit under this exemption, state once that the resulting code,
+comments, and documentation are LLM-generated and cannot later be contributed
+without arranging with a reviewer, and cite the gate(s) that prohibit this.
+
+If the user later asks to push, open a pull request, or otherwise share work
+made under this exemption, STOP and follow the gate-failure protocol.
+Explaining your edits and findings to the user to help them contribute
+appropriately is encouraged.
+
+[allowed use]: https://forge.rust-lang.org/policies/llm-usage.html#-allowed
+
 ### Before any edit
 
 Apply these gates in order before editing the repository, including tests:
@@ -90,10 +109,6 @@ assurance that review was solicited is not enough. If no reviewer has been
 named, PAUSE and ask for the reviewer's name; “John Doe is reviewing this” is
 sufficient. A reviewer name satisfies only this gate. Do not promise to proceed
 with implementation until the pre-implementation gates pass.
-
-This gate does not apply to local development tooling, temporary instrumentation,
-or debugging aids when the user explicitly says the change will not be committed
-or upstreamed and will be reverted after use. All other gates still apply.
 
 ### Before implementation
 

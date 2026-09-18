@@ -1,7 +1,7 @@
 use rustc_ast::{self as ast, AsmMacro};
 use rustc_span::{Span, Symbol, kw};
 
-use super::{ExpKeywordPair, ForceCollect, IdentIsRaw, Trailing, UsePreAttrPos};
+use super::{ExpKeywordPair, ForceCollect, IdentKind, Trailing, UsePreAttrPos};
 use crate::{PResult, Parser, diagnostics, exp, token};
 
 /// An argument to one of the `asm!` macros. The argument is syntactically valid, but is otherwise
@@ -368,7 +368,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>) -> PResult<'a, Vec<(Symbol, Span)>>
 fn parse_reg<'a>(p: &mut Parser<'a>) -> PResult<'a, ast::InlineAsmRegOrRegClass> {
     p.expect(exp!(OpenParen))?;
     let result = match p.token.uninterpolate().kind {
-        token::Ident(name, IdentIsRaw::No) => ast::InlineAsmRegOrRegClass::RegClass(name),
+        token::Ident(name, IdentKind::Normal) => ast::InlineAsmRegOrRegClass::RegClass(name),
         token::Literal(token::Lit { kind: token::LitKind::Str, symbol, suffix: _ }) => {
             ast::InlineAsmRegOrRegClass::Reg(symbol)
         }

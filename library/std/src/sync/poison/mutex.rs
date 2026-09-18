@@ -68,7 +68,7 @@ use crate::sys::sync as sys;
 ///     }
 ///
 ///     pub fn replace_with(&self, f: impl FnOnce(T) -> T) {
-///         let ptr = self.data.lock().expect("poisoned");
+///         let ptr = self.data.lock().expect("`Mutex` should not be poisoned");
 ///         // While `f` is running, the data is moved out of `*ptr`. If `f`
 ///         // panics, `*ptr` keeps pointing at a dropped value. The intention
 ///         // is that this will poison the mutex, so the following calls to
@@ -216,7 +216,7 @@ use crate::sys::sync as sys;
 /// threads.into_iter().for_each(|thread| {
 ///     thread
 ///         .join()
-///         .expect("The thread creating or execution failed !")
+///         .expect("Thread creation or execution should not fail")
 /// });
 ///
 /// assert_eq!(*res_mutex.lock().unwrap(), 800);
@@ -482,7 +482,7 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// thread::spawn(move || {
     ///     *c_mutex.lock().unwrap() = 10;
-    /// }).join().expect("thread::spawn failed");
+    /// }).join().expect("`thread::spawn` should not fail");
     /// assert_eq!(*mutex.lock().unwrap(), 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -531,7 +531,7 @@ impl<T: ?Sized> Mutex<T> {
     ///     } else {
     ///         println!("try_lock failed");
     ///     }
-    /// }).join().expect("thread::spawn failed");
+    /// }).join().expect("`thread::spawn` should not fail");
     /// assert_eq!(*mutex.lock().unwrap(), 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

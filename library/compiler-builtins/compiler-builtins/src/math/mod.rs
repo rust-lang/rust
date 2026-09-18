@@ -27,6 +27,7 @@ pub mod full_availability {
         fn fabsf16(x: f16) -> f16;
         fn fdimf16(x: f16, y: f16) -> f16;
         fn floorf16(x: f16) -> f16;
+        fn fmaf16(x: f16, y: f16, z: f16) -> f16;
         fn fmaxf16(x: f16, y: f16) -> f16;
         fn fmaximum_numf16(x: f16, y: f16) -> f16;
         fn fmaximumf16(x: f16, y: f16) -> f16;

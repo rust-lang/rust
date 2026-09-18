@@ -6,12 +6,11 @@ use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::ASM_SUB_REGISTER;
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy, Unnormalized,
 };
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, bug, sym};
 use rustc_target::asm::{
     InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmSize, InlineAsmType,
     ModifierInfo,
@@ -46,7 +45,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
 
     fn expr_ty(&self, expr: &hir::Expr<'tcx>) -> Ty<'tcx> {
         let ty = self.fcx.typeck_results.borrow().expr_ty_adjusted(expr);
-        let ty = self.fcx.resolve_vars_with_obligations(ty);
+        let ty = self.fcx.deeply_resolve_ignoring_regions_with_obligations(ty);
         if ty.has_non_region_infer() {
             Ty::new_misc_error(self.tcx())
         } else {
@@ -61,7 +60,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         if self.fcx.type_is_sized_modulo_regions(self.fcx.param_env, ty) {
             return true;
         }
-        if let ty::Foreign(..) = self.fcx.resolve_vars_with_obligations(ty).kind() {
+        if let ty::Foreign(..) =
+            self.fcx.deeply_resolve_ignoring_regions_with_obligations(ty).kind()
+        {
             return true;
         }
         false

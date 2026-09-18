@@ -1,7 +1,8 @@
 use rustc_infer::traits::solve::Goal;
 use rustc_macros::extension;
-use rustc_middle::{span_bug, ty};
+use rustc_middle::ty;
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
+use rustc_span::span_bug;
 
 use crate::infer::InferCtxt;
 use crate::infer::canonical::OriginalQueryValues;

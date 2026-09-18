@@ -2,8 +2,8 @@ use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, StashKey,
-    Suggestions, struct_span_code_err,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, Level, StashKey, Suggestions,
+    struct_span_code_err,
 };
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
@@ -739,7 +739,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Make sure that we are in the condition to suggest the blanket implementation.
-    fn maybe_suggest_blanket_trait_impl<G: EmissionGuarantee>(
+    fn maybe_suggest_blanket_trait_impl<G>(
         &self,
         span: Span,
         hir_id: hir::HirId,

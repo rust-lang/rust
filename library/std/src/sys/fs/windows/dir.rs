@@ -72,6 +72,10 @@ impl Dir {
         with_native_path(path, &|path| Self::open_with_native(path, &opts))
     }
 
+    pub fn duplicate(&self) -> io::Result<Self> {
+        Ok(Self { handle: self.handle.try_clone()? })
+    }
+
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
         // NtCreateFile will fail if given an absolute path and a non-null RootDirectory
         if path.is_absolute() {

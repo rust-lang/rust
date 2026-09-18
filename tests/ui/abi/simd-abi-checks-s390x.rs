@@ -15,7 +15,7 @@
 #![feature(no_core)]
 #![no_core]
 #![crate_type = "lib"]
-#![allow(non_camel_case_types, improper_ctypes_definitions)]
+#![expect(improper_ctypes_definitions)]
 
 extern crate minicore;
 use minicore::simd::*;

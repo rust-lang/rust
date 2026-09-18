@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::mem;
 
-use ast::token::IdentIsRaw;
+use ast::token::IdentKind;
 use rustc_ast as ast;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, Delimiter, MetaVarKind, TokenKind};
@@ -328,7 +328,6 @@ impl<'a> Parser<'a> {
                 generics,
                 ty,
                 body,
-                kind: ConstItemKind::Body,
                 define_opaque: None,
             }))
         } else if let Some(kind) = self.is_reuse_item() {
@@ -339,27 +338,8 @@ impl<'a> Parser<'a> {
             // MODULE ITEM
             self.parse_item_mod(attrs)?
         } else if self.eat_keyword_case(exp!(Type), case) {
-            if let Const::Yes(const_span) = self.parse_constness(case) {
-                // TYPE CONST (mgca)
-                self.recover_const_mut(const_span);
-                self.recover_missing_kw_before_item()?;
-                let (ident, generics, ty, body) = self.parse_const_item(const_span)?;
-                // Make sure this is only allowed if the feature gate is enabled.
-                // #![feature(mgca_type_const_syntax)]
-                self.psess.gated_spans.gate(sym::mgca_type_const_syntax, lo.to(const_span));
-                ItemKind::Const(Box::new(ConstItem {
-                    defaultness: def_(),
-                    ident,
-                    generics,
-                    ty,
-                    body,
-                    kind: ConstItemKind::TypeConst,
-                    define_opaque: None,
-                }))
-            } else {
-                // TYPE ITEM
-                self.parse_type_alias(def_())?
-            }
+            // TYPE ITEM
+            self.parse_type_alias(def_())?
         } else if self.eat_keyword_case(exp!(Enum), case) {
             // ENUM ITEM
             self.parse_item_enum()?
@@ -1072,7 +1052,7 @@ impl<'a> Parser<'a> {
         // However, we must avoid keywords that occur as binary operators.
         // Currently, the only applicable keyword is `as` (`default as Ty`).
         if self.check_keyword(exp!(Default))
-            && self.look_ahead(1, |t| t.is_non_raw_ident_where(|i| i.name != kw::As))
+            && self.look_ahead(1, |t| t.non_raw_ident().is_some_and(|i| i.name != kw::As))
         {
             self.psess.gated_spans.gate(sym::specialization, self.token.span);
             self.bump(); // `default`
@@ -1268,7 +1248,6 @@ impl<'a> Parser<'a> {
                                 generics: Generics::default(),
                                 ty,
                                 body: expr,
-                                kind: ConstItemKind::Body,
                                 define_opaque,
                             }))
                         }
@@ -1389,7 +1368,7 @@ impl<'a> Parser<'a> {
         &mut self,
         use_token_span: Span,
         prefix: Option<&'b UsePathList<'b>>,
-    ) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
+    ) -> PResult<'a, ThinVec<UseTreeAndId>> {
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |p| {
             p.recover_vcs_conflict_marker();
 
@@ -1407,7 +1386,7 @@ impl<'a> Parser<'a> {
                 p.emit_error_attr_in_use_tree(use_token_span, prefix, use_tree.span(), attr_span);
             }
 
-            Ok((use_tree, DUMMY_NODE_ID))
+            Ok(UseTreeAndId { inner: use_tree, id: DUMMY_NODE_ID })
         })
         .map(|(r, _)| r)
     }
@@ -1473,12 +1452,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, Ident> {
-        match self.token.ident() {
-            Some((ident @ Ident { name: kw::Underscore, .. }, IdentIsRaw::No)) => {
-                self.bump();
-                Ok(ident)
-            }
-            _ => self.parse_ident(),
+        if let Some(ident @ Ident { name: kw::Underscore, .. }) = self.token.non_raw_ident() {
+            self.bump();
+            Ok(ident)
+        } else {
+            self.parse_ident()
         }
     }
 
@@ -2491,8 +2469,8 @@ impl<'a> Parser<'a> {
     /// Parses a field identifier. Specialized version of `parse_ident_common`
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
-        let (ident, is_raw) = self.ident_or_err(true)?;
-        if is_raw == IdentIsRaw::No
+        let (ident, kind) = self.ident_or_err(true)?;
+        if kind == IdentKind::Normal
             && ident.is_reserved()
             && !(ident.name == kw::Underscore && adt_ty == "enum")
         {
@@ -2709,10 +2687,10 @@ impl<'a> Parser<'a> {
                 return Ok(());
             }
             match this.token.ident() {
-                Some((Ident { name: sym::forall, .. }, IdentIsRaw::No)) => {
+                Some((Ident { name: sym::forall, .. }, IdentKind::Normal)) => {
                     foralls.push(this.parse_test_binder_forall()?)
                 }
-                Some((Ident { name: sym::exists, .. }, IdentIsRaw::No)) => {
+                Some((Ident { name: sym::exists, .. }, IdentKind::Normal)) => {
                     exists.push(this.parse_test_binder_exists()?)
                 }
 
@@ -2732,7 +2710,7 @@ impl<'a> Parser<'a> {
 
         let body = self.parse_test_binder_body()?;
 
-        let assert_on_exit = if let Some((i, IdentIsRaw::No)) = self.token.ident()
+        let assert_on_exit = if let Some((i, IdentKind::Normal)) = self.token.ident()
             && i.name == sym::expect
         {
             self.bump();
@@ -2759,7 +2737,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse_test_binder_constraint(&mut self) -> PResult<'a, TestBinderConstraint> {
         match self.token.ident() {
-            Some((Ident { name: sym::and, .. }, IdentIsRaw::No)) => {
+            Some((Ident { name: sym::and, .. }, IdentKind::Normal)) => {
                 self.bump();
                 let items = self
                     .parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
@@ -2768,7 +2746,7 @@ impl<'a> Parser<'a> {
                     .0;
                 Ok(TestBinderConstraint::And { items })
             }
-            Some((Ident { name: sym::or, .. }, IdentIsRaw::No)) => {
+            Some((Ident { name: sym::or, .. }, IdentKind::Normal)) => {
                 self.bump();
                 let items = self
                     .parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {

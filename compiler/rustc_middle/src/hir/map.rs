@@ -16,7 +16,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
 use rustc_span::def_id::{CRATE_MOD_ID, StableCrateId};
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, bug, kw, span_bug, with_metavar_spans};
 
 use crate::hir::{ModuleItems, ProjectedMaybeOwner, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -321,9 +321,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn hir_body_owner_kind(self, def_id: impl Into<DefId>) -> BodyOwnerKind {
         let def_id = def_id.into();
         match self.def_kind(def_id) {
-            DefKind::Const { .. } | DefKind::AssocConst { .. } => {
-                BodyOwnerKind::Const { inline: false }
-            }
+            DefKind::Const | DefKind::AssocConst => BodyOwnerKind::Const { inline: false },
             DefKind::AnonConst => BodyOwnerKind::Const {
                 inline: self.anon_const_kind(def_id) == ty::AnonConstKind::NonTypeSystemInline,
             },
@@ -411,11 +409,10 @@ impl<'tcx> TyCtxt<'tcx> {
         find_attr!(self.hir_krate_attrs(), RustcCoherenceIsCore)
     }
 
-    pub fn hir_get_module(self, module: LocalModId) -> (&'tcx Mod<'tcx>, Span, HirId) {
-        let hir_id = HirId::make_owner(module.to_local_def_id());
-        match self.hir_owner_node(hir_id.owner) {
-            OwnerNode::Item(&Item { span, kind: ItemKind::Mod(_, m), .. }) => (m, span, hir_id),
-            OwnerNode::Crate(item) => (item, item.spans.inner_span, hir_id),
+    pub fn hir_get_module(self, module: LocalModId) -> (&'tcx Mod<'tcx>, Span) {
+        match self.hir_owner_node(module.into()) {
+            OwnerNode::Item(&Item { span, kind: ItemKind::Mod(_, m), .. }) => (m, span),
+            OwnerNode::Crate(item) => (item, item.spans.inner_span),
             node => panic!("not a module: {node:?}"),
         }
     }
@@ -425,8 +422,8 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         V: Visitor<'tcx>,
     {
-        let (top_mod, span, hir_id) = self.hir_get_module(CRATE_MOD_ID);
-        visitor.visit_mod(top_mod, span, hir_id)
+        let (top_mod, span) = self.hir_get_module(CRATE_MOD_ID);
+        visitor.visit_mod(top_mod, span, CRATE_MOD_ID)
     }
 
     /// Walks the attributes in a crate.
@@ -1256,8 +1253,8 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
 pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModId) -> ModuleItems {
     let mut collector = ItemCollector::new(tcx, false);
 
-    let (hir_mod, span, hir_id) = tcx.hir_get_module(module_id);
-    collector.visit_mod(hir_mod, span, hir_id);
+    let (hir_mod, span) = tcx.hir_get_module(module_id);
+    collector.visit_mod(hir_mod, span, module_id);
 
     let ItemCollector {
         submodules,

@@ -8,7 +8,7 @@ fn foo2<'a>(x: &'a usize) -> &'static usize {
     x //~ERROR lifetime may not live long enough
 }
 
-fn foo3<'a, 'b>(x: &'a usize, y: &'b usize) -> (&'b usize, &'a usize) {
+fn foo3<'a, 'b>(x: &'a usize, y: &'b usize) -> (&'b usize, &'a usize) { //~ ERROR one or more
     (x, y) //~ERROR lifetime may not live long enough
            //~^ERROR lifetime may not live long enough
 }

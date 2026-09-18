@@ -10,6 +10,7 @@ use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, extension};
 use rustc_serialize::{Decodable, Encodable};
+use rustc_span::bug;
 use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::walk::TypeWalker;
 use smallvec::SmallVec;

@@ -4,7 +4,7 @@
 use std::ops::Deref;
 
 use rustc_hir::def_id::LocalDefId;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug};
 
 use crate::dep_graph;
 use crate::dep_graph::DepNodeKey;

@@ -29,8 +29,7 @@ use rustc_middle::ty::{
     self, BoundVariableKind, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts,
     List, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{ErrorGuaranteed, kw, sym};
+use rustc_span::{ErrorGuaranteed, bug, kw, span_bug, sym};
 use tracing::{debug, instrument};
 
 use crate::BorrowckInferCtxt;

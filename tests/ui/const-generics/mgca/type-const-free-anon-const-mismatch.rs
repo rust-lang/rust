@@ -2,10 +2,10 @@
 
 #![feature(min_generic_const_args)]
 
-type const X: usize = const { N };
+const X: usize = core::direct_const_arg!(const { N });
 //~^ ERROR type annotations needed
 
-type const N: usize = "this isn't a usize";
+const N: usize = core::direct_const_arg!("this isn't a usize");
 //~^ ERROR the constant `"this isn't a usize"` is not of type `usize`
 
 fn main() {}

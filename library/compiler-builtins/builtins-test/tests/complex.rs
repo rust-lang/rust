@@ -382,45 +382,33 @@ mod complex {
         };
     }
 
-    #[cfg(all(f16_enabled, not(x86_no_sse2)))]
+    #[cfg(f16_enabled)]
     complex_mul! {
         f16, __rust_mulhc3, 1.0e-3;
     }
 
-    #[cfg(all(f16_enabled, not(x86_no_sse2)))]
+    #[cfg(f16_enabled)]
     complex_div! {
         f16, __rust_divhc3, 1.0e-3;
     }
 
     complex_mul! {
-        f32, __rust_mulsc3, 1.0e-6;
-        f64, __rust_muldc3, 1.0e-9;
+        f32, __mulsc3, 1.0e-6;
+        f64, __muldc3, 1.0e-9;
     }
 
     complex_div! {
-        f32, __rust_divsc3, 1.0e-6;
-        f64, __rust_divdc3, 1.0e-9;
+        f32, __divsc3, 1.0e-6;
+        f64, __divdc3, 1.0e-9;
     }
 
     #[cfg(f128_enabled)]
-    cfg_select! {
-        any(target_arch = "powerpc", target_arch = "powerpc64") => {
-            complex_mul! {
-                f128, __rust_mulkc3, 1.0e-12;
-            }
+    complex_mul! {
+        f128, __rust_multc3, 1.0e-12;
+    }
 
-            complex_div! {
-                f128, __rust_divkc3, 1.0e-12;
-            }
-        }
-        _ => {
-            complex_mul! {
-                f128, __rust_multc3, 1.0e-12;
-            }
-
-            complex_div! {
-                f128, __rust_divtc3, 1.0e-12;
-            }
-        }
+    #[cfg(f128_enabled)]
+    complex_div! {
+        f128, __rust_divtc3, 1.0e-12;
     }
 }

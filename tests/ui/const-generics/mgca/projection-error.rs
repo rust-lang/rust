@@ -6,7 +6,8 @@
 // a type error.
 
 pub trait Tr<A> {
-    type const SIZE: usize;
+    #[rustc_always_gca]
+    const SIZE: usize;
 }
 
 fn mk_array(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}

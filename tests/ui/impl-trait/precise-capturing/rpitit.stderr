@@ -40,7 +40,13 @@ LL | |     );
    |
    = help: consider adding the following bound: `'b: 'a`
 
-help: `'a` and `'b` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/rpitit.rs:12:4
+   |
+LL | fn trait_lt<'a, 'b, T: for<'r> TraitLt<'r>> () {
+   |    ^^^^^^^^
+   |
+   = help: `'a` and `'b` must be the same: replace one with the other
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

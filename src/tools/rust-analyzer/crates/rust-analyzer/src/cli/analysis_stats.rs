@@ -19,10 +19,7 @@ use hir_def::{
     expr_store::{Body, BodySourceMap, ExpressionStore},
     hir::{ExprId, PatId, generics::GenericParams},
 };
-use hir_ty::{
-    InferenceResult,
-    next_solver::{DbInterner, GenericArgs},
-};
+use hir_ty::{InferenceResult, next_solver::GenericArgs};
 use ide::{
     Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
     InlayHintsConfig, LineCol, RaFixtureConfig, RootDatabase,
@@ -411,7 +408,6 @@ impl flags::AnalysisStats {
         let mut all = 0;
         let mut fail = 0;
         for &a in adts {
-            let interner = DbInterner::new_no_crate(db);
             let generic_params = GenericParams::of(db, a.into());
             if generic_params.iter_type_or_consts().next().is_some()
                 || generic_params.iter_lt().next().is_some()
@@ -422,7 +418,7 @@ impl flags::AnalysisStats {
             all += 1;
             let Err(e) = db.layout_of_adt(
                 hir_def::AdtId::from(a),
-                GenericArgs::empty(interner).store(),
+                GenericArgs::empty().store(),
                 hir_ty::ParamEnvAndCrate {
                     param_env: db.trait_environment(a.into()),
                     krate: a.krate(db).into(),

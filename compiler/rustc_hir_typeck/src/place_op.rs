@@ -4,13 +4,12 @@ use rustc_hir as hir;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::InferOk;
 use rustc_infer::traits::{Obligation, ObligationCauseCode};
-use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
     OverloadedDeref, PointerCoercion,
 };
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{Span, sym};
+use rustc_span::{Span, span_bug, sym};
 use tracing::debug;
 
 use crate::method::{MethodCallee, TreatNotYetDefinedOpaques};
@@ -74,7 +73,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         base_expr: &hir::Expr<'_>,
     ) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
-        let ty = self.resolve_vars_if_possible(ty);
+        let ty = self.deeply_resolve_ignoring_regions(ty);
         let mut err = self.dcx().struct_span_err(
             span,
             format!("negative integers cannot be used to index on a `{ty}`"),

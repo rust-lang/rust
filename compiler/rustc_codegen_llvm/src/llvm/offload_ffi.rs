@@ -14,7 +14,7 @@ use rustc_fs_util::path_to_c_string;
 use rustc_session::config::host_tuple;
 use rustc_session::filesearch;
 
-use crate::llvm::LLVMRustVersionMajor;
+use crate::llvm;
 
 pub(crate) struct RustOffloadWrapper {
     LLVMRustBundleImages: LLVMRustBundleImagesFn,
@@ -119,7 +119,7 @@ impl RustOffloadWrapper {
     fn get_offload_and_lld_paths(
         sysroot: &rustc_session::config::Sysroot,
     ) -> Result<(PathBuf, Option<PathBuf>), RustOffloadLibraryError> {
-        let llvm_version_major = unsafe { LLVMRustVersionMajor() };
+        let llvm_version_major = llvm::LLVMRustVersionMajor();
         let mut searched = Vec::new();
 
         for root in sysroot.all_paths() {

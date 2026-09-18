@@ -2752,7 +2752,6 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// #![feature(trim_prefix_suffix)]
     /// use std::path::Path;
     ///
     /// let path = Path::new("/test/haha/foo.txt");
@@ -2770,7 +2769,7 @@ impl Path {
     /// assert_eq!(path.trim_prefix("/haha"), path);
     /// ```
     #[must_use = "this returns the remaining path as a new path, without modifying the original"]
-    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
     pub fn trim_prefix<P>(&self, base: P) -> &Path
     where
         P: AsRef<Path>,
@@ -2983,7 +2982,8 @@ impl Path {
     #[must_use]
     #[inline]
     pub fn has_trailing_sep(&self) -> bool {
-        self.as_os_str().as_encoded_bytes().last().copied().is_some_and(is_sep_byte)
+        let comps = self.components();
+        self.as_os_str().as_encoded_bytes().last().copied().is_some_and(|b| comps.is_sep_byte(b))
     }
 
     /// Ensures that a path has a trailing [separator](MAIN_SEPARATOR),
@@ -3034,10 +3034,11 @@ impl Path {
     #[must_use]
     #[inline]
     pub fn trim_trailing_sep(&self) -> &Path {
+        let comps = self.components();
         if self.has_trailing_sep() && (!self.has_root() || self.parent().is_some()) {
             let mut bytes = self.inner.as_encoded_bytes();
             while let Some((last, init)) = bytes.split_last()
-                && is_sep_byte(*last)
+                && comps.is_sep_byte(*last)
             {
                 bytes = init;
             }

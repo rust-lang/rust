@@ -12,12 +12,8 @@ impl CombineAttributeParser for AllowInternalUnstableParser {
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> =
         |items, span| AttributeKind::AllowInternalUnstable(items, span);
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::MacroDef),
-        Allow(Target::Fn),
-        Warn(Target::Field),
-        Warn(Target::Arm),
-    ]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::MacroDef), Allow(Target::Fn)]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
     const STABILITY: AttributeStability = unstable!(allow_internal_unstable);
 

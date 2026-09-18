@@ -28,7 +28,7 @@ impl Copy for int8x16x4_t {}
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 pub unsafe fn vld1q_s8_x4(a: *const i8) -> int8x16x4_t {
-    #[allow(improper_ctypes)]
+    #[expect(improper_ctypes)]
     extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1x4.v16i8.p0i8")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld1x4.v16i8.p0i8")]

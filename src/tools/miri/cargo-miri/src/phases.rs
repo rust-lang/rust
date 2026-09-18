@@ -530,10 +530,6 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
     cmd.env("MIRI_BE_RUSTC", if target_crate { "target" } else { "host" });
 
     // Run it.
-    if verbose > 0 {
-        eprintln!("[cargo-miri rustc] target_crate={target_crate} runnable_crate={runnable_crate}");
-    }
-
     debug_cmd("[cargo-miri rustc]", verbose, &cmd);
     exec(cmd);
 }
@@ -582,16 +578,21 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
         if name == "CARGO_MAKEFLAGS" {
             continue;
         }
-        if let Some(old_val) = env::var_os(name) {
-            if *old_val == *val {
-                // This one did not actually change, no need to re-set it.
-                // (This keeps the `debug_cmd` below more manageable.)
-                continue;
-            } else if verbose > 0 {
-                eprintln!(
-                    "[cargo-miri runner] Overwriting run-time env var {name:?}={old_val:?} with build-time value {val:?}"
-                );
-            }
+        let old_val = env::var_os(name);
+        if old_val.as_ref() == Some(val) {
+            // This one did not actually change, no need to re-set it.
+            // (This keeps the `debug_cmd` below more manageable.)
+            continue;
+        }
+        if verbose > 0 {
+            eprintln!(
+                "[cargo-miri runner] Carrying over build-time env var {name:?}={val:?}{}",
+                if let Some(old_val) = old_val {
+                    format!(", overwriting run-time value {old_val:?}")
+                } else {
+                    format!("")
+                }
+            );
         }
         cmd.env(name, val);
     }

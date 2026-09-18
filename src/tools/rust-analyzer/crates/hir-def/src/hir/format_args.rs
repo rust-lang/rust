@@ -169,7 +169,6 @@ enum PositionUsedAs {
 }
 use PositionUsedAs::*;
 
-#[allow(clippy::unnecessary_lazy_evaluations)]
 pub(crate) fn parse(
     s: &ast::String,
     string_ptr: AstPtr<ast::Expr>,

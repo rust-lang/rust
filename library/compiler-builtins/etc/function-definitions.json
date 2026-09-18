@@ -985,6 +985,7 @@
     "sqrt": {
         "sources": [
             "libm/src/math/arch/aarch64/sqrt.rs",
+            "libm/src/math/arch/arm/sqrt.rs",
             "libm/src/math/arch/loongarch/sqrt.rs",
             "libm/src/math/arch/wasm32/sqrt.rs",
             "libm/src/math/arch/x86/sqrt.rs",
@@ -996,6 +997,7 @@
     "sqrtf": {
         "sources": [
             "libm/src/math/arch/aarch64/sqrt.rs",
+            "libm/src/math/arch/arm/sqrt.rs",
             "libm/src/math/arch/loongarch/sqrt.rs",
             "libm/src/math/arch/wasm32/sqrt.rs",
             "libm/src/math/arch/x86/sqrt.rs",

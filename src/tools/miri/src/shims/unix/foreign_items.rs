@@ -14,8 +14,8 @@ use self::shims::unix::linux::foreign_items as linux;
 use self::shims::unix::macos::foreign_items as macos;
 use self::shims::unix::netbsd::foreign_items as netbsd;
 use self::shims::unix::solarish::foreign_items as solarish;
-use crate::concurrency::cpu_affinity::CpuAffinityMask;
 use crate::shims::alloc::EvalContextExt as _;
+use crate::shims::cpu_affinity::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::{shim_sig, *};
 
@@ -461,6 +461,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [dirp] = this
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> *_), (link_name, abi, args))?;
                 this.readdir(dirp, dest)?;
+            }
+            "dirfd" => {
+                let [dirp] = this
+                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                this.dirfd(dirp, dest)?;
             }
             "lseek" => {
                 // FIXME: This does not have a direct test (#3179).
@@ -1143,52 +1148,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(libc::pid_t, usize, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                let pid = this.read_scalar(pid)?.to_u32()?;
-                let cpusetsize = this.read_target_usize(cpusetsize)?;
-                let mask = this.read_pointer(mask)?;
-
-                if this.machine.thread_cpu_affinity.is_none() {
-                    throw_unsup_format!(
-                        "`sched_getaffinity` is not supported on #![no_core] programs"
-                    )
-                }
-
-                let thread_id = if pid == 0 {
-                    this.active_thread()
-                } else if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android) {
-                    // On Linux/Android, pid can be a TID as returned by `gettid`.
-                    let Some(thread_id) = this.get_thread_id_from_linux_tid(pid) else {
-                        this.set_errno_and_return_neg1(LibcError("ESRCH"), dest)?;
-                        return interp_ok(EmulateItemResult::NeedsReturn);
-                    };
-                    thread_id
-                } else {
-                    throw_unsup_format!(
-                        "`sched_getaffinity` is only supported with a pid of 0 (indicating the current thread) on non-Linux platforms"
-                    )
-                };
-
-                // The mask is stored in chunks, and the size must be a whole number of chunks.
-                let chunk_size = CpuAffinityMask::chunk_size(this);
-
-                if this.ptr_is_null(mask)? {
-                    this.set_errno_and_return_neg1(LibcError("EFAULT"), dest)?;
-                } else if cpusetsize == 0 || cpusetsize.checked_rem(chunk_size).unwrap() != 0 {
-                    // we only copy whole chunks of size_of::<c_ulong>()
-                    this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
-                } else if let Some(cpuset) =
-                    this.machine.thread_cpu_affinity.as_ref().unwrap().get(&thread_id)
-                {
-                    let cpuset = cpuset.clone();
-                    // we only copy whole chunks of size_of::<c_ulong>()
-                    let byte_count =
-                        Ord::min(cpuset.as_slice().len(), cpusetsize.try_into().unwrap());
-                    this.write_bytes_ptr(mask, cpuset.as_slice()[..byte_count].iter().copied())?;
-                    this.write_null(dest)?;
-                } else {
-                    // The thread whose ID is pid could not be found
-                    this.set_errno_and_return_neg1(LibcError("ESRCH"), dest)?;
-                }
+                this.sched_getaffinity(pid, cpusetsize, mask, dest)?;
             }
             "sched_setaffinity" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
@@ -1198,57 +1158,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(libc::pid_t, usize, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                let pid = this.read_scalar(pid)?.to_u32()?;
-                let cpusetsize = this.read_target_usize(cpusetsize)?;
-                let mask = this.read_pointer(mask)?;
-
-                if this.machine.thread_cpu_affinity.is_none() {
-                    throw_unsup_format!(
-                        "`sched_setaffinity` is not supported on #![no_core] programs"
-                    )
-                }
-
-                let thread_id = if pid == 0 {
-                    this.active_thread()
-                } else if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android) {
-                    // On Linux/Android, pid can be a TID as returned by `gettid`.
-                    let Some(thread_id) = this.get_thread_id_from_linux_tid(pid) else {
-                        this.set_errno_and_return_neg1(LibcError("ESRCH"), dest)?;
-                        return interp_ok(EmulateItemResult::NeedsReturn);
-                    };
-                    thread_id
-                } else {
-                    throw_unsup_format!(
-                        "`sched_setaffinity` is only supported with a pid of 0 (indicating the current thread) on non-Linux platforms"
-                    )
-                };
-
-                if this.ptr_is_null(mask)? {
-                    this.set_errno_and_return_neg1(LibcError("EFAULT"), dest)?;
-                } else {
-                    // NOTE: cpusetsize might be smaller than `CpuAffinityMask::CPU_MASK_BYTES`.
-                    // Any unspecified bytes are treated as zero here (none of the CPUs are configured).
-                    // This is not exactly documented, so we assume that this is the behavior in practice.
-                    let bits_slice =
-                        this.read_bytes_ptr_strip_provenance(mask, Size::from_bytes(cpusetsize))?;
-                    // This ignores the bytes beyond `CpuAffinityMask::CPU_MASK_BYTES`
-                    let bits_array: [u8; CpuAffinityMask::CPU_MASK_BYTES] =
-                        std::array::from_fn(|i| bits_slice.get(i).copied().unwrap_or(0));
-                    match CpuAffinityMask::from_array(this, this.machine.num_cpus, bits_array) {
-                        Some(cpuset) => {
-                            this.machine
-                                .thread_cpu_affinity
-                                .as_mut()
-                                .unwrap()
-                                .insert(thread_id, cpuset);
-                            this.write_null(dest)?;
-                        }
-                        None => {
-                            // The intersection between the mask and the available CPUs was empty.
-                            this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
-                        }
-                    }
-                }
+                this.sched_setaffinity(pid, cpusetsize, mask, dest)?;
             }
 
             // Miscellaneous
@@ -1443,7 +1353,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let pwd = this.deref_pointer_as(pwd, this.libc_ty_layout("passwd"))?;
                 let buf = this.read_pointer(buf)?;
                 let buflen = this.read_target_usize(buflen)?;
-                let result = this.deref_pointer_as(result, this.machine.layouts.mut_raw_ptr)?;
+                let result = this.deref_pointer_as(result, this.machine.layouts.unit_ptr_mut)?;
 
                 // Must be for "us".
                 if uid != UID {

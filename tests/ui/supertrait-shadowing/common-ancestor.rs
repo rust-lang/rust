@@ -27,12 +27,13 @@ trait B: A {
     }
     type Assoc;
     //~^ WARN trait item `Assoc` from `B` shadows identically named item
-    type const CONST: i32;
+    #[rustc_always_gca]
+    const CONST: i32;
     //~^ WARN trait item `CONST` from `B` shadows identically named item
 }
 impl<T> B for T {
     type Assoc = i16;
-    type const CONST: i32 = 2;
+    const CONST: i32 = core::direct_const_arg!(2);
 }
 
 fn main() {

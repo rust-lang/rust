@@ -159,7 +159,7 @@ LL | struct NoDerive;
    | --------------- `NoDerive` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
 ...
 LL |     trait Trait: Sized { const ASSOC: Option<Self>; }
-   |     ------------------   ------------------------- constant defined here
+   |                          ------------------------- constant defined here
 LL |     impl Trait for NoDerive { const ASSOC: Option<NoDerive> = Some(NoDerive); }
 LL |     match Some(NoDerive) { NoDerive::ASSOC => dbg!(NoDerive::ASSOC), _ => panic!("whoops"), };
    |                            ^^^^^^^^^^^^^^^ constant of non-structural type

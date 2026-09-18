@@ -24,11 +24,6 @@ LL |     let _: &'upper () = match v {
    |
    = help: consider adding the following bound: `'b: 'upper`
 
-help: the following changes may resolve your lifetime errors
-   |
-   = help: add bound `'a: 'upper`
-   = help: add bound `'b: 'upper`
-
 error: lifetime may not live long enough
   --> $DIR/empty-binders-err.rs:35:12
    |

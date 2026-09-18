@@ -1,6 +1,7 @@
 //! Test for `gettid` and similar functions for retrieving an OS thread ID.
-//@ revisions: with_isolation without_isolation
-//@ [without_isolation] compile-flags: -Zmiri-disable-isolation
+//@revisions: with_isolation without_isolation
+//@[without_isolation] compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 #![feature(linkage)]
 #![allow(unused_features)] // only used on some targets
@@ -98,6 +99,8 @@ mod queried {
             // Apple also has two documented return values for invalid threads and null pointers
             let res = libc::pthread_threadid_np(libc::pthread_t::MAX, &mut 0);
             assert_eq!(res, libc::ESRCH, "expected ESRCH for invalid TID");
+            let res = libc::pthread_threadid_np(0xdeadbeef, &mut 0);
+            assert_eq!(res, libc::ESRCH, "expected ESRCH for invalid TID");
             let res = libc::pthread_threadid_np(0, ptr::null_mut());
             assert_eq!(res, libc::EINVAL, "invalid EINVAL for a null pointer");
         }
@@ -160,10 +163,10 @@ fn main() {
         assert_ne!(gettid(), tid);
     });
 
-    // Test that in isolation mode a deterministic value will be returned.
+    // Test that in Miri's isolation mode a deterministic value will be returned.
     // The value is not important, we only care that whatever the value is,
     // won't change from execution to execution.
-    if cfg!(with_isolation) {
+    if cfg!(miri) && cfg!(with_isolation) {
         if cfg!(any(
             target_os = "linux",
             target_os = "android",

@@ -19,101 +19,101 @@ LL | struct BarWhere<'a, 'b> where 'b: 'a {
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives-macro.rs:41:30
    |
+LL |     macro_rules! m {
+LL |         ('b: 'a) => {
 LL |             struct Foo<'a, 'b: 'a>(&'a &'b ());
    |                              ^^^^ help: remove this bound
 ...
 LL |     m!('b: 'a);
    |     ---------- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives-macro.rs:43:44
    |
+LL |     macro_rules! m {
+...
 LL |             struct Bar<'a, 'b>(&'a &'b ()) where 'b: 'a;
    |                                            ^^^^^^^^^^^^ help: remove this bound
 ...
 LL |     m!('b: 'a);
    |     ---------- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives-macro.rs:45:61
    |
+LL |     macro_rules! m {
+...
 LL |             struct Baz<'a, 'b>(&'a &'b ()) where (): Sized, 'b: 'a;
    |                                                             ^^^^^^ help: remove this bound
 ...
 LL |     m!('b: 'a);
    |     ---------- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives-macro.rs:55:30
    |
+LL |     macro_rules! m {
+LL |         ($b:lifetime: 'a) => {
 LL |             struct Foo<'a, $b: 'a>(&'a &$b ());
    |                              ^^^^ help: remove this bound
 ...
 LL |     m!('b: 'a);
    |     ---------- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives-macro.rs:57:44
    |
+LL |     macro_rules! m {
+...
 LL |             struct Bar<'a, $b>(&'a &$b ()) where $b: 'a;
    |                                            ^^^^^^^^^^^^ help: remove this bound
 ...
 LL |     m!('b: 'a);
    |     ---------- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives-macro.rs:59:61
    |
+LL |     macro_rules! m {
+...
 LL |             struct Baz<'a, $b>(&'a &$b ()) where (): Sized, $b: 'a;
    |                                                             ^^^^^^ help: remove this bound
 ...
 LL |     m!('b: 'a);
    |     ---------- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives-macro.rs:117:44
    |
+LL |     macro_rules! m {
+...
 LL |             struct Bar<$a, $b>(&$a &$b ()) where $b $colon $a;
    |                                            ^^^^^^^^^^^^^^^^^^ help: remove this bound
 ...
 LL |     m!('b: 'a);
    |     ---------- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives-macro.rs:119:61
    |
+LL |     macro_rules! m {
+...
 LL |             struct Baz<$a, $b>(&$a &$b ()) where (): Sized, $b $colon $a;
    |                                                             ^^^^^^^^^^^^ help: remove this bound
 ...
 LL |     m!('b: 'a);
    |     ---------- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives-macro.rs:132:44
    |
+LL |     macro_rules! m {
+...
 LL |             struct Bar<$a, $b>(&$a &$b ()) where $b $colon $a;
    |                                            ^^^^^^^^^^^^^^^^^^ help: remove this bound
 ...
 LL |     m!('b: 'a);
    |     ---------- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives-macro.rs:134:61

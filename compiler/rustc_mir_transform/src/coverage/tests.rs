@@ -29,8 +29,8 @@ use rustc_data_structures::graph::{DirectedGraph, Successors};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
-use rustc_middle::{bug, ty};
-use rustc_span::{BytePos, DUMMY_SP, Pos, Span};
+use rustc_middle::ty;
+use rustc_span::{BytePos, DUMMY_SP, Pos, Span, bug};
 
 use super::graph::{self, BasicCoverageBlock};
 

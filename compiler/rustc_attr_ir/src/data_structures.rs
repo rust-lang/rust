@@ -785,6 +785,9 @@ pub enum AttributeKind {
     /// Represents `#[allow_internal_unstable]`.
     AllowInternalUnstable(ThinVec<(Symbol, Span)>, Span),
 
+    /// Represents `#[rustc_always_gca]`
+    AlwaysGca,
+
     /// Represents `#[automatically_derived]`
     AutomaticallyDerived,
 

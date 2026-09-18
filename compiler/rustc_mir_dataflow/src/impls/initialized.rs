@@ -3,11 +3,11 @@ use std::assert_matches;
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
-use rustc_middle::bug;
 use rustc_middle::mir::{
     self, BasicBlock, Body, CallReturnPlaces, Local, Location, StatementKind, TerminatorEdges,
 };
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::bug;
 use smallvec::SmallVec;
 use tracing::instrument;
 

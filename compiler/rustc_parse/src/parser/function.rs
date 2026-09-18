@@ -1,4 +1,3 @@
-use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, TokenKind};
@@ -103,6 +102,8 @@ pub(crate) enum FnContext {
     Free,
     /// A Function Pointer Type `fn(..)`.
     FunctionPtrType,
+    /// A Parenthesized Argument List `impl Fn(...)`
+    ParenthesizedArgumentList,
     /// A Trait context.
     Trait,
     /// An Impl block.
@@ -330,13 +331,13 @@ impl<'a> Parser<'a> {
                     // Two qualifiers `$qual $qual` is enough, e.g. `async unsafe`.
                     || (
                         (
-                            t.is_non_raw_ident_where(|i|
+                            t.non_raw_ident().is_some_and(|i|
                                 quals.iter().any(|exp| exp.kw == i.name)
                                     // Rule out 2015 `const async: T = val`.
                                     && i.is_reserved()
                             )
                             || case == Case::Insensitive
-                                && t.is_non_raw_ident_where(|i| quals.iter().any(|exp| {
+                                && t.non_raw_ident().is_some_and(|i| quals.iter().any(|exp| {
                                     exp.kw.as_str() == i.name.as_str().to_lowercase()
                                 }))
                         )
@@ -362,6 +363,8 @@ impl<'a> Parser<'a> {
                 }) == Some(true) ||
                     // This branch is only for better diagnostics; `pub`, `unsafe`, etc. are not
                     // allowed here.
+                    // This branch also follows `$qual fn` or `$qual $qual` rule
+                    // above since a valid `fn` can be after `extern`.
                     (self.may_recover()
                         && self.tree_look_ahead(2, |tt| {
                             match tt {
@@ -374,7 +377,12 @@ impl<'a> Parser<'a> {
                         }) == Some(true)
                         && self.tree_look_ahead(3, |tt| {
                             match tt {
-                                TokenTree::Token(t, _) => t.is_keyword_case(kw::Fn, case),
+                                TokenTree::Token(t, _) => {
+                                    t.is_keyword_case(kw::Fn, case) ||
+                                    ALL_QUALS.iter().any(|exp| {
+                                        t.is_keyword(exp.kw)
+                                    })
+                                },
                                 TokenTree::Delimited(..) => false,
                             }
                         }) == Some(true)
@@ -691,7 +699,7 @@ impl<'a> Parser<'a> {
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
             p.recover_vcs_conflict_marker();
             let snapshot = p.create_snapshot_for_diagnostic();
-            let param = p.parse_param_general(fn_parse_mode, first_param, true).or_else(|e| {
+            let param = p.parse_param_general(fn_parse_mode, first_param).or_else(|e| {
                 let guar = e.emit();
                 // When parsing a param failed, we should check to make the span of the param
                 // not contain '(' before it.
@@ -724,7 +732,6 @@ impl<'a> Parser<'a> {
         &mut self,
         fn_parse_mode: &FnParseMode,
         first_param: bool,
-        recover_arg_parse: bool,
     ) -> PResult<'a, Param> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
@@ -812,13 +819,22 @@ impl<'a> Parser<'a> {
                     // If this is a C-variadic argument and we hit an error, return the error.
                     Err(err) if this.token == token::DotDotDot => return Err(err),
                     Err(err) if this.unmatched_angle_bracket_count > 0 => return Err(err),
-                    Err(err) if recover_arg_parse => {
+                    Err(err) => {
                         // Recover from attempting to parse the argument as a type without pattern.
-                        err.cancel();
                         this.restore_snapshot(parser_snapshot_before_ty);
-                        this.recover_arg_parse(fn_parse_mode.context)?
+                        match this.recover_arg_parse(fn_parse_mode.context) {
+                            Ok(res) => {
+                                // We managed to parse the argument as a pattern, cancel the original error and emit a better one
+                                err.cancel();
+                                res
+                            }
+                            Err(new_err) => {
+                                // We did not manage to parse the argument as a pattern, avoid suggesting a pattern and emit the original error
+                                new_err.cancel();
+                                return Err(err);
+                            }
+                        }
                     }
-                    Err(err) => return Err(err),
                 }
             };
 
@@ -835,12 +851,10 @@ impl<'a> Parser<'a> {
     /// Returns the parsed optional self parameter and whether a self shortcut was used.
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
         // Extract an identifier *after* having confirmed that the token is one.
-        let expect_self_ident = |this: &mut Self| match this.token.ident() {
-            Some((ident, IdentIsRaw::No)) => {
-                this.bump();
-                ident
-            }
-            _ => unreachable!(),
+        let expect_self_ident = |this: &mut Self| {
+            let ident = this.token.non_raw_ident().unwrap();
+            this.bump();
+            ident
         };
         // is lifetime `n` tokens ahead?
         let is_lifetime = |this: &Self, n| this.look_ahead(n, |t| t.is_lifetime());

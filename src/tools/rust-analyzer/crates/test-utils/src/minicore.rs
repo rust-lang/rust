@@ -670,7 +670,11 @@ pub mod ops {
     // region:drop
     #[lang = "drop"]
     pub trait Drop {
-        fn drop(&mut self);
+        fn drop(&mut self) {
+            // region:pin
+            Drop::pin_drop(crate::pin::Pin::new(self))
+            // endregion:pin
+        }
 
         // region:pin
         fn pin_drop(self: crate::pin::Pin<&mut Self>) {}

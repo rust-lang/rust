@@ -126,6 +126,12 @@ fn self_hosting_parsing() {
     }
 }
 
+#[test]
+fn doc_comment_on_literal_expr() {
+    let parse = SourceFile::parse("fn f() { ///\n0..0; }", parser::Edition::CURRENT);
+    assert!(parse.errors().is_empty());
+}
+
 fn test_data_dir() -> PathBuf {
     project_root().into_std_path_buf().join("crates/syntax/test_data")
 }

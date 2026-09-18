@@ -250,7 +250,7 @@
     },
     {
      "name": "ptr",
-     "type": "core::ptr::unique::Unique<u8>",
+     "type": "core::ptr::non_null::NonNull<u8>",
      "offset": 8
     }
    ],
@@ -267,20 +267,6 @@
      "type": "unsigned long long",
      "offset": 0
     }
-   ]
-  },
-  "core::ptr::unique::Unique<u8>": {
-   "size": 8,
-   "type_class": 16384,
-   "fields": [
-    {
-     "name": "pointer",
-     "type": "core::ptr::non_null::NonNull<u8>",
-     "offset": 0
-    }
-   ],
-   "generic_params": [
-    "unsigned char"
    ]
   },
   "core::ptr::non_null::NonNull<u8>": {

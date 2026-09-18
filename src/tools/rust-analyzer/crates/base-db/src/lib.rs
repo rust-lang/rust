@@ -19,6 +19,7 @@ use std::{
     cell::RefCell,
     hash::BuildHasherDefault,
     panic,
+    str::FromStr as _,
     sync::{Once, atomic::AtomicUsize},
 };
 
@@ -327,7 +328,7 @@ impl CrateWorkspaceData {
 }
 
 pub fn toolchain_channel(db: &dyn salsa::Database, krate: Crate) -> Option<ReleaseChannel> {
-    krate.workspace_data(db).toolchain.as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre))
+    krate.workspace_data(db).toolchain.as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre).ok())
 }
 
 #[salsa::input(singleton, debug)]

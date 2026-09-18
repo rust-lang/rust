@@ -33,11 +33,11 @@ where
     if a_abs.wrapping_sub(one) >= inf_rep - one || b_abs.wrapping_sub(one) >= inf_rep - one {
         // NaN + anything = qNaN
         if a_abs > inf_rep {
-            return F::from_bits(a_abs | quiet_bit);
+            return F::from_bits(a_rep | quiet_bit);
         }
         // anything + NaN = qNaN
         if b_abs > inf_rep {
-            return F::from_bits(b_abs | quiet_bit);
+            return F::from_bits(b_rep | quiet_bit);
         }
 
         if a_abs == inf_rep {

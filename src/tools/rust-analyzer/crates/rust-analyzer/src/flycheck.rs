@@ -490,7 +490,7 @@ impl<'a> Substitutions<'a> {
     ///
     /// Same for {saved_file}.
     ///
-    #[allow(clippy::disallowed_types)] /* generic parameter allows for FxHashMap */
+    #[expect(clippy::disallowed_types, reason = "generic parameter allows for `FxHashMap`")]
     fn substitute<H>(
         self,
         template: &project_json::Runnable,

@@ -1,6 +1,8 @@
 error: expected expression, found `ty` metavariable
   --> $DIR/cfg-eval-derive-invalid-reparse-no-ice.rs:8:25
    |
+LL | macro_rules! values {
+...
 LL |         pub enum TokenKind {
    |                  --------- while parsing this enum
 LL |             #[cfg(test)]
@@ -11,7 +13,6 @@ LL | values!(String);
    | --------------- in this macro invocation
    |
    = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
-   = note: this error originates in the macro `values` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: macro expansion ignores `)` and any tokens following
   --> $DIR/cfg-eval-derive-invalid-reparse-no-ice.rs:8:32

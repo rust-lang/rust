@@ -371,7 +371,6 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
         Ident::new(kw::Underscore, span),
         cx.ty(span, ast::TyKind::Tup(ThinVec::new())),
         Some(block),
-        ast::ConstItemKind::Body,
     );
 
     // Integrate the new item into existing module structures.

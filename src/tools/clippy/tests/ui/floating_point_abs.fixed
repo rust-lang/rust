@@ -1,7 +1,13 @@
 #![warn(clippy::suboptimal_flops)]
 
-/// Allow suboptimal ops in constant context
+#[clippy::msrv = "1.85.0"]
 pub const fn in_const_context(num: f64) -> f64 {
+    num.abs()
+    //~^ suboptimal_flops
+}
+
+#[clippy::msrv = "1.84.0"]
+const fn just_under_msrv(num: f64) -> f64 {
     if num >= 0.0 { num } else { -num }
 }
 

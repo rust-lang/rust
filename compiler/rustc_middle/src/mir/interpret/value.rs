@@ -6,6 +6,7 @@ use rustc_abi::{HasDataLayout, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
+use rustc_span::bug;
 
 use super::{
     AllocId, CtfeProvenance, InterpResult, Pointer, PointerArithmetic, Provenance, interp_ok,

@@ -21,6 +21,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Encodable};
+use rustc_span::bug;
 use tracing::{debug, trace};
 // Also make the error macros available from this module.
 pub use {

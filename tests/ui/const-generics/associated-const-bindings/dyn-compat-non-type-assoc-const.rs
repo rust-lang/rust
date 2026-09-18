@@ -7,7 +7,7 @@
 
 trait Trait {
     const K: usize;
-    //~^ NOTE it contains associated const `K` that's not defined as `type const`
+    //~^ NOTE it contains associated const `K` that's not defined as `#[rustc_always_gca]`
 }
 
 fn main() {
@@ -16,5 +16,5 @@ fn main() {
     // Check that specifying the non-type assoc const doesn't work without full GCA.
     let _: dyn Trait<K = 0>;
     //~^ ERROR the trait `Trait` is not dyn compatible
-    //~| ERROR use of trait associated const not defined as `type const`
+    //~| ERROR use of trait associated const not defined as `#[rustc_always_gca]`
 }

@@ -80,6 +80,11 @@ impl f64 {
     ///
     /// This function always returns the precise result.
     ///
+    /// On most hardware platforms, [`round_ties_even`](Self::round_ties_even) may execute faster
+    /// than `round`. If both rounding methods fit the use case, consider using `round_ties_even`.
+    /// Note that the two methods apply different rounding rules to values exactly halfway between
+    /// two integers.
+    ///
     /// # Examples
     ///
     /// ```

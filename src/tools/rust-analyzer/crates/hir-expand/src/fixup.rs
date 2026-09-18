@@ -343,7 +343,6 @@ pub(crate) fn reverse_fixups(tt: &mut TopSubtree, undo_info: &SyntaxFixupUndoInf
     let top_subtree = tt.top_subtree();
     let open_span = top_subtree.delimiter.open;
     let close_span = top_subtree.delimiter.close;
-    #[allow(deprecated)]
     if never!(
         close_span.anchor.ast_id == FIXUP_DUMMY_AST_ID
             || open_span.anchor.ast_id == FIXUP_DUMMY_AST_ID

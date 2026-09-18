@@ -13,7 +13,7 @@ use crate::token::LitKind;
 //
 // format_args!("hello {abc:.xyz$}!!", abc="world");
 //                                     └─────────┘
-//                                      argument
+//                                      argument.original_span (before expansion)
 //
 // format_args!("hello {abc:.xyz$}!!", abc="world");
 //              └───────────────────┘
@@ -42,6 +42,7 @@ use crate::token::LitKind;
 /// E.g., `format_args!("hello {name}");`.
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct FormatArgs {
+    /// The format string literal's span (including quotes), not the whole invocation.
     pub span: Span,
     pub template: Vec<FormatArgsPiece>,
     pub arguments: FormatArguments,
@@ -145,6 +146,10 @@ impl FormatArguments {
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct FormatArgument {
+    /// The original argument span, including `name =` for named arguments, preserved across expansion.
+    /// For implicit captures, this is the identifier's span inside the format string.
+    /// Unlike `expr.span`, this still covers all of `identity!(x)` after it expands to `x`.
+    pub original_span: Span,
     pub kind: FormatArgumentKind,
     pub expr: Box<Expr>,
 }

@@ -30,7 +30,7 @@ impl<'tcx> MiriMachine<'tcx> {
         ptr: Pointer,
     ) -> InterpResult<'tcx> {
         // Allocate the extra indirection place and add it to the map.
-        let layout = ecx.machine.layouts.mut_raw_ptr;
+        let layout = ecx.machine.layouts.unit_ptr_mut;
         let place = ecx.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
         ecx.write_scalar(Scalar::from_maybe_pointer(ptr, ecx), &place)?;
         let weak_ptr = place.ptr().into_pointer_or_addr().unwrap();

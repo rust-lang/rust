@@ -5,7 +5,6 @@ use std::iter;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty;
-use rustc_span::Span;
 use tracing::instrument;
 
 use self::env::OutlivesEnvironment;
@@ -36,7 +35,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Process the region constraints and return any errors that
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
-    /// `resolve_vars_if_possible` as well as `fully_resolve`.
+    /// `deeply_resolve_ignoring_regions` as well as `fully_resolve`.
     ///
     /// Don't call this directly unless you know what you're doing.
     /// You probably want to use `resolve_regions` instead.
@@ -44,9 +43,8 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn resolve_regions_with_outlives_env(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
-        span: Span,
     ) -> Vec<RegionResolutionError<'tcx>> {
-        self.process_registered_region_obligations(outlives_env, span);
+        self.process_registered_region_obligations(outlives_env);
 
         let mut storage = {
             let mut inner = self.inner.borrow_mut();

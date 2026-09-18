@@ -7,6 +7,7 @@ use std::sync::Arc;
 use rustc_ast::{self as ast, Crate, DelegationSuffixes, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
+use rustc_data_structures::sync::RwLock;
 use rustc_errors::{Applicability, StashKey};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
@@ -41,7 +42,7 @@ use crate::diagnostics::{
 use crate::hygiene::Macros20NormalizedSyntaxContext;
 use crate::imports::Import;
 use crate::{
-    BindingKey, CacheCell, CmResolver, Decl, DeclKind, DeriveData, Determinacy, Finalize, IdentKey,
+    BindingKey, CmResolver, Decl, DeclKind, DeriveData, Determinacy, Finalize, IdentKey,
     InvocationParent, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, Res,
     ResolutionError, Resolver, ScopeSet, Segment, Used,
 };
@@ -79,7 +80,7 @@ pub(crate) enum MacroRulesScope<'ra> {
 /// This helps to avoid uncontrollable growth of `macro_rules!` scope chains,
 /// which usually grow linearly with the number of macro invocations
 /// in a module (including derives) and hurt performance.
-pub(crate) type MacroRulesScopeRef<'ra> = &'ra CacheCell<MacroRulesScope<'ra>>;
+pub(crate) type MacroRulesScopeRef<'ra> = &'ra RwLock<MacroRulesScope<'ra>>;
 
 /// Macro namespace is separated into two sub-namespaces, one for bang macros and
 /// one for attribute-like macros (attributes, derives).
@@ -1143,7 +1144,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if let Some((mod_def_id, node_id)) = invoc_in_mod_inert_attr
             && let Some(decl) = decl
             // This is a `macro_rules` itself, not some import.
-            && let DeclKind::Def(res) = decl.kind
+            && let DeclKind::Def(res, _) = decl.kind
             && let Res::Def(DefKind::Macro(kinds), def_id) = res
             && kinds.contains(MacroKinds::BANG)
             // And the `macro_rules` is defined inside the attribute's module,

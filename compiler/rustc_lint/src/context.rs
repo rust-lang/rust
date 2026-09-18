@@ -22,7 +22,6 @@ use rustc_lint_defs::{
     FutureIncompatibleInfo, Lint, LintExpectationId, LintId, StableLintExpectationId,
     UnstableLintExpectationId,
 };
-use rustc_middle::bug;
 use rustc_middle::lint::{LevelSpec, StableLevelSpec, UnstableLevelSpec};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
@@ -32,7 +31,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, bug, sym};
 use tracing::debug;
 
 use self::TargetLint::*;

@@ -26,6 +26,7 @@ use rustc_middle::lint::{
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
+use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::{AttrId, DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
@@ -190,7 +191,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
             hir::OwnerNode::ImplItem(item) => levels.visit_impl_item(item),
             hir::OwnerNode::Crate(mod_) => {
                 levels.add_id(hir::CRATE_HIR_ID);
-                levels.visit_mod(mod_, mod_.spans.inner_span, hir::CRATE_HIR_ID)
+                levels.visit_mod(mod_, mod_.spans.inner_span, CRATE_MOD_ID)
             }
             hir::OwnerNode::Synthetic => unreachable!(),
         },
@@ -969,14 +970,18 @@ where
                 let mut lint = Diag::new(dcx, level, msg!("unknown lint: `{$name}`"))
                     .with_arg("name", lint_id.lint.name_lower())
                     .with_note(msg!("the `{$name}` lint is unstable"));
-                rustc_session::diagnostics::add_feature_diagnostics_for_issue(
-                    &mut lint,
-                    sess,
-                    feature,
-                    GateIssue::Language,
-                    lint_from_cli,
-                    None,
-                );
+                // `staged_api` is only intended for the standard library, so don't
+                // suggest enabling it just to use this lint.
+                if feature != sym::staged_api {
+                    rustc_session::diagnostics::add_feature_diagnostics_for_issue(
+                        &mut lint,
+                        sess,
+                        feature,
+                        GateIssue::Language,
+                        lint_from_cli,
+                        None,
+                    );
+                }
                 lint
             }
         }

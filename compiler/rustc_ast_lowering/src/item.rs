@@ -5,16 +5,12 @@ use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::{
-    self as hir, CRATE_OWNER_ID, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin, Target,
-    find_attr,
+    self as hir, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin, Target, find_attr,
 };
-use rustc_middle::middle::resolve::ResolverAstLowering;
-use rustc_middle::span_bug;
-use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::data_structures::IndexMap;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, span_bug, sym};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -29,14 +25,9 @@ use super::{
 };
 use crate::diagnostics::{ConstComptimeFn, ResolvingRestrictionKind, RestrictionAncestorOnly};
 
-pub(super) struct ItemLowerer<'a, 'hir> {
-    pub(super) tcx: TyCtxt<'hir>,
-    pub(super) resolver: &'a ResolverAstLowering<'hir>,
-}
-
-/// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
-/// to the where clause that is preferred, if it exists. Otherwise, it sets the span to the other where
-/// clause if it exists.
+/// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set
+/// the span to the where clause that is preferred, if it exists. Otherwise, it sets the span to
+/// the other where clause if it exists.
 fn add_ty_alias_where_clause(
     generics: &mut ast::Generics,
     after_where_clause: &ast::WhereClause,
@@ -51,48 +42,6 @@ fn add_ty_alias_where_clause(
     }
     (generics.where_clause.has_where_token, generics.where_clause.span) =
         if before.0 || !after.0 { before } else { after };
-}
-
-impl<'hir> ItemLowerer<'_, 'hir> {
-    fn with_lctx(
-        &mut self,
-        owner: NodeId,
-        f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
-    ) -> hir::MaybeOwner<'hir> {
-        let mut lctx = LoweringContext::new(self.tcx, self.resolver, owner);
-
-        let item = f(&mut lctx);
-
-        let info = lctx.curr_owner.into_owner_info(self.tcx, item);
-        hir::MaybeOwner::Owner(lctx.arena.alloc(info))
-    }
-
-    #[instrument(level = "debug", skip(self, c))]
-    pub(super) fn lower_crate(&mut self, c: &Crate) -> hir::MaybeOwner<'hir> {
-        self.with_lctx(CRATE_NODE_ID, |lctx| {
-            debug_assert_eq!(lctx.curr_owner.owner_id, CRATE_OWNER_ID);
-            let module = lctx.lower_mod(&c.items, &c.spans);
-            lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs, c.spans.inner_span, Target::Crate);
-            hir::OwnerNode::Crate(module)
-        })
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    pub(super) fn lower_item(&mut self, item: &Item) -> hir::MaybeOwner<'hir> {
-        self.with_lctx(item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
-    }
-
-    pub(super) fn lower_trait_item(&mut self, item: &AssocItem) -> hir::MaybeOwner<'hir> {
-        self.with_lctx(item.id, |lctx| hir::OwnerNode::TraitItem(lctx.lower_trait_item(item)))
-    }
-
-    pub(super) fn lower_impl_item(&mut self, item: &AssocItem) -> hir::MaybeOwner<'hir> {
-        self.with_lctx(item.id, |lctx| hir::OwnerNode::ImplItem(lctx.lower_impl_item(item)))
-    }
-
-    pub(super) fn lower_foreign_item(&mut self, item: &ForeignItem) -> hir::MaybeOwner<'hir> {
-        self.with_lctx(item.id, |lctx| hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item)))
-    }
 }
 
 impl<'hir> LoweringContext<'_, 'hir> {
@@ -204,8 +153,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_item(&mut self, i: &Item) -> &'hir hir::Item<'hir> {
-        let owner_id = self.curr_owner.owner_id;
+    pub(super) fn lower_item(&mut self, i: &Item) -> &'hir hir::Item<'hir> {
+        let owner_id = self.curr_owner.owner_id();
         let hir_id: HirId = owner_id.into();
         let vis_span = self.lower_span(i.vis.span);
 
@@ -215,6 +164,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_ast_item(i),
+            Some(i),
             &extra_hir_attributes,
         );
 
@@ -272,7 +222,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 generics,
                 ty,
                 body,
-                kind,
                 define_opaque,
             }) => {
                 let ident = self.lower_ident(*ident);
@@ -284,7 +233,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ty,
                             ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
                         );
-                        let rhs = this.lower_const_item_rhs(body, *kind, span);
+                        let rhs = this.lower_const_item_rhs(body, span);
                         (ty, rhs)
                     },
                 );
@@ -332,7 +281,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) = this.lower_generics(generics, itctx, |this| {
-                        this.lower_fn_decl(decl, id, *fn_sig_span, FnDeclKind::Fn, coroutine_marker)
+                        this.lower_fn_decl(decl, id, FnDeclKind::Fn, coroutine_marker)
                     });
                     let sig = hir::FnSig {
                         decl,
@@ -545,7 +494,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::MacroDef(ident, MacroDef { body, macro_rules, eii_declaration: _ }) => {
                 let ident = self.lower_ident(*ident);
-                let body = Box::new(self.lower_delim_args(body));
+                let body = body.clone();
                 let def_id = self.curr_owner.owner.def_id;
                 let def_kind = self.tcx.def_kind(def_id);
                 let DefKind::Macro(macro_kinds) = def_kind else {
@@ -680,7 +629,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let prefix = Path { segments, span };
 
                 // Add all the nested `PathListItem`s to the HIR.
-                for &(ref use_tree, id) in trees {
+                for use_tree in trees {
+                    let id = use_tree.id;
                     let owner_id = self.owner_id(id);
 
                     // Each `use` import is an item and thus are owners of the
@@ -692,7 +642,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         // `prefix` is lowered multiple times, but in different HIR owners.
                         // So each segment gets renewed `HirId` with the same
                         // `ItemLocalId` and the new owner. (See `lower_node_id`)
-                        let kind = this.lower_use_tree(use_tree, &prefix, id, vis_span, attrs);
+                        let kind =
+                            this.lower_use_tree(&use_tree.inner, &prefix, id, vis_span, attrs);
                         if !attrs.is_empty() {
                             this.curr_owner.attrs.insert(hir::ItemLocalId::ZERO, attrs);
                         }
@@ -701,7 +652,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             owner_id,
                             kind,
                             vis_span,
-                            span: this.lower_span(use_tree.span()),
+                            span: this.lower_span(use_tree.inner.span()),
                             eii: find_attr!(attrs, EiiImpl(..) | EiiDeclaration(..)),
                         };
                         hir::OwnerNode::Item(this.arena.alloc(item))
@@ -729,8 +680,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
-        let owner_id = self.curr_owner.owner_id;
+    pub(super) fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
+        let owner_id = self.curr_owner.owner_id();
         let hir_id: HirId = owner_id.into();
         let attrs =
             self.lower_attrs(hir_id, &i.attrs, i.span, Target::from_foreign_item_kind(&i.kind));
@@ -741,7 +692,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, (decl, fn_args)) = self.lower_generics(generics, itctx, |this| {
                     (
                         // Disallow `impl Trait` in foreign items.
-                        this.lower_fn_decl(fdec, i.id, sig.span, FnDeclKind::ExternFn, None),
+                        this.lower_fn_decl(fdec, i.id, FnDeclKind::ExternFn, None),
                         this.lower_fn_params_to_idents(fdec),
                     )
                 });
@@ -800,9 +751,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_variant(&mut self, item_kind: &ItemKind, v: &Variant) -> hir::Variant<'hir> {
         if v.ident.name == kw::Underscore && self.tcx.features().unnamed_enum_variants() {
             // FIXME(#156628): lower unnamed enum variants to HIR.
-            self.dcx()
-                .struct_span_fatal(v.span, "unnamed enum variants are not yet implemented")
-                .emit()
+            self.dcx().span_fatal(v.span, "unnamed enum variants are not yet implemented");
         }
         let hir_id = self.lower_node_id(v.id);
         self.lower_attrs(hir_id, &v.attrs, v.span, Target::Variant);
@@ -912,8 +861,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_trait_item(&mut self, i: &AssocItem) -> &'hir hir::TraitItem<'hir> {
-        let trait_item_def_id = self.curr_owner.owner_id;
+    pub(super) fn lower_trait_item(&mut self, i: &AssocItem) -> &'hir hir::TraitItem<'hir> {
+        let trait_item_def_id = self.curr_owner.owner_id();
         let hir_id: HirId = trait_item_def_id.into();
         let attrs = self.lower_attrs(
             hir_id,
@@ -924,13 +873,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (ident, generics, kind, has_value) = match &i.kind {
             AssocItemKind::Const(ConstItem {
-                ident,
-                generics,
-                ty,
-                body,
-                kind,
-                define_opaque,
-                ..
+                ident, generics, ty, body, define_opaque, ..
             }) => {
                 let (generics, kind) = self.lower_generics(
                     generics,
@@ -942,7 +885,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         );
                         // Trait associated consts don't need an expression/body.
                         let rhs = if body.is_some() {
-                            Some(this.lower_const_item_rhs(body, *kind, i.span))
+                            Some(this.lower_const_item_rhs(body, i.span))
                         } else {
                             None
                         };
@@ -1167,8 +1110,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         ident
     }
 
-    fn lower_impl_item(&mut self, i: &AssocItem) -> &'hir hir::ImplItem<'hir> {
-        let owner_id = self.curr_owner.owner_id;
+    pub(super) fn lower_impl_item(&mut self, i: &AssocItem) -> &'hir hir::ImplItem<'hir> {
+        let owner_id = self.curr_owner.owner_id();
         let hir_id: HirId = owner_id.into();
         let parent_id = self.tcx.local_parent(owner_id.def_id);
         let is_in_trait_impl =
@@ -1187,13 +1130,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (ident, (generics, kind)) = match &i.kind {
             AssocItemKind::Const(ConstItem {
-                ident,
-                generics,
-                ty,
-                body,
-                kind,
-                define_opaque,
-                ..
+                ident, generics, ty, body, define_opaque, ..
             }) => (
                 *ident,
                 self.lower_generics(
@@ -1205,7 +1142,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy),
                         );
                         this.lower_define_opaque(hir_id, &define_opaque);
-                        let rhs = this.lower_const_item_rhs(body, *kind, i.span);
+                        let rhs = this.lower_const_item_rhs(body, i.span);
                         hir::ImplItemKind::Const(ty, rhs)
                     },
                 ),
@@ -1335,7 +1272,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::BodyId {
         let body = hir::Body { params, value: self.arena.alloc(value) };
         let id = body.id();
-        assert_eq!(id.hir_id.owner, self.curr_owner.owner_id);
+        assert_eq!(id.hir_id.owner, self.curr_owner.owner_id());
         self.curr_owner.bodies.push((id.hir_id.local_id, self.arena.alloc(body)));
         id
     }
@@ -1680,7 +1617,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, itctx, |this| {
-            this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_marker)
+            this.lower_fn_decl(&sig.decl, id, kind, coroutine_marker)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }

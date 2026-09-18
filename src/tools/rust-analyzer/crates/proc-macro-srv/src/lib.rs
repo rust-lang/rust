@@ -10,7 +10,7 @@
 
 #![cfg(feature = "in-rust-tree")]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span, rustc_private)]
-#![expect(internal_features, clippy::disallowed_types, clippy::print_stderr)]
+#![expect(internal_features)]
 #![allow(unused_features, unused_crate_dependencies)]
 #![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
 #![cfg_attr(test, expect(unreachable_pub))]
@@ -29,7 +29,7 @@ mod server_impl;
 mod token_stream;
 
 use std::{
-    collections::{HashMap, HashSet, hash_map::Entry},
+    collections::hash_map::Entry,
     env,
     ffi::OsString,
     fs,
@@ -40,6 +40,7 @@ use std::{
 };
 
 use paths::{Utf8Path, Utf8PathBuf};
+use rustc_hash::{FxHashMap, FxHashSet};
 use span::{FIXUP_ERASED_FILE_AST_ID_MARKER, Span};
 
 pub use crate::server_impl::token_id::SpanId;
@@ -61,7 +62,7 @@ pub enum ProcMacroKind {
 pub const RUSTC_VERSION_STRING: &str = env!("RUSTC_VERSION");
 
 pub struct ProcMacroSrv<'env> {
-    expanders: Mutex<HashMap<Utf8PathBuf, Arc<dylib::Expander>>>,
+    expanders: Mutex<FxHashMap<Utf8PathBuf, Arc<dylib::Expander>>>,
     env: &'env EnvSnapshot,
 }
 
@@ -226,8 +227,8 @@ impl ProcMacroSrv<'_> {
 
 #[derive(Default)]
 pub struct TrackedEnv {
-    pub env_vars: HashMap<Box<str>, Option<Box<str>>>,
-    pub paths: HashSet<Box<str>>,
+    pub env_vars: FxHashMap<Box<str>, Option<Box<str>>>,
+    pub paths: FxHashSet<Box<str>>,
 }
 
 pub trait ProcMacroSrvSpan: Copy + Send + Sync {
@@ -289,7 +290,7 @@ impl PanicMessage {
 }
 
 pub struct EnvSnapshot {
-    vars: HashMap<OsString, OsString>,
+    vars: FxHashMap<OsString, OsString>,
 }
 
 impl Default for EnvSnapshot {

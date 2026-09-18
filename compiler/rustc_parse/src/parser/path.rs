@@ -1,6 +1,5 @@
 use std::mem;
 
-use ast::token::IdentIsRaw;
 use rustc_ast::token::{self, MetaVarKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
@@ -397,14 +396,16 @@ impl<'a> Parser<'a> {
                     }
 
                     let dcx = self.dcx();
+                    let mut first_param = true;
                     let parse_params_result = self.parse_paren_comma_seq(|p| {
                         // Inside parenthesized type arguments, we want types only, not names.
                         let mode = FnParseMode {
-                            context: FnContext::Free,
+                            context: FnContext::ParenthesizedArgumentList,
                             req_name: |_, _| false,
                             req_body: false,
                         };
-                        let param = p.parse_param_general(&mode, false, false)?;
+                        let param = p.parse_param_general(&mode, first_param)?;
+                        first_param = false;
                         if !matches!(param.pat.kind, PatKind::Missing) {
                             self.psess
                                 .gated_spans
@@ -455,12 +456,13 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_path_segment_ident(&mut self) -> PResult<'a, Ident> {
-        match self.token.ident() {
-            Some((ident, IdentIsRaw::No)) if ident.is_path_segment_keyword() => {
-                self.bump();
-                Ok(ident)
-            }
-            _ => self.parse_ident(),
+        if let Some(ident) = self.token.non_raw_ident()
+            && ident.is_path_segment_keyword()
+        {
+            self.bump();
+            Ok(ident)
+        } else {
+            self.parse_ident()
         }
     }
 

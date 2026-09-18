@@ -12,32 +12,8 @@
 // Check that the assembly that rustc generates matches what GCC emits.
 
 extern crate minicore;
+use minicore::ffi::VaList;
 use minicore::*;
-
-pub unsafe trait VaArgSafe {}
-
-unsafe impl VaArgSafe for i32 {}
-unsafe impl VaArgSafe for i64 {}
-unsafe impl VaArgSafe for f64 {}
-unsafe impl<T> VaArgSafe for *const T {}
-
-#[repr(C)]
-struct VaListInner {
-    va_stk: *const c_void,
-    va_reg: *const c_void,
-    va_ndx: i32,
-}
-
-#[repr(transparent)]
-#[lang = "va_list"]
-pub struct VaList<'a> {
-    inner: VaListInner,
-    _marker: PhantomData<&'a mut ()>,
-}
-
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
@@ -68,7 +44,7 @@ unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
     // XTENSA-NEXT: l32i a2, a8, 0
     // XTENSA-NEXT: l32i a3, a8, 4
     // XTENSA-NEXT: retw.n
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -98,7 +74,7 @@ unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
     // XTENSA-NEXT: add a8, a9, a8
     // XTENSA-NEXT: l32i a2, a8, 0
     // XTENSA-NEXT: retw.n
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -130,11 +106,11 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // XTENSA-NEXT: l32i a2, a8, 0
     // XTENSA-NEXT: l32i a3, a8, 4
     // XTENSA-NEXT: retw.n
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_ptr(ap: &mut VaList<'_>) -> *const u8 {
     // XTENSA: read_ptr = read_i32
-    va_arg(ap)
+    ap.next_arg()
 }

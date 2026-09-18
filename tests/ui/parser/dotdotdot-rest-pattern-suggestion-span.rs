@@ -10,7 +10,7 @@ impl S { fn f(···>) }
 //~| ERROR unknown start of token
 //~| ERROR unknown start of token
 //~| ERROR unexpected `...`
-//~| ERROR expected `:`, found `>`
+//~| ERROR unexpected token: `>`
 //~| ERROR expected one of
 //~| ERROR associated function in `impl` without body
 //~| ERROR cannot find type `S` in this scope

@@ -169,16 +169,6 @@ impl<I: Interner> AliasTerm<I> {
         Self::new_from_args(interner, kind, args)
     }
 
-    pub fn new_from_def_id(
-        interner: I,
-        def_id: I::DefId,
-        args: I::GenericArgs,
-        inherent_args: ty::AliasConstInherentArgsKind,
-    ) -> AliasTerm<I> {
-        let kind = interner.alias_term_kind_from_def_id(def_id, inherent_args);
-        Self::new_from_args(interner, kind, args)
-    }
-
     pub fn expect_ty(self) -> ty::AliasTy<I> {
         let kind = match self.kind {
             AliasTermKind::ProjectionTy { def_id } => ty::AliasTyKind::Projection { def_id },

@@ -49,6 +49,12 @@ or
 rustc +l4re --target <l4re-triple> <rs-file>
 ```
 
+### Build Script
+
+<https://github.com/l4re/rust-l4re-toolchain/> has a wrapper script to build
+L4Re and rustc for arm64 and x86-64 as well as small test programs to verify
+in QEMU that runnable binaries are generated.
+
 ## Run Rust Programs on L4Re
 
 You can run an L4Re application written in Rust just like any other externally

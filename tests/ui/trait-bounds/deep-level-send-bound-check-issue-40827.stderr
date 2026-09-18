@@ -12,12 +12,14 @@ note: required because it appears within the type `Bar`
    |
 LL | enum Bar {
    |      ^^^
+LL |     A(Rc<Foo>),
+   |       ------- required by this field
    = note: required for `Arc<Bar>` to implement `Send`
 note: required because it appears within the type `Foo`
   --> $DIR/deep-level-send-bound-check-issue-40827.rs:4:8
    |
 LL | struct Foo(Arc<Bar>);
-   |        ^^^
+   |        ^^^ -------- required by this field
 note: required by a bound in `f`
   --> $DIR/deep-level-send-bound-check-issue-40827.rs:11:9
    |
@@ -38,12 +40,14 @@ note: required because it appears within the type `Bar`
    |
 LL | enum Bar {
    |      ^^^
+LL |     A(Rc<Foo>),
+   |       ------- required by this field
    = note: required for `Arc<Bar>` to implement `Send`
 note: required because it appears within the type `Foo`
   --> $DIR/deep-level-send-bound-check-issue-40827.rs:4:8
    |
 LL | struct Foo(Arc<Bar>);
-   |        ^^^
+   |        ^^^ -------- required by this field
 note: required by a bound in `f`
   --> $DIR/deep-level-send-bound-check-issue-40827.rs:11:9
    |

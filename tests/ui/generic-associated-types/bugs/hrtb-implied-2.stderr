@@ -4,7 +4,7 @@ error[E0521]: borrowed data escapes outside of function
 LL | fn fails<I: LendingIterator, F>(iter: &mut I, f: F) -> bool
    |                                 ----  - let's call the lifetime of this reference `'1`
    |                                 |
-   |                                 `iter` is a reference that is only valid in the function body
+   |                                 `iter` is only valid in the function body
 ...
 LL |     let _next = iter2.next();
    |                 ^^^^^^^^^^^^

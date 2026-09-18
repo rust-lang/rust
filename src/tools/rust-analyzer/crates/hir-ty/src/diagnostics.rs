@@ -9,8 +9,5 @@ pub use crate::diagnostics::{
     expr::{
         BodyValidationDiagnostic, record_literal_missing_fields, record_pattern_missing_fields,
     },
-    unsafe_check::{
-        InsideUnsafeBlock, UnsafetyReason, missing_unsafe, unsafe_operations,
-        unsafe_operations_for_body,
-    },
+    unsafe_check::{InsideUnsafeBlock, UnsafetyReason, missing_unsafe, unsafe_operations},
 };

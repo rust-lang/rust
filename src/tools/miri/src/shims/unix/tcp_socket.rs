@@ -17,6 +17,21 @@ use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket::{SocketFamily, UnixSocketFileDescription};
 use crate::*;
 
+/// On Linux a TCP socket is initally in the TCP_CLOSE state:
+/// See <https://github.com/torvalds/linux/blob/cee9395/net/core/sock.c#L3753>
+/// For a socket in this state, (E)POLLHUP is reported:
+/// See <https://github.com/torvalds/linux/blob/980a813/net/ipv4/tcp.c#L581-L582>
+/// Additionally, because the write buffer is initially empty and the socket is not
+/// shut down, (E)POLLOUT is also reported for freshly created TCP sockets:
+/// See <https://github.com/torvalds/linux/blob/980a813/net/ipv4/tcp.c#L602>
+///
+/// These events are reported when the "write closed" and "writable" readiness of
+/// our generic [`Readiness`] struct are set. Because the TCP socket is only added
+/// to the blocking I/O manager after it is connected or listening, we manually set
+/// this initial readiness.
+const INITIAL_TCP_SOCKET_READINESS: Readiness =
+    Readiness { writable: true, write_closed: true, ..Readiness::EMPTY };
+
 #[derive(Debug)]
 enum SocketState {
     /// No syscall after `socket` has been made.
@@ -81,7 +96,7 @@ impl TcpSocket {
             family,
             state: RefCell::new(SocketState::Initial),
             is_non_block: Cell::new(is_non_block),
-            io_readiness: RefCell::new(Readiness::EMPTY),
+            io_readiness: RefCell::new(INITIAL_TCP_SOCKET_READINESS),
             error: RefCell::new(None),
             read_timeout: Cell::new(None),
             write_timeout: Cell::new(None),
@@ -297,6 +312,15 @@ impl UnixSocketFileDescription for TcpSocket {
                     Ok(listener) => {
                         *state = SocketState::Listening(listener);
                         drop(state);
+
+                        // After invoking `listen` on a TCP socket, it transitions out of the
+                        // TCP_CLOSE state which affects the socket's readiness. Because we
+                        // register the socket afterwards to the blocking I/O manager, we just
+                        // clear its readiness here as the blocking I/O manager will update its
+                        // readiness accordingly.
+                        self.io_readiness.replace(Readiness::EMPTY);
+                        ecx.update_fd_readiness(self.clone(), ReadinessUpdateFlags::DEFAULT)?;
+
                         // Register the socket to the blocking I/O manager because
                         // we now have an associated host socket.
                         ecx.machine.blocking_io.register(self);
@@ -389,6 +413,15 @@ impl UnixSocketFileDescription for TcpSocket {
         match TcpStream::connect(address) {
             Ok(stream) => {
                 *self.state.borrow_mut() = SocketState::Connecting(stream);
+
+                // After invoking `connect` on a TCP socket, it transitions out of the
+                // TCP_CLOSE state which affects the socket's readiness. Because we
+                // register the socket afterwards to the blocking I/O manager, we just
+                // clear its readiness here as the blocking I/O manager will update its
+                // readiness accordingly.
+                self.io_readiness.replace(Readiness::EMPTY);
+                ecx.update_fd_readiness(self.clone(), ReadinessUpdateFlags::DEFAULT)?;
+
                 // Register the socket to the blocking I/O manager because
                 // we now have an associated host socket.
                 ecx.machine.blocking_io.register(self.clone());

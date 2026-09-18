@@ -2,9 +2,11 @@
 //! `Copy` type, and any `!Copy` type explicitly listed below.
 
 use rustc_serialize::Decodable;
+use rustc_span::{Span, Spanned};
 
+use crate::mono::MonoItem;
 use crate::ty::codec::{RefDecodable, TyDecoder};
-use crate::ty::{Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 
 // If a type `T` supported by the arena also needs to support decoding into `&'tcx T`
 // backed by an arena allocation (via `RefDecodable`), add it to the list in
@@ -157,8 +159,10 @@ where
     D: TyDecoder<'tcx>,
     T: ArenaAllocatable<'tcx, C> + Decodable<D>,
 {
-    let values: Vec<T> = Decodable::decode(decoder);
-    decoder.interner().arena.alloc_from_iter(values)
+    // The decoder for slices must match the decoder for `Vec<T>`,
+    // which is a `usize` length followed by that many `T`.
+    let len = decoder.read_usize();
+    decoder.interner().arena.alloc_from_iter((0..len).map(|_| T::decode(decoder)))
 }
 
 macro_rules! impl_ref_decodable_into_arena {
@@ -168,16 +172,16 @@ macro_rules! impl_ref_decodable_into_arena {
         )*
     ) => {
         $(
-            impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for $ty {
+            impl<'tcx> RefDecodable<'tcx> for $ty {
                 #[inline]
-                fn decode(decoder: &mut D) -> &'tcx Self {
+                fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
                     decode_arena_allocatable(decoder)
                 }
             }
 
-            impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [$ty] {
+            impl<'tcx> RefDecodable<'tcx> for [$ty] {
                 #[inline]
-                fn decode(decoder: &mut D) -> &'tcx Self {
+                fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
                     decode_arena_allocatable_slice(decoder)
                 }
             }
@@ -190,9 +194,14 @@ macro_rules! impl_ref_decodable_into_arena {
 //
 // Types in this list must be `ArenaAllocatable`, either because they are `Copy`
 // or because they are listed in the `declare_arena!` invocation.
+//
+// Types in this list must also implement `Decodable<D>` for all `D: TyDecoder<'tcx>`.
 impl_ref_decodable_into_arena! {
     // tidy-alphabetical-start
     (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
+    (ty::Clause<'tcx>, Span),
+    (ty::PolyTraitRef<'tcx>, Span),
+    Spanned<MonoItem<'tcx>>,
     rustc_ast::InlineAsmTemplatePiece,
     rustc_ast::tokenstream::TokenStream,
     rustc_data_structures::unord::UnordMap<rustc_span::def_id::DefId, rustc_middle::ty::EarlyBinder<'tcx, Ty<'tcx>>>,

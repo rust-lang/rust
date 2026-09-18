@@ -161,13 +161,13 @@ LL +     let W(mut a, W(mut b, W(ref c, W(mut d, B { mut f }))))
 error: expected identifier, found metavariable
   --> $DIR/mut-patterns.rs:48:21
    |
+LL |     macro_rules! foo {
+LL |         ($p:pat) => {
 LL |             let mut $p = 0;
    |                     ^^ expected identifier, found metavariable
 ...
 LL |     foo!(x);
    |     ------- in this macro invocation
-   |
-   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 14 previous errors
 

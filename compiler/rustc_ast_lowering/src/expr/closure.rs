@@ -1,8 +1,7 @@
 use rustc_ast::*;
 use rustc_hir as hir;
 use rustc_hir::{HirId, Target, find_attr};
-use rustc_middle::span_bug;
-use rustc_span::Span;
+use rustc_span::{Span, span_bug};
 
 use super::{LoweringContext, MoveExprState};
 use crate::FnDeclKind;
@@ -204,7 +203,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
         // Lower outside new scope to preserve `is_in_loop_condition`.
-        let fn_decl = self.lower_fn_decl(decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
+        let fn_decl = self.lower_fn_decl(decl, closure_id, FnDeclKind::Closure, None);
 
         let c = self.arena.alloc(hir::Closure {
             def_id: closure_def_id,
@@ -327,8 +326,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // We need to lower the declaration outside the new scope, because we
         // have to conserve the state of being inside a loop condition for the
         // closure argument types.
-        let fn_decl =
-            self.lower_fn_decl(&decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
+        let fn_decl = self.lower_fn_decl(&decl, closure_id, FnDeclKind::Closure, None);
 
         if let Const::Yes(span) = constness {
             self.dcx().span_err(span, "const coroutines are not supported");

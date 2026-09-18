@@ -6,11 +6,12 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-    type const N: i32 where Self: Bound;
+    #[rustc_always_gca]
+    const N: i32 where Self: Bound;
 }
 
 impl Trait for () {
-    type const N: i32 = 0;
+    const N: i32 = core::direct_const_arg!(0);
 }
 
 trait Bound {}

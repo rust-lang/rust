@@ -17,9 +17,8 @@ use rustc_data_structures::owned_slice::{OwnedSlice, try_slice_owned};
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::fs::METADATA_FILENAME;
-use rustc_middle::bug;
 use rustc_session::Session;
-use rustc_span::sym;
+use rustc_span::{bug, sym};
 use rustc_target::spec::{CfgAbi, LlvmAbi, Os, RelocModel, Target, ef_avr_arch};
 use tracing::debug;
 

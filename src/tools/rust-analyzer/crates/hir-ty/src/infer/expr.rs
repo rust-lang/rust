@@ -192,7 +192,6 @@ impl<'db> InferenceContext<'db> {
             | Pat::Lit(_)
             | Pat::Range { .. }
             | Pat::Slice { .. }
-            | Pat::ConstBlock(_)
             | Pat::Record { .. }
             | Pat::NotNull
             | Pat::Missing => true,

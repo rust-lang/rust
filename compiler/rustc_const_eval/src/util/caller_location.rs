@@ -1,8 +1,8 @@
 use rustc_abi::FieldIdx;
 use rustc_hir::attrs::lang_items::LangItem;
+use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_middle::{bug, mir};
-use rustc_span::Symbol;
+use rustc_span::{Symbol, bug};
 use tracing::trace;
 
 use crate::const_eval::{CanAccessMutGlobal, CompileTimeInterpCx, mk_eval_cx_to_read_const_val};

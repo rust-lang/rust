@@ -34,22 +34,21 @@ fn repeats<const N: usize>() -> [(); N] {
     //~^ ERROR: generic parameters may not be used in const operations
 }
 
+const ITEM1<const N: usize>: usize = core::direct_const_arg!(N);
 
-type const ITEM1<const N: usize>: usize = N;
+const ITEM2<const N: usize>: usize = core::direct_const_arg!({ N });
 
-type const ITEM2<const N: usize>: usize = { N };
-
-type const ITEM3<const N: usize>: usize = const { N };
+const ITEM3<const N: usize>: usize = core::direct_const_arg!(const { N });
 //~^ ERROR: generic parameters may not be used in const operations
 
-type const ITEM4<const N: usize>: usize = core::direct_const_arg!(1 + 1);
+const ITEM4<const N: usize>: usize = core::direct_const_arg!(1 + 1);
 //~^ ERROR: complex const arguments must be placed inside of a `const` block
 
-type const ITEM5<const N: usize>: usize = const { 1 + 1 };
+const ITEM5<const N: usize>: usize = core::direct_const_arg!(const { 1 + 1 });
 
 trait Trait {
-
-    type const ASSOC: usize;
+    #[rustc_always_gca]
+    const ASSOC: usize;
 }
 
 fn ace_bounds<
@@ -62,7 +61,8 @@ fn ace_bounds<
     T4: Trait<ASSOC = { core::direct_const_arg!(1 + 1) }>,
     //~^ ERROR: complex const arguments must be placed inside of a `const` block
     T5: Trait<ASSOC = const { 1 + 1 }>,
->() {}
+>() {
+}
 
 struct Default1<const N: usize, const M: usize = N>;
 struct Default2<const N: usize, const M: usize = { N }>;

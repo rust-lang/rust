@@ -14,10 +14,10 @@ error[E0425]: cannot find value `x` in this scope
 LL |         let _ = format!("{x}");
    |                           ^
    |
-help: you might have meant to use the available field
+help: you might have meant to add a named formatting argument
    |
-LL |         let _ = format!("{self.x}");
-   |                           +++++
+LL |         let _ = format!("{x}", x = self.x);
+   |                              ++++++++++++
 
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/sugg-field-in-format-string-issue-141136.rs:8:27
@@ -25,10 +25,10 @@ error[E0425]: cannot find value `x` in this scope
 LL |         let _ = format!("{x }");
    |                           ^^
    |
-help: you might have meant to use the available field
+help: you might have meant to add a named formatting argument
    |
-LL |         let _ = format!("{self.x }");
-   |                           +++++
+LL |         let _ = format!("{x }", x = self.x);
+   |                               ++++++++++++
 
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/sugg-field-in-format-string-issue-141136.rs:10:31
@@ -47,10 +47,10 @@ error[E0425]: cannot find value `x` in this scope
 LL |         println!("{x}");
    |                    ^
    |
-help: you might have meant to use the available field
+help: you might have meant to add a named formatting argument
    |
-LL |         println!("{self.x}");
-   |                    +++++
+LL |         println!("{x}", x = self.x);
+   |                       ++++++++++++
 
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/sugg-field-in-format-string-issue-141136.rs:12:18

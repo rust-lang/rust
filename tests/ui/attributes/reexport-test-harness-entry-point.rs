@@ -11,5 +11,5 @@
 fn _unused() {
     // should resolve to the entry point function the --test harness
     // creates.
-    test_main();
+    let _ = test_main();
 }

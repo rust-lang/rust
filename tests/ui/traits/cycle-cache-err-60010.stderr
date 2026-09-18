@@ -20,6 +20,8 @@ note: required because it appears within the type `RootDatabase`
    |
 LL | struct RootDatabase {
    |        ^^^^^^^^^^^^
+LL |     _runtime: Runtime<RootDatabase>,
+   |     ------------------------------- required by this field
 note: required for `RootDatabase` to implement `SourceDatabase`
   --> $DIR/cycle-cache-err-60010.rs:43:9
    |
@@ -59,6 +61,8 @@ note: required because it appears within the type `RootDatabase`
    |
 LL | struct RootDatabase {
    |        ^^^^^^^^^^^^
+LL |     _runtime: Runtime<RootDatabase>,
+   |     ------------------------------- required by this field
 note: required for `RootDatabase` to implement `SourceDatabase`
   --> $DIR/cycle-cache-err-60010.rs:43:9
    |

@@ -628,3 +628,34 @@ const _: bool = foo::<(), fn() -> Foo<i32, i64>>(1, );
     "#]],
     );
 }
+
+#[test]
+fn eager_recursion_limit() {
+    check(
+        r#"
+//- minicore: concat
+
+macro_rules! concat_separator {
+    () => {
+        concat!("", concat_separator!())
+    };
+}
+
+fn main() {
+    concat_separator!()
+}
+    "#,
+        expect![[r#"
+
+macro_rules! concat_separator {
+    () => {
+        concat!("", concat_separator!())
+    };
+}
+
+fn main() {
+    concat!("", concat_separator!())
+}
+    "#]],
+    );
+}

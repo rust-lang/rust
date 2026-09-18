@@ -4,15 +4,15 @@
 #![allow(incomplete_features)]
 
 trait Trait {
-
-    type const ASSOC: u8;
+    #[rustc_always_gca]
+    const ASSOC: u8;
 }
 
 struct TakesArr<const N: [u8; 1]>;
 
 fn foo<const N: u8>()
 where
-    u8: Trait
+    u8: Trait,
 {
     let _: TakesArr<{ [<u8 as Trait>::ASSOC] }> = TakesArr::<{ [1] }>;
     //~^ ERROR: mismatched types [E0308]

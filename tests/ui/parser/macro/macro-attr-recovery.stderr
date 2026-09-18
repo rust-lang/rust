@@ -13,6 +13,8 @@ LL +     attr($($args:tt)*) { $($body:tt)* } => {
 error: attr: args="" body="struct S;"
   --> $DIR/macro-attr-recovery.rs:8:9
    |
+LL |   macro_rules! attr {
+...
 LL | /         compile_error!(concat!(
 LL | |             "attr: args=\"",
 LL | |             stringify!($($args)*),
@@ -24,8 +26,6 @@ LL | |         ));
 ...
 LL |   #[attr]
    |   ------- in this attribute macro expansion
-   |
-   = note: this error originates in the attribute macro `attr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

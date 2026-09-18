@@ -13,8 +13,8 @@ use std::ops::Range;
 use rustc_abi::{self as abi, FieldIdx, Size, VariantIdx};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::{bug, mir, span_bug, ty};
-use rustc_span::Symbol;
+use rustc_middle::{mir, ty};
+use rustc_span::{Symbol, bug, span_bug};
 use tracing::{debug, instrument};
 
 use super::{

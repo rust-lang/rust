@@ -6,12 +6,12 @@ use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo, ReportedErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
 use rustc_middle::query::TyCtxtAt;
+use rustc_middle::throw_inval;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
-use rustc_middle::{bug, throw_inval};
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::{Span, bug};
 use tracing::{debug, instrument, trace};
 
 use super::{CanAccessMutGlobal, CompileTimeInterpCx, CompileTimeMachine};
@@ -61,11 +61,11 @@ fn setup_for_eval<'tcx>(
         cid.promoted.is_some()
             || matches!(
                 ecx.tcx.def_kind(cid.instance.def_id()),
-                DefKind::Const { .. }
+                DefKind::Const
                     | DefKind::Static { .. }
                     | DefKind::ConstParam
                     | DefKind::AnonConst
-                    | DefKind::AssocConst { .. }
+                    | DefKind::AssocConst
             ),
         "Unexpected DefKind: {:?}",
         ecx.tcx.def_kind(cid.instance.def_id())
@@ -441,9 +441,7 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
 ) -> Result<R, ErrorHandled> {
     let def = cid.instance.def.def_id();
     // directly represented consts don't have bodies
-    if cfg!(debug_assertions)
-        && matches!(tcx.def_kind(def), DefKind::Const { .. } | DefKind::AssocConst { .. })
-    {
+    if cfg!(debug_assertions) && matches!(tcx.def_kind(def), DefKind::Const | DefKind::AssocConst) {
         debug_assert!(
             tcx.const_of_item(def).is_none(),
             "CTFE tried to evaluate directly represented const item: {def:?}"

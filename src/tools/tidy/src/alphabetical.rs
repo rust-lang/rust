@@ -51,7 +51,7 @@ fn indentation(line: &str) -> usize {
 }
 
 fn is_close_bracket(c: char) -> bool {
-    matches!(c, ')' | ']' | '}')
+    matches!(c, ')' | ']' | '}' | '>')
 }
 
 fn is_empty_or_comment(line: &&str) -> bool {

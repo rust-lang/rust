@@ -10,11 +10,10 @@
 //! generic constants mentioned in the `caller_bounds` of the current environment.
 
 use rustc_infer::infer::InferCtxt;
-use rustc_middle::bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, bug};
 use tracing::{debug, instrument};
 
 use super::EvaluateConstErr;

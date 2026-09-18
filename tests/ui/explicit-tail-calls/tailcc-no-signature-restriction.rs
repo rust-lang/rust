@@ -40,10 +40,32 @@ pub extern "tail" fn pass_struct(a: u64, d: u64) -> u64 {
     become add(large);
 }
 
+#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), not(windows)))]
+#[inline(never)]
+pub extern "tail" fn pass_vector(x: [f32; 4]) -> [f32; 4] {
+    #[derive(Clone, Copy)]
+    pub struct F32x4([f32; 4]);
+
+    #[inline(never)]
+    extern "tail" fn identity(x: F32x4) -> F32x4 {
+        x
+    }
+
+    #[inline(never)]
+    extern "tail" fn forward(x: F32x4) -> F32x4 {
+        become identity(x);
+    }
+
+    forward(F32x4(x)).0
+}
+
 fn main() {
     assert_eq!(add(), 3);
 
-    // Windows and Aarch64 in LLVM 23 does not support byval arguments.
+    // Windows and Aarch64 in LLVM 23 do not support byval arguments.
     #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), not(windows)))]
-    assert_eq!(pass_struct(5, 6), 5 + 6);
+    {
+        assert_eq!(pass_struct(5, 6), 5 + 6);
+        assert_eq!(pass_vector([1.0, 2.0, 3.0, 4.0]), [1.0, 2.0, 3.0, 4.0]);
+    }
 }

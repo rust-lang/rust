@@ -42,7 +42,13 @@ LL |     x as _
    = note: this was previously accepted by the compiler but was changed recently
    = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
-help: `'b` and `'a` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:6:4
+   |
+LL | fn change_lt<'a, 'b>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> {
+   |    ^^^^^^^^^
+   |
+   = help: `'b` and `'a` must be the same: replace one with the other
 
 error: lifetime may not live long enough
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:12:5
@@ -156,9 +162,13 @@ LL |     x as _
    = note: this was previously accepted by the compiler but was changed recently
    = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
-help: `'b` and `'a` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:29:4
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+LL | fn change_assoc_0<'a, 'b>(
+   |    ^^^^^^^^^^^^^^
+   |
+   = help: `'b` and `'a` must be the same: replace one with the other
 
 error: lifetime may not live long enough
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:39:5
@@ -206,9 +216,13 @@ LL |     x as _
    = note: this was previously accepted by the compiler but was changed recently
    = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
-help: `'b` and `'a` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:36:4
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+LL | fn change_assoc_1<'a, 'b>(
+   |    ^^^^^^^^^^^^^^
+   |
+   = help: `'b` and `'a` must be the same: replace one with the other
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:46:5
@@ -217,7 +231,7 @@ LL | fn extend_to_static<'a>(ptr: *const dyn Trait<'a>) {
    |                     --  ---
    |                     |   |
    |                     |   `ptr` declared here, outside of the function body
-   |                     |   `ptr` is a reference that is only valid in the function body
+   |                     |   `ptr` is only valid in the function body
    |                     lifetime `'a` defined here
 LL |     require_static(ptr as _)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -233,7 +247,7 @@ LL |     require_static(ptr as _)
    = note: this was previously accepted by the compiler but was changed recently
    = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
 
-error: aborting due to 11 previous errors
+error: aborting due to 14 previous errors
 
 Some errors have detailed explanations: E0308, E0521.
 For more information about an error, try `rustc --explain E0308`.

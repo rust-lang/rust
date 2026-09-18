@@ -1175,7 +1175,11 @@ impl<'a, 'db> DiagnosticsCollector<'a, 'db> {
     }
 
     fn collect_anon_const(&mut self, source_map: &ExpressionStoreSourceMap, def: AnonConstId<'db>) {
-        self.emit_inference_errors(def.into(), source_map, def.into());
+        self.emit_inference_errors(
+            def.into(),
+            source_map,
+            TypeOwnerId::from_anon_const(def, self.db),
+        );
     }
 
     fn collect_enum(&mut self, def: EnumId) {
@@ -1232,7 +1236,7 @@ impl<'a, 'db> DiagnosticsCollector<'a, 'db> {
         }
     }
 
-    fn collect_def_with_body(&mut self, def: DefWithBodyId, type_owner: TypeOwnerId<'db>) {
+    fn collect_def_with_body(&mut self, def: DefWithBodyId, type_owner: TypeOwnerId) {
         let (body, source_map) = Body::with_source_map(self.db, def);
 
         self.collect_expr_store(body, source_map);
@@ -1284,7 +1288,7 @@ impl<'a, 'db> DiagnosticsCollector<'a, 'db> {
         &mut self,
         def: InferBodyId<'db>,
         source_map: &ExpressionStoreSourceMap,
-        type_owner: TypeOwnerId<'db>,
+        type_owner: TypeOwnerId,
     ) {
         let infer = InferenceResult::of(self.db, def);
 
@@ -1548,7 +1552,7 @@ impl<'db> AnyDiagnostic<'db> {
         edition: Edition,
         d: &'db InferenceDiagnostic,
         source_map: &ExpressionStoreSourceMap,
-        type_owner: TypeOwnerId<'db>,
+        type_owner: TypeOwnerId,
     ) -> Option<AnyDiagnostic<'db>> {
         let expr_syntax = |expr| Self::expr_syntax(expr, source_map);
         let pat_syntax = |pat| Self::pat_syntax(pat, source_map);
@@ -1918,7 +1922,7 @@ impl<'db> AnyDiagnostic<'db> {
         db: &'db dyn HirDatabase,
         d: &'db SolverDiagnosticKind,
         span: SpanSyntax,
-        type_owner: TypeOwnerId<'db>,
+        type_owner: TypeOwnerId,
     ) -> Option<AnyDiagnostic<'db>> {
         let interner = DbInterner::new_no_crate(db);
         Some(match d {

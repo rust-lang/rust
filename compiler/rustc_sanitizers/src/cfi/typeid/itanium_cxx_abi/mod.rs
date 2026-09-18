@@ -6,8 +6,8 @@
 
 use rustc_abi::CanonAbi;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::bug;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_span::bug;
 use rustc_target::callconv::{FnAbi, PassMode};
 use tracing::instrument;
 

@@ -22,6 +22,9 @@ note: required because it appears within the type `Foo`
    |
 LL | struct Foo {
    |        ^^^
+LL |     foo: Nonexistent,
+LL |     other: str
+   |     ---------- required by this field
    = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |

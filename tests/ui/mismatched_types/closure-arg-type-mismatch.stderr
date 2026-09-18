@@ -45,7 +45,7 @@ error[E0521]: borrowed data escapes outside of function
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
 LL | fn _test<'a>(f: fn(*mut &'a u32)) {
-   |          --  - `f` is a reference that is only valid in the function body
+   |          --  - `f` is only valid in the function body
    |          |
    |          lifetime `'a` defined here
 LL |     baz(f);

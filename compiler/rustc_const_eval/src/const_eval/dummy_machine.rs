@@ -1,10 +1,11 @@
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, InterpResult};
 use rustc_middle::mir::*;
 use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::{bug, span_bug, ty};
 use rustc_span::def_id::DefId;
+use rustc_span::{bug, span_bug};
 use rustc_target::callconv::FnAbi;
 
 use crate::interpret::{

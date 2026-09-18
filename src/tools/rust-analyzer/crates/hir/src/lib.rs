@@ -1299,16 +1299,15 @@ impl<'db> AnonConst<'db> {
 
     pub fn ty(self, db: &'db dyn HirDatabase) -> Type<'db> {
         let loc = self.id.loc(db);
-        Type { owner: self.id.into(), ty: loc.ty.get() }
+        Type { owner: TypeOwnerId::from_anon_const(self.id, db), ty: loc.ty.get() }
     }
 
     pub fn eval(
         self,
         db: &'db dyn HirDatabase,
     ) -> Result<EvaluatedConst<'db>, ConstEvalError<'db>> {
-        let interner = DbInterner::new_no_crate(db);
         let ty = self.id.loc(db).ty.get().instantiate_identity().skip_norm_wip();
-        db.anon_const_eval(self.id, GenericArgs::empty(interner), None).map(|it| EvaluatedConst {
+        db.anon_const_eval(self.id, GenericArgs::empty(), None).map(|it| EvaluatedConst {
             allocation: it,
             def: self.id.into(),
             ty,
@@ -1550,7 +1549,7 @@ impl Function {
         }
     }
 
-    fn fn_sig<'db>(self, db: &'db dyn HirDatabase) -> (TypeOwnerId<'db>, PolyFnSig<'db>) {
+    fn fn_sig<'db>(self, db: &'db dyn HirDatabase) -> (TypeOwnerId, PolyFnSig<'db>) {
         let fn_ptr = self.fn_ptr_type(db);
         let TyKind::FnPtr(sig_tys, hdr) = fn_ptr.ty.skip_binder().kind() else {
             unreachable!();
@@ -1558,7 +1557,7 @@ impl Function {
         (fn_ptr.owner, sig_tys.with(hdr))
     }
 
-    fn erased_fn_sig<'db>(self, db: &'db dyn HirDatabase) -> (TypeOwnerId<'db>, FnSig<'db>) {
+    fn erased_fn_sig<'db>(self, db: &'db dyn HirDatabase) -> (TypeOwnerId, FnSig<'db>) {
         let (owner, sig) = self.fn_sig(db);
         let sig = DbInterner::new_no_crate(db).instantiate_bound_regions_with_erased(sig);
         (owner, sig)
@@ -1827,10 +1826,9 @@ impl Function {
                 "evaluation of builtin derive impl methods is not supported".to_owned(),
             )));
         };
-        let interner = DbInterner::new_no_crate(db);
         let body = db.monomorphized_mir_body(
             id.into(),
-            GenericArgs::empty(interner).store(),
+            GenericArgs::empty().store(),
             ParamEnvAndCrate {
                 param_env: db.trait_environment(id.into()),
                 krate: id.module(db).krate(db),
@@ -2109,9 +2107,8 @@ impl Const {
 
     /// Evaluate the constant.
     pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError<'_>> {
-        let interner = DbInterner::new_no_crate(db);
         let ty = db.value_ty(self.id.into()).unwrap().instantiate_identity().skip_norm_wip();
-        db.const_eval(self.id, GenericArgs::empty(interner), None).map(|it| EvaluatedConst {
+        db.const_eval(self.id, GenericArgs::empty(), None).map(|it| EvaluatedConst {
             allocation: it,
             def: self.id.into(),
             ty,
@@ -3124,21 +3121,17 @@ impl GenericDef {
 // We cannot call this `Substitution` unfortunately...
 #[derive(Debug)]
 pub struct GenericSubstitution<'db> {
-    owner: TypeOwnerId<'db>,
+    owner: TypeOwnerId,
     def: GenericDefId,
     subst: GenericArgs<'db>,
 }
 
 impl<'db> GenericSubstitution<'db> {
-    fn new(def: GenericDefId, subst: GenericArgs<'db>, owner: TypeOwnerId<'db>) -> Self {
+    fn new(def: GenericDefId, subst: GenericArgs<'db>, owner: TypeOwnerId) -> Self {
         Self { owner, def, subst }
     }
 
-    fn new_from_fn(
-        def: Function,
-        subst: GenericArgs<'db>,
-        owner: TypeOwnerId<'db>,
-    ) -> Option<Self> {
+    fn new_from_fn(def: Function, subst: GenericArgs<'db>, owner: TypeOwnerId) -> Option<Self> {
         match def.id {
             AnyFunctionId::FunctionId(def) => Some(Self::new(def.into(), subst, owner)),
             AnyFunctionId::BuiltinDeriveImplMethod { .. } => None,
@@ -3965,7 +3958,7 @@ impl Impl {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TraitRef<'db> {
-    owner: TypeOwnerId<'db>,
+    owner: TypeOwnerId,
     trait_ref: hir_ty::next_solver::TraitRef<'db>,
 }
 
@@ -4003,7 +3996,7 @@ enum AnyClosureId<'db> {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Closure<'db> {
-    owner: TypeOwnerId<'db>,
+    owner: TypeOwnerId,
     id: AnyClosureId<'db>,
     subst: GenericArgs<'db>,
 }
@@ -4347,23 +4340,26 @@ impl CaptureUsageSource {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
-enum TypeOwnerId<'db> {
+enum TypeOwnerId {
     GenericDefId(GenericDefId),
     BuiltinDeriveImplId(BuiltinDeriveImplId),
-    AnonConstId(AnonConstId<'db>),
     // FIXME: What do when we unify two different crates? Currently we just randomly keep one.
     NoParams(base_db::Crate),
 }
 
 impl_from!(
-    impl<'db>
     GenericDefId,
-    BuiltinDeriveImplId,
-    AnonConstId<'db>
-    for TypeOwnerId<'db>
+    BuiltinDeriveImplId
+    for TypeOwnerId
 );
 
-impl TypeOwnerId<'_> {
+impl TypeOwnerId {
+    /// We associated anon consts with their parent, because they can never have generics of their own.
+    /// It can have *less* than the parent, but providing more generic args is not a problem.
+    fn from_anon_const<'db>(id: AnonConstId<'db>, db: &'db dyn HirDatabase) -> TypeOwnerId {
+        TypeOwnerId::GenericDefId(id.loc(db).owner.generic_def(db))
+    }
+
     fn unify(self, other: Self) -> Option<Self> {
         match (self, other) {
             (TypeOwnerId::NoParams(_), owner) => Some(owner),
@@ -4394,7 +4390,7 @@ impl TypeOwnerId<'_> {
         }
         let self_def = match self {
             TypeOwnerId::GenericDefId(def) => def,
-            TypeOwnerId::BuiltinDeriveImplId(_) | TypeOwnerId::AnonConstId(_) => return false,
+            TypeOwnerId::BuiltinDeriveImplId(_) => return false,
             TypeOwnerId::NoParams(_) => return true,
         };
         let self_def = match self_def {
@@ -4408,9 +4404,7 @@ impl TypeOwnerId<'_> {
         };
         let rebase_into_def = match rebase_into {
             TypeOwnerId::GenericDefId(def) => def,
-            TypeOwnerId::BuiltinDeriveImplId(_)
-            | TypeOwnerId::AnonConstId(_)
-            | TypeOwnerId::NoParams(_) => return false,
+            TypeOwnerId::BuiltinDeriveImplId(_) | TypeOwnerId::NoParams(_) => return false,
         };
         let rebase_into_parent = match rebase_into_def {
             GenericDefId::ConstId(def) => def.loc(db).container,
@@ -4429,7 +4423,7 @@ impl TypeOwnerId<'_> {
 /// with types of different origins will cause errors or panics. Instead, use the `instantiate` methods.
 #[derive(Clone, Debug)]
 pub struct Type<'db> {
-    owner: TypeOwnerId<'db>,
+    owner: TypeOwnerId,
     ty: EarlyBinder<'db, Ty<'db>>,
 }
 
@@ -4513,8 +4507,7 @@ impl<'db> Type<'db> {
             TypeOwnerId::BuiltinDeriveImplId(def) => {
                 GenericArgs::error_for_item(interner, def.into())
             }
-            TypeOwnerId::AnonConstId(def) => GenericArgs::error_for_item(interner, def.into()),
-            TypeOwnerId::NoParams(_) => GenericArgs::empty(interner),
+            TypeOwnerId::NoParams(_) => GenericArgs::empty(),
         };
         Type::no_params(krate, self.ty.instantiate(interner, args).skip_norm_wip())
     }
@@ -4527,10 +4520,7 @@ impl<'db> Type<'db> {
             TypeOwnerId::BuiltinDeriveImplId(def) => {
                 generic_args_from_tys(interner, def.into(), args)
             }
-            TypeOwnerId::AnonConstId(def) => generic_args_from_tys(interner, def.into(), args),
-            TypeOwnerId::NoParams(krate) => {
-                (GenericArgs::empty(interner), TypeOwnerId::NoParams(krate))
-            }
+            TypeOwnerId::NoParams(krate) => (GenericArgs::empty(), TypeOwnerId::NoParams(krate)),
         };
         Type { owner, ty: EarlyBinder::bind(self.ty.instantiate(interner, args).skip_norm_wip()) }
     }
@@ -4546,7 +4536,6 @@ impl<'db> Type<'db> {
             let owner = match ty.owner {
                 TypeOwnerId::GenericDefId(def) => def.into(),
                 TypeOwnerId::BuiltinDeriveImplId(def) => def.into(),
-                TypeOwnerId::AnonConstId(def) => def.into(),
                 TypeOwnerId::NoParams(_) => return ty.ty.skip_binder(),
             };
             let args = GenericArgs::for_item(infcx.interner, owner, |_, param, _, _| {
@@ -4624,7 +4613,7 @@ impl<'db> Type<'db> {
         tys: impl IntoIterator<Item: Borrow<Type<'db>>>,
     ) -> Self {
         let interner = DbInterner::new_no_crate(db);
-        let mut owner = None::<TypeOwnerId<'db>>;
+        let mut owner = None::<TypeOwnerId>;
         let ty = EarlyBinder::bind(Ty::new_tup_from_iter(
             interner,
             tys.into_iter().map(|ty| {
@@ -4840,29 +4829,21 @@ impl<'db> Type<'db> {
             TypeOwnerId::BuiltinDeriveImplId(def) => {
                 hir_def::HasModule::krate(&def.loc(db).adt, db)
             }
-            TypeOwnerId::AnonConstId(def) => hir_def::HasModule::krate(&def, db),
             TypeOwnerId::NoParams(krate) => krate,
         }
     }
 
     fn param_env(&self, db: &'db dyn HirDatabase) -> ParamEnvAndCrate<'db> {
-        let interner = DbInterner::new_no_crate(db);
         let krate = self.krate(db);
         match self.owner {
             TypeOwnerId::GenericDefId(def) => {
                 ParamEnvAndCrate { param_env: db.trait_environment(def), krate }
             }
             TypeOwnerId::BuiltinDeriveImplId(def) => ParamEnvAndCrate {
-                param_env: hir_ty::builtin_derive::param_env(interner, def),
+                param_env: hir_ty::builtin_derive::param_env(DbInterner::new_with(db, krate), def),
                 krate,
             },
-            TypeOwnerId::AnonConstId(def) => ParamEnvAndCrate {
-                param_env: db.trait_environment(def.loc(db).owner.generic_def(db)),
-                krate,
-            },
-            TypeOwnerId::NoParams(_) => {
-                ParamEnvAndCrate { param_env: ParamEnv::empty(interner), krate }
-            }
+            TypeOwnerId::NoParams(_) => ParamEnvAndCrate { param_env: ParamEnv::empty(), krate },
         }
     }
 
@@ -4986,8 +4967,7 @@ impl<'db> Type<'db> {
         trait_: Trait,
         args: &[Type<'db>],
     ) -> bool {
-        let interner = DbInterner::new_no_crate(db);
-        let env = ParamEnvAndCrate { param_env: ParamEnv::empty(interner), krate: self.krate(db) };
+        let env = ParamEnvAndCrate { param_env: ParamEnv::empty(), krate: self.krate(db) };
         traits::implements_trait_unique_with_infcx(db, env, trait_.id, &mut |infcx| {
             let mut args = Self::instantiate_many_with_infer(iter::once(self).chain(args), infcx);
             GenericArgs::for_item(infcx.interner, trait_.id.into(), |_, param, _, _| {
@@ -5681,7 +5661,7 @@ impl<'db> Type<'db> {
     pub fn walk(&self, db: &'db dyn HirDatabase, callback: impl FnMut(Type<'db>)) {
         struct Visitor<'db, F> {
             db: &'db dyn HirDatabase,
-            owner: TypeOwnerId<'db>,
+            owner: TypeOwnerId,
             callback: F,
             visited: FxHashSet<Ty<'db>>,
         }
@@ -6144,7 +6124,7 @@ pub enum PredicatePolarity {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitPredicate<'db> {
     inner: hir_ty::next_solver::TraitPredicate<'db>,
-    owner: TypeOwnerId<'db>,
+    owner: TypeOwnerId,
 }
 
 impl<'db> TraitPredicate<'db> {
@@ -6549,8 +6529,8 @@ fn generic_args_from_tys<'db>(
     interner: DbInterner<'db>,
     def_id: SolverDefId<'db>,
     args: impl IntoIterator<Item: Borrow<Type<'db>>>,
-) -> (GenericArgs<'db>, TypeOwnerId<'db>) {
-    let mut owner = None::<TypeOwnerId<'db>>;
+) -> (GenericArgs<'db>, TypeOwnerId) {
+    let mut owner = None::<TypeOwnerId>;
     let mut args = args.into_iter();
     let args = GenericArgs::for_item(interner, def_id, |_, id, _, _| {
         if matches!(id, GenericParamId::TypeParamId(_))

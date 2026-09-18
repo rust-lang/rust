@@ -11,6 +11,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::{ItemKind, Node, UseKind};
 use rustc_macros::StableHash;
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
+use rustc_span::span_bug;
 
 use crate::ty::{TyCtxt, Visibility};
 

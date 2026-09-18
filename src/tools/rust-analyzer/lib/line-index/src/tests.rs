@@ -149,7 +149,10 @@ fn test_every_chars() {
         let mut chars: Vec<char> = ((0 as char)..char::MAX).collect(); // Neat!
         chars.extend("\n".repeat(chars.len() / 16).chars());
         let seed = std::hash::Hasher::finish(&std::hash::BuildHasher::build_hasher(
-            #[allow(clippy::disallowed_types)]
+            #[expect(
+                clippy::disallowed_types,
+                reason = "we need a source of randomness for the seed"
+            )]
             &std::collections::hash_map::RandomState::new(),
         ));
         let mut rng = oorandom::Rand32::new(seed);

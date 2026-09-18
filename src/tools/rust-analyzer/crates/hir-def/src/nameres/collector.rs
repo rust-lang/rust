@@ -1360,6 +1360,7 @@ impl<'db> DefCollector<'db> {
                         *expand_to,
                         self.def_map.krate,
                         directive.depth,
+                        self.def_map.recursion_limit(),
                         resolver_def_id,
                         &mut |ptr, call_id| {
                             eager_callback_buffer.push((directive.module_id, ptr, call_id));
@@ -1793,6 +1794,7 @@ impl<'db> DefCollector<'db> {
                         *expand_to,
                         self.def_map.krate,
                         directive.depth,
+                        self.def_map.recursion_limit(),
                         |path| {
                             let resolved_res = self.def_map.resolve_path_fp_with_macro(
                                 self.crate_local_def_map.unwrap_or(&self.local_def_map),
@@ -2698,6 +2700,7 @@ impl ModCollector<'_, '_> {
             expand_to,
             self.def_collector.def_map.krate,
             self.macro_depth + 1,
+            self.def_collector.def_map.recursion_limit(),
             |path| {
                 path.as_ident().and_then(|name| {
                     let def_map = &self.def_collector.def_map;

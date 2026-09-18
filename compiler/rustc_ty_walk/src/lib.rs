@@ -7,9 +7,8 @@
 
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable, Unnormalized, VisitorResult, try_visit};
-use rustc_span::Span;
+use rustc_span::{Span, span_bug};
 use tracing::{instrument, trace};
 
 pub trait SpannedTypeVisitor<'tcx> {
@@ -67,8 +66,8 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         DefKind::TyAlias { .. }
         | DefKind::AssocTy
         | DefKind::Static { .. }
-        | DefKind::Const { .. }
-        | DefKind::AssocConst { .. } => return visit_alias(),
+        | DefKind::Const
+        | DefKind::AssocConst => return visit_alias(),
         DefKind::AnonConst
             if tcx.anon_const_kind(item) != ty::AnonConstKind::NonTypeSystemInline =>
         {

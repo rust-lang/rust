@@ -26,7 +26,6 @@ use std::{fmt, fs};
 
 use indexmap::IndexMap;
 use rustc_ast::join_path_syms;
-use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
@@ -57,6 +56,8 @@ use crate::html::static_files::{self, suffix_path};
 use crate::visit::DocVisitor;
 use crate::{DOC_RUST_LANG_ORG_VERSION, try_err, try_none};
 
+mod flock;
+
 pub(crate) fn write_shared(
     cx: &mut Context<'_>,
     krate: &Crate,
@@ -67,7 +68,7 @@ pub(crate) fn write_shared(
     cx.shared.fs.set_sync_only(true);
     let lock_file = cx.dst.join(".lock");
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
-    let _lock = try_err!(flock::Lock::new(&lock_file, true, true, true), &lock_file);
+    let _lock = try_err!(flock::Lock::new(&lock_file), &lock_file);
 
     let search_index = build_index(
         krate,
@@ -833,12 +834,17 @@ impl TraitAliasPart {
             // FIXME: this is a vague explanation for why this can't be a `get`, in
             //        theory it should be...
             let (remote_path, remote_item_type) = match cache.exact_paths.get(&did) {
-                Some(p) => match cache.paths.get(&did).or_else(|| cache.external_paths.get(&did)) {
+                Some(p) => match cache
+                    .paths
+                    .get(&did)
+                    .map(|info| (&info.parts, info.ty))
+                    .or_else(|| cache.external_paths.get(&did).map(|(parts, ty)| (parts, *ty)))
+                {
                     Some((_, t)) => (p, t),
                     None => continue,
                 },
                 None => match cache.external_paths.get(&did) {
-                    Some((p, t)) => (p, t),
+                    Some((p, t)) => (p, *t),
                     None => continue,
                 },
             };
@@ -986,8 +992,10 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
             return;
         }
         let Some(target_did) = t.type_.def_id(cache) else { return };
-        let get_extern = { || cache.external_paths.get(&target_did) };
-        let Some(&(ref target_fqp, target_type)) = cache.paths.get(&target_did).or_else(get_extern)
+        let get_extern =
+            { || cache.external_paths.get(&target_did).map(|(parts, ty)| (parts, *ty)) };
+        let Some((target_fqp, target_type)) =
+            cache.paths.get(&target_did).map(|info| (&info.parts, info.ty)).or_else(get_extern)
         else {
             return;
         };
@@ -1003,7 +1011,7 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
                 .collect();
             AliasedType { target_fqp: &target_fqp[..], target_type, impl_ }
         });
-        let get_local = { || cache.paths.get(&self_did).map(|(p, _)| p) };
+        let get_local = { || cache.paths.get(&self_did).map(|info| &info.parts) };
         let Some(self_fqp) = cache.exact_paths.get(&self_did).or_else(get_local) else {
             return;
         };

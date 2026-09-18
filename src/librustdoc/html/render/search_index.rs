@@ -1279,7 +1279,7 @@ pub(crate) fn build_index(
     for &OrphanImplItem { impl_id, parent, trait_parent, ref item, ref impl_generics } in
         &cache.orphan_impl_items
     {
-        if let Some((fqp, _)) = cache.paths.get(&parent) {
+        if let Some(path_info) = cache.paths.get(&parent) {
             let info = IndexItemInfo::new(
                 tcx,
                 cache,
@@ -1291,7 +1291,7 @@ pub(crate) fn build_index(
             search_index.push(IndexItem {
                 defid: item.item_id.as_def_id(),
                 name: item.name.unwrap(),
-                module_path: fqp[..fqp.len() - 1].to_vec(),
+                module_path: path_info.parts[..path_info.parts.len() - 1].to_vec(),
                 parent: Some(parent),
                 parent_idx: None,
                 trait_parent,
@@ -1418,8 +1418,15 @@ pub(crate) fn build_index(
                 cache
                     .paths
                     .get(&defid)
-                    .or_else(|| check_external.then(|| cache.external_paths.get(&defid)).flatten())
-                    .map(|&(ref fqp, ty)| {
+                    .map(|info| (&info.parts, info.ty))
+                    .or_else(|| {
+                        check_external
+                            .then(|| {
+                                cache.external_paths.get(&defid).map(|(parts, ty)| (parts, *ty))
+                            })
+                            .flatten()
+                    })
+                    .map(|(fqp, ty)| {
                         let pathid = serialized_index.names.len();
                         match serialized_index.crate_paths_index.entry((ty, fqp.clone())) {
                             Entry::Occupied(entry) => *entry.get(),
@@ -1661,8 +1668,10 @@ pub(crate) fn build_index(
                     used_in_function_signature,
                 )),
                 RenderTypeId::DefId(defid) => {
-                    if let Some(&(ref fqp, item_type)) =
-                        paths.get(&defid).or_else(|| external_paths.get(&defid))
+                    if let Some((fqp, item_type)) = paths
+                        .get(&defid)
+                        .map(|info| (&info.parts, info.ty))
+                        .or_else(|| external_paths.get(&defid).map(|(parts, ty)| (parts, *ty)))
                     {
                         if tcx.lang_items().fn_mut_trait() == Some(defid)
                             || tcx.lang_items().fn_once_trait() == Some(defid)
@@ -1974,8 +1983,11 @@ pub(crate) fn get_function_type_for_search(
     let impl_or_trait_generics = impl_generics.or_else(|| {
         if let Some(def_id) = parent
             && let Some(trait_) = cache.traits.get(&def_id)
-            && let Some((path, _)) =
-                cache.paths.get(&def_id).or_else(|| cache.external_paths.get(&def_id))
+            && let Some((path, _)) = cache
+                .paths
+                .get(&def_id)
+                .map(|info| (&info.parts, info.ty))
+                .or_else(|| cache.external_paths.get(&def_id).map(|(parts, ty)| (parts, *ty)))
         {
             let path = clean::Path {
                 res: rustc_hir::def::Res::Def(rustc_hir::def::DefKind::Trait, def_id),

@@ -9,7 +9,7 @@ note: required because it appears within the type `Fat<[isize]>`
   --> $DIR/dst-bad-deep-2.rs:6:8
    |
 LL | struct Fat<T: ?Sized>(T);
-   |        ^^^
+   |        ^^^            - required by this field
    = note: all function arguments must have a statically known size
    = help: unsized fn params are gated as an unstable feature
 

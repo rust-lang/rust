@@ -5,7 +5,7 @@
 pub struct Foo;
 
 impl Foo {
-    type const LEN: usize = 4;
+    const LEN: usize = core::direct_const_arg!(4);
 }
 
 //@ has 'foo/fn.mk_array.html'

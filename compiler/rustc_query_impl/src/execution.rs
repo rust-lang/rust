@@ -1,7 +1,9 @@
 use std::hash::Hash;
 use std::mem::ManuallyDrop;
 use std::num::NonZero;
+use std::sync::Arc;
 
+use parking_lot::{Condvar, Mutex};
 use rustc_data_structures::hash_table::Entry;
 use rustc_data_structures::{defer, outline, sharded, sync};
 use rustc_errors::FatalError;
@@ -10,7 +12,7 @@ use rustc_middle::dep_graph::{
 };
 use rustc_middle::query::{
     ActiveKeyStatus, QueryCache, QueryCycle, QueryJob, QueryJobId, QueryLatch, QueryMode,
-    QueryState, QueryVTable,
+    QueryState, QueryVTable, QueryWaiter,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
@@ -61,6 +63,24 @@ fn handle_cycle<'tcx, C: QueryCache>(
         handle_cycle_error::default(error)
     } else {
         (query.handle_cycle_error_fn)(tcx, key, cycle, error)
+    }
+}
+
+/// Signals to waiters that the query is complete.
+///
+/// This does nothing for single threaded rustc, as there are no concurrent jobs which could be
+/// waiting on us.
+#[inline]
+fn signal_complete(job: QueryJob<'_>) {
+    if let Some(latch) = job.latch {
+        // Set the latch and resume all waiters on it.
+        let mut waiters_guard = latch.waiters.lock();
+        let waiters = waiters_guard.take().unwrap(); // mark the latch as complete
+        let registry = rustc_thread_pool::Registry::current();
+        for waiter in waiters {
+            rustc_thread_pool::mark_unblocked(&registry);
+            waiter.condvar.notify_one();
+        }
     }
 }
 
@@ -120,7 +140,7 @@ where
 
         // Also signal the completion of the job, so waiters will continue execution.
         match status {
-            ActiveKeyStatus::Started(job) => job.signal_complete(),
+            ActiveKeyStatus::Started(job) => signal_complete(job),
             ActiveKeyStatus::Poisoned => panic!(),
         }
     }
@@ -155,6 +175,47 @@ fn find_and_handle_cycle<'tcx, C: QueryCache>(
     (handle_cycle(query, tcx, key, cycle), None)
 }
 
+/// Awaits for the query job to complete.
+fn latch_wait_on<'tcx>(
+    latch: &QueryLatch<'tcx>,
+    query: Option<QueryJobId>,
+    span: Span,
+) -> Result<(), QueryCycle<'tcx>> {
+    let mut waiters_guard = latch.waiters.lock();
+    let Some(waiters) = &mut *waiters_guard else {
+        return Ok(()); // already complete
+    };
+
+    let waiter = Arc::new(QueryWaiter {
+        parent: query,
+        span,
+        cycle: Mutex::new(None),
+        condvar: Condvar::new(),
+    });
+
+    // We push the waiter on to the `waiters` list. It can be accessed inside the `wait` call
+    // below, by 1) the `signal_complete` function or 2) by deadlock detection. Both of these will
+    // remove it from the `waiters` list before resuming this thread.
+    waiters.push(Arc::clone(&waiter));
+
+    // Awaits the caller on this latch by blocking the current thread. If this detects a deadlock
+    // and the deadlock handler wants to resume this thread we have to be in the `wait` call. This
+    // is ensured by the deadlock handler getting the waiters lock.
+    rustc_thread_pool::mark_blocked_and_wait(|| {
+        waiter.condvar.wait(&mut waiters_guard);
+        // Release the lock before we potentially block when acquiring jobserver token.
+        drop(waiters_guard);
+    });
+
+    // FIXME: Get rid of this lock. We have ownership of the QueryWaiter although another thread
+    // may still have a Arc reference so we cannot use Arc::get_mut.
+    let mut cycle = waiter.cycle.lock();
+    match cycle.take() {
+        None => Ok(()),
+        Some(cycle) => Err(cycle),
+    }
+}
+
 #[inline(always)]
 fn wait_for_query<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
@@ -171,7 +232,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
     let query_blocked_prof_timer = tcx.prof.query_blocked();
 
     // With parallel queries we might just have to wait on some other thread.
-    let result = latch.wait_on(current, span);
+    let result = latch_wait_on(&latch, current, span);
 
     match result {
         Ok(()) => {
@@ -277,7 +338,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
                 ActiveKeyStatus::Started(job) => {
                     if sync::is_dyn_thread_safe() {
                         // Get the latch out
-                        let latch = job.latch();
+                        let latch = job.latch.get_or_insert_with(QueryLatch::new).clone();
                         drop(state_lock);
 
                         // Only call `wait_for_query` if we're using a Rayon thread pool

@@ -6,11 +6,12 @@ use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::IntrinsicResult;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceValue;
-use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods, ReturnSlot};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::attrs::RustcAutodiff;
+use rustc_middle::ty;
 use rustc_middle::ty::{PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
-use rustc_middle::{bug, ty};
+use rustc_span::bug;
 use rustc_target::callconv::PassMode;
 use tracing::debug;
 
@@ -372,7 +373,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
         crate::typetree::add_tt(&bx, fn_to_diff, fnc_tree);
     }
 
-    let call = bx.call(enzyme_ty, None, None, ad_fn, &args, None, None);
+    let call = bx.call(enzyme_ty, None, None, ad_fn, ReturnSlot::Direct, &args, None, None);
 
     let fn_ret_ty = bx.cx.val_ty(call);
     if fn_ret_ty == bx.cx.type_void() || fn_ret_ty == bx.cx.type_struct(&[], false) {

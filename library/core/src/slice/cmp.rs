@@ -126,14 +126,11 @@ where
         // Implemented as explicit indexing rather
         // than zipped iterators for performance reasons.
         // See PR https://github.com/rust-lang/rust/pull/116846
-        // FIXME(const_hack): make this a `for idx in 0..len` loop.
-        let mut idx = 0;
-        while idx < len {
+        for idx in 0..len {
             // SAFETY: idx < len, so both are in-bounds and readable
             if unsafe { *lhs.add(idx) != *rhs.add(idx) } {
                 return false;
             }
-            idx += 1;
         }
 
         true
@@ -224,11 +221,8 @@ const fn chaining_impl<'l, 'r, A: PartialOrd, B, C>(
     let lhs = &left[..l];
     let rhs = &right[..l];
 
-    // FIXME(const-hack): revert this to `for i in 0..l` once `impl const Iterator for Range<T>`
-    let mut i: usize = 0;
-    while i < l {
+    for i in 0..l {
         elem_chain(&lhs[i], &rhs[i])?;
-        i += 1;
     }
 
     len_chain(&left.len(), &right.len())

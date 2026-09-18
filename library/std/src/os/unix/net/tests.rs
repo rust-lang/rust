@@ -53,6 +53,25 @@ fn sock_addr_without_trailing_nul() {
 }
 
 #[test]
+#[cfg(any(target_os = "android", target_os = "linux"))]
+fn sock_addr_pathname_fills_sun_path() {
+    use crate::ffi::OsStr;
+    use crate::os::unix::ffi::OsStrExt;
+
+    let mut addr: libc::sockaddr_un = unsafe { crate::mem::zeroed() };
+    addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
+    let mut path = vec![b'a'; addr.sun_path.len()];
+    path[0] = b'/';
+    for (dst, &src) in addr.sun_path.iter_mut().zip(&path) {
+        *dst = src as _;
+    }
+    let offset = crate::mem::offset_of!(libc::sockaddr_un, sun_path);
+
+    let address = or_panic!(SocketAddr::from_parts(addr, (offset + path.len() + 1) as _));
+    assert_eq!(address.as_pathname(), Some(Path::new(OsStr::from_bytes(&path))));
+}
+
+#[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 #[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn basic() {

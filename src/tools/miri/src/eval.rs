@@ -458,11 +458,13 @@ fn call_main<'tcx>(
     // Call start function.
     match entry_type {
         MiriEntryFnType::Rustc(EntryFnType::Main { .. }) => {
+            let entry_sig = tcx.fn_sig(entry_id).no_bound_vars().unwrap();
+            let main_ret_ty = entry_sig.output();
+            let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
+
             let start_id = tcx.lang_items().start_fn().unwrap_or_else(|| {
                 tcx.dcx().fatal("could not find start lang item");
             });
-            let main_ret_ty = tcx.fn_sig(entry_id).no_bound_vars().unwrap().output();
-            let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
             let start_instance = ty::Instance::try_resolve(
                 tcx,
                 ecx.typing_env(),
@@ -484,8 +486,7 @@ fn call_main<'tcx>(
                 &[
                     ImmTy::from_scalar(
                         Scalar::from_pointer(main_ptr, ecx),
-                        // FIXME use a proper fn ptr type
-                        ecx.machine.layouts.const_raw_ptr,
+                        ecx.layout_of(Ty::new_fn_ptr(tcx, entry_sig)).unwrap(),
                     ),
                     argc,
                     argv,

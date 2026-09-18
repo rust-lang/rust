@@ -39,7 +39,7 @@
 // tidy-alphabetical-end
 
 use std::mem;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeMap;
@@ -60,8 +60,9 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
-    self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
-    LifetimeSyntax, MissingLifetimeKind, ParamName, Target, TraitCandidate, find_attr,
+    self as hir, AngleBrackets, CRATE_OWNER_ID, ConstArg, GenericArg, HirId, ItemLocalMap,
+    LifetimeSource, LifetimeSyntax, MissingLifetimeKind, ParamName, Target, TraitCandidate,
+    find_attr,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -69,11 +70,10 @@ use rustc_middle::middle::resolve::{
     AstOwner, LifetimeRes, PartialRes, PerOwnerResolverData, ResolverAstLowering,
 };
 use rustc_middle::queries::Providers;
-use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::diagnostics::add_feature_diagnostics;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, DesugaringKind, Span};
+use rustc_span::{DUMMY_SP, DesugaringKind, Span, span_bug};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
@@ -155,7 +155,6 @@ pub(crate) mod re_lowering {
 struct PerOwnerLoweringState<'a, 'hir> {
     // -- Identity --
     owner: &'a PerOwnerResolverData<'hir>,
-    owner_id: hir::OwnerId,
     disambiguator: PerParentDisambiguatorState,
 
     // -- HirId allocation --
@@ -197,7 +196,6 @@ impl<'a, 'hir> PerOwnerLoweringState<'a, 'hir> {
 
         PerOwnerLoweringState {
             owner,
-            owner_id: hir::OwnerId { def_id: owner.def_id },
             disambiguator,
             // 0 corresponds to `owner` lowered as `owner_id`, and we never call
             // `lower_node_id(owner)`.
@@ -216,12 +214,16 @@ impl<'a, 'hir> PerOwnerLoweringState<'a, 'hir> {
         }
     }
 
+    fn owner_id(&self) -> hir::OwnerId {
+        hir::OwnerId { def_id: self.owner.def_id }
+    }
+
     fn into_owner_info(
         self,
         tcx: TyCtxt<'hir>,
         node: hir::OwnerNode<'hir>,
     ) -> &'hir hir::OwnerInfo<'hir> {
-        assert_eq!(self.owner_id, node.def_id());
+        assert_eq!(self.owner_id(), node.def_id());
         assert!(self.impl_trait_defs.is_empty());
         assert!(self.impl_trait_bounds.is_empty());
 
@@ -295,7 +297,7 @@ struct LoweringContext<'a, 'hir> {
 
     /// Used to get the current `fn`'s def span to point to when using `await`
     /// outside of an `async fn`.
-    current_item: Option<Span>,
+    current_item_span: Option<Span>,
 
     try_block_scope: TryBlockScope,
     loop_scope: Option<HirId>,
@@ -313,15 +315,6 @@ struct LoweringContext<'a, 'hir> {
     /// so we only store `self_param_id`.
     partial_res_overrides: NodeMap<NodeId>,
 
-    allow_contracts: Arc<[Symbol]>,
-    allow_try_trait: Arc<[Symbol]>,
-    allow_gen_future: Arc<[Symbol]>,
-    allow_pattern_type: Arc<[Symbol]>,
-    allow_async_gen: Arc<[Symbol]>,
-    allow_async_iterator: Arc<[Symbol]>,
-    allow_for_await: Arc<[Symbol]>,
-    allow_async_fn_traits: Arc<[Symbol]>,
-
     /// Stack of `move(...)` collection states. A closure-like body pushes
     /// `Some`, so `move(...)` expressions can record the generated locals they
     /// should lower to. Nested bodies that cannot use `move(...)` push `None`.
@@ -331,6 +324,26 @@ struct LoweringContext<'a, 'hir> {
     lowering_move_expr_initializer: bool,
 
     attribute_parser: AttributeParser<'hir>,
+}
+
+macro_rules! allow {
+    ($($name:ident: $list:expr;)*) => {
+        $( static $name: LazyLock<Arc<[Symbol]>> = LazyLock::new(|| $list.into()); )*
+    }
+}
+
+allow! {
+    ALLOW_CONTRACTS: [sym::contracts_internals];
+    ALLOW_TRY_TRAIT: [sym::try_trait_v2, sym::try_trait_v2_residual, sym::yeet_desugar_details];
+    ALLOW_PATTERN_TYPE: [sym::pattern_types, sym::pattern_type_range_trait];
+    ALLOW_GEN_FUTURE: [sym::gen_future];
+    ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER: [sym::gen_future, sym::closure_track_caller];
+    ALLOW_FOR_AWAIT: [sym::async_gen_internals, sym::async_iterator];
+    ALLOW_ASYNC_FN_TRAITS: [sym::async_fn_traits];
+    ALLOW_ASYNC_GEN: [sym::async_gen_internals];
+    // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
+    // interact with `gen`/`async gen` blocks
+    ALLOW_ASYNC_ITERATOR: [sym::gen_future, sym::async_iterator];
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
@@ -354,26 +367,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             is_in_dyn_type: false,
             coroutine_kind: None,
             task_context: None,
-            current_item: None,
-            allow_contracts: [sym::contracts_internals].into(),
-            allow_try_trait: [
-                sym::try_trait_v2,
-                sym::try_trait_v2_residual,
-                sym::yeet_desugar_details,
-            ]
-            .into(),
-            allow_pattern_type: [sym::pattern_types, sym::pattern_type_range_trait].into(),
-            allow_gen_future: if tcx.features().async_fn_track_caller() {
-                [sym::gen_future, sym::closure_track_caller].into()
-            } else {
-                [sym::gen_future].into()
-            },
-            allow_for_await: [sym::async_gen_internals, sym::async_iterator].into(),
-            allow_async_fn_traits: [sym::async_fn_traits].into(),
-            allow_async_gen: [sym::async_gen_internals].into(),
-            // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
-            // interact with `gen`/`async gen` blocks
-            allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
+            current_item_span: None,
 
             move_expr_bindings: Vec::new(),
             lowering_move_expr_initializer: false,
@@ -388,6 +382,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'hir> {
         self.tcx.dcx()
+    }
+
+    fn allow_gen_future(&self) -> &Arc<[Symbol]> {
+        if self.tcx.features().async_fn_track_caller() {
+            &ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER
+        } else {
+            &ALLOW_GEN_FUTURE
+        }
     }
 }
 
@@ -674,12 +676,13 @@ fn index_ast<'tcx>(
             match tree.kind {
                 UseTreeKind::Glob(_) | UseTreeKind::Simple(_) => {}
                 UseTreeKind::Nested { items: ref nested_vec, span } => {
-                    for &(ref nested, id) in nested_vec {
+                    for nested in nested_vec {
+                        let id = nested.id;
                         self.insert(id, AstOwner::NestedUseTree(parent));
                         items.push(self.make_dummy(id, span, ItemKind::MacCall));
 
                         let def_id = self.owners[&id].def_id;
-                        self.visit_item_id_use_tree(nested, def_id, items);
+                        self.visit_item_id_use_tree(&nested.inner, def_id, items);
                     }
                 }
             }
@@ -781,15 +784,37 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         return fallback_to_ancestor(tcx.local_parent(def_id));
     };
 
-    let mut item_lowerer = item::ItemLowerer { tcx, resolver: &*resolver };
+    fn with_lctx<'hir>(
+        tcx: TyCtxt<'hir>,
+        resolver: &ResolverAstLowering<'hir>,
+        owner: NodeId,
+        f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
+    ) -> hir::MaybeOwner<'hir> {
+        let mut lctx = LoweringContext::new(tcx, resolver, owner);
+        let item = f(&mut lctx);
+        hir::MaybeOwner::Owner(lctx.curr_owner.into_owner_info(tcx, item))
+    }
 
     let item = match &node {
         // The item existed in the AST.
-        AstOwner::Crate(c) => item_lowerer.lower_crate(&c),
-        AstOwner::Item(item) => item_lowerer.lower_item(&item),
-        AstOwner::TraitItem(item) => item_lowerer.lower_trait_item(&item),
-        AstOwner::ImplItem(item) => item_lowerer.lower_impl_item(&item),
-        AstOwner::ForeignItem(item) => item_lowerer.lower_foreign_item(&item),
+        AstOwner::Crate(c) => with_lctx(tcx, &*resolver, CRATE_NODE_ID, |lctx| {
+            debug_assert_eq!(lctx.curr_owner.owner_id(), CRATE_OWNER_ID);
+            let module = lctx.lower_mod(&c.items, &c.spans);
+            lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs, c.spans.inner_span, Target::Crate);
+            hir::OwnerNode::Crate(module)
+        }),
+        AstOwner::Item(item) => {
+            with_lctx(tcx, &*resolver, item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
+        }
+        AstOwner::TraitItem(item) => with_lctx(tcx, &*resolver, item.id, |lctx| {
+            hir::OwnerNode::TraitItem(lctx.lower_trait_item(item))
+        }),
+        AstOwner::ImplItem(item) => with_lctx(tcx, &*resolver, item.id, |lctx| {
+            hir::OwnerNode::ImplItem(lctx.lower_impl_item(item))
+        }),
+        AstOwner::ForeignItem(item) => with_lctx(tcx, &*resolver, item.id, |lctx| {
+            hir::OwnerNode::ForeignItem(lctx.lower_foreign_item(item))
+        }),
         AstOwner::NestedUseTree(owner_id) => fallback_to_ancestor(*owner_id),
         // The item existed in the AST, but is not a HIR owner.
         // Fetch the correct information from its parent.
@@ -822,7 +847,7 @@ enum GenericArgsMode {
     ParenSugar,
     /// Allow RTN, don't allow paren sugar.
     ReturnTypeNotation,
-    // Error if parenthesized generics or RTN are encountered.
+    /// Error if parenthesized generics or RTN are encountered.
     Err,
     /// Silence errors when lowering generics. Only used with `Res::Err`.
     Silence,
@@ -836,7 +861,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         def_kind: DefKind,
         span: Span,
     ) -> LocalDefId {
-        let parent = self.curr_owner.owner_id.def_id;
+        let parent = self.curr_owner.owner_id().def_id;
         assert_ne!(node_id, ast::DUMMY_NODE_ID);
         assert!(
             self.opt_local_def_id(node_id).is_none(),
@@ -928,7 +953,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let item = f(self);
         let completed_child_owner = mem::replace(&mut self.curr_owner, parent_owner);
-        let owner_id = completed_child_owner.owner_id;
+        let owner_id = completed_child_owner.owner_id();
         let info = completed_child_owner.into_owner_info(self.tcx, item);
 
         self.curr_owner
@@ -948,7 +973,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_node_id(&mut self, ast_node_id: NodeId) -> HirId {
         assert_ne!(ast_node_id, DUMMY_NODE_ID);
 
-        let owner = self.curr_owner.owner_id;
+        let owner = self.curr_owner.owner_id();
         let local_id = self.curr_owner.item_local_id_counter;
         assert_ne!(local_id, hir::ItemLocalId::ZERO);
         self.curr_owner.item_local_id_counter.increment_by(1);
@@ -972,7 +997,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Generate a new `HirId` without a backing `NodeId`.
     #[instrument(level = "debug", skip(self), ret)]
     fn next_id(&mut self) -> HirId {
-        let owner = self.curr_owner.owner_id;
+        let owner = self.curr_owner.owner_id();
         let local_id = self.curr_owner.item_local_id_counter;
         assert_ne!(local_id, hir::ItemLocalId::ZERO);
         self.curr_owner.item_local_id_counter.increment_by(1);
@@ -980,9 +1005,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn lower_res(&mut self, res: Res<NodeId>) -> Res {
+    fn lower_res(&self, res: Res<NodeId>) -> Res {
         let res: Result<Res, ()> = res.apply_id(|id| {
-            let owner = self.curr_owner.owner_id;
+            let owner = self.curr_owner.owner_id();
             let local_id =
                 self.curr_owner.ident_and_label_to_local_id.get(&id).copied().ok_or(())?;
             Ok(HirId { owner, local_id })
@@ -997,11 +1022,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         res.unwrap_or(Res::Err)
     }
 
-    fn expect_full_res(&mut self, id: NodeId) -> Res<NodeId> {
+    fn expect_full_res(&self, id: NodeId) -> Res<NodeId> {
         self.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
     }
 
-    fn lower_import_res(&mut self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
+    fn lower_import_res(&self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
         debug_assert_eq!(id, self.curr_owner.owner.id);
         let per_ns = self.curr_owner.owner.import_res.map(|res| res.map(|res| self.lower_res(res)));
         if per_ns.is_empty() {
@@ -1061,7 +1086,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn span_lowerer(&self) -> SpanLowerer {
         SpanLowerer {
             is_incremental: self.tcx.sess.opts.incremental.is_some(),
-            def_id: self.curr_owner.owner_id.def_id,
+            def_id: self.curr_owner.owner_id().def_id,
         }
     }
 
@@ -1152,8 +1177,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn with_new_scopes<T>(&mut self, scope_span: Span, f: impl FnOnce(&mut Self) -> T) -> T {
-        let current_item = self.current_item;
-        self.current_item = Some(scope_span);
+        let current_item_span = self.current_item_span;
+        self.current_item_span = Some(scope_span);
 
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
@@ -1170,7 +1195,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         self.is_in_loop_condition = was_in_loop_condition;
 
-        self.current_item = current_item;
+        self.current_item_span = current_item_span;
 
         ret
     }
@@ -1182,7 +1207,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         target_span: Span,
         target: Target,
     ) -> &'hir [hir::Attribute] {
-        self.lower_attrs_with_extra(id, attrs, target_span, target, &[])
+        self.lower_attrs_with_extra(id, attrs, target_span, target, None, &[])
     }
 
     fn lower_attrs_with_extra(
@@ -1191,16 +1216,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target: Target,
+        target_item: Option<&ast::Item>,
         extra_hir_attributes: &[hir::Attribute],
     ) -> &'hir [hir::Attribute] {
         if attrs.is_empty() && extra_hir_attributes.is_empty() {
             &[]
         } else {
             let mut lowered_attrs =
-                self.lower_attrs_vec(attrs, self.lower_span(target_span), id, target);
+                self.lower_attrs_vec(attrs, self.lower_span(target_span), id, target, target_item);
             lowered_attrs.extend(extra_hir_attributes.iter().cloned());
 
-            assert_eq!(id.owner, self.curr_owner.owner_id);
+            assert_eq!(id.owner, self.curr_owner.owner_id());
             let ret = self.arena.alloc_from_iter(lowered_attrs);
 
             // this is possible if an item contained syntactical attribute,
@@ -1224,12 +1250,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         target_span: Span,
         target_hir_id: HirId,
         target: Target,
+        target_item: Option<&ast::Item>,
     ) -> Vec<hir::Attribute> {
         let l = self.span_lowerer();
         self.attribute_parser.parse_attribute_list(
             attrs,
             target_span,
             target,
+            target_item,
             |s| l.lower(s),
             |lint_id, span, kind| {
                 self.curr_owner.delayed_lints.push(DelayedLint {
@@ -1248,16 +1276,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn alias_attrs(&mut self, id: HirId, target_id: HirId) {
-        assert_eq!(id.owner, self.curr_owner.owner_id);
-        assert_eq!(target_id.owner, self.curr_owner.owner_id);
+        assert_eq!(id.owner, self.curr_owner.owner_id());
+        assert_eq!(target_id.owner, self.curr_owner.owner_id());
         if let Some(&a) = self.curr_owner.attrs.get(&target_id.local_id) {
             assert!(!a.is_empty());
             self.curr_owner.attrs.insert(id.local_id, a);
         }
-    }
-
-    fn lower_delim_args(&self, args: &DelimArgs) -> DelimArgs {
-        args.clone()
     }
 
     /// Lower an associated item constraint.
@@ -1599,7 +1623,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generic_params,
                     safety: self.lower_safety(f.safety, hir::Safety::Safe),
                     abi: self.lower_extern(f.ext),
-                    decl: self.lower_fn_decl(&f.decl, t.id, t.span, FnDeclKind::Pointer, None),
+                    decl: self.lower_fn_decl(&f.decl, t.id, FnDeclKind::Pointer, None),
                     param_idents: self.lower_fn_params_to_idents(&f.decl),
                 }))
             }
@@ -1642,8 +1666,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_array_length_to_const_arg(length),
             ),
             TyKind::TraitObject(bounds, kind) => {
-                let mut lifetime_bound = None;
                 let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
+                    let mut lifetime_bound = None;
                     let bounds =
                         this.arena.alloc_from_iter(bounds.iter().filter_map(|bound| match bound {
                             // We can safely ignore constness here since AST validation
@@ -1676,9 +1700,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                 None
                             }
                         }));
-                    let lifetime_bound =
-                        lifetime_bound.unwrap_or_else(|| this.elided_dyn_bound(t.span));
-                    (bounds, lifetime_bound)
+                    (bounds, lifetime_bound.unwrap_or_else(|| this.elided_dyn_bound(t.span)))
                 });
                 hir::TyKind::TraitObject(bounds, TaggedRef::new(lifetime_bound, *kind))
             }
@@ -1795,9 +1817,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if expr::WillCreateDefIdsVisitor.visit_expr(expr).is_break() {
             // FIXME(mgca): make this non-fatal once we have a better way to handle
             // nested items in invalid `direct_const_arg!()` arguments.
-            self.dcx().struct_span_fatal(span, msg).emit()
+            self.dcx().span_fatal(span, msg)
         } else {
-            self.dcx().struct_span_err(span, msg).emit()
+            self.dcx().span_err(span, msg)
         }
     }
 
@@ -1959,7 +1981,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         decl: &FnDecl,
         fn_node_id: NodeId,
-        fn_span: Span,
         kind: FnDeclKind,
         coro: Option<CoroutineMarker>,
     ) -> &'hir hir::FnDecl<'hir> {
@@ -2091,7 +2112,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (opaque_ty_node_id, allowed_features) = match coro.kind {
             CoroutineKind::Async | CoroutineKind::Gen => (coro.return_impl_trait_id, None),
             CoroutineKind::AsyncGen => {
-                (coro.return_impl_trait_id, Some(Arc::clone(&self.allow_async_iterator)))
+                (coro.return_impl_trait_id, Some(Arc::clone(&ALLOW_ASYNC_ITERATOR)))
             }
         };
 
@@ -2679,56 +2700,31 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_const_item_rhs(
         &mut self,
         body: &Option<Box<Expr>>,
-        kind: ConstItemKind,
         span: Span,
     ) -> hir::ConstItemRhs<'hir> {
-        match (body, kind) {
-            (body, ConstItemKind::Body) => {
-                let is_direct = |body| {
-                    if self.tcx.features().macroless_generic_const_args() {
-                        self.can_lower_expr_to_const_arg_direct(
-                            body,
-                            DirectConstArgContext::MacrolessMinGenericConstArgs,
-                        )
-                        .is_ok()
-                    } else {
-                        // do not check can_lower_expr_to_const_arg_direct, but rather just
-                        // ExprKind::DirectConstArg, because we don't want e.g.
-                        // `impl<const N: u8> { const C: u8 = N; }` to be a direct-rhs const
-                        matches!(body, Expr { kind: ExprKind::DirectConstArg(_), .. })
-                    }
-                };
-                // N.B.: the feature gate for this is generic_const_args, not min_generic_const_args
-                if self.tcx.features().generic_const_args()
-                    && let Some(body) = body
-                    && is_direct(body)
-                {
-                    hir::ConstItemRhs::Direct(
-                        self.arena.alloc(self.lower_expr_to_const_arg_direct(&body, None)),
-                    )
-                } else {
-                    hir::ConstItemRhs::Body(self.lower_const_body(span, body.as_deref()))
-                }
-            }
-            (Some(body), ConstItemKind::TypeConst) => hir::ConstItemRhs::Direct(self.arena.alloc(
-                match self.can_lower_expr_to_const_arg_direct(
-                    &body,
+        let is_direct = |body| {
+            if self.tcx.features().macroless_const_item_generic_const_args() {
+                self.can_lower_expr_to_const_arg_direct(
+                    body,
                     DirectConstArgContext::MacrolessMinGenericConstArgs,
-                ) {
-                    Ok(()) => self.lower_expr_to_const_arg_direct(&body, None),
-                    Err(err) => err.emit(self),
-                },
-            )),
-            (None, ConstItemKind::TypeConst) => {
-                let const_arg = ConstArg {
-                    hir_id: self.next_id(),
-                    kind: hir::ConstArgKind::Error(
-                        self.dcx().span_delayed_bug(DUMMY_SP, "no block"),
-                    ),
-                    span: DUMMY_SP,
-                };
-                hir::ConstItemRhs::Direct(self.arena.alloc(const_arg))
+                )
+                .is_ok()
+            } else {
+                // do not check can_lower_expr_to_const_arg_direct, but rather just
+                // ExprKind::DirectConstArg, because we don't want e.g.
+                // `impl<const N: u8> { const C: u8 = N; }` to be a direct-rhs const
+                matches!(body, Expr { kind: ExprKind::DirectConstArg(_), .. })
             }
+        };
+        if self.tcx.features().min_generic_const_args()
+            && let Some(body) = body
+            && is_direct(body)
+        {
+            hir::ConstItemRhs::Direct(
+                self.arena.alloc(self.lower_expr_to_const_arg_direct(&body, None)),
+            )
+        } else {
+            hir::ConstItemRhs::Body(self.lower_const_body(span, body.as_deref()))
         }
     }
 
@@ -2983,9 +2979,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let literal = self.lower_lit(literal, span);
 
                 let kind = if !matches!(literal.node, LitKind::Int(..)) {
-                    let err =
-                        self.dcx().struct_span_err(expr.span, "negated literal must be an integer");
-                    hir::ConstArgKind::Error(err.emit())
+                    let err = self.dcx().span_err(expr.span, "negated literal must be an integer");
+                    hir::ConstArgKind::Error(err)
                 } else {
                     hir::ConstArgKind::Literal { lit: literal.node, negated: true }
                 };
@@ -3080,7 +3075,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }))
     }
 
-    fn lower_unsafe_source(&mut self, u: UnsafeSource) -> hir::UnsafeSource {
+    fn lower_unsafe_source(&self, u: UnsafeSource) -> hir::UnsafeSource {
         match u {
             CompilerGenerated => hir::UnsafeSource::CompilerGenerated,
             UserProvided => hir::UnsafeSource::UserProvided,
@@ -3088,7 +3083,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_trait_bound_modifiers(
-        &mut self,
+        &self,
         modifiers: TraitBoundModifiers,
     ) -> hir::TraitBoundModifiers {
         let constness = match modifiers.constness {
@@ -3389,9 +3384,9 @@ impl UnrepresentableConstArgError {
             // FIXME(mgca): make this non-fatal once we have a better way to handle
             // nested items in const args
             // Issue: https://github.com/rust-lang/rust/issues/154539
-            lowering_context.dcx().struct_span_fatal(self.span, msg).emit()
+            lowering_context.dcx().span_fatal(self.span, msg)
         } else {
-            lowering_context.dcx().struct_span_err(self.span, msg).emit()
+            lowering_context.dcx().span_err(self.span, msg)
         };
 
         ConstArg {

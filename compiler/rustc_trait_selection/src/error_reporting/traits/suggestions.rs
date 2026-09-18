@@ -9,8 +9,7 @@ use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, EmissionGuarantee, MultiSpan, Style, SuggestionStyle, pluralize,
-    struct_span_code_err,
+    Applicability, Diag, MultiSpan, Style, SuggestionStyle, pluralize, struct_span_code_err,
 };
 use rustc_hir::attrs::lang_items::{self, LangItem};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -36,10 +35,10 @@ use rustc_middle::ty::{
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, TypeckResults,
     Unnormalized, Upcast, suggest_arbitrary_trait_bound, suggest_constraining_type_param,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{
-    BytePos, DUMMY_SP, DesugaringKind, ExpnKind, Ident, MacroKind, Span, Symbol, kw, sym,
+    BytePos, DUMMY_SP, DesugaringKind, ExpnKind, Ident, MacroKind, Span, Symbol, bug, kw, span_bug,
+    sym,
 };
 use tracing::{debug, instrument};
 
@@ -82,7 +81,7 @@ impl<'a, 'tcx> CoroutineData<'a, 'tcx> {
         infer_context.tcx.upvars_mentioned(coroutine_did).and_then(|upvars| {
             upvars.iter().find_map(|(upvar_id, upvar)| {
                 let upvar_ty = self.0.node_type(*upvar_id);
-                let upvar_ty = infer_context.resolve_vars_if_possible(upvar_ty);
+                let upvar_ty = infer_context.deeply_resolve_ignoring_regions(upvar_ty);
                 ty_matches(ty::Binder::dummy(upvar_ty))
                     .then(|| CoroutineInteriorOrUpvar::Upvar(upvar.span))
             })
@@ -120,7 +119,7 @@ fn predicate_constraint(generics: &hir::Generics<'_>, pred: ty::Predicate<'_>) -
 /// Type parameter needs more bounds. The trivial case is `T` `where T: Bound`, but
 /// it can also be an `impl Trait` param that needs to be decomposed to a type
 /// param for cleaner code.
-pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
+pub fn suggest_restriction<'tcx, G>(
     tcx: TyCtxt<'tcx>,
     item_id: LocalDefId,
     hir_generics: &hir::Generics<'tcx>,
@@ -328,7 +327,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some(base_ty) = typeck_results.expr_ty_opt(base_expr) else {
             return;
         };
-        let base_ty = self.resolve_vars_if_possible(base_ty);
+        let base_ty = self.deeply_resolve_ignoring_regions(base_ty);
         if base_ty.references_error() {
             return;
         }
@@ -347,7 +346,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let (adjusted_ident, def_scope) = self.tcx.adjust_ident_and_get_scope(
                 field_ident,
                 base_def.did(),
-                typeck_results.hir_owner.def_id,
+                self.tcx.parent_module_from_def_id(typeck_results.hir_owner.def_id),
             );
 
             let Some((_, field_def)) =
@@ -1357,7 +1356,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             err.span_label(block.span, "this block is missing a tail expression");
             return;
         };
-        let ty = self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(ty));
+        let ty =
+            self.resolve_numeric_literals_with_default(self.deeply_resolve_ignoring_regions(ty));
         let trait_pred_and_self = trait_pred.map_bound(|trait_pred| (trait_pred, ty));
 
         let new_obligation =
@@ -1382,7 +1382,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitClause<'tcx>,
     ) -> bool {
-        let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
+        let self_ty = self.deeply_resolve_ignoring_regions(trait_pred.self_ty());
         self.enter_forall(self_ty, |ty: Ty<'_>| {
             let Some(generics) = self.tcx.hir_get_generics(obligation.cause.body_def_id) else {
                 return false;
@@ -2498,7 +2498,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Do not suggest removal of borrow from type arguments.
                 return;
             }
-            let trait_pred = self.resolve_vars_if_possible(trait_pred);
+            let trait_pred = self.deeply_resolve_ignoring_regions(trait_pred);
             if trait_pred.has_non_region_infer() {
                 // Do not ICE while trying to find if a reborrow would succeed on a trait with
                 // unresolved bindings.
@@ -2530,7 +2530,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .sess
                         .source_map()
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
-                    if points_at_arg && mutability.is_not() && refs_number > 0 {
+                    if points_at_arg
+                        && mutability.is_not()
+                        && refs_number > 0
+                        // The borrow can sit in a macro body, where rewriting it would edit the
+                        // macro definition and so every one of its call sites, or a crate the user
+                        // does not own. Fall through to the note in that case.
+                        && span.can_be_used_for_suggestions()
+                    {
                         // If we have a call like foo(&mut buf), then don't suggest foo(&mut mut buf)
                         if snippet
                             .trim_start_matches(|c: char| c.is_whitespace() || c == '&')
@@ -2604,7 +2611,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Only suggest this if the expression behind the semicolon implements the predicate
             && let Some(typeck_results) = &self.typeck_results
             && let Some(ty) =
-                typeck_results.expr_ty_opt(expr).map(|ty| self.resolve_vars_if_possible(ty))
+                typeck_results.expr_ty_opt(expr).map(|ty| self.deeply_resolve_ignoring_regions(ty))
             && self.predicate_may_hold(&self.mk_trait_obligation_with_new_self_ty(
                 obligation.param_env, trait_pred.map_bound(|trait_pred| (trait_pred, ty))
             ))
@@ -2716,7 +2723,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 hir::ExprKind::Closure(closure) => closure.def_id,
                 _ => match typeck_results
                     .expr_ty_adjusted_opt(arg)
-                    .map(|ty| *self.resolve_vars_if_possible(ty).peel_refs().kind())
+                    .map(|ty| *self.deeply_resolve_ignoring_regions(ty).peel_refs().kind())
                 {
                     Some(ty::Closure(def_id, _)) => def_id.as_local()?,
                     _ => return None,
@@ -2751,7 +2758,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         false
     }
 
-    pub(super) fn suggest_borrow_for_unsized_closure_return<G: EmissionGuarantee>(
+    pub(super) fn suggest_borrow_for_unsized_closure_return<G>(
         &self,
         body_def_id: LocalDefId,
         err: &mut Diag<'_, G>,
@@ -3296,7 +3303,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ///
     /// Returns `true` if an async-await specific note was added to the diagnostic.
     #[instrument(level = "debug", skip_all, fields(?obligation.predicate, ?obligation.cause.span))]
-    pub fn maybe_note_obligation_cause_for_async_await<G: EmissionGuarantee>(
+    pub fn maybe_note_obligation_cause_for_async_await<G>(
         &self,
         err: &mut Diag<'_, G>,
         obligation: &PredicateObligation<'tcx>,
@@ -3528,7 +3535,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// Unconditionally adds the diagnostic note described in
     /// `maybe_note_obligation_cause_for_async_await`'s documentation comment.
     #[instrument(level = "debug", skip_all)]
-    fn note_obligation_cause_for_async_await<G: EmissionGuarantee>(
+    fn note_obligation_cause_for_async_await<G>(
         &self,
         err: &mut Diag<'_, G>,
         interior_or_upvar_span: CoroutineInteriorOrUpvar,
@@ -3762,7 +3769,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
     }
 
-    fn note_closure_capture<G: EmissionGuarantee>(
+    fn note_closure_capture<G>(
         &self,
         err: &mut Diag<'_, G>,
         closure_def_id: DefId,
@@ -3795,10 +3802,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         let capture_ty =
-            self.tcx.erase_and_anonymize_regions(self.resolve_vars_if_possible(capture_ty));
+            self.tcx.erase_and_anonymize_regions(self.deeply_resolve_ignoring_regions(capture_ty));
         let Some(capture) = captures.iter().zip(upvar_tys).find_map(|(&capture, upvar_ty)| {
-            let upvar_ty =
-                self.tcx.erase_and_anonymize_regions(self.resolve_vars_if_possible(upvar_ty));
+            let upvar_ty = self
+                .tcx
+                .erase_and_anonymize_regions(self.deeply_resolve_ignoring_regions(upvar_ty));
             (upvar_ty == capture_ty).then_some(capture)
         }) else {
             return false;
@@ -3814,7 +3822,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         true
     }
 
-    pub(super) fn note_obligation_cause_code<G: EmissionGuarantee, T>(
+    pub(super) fn note_obligation_cause_code<G, T>(
         &self,
         body_def_id: LocalDefId,
         err: &mut Diag<'_, G>,
@@ -3843,7 +3851,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
     }
 
-    fn note_obligation_cause_code_inner<G: EmissionGuarantee, T>(
+    fn note_obligation_cause_code_inner<G, T>(
         &self,
         body_def_id: LocalDefId,
         err: &mut Diag<'_, G>,
@@ -4133,10 +4141,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
             ObligationCauseCode::Coercion { source, target } => {
-                let source =
-                    tcx.short_string(self.resolve_vars_if_possible(source), err.long_ty_path());
-                let target =
-                    tcx.short_string(self.resolve_vars_if_possible(target), err.long_ty_path());
+                let source = tcx
+                    .short_string(self.deeply_resolve_ignoring_regions(source), err.long_ty_path());
+                let target = tcx
+                    .short_string(self.deeply_resolve_ignoring_regions(target), err.long_ty_path());
                 err.note(with_forced_trimmed_paths!(format!(
                     "required for the cast from `{source}` to `{target}`",
                 )));
@@ -4408,7 +4416,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 err.note("shared static variables must have a type that implements `Sync`");
             }
             ObligationCauseCode::BuiltinDerived(ref data) => {
-                let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
+                let parent_trait_ref = self.deeply_resolve_ignoring_regions(data.parent_trait_pred);
                 let ty = parent_trait_ref.skip_binder().self_ty();
                 if parent_trait_ref.references_error() {
                     // NOTE(eddyb) this was `.cancel()`, but `err`
@@ -4422,7 +4430,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let is_upvar_tys_infer_tuple = if !matches!(ty.kind(), ty::Tuple(..)) {
                     false
                 } else if let ObligationCauseCode::BuiltinDerived(data) = &*data.parent_code {
-                    let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
+                    let parent_trait_ref =
+                        self.deeply_resolve_ignoring_regions(data.parent_trait_pred);
                     let nested_ty = parent_trait_ref.skip_binder().self_ty();
                     matches!(nested_ty.kind(), ty::Coroutine(..))
                         || matches!(nested_ty.kind(), ty::Closure(..))
@@ -4440,11 +4449,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         format!("required because it appears within the type `{ty_str}`")
                     };
                     match *ty.kind() {
-                        ty::Adt(def, _) => {
+                        ty::Adt(def, args) => {
                             let msg = msg();
                             match tcx.opt_item_ident(def.did()) {
                                 Some(ident) => {
-                                    err.span_note(ident.span, msg);
+                                    let mut spans = MultiSpan::from(ident.span);
+                                    if def.did().is_local()
+                                        && let Some(pred) = predicate.as_trait_clause()
+                                    {
+                                        let field_ty = self.deeply_resolve_ignoring_regions(
+                                            pred.skip_binder().self_ty(),
+                                        );
+                                        for field in def.all_fields() {
+                                            if field.ty(tcx, args).skip_norm_wip() == field_ty {
+                                                spans.push_span_label(
+                                                    tcx.def_span(field.did),
+                                                    "required by this field",
+                                                );
+                                            }
+                                        }
+                                    }
+                                    err.span_note(spans, msg);
                                 }
                                 None => {
                                     err.note(msg);
@@ -4559,7 +4584,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::ImplDerived(ref data) => {
                 let mut parent_trait_pred =
-                    self.resolve_vars_if_possible(data.derived.parent_trait_pred);
+                    self.deeply_resolve_ignoring_regions(data.derived.parent_trait_pred);
                 let parent_def_id = parent_trait_pred.def_id();
                 if tcx.is_diagnostic_item(sym::FromResidual, parent_def_id)
                     && !tcx.features().enabled(sym::try_trait_v2)
@@ -4571,7 +4596,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 if tcx.is_diagnostic_item(sym::PinDerefMutHelper, parent_def_id) {
                     let parent_predicate =
-                        self.resolve_vars_if_possible(data.derived.parent_trait_pred);
+                        self.deeply_resolve_ignoring_regions(data.derived.parent_trait_pred);
 
                     // Skip PinDerefMutHelper in suggestions, but still show downstream suggestions.
 
@@ -4697,7 +4722,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // the type `X`", like we would otherwise do in test `supertrait-auto-trait.rs`.
                     while let ObligationCauseCode::BuiltinDerived(derived) = &*data.parent_code {
                         let child_trait_ref =
-                            self.resolve_vars_if_possible(derived.parent_trait_pred);
+                            self.deeply_resolve_ignoring_regions(derived.parent_trait_pred);
                         let child_def_id = child_trait_ref.def_id();
                         if seen_requirements.insert(child_def_id) {
                             break;
@@ -4710,7 +4735,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 while let ObligationCauseCode::ImplDerived(child) = &*data.parent_code {
                     // Skip redundant recursive obligation notes. See `ui/issue-20413.rs`.
                     let child_trait_pred =
-                        self.resolve_vars_if_possible(child.derived.parent_trait_pred);
+                        self.deeply_resolve_ignoring_regions(child.derived.parent_trait_pred);
                     let child_def_id = child_trait_pred.def_id();
                     if seen_requirements.insert(child_def_id) {
                         break;
@@ -4750,7 +4775,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::ImplDerivedHost(ref data) => {
                 let self_ty = tcx.short_string(
-                    self.resolve_vars_if_possible(data.derived.parent_host_clause.self_ty()),
+                    self.deeply_resolve_ignoring_regions(data.derived.parent_host_clause.self_ty()),
                     err.long_ty_path(),
                 );
                 let trait_path = tcx.short_string(
@@ -4804,7 +4829,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
             }
             ObligationCauseCode::WellFormedDerived(ref data) => {
-                let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
+                let parent_trait_ref = self.deeply_resolve_ignoring_regions(data.parent_trait_pred);
                 let parent_predicate = parent_trait_ref;
 
                 *closure_capture_ty = Some(parent_trait_ref.skip_binder().self_ty());
@@ -4979,7 +5004,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) {
         let future_trait = self.tcx.require_lang_item(LangItem::Future, span);
 
-        let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
+        let self_ty = self.deeply_resolve_ignoring_regions(trait_pred.self_ty());
         let impls_future = self.type_implements_trait(
             future_trait,
             [self.tcx.instantiate_bound_regions_with_erased(self_ty)],
@@ -5005,7 +5030,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .normalize(Unnormalized::new_wip(projection_ty));
 
         debug!(
-            normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)
+            normalized_projection_type = ?self.deeply_resolve_ignoring_regions(projection_ty)
         );
         let try_obligation = self.mk_trait_obligation_with_new_self_ty(
             obligation.param_env,
@@ -5079,6 +5104,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ty::Adt(adt, args) if adt.did().is_local() => (adt, args),
             _ => return false,
         };
+        if !self.tcx.def_span(adt.did()).can_be_used_for_suggestions() {
+            return false;
+        }
         let is_derivable_trait = match diagnostic_name {
             sym::Copy | sym::Clone => true,
             _ if adt.is_union() => false,
@@ -5199,7 +5227,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn note_function_argument_obligation<G: EmissionGuarantee>(
+    fn note_function_argument_obligation<G>(
         &self,
         body_def_id: LocalDefId,
         err: &mut Diag<'_, G>,
@@ -5438,7 +5466,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_option_method_if_applicable<G: EmissionGuarantee>(
+    fn suggest_option_method_if_applicable<G>(
         &self,
         failed_pred: ty::Predicate<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -5513,7 +5541,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn look_for_iterator_item_mistakes<G: EmissionGuarantee>(
+    fn look_for_iterator_item_mistakes<G>(
         &self,
         assocs_in_this_method: &[Option<(Span, (DefId, Ty<'tcx>))>],
         typeck_results: &TypeckResults<'tcx>,
@@ -5662,7 +5690,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn point_at_chain<G: EmissionGuarantee>(
+    fn point_at_chain<G>(
         &self,
         expr: &hir::Expr<'_>,
         typeck_results: &TypeckResults<'tcx>,
@@ -5678,7 +5706,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut print_root_expr = true;
         let mut assocs = vec![];
         let mut expr = expr;
-        let mut prev_ty = self.resolve_vars_if_possible(
+        let mut prev_ty = self.deeply_resolve_ignoring_regions(
             typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx)),
         );
         while let hir::ExprKind::MethodCall(path_segment, rcvr_expr, args, span) = expr.kind {
@@ -5688,7 +5716,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             expr = rcvr_expr;
             let assocs_in_this_method =
                 self.probe_assoc_types_at_expr(&type_diffs, span, prev_ty, expr.hir_id, param_env);
-            prev_ty = self.resolve_vars_if_possible(
+            prev_ty = self.deeply_resolve_ignoring_regions(
                 typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx)),
             );
             self.look_for_iterator_item_mistakes(
@@ -5717,7 +5745,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 if let hir::Node::Param(param) = parent {
                     // ...and it is an fn argument.
-                    let prev_ty = self.resolve_vars_if_possible(
+                    let prev_ty = self.deeply_resolve_ignoring_regions(
                         typeck_results
                             .node_type_opt(param.hir_id)
                             .unwrap_or(Ty::new_misc_error(tcx)),
@@ -5882,7 +5910,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 projection,
             ));
             if ocx.try_evaluate_obligations().no_errors()
-                && let ty = self.resolve_vars_if_possible(ty)
+                && let ty = self.deeply_resolve_ignoring_regions(ty)
                 && !ty.is_ty_var()
             {
                 assocs_in_this_method.push(Some((span, (def_id, ty))));
@@ -5911,7 +5939,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ///    |     | `Iterator::Item` is `&mut Vec<u8>` here
     ///    |     this expression has type `Vec<Vec<u8>>`
     /// ```
-    fn point_at_chain_in_return_position<G: EmissionGuarantee>(
+    fn point_at_chain_in_return_position<G>(
         &self,
         body_def_id: LocalDefId,
         expr: &hir::Expr<'_>,
@@ -5971,7 +5999,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             // Resolve what each bound associated type actually is for the returned expression,
             // and keep only the ones that diverged from the signature.
-            let expr_ty = self.resolve_vars_if_possible(
+            let expr_ty = self.deeply_resolve_ignoring_regions(
                 typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx)),
             );
             let assocs = self.probe_assoc_types_at_expr(
@@ -6130,7 +6158,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let hir::ExprKind::MethodCall(segment, rcvr, args, ..) = call.kind else { return };
         let Some(typeck) = &self.typeck_results else { return };
         let Some(rcvr_ty) = typeck.expr_ty_adjusted_opt(rcvr) else { return };
-        let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
+        let rcvr_ty = self.deeply_resolve_ignoring_regions(rcvr_ty);
         let autoderef = (self.autoderef_steps)(rcvr_ty);
         for (ty, def_id) in autoderef.iter().filter_map(|(ty, obligations)| {
             if let ty::Adt(def, _) = ty.kind()
@@ -7099,7 +7127,7 @@ pub fn suggest_desugaring_async_fn_to_impl_future_in_trait<'tcx>(
 
 /// On `impl` evaluation cycles, look for `Self::AssocTy` restrictions in `where` clauses, explain
 /// they are not allowed and if possible suggest alternatives.
-fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
+fn point_at_assoc_type_restriction<G>(
     tcx: TyCtxt<'_>,
     err: &mut Diag<'_, G>,
     self_ty_str: &str,

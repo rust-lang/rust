@@ -7,20 +7,24 @@
 #![expect(incomplete_features)]
 
 trait Trait: SuperTrait<C = 3> {
-    type const K: usize;
+    #[rustc_always_gca]
+    const K: usize;
 }
 
 trait SuperTrait {
-    type const Q: usize;
-    type const C: usize;
+    #[rustc_always_gca]
+    const Q: usize;
+    #[rustc_always_gca]
+    const C: usize;
 }
 
 trait Bound {
-    type const N: usize;
+    #[rustc_always_gca]
+    const N: usize;
 }
 
 impl Bound for () {
-    type const N: usize = 10;
+    const N: usize = core::direct_const_arg!(10);
 }
 
 fn main() {
@@ -29,5 +33,7 @@ fn main() {
     let obj: &dyn Bound<N = 10> = &();
     _ = identity(obj);
 
-    fn identity(x: &(impl ?Sized + Bound<N = 10>)) -> &(impl ?Sized + Bound<N = 10>) { x }
+    fn identity(x: &(impl ?Sized + Bound<N = 10>)) -> &(impl ?Sized + Bound<N = 10>) {
+        x
+    }
 }

@@ -1,8 +1,6 @@
-use rustc_ast::{
-    self as ast, AttrArgs, GenericArg, GenericParamKind, Generics, ItemKind, MetaItem, token,
-};
+use rustc_ast::{self as ast, AttrArgs, GenericArg, GenericParamKind, Generics, ItemKind, token};
 use rustc_errors::E0802;
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_macros::Diagnostic;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
@@ -14,9 +12,8 @@ macro_rules! path {
 pub(crate) fn expand_deriving_reborrow(
     cx: &ExtCtxt<'_>,
     span: Span,
-    _mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     _is_const: bool,
 ) {
     let Some((ident, generics)) = struct_def(cx, span, item, sym::Reborrow) else {
@@ -29,9 +26,8 @@ pub(crate) fn expand_deriving_reborrow(
 pub(crate) fn expand_deriving_coerce_shared(
     cx: &ExtCtxt<'_>,
     span: Span,
-    _mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     _is_const: bool,
 ) {
     let Some((ident, generics)) = struct_def(cx, span, item, sym::CoerceShared) else {
@@ -55,25 +51,19 @@ pub(crate) fn expand_deriving_coerce_shared(
 fn struct_def<'a>(
     cx: &ExtCtxt<'_>,
     span: Span,
-    item: &'a Annotatable,
+    item: &'a ast::Item,
     trait_name: Symbol,
 ) -> Option<(Ident, &'a Generics)> {
-    match item {
-        Annotatable::Item(item) => match &item.kind {
-            ItemKind::Struct(ident, generics, _) => Some((*ident, generics)),
-            ItemKind::Enum(..) => {
-                cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "enum" });
-                None
-            }
-            ItemKind::Union(..) => {
-                cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "union" });
-                None
-            }
-            _ => {
-                cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "item" });
-                None
-            }
-        },
+    match &item.kind {
+        ItemKind::Struct(ident, generics, _) => Some((*ident, generics)),
+        ItemKind::Enum(..) => {
+            cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "enum" });
+            None
+        }
+        ItemKind::Union(..) => {
+            cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "union" });
+            None
+        }
         _ => {
             cx.dcx().emit_err(UnsupportedItem { span, trait_name, kind: "item" });
             None
@@ -81,12 +71,7 @@ fn struct_def<'a>(
     }
 }
 
-fn coerce_shared_target(cx: &ExtCtxt<'_>, span: Span, item: &Annotatable) -> Option<Box<ast::Ty>> {
-    let Annotatable::Item(item) = item else {
-        cx.dcx().emit_err(MissingTarget { span });
-        return None;
-    };
-
+fn coerce_shared_target(cx: &ExtCtxt<'_>, span: Span, item: &ast::Item) -> Option<Box<ast::Ty>> {
     let mut attrs = item.attrs.iter().filter(|attr| attr.has_name(sym::coerce_shared));
     let Some(attr) = attrs.next() else {
         cx.dcx().emit_err(MissingTarget { span });
@@ -130,7 +115,7 @@ fn push_marker_impl(
     generics: &Generics,
     trait_name: Symbol,
     trait_args: Vec<GenericArg>,
-    push: &mut dyn FnMut(Annotatable),
+    push: &mut dyn FnMut(Box<ast::Item>),
 ) {
     let mut trait_parts = path!(span, core::marker);
     trait_parts.push(Ident::new(trait_name, span));
@@ -154,7 +139,7 @@ fn push_marker_impl(
         .collect();
     let self_ty = cx.ty_path(cx.path_all(span, false, vec![ident], self_params));
 
-    push(Annotatable::Item(cx.item(
+    push(cx.item(
         span,
         thin_vec::thin_vec![cx.attr_word(sym::automatically_derived, span)],
         ast::ItemKind::Impl(ast::Impl {
@@ -169,7 +154,7 @@ fn push_marker_impl(
             self_ty,
             items: ThinVec::new(),
         }),
-    )));
+    ));
 }
 
 fn impl_generics(cx: &ExtCtxt<'_>, generics: &Generics) -> Generics {
