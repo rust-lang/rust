@@ -835,8 +835,6 @@ fn file_test_windows_fileext_trait_case_1() {
     use crate::os::windows::fs::FileExt;
 
     // Test when seek_read_exact(), seek_write_all() are called with empty buffers.
-    // Importantly, no calls to seek_read() or seek_write() should be made, and therefore
-    // no system calls should be made.
     struct MockFile {}
 
     impl FileExt for MockFile {
@@ -851,8 +849,8 @@ fn file_test_windows_fileext_trait_case_1() {
 
     let mock_file = MockFile {};
     check!(mock_file.seek_read_exact(&mut [], 0));
-    check!(mock_file.seek_read_exact(&mut [], 420));
     check!(mock_file.seek_write_all(&[], 0));
+    check!(mock_file.seek_read_exact(&mut [], 420));
     check!(mock_file.seek_write_all(&[], 420));
 }
 
@@ -862,27 +860,41 @@ fn file_test_windows_fileext_trait_case_2() {
     use crate::os::windows::fs::FileExt;
 
     // Test when seek_read(), seek_write() return Ok(0)
-    struct MockFile {}
+    struct MockFile {
+        expected_offset: u64,
+    }
 
     impl FileExt for MockFile {
-        fn seek_read(&self, _buf: &mut [u8], _offset: u64) -> io::Result<usize> {
+        fn seek_read(&self, _buf: &mut [u8], offset: u64) -> io::Result<usize> {
+            assert_eq!(offset, self.expected_offset);
             Ok(0)
         }
 
-        fn seek_write(&self, _buf: &[u8], _offset: u64) -> io::Result<usize> {
+        fn seek_write(&self, _buf: &[u8], offset: u64) -> io::Result<usize> {
+            assert_eq!(offset, self.expected_offset);
             Ok(0)
         }
     }
 
-    let mock_file = MockFile {};
-    let mut buf = [0; 256];
-    assert_eq!(mock_file.seek_read(&mut buf, 0).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
-    assert_eq!(
-        mock_file.seek_read(&mut buf, 420).unwrap_err().kind(),
-        io::ErrorKind::UnexpectedEof
-    );
-    assert_eq!(mock_file.seek_write(&buf, 0).unwrap_err().kind(), io::ErrorKind::WriteZero);
-    assert_eq!(mock_file.seek_write(&buf, 420).unwrap_err().kind(), io::ErrorKind::WriteZero);
+    {
+        let mock_file = MockFile { expected_offset: 0 };
+        let mut buf = [0; 256];
+        assert_eq!(
+            mock_file.seek_read(&mut buf, 0).unwrap_err().kind(),
+            io::ErrorKind::UnexpectedEof
+        );
+        assert_eq!(mock_file.seek_write(&buf, 0).unwrap_err().kind(), io::ErrorKind::WriteZero);
+    }
+
+    {
+        let mock_file = MockFile { expected_offset: 420 };
+        let mut buf = [0; 256];
+        assert_eq!(mock_file.seek_write(&buf, 420).unwrap_err().kind(), io::ErrorKind::WriteZero);
+        assert_eq!(
+            mock_file.seek_read(&mut buf, 420).unwrap_err().kind(),
+            io::ErrorKind::UnexpectedEof
+        );
+    }
 }
 
 #[test]
@@ -891,33 +903,47 @@ fn file_test_windows_fileext_trait_case_3() {
     use crate::os::windows::fs::FileExt;
 
     // Test that Err other than io::ErrorKind::Interrupted are propagated up.
-    struct MockFile {}
+    struct MockFile {
+        expected_offset: u64,
+    }
 
     impl FileExt for MockFile {
-        fn seek_read(&self, _buf: &mut [u8], _offset: u64) -> io::Result<usize> {
+        fn seek_read(&self, _buf: &mut [u8], offset: u64) -> io::Result<usize> {
+            assert_eq!(offset, self.expected_offset);
             Err(io::Error::new(io::ErrorKind::PermissionDenied, "seek_read"))
         }
 
-        fn seek_write(&self, _buf: &[u8], _offset: u64) -> io::Result<usize> {
+        fn seek_write(&self, _buf: &[u8], offset: u64) -> io::Result<usize> {
+            assert_eq!(offset, self.expected_offset);
             Err(io::Error::new(io::ErrorKind::ConnectionRefused, "seek_write"))
         }
     }
 
-    let mock_file = MockFile {};
-    let mut buf = [0; 256];
-    assert_eq!(
-        mock_file.seek_read(&mut buf, 0).unwrap_err().kind(),
-        io::ErrorKind::PermissionDenied
-    );
-    assert_eq!(
-        mock_file.seek_read(&mut buf, 420).unwrap_err().kind(),
-        io::ErrorKind::PermissionDenied
-    );
-    assert_eq!(mock_file.seek_write(&buf, 0).unwrap_err().kind(), io::ErrorKind::ConnectionRefused);
-    assert_eq!(
-        mock_file.seek_write(&buf, 420).unwrap_err().kind(),
-        io::ErrorKind::ConnectionRefused
-    );
+    {
+        let mock_file = MockFile { expected_offset: 0 };
+        let mut buf = [0; 256];
+        assert_eq!(
+            mock_file.seek_read(&mut buf, 0).unwrap_err().kind(),
+            io::ErrorKind::PermissionDenied
+        );
+        assert_eq!(
+            mock_file.seek_write(&buf, 0).unwrap_err().kind(),
+            io::ErrorKind::ConnectionRefused
+        );
+    }
+
+    {
+        let mock_file = MockFile { expected_offset: 420 };
+        let mut buf = [0; 256];
+        assert_eq!(
+            mock_file.seek_read(&mut buf, 420).unwrap_err().kind(),
+            io::ErrorKind::PermissionDenied
+        );
+        assert_eq!(
+            mock_file.seek_write(&buf, 420).unwrap_err().kind(),
+            io::ErrorKind::ConnectionRefused
+        );
+    }
     // FIXME: Cover io::ErrorKind::Interrupted, but don't infinite loop ;)
 }
 
@@ -929,7 +955,8 @@ fn file_test_windows_fileext_trait_case_4() {
     const MSG: &[u8] =
         b"The Rust programming language helps you write faster, more reliable software.";
 
-    // Test when only one call is made to seek_read() or seek_write()
+    // Test when the entire read or write is satisfied by only one call to seek_read() or
+    // seek_write(), respectively.
     struct MockFile {
         expected_offset: u64,
     }
@@ -951,7 +978,6 @@ fn file_test_windows_fileext_trait_case_4() {
         }
     }
 
-    // Offset is 0
     {
         let mock_file = MockFile { expected_offset: 0 };
         let mut buf = [0; MSG.len()];
@@ -960,7 +986,6 @@ fn file_test_windows_fileext_trait_case_4() {
         check!(mock_file.seek_write_all(&buf, 0));
     }
 
-    // Offset is 420
     {
         let mock_file = MockFile { expected_offset: 420 };
         let mut buf = [0; MSG.len()];
@@ -978,7 +1003,7 @@ fn file_test_windows_fileext_trait_case_5() {
     const MSG: &[u8] =
         b"Rust is for students and those who are interested in learning about systems concepts.";
 
-    // Test pathological case where seek_read(), seek_write() only do 1 byte per call.
+    // Test pathological case where seek_read(), seek_write() only do 1 byte per call, return Ok(1)
     struct MockFile {
         base_offset: u64,
     }
@@ -997,7 +1022,6 @@ fn file_test_windows_fileext_trait_case_5() {
         }
     }
 
-    // Offset is 0
     {
         let mock_file = MockFile { base_offset: 0 };
         let mut buf = [0; MSG.len()];
@@ -1006,7 +1030,6 @@ fn file_test_windows_fileext_trait_case_5() {
         check!(mock_file.seek_write_all(&buf, 0));
     }
 
-    // Offset is 420
     {
         let mock_file = MockFile { base_offset: 420 };
         let mut buf = [0; MSG.len()];
