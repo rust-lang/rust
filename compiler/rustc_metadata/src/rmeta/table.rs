@@ -4,6 +4,9 @@ use rustc_index::Idx;
 use crate::rmeta::decoder::MetaBlob;
 use crate::rmeta::*;
 
+#[cfg(test)]
+mod tests;
+
 pub(super) trait IsDefault: Default {
     fn is_default(&self) -> bool;
 }
@@ -44,6 +47,49 @@ impl<T> IsDefault for LazyArray<T> {
     }
 }
 
+/// Trait for arrays `[u8; N]` to count how many leading bytes are needed to
+/// faithfully encode the value, if subsequent bytes are assumed to be zero.
+///
+/// For example:
+/// ```text
+/// [0, 0, 0, 0] => 0 significant bytes
+/// [1, 0, 0, 0] => 1 significant byte  [1]
+/// [0, 4, 0, 0] => 2 significant bytes [0, 4]
+/// [1, 0, 7, 0] => 3 significant bytes [1, 0, 7]
+/// [0, 0, 0, 8] => 4 significant bytes [0, 0, 0, 8]
+/// ```
+///
+/// Used when deciding how many bytes to use for each entry in a [`LazyTable`].
+pub(crate) trait MinBytesToEncode {
+    /// Counts the number of leading bytes that are needed to faithfully encode this value.
+    fn min_bytes_to_encode(&self) -> usize;
+}
+
+/// Shared implementation of [`MinBytesToEncode::min_bytes_to_encode`], after
+/// treating the byte array as a little-endian unsigned integer.
+fn min_bytes_for_uint(x: impl Into<u128>) -> usize {
+    match x.into() {
+        0 => 0,
+        x => (x.ilog(256) + 1) as usize,
+    }
+}
+
+impl MinBytesToEncode for [u8; 1] {
+    fn min_bytes_to_encode(&self) -> usize {
+        min_bytes_for_uint(u8::from_le_bytes(*self))
+    }
+}
+impl MinBytesToEncode for [u8; 8] {
+    fn min_bytes_to_encode(&self) -> usize {
+        min_bytes_for_uint(u64::from_le_bytes(*self))
+    }
+}
+impl MinBytesToEncode for [u8; 16] {
+    fn min_bytes_to_encode(&self) -> usize {
+        min_bytes_for_uint(u128::from_le_bytes(*self))
+    }
+}
+
 /// Helper trait, for encoding to, and decoding from, a fixed number of bytes.
 /// Used mainly for Lazy positions and lengths.
 ///
@@ -53,7 +99,7 @@ impl<T> IsDefault for LazyArray<T> {
 pub(super) trait FixedSizeEncoding: IsDefault {
     /// This should be `[u8; BYTE_LEN]`;
     /// Cannot use an associated `const BYTE_LEN: usize` instead due to const eval limitations.
-    type ByteArray;
+    type ByteArray: MinBytesToEncode;
 
     fn from_bytes(b: &Self::ByteArray) -> Self;
     fn write_to_bytes(self, b: &mut Self::ByteArray);
@@ -436,6 +482,11 @@ impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
 
 /// Helper for constructing a table's serialization (also see `Table`).
 pub(super) struct TableBuilder<I: Idx, T: FixedSizeEncoding> {
+    /// The largest [`MinBytesToEncode`] of all entries added to the table so far.
+    ///
+    /// When the table is encoded, each table entry will be encoded with this many bytes,
+    /// which might be less than the full size of [`FixedSizeEncoding::ByteArray`].
+    /// This allows table entries to use as few bytes as possible while still being fixed-size.
     width: usize,
     blocks: IndexVec<I, T::ByteArray>,
     _marker: PhantomData<T>,
@@ -450,19 +501,26 @@ impl<I: Idx, T: FixedSizeEncoding> Default for TableBuilder<I, T> {
 impl<I: Idx, const N: usize, T> TableBuilder<I, Option<T>>
 where
     Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
+    [u8; N]: MinBytesToEncode,
 {
     pub(crate) fn set_some(&mut self, i: I, value: T) {
         self.set(i, Some(value))
     }
 }
 
-impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBuilder<I, T> {
+impl<I: Idx, const N: usize, T> TableBuilder<I, T>
+where
+    T: FixedSizeEncoding<ByteArray = [u8; N]>,
+{
     /// Sets the table value if it is not default.
     /// ATTENTION: For optimization default values are simply ignored by this function, because
     /// right now metadata tables never need to reset non-default values to default. If such need
     /// arises in the future then a new method (e.g. `clear` or `reset`) will need to be introduced
     /// for doing that explicitly.
-    pub(crate) fn set(&mut self, i: I, value: T) {
+    pub(crate) fn set(&mut self, i: I, value: T)
+    where
+        [u8; N]: MinBytesToEncode,
+    {
         #[cfg(debug_assertions)]
         {
             debug_assert!(
@@ -478,9 +536,10 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
             // > store bit-masks of which item in each bucket is actually serialized).
             let block = self.blocks.ensure_contains_elem(i, || [0; N]);
             value.write_to_bytes(block);
+
+            // Keep track of the widest value seen so far.
             if self.width != N {
-                let width = N - trailing_zeros(block);
-                self.width = self.width.max(width);
+                self.width = self.width.max(block.min_bytes_to_encode());
             }
         }
     }
@@ -502,10 +561,6 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
             self.blocks.len(),
         )
     }
-}
-
-fn trailing_zeros(x: &[u8]) -> usize {
-    x.iter().rev().take_while(|b| **b == 0).count()
 }
 
 impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]> + ParameterizedOverTcx>
