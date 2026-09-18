@@ -288,8 +288,6 @@ impl<'tcx> InferCtxt<'tcx> {
             &assumptions,
         );
         debug!(?constraint);
-        let constraint = region_constraint::propagate_ambiguity(constraint);
-        debug!(?constraint);
 
         // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
         for c in constraint.and_constraint.0.into_iter().chain(
