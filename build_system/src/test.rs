@@ -730,11 +730,13 @@ struct Project {
     cargo_arguments: &'static [&'static str],
     /// Arguments forwarded to the test harness by `cargo test`.
     test_harness_arguments: &'static [&'static str],
+    /// Variables added to the environment of both invocations.
+    environment_variables: &'static [(&'static str, &'static str)],
 }
 
 impl Project {
     const fn new(url: &'static str) -> Self {
-        Self { url, cargo_arguments: &[], test_harness_arguments: &[] }
+        Self { url, cargo_arguments: &[], test_harness_arguments: &[], environment_variables: &[] }
     }
 
     const fn cargo_arguments(mut self, arguments: &'static [&'static str]) -> Self {
@@ -746,17 +748,25 @@ impl Project {
         self.test_harness_arguments = arguments;
         self
     }
+
+    const fn environment_variables(
+        mut self,
+        variables: &'static [(&'static str, &'static str)],
+    ) -> Self {
+        self.environment_variables = variables;
+        self
+    }
 }
 
 fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
     let projects = [
         // The reference images assume the exact cairo, pango and freetype that librsvg pins in its
         // own CI; this one renders text decorations a pixel off with the versions Ubuntu ships.
-        Project::new("https://gitlab.gnome.org/GNOME/librsvg").test_harness_arguments(&[
-            "--skip",
-            "tests::svg1_1_text_text_03_b_svg",
-            "--exact",
-        ]),
+        Project::new("https://gitlab.gnome.org/GNOME/librsvg")
+            .test_harness_arguments(&["--skip", "tests::svg1_1_text_text_03_b_svg", "--exact"])
+            // A debug build of librsvg needs about 5 MB of stack per `cargo test` thread to reach
+            // its maximum layer nesting depth; librsvg's own CI sets the same value.
+            .environment_variables(&[("RUST_MIN_STACK", "8388608")]),
         Project::new("https://github.com/rust-random/getrandom"),
         Project::new("https://github.com/BurntSushi/memchr"),
         Project::new("https://github.com/dtolnay/itoa"),
@@ -788,11 +798,16 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
                 let clone_result = git_clone_root_dir(project.url, projects_path, true)?;
                 let repo_path = Path::new(&clone_result.repo_dir);
 
+                let mut project_environment = env.clone();
+                for (name, value) in project.environment_variables {
+                    project_environment.insert(name.to_string(), value.to_string());
+                }
+
                 let mut build_command: Vec<&dyn AsRef<OsStr>> = vec![&"build", &"--release"];
                 build_command.extend(
                     project.cargo_arguments.iter().map(|argument| argument as &dyn AsRef<OsStr>),
                 );
-                run_cargo_command(&build_command, Some(repo_path), &env, args)?;
+                run_cargo_command(&build_command, Some(repo_path), &project_environment, args)?;
 
                 let mut test_command: Vec<&dyn AsRef<OsStr>> = vec![&"test"];
                 test_command.extend(
@@ -807,7 +822,7 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
                             .map(|argument| argument as &dyn AsRef<OsStr>),
                     );
                 }
-                run_cargo_command(&test_command, Some(repo_path), &env, args)?;
+                run_cargo_command(&test_command, Some(repo_path), &project_environment, args)?;
             }
 
             Ok(())
