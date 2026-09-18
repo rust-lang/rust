@@ -50,7 +50,7 @@ pub trait FileExt {
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize>;
 
-    /// Seeks to a given position and reads the exact number of bytes required to fill `buf`
+    /// Seeks to a given position and reads the exact number of bytes required to fill `buf`.
     ///
     /// The offset is relative to the start of the file and thus independent
     /// from the current cursor. The current cursor **is** affected by this
