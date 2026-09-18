@@ -3,8 +3,8 @@ use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnPtrTy, FnRetTy,
     GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability,
-    Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
-    TyKind, UnsafeBinderTy,
+    Path, Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax,
+    Ty, TyKind, UnsafeBinderTy,
 };
 use rustc_errors::{Applicability, Diag, E0516, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
@@ -406,7 +406,23 @@ impl<'a> Parser<'a> {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
             let mut err = self.dcx().struct_span_err(lo, msg);
             err.span_label(lo, "expected type");
-            return Err(err);
+            if self.may_recover()
+                && (self.eat_keyword_noexpect(kw::True) || self.eat_keyword_noexpect(kw::False))
+            {
+                err.span_suggestion(
+                    self.prev_token.span,
+                    "the type is called",
+                    "bool",
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+                TyKind::Path(
+                    None,
+                    Path::from_ident(Ident { span: self.prev_token.span, name: sym::bool }),
+                )
+            } else {
+                return Err(err);
+            }
         };
 
         let span = lo.to(self.prev_token.span);
