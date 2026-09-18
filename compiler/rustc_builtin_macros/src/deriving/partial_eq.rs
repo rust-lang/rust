@@ -172,9 +172,8 @@ fn get_substructure_equality_expr(
 /// Panics if there are not exactly two arguments to compare (should be `self`
 /// and `other`).
 fn get_field_equality_expr(cx: &ExtCtxt<'_>, field: &FieldInfo) -> Box<Expr> {
-    let [rhs] = &field.other_selflike_exprs[..] else {
-        cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(PartialEq)`");
-    };
+    let rhs =
+        field.other_selflike_expr.as_ref().expect("not exactly 2 arguments in `derive(PartialEq)`");
 
     cx.expr_binary(
         field.span,

@@ -57,10 +57,9 @@ pub(crate) fn cs_cmp(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> 
         span,
         substr,
         |field| {
-            let [other_expr] = &field.other_selflike_exprs[..] else {
-                cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
-            };
-            let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
+            let other_expr =
+                field.other_selflike_expr.expect("not exactly 2 arguments in `derive(Ord)`");
+            let args = thin_vec![field.self_expr, other_expr];
             cx.expr_call_global(field.span, cmp_path.clone(), args)
         },
         |span, expr1, expr2| {

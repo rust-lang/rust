@@ -287,9 +287,9 @@ pub(crate) struct FieldInfo {
     /// The expression corresponding to this field of `self`
     /// (specifically, a reference to it).
     pub self_expr: Box<Expr>,
-    /// The expressions corresponding to references to this field in
-    /// the other selflike arguments.
-    pub other_selflike_exprs: Vec<Box<Expr>>,
+    /// The expression corresponding to a reference to this field in
+    /// the other selflike argument.
+    pub other_selflike_expr: Option<Box<Expr>>,
     pub maybe_scalar: bool,
 }
 
@@ -1162,9 +1162,11 @@ impl<'a> MethodDef<'a> {
                 discr_idents.clone().map(|ident| cx.expr_addr_of(span, cx.expr_ident(span, ident)));
 
             let self_expr = discr_exprs.next().unwrap();
-            let other_selflike_exprs = discr_exprs.collect();
+            let other_selflike_expr = discr_exprs.next();
+            debug_assert!(discr_exprs.next().is_none());
+
             let discr_field =
-                FieldInfo { span, name: None, self_expr, other_selflike_exprs, maybe_scalar: true };
+                FieldInfo { span, name: None, self_expr, other_selflike_expr, maybe_scalar: true };
 
             let discr_let_stmts: ThinVec<_> = iter::zip(discr_idents, &selflike_args)
                 .map(|(ident, selflike_arg)| {
@@ -1405,12 +1407,12 @@ impl<'a> TraitDef<'a> {
                 let sp = struct_field.span.with_ctxt(self.span.ctxt());
                 let mut exprs: Vec<_> = mk_exprs(i, struct_field, sp);
                 let self_expr = exprs.remove(0);
-                let other_selflike_exprs = exprs;
+                debug_assert!(exprs.len() <= 1);
                 FieldInfo {
                     span: sp.with_ctxt(self.span.ctxt()),
                     name: struct_field.ident,
                     self_expr,
-                    other_selflike_exprs,
+                    other_selflike_expr: exprs.pop(),
                     maybe_scalar: struct_field.ty.peel_refs().kind.maybe_scalar(),
                 }
             })

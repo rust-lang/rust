@@ -128,10 +128,9 @@ fn cs_partial_cmp(
         span,
         substr,
         |field| {
-            let [other_expr] = &field.other_selflike_exprs[..] else {
-                cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(PartialOrd)`");
-            };
-            let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
+            let other_expr =
+                field.other_selflike_expr.expect("not exactly 2 arguments in `derive(PartialOrd)`");
+            let args = thin_vec![field.self_expr, other_expr];
             cx.expr_call_global(field.span, partial_cmp_path.clone(), args)
         },
         |span, mut expr1, expr2| {

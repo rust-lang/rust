@@ -75,7 +75,7 @@ fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_
             (stmts, None)
         }
         EnumDiscr(discr_field, match_expr) => {
-            assert!(discr_field.other_selflike_exprs.is_empty());
+            assert!(discr_field.other_selflike_expr.is_none());
             let stmts = thin_vec![call_hash(discr_field.span, discr_field.self_expr)];
             (stmts, match_expr)
         }
