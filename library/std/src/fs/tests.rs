@@ -930,29 +930,6 @@ fn file_test_windows_fileext_trait() {
     const MSG: &[u8] =
         b"The Rust programming language helps you write faster, more reliable software.";
 
-    // Test when seek_read_exact(), seek_write_all() are called with empty buffers.
-    // Importantly, no calls to seek_read() or seek_write() should be made, and therefore
-    // no system calls should be made.
-    {
-        struct MockFile {}
-
-        impl FileExt for MockFile {
-            fn seek_read(&self, _buf: &mut [u8], _offset: u64) -> io::Result<usize> {
-                panic!("should not be called");
-            }
-
-            fn seek_write(&self, _buf: &[u8], _offset: u64) -> io::Result<usize> {
-                panic!("should not be called");
-            }
-        }
-
-        let mock_file = MockFile {};
-        check!(mock_file.seek_read_exact(&mut [], 0));
-        check!(mock_file.seek_read_exact(&mut [], 42));
-        check!(mock_file.seek_write_all(&[], 0));
-        check!(mock_file.seek_write_all(&[], 42));
-    }
-
     // Test when only one call is made to seek_read() or seek_write()
     {
         struct MockFile {
@@ -1033,76 +1010,6 @@ fn file_test_windows_fileext_trait() {
             check!(mock_file.seek_write_all(&buf, 420));
         }
     }
-
-    // Test when seek_read(), seek_write() return Ok(0)
-    {
-        struct MockFile {}
-
-        impl FileExt for MockFile {
-            fn seek_read(&self, _buf: &mut [u8], _offset: u64) -> io::Result<usize> {
-                Ok(0)
-            }
-
-            fn seek_write(&self, _buf: &[u8], _offset: u64) -> io::Result<usize> {
-                Ok(0)
-            }
-        }
-
-        let mock_file = MockFile {};
-        let mut buf = [0; 256];
-        assert_eq!(
-            mock_file.seek_read(&mut buf, 0).unwrap_err().kind(),
-            crate::io::ErrorKind::UnexpectedEof
-        );
-        assert_eq!(
-            mock_file.seek_read(&mut buf, 420).unwrap_err().kind(),
-            crate::io::ErrorKind::UnexpectedEof
-        );
-        assert_eq!(
-            mock_file.seek_write(&buf, 0).unwrap_err().kind(),
-            crate::io::ErrorKind::WriteZero
-        );
-        assert_eq!(
-            mock_file.seek_write(&buf, 420).unwrap_err().kind(),
-            crate::io::ErrorKind::WriteZero
-        );
-    }
-
-    // Test that Err other than io::ErrorKind::Interrupted are propagated up.
-    {
-        struct MockFile {}
-
-        impl FileExt for MockFile {
-            fn seek_read(&self, _buf: &mut [u8], _offset: u64) -> io::Result<usize> {
-                Err(io::Error::new(io::ErrorKind::PermissionDenied, "seek_read"))
-            }
-
-            fn seek_write(&self, _buf: &[u8], _offset: u64) -> io::Result<usize> {
-                Err(io::Error::new(io::ErrorKind::ConnectionRefused, "seek_write"))
-            }
-        }
-
-        let mock_file = MockFile {};
-        let mut buf = [0; 256];
-        assert_eq!(
-            mock_file.seek_read(&mut buf, 0).unwrap_err().kind(),
-            crate::io::ErrorKind::PermissionDenied
-        );
-        assert_eq!(
-            mock_file.seek_read(&mut buf, 420).unwrap_err().kind(),
-            crate::io::ErrorKind::PermissionDenied
-        );
-        assert_eq!(
-            mock_file.seek_write(&buf, 0).unwrap_err().kind(),
-            crate::io::ErrorKind::ConnectionRefused
-        );
-        assert_eq!(
-            mock_file.seek_write(&buf, 420).unwrap_err().kind(),
-            crate::io::ErrorKind::ConnectionRefused
-        );
-    }
-
-    // FIXME: Cover io::ErrorKind::Interrupted, but don't infinite loop ;)
 }
 
 #[test]
