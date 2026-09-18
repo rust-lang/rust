@@ -86,12 +86,12 @@ pub trait FileExt {
     /// use std::os::windows::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut buf = [0u8; 8];
-    ///     let file = File::open("foo.txt")?;
+    ///     let mut file = File::open("foo.txt")?;
+    ///     let mut buffer = [0; 10];
     ///
-    ///     // We now read exactly 8 bytes from the offset 10.
-    ///     file.seek_read_exact(&mut buf, 10)?;
-    ///     println!("read {} bytes: {:?}", buf.len(), buf);
+    ///     // Read 10 bytes, starting 72 bytes from the
+    ///     // start of the file.
+    ///     file.seek_read_exact(&mut buffer[..], 72)?;
     ///     Ok(())
     /// }
     /// ```
@@ -212,10 +212,11 @@ pub trait FileExt {
     /// use std::os::windows::prelude::*;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let file = File::open("foo.txt")?;
+    ///     let mut buffer = File::create("foo.txt")?;
     ///
-    ///     // We now write at the offset 10.
-    ///     file.seek_write_all(b"sushi", 10)?;
+    ///     // Write a byte string starting 72 bytes from
+    ///     // the start of the file.
+    ///     buffer.seek_write_all(b"some bytes", 72)?;
     ///     Ok(())
     /// }
     /// ```
