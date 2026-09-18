@@ -19,8 +19,8 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance};
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
+use rustc_span::{bug, span_bug};
 
 use crate::common::bytes_type_in_context;
 use crate::context::CodegenCx;

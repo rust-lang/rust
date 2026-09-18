@@ -21,7 +21,7 @@ use rustc_target::spec::SymbolVisibility;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::gcc_util::new_context;
-use crate::{GccContext, LockedTargetInfo, LtoMode, SyncContext};
+use crate::{GccContext, LtoMode, SharedTargetInfo, SyncContext};
 
 #[cfg(feature = "master")]
 pub fn visibility_to_gcc(visibility: Visibility) -> gccjit::Visibility {
@@ -113,7 +113,7 @@ pub fn linkage_needs_weak_attribute(linkage: Linkage) -> bool {
 pub fn compile_codegen_unit(
     tcx: TyCtxt<'_>,
     cgu_name: Symbol,
-    target_info: LockedTargetInfo,
+    target_info: SharedTargetInfo,
     lto_supported: bool,
 ) -> (ModuleCodegen<GccContext>, u64) {
     let prof_timer = tcx.prof.generic_activity("codegen_module");
@@ -136,7 +136,7 @@ pub fn compile_codegen_unit(
     fn module_codegen(
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
-        target_info: LockedTargetInfo,
+        target_info: SharedTargetInfo,
         lto_supported: bool,
     ) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);

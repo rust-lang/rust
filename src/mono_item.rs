@@ -5,11 +5,11 @@ use rustc_codegen_ssa::traits::PreDefineCodegenMethods;
 use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
+use rustc_span::bug;
 
 use crate::consts::const_alloc_type;
 use crate::context::CodegenCx;
