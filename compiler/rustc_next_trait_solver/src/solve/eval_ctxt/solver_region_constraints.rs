@@ -164,7 +164,9 @@ where
                 Or::new_leaf(PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r, ()))
             }
             Alias(_, alias) => self.destructure_alias_outlives(*alias, r),
-            UnresolvedInferenceVariable(_) => Or::new_ambig(()),
+            UnresolvedInferenceVariable(_) => {
+                panic!("Shouldn't destructure type outlives when ty vars exist")
+            }
             Param(_) => panic!("Params should have been canonicalized to placeholders"),
             EscapingAlias(components) => self.destructure_components(components, r),
         }
