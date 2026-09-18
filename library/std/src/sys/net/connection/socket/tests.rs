@@ -35,11 +35,15 @@ fn no_lookup_host_duplicates() {
 // sends larger then `ssize_t::MAX` will (maybe silently) return bad lengths.
 #[test]
 fn max_send_len_within_platform_limit() {
-    if cfg!(any(target_vendor = "apple", target_os = "nto", target_os = "qnx")) {
-        assert_eq!(MAX_SEND_LEN, c_int::MAX as usize);
-    } else if cfg!(target_os = "windows") {
-        assert_eq!(MAX_SEND_LEN, i32::MAX as usize);
-    } else {
-        assert_eq!(MAX_SEND_LEN, libc::ssize_t::MAX as usize);
+    cfg_select! {
+        any(target_vendor = "apple", target_os = "nto", target_os = "qnx") => {
+            assert_eq!(MAX_SEND_LEN, c_int::MAX as usize);
+        }
+        target_os = "windows" => {
+            assert_eq!(MAX_SEND_LEN, i32::MAX as usize);
+        }
+        _ => {
+            assert_eq!(MAX_SEND_LEN, libc::ssize_t::MAX as usize);
+        }
     }
 }

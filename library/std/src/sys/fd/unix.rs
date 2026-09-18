@@ -79,12 +79,12 @@ pub struct FileDesc(OwnedFd);
 // of the correct byte count).
 //
 // To handle both of these the read/write/send size is capped on both platforms.
-const READ_LIMIT: usize =
-    if cfg!(any(target_vendor = "apple", target_os = "nto", target_os = "qnx")) {
+const READ_LIMIT: usize = cfg_select! {
+    any(target_vendor = "apple", target_os = "nto", target_os = "qnx") => {
         libc::c_int::MAX as usize
-    } else {
-        libc::ssize_t::MAX as usize
-    };
+    }
+    _ => libc::ssize_t::MAX as usize,
+};
 
 #[cfg(any(
     target_os = "dragonfly",
