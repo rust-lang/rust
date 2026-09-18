@@ -750,7 +750,13 @@ impl Project {
 
 fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
     let projects = [
-        Project::new("https://gitlab.gnome.org/GNOME/librsvg"),
+        // The reference images assume the exact cairo, pango and freetype that librsvg pins in its
+        // own CI; this one renders text decorations a pixel off with the versions Ubuntu ships.
+        Project::new("https://gitlab.gnome.org/GNOME/librsvg").test_harness_arguments(&[
+            "--skip",
+            "tests::svg1_1_text_text_03_b_svg",
+            "--exact",
+        ]),
         Project::new("https://github.com/rust-random/getrandom"),
         Project::new("https://github.com/BurntSushi/memchr"),
         Project::new("https://github.com/dtolnay/itoa"),
