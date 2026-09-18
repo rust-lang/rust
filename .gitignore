@@ -7,7 +7,7 @@ perf.data.old
 *.events
 *.string*
 gimple*
-*asm
+*_asm
 res
 test-backend
 projects

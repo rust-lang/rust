@@ -26,7 +26,7 @@ jobs:
           - { gcc: "gcc-15.deb" }
           - { gcc: "gcc-15-without-int128.deb" }
         commands: [
-          "--std-tests",
+          "--std-tests --alloc-tests",
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
           # "--asm-tests",
           "--test-libcore",
@@ -91,16 +91,17 @@ jobs:
     - name: Check formatting
       run: ./y.sh fmt --check
 
-    - name: clippy
-      run: |
-        cargo clippy --all-targets -- -D warnings
-        cargo clippy --all-targets --no-default-features -- -D warnings
-        cargo clippy --manifest-path build_system/Cargo.toml --all-targets -- -D warnings
+    - name: Check todo
+      run: ./y.sh check-todo
+
+    - name: Check lints
+      run: ./y.sh clippy
 
     - name: Build
       run: |
         ./y.sh build --sysroot
         ./y.sh test --cargo-tests
+        CARGO_TEST_FLAGS="-Zmir-preserve-ub" ./y.sh test --cargo-tests -- mir_preserve_ub_empty_switch
 
     - name: Run y.sh cargo build
       run: |

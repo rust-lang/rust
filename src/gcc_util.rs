@@ -4,7 +4,7 @@ use std::env;
 
 use gccjit::Context;
 #[cfg(feature = "master")]
-use gccjit::Context;
+use gccjit::Version;
 use rustc_codegen_ssa::target_features;
 use rustc_data_structures::smallvec::{SmallVec, smallvec};
 use rustc_session::config::NATIVE_CPU;
