@@ -59,7 +59,7 @@ solver.
 `rustc_next_trait_solver` is intended to depend only on the abstract interfaces defined in
 `rustc_type_ir`.
 To support this, the type-system traits in `rustc_type_ir` must expose every interface the solver
-requires—for example, [creating a new inference type variable][ir new_infer] 
+requires—for example, [creating a new inference type variable][ir new_infer]
 ([rustc][rustc new_infer], [rust-analyzer][r-a new_infer]).
 For items that do not need compiler-specific representations, `rustc_type_ir` defines them directly
 as structs or enums parameterized over these traits—for example, [`TraitRef`][ir tr].
@@ -78,7 +78,7 @@ Among its essential responsibilities:
 - it provides the context required by the solver (e.g., querying [lang items][ir require_lang_item],
   enumerating [all blanket impls for a trait][ir for_each_blanket_impl]);
 - and it must implement [`IrPrint`][ir irprint] for formatting and tracing.
-  
+
   In practice, these `IrPrint` impls simply route to existing formatting logic inside rustc or
   rust-analyzer.
 
@@ -153,7 +153,7 @@ This infrastructure is used by the external fuzzing project:
 - [`trait Lift` and `Lift_Generic`][lift-trait-macro]
 - [`trait GenericTypeVisitable`][generictypevisitable]
 
-These traits are used heavily in `rustc_type_ir`, their associated macros 
+These traits are used heavily in `rustc_type_ir`, their associated macros
 primarily exist to reduce the amount of boilerplate otherwise required to implement `Lift`,
 `TypeFoldable`, `TypeVisitable` and `GenericTypeVisitable`.
 
@@ -264,8 +264,8 @@ Shared crates that require nightly-only features must guard such code behind a `
 flag, since rust-analyzer is built with the stable toolchain.
 
 Looking forward, we plan to uplift more shared logic into `rustc_type_ir`.
-There are still duplicated implementations between rustc and rust-analyzer—such as `ObligationCtxt` 
-([rustc][rustc oblctxt], [rust-analyzer][r-a oblctxt]) and type coercion logic 
+There are still duplicated implementations between rustc and rust-analyzer—such as `ObligationCtxt`
+([rustc][rustc oblctxt], [rust-analyzer][r-a oblctxt]) and type coercion logic
 ([rustc][rustc coerce], [rust-analyzer][r-a coerce])—that we would like to unify over time.
 
 [rustc-auto-publish]: https://github.com/rust-analyzer/rustc-auto-publish
@@ -302,5 +302,5 @@ There are still duplicated implementations between rustc and rust-analyzer—suc
 [rustc coerce]: https://github.com/rust-lang/rust/blob/63b1db05801271e400954e41b8600a3cf1482363/compiler/rustc_hir_typeck/src/coercion.rs
 [r-a coerce]: https://github.com/rust-lang/rust-analyzer/blob/34f47d9298c478c12c6c4c0348771d1b05706e09/crates/hir-ty/src/infer/coerce.rs
 [rustc_lift]: https://github.com/rust-lang/rust/blob/0913b18e489ac1011b580e31fa5559654be12bfc/compiler/rustc_type_ir/src/lift.rs#L18
-[rustc_typevisitable]: https://github.com/rust-lang/rust/blob/0913b18e489ac1011b580e31fa5559654be12bfc/compiler/rustc_type_ir/src/visit.rs#L62 
+[rustc_typevisitable]: https://github.com/rust-lang/rust/blob/0913b18e489ac1011b580e31fa5559654be12bfc/compiler/rustc_type_ir/src/visit.rs#L62
 [rustc_typefoldable]: https://github.com/rust-lang/rust/blob/0913b18e489ac1011b580e31fa5559654be12bfc/compiler/rustc_type_ir/src/fold.rs#L71
