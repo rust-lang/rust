@@ -2014,10 +2014,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let tcx = self.tcx;
             let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap().local_def_index;
             let stability = tcx.lookup_stability(CRATE_DEF_ID);
-            for (i, span) in self.tcx.sess.proc_macro_quoted_spans() {
-                let span = self.lazy(span);
-                self.tables.proc_macro_quoted_spans.set_some(i, span);
-            }
 
             record_non_lazy!(self.tables.def_kind[LOCAL_CRATE.as_def_id()] <- DefKind::Mod);
             record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()));
@@ -2092,7 +2088,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             let macros = self.lazy_array(macros);
 
-            Some(ProcMacroData { proc_macro_decls_static, stability, macros })
+            let mut proc_macro_quoted_spans = TableBuilder::default();
+            for (i, span) in self.tcx.sess.proc_macro_quoted_spans() {
+                proc_macro_quoted_spans.set_some(i, self.lazy(span));
+            }
+
+            let proc_macro_quoted_spans = proc_macro_quoted_spans.encode(&mut self.opaque);
+
+            Some(ProcMacroData {
+                proc_macro_decls_static,
+                stability,
+                macros,
+                proc_macro_quoted_spans,
+            })
         } else {
             None
         }
