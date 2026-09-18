@@ -95,7 +95,7 @@ fn get_param_type_alignment<'ll, 'tcx>(
                 Integer::I128 => return Align::EIGHT,
             },
             Primitive::Float(float) => match float {
-                Float::F16 | Float::F32 => unreachable!(),
+                Float::F16 | Float::F16B | Float::F32 => unreachable!(),
                 Float::F64 => { /* fall through */ }
                 Float::F128 => return Align::from_bytes(16).unwrap(),
             },
@@ -481,7 +481,11 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
                 Primitive::Float(Float::F16 | Float::F32 | Float::F64) => true,
                 Primitive::Float(Float::F128) => false,
                 Primitive::Int(_, _) | Primitive::Pointer(_) => false,
+                Primitive::Float(Float::F16B) => {
+                    bug!("`f16b` use in varadics unsupported on s390x")
+                }
             },
+
             _ => false,
         }
     };
