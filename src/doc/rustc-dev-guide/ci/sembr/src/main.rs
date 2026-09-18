@@ -185,12 +185,22 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
             continue;
         }
         const SEP: &str = ", ";
-        let Some((before_comma, after_comma)) = next_line.split_once(SEP) else { continue };
-        if line.len() + before_comma.len() < limit - SEP.len() {
-            new_content[new_n] = format!("{line} {before_comma}{}", SEP.trim_end());
-            new_n += 1;
-            new_content[new_n] = after_comma.to_owned();
-            skip_next = true;
+        if next_line.contains(SEP) {
+            let (before_comma, after_comma) = next_line.split_once(SEP).unwrap();
+            if line.len() + before_comma.len() < limit - SEP.len() {
+                new_content[new_n] = format!("{line} {before_comma}{}", SEP.trim_end());
+                new_n += 1;
+                new_content[new_n] = after_comma.to_owned();
+                skip_next = true;
+            }
+        } else if line.contains(SEP) {
+            let (before_comma, after_comma) = line.rsplit_once(SEP).unwrap();
+            if after_comma.len() + next_line.len() < limit {
+                new_content[new_n] = format!("{before_comma}{}", SEP.trim_end());
+                new_n += 1;
+                new_content[new_n] = format!("{after_comma} {next_line}");
+                skip_next = true;
+            }
         }
     }
     new_content.join("\n") + "\n"
@@ -334,14 +344,13 @@ fn should_pass() {
 }
 
 #[test]
-#[ignore]
 fn split_on_comma_of_current_line() {
     let original = "
-Each derived value has a dependency on other values, which could themselves be either base or
+Each derived value has a dependency, on other values, which could themselves be either base or
 derived.
 ";
     let expected = "
-Each derived value has a dependency on other values,
+Each derived value has a dependency, on other values,
 which could themselves be either base or derived.
 ";
     assert_eq!(expected, lengthen_lines(original, 100))
