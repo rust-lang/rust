@@ -465,19 +465,19 @@ impl CodegenBackend for LlvmCodegenBackend {
 }
 
 pub struct ModuleLlvm {
-    llcx: &'static mut llvm::Context,
+    pub(crate) llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,
 
     // This field is `ManuallyDrop` because it is important that the `TargetMachine`
     // is disposed prior to the `Context` being disposed otherwise UAFs can occur.
-    tm: ManuallyDrop<OwnedTargetMachine>,
+    pub(crate) tm: ManuallyDrop<OwnedTargetMachine>,
 }
 
 unsafe impl Send for ModuleLlvm {}
 unsafe impl Sync for ModuleLlvm {}
 
 impl ModuleLlvm {
-    fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
             let llcx = llvm::LLVMContextCreate();
             llvm::LLVMContextSetDiscardValueNames(llcx, tcx.sess.fewer_names().to_llvm_bool());
@@ -490,7 +490,7 @@ impl ModuleLlvm {
         }
     }
 
-    fn new_metadata(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
+    pub(crate) fn new_metadata(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
             let llcx = llvm::LLVMContextCreate();
             llvm::LLVMContextSetDiscardValueNames(llcx, tcx.sess.fewer_names().to_llvm_bool());
@@ -503,7 +503,7 @@ impl ModuleLlvm {
         }
     }
 
-    fn parse(
+    pub(crate) fn parse(
         cgcx: &CodegenContext,
         tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
         name: &CStr,
@@ -520,7 +520,7 @@ impl ModuleLlvm {
         }
     }
 
-    fn llmod(&self) -> &llvm::Module {
+    pub(crate) fn llmod(&self) -> &llvm::Module {
         unsafe { &*self.llmod_raw }
     }
 }
