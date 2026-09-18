@@ -97,9 +97,11 @@ pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
 pub struct InferCtxtInner<'tcx> {
     undo_log: InferCtxtUndoLogs<'tcx>,
 
-    /// Bumped whenever an inference change may let a stalled fulfillment goal
-    /// make progress. Snapshots save and restore the value, but individual bumps
-    /// are not undo-log entries.
+    /// Tracks inference changes that may unblock stalled fulfillment goals
+    ///
+    /// Even values are clean, the first relevant inference change makes the value odd and the next
+    /// fulfillment pass advances it to the next even value
+    /// Snapshots save and restore this with the inference state
     stalled_goal_generation: Option<u64>,
 
     /// Cache for projections.
