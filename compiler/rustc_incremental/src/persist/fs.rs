@@ -236,16 +236,13 @@ pub(crate) fn prepare_session_directory(
         // Generate a session directory of the form:
         //
         // {incr-comp-dir}/{crate-name-and-disambiguator}/s-{timestamp}-{random}-working
-        let session_dir = generate_session_dir_path(&crate_dir);
-        debug!("session-dir: {}", session_dir.display());
+        let session_directory = generate_session_dir_path(&crate_dir);
+        debug!("session-dir: {}", session_directory.display());
 
         // Lock the new session directory. If this fails, return an
         // error without retrying
-        let (directory_lock, lock_file_path) = lock_directory(sess, &session_dir);
-
-        // Now that we have the lock, we can actually create the session
-        // directory
-        create_dir(sess, &session_dir, "session");
+        let (session_directory, lock_file_path) =
+            lock_and_create_directory(sess, &session_directory);
 
         // Find a suitable source directory to copy from. Ignore those that we
         // have already tried before.
@@ -258,20 +255,20 @@ pub(crate) fn prepare_session_directory(
                     directory."
             );
 
-            return IncrCompSession { session_directory: session_dir, _lock_file: directory_lock };
+            return IncrCompSession { session_directory };
         };
 
         debug!("attempting to copy data from source: {}", source_directory.display());
 
         // Try copying over all files from the source directory
-        if let Ok(allows_links) = copy_files(sess, &session_dir, &source_directory) {
+        if let Ok(allows_links) = copy_files(sess, &session_directory, &source_directory) {
             debug!("successfully copied data from: {}", source_directory.display());
 
             if !allows_links {
-                sess.dcx().emit_warn(diagnostics::HardLinkFailed { path: &session_dir });
+                sess.dcx().emit_warn(diagnostics::HardLinkFailed { path: &session_directory });
             }
 
-            return IncrCompSession { session_directory: session_dir, _lock_file: directory_lock };
+            return IncrCompSession { session_directory };
         } else {
             debug!("copying failed - trying next directory");
 
@@ -281,12 +278,12 @@ pub(crate) fn prepare_session_directory(
 
             // Try to remove the session directory we just allocated. We don't
             // know if there's any garbage in it from the failed copy action.
-            if let Err(err) = std_fs::remove_dir_all(&session_dir) {
-                sess.dcx().emit_warn(diagnostics::DeletePartial { path: &session_dir, err });
+            if let Err(err) = std_fs::remove_dir_all(&*session_directory) {
+                sess.dcx().emit_warn(diagnostics::DeletePartial { path: &session_directory, err });
             }
 
             delete_session_dir_lock_file(sess, &lock_file_path);
-            drop(directory_lock);
+            drop(session_directory);
         }
     }
 }
@@ -310,7 +307,7 @@ pub fn finalize_session_directory(
 
     let _timer = sess.timer("incr_comp_finalize_session_directory");
 
-    let incr_comp_session_dir = incr_comp_session.session_directory.clone();
+    let incr_comp_session_dir = &*incr_comp_session.session_directory;
 
     debug!("finalize_session_directory() - session directory: {}", incr_comp_session_dir.display());
 
@@ -334,7 +331,7 @@ pub fn finalize_session_directory(
     let new_path = incr_comp_session_dir.parent().unwrap().join(&*sub_dir_name);
     debug!("finalize_session_directory() - new path: {}", new_path.display());
 
-    let result = std_fs::rename(&*incr_comp_session_dir, &new_path).or_else(|e| {
+    let result = std_fs::rename(incr_comp_session_dir, &new_path).or_else(|e| {
         if !cfg!(windows) || e.kind() != ErrorKind::PermissionDenied {
             return Err(e);
         }
@@ -355,7 +352,7 @@ pub fn finalize_session_directory(
             debug!("finalize_session_directory() - error replacing hard link with copy: {}", err);
         }
 
-        rename_path_with_retry(&*incr_comp_session_dir, &new_path, 3)
+        rename_path_with_retry(incr_comp_session_dir, &new_path, 3)
     });
 
     match result {
@@ -364,7 +361,7 @@ pub fn finalize_session_directory(
         }
         Err(e) => {
             // Warn about the error. However, no need to abort compilation now.
-            sess.dcx().emit_note(diagnostics::Finalize { path: &incr_comp_session_dir, err: e });
+            sess.dcx().emit_note(diagnostics::Finalize { path: incr_comp_session_dir, err: e });
 
             debug!("finalize_session_directory() - error");
         }
@@ -471,18 +468,25 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) {
     }
 }
 
-/// Allocate the lock-file and lock it.
-fn lock_directory(sess: &Session, session_dir: &Path) -> (flock::Lock, PathBuf) {
+/// Allocate the lock-file, lock it and create the session directory.
+fn lock_and_create_directory(sess: &Session, session_dir: &Path) -> (flock::LockedDir, PathBuf) {
     let lock_file_path = lock_file_path(session_dir);
     debug!("lock_directory() - lock_file: {}", lock_file_path.display());
 
-    match flock::Lock::try_lock(
+    match flock::LockedDir::try_lock(
+        session_dir.to_owned(),
         &lock_file_path,
         true, // create the lock file
         true,
     ) {
         // the lock should be exclusive
-        Ok(lock) => (lock, lock_file_path),
+        Ok(lock) => {
+            // Now that we have the lock, we can actually create the session
+            // directory
+            create_dir(sess, &session_dir, "session");
+
+            (lock, lock_file_path)
+        }
         Err(lock_err) => {
             let is_unsupported_lock = flock::Lock::error_unsupported(&lock_err);
             sess.dcx().emit_fatal(diagnostics::CreateLock {
