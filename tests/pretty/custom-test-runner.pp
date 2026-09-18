@@ -26,7 +26,6 @@ fn my_runner(tests: &[&i32]) {
 pub const WILL_PASS: i32 = 0;
 #[rustc_test_marker = "WILL_FAIL"]
 pub const WILL_FAIL: i32 = 4;
-extern crate test;
 #[rustc_main]
 #[coverage(off)]
 #[doc(hidden)]
