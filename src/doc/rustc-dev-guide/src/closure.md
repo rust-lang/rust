@@ -31,9 +31,10 @@ fn main() {
 ```
 
 Let's say the above is the content of a file called `immut.rs`.
-If we compile `immut.rs` using the following command.
-The [`-Z dump-mir=all`][dump-mir] flag will cause
-`rustc` to generate and dump the [MIR][mir] to a directory called `mir_dump`.
+If we compile `immut.rs` using the following command,
+the [`-Z dump-mir=all`][dump-mir] flag will cause
+`rustc` to generate and dump the [MIR] to a directory called `mir_dump`.
+
 ```console
 > rustc +stage1 immut.rs -Z dump-mir=all
 ```
@@ -55,7 +56,7 @@ Note that in the MIR examples in this chapter, `_1` is `x`.
 
 Here in first line `_4 = &_1;`,
 the `mir_dump` tells us that `x` was borrowed as an immutable reference.
- This is what we would hope as our closure just reads `x`.
+This is what we would hope as our closure just reads `x`.
 
 ### Example 2
 
@@ -105,19 +106,19 @@ fn main() {
 ```rust,ignore
 _6 = [closure@move.rs:7:13: 9:6] { x: move _1 }; // bb16[3]: scope 1 at move.rs:7:13: 9:6
 ```
-Here,
-`x` is directly moved into the closure and the access to it will not be permitted after the closure.
+Here, `x` is directly moved into the closure,
+and the access to it will not be permitted after the closure.
 
 ## Inferences in the compiler
 
 Now let's dive into rustc code and see how all these inferences are done by the compiler.
 
 Let's start with defining a term that we will be using quite a bit in the rest of the discussion -
-*upvar*. An **upvar** is a variable that is local to the function where the closure is defined.
-So,
-in the above examples, **x** will be an upvar to the closure.
-They are also sometimes referred to as
-the *free variables* meaning they are not bound to the context of the closure.
+*upvar*.
+An **upvar** is a variable that is local to the function where the closure is defined.
+So, in the above examples, **x** will be an upvar to the closure.
+They are also sometimes referred to as the *free variables*,
+meaning they are not bound to the context of the closure.
 [`compiler/rustc_passes/src/upvars.rs`][upvars] defines a query called *upvars_mentioned*
 for this purpose.
 
@@ -127,9 +128,8 @@ Other than lazy invocation,
 one other thing that distinguishes a closure from a normal function is that it can use the upvars.
 It borrows these upvars from its surrounding
 context; therefore the compiler has to determine the upvar's borrow type.
-The compiler starts with assigning an immutable borrow type and lowers the restriction (that is,
-changes it from
-**immutable** to **mutable** to **move**) as needed, based on the usage.
+The compiler starts with assigning an immutable borrow type and lowers the restriction
+(that is, changes it from **immutable** to **mutable** to **move**) as needed, based on the usage.
 In the Example 1 above, the
 closure only uses the variable for printing but does not modify it in any way and therefore, in the
 `mir_dump`, we find the borrow type for the upvar `x` to be immutable.
