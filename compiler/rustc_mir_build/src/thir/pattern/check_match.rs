@@ -1229,8 +1229,7 @@ fn is_const_pat_that_looks_like_binding<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat<'tcx>
     // The pattern must be a named constant, and the name that appears in
     // the pattern's source text must resemble a plain identifier without any
     // `::` namespace separators or other non-identifier characters.
-    if let Some(def_id) = try { pat.extra.as_deref()?.expanded_const? }
-        && tcx.def_kind(def_id) == DefKind::Const
+    if let ty::AliasConstKind::Free { def_id } = pat.extra.as_deref()?.expanded_const?
         && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(pat.span)
         && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
     {
