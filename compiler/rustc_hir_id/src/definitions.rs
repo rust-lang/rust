@@ -6,10 +6,9 @@
 
 use std::fmt::{self, Write};
 use std::hash::Hash;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::Relaxed;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
@@ -51,8 +50,8 @@ impl LocalDefIdMap<PerParentDisambiguatorState> {
 #[derive(Debug, Default)]
 pub struct DefPathToIndexMap {
     pub det_part: DefPathHashMap,
-    pub non_det_part: FxHashMap<Hash64, DefIndex>,
-    non_det_mode: AtomicBool,
+    pub non_det_part: SortedMap<Hash64, DefIndex>,
+    non_det_mode: bool,
 }
 
 impl DefPathToIndexMap {
@@ -61,7 +60,7 @@ impl DefPathToIndexMap {
         match self.det_part.get(hash) {
             Some(index) => Some(index),
             None => {
-                if self.non_det_mode.load(Relaxed) {
+                if self.non_det_mode {
                     self.non_det_part.get(hash).copied()
                 } else {
                     None
@@ -71,16 +70,22 @@ impl DefPathToIndexMap {
     }
 
     #[inline]
-    pub fn insert(&mut self, hash: Hash64, index: DefIndex) -> Option<DefIndex> {
-        match self.non_det_mode.load(Relaxed) {
-            true => self.non_det_part.insert(hash, index),
-            false => self.det_part.insert(&hash, &index),
+    pub fn insert(&mut self, hash: &Hash64, index: DefIndex) -> Option<DefIndex> {
+        match self.non_det_mode {
+            false => self.det_part.insert(hash, &index),
+            true => {
+                if let Some(existing) = self.det_part.get(hash) {
+                    return Some(existing);
+                }
+
+                self.non_det_part.insert(*hash, index)
+            }
         }
     }
 
     #[inline]
     pub fn switch_to_non_det_mode(&mut self) {
-        self.non_det_mode.store(true, Relaxed);
+        self.non_det_mode = true;
     }
 }
 
@@ -364,7 +369,9 @@ impl Definitions {
 
         // Check for hash collisions of DefPathHashes. These should be
         // exceedingly rare.
-        if let Some(existing) = self.def_path_hash_to_index.get(&local_hash) {
+        if let Some(existing) =
+            self.def_path_hash_to_index.insert(&local_hash, def_id.local_def_index)
+        {
             let def_path1 = self.def_path(LocalDefId { local_def_index: existing });
             let def_path2 = self.def_path(def_id);
 
@@ -380,8 +387,6 @@ impl Definitions {
                 "found DefPathHash collision between {def_path1:#?} and {def_path2:#?}. \
                     Compilation cannot continue."
             );
-        } else {
-            self.def_path_hash_to_index.insert(local_hash, def_id.local_def_index);
         }
 
         def_id

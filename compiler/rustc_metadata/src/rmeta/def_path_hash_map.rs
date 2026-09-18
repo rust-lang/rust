@@ -1,3 +1,5 @@
+use rustc_data_structures::owned_slice::OwnedSlice;
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_hashes::Hash64;
 use rustc_hir::def_path_hash_map::Config as HashMapConfig;
 use rustc_hir::definitions::DefPathToIndexMap;
@@ -8,7 +10,7 @@ use crate::rmeta::EncodeContext;
 use crate::rmeta::decoder::BlobDecodeContext;
 
 pub(crate) enum DefPathHashMapRef<'tcx> {
-    OwnedFromMetadata(odht::HashTableOwned<HashMapConfig>),
+    OwnedFromMetadata(odht::HashTable<HashMapConfig, OwnedSlice>, SortedMap<Hash64, DefIndex>),
     BorrowedFromTcx(&'tcx DefPathToIndexMap),
 }
 
@@ -18,8 +20,14 @@ impl DefPathHashMapRef<'_> {
         &self,
         def_path_hash: &DefPathHash,
     ) -> Option<DefIndex> {
-        match *self {
-            DefPathHashMapRef::OwnedFromMetadata(ref map) => map.get(&def_path_hash.local_hash()),
+        match self {
+            DefPathHashMapRef::OwnedFromMetadata(det_map, non_det_map) => {
+                let hash = &def_path_hash.local_hash();
+                match det_map.get(hash) {
+                    Some(index) => Some(index),
+                    None => non_det_map.get(hash).copied(),
+                }
+            }
             DefPathHashMapRef::BorrowedFromTcx(_) => {
                 panic!("DefPathHashMap::BorrowedFromTcx variant only exists for serialization")
             }
@@ -31,22 +39,14 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefPathHashMapRef<'tcx> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
         match *self {
             DefPathHashMapRef::BorrowedFromTcx(map) => {
-                #[allow(rustc::potential_query_instability)]
                 let bytes = map.det_part.raw_bytes();
                 e.emit_usize(bytes.len());
                 e.emit_raw_bytes(bytes);
 
                 #[allow(rustc::potential_query_instability)]
-                let mut vec = map.non_det_part.iter().collect::<Vec<_>>();
-                vec.sort_by_key(|(hash, _)| *hash);
-
-                e.emit_usize(vec.len());
-                for (hash, index) in vec {
-                    hash.encode(e);
-                    index.encode(e);
-                }
+                map.non_det_part.range(..).encode(e);
             }
-            DefPathHashMapRef::OwnedFromMetadata(_) => {
+            DefPathHashMapRef::OwnedFromMetadata(..) => {
                 panic!("DefPathHashMap::OwnedFromMetadata variant only exists for deserialization")
             }
         }
@@ -64,15 +64,13 @@ impl<'a> Decodable<BlobDecodeContext<'a>> for DefPathHashMapRef<'static> {
         // the method. We use `read_raw_bytes()` for that.
         let _ = d.read_raw_bytes(len);
 
-        let mut inner = odht::HashTableOwned::from_raw_bytes(o.as_ref()).unwrap_or_else(|e| {
+        let inner = odht::HashTable::from_raw_bytes(o).unwrap_or_else(|e| {
             panic!("decode error: {e}");
         });
 
-        let non_det_size = d.read_usize();
-        for _ in 0..non_det_size {
-            inner.insert(&Hash64::decode(d), &DefIndex::decode(d));
-        }
+        let elements = Vec::<(Hash64, DefIndex)>::decode(d);
+        let non_det_map = SortedMap::from_presorted_elements(elements);
 
-        DefPathHashMapRef::OwnedFromMetadata(inner)
+        DefPathHashMapRef::OwnedFromMetadata(inner, non_det_map)
     }
 }
