@@ -130,11 +130,11 @@ It borrows these upvars from its surrounding
 context; therefore the compiler has to determine the upvar's borrow type.
 The compiler starts with assigning an immutable borrow type and lowers the restriction
 (that is, changes it from **immutable** to **mutable** to **move**) as needed, based on the usage.
-In the Example 1 above, the
-closure only uses the variable for printing but does not modify it in any way and therefore, in the
-`mir_dump`, we find the borrow type for the upvar `x` to be immutable.
- In example 2, however, the closure modifies `x` and increments it by some value.
- Because of this mutation, the compiler, which
+In the Example 1 above,
+the closure only uses the variable for printing but does not modify it in any way and therefore,
+in the `mir_dump`, we find the borrow type for the upvar `x` to be immutable.
+In example 2, however, the closure modifies `x` and increments it by some value.
+Because of this mutation, the compiler, which
 started off assigning `x` as an immutable reference type, has to adjust it as a mutable reference.
 Likewise in the third example, the closure drops the vector and therefore this requires the variable
 `x` to be moved into the closure.
