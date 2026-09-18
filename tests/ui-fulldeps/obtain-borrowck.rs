@@ -26,13 +26,11 @@ extern crate rustc_interface;
 extern crate rustc_middle;
 extern crate rustc_session;
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::process::ExitCode;
-use std::thread_local;
+use std::sync::{LazyLock, Mutex};
 
-use rustc_borrowck::consumers::{self, BodyWithBorrowckFacts, ConsumerOptions};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_borrowck::consumers::{self, ConsumerOptions, PoloniusInput};
 use rustc_driver::Compilation;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -104,9 +102,9 @@ impl rustc_driver::Callbacks for CompilerCalls {
         let mut bodies = get_bodies(tcx);
         bodies.sort_by(|(def_id1, _), (def_id2, _)| def_id1.cmp(def_id2));
         println!("Bodies retrieved for:");
-        for (def_id, body) in bodies {
+        for (def_id, facts) in bodies {
             println!("{}", def_id);
-            assert!(body.input_facts.unwrap().cfg_edge.len() > 0);
+            assert!(facts.cfg_edge.len() > 0);
         }
 
         Compilation::Continue
@@ -118,47 +116,31 @@ fn override_queries(_session: &Session, local: &mut Providers) {
 }
 
 // Since mir_borrowck does not have access to any other state, we need to use a
-// thread-local for storing the obtained MIR bodies.
-//
-// Note: We are using 'static lifetime here, which is in general unsound.
-// Unfortunately, that is the only lifetime allowed here. Our use is safe
-// because we cast it back to `'tcx` before using.
-thread_local! {
-    pub static MIR_BODIES:
-        RefCell<HashMap<LocalDefId, BodyWithBorrowckFacts<'static>>> =
-        RefCell::new(HashMap::new());
-}
+// global variable for storing the obtained MIR bodies.
+// Note that we don't use a thread-local variable, because borrowck can run under multiple threads.
+pub static MIR_BODIES: LazyLock<Mutex<HashMap<LocalDefId, Option<Box<PoloniusInput>>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 fn mir_borrowck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ProvidedValue<'tcx> {
     let opts = ConsumerOptions::PoloniusInputFacts;
     let bodies_with_facts = consumers::get_bodies_with_borrowck_facts(tcx, def_id, opts);
-    // SAFETY: The reader casts the 'static lifetime to 'tcx before using it.
-    let bodies_with_facts: FxHashMap<LocalDefId, BodyWithBorrowckFacts<'static>> =
-        unsafe { std::mem::transmute(bodies_with_facts) };
-    MIR_BODIES.with(|state| {
-        let mut map = state.borrow_mut();
-        for (def_id, body_with_facts) in bodies_with_facts {
-            assert!(map.insert(def_id, body_with_facts).is_none());
-        }
-    });
+    let mut map = MIR_BODIES.lock().unwrap();
+    for (def_id, body_with_facts) in bodies_with_facts {
+        assert!(map.insert(def_id, body_with_facts.input_facts).is_none());
+    }
     let mut providers = Providers::default();
     rustc_borrowck::provide(&mut providers.queries);
     let original_mir_borrowck = providers.queries.mir_borrowck;
     original_mir_borrowck(tcx, def_id)
 }
 
-/// Pull MIR bodies stored in the thread-local.
-fn get_bodies<'tcx>(tcx: TyCtxt<'tcx>) -> Vec<(String, BodyWithBorrowckFacts<'tcx>)> {
-    MIR_BODIES.with(|state| {
-        let mut map = state.borrow_mut();
-        map.drain()
-            .map(|(def_id, body)| {
-                let def_path = tcx.def_path(def_id.to_def_id());
-                // SAFETY: For soundness we need to ensure that the bodies have
-                // the same lifetime (`'tcx`), which they had before they were
-                // stored in the thread local.
-                (def_path.to_string_no_crate_verbose(), unsafe { std::mem::transmute(body) })
-            })
-            .collect()
-    })
+/// Pull MIR bodies stored in the global variable.
+fn get_bodies<'tcx>(tcx: TyCtxt<'tcx>) -> Vec<(String, PoloniusInput)> {
+    let mut map = MIR_BODIES.lock().unwrap();
+    map.drain()
+        .map(|(def_id, facts)| {
+            let def_path = tcx.def_path(def_id.to_def_id());
+            (def_path.to_string_no_crate_verbose(), *facts.unwrap())
+        })
+        .collect()
 }
