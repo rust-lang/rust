@@ -154,7 +154,7 @@ const impl<T: [const] BytewiseEq<U>, U, const N: usize> SpecArrayEq<U, N> for T 
         // SAFETY: Arrays are compared element-wise, and don't add any padding
         // between elements, so when the elements are `BytewiseEq`, we can
         // compare the entire array at once.
-        unsafe { crate::intrinsics::raw_eq(a, crate::mem::transmute(b)) }
+        unsafe { crate::intrinsics::raw_eq(a, crate::mem::transmute::<&[U; N], &[T; N]>(b)) }
     }
     fn spec_ne(a: &[T; N], b: &[U; N]) -> bool {
         !Self::spec_eq(a, b)
