@@ -150,8 +150,8 @@ fn gen_spec(in_file: String, ext_name: &str) -> io::Result<()> {
     Ok(())
 }
 
-fn gen_bind(in_file: &str, ext_name: &str, out_path: &Path) -> io::Result<()> {
-    let f = File::open(in_file).unwrap_or_else(|_| panic!("Failed to open {in_file}"));
+fn gen_bind(in_file: &Path, spec_display: &str, ext_name: &str, out_path: &Path) -> io::Result<()> {
+    let f = File::open(in_file).unwrap_or_else(|_| panic!("Failed to open {}", in_file.display()));
     let f = BufReader::new(f);
 
     let target: TargetFeature = TargetFeature::new(ext_name);
@@ -166,10 +166,10 @@ fn gen_bind(in_file: &str, ext_name: &str, out_path: &Path) -> io::Result<()> {
     out.push_str(&format!(
         r#"// This code is automatically generated. DO NOT MODIFY.
 //
-// Instead, modify `{in_file}` and run the following command to re-generate this file:
+// Instead, modify `{spec_display}` and run the following command to re-generate this file:
 //
 // ```
-// OUT_DIR=`pwd`/crates/core_arch cargo run -p stdarch-gen-loongarch -- {in_file}
+// OUT_DIR=`pwd`/crates/core_arch cargo run -p stdarch-gen-loongarch -- {spec_display}
 // ```
 
 use crate::mem::transmute;
@@ -1617,10 +1617,11 @@ pub fn main() -> Result<(), String> {
         let core_arch_src = crate_dir.join("../core_arch/src");
         let mode = Mode::from_env();
         for ext in exts {
-            let spec_rel = format!("crates/stdarch-gen-loongarch/{ext}.spec");
+            let spec_display = format!("crates/stdarch-gen-loongarch/{ext}.spec");
+            let spec = crate_dir.join(format!("{ext}.spec"));
             let committed = core_arch_src.join("loongarch64").join(ext);
             run_generator(&committed, mode, |out_dir| {
-                gen_bind(&spec_rel, ext, out_dir)
+                gen_bind(&spec, &spec_display, ext, out_dir)
             })
             .map_err(|e| e.to_string())?;
         }
@@ -1648,5 +1649,5 @@ pub fn main() -> Result<(), String> {
         .join("src")
         .join("loongarch64")
         .join(ext_name);
-    gen_bind(&in_file, ext_name, &out_path).map_err(|e| e.to_string())
+    gen_bind(Path::new(&in_file), &in_file, ext_name, &out_path).map_err(|e| e.to_string())
 }
