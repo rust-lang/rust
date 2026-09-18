@@ -6,6 +6,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir_analysis::check::check_function_signature;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::traits::WellFormedLoc;
+use rustc_lint_defs::builtin::UNSAFE_PANIC_HANDLERS;
 use rustc_middle::ty::{self, Binder, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::sym;
@@ -13,6 +14,7 @@ use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use tracing::{debug, instrument};
 
 use crate::coercion::CoerceMany;
+use crate::diagnostics::UnsafePanicHandlers;
 use crate::gather_locals::GatherLocalsVisitor;
 use crate::{CoroutineTypes, Diverges, FnCtxt};
 
@@ -175,6 +177,21 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
     }
     if generic_counts.consts != 0 {
         tcx.dcx().span_err(span, "should have no const parameters");
+    }
+
+    if fn_sig.safety().is_unsafe() {
+        let hir_id = tcx.local_def_id_to_hir_id(fn_id);
+        let span = tcx.def_span(fn_id);
+        // If the function is implicitly "unsafe" because it has a `#[target_feature]` attribute,
+        // then we should already have emitted an error. Don't also emit a warning.
+        // See `tests/ui/panic-handler/panic-handler-with-target-feature.rs`
+        if let Some(hir_fn_sig) = tcx.hir_fn_sig_by_hir_id(hir_id)
+            && hir_fn_sig.header.safety == hir::HeaderSafety::SafeTargetFeatures
+        {
+            tcx.dcx().span_delayed_bug(span, "`unsafe_panic_handlers` lint suppressed because there should already be an error for `#[target_feature]`");
+        } else {
+            tcx.emit_node_span_lint(UNSAFE_PANIC_HANDLERS, hir_id, span, UnsafePanicHandlers);
+        }
     }
 
     let panic_info_did = tcx.require_lang_item(LangItem::PanicInfo, span);
