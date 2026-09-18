@@ -107,6 +107,8 @@ mod ok {
     #[test]
     fn cfg_meta() { run_and_expect_no_errors("test_data/parser/inline/ok/cfg_meta.rs"); }
     #[test]
+    fn cfg_pred_pat() { run_and_expect_no_errors("test_data/parser/inline/ok/cfg_pred_pat.rs"); }
+    #[test]
     fn cfg_true_false_pred() {
         run_and_expect_no_errors("test_data/parser/inline/ok/cfg_true_false_pred.rs");
     }
