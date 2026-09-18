@@ -6,7 +6,7 @@ use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::traits::TraitErrors;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
-use rustc_middle::ty::{GenericArg, Ty, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
@@ -553,8 +553,17 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     /// points `live_at`.
     fn add_use_live_facts_for(&mut self, value: Ty<'tcx>, live_at: &IntervalSet<PointIndex>) {
         debug!("add_use_live_facts_for(value={:?})", value);
-        Self::record_region_variance(self.typeck, value.into());
-        Self::make_all_regions_live(self.location_map, self.typeck, value.into(), live_at);
+        Self::make_all_regions_live(self.location_map, self.typeck, value, live_at);
+
+        // When using `-Zpolonius=next`, we also record the variance of regions in this live type.
+        if let Some(polonius_context) = self.typeck.polonius_context.as_mut() {
+            record_live_region_variance(
+                self.typeck.infcx.tcx,
+                &mut polonius_context.live_region_variances,
+                self.typeck.universal_regions,
+                value,
+            );
+        }
     }
 
     /// Some variable with type `live_ty` is "drop live" at `location`
@@ -595,9 +604,6 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
             }
         }
 
-        // Since the entire dropped local is live, record the variance of its regions.
-        Self::record_region_variance(self.typeck, dropped_ty.into());
-
         // All things in the `outlives` array may be touched by
         // the destructor and must be live at this point.
         for &kind in &drop_data.dropck_result.kinds {
@@ -610,19 +616,16 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
                 self.typeck.polonius_facts,
             );
         }
-    }
 
-    /// `live_kind` is the type of a  (use- or drop-) live local.
-    /// Record the variance of any region(s) appearing in it for Polonius. Does
-    /// nothing if Polonius is not active.
-    fn record_region_variance(typeck: &mut TypeChecker<'_, 'tcx>, live_kind: GenericArg<'tcx>) {
-        // When using `-Zpolonius=next`, we record the variance of each live region.
-        if let Some(polonius_context) = typeck.polonius_context.as_mut() {
+        // For polonius: since the local is drop live, record the variance of the regions in its
+        // type, not the ones in the type's live components seen in the dropck results above. See
+        // issue #160670.
+        if let Some(polonius_context) = self.typeck.polonius_context.as_mut() {
             record_live_region_variance(
-                typeck.infcx.tcx,
+                self.typeck.infcx.tcx,
                 &mut polonius_context.live_region_variances,
-                typeck.universal_regions,
-                live_kind,
+                self.typeck.universal_regions,
+                dropped_ty,
             );
         }
     }
@@ -630,7 +633,7 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
     fn make_all_regions_live(
         location_map: &DenseLocationMap,
         typeck: &mut TypeChecker<'_, 'tcx>,
-        value: GenericArg<'tcx>,
+        value: impl TypeVisitable<TyCtxt<'tcx>>,
         live_at: &IntervalSet<PointIndex>,
     ) {
         debug!("make_all_regions_live(value={:?})", value);
@@ -647,7 +650,6 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
                 typeck.constraints.liveness_constraints.add_points(live_region_vid, live_at);
             },
         });
-        Self::record_region_variance(typeck, value);
     }
 }
 
