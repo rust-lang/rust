@@ -194,6 +194,7 @@ pub(crate) struct ProcMacroData {
     proc_macro_decls_static: DefIndex,
     stability: Option<hir::Stability>,
     macros: LazyArray<(DefIndex, LazyValue<ProcMacroKind>)>,
+    proc_macro_quoted_spans: LazyTable<usize, Option<LazyValue<Span>>>,
 }
 
 #[derive(MetadataEncodable, LazyDecodable)]
@@ -344,7 +345,7 @@ pub(crate) struct CrateDep {
 
 #[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct TraitImpls {
-    trait_id: (u32, DefIndex),
+    trait_id: (u32 /* crate */, u32 /* def index */),
     impls: LazyArray<(DefIndex, Option<SimplifiedType>)>,
 }
 
@@ -470,7 +471,6 @@ define_tables! {
     // `DefPathTable` up front, since we may only ever use a few
     // definitions from any given crate.
     def_keys: Table<DefIndex, LazyValue<DefKey>>,
-    proc_macro_quoted_spans: Table<usize, LazyValue<Span>>,
     variant_data: Table<DefIndex, LazyValue<VariantData>>,
     assoc_container: Table<DefIndex, LazyValue<ty::AssocContainer>>,
     macro_definition: Table<DefIndex, LazyValue<ast::DelimArgs>>,

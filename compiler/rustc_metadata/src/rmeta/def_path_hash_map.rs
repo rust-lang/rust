@@ -1,4 +1,5 @@
 use rustc_data_structures::owned_slice::OwnedSlice;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_path_hash_map::{Config as HashMapConfig, DefPathHashMap};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::def_id::{DefIndex, DefPathHash};
@@ -30,7 +31,21 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefPathHashMapRef<'tcx> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
         match *self {
             DefPathHashMapRef::BorrowedFromTcx(def_path_hash_map) => {
-                let bytes = def_path_hash_map.raw_bytes();
+                let mut map = def_path_hash_map.clone();
+
+                let definitions = e.tcx.definitions();
+
+                #[allow(rustc::potential_query_instability)]
+                for (orig, remap) in &e.def_indexes_remapping {
+                    map.insert(
+                        &definitions
+                            .def_path_hash(LocalDefId { local_def_index: *orig })
+                            .local_hash(),
+                        remap,
+                    );
+                }
+
+                let bytes = map.raw_bytes();
                 e.emit_usize(bytes.len());
                 e.emit_raw_bytes(bytes);
             }

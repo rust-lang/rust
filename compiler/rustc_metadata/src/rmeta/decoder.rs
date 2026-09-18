@@ -1522,7 +1522,9 @@ impl CrateMetadata {
 
     fn get_proc_macro_quoted_span(&self, tcx: TyCtxt<'_>, index: usize) -> Span {
         self.root
-            .tables
+            .proc_macro_data
+            .as_ref()
+            .unwrap()
             .proc_macro_quoted_spans
             .get(self, index)
             .unwrap_or_else(|| panic!("Missing proc macro quoted span: {index:?}"))
@@ -1942,8 +1944,12 @@ impl CrateMetadata {
         let trait_impls = root
             .impls
             .decode(&blob)
-            .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
+            .map(|trait_impls| {
+                let (krate, index) = trait_impls.trait_id;
+                ((krate, DefIndex::from_u32(index)), trait_impls.impls)
+            })
             .collect();
+
         let alloc_decoding_state =
             AllocDecodingState::new(root.interpret_alloc_index.decode(&blob).collect());
 
