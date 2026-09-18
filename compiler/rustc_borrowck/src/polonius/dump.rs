@@ -543,6 +543,7 @@ fn emit_loan_reachability(
             // It's useful to know whether the region we're reaching is live at this point.
             let node_liveness =
                 if liveness.is_live_at(node.region, location) { "live" } else { "not live" };
+            writeln!(out, "<span class='trace-suffix'>")?;
             writeln!(
                 out,
                 "/ at <code>{:?}</code>: <code>'{}</code> is {}",
@@ -550,6 +551,7 @@ fn emit_loan_reachability(
                 node.region.index(),
                 node_liveness,
             )?;
+            writeln!(out, "</span>")?;
             writeln!(out, "</li>")?;
         }
         writeln!(out, "</ul>")?;
