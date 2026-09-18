@@ -1565,6 +1565,11 @@ pub struct Resolver<'ra, 'tcx> {
     // for APITs, so we don't want to leak details of resolution into these names.
     impl_trait_names: FxHashMap<NodeId, Symbol> = default::fx_hash_map(),
 
+    /// When enabled, after reporting every error we will `FatalError.raise()` to avoid advancing
+    /// to the next compiler stage. Only used when encountering resolution errors that cause lots of
+    /// unnecessary knock down errors.
+    raise_fatal_after_resolve: bool = false,
+
     /// Stores `#[diagnostic::on_unknown]` attributes placed on module declarations.
     on_unknown_data: FxHashMap<LocalDefId, OnUnknownData> = default::fx_hash_map(),
     features: &'tcx Features,
@@ -2098,6 +2103,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         // Don't mutate the cstore or stable crate id map from here on.
         self.tcx.untracked().freeze_cstore();
+        if self.raise_fatal_after_resolve {
+            rustc_errors::FatalError.raise();
+        }
     }
 
     fn traits_in_scope(

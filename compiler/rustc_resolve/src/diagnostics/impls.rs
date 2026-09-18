@@ -476,6 +476,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             },
         };
 
+        if ns == TypeNS {
+            // Duplicated types wreak havoc on other errors, like impls selecting the wrong
+            // type causing wrong number of generic params and other assorted number of
+            // irrelevant nonsense, so avoid advancing to the next compiler stage.
+            self.raise_fatal_after_resolve = true;
+        }
+
         let label = match new_binding.is_import_user_facing() {
             true => diagnostics::NameDefinedMultipleTimeLabel::Reimported { span, name },
             false => diagnostics::NameDefinedMultipleTimeLabel::Redefined { span, name },
@@ -2872,7 +2879,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 break;
             }
         }
-
         err.emit();
     }
 
