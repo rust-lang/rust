@@ -23,7 +23,7 @@ pub type Vec4<T> = Simd<T, 4>;
 #[no_mangle]
 pub unsafe fn scatter_f32x2(pointers: Vec2<*mut f32>, mask: Vec2<i32>, values: Vec2<f32>) {
     // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> {{.*}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
-    // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
+    // CHECK: [[B:%[0-9]+]] = trunc nuw <2 x i32> [[A]] to <2 x i1>
     // LLVM21: call void @llvm.masked.scatter.v2f32.v2p0(<2 x float> {{.*}}, <2 x ptr> {{.*}}, i32 {{.*}}, <2 x i1> [[B]]
     // LLVM22: call void @llvm.masked.scatter.v2f32.v2p0(<2 x float> {{.*}}, <2 x ptr> align {{.*}} {{.*}}, <2 x i1> [[B]]
     simd_scatter(values, pointers, mask)
@@ -33,7 +33,7 @@ pub unsafe fn scatter_f32x2(pointers: Vec2<*mut f32>, mask: Vec2<i32>, values: V
 #[no_mangle]
 pub unsafe fn scatter_f32x2_unsigned(pointers: Vec2<*mut f32>, mask: Vec2<u32>, values: Vec2<f32>) {
     // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> {{.*}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
-    // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
+    // CHECK: [[B:%[0-9]+]] = trunc nuw <2 x i32> [[A]] to <2 x i1>
     // LLVM21: call void @llvm.masked.scatter.v2f32.v2p0(<2 x float> {{.*}}, <2 x ptr> {{.*}}, i32 {{.*}}, <2 x i1> [[B]]
     // LLVM22: call void @llvm.masked.scatter.v2f32.v2p0(<2 x float> {{.*}}, <2 x ptr> align {{.*}} {{.*}}, <2 x i1> [[B]]
     simd_scatter(values, pointers, mask)
@@ -47,7 +47,7 @@ pub unsafe fn scatter_pf32x2(
     values: Vec2<*const f32>,
 ) {
     // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> {{.*}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
-    // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
+    // CHECK: [[B:%[0-9]+]] = trunc nuw <2 x i32> [[A]] to <2 x i1>
     // LLVM21: call void @llvm.masked.scatter.v2p0.v2p0(<2 x ptr> {{.*}}, <2 x ptr> {{.*}}, i32 {{.*}}, <2 x i1> [[B]]
     // LLVM22: call void @llvm.masked.scatter.v2p0.v2p0(<2 x ptr> {{.*}}, <2 x ptr> align {{.*}} {{.*}}, <2 x i1> [[B]]
     simd_scatter(values, pointers, mask)

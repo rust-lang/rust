@@ -21,7 +21,7 @@ pub type Vec4<T> = Simd<T, 4>;
 #[no_mangle]
 pub unsafe fn load_f32x2(mask: Vec2<i32>, pointer: *const f32, values: Vec2<f32>) -> Vec2<f32> {
     // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> {{.*}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
-    // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
+    // CHECK: [[B:%[0-9]+]] = trunc nuw <2 x i32> [[A]] to <2 x i1>
     // LLVM21: call <2 x float> @llvm.masked.load.v2f32.p0(ptr {{.*}}, i32 4, <2 x i1> [[B]], <2 x float> {{.*}})
     //                                                                 ^^^^^
     // LLVM22: call <2 x float> @llvm.masked.load.v2f32.p0(ptr align 4 {{.*}}, <2 x i1> [[B]], <2 x float> {{.*}})
@@ -38,7 +38,7 @@ pub unsafe fn load_f32x2_aligned(
     values: Vec2<f32>,
 ) -> Vec2<f32> {
     // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> {{.*}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
-    // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
+    // CHECK: [[B:%[0-9]+]] = trunc nuw <2 x i32> [[A]] to <2 x i1>
     // LLVM21: call <2 x float> @llvm.masked.load.v2f32.p0(ptr {{.*}}, i32 8, <2 x i1> [[B]], <2 x float> {{.*}})
     //                                                                 ^^^^^
     // LLVM22: call <2 x float> @llvm.masked.load.v2f32.p0(ptr align 8 {{.*}}, <2 x i1> [[B]], <2 x float> {{.*}})
@@ -55,7 +55,7 @@ pub unsafe fn load_f32x2_unaligned(
     values: Vec2<f32>,
 ) -> Vec2<f32> {
     // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> {{.*}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
-    // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
+    // CHECK: [[B:%[0-9]+]] = trunc nuw <2 x i32> [[A]] to <2 x i1>
     // LLVM21: call <2 x float> @llvm.masked.load.v2f32.p0(ptr {{.*}}, i32 1, <2 x i1> [[B]], <2 x float> {{.*}})
     //                                                                 ^^^^^
     // LLVM22: call <2 x float> @llvm.masked.load.v2f32.p0(ptr align 1 {{.*}}, <2 x i1> [[B]], <2 x float> {{.*}})
@@ -72,7 +72,7 @@ pub unsafe fn load_f32x2_unsigned(
     values: Vec2<f32>,
 ) -> Vec2<f32> {
     // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> {{.*}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
-    // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
+    // CHECK: [[B:%[0-9]+]] = trunc nuw <2 x i32> [[A]] to <2 x i1>
     // LLVM21: call <2 x float> @llvm.masked.load.v2f32.p0(ptr {{.*}}, i32 4, <2 x i1> [[B]], <2 x float> {{.*}})
     // LLVM22: call <2 x float> @llvm.masked.load.v2f32.p0(ptr align 4 {{.*}}, <2 x i1> [[B]], <2 x float> {{.*}})
     simd_masked_load::<_, _, _, { SimdAlign::Element }>(mask, pointer, values)
@@ -86,7 +86,7 @@ pub unsafe fn load_pf32x4(
     values: Vec4<*const f32>,
 ) -> Vec4<*const f32> {
     // CHECK: [[A:%[0-9]+]] = lshr <4 x i32> {{.*}}, {{<i32 31, i32 31, i32 31, i32 31>|splat \(i32 31\)}}
-    // CHECK: [[B:%[0-9]+]] = trunc <4 x i32> [[A]] to <4 x i1>
+    // CHECK: [[B:%[0-9]+]] = trunc nuw <4 x i32> [[A]] to <4 x i1>
     // LLVM21: call <4 x ptr> @llvm.masked.load.v4p0.p0(ptr {{.*}}, i32 {{.*}}, <4 x i1> [[B]], <4 x ptr> {{.*}})
     // LLVM22: call <4 x ptr> @llvm.masked.load.v4p0.p0(ptr align {{.*}} {{.*}}, <4 x i1> [[B]], <4 x ptr> {{.*}})
     simd_masked_load::<_, _, _, { SimdAlign::Element }>(mask, pointer, values)

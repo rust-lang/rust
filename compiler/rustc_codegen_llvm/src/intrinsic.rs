@@ -2141,7 +2141,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let shift_indices = vec![shift_idx; in_len as _];
         let i_xn_msb = bx.lshr(i_xn, bx.const_vector(shift_indices.as_slice()));
         // Truncate vector to an <i1 x N>
-        bx.trunc(i_xn_msb, bx.type_vector(bx.type_i1(), in_len))
+        bx.unchecked_utrunc(i_xn_msb, bx.type_vector(bx.type_i1(), in_len))
     }
 
     // Sanity-check: all vector arguments must be immediates.
