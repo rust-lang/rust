@@ -1772,6 +1772,26 @@ impl<'test> TestCx<'test> {
             rustc.arg(dir_opt);
         };
 
+        if !self.config.parallel_frontend_enabled() {
+            // If the parallel frontend thread count was not specified, we override
+            // it to 1, because the tested toolchain might have a different default
+            // value for the frontend thread count, but we want to run tests in
+            // compiletest with the sequential frontend for now, until we prepare the testing
+            // infrastructure of all test suites to support potentially non-deterministic order of
+            // diagnostics.
+
+            // We can't set this option if the test already specifies the frontend thread count
+            // though.
+            if !self
+                .props
+                .compile_flags
+                .iter()
+                .any(|flag| flag.contains("-Zthreads") || flag.contains("--jobs-frontend"))
+            {
+                compiler.arg("-Zthreads=1");
+            }
+        }
+
         match self.config.mode {
             TestMode::Incremental => {
                 // If we are extracting and matching errors in the new
