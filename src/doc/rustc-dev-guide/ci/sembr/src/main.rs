@@ -185,12 +185,14 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
             continue;
         }
         const SEP: &str = ", ";
+        let indent = next_line.find(|ch: char| !ch.is_whitespace()).unwrap();
         if next_line.contains(SEP) {
             let (before_sep, after_sep) = next_line.split_once(SEP).unwrap();
             if line.len() + before_sep.len() < limit - SEP.len() {
-                new_content[new_n] = format!("{line} {before_sep}{}", SEP.trim_end());
+                new_content[new_n] =
+                    format!("{line} {}{}", before_sep.trim_start(), SEP.trim_end());
                 new_n += 1;
-                new_content[new_n] = after_sep.to_owned();
+                new_content[new_n] = format!("{:indent$}{after_sep}", "");
                 skip_next = true;
             }
         } else if line.contains(SEP) {
@@ -198,7 +200,8 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
             if after_sep.len() + next_line.len() < limit {
                 new_content[new_n] = format!("{before_sep}{}", SEP.trim_end());
                 new_n += 1;
-                new_content[new_n] = format!("{after_sep} {next_line}");
+                new_content[new_n] =
+                    format!("{:indent$}{after_sep} {}", "", next_line.trim_start());
                 skip_next = true;
             }
         }
@@ -348,10 +351,16 @@ fn split_on_comma_of_current_line() {
     let original = "
 Each derived value has a dependency, on other values, which could themselves be either base or
 derived.
+
+  Each derived value has a dependency, on other values, which could themselves be either base or
+  derived.
 ";
     let expected = "
 Each derived value has a dependency, on other values,
 which could themselves be either base or derived.
+
+  Each derived value has a dependency, on other values,
+  which could themselves be either base or derived.
 ";
     assert_eq!(expected, lengthen_lines(original, 100))
 }
@@ -361,10 +370,16 @@ fn split_on_comma_of_next_line() {
     let original = "
 Because of canonicalization of regions and
 inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
+
+  Because of canonicalization of regions and
+  inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
 ";
     let expected = "
 Because of canonicalization of regions and inference variables,
 encountering a cycle doesn't mean that we would get an infinite proof tree.
+
+  Because of canonicalization of regions and inference variables,
+  encountering a cycle doesn't mean that we would get an infinite proof tree.
 ";
     assert_eq!(expected, lengthen_lines(original, 100))
 }
