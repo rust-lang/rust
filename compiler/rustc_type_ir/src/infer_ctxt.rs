@@ -1,5 +1,6 @@
 use core::fmt;
 use std::hash::{Hash, Hasher};
+use std::range::RangeInclusive;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
@@ -413,6 +414,7 @@ pub trait InferCtxtLike: Sized {
         &self,
         u: ty::UniverseIndex,
     ) -> crate::region_constraint::Assumptions<Self::Interner>;
+    fn has_placeholder_assumptions(&self, range: RangeInclusive<ty::UniverseIndex>) -> bool;
     fn get_solver_region_constraint(
         &self,
     ) -> crate::region_constraint::RegionConstraint<Self::Interner>;
