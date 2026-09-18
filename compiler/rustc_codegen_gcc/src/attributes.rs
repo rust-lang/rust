@@ -12,6 +12,8 @@ use rustc_middle::ty;
 #[cfg(feature = "master")]
 use rustc_target::spec::Arch;
 
+#[cfg(feature = "master")]
+use crate::base;
 use crate::context::CodegenCx;
 use crate::gcc_util::to_gcc_features;
 
@@ -101,6 +103,16 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
             InlineAttr::Hint
         } else {
             codegen_fn_attrs.inline
+        };
+        // GCC drops `weak` from a function that is also `inline`, leaving the symbol strong, and
+        // the linkage is what has to survive. `inline(never)` does not conflict.
+        let inline = match inline {
+            InlineAttr::Always | InlineAttr::Hint | InlineAttr::Force { .. }
+                if codegen_fn_attrs.linkage.is_some_and(base::linkage_needs_weak_attribute) =>
+            {
+                InlineAttr::None
+            }
+            inline => inline,
         };
         if let Some(attr) = inline_attr(cx, inline, instance) {
             if let FnAttribute::AlwaysInline = attr {

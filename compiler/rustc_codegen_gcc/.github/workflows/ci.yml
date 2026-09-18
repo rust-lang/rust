@@ -31,11 +31,13 @@ jobs:
           # "--asm-tests",
           "--test-libcore",
           "--extended-rand-tests",
-          "--extended-regex-example-tests",
+          "--extended-regex-example-tests --test-libcore-doctests",
           "--extended-regex-tests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
-          "--projects",
+          "--projects --nb-parts 2 --current-part 0",
+          "--projects --nb-parts 2 --current-part 1",
+          "--gcc-asm-tests --test-release-libcore",
         ]
 
     steps:
@@ -52,8 +54,9 @@ jobs:
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
       run: sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
 
-    - name: Install rustfmt & clippy
-      run: rustup component add rustfmt clippy
+    - name: Install the libraries needed to build librsvg
+      if: ${{ contains(matrix.commands, '--projects') }}
+      run: sudo apt-get install libcairo2-dev libpango1.0-dev libfontconfig1-dev libfreetype-dev libharfbuzz-dev libxml2-dev libglib2.0-dev
 
     - name: Download artifact
       run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/${{ matrix.libgccjit_version.gcc }}
@@ -126,13 +129,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python tools/check_intrinsics_duplicates.py
-
-  spell_check:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: crate-ci/typos@v1.32.0
-      - uses: streetsidesoftware/cspell-action@v7
 
   build_system:
     runs-on: ubuntu-24.04

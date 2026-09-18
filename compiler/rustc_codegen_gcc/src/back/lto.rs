@@ -36,7 +36,8 @@ use tempfile::{TempDir, tempdir};
 
 use crate::back::write::{codegen, save_temp_bitcode};
 use crate::diagnostics::LtoBitcodeFromRlib;
-use crate::{GccCodegenBackend, GccContext, LtoMode, to_gcc_opt_level};
+use crate::gcc_util::new_context;
+use crate::{GccCodegenBackend, GccContext, LtoMode, SyncContext, to_gcc_opt_level};
 
 struct LtoData {
     // FIXME(antoyo): use symbols_below_threshold.
