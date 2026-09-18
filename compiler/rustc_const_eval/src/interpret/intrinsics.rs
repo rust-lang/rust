@@ -10,6 +10,7 @@ use std::assert_matches;
 use rustc_abi::{FieldIdx, HasDataLayout, Size, VariantIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_ast::{IntTy, UintTy};
+use rustc_hir::attrs::LangItem;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty;
@@ -73,6 +74,21 @@ pub enum VarArgCompatible {
     /// `T` and `U` are corresponding signed and unsigned integer types.
     /// This is compatible only if the value can be represented in both types.
     CastIntTo { source_is_signed: bool },
+}
+
+// Kinds of types that are allowed for var-args
+enum ValidVarArgTy<'tcx> {
+    /// Integer type.
+    ///
+    /// This represents one of the primitive integer types (`iN`, `uN`, `isize`, `usize`)
+    /// or one of the ABI-equivalent `NonZero` types (`NonZeroIN`, `NonZeroUN`, `NonZeroIsize`, `NonZeroUsize`)
+    /// or one of the equivalent `NonZero` types wrapped in `Option`.
+    Int { signed: bool },
+
+    /// Pointer type.
+    ///
+    /// This represents a raw pointer, a reference, `NonNull`, or `NonNull` wrapped in `Option`.
+    Ptr { target_ty: Ty<'tcx> },
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
@@ -852,6 +868,44 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
+    /// Normalises C-variadic types into a way that's easier for compatibility checks.
+    ///
+    /// Used by the below method.
+    fn filter_c_variadic_compatible_ty(&self, ty: Ty<'tcx>) -> Option<ValidVarArgTy<'tcx>> {
+        match ty.kind() {
+            ty::Int(_) => Some(ValidVarArgTy::Int { signed: true }),
+            ty::Uint(_) => Some(ValidVarArgTy::Int { signed: false }),
+            &ty::RawPtr(target_ty, _) => Some(ValidVarArgTy::Ptr { target_ty }),
+            &ty::Ref(_, target_ty, _) => Some(ValidVarArgTy::Ptr { target_ty }),
+            ty::Alias(_, _) => {
+                bug!("aliases should be normalized by this point? got {ty:?}");
+            }
+            &ty::Adt(mut adt, mut generics) => {
+                if let Some(LangItem::Option) = self.tcx.tcx.as_lang_item(adt.did()) {
+                    (adt, generics) = match generics.type_at(0).kind() {
+                        &ty::Adt(adt, generics) => (adt, generics),
+                        ty @ ty::Alias(_, _) => {
+                            bug!("aliases should be normalized by this point? got {ty:?}")
+                        }
+                        _ => return None,
+                    };
+                }
+                match self.tcx.tcx.as_lang_item(adt.did()) {
+                    Some(LangItem::NonNull) => {
+                        Some(ValidVarArgTy::Ptr { target_ty: generics.type_at(0) })
+                    }
+                    Some(LangItem::NonZero) => match generics.type_at(0).kind() {
+                        ty::Int(_) => Some(ValidVarArgTy::Int { signed: true }),
+                        ty::Uint(_) => Some(ValidVarArgTy::Int { signed: false }),
+                        _ => None,
+                    },
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
     /// Check whether the caller and callee type are compatible for c-variadic calls. Further
     /// validation of the argument value may be needed to detect all UB.
     ///
@@ -886,12 +940,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // `void*`, so the signedness of `c_char` is irrelevant here.
         let is_c_char = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(UintTy::U8) | ty::Int(IntTy::I8));
 
-        match (caller_type.kind(), callee_type.kind()) {
-            // Some types look different but are actually the same for ABI purposes.
-            (ty::Int(_), ty::Int(_)) | (ty::Uint(_), ty::Uint(_)) => {
-                // E.g. cast between `usize` and `u64` on a 64-bit platform.
-                interp_ok(VarArgCompatible::Compatible)
-            }
+        // As detailed in the below match, the only valid types we can accept are integer-like or
+        // pointer-like, so, normalise to these kinds ahead of time
+        let Some(caller_type) = self.filter_c_variadic_compatible_ty(caller_type) else {
+            return interp_ok(VarArgCompatible::Incompatible);
+        };
+        let Some(callee_type) = self.filter_c_variadic_compatible_ty(callee_type) else {
+            return interp_ok(VarArgCompatible::Incompatible);
+        };
+
+        match (caller_type, callee_type) {
             // C allows different types if...
             // - "both types are pointers to qualified or unqualified versions of compatible types"
             // - "one type is pointer to qualified or unqualified void and the other is a pointer to a qualified or
@@ -899,8 +957,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             //
             // As usual for the ABI, we treat references and raw pointers alike.
             (
-                ty::RawPtr(caller_target_ty, _) | ty::Ref(_, caller_target_ty, _),
-                ty::RawPtr(callee_target_ty, _) | ty::Ref(_, callee_target_ty, _),
+                ValidVarArgTy::Ptr { target_ty: caller_target_ty },
+                ValidVarArgTy::Ptr { target_ty: callee_target_ty },
             ) => {
                 // In C, types can be qualified by a combination of `const`, `volatile` and
                 // `restrict`. These properties are irrelevant for the ABI, and don't have an
@@ -908,17 +966,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Accept the cast if one type is pointer to void, and the other is a pointer to
                 // a character type (`char`, `unsigned char` and `signed char`).
-                if caller_target_ty.is_c_void(self.tcx.tcx) && is_c_char(*callee_target_ty) {
+                if caller_target_ty.is_c_void(self.tcx.tcx) && is_c_char(callee_target_ty) {
                     return interp_ok(VarArgCompatible::Compatible);
                 }
-                if callee_target_ty.is_c_void(self.tcx.tcx) && is_c_char(*caller_target_ty) {
+                if callee_target_ty.is_c_void(self.tcx.tcx) && is_c_char(caller_target_ty) {
                     return interp_ok(VarArgCompatible::Compatible);
                 }
 
                 // Accept the cast if both types are pointers to compatible types.
-                match self
-                    .validate_c_variadic_compatible_ty(*caller_target_ty, *callee_target_ty)?
-                {
+                match self.validate_c_variadic_compatible_ty(caller_target_ty, callee_target_ty)? {
                     VarArgCompatible::Incompatible => interp_ok(VarArgCompatible::Incompatible),
                     VarArgCompatible::Compatible => interp_ok(VarArgCompatible::Compatible),
                     VarArgCompatible::CastIntTo { source_is_signed: _ } => {
@@ -929,17 +985,24 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             // - "one type is a signed integer type, the other type is the corresponding unsigned integer type,
             //   and the value is representable in both types"
-            (ty::Int(_), ty::Uint(_)) => {
-                interp_ok(VarArgCompatible::CastIntTo { source_is_signed: true })
+            (
+                ValidVarArgTy::Int { signed: caller_signed },
+                ValidVarArgTy::Int { signed: callee_signed },
+            ) => {
+                if caller_signed == callee_signed {
+                    // E.g. cast between `usize` and `u64` on a 64-bit platform.
+                    interp_ok(VarArgCompatible::Compatible)
+                } else {
+                    interp_ok(VarArgCompatible::CastIntTo { source_is_signed: caller_signed })
+                }
             }
-            (ty::Uint(_), ty::Int(_)) => {
-                interp_ok(VarArgCompatible::CastIntTo { source_is_signed: false })
-            }
-            // - "or, the type of the next argument is nullptr_t and type is a pointer type that has the same
-            //   representation and alignment requirements as a pointer to a character type"
-            //   This one does not have an equivalent form in Rust.
+
+            // (integer-pointer conversion is explicitly not allowed)
             _ => interp_ok(VarArgCompatible::Incompatible),
         }
+        // - "or, the type of the next argument is nullptr_t and type is a pointer type that has the same
+        //   representation and alignment requirements as a pointer to a character type"
+        //   This one does not have an equivalent form in Rust.
     }
 
     pub(super) fn eval_nondiverging_intrinsic(
