@@ -923,92 +923,96 @@ fn file_test_windows_fileext_trait_case_3() {
 
 #[test]
 #[cfg(windows)]
-fn file_test_windows_fileext_trait() {
-    use crate::io;
+fn file_test_windows_fileext_trait_case_4() {
     use crate::os::windows::fs::FileExt;
 
     const MSG: &[u8] =
         b"The Rust programming language helps you write faster, more reliable software.";
 
     // Test when only one call is made to seek_read() or seek_write()
-    {
-        struct MockFile {
-            expected_offset: u64,
+    struct MockFile {
+        expected_offset: u64,
+    }
+
+    impl FileExt for MockFile {
+        fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+            assert_eq!(offset, self.expected_offset);
+            assert_eq!(buf.len(), MSG.len());
+            assert_eq!(buf, &[0; MSG.len()]);
+            buf.copy_from_slice(MSG);
+            Ok(MSG.len())
         }
 
-        impl FileExt for MockFile {
-            fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
-                assert_eq!(offset, self.expected_offset);
-                assert_eq!(buf.len(), MSG.len());
-                assert_eq!(buf, &[0; MSG.len()]);
-                buf.copy_from_slice(MSG);
-                Ok(MSG.len())
-            }
-
-            fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
-                assert_eq!(offset, self.expected_offset);
-                assert_eq!(buf.len(), MSG.len());
-                assert_eq!(buf, MSG);
-                Ok(MSG.len())
-            }
-        }
-
-        // Offset is 0
-        {
-            let mock_file = MockFile { expected_offset: 0 };
-            let mut buf = [0; MSG.len()];
-            check!(mock_file.seek_read_exact(&mut buf, 0));
-            assert_eq!(&buf, MSG);
-            check!(mock_file.seek_write_all(&buf, 0));
-        }
-
-        // Offset is 420
-        {
-            let mock_file = MockFile { expected_offset: 420 };
-            let mut buf = [0; MSG.len()];
-            check!(mock_file.seek_read_exact(&mut buf, 420));
-            assert_eq!(&buf, MSG);
-            check!(mock_file.seek_write_all(&buf, 420));
+        fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+            assert_eq!(offset, self.expected_offset);
+            assert_eq!(buf.len(), MSG.len());
+            assert_eq!(buf, MSG);
+            Ok(MSG.len())
         }
     }
 
-    // Test pathological case where seek_read(), seek_write() only do 1 byte per call.
+    // Offset is 0
     {
-        struct MockFile {
-            base_offset: u64,
+        let mock_file = MockFile { expected_offset: 0 };
+        let mut buf = [0; MSG.len()];
+        check!(mock_file.seek_read_exact(&mut buf, 0));
+        assert_eq!(&buf, MSG);
+        check!(mock_file.seek_write_all(&buf, 0));
+    }
+
+    // Offset is 420
+    {
+        let mock_file = MockFile { expected_offset: 420 };
+        let mut buf = [0; MSG.len()];
+        check!(mock_file.seek_read_exact(&mut buf, 420));
+        assert_eq!(&buf, MSG);
+        check!(mock_file.seek_write_all(&buf, 420));
+    }
+}
+
+#[test]
+#[cfg(windows)]
+fn file_test_windows_fileext_trait_case_5() {
+    use crate::os::windows::fs::FileExt;
+
+    const MSG: &[u8] =
+        b"Rust is for students and those who are interested in learning about systems concepts.";
+
+    // Test pathological case where seek_read(), seek_write() only do 1 byte per call.
+    struct MockFile {
+        base_offset: u64,
+    }
+
+    impl FileExt for MockFile {
+        fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+            let offset = (offset - self.base_offset) as usize;
+            buf[0..1].copy_from_slice(&MSG[offset..offset + 1]);
+            Ok(1)
         }
 
-        impl FileExt for MockFile {
-            fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
-                let offset = (offset - self.base_offset) as usize;
-                buf[0..1].copy_from_slice(&MSG[offset..offset + 1]);
-                Ok(1)
-            }
-
-            fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
-                let offset = (offset - self.base_offset) as usize;
-                assert_eq!(buf[0..1], MSG[offset..offset + 1]);
-                Ok(1)
-            }
+        fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+            let offset = (offset - self.base_offset) as usize;
+            assert_eq!(buf[0..1], MSG[offset..offset + 1]);
+            Ok(1)
         }
+    }
 
-        // Offset is 0
-        {
-            let mock_file = MockFile { base_offset: 0 };
-            let mut buf = [0; MSG.len()];
-            check!(mock_file.seek_read_exact(&mut buf, 0));
-            assert_eq!(&buf, MSG);
-            check!(mock_file.seek_write_all(&buf, 0));
-        }
+    // Offset is 0
+    {
+        let mock_file = MockFile { base_offset: 0 };
+        let mut buf = [0; MSG.len()];
+        check!(mock_file.seek_read_exact(&mut buf, 0));
+        assert_eq!(&buf, MSG);
+        check!(mock_file.seek_write_all(&buf, 0));
+    }
 
-        // Offset is 420
-        {
-            let mock_file = MockFile { base_offset: 420 };
-            let mut buf = [0; MSG.len()];
-            check!(mock_file.seek_read_exact(&mut buf, 420));
-            assert_eq!(&buf, MSG);
-            check!(mock_file.seek_write_all(&buf, 420));
-        }
+    // Offset is 420
+    {
+        let mock_file = MockFile { base_offset: 420 };
+        let mut buf = [0; MSG.len()];
+        check!(mock_file.seek_read_exact(&mut buf, 420));
+        assert_eq!(&buf, MSG);
+        check!(mock_file.seek_write_all(&buf, 420));
     }
 }
 
