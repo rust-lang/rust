@@ -7,8 +7,8 @@ use gccjit::Context;
 use gccjit::Version;
 use rustc_codegen_ssa::target_features;
 use rustc_data_structures::smallvec::{SmallVec, smallvec};
-use rustc_session::{EarlySession, Session};
 use rustc_session::config::NATIVE_CPU;
+use rustc_session::{EarlySession, Session};
 use rustc_target::spec::{Arch, RelocModel, StackProbeType, StackProtector, Target};
 
 fn gcc_features_by_flags(sess: &EarlySession, features: &mut Vec<String>) {
