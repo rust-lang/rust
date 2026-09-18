@@ -52,7 +52,7 @@ investigate a regression.
 After running a Docker build,
 you'll find the Fuchsia checkout inside the `obj/test-x86_64-fuchsia/fuchsia` directory of your Rust
 checkout.
- If you modify the `KEEP_CHECKOUT` line in the [build-fuchsia.sh] script to `KEEP_CHECKOUT=1`,
+If you modify the `KEEP_CHECKOUT` line in the [build-fuchsia.sh] script to `KEEP_CHECKOUT=1`,
 you can change the checkout as needed and rerun
 the build command above.
 This will reuse all the build results from before.
@@ -76,11 +76,11 @@ There are a few `fx` subcommands that are relevant, including:
 - `fx set` accepts build arguments, writes them to `out/default/args.gn`, and runs GN.
 - `fx build` builds the Fuchsia project using Ninja.
   It will automatically pick up changes to build arguments and rerun GN.
-  By default it builds everything,
+  By default, it builds everything,
   but it also accepts target paths to build specific targets (see below).
 - `fx clippy` runs Clippy on specific Rust targets (or all of them).
   We use this in the Rust CI build to avoid running codegen on most Rust targets.
-  Underneath it invokes Ninja, just like `fx build`.
+  Underneath, it invokes Ninja, just like `fx build`.
   The clippy results are saved in json
   files inside the build output directory before being printed.
 
@@ -141,7 +141,7 @@ Once you have the command, you can run it from inside the output directory.
 After changing the toolchain itself, the build setting `rustc_version_string` in
 `out/default/args.gn` needs to be changed so that `fx build` or `ninja` will
 rebuild all the Rust targets.
-This can be done in a text editor and the contents of the string do not matter,
+This can be done in a text editor, and the contents of the string do not matter,
 as long as it changes from one build to the next.
 [build_fuchsia_from_rust_ci.sh] does this for you by hashing the toolchain directory.
 
@@ -151,7 +151,7 @@ The Fuchsia website has more detailed documentation of the [build system].
 
 When using `build_fuchsia_from_rust_ci.sh` you can comment out the `fx set`
 command after the initial run so it won't rerun GN each time.
-If you do this you can also comment out the version_string line to save a couple seconds.
+If you do this, you can also comment out the version_string line to save a couple seconds.
 
 `export NINJA_PERSISTENT_MODE=1` to get faster ninja startup times after the initial build.
 
