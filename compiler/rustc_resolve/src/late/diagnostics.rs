@@ -3138,7 +3138,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 note: None,
                                 via_import: false,
                                 is_stable: true,
-                                is_exact_match: module_def_id == def_id,
+                                exact_matched: module_def_id == def_id,
                             },
                         ));
                     } else {
