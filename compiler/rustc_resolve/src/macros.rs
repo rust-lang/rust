@@ -30,7 +30,9 @@ use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::ModId;
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
+use rustc_span::hygiene::{
+    self, AllowInternalUnstable, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind,
+};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 
 use crate::Namespace::*;
@@ -226,7 +228,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         &mut self,
         call_site: Span,
         pass: AstPass,
-        features: &[Symbol],
+        features: &'static [Symbol],
         parent_module_id: Option<NodeId>,
     ) -> LocalExpnId {
         let parent_module = parent_module_id
@@ -237,7 +239,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                     ExpnKind::AstPass(pass),
                     call_site,
                     self.tcx.sess.edition(),
-                    features.into(),
+                    AllowInternalUnstable::Static(features),
                     None,
                     parent_module,
                 ),

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use rustc_ast::{self as ast, *};
 use rustc_errors::StashKey;
 use rustc_hir::def::{DefKind, PerNS, Res};
@@ -8,7 +6,8 @@ use rustc_hir::{self as hir, GenericArg};
 use rustc_middle::middle::resolve::PartialRes;
 use rustc_middle::ty;
 use rustc_session::diagnostics::add_feature_diagnostics;
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, span_bug, sym};
+use rustc_span::hygiene::AllowInternalUnstable;
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, span_bug, sym};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
@@ -75,7 +74,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let bound_modifier_allowed_features = if let Res::Def(DefKind::Trait, async_def_id) = res
             && self.tcx.async_fn_trait_kind_from_def_id(async_def_id).is_some()
         {
-            Some(Arc::clone(&crate::ALLOW_ASYNC_FN_TRAITS))
+            Some(AllowInternalUnstable::Static(crate::ALLOW_ASYNC_FN_TRAITS))
         } else {
             None
         };
@@ -260,7 +259,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Additional features ungated with a bound modifier like `async`.
         // This is passed down to the implicit associated type binding in
         // parenthesized bounds.
-        bound_modifier_allowed_features: Option<Arc<[Symbol]>>,
+        bound_modifier_allowed_features: Option<AllowInternalUnstable>,
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment);
         let (mut generic_args, infer_args) = if let Some(generic_args) = segment.args.as_deref() {
@@ -507,7 +506,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         data: &ParenthesizedArgs,
         itctx: ImplTraitContext,
-        bound_modifier_allowed_features: Option<Arc<[Symbol]>>,
+        bound_modifier_allowed_features: Option<AllowInternalUnstable>,
     ) -> (GenericArgsCtor<'hir>, bool) {
         // Switch to `PassThrough` mode for anonymous lifetimes; this
         // means that we permit things like `&Ref<T>`, where `Ref` has

@@ -39,7 +39,7 @@
 // tidy-alphabetical-end
 
 use std::mem;
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeMap;
@@ -72,6 +72,7 @@ use rustc_middle::middle::resolve::{
 use rustc_middle::queries::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::diagnostics::add_feature_diagnostics;
+use rustc_span::hygiene::AllowInternalUnstable;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span, span_bug};
 use smallvec::{SmallVec, smallvec};
@@ -326,25 +327,19 @@ struct LoweringContext<'a, 'hir> {
     attribute_parser: AttributeParser<'hir>,
 }
 
-macro_rules! allow {
-    ($($name:ident: $list:expr;)*) => {
-        $( static $name: LazyLock<Arc<[Symbol]>> = LazyLock::new(|| $list.into()); )*
-    }
-}
-
-allow! {
-    ALLOW_CONTRACTS: [sym::contracts_internals];
-    ALLOW_TRY_TRAIT: [sym::try_trait_v2, sym::try_trait_v2_residual, sym::yeet_desugar_details];
-    ALLOW_PATTERN_TYPE: [sym::pattern_types, sym::pattern_type_range_trait];
-    ALLOW_GEN_FUTURE: [sym::gen_future];
-    ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER: [sym::gen_future, sym::closure_track_caller];
-    ALLOW_FOR_AWAIT: [sym::async_gen_internals, sym::async_iterator];
-    ALLOW_ASYNC_FN_TRAITS: [sym::async_fn_traits];
-    ALLOW_ASYNC_GEN: [sym::async_gen_internals];
-    // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
-    // interact with `gen`/`async gen` blocks
-    ALLOW_ASYNC_ITERATOR: [sym::gen_future, sym::async_iterator];
-}
+const ALLOW_CONTRACTS: &[Symbol] = &[sym::contracts_internals];
+const ALLOW_TRY_TRAIT: &[Symbol] =
+    &[sym::try_trait_v2, sym::try_trait_v2_residual, sym::yeet_desugar_details];
+const ALLOW_PATTERN_TYPE: &[Symbol] = &[sym::pattern_types, sym::pattern_type_range_trait];
+const ALLOW_GEN_FUTURE: &[Symbol] = &[sym::gen_future];
+const ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER: &[Symbol] =
+    &[sym::gen_future, sym::closure_track_caller];
+const ALLOW_FOR_AWAIT: &[Symbol] = &[sym::async_gen_internals, sym::async_iterator];
+const ALLOW_ASYNC_FN_TRAITS: &[Symbol] = &[sym::async_fn_traits];
+const ALLOW_ASYNC_GEN: &[Symbol] = &[sym::async_gen_internals];
+// FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
+// interact with `gen`/`async gen` blocks
+const ALLOW_ASYNC_ITERATOR: &[Symbol] = &[sym::gen_future, sym::async_iterator];
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn new(tcx: TyCtxt<'hir>, resolver: &'a ResolverAstLowering<'hir>, owner: NodeId) -> Self {
@@ -384,11 +379,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.tcx.dcx()
     }
 
-    fn allow_gen_future(&self) -> &Arc<[Symbol]> {
+    fn allow_gen_future(&self) -> AllowInternalUnstable {
         if self.tcx.features().async_fn_track_caller() {
-            &ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER
+            AllowInternalUnstable::Static(ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER)
         } else {
-            &ALLOW_GEN_FUTURE
+            AllowInternalUnstable::Static(ALLOW_GEN_FUTURE)
         }
     }
 }
@@ -1076,7 +1071,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &self,
         reason: DesugaringKind,
         span: Span,
-        allow_internal_unstable: Option<Arc<[Symbol]>>,
+        allow_internal_unstable: Option<AllowInternalUnstable>,
     ) -> Span {
         self.tcx.with_stable_hashing_context(|hcx| {
             span.mark_with_reason(allow_internal_unstable, reason, span.edition(), hcx)
@@ -2111,9 +2106,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (opaque_ty_node_id, allowed_features) = match coro.kind {
             CoroutineKind::Async | CoroutineKind::Gen => (coro.return_impl_trait_id, None),
-            CoroutineKind::AsyncGen => {
-                (coro.return_impl_trait_id, Some(Arc::clone(&ALLOW_ASYNC_ITERATOR)))
-            }
+            CoroutineKind::AsyncGen => (
+                coro.return_impl_trait_id,
+                Some(AllowInternalUnstable::Static(ALLOW_ASYNC_ITERATOR)),
+            ),
         };
 
         let opaque_ty_span =
