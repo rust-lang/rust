@@ -266,6 +266,7 @@ impl<'sess> AttributeParser<'sess> {
             attr_path,
             #[cfg(debug_assertions)]
             has_target_been_checked: false,
+            attr_id: None,
         };
         parse_fn(&mut cx, args)
     }
@@ -440,6 +441,7 @@ impl<'sess> AttributeParser<'sess> {
                             attr_path: attr_path.clone(),
                             #[cfg(debug_assertions)]
                             has_target_been_checked: false,
+                            attr_id: Some(HashIgnoredAttrId { attr_id: attr.id }),
                         };
 
                         (accept.accept_fn)(&mut cx, &args);

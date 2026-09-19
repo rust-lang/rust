@@ -1,9 +1,19 @@
 #![deny(unused_attributes)]
-#![allow()] //~ ERROR unused attribute
-#![expect()] //~ ERROR unused attribute
-#![warn()] //~ ERROR unused attribute
-#![deny()] //~ ERROR unused attribute
-#![forbid()] //~ ERROR unused attribute
+#![allow()]
+//~^ ERROR unused attribute
+//~| ERROR unused attribute
+#![expect()]
+//~^ ERROR unused attribute
+//~| ERROR unused attribute
+#![warn()]
+//~^ ERROR unused attribute
+//~| ERROR unused attribute
+#![deny()]
+//~^ ERROR unused attribute
+//~| ERROR unused attribute
+#![forbid()]
+//~^ ERROR unused attribute
+//~| ERROR unused attribute
 #![feature()] //~ ERROR unused attribute
 
 #[repr()] //~ ERROR unused attribute

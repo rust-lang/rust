@@ -7,8 +7,8 @@ LL |     let y: u32 = x?;
    = note: `?` operator cannot convert from `i32` to `u32`
 help: you can convert an `i32` to a `u32` and panic if the converted value doesn't fit
    |
-LL |     let y: u32 = x?.try_into().unwrap();
-   |                    ++++++++++++++++++++
+LL |     let y: u32 = (x?).try_into().unwrap();
+   |                  +  +++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

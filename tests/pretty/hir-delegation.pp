@@ -1,12 +1,12 @@
-//@ pretty-compare-only
-//@ pretty-mode:hir
-//@ pp-exact:hir-delegation.pp
-
-#![allow(incomplete_features)]
+#![attr = LintCheck([LintCheck {name: ["incomplete_features"], kind: Allow}])]
 #![attr = Feature([fn_delegation#0])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
+//@ pretty-compare-only
+//@ pretty-mode:hir
+//@ pp-exact:hir-delegation.pp
+
 
 fn b<C>(e: C) { }
 

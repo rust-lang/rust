@@ -61,8 +61,10 @@ fn parsed_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<AttributeKind> {
     HasAttrs::get_attrs(id, &tcx)
         .into_iter()
         .filter_map(|attr| match attr {
-            hir::Attribute::Parsed(attrkind) => Some(attrkind.clone()),
-            hir::Attribute::Unparsed(_) => None,
+            hir::Attribute::Parsed(attrkind @ AttributeKind::Unroll(_)) => Some(attrkind.clone()),
+            // contains `AttrId` which will lead to hard to debug ICEs
+            hir::Attribute::Parsed(AttributeKind::LintCheck(_)) => None,
+            _ => None,
         })
         .collect()
 }
