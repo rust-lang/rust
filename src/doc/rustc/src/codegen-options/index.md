@@ -98,13 +98,6 @@ It takes one of the following values:
 For example, for gcc flavor linkers, this issues the `-nodefaultlibs` flag to
 the linker.
 
-## dlltool
-
-On `windows-gnu` targets, this flag controls which dlltool `rustc` invokes to
-generate import libraries when using the [`raw-dylib` link kind](../../reference/items/external-blocks.md#the-link-attribute).
-It takes a path to [the dlltool executable](https://sourceware.org/binutils/docs/binutils/dlltool.html).
-If this flag is not specified, a dlltool executable will be inferred based on
-the host environment and target.
 
 ## dwarf-version
 
@@ -261,7 +254,7 @@ You can pass a comma-separated list of self-contained components, individually e
 (`+component`) or disabled (`-component`).
 
 Currently, only the `linker` granular option is stabilized, and only on the `x86_64-unknown-linux-gnu` target:
-- `linker`: toggle the usage of self-contained linker binaries (linker, dlltool, and their necessary libraries)
+- `linker`: toggle the usage of self-contained linker binaries (linker and its necessary libraries)
 
 Note that only the `-linker` opt-out is stable on the `x86_64-unknown-linux-gnu` target: `+linker` is
 already the default on this target.
