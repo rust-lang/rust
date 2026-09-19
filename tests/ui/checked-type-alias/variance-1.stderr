@@ -10,7 +10,7 @@ error[E0392]: type parameter `T` is never used
   --> $DIR/variance-1.rs:17:24
    |
 LL | struct WrapDiscard<'a, T>(Discard<'a, T>);
-   |                        ^              - `T` is named here, but is likely unused in the containing type
+   |                        ^              - `T` is named here, but `Discard` does not use it
    |                        |
    |                        unused type parameter
    |
