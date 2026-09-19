@@ -791,6 +791,12 @@ pub enum AttributeKind {
     /// Represents `#[automatically_derived]`
     AutomaticallyDerived,
 
+    /// Represents `#[diagnostic::c_buffer_length(pointer, length)]`.
+    CBufferLength {
+        pointer: Ident,
+        length: Ident,
+    },
+
     /// Represents the trace attribute of `#[cfg_attr]`
     CfgAttrTrace(ThinVec<(CfgEntry, Span)>),
 

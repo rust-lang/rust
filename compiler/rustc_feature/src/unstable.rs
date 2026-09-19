@@ -482,6 +482,8 @@ declare_features! (
     (unstable, deref_patterns, "1.79.0", Some(87121)),
     /// Allows deriving the From trait on single-field structs.
     (unstable, derive_from, "1.91.0", Some(144889)),
+    /// Allows annotating pointer and length parameters for buffer length diagnostics.
+    (unstable, diagnostic_c_buffer_length, "CURRENT_RUSTC_VERSION", Some(162563)),
     /// Allows giving non-const impls custom diagnostic messages if attempted to be used as const
     (unstable, diagnostic_on_const, "1.93.0", Some(143874)),
     /// Allows giving on-move borrowck custom diagnostic messages for a type
