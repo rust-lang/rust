@@ -1664,26 +1664,49 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	font-size: 1rem;
 	font-weight: normal;
 	color: var(--main-color);
-	border: solid 1px transparent;
-}
-
-.notable-trait-badge-container > a:hover {
-	text-decoration: none;
-	border: solid 1px var(--settings-button-border-focus);
 }
 
 /* this list of colors is lifted from the ANSI escape codes list:
 	https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
 	This way, CLI-based tooling can adapt them without having to do
 	complex platform support dances. */
-.notable-trait-badge-grey { background: var(--notable-badge-grey); }
-.notable-trait-badge-red { background: var(--notable-badge-red); }
-.notable-trait-badge-green { background: var(--notable-badge-green); }
-.notable-trait-badge-yellow { background: var(--notable-badge-yellow); }
-.notable-trait-badge-blue { background: var(--notable-badge-blue); }
-.notable-trait-badge-magenta { background: var(--notable-badge-magenta); }
-.notable-trait-badge-cyan { background: var(--notable-badge-cyan); }
-.notable-trait-badge-transparent { background: var(--notable-badge-transparent); }
+.notable-trait-badge-container > .notable-trait-badge-grey {
+	background: var(--notable-badge-grey);
+	border: solid 1px var(--notable-badge-grey);
+}
+.notable-trait-badge-container > .notable-trait-badge-red {
+	background: var(--notable-badge-red);
+	border: solid 1px var(--notable-badge-red);
+}
+.notable-trait-badge-container > .notable-trait-badge-green {
+	background: var(--notable-badge-green);
+	border: solid 1px var(--notable-badge-green);
+}
+.notable-trait-badge-container > .notable-trait-badge-yellow {
+	background: var(--notable-badge-yellow);
+	border: solid 1px var(--notable-badge-yellow);
+}
+.notable-trait-badge-container > .notable-trait-badge-blue {
+	background: var(--notable-badge-blue);
+	border: solid 1px var(--notable-badge-blue);
+}
+.notable-trait-badge-container > .notable-trait-badge-magenta {
+	background: var(--notable-badge-magenta);
+	border: solid 1px var(--notable-badge-magenta);
+}
+.notable-trait-badge-container > .notable-trait-badge-cyan {
+	background: var(--notable-badge-cyan);
+	border: solid 1px var(--notable-badge-cyan);
+}
+.notable-trait-badge-container > .notable-trait-badge-transparent {
+	background: var(--notable-badge-transparent);
+	border: solid 1px var(--border-color);
+}
+
+.notable-trait-badge-container > a:hover {
+	text-decoration: none;
+	border: solid 1px var(--settings-button-border-focus);
+}
 
 .rightside {
 	padding-left: 12px;
@@ -3325,7 +3348,7 @@ by default.
 	--notable-badge-blue: oklch(0.88 0.21 240);
 	--notable-badge-magenta: oklch(0.88 0.21 320);
 	--notable-badge-cyan: oklch(0.88 0.21 180);
-	--notable-badge-transparent: white;
+	--notable-badge-transparent: transparent;
 }
 /* End theme: light */
 
