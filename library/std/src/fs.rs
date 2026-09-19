@@ -1891,6 +1891,54 @@ impl Dir {
     pub fn try_clone(&self) -> io::Result<Self> {
         Ok(Dir { inner: self.inner.duplicate()? })
     }
+
+    /// Queries the file system to get information about a file, directory, etc. relative to this
+    /// directory.
+    ///
+    /// This function will traverse symbolic links to query information about the destination file.
+    /// To query metadata about the path itself without following symbolic links, use
+    /// [`symlink_metadata_at`][Self::symlink_metadata_at].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let metadata = dir.metadata_at("subdir/file.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn metadata_at<P: AsRef<Path>>(&self, path: P) -> io::Result<Metadata> {
+        self.inner.metadata_at(path.as_ref()).map(Metadata)
+    }
+
+    /// Queries the file system to get information about a file, directory, etc. relative to this
+    /// directory.
+    ///
+    /// This function will return the [`Metadata`] of the exact path without traversing symbolic
+    /// links to a resolved destination file. Using this function on a path that is a file or
+    /// directory (not a symbolic link) will behave the same as [`metadata_at`][Self::metadata_at].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let metadata = dir.symlink_metadata_at("subdir/file.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn symlink_metadata_at<P: AsRef<Path>>(&self, path: P) -> io::Result<Metadata> {
+        self.inner.symlink_metadata_at(path.as_ref()).map(Metadata)
+    }
 }
 
 impl AsInner<fs_imp::Dir> for Dir {

@@ -13,7 +13,7 @@ use crate::os::unix::fs::symlink as symlink_file;
 use crate::os::unix::fs::symlink as junction_point;
 #[cfg(windows)]
 use crate::os::windows::fs::{OpenOptionsExt, junction_point, symlink_dir, symlink_file};
-use crate::path::Path;
+use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::test_helpers::{TempDir, tmpdir};
 use crate::time::{Duration, Instant, SystemTime};
@@ -655,11 +655,6 @@ fn set_get_permissions_nofollows() {
     not(any(target_os = "espidf", target_os = "horizon", target_os = "wasi"))
 ))]
 fn set_get_permissions_nofollows_symlink() {
-    #[cfg(not(windows))]
-    use crate::os::unix::fs::symlink as symlink_file;
-    #[cfg(windows)]
-    use crate::os::windows::fs::symlink_file;
-
     let tmpdir = tmpdir();
     let filename = tmpdir.join("set_get_unix_permissions_file");
     let symlink_name = tmpdir.join("set_get_unix_permissions");
@@ -3105,4 +3100,28 @@ fn test_dir_open_dir() {
     let mut buf = [0u8; 3];
     check!(f.read_exact(&mut buf));
     assert_eq!(b"baz", &buf);
+}
+
+#[test]
+fn test_dir_metadata_at() {
+    let tmpdir = tmpdir();
+    let dir = check!(Dir::open(tmpdir.path()));
+    check!(dir.create_dir("subdir"));
+    // FIXME: `/` does not work as path separator on Windows.
+    let barpath = PathBuf::from("subdir").join("bar.txt");
+    drop(check!(dir.open_file_with(&barpath, &OpenOptions::new().create(true).write(true))));
+    check!(symlink_file(&tmpdir.join("subdir/bar.txt"), &tmpdir.join("link")));
+
+    let metadata = check!(dir.metadata_at(&barpath));
+    assert!(metadata.is_file());
+    let metadata = check!(dir.metadata_at("subdir"));
+    assert!(metadata.is_dir());
+    dir.metadata_at("does-not-exist").unwrap_err();
+
+    let metadata = check!(dir.metadata_at("link"));
+    assert!(metadata.is_file());
+    assert!(!metadata.is_symlink());
+    let metadata = check!(dir.symlink_metadata_at("link"));
+    assert!(!metadata.is_file());
+    assert!(metadata.is_symlink());
 }
