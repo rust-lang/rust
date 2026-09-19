@@ -600,11 +600,14 @@ fn test_clone() {
     d.push_front(42);
     d.push_back(137);
     d.push_back(137);
-
-    let e = d.clone();
-    assert_eq!(e, d);
-    // they should be disjoint in memory
-    assert!(d.as_slices().0.as_ptr() != e.as_slices().0.as_ptr());
+    assert_eq!(d.len(), 4);
+    let mut e = d.clone();
+    assert_eq!(e.len(), 4);
+    while !d.is_empty() {
+        assert_eq!(d.pop_back(), e.pop_back());
+    }
+    assert_eq!(d.len(), 0);
+    assert_eq!(e.len(), 0);
 }
 
 #[test]
@@ -653,7 +656,12 @@ fn test_clone_trivial() {
         let source = clone_test_fixture(source_len, source_front, source_capacity, |i| {
             Elem([i as u64 + 1; 4])
         });
-        assert_eq!(source.clone(), source, "{case}");
+        let mut cloned = source.clone();
+        assert_eq!(cloned, source, "{case}");
+        if source_len != 0 {
+            cloned[0] = Elem([u64::MAX; 4]);
+            assert_eq!(source[0], Elem([1; 4]), "{case}");
+        }
 
         let mut destination = clone_test_fixture(4, 2, 8, |i| Elem([i as u64 + 100; 4]));
         let capacity = destination.capacity();
