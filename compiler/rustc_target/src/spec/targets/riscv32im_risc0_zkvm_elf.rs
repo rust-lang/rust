@@ -1,6 +1,6 @@
 use crate::spec::{
     Arch, Cc, LinkerFlavor, Lld, LlvmAbi, Os, PanicStrategy, RelocModel, Target, TargetMetadata,
-    TargetOptions,
+    TargetOptions, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -21,6 +21,7 @@ pub(crate) fn target() -> Target {
             vendor: "risc0".into(),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
+            pre_link_args: base::riscv::pre_link_args(),
             cpu: "generic-rv32".into(),
 
             // Some crates (*cough* crossbeam) assume you have 64 bit
