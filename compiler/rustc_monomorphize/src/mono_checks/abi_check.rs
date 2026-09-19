@@ -1,13 +1,13 @@
 //! This module ensures that if a function's ABI requires a particular target feature,
 //! that target feature is enabled both on the callee and all callers.
-use rustc_abi::{BackendRepr, CanonAbi, ExternAbi, RegKind, X86Call};
+use rustc_abi::{BackendRepr, CanonAbi, ExternAbi, InterruptKind, Primitive, RegKind, X86Call};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::layout::{FnAbiRequest, codegen_handle_fn_abi_err};
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
-use rustc_target::callconv::{FnAbi, PassMode};
+use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 
 use crate::diagnostics;
 
@@ -42,6 +42,93 @@ fn passes_vectors_by_value(mode: &PassMode, repr: &BackendRepr) -> UsesVectorReg
             UsesVectorRegisters::ScalableVector
         }
         _ => UsesVectorRegisters::No,
+    }
+}
+
+/// Checks for whether a given function is a valid parameterization for the
+///   x86 interrupt ABI.
+fn do_check_x86_interrupt_abi<'tcx>(tcx: TyCtxt<'tcx>, abi: &FnAbi<'tcx, Ty<'tcx>>, def_id: DefId) {
+    // Rules laid out in check/x86_interrupt.rs, but relevant ones repeated here
+    // 1. No parameter may be ZST.
+    // 2. Parameters must be valid for any bit pattern
+    // 3. First parameter (frame) must not be a pointer.
+    // 4. Second parameter (error code) must be word-sized int, valid for any bit pattern
+    if !matches!(abi.conv, CanonAbi::Interrupt(InterruptKind::X86)) {
+        return;
+    }
+
+    let dcx = tcx.dcx();
+
+    let get_span = |idx: usize| -> Span {
+        def_id
+            .as_local()
+            .and_then(|local| tcx.hir_node_by_def_id(local).fn_decl())
+            .and_then(|decl| decl.inputs.get(idx))
+            .map_or_else(|| tcx.def_span(def_id), |ty| ty.span)
+    };
+
+    let validate_frame = |arg: &ArgAbi<'tcx, Ty<'tcx>>, idx: usize| {
+        if arg.layout.is_zst() {
+            dcx.emit_err(diagnostics::X86InterruptZeroSized {
+                span: get_span(idx),
+                ty: arg.layout.ty,
+            });
+            return;
+        }
+
+        let is_pointer = match arg.layout.backend_repr {
+            BackendRepr::Scalar(s) => matches!(s.primitive(), Primitive::Pointer(_)),
+            BackendRepr::ScalarPair { a: s1, b: s2, b_offset: _ } => {
+                matches!(s1.primitive(), Primitive::Pointer(_))
+                    || matches!(s2.primitive(), Primitive::Pointer(_))
+            }
+            _ => false,
+        };
+
+        if is_pointer || arg.layout.largest_niche.is_some() {
+            dcx.emit_err(diagnostics::X86InterruptInvalidFrame {
+                span: get_span(idx),
+                ty: arg.layout.ty,
+            });
+        }
+    };
+
+    let validate_error_code = |arg: &ArgAbi<'tcx, Ty<'tcx>>, idx: usize| {
+        if arg.layout.is_zst() {
+            dcx.emit_err(diagnostics::X86InterruptZeroSized {
+                span: get_span(idx),
+                ty: arg.layout.ty,
+            });
+            return;
+        }
+
+        let ec_ok = if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr
+            && let Primitive::Int(primitive, _) = scalar.primitive()
+            && primitive.size() == tcx.data_layout.pointer_size()
+            && scalar.is_always_valid(&tcx)
+        {
+            true
+        } else {
+            false
+        };
+
+        if !ec_ok {
+            dcx.emit_err(diagnostics::X86InterruptInvalidErrorCode {
+                span: get_span(idx),
+                ty: arg.layout.ty,
+            });
+        }
+    };
+
+    match &*abi.args {
+        [frame] => {
+            validate_frame(frame, 0);
+        }
+        [frame, ec] => {
+            validate_frame(frame, 0);
+            validate_error_code(ec, 1);
+        }
+        _ => { /* Ignore, arity handled at AST layer. */ }
     }
 }
 
@@ -199,6 +286,7 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     };
     do_check_unsized_params(tcx, abi, /*is_call*/ false, loc);
     do_check_simd_vector_abi(tcx, abi, instance.def_id(), /*is_call*/ false, loc);
+    do_check_x86_interrupt_abi(tcx, abi, instance.def_id());
 }
 
 /// Check the ABI at a call site, emitting an error when:
