@@ -6,7 +6,7 @@ use crate::sys::pal::sync as pal;
 use crate::sys::sync::OnceBox;
 
 pub struct Mutex {
-    pub(in crate::sys::sync) pal: OnceBox<pal::Mutex>,
+    pal: OnceBox<pal::Mutex>,
 }
 
 impl Mutex {
