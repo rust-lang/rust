@@ -1,10 +1,10 @@
 //@ run-pass
-#![allow(improper_ctypes)]
 
 // Test a foreign function that accepts and returns a struct
 // by value.
 
 #[derive(Copy, Clone, PartialEq, Debug)]
+#[repr(C)]
 pub struct TwoU64s {
     one: u64,
     two: u64,
