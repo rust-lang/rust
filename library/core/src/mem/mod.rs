@@ -1245,7 +1245,8 @@ pub const unsafe fn transmute_prefix<Src, Dst>(src: Src) -> Dst {
 ///
 /// # Safety
 ///
-/// Refer to [`transmute`] for safety requirements. This function is semantically identical to `transmute`.
+/// Refer to [`transmute`] for safety requirements.
+/// This function is semantically identical to `transmute`.
 ///
 /// [`transmute`]: crate::mem::transmute
 ///
