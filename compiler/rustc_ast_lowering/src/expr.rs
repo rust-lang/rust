@@ -1018,7 +1018,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     expr.span,
                     hir::ExprKind::Err(self.dcx().emit_err(AwaitOnlyInAsyncFnAndBlocks {
                         await_kw_span,
-                        item_span: self.current_item,
+                        item_span: self.current_item_span,
                     })),
                 );
                 return hir::ExprKind::Block(
@@ -1712,7 +1712,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             Some(hir::CoroutineKind::Coroutine(_)) => false,
             None => {
-                let suggestion = self.current_item.map(|s| s.shrink_to_lo());
+                let suggestion = self.current_item_span.map(|s| s.shrink_to_lo());
                 self.dcx().emit_err(YieldInClosure { span, suggestion });
                 self.coroutine_kind = Some(hir::CoroutineKind::Coroutine(Movability::Movable));
 

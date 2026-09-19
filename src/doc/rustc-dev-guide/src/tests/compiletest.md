@@ -3,8 +3,8 @@
 ## Introduction
 
 `compiletest` is the main test harness of the Rust test suite.
-It allows test authors to organize large numbers of tests (the Rust compiler has many
-thousands), efficient test execution (parallel execution is supported), and
+It allows test authors to organize large numbers of tests (the Rust compiler has many thousands),
+efficient test execution (parallel execution is supported), and
 allows the test author to configure behavior and expected results of both
 individual and groups of tests.
 
@@ -23,14 +23,14 @@ individual and groups of tests.
 
 Tests are typically organized as a Rust source file with annotations in comments
 before and/or within the test code.
-These comments serve to direct `compiletest`
-on if or how to run the test, what behavior to expect, and more.
+These comments serve to direct `compiletest` on if or how to run the test,
+what behavior to expect, and more.
 See [directives](directives.md) and the test suite documentation below for more details
 on these annotations.
 
 See the [Adding new tests](adding.md) and [Best practices](best-practices.md)
-chapters for a tutorial on creating a new test and advice on writing a good
-test, and the [Running tests](running.md) chapter on how to run the test suite.
+chapters for a tutorial on creating a new test and advice on writing a good test,
+and the [Running tests](running.md) chapter on how to run the test suite.
 
 Arguments can be passed to compiletest using `--test-args` or by placing them after `--`, e.g.
 - `x test --test-args --force-rerun`
@@ -49,8 +49,8 @@ You can use `x test --test-args
 
 All of the tests are in the [`tests`] directory.
 The tests are organized into "suites", with each suite in a separate subdirectory.
-Each test suite behaves a
-little differently, with different compiler behavior and different checks for correctness.
+Each test suite behaves a little differently,
+with different compiler behavior and different checks for correctness.
 For example, the [`tests/incremental`] directory contains tests for incremental compilation.
 The various suites are defined in
 [`src/tools/compiletest/src/common.rs`] in the `pub enum Mode` declaration.
@@ -114,8 +114,8 @@ The `-Z unpretty` CLI option for `rustc` causes it to translate the
 input source into various different formats, such as the Rust source after macro expansion.
 
 The pretty-printer tests have several [directives](directives.md) described below.
-These commands can significantly change the behavior of the test, but the
-default behavior without any commands is to:
+These commands can significantly change the behavior of the test,
+but the default behavior without any commands is to:
 
 1. Run `rustc -Zunpretty=normal` on the source file.
 2. Run `rustc -Zunpretty=normal` on the output of the previous step.
@@ -133,17 +133,17 @@ The directives for pretty-printing tests are:
 - `pretty-compare-only` causes a pretty test to only compare the pretty-printed
   output (stopping after step 3 from above).
   It will not try to compile the expanded output to type check it.
-  This is needed for a pretty-mode that does
-  not expand to valid Rust, or for other situations where the expanded output cannot be compiled.
+  This is needed for a pretty-mode that does not expand to valid Rust,
+  or for other situations where the expanded output cannot be compiled.
 - `pp-exact` is used to ensure a pretty-print test results in specific output.
-  If specified without a value, then it means the pretty-print output should
-  match the original source.
-  If specified with a value, as in `//@
-  pp-exact:foo.pp`, it will ensure that the pretty-printed output matches the
+  If specified without a value,
+  then it means the pretty-print output should match the original source.
+  If specified with a value, as in `//@ pp-exact:foo.pp`,
+  it will ensure that the pretty-printed output matches the
   contents of the given file.
   Otherwise, if `pp-exact` is not specified, then
-  the pretty-printed output will be pretty-printed one more time, and the output
-  of the two pretty-printing rounds will be compared to ensure that the
+  the pretty-printed output will be pretty-printed one more time,
+  and the output of the two pretty-printing rounds will be compared to ensure that the
   pretty-printed output converges to a steady state.
 
 [`tests/pretty`]: https://github.com/rust-lang/rust/tree/HEAD/tests/pretty
@@ -166,8 +166,8 @@ Each revision name must start with one of:
 
 To make the revisions unique, you should add a suffix like `rpass1` and `rpass2`.
 
-To simulate changing the source, compiletest also passes a `--cfg` flag with the
-current revision name.
+To simulate changing the source,
+compiletest also passes a `--cfg` flag with the current revision name.
 
 For example, this will run twice, simulating changing a function:
 
@@ -221,9 +221,10 @@ A simple example of a test using `rustc_clean` is the [hello_world test].
 > opt-in. For further context, see:
 > [Stabilizing the state of the debuginfo test suite](https://github.com/rust-lang/compiler-team/issues/1012)
 
-The tests in [`tests/debuginfo`] test how debuginfo is interpreted by the supported debuggers, and
-confirm our visualizers still work as expected. They build a program, launch a debugger, and issue
-commands to the debugger. A single test can work with cdb, gdb, and lldb.
+The tests in [`tests/debuginfo`] test how debuginfo is interpreted by the supported debuggers,
+and confirm our visualizers still work as expected.
+They build a program, launch a debugger, and issue commands to the debugger.
+A single test can work with cdb, gdb, and lldb.
 
 Most tests should have the `//@ compile-flags: -g` directive or something
 similar to generate the appropriate debuginfo.
@@ -245,8 +246,8 @@ The debugger values can be:
 The command to check the output are of the form `//@ $DEBUGGER-check:$OUTPUT`
 where `$OUTPUT` is the output to expect.
 
-For example, the following will build the test, start the debugger, set a
-breakpoint, launch the program, inspect a value, and check what the debugger prints:
+For example, the following will build the test, start the debugger, set a breakpoint,
+launch the program, inspect a value, and check what the debugger prints:
 
 ```rust,ignore
 //@ compile-flags: -g
@@ -265,7 +266,8 @@ fn b() {}
 
 Additionally, there is a special command, `//@ $DEBUGGER-repr:$VAR_NAME` intended to verify
 variables (and their visualizers) with more granularity than can be achieved with simple string
-comparison. This directive should be preferred over the `-command`/`-check` whenever possible.
+comparison.
+This directive should be preferred over the `-command`/`-check` whenever possible.
 
 > [!NOTE]
 > At time of writing (July 2026) this command is limited to LLDB, with an implementation coming soon
@@ -279,8 +281,8 @@ This command effectivly desugars into:
 ```
 
 The `repr $VAR_NAME` command is intercepted by special logic that uses the debuggers' API to inspect
-data that isn't reflected in the variable's printed output. The variable in memory is compared
-against input data stored in
+data that isn't reflected in the variable's printed output.
+The variable in memory is compared against input data stored in
 `tests/debuginfo/<test_name>/input/<debugger>_input/<target_group>.json` and
 provides detailed error messages on failure.
 
@@ -305,8 +307,9 @@ the debugger currently being used:
 - `min-apple-lldb-version: 1703.0.236.21`/`min-llvm-lldb-version: 21.1.0` — ignores the test if the
   version of lldb is below the given version.
   Note: Apple's fork of LLDB (distributed with Xcode) uses a different versioning scheme that is not
-  easily mappable to LLVM's LLDB version numbers. As such, the version gates are specified by
-  vendor. Further info on manually checking version equivalence is available [here](../debuginfo/testing.md#lldb-versioning)
+  easily mappable to LLVM's LLDB version numbers.
+  As such, the version gates are specified by vendor.
+  Further info on manually checking version equivalence is available [here](../debuginfo/testing.md#lldb-versioning)
 - `rust-lldb` — ignores the test if lldb is not contain the Rust plugin.
   NOTE: The "Rust" version of LLDB doesn't exist anymore, so this will always be ignored.
   This should probably be removed.
@@ -361,14 +364,14 @@ See the [FileCheck] documentation for a tutorial and more information.
 See also the [assembly tests](#assembly-tests) for a similar set of tests.
 
 By default, codegen tests will have `//@ needs-target-std` *implied* (that the
-target needs to support std), *unless* the `#![no_std]`/`#![no_core]` attribute
-was specified in the test source.
+target needs to support std),
+*unless* the `#![no_std]`/`#![no_core]` attribute was specified in the test source.
 You can override this behavior and explicitly
-write `//@ needs-target-std` to only run the test when target supports std, even
-if the test is `#![no_std]`/`#![no_core]`.
+write `//@ needs-target-std` to only run the test when target supports std,
+even if the test is `#![no_std]`/`#![no_core]`.
 
-If you need to work with `#![no_std]` cross-compiling tests, consult the
-[`minicore` test auxiliary](./minicore.md) chapter.
+If you need to work with `#![no_std]` cross-compiling tests,
+consult the [`minicore` test auxiliary](./minicore.md) chapter.
 
 [`tests/codegen-llvm`]: https://github.com/rust-lang/rust/tree/HEAD/tests/codegen-llvm
 [FileCheck]: https://llvm.org/docs/CommandGuide/FileCheck.html
@@ -388,8 +391,8 @@ See the [FileCheck] documentation for a tutorial and more information.
 
 See also the [codegen tests](#codegen-tests) for a similar set of tests.
 
-If you need to work with `#![no_std]` cross-compiling tests, consult the
-[`minicore` test auxiliary](./minicore.md) chapter.
+If you need to work with `#![no_std]` cross-compiling tests,
+consult the [`minicore` test auxiliary](./minicore.md) chapter.
 
 [`tests/assembly-llvm`]: https://github.com/rust-lang/rust/tree/HEAD/tests/assembly-llvm
 
@@ -444,10 +447,10 @@ There are several forms the `EMIT_MIR` comment can take:
   interested in the final state after an optimization.
   Some rare cases may want to use the "before" file for completeness.
 
-- `// EMIT_MIR $MIR_PATH.diff` — where `$MIR_PATH` is the filename of the MIR
-  dump, such as `my_test_name.my_function.EarlyOtherwiseBranch`.
-  Compiletest will diff the `.before.mir` and `.after.mir` files, and compare the diff
-  output to the expected `.diff` file from the `EMIT_MIR` comment.
+- `// EMIT_MIR $MIR_PATH.diff` — where `$MIR_PATH` is the filename of the MIR dump,
+  such as `my_test_name.my_function.EarlyOtherwiseBranch`.
+  Compiletest will diff the `.before.mir` and `.after.mir` files,
+  and compare the diff output to the expected `.diff` file from the `EMIT_MIR` comment.
 
   This is useful if you want to see how an optimization changes the MIR.
 
@@ -457,8 +460,8 @@ There are several forms the `EMIT_MIR` comment can take:
 
 By default 32 bit and 64 bit targets use the same dump files, which can be
 problematic in the presence of pointers in constants or other bit width dependent things.
-In that case you can add `// EMIT_MIR_FOR_EACH_BIT_WIDTH` to
-your test, causing separate files to be generated for 32bit and 64bit systems.
+In that case you can add `// EMIT_MIR_FOR_EACH_BIT_WIDTH` to your test,
+causing separate files to be generated for 32bit and 64bit systems.
 
 [`tests/mir-opt`]: https://github.com/rust-lang/rust/tree/HEAD/tests/mir-opt
 
@@ -491,8 +494,8 @@ Each test should be in a separate directory with a `rmake.rs` Rust program,
 called the *recipe*. A recipe will be compiled and executed by compiletest with
 the `run_make_support` library linked in.
 
-If you need new utilities or functionality, consider extending and improving the
-[`run_make_support`] library.
+If you need new utilities or functionality,
+consider extending and improving the [`run_make_support`] library.
 
 Compiletest directives like `//@ only-<target>` or `//@ ignore-<target>` are
 supported in `rmake.rs`, like in UI tests.
@@ -524,11 +527,11 @@ Of course, some tests will not successfully *run* in this way.
 
 #### Using rust-analyzer with `rmake.rs`
 
-Like other test programs, the `rmake.rs` scripts used by run-make tests do not
-have rust-analyzer integration by default.
+Like other test programs,
+the `rmake.rs` scripts used by run-make tests do not have rust-analyzer integration by default.
 
-To work around this when working on a particular test, temporarily create a
-`Cargo.toml` file in the test's directory
+To work around this when working on a particular test,
+temporarily create a `Cargo.toml` file in the test's directory
 (e.g. `tests/run-make/sysroot-crates-are-unstable/Cargo.toml`)
 with these contents:
 
@@ -589,8 +592,8 @@ Each mode also has an alias to run the coverage tests in just that mode:
 ./x test coverage-map -- tests/coverage/if.rs # runs the specified test in "coverage-map" mode only
 ```
 
-If a particular test should not be run in one of the coverage test modes for
-some reason, use the `//@ ignore-coverage-map` or `//@ ignore-coverage-run` directives.
+If a particular test should not be run in one of the coverage test modes for some reason,
+use the `//@ ignore-coverage-map` or `//@ ignore-coverage-run` directives.
 
 #### `coverage-map` suite
 
@@ -598,11 +601,11 @@ In `coverage-map` mode, these tests verify the mappings between source code
 regions and coverage counters that are emitted by LLVM.
 They compile the test with `--emit llvm-ir`, then use a custom tool ([`src/tools/coverage-dump`]) to
 extract and pretty-print the coverage mappings embedded in the IR.
-These tests don't require the profiler runtime, so they run in PR CI jobs and are easy to
-run/bless locally.
+These tests don't require the profiler runtime,
+so they run in PR CI jobs and are easy to run/bless locally.
 
-These coverage map tests can be sensitive to changes in MIR lowering or MIR
-optimizations, producing mappings that are different but produce identical coverage reports.
+These coverage map tests can be sensitive to changes in MIR lowering or MIR optimizations,
+producing mappings that are different but produce identical coverage reports.
 
 As a rule of thumb, any PR that doesn't change coverage-specific code should
 **feel free to re-bless** the `coverage-map` tests as necessary, without
@@ -612,19 +615,19 @@ worrying about the actual changes, as long as the `coverage-run` tests still pas
 
 In `coverage-run` mode, these tests perform an end-to-end test of coverage reporting.
 They compile a test program with coverage instrumentation, run that
-program to produce raw coverage data, and then use LLVM tools to process that
-data into a human-readable code coverage report.
+program to produce raw coverage data,
+and then use LLVM tools to process that data into a human-readable code coverage report.
 
-Instrumented binaries need to be linked against the LLVM profiler runtime, so
-`coverage-run` tests are **automatically skipped** unless the profiler runtime
+Instrumented binaries need to be linked against the LLVM profiler runtime,
+so `coverage-run` tests are **automatically skipped** unless the profiler runtime
 is enabled in `bootstrap.toml`:
 
 ```toml
 build.profiler = true
 ```
 
-This also means that they typically don't run in PR CI jobs, though they do run
-as part of the full set of CI jobs used for merging.
+This also means that they typically don't run in PR CI jobs,
+though they do run as part of the full set of CI jobs used for merging.
 
 #### `coverage-run-rustdoc` suite
 
@@ -638,8 +641,8 @@ This avoids having to build rustdoc when only running the main `coverage` suite.
 
 ### Crash tests
 
-[`tests/crashes`] serve as a collection of tests that are expected to cause the
-compiler to ICE, panic or crash in some other way, so that accidental fixes are tracked.
+[`tests/crashes`] serve as a collection of tests that are expected to cause the compiler to ICE,
+panic, or crash in some other way, so that accidental fixes are tracked.
 Formerly, this was done at <https://github.com/rust-lang/glacier> but
 doing it inside the rust-lang/rust testsuite is more convenient.
 
@@ -659,8 +662,8 @@ When you do so, each issue number should be noted in the file name (`12345.rs`
 should suffice) and also inside the file by means of a `//@ known-bug: #12345` directive.
 Please [label][labeling] the relevant issues with `S-bug-has-test` once your PR is merged.
 
-If you happen to fix one of the crashes, please move it to a fitting
-subdirectory in `tests/ui` and give it a meaningful name.
+If you happen to fix one of the crashes,
+please move it to a fitting subdirectory in `tests/ui` and give it a meaningful name.
 Please add a doc comment at the top of the file explaining why this test exists.
 Even better will be if you can briefly explain how the example caused rustc to crash previously,
 and what was done to fix it.
@@ -711,8 +714,8 @@ The `-L` flag is used to find the extern crates.
 `aux-crate` is very similar to `aux-build`.
 However, it uses the `--extern` flag
 to link to the extern crate to make the crate be available as an extern prelude.
-That allows you to specify the additional syntax of the `--extern` flag, such as
-renaming a dependency.
+That allows you to specify the additional syntax of the `--extern` flag,
+such as renaming a dependency.
 For example, `//@ aux-crate: foo=bar.rs` will compile
 `auxiliary/bar.rs` and make it available under the name `foo` within the test.
 This is similar to how Cargo does dependency renaming.
@@ -722,8 +725,8 @@ For example, `//@ aux-crate: noprelude:foo=bar.rs`.
 `aux-bin` is similar to `aux-build` but will build a binary instead of a library.
 The binary will be available in `auxiliary/bin` relative to the working directory of the test.
 
-`aux-codegen-backend` is similar to `aux-build`, but will then pass the compiled
-dylib to `-Zcodegen-backend` when building the main file.
+`aux-codegen-backend` is similar to `aux-build`,
+but will then pass the compiled dylib to `-Zcodegen-backend` when building the main file.
 This will only work for tests in `tests/ui-fulldeps`, since it requires the use of compiler crates.
 
 ### Auxiliary proc-macro
@@ -740,8 +743,8 @@ preset behavior compared to `aux-build` for the proc-macro test auxiliary:
    to produce a dylib for the aux crate.
 3. The aux crate is made available to the test file via extern prelude with
    `--extern <aux_crate_name>`.
-   Note that since UI tests default to edition
-   2015, you still need to specify `extern <aux_crate_name>` unless the main
+   Note that since UI tests default to edition 2015,
+   you still need to specify `extern <aux_crate_name>` unless the main
    test file is using an edition that is 2018 or newer if you want to use the
    aux crate name in a `use` import.
 4. The `proc_macro` crate is made available as an extern prelude module.
@@ -794,8 +797,8 @@ This is done by adding a special directive at the top of the file:
 //@ revisions: foo bar baz
 ```
 
-This will result in the test being compiled (and tested) three times, once with
-`--cfg foo`, once with `--cfg bar`, and once with `--cfg baz`.
+This will result in the test being compiled (and tested) three times, once with `--cfg foo`,
+once with `--cfg bar`, and once with `--cfg baz`.
 You can therefore use `#[cfg(foo)]` etc within the test to tweak each of these results.
 
 You can also customize directives and expected error messages to a particular revision.
@@ -814,8 +817,8 @@ fn test_foo() {
 
 Multiple revisions can be specified in a comma-separated list, such as `//[foo,bar,baz]~^`.
 
-In test suites that use the LLVM [FileCheck] tool, the current revision name is
-also registered as an additional prefix for FileCheck directives:
+In test suites that use the LLVM [FileCheck] tool,
+the current revision name is also registered as an additional prefix for FileCheck directives:
 
 ```rust,ignore
 //@ revisions: NORMAL COVERAGE
@@ -848,8 +851,8 @@ Normally, revision names mentioned in other directives and error annotations
 must correspond to an actual revision declared in a `revisions` directive.
 This is enforced by an `./x test tidy` check.
 
-If a revision name needs to be temporarily removed from the revision list for
-some reason, the above check can be suppressed by adding the revision name to an
+If a revision name needs to be temporarily removed from the revision list for some reason,
+the above check can be suppressed by adding the revision name to an
 `//@ unused-revision-names:` header instead.
 
 Specifying an unused name of `*` (i.e. `//@ unused-revision-names: *`) will
@@ -857,10 +860,10 @@ permit any unused revision name to be mentioned.
 
 ## Compare modes
 
-Compiletest can be run in different modes, called _compare modes_, which can be
-used to compare the behavior of all tests with different compiler flags enabled.
-This can help highlight what differences might appear with certain flags, and
-check for any problems that might arise.
+Compiletest can be run in different modes, called _compare modes_,
+which can be used to compare the behavior of all tests with different compiler flags enabled.
+This can help highlight what differences might appear with certain flags,
+and check for any problems that might arise.
 
 To run the tests in a different mode, you need to pass the `--compare-mode` CLI flag:
 
@@ -885,8 +888,8 @@ In CI, compare modes are only used in one Linux builder, and only with the follo
   This helps ensure that none of the debuginfo tests are affected when enabling split-DWARF.
 
 Note that compare modes are separate to [revisions](#revisions).
-All revisions are tested when running `./x test tests/ui`, however compare-modes must be
-manually run individually via the `--compare-mode` flag.
+All revisions are tested when running `./x test tests/ui`,
+however compare-modes must be manually run individually via the `--compare-mode` flag.
 
 ## Parallel frontend
 
