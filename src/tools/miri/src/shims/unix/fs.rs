@@ -802,44 +802,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let statxbuf = this.deref_pointer_as(statxbuf_op, this.libc_ty_layout("statx"))?;
-
         let path = this.read_path_from_c_str(pathname_ptr)?.into_owned();
-        // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
+
         let at_empty_path = this.eval_libc_i32("AT_EMPTY_PATH");
         let empty_path_flag = flags & at_empty_path == at_empty_path;
-        // We only support:
-        // * interpreting `path` as an absolute directory,
-        // * interpreting `path` as a path relative to `dirfd` when the latter is `AT_FDCWD`, or
-        // * interpreting `dirfd` as any file descriptor when `path` is empty and AT_EMPTY_PATH is
-        // set.
-        // Other behaviors cannot be tested from `libstd` and thus are not implemented. If you
-        // found this error, please open an issue reporting it.
-        if !(path.is_absolute()
-            || dirfd == this.eval_libc_i32("AT_FDCWD")
-            || (path.as_os_str().is_empty() && empty_path_flag))
-        {
-            throw_unsup_format!(
-                "using statx is only supported with absolute paths, relative paths with the file \
-                descriptor `AT_FDCWD`, and empty paths with the `AT_EMPTY_PATH` flag set and any \
-                file descriptor"
-            )
+
+        // The docs are kind of unclear about what empty paths should do when the
+        // flag is *not* set, so we just bail.
+        if path.is_empty() && !empty_path_flag {
+            throw_unsup_format!("statx only supports empty paths if `AT_EMPTY_PATH` is set");
         }
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`statx`", reject_with)?;
-            let ecode = if path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD") {
-                // since `path` is provided, either absolute or
-                // relative to CWD, `EACCES` is the most relevant.
-                LibcError("EACCES")
-            } else {
-                // `dirfd` is set to target file, and `path` is empty
-                // (or we would have hit the `throw_unsup_format`
-                // above). `EACCES` would violate the spec.
-                assert!(empty_path_flag);
-                LibcError("EBADF")
-            };
-            return this.set_errno_and_return_neg1_i32(ecode);
+            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
         // If the `AT_SYMLINK_NOFOLLOW` flag is set, we query the file's metadata without following
@@ -848,11 +825,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // If the path is empty, and the AT_EMPTY_PATH flag is set, we query the open file
         // represented by dirfd, whether it's a directory or otherwise.
-        let metadata = if path.as_os_str().is_empty() && empty_path_flag {
-            FileMetadata::from_fd_num(this, dirfd)?
-        } else {
+        let metadata = if path.is_absolute() {
+            // absolute path, dirfd is ignored.
             FileMetadata::from_path(this, &path, follow_symlink)?
+        } else if path.is_empty() {
+            // no path, load metadata about dirfd
+            FileMetadata::from_fd_num(this, dirfd)?
+        } else if dirfd == this.eval_libc_i32("AT_FDCWD") {
+            // relative to current working directory
+            FileMetadata::from_path(this, &path, follow_symlink)?
+        } else {
+            // relative to dirfd, which must be a directory handle
+            let Some(fd) = this.machine.fds.get(dirfd) else {
+                return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+            };
+            let Some(_dir) = fd.downcast::<DirHandle>() else {
+                return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+            };
+
+            throw_unsup_format!("statx relative to a directory handle is not supported");
         };
+
         let metadata = match metadata {
             Ok(metadata) => metadata,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
