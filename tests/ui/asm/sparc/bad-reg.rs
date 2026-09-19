@@ -28,7 +28,7 @@ fn f() {
         asm!("", out("g3") _);
         asm!("", out("g4") _);
         asm!("", out("g5") _);
-        //[sparc,sparcv8plus]~^ ERROR cannot use register `r5`: g5 is reserved for system on SPARC32
+        //[sparc,sparcv8plus]~^ ERROR cannot use register `g5`: g5 is reserved for system on SPARC32
         asm!("", out("g6") _);
         //~^ ERROR invalid register `g6`: reserved for system and cannot be used as an operand for inline asm
         asm!("", out("g7") _);
