@@ -839,8 +839,8 @@ impl<'a> TraitDef<'a> {
         let field_tys = struct_def.fields().iter().map(|field| &*field.ty);
 
         let methods = self.methods.iter().filter_map(|method_def| {
-            let ArgDetails { selflike_args, nonselflike_args, nonself_arg_tys } =
-                method_def.extract_arg_details(cx, self, type_ident, generics);
+            let ArgDetails { selflike_args, nonselflike_args } =
+                method_def.extract_arg_details(cx, self);
 
             let body = if from_scratch || method_def.is_static() {
                 method_def.call_substructure_method(
@@ -862,7 +862,7 @@ impl<'a> TraitDef<'a> {
                 )
             };
 
-            method_def.create_method(cx, self, type_ident, generics, nonself_arg_tys, body)
+            method_def.create_method(cx, self, type_ident, generics, body)
         });
 
         self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
@@ -883,8 +883,8 @@ impl<'a> TraitDef<'a> {
             .map(|field| &*field.ty);
 
         let methods = self.methods.iter().filter_map(|method_def| {
-            let ArgDetails { selflike_args, nonselflike_args, nonself_arg_tys } =
-                method_def.extract_arg_details(cx, self, type_ident, generics);
+            let ArgDetails { selflike_args, nonselflike_args } =
+                method_def.extract_arg_details(cx, self);
 
             let body = if from_scratch || method_def.is_static() {
                 method_def.call_substructure_method(
@@ -905,7 +905,7 @@ impl<'a> TraitDef<'a> {
                 )
             };
 
-            method_def.create_method(cx, self, type_ident, generics, nonself_arg_tys, body)
+            method_def.create_method(cx, self, type_ident, generics, body)
         });
 
         let is_packed = false; // enums are never packed
@@ -919,8 +919,6 @@ struct ArgDetails {
     selflike_args: ThinVec<Box<Expr>>,
     /// Expressions for all the remaining args.
     nonselflike_args: Vec<Box<Expr>>,
-    /// Additional information about all the args other than `&self`.
-    nonself_arg_tys: Vec<(Ident, Box<ast::Ty>)>,
 }
 
 impl<'a> MethodDef<'a> {
@@ -942,16 +940,9 @@ impl<'a> MethodDef<'a> {
         !self.explicit_self
     }
 
-    fn extract_arg_details(
-        &self,
-        cx: &ExtCtxt<'_>,
-        trait_: &TraitDef<'_>,
-        type_ident: Ident,
-        generics: &Generics,
-    ) -> ArgDetails {
+    fn extract_arg_details(&self, cx: &ExtCtxt<'_>, trait_: &TraitDef<'_>) -> ArgDetails {
         let mut selflike_args = ThinVec::new();
         let mut nonselflike_args = Vec::new();
-        let mut nonself_arg_tys = Vec::new();
         let span = trait_.span;
 
         if self.explicit_self {
@@ -960,21 +951,18 @@ impl<'a> MethodDef<'a> {
         }
 
         for (ty, name) in self.nonself_args.iter() {
-            let ast_ty = ty.to_ty(cx, span, type_ident, generics);
             let ident = Ident::new(*name, span);
-            nonself_arg_tys.push((ident, ast_ty));
-
             let arg_expr = cx.expr_ident(span, ident);
 
             match ty {
                 // Selflike (`&Self`) arguments only occur in non-static methods.
-                Ref(Self_, _) if !self.is_static() => selflike_args.push(arg_expr),
+                Ref(Self_, _) if self.explicit_self => selflike_args.push(arg_expr),
                 Self_ => cx.dcx().span_bug(span, "`Self` in non-return position"),
                 _ => nonselflike_args.push(arg_expr),
             }
         }
 
-        ArgDetails { selflike_args, nonselflike_args, nonself_arg_tys }
+        ArgDetails { selflike_args, nonselflike_args }
     }
 
     fn create_method(
@@ -983,7 +971,6 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         generics: &Generics,
-        nonself_arg_tys: Vec<(Ident, Box<ast::Ty>)>,
         body: BlockOrExpr,
     ) -> Option<Box<ast::AssocItem>> {
         // `assert_fields_are_eq` has an empty default implementation
@@ -994,19 +981,22 @@ impl<'a> MethodDef<'a> {
         // Create the generics that aren't for `Self`.
         let fn_generics = self.generics.clone();
 
-        let args = {
-            let self_arg = self.explicit_self.then(|| {
-                let ident = Ident::new(kw::SelfLower, span);
-                ast::Param::from_self(
-                    ast::AttrVec::default(),
-                    respan(span, SelfKind::Region(None, ast::Mutability::Not)),
-                    ident,
-                )
-            });
-            let nonself_args =
-                nonself_arg_tys.into_iter().map(|(name, ty)| cx.param(span, name, ty));
-            self_arg.into_iter().chain(nonself_args).collect()
-        };
+        let self_arg = self.explicit_self.then(|| {
+            let ident = Ident::new(kw::SelfLower, span);
+            ast::Param::from_self(
+                ast::AttrVec::default(),
+                respan(span, SelfKind::Region(None, ast::Mutability::Not)),
+                ident,
+            )
+        });
+        let args = self_arg
+            .into_iter()
+            .chain(self.nonself_args.iter().map(|(ty, name)| {
+                let ast_ty = ty.to_ty(cx, span, type_ident, generics);
+                let ident = Ident::new(*name, span);
+                cx.param(span, ident, ast_ty)
+            }))
+            .collect();
 
         let ret_type = if let Ty::Unit = &self.ret_ty {
             ast::FnRetTy::Default(span)
