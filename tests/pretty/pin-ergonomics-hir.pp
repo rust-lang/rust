@@ -1,12 +1,14 @@
+#![attr = Feature([pin_ergonomics#0])]
+#![attr = LintCheck([LintCheck {name: ["dead_code"], attr_index: 0,
+lint_index: 0, kind: Allow}, LintCheck {name: ["incomplete_features"],
+attr_index: 0, lint_index: 1, kind: Allow}])]
+extern crate std;
+#[attr = PreludeImport]
+use ::std::prelude::rust_2015::*;
 //@ pretty-compare-only
 //@ pretty-mode:hir
 //@ pp-exact:pin-ergonomics-hir.pp
 
-#![allow(dead_code, incomplete_features)]
-#![attr = Feature([pin_ergonomics#0])]
-extern crate std;
-#[attr = PreludeImport]
-use ::std::prelude::rust_2015::*;
 
 use std::pin::Pin;
 

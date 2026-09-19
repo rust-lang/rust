@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast::{AttrStyle, MetaItemLit, Safety};
 use rustc_attr_ir::target::Target;
-use rustc_attr_ir::{AttrPath, Attribute, AttributeKind};
+use rustc_attr_ir::{AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::AttributeStability;
@@ -43,6 +43,7 @@ use crate::attributes::dummy::*;
 use crate::attributes::inline::*;
 use crate::attributes::instruction_set::*;
 use crate::attributes::link_attrs::*;
+use crate::attributes::lint::*;
 use crate::attributes::lint_helpers::*;
 use crate::attributes::loop_match::*;
 use crate::attributes::macro_attrs::*;
@@ -166,6 +167,7 @@ attribute_parsers!(
         ConfusablesParser,
         ConstStabilityParser,
         DocParser,
+        LintParser,
         MacroUseParser,
         NakedParser,
         OnConstParser,
@@ -386,6 +388,8 @@ pub struct AcceptContext<'f, 'sess> {
 
     /// Whether it is an inner or outer attribute.
     pub(crate) attr_style: AttrStyle,
+
+    pub(crate) attr_id: Option<HashIgnoredAttrId>,
 
     /// A description of the thing we are parsing using this attribute parser.
     /// We are not only using these parsers for attributes, but also for macros such as the `cfg!()` macro.

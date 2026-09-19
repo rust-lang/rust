@@ -4,12 +4,14 @@ use clippy_utils::{
     binary_expr_needs_parentheses, is_from_proc_macro, leaks_droppable_temporary_with_limited_lifetime,
     span_contains_cfg, span_find_starting_semi, sym,
 };
-use rustc_ast::MetaItemInner;
+
 use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::lint::LintCheckKind;
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Expr, ExprKind, HirId, MatchSource, StmtKind};
-use rustc_lint::{LateContext, Level, LintContext as _};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{BytePos, Pos as _, Span};
 use std::borrow::Cow;
@@ -181,17 +183,19 @@ fn check_final_expr<'tcx>(
             // actually fulfill the expectation (clippy::#12998)
             match cx.tcx.hir_attrs(expr.hir_id) {
                 [] => {},
-                [attr] => {
-                    if matches!(Level::from_opt_symbol(attr.name()), Some(Level::Expect))
-                        && let metas = attr.meta_item_list()
-                        && let Some(lst) = metas
-                        && let [MetaItemInner::MetaItem(meta_item), ..] = lst.as_slice()
-                        && let [tool, lint_name] = meta_item.path.segments.as_slice()
-                        && tool.ident.name == sym::clippy
-                        && matches!(
-                            lint_name.ident.name,
-                            sym::needless_return | sym::style | sym::all | sym::warnings
-                        )
+                [Attribute::Parsed(AttributeKind::LintCheck(lints))] => {
+                    if lints
+                        .iter()
+                        .filter(|lint| matches!(lint.kind, LintCheckKind::Expect))
+                        .any(|lint| {
+                            matches!(
+                                &*lint.name,
+                                [
+                                    sym::clippy,
+                                    sym::needless_return | sym::style | sym::all | sym::warnings
+                                ]
+                            )
+                        })
                     {
                         // This is an expectation of the `needless_return` lint
                     } else {
