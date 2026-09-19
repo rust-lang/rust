@@ -541,8 +541,6 @@ impl<'a> AstValidator<'a> {
             .for_each(|attr| {
                 if attr.is_doc_comment() {
                     self.dcx().emit_err(diagnostics::FnParamDocComment { span: attr.span });
-                } else {
-                    self.dcx().emit_err(diagnostics::FnParamForbiddenAttr { span: attr.span });
                 }
             });
     }
