@@ -62,7 +62,7 @@ macro_rules! thir_with_elements {
         #[derive(Debug, StableHash, Clone)]
         pub struct Thir<'tcx> {
             pub body_type: BodyTy<'tcx>,
-            pub attributes: FxIndexMap<ExprId, ThinVec<AttributeKind>>,
+            pub loop_hint_attrs: FxIndexMap<ExprId, ThinVec<AttributeKind>>,
             $(
                 pub $name: IndexVec<$id, $value>,
             )*
@@ -72,7 +72,7 @@ macro_rules! thir_with_elements {
             pub fn new(body_type: BodyTy<'tcx>) -> Thir<'tcx> {
                 Thir {
                     body_type,
-                    attributes: FxIndexMap::default(),
+                    loop_hint_attrs: FxIndexMap::default(),
                     $(
                         $name: IndexVec::new(),
                     )*

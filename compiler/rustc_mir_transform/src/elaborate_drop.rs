@@ -1640,7 +1640,11 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     fn new_block(&mut self, unwind: Unwind, k: TerminatorKind<'tcx>) -> BasicBlock {
         self.elaborator.patch().new_block(BasicBlockData::new(
-            Some(Terminator { source_info: self.source_info, kind: k, attributes: ThinVec::new() }),
+            Some(Terminator {
+                source_info: self.source_info,
+                kind: k,
+                loop_hint_attrs: ThinVec::new(),
+            }),
             unwind.is_cleanup(),
         ))
     }
@@ -1654,7 +1658,11 @@ where
     ) -> BasicBlock {
         self.elaborator.patch().new_block(BasicBlockData::new_stmts(
             statements,
-            Some(Terminator { source_info: self.source_info, kind: k, attributes: ThinVec::new() }),
+            Some(Terminator {
+                source_info: self.source_info,
+                kind: k,
+                loop_hint_attrs: ThinVec::new(),
+            }),
             unwind.is_cleanup(),
         ))
     }
