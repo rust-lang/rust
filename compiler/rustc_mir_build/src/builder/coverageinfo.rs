@@ -1,184 +1,9 @@
-use std::assert_matches;
-use std::collections::hash_map::Entry;
-
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
-use rustc_middle::mir::coverage::{
-    BlockMarkerId, BranchSpan, CoverageEarlyInfo, CoverageKind, PointKind,
-};
-use rustc_middle::mir::{self, BasicBlock, SourceInfo, Statement, UnOp};
-use rustc_middle::thir::{self, ExprId, ExprKind, Pat, Thir};
-use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::LocalDefId;
+use rustc_middle::mir::coverage::{CoverageKind, PointKind};
+use rustc_middle::mir::{self, BasicBlock, SourceInfo, Statement};
+use rustc_middle::thir;
 
-use crate::builder::{Builder, CFG};
-
-/// Collects coverage-related information during MIR building, to eventually be
-/// turned into a function's [`CoverageEarlyInfo`] when MIR building is complete.
-///
-/// FIXME(Zalathar): Now that we have [`CoverageKind::Point`], we should be able
-/// to remove this and perform HIR-aware analysis during instrumentation instead.
-pub(crate) struct CoverageInfoBuilder {
-    /// Maps condition expressions to their enclosing `!`, for better instrumentation.
-    nots: FxHashMap<ExprId, NotInfo>,
-
-    markers: BlockMarkerGen,
-
-    /// Present if branch coverage is enabled.
-    branch_info: Option<BranchInfo>,
-}
-
-#[derive(Default)]
-struct BranchInfo {
-    branch_spans: Vec<BranchSpan>,
-}
-
-#[derive(Clone, Copy)]
-struct NotInfo {
-    /// When visiting the associated expression as a branch condition, treat this
-    /// enclosing `!` as the branch condition instead.
-    enclosing_not: ExprId,
-    /// True if the associated expression is nested within an odd number of `!`
-    /// expressions relative to `enclosing_not` (inclusive of `enclosing_not`).
-    is_flipped: bool,
-}
-
-#[derive(Default)]
-struct BlockMarkerGen {
-    num_block_markers: usize,
-}
-
-impl BlockMarkerGen {
-    fn next_block_marker_id(&mut self) -> BlockMarkerId {
-        let id = BlockMarkerId::from_usize(self.num_block_markers);
-        self.num_block_markers += 1;
-        id
-    }
-
-    fn inject_block_marker(
-        &mut self,
-        cfg: &mut CFG<'_>,
-        source_info: SourceInfo,
-        block: BasicBlock,
-    ) -> BlockMarkerId {
-        let id = self.next_block_marker_id();
-        let marker_statement = mir::Statement::new(
-            source_info,
-            mir::StatementKind::Coverage(CoverageKind::BlockMarker { id }),
-        );
-        cfg.push(block, marker_statement);
-
-        id
-    }
-}
-
-impl CoverageInfoBuilder {
-    /// Creates a new coverage info builder, but only if coverage instrumentation
-    /// is enabled and `def_id` represents a function that is eligible for coverage.
-    pub(crate) fn new_if_enabled(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<Self> {
-        if !tcx.sess.instrument_coverage() || !tcx.is_eligible_for_coverage(def_id) {
-            return None;
-        }
-
-        Some(Self {
-            nots: FxHashMap::default(),
-            markers: BlockMarkerGen::default(),
-            branch_info: tcx.sess.instrument_coverage_branch().then(BranchInfo::default),
-        })
-    }
-
-    /// Unary `!` expressions inside an `if` condition are lowered by lowering
-    /// their argument instead, and then reversing the then/else arms of that `if`.
-    ///
-    /// That's awkward for branch coverage instrumentation, so to work around that
-    /// we pre-emptively visit any affected `!` expressions, and record extra
-    /// information that [`Builder::visit_coverage_branch_condition`] can use to
-    /// synthesize branch instrumentation for the enclosing `!`.
-    pub(crate) fn visit_unary_not(&mut self, thir: &Thir<'_>, unary_not: ExprId) {
-        assert_matches!(thir[unary_not].kind, ExprKind::Unary { op: UnOp::Not, .. });
-
-        // The information collected by this visitor is only needed when branch
-        // coverage or higher is enabled.
-        if self.branch_info.is_none() {
-            return;
-        }
-
-        self.visit_with_not_info(
-            thir,
-            unary_not,
-            // Set `is_flipped: false` for the `!` itself, so that its enclosed
-            // expression will have `is_flipped: true`.
-            NotInfo { enclosing_not: unary_not, is_flipped: false },
-        );
-    }
-
-    fn visit_with_not_info(&mut self, thir: &Thir<'_>, expr_id: ExprId, not_info: NotInfo) {
-        match self.nots.entry(expr_id) {
-            // This expression has already been marked by an enclosing `!`.
-            Entry::Occupied(_) => return,
-            Entry::Vacant(entry) => entry.insert(not_info),
-        };
-
-        match thir[expr_id].kind {
-            ExprKind::Unary { op: UnOp::Not, arg } => {
-                // Invert the `is_flipped` flag for the contents of this `!`.
-                let not_info = NotInfo { is_flipped: !not_info.is_flipped, ..not_info };
-                self.visit_with_not_info(thir, arg, not_info);
-            }
-            ExprKind::Scope { value, .. } => self.visit_with_not_info(thir, value, not_info),
-            ExprKind::ValueExpr { source } => self.visit_with_not_info(thir, source, not_info),
-            // All other expressions (including `&&` and `||`) don't need any
-            // special handling of their contents, so stop visiting.
-            _ => {}
-        }
-    }
-
-    fn register_two_way_branch<'tcx>(
-        &mut self,
-        cfg: &mut CFG<'tcx>,
-        source_info: SourceInfo,
-        true_block: BasicBlock,
-        false_block: BasicBlock,
-    ) {
-        // Bail out if branch coverage is not enabled.
-        let Some(branch_info) = self.branch_info.as_mut() else { return };
-
-        let true_marker = self.markers.inject_block_marker(cfg, source_info, true_block);
-        let false_marker = self.markers.inject_block_marker(cfg, source_info, false_block);
-
-        branch_info.branch_spans.push(BranchSpan {
-            span: source_info.span,
-            true_marker,
-            false_marker,
-        });
-    }
-
-    pub(crate) fn into_done(self) -> Box<CoverageEarlyInfo> {
-        let Self { nots: _, markers: BlockMarkerGen { num_block_markers }, branch_info } = self;
-
-        let branch_spans =
-            branch_info.map(|branch_info| branch_info.branch_spans).unwrap_or_default();
-
-        // For simplicity, always return an info struct (without Option), even
-        // if there's nothing interesting in it.
-        Box::new(CoverageEarlyInfo { num_block_markers, branch_spans })
-    }
-
-    pub(crate) fn as_done(&self) -> Box<CoverageEarlyInfo> {
-        let &Self { nots: _, markers: BlockMarkerGen { num_block_markers }, ref branch_info } =
-            self;
-
-        let branch_spans = branch_info
-            .as_ref()
-            .map(|branch_info| branch_info.branch_spans.as_slice())
-            .unwrap_or_default()
-            .to_owned();
-
-        // For simplicity, always return an info struct (without Option), even
-        // if there's nothing interesting in it.
-        Box::new(CoverageEarlyInfo { num_block_markers, branch_spans })
-    }
-}
+use crate::builder::Builder;
 
 impl<'tcx> Builder<'_, 'tcx> {
     /// Does nothing if `-Cinstrument-coverage` is not enabled.
@@ -211,8 +36,7 @@ impl<'tcx> Builder<'_, 'tcx> {
         if !self.tcx.sess.instrument_coverage() {
             return;
         }
-        // Recover the full HirId by combining a local ID with the function's owner ID.
-        let hir_id = HirId { owner: self.hir_id.owner, local_id: if_expr.temp_scope_id };
+        let hir_id = self.recover_hir_id_for_expr(if_expr);
         self.push_coverage_point_inner(block, source_info, PointKind::ImplicitElse, hir_id);
     }
 
@@ -230,6 +54,36 @@ impl<'tcx> Builder<'_, 'tcx> {
             return;
         }
         self.push_coverage_point_inner(block, source_info, PointKind::FunctionEnd, fn_hir_id);
+    }
+
+    /// Does nothing if branch coverage is not enabled.
+    ///
+    /// Otherwise, pushes marker statements to `true_block` and `false_block`
+    /// indicating that a branch to one of those blocks occurred due to inspection
+    /// of `scrutinee_expr`.
+    pub(crate) fn push_coverage_points_for_branch_outcomes(
+        &mut self,
+        scrutinee_expr: &thir::Expr<'tcx>,
+        true_block: BasicBlock,
+        false_block: BasicBlock,
+    ) {
+        if !self.tcx.sess.instrument_coverage_branch() {
+            return;
+        }
+
+        let hir_id = self.recover_hir_id_for_expr(scrutinee_expr);
+        let source_info = self.source_info(scrutinee_expr.span);
+        let pk_branch_outcome = |outcome: bool| PointKind::BranchOutcome { outcome };
+        self.push_coverage_point_inner(true_block, source_info, pk_branch_outcome(true), hir_id);
+        self.push_coverage_point_inner(false_block, source_info, pk_branch_outcome(false), hir_id);
+    }
+
+    /// Recovers the full [`HirId`] for a THIR expression by combining its local ID
+    /// with the current function's owner ID.
+    fn recover_hir_id_for_expr(&self, expr: &thir::Expr<'tcx>) -> HirId {
+        // Note that we can't call `hir_id.expect_owner()`, because it would fail
+        // if we're inside a closure, for example.
+        HirId { owner: self.hir_id.owner, local_id: expr.temp_scope_id }
     }
 
     fn push_coverage_point_inner(
@@ -252,29 +106,27 @@ impl<'tcx> Builder<'_, 'tcx> {
     /// that will let us track the value of the condition in `place`.
     pub(crate) fn visit_coverage_standalone_condition(
         &mut self,
-        mut expr_id: ExprId,     // Expression giving the span of the condition
+        expr_id: thir::ExprId,   // Expression being inspected
         place: mir::Place<'tcx>, // Already holds the boolean condition value
         block: &mut BasicBlock,
     ) {
         // Bail out if condition coverage is not enabled for this function.
-        let Some(coverage_info) = self.coverage_info.as_mut() else { return };
         if !self.tcx.sess.instrument_coverage_condition() {
             return;
         };
 
         // Remove any wrappers, so that we can inspect the real underlying expression.
-        while let ExprKind::ValueExpr { source: inner } | ExprKind::Scope { value: inner, .. } =
-            self.thir[expr_id].kind
+        let mut expr = &self.thir[expr_id];
+        while let thir::ExprKind::ValueExpr { source: inner }
+        | thir::ExprKind::Scope { value: inner, .. } = expr.kind
         {
-            expr_id = inner;
+            expr = &self.thir[inner];
         }
         // If the expression is a lazy logical op, it will naturally get branch
         // coverage as part of its normal lowering, so we can disregard it here.
-        if let ExprKind::LogicalOp { .. } = self.thir[expr_id].kind {
+        if let thir::ExprKind::LogicalOp { .. } = expr.kind {
             return;
         }
-
-        let source_info = SourceInfo { span: self.thir[expr_id].span, scope: self.source_scope };
 
         // Using the boolean value that has already been stored in `place`, set up
         // control flow in the shape of a diamond, so that we can place separate
@@ -288,6 +140,7 @@ impl<'tcx> Builder<'_, 'tcx> {
         //         \     /
         //        join_block
 
+        let source_info = self.source_info(expr.span);
         let true_block = self.cfg.start_new_block();
         let false_block = self.cfg.start_new_block();
         self.cfg.terminate(
@@ -296,54 +149,12 @@ impl<'tcx> Builder<'_, 'tcx> {
             mir::TerminatorKind::if_(mir::Operand::Copy(place), true_block, false_block),
         );
 
-        coverage_info.register_two_way_branch(&mut self.cfg, source_info, true_block, false_block);
+        self.push_coverage_points_for_branch_outcomes(expr, true_block, false_block);
 
         let join_block = self.cfg.start_new_block();
         self.cfg.goto(true_block, source_info, join_block);
         self.cfg.goto(false_block, source_info, join_block);
         // Any subsequent codegen in the caller should use the new join block.
         *block = join_block;
-    }
-
-    /// If branch coverage is enabled, inject marker statements into `true_block`
-    /// and `false_block`, and record their IDs in the table of branch spans.
-    pub(crate) fn visit_coverage_branch_condition(
-        &mut self,
-        mut expr_id: ExprId,
-        mut true_block: BasicBlock,
-        mut false_block: BasicBlock,
-    ) {
-        // Bail out if coverage is not enabled for this function.
-        let Some(coverage_info) = self.coverage_info.as_mut() else { return };
-
-        // If this condition expression is nested within one or more `!` expressions,
-        // replace it with the enclosing `!` collected by `visit_unary_not`.
-        if let Some(&NotInfo { enclosing_not, is_flipped }) = coverage_info.nots.get(&expr_id) {
-            expr_id = enclosing_not;
-            if is_flipped {
-                std::mem::swap(&mut true_block, &mut false_block);
-            }
-        }
-
-        let source_info = SourceInfo { span: self.thir[expr_id].span, scope: self.source_scope };
-
-        coverage_info.register_two_way_branch(&mut self.cfg, source_info, true_block, false_block);
-    }
-
-    /// If branch coverage is enabled, inject marker statements into `true_block`
-    /// and `false_block`, and record their IDs in the table of branches.
-    ///
-    /// Used to instrument let-else and if-let (including let-chains) for branch coverage.
-    pub(crate) fn visit_coverage_conditional_let(
-        &mut self,
-        pattern: &Pat<'tcx>, // Pattern that has been matched when the true path is taken
-        true_block: BasicBlock,
-        false_block: BasicBlock,
-    ) {
-        // Bail out if coverage is not enabled for this function.
-        let Some(coverage_info) = self.coverage_info.as_mut() else { return };
-
-        let source_info = SourceInfo { span: pattern.span, scope: self.source_scope };
-        coverage_info.register_two_way_branch(&mut self.cfg, source_info, true_block, false_block);
     }
 }
