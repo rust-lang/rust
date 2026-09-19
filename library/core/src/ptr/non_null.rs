@@ -1326,8 +1326,9 @@ impl<T> NonNull<T> {
     ///
     /// The `len` argument is the number of **elements**, not the number of bytes.
     ///
-    /// This function is safe, but dereferencing the return value is unsafe.
-    /// See the documentation of [`slice::from_raw_parts`] for slice safety requirements.
+    /// See [`ptr::slice_from_raw_parts`] for more information.
+    ///
+    /// [`ptr::slice_from_raw_parts`]: crate::ptr::slice_from_raw_parts
     ///
     /// # Examples
     ///
