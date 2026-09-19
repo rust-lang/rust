@@ -241,6 +241,7 @@ impl<'tcx> BestObligation<'tcx> {
                                         GoalSource::ImplWhereBound
                                             | GoalSource::AliasBoundConstCondition
                                             | GoalSource::AliasWellFormed
+                                            | GoalSource::TypeRelating
                                     ) && nested_goal.result().is_err()
                                 },
                             )

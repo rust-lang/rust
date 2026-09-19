@@ -1,0 +1,67 @@
+error[E0277]: the trait bound `MyError: From<<A as MaybeFallible>::Error>` is not satisfied
+  --> $DIR/confusing-diagnostic-due-to-best-obligation-visitor.rs:22:49
+   |
+LL |     <A::Error as MaybeError>::ComposeWithOther: From<B>,
+   |                                                 ^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `From<<A as MaybeFallible>::Error>` is not implemented for `MyError`
+  --> $DIR/confusing-diagnostic-due-to-best-obligation-visitor.rs:7:1
+   |
+LL | struct MyError;
+   | ^^^^^^^^^^^^^^
+note: required by a bound in `MaybeError`
+  --> $DIR/confusing-diagnostic-due-to-best-obligation-visitor.rs:15:14
+   |
+LL | trait MaybeError: Sized
+   |       ---------- required by a bound in this trait
+LL | where
+LL |     MyError: From<Self>,
+   |              ^^^^^^^^^^ required by this bound in `MaybeError`
+help: consider extending the `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL |     <A::Error as MaybeError>::ComposeWithOther: From<B>, MyError: From<<A as MaybeFallible>::Error>
+   |                                                          ++++++++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the trait bound `MyError: From<<Self as MaybeFallible>::Error>` is not satisfied
+  --> $DIR/confusing-diagnostic-due-to-best-obligation-visitor.rs:10:17
+   |
+LL |     type Error: MaybeError;
+   |                 ^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `From<<Self as MaybeFallible>::Error>` is not implemented for `MyError`
+  --> $DIR/confusing-diagnostic-due-to-best-obligation-visitor.rs:7:1
+   |
+LL | struct MyError;
+   | ^^^^^^^^^^^^^^
+note: required by a bound in `MaybeError`
+  --> $DIR/confusing-diagnostic-due-to-best-obligation-visitor.rs:15:14
+   |
+LL | trait MaybeError: Sized
+   |       ---------- required by a bound in this trait
+LL | where
+LL |     MyError: From<Self>,
+   |              ^^^^^^^^^^ required by this bound in `MaybeError`
+
+error[E0277]: the trait bound `MyError: From<<Self as MaybeError>::ComposeWithOther>` is not satisfied
+  --> $DIR/confusing-diagnostic-due-to-best-obligation-visitor.rs:17:28
+   |
+LL |     type ComposeWithOther: MaybeError;
+   |                            ^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `From<<Self as MaybeError>::ComposeWithOther>` is not implemented for `MyError`
+  --> $DIR/confusing-diagnostic-due-to-best-obligation-visitor.rs:7:1
+   |
+LL | struct MyError;
+   | ^^^^^^^^^^^^^^
+note: required by a bound in `MaybeError`
+  --> $DIR/confusing-diagnostic-due-to-best-obligation-visitor.rs:15:14
+   |
+LL | trait MaybeError: Sized
+   |       ---------- required by a bound in this trait
+LL | where
+LL |     MyError: From<Self>,
+   |              ^^^^^^^^^^ required by this bound in `MaybeError`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
