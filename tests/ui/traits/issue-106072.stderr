@@ -16,13 +16,7 @@ LL | #[derive(Clone)]
 LL | struct Foo;
    |        ^^^
 
-error[E0782]: expected a type, found a trait
-  --> $DIR/issue-106072.rs:1:10
-   |
-LL | #[derive(Clone)]
-   |          ^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0428, E0782.
 For more information about an error, try `rustc --explain E0428`.
