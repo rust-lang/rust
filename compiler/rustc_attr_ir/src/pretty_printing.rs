@@ -17,6 +17,8 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_structures::{CollapseMacroDebuginfo, CrateType, Limit, NativeLibKind, SanitizerSet};
 use thin_vec::ThinVec;
 
+use crate::HashIgnoredAttrId;
+
 /// This trait is used to print attributes in `rustc_hir_pretty`.
 ///
 /// For structs and enums it can be derived using [`rustc_macros::PrintAttribute`].
@@ -189,7 +191,7 @@ macro_rules! print_tup {
 }
 
 print_tup!(A B C D E F G H);
-print_skip!(Span, (), ErrorGuaranteed, AttrId);
+print_skip!(Span, (), ErrorGuaranteed, AttrId, HashIgnoredAttrId);
 print_disp!(u8, u16, u32, u128, usize, bool, NonZero<u32>, Limit);
 print_debug!(
     Symbol,

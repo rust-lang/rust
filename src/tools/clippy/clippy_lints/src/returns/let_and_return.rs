@@ -5,9 +5,10 @@ use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{binary_expr_needs_parentheses, fn_def_id, span_contains_non_whitespace};
 use core::ops::ControlFlow;
+use rustc_attr_ir::find_attr;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, PatKind, Stmt, StmtKind};
-use rustc_lint::{LateContext, Level, LintContext as _};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::GenericArgKind;
 use rustc_span::edition::Edition;
 
@@ -91,11 +92,7 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
 /// or if there is only whitespace between `let` and return expression.
 /// Non-lint attrs like `#[cfg]` should still block.
 fn has_lint_attrs_or_only_whitespace_between(cx: &LateContext<'_>, retexpr: &Expr<'_>, stmt: &Stmt<'_>) -> bool {
-    // TODO: Turn into find_attr! when lint level attr parsing is done.
-    let retexpr_attrs = cx.tcx.hir_attrs(retexpr.hir_id);
+    let retexpr_lintcheck_attr = find_attr!(cx.tcx, retexpr.hir_id, LintCheck(_));
 
-    retexpr_attrs
-        .iter()
-        .any(|a| a.name().is_some_and(|name| Level::from_symbol(name).is_some()))
-        || !span_contains_non_whitespace(cx, stmt.span.between(retexpr.span), false)
+    retexpr_lintcheck_attr || !span_contains_non_whitespace(cx, stmt.span.between(retexpr.span), false)
 }

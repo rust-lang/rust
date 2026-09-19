@@ -21,15 +21,18 @@ pub fn c() {}
 pub fn d() {}
 
 #[unsafe(allow(dead_code))]
-//~^ ERROR: is not an unsafe attribute
+//~^ ERROR: allow` is not an unsafe attribute
+//~| ERROR: `allow` is not an unsafe attribute
+//~| ERROR: `allow` is not an unsafe attribute
 pub fn e() {}
 
 #[unsafe(allow(unsafe(dead_code)))]
-//~^ ERROR: is not an unsafe attribute
-//~| ERROR: malformed lint attribute input
-//~| ERROR: malformed lint attribute input
+//~^ ERROR: allow` is not an unsafe attribute
+//~| ERROR: `allow` is not an unsafe attribute
+//~| ERROR: `allow` is not an unsafe attribute
 //~| ERROR: expected identifier, found keyword `unsafe`
-//~| ERROR: malformed lint attribute input
+//~| ERROR: expected identifier, found keyword `unsafe`
+//~| ERROR: expected identifier, found keyword `unsafe`
 //~| ERROR: malformed lint attribute input
 //~| ERROR: malformed lint attribute input
 //~| ERROR: malformed lint attribute input

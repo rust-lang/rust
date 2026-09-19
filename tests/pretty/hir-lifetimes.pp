@@ -1,13 +1,14 @@
+#![attr = LintCheck([LintCheck {name: ["unused"], attr_index: 0,
+lint_index: 0, kind: Allow}])]
+extern crate std;
+#[attr = PreludeImport]
+use ::std::prelude::rust_2015::*;
 //@ pretty-compare-only
 //@ pretty-mode:hir
 //@ pp-exact:hir-lifetimes.pp
 
 // This tests the pretty-printing of lifetimes in lots of ways.
 
-#![allow(unused)]
-extern crate std;
-#[attr = PreludeImport]
-use ::std::prelude::rust_2015::*;
 
 struct Foo<'a> {
     x: &'a u32,
