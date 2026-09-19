@@ -535,10 +535,10 @@ pub enum NotableTraitColor {
     Transparent,
 }
 
-impl Into<&'static str> for NotableTraitColor {
-    fn into(self) -> &'static str {
+impl From<NotableTraitColor> for &'static str {
+    fn from(color: NotableTraitColor) -> &'static str {
         use NotableTraitColor::*;
-        match self {
+        match color {
             Grey => "grey",
             Red => "red",
             Green => "green",
@@ -553,7 +553,7 @@ impl Into<&'static str> for NotableTraitColor {
 
 impl std::fmt::Display for NotableTraitColor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.into())
+        f.write_str((*self).into())
     }
 }
 

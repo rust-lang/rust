@@ -1531,7 +1531,7 @@ rustc_queries! {
     }
 
     /// If an item is annotated with `#[doc(notable_trait)]`,
-    /// returns the color used to render its pill. If the crate specifies
+    /// returns the color used to render its badge. If the crate specifies
     /// no color, `Transparent` is used.
     query doc_notable_trait(def_id: DefId) -> Option<&'tcx NotableTraitColor> {
         desc { "checking whether `{}` is `doc(notable_trait)`", tcx.def_path_str(def_id) }
