@@ -160,16 +160,6 @@ impl<I: Interner> AliasConstKind<I> {
             AliasConstKind::Anon { def_id } => interner.def_span(def_id.into()),
         }
     }
-
-    pub fn opt_def_id(self) -> Option<I::DefId> {
-        match self {
-            AliasConstKind::Projection { def_id } => Some(def_id.into()),
-            AliasConstKind::InherentSelf { def_id } => Some(def_id.into()),
-            AliasConstKind::InherentImpl { def_id } => Some(def_id.into()),
-            AliasConstKind::Free { def_id } => Some(def_id.into()),
-            AliasConstKind::Anon { def_id } => Some(def_id.into()),
-        }
-    }
 }
 
 rustc_index::newtype_index! {
