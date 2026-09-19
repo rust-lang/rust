@@ -19,8 +19,8 @@ macro_rules! __impl_slice_eq1 {
 }
 
 macro_rules! __impl_slice_eq2 {
-    ([$($vars:tt)*] $lhs:ty, $rhs:ty, $($constraints:tt)*) => {
-        #[stable(feature = "vec_deque_partial_eq_slice", since = "CURRENT_RUSTC_VERSION")]
+    ($(#[$stability:meta])+, [$($vars:tt)*] $lhs:ty, $rhs:ty, $($constraints:tt)*) => {
+        $(#[$stability])+
         impl<T, U, A: Allocator, $($vars)*> PartialEq<$rhs> for $lhs
         where
             T: PartialEq<U>,
