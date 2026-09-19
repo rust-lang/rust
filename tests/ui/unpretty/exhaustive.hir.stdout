@@ -3,9 +3,8 @@ coroutines#0, decl_macro#0, deref_patterns#0, explicit_tail_calls#0,
 gen_blocks#0, more_qualified_paths#0, never_patterns#0, pattern_types#0,
 pattern_type_macro#0, prelude_import#0, specialization#0, trace_macros#0,
 trait_alias#0, try_blocks#0, try_blocks_heterogeneous#0, yeet_expr#0])]
-#![attr = LintCheck([LintCheck {name: ["incomplete_features"], attr_index: 0,
-lint_index: 0, kind: Allow}, LintCheck {name: ["unused_attributes"],
-attr_index: 0, lint_index: 1, kind: Allow}])]
+#![attr = LintCheck([LintCheck {name: ["incomplete_features"], kind: Allow},
+LintCheck {name: ["unused_attributes"], kind: Allow}])]
 extern crate std;
 #[attr = PreludeImport]
 use std::prelude::rust_2024::*;
@@ -40,9 +39,8 @@ use self::prelude::*;
      * inner multi-line doc comment
      */
 #[doc = "inner doc attribute"]
-#[attr = LintCheck([LintCheck {name: ["dead_code"], attr_index: 0,
-lint_index: 0, kind: Allow}, LintCheck {name: ["unused_variables"],
-attr_index: 0, lint_index: 1, kind: Allow}])]
+#[attr = LintCheck([LintCheck {name: ["dead_code"], kind: Allow},
+LintCheck {name: ["unused_variables"], kind: Allow}])]
 #[attr = NoStd]
 mod attributes {
 
@@ -240,14 +238,10 @@ mod expressions {
                 from_output(match branch(None) {
                         Break {  0: residual } =>
                             #[attr = LintCheck([LintCheck {name: ["unreachable_code"],
-                            attr_index: 0,
-                            lint_index: 0,
                             kind: Allow}])]
                             break from_residual(residual),
                         Continue {  0: val } =>
                             #[attr = LintCheck([LintCheck {name: ["unreachable_code"],
-                            attr_index: 0,
-                            lint_index: 0,
                             kind: Allow}])]
                             val,
                     })
@@ -372,14 +366,10 @@ mod expressions {
         match branch(expr) {
             Break {  0: residual } =>
                 #[attr = LintCheck([LintCheck {name: ["unreachable_code"],
-                attr_index: 0,
-                lint_index: 0,
                 kind: Allow}])]
                 return from_residual(residual),
             Continue {  0: val } =>
                 #[attr = LintCheck([LintCheck {name: ["unreachable_code"],
-                attr_index: 0,
-                lint_index: 0,
                 kind: Allow}])]
                 val,
         };
