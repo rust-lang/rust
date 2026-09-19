@@ -18,25 +18,7 @@ pub(crate) fn expand_deriving_partial_ord(
     let ret_ty = Path(new_path(cx, span, pathvec!(option::Option), &[ordering_ty]));
 
     // Order in which to perform matching
-    let discr_then_data = if let ItemKind::Enum(_, _, def) = &item.kind {
-        let dataful: Vec<bool> = def.variants.iter().map(|v| !v.data.fields().is_empty()).collect();
-        match dataful.iter().filter(|&&b| b).count() {
-            // No data, placing the discriminant check first makes codegen simpler
-            0 => true,
-            1..=2 => false,
-            _ => (0..dataful.len() - 1).any(|i| {
-                if dataful[i]
-                    && let Some(idx) = dataful[i + 1..].iter().position(|v| *v)
-                {
-                    idx >= 2
-                } else {
-                    false
-                }
-            }),
-        }
-    } else {
-        true
-    };
+    let discr_then_data = discr_data_order(item);
 
     let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
     let has_derive_ord = cx.resolver.has_derive_ord(container_id);
@@ -93,6 +75,28 @@ pub(crate) fn expand_deriving_partial_ord(
         document: true,
     };
     trait_def.expand_ext(cx, item, push, is_simple)
+}
+
+pub(crate) fn discr_data_order(item: &ast::Item) -> bool {
+    if let ItemKind::Enum(_, _, def) = &item.kind {
+        let dataful: Vec<bool> = def.variants.iter().map(|v| !v.data.fields().is_empty()).collect();
+        match dataful.iter().filter(|&&b| b).count() {
+            // No data, placing the discriminant check first makes codegen simpler
+            0 => true,
+            1..=2 => false,
+            _ => (0..dataful.len() - 1).any(|i| {
+                if dataful[i]
+                    && let Some(idx) = dataful[i + 1..].iter().position(|v| *v)
+                {
+                    idx >= 2
+                } else {
+                    false
+                }
+            }),
+        }
+    } else {
+        true
+    }
 }
 
 // Special case for the type deriving both `PartialOrd` and `Ord`. Builds:

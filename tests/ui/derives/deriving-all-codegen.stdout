@@ -1319,21 +1319,17 @@ impl ::core::cmp::Ord for Mixed {
     fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        match ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr) {
-            ::core::cmp::Ordering::Equal =>
-                match (self, other) {
-                    (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
-                    (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
-                        d1: __arg1_0, d2: __arg1_1 }) =>
-                        match ::core::cmp::Ord::cmp(__self_0, __arg1_0) {
-                            ::core::cmp::Ordering::Equal =>
-                                ::core::cmp::Ord::cmp(__self_1, __arg1_1),
-                            cmp => cmp,
-                        },
-                    _ => ::core::cmp::Ordering::Equal,
+        match (self, other) {
+            (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+            (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
+                d1: __arg1_0, d2: __arg1_1 }) =>
+                match ::core::cmp::Ord::cmp(__self_0, __arg1_0) {
+                    ::core::cmp::Ordering::Equal =>
+                        ::core::cmp::Ord::cmp(__self_1, __arg1_1),
+                    cmp => cmp,
                 },
-            cmp => cmp,
+            _ => ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr),
         }
     }
 }
@@ -1501,18 +1497,14 @@ impl ::core::cmp::Ord for Fielded {
     fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        match ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr) {
-            ::core::cmp::Ordering::Equal =>
-                match (self, other) {
-                    (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
-                    (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
-                    (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
-                    _ => unsafe { ::core::intrinsics::unreachable() }
-                },
-            cmp => cmp,
+        match (self, other) {
+            (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+            (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+            (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+            _ => ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr),
         }
     }
 }
@@ -1624,16 +1616,12 @@ impl<T: ::core::cmp::Ord, U: ::core::cmp::Ord> ::core::cmp::Ord for
     fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-        match ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr) {
-            ::core::cmp::Ordering::Equal =>
-                match (self, other) {
-                    (EnumGeneric::One(__self_0), EnumGeneric::One(__arg1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
-                    (EnumGeneric::Two(__self_0), EnumGeneric::Two(__arg1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
-                    _ => unsafe { ::core::intrinsics::unreachable() }
-                },
-            cmp => cmp,
+        match (self, other) {
+            (EnumGeneric::One(__self_0), EnumGeneric::One(__arg1_0)) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+            (EnumGeneric::Two(__self_0), EnumGeneric::Two(__arg1_0)) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+            _ => ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr),
         }
     }
 }
