@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `Foo<fn(&())>::Assoc == &()`
-  --> $DIR/implied_outlives_bounds_not_resolving_vars_ice.rs:13:11
+  --> $DIR/issue-111404-1.rs:14:11
    |
 LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
