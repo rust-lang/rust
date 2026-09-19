@@ -1,15 +1,18 @@
 use itertools::{Either, Itertools};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_index::interval::IntervalSet;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location, SourceInfo};
 use rustc_middle::ty::relate::Relate;
 use rustc_middle::ty::{GenericArgsRef, Region, RegionVid, Ty, TyCtxt, TypeVisitable};
 use rustc_mir_dataflow::move_paths::MoveData;
-use rustc_mir_dataflow::points::DenseLocationMap;
+use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use rustc_span::span_bug;
+use rustc_trait_selection::traits::outlives_for_liveness::FreeRegionsVisitor;
 use tracing::debug;
 
 use super::TypeChecker;
+use crate::BorrowckInferCtxt;
 use crate::constraints::OutlivesConstraintSet;
 use crate::polonius::{PoloniusContext, record_live_region_variance};
 use crate::region_infer::values::LivenessValues;
@@ -228,4 +231,19 @@ impl<'a, 'tcx> LiveVariablesVisitor<'a, 'tcx> {
             );
         }
     }
+}
+
+pub(crate) fn make_all_regions_live<'tcx>(
+    infcx: &BorrowckInferCtxt<'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
+    liveness: &mut LivenessValues,
+    value: impl TypeVisitable<TyCtxt<'tcx>>,
+    live_at: &IntervalSet<PointIndex>,
+) {
+    debug!("make_all_regions_live(value={value:?})");
+    value.visit_with(&mut FreeRegionsVisitor {
+        tcx: infcx.tcx,
+        param_env: infcx.param_env,
+        op: |r| liveness.add_points(universal_regions.to_region_vid(r), live_at),
+    });
 }
