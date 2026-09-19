@@ -9,7 +9,7 @@ note: the lint level is defined here
    |
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation and drop the value immediately, use `let _ = ...`
    |
 LL |     let _ = function() && return 1;
    |     +++++++
