@@ -1,0 +1,77 @@
+error: traits in `#[derive(...)]` don't accept arguments
+  --> $DIR/meta-item-global-path-fail-issue-53048.rs:9:5
+   |
+LL | m!(a(::b::c));
+   |     ^ help: remove the arguments
+
+error: expected identifier, found `<eof>`
+  --> $DIR/meta-item-global-path-fail-issue-53048.rs:12:4
+   |
+LL | macro_rules! m { ($m:meta) => { #[derive($m)] pub struct S; }; }
+   |                   ------- while parsing argument for this `meta` macro fragment
+...
+LL | m!(::);
+   |    ^^ expected identifier
+
+error: no rules expected `1`
+  --> $DIR/meta-item-global-path-fail-issue-53048.rs:16:4
+   |
+LL | macro_rules! m { ($m:meta) => { #[derive($m)] pub struct S; }; }
+   | -------------- when calling this macro
+...
+LL | m!(1 + 1);
+   |    ^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$m:meta`
+  --> $DIR/meta-item-global-path-fail-issue-53048.rs:7:19
+   |
+LL | macro_rules! m { ($m:meta) => { #[derive($m)] pub struct S; }; }
+   |                   ^^^^^^^
+
+error: expected identifier, found `<`
+  --> $DIR/meta-item-global-path-fail-issue-53048.rs:20:7
+   |
+LL | macro_rules! m { ($m:meta) => { #[derive($m)] pub struct S; }; }
+   |                   ------- while parsing argument for this `meta` macro fragment
+...
+LL | m!(a::<b>::c);
+   |       ^ expected identifier
+
+error: no rules expected `<`
+  --> $DIR/meta-item-global-path-fail-issue-53048.rs:24:4
+   |
+LL | macro_rules! m { ($m:meta) => { #[derive($m)] pub struct S; }; }
+   | -------------- when calling this macro
+...
+LL | m!(<T>::foo);
+   |    ^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$m:meta`
+  --> $DIR/meta-item-global-path-fail-issue-53048.rs:7:19
+   |
+LL | macro_rules! m { ($m:meta) => { #[derive($m)] pub struct S; }; }
+   |                   ^^^^^^^
+
+error: no rules expected `<`
+  --> $DIR/meta-item-global-path-fail-issue-53048.rs:27:4
+   |
+LL | macro_rules! m { ($m:meta) => { #[derive($m)] pub struct S; }; }
+   | -------------- when calling this macro
+...
+LL | m!(<T as a>::foo);
+   |    ^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$m:meta`
+  --> $DIR/meta-item-global-path-fail-issue-53048.rs:7:19
+   |
+LL | macro_rules! m { ($m:meta) => { #[derive($m)] pub struct S; }; }
+   |                   ^^^^^^^
+
+error: expected unsuffixed literal, found `<eof>`
+  --> $DIR/meta-item-global-path-fail-issue-53048.rs:31:10
+   |
+LL | #[derive(::)] pub struct D;
+   |          ^^
+
+error: aborting due to 7 previous errors
+
