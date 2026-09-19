@@ -1841,14 +1841,11 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
 /// Holds data on the current incremental compilation session, if there is one.
 pub struct IncrCompSession {
-    /// The directory containing all cached data. Cached data from a previous
-    /// session can be read out of it and new data for the current session will
-    /// be written into it.
-    pub session_directory: PathBuf,
-    /// `_lock_file` is never directly used, but its presence
-    /// alone has an effect, because the file will unlock when the session is
-    /// dropped.
-    pub _lock_file: flock::Lock,
+    /// The directory from which cached data of a previous session can be read.
+    pub old_session_directory: Option<flock::LockedDir>,
+    /// The directory to which cached data for the current session can be
+    /// written to.
+    pub new_session_directory: flock::LockedDir,
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
