@@ -44,6 +44,33 @@ error: attribute value must be a literal
 LL |     #[deprecated = concat!("woah", "dude")]
    |                    ^^^^^^^^^^^^^^^^^^^^^^^
 
+error: attribute value must be a literal
+  --> $DIR/attr-on-mac-call.rs:115:13
+   |
+LL |     #[doc = concat!("woah", "dude")]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: attribute value must be a literal
+  --> $DIR/attr-on-mac-call.rs:118:13
+   |
+LL |       #[doc = {
+   |  _____________^
+LL | |         let a = 1;
+LL | |         let b = 1;
+LL | |         let sum = a + b;
+LL | |         assert_eq!(sum, 2);
+LL | |     }]
+   | |_____^
+
+error: attribute value must be a literal
+  --> $DIR/attr-on-mac-call.rs:126:13
+   |
+LL |       #[doc = {
+   |  _____________^
+LL | |         let expressions @ r#in @ doc @ attributes @ at = home;
+LL | |     }]
+   | |_____^
+
 warning: the `export_name` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:8:7
    |
@@ -347,6 +374,6 @@ LL |     #[repr(Rust)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
 
-error: aborting due to 5 previous errors; 30 warnings emitted
+error: aborting due to 8 previous errors; 30 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.
