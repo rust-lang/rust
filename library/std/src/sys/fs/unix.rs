@@ -17,10 +17,6 @@ use libc::c_char;
     target_vendor = "apple",
 ))]
 use libc::dirfd;
-#[cfg(any(target_os = "fuchsia", target_os = "illumos", target_vendor = "apple"))]
-use libc::fstatat as fstatat64;
-#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
-use libc::fstatat64;
 use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
 use libc::{
@@ -1016,89 +1012,61 @@ impl DirEntry {
         self.file_name_os_str().to_os_string()
     }
 
-    #[cfg(all(
-        any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "fuchsia",
-            target_os = "hurd",
-            target_os = "illumos",
-            target_vendor = "apple",
-        ),
-        not(miri) // no dirfd on Miri
-    ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
-        let name = self.name.as_ptr();
+        cfg_select! {
+            // Use directory handle where possible
+            all(
+                any(
+                    all(target_os = "linux", not(target_env = "musl")),
+                    target_os = "android",
+                    target_os = "fuchsia",
+                    target_os = "hurd",
+                    target_os = "illumos",
+                    target_vendor = "apple",
+                ),
+                not(miri) // no dirfd on Miri
+            ) => {
+                let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
 
-        cfg_has_statx! {
-            if let Some(ret) = unsafe { try_statx(
-                fd,
-                name,
-                libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
-                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
-            ) } {
-                return ret;
+                // Make this FD into a directory handle. We don't actually drop it,
+                // so having an `OwnedFd` is fine.
+                let dir_handle =
+                    mem::ManuallyDrop::new(dir::Dir(unsafe { OwnedFd::from_raw_fd(fd) }));
+
+                dir_handle.metadata_at_c(&self.name, /* symlink_nofollow */ true)
             }
-        }
 
-        let mut stat: stat64 = unsafe { mem::zeroed() };
-        cvt(unsafe { fstatat64(fd, name, &mut stat, libc::AT_SYMLINK_NOFOLLOW) })?;
-        Ok(FileAttr::from_stat64(stat))
+            // Fallback based on path
+            _ => run_path_with_cstr(&self.path(), &lstat),
+        }
     }
 
-    #[cfg(any(
-        not(any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "fuchsia",
-            target_os = "hurd",
+    pub fn file_type(&self) -> io::Result<FileType> {
+        // Use `entry.d_type` if available.
+        #[cfg(not(any(
+            target_os = "solaris",
             target_os = "illumos",
-            target_vendor = "apple",
-        )),
-        miri // no dirfd on Miri
-    ))]
-    pub fn metadata(&self) -> io::Result<FileAttr> {
-        run_path_with_cstr(&self.path(), &lstat)
-    }
-
-    #[cfg(any(
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "haiku",
-        target_os = "vxworks",
-        target_os = "aix",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "vita",
-        target_os = "l4re",
-    ))]
-    pub fn file_type(&self) -> io::Result<FileType> {
-        self.metadata().map(|m| m.file_type())
-    }
-
-    #[cfg(not(any(
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "haiku",
-        target_os = "vxworks",
-        target_os = "aix",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "vita",
-        target_os = "l4re",
-    )))]
-    pub fn file_type(&self) -> io::Result<FileType> {
+            target_os = "haiku",
+            target_os = "vxworks",
+            target_os = "aix",
+            target_os = "nto",
+            target_os = "qnx",
+            target_os = "vita",
+            target_os = "l4re",
+        )))]
         match self.entry.d_type {
-            libc::DT_CHR => Ok(FileType { mode: libc::S_IFCHR }),
-            libc::DT_FIFO => Ok(FileType { mode: libc::S_IFIFO }),
-            libc::DT_LNK => Ok(FileType { mode: libc::S_IFLNK }),
-            libc::DT_REG => Ok(FileType { mode: libc::S_IFREG }),
-            libc::DT_SOCK => Ok(FileType { mode: libc::S_IFSOCK }),
-            libc::DT_DIR => Ok(FileType { mode: libc::S_IFDIR }),
-            libc::DT_BLK => Ok(FileType { mode: libc::S_IFBLK }),
-            _ => self.metadata().map(|m| m.file_type()),
+            libc::DT_CHR => return Ok(FileType { mode: libc::S_IFCHR }),
+            libc::DT_FIFO => return Ok(FileType { mode: libc::S_IFIFO }),
+            libc::DT_LNK => return Ok(FileType { mode: libc::S_IFLNK }),
+            libc::DT_REG => return Ok(FileType { mode: libc::S_IFREG }),
+            libc::DT_SOCK => return Ok(FileType { mode: libc::S_IFSOCK }),
+            libc::DT_DIR => return Ok(FileType { mode: libc::S_IFDIR }),
+            libc::DT_BLK => return Ok(FileType { mode: libc::S_IFBLK }),
+            _ => {}
         }
+
+        // Fall back to loading the metadata.
+        self.metadata().map(|m| m.file_type())
     }
 
     pub fn ino(&self) -> u64 {

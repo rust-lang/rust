@@ -7,7 +7,7 @@ use crate::os::windows::io::{
 };
 use crate::path::Path;
 use crate::sys::api::{UnicodeStrRef, WinError};
-use crate::sys::fs::windows::debug_path_handle;
+use crate::sys::fs::windows::{ReparsePoint, debug_path_handle};
 use crate::sys::fs::{File, FileAttr, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::path::{WCStr, with_native_path};
@@ -78,7 +78,7 @@ impl Dir {
             return File::open(path, opts);
         }
         let path = to_u16s_without_nul(path)?;
-        self.open_file_native(&path, opts, false).map(|handle| File { handle })
+        self.open_file_native(&path, opts, /* dir */ false).map(|handle| File { handle })
     }
 
     pub fn remove_file(&self, path: &Path) -> io::Result<()> {
@@ -103,7 +103,7 @@ impl Dir {
 
     pub fn open_dir(&self, path: &Path, opts: &OpenOptions) -> io::Result<Self> {
         let path = to_u16s_without_nul(&path)?;
-        self.open_file_native(&path, &opts, true).map(|handle| Self { handle })
+        self.open_file_native(&path, &opts, /* dir */ true).map(|handle| Self { handle })
     }
 
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
@@ -222,6 +222,49 @@ impl Dir {
             handle: unsafe { Handle::from_raw_handle(handle) },
         });
         f.file_attr()
+    }
+
+    pub fn metadata_at(&self, path: &Path) -> io::Result<FileAttr> {
+        let path = to_u16s_without_nul(path)?;
+        // Same as the `stat` logic used for `fs::metadata`
+        match self.metadata_at_native(&path, ReparsePoint::Follow) {
+            Err(err) if err.raw_os_error() == Some(c::ERROR_CANT_ACCESS_FILE as i32) => {
+                // Fallback to opening reparse points when following fails. Needed for UNIX domain
+                // sockets. See <https://github.com/rust-lang/rust/issues/109106>.
+                if let Ok(attrs) = self.metadata_at_native(&path, ReparsePoint::Open) {
+                    if !attrs.file_type().is_symlink() {
+                        return Ok(attrs);
+                    }
+                }
+                Err(err)
+            }
+            result => result,
+        }
+    }
+
+    pub fn symlink_metadata_at(&self, path: &Path) -> io::Result<FileAttr> {
+        let path = to_u16s_without_nul(path)?;
+        self.metadata_at_native(&path, ReparsePoint::Open)
+    }
+
+    fn metadata_at_native(&self, path: &[u16], reparse: ReparsePoint) -> io::Result<FileAttr> {
+        let mut opts = OpenOptions::new();
+        // No read or write permissions are necessary
+        opts.access_mode(0);
+        opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | reparse.as_flag());
+
+        // Attempt to open the file normally.
+        // FIXME: `fs::metadata` has a fallback path when that fails. That has not (yet) been ported
+        // to directory handles.
+        let name = UnicodeStrRef::from_slice(path);
+        let object_attributes = c::OBJECT_ATTRIBUTES {
+            RootDirectory: self.handle.as_raw_handle(),
+            ObjectName: name.as_ptr().cast_mut(),
+            ..c::OBJECT_ATTRIBUTES::with_length()
+        };
+        let create_opt = 0; // We don't want to create anything, only open existing things.
+        let handle = unsafe { nt_create_file(&opts, &object_attributes, create_opt)? };
+        File { handle }.file_attr()
     }
 }
 
