@@ -1,4 +1,4 @@
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, Token};
+use rustc_ast::token::{self, Delimiter, IdentKind, NonterminalKind, Token};
 use rustc_ast::tokenstream::TokenStreamIter;
 use rustc_ast::{NodeId, tokenstream};
 use rustc_ast_pretty::pprust;
@@ -324,11 +324,14 @@ fn parse_tree<'a>(
 
                 // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate`
                 // special metavariable that names the crate of the invocation.
-                Some(tokenstream::TokenTree::Token(token, _)) if token.is_ident() => {
-                    let (ident, is_raw) = token.ident().unwrap();
+                Some(tokenstream::TokenTree::Token(token, _))
+                    if let Some((ident, kind)) = token.ident() =>
+                {
                     let span = ident.span.with_lo(dollar_span.lo());
-                    if ident.name == kw::Crate && matches!(is_raw, IdentIsRaw::No) {
-                        TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
+                    if let kw::Crate = ident.name
+                        && let IdentKind::Normal | IdentKind::ForcedKeyword = kind
+                    {
+                        TokenTree::token(token::Ident(kw::DollarCrate, kind), span)
                     } else {
                         TokenTree::MetaVar(span, ident)
                     }

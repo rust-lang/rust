@@ -2,7 +2,7 @@ use std::ops::Bound;
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::NtPatKind::*;
-use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token};
+use rustc_ast::token::{self, IdentKind, MetaVarKind, Token};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
@@ -353,7 +353,7 @@ impl<'a> Parser<'a> {
             matches!(
                 &token.uninterpolate().kind,
                 token::FatArrow // e.g. `a | => 0,`.
-                | token::Ident(kw::If, token::IdentIsRaw::No) // e.g. `a | if expr`.
+                | token::Ident(kw::If, token::IdentKind::Normal | token::IdentKind::ForcedKeyword) // e.g. `a | if expr`.
                 | token::Eq // e.g. `let a | = 0`.
                 | token::Semi // e.g. `let a |;`.
                 | token::Colon // e.g. `let a | :`.
@@ -801,8 +801,18 @@ impl<'a> Parser<'a> {
             } else {
                 PatKind::Expr(const_expr)
             }
-        } else if self.is_builtin() {
-            self.parse_pat_builtin()?
+        } else if self.token.is_forced_keyword(kw::Deref) {
+            self.bump();
+            self.expect(exp!(OpenParen))?;
+            let pat = ast::PatKind::Deref(Box::new(self.parse_pat_allow_top_guard(
+                None,
+                RecoverComma::Yes,
+                RecoverColon::Yes,
+                CommaRecoveryMode::LikelyTuple,
+            )?));
+            self.expect(exp!(CloseParen))?;
+            self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
+            pat
         }
         // Don't eagerly error on semantically invalid tokens when matching
         // declarative macros, as the input to those doesn't have to be
@@ -842,7 +852,7 @@ impl<'a> Parser<'a> {
                     None => PatKind::Path(qself, path),
                 }
             }
-        } else if let Some((lt, IdentIsRaw::No)) = self.token.lifetime()
+        } else if let Some((lt, IdentKind::Normal)) = self.token.lifetime()
             // In pattern position, we're totally fine with using "next token isn't colon"
             // as a heuristic. We could probably just always try to recover if it's a lifetime,
             // because we never have `'a: label {}` in a pattern position anyways, but it does
@@ -1606,23 +1616,6 @@ impl<'a> Parser<'a> {
             token::CloseParen,
         ]
         .contains(&self.token.kind)
-    }
-
-    fn parse_pat_builtin(&mut self) -> PResult<'a, PatKind> {
-        self.parse_builtin(|self_, _lo, ident| {
-            Ok(match ident.name {
-                // builtin#deref(PAT)
-                sym::deref => {
-                    Some(ast::PatKind::Deref(Box::new(self_.parse_pat_allow_top_guard(
-                        None,
-                        RecoverComma::Yes,
-                        RecoverColon::Yes,
-                        CommaRecoveryMode::LikelyTuple,
-                    )?)))
-                }
-                _ => None,
-            })
-        })
     }
 
     // FIXME: remove this entirely eventually

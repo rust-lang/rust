@@ -124,17 +124,22 @@ symbols! {
         // Matching predicates: `is_weak`
         // tidy-alphabetical-start
         Auto:               "auto",
-        Builtin:            "builtin",
         Catch:              "catch",
         ContractEnsures:    "contract_ensures",
         ContractRequires:   "contract_requires",
         Default:            "default",
+        Deref:              "deref",
+        FieldOf:            "field_of",
         MacroRules:         "macro_rules",
+        OffsetOf:           "offset_of",
         Pin:                "pin",
         Raw:                "raw",
         Reuse:              "reuse",
         Safe:               "safe",
+        TypeAscribe:        "type_ascribe",
         Union:              "union",
+        UnwrapBinder:       "unwrap_binder",
+        WrapBinder:         "wrap_binder",
         Yeet:               "yeet",
         // tidy-alphabetical-end
     }
@@ -575,7 +580,6 @@ symbols! {
         bridge,
         bswap,
         built,
-        builtin_syntax,
         bundle,
         c_dash_variadic,
         c_str_literals,
@@ -821,7 +825,6 @@ symbols! {
         deprecated,
         deprecated_safe,
         deprecated_suggestion,
-        deref,
         deref_method,
         deref_mut,
         deref_patterns,
@@ -983,7 +986,6 @@ symbols! {
         field,
         field_base,
         field_init_shorthand,
-        field_of,
         field_offset,
         field_projections,
         field_representing_type,
@@ -1027,6 +1029,7 @@ symbols! {
         forall,
         forbid,
         force_target_feature,
+        forced_keywords,
         forget,
         format_args,
         format_args_capture,
@@ -1165,6 +1168,7 @@ symbols! {
         internal,
         internal_eq_trait_method_impls,
         internal_features,
+        internal_syntax,
         interrupt,
         into_async_iter_into_iter,
         into_future,
@@ -1492,7 +1496,6 @@ symbols! {
         offload_get_num_devices,
         offload_kernel,
         offset,
-        offset_of,
         offset_of_enum,
         offset_of_nested,
         offset_of_slice,
@@ -2196,7 +2199,6 @@ symbols! {
         ty,
         type_alias_enum_variants,
         type_alias_impl_trait,
-        type_ascribe,
         type_ascription,
         type_changing_struct_update,
         type_id,
@@ -2320,7 +2322,6 @@ symbols! {
         unwind_attributes,
         unwind_safe_trait,
         unwrap,
-        unwrap_binder,
         unwrap_or,
         update,
         use_cloned,
@@ -2408,7 +2409,6 @@ symbols! {
         windows,
         windows_subsystem,
         with_negative_coherence,
-        wrap_binder,
         wrapping_add,
         wrapping_div,
         wrapping_mul,
@@ -2576,6 +2576,7 @@ impl fmt::Display for Ident {
 pub enum IdentPrintMode {
     Normal,
     RawIdent,
+    ForcedKeywordIdent,
     RawLifetime,
 }
 
@@ -2634,6 +2635,10 @@ impl fmt::Display for IdentPrinter {
             IdentPrintMode::Normal => self.symbol,
             IdentPrintMode::RawIdent => {
                 f.write_str("r#")?;
+                self.symbol
+            }
+            IdentPrintMode::ForcedKeywordIdent => {
+                f.write_str("k#")?;
                 self.symbol
             }
             IdentPrintMode::RawLifetime => {
@@ -3069,6 +3074,11 @@ impl Symbol {
     /// Returns `true` if this symbol can be a raw identifier.
     pub fn can_be_raw(self) -> bool {
         self != sym::empty && self != kw::Underscore && !self.is_path_segment_keyword()
+    }
+
+    /// Returns `true` if this symbol can be a forced keyword.
+    pub fn can_be_forced_keyword(self) -> bool {
+        self.is_reserved(|| Edition::EditionFuture) || self.is_weak()
     }
 
     /// Was this symbol index predefined in the compiler's `symbols!` macro?

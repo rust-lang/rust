@@ -126,11 +126,7 @@ impl<'a> Parser<'a> {
                 diagnostics::InvalidVariableDeclarationSub::UseLetNotVar,
                 force_collect,
             )?
-        } else if self.check_path()
-            && !self.token.is_qpath_start()
-            && !self.is_path_start_item()
-            && !self.is_builtin()
-        {
+        } else if self.check_path() && !self.token.is_qpath_start() && !self.is_path_start_item() {
             // We have avoided contextual keywords like `union`, items with `crate` visibility,
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
             // that starts like a path (1 token), but it fact not a path.
@@ -1020,7 +1016,7 @@ impl<'a> Parser<'a> {
                                 && self.look_ahead(1, |t| {
                                     t.is_metavar_block()
                                         || t.kind == token::OpenBrace
-                                        || t.is_non_raw_ident_where(|ident| {
+                                        || t.non_raw_ident().is_some_and(|ident| {
                                             matches!(ident.name, kw::For | kw::Loop | kw::While)
                                         })
                                 })
