@@ -23,6 +23,7 @@ use minicore::*;
 // Verifies ABI changes for small structs, where both fields fit into one register.
 // WITH is expected to use register return, WITHOUT should use hidden pointer.
 mod Small {
+    #[repr(C)]
     struct SmallStruct {
         a: i8,
         b: i8,
@@ -66,6 +67,7 @@ mod Small {
 // WITH is expected to still use register return, WITHOUT should use hidden
 // pointer.
 mod Pivot {
+    #[repr(C)]
     struct PivotStruct {
         a: i32,
         b: i32,
@@ -109,6 +111,7 @@ mod Pivot {
 // maximum size for reg-struct-return (8 bytes).
 // Here, the hidden pointer convention should be used even when `-Zreg-struct-return` is set.
 mod Large {
+    #[repr(C)]
     struct LargeStruct {
         a: i32,
         b: i32,
