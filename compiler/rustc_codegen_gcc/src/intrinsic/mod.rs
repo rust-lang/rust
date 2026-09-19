@@ -364,7 +364,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         sym::cttz_nonzero => {
                             self.count_trailing_zeroes_nonzero(width, args[0].immediate())
                         }
-                        sym::ctpop => self.pop_count(args[0].immediate()),
+                        sym::ctpop => self.ctpop(args[0].immediate()),
                         sym::bswap => {
                             if width == 8 {
                                 args[0].immediate() // byte swap a u8/i8 is just a no-op
@@ -679,6 +679,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
     fn expect(&mut self, cond: Self::Value, _expected: bool) -> Self::Value {
         // FIXME(antoyo)
         cond
+    }
+
+    fn ctpop(&mut self, val: Self::Value) -> Self::Value {
+        self.pop_count(val)
     }
 
     fn type_checked_load(
