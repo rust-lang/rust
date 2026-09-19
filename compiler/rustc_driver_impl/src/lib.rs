@@ -192,6 +192,8 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
     };
 
     let sopts = config::build_session_options(&mut default_early_dcx, &matches);
+    let _ = ICE_COLOR.set(sopts.color);
+
     // fully initialize ice path static once unstable options are available as context
     let ice_file = ice_path_with_config(Some(&sopts.unstable_opts)).clone();
 
@@ -1383,6 +1385,7 @@ pub fn catch_with_exit_code<T: Termination>(f: impl FnOnce() -> T) -> ExitCode {
     }
 }
 
+static ICE_COLOR: OnceLock<ColorConfig> = OnceLock::new();
 static ICE_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
 // This function should only be called from the ICE hook.
@@ -1529,9 +1532,10 @@ fn report_ice(
     extra_info: fn(DiagCtxtHandle<'_>),
     using_internal_features: &AtomicBool,
 ) {
+    let color = ICE_COLOR.get().copied().unwrap_or(ColorConfig::Auto);
     let emitter =
         Box::new(rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter::new(
-            stderr_destination(rustc_errors::ColorConfig::Auto),
+            stderr_destination(color),
         ));
     let dcx = DiagCtxt::new(emitter);
     let dcx = dcx.handle();
