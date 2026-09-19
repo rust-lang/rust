@@ -17,10 +17,6 @@ use libc::c_char;
     target_vendor = "apple",
 ))]
 use libc::dirfd;
-#[cfg(any(target_os = "fuchsia", target_os = "illumos", target_vendor = "apple"))]
-use libc::fstatat as fstatat64;
-#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
-use libc::fstatat64;
 use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
 use libc::{
@@ -1018,7 +1014,7 @@ impl DirEntry {
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
         cfg_select! {
-            // Use fstatat (or similar) where possible
+            // Use directory handle where possible
             all(
                 any(
                     all(target_os = "linux", not(target_env = "musl")),
@@ -1031,22 +1027,13 @@ impl DirEntry {
                 not(miri) // no dirfd on Miri
             ) => {
                 let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
-                let name = self.name.as_ptr();
 
-                cfg_has_statx! {
-                    if let Some(ret) = unsafe { try_statx(
-                        fd,
-                        name,
-                        libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
-                        libc::STATX_BASIC_STATS | libc::STATX_BTIME,
-                    ) } {
-                        return ret;
-                    }
-                }
+                // Make this FD into a directory handle. We don't actually drop it,
+                // so having an `OwnedFd` is fine.
+                let dir_handle =
+                    mem::ManuallyDrop::new(dir::Dir(unsafe { OwnedFd::from_raw_fd(fd) }));
 
-                let mut stat: stat64 = unsafe { mem::zeroed() };
-                cvt(unsafe { fstatat64(fd, name, &mut stat, libc::AT_SYMLINK_NOFOLLOW) })?;
-                Ok(FileAttr::from_stat64(stat))
+                dir_handle.metadata_at_c(&self.name, /* symlink_nofollow */ true)
             }
 
             // Fallback based on path
