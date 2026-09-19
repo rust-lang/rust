@@ -519,7 +519,8 @@ impl CStr {
     #[stable(feature = "cstr_count_bytes", since = "1.79.0")]
     #[rustc_const_stable(feature = "const_cstr_from_ptr", since = "1.81.0")]
     pub const fn count_bytes(&self) -> usize {
-        self.inner.len() - 1
+        // SAFETY: This length includes the nul-terminator, so it's at least one.
+        unsafe { self.inner.len().unchecked_sub(1) }
     }
 
     /// Returns `true` if `self.to_bytes()` has a length of 0.
