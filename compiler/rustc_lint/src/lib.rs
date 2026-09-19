@@ -697,7 +697,9 @@ fn register_builtins(store: &mut LintStore) {
     store.register_removed("soft_unstable", "the general soft-unstable mechanism has been removed");
     store.register_removed(
         "inline_always_mismatching_target_features",
-        "replaced by a hard error for `#[inline(always)]` with `#[target_feature]`",
+        "replaced by a hard error for `#[inline(always)]` with `#[target_feature]`. \
+        This was prior to LLVM23 where combining these could be unsound. See \
+        <https://github.com/rust-lang/rust/issues/145574> for more information",
     );
     store.register_removed(
         "repr_transparent_external_private_fields",
