@@ -3125,8 +3125,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     path_segments.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
                     let doc_visible = doc_visible
                         && (module_def_id.is_local() || !r.tcx.is_doc_hidden(module_def_id));
-                    let is_exact_match = module_def_id == def_id;
-                    if is_exact_match {
+                    if module_def_id == def_id {
                         let path = Path { span: name_binding.span, segments: path_segments };
                         result = Some((
                             r.expect_module(module_def_id),
@@ -3139,7 +3138,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 note: None,
                                 via_import: false,
                                 is_stable: true,
-                                is_exact_match,
+                                is_exact_match: module_def_id == def_id,
                             },
                         ));
                     } else {
