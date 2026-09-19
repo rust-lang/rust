@@ -3,6 +3,7 @@
 #![feature(const_c_variadic)]
 #![feature(const_destruct)]
 #![crate_type = "lib"]
+#![expect(invalid_c_variadic_arguments)]
 
 // Regression test for when a c-variadic argument is `PassMode::Ignore`. The caller won't pass the
 // argument, but the callee ABI does have the argument. Ensure that const-eval is able to handle
