@@ -25,8 +25,9 @@ use super::debuginfo::{
     DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIFile, DIFlags, DILocation, DISPFlags,
     DIScope, DISubprogram, DITemplateTypeParameter, DIType, DebugEmissionKind, DebugNameTableKind,
 };
+use crate::llvm;
 use crate::llvm::MetadataKindId;
-use crate::{TryFromU32, llvm};
+use crate::macros::TryFromU32;
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
