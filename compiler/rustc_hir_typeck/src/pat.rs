@@ -1914,9 +1914,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             last_subpat_span,
             format!("expected {} field{}, found {}", fields.len(), fields_ending, subpats.len()),
         );
-        if self.tcx.sess.source_map().is_multiline(qpath.span().between(last_subpat_span)) {
-            err.span_label(qpath.span(), "");
-        }
+        err.span_context(qpath.span());
         if self.tcx.sess.source_map().is_multiline(def_ident_span.between(last_field_def_span)) {
             err.span_label(def_ident_span, format!("{} defined here", res.descr()));
         }

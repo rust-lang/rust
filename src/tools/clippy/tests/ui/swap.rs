@@ -221,10 +221,22 @@ fn issue_8154() {
     s.0.y = t;
 }
 
-const fn issue_9864(mut u: u32) -> u32 {
+#[clippy::msrv = "1.84"]
+const fn const_swap_msrv_too_low(mut u: u32) -> u32 {
     let mut v = 10;
 
     let temp = u;
+    u = v;
+    v = temp;
+    u + v
+}
+
+#[clippy::msrv = "1.85"]
+const fn const_swap_msrv_met(mut u: u32) -> u32 {
+    let mut v = 10;
+
+    let temp = u;
+    //~^ manual_swap
     u = v;
     v = temp;
     u + v

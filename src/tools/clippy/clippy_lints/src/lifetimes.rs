@@ -4,13 +4,13 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::{is_from_proc_macro, trait_ref_of_method};
 use itertools::Itertools as _;
 use rustc_ast::visit::{try_visit, walk_list};
+use rustc_attr_ir::lang_items;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
-use rustc_hir::attrs::lang_items;
 use rustc_hir::intravisit::{
-    IgnoreNested, NestedFilter, Visitor, walk_fn_decl, walk_generic_args, walk_generic_param,
-    walk_generics, walk_impl_item_ref, walk_param_bound, walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty,
+    IgnoreNested, NestedFilter, Visitor, walk_fn_decl, walk_generic_args, walk_generic_param, walk_generics,
+    walk_impl_item_ref, walk_param_bound, walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty,
     walk_where_predicate,
 };
 use rustc_hir::{

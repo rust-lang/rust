@@ -36,6 +36,7 @@ fn baz<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
 
 #[cfg(oneuse)] // one instantiation: BAD
 fn baz<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
+    //[oneuse]~^ ERROR one or more lifetime errors
     let f = foo; // <-- No consistent type can be inferred for `f` here.
     let a = bar(f, x);
     //[oneuse]~^ ERROR lifetime may not live long enough
@@ -54,6 +55,7 @@ fn baz<'a, 'b>(x: Type<'a>) -> Type<'static> {
 
 #[cfg(krisskross)] // two instantiations, mixing and matching: BAD
 fn transmute<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
+    //[krisskross]~^ ERROR one or more lifetime errors
     let a = bar(foo, y);
     let b = bar(foo, x);
     (a, b)

@@ -115,6 +115,8 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_data_structures::{base_n, flock};
 use rustc_fs_util::{LinkOrCopy, link_or_copy, try_canonicalize};
+use rustc_middle::dep_graph::WorkProduct;
+use rustc_session::config::OutputType;
 use rustc_session::{IncrCompSession, Session, StableCrateId};
 use rustc_span::{Symbol, bug};
 use tracing::debug;
@@ -332,7 +334,31 @@ pub fn finalize_session_directory(
     let new_path = incr_comp_session_dir.parent().unwrap().join(&*sub_dir_name);
     debug!("finalize_session_directory() - new path: {}", new_path.display());
 
-    match rename_path_with_retry(&*incr_comp_session_dir, &new_path, 3) {
+    let result = std_fs::rename(&*incr_comp_session_dir, &new_path).or_else(|e| {
+        if !cfg!(windows) || e.kind() != ErrorKind::PermissionDenied {
+            return Err(e);
+        }
+
+        // On ReFS, renaming a directory that contains a hard link to the metadata workproduct file
+        // can fail if it is being used by another process (such as another rustc instance).
+        // As a fallback, we try to replace the hard link with a copy, which should allow the
+        // rename to succeed.
+        // See https://github.com/rust-lang/rust/issues/151181
+        if let Err(err) = replace_hard_link_with_copy(&in_incr_comp_dir_sess(
+            &incr_comp_session,
+            &format!(
+                "{}.{}",
+                WorkProduct::METADATA_WORKPRODUCT_CGU_NAME,
+                OutputType::Metadata.extension()
+            ),
+        )) {
+            debug!("finalize_session_directory() - error replacing hard link with copy: {}", err);
+        }
+
+        rename_path_with_retry(&*incr_comp_session_dir, &new_path, 3)
+    });
+
+    match result {
         Ok(_) => {
             debug!("finalize_session_directory() - directory renamed successfully");
         }
@@ -366,9 +392,8 @@ fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bo
     let lock_file_path = lock_file_path(source_dir);
 
     // not exclusive
-    let Ok(_lock) = flock::Lock::new(
+    let Ok(_lock) = flock::Lock::try_lock(
         &lock_file_path,
-        false, // don't wait,
         false, // don't create
         false,
     ) else {
@@ -451,10 +476,9 @@ fn lock_directory(sess: &Session, session_dir: &Path) -> (flock::Lock, PathBuf) 
     let lock_file_path = lock_file_path(session_dir);
     debug!("lock_directory() - lock_file: {}", lock_file_path.display());
 
-    match flock::Lock::new(
+    match flock::Lock::try_lock(
         &lock_file_path,
-        false, // don't wait
-        true,  // create the lock file
+        true, // create the lock file
         true,
     ) {
         // the lock should be exclusive
@@ -712,9 +736,8 @@ pub(crate) fn garbage_collect_session_directories(
 
             if is_finalized(directory_name) {
                 let lock_file_path = crate_directory.join(lock_file_name);
-                match flock::Lock::new(
+                match flock::Lock::try_lock(
                     &lock_file_path,
-                    false, // don't wait
                     false, // don't create the lock-file
                     true,
                 ) {
@@ -781,9 +804,8 @@ pub(crate) fn garbage_collect_session_directories(
                 // means that the owning process is still alive and we
                 // leave this directory alone.
                 let lock_file_path = crate_directory.join(lock_file_name);
-                match flock::Lock::new(
+                match flock::Lock::try_lock(
                     &lock_file_path,
-                    false, // don't wait
                     false, // don't create the lock-file
                     true,
                 ) {
@@ -892,4 +914,16 @@ fn rename_path_with_retry(from: &Path, to: &Path, mut retries_left: usize) -> st
             }
         }
     }
+}
+
+/// Turns a hard link of the file at `path` into a copy.
+fn replace_hard_link_with_copy(path: &Path) -> std::io::Result<()> {
+    let tmp_name = path.with_added_extension("tmp");
+
+    // In case a stale temporary file was linked from a previous failed attempt.
+    safe_remove_file(&tmp_name)?;
+
+    std_fs::copy(path, &tmp_name).and_then(|_| std_fs::rename(&tmp_name, path)).inspect_err(|_| {
+        let _ = safe_remove_file(&tmp_name);
+    })
 }

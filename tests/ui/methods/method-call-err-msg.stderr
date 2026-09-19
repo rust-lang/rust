@@ -50,14 +50,12 @@ LL |      .two(0, /* isize */);
 error[E0599]: `Foo` is not an iterator
   --> $DIR/method-call-err-msg.rs:19:7
    |
-LL |   pub struct Foo;
-   |   -------------- method `take` not found for this struct because it doesn't satisfy `Foo: Iterator`
+LL | pub struct Foo;
+   | -------------- method `take` not found for this struct because it doesn't satisfy `Foo: Iterator`
 ...
-LL | /     y.zero()
-LL | |      .take()
-   | |      -^^^^ `Foo` is not an iterator
-   | |______|
-   |
+LL |     y.zero()
+LL |      .take()
+   |       ^^^^ `Foo` is not an iterator
    |
    = note: the following trait bounds were not satisfied:
            `Foo: Iterator`

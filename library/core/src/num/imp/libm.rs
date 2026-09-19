@@ -33,6 +33,7 @@ unsafe extern "C" {
     pub(crate) safe fn fma(x: f64, y: f64, z: f64) -> f64;
     pub(crate) safe fn fmaf(x: f32, y: f32, z: f32) -> f32;
     pub(crate) safe fn fmaf128(x: f128, y: f128, z: f128) -> f128;
+    pub(crate) safe fn fmaf16(x: f16, y: f16, z: f16) -> f16;
     pub(crate) safe fn fmax(x: f64, y: f64) -> f64;
     pub(crate) safe fn fmaxf(x: f32, y: f32) -> f32;
     pub(crate) safe fn fmaxf128(x: f128, y: f128) -> f128;

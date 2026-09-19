@@ -95,7 +95,7 @@ to use these flags.
 
 <div class="warning">
 
-Never use the `-fpregs` *target-feature* with the `(arm|thumb)v7r-none-eabi` targets
+Never use the `-fpregs` *target-feature* with the `(arm|thumb)v7r-none-eabihf` targets
 as it will cause compilation units to have different ABIs, which is unsound.
 
 </div>

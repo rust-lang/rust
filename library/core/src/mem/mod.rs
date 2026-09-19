@@ -1243,6 +1243,13 @@ pub const unsafe fn transmute_prefix<Src, Dst>(src: Src) -> Dst {
 ///
 /// It will not be stabilized under this name.
 ///
+/// # Safety
+///
+/// Refer to [`transmute`] for safety requirements.
+/// This function is semantically identical to `transmute`.
+///
+/// [`transmute`]: crate::mem::transmute
+///
 /// # Examples
 ///
 /// ```

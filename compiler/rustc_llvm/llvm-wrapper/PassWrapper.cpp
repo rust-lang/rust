@@ -425,9 +425,11 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     }
   }
 
+#if LLVM_VERSION_LT(24, 0)
   if (Singlethread) {
     Options.ThreadModel = ThreadModel::Single;
   }
+#endif
 
   if (UseWasmEH)
     Options.ExceptionModel = ExceptionHandling::Wasm;
@@ -456,10 +458,11 @@ extern "C" void LLVMRustAddLibraryInfo(LLVMTargetMachineRef T,
     TLII.disableAllFunctions();
   unwrap(PMR)->add(new TargetLibraryInfoWrapperPass(TLII));
 #if LLVM_VERSION_GE(24, 0)
-  // LLVM 24 removed TargetOptions::EABIVersion; the EABI version is now
-  // derived from the target triple instead.
-  unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
-      Options->ExceptionModel, Options->MCOptions.ABIName, Options->VecLib));
+  // LLVM 24 removed TargetOptions::EABIVersion and ExceptionModel; the EABI
+  // version and exception model are now derived from the target triple and
+  // module flags respectively instead.
+  unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(Options->MCOptions.ABIName,
+                                                 Options->VecLib));
 #elif LLVM_VERSION_GE(22, 0)
   unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
       TargetTriple, Options->ExceptionModel, Options->FloatABIType,
