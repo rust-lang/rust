@@ -1,6 +1,4 @@
 //@ run-pass
-#![allow(dead_code)]
-#![allow(improper_ctypes)]
 
 #[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
