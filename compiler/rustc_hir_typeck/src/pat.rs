@@ -1227,7 +1227,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
 
             if let Some(span) = and_pat_span {
-                err.span_suggestion(
+                err.span_suggestion_short(
                     span,
                     "replace this `&` with `&mut`",
                     "&mut ",
