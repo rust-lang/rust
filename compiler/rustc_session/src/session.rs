@@ -1888,6 +1888,12 @@ impl EarlyDiagCtxt {
         self.dcx.handle().warn(msg)
     }
 
+    /// We should not be emitting notes during compiles, with the *only* exception of missing
+    /// `--crate` when calling `rustc` directly.
+    pub fn early_note_for_missing_crate_edition(&self, msg: impl Into<DiagMessage>) {
+        self.dcx.handle().note(msg)
+    }
+
     pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
         self.dcx.handle().struct_warn(msg)
     }
