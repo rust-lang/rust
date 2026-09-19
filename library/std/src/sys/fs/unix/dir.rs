@@ -7,10 +7,10 @@ cfg_select! {
         target_os = "android",
         target_os = "hurd",
     )) => {
-        use libc::{open as open64, openat as openat64};
+        use libc::{fstatat as fstatat64, open as open64, openat as openat64};
     }
     _ => {
-        use libc::{open64, openat64};
+        use libc::{fstatat64, open64, openat64};
     }
 }
 
@@ -36,7 +36,7 @@ const TRAVERSE_DIRECTORY: i32 =
         _ => libc::O_RDONLY,
     };
 
-pub struct Dir(OwnedFd);
+pub struct Dir(pub(super) OwnedFd);
 
 impl Dir {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<Self> {
@@ -150,7 +150,11 @@ impl Dir {
         cvt(unsafe { mkdirat(self.0.as_raw_fd(), path.as_ptr(), 0o777) }).map(|_| ())
     }
 
-    fn metadata_at_c(&self, path: &CStr, symlink_nofollow: bool) -> io::Result<FileAttr> {
+    pub(super) fn metadata_at_c(
+        &self,
+        path: &CStr,
+        symlink_nofollow: bool,
+    ) -> io::Result<FileAttr> {
         let fd = self.0.as_raw_fd();
         let flag = if symlink_nofollow { libc::AT_SYMLINK_NOFOLLOW } else { 0 };
 
@@ -166,7 +170,7 @@ impl Dir {
         }
 
         let mut stat: super::stat64 = unsafe { mem::zeroed() };
-        cvt(unsafe { super::fstatat64(fd, path.as_ptr(), &mut stat, flag) })?;
+        cvt(unsafe { fstatat64(fd, path.as_ptr(), &mut stat, flag) })?;
         Ok(FileAttr::from_stat64(stat))
     }
 }
