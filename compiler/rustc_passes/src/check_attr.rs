@@ -9,7 +9,7 @@ use std::cell::Cell;
 use std::slice;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::MetaItemKind;
+use rustc_attr_ir::lint::LintCheck;
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
@@ -137,13 +137,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             match attr {
                 Attribute::Parsed(attr_kind) => {
                     self.check_one_parsed_attribute(hir_id, span, target, item, attr_kind);
-                    self.check_unused_attribute(hir_id, attr);
                 }
                 Attribute::Unparsed(_) => {
                     match attr.path().as_slice() {
-                        // ok
-                        [sym::allow | sym::expect | sym::warn | sym::deny | sym::forbid, ..] => {}
-
                         [name, rest @ ..] => {
                             if BUILTIN_ATTRIBUTE_SET.contains(name) {
                                 if rest.len() > 0
@@ -165,8 +161,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
                         [] => unreachable!(),
                     }
-
-                    self.check_unused_attribute(hir_id, attr);
                 }
             }
         }
@@ -235,6 +229,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Linkage(_linkage, span) => {
                 self.check_linkage(*span, hir_id, target, item)
             }
+            AttributeKind::LintCheck(lints) => self.check_lint_check(hir_id, lints),
 
             // All of the following attributes have no specific checks.
             // tidy-alphabetical-start
@@ -1317,75 +1312,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_unused_attribute(&self, hir_id: HirId, attr: &Attribute) {
-        // Warn on useless empty attributes.
-        // FIXME(jdonszelmann): this lint should be moved to attribute parsing, see `AcceptContext::warn_empty_attribute`
-        let note =
-            if attr.has_any_name(&[sym::allow, sym::expect, sym::warn, sym::deny, sym::forbid])
-                && attr.meta_item_list().is_some_and(|list| list.is_empty())
-            {
-                diagnostics::UnusedNote::EmptyList { name: attr.name().unwrap() }
-            } else if attr.has_any_name(&[
-                sym::allow,
-                sym::warn,
-                sym::deny,
-                sym::forbid,
-                sym::expect,
-            ]) && let Some(meta) = attr.meta_item_list()
-                && let [meta] = meta.as_slice()
-                && let Some(item) = meta.meta_item()
-                && let MetaItemKind::NameValue(_) = &item.kind
-                && item.path == sym::reason
-            {
-                diagnostics::UnusedNote::NoLints { name: attr.name().unwrap() }
-            } else if attr.has_any_name(&[
-                sym::allow,
-                sym::warn,
-                sym::deny,
-                sym::forbid,
-                sym::expect,
-            ]) && let Some(meta) = attr.meta_item_list()
-                && meta.iter().any(|meta| {
-                    meta.meta_item().map_or(false, |item| {
-                        item.path == sym::linker_messages || item.path == sym::linker_info
-                    })
-                })
-            {
-                if hir_id != CRATE_HIR_ID {
-                    return;
-                } else {
-                    let never_needs_link = self
-                        .tcx
-                        .crate_types()
-                        .iter()
-                        .all(|kind| matches!(kind, CrateType::Rlib | CrateType::StaticLib));
-                    if never_needs_link {
-                        diagnostics::UnusedNote::LinkerMessagesBinaryCrateOnly
-                    } else {
-                        return;
-                    }
-                }
-            } else if hir_id == CRATE_HIR_ID
-                && attr.has_any_name(&[sym::allow, sym::warn, sym::deny, sym::forbid, sym::expect])
-                && let Some(meta) = attr.meta_item_list()
-                && meta.iter().any(|meta| {
-                    meta.meta_item().is_some_and(|item| item.path == sym::dead_code_pub_in_binary)
-                })
-                && !self.tcx.crate_types().contains(&CrateType::Executable)
-            {
-                diagnostics::UnusedNote::NoEffectDeadCodePubInBinary
-            } else {
-                return;
-            };
-
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr.span(),
-            diagnostics::Unused { attr_span: attr.span(), note },
-        );
-    }
-
     /// A best effort attempt to create an error for a mismatching proc macro signature.
     ///
     /// If this best effort goes wrong, it will just emit a worse error later (see #102923)
@@ -1584,6 +1510,46 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.tcx.dcx().emit_err(diagnostics::ConstFnLinkage { span });
             }
             _ => {}
+        }
+    }
+
+    fn check_lint_check(&self, hir_id: HirId, lints: &[LintCheck]) {
+        for LintCheck { name, span, .. } in lints {
+            match &**name {
+                [sym::dead_code_pub_in_binary] => {
+                    if !self.tcx.crate_types().contains(&CrateType::Executable) {
+                        self.tcx.emit_node_span_lint(
+                            UNUSED_ATTRIBUTES,
+                            hir_id,
+                            *span,
+                            diagnostics::Unused {
+                                attr_span: *span,
+                                note: diagnostics::UnusedNote::NoEffectDeadCodePubInBinary,
+                            },
+                        );
+                    }
+                }
+                [sym::linker_messages | sym::linker_info] => {
+                    if hir_id == CRATE_HIR_ID
+                        && self
+                            .tcx
+                            .crate_types()
+                            .iter()
+                            .all(|kind| matches!(kind, CrateType::Rlib | CrateType::StaticLib))
+                    {
+                        self.tcx.emit_node_span_lint(
+                            UNUSED_ATTRIBUTES,
+                            hir_id,
+                            *span,
+                            diagnostics::Unused {
+                                attr_span: *span,
+                                note: diagnostics::UnusedNote::LinkerMessagesBinaryCrateOnly,
+                            },
+                        );
+                    }
+                }
+                _ => {}
+            }
         }
     }
 }

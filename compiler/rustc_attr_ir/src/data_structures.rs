@@ -24,6 +24,7 @@ use thin_vec::ThinVec;
 pub use crate::canonical_symbols::{CanonicalSymbol, CanonicalSymbols};
 use crate::diagnostic::*;
 use crate::lang_items::LangItem;
+use crate::lint::LintCheck;
 use crate::pretty_printing::PrintAttribute;
 use crate::stability::{DefaultBodyStability, PartialConstStability, Stability};
 
@@ -932,6 +933,9 @@ pub enum AttributeKind {
 
     /// Represents `#[linkage]`.
     Linkage(Linkage, Span),
+
+    /// Represents `#[allow]`, `#[warn]`, `#[deny]`, `#[forbid]`, and `#[expect]`.
+    LintCheck(ThinVec<LintCheck>),
 
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
