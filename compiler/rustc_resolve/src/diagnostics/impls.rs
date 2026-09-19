@@ -122,7 +122,7 @@ pub(crate) struct ImportSuggestion {
     /// An extra note that should be issued if this item is suggested
     pub note: Option<String>,
     pub is_stable: bool,
-    pub is_exact_match: bool,
+    pub exact_matched: bool,
 }
 
 /// Adjust the impl span so that just the `impl` keyword is taken by removing
@@ -1754,7 +1754,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             note,
                             via_import,
                             is_stable,
-                            is_exact_match: ident.name == lookup_ident.name,
+                            exact_matched: ident.name == lookup_ident.name,
                         });
                     }
                 }
@@ -3965,7 +3965,7 @@ fn show_candidates(
                     c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
                     &c.note,
                     c.via_import,
-                    c.is_exact_match,
+                    c.exact_matched,
                 ))
             }
         } else {
@@ -3975,7 +3975,7 @@ fn show_candidates(
                 c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
                 &c.note,
                 c.via_import,
-                c.is_exact_match,
+                c.exact_matched,
             ))
         }
     });
