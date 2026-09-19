@@ -1,4 +1,4 @@
-use rustc_ast::token::{self, Delimiter, IdentIsRaw};
+use rustc_ast::token::{self, Delimiter, IdentKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::PrintState;
 use rustc_ast_pretty::pprust::state::State as Printer;
@@ -146,7 +146,7 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
                 (DollarParen, _) => (false, DollarParenSep),
                 (DollarParenSep, token::Plus | token::Star) => (false, Other),
                 (Pound, token::Bang) => (false, PoundBang),
-                (_, token::Ident(symbol, IdentIsRaw::No))
+                (_, token::Ident(symbol, IdentKind::Normal))
                     if !usually_needs_space_between_keyword_and_open_delim(*symbol, tt.span) =>
                 {
                     (true, Ident)

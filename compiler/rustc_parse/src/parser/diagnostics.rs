@@ -1,7 +1,7 @@
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
 
-use ast::token::IdentIsRaw;
+use ast::token::IdentKind;
 use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
     pub(super) fn expected_ident_found(
         &mut self,
         recover: bool,
-    ) -> PResult<'a, (Ident, IdentIsRaw)> {
+    ) -> PResult<'a, (Ident, IdentKind)> {
         let valid_follow = &[
             TokenKind::Eq,
             TokenKind::Colon,
@@ -228,11 +228,11 @@ impl<'a> Parser<'a> {
         let bad_token = self.token;
 
         // suggest prepending a keyword in identifier position with `r#`
-        let suggest_raw = if let Some((ident, IdentIsRaw::No)) = self.token.ident()
+        let suggest_raw = if let Some((ident, IdentKind::Normal)) = self.token.ident()
             && ident.is_raw_guess()
             && self.look_ahead(1, |t| valid_follow.contains(&t.kind))
         {
-            recovered_ident = Some((ident, IdentIsRaw::Yes));
+            recovered_ident = Some((ident, IdentKind::Raw));
 
             // `Symbol::to_string()` is different from `Symbol::into_diag_arg()`,
             // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
@@ -258,7 +258,7 @@ impl<'a> Parser<'a> {
         let help_cannot_start_number = self.is_lit_bad_ident().map(|(len, valid_portion)| {
             let (invalid, valid) = self.token.span.split_at(len as u32);
 
-            recovered_ident = Some((Ident::new(valid_portion, valid), IdentIsRaw::No));
+            recovered_ident = Some((Ident::new(valid_portion, valid), IdentKind::Normal));
 
             HelpIdentifierStartsWithNumber { num_span: invalid }
         });
@@ -277,7 +277,7 @@ impl<'a> Parser<'a> {
         if self.token == token::Lt {
             // Let's check if the previous token could denote the start of an item
             // whose kind can have generics.
-            if let Some((Ident { name, .. }, IdentIsRaw::No)) = self.prev_token.ident()
+            if let Some(Ident { name, .. }) = self.prev_token.non_raw_ident()
                 && let kw::Fn | kw::Type | kw::Struct | kw::Enum | kw::Union | kw::Trait = name
             {
                 match self.parse_generics() {
@@ -508,7 +508,7 @@ impl<'a> Parser<'a> {
             );
         }
 
-        if let Some((ident, IdentIsRaw::No)) = self.prev_token.ident()
+        if let Some(ident) = self.prev_token.non_raw_ident()
             && let "def" | "fun" | "func" | "function" = ident.name.as_str()
         {
             err.span_suggestion_short(
@@ -542,9 +542,9 @@ impl<'a> Parser<'a> {
         // positive for a `cr#` that wasn't intended to start a c-string literal, but identifying
         // that in the parser requires unbounded lookahead, so we only add a hint to the existing
         // error rather than replacing it entirely.
-        if ((self.prev_token == TokenKind::Ident(sym::character('c'), IdentIsRaw::No)
+        if ((self.prev_token == TokenKind::Ident(sym::character('c'), IdentKind::Normal)
             && matches!(&self.token.kind, TokenKind::Literal(token::Lit { kind: token::Str, .. })))
-            || (self.prev_token == TokenKind::Ident(sym::cr, IdentIsRaw::No)
+            || (self.prev_token == TokenKind::Ident(sym::cr, IdentKind::Normal)
                 && matches!(
                     &self.token.kind,
                     TokenKind::Literal(token::Lit { kind: token::Str, .. }) | token::Pound
