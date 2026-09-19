@@ -773,12 +773,12 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
         let mut end = self.len();
         while end > 1 {
             end -= 1;
+            let ptr = self.data.as_mut_ptr();
             // SAFETY: `end` goes from `self.len() - 1` to 1 (both included),
             //  so it's always a valid index to access.
             //  It is safe to access index 0 (i.e. `ptr`), because
             //  1 <= end < self.len(), which means self.len() >= 2.
             unsafe {
-                let ptr = self.data.as_mut_ptr();
                 ptr::swap(ptr, ptr.add(end));
             }
             // SAFETY: `end` goes from `self.len() - 1` to 1 (both included) so:
