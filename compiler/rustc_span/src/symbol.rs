@@ -1491,6 +1491,7 @@ symbols! {
         offload,
         offload_get_num_devices,
         offload_kernel,
+        offload_region,
         offset,
         offset_of,
         offset_of_enum,
