@@ -92,11 +92,17 @@ where
         let ty::OutlivesClause(ty, lt) = goal.predicate;
         let ty = self.normalize(GoalSource::Misc, goal.param_env, ty::Unnormalized::new_wip(ty))?;
 
-        if self.cx().assumptions_on_binders() {
-            use rustc_type_ir::region_constraint::RegionConstraint;
+        if self.cx().assumptions_on_binders_any() {
+            use rustc_type_ir::region_constraint::{
+                LeafRegionConstraint, RegionConstraint, destructure_type_outlives,
+            };
 
-            let constraint = self.destructure_type_outlives(ty, lt);
-            self.register_solver_region_constraint(RegionConstraint::new_from_or(constraint));
+            let constraint = if self.cx().assumptions_on_binders_min_coroutines() {
+                RegionConstraint::new_leaf(LeafRegionConstraint::TypeOutlives(ty, lt, ()))
+            } else {
+                RegionConstraint::new_from_or(destructure_type_outlives(self.cx(), ty, lt, ()))
+            };
+            self.register_solver_region_constraint(constraint);
         } else {
             self.register_ty_outlives(ty, lt);
         }
@@ -120,7 +126,7 @@ where
     ) -> QueryResultOrRerunNonErased<I> {
         let ty::OutlivesClause(a, b) = goal.predicate;
 
-        if self.cx().assumptions_on_binders() {
+        if self.cx().assumptions_on_binders_any() {
             use rustc_type_ir::region_constraint::{LeafRegionConstraint, RegionConstraint};
 
             let constraint =
