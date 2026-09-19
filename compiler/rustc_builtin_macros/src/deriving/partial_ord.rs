@@ -15,7 +15,7 @@ pub(crate) fn expand_deriving_partial_ord(
     is_const: bool,
 ) {
     let ordering_ty = Path(path_std!(cx, span, cmp::Ordering));
-    let ret_ty = Path(new_path(cx, span, pathvec!(option::Option), &[Box::new(ordering_ty)]));
+    let ret_ty = Path(new_path(cx, span, pathvec!(option::Option), &[ordering_ty]));
 
     // Order in which to perform matching
     let discr_then_data = if let ItemKind::Enum(_, _, def) = &item.kind {

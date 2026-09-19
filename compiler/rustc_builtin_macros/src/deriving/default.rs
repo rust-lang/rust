@@ -83,9 +83,7 @@ fn default_struct_substructure(
                 .iter()
                 .map(|field| {
                     let span = field.span.with_ctxt(trait_span.ctxt());
-                    let value = if let Some(extras) = &field.extras
-                        && let Some(default_val) = &extras.default
-                    {
+                    let value = if let Some(default_val) = field.default_value() {
                         // We use the field default const expression.
                         cx.expr(
                             default_val.value.span,

@@ -52,7 +52,7 @@ pub(crate) fn expand_deriving_from(
         Err(guar) => cx.ty(span, ast::TyKind::Err(guar)),
     });
 
-    let path = new_path(cx, span, pathvec!(convert::From), &[Box::new(from_type.clone())]);
+    let path = new_path(cx, span, pathvec!(convert::From), &[from_type.clone()]);
 
     // Generate code like this:
     //

@@ -9,12 +9,7 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, Symbol, kw};
 use thin_vec::ThinVec;
 
-pub(crate) fn new_path(
-    cx: &ExtCtxt<'_>,
-    span: Span,
-    path: &[Symbol],
-    params: &[Box<Ty>],
-) -> ast::Path {
+pub(crate) fn new_path(cx: &ExtCtxt<'_>, span: Span, path: &[Symbol], params: &[Ty]) -> ast::Path {
     let idents = path.iter().map(|s| Ident::new(*s, span));
     let tys = params.iter().map(|t| t.to_ty(cx, span));
     let params = tys.map(GenericArg::Type).collect();

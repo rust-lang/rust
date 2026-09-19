@@ -45,9 +45,6 @@ pub(crate) fn expand_deriving_debug(
 }
 
 fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
-    // We want to make sure we have the ctxt set so that we can use unstable methods
-    let span = cx.with_def_site_ctxt(span);
-
     let fmt_detail = cx.sess.opts.unstable_opts.fmt_debug;
     if fmt_detail == FmtDebug::None {
         return BlockOrExpr::new_expr(cx.expr_ok(span, cx.expr_tuple(span, ThinVec::new())));
@@ -85,13 +82,14 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> 
     // The number of fields that can be handled without an array.
     const CUTOFF: usize = 5;
 
-    let expr_for_field = |field: &FieldInfo, index: usize| -> Box<ast::Expr> {
-        if index < fields.len() - 1 {
-            field.self_expr.clone()
+    let len = fields.len();
+    let expr_for_field = |field: FieldInfo, index: usize| -> Box<ast::Expr> {
+        if index < len - 1 {
+            field.self_expr
         } else {
             // Unsized types need an extra indirection, but only the last field
             // may be unsized.
-            cx.expr_addr_of(field.span, field.self_expr.clone())
+            cx.expr_addr_of(field.span, field.self_expr)
         }
     };
 
@@ -111,8 +109,7 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> 
 
         let mut args = ThinVec::with_capacity(2 + fields.len() * args_per_field);
         args.extend([fmt, name]);
-        for i in 0..fields.len() {
-            let field = &fields[i];
+        for (i, field) in fields.into_iter().enumerate() {
             if is_struct {
                 let name = cx.expr_str(field.span, field.name.unwrap().name);
                 args.push(name);
@@ -128,8 +125,7 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> 
         let mut name_exprs = ThinVec::with_capacity(fields.len());
         let mut value_exprs = ThinVec::with_capacity(fields.len());
 
-        for i in 0..fields.len() {
-            let field = &fields[i];
+        for (i, field) in fields.into_iter().enumerate() {
             if is_struct {
                 name_exprs.push(cx.expr_str(field.span, field.name.unwrap().name));
             }

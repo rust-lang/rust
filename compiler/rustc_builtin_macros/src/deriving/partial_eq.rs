@@ -43,7 +43,7 @@ pub(crate) fn expand_deriving_partial_eq(
         generics: cx.empty_generics(span),
         explicit_self: true,
         nonself_args: smallvec![(self_ref(), sym::other)],
-        ret_ty: AstTy(cx.ty_path(cx.path_ident(span, Ident::new(sym::bool, span)))),
+        ret_ty: Path(cx.path_ident(span, Ident::new(sym::bool, span))),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(get_substructure_equality_expr),

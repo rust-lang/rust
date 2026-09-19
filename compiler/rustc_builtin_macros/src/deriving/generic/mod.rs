@@ -1404,12 +1404,12 @@ impl<'a> TraitDef<'a> {
             .map(|(i, struct_field)| {
                 // For this field, get an expr for each selflike_arg. E.g. for
                 // `PartialEq::eq`, one for each of `&self` and `other`.
-                let sp = struct_field.span.with_ctxt(self.span.ctxt());
-                let mut exprs: Vec<_> = mk_exprs(i, struct_field, sp);
+                let span = struct_field.span.with_ctxt(self.span.ctxt());
+                let mut exprs: Vec<_> = mk_exprs(i, struct_field, span);
                 let self_expr = exprs.remove(0);
                 debug_assert!(exprs.len() <= 1);
                 FieldInfo {
-                    span: sp.with_ctxt(self.span.ctxt()),
+                    span,
                     name: struct_field.ident,
                     self_expr,
                     other_selflike_expr: exprs.pop(),
