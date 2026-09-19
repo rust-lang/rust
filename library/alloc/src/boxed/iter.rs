@@ -77,6 +77,9 @@ impl<I: ExactSizeIterator + ?Sized, A: Allocator> ExactSizeIterator for Box<I, A
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<I: TrustedLen + ?Sized, A: Allocator> TrustedLen for Box<I, A> {}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator + ?Sized, A: Allocator> FusedIterator for Box<I, A> {}
 
