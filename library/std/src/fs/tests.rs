@@ -2727,6 +2727,19 @@ fn test_dir_read_file() {
 }
 
 #[test]
+fn test_dir_clone() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write_all(b"bar"));
+    drop(f);
+
+    let dir = check!(Dir::open(tmpdir.path()));
+    let dir2 = check!(dir.try_clone());
+    let f = check!(dir2.open_file("foo.txt"));
+    drop(f);
+}
+
+#[test]
 fn test_dir_metadata() {
     let tmpdir = tmpdir();
     let dir = check!(Dir::open(tmpdir.path()));
