@@ -948,7 +948,7 @@ impl<'a> Parser<'a> {
             }
         } else if self.token.is_keyword(kw::Const) {
             return self.recover_const_param_declaration(ty_generics);
-        } else {
+        } else if self.may_recover() {
             // Fall back by trying to parse a const-expr expression. If we successfully do so,
             // then we should report an error that it needs to be wrapped in braces.
             let snapshot = self.create_snapshot_for_diagnostic();
@@ -965,6 +965,8 @@ impl<'a> Parser<'a> {
                     return Ok(None);
                 }
             }
+        } else {
+            return Ok(None);
         };
 
         Ok(Some(arg))
