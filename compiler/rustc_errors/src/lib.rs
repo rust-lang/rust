@@ -1149,16 +1149,6 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     #[track_caller]
-    pub fn struct_help(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
-        Diag::new(self, Help, msg)
-    }
-
-    #[track_caller]
-    pub fn struct_failure_note(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
-        Diag::new(self, FailureNote, msg)
-    }
-
-    #[track_caller]
     pub fn struct_allow(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
         Diag::new(self, Allow, msg)
     }
@@ -1572,7 +1562,7 @@ impl DelayedDiagInner {
 /// | ForceWarning | -        | ()               | yes       | lint-only
 /// | Warning      | -        | ()               | yes       | yes
 /// | Note         | -        | ()               | rare      | -
-/// | Help         | -        | ()               | rare      | -
+/// | Help         | -        | ()               | don't use | -
 /// | FailureNote  | -        | ()               | rare      | -
 /// | Allow        | -        | ()               | yes       | lint-only
 /// | Expect       | -        | ()               | yes       | lint-only
@@ -1607,14 +1597,18 @@ pub enum Level {
     /// Will be skipped if `can_emit_warnings` is false.
     Warning,
 
-    /// A message giving additional context.
+    /// A rarely-used level for output that isn't an error or a warning.
     Note,
 
     /// A message suggesting how to fix something.
+    ///
+    /// FIXME(nnethercote) Do not use this! Currently only exists to support `proc_macro::Help`,
+    /// part of the unstable `proc_macro_diagnostic` feature (see #54140). Should be removed
+    /// because help messages are fine as subdiagnostics but are silly as top-level diagnostics.
     Help,
 
-    /// Similar to `Note`, but used in cases where compilation has failed. When printed for human
-    /// consumption, it doesn't have any kind of `note:` label.
+    /// Similar to `Note`, but even rarer. Lacks the a trailing blank line that all other
+    /// diagnostics have. Also, when printed for human consumption it doesn't have a `note:` label.
     FailureNote,
 
     /// Only used for lints.
@@ -1666,13 +1660,13 @@ pub enum Sublevel {
     /// See `Level::Warning`.
     Warning,
 
-    /// See `Level::Note`.
+    /// A message giving additional context.
     Note,
 
     /// A note that is only emitted once.
     OnceNote,
 
-    /// See `Level::Help`.
+    /// A message suggesting how to fix something.
     Help,
 
     /// A help that is only emitted once.

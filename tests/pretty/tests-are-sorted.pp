@@ -80,10 +80,10 @@ pub static a_test: test::TestDescAndFn =
                 test::assert_test_result(a_test())),
     };
 fn a_test() {}
+extern crate test;
 #[rustc_main]
 #[coverage(off)]
 #[doc(hidden)]
-pub fn main() -> () {
-    extern crate test;
+pub fn main() -> test::ExitCode {
     test::test_main_env_args(&[&a_test, &m_test, &z_test])
 }

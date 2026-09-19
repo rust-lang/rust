@@ -584,6 +584,25 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
+    if llvm_version >= (24, 0, 0) {
+        if sess.target.singlethread(&sess.internal_target_features) {
+            llvm::add_module_flag_str(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "thread-model",
+                "single",
+            );
+        }
+        if wants_wasm_eh(&sess.target) {
+            llvm::add_module_flag_str(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "exception-model",
+                "wasm",
+            );
+        }
+    }
+
     // Add module flags specified via -Z llvm_module_flag
     for (key, value, merge_behavior) in &sess.opts.unstable_opts.llvm_module_flag {
         let merge_behavior = match merge_behavior.as_str() {

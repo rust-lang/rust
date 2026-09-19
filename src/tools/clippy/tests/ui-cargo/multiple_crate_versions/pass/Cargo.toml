@@ -8,3 +8,6 @@ publish = false
 [dependencies]
 regex = "1.3.7"
 serde = "1.0.110"
+
+[lints.cargo]
+unused_dependencies = "allow"

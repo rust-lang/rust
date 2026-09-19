@@ -192,7 +192,7 @@ pub(crate) fn emit_drop_facts<'tcx>(
     debug!("emit_drop_facts(local={:?}, kind={:?}", local, kind);
     let Some(facts) = facts.as_mut() else { return };
     let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
-    tcx.for_each_free_region(kind, |drop_live_region| {
+    tcx.for_each_free_region(&kind, |drop_live_region| {
         let region_vid = universal_regions.to_region_vid(drop_live_region);
         facts.drop_of_var_derefs_origin.push((local, region_vid.into()));
     });

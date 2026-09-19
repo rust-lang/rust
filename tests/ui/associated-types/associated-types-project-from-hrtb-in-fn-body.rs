@@ -13,7 +13,7 @@ fn foo<'a, I : for<'x> Foo<&'x isize>>(
     let y: I::A = x;
 }
 
-fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>(
+fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>( //~ ERROR one or more lifetime errors
     x: <I as Foo<&'a isize>>::A,
     y: <I as Foo<&'b isize>>::A,
     cond: bool)

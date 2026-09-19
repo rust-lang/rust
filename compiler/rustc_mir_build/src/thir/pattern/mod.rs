@@ -635,9 +635,17 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         let ty = self.typeck_results.node_type(id);
         let res = self.typeck_results.qpath_res(qpath, id);
 
-        let (def_id, user_ty) = match res {
-            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
-                (def_id, self.typeck_results.user_provided_types().get(id))
+        let kind = match res {
+            Res::Def(DefKind::Const, def_id) => ty::AliasConstKind::Free { def_id },
+
+            Res::Def(DefKind::AssocConst, def_id) => {
+                if let DefKind::Impl { of_trait: false } =
+                    self.tcx.def_kind(self.tcx.parent(def_id))
+                {
+                    ty::AliasConstKind::InherentImpl { def_id }
+                } else {
+                    ty::AliasConstKind::Projection { def_id }
+                }
             }
 
             _ => {
@@ -649,26 +657,13 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
 
         // Lower the named constant to a THIR pattern.
         let args = self.typeck_results.node_args(id);
-        // FIXME(mgca): we will need to special case IACs here to have type system compatible
-        // generic args, instead of how we represent them in body expressions.
-        let c = ty::Const::new_alias(
-            self.tcx,
-            ty::IsRigid::No,
-            ty::AliasConst::new(
-                self.tcx,
-                ty::AliasConstKind::new_from_def_id(
-                    self.tcx,
-                    def_id,
-                    ty::AliasConstInherentArgsKind::Impl,
-                ),
-                args,
-            ),
-        );
+        let alias = ty::AliasConst::new(self.tcx, kind, args);
+        let c = ty::Const::new_alias(self.tcx, ty::IsRigid::No, alias);
         let mut pattern = self.const_to_pat(c, ty, id, span);
 
         // If this is an associated constant with an explicit user-written
         // type, add an ascription node (e.g. `<Foo<'a> as MyTrait>::CONST`).
-        if let Some(&user_ty) = user_ty {
+        if let Some(&user_ty) = self.typeck_results.user_provided_types().get(id) {
             let annotation = CanonicalUserTypeAnnotation {
                 user_ty: Box::new(user_ty),
                 span,

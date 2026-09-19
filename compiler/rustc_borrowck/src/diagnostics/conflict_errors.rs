@@ -1201,17 +1201,15 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 }
                 // Point at all the loops that are between this move and the parent item.
                 for span in loop_spans {
-                    spans.push_span_label(sm.guess_head_span(span), "");
+                    spans.push_span_context(sm.guess_head_span(span));
                 }
 
                 // note: verify that your loop breaking logic is correct
                 //   --> $DIR/nested-loop-moved-value-wrong-continue.rs:41:17
                 //    |
                 // 28 |     for foo in foos {
-                //    |     ---------------
                 // ...
                 // 33 |         for bar in &bars {
-                //    |         ----------------
                 // ...
                 // 41 |                 continue;
                 //    |                 ^^^^^^^^ this `continue` advances the loop at line 33

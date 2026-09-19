@@ -961,8 +961,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     tcx.require_lang_item(LangItem::Sized, ty_span),
                 );
                 check_where_clauses(wfcx, def_id);
-                wfcheck::check_const_item(wfcx, def_id, ty);
-                Ok(())
+                wfcheck::check_const_item(wfcx, def_id, ty)
             }));
 
             // Only `Node::Item` and `Node::ForeignItem` still have HIR based

@@ -290,3 +290,17 @@ fn is_local_assignment(mir: &Body<'_>, local: Local, location: Location) -> bool
         },
     }
 }
+
+/// Returns the basic block that is terminated with this function call.
+pub fn function_call_basic_block(body: &Body<'_>, fun: &Expr<'_>) -> Option<BasicBlock> {
+    body.basic_blocks.iter_enumerated().find_map(|(block, data)| {
+        if let Some(terminator) = data.terminator.as_ref()
+            && let TerminatorKind::Call { fn_span, .. } = terminator.kind
+            && fn_span.lo() == fun.span.lo()
+        {
+            Some(block)
+        } else {
+            None
+        }
+    })
+}

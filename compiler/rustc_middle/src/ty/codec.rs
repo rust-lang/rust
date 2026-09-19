@@ -323,57 +323,45 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for AdtDef<'tcx> {
     }
 }
 
-#[macro_export]
-macro_rules! __impl_decoder_methods {
-    ($($name:ident -> $ty:ty;)*) => {
-        $(
-            #[inline]
-            fn $name(&mut self) -> $ty {
-                self.opaque.$name()
-            }
-        )*
-    }
-}
+/// Declares implementations of all [`Decoder`](rustc_serialize::Decoder) methods,
+/// each of which forwards to a method of the same name on some underlying decoder,
+/// typically a field of type [`MemDecoder`](rustc_serialize::opaque::MemDecoder).
+///
+/// Call this macro within an impl block `impl Decoder for $MyDecoder { ... }`.
+pub macro forward_all_decoder_methods_to {
+    (
+        // Make the caller provide an explicit `self` (using closure syntax),
+        // so that `$inner:expr` can refer to `self` without violating hygiene.
+        //
+        // This isn't an actual closure, because it needs to work for both
+        // `&self` and `&mut self` methods.
+        |$self:ident| $inner:expr
+    ) => {
+        #[inline] fn read_usize(&mut $self) -> usize { $inner.read_usize() }
+        #[inline] fn read_u128 (&mut $self) -> u128  { $inner.read_u128()  }
+        #[inline] fn read_u64  (&mut $self) -> u64   { $inner.read_u64()   }
+        #[inline] fn read_u32  (&mut $self) -> u32   { $inner.read_u32()   }
+        #[inline] fn read_u16  (&mut $self) -> u16   { $inner.read_u16()   }
+        #[inline] fn read_u8   (&mut $self) -> u8    { $inner.read_u8()    }
+        #[inline] fn read_isize(&mut $self) -> isize { $inner.read_isize() }
+        #[inline] fn read_i128 (&mut $self) -> i128  { $inner.read_i128()  }
+        #[inline] fn read_i64  (&mut $self) -> i64   { $inner.read_i64()   }
+        #[inline] fn read_i32  (&mut $self) -> i32   { $inner.read_i32()   }
+        #[inline] fn read_i16  (&mut $self) -> i16   { $inner.read_i16()   }
 
-#[macro_export]
-macro_rules! implement_ty_decoder {
-    ($DecoderName:ident <$($typaram:tt),*>) => {
-        mod __ty_decoder_impl {
-            use rustc_serialize::Decoder;
+        #[inline]
+        fn read_raw_bytes(&mut $self, len: usize) -> &[u8] {
+            $inner.read_raw_bytes(len)
+        }
 
-            use super::$DecoderName;
+        #[inline]
+        fn peek_byte(&$self) -> u8 {
+            $inner.peek_byte()
+        }
 
-            impl<$($typaram ),*> Decoder for $DecoderName<$($typaram),*> {
-                $crate::__impl_decoder_methods! {
-                    read_usize -> usize;
-                    read_u128 -> u128;
-                    read_u64 -> u64;
-                    read_u32 -> u32;
-                    read_u16 -> u16;
-                    read_u8 -> u8;
-
-                    read_isize -> isize;
-                    read_i128 -> i128;
-                    read_i64 -> i64;
-                    read_i32 -> i32;
-                    read_i16 -> i16;
-                }
-
-                #[inline]
-                fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
-                    self.opaque.read_raw_bytes(len)
-                }
-
-                #[inline]
-                fn peek_byte(&self) -> u8 {
-                    self.opaque.peek_byte()
-                }
-
-                #[inline]
-                fn position(&self) -> usize {
-                    self.opaque.position()
-                }
-            }
+        #[inline]
+        fn position(&$self) -> usize {
+            $inner.position()
         }
     }
 }
