@@ -3,8 +3,8 @@ use std::mem;
 use crate::clean::*;
 
 pub(crate) fn strip_item(mut item: Item) -> Item {
-    if !matches!(item.inner.kind, StrippedItem(..)) {
-        item.inner.kind = StrippedItem(Box::new(item.inner.kind));
+    if !matches!(item.inner.kind, ItemKind::Stripped(..)) {
+        item.inner.kind = ItemKind::Stripped(Box::new(item.inner.kind));
     }
     item
 }
@@ -17,29 +17,29 @@ pub(crate) trait DocFolder: Sized {
     /// don't override!
     fn fold_inner_recur(&mut self, kind: ItemKind) -> ItemKind {
         match kind {
-            StrippedItem(..) => unreachable!(),
-            ModuleItem(i) => ModuleItem(self.fold_mod(i)),
-            StructItem(mut i) => {
+            ItemKind::Stripped(..) => unreachable!(),
+            ItemKind::Module(i) => ItemKind::Module(self.fold_mod(i)),
+            ItemKind::Struct(mut i) => {
                 i.fields = i.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                StructItem(i)
+                ItemKind::Struct(i)
             }
-            UnionItem(mut i) => {
+            ItemKind::Union(mut i) => {
                 i.fields = i.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                UnionItem(i)
+                ItemKind::Union(i)
             }
-            EnumItem(mut i) => {
+            ItemKind::Enum(mut i) => {
                 i.variants = i.variants.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                EnumItem(i)
+                ItemKind::Enum(i)
             }
-            TraitItem(mut i) => {
+            ItemKind::Trait(mut i) => {
                 i.items = i.items.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                TraitItem(i)
+                ItemKind::Trait(i)
             }
-            ImplItem(mut i) => {
+            ItemKind::Impl(mut i) => {
                 i.items = i.items.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                ImplItem(i)
+                ItemKind::Impl(i)
             }
-            VariantItem(Variant { kind, discriminant }) => {
+            ItemKind::Variant(Variant { kind, discriminant }) => {
                 let kind = match kind {
                     VariantKind::Struct(mut j) => {
                         j.fields = j.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
@@ -52,9 +52,9 @@ pub(crate) trait DocFolder: Sized {
                     VariantKind::CLike => VariantKind::CLike,
                 };
 
-                VariantItem(Variant { kind, discriminant })
+                ItemKind::Variant(Variant { kind, discriminant })
             }
-            TypeAliasItem(mut typealias) => {
+            ItemKind::TyAlias(mut typealias) => {
                 typealias.inner_type = typealias.inner_type.map(|inner_type| match inner_type {
                     TypeAliasInnerType::Enum { variants, is_non_exhaustive } => {
                         let variants = variants
@@ -74,38 +74,35 @@ pub(crate) trait DocFolder: Sized {
                     }
                 });
 
-                TypeAliasItem(typealias)
+                ItemKind::TyAlias(typealias)
             }
-            ExternCrateItem { src: _ }
-            | ImportItem(_)
-            | FunctionItem(_)
-            | StaticItem(_)
-            | ConstantItem(..)
-            | TraitAliasItem(_)
-            | RequiredMethodItem(..)
-            | MethodItem(..)
-            | StructFieldItem(_)
-            | ForeignFunctionItem(..)
-            | ForeignStaticItem(..)
-            | ForeignTypeItem
-            | MacroItem(..)
-            | ProcMacroItem(_)
-            | PrimitiveItem(_)
-            | RequiredAssocConstItem(..)
-            | ProvidedAssocConstItem(..)
-            | ImplAssocConstItem(..)
-            | RequiredAssocTypeItem(..)
-            | AssocTypeItem(..)
-            | KeywordItem
-            | AttributeItem
-            | PlaceholderImplItem => kind,
+            ItemKind::ExternCrate { src: _ }
+            | ItemKind::Import(_)
+            | ItemKind::Fn(_)
+            | ItemKind::Static(_)
+            | ItemKind::Const(..)
+            | ItemKind::TraitAlias(_)
+            | ItemKind::AssocFn(..)
+            | ItemKind::StructField(_)
+            | ItemKind::ForeignFn(..)
+            | ItemKind::ForeignStatic(..)
+            | ItemKind::ForeignTy
+            | ItemKind::DeclMacro(..)
+            | ItemKind::ProcMacro(_)
+            | ItemKind::Primitive(_)
+            | ItemKind::AssocConst(..)
+            | ItemKind::RequiredAssocTy(..)
+            | ItemKind::AssocTy(..)
+            | ItemKind::Keyword
+            | ItemKind::Attribute
+            | ItemKind::PlaceholderImpl => kind,
         }
     }
 
     /// don't override!
     fn fold_item_recur(&mut self, mut item: Item) -> Item {
         item.inner.kind = match item.inner.kind {
-            StrippedItem(i) => StrippedItem(Box::new(self.fold_inner_recur(*i))),
+            ItemKind::Stripped(i) => ItemKind::Stripped(Box::new(self.fold_inner_recur(*i))),
             _ => self.fold_inner_recur(item.inner.kind),
         };
         item

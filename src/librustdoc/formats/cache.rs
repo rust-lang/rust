@@ -9,7 +9,7 @@ use rustc_span::Symbol;
 use tracing::debug;
 
 use crate::clean::types::ExternalLocation;
-use crate::clean::{self, ExternalCrate, ItemId, PrimitiveType};
+use crate::clean::{self, ExternalCrate, ItemId, ItemKind, PrimitiveType};
 use crate::config::RenderOptions;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
@@ -311,7 +311,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
         // If this is a stripped module,
         // we don't want it or its children in the search index.
         let orig_stripped_mod = match item.kind {
-            clean::StrippedItem(clean::ModuleItem(..)) => {
+            ItemKind::Stripped(ItemKind::Module(..)) => {
                 mem::replace(&mut self.cache.stripped_mod, true)
             }
             _ => self.cache.stripped_mod,
@@ -326,7 +326,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
 
         // If the impl is from a masked crate or references something from a
         // masked crate then remove it completely.
-        if let clean::ImplItem(ref i) = item.kind
+        if let ItemKind::Impl(ref i) = item.kind
             && (self.cache.masked_crates.contains(&item.item_id.krate())
                 || i.trait_
                     .as_ref()
@@ -340,9 +340,9 @@ impl DocFolder for CacheBuilder<'_, '_> {
 
         // Propagate a trait method's documentation to all implementors of the
         // trait.
-        if let clean::TraitItem(ref t) = item.kind {
+        if let ItemKind::Trait(ref t) = item.kind {
             self.cache.traits.entry(item.item_id.expect_def_id()).or_insert_with(|| (**t).clone());
-        } else if let clean::ImplItem(ref i) = item.kind
+        } else if let ItemKind::Impl(ref i) = item.kind
             && let Some(trait_) = &i.trait_
             && !i.kind.is_blanket()
         {
@@ -357,7 +357,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
         // Index this method for searching later on.
         let search_name = if !item.is_stripped() {
             item.name.or_else(|| {
-                if let clean::ImportItem(ref i) = item.kind
+                if let ItemKind::Import(ref i) = item.kind
                     && let clean::ImportKind::Simple(s) = i.kind
                 {
                     Some(s)
@@ -382,23 +382,23 @@ impl DocFolder for CacheBuilder<'_, '_> {
         };
 
         match item.kind {
-            clean::StructItem(..)
-            | clean::EnumItem(..)
-            | clean::TypeAliasItem(..)
-            | clean::TraitItem(..)
-            | clean::TraitAliasItem(..)
-            | clean::FunctionItem(..)
-            | clean::ModuleItem(..)
-            | clean::ForeignFunctionItem(..)
-            | clean::ForeignStaticItem(..)
-            | clean::ConstantItem(..)
-            | clean::StaticItem(..)
-            | clean::UnionItem(..)
-            | clean::ForeignTypeItem
-            | clean::MacroItem(..)
-            | clean::ProcMacroItem(..)
-            | clean::VariantItem(..)
-            | clean::PrimitiveItem(..) => {
+            ItemKind::Struct(..)
+            | ItemKind::Enum(..)
+            | ItemKind::TyAlias(..)
+            | ItemKind::Trait(..)
+            | ItemKind::TraitAlias(..)
+            | ItemKind::Fn(..)
+            | ItemKind::Module(..)
+            | ItemKind::ForeignFn(..)
+            | ItemKind::ForeignStatic(..)
+            | ItemKind::Const(..)
+            | ItemKind::Static(..)
+            | ItemKind::Union(..)
+            | ItemKind::ForeignTy
+            | ItemKind::DeclMacro(..)
+            | ItemKind::ProcMacro(..)
+            | ItemKind::Variant(..)
+            | ItemKind::Primitive(..) => {
                 use rustc_data_structures::fx::IndexEntry as Entry;
 
                 let skip_because_unstable = matches!(
@@ -442,39 +442,36 @@ impl DocFolder for CacheBuilder<'_, '_> {
                 }
             }
 
-            clean::ExternCrateItem { .. }
-            | clean::ImportItem(..)
-            | clean::ImplItem(..)
-            | clean::RequiredMethodItem(..)
-            | clean::MethodItem(..)
-            | clean::StructFieldItem(..)
-            | clean::RequiredAssocConstItem(..)
-            | clean::ProvidedAssocConstItem(..)
-            | clean::ImplAssocConstItem(..)
-            | clean::RequiredAssocTypeItem(..)
-            | clean::AssocTypeItem(..)
-            | clean::StrippedItem(..)
-            | clean::KeywordItem
-            | clean::AttributeItem => {
+            ItemKind::ExternCrate { .. }
+            | ItemKind::Import(..)
+            | ItemKind::Impl(..)
+            | ItemKind::AssocFn(..)
+            | ItemKind::StructField(..)
+            | ItemKind::AssocConst(..)
+            | ItemKind::RequiredAssocTy(..)
+            | ItemKind::AssocTy(..)
+            | ItemKind::Stripped(..)
+            | ItemKind::Keyword
+            | ItemKind::Attribute => {
                 // FIXME: Do these need handling?
                 // The person writing this comment doesn't know.
                 // So would rather leave them to an expert,
                 // as at least the list is better than `_ => {}`.
             }
 
-            clean::PlaceholderImplItem => return None,
+            ItemKind::PlaceholderImpl => return None,
         }
 
         // Maintain the parent stack.
         let (item, parent_pushed) = match item.kind {
-            clean::TraitItem(..)
-            | clean::EnumItem(..)
-            | clean::ForeignTypeItem
-            | clean::StructItem(..)
-            | clean::UnionItem(..)
-            | clean::VariantItem(..)
-            | clean::TypeAliasItem(..)
-            | clean::ImplItem(..) => {
+            ItemKind::Trait(..)
+            | ItemKind::Enum(..)
+            | ItemKind::ForeignTy
+            | ItemKind::Struct(..)
+            | ItemKind::Union(..)
+            | ItemKind::Variant(..)
+            | ItemKind::TyAlias(..)
+            | ItemKind::Impl(..) => {
                 self.cache.parent_stack.push(ParentStackItem::new(&item));
                 (self.fold_item_recur(item), true)
             }
@@ -484,7 +481,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
         // Once we've recursively found all the generics, hoard off all the
         // implementations elsewhere.
         let ret =
-            if let clean::Item { inner: clean::ItemInner { kind: clean::ImplItem(ref i), .. } } =
+            if let clean::Item { inner: clean::ItemInner { kind: ItemKind::Impl(ref i), .. } } =
                 item
             {
                 // Figure out the id of this impl. This may map to a
@@ -549,20 +546,18 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     // Item has a name, so it must also have a DefId (can't be an impl, let alone a blanket or auto impl).
     let item_def_id = item.item_id.as_def_id().unwrap();
     let (parent_did, parent_path) = match item.kind {
-        clean::StrippedItem(..) => return,
-        clean::ProvidedAssocConstItem(..)
-        | clean::ImplAssocConstItem(..)
-        | clean::AssocTypeItem(..)
+        ItemKind::Stripped(..) => return,
+        ItemKind::AssocConst(clean::AssocConst { rhs: Some(_), .. }) | ItemKind::AssocTy(..)
             if cache.parent_stack.last().is_some_and(|parent| parent.is_trait_impl()) =>
         {
             // skip associated items in trait impls
             return;
         }
-        clean::RequiredMethodItem(..)
-        | clean::RequiredAssocConstItem(..)
-        | clean::RequiredAssocTypeItem(..)
-        | clean::StructFieldItem(..)
-        | clean::VariantItem(..) => {
+        ItemKind::AssocFn(_, None)
+        | ItemKind::AssocConst(clean::AssocConst { rhs: None, .. })
+        | ItemKind::RequiredAssocTy(..)
+        | ItemKind::StructField(..)
+        | ItemKind::Variant(..) => {
             // Don't index if containing module is stripped (i.e., private),
             // or if item is tuple struct/variant field (name is a number -> not useful for search).
             if cache.stripped_mod
@@ -576,10 +571,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             let parent_path = &cache.stack[..cache.stack.len() - 1];
             (Some(parent_did), parent_path)
         }
-        clean::MethodItem(..)
-        | clean::ProvidedAssocConstItem(..)
-        | clean::ImplAssocConstItem(..)
-        | clean::AssocTypeItem(..) => {
+        ItemKind::AssocFn(..) | ItemKind::AssocConst(..) | ItemKind::AssocTy(..) => {
             let last = cache.parent_stack.last().expect("parent_stack is empty 2");
             let parent_did = match last {
                 // impl Trait for &T { fn method(self); }
@@ -645,7 +637,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     // - It's got the same name
     // - Both of them have the same exact path
     let defid = match &item.kind {
-        clean::ItemKind::ImportItem(import) => import.source.did.unwrap_or(item_def_id),
+        ItemKind::Import(import) => import.source.did.unwrap_or(item_def_id),
         _ => item_def_id,
     };
     let (impl_id, trait_parent) = cache.parent_stack_last_impl_and_trait_id();
@@ -722,7 +714,7 @@ enum ParentStackItem {
 impl ParentStackItem {
     fn new(item: &clean::Item) -> Self {
         match &item.kind {
-            clean::ItemKind::ImplItem(clean::Impl { for_, trait_, generics, kind, .. }) => {
+            ItemKind::Impl(clean::Impl { for_, trait_, generics, kind, .. }) => {
                 ParentStackItem::Impl {
                     for_: for_.clone(),
                     trait_: trait_.clone(),

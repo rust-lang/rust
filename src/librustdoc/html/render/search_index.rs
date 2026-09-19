@@ -22,7 +22,7 @@ use rustc_span::symbol::{Symbol, kw};
 use stringdex::internals as stringdex_internals;
 use tracing::instrument;
 
-use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
+use crate::clean::types::{Function, Generics, ItemId, ItemKind, Type, WherePredicate};
 use crate::clean::{self, ExternalLocation, utils};
 use crate::config::ShouldMerge;
 use crate::error::Error;
@@ -2009,15 +2009,12 @@ pub(crate) fn get_function_type_for_search(
         }
     });
     let (mut inputs, mut output, param_names, where_clause) = match item.kind {
-        clean::ForeignFunctionItem(ref f, _)
-        | clean::FunctionItem(ref f)
-        | clean::MethodItem(ref f, _)
-        | clean::RequiredMethodItem(ref f, _) => {
+        ItemKind::ForeignFn(ref f, _) | ItemKind::Fn(ref f) | ItemKind::AssocFn(ref f, _) => {
             get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
         }
-        clean::ConstantItem(ref c) => make_nullary_fn(&c.type_),
-        clean::StaticItem(ref s) => make_nullary_fn(&s.type_),
-        clean::StructFieldItem(ref t) if let Some(parent) = parent => {
+        ItemKind::Const(ref c) => make_nullary_fn(&c.ty),
+        ItemKind::Static(ref s) => make_nullary_fn(&s.type_),
+        ItemKind::StructField(ref t) if let Some(parent) = parent => {
             let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> =
                 Default::default();
             let output = get_index_type(t, vec![], &mut rgen);
@@ -2338,8 +2335,7 @@ fn simplify_fn_type<'a, 'tcx>(
                 && trait_.items.iter().any(|at| at.is_required_associated_type())
             {
                 for assoc_ty in &trait_.items {
-                    if let clean::ItemKind::RequiredAssocTypeItem(_generics, bounds) =
-                        &assoc_ty.kind
+                    if let clean::ItemKind::RequiredAssocTy(_generics, bounds) = &assoc_ty.kind
                         && let Some(name) = assoc_ty.name
                     {
                         let idx = -isize::try_from(rgen.len() + 1).unwrap();

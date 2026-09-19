@@ -7,7 +7,7 @@ use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
 use crate::clean::utils::inherits_doc_hidden;
-use crate::clean::{self, Item, ItemIdSet, reexport_chain};
+use crate::clean::{self, Item, ItemIdSet, ItemKind, reexport_chain};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, strip_item};
 use crate::passes::ImplStripper;
@@ -85,7 +85,7 @@ impl DocFolder for Stripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         let has_doc_hidden = i.is_doc_hidden();
 
-        if let clean::ImportItem(clean::Import { source, .. }) = &i.kind
+        if let ItemKind::Import(clean::Import { source, .. }) = &i.kind
             && let Some(source_did) = source.did
         {
             if self.tcx.is_doc_hidden(source_did) {
@@ -106,10 +106,10 @@ impl DocFolder for Stripper<'_, '_> {
         }
 
         let is_impl_or_exported_macro = match i.kind {
-            clean::ImplItem(..) => true,
+            ItemKind::Impl(..) => true,
             // If the macro has the `#[macro_export]` attribute, it means it's accessible at the
             // crate level so it should be handled differently.
-            clean::MacroItem(..) => i.is_exported_macro(),
+            ItemKind::DeclMacro(..) => i.is_exported_macro(),
             _ => false,
         };
         let mut is_hidden = has_doc_hidden;
@@ -153,7 +153,7 @@ impl DocFolder for Stripper<'_, '_> {
         // not included in the final docs, but since they still have an effect
         // on the final doc, cannot be completely removed from the Clean IR.
         match i.kind {
-            clean::StructFieldItem(..) | clean::ModuleItem(..) | clean::VariantItem(..) => {
+            ItemKind::StructField(..) | ItemKind::Module(..) | ItemKind::Variant(..) => {
                 // We need to recurse into stripped modules to
                 // strip things like impl methods but when doing so
                 // we must not add any items to the `retained` set.

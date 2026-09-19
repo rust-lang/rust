@@ -44,7 +44,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let mut module = clean_doc_module(&module, cx);
 
     match module.kind {
-        ItemKind::ModuleItem(ref module) => {
+        ItemKind::Module(ref module) => {
             for it in &module.items {
                 // `compiler_builtins` should be masked too, but we can't apply
                 // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
@@ -68,20 +68,20 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let keywords = local_crate.keywords(cx.tcx);
     let documented_attributes = local_crate.documented_attributes(cx.tcx);
     {
-        let ItemKind::ModuleItem(m) = &mut module.inner.kind else { unreachable!() };
+        let ItemKind::Module(m) = &mut module.inner.kind else { unreachable!() };
         m.items.extend(primitives.map(|(def_id, prim)| {
             Item::from_def_id_and_parts(
                 def_id,
                 Some(prim.as_sym()),
-                ItemKind::PrimitiveItem(prim),
+                ItemKind::Primitive(prim),
                 cx.tcx,
             )
         }));
         m.items.extend(keywords.map(|(def_id, kw)| {
-            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem, cx.tcx)
+            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::Keyword, cx.tcx)
         }));
         m.items.extend(documented_attributes.into_iter().map(|(def_id, kw)| {
-            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::AttributeItem, cx.tcx)
+            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::Attribute, cx.tcx)
         }));
     }
 
@@ -277,7 +277,7 @@ pub(crate) fn build_deref_target_impls(
 
     for item in items {
         let target = match item.kind {
-            ItemKind::AssocTypeItem(ref t, _) => &t.type_,
+            ItemKind::AssocTy(ref t, _) => &t.type_,
             _ => continue,
         };
 

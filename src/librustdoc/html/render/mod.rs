@@ -65,7 +65,7 @@ use tracing::{debug, info};
 
 pub(crate) use self::context::*;
 pub(crate) use self::write_shared::*;
-use crate::clean::{self, Defaultness, Item, ItemId, RenderedLink};
+use crate::clean::{self, Defaultness, Item, ItemId, ItemKind, RenderedLink};
 use crate::display::{Joined as _, MaybeDisplay as _};
 use crate::error::Error;
 use crate::formats::Impl;
@@ -818,11 +818,11 @@ fn document_full_inner(
         }
 
         let kind = match &item.kind {
-            clean::ItemKind::StrippedItem(kind) => kind,
+            ItemKind::Stripped(kind) => kind,
             kind => kind,
         };
 
-        if let clean::ItemKind::FunctionItem(..) | clean::ItemKind::MethodItem(..) = kind {
+        if let ItemKind::Fn(..) | ItemKind::AssocFn(..) = kind {
             render_call_locations(f, cx, item)?;
         }
         Ok(())
@@ -1072,24 +1072,13 @@ fn assoc_href_attr(
     Some(fmt::from_fn(move |f| write!(f, " href=\"{href}\"")))
 }
 
-#[derive(Debug)]
-enum AssocConstValue<'a> {
-    // In trait definitions, it is relevant for the public API whether an
-    // associated constant comes with a default value, so even if we cannot
-    // render its value, the presence of a value must be shown using `= _`.
-    TraitDefault(&'a clean::ConstantKind),
-    // In impls, there is no need to show `= _`.
-    Impl(&'a clean::ConstantKind),
-    None,
-}
-
 fn assoc_const(
     it: &clean::Item,
-    generics: &clean::Generics,
-    ty: &clean::Type,
-    value: AssocConstValue<'_>,
+    ct: &clean::AssocConst,
+    parent: ItemType,
     link: AssocItemLink<'_>,
     indent: usize,
+    ending: Ending,
     cx: &Context<'_>,
 ) -> impl fmt::Display {
     let tcx = cx.tcx();
@@ -1102,22 +1091,23 @@ fn assoc_const(
             vis = visibility_print_with_space(it, cx),
             href = assoc_href_attr(it, link, cx).maybe_display(),
             name = it.name.as_ref().unwrap(),
-            generics = print_generics(generics, cx),
-            ty = print_type(ty, cx),
+            generics = print_generics(&ct.generics, cx),
+            ty = print_type(&ct.ty, cx),
         )?;
-        if let AssocConstValue::TraitDefault(konst) | AssocConstValue::Impl(konst) = value {
-            let repr = konst.expr(tcx);
-            if match value {
-                AssocConstValue::TraitDefault(_) => true, // always show
-                // FIXME: Comparing against the special string "_" denoting overly complex const exprs
-                //        is rather hacky; `ConstKind::expr` should have a richer return type.
-                AssocConstValue::Impl(_) => repr != "_", // show if there is a meaningful value to show
-                AssocConstValue::None => unreachable!(),
-            } {
+        if let Some(rhs) = &ct.rhs {
+            let repr = rhs.expr(tcx);
+            // In trait definitions, it is relevant for the public API whether an assoc const comes
+            // with a default value, so even if we cannot render its value, the presence of a value
+            // must be shown using `= _`. In impls, there is no need to show `= _`.
+            //
+            // FIXME: Comparing against the special string "_" (which denotes overly complex const
+            //        exprs) is rather hacky; `ConstantKind::expr` should have a richer return type.
+            if parent == ItemType::Trait || repr != "_" {
                 write!(w, " = {}", Escape(&repr))?;
             }
         }
-        write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline).maybe_display())
+        let where_clause = print_where_clause(&ct.generics, cx, indent, ending).maybe_display();
+        write!(w, "{where_clause}")
     })
 }
 
@@ -1128,6 +1118,7 @@ fn assoc_type(
     default: Option<&clean::Type>,
     link: AssocItemLink<'_>,
     indent: usize,
+    ending: Ending,
     cx: &Context<'_>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
@@ -1148,48 +1139,53 @@ fn assoc_type(
         if let Some(default) = default {
             write!(w, " = {}", print_type(default, cx))?;
         }
-        write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline).maybe_display())
+        write!(w, "{}", print_where_clause(generics, cx, indent, ending).maybe_display())
     })
 }
 
 fn assoc_method(
-    meth: &clean::Item,
-    g: &clean::Generics,
-    d: &clean::FnDecl,
+    it: &clean::Item,
+    fn_: &clean::Function,
+    body: Option<clean::Defaultness>,
     link: AssocItemLink<'_>,
-    parent: ItemType,
-    cx: &Context<'_>,
+    indent: usize,
+    ending: Ending,
     render_mode: RenderMode,
+    cx: &Context<'_>,
 ) -> impl fmt::Display {
     let tcx = cx.tcx();
-    let header = meth.fn_header(tcx).expect("Trying to get header from a non-function item");
-    let name = meth.name.as_ref().unwrap();
-    let vis = visibility_print_with_space(meth, cx).to_string();
-    let defaultness = match meth.defaultness().expect("Expected assoc method to have defaultness") {
-        Defaultness::Implicit => "",
-        Defaultness::Final => "final ",
-        Defaultness::Default => "default ",
+    let header = it.fn_header(tcx).expect("Trying to get header from a non-function item");
+    let name = it.name.as_ref().unwrap();
+    let vis = visibility_print_with_space(it, cx).to_string();
+    let defaultness = match body {
+        Some(Defaultness::Implicit) | None => "",
+        Some(Defaultness::Final) => "final ",
+        Some(Defaultness::Default) => "default ",
     };
     // FIXME: Once https://github.com/rust-lang/rust/issues/143874 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
         RenderMode::Normal => print_constness_with_space(
             &header.constness,
-            meth.stable_since(tcx),
-            meth.const_stability(tcx),
+            it.stable_since(tcx),
+            it.const_stability(tcx),
         ),
         RenderMode::ForDeref { .. } => "",
     };
 
     fmt::from_fn(move |w| {
+        let indent_str = " ".repeat(indent);
+        render_attributes_in_code(w, it, &indent_str, cx)?;
+
         let asyncness = header.asyncness.print_with_space();
         let safety = header.safety.print_with_space();
         let abi = print_abi_with_space(header.abi).to_string();
-        let href = assoc_href_attr(meth, link, cx).maybe_display();
+        let href = assoc_href_attr(it, link, cx).maybe_display();
 
         // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
-        let generics_len = format!("{:#}", print_generics(g, cx)).len();
-        let mut header_len = "fn ".len()
+        let generics_len = format!("{:#}", print_generics(&fn_.generics, cx)).len();
+        let header_len = indent
+            + "fn ".len()
             + vis.len()
             + defaultness.len()
             + constness.len()
@@ -1199,25 +1195,16 @@ fn assoc_method(
             + name.as_str().len()
             + generics_len;
 
-        let notable_traits = notable_traits_button(&d.output, cx).maybe_display();
+        let notable_traits = notable_traits_button(&fn_.decl.output, cx).maybe_display();
 
-        let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
-            header_len += 4;
-            let indent_str = "    ";
-            render_attributes_in_code(w, meth, indent_str, cx)?;
-            (4, indent_str, Ending::NoNewline)
-        } else {
-            render_attributes_in_code(w, meth, "", cx)?;
-            (0, "", Ending::Newline)
-        };
         write!(
             w,
             "{indent}{vis}{defaultness}{constness}{asyncness}{safety}{abi}fn \
             <a{href} class=\"fn\">{name}</a>{generics}{decl}{notable_traits}{where_clause}",
             indent = indent_str,
-            generics = print_generics(g, cx),
-            decl = full_print_fn_decl(d, header_len, indent, cx),
-            where_clause = print_where_clause(g, cx, indent, end_newline).maybe_display(),
+            generics = print_generics(&fn_.generics, cx),
+            decl = full_print_fn_decl(&fn_.decl, header_len, indent, cx),
+            where_clause = print_where_clause(&fn_.generics, cx, indent, ending).maybe_display(),
         )
     })
 }
@@ -1315,61 +1302,28 @@ fn render_assoc_item(
     item: &clean::Item,
     link: AssocItemLink<'_>,
     parent: ItemType,
-    cx: &Context<'_>,
+    indent: usize,
+    ending: Ending,
     render_mode: RenderMode,
+    cx: &Context<'_>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| match &item.kind {
-        clean::StrippedItem(..) => Ok(()),
-        clean::RequiredMethodItem(m, _) | clean::MethodItem(m, _) => {
-            assoc_method(item, &m.generics, &m.decl, link, parent, cx, render_mode).fmt(f)
+        ItemKind::Stripped(..) => Ok(()),
+        ItemKind::AssocFn(fn_, body) => {
+            assoc_method(item, fn_, *body, link, indent, ending, render_mode, cx).fmt(f)
         }
-        clean::RequiredAssocConstItem(generics, ty) => assoc_const(
-            item,
-            generics,
-            ty,
-            AssocConstValue::None,
-            link,
-            if parent == ItemType::Trait { 4 } else { 0 },
-            cx,
-        )
-        .fmt(f),
-        clean::ProvidedAssocConstItem(ci) => assoc_const(
-            item,
-            &ci.generics,
-            &ci.type_,
-            AssocConstValue::TraitDefault(&ci.kind),
-            link,
-            if parent == ItemType::Trait { 4 } else { 0 },
-            cx,
-        )
-        .fmt(f),
-        clean::ImplAssocConstItem(ci) => assoc_const(
-            item,
-            &ci.generics,
-            &ci.type_,
-            AssocConstValue::Impl(&ci.kind),
-            link,
-            if parent == ItemType::Trait { 4 } else { 0 },
-            cx,
-        )
-        .fmt(f),
-        clean::RequiredAssocTypeItem(generics, bounds) => assoc_type(
-            item,
-            generics,
-            bounds,
-            None,
-            link,
-            if parent == ItemType::Trait { 4 } else { 0 },
-            cx,
-        )
-        .fmt(f),
-        clean::AssocTypeItem(ty, bounds) => assoc_type(
+        ItemKind::AssocConst(ct) => assoc_const(item, ct, parent, link, indent, ending, cx).fmt(f),
+        ItemKind::RequiredAssocTy(generics, bounds) => {
+            assoc_type(item, generics, bounds, None, link, indent, ending, cx).fmt(f)
+        }
+        ItemKind::AssocTy(ty, bounds) => assoc_type(
             item,
             &ty.generics,
             bounds,
             Some(ty.item_type.as_ref().unwrap_or(&ty.type_)),
             link,
-            if parent == ItemType::Trait { 4 } else { 0 },
+            indent,
+            ending,
             cx,
         )
         .fmt(f),
@@ -1610,7 +1564,7 @@ fn render_deref_methods(
         .items
         .iter()
         .find_map(|item| match item.kind {
-            clean::AssocTypeItem(ref t, _) => Some(match *t {
+            ItemKind::AssocTy(ref t, _) => Some(match *t {
                 clean::TypeAlias { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),
@@ -1641,28 +1595,21 @@ fn render_deref_methods(
 }
 
 fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> bool {
-    let self_type_opt = match item.kind {
-        clean::MethodItem(ref method, _) => method.decl.receiver_type(),
-        clean::RequiredMethodItem(ref method, _) => method.decl.receiver_type(),
-        _ => None,
+    let ItemKind::AssocFn(item, _) = &item.kind else { return false };
+    let Some(self_ty) = item.decl.receiver_type() else { return false };
+
+    let (by_mut_ref, by_box, by_value) = match *self_ty {
+        clean::Type::BorrowedRef { mutability, .. } => {
+            (mutability == Mutability::Mut, false, false)
+        }
+        clean::Type::Path { ref path } => {
+            (false, Some(path.def_id()) == tcx.lang_items().owned_box(), false)
+        }
+        clean::Type::SelfTy => (false, false, true),
+        _ => (false, false, false),
     };
 
-    if let Some(self_ty) = self_type_opt {
-        let (by_mut_ref, by_box, by_value) = match *self_ty {
-            clean::Type::BorrowedRef { mutability, .. } => {
-                (mutability == Mutability::Mut, false, false)
-            }
-            clean::Type::Path { ref path } => {
-                (false, Some(path.def_id()) == tcx.lang_items().owned_box(), false)
-            }
-            clean::Type::SelfTy => (false, false, true),
-            _ => (false, false, false),
-        };
-
-        (deref_mut_ || !by_mut_ref) && !by_box && !by_value
-    } else {
-        false
-    }
+    (deref_mut_ || !by_mut_ref) && !by_box && !by_value
 }
 
 /// `Box` has pass-through impls for `Read`, `Write`, `Iterator`, and `Future` when the
@@ -1754,7 +1701,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
         for (impl_, trait_did) in notable_impls {
             write!(f, "<div class=\"where\">{}</div>", print_impl(impl_, false, cx))?;
             for it in &impl_.items {
-                let clean::AssocTypeItem(tydef, ..) = &it.kind else {
+                let ItemKind::AssocTy(tydef, ..) = &it.kind else {
                     continue;
                 };
 
@@ -1771,6 +1718,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                         Some(&tydef.type_),
                         src_link,
                         0,
+                        Ending::Newline,
                         cx,
                     )
                 )?;
@@ -1959,7 +1907,7 @@ fn render_impl(
                 deprecation_class = "";
             }
             match &item.kind {
-                clean::MethodItem(..) | clean::RequiredMethodItem(..) => {
+                ItemKind::AssocFn(..) => {
                     // Only render when the method is not static or we allow static methods
                     if render_method_item {
                         let id = cx.derive_id(format!("{item_type}.{name}"));
@@ -1988,40 +1936,15 @@ fn render_impl(
                                 item,
                                 link.anchor(source_id.as_ref().unwrap_or(&id)),
                                 ItemType::Impl,
-                                cx,
+                                0,
+                                Ending::Newline,
                                 render_mode,
+                                cx,
                             ),
                         )?;
                     }
                 }
-                clean::RequiredAssocConstItem(generics, ty) => {
-                    let source_id = format!("{item_type}.{name}");
-                    let id = cx.derive_id(&source_id);
-                    write!(
-                        w,
-                        "<section id=\"{id}\" class=\"{item_type}{in_trait_class}{deprecation_class}\">\
-                            {}",
-                        render_rightside(cx, item, render_mode)
-                    )?;
-                    if trait_.is_some() {
-                        // Anchors are only used on trait impls.
-                        write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>")?;
-                    }
-                    write!(
-                        w,
-                        "<h4 class=\"code-header\">{}</h4></section>",
-                        assoc_const(
-                            item,
-                            generics,
-                            ty,
-                            AssocConstValue::None,
-                            link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                            0,
-                            cx,
-                        ),
-                    )?;
-                }
-                clean::ProvidedAssocConstItem(ci) | clean::ImplAssocConstItem(ci) => {
+                ItemKind::AssocConst(ct) => {
                     let source_id = format!("{item_type}.{name}");
                     let id = cx.derive_id(&source_id);
                     write!(
@@ -2039,21 +1962,16 @@ fn render_impl(
                         "<h4 class=\"code-header\">{}</h4></section>",
                         assoc_const(
                             item,
-                            &ci.generics,
-                            &ci.type_,
-                            match item.kind {
-                                clean::ProvidedAssocConstItem(_) =>
-                                    AssocConstValue::TraitDefault(&ci.kind),
-                                clean::ImplAssocConstItem(_) => AssocConstValue::Impl(&ci.kind),
-                                _ => unreachable!(),
-                            },
+                            ct,
+                            ItemType::Impl,
                             link.anchor(if trait_.is_some() { &source_id } else { &id }),
                             0,
+                            Ending::Newline,
                             cx,
                         ),
                     )?;
                 }
-                clean::RequiredAssocTypeItem(generics, bounds) => {
+                ItemKind::RequiredAssocTy(generics, bounds) => {
                     let source_id = format!("{item_type}.{name}");
                     let id = cx.derive_id(&source_id);
                     write!(
@@ -2076,11 +1994,12 @@ fn render_impl(
                             None,
                             link.anchor(if trait_.is_some() { &source_id } else { &id }),
                             0,
+                            Ending::Newline,
                             cx,
                         ),
                     )?;
                 }
-                clean::AssocTypeItem(tydef, _bounds) => {
+                ItemKind::AssocTy(tydef, _bounds) => {
                     let source_id = format!("{item_type}.{name}");
                     let id = cx.derive_id(&source_id);
                     write!(
@@ -2103,11 +2022,12 @@ fn render_impl(
                             Some(tydef.item_type.as_ref().unwrap_or(&tydef.type_)),
                             link.anchor(if trait_.is_some() { &source_id } else { &id }),
                             0,
+                            Ending::Newline,
                             cx,
                         ),
                     )?;
                 }
-                clean::StrippedItem(..) => return Ok(()),
+                ItemKind::Stripped(..) => return Ok(()),
                 _ => panic!("can't make docs for trait item with name {:?}", item.name),
             }
 
@@ -2137,15 +2057,11 @@ fn render_impl(
         if !impl_.is_negative_trait_impl() {
             for impl_item in &impl_.items {
                 match impl_item.kind {
-                    clean::MethodItem(..) | clean::RequiredMethodItem(..) => {
-                        methods.push(impl_item)
-                    }
-                    clean::RequiredAssocTypeItem(..) | clean::AssocTypeItem(..) => {
+                    ItemKind::AssocFn(..) => methods.push(impl_item),
+                    ItemKind::RequiredAssocTy(..) | ItemKind::AssocTy(..) => {
                         assoc_types.push(impl_item)
                     }
-                    clean::RequiredAssocConstItem(..)
-                    | clean::ProvidedAssocConstItem(_)
-                    | clean::ImplAssocConstItem(_) => {
+                    ItemKind::AssocConst(_) => {
                         // We render it directly since they're supposed to come first.
                         doc_impl_item(
                             &mut default_impl_items,
@@ -2407,7 +2323,7 @@ fn render_impl_summary(
             write!(w, "{}", print_impl(inner_impl, use_absolute, cx))?;
             if show_def_docs {
                 for it in &inner_impl.items {
-                    if let clean::AssocTypeItem(ref tydef, ref _bounds) = it.kind {
+                    if let ItemKind::AssocTy(ref tydef, ref _bounds) = it.kind {
                         write!(
                             w,
                             "<div class=\"where\">  {};</div>",
@@ -2418,6 +2334,7 @@ fn render_impl_summary(
                                 Some(&tydef.type_),
                                 AssocItemLink::Anchor(None),
                                 0,
+                                Ending::Newline,
                                 cx,
                             )
                         )?;
@@ -2541,7 +2458,7 @@ fn get_id_for_impl(tcx: TyCtxt<'_>, impl_id: ItemId) -> String {
 
 fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
     match item.kind {
-        clean::ItemKind::ImplItem(ref i) if i.trait_.is_some() => {
+        clean::ItemKind::Impl(ref i) if i.trait_.is_some() => {
             // Alternative format produces no URLs,
             // so this parameter does nothing.
             Some((
