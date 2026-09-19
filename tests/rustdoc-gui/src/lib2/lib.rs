@@ -412,6 +412,7 @@ pub mod deprecated {
 }
 
 pub mod notable_trait_colors {
+    /// Top doc
     pub struct NotableTraitColors;
     #[doc(notable_trait(color="grey"))]
     pub trait Grey {}

@@ -30,7 +30,8 @@
             {% else %}
         {% endmatch %}
         {% if !notable_trait_badges.is_empty() %}
-            <div class="notable-trait-badge-container">
+            <div class="notable-trait-badge-container"> {# #}
+                <a class="tooltip" href="#" data-notable-ty="{{name}}">ⓘ</a>
                 {% for badge in notable_trait_badges.iter() %}
                     <a class="notable-trait-badge-{{badge.color}}"
                         {% if let Some(href) = badge.href %}href="{{href|safe}}" {%+ endif %}

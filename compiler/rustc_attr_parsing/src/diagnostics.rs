@@ -1033,14 +1033,6 @@ pub(crate) struct DocAttrNotCrateLevel {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#![doc({$attr_name} = \"...\")]` is only allowed as a trait attribute")]
-pub(crate) struct DocAttrTraitLevel {
-    #[primary_span]
-    pub span: Span,
-    pub attr_name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("nonexistent keyword `{$keyword}` used in `#[doc(keyword = \"...\")]`")]
 #[help("only existing keywords are allowed in core/std")]
 pub(crate) struct DocKeywordNotKeyword {
@@ -1056,6 +1048,17 @@ pub(crate) struct DocAttributeNotAttribute {
     #[primary_span]
     pub span: Span,
     pub attribute: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#![doc({$attr_name})]` must be a trait attribute")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct DocAttrNotTraitLevel {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: Symbol,
 }
 
 #[derive(Diagnostic)]

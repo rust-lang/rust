@@ -15,7 +15,7 @@ use super::{AcceptMapping, AttributeParser, template};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
     AttrCrateLevelOnly, DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed,
-    DocAliasStartEnd, DocAttrNotCrateLevel, DocAttrTraitLevel, DocAttributeNotAttribute,
+    DocAliasStartEnd, DocAttrNotCrateLevel, DocAttrNotTraitLevel, DocAttributeNotAttribute,
     DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
     DocAutoCfgHideShowNoIdentBeforeValues, DocAutoCfgHideShowUnexpectedItem,
     DocAutoCfgHideShowUnexpectedItemAfterValues, DocAutoCfgHideShowValuesMix,
@@ -110,20 +110,12 @@ fn parse_notable_trait(
             } else if let Some(meta_item) = meta_item_list_parser.as_single() {
                 Some(meta_item)
             } else {
-                cx.emit_lint(
-                    rustc_lint_defs::builtin::INVALID_DOC_ATTRIBUTES,
-                    InvalidNotableTraitAttr,
-                    span,
-                );
+                cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
                 return;
             }
         }
         ArgParser::NameValue(_) => {
-            cx.emit_lint(
-                rustc_lint_defs::builtin::INVALID_DOC_ATTRIBUTES,
-                InvalidNotableTraitAttr,
-                span,
-            );
+            cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
             return;
         }
     };
@@ -131,35 +123,19 @@ fn parse_notable_trait(
     let notable_trait_color_and_span =
         if let Some(notable_trait_color_attr) = notable_trait_color_attr {
             let Some(notable_trait_color_attr) = notable_trait_color_attr.meta_item() else {
-                cx.emit_lint(
-                    rustc_lint_defs::builtin::INVALID_DOC_ATTRIBUTES,
-                    InvalidNotableTraitAttr,
-                    span,
-                );
+                cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
                 return;
             };
             if !notable_trait_color_attr.path().word_is(sym::color) {
-                cx.emit_lint(
-                    rustc_lint_defs::builtin::INVALID_DOC_ATTRIBUTES,
-                    InvalidNotableTraitAttr,
-                    span,
-                );
+                cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
                 return;
             }
             let Some(notable_trait_color) = notable_trait_color_attr.args().as_name_value() else {
-                cx.emit_lint(
-                    rustc_lint_defs::builtin::INVALID_DOC_ATTRIBUTES,
-                    InvalidNotableTraitAttr,
-                    span,
-                );
+                cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
                 return;
             };
             let Some(notable_trait_color) = notable_trait_color.value_as_str() else {
-                cx.emit_lint(
-                    rustc_lint_defs::builtin::INVALID_DOC_ATTRIBUTES,
-                    InvalidNotableTraitAttr,
-                    span,
-                );
+                cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
                 return;
             };
             let notable_trait_color = match notable_trait_color.as_str() {
@@ -172,11 +148,7 @@ fn parse_notable_trait(
                 "cyan" => NotableTraitColor::Cyan,
                 "transparent" => NotableTraitColor::Transparent,
                 _ => {
-                    cx.emit_lint(
-                        rustc_lint_defs::builtin::INVALID_DOC_ATTRIBUTES,
-                        InvalidNotableTraitAttr,
-                        span,
-                    );
+                    cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
                     return;
                 }
             };
@@ -186,11 +158,7 @@ fn parse_notable_trait(
         };
 
     if cx.shared.target != Target::Trait {
-        cx.emit_lint(
-            rustc_lint_defs::builtin::INVALID_DOC_ATTRIBUTES,
-            DocAttrTraitLevel { span, attr_name },
-            span,
-        );
+        cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocAttrNotTraitLevel { span, attr_name }, span);
         return;
     }
 
@@ -728,7 +696,7 @@ impl DocParser {
                     &mut self.attribute.notable_trait,
                     sym::notable_trait,
                 )
-            },
+            }
             Some(sym::keyword) => {
                 gated!(rustdoc_internals);
                 parse_keyword_and_attribute(
