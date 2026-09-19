@@ -1,4 +1,5 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_index::IndexVec;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::RegionVid;
@@ -47,7 +48,7 @@ pub(super) struct LocalizedConstraintGraph {
     /// The logical edges representing the outlives constraints that hold at all points in the CFG,
     /// which we don't localize to avoid creating a lot of unnecessary edges in the graph. Some CFGs
     /// can be big, and we don't need to create such a physical edge for every point in the CFG.
-    logical_edges: FxHashMap<RegionVid, FxIndexSet<RegionVid>>,
+    logical_edges: IndexVec<RegionVid, Option<FxIndexSet<RegionVid>>>,
 }
 
 /// The visitor interface when traversing a `LocalizedConstraintGraph`.
@@ -68,14 +69,14 @@ impl LocalizedConstraintGraph {
         outlives_constraints: impl Iterator<Item = OutlivesConstraint<'tcx>>,
     ) -> Self {
         let mut edges: FxHashMap<_, FxIndexSet<_>> = FxHashMap::default();
-        let mut logical_edges: FxHashMap<_, FxIndexSet<_>> = FxHashMap::default();
+        let mut logical_edges: IndexVec<_, Option<FxIndexSet<_>>> = IndexVec::new();
 
         for outlives_constraint in outlives_constraints {
             match outlives_constraint.locations {
                 Locations::All(_) => {
                     logical_edges
-                        .entry(outlives_constraint.sup)
-                        .or_default()
+                        .ensure_contains_elem(outlives_constraint.sup, || None)
+                        .get_or_insert_with(FxIndexSet::default)
                         .insert(outlives_constraint.sub);
                 }
 
@@ -118,13 +119,10 @@ impl LocalizedConstraintGraph {
                 region: loan.region,
                 point: liveness.point_from_location(loan.reserve_location),
             };
+            visited.insert(start_node);
             stack.push(start_node);
 
             while let Some(node) = stack.pop() {
-                if !visited.insert(node) {
-                    continue;
-                }
-
                 // We've reached a node we haven't visited before.
                 let location = liveness.location_from_point(node.point);
                 visitor.on_node_traversed(loan_idx, node);
@@ -133,7 +131,7 @@ impl LocalizedConstraintGraph {
                 // - visit it eventually,
                 // - and let the generic visitor know about it.
                 let mut successor_found = |succ| {
-                    if !visited.contains(&succ) {
+                    if visited.insert(succ) {
                         stack.push(succ);
                         visitor.on_successor_discovered(node, succ);
                     }
@@ -228,7 +226,8 @@ impl LocalizedConstraintGraph {
                 }
 
                 // And finally, we have the logical edges, materialized at this point.
-                for &logical_succ in self.logical_edges.get(&node.region).into_flat_iter() {
+                let logical_succs = self.logical_edges.get(node.region);
+                for &logical_succ in logical_succs.into_flat_iter().flatten() {
                     let succ = LocalizedNode { region: logical_succ, point: node.point };
                     successor_found(succ);
                 }
