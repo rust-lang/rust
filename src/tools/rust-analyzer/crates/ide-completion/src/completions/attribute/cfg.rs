@@ -7,9 +7,14 @@ use syntax::{AstToken, Direction, NodeOrToken, SmolStr, SyntaxKind, algo, ast::I
 use crate::{CompletionItem, completions::Completions, context::CompletionContext};
 
 pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_, '_>) {
+    let token_range = if ctx.original_token.kind() == SyntaxKind::STRING {
+        ctx.original_token.text_range()
+    } else {
+        ctx.source_range()
+    };
     let add_completion = |item: &str| {
         let mut completion =
-            CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), item, ctx.edition);
+            CompletionItem::new(SymbolKind::BuiltinAttr, token_range, item, ctx.edition);
         completion.insert_text(format!(r#""{item}""#));
         completion.add_to(acc, ctx.db);
     };
@@ -42,12 +47,8 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_, '_
             name => ctx.krate.potential_cfg(ctx.db).get_cfg_values(name).for_each(|s| {
                 let s = s.as_str();
                 let insert_text = format!(r#""{s}""#);
-                let mut item = CompletionItem::new(
-                    SymbolKind::BuiltinAttr,
-                    ctx.source_range(),
-                    s,
-                    ctx.edition,
-                );
+                let mut item =
+                    CompletionItem::new(SymbolKind::BuiltinAttr, token_range, s, ctx.edition);
                 item.insert_text(insert_text);
                 item.add_to(acc, ctx.db);
             }),
@@ -70,12 +71,8 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_, '_
             .chain(CFG_CONDITION.iter().map(|&(k, snip)| (k, SmolStr::new_static(snip))))
             .unique_by(|&(s, _)| s)
             .for_each(|(s, snippet)| {
-                let mut item = CompletionItem::new(
-                    SymbolKind::BuiltinAttr,
-                    ctx.source_range(),
-                    s,
-                    ctx.edition,
-                );
+                let mut item =
+                    CompletionItem::new(SymbolKind::BuiltinAttr, token_range, s, ctx.edition);
                 if let Some(cap) = ctx.config.snippet_cap
                     && !snippet.is_empty()
                 {
