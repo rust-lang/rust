@@ -20,7 +20,7 @@ use rustc_hir::find_attr;
 use rustc_lint_defs::builtin::DEPRECATED_LLVM_INTRINSIC;
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::offload_meta::OffloadMetadata;
+use rustc_middle::ty::offload_meta::{OffloadMetadata, MappingFlags};
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, bug, span_bug, sym};
@@ -35,13 +35,17 @@ use tracing::debug;
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
-use crate::builder::gpu_offload::{self, OffloadKernelDims, declare_omp_get_num_devices};
+use crate::builder::gpu_offload::*;
+use crate::builder::gpu_offload::{
+    self, OffloadKernelDims, declare_omp_get_num_devices,
+};
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::diagnostics::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, IntrinsicWrongArch,
     OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
+use crate::intrinsic::ty::offload_meta::OffloadSize;
 use crate::intrinsic::ty::typetree::fnc_typetrees;
 use crate::llvm::{self, Attribute, AttributePlace, Type, Value};
 use crate::type_of::LayoutLlvmExt;
@@ -227,6 +231,16 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
             sym::autodiff => {
                 return codegen_autodiff(self, instance, args, result_layout, result_place);
+            }
+
+            sym::offload_preload => {
+                codegen_offload_preload(self, tcx, args, TransferType::Begin);
+                return IntrinsicResult::WroteIntoPlace;
+            }
+
+            sym::offload_preload_end => {
+                codegen_offload_preload(self, tcx, args, TransferType::End);
+                return IntrinsicResult::WroteIntoPlace;
             }
             sym::offload => {
                 if tcx.sess.opts.unstable_opts.offload.is_empty() {
@@ -1915,6 +1929,91 @@ fn codegen_autodiff<'ll, 'tcx>(
     )
 }
 
+// For each preload{_mut} *call*, we now use some of our previous declared globals to move data to the gpu.
+// For now, we only handle the data transfer part of it. Consecutive calls become a no-op on the
+// LLVM side.
+//
+// Current steps:
+// 0. Alloca some variables for the following steps
+// 1. set insert point before PreLoad call.
+// 2. generate all the GEPS and stores, to be used in 3)
+// 3. generate __tgt_target_data_begin calls to move data to the GPU
+//
+// unchanged: keep kernel call. Later move the kernel to the GPU
+//
+// 4. set insert point after kernel call.
+// 5. generate all the GEPS and stores, to be used in 6)
+// 6. generate __tgt_target_data_end calls to move data from the GPU
+fn codegen_offload_preload<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    args: &[OperandRef<'tcx, &'ll Value>],
+    transfer_type: TransferType,
+) {
+    let cx = bx.cx;
+    let ptr_arg = &args[0];
+
+    let pointee_ty = match *ptr_arg.layout.ty.kind() {
+        ty::RawPtr(pointee_ty, _) => pointee_ty,
+        _ => bug!("expected raw pointer argument"),
+    };
+
+    let ptr = match ptr_arg.val {
+        OperandValue::Immediate(ptr) => ptr,
+        _ => bug!("not handled"),
+    };
+
+    let args = vec![ptr];
+
+    let meta = OffloadMetadata::from_ty(tcx, ptr_arg.layout.ty);
+    let metadata = &[meta];
+    let types = cx.layout_of(pointee_ty).llvm_type(cx);
+
+    let offload_globals_ref = cx.offload_globals.borrow();
+    let offload_globals = match offload_globals_ref.as_ref() {
+        Some(globals) => globals,
+        None => {
+            // Offload is not initialized, cannot continue
+            return;
+        }
+    };
+
+    let target_symbol = cx.generate_local_symbol_name("");
+    let offload_data =
+        gen_define_handling(&cx, metadata, target_symbol, offload_globals, transfer_type);
+    let (b,c) = match transfer_type {
+        TransferType::Begin => (offload_data.memtransfer_begin, offload_globals.begin_mapper),
+        TransferType::End => (offload_data.memtransfer_end, offload_globals.end_mapper),
+        // logic bug
+        TransferType::Kernel => bug!("Kernel transfer type is not valid for preload"),
+    };
+    let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
+    let (ty, ty2, a1, a2, a4) = crate::builder::gpu_helper::preper_datatransfers(
+        bx,
+        &args,
+        &[types],
+        offload_data.offload_sizes,
+        metadata,
+        has_dynamic,
+    );
+    let geps = crate::builder::gpu_helper::get_geps(bx, ty, ty2, a1, a2, a4, has_dynamic);
+
+    crate::builder::gpu_helper::generate_mapper_call(
+        bx,
+        geps,
+        b,c,
+        offload_globals.mapper_fn_ty,
+        1,
+        offload_globals.ident_t_global,
+    );
+}
+
+pub(crate) enum TransferType {
+    Begin,
+    Kernel,
+    End,
+}
+
 // Generates the LLVM code to offload a Rust function to a target device (e.g., GPU).
 // For each kernel call, it generates the necessary globals (including metadata such as
 // size and pass mode), manages memory mapping to and from the device, handles all
@@ -1986,7 +2085,7 @@ fn codegen_offload<'ll, 'tcx>(
         }
     };
     let offload_data =
-        gpu_offload::gen_define_handling(&cx, &metadata, target_symbol, offload_globals);
+        gen_define_handling(&cx, &metadata, target_symbol, offload_globals, TransferType::Kernel);
     gpu_offload::gen_call_handling(
         bx,
         &offload_data,
