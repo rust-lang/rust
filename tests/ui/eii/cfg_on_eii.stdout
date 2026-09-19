@@ -1,6 +1,5 @@
 #![attr = Feature([extern_item_impls#0])]
-#![attr = LintCheck([LintCheck {name: ["deprecated"], attr_index: 0,
-lint_index: 0, kind: Deny}])]
+#![attr = LintCheck([LintCheck {name: ["deprecated"], kind: Deny}])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;

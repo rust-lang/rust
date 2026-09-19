@@ -1,8 +1,7 @@
 #![attr = Feature([min_generic_const_args#0, macroless_generic_const_args#0,
 adt_const_params#0])]
-#![attr = LintCheck([LintCheck {name: ["incomplete_features"], attr_index: 0,
-lint_index: 0, kind: Expect}, LintCheck {name: ["dead_code"], attr_index: 1,
-lint_index: 0, kind: Allow}])]
+#![attr = LintCheck([LintCheck {name: ["incomplete_features"], kind: Expect},
+LintCheck {name: ["dead_code"], kind: Allow}])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;

@@ -230,12 +230,7 @@ pub trait LintLevelsProvider {
 
     fn push_expectation(&mut self, id: Self::LintExpectationId, expectation: LintExpectation);
 
-    fn mk_lint_expectation_id(
-        &self,
-        attr_id: AttrId,
-        attr_index: u16,
-        lint_index: u16,
-    ) -> Self::LintExpectationId;
+    fn mk_lint_expectation_id(&self, attr_id: AttrId, lint_index: u16) -> Self::LintExpectationId;
 }
 
 impl LintLevelsProvider for TopDown {
@@ -255,12 +250,7 @@ impl LintLevelsProvider for TopDown {
 
     fn push_expectation(&mut self, _: Self::LintExpectationId, _: LintExpectation) {}
 
-    fn mk_lint_expectation_id(
-        &self,
-        attr_id: AttrId,
-        _attr_index: u16,
-        lint_index: u16,
-    ) -> Self::LintExpectationId {
+    fn mk_lint_expectation_id(&self, attr_id: AttrId, lint_index: u16) -> Self::LintExpectationId {
         UnstableLintExpectationId { attr_id, lint_index }
     }
 }
@@ -293,13 +283,8 @@ impl LintLevelsProvider for LintLevelQueryMap<'_> {
         self.specs.expectations.push((id, expectation))
     }
 
-    fn mk_lint_expectation_id(
-        &self,
-        _attr_id: AttrId,
-        attr_index: u16,
-        lint_index: u16,
-    ) -> Self::LintExpectationId {
-        StableLintExpectationId { hir_id: self.cur, attr_index, lint_index }
+    fn mk_lint_expectation_id(&self, _attr_id: AttrId, lint_index: u16) -> Self::LintExpectationId {
+        StableLintExpectationId { hir_id: self.cur, lint_index }
     }
 }
 
@@ -763,17 +748,8 @@ where
 
         let sess = self.sess;
 
-        for lint_check in lint_checks {
-            let LintCheck {
-                mut name,
-                span: sp,
-                attr_index,
-                lint_index,
-                kind,
-                reason,
-                attr_id,
-                attr_span: _,
-            } = lint_check;
+        for (lint_index, lint_check) in lint_checks.into_iter().enumerate() {
+            let LintCheck { mut name, span: sp, kind, reason, attr_id, attr_span: _ } = lint_check;
 
             let level = match kind {
                 LintCheckKind::Allow => Level::Allow,
@@ -785,9 +761,8 @@ where
 
             // `Expect` is the only lint level with a `LintExpectationId` that can be created
             // from an attribute.
-            let lint_id = (level == Level::Expect).then(|| {
-                self.provider.mk_lint_expectation_id(attr_id.attr_id, attr_index, lint_index)
-            });
+            let lint_id = (level == Level::Expect)
+                .then(|| self.provider.mk_lint_expectation_id(attr_id.attr_id, lint_index as u16));
 
             let tool_name = if name.len() > 1 { Some(name.remove(0)) } else { None };
 
