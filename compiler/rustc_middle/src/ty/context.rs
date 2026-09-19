@@ -69,11 +69,11 @@ use crate::traits::solve::{
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, ClausePolarity, Clauses, Const, FnSigKind,
-    GenericArg, GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo,
-    ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate,
-    PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, ValTree,
-    ValTreeKind, Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, ClausePolarity, Clauses, Const, ConstKind,
+    FnSigKind, GenericArg, GenericArgs, GenericArgsRef, GenericParamDefKind, List,
+    ListWithCachedTypeInfo, ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig,
+    Predicate, PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind,
+    TyVid, ValTree, ValTreeKind, Visibility,
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
@@ -1711,7 +1711,6 @@ macro_rules! nop_list_lift {
 }
 
 nop_lift! { type_; Ty<'a> => Ty<'tcx> }
-nop_lift! { const_; Const<'a> => Const<'tcx> }
 nop_lift! { pat; Pattern<'a> => Pattern<'tcx> }
 nop_lift! { const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx> }
 nop_lift! { predicate; Predicate<'a> => Predicate<'tcx> }
@@ -1725,6 +1724,19 @@ impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Interned<'a, RegionKind<'a>> {
     #[track_caller]
     fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
         assert!(tcx.interners.region.contains_pointer_to(&InternedInSet(&*self.0)));
+        // SAFETY: we just checked that `self` is interned in this `TyCtxt`, so
+        // its pointee is valid for the entire lifetime of the target `TyCtxt`.
+        unsafe { mem::transmute(self) }
+    }
+}
+
+// FIXME: unclear why exactly the macro doesn't work.
+impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Interned<'a, WithCachedTypeInfo<ConstKind<'a>>> {
+    type Lifted = Interned<'tcx, WithCachedTypeInfo<ConstKind<'tcx>>>;
+
+    #[track_caller]
+    fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
+        assert!(tcx.interners.const_.contains_pointer_to(&InternedInSet(&*self.0)));
         // SAFETY: we just checked that `self` is interned in this `TyCtxt`, so
         // its pointee is valid for the entire lifetime of the target `TyCtxt`.
         unsafe { mem::transmute(self) }
