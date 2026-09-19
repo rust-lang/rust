@@ -1740,3 +1740,14 @@ pub(crate) enum UnusedImportsSugg {
         num_to_remove: usize,
     },
 }
+
+#[derive(Diagnostic)]
+#[diag("attribute macro `{$attr_path}` is ambiguous")]
+#[note("ambiguous because of a name conflict with a tool namespace")]
+#[note("`{$tool}` could refer to a tool namespace")]
+pub(crate) struct ToolAttrAmbiguity {
+    #[primary_span]
+    pub path_span: Span,
+    pub attr_path: String,
+    pub tool: Symbol,
+}
