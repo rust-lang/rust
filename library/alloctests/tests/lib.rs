@@ -53,6 +53,7 @@
 #![feature(test)]
 #![feature(thin_box)]
 #![feature(titlecase)]
+#![feature(trivial_clone)]
 #![feature(trusted_len)]
 #![feature(try_reserve_kind)]
 #![feature(try_with_capacity)]

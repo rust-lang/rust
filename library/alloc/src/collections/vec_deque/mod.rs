@@ -119,17 +119,78 @@ pub struct VecDeque<
 impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
     fn clone(&self) -> Self {
         let mut deq = Self::with_capacity_in(self.len(), self.allocator().clone());
-        deq.extend(self.iter().cloned());
+        deq.spec_clone_from(self);
         deq
     }
 
     /// Overwrites the contents of `self` with a clone of the contents of `source`.
     ///
     /// This method is preferred over simply assigning `source.clone()` to `self`,
-    /// as it avoids reallocation if possible.
+    /// as it avoids reallocation if possible. Additionally, if the element type
+    /// `T` overrides `clone_from()`, this will reuse the resources of `self`'s
+    /// elements as well.
     fn clone_from(&mut self, source: &Self) {
+        self.spec_clone_from(source);
+    }
+}
+
+// The trait is required to prevent internal details of the implementation leaking in rustdoc.
+trait SpecCloneFrom {
+    fn spec_clone_from(&mut self, source: &Self);
+}
+
+impl<T: Clone, A: Allocator> SpecCloneFrom for VecDeque<T, A> {
+    default fn spec_clone_from(&mut self, source: &Self) {
+        self.truncate(source.len());
+
+        // We need to clone the overlapping elements in chunks given the deques may wrap at
+        // different points.
+        let (dst_front, dst_back) = self.as_mut_slices();
+        let (mut src_front, mut src_back) = source.as_slices();
+        for mut destination in [dst_front, dst_back] {
+            while !destination.is_empty() {
+                if src_front.is_empty() {
+                    src_front = src_back;
+                    src_back = &[];
+                }
+                let len = cmp::min(destination.len(), src_front.len());
+                debug_assert!(len > 0);
+                let (dst, dst_rest) = destination.split_at_mut(len);
+                let (src, src_rest) = src_front.split_at(len);
+                dst.clone_from_slice(src);
+                destination = dst_rest;
+                src_front = src_rest;
+            }
+        }
+
+        self.extend(src_front.iter().chain(src_back).cloned());
+    }
+}
+
+impl<T: TrivialClone, A: Allocator> SpecCloneFrom for VecDeque<T, A> {
+    fn spec_clone_from(&mut self, source: &Self) {
         self.clear();
-        self.extend(source.iter().cloned());
+        self.reserve(source.len());
+
+        let (front, back) = source.as_slices();
+        // SAFETY:
+        // - `TrivialClone` allows cloning by copying the bits.
+        // - `clear` dropped all destination elements, leaving no live values to overwrite.
+        // - The source slices are initialized, and all pointers are properly aligned for `T`.
+        // - `reserve` ensures capacity for `front.len() + back.len() == source.len()`
+        //   elements, so both destination ranges and `dst.add(front.len())` are in bounds.
+        // - For non-ZSTs, the deques own distinct allocations, so the copied ranges do not
+        //   overlap. For ZSTs, the copies and pointer offset have size zero in bytes.
+        unsafe {
+            let dst = self.ptr();
+            ptr::copy_nonoverlapping(front.as_ptr(), dst, front.len());
+            if !back.is_empty() {
+                ptr::copy_nonoverlapping(back.as_ptr(), dst.add(front.len()), back.len());
+            }
+        }
+        // SAFETY: The copies initialized `source.len()` elements starting at index zero.
+        self.head = WrappedIndex::zero();
+        self.len = source.len();
     }
 }
 

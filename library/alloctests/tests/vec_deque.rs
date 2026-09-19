@@ -574,6 +574,25 @@ fn test_from_iter() {
     assert_eq!(deq.len(), 256);
 }
 
+/// pushing everything to the front leaves a nonzero start index when there's spare capacity
+fn clone_test_fixture<T>(
+    len: usize,
+    push_front_count: usize,
+    capacity: usize,
+    mut element: impl FnMut(usize) -> T,
+) -> VecDeque<T> {
+    let mut deque = VecDeque::with_capacity(capacity);
+    deque.extend((push_front_count..len).map(&mut element));
+    // pushing at both ends gives the same split even if capacity is rounded up
+    for i in (0..push_front_count).rev() {
+        deque.push_front(element(i));
+    }
+    let first_len = if push_front_count == 0 { len } else { push_front_count };
+    let (first, second) = deque.as_slices();
+    assert_eq!((first.len(), second.len()), (first_len, len - first_len));
+    deque
+}
+
 #[test]
 fn test_clone() {
     let mut d = VecDeque::new();
@@ -589,6 +608,267 @@ fn test_clone() {
     }
     assert_eq!(d.len(), 0);
     assert_eq!(e.len(), 0);
+}
+
+#[test]
+fn test_clone_from_reuses_element_allocations() {
+    for (case, (source_len, source_front), (destination_len, destination_front, capacity)) in [
+        ("empty destination", (5, 2), (0, 0, 0)),
+        ("contiguous source", (5, 0), (5, 2, 8)),
+        ("contiguous destination", (5, 2), (5, 0, 8)),
+        ("source wraps first", (5, 1), (5, 3, 8)),
+        ("destination wraps first", (5, 3), (5, 1, 8)),
+        ("append across source wrap", (8, 3), (2, 1, 8)),
+        ("append within source back slice", (8, 2), (4, 1, 8)),
+        ("append after growing the destination", (8, 3), (2, 1, 2)),
+        ("truncate destination", (3, 1), (6, 4, 8)),
+    ] {
+        let source = clone_test_fixture(source_len, source_front, 8, |i| i.to_string());
+        let mut destination =
+            clone_test_fixture(destination_len, destination_front, capacity, |i| {
+                String::with_capacity(32 + i)
+            });
+        let capacities: Vec<_> =
+            destination.iter().take(source_len).map(String::capacity).collect();
+
+        destination.clone_from(&source);
+
+        assert_eq!(destination, source, "{case}");
+        // existing strings should keep their buffers, even if the deque has to grow
+        for (value, capacity) in destination.iter().zip(capacities) {
+            assert_eq!(value.capacity(), capacity, "{case}");
+        }
+    }
+}
+
+#[test]
+fn test_clone_trivial() {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[repr(align(32))]
+    struct Elem([u64; 4]);
+
+    for (case, source_len, source_front, source_capacity) in [
+        ("empty", 0, 0, 0),
+        ("contiguous at buffer start", 5, 0, 8),
+        ("contiguous at buffer end", 5, 5, 8),
+        ("wrapped", 5, 2, 8),
+    ] {
+        let source = clone_test_fixture(source_len, source_front, source_capacity, |i| {
+            Elem([i as u64 + 1; 4])
+        });
+        let mut cloned = source.clone();
+        assert_eq!(cloned, source, "{case}");
+        if source_len != 0 {
+            cloned[0] = Elem([u64::MAX; 4]);
+            assert_eq!(source[0], Elem([1; 4]), "{case}");
+        }
+
+        let mut destination = clone_test_fixture(4, 2, 8, |i| Elem([i as u64 + 100; 4]));
+        let capacity = destination.capacity();
+
+        destination.clone_from(&source);
+
+        assert_eq!(destination, source, "{case}");
+        assert_eq!(destination.capacity(), capacity, "{case}");
+    }
+
+    // force reallocation with a wrapped source
+    let mut destination = clone_test_fixture(2, 1, 2, |i| Elem([i as u64 + 100; 4]));
+    let source_len = destination.capacity() + 1;
+    let source = clone_test_fixture(source_len, 1, source_len, |i| Elem([i as u64 + 1; 4]));
+
+    destination.clone_from(&source);
+
+    assert_eq!(destination, source);
+}
+
+#[test]
+fn test_clone_trivial_drops_elements() {
+    #[derive(Clone)]
+    struct Elem<'a>(&'a Cell<u32>);
+
+    // SAFETY: the derived Clone only copies a shared reference
+    unsafe impl std::clone::TrivialClone for Elem<'_> {}
+
+    impl Drop for Elem<'_> {
+        fn drop(&mut self) {
+            self.0.update(|count| count + 1);
+        }
+    }
+
+    let source_drops = [const { Cell::new(0) }; 3];
+    let destination_drops = [const { Cell::new(0) }; 4];
+    let source = clone_test_fixture(3, 1, 3, |id| Elem(&source_drops[id]));
+    let cloned = source.clone();
+    assert_eq!(source_drops.each_ref().map(Cell::get), [0; 3]);
+    drop(cloned);
+    assert_eq!(source_drops.each_ref().map(Cell::get), [1; 3]);
+
+    let mut destination = clone_test_fixture(4, 2, 4, |id| Elem(&destination_drops[id]));
+
+    destination.clone_from(&source);
+
+    assert_eq!(destination_drops.each_ref().map(Cell::get), [1; 4]);
+    assert_eq!(source_drops.each_ref().map(Cell::get), [1; 3]);
+
+    drop(destination);
+    assert_eq!(source_drops.each_ref().map(Cell::get), [2; 3]);
+    drop(source);
+    assert_eq!(source_drops.each_ref().map(Cell::get), [3; 3]);
+}
+
+#[test]
+fn test_clone_copy_with_custom_clone() {
+    #[derive(Copy)]
+    struct Elem<'a> {
+        id: usize,
+        clones: &'a Cell<u32>,
+    }
+
+    impl Clone for Elem<'_> {
+        fn clone(&self) -> Self {
+            self.clones.update(|count| count + 1);
+            *self
+        }
+    }
+
+    let clones = Cell::new(0);
+    let element = |id| Elem { id, clones: &clones };
+    let source = clone_test_fixture(5, 2, 5, &element);
+
+    let cloned = source.clone();
+    assert_eq!(cloned.iter().map(|element| element.id).collect::<Vec<_>>(), [0, 1, 2, 3, 4]);
+    assert_eq!(clones.get(), 5);
+
+    clones.set(0);
+    let mut destination = clone_test_fixture(3, 1, 3, |id| element(5 + id));
+    destination.clone_from(&source);
+    assert_eq!(destination.iter().map(|element| element.id).collect::<Vec<_>>(), [0, 1, 2, 3, 4]);
+    assert_eq!(clones.get(), 5);
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_clone_panic_drops_elements() {
+    // use None for clone and Some(len) for clone_from with an existing destination
+    for (case, destination_len, panic_index) in [
+        ("new destination", None, 5),
+        ("overwrite after truncating", Some(12), 2),
+        ("append after overlap", Some(3), 5),
+    ] {
+        let clones = [const { Cell::new(0) }; 20];
+        let drops = [const { Cell::new(0) }; 20];
+        let element = |id| CloneTracker {
+            id,
+            clone: Some(&clones[id]),
+            drop: Some(&drops[id]),
+            panic: false,
+        };
+        let mut source = clone_test_fixture(8, 3, 8, &element);
+        let mut destination = destination_len
+            .map(|len| clone_test_fixture(len, len - len / 2, len, |id| element(8 + id)));
+        let old_len = destination_len.unwrap_or(0);
+        source[panic_index].panic = true;
+
+        catch_unwind(AssertUnwindSafe(|| match &mut destination {
+            Some(destination) => destination.clone_from(&source),
+            None => drop(source.clone()),
+        }))
+        .expect_err(case);
+
+        // check for leaks and double drops before retrying the clone
+        let mut live = [0; 20];
+        if let Some(destination) = &destination {
+            for element in destination {
+                live[element.id] += 1;
+            }
+        }
+        // the original destination elements weren't created by clone
+        for id in 0..8 + old_len {
+            assert_eq!(
+                drops[id].get() + live[id],
+                clones[id].get() + u32::from(id >= 8),
+                "{case}: element {id}"
+            );
+        }
+
+        // check that cloning still works after the panic
+        source[panic_index].panic = false;
+        let destination = match destination {
+            Some(mut destination) => {
+                destination.clone_from(&source);
+                destination
+            }
+            None => source.clone(),
+        };
+        assert_eq!(
+            destination.iter().map(|element| element.id).collect::<Vec<_>>(),
+            source.iter().map(|element| element.id).collect::<Vec<_>>(),
+            "{case}"
+        );
+
+        drop(destination);
+        drop(source);
+        for id in 0..8 + old_len {
+            assert_eq!(drops[id].get(), 1 + clones[id].get(), "{case}: element {id}");
+        }
+    }
+}
+
+#[test]
+fn test_clone_zero_sized() {
+    static CLONES: AtomicUsize = AtomicUsize::new(0);
+    static DROPS: AtomicUsize = AtomicUsize::new(0);
+
+    // a custom Clone checks that zero-sized elements still get cloned individually
+    struct Counted;
+
+    impl Clone for Counted {
+        fn clone(&self) -> Self {
+            CLONES.fetch_add(1, Ordering::Relaxed);
+            Self
+        }
+    }
+
+    impl Drop for Counted {
+        fn drop(&mut self) {
+            DROPS.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    #[repr(align(32))]
+    struct Zst;
+
+    let source = clone_test_fixture(3, 1, 3, |_| Zst);
+    let mut destination = source.clone();
+    assert_eq!(destination.len(), 3);
+    destination.clone_from(&VecDeque::new());
+    assert_eq!(destination.len(), 0);
+    destination.clone_from(&source);
+    assert_eq!(destination.len(), 3);
+
+    let source: VecDeque<_> = (0..3).map(|_| Counted).collect();
+    let mut destination = source.clone();
+    assert_eq!(destination.len(), 3);
+    assert_eq!(CLONES.load(Ordering::Relaxed), 3);
+    assert_eq!(DROPS.load(Ordering::Relaxed), 0);
+
+    destination.push_back(Counted);
+    destination.clone_from(&source);
+    assert_eq!(destination.len(), 3);
+    assert_eq!(CLONES.load(Ordering::Relaxed), 6);
+    // one truncated element and three replaced elements were dropped
+    assert_eq!(DROPS.load(Ordering::Relaxed), 4);
+
+    destination.clone_from(&VecDeque::new());
+    assert_eq!(destination.len(), 0);
+    assert_eq!(CLONES.load(Ordering::Relaxed), 6);
+    assert_eq!(DROPS.load(Ordering::Relaxed), 7);
+
+    drop(destination);
+    drop(source);
+    assert_eq!(DROPS.load(Ordering::Relaxed), 10);
 }
 
 #[test]
