@@ -17,10 +17,10 @@ pub struct Generic<T: ?Sized> {
 }
 
 fn generic<T: ?Sized>() {
-    impls_field::<field_of!(Generic<T>, count)>();
-    //~^ ERROR: the trait bound `field_of!(Generic<T>, count): Field` is not satisfied [E0277]
-    impls_field::<field_of!(Generic<T>, last)>();
-    //~^ ERROR: the trait bound `field_of!(Generic<T>, last): Field` is not satisfied [E0277]
+    impls_field::<field_of!(Generic<T>, count)>(); //[next]~ ERROR: the size for values of type `T` cannot be known at compilation time [E0277]
+    //[old]~^ ERROR: the trait bound `field_of!(Generic<T>, count): Field` is not satisfied [E0277]
+    impls_field::<field_of!(Generic<T>, last)>(); //[next]~ ERROR: the size for values of type `T` cannot be known at compilation time [E0277]
+    //[old]~^ ERROR: the trait bound `field_of!(Generic<T>, last): Field` is not satisfied [E0277]
 }
 
 fn ok<T>() {
@@ -29,10 +29,10 @@ fn ok<T>() {
 }
 
 fn main() {
-    impls_field::<field_of!(MyDST, count)>();
-    //~^ ERROR: the trait bound `field_of!(MyDST, count): Field` is not satisfied [E0277]
-    impls_field::<field_of!(MyDST, last)>();
-    //~^ ERROR: the trait bound `field_of!(MyDST, last): Field` is not satisfied [E0277]
+    impls_field::<field_of!(MyDST, count)>(); //[next]~ ERROR: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time [E0277]
+    //[old]~^ ERROR: the trait bound `field_of!(MyDST, count): Field` is not satisfied [E0277]
+    impls_field::<field_of!(MyDST, last)>(); //[next]~ ERROR: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time [E0277]
+    //[old]~^ ERROR: the trait bound `field_of!(MyDST, last): Field` is not satisfied [E0277]
 }
 
 fn impls_field<F: Field>() {}
