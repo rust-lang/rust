@@ -207,7 +207,7 @@ pub fn raw_slice(_: *const [u8]) {}
 // CHECK-SAME: ptr noalias nofree noundef nonnull readonly{{( captures\(address, read_provenance\))?}} %_1.0,
 // CHECK-SAME: [[USIZE]] noundef range({{i32 0, -2147483648|i64 0, -9223372036854775808}}) %_1.1)
 #[no_mangle]
-pub fn str(_: &[u8]) {}
+pub fn str(_: &str) {}
 
 // CHECK: @trait_borrow(ptr noundef nonnull %_1.0, {{.+}} noalias nofree noundef readonly align {{.*}} dereferenceable({{.*}}) %_1.1)
 #[no_mangle]
