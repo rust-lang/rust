@@ -435,6 +435,7 @@ pub(crate) fn merge_attrs(
     old_attrs: &[hir::Attribute],
     new_attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
     cfg_info: &mut CfgInfo,
+    item_def_id: Option<DefId>,
 ) -> (clean::Attributes, Option<Arc<clean::cfg::Cfg>>) {
     // NOTE: If we have additional attributes (from a re-export),
     // always insert them first. This ensure that re-export
@@ -449,10 +450,13 @@ pub(crate) fn merge_attrs(
             } else {
                 Attributes::from_hir(&both)
             },
-            extract_cfg_from_attrs(both.iter(), tcx, cfg_info),
+            extract_cfg_from_attrs(both.iter(), tcx, cfg_info, item_def_id),
         )
     } else {
-        (Attributes::from_hir(old_attrs), extract_cfg_from_attrs(old_attrs.iter(), tcx, cfg_info))
+        (
+            Attributes::from_hir(old_attrs),
+            extract_cfg_from_attrs(old_attrs.iter(), tcx, cfg_info, item_def_id),
+        )
     }
 }
 
@@ -639,7 +643,7 @@ pub(crate) fn build_impl(
     //
     // We need to pass this empty `CfgInfo` because `merge_attrs` is used when computing the `cfg`.
     let (merged_attrs, cfg) =
-        merge_attrs(cx.tcx, load_attrs(cx.tcx, did), attrs, &mut CfgInfo::default());
+        merge_attrs(cx.tcx, load_attrs(cx.tcx, did), attrs, &mut CfgInfo::default(), Some(did));
     trace!("merged_attrs={merged_attrs:?}");
 
     trace!(
