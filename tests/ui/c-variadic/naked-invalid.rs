@@ -9,11 +9,8 @@
 #![no_core]
 
 extern crate minicore;
+use minicore::ffi::VaList;
 use minicore::*;
-
-#[repr(C)]
-#[lang = "va_list"]
-pub struct VaList;
 
 #[unsafe(naked)]
 unsafe extern "sysv64" fn c_variadic_sysv64(_: ...) {
