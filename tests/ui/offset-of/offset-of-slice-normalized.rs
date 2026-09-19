@@ -3,8 +3,6 @@
 //@[next] compile-flags: -Znext-solver
 //@ run-pass
 
-#![feature(offset_of_slice)]
-
 use std::mem::offset_of;
 
 trait Mirror {
