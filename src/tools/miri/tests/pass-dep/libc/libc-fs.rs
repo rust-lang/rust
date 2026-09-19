@@ -60,6 +60,7 @@ fn main() {
     test_ioctl();
     test_opendir_closedir();
     test_readdir();
+    test_dirfd();
     #[cfg(target_os = "linux")]
     test_statx_on_file_path();
     #[cfg(target_os = "linux")]
@@ -1012,8 +1013,34 @@ fn test_readdir() {
     remove_dir(&dir_path).unwrap();
 }
 
+fn test_dirfd() {
+    use std::mem::MaybeUninit;
+
+    let path = utils::prepare_dir("miri_test_libc_opendir_closedir");
+    create_dir(&path).expect("create_dir failed");
+    let cpath = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };
+    assert!(!dir.is_null());
+
+    let dirfd = unsafe { libc::dirfd(dir) };
+
+    let mut stat = MaybeUninit::<libc::stat>::uninit();
+    errno_check(unsafe { libc::fstat(dirfd, stat.as_mut_ptr()) });
+    let stat = unsafe { stat.assume_init_ref() };
+
+    assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFDIR);
+    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+
+    // Check that all fields are initialized.
+    check_stat_fields(stat);
+
+    errno_check(unsafe { libc::closedir(dir) });
+}
+
 /// Check that all common fields of a `stat` struct are initialized.
 pub fn check_stat_fields(stat: &libc::stat) {
+    let _st_size = stat.st_size;
+    let _st_mode = stat.st_mode;
     let _st_nlink = stat.st_nlink;
     let _st_blksize = stat.st_blksize;
     let _st_blocks = stat.st_blocks;
