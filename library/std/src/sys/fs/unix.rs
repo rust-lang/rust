@@ -977,7 +977,6 @@ impl Drop for DirStream {
     fn drop(&mut self) {
         // dirfd isn't supported everywhere
         #[cfg(not(any(
-            miri,
             target_os = "redox",
             target_os = "nto",
             target_os = "qnx",
@@ -1025,7 +1024,7 @@ impl DirEntry {
             target_os = "illumos",
             target_vendor = "apple",
         ),
-        not(miri) // no dirfd on Miri
+        not(miri) // no fstatat in Miri (https://github.com/rust-lang/miri/issues/5327)
     ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
@@ -1056,7 +1055,7 @@ impl DirEntry {
             target_os = "illumos",
             target_vendor = "apple",
         )),
-        miri // no dirfd on Miri
+        miri // no fstatat in Miri (https://github.com/rust-lang/miri/issues/5327)
     ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         run_path_with_cstr(&self.path(), &lstat)
