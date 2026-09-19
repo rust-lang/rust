@@ -14,6 +14,7 @@
 #![feature(iter_order_by)]
 #![feature(iter_partition_in_place)]
 #![feature(rustc_private)]
+#![feature(strip_circumfix)]
 #![feature(test)]
 #![feature(variant_count)]
 #![recursion_limit = "256"]
