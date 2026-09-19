@@ -138,7 +138,7 @@ expression: test --skip=tests --skip=library --skip=tidyselftest
     targets: [x86_64-unknown-linux-gnu]
     - Set({src/tools/rust-installer})
 [Test] test::TestFloatParse
-    targets: [x86_64-unknown-linux-gnu]
+    targets: [aarch64-unknown-linux-gnu]
     - Set({src/tools/test-float-parse})
 [Test] test::IntrinsicTest
     targets: [x86_64-unknown-linux-gnu]

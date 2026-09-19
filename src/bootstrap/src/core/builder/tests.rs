@@ -2999,6 +2999,62 @@ mod snapshot {
         ");
     }
 
+    #[test]
+    fn test_float_parse() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("src/tools/test-float-parse")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
+        ");
+    }
+
+    // The tool tests std for `--target`, but is itself built by, and for, the host.
+    #[test]
+    fn test_float_parse_cross_with_runner() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("src/tools/test-float-parse")
+                .targets(&[TEST_TRIPLE_1])
+                .override_target_runner(TEST_TRIPLE_1, "emulator")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
+        ");
+    }
+
+    // Without a way to run the tool there is nothing to test.
+    #[test]
+    fn test_float_parse_cross_without_runner() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("src/tools/test-float-parse")
+                .targets(&[TEST_TRIPLE_1])
+                .render_steps(), @"");
+    }
+
+    // Nor is there if the target has no std to test.
+    #[test]
+    fn test_float_parse_no_std_target() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("src/tools/test-float-parse")
+                .targets(&[TEST_TRIPLE_1])
+                .override_target_runner(TEST_TRIPLE_1, "emulator")
+                .override_target_no_std(TEST_TRIPLE_1)
+                .render_steps(), @"");
+    }
+
     // Check that `x run miri --target FOO` actually builds miri for the host.
     #[test]
     fn run_miri() {

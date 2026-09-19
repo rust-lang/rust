@@ -209,7 +209,7 @@ expression: test
     targets: [x86_64-unknown-linux-gnu]
     - Set({src/tools/rust-installer})
 [Test] test::TestFloatParse
-    targets: [x86_64-unknown-linux-gnu]
+    targets: [aarch64-unknown-linux-gnu]
     - Set({src/tools/test-float-parse})
 [Test] test::RunMake
     targets: [aarch64-unknown-linux-gnu]
