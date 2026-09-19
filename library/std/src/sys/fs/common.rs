@@ -102,16 +102,38 @@ impl Dir {
     }
 
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
-        remove_dir(path)
+        remove_dir(self.path.join(path))
     }
 
     pub fn symlink(&self, original: &Path, link: &Path) -> io::Result<()> {
-        symlink(original, link)
+        symlink(original, &self.path.join(link))
     }
 }
 
 impl fmt::Debug for Dir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Dir").field("path", &self.path).finish()
+    }
+}
+
+#[cfg(not(any(
+    all(target_os = "linux", not(target_env = "musl")),
+    target_os = "android",
+    target_os = "fuchsia",
+    target_os = "hurd",
+    target_os = "illumos",
+    target_vendor = "apple",
+)))]
+impl crate::sys::fs::DirEntry {
+    pub fn open_with(&self, opts: &OpenOptions) -> io::Result<File> {
+        File::open(&self.path(), opts)
+    }
+
+    pub fn remove_file(&self) -> io::Result<()> {
+        remove_file(&self.path())
+    }
+
+    pub fn remove_dir(&self) -> io::Result<()> {
+        remove_dir(&self.path())
     }
 }

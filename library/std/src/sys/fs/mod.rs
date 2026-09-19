@@ -153,28 +153,3 @@ pub fn set_times(path: &Path, times: FileTimes) -> io::Result<()> {
 pub fn set_times_nofollow(path: &Path, times: FileTimes) -> io::Result<()> {
     with_native_path(path, &|path| imp::set_times_nofollow(path, times.clone()))
 }
-
-#[cfg(any(
-    not(any(
-        all(target_os = "linux", not(target_env = "musl")),
-        target_os = "android",
-        target_os = "fuchsia",
-        target_os = "hurd",
-        target_os = "illumos",
-        target_vendor = "apple",
-    )),
-    miri
-))]
-impl DirEntry {
-    pub fn open_with(&self, opts: &OpenOptions) -> io::Result<File> {
-        File::open(&self.path(), opts)
-    }
-
-    pub fn remove_file(&self) -> io::Result<()> {
-        remove_file(&self.path())
-    }
-
-    pub fn remove_dir(&self) -> io::Result<()> {
-        remove_dir(&self.path())
-    }
-}
