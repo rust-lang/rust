@@ -1,0 +1,12 @@
+error[E0283]: type annotations needed: cannot satisfy `&W<Test>: OnWSend`
+  --> $DIR/reveal-auto-trait-send.rs:37:35
+   |
+LL |     let _: OnWSendShow = (&&W(x)).show();
+   |                                   ^^^^
+   |
+   = note: cannot satisfy `&W<Test>: OnWSend`
+   = help: the trait `OnWSend` is implemented for `&W<Test>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.
