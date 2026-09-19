@@ -31,6 +31,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
 use rustc_span::{AttrId, DUMMY_SP, Span, Symbol, sym};
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use crate::builtin::MISSING_DOCS;
@@ -653,19 +654,20 @@ where
         };
     }
 
-    fn parse_lint_attributes<A: AttributeExt + 'static>(&mut self, attrs: &[A]) -> Vec<LintCheck> {
-        use std::any::{Any, TypeId};
-
-        for attr in attrs {
-            if let Some(attr_ir_attr) = <dyn Any>::downcast_ref::<rustc_attr_ir::Attribute>(attr) {
-                if let Attribute::Parsed(AttributeKind::LintCheck(lints)) = attr_ir_attr {
-                    return lints.clone().into();
-                }
-            }
-        }
-
+    fn parse_lint_attributes<A: AttributeExt + 'static>(
+        &mut self,
+        attrs: &[A],
+    ) -> ThinVec<LintCheck> {
+        use std::any::TypeId;
         if TypeId::of::<A>() == TypeId::of::<rustc_attr_ir::Attribute>() {
-            return Vec::new();
+            let attrs = unsafe {
+                core::slice::from_raw_parts(
+                    attrs.as_ptr().cast::<rustc_attr_ir::Attribute>(),
+                    attrs.len(),
+                )
+            };
+            return find_attr!(attrs, LintCheck(lints) => lints.clone())
+                .unwrap_or_else(ThinVec::new);
         }
 
         fn cast<'a, A: AttributeExt + 'static>(attrs: &'a [A]) -> &'a [ast::Attribute] {
@@ -718,14 +720,22 @@ where
             ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             Some(self.registered_lint_tools),
         );
-        if let Some(lints) = find_attr!(&parsed, LintCheck(lints) => lints) {
-            return lints.clone().into();
-        }
-
-        Vec::new()
+        parsed
+            .into_iter()
+            .find_map(|p| {
+                if let Attribute::Parsed(AttributeKind::LintCheck(lints)) = p {
+                    Some(lints)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(ThinVec::new)
     }
 
     fn add(&mut self, attrs: &[impl AttributeExt + 'static], is_crate_node: bool) {
+        if attrs.is_empty() {
+            return;
+        }
         for attr in attrs {
             if attr.is_automatically_derived_attr() {
                 self.provider.insert(
@@ -749,7 +759,7 @@ where
         let sess = self.sess;
 
         for (lint_index, lint_check) in lint_checks.into_iter().enumerate() {
-            let LintCheck { mut name, span: sp, kind, reason, attr_id, attr_span: _ } = lint_check;
+            let LintCheck { name, span: sp, kind, reason, attr_id, attr_span: _ } = lint_check;
 
             let level = match kind {
                 LintCheckKind::Allow => Level::Allow,
@@ -764,11 +774,21 @@ where
             let lint_id = (level == Level::Expect)
                 .then(|| self.provider.mk_lint_expectation_id(attr_id.attr_id, lint_index as u16));
 
-            let tool_name = if name.len() > 1 { Some(name.remove(0)) } else { None };
+            let (tool_name, name) = match &*name {
+                [] => unreachable!(),
+                name @ [_] => (None, name),
+                [tool, name @ ..] => (Some(*tool), name),
+            };
 
-            let lint_name = join_path_syms(&name);
+            let lint_name = match name {
+                [] => unreachable!(),
+                [one] => one.as_str(),
+                // Only reached if the original lint name has 3 or more segments
+                many => &join_path_syms(many),
+            };
+
             let lint_result =
-                self.store.check_lint_name(&lint_name, tool_name, self.registered_lint_tools);
+                self.store.check_lint_name(lint_name, tool_name, self.registered_lint_tools);
 
             let (ids, name) = match lint_result {
                 CheckLintNameResult::Ok(ids) => {
@@ -787,7 +807,7 @@ where
                                 builtin::RENAMED_AND_REMOVED_LINTS,
                                 sp.into(),
                                 DeprecatedLintName {
-                                    name: lint_name,
+                                    name: lint_name.to_string(),
                                     suggestion: sp,
                                     replace: &new_lint_name,
                                 },
@@ -810,7 +830,7 @@ where
                     sess.dcx().emit_err(UnknownToolInScopedLint {
                         span: Some(sp),
                         tool_name: tool_name.unwrap(),
-                        lint_name,
+                        lint_name: lint_name.to_string(),
                         is_nightly_build: sess.is_nightly_build(),
                     });
                     continue;
@@ -822,7 +842,7 @@ where
                             RenamedLintSuggestion::WithSpan { suggestion: sp, replace };
                         let name = tool_name
                             .map(|tool| format!("{tool}::{lint_name}"))
-                            .unwrap_or(lint_name);
+                            .unwrap_or_else(|| lint_name.to_string());
                         self.emit_span_lint(
                             RENAMED_AND_REMOVED_LINTS,
                             sp.into(),
@@ -848,7 +868,7 @@ where
                     if self.lint_added_lints {
                         let name = tool_name
                             .map(|tool| format!("{tool}::{lint_name}"))
-                            .unwrap_or(lint_name);
+                            .unwrap_or_else(|| lint_name.to_string());
                         self.emit_span_lint(
                             RENAMED_AND_REMOVED_LINTS,
                             sp.into(),
@@ -862,7 +882,7 @@ where
                     if self.lint_added_lints {
                         let name = tool_name
                             .map(|tool| format!("{tool}::{lint_name}"))
-                            .unwrap_or(lint_name);
+                            .unwrap_or_else(|| lint_name.to_string());
                         let suggestion = suggestion.map(|(replace, from_rustc)| {
                             UnknownLintSuggestion::WithSpan { suggestion: sp, replace, from_rustc }
                         });
