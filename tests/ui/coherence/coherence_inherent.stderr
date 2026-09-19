@@ -7,7 +7,7 @@ LL |         s.the_fn();
    = help: items from traits can only be used if the trait is in scope
 help: trait `TheTrait` which provides `the_fn` is implemented but not in scope; perhaps you want to import it
    |
-LL +     use Lib::TheTrait;
+LL +     use crate::Lib::TheTrait;
    |
 
 error: aborting due to 1 previous error
