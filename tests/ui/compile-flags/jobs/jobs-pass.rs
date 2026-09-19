@@ -9,6 +9,7 @@
 //@[c] compile-flags: -j 255
 //@[d] compile-flags: --jobs 16 --jobs-frontend 8 --jobs-backend 4 --jobs-linker 2
 //@[e] compile-flags: --jobs 16 -Zthreads=8 --jobs-backend 4
-//@[g] compile-flags: -Zthreads=1 -Zthreads=2
+//@[f] compile-flags: -Zthreads=1 -Zthreads=2
+//@[g] compile-flags: --jobs 16 --reproducible=binaries,diagnostics
 
 fn main() {}
