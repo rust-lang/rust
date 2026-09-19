@@ -3385,7 +3385,7 @@ fn run_cargo_test<'a>(
 ) -> bool {
     let compiler = cargo.compiler();
     let stage = match cargo.mode() {
-        Mode::Std => compiler.stage,
+        Mode::Std | Mode::DistStd => compiler.stage,
         _ => compiler.stage + 1,
     };
 
@@ -3519,7 +3519,8 @@ impl CommandLineStep for Crate {
             .map(|p| builder.crate_paths[&p.assert_single_path().path].clone())
             .collect();
 
-        builder.ensure(Crate { build_compiler, target: run.target, mode: Mode::Std, crates });
+        let mode = if builder.sess.config.cmd.dist_std() { Mode::DistStd } else { Mode::Std };
+        builder.ensure(Crate { build_compiler, target: run.target, mode, crates });
     }
 
     /// Runs all unit tests plus documentation tests for a given crate defined
@@ -3603,7 +3604,7 @@ impl CommandLineStep for Crate {
         };
 
         match mode {
-            Mode::Std => {
+            Mode::Std | Mode::DistStd => {
                 if builder.kind == Kind::Miri {
                     // We can't use `std_cargo` as that uses `optimized-compiler-builtins` which
                     // needs host tools for the given target. This is similar to what `compile::Std`
