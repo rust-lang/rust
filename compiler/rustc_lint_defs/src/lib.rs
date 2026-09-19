@@ -125,17 +125,15 @@ impl From<UnstableLintExpectationId> for LintExpectationId {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
 pub struct StableLintExpectationId {
     pub hir_id: HirId,
-    pub attr_index: u16,
     pub lint_index: u16,
 }
 
 impl StableHash for StableLintExpectationId {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        let StableLintExpectationId { hir_id, attr_index, lint_index } = self;
+        let StableLintExpectationId { hir_id, lint_index } = self;
 
         hir_id.stable_hash(hcx, hasher);
-        attr_index.stable_hash(hcx, hasher);
         lint_index.stable_hash(hcx, hasher);
     }
 }

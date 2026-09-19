@@ -1,5 +1,4 @@
-#![attr = LintCheck([LintCheck {name: ["incomplete_features"], attr_index: 0,
-lint_index: 0, kind: Allow}])]
+#![attr = LintCheck([LintCheck {name: ["incomplete_features"], kind: Allow}])]
 #![attr = Feature([fn_delegation#0])]
 extern crate std;
 #[attr = PreludeImport]

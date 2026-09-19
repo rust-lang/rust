@@ -19,13 +19,11 @@ const LINT_TEMPLATE: AttributeTemplate = template!(
 
 #[derive(Default, Debug)]
 pub(crate) struct LintParser {
-    attr_index: u16,
     lints: ThinVec<LintCheck>,
 }
 
 impl LintParser {
     fn parse(&mut self, kind: LintCheckKind, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
-        let attr_index = self.attr_index;
         let attr_span = cx.attr_span;
         let attr_id = cx.attr_id.expect("no `AttrId` for lint attribute");
         let mut lints: Vec<(ThinVec<Symbol>, Span)> = Vec::new();
@@ -97,21 +95,10 @@ impl LintParser {
                 );
             }
 
-            for (lint_index, (name, span)) in lints.into_iter().enumerate() {
-                self.lints.push(LintCheck {
-                    name,
-                    span,
-                    lint_index: lint_index as u16,
-                    attr_index,
-                    kind,
-                    attr_id,
-                    reason,
-                    attr_span,
-                })
+            for (name, span) in lints.into_iter() {
+                self.lints.push(LintCheck { name, span, kind, attr_id, reason, attr_span })
             }
         }
-
-        self.attr_index += 1
     }
 }
 
