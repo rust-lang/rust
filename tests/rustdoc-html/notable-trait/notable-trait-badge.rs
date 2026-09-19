@@ -12,8 +12,9 @@ pub trait Plain {}
 //@ has 'foo/struct.Tagged.html'
 //@ has - '//div[@class="notable-trait-badge-container"]/a[@href="trait.Labeled.html"][@title="foo::Labeled"]' 'Labeled'
 // Badges are sorted by trait name, so `AlsoLabeled` precedes `Labeled`.
-//@ has - '//div[@class="notable-trait-badge-container"]/a[1]' 'AlsoLabeled'
-//@ has - '//div[@class="notable-trait-badge-container"]/a[2]' 'Labeled'
+//@ has - '//div[@class="notable-trait-badge-container"]/a[1]' 'ⓘ'
+//@ has - '//div[@class="notable-trait-badge-container"]/a[2]' 'AlsoLabeled'
+//@ has - '//div[@class="notable-trait-badge-container"]/a[3]' 'Labeled'
 pub struct Tagged;
 impl Labeled for Tagged {}
 impl AlsoLabeled for Tagged {}
