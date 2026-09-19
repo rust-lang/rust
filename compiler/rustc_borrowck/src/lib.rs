@@ -2076,15 +2076,42 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         // This code covers scenarios 1, 2, and 3.
 
         debug!("check_if_full_path_is_moved place: {:?}", place_span.0);
-        let (prefix, mpi) = self.move_path_closest_to(place_span.0);
-        if maybe_uninits.contains(mpi) {
+
+        let uninit_mpi = match self.move_data.rev_lookup.find(place_span.0) {
+            // Index projections arbitrarily overlap sibling move paths, so we need to check all descendents of the parent
+            // Subslice and ConstantIndex projections of slices also overlap siblings,
+            // but the parent slice will never have a move path
+            // Subslice projections of arrays are specifically checked in `check_if_subslice_element_is_moved`
+            LookupResult::Parent { mpi, next_elem: ProjectionKind::Index(..) } => self
+                .move_data
+                .find_in_move_path_or_its_descendants(mpi, |mpi| maybe_uninits.contains(mpi)),
+
+            LookupResult::Exact(mpi)
+            | LookupResult::Parent {
+                mpi,
+                next_elem:
+                    ProjectionKind::Deref
+                    | ProjectionKind::Field(..)
+                    | ProjectionKind::ConstantIndex { .. }
+                    | ProjectionKind::Subslice { .. }
+                    | ProjectionKind::Downcast(..)
+                    | ProjectionKind::OpaqueCast(..)
+                    | ProjectionKind::UnwrapUnsafeBinder(..),
+            } => maybe_uninits.contains(mpi).then_some(mpi),
+
+            LookupResult::None => bug!("should have move path for every Local"),
+        };
+
+        if let Some(mpi) = uninit_mpi {
             self.report_use_of_moved_or_uninitialized(
                 location,
                 desired_action,
-                (prefix, place_span.0, place_span.1),
+                (self.move_data.move_paths[mpi].place.as_ref(), place_span.0, place_span.1),
                 mpi,
             );
-        } // Only query longest prefix with a MovePath, not further
+        }
+
+        // Only query longest prefix with a MovePath, not further
         // ancestors; dataflow recurs on children when parents
         // move (to support partial (re)inits).
         //
@@ -2206,32 +2233,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         }
     }
 
-    /// Currently MoveData does not store entries for all places in
-    /// the input MIR. For example it will currently filter out
-    /// places that are Copy; thus we do not track places of shared
-    /// reference type. This routine will walk up a place along its
-    /// prefixes, searching for a foundational place that *is*
-    /// tracked in the MoveData.
-    ///
-    /// An Err result includes a tag indicated why the search failed.
-    /// Currently this can only occur if the place is built off of a
-    /// static variable, as we do not track those in the MoveData.
-    fn move_path_closest_to(&mut self, place: PlaceRef<'tcx>) -> (PlaceRef<'tcx>, MovePathIndex) {
-        match self.move_data.rev_lookup.find(place) {
-            LookupResult::Parent(Some(mpi)) | LookupResult::Exact(mpi) => {
-                (self.move_data.move_paths[mpi].place.as_ref(), mpi)
-            }
-            LookupResult::Parent(None) => panic!("should have move path for every Local"),
-        }
-    }
-
     fn move_path_for_place(&mut self, place: PlaceRef<'tcx>) -> Option<MovePathIndex> {
         // If returns None, then there is no move path corresponding
         // to a direct owner of `place` (which means there is nothing
         // that borrowck tracks for its analysis).
 
         match self.move_data.rev_lookup.find(place) {
-            LookupResult::Parent(_) => None,
+            LookupResult::Parent { .. } | LookupResult::None => None,
             LookupResult::Exact(mpi) => Some(mpi),
         }
     }
