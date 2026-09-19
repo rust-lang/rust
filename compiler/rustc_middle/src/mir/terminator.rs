@@ -419,7 +419,7 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
 pub struct Terminator<'tcx> {
     pub source_info: SourceInfo,
     pub kind: TerminatorKind<'tcx>,
-    pub attributes: ThinVec<AttributeKind>,
+    pub loop_hint_attrs: ThinVec<AttributeKind>,
 }
 
 impl<'tcx> Terminator<'tcx> {

@@ -518,7 +518,7 @@ macro_rules! make_mir_visitor {
                 terminator: &$($mutability)? Terminator<'tcx>,
                 location: Location
             ) {
-                let Terminator { source_info, kind, attributes: _ } = terminator;
+                let Terminator { source_info, kind, loop_hint_attrs: _ } = terminator;
 
                 self.visit_source_info(source_info);
                 match kind {

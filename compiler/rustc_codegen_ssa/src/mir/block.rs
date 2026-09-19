@@ -140,7 +140,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         bx: &mut Bx,
         target: mir::BasicBlock,
         mergeable_succ: bool,
-        attributes: &[AttributeKind],
+        loop_hint_attrs: &[AttributeKind],
     ) -> MergingSucc {
         let (needs_landing_pad, is_cleanupret) = self.llbb_characteristics(fx, target);
         if mergeable_succ && !needs_landing_pad && !is_cleanupret {
@@ -156,7 +156,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 // to a trampoline.
                 bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
             } else {
-                bx.br_with_attrs(lltarget, attributes);
+                bx.br_with_attrs(lltarget, loop_hint_attrs);
             }
             MergingSucc::False
         }
@@ -1673,7 +1673,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::Goto { target } => {
-                helper.funclet_br(self, bx, target, mergeable_succ(), &terminator.attributes)
+                helper.funclet_br(self, bx, target, mergeable_succ(), &terminator.loop_hint_attrs)
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, ref targets } => {
