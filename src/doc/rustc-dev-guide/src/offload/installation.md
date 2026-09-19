@@ -3,9 +3,16 @@
 `std::offload` is partly available in nightly builds for users.
 For now, everyone however still needs to build rustc from source to use all features of it.
 
+## Rustup installation.
+
+If you are on `x86_64` Linux, you can install the nightly toolchain with:
+```console
+rustup +nightly component add offload
+```
+
 ## Build instructions
 
-First you need to clone and configure the Rust repository:
+Otherwise you need to clone and configure the Rust repository:
 ```console
 git clone git@github.com:rust-lang/rust
 cd rust
@@ -14,7 +21,8 @@ cd rust
 
 If you would rather reuse an existing clang than build one, drop `--enable-clang` and pass
 `--enable-llvm-offload-clang-dir=<absolute path to the directory holding ClangConfig.cmake>`
-instead. It should match the (major version of the) LLVM in `src/llvm-project`.
+instead.
+It should match the (major version of the) LLVM in `src/llvm-project`.
 
 Afterwards you can build rustc using:
 ```console
@@ -27,9 +35,8 @@ rustup toolchain link offload build/host/stage1
 rustup toolchain install nightly # enables -Z unstable-options
 ```
 
-
-
 ## Build instruction for LLVM itself
+
 ```console
 git clone git@github.com:llvm/llvm-project
 cd llvm-project
@@ -41,8 +48,8 @@ ninja install
 ```
 This gives you a working LLVM build.
 
-
 ## Testing
+
 Run this test script for offload-specific tests:
 ```console
 ./x test --stage 1 tests/codegen-llvm/gpu_offload
