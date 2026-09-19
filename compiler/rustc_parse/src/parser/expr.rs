@@ -1354,6 +1354,9 @@ impl<'a> Parser<'a> {
                 if let Some(expr) = this.maybe_recover_bad_struct_literal_path(false)? {
                     return Ok(expr);
                 }
+                if let Some(arr) = this.recover_from_c_array(lo) {
+                    return Ok(arr);
+                }
                 this.parse_expr_block(None, lo, BlockCheckMode::Default)
             } else if this.check(exp!(Or)) || this.check(exp!(OrOr)) {
                 this.parse_expr_closure().map_err(|mut err| {
@@ -2180,39 +2183,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn is_array_like_block(&mut self) -> bool {
-        self.token.kind == TokenKind::OpenBrace
-            && self
-                .look_ahead(1, |t| matches!(t.kind, TokenKind::Ident(..) | TokenKind::Literal(_)))
-            && self.look_ahead(2, |t| t == &token::Comma)
-            && self.look_ahead(3, |t| t.can_begin_expr())
-    }
-
-    /// Emits a suggestion if it looks like the user meant an array but
-    /// accidentally used braces, causing the code to be interpreted as a block
-    /// expression.
-    fn maybe_suggest_brackets_instead_of_braces(&mut self, lo: Span) -> Option<Box<Expr>> {
-        let mut snapshot = self.create_snapshot_for_diagnostic();
-        match snapshot.parse_expr_array_or_repeat(exp!(CloseBrace)) {
-            Ok(arr) => {
-                let guar = self.dcx().emit_err(crate::diagnostics::ArrayBracketsInsteadOfBraces {
-                    span: arr.span,
-                    sub: crate::diagnostics::ArrayBracketsInsteadOfBracesSugg {
-                        left: lo,
-                        right: snapshot.prev_token.span,
-                    },
-                });
-
-                self.restore_snapshot(snapshot);
-                Some(self.mk_expr_err(arr.span, guar))
-            }
-            Err(e) => {
-                e.cancel();
-                None
-            }
-        }
-    }
-
     fn suggest_missing_semicolon_before_array(
         &self,
         prev_span: Span,
@@ -2262,12 +2232,6 @@ impl<'a> Parser<'a> {
         lo: Span,
         blk_mode: BlockCheckMode,
     ) -> PResult<'a, Box<Expr>> {
-        if self.may_recover() && self.is_array_like_block() {
-            if let Some(arr) = self.maybe_suggest_brackets_instead_of_braces(lo) {
-                return Ok(arr);
-            }
-        }
-
         if self.token.is_metavar_block() {
             self.dcx().emit_err(crate::diagnostics::InvalidBlockMacroSegment {
                 span: self.token.span,

@@ -3,8 +3,8 @@ use rustc_ast::{BinOpKind, Expr, ExprKind, token};
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{Span, Spanned, respan, sym};
 
-use crate::diagnostics;
 use crate::parser::Parser;
+use crate::{diagnostics, exp};
 
 impl<'a> Parser<'a> {
     /// Recover from alphabetic logic operators `and` and `or` as found in e.g., Python and PHP.
@@ -215,6 +215,38 @@ impl<'a> Parser<'a> {
             }
         }
         err
+    }
+
+    /// Recover from array expressions as found in C like `{0, 1, 2, 3}`.
+    pub(super) fn recover_from_c_array(&mut self, lo: Span) -> Option<Box<Expr>> {
+        if !self.may_recover()
+            || self.token.kind != token::OpenBrace
+            || self.look_ahead(1, |t| !matches!(t.kind, token::Literal(_)))
+            || self.look_ahead(2, |t| t != &token::Comma)
+            || self.look_ahead(3, |t| !t.can_begin_expr())
+        {
+            return None;
+        }
+
+        let mut snapshot = self.create_snapshot_for_diagnostic();
+        match snapshot.parse_expr_array_or_repeat(exp!(CloseBrace)) {
+            Ok(arr) => {
+                let guar = self.dcx().emit_err(diagnostics::ArrayBracketsInsteadOfBraces {
+                    span: arr.span,
+                    sub: diagnostics::ArrayBracketsInsteadOfBracesSugg {
+                        left: lo,
+                        right: snapshot.prev_token.span,
+                    },
+                });
+
+                self.restore_snapshot(snapshot);
+                Some(self.mk_expr_err(arr.span, guar))
+            }
+            Err(e) => {
+                e.cancel();
+                None
+            }
+        }
     }
 }
 
