@@ -1492,18 +1492,47 @@ where
         }
     }
 
+    /// Like `try_merge_candidates`, but returns `None` if there are multiple user-written
+    /// impls, or a user-written impl and a builtin impl, in which case we flounder.
+    ///
+    /// Candidates with equal responses can still come from conflicting impls, ex - two
+    /// overlapping impls which both apply due to impossible where-clauses. We don't want
+    /// to merge these. Multiple builtin impls are still merged as usual. This is not
+    /// done for marker traits, as their impls are allowed to overlap.
+    #[instrument(level = "trace", skip(self), ret)]
+    fn try_merge_impl_candidates(
+        &mut self,
+        trait_def_id: I::TraitId,
+        candidates: &[Candidate<I>],
+    ) -> Option<CanonicalResponse<I>> {
+        if !self.cx().trait_is_marker(trait_def_id) {
+            let impl_count = candidates
+                .iter()
+                .filter(|candidate| matches!(candidate.source, CandidateSource::Impl(_)))
+                .count();
+            let has_builtin_impl = candidates
+                .iter()
+                .any(|candidate| matches!(candidate.source, CandidateSource::BuiltinImpl(_)));
+            if impl_count + usize::from(has_builtin_impl) > 1 {
+                return None;
+            }
+        }
+
+        self.try_merge_candidates(candidates).map(|(response, _)| response)
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn merge_trait_candidates(
         &mut self,
-        candidate_preference_mode: CandidatePreferenceMode,
+        trait_def_id: I::TraitId,
         mut candidates: Vec<Candidate<I>>,
         failed_candidate_info: FailedCandidateInfo,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
+        let candidate_preference_mode = CandidatePreferenceMode::compute(self.cx(), trait_def_id);
         if self.typing_mode().is_coherence() {
-            return if let Some((response, _)) = self.try_merge_candidates(&candidates) {
-                Ok((response, Some(TraitGoalProvenVia::Misc)))
-            } else {
-                self.flounder(&candidates).map(|r| (r, None))
+            return match self.try_merge_impl_candidates(trait_def_id, &candidates) {
+                Some(response) => Ok((response, Some(TraitGoalProvenVia::Misc))),
+                None => self.flounder(&candidates).map(|r| (r, None)),
             };
         }
 
@@ -1612,10 +1641,9 @@ where
             TraitGoalProvenVia::Misc
         };
 
-        if let Some((response, _)) = self.try_merge_candidates(&candidates) {
-            Ok((response, Some(proven_via)))
-        } else {
-            self.flounder(&candidates).map(|r| (r, None))
+        match self.try_merge_impl_candidates(trait_def_id, &candidates) {
+            Some(response) => Ok((response, Some(proven_via))),
+            None => self.flounder(&candidates).map(|r| (r, None)),
         }
     }
 
@@ -1627,9 +1655,7 @@ where
     {
         let (candidates, failed_candidate_info) =
             self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All)?;
-        let candidate_preference_mode =
-            CandidatePreferenceMode::compute(self.cx(), goal.predicate.def_id());
-        self.merge_trait_candidates(candidate_preference_mode, candidates, failed_candidate_info)
+        self.merge_trait_candidates(goal.predicate.def_id(), candidates, failed_candidate_info)
             .map_err(Into::into)
     }
 

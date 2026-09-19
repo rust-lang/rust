@@ -1091,8 +1091,12 @@ where
                 // we still use modulo regions here. This is fine as specialization currently
                 // assumes that specializing impls have to be always applicable, meaning that
                 // the only allowed region constraints may be constraints also present on the default impl.
+                //
+                // If both impls have the same response, dropping victim doesn't change the
+                // result. We need to do so here as we don't merge distinct impl candidates.
                 if matches!(allow_inference_constraints, AllowInferenceConstraints::Yes)
                     || has_only_region_constraints(c.result)
+                    || c.result == candidates[i].result
                 {
                     if self.cx().impl_specializes(other_def_id, victim_def_id) {
                         candidates.remove(i);
