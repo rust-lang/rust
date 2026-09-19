@@ -1650,10 +1650,9 @@ impl<T> *mut T {
     /// Performs the same functionality as [`cast_slice`] on a `*const T`, except that a
     /// raw mutable slice is returned, as opposed to a raw immutable slice.
     ///
-    /// This function is safe, but actually using the return value is unsafe.
-    /// See the documentation of [`slice::from_raw_parts_mut`] for slice safety requirements.
+    /// See [`ptr::slice_from_raw_parts`] for more information.
     ///
-    /// [`slice::from_raw_parts_mut`]: crate::slice::from_raw_parts_mut
+    /// [`ptr::slice_from_raw_parts`]: crate::ptr::slice_from_raw_parts
     /// [`cast_slice`]: pointer::cast_slice
     ///
     /// # Examples
