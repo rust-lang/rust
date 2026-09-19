@@ -602,6 +602,8 @@ pub(crate) struct TrailingMacro {
     )]
     pub is_trailing: bool,
     pub name: Ident,
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

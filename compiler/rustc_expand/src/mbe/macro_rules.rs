@@ -16,10 +16,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_feature::Features;
 use rustc_hir::def::MacroKinds;
-use rustc_lint_defs::builtin::{
-    RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
-    SEMICOLON_IN_EXPRESSIONS_FROM_NON_LOCAL_MACROS,
-};
+use rustc_lint_defs::builtin::RUST_2021_INCOMPATIBLE_OR_PATTERNS;
 use rustc_parse::exp;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::Session;
@@ -52,11 +49,8 @@ pub(crate) struct ParserAnyMacro<'a, 'b> {
     site_span: Span,
     /// The ident of the macro we're parsing
     macro_ident: Ident,
-    lint_node_id: NodeId,
     is_trailing_mac: bool,
     arm_span: Span,
-    /// Whether or not this macro is defined in the current crate
-    is_local: bool,
     bindings: &'b [MacroRule],
     matched_rule_bindings: &'b [MatcherLoc],
 }
@@ -70,10 +64,8 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
             site_span,
             macro_ident,
             ref mut parser,
-            lint_node_id,
             arm_span,
             is_trailing_mac,
-            is_local,
             bindings,
             matched_rule_bindings,
         } = *self;
@@ -99,17 +91,11 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
         // `macro_rules! m { () => { panic!(); } }` isn't parsed by `.parse_expr()`,
         // but `m!()` is allowed in expression positions (cf. issue #34706).
         if kind == AstFragmentKind::Expr && parser.token == token::Semi {
-            let lint = if is_local {
-                SEMICOLON_IN_EXPRESSIONS_FROM_MACROS
-            } else {
-                SEMICOLON_IN_EXPRESSIONS_FROM_NON_LOCAL_MACROS
-            };
-            parser.psess.buffer_lint(
-                lint,
-                parser.token.span,
-                lint_node_id,
-                diagnostics::TrailingMacro { is_trailing: is_trailing_mac, name: macro_ident },
-            );
+            parser.psess.dcx().emit_err(diagnostics::TrailingMacro {
+                is_trailing: is_trailing_mac,
+                name: macro_ident,
+                span: parser.token.span,
+            });
             parser.bump();
         }
 
@@ -139,10 +125,8 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
             // macro leaves unparsed tokens.
             site_span,
             macro_ident,
-            lint_node_id: cx.current_expansion.lint_node_id,
             is_trailing_mac: cx.current_expansion.is_trailing_mac,
             arm_span,
-            is_local,
             bindings,
             matched_rule_bindings,
         }
