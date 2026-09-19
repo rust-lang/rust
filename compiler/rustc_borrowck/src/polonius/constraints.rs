@@ -1,8 +1,7 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::RegionVid;
-use rustc_mir_dataflow::points::PointIndex;
+use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use tracing::debug;
 
 use crate::BorrowSet;
@@ -50,11 +49,50 @@ pub(super) struct LocalizedConstraintGraph {
     logical_edges: FxHashMap<RegionVid, FxIndexSet<RegionVid>>,
 }
 
+/// For a given region, the relevant liveness and variance information.
+pub(super) struct RegionLiveness<'a> {
+    region: RegionVid,
+    direction: ConstraintDirection,
+    liveness: &'a LivenessValues,
+}
+
+impl<'a> RegionLiveness<'a> {
+    pub(super) fn new(
+        region: RegionVid,
+        live_region_variances: &LiveRegionVariances,
+        liveness: &'a LivenessValues,
+    ) -> Self {
+        // Note: there currently are cases related to promoted and const generics, where we don't yet
+        // have variance information (possibly about temporary regions created when typeck sanitizes the
+        // promoteds). Until that is done, we conservatively fallback to maximizing reachability by
+        // adding a bidirectional edge here. This will not limit traversal whatsoever, and thus
+        // propagate liveness when needed.
+        //
+        // FIXME: add the missing variance information and remove this fallback bidirectional edge.
+        let direction = live_region_variances
+            .get(region)
+            .copied()
+            .flatten()
+            .unwrap_or(ConstraintDirection::Bidirectional);
+        Self { region, direction, liveness }
+    }
+
+    fn is_live_at(&self, point: PointIndex) -> bool {
+        self.liveness.points().contains(self.region, point)
+    }
+}
+
+/// The source of liveness information for a given region.
+pub(super) trait LivenessSource {
+    fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_>;
+    fn location_map(&self) -> &DenseLocationMap;
+}
+
 /// The visitor interface when traversing a `LocalizedConstraintGraph`.
 pub(super) trait LocalizedConstraintGraphVisitor {
     /// Callback called when traversing a given `loan` encounters a localized `node` it hasn't
     /// visited before.
-    fn on_node_traversed(&mut self, _loan: BorrowIndex, _node: LocalizedNode) {}
+    fn on_node_traversed(&mut self, _loan: BorrowIndex, _node: LocalizedNode, _is_live: bool) {}
 
     /// Callback called when discovering a new `successor` node for the `current_node`.
     fn on_successor_discovered(&mut self, _current_node: LocalizedNode, _successor: LocalizedNode) {
@@ -64,7 +102,7 @@ pub(super) trait LocalizedConstraintGraphVisitor {
 impl LocalizedConstraintGraph {
     /// Traverses the constraints and returns the indexed graph of edges per node.
     pub(super) fn new<'tcx>(
-        liveness: &LivenessValues,
+        location_map: &DenseLocationMap,
         outlives_constraints: impl Iterator<Item = OutlivesConstraint<'tcx>>,
     ) -> Self {
         let mut edges: FxHashMap<_, FxIndexSet<_>> = FxHashMap::default();
@@ -82,7 +120,7 @@ impl LocalizedConstraintGraph {
                 Locations::Single(location) => {
                     let node = LocalizedNode {
                         region: outlives_constraint.sup,
-                        point: liveness.point_from_location(location),
+                        point: location_map.point_from_location(location),
                     };
                     edges.entry(node).or_default().insert(outlives_constraint.sub);
                 }
@@ -97,14 +135,11 @@ impl LocalizedConstraintGraph {
     pub(super) fn traverse<'tcx>(
         &self,
         body: &Body<'tcx>,
-        liveness: &LivenessValues,
-        live_region_variances: &LiveRegionVariances,
         universal_regions: &UniversalRegions<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
+        liveness_source: &mut impl LivenessSource,
         visitor: &mut impl LocalizedConstraintGraphVisitor,
     ) {
-        let live_regions = liveness.points();
-
         let mut visited = FxHashSet::default();
         let mut stack = Vec::new();
 
@@ -116,7 +151,7 @@ impl LocalizedConstraintGraph {
 
             let start_node = LocalizedNode {
                 region: loan.region,
-                point: liveness.point_from_location(loan.reserve_location),
+                point: liveness_source.location_map().point_from_location(loan.reserve_location),
             };
             stack.push(start_node);
 
@@ -125,9 +160,10 @@ impl LocalizedConstraintGraph {
                     continue;
                 }
 
+                let liveness = liveness_source.liveness_for_region(node.region);
                 // We've reached a node we haven't visited before.
-                let location = liveness.location_from_point(node.point);
-                visitor.on_node_traversed(loan_idx, node);
+                let location = liveness.liveness.location_map().to_location(node.point);
+                visitor.on_node_traversed(loan_idx, node, liveness.is_live_at(node.point));
 
                 // When we find a _new_ successor, we'd like to
                 // - visit it eventually,
@@ -162,13 +198,9 @@ impl LocalizedConstraintGraph {
                     // Intra-block edges, straight line constraints from each point to its successor
                     // within the same block.
                     let next_point = node.point + 1;
-                    if let Some(succ) = compute_forward_successor(
-                        node.region,
-                        next_point,
-                        live_regions,
-                        live_region_variances,
-                        is_universal_region,
-                    ) {
+                    if let Some(succ) =
+                        compute_forward_successor(&liveness, next_point, is_universal_region)
+                    {
                         successor_found(succ);
                     }
                 } else {
@@ -176,14 +208,10 @@ impl LocalizedConstraintGraph {
                     // entry point.
                     for successor_block in body[location.block].terminator().successors() {
                         let next_location = Location { block: successor_block, statement_index: 0 };
-                        let next_point = liveness.point_from_location(next_location);
-                        if let Some(succ) = compute_forward_successor(
-                            node.region,
-                            next_point,
-                            live_regions,
-                            live_region_variances,
-                            is_universal_region,
-                        ) {
+                        let next_point = liveness.liveness.point_from_location(next_location);
+                        if let Some(succ) =
+                            compute_forward_successor(&liveness, next_point, is_universal_region)
+                        {
                             successor_found(succ);
                         }
                     }
@@ -195,13 +223,9 @@ impl LocalizedConstraintGraph {
                     if location.statement_index > 0 {
                         // Backward edges to the predecessor point in the same block.
                         let previous_point = PointIndex::from(node.point.as_usize() - 1);
-                        if let Some(succ) = compute_backward_successor(
-                            node.region,
-                            node.point,
-                            previous_point,
-                            live_regions,
-                            live_region_variances,
-                        ) {
+                        if let Some(succ) =
+                            compute_backward_successor(&liveness, node.point, previous_point)
+                        {
                             successor_found(succ);
                         }
                     } else {
@@ -213,14 +237,11 @@ impl LocalizedConstraintGraph {
                                 block: pred_block,
                                 statement_index: body[pred_block].statements.len(),
                             };
-                            let previous_point = liveness.point_from_location(previous_location);
-                            if let Some(succ) = compute_backward_successor(
-                                node.region,
-                                node.point,
-                                previous_point,
-                                live_regions,
-                                live_region_variances,
-                            ) {
+                            let previous_point =
+                                liveness.liveness.point_from_location(previous_location);
+                            if let Some(succ) =
+                                compute_backward_successor(&liveness, node.point, previous_point)
+                            {
                                 successor_found(succ);
                             }
                         }
@@ -240,12 +261,12 @@ impl LocalizedConstraintGraph {
 /// Returns the successor for the current region/point node when propagating a loan through forward
 /// edges, if applicable, according to liveness and variance.
 fn compute_forward_successor(
-    region: RegionVid,
+    liveness: &RegionLiveness<'_>,
     next_point: PointIndex,
-    live_regions: &SparseIntervalMatrix<RegionVid, PointIndex>,
-    live_region_variances: &LiveRegionVariances,
     is_universal_region: bool,
 ) -> Option<LocalizedNode> {
+    let region = liveness.region;
+
     // 1. Universal regions are semantically live at all points.
     if is_universal_region {
         let succ = LocalizedNode { region, point: next_point };
@@ -253,7 +274,7 @@ fn compute_forward_successor(
     }
 
     // 2. Otherwise, gather the edges due to explicit region liveness, when applicable.
-    if !live_regions.contains(region, next_point) {
+    if !liveness.is_live_at(next_point) {
         debug!(?region, ?next_point, "region isn't live at successor");
         return None;
     }
@@ -261,22 +282,9 @@ fn compute_forward_successor(
     // Here, `region` could be live at the current point, and is live at the next point: add a
     // constraint between them, according to variance.
 
-    // Note: there currently are cases related to promoted and const generics, where we don't yet
-    // have variance information (possibly about temporary regions created when typeck sanitizes the
-    // promoteds). Until that is done, we conservatively fallback to maximizing reachability by
-    // adding a bidirectional edge here. This will not limit traversal whatsoever, and thus
-    // propagate liveness when needed.
-    //
-    // FIXME: add the missing variance information and remove this fallback bidirectional edge.
-    let direction = live_region_variances
-        .get(region)
-        .copied()
-        .flatten()
-        .unwrap_or(ConstraintDirection::Bidirectional);
+    debug!(?liveness.direction);
 
-    debug!(?direction);
-
-    match direction {
+    match liveness.direction {
         ConstraintDirection::Backward => {
             // Contravariant cases: loans flow in the inverse direction, but we're only interested
             // in forward successors and there are none here.
@@ -295,28 +303,20 @@ fn compute_forward_successor(
 /// Returns the successor for the current region/point node when propagating a loan through backward
 /// edges, if applicable, according to liveness and variance.
 fn compute_backward_successor(
-    region: RegionVid,
+    liveness: &RegionLiveness<'_>,
     current_point: PointIndex,
     previous_point: PointIndex,
-    live_regions: &SparseIntervalMatrix<RegionVid, PointIndex>,
-    live_region_variances: &LiveRegionVariances,
 ) -> Option<LocalizedNode> {
+    let region = liveness.region;
+
     // Liveness flows into the regions live at the next point. So, in a backwards view, we'll link
     // the region from the current point, if it's live there, to the previous point.
-    if !live_regions.contains(region, current_point) {
+    if !liveness.is_live_at(current_point) {
         debug!(?region, ?current_point, "region isn't live at current point");
         return None;
     }
 
-    // FIXME: add the missing variance information and remove this fallback bidirectional edge. See
-    // the same comment in `compute_forward_successor`.
-    let direction = live_region_variances
-        .get(region)
-        .copied()
-        .flatten()
-        .unwrap_or(ConstraintDirection::Bidirectional);
-
-    match direction {
+    match liveness.direction {
         ConstraintDirection::Forward => {
             // Covariant cases: loans flow in the regular direction, but we're only interested in
             // backward successors and there are none here.
