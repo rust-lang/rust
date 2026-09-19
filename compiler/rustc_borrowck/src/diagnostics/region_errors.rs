@@ -15,6 +15,7 @@ use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{AnnotationSource, ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::{
     self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitor, fold_regions,
+    print,
 };
 use rustc_span::{Ident, Span, bug, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -823,8 +824,242 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         self.suggest_adding_lifetime_params(&mut diag, *fr, *outlived_fr);
         self.suggest_move_on_borrowing_closure(&mut diag);
         self.suggest_deref_closure_return(&mut diag);
+        self.detect_self_ty(&mut diag, *span, category, outlived_fr_name);
+        self.point_at_implicit_lifetime_in_return_type(&mut diag, *fr, fr_name);
 
         diag
+    }
+
+    /// Point at `Path` in return type when declared `struct Path<'a>(&'a ());`.
+    ///
+    /// ```text
+    /// LL |         pub fn sub(&mut self) -> Path {
+    ///    |                    -             ---- this returned type has an implicit lifetime `'1`
+    ///    |                    |
+    ///    |                    let's call the lifetime of this reference `'1`
+    /// ...
+    /// help: consider making explicit the implicit `'1` lifetime in the return type
+    ///    |
+    /// LL |         pub fn sub(&mut self) -> Path<'_> {
+    ///    |                                      ++++
+    /// ```
+    fn point_at_implicit_lifetime_in_return_type(
+        &self,
+        diag: &mut Diag<'_>,
+        fr: RegionVid,
+        fr_name: RegionName,
+    ) {
+        let body = self.infcx.tcx.hir_body_owned_by(self.mir_def_id());
+        let expr = &body.value.peel_blocks();
+        if let Some(fn_hir_id) = self.infcx.tcx.hir_get_fn_id_for_return_block(expr.hir_id)
+            && let Some(fn_decl) = self.infcx.tcx.hir_node(fn_hir_id).fn_decl()
+            && let hir::FnRetTy::Return(ret) = fn_decl.output
+        {
+            struct V<'tcx> {
+                lifetimes: Vec<&'tcx hir::Lifetime>,
+                tcx: TyCtxt<'tcx>,
+            }
+            impl<'tcx> Visitor<'tcx> for V<'tcx> {
+                type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
+
+                fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                    self.tcx
+                }
+
+                fn visit_lifetime(&mut self, lifetime: &'tcx hir::Lifetime) -> Self::Result {
+                    self.lifetimes.push(lifetime);
+                    hir::intravisit::walk_lifetime(self, lifetime)
+                }
+            }
+            let tcx = self.infcx.tcx;
+            let mut v = V { lifetimes: vec![], tcx };
+            v.visit_ty_unambig(ret);
+            if let Some(region) = self.regioncx.to_error_region(fr) {
+                for lifetime in v.lifetimes {
+                    if let hir::LifetimeKind::Param(lt_def_id) = lifetime.kind
+                        && lifetime.is_implicit()
+                        && let hir::LifetimeSource::Path { angle_brackets } = lifetime.source
+                        && let Some(def_id) =
+                            region.opt_param_def_id(self.infcx.tcx, self.mir_def_id().to_def_id())
+                        && def_id == lt_def_id.to_def_id()
+                    {
+                        let (msg, sugg) = match angle_brackets {
+                            hir::AngleBrackets::Missing => (
+                                format!("this returned type has an implicit lifetime `{fr_name}`"),
+                                format!("<{region}>"),
+                            ),
+                            hir::AngleBrackets::Empty => (
+                                format!(
+                                    "there is an implicit lifetime `{fr_name}` in this empty \
+                                     parameter list",
+                                ),
+                                format!("{region}"),
+                            ),
+                            hir::AngleBrackets::Full => (
+                                format!(
+                                    "there is an implicit lifetime `{fr_name}` in this parameter \
+                                     list",
+                                ),
+                                format!("{region}, "),
+                            ),
+                        };
+                        diag.span_label(lifetime.ident.span, msg);
+                        diag.span_suggestion_verbose(
+                            lifetime.ident.span.shrink_to_hi(),
+                            format!(
+                                "consider making explicit the implicit `{fr_name}` lifetime in the \
+                                 return type",
+                            ),
+                            sugg,
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// Detect lifetime errors caused by lifetime requirements coming from the enclosing `impl`
+    /// because of the use of `Self` as a binding type or as a struct/enum literal.
+    ///
+    /// Point at the `Self` in literals as the introduction of lifetime requirement:
+    /// ```text
+    /// LL |             Self {
+    ///    |             ---- requires lifetime `'a` from the `impl`
+    /// ```
+    ///
+    /// Provide structured suggestion to use the self type directly.
+    ///
+    /// Struct literal:
+    /// ```text
+    /// help: consider using the type's name directly instead, to avoid conflicting lifetime bounds from the `impl`
+    ///    |
+    /// LL -             Self {
+    /// LL +             Path {
+    ///    |
+    /// ```
+    ///
+    /// Tuple struct literal:
+    /// ```text
+    /// help: consider using the type's name directly instead, to avoid conflicting lifetime bounds from the `impl`
+    ///    |
+    /// LL -             Self(
+    /// LL +             Path(
+    ///    |
+    /// ```
+    ///
+    /// `Self` type:
+    /// ```text
+    /// help: consider using the type directly instead, to avoid conflicting lifetime bounds from the `impl`
+    ///    |
+    /// LL -             let x: Self = Path(
+    /// LL +             let x: Path<'_> = Path(
+    ///    |
+    /// ```
+    fn detect_self_ty(
+        &self,
+        diag: &mut Diag<'_>,
+        target: Span,
+        category: &ConstraintCategory<'_>,
+        outlived_fr_name: RegionName,
+    ) {
+        struct V<'tcx> {
+            target: Span,
+            tcx: TyCtxt<'tcx>,
+        }
+        use std::ops::ControlFlow;
+        impl<'tcx> Visitor<'tcx> for V<'tcx> {
+            type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
+            type Result = ControlFlow<hir::HirId>;
+
+            fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                self.tcx
+            }
+
+            fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, hir::AmbigArg>) -> Self::Result {
+                if ty.span == self.target {
+                    return ControlFlow::Break(ty.hir_id);
+                }
+                hir::intravisit::walk_ty(self, ty)
+            }
+
+            fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) -> Self::Result {
+                if ex.span == self.target {
+                    return ControlFlow::Break(ex.hir_id);
+                }
+                hir::intravisit::walk_expr(self, ex)
+            }
+        }
+        let tcx = self.infcx.tcx;
+        let mut v = V { target, tcx };
+        let body = tcx.hir_body_owned_by(self.mir_def_id());
+        if let Some(hir_id) = v.visit_body(body).break_value() {
+            let node = tcx.hir_node(hir_id);
+            if let ConstraintCategory::TypeAnnotation(_) = category
+                && let hir::Node::Ty(ty) = node
+                && let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = ty.kind
+                && let hir::def::Res::SelfTyAlias { alias_to, .. }
+                | hir::def::Res::SelfCtor(alias_to) = path.res
+            {
+                // Look for `let binding: Self = ...;`.
+                let ty = tcx.erase_and_anonymize_regions(
+                    tcx.type_of(alias_to).instantiate_identity().skip_norm_wip(),
+                );
+                diag.span_suggestion_verbose(
+                    path.span,
+                    "consider using the type directly instead, to avoid conflicting lifetime \
+                     bounds from the `impl`",
+                    print::with_forced_trimmed_paths!(format!("{ty}")),
+                    Applicability::MaybeIncorrect,
+                );
+            } else {
+                // Look for `Self { ... }` and `Self(...)` literals.
+                for (_, node) in tcx.hir_parent_iter(hir_id) {
+                    let expr = match node {
+                        hir::Node::Expr(expr) => expr,
+                        hir::Node::Stmt(stmt)
+                            if let hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr) =
+                                stmt.kind =>
+                        {
+                            expr
+                        }
+                        _ => continue,
+                    };
+                    let path = match expr.kind {
+                        hir::ExprKind::Struct(hir::QPath::Resolved(None, path), _, _) => path,
+                        hir::ExprKind::Call(expr, _)
+                            if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) =
+                                expr.kind =>
+                        {
+                            path
+                        }
+                        _ => continue,
+                    };
+                    let (hir::def::Res::SelfTyAlias { alias_to, .. }
+                    | hir::def::Res::SelfCtor(alias_to)) = path.res
+                    else {
+                        continue;
+                    };
+                    diag.span_label(
+                        path.span,
+                        format!("requires lifetime `{outlived_fr_name}` from the `impl`"),
+                    );
+
+                    if let ty::Adt(adt, _args) =
+                        tcx.type_of(alias_to).instantiate_identity().skip_norm_wip().kind()
+                    {
+                        diag.span_suggestion_verbose(
+                            path.span,
+                            "consider using the type's name directly instead, to avoid conflicting \
+                            lifetime bounds from the `impl`",
+                            format!("{}", tcx.item_name(adt.did())),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     /// Adds a suggestion to errors where an `impl Trait` is returned.
