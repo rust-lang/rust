@@ -1,10 +1,12 @@
 //@ add-minicore
 // ignore-tidy-linelength
-//@ only-pauthtest
 //@ revisions: O0_PAUTH O3_PAUTH
 
 //@ [O0_PAUTH] needs-llvm-components: aarch64
 //@ [O0_PAUTH] compile-flags: --target=aarch64-unknown-linux-pauthtest -C opt-level=0
+// O3_PAUTH relies on an InstCombine fold that removes the redundant `ptrauth` bundle from calls.
+// That fold first shipped in LLVM 22, gate this revision accordingly.
+//@ [O3_PAUTH] min-llvm-version: 22
 //@ [O3_PAUTH] needs-llvm-components: aarch64
 //@ [O3_PAUTH] compile-flags: --target=aarch64-unknown-linux-pauthtest -C opt-level=3
 
