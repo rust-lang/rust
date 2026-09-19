@@ -470,6 +470,9 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             sess.check_config = parse_check_cfg(&sess, config.crate_check_cfg);
 
+            sess.codegen_backend_supports_eh_personality_mangling =
+                codegen_backend.can_mangle_eh_personality();
+
             if let Some(psess_created) = config.psess_created {
                 psess_created(&mut sess.psess);
             }

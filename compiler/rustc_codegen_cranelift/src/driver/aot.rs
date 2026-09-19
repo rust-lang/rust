@@ -62,7 +62,11 @@ fn make_module(tcx: TyCtxt<'_>, cgu_name: &str) -> AotModule {
         tcx.sess.opts.unstable_opts.function_sections.unwrap_or(default_function_sections),
     );
 
-    let module = UnwindModule::new(ObjectModule::new(builder), true);
+    let module = UnwindModule::new(
+        ObjectModule::new(builder),
+        &rustc_symbol_mangling::eh_personality_symbol(tcx),
+        true,
+    );
 
     let producer = crate::debuginfo::producer(tcx.sess);
     let global_asm_config = GlobalAsmConfig::new(tcx.sess);
