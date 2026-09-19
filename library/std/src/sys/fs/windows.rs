@@ -1474,7 +1474,9 @@ pub fn link(_original: &WCStr, _link: &WCStr) -> io::Result<()> {
 pub fn stat(path: &WCStr) -> io::Result<FileAttr> {
     match metadata(path, ReparsePoint::Follow) {
         Err(err) if err.raw_os_error() == Some(c::ERROR_CANT_ACCESS_FILE as i32) => {
-            if let Ok(attrs) = lstat(path) {
+            // Fallback to opening reparse points when following fails. Needed for UNIX domain
+            // sockets. See <https://github.com/rust-lang/rust/issues/109106>.
+            if let Ok(attrs) = metadata(path, ReparsePoint::Open) {
                 if !attrs.file_type().is_symlink() {
                     return Ok(attrs);
                 }

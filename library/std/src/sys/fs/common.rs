@@ -104,6 +104,14 @@ impl Dir {
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
         remove_dir(path)
     }
+
+    pub fn metadata_at(&self, path: &Path) -> io::Result<FileAttr> {
+        self.path.join(path).metadata().map(|m| m.into_inner())
+    }
+
+    pub fn symlink_metadata_at(&self, path: &Path) -> io::Result<FileAttr> {
+        self.path.join(path).symlink_metadata().map(|m| m.into_inner())
+    }
 }
 
 impl fmt::Debug for Dir {

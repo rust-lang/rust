@@ -26,7 +26,7 @@ use crate::sys::fs::OpenOptions;
 use crate::sys::fs::unix::{File, FileAttr, debug_path_fd};
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt, cvt_r};
-use crate::{fmt, fs, io};
+use crate::{fmt, fs, io, mem};
 
 const TRAVERSE_DIRECTORY: i32 =
     cfg_select! {
@@ -64,7 +64,7 @@ impl Dir {
     }
 
     pub fn remove_file(&self, path: &Path) -> io::Result<()> {
-        run_path_with_cstr(path, &|path| self.remove_c(path, false))
+        run_path_with_cstr(path, &|path| self.remove_c(path, /* remove_dir */ false))
     }
 
     pub fn rename(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
@@ -82,7 +82,17 @@ impl Dir {
     }
 
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
-        run_path_with_cstr(path, &|path| self.remove_c(path, true))
+        run_path_with_cstr(path, &|path| self.remove_c(path, /* remove_dir */ true))
+    }
+
+    pub fn metadata_at(&self, path: &Path) -> io::Result<FileAttr> {
+        run_path_with_cstr(path, &|path| {
+            self.metadata_at_c(path, /* symlink_nofollow */ false)
+        })
+    }
+
+    pub fn symlink_metadata_at(&self, path: &Path) -> io::Result<FileAttr> {
+        run_path_with_cstr(path, &|path| self.metadata_at_c(path, /* symlink_nofollow */ true))
     }
 
     fn open_with_c(path: &CStr, opts: &OpenOptions) -> io::Result<Self> {
@@ -138,6 +148,26 @@ impl Dir {
 
     fn create_dir_c(&self, path: &CStr) -> io::Result<()> {
         cvt(unsafe { mkdirat(self.0.as_raw_fd(), path.as_ptr(), 0o777) }).map(|_| ())
+    }
+
+    fn metadata_at_c(&self, path: &CStr, symlink_nofollow: bool) -> io::Result<FileAttr> {
+        let fd = self.0.as_raw_fd();
+        let flag = if symlink_nofollow { libc::AT_SYMLINK_NOFOLLOW } else { 0 };
+
+        cfg_has_statx! {
+            if let Some(ret) = unsafe { super::try_statx(
+                fd,
+                path.as_ptr(),
+                flag | libc::AT_STATX_SYNC_AS_STAT,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            ) } {
+                return ret;
+            }
+        }
+
+        let mut stat: super::stat64 = unsafe { mem::zeroed() };
+        cvt(unsafe { super::fstatat64(fd, path.as_ptr(), &mut stat, flag) })?;
+        Ok(FileAttr::from_stat64(stat))
     }
 }
 
