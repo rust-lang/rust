@@ -633,3 +633,64 @@ const _: () = ();
 ///
 /// [the `non_exhaustive` attribute]: ../reference/attributes/type_system.html#the-non_exhaustive-attribute
 const _: () = ();
+
+#[doc(attribute = "target_feature")]
+//
+/// Enables extra CPU instructions for a single function.
+///
+/// Newer CPUs support instructions that older ones may lack. AVX2, for example, processes 32
+/// bytes in a single instruction, but a program using it everywhere cannot run on older machines.
+/// By default the compiler stays within a baseline that the compilation target defines.
+/// `#[target_feature(enable = "...")]` enables the named features for one function, so a portable
+/// binary can use faster instructions on CPUs that support them, and fall back otherwise:
+///
+/// ```
+/// # #[cfg(target_arch = "x86_64")] {
+/// #[target_feature(enable = "avx2")]
+/// fn increment_avx2(data: &mut [u8]) {
+///     // The compiler may use AVX2 instructions to process many bytes at once.
+///     for byte in data {
+///         *byte = byte.wrapping_add(1);
+///     }
+/// }
+///
+/// fn increment(data: &mut [u8]) {
+///     if is_x86_feature_detected!("avx2") {
+///         // SAFETY: the CPU was just confirmed to support AVX2.
+///         unsafe { increment_avx2(data) }
+///     } else {
+///         // Fallback that runs on every x86-64 CPU.
+///         for byte in data {
+///             *byte = byte.wrapping_add(1);
+///         }
+///     }
+/// }
+/// # }
+/// ```
+///
+/// Calling a `#[target_feature]` function on a CPU that lacks the features is undefined
+/// behavior, unless the platform explicitly documents it to be safe. That is why the call
+/// needs `unsafe`: the caller must verify that the features are present. Even in a crate built
+/// with `-C target-feature=+avx2`, calling `increment_avx2` still needs `unsafe`; only a
+/// caller that enables the same features through its own `#[target_feature]` attribute may
+/// call it without.
+///
+/// The value of `enable` is one or more comma-separated feature names, and the names are
+/// architecture-specific: `avx2` belongs to x86, `neon` to ARM. The `-C target-feature` flag
+/// accepts the same names crate-wide, and run-time detection has per-architecture macros such
+/// as [`is_x86_feature_detected`] and [`is_aarch64_feature_detected`], which callers use to
+/// confirm the running CPU has a feature before the call.
+///
+/// Inlining would copy the function's extra instructions into code that runs on any CPU, so
+/// the function is never inlined into callers that lack its features and does not combine with
+/// [`inline(always)`]. Every dispatched call is a real call, so put a whole loop behind it,
+/// not a few instructions. It also does not implement the `Fn` traits, so wrap the checked call
+/// in a closure instead.
+///
+/// For more information, see the Reference on [the `target_feature` attribute].
+///
+/// [`is_x86_feature_detected`]: ../std/arch/macro.is_x86_feature_detected.html
+/// [`is_aarch64_feature_detected`]: ../std/arch/macro.is_aarch64_feature_detected.html
+/// [`inline(always)`]: ./attribute.inline.html
+/// [the `target_feature` attribute]: ../reference/attributes/codegen.html#the-target_feature-attribute
+const _: () = ();
