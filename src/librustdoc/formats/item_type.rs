@@ -162,7 +162,7 @@ impl ItemType {
             DefKind::Enum => Self::Enum,
             DefKind::Fn => Self::Function,
             DefKind::Mod => Self::Module,
-            DefKind::Const { .. } => Self::Constant,
+            DefKind::Const => Self::Constant,
             DefKind::Static { .. } => Self::Static,
             DefKind::Struct => Self::Struct,
             DefKind::Union => Self::Union,
@@ -185,20 +185,20 @@ impl ItemType {
             }
             DefKind::Ctor(CtorOf::Struct, _) => Self::Struct,
             DefKind::Ctor(CtorOf::Variant, _) => Self::Variant,
-            DefKind::AssocConst { .. } => Self::AssocConst,
+            DefKind::AssocConst => Self::AssocConst,
             DefKind::TyParam
             | DefKind::ConstParam
             | DefKind::ExternCrate
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::AnonConst
-            | DefKind::InlineConst
             | DefKind::OpaqueTy
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
             | DefKind::Closure
-            | DefKind::SyntheticCoroutineBody => Self::ForeignType,
+            | DefKind::SyntheticCoroutineBody
+            | DefKind::TestBinderConstraints => Self::ForeignType,
         }
     }
 

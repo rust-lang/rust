@@ -623,7 +623,6 @@ ui/const-generics/issues/issue-88119.rs
 ui/const-generics/issues/issue-88468.rs
 ui/const-generics/issues/issue-88997.rs
 ui/const-generics/issues/issue-89146.rs
-ui/const-generics/issues/issue-89304.rs
 ui/const-generics/issues/issue-89320.rs
 ui/const-generics/issues/issue-89334.rs
 ui/const-generics/issues/issue-90318.rs
@@ -725,7 +724,6 @@ ui/consts/issue-28113.rs
 ui/consts/issue-28822.rs
 ui/consts/issue-29798.rs
 ui/consts/issue-29914-2.rs
-ui/consts/issue-29914-3.rs
 ui/consts/issue-29914.rs
 ui/consts/issue-29927-1.rs
 ui/consts/issue-29927.rs
@@ -1916,7 +1914,6 @@ ui/parser/issues/issue-17718-parse-const.rs
 ui/parser/issues/issue-17904-2.rs
 ui/parser/issues/issue-17904.rs
 ui/parser/issues/issue-1802-1.rs
-ui/parser/issues/issue-1802-2.rs
 ui/parser/issues/issue-19096.rs
 ui/parser/issues/issue-19398.rs
 ui/parser/issues/issue-20616-1.rs
@@ -2324,8 +2321,6 @@ ui/resolve/issue-2356.rs
 ui/resolve/issue-23716.rs
 ui/resolve/issue-24968.rs
 ui/resolve/issue-26545.rs
-ui/resolve/issue-3021-c.rs
-ui/resolve/issue-3021.rs
 ui/resolve/issue-30535.rs
 ui/resolve/issue-3099-a.rs
 ui/resolve/issue-3099-b.rs
@@ -2442,7 +2437,6 @@ ui/span/issue-42234-unknown-receiver-type.rs
 ui/span/issue-43927-non-ADT-derive.rs
 ui/span/issue-71363.rs
 ui/span/issue-81800.rs
-ui/span/issue28498-reject-ex1.rs
 ui/span/issue28498-reject-lifetime-param.rs
 ui/span/issue28498-reject-passed-to-fn.rs
 ui/span/issue28498-reject-trait-bound.rs
@@ -2768,7 +2762,6 @@ ui/type-alias-impl-trait/issue-57961.rs
 ui/type-alias-impl-trait/issue-58662-coroutine-with-lifetime.rs
 ui/type-alias-impl-trait/issue-58662-simplified.rs
 ui/type-alias-impl-trait/issue-58887.rs
-ui/type-alias-impl-trait/issue-58951-2.rs
 ui/type-alias-impl-trait/issue-58951.rs
 ui/type-alias-impl-trait/issue-60371.rs
 ui/type-alias-impl-trait/issue-60407.rs
@@ -2794,7 +2787,6 @@ ui/type-alias-impl-trait/issue-70121.rs
 ui/type-alias-impl-trait/issue-72793.rs
 ui/type-alias-impl-trait/issue-74244.rs
 ui/type-alias-impl-trait/issue-74280.rs
-ui/type-alias-impl-trait/issue-74761-2.rs
 ui/type-alias-impl-trait/issue-74761.rs
 ui/type-alias-impl-trait/issue-76202-trait-impl-for-tait.rs
 ui/type-alias-impl-trait/issue-77179.rs
@@ -2959,7 +2951,6 @@ ui/unsafe/issue-45107-unnecessary-unsafe-in-closure.rs
 ui/unsafe/issue-47412.rs
 ui/unsafe/issue-85435-unsafe-op-in-let-under-unsafe-under-closure.rs
 ui/unsafe/issue-87414-query-cycle.rs
-ui/unsized-locals/issue-30276-feature-flagged.rs
 ui/unsized-locals/issue-30276.rs
 ui/unsized-locals/issue-50940-with-feature.rs
 ui/unsized-locals/issue-50940.rs

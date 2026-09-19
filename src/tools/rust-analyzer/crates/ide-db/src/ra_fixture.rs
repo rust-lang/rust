@@ -3,6 +3,7 @@
 use std::hash::{BuildHasher, Hash};
 
 use hir::{CfgExpr, FilePositionWrapper, FileRangeWrapper, Semantics, Symbol};
+use itertools::Itertools;
 use smallvec::SmallVec;
 use span::{TextRange, TextSize};
 use syntax::{
@@ -96,9 +97,12 @@ impl RaFixtureAnalysis {
         let active_parameter = ActiveParameter::at_token(sema, expanded.syntax().clone())?;
         let has_rust_fixture_attr = active_parameter.attrs().is_some_and(|attrs| {
             attrs.filter_map(|attr| attr.as_simple_path()).any(|path| {
-                path.segments()
-                    .zip(["rust_analyzer", "rust_fixture"])
-                    .all(|(seg, name)| seg.name_ref().map_or(false, |nr| nr.text() == name))
+                let Some([Some(segment1), Some(segment2)]) =
+                    path.segments().map(|seg| seg.name_ref()).collect_array()
+                else {
+                    return false;
+                };
+                segment1.text() == "rust_analyzer" && segment2.text() == "rust_fixture"
             })
         });
         if !has_rust_fixture_attr {
@@ -303,7 +307,7 @@ impl<T, const N: usize> IsEmpty for SmallVec<[T; N]> {
     }
 }
 
-#[allow(clippy::disallowed_types)]
+#[expect(clippy::disallowed_types, reason = "generic allows for `FxHashMap`")]
 impl<K, V, S> IsEmpty for std::collections::HashMap<K, V, S> {
     fn is_empty(&self) -> bool {
         self.is_empty()
@@ -372,7 +376,7 @@ impl<T: UpmapFromRaFixture, const N: usize> UpmapFromRaFixture for SmallVec<[T; 
     }
 }
 
-#[allow(clippy::disallowed_types)]
+#[expect(clippy::disallowed_types, reason = "generic allows for `FxHashMap`")]
 impl<K: UpmapFromRaFixture + Hash + Eq, V: UpmapFromRaFixture, S: BuildHasher + Default>
     UpmapFromRaFixture for std::collections::HashMap<K, V, S>
 {
@@ -387,7 +391,7 @@ impl<K: UpmapFromRaFixture + Hash + Eq, V: UpmapFromRaFixture, S: BuildHasher + 
 }
 
 // A map of `FileId`s is treated as associating the ranges in the values with the keys.
-#[allow(clippy::disallowed_types)]
+#[expect(clippy::disallowed_types, reason = "generic allows for `FxHashMap`")]
 impl<V: UpmapFromRaFixture, S: BuildHasher + Default> UpmapFromRaFixture
     for std::collections::HashMap<FileId, V, S>
 {

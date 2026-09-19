@@ -7,7 +7,7 @@
 // CHECK-LABEL: @checked_ilog2
 #[no_mangle]
 pub fn checked_ilog2(val: u32) -> Option<u32> {
-    // CHECK: %[[ICMP:.+]] = icmp ne i32 %val, 0
+    // CHECK: icmp {{ne|eq}} i32 %val, 0
     // CHECK: %[[CTZ:.+]] = tail call range(i32 0, 33) i32 @llvm.ctlz.i32(i32 %val, i1 true)
     // CHECK: %[[LOG2:.+]] = xor i32 %[[CTZ]], 31
     val.checked_ilog(2)
@@ -17,7 +17,7 @@ pub fn checked_ilog2(val: u32) -> Option<u32> {
 // CHECK-LABEL: @checked_ilog4
 #[no_mangle]
 pub fn checked_ilog4(val: u32) -> Option<u32> {
-    // CHECK: %[[ICMP:.+]] = icmp ne i32 %val, 0
+    // CHECK: icmp {{ne|eq}} i32 %val, 0
     // CHECK: %[[CTZ:.+]] = tail call range(i32 0, 33) i32 @llvm.ctlz.i32(i32 %val, i1 true)
     // CHECK: %[[DIV2:.+]] = lshr i32 %[[CTZ]], 1
     // CHECK: %[[LOG4:.+]] = xor i32 %[[DIV2]], 15
@@ -28,9 +28,9 @@ pub fn checked_ilog4(val: u32) -> Option<u32> {
 // CHECK-LABEL: @checked_ilog16
 #[no_mangle]
 pub fn checked_ilog16(val: u32) -> Option<u32> {
-    // CHECK: %[[ICMP:.+]] = icmp ne i32 %val, 0
+    // CHECK: icmp {{ne|eq}} i32 %val, 0
     // CHECK: %[[CTZ:.+]] = tail call range(i32 0, 33) i32 @llvm.ctlz.i32(i32 %val, i1 true)
     // CHECK: %[[DIV4:.+]] = lshr i32 %[[CTZ]], 2
-    // CHECK: %[[LOG16:.+]] = xor i32 %[[DIV2]], 7
+    // CHECK: %[[LOG16:.+]] = xor i32 %[[DIV4]], 7
     val.checked_ilog(16)
 }

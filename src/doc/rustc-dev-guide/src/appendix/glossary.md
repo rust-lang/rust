@@ -3,6 +3,7 @@
 Term                                           | Meaning
 -----------------------------------------------|--------
 <span id="1zst">1-ZST</span>                   |  A *one-aligned [zero-sized type](#zst)*. A type of size zero with an [alignment][size-align] of one.
+<span id="abby">abby</span>                    | Short for [_assumptions on binders_](https://github.com/rust-lang/project-assumptions-on-binders). Alternatively: `a-bi`, though this is very close to ABI.
 <span id="arena">arena, arena allocation</span> |  An _arena_ is a large memory buffer from which other memory allocations are made. This style of allocation is called _arena allocation_. See [this chapter](../memory.md) for more info.
 <span id="afidt">AFIDT</span>                  |  Short for _async function in `dyn Trait`_. See also [AFIT](#afit).
 <span id="afit">AFIT</span>                    |  Short for _async function in trait_. They desugar to [RPITITs](#rpitit).
@@ -17,6 +18,7 @@ Term                                           | Meaning
 <span id="codegen-unit">codegen unit</span>    |  When we produce LLVM IR, we group the Rust code into a number of codegen units (sometimes abbreviated as CGUs). Each of these units is processed by LLVM independently from one another, enabling parallelism. They are also the unit of incremental re-use. ([see more](../backend/codegen.md))
 <span id="completeness">completeness</span>    |  A technical term in type theory, it means that every type-safe program also type-checks. Having both soundness and completeness is very hard, and usually soundness is more important. (see "soundness").
 <span id="cfg">control-flow graph, CFG</span>  |  A representation of the control-flow of a program; see [the background chapter for more](./background.md#cfg)
+<span id="cta">CTA</span>                      |  A _checked type alias_, a type alias that gets "properly" represented as an alias in the [middle ty IR](#middle-ty-ir); contrary to (unchecked) type aliases whose reference sites get expanded to the underlying aliased type (the RHS of the type alias after instantiation) during HIR ty lowering, its reference sites get [lowered](#lowering) to an [`AliasTy`].
 <span id="ctfe">CTFE</span>                    |  Short for _compile-time function evaluation_, this is the ability of the compiler to evaluate `const fn`s at compile time. This is part of the compiler's constant evaluation system. ([see more](../const-eval.md))
 <span id="cx">`cx`</span>                      |  We tend to use _cx_ as an abbreviation for _context_. See also `tcx`, `infcx`, etc.
 <span id="ctxt">`ctxt`</span>                  |  We also use _ctxt_ as an abbreviation for _context_, e.g. [`TyCtxt`](#TyCtxt). See also [cx](#cx) or [tcx](#tcx).
@@ -56,7 +58,7 @@ Term                                           | Meaning
 <span id="lbl">late-bound lifetime</span>      |  A lifetime / region that is substituted at its call site. Bound in a HRTB and substituted by specific functions in the compiler, such as `liberate_late_bound_regions`. Contrast with **early-bound lifetime**. ([see more](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/region_kind/enum.RegionKind.html#bound-regions))
 <span id="local-crate">local crate</span>      |  The crate currently being compiled. This is in contrast to "upstream crates" which refer to dependencies of the local crate.
 <span id="lowering">lowering</span>            |  The act of converting a higher-level [IR](#ir) to a lower-level one. E.g., AST lowering (from [AST](#ast) to [HIR](#hir)) or HIR ty lowering (from HIR to [middle ty IR](#middle-ty-ir)).
-<span id="lta">LTA</span>                      |  A _lazy type alias_, a type alias that gets "properly" represented as an alias in the [middle ty IR](#middle-ty-ir); contrary to (eager) type aliases whose reference sites get expanded to the underlying aliased type (the RHS of the type alias after instantiation) during HIR ty lowering, its reference sites get [lowered](#lowering) to an [`AliasTy`].
+<span id="lta">LTA 👎</span>                   |  Short for _lazy type alias_. **Renamed to [CTA](#cta)**.
 <span id="lto">LTO</span>                      |  Short for *link-time optimizations*, this is a set of optimizations offered by LLVM that occur just before the final binary is linked. These include optimizations like removing functions that are never used in the final program, for example. _ThinLTO_ is a variant of LTO that aims to be a bit more scalable and efficient, but possibly sacrifices some optimizations. You may also read issues in the Rust repo about "FatLTO", which is the loving nickname given to non-Thin LTO. LLVM documentation: [here][lto] and [here][thinlto].
 <span id="llvm">[LLVM]</span>                  |  (actually not an acronym :P) an open-source compiler backend. It accepts LLVM IR and outputs native binaries. Various languages (e.g. Rust) can then implement a compiler front-end that outputs LLVM IR and use LLVM to compile to all the platforms LLVM supports.
 <span id="memoization">memoization</span>      |  The process of storing the results of (pure) computations (such as pure function calls) to avoid having to repeat them in the future. This is typically a trade-off between execution speed and memory usage.
@@ -91,7 +93,7 @@ Term                                           | Meaning
 <span id="span">span</span>                    |  A location in the user's source code, used for error reporting primarily. These are like a file-name/line-number/column tuple on steroids: they carry a start/end point, and also track macro expansions and compiler desugaring. All while being packed into a few bytes (really, it's an index into a table). See the [`Span`] datatype for more.
 <span id="subst">subst 👎</span>               |  The act of _substituting_ the generic parameters inside of a type, constant expression, etc. with concrete generic arguments by supplying [substs](#substs). Nowadays referred to as _instantiating_ in the compiler.
 <span id="substs">substs 👎</span>             |  The _substitutions_ for a given generic item (e.g. the `i32`, `u32` in `HashMap<i32, u32>`). Nowadays referred to as the list of _generic arguments_ in the compiler (but note that strictly speaking these two concepts differ, see the literature).
-<span id="sysroot">sysroot</span>              |  The directory for build artifacts that are loaded by the compiler at runtime. ([see more](../building/bootstrapping/what-bootstrapping-does.html#what-is-a-sysroot))
+<span id="sysroot">sysroot</span>              |  The directory for build artifacts that are loaded by the compiler at runtime. ([see more](../building/bootstrapping/what-bootstrapping-does.md#what-is-a-sysroot))
 <span id="tag">tag</span>                      |  The "tag" of an enum/generator encodes the [discriminant](#discriminant) of the active variant/state.  Tags can either be "direct" (simply storing the discriminant in a field) or use a ["niche"](#niche).
 <span id="tait">TAIT</span>                    |  Short for _type-alias `impl Trait`_. Introduced in [RFC 2515].
 <span id="tcx">`tcx`</span>                    |  Standard variable name for the "typing context" (`TyCtxt`), main data structure of the compiler. ([see more](../ty.md))
@@ -102,6 +104,7 @@ Term                                           | Meaning
 <span id="trans">trans 👎</span>                  |  Short for _translation_, the code to translate MIR into LLVM IR. **Renamed to** [codegen](#codegen).
 <span id="ty">`Ty`</span>                      |  The internal representation of a type. ([see more](../ty.md))
 <span id="tyctxt">`TyCtxt`</span>              |  The data structure often referred to as [`tcx`](#tcx) in code which provides access to session data and the query system.
+<span id="type-level-term">Type-Level Term</span> | An expression at the type level, such as a Type or Const Generic.
 <span id="ufcs">UFCS 👎</span>                 |  Short for _universal function call syntax_, this is an unambiguous syntax for calling a method. **Term no longer in use!** Prefer _fully-qualified path / syntax_. ([see more](../hir-typeck/summary.md), [see the reference](https://doc.rust-lang.org/reference/expressions/call-expr.html#disambiguating-function-calls))
 <span id="ut">uninhabited type</span>          |  A type which has _no_ values. This is not the same as a ZST, which has exactly 1 value. An example of an uninhabited type is `enum Foo {}`, which has no variants, and so, can never be created. The compiler can treat code that deals with uninhabited types as dead code, since there is no such value to be manipulated. `!` (the never type) is an uninhabited type. Uninhabited types are also called _empty types_.
 <span id="upvar">upvar</span>                  |  A variable captured by a closure from outside the closure.
@@ -118,7 +121,7 @@ See also <https://doc.rust-lang.org/reference/glossary.html#glossary>.
 [RFC 2515]: https://rust-lang.github.io/rfcs/2515-type_alias_impl_trait.html
 [RFC 3425]: https://rust-lang.github.io/rfcs/3425-return-position-impl-trait-in-traits.html
 [TLS]: https://llvm.org/docs/LangRef.html#thread-local-storage-models
-[`AliasTy`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.AliasTy.html
+[`AliasTy`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/sty/type.AliasTy.html
 [`Span`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
 [`generic_const_items`]: https://github.com/rust-lang/rust/issues/113521
 [`min_generic_const_items`]: https://github.com/rust-lang/rust/issues/132980

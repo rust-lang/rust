@@ -103,7 +103,10 @@ impl PathCompletionCtx<'_> {
         )
     }
 
-    pub(crate) fn required_thin_arrow(&self) -> Option<(&'static str, TextSize)> {
+    pub(crate) fn required_thin_arrow(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<(&'static str, TextSize)> {
         let PathKind::Type {
             location:
                 TypeLocation::TypeAscription(TypeAscriptionTarget::RetType {
@@ -117,10 +120,11 @@ impl PathCompletionCtx<'_> {
         if fn_item.ret_type().is_some_and(|it| it.thin_arrow_token().is_some()) {
             return None;
         }
+        let unmap = |node: &_| sema.original_range_opt(node).map(|it| it.range);
         let ret_type = fn_item.ret_type().and_then(|it| it.ty());
         match (ret_type, fn_item.param_list()) {
-            (Some(ty), _) => Some(("-> ", ty.syntax().text_range().start())),
-            (None, Some(param)) => Some((" ->", param.syntax().text_range().end())),
+            (Some(ty), _) => Some(("-> ", unmap(ty.syntax())?.start())),
+            (None, Some(param)) => Some((" ->", unmap(param.syntax())?.end())),
             (None, None) => None,
         }
     }
@@ -273,7 +277,7 @@ pub(crate) enum Qualified<'db> {
     No,
     With {
         path: ast::Path,
-        resolution: Option<PathResolution>,
+        resolution: Option<PathResolution<'db>>,
         /// How many `super` segments are present in the path
         ///
         /// This would be None, if path is not solely made of
@@ -491,7 +495,7 @@ pub(crate) struct CompletionContext<'a, 'db> {
 
     pub(crate) qualifier_ctx: QualifierCtx,
 
-    pub(crate) locals: FxHashMap<Name, Local>,
+    pub(crate) locals: FxHashMap<Name, Local<'db>>,
 
     /// The module depth of the current module of the cursor position.
     /// - crate-root
@@ -545,7 +549,7 @@ impl<'db> CompletionContext<'_, 'db> {
     }
 
     /// Checks if an item is visible and not `doc(hidden)` at the completion site.
-    pub(crate) fn def_is_visible(&self, item: &ScopeDef) -> Visible {
+    pub(crate) fn def_is_visible(&self, item: &ScopeDef<'db>) -> Visible {
         match item {
             ScopeDef::ModuleDef(def) => match def {
                 hir::ModuleDef::Module(it) => self.is_visible(it),
@@ -664,7 +668,7 @@ impl<'db> CompletionContext<'_, 'db> {
 
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items and
     /// passes all doc-aliases along, to funnel it into `Completions::add_path_resolution`.
-    pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef, Vec<SmolStr>)) {
+    pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef<'db>, Vec<SmolStr>)) {
         let _p = tracing::info_span!("CompletionContext::process_all_names").entered();
         self.scope.process_all_names(&mut |name, def| {
             if self.is_scope_def_hidden(def) {
@@ -675,12 +679,12 @@ impl<'db> CompletionContext<'_, 'db> {
         });
     }
 
-    pub(crate) fn process_all_names_raw(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
+    pub(crate) fn process_all_names_raw(&self, f: &mut dyn FnMut(Name, ScopeDef<'db>)) {
         let _p = tracing::info_span!("CompletionContext::process_all_names_raw").entered();
         self.scope.process_all_names(f);
     }
 
-    fn is_scope_def_hidden(&self, scope_def: ScopeDef) -> bool {
+    fn is_scope_def_hidden(&self, scope_def: ScopeDef<'db>) -> bool {
         if let (Some(attrs), Some(krate)) = (scope_def.attrs(self.db), scope_def.krate(self.db)) {
             return self.is_doc_hidden(&attrs, krate);
         }
@@ -722,7 +726,7 @@ impl<'db> CompletionContext<'_, 'db> {
         self.krate != defining_crate && attrs.is_doc_hidden()
     }
 
-    pub(crate) fn doc_aliases_in_scope(&self, scope_def: ScopeDef) -> Vec<SmolStr> {
+    pub(crate) fn doc_aliases_in_scope(&self, scope_def: ScopeDef<'db>) -> Vec<SmolStr> {
         if let Some(attrs) = scope_def.attrs(self.db) {
             attrs.doc_aliases(self.db).iter().map(|it| it.as_str().into()).collect()
         } else {
@@ -868,10 +872,22 @@ impl<'a, 'db> CompletionContext<'a, 'db> {
                 _ => None,
             })
             .collect::<Vec<_>>();
+        let exclude_variants = exclude_flyimport
+            .iter()
+            .flat_map(|it| match it {
+                (ModuleDef::Adt(hir::Adt::Enum(enum_)), AutoImportExclusionType::Variants) => {
+                    enum_.variants(db)
+                }
+                _ => vec![],
+            })
+            .collect::<Vec<_>>();
         exclude_flyimport
             .extend(exclude_traits.iter().map(|&t| (t.into(), AutoImportExclusionType::Always)));
         exclude_flyimport
             .extend(exclude_subitems.into_iter().map(|it| (it, AutoImportExclusionType::Always)));
+        exclude_flyimport.extend(
+            exclude_variants.into_iter().map(|it| (it.into(), AutoImportExclusionType::Always)),
+        );
 
         // FIXME: This should be part of `CompletionAnalysis` / `expand_and_analyze`
         let complete_semicolon = if !config.add_semicolon_to_unit {

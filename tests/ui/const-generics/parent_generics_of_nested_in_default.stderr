@@ -8,10 +8,13 @@ error[E0425]: cannot find value `B` in this scope
   --> $DIR/parent_generics_of_nested_in_default.rs:1:30
    |
 LL | impl<const A: i32 = { || [0; B] }> Tr {}
-   |            -                 ^
-   |            |
-   |            similarly named const parameter `A` defined here
+   |                              ^ not found in this scope
    |
+note: similarly named const parameter `A` defined here
+  --> $DIR/parent_generics_of_nested_in_default.rs:1:12
+   |
+LL | impl<const A: i32 = { || [0; B] }> Tr {}
+   |            ^
 help: a const parameter with a similar name exists
    |
 LL - impl<const A: i32 = { || [0; B] }> Tr {}

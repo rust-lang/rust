@@ -24,8 +24,10 @@ mod u8;
 mod bignum;
 mod carryless_mul;
 mod cast;
+mod complex;
 mod const_from;
 mod dec2flt;
+mod float_conversions;
 mod float_ieee754_flt2dec_dec2flt;
 mod float_iter_sum_identity;
 mod floats;
@@ -118,7 +120,7 @@ fn from_str_issue7588() {
 
 #[test]
 #[should_panic = "radix must lie in the range `[2, 36]`"]
-fn from_ascii_radix_panic() {
+fn from_ascii_bytes_radix_panic() {
     let radix = 1;
     let _parsed = u64::from_str_radix("12345ABCD", radix);
 }

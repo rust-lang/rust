@@ -1,4 +1,4 @@
-use hir::{HasSource, HirDisplay, db::ExpandDatabase};
+use hir::{HasSource, HirDisplay};
 use ide_db::text_edit::TextRange;
 use ide_db::{
     assists::{Assist, AssistId},
@@ -82,7 +82,7 @@ fn quickfix_for_redundant_assoc_item(
     let file_id = d.file_id.file_id()?;
     let add_assoc_item_def = |builder: &mut SourceChangeBuilder| -> Option<()> {
         let db = ctx.sema.db;
-        let root = db.parse_or_expand(d.file_id);
+        let root = d.file_id.parse_or_expand(db);
         // don't modify trait def in outer crate
         let impl_def = d.impl_.to_node(&root);
         let current_crate = ctx.sema.scope(impl_def.syntax())?.krate();

@@ -16,14 +16,15 @@ extern crate rustc_interface;
 #[macro_use]
 extern crate rustc_public;
 
+use std::assert_matches;
+use std::io::Write;
+use std::ops::ControlFlow;
+
 use rustc_hir::def::DefKind;
 use rustc_public::ItemKind;
 use rustc_public::crate_def::CrateDef;
 use rustc_public::mir::mono::Instance;
 use rustc_public::ty::{RigidTy, TyKind};
-use std::assert_matches;
-use std::io::Write;
-use std::ops::ControlFlow;
 
 const CRATE_NAME: &str = "input";
 
@@ -139,8 +140,7 @@ fn test_stable_mir() -> ControlFlow<()> {
         }
     }
 
-    let foo_const =
-        get_item(&items, (DefKind::Const { is_type_const: false }, "input::FOO")).unwrap();
+    let foo_const = get_item(&items, (DefKind::Const, "input::FOO")).unwrap();
     // Ensure we don't panic trying to get the body of a constant.
     foo_const.expect_body();
 
@@ -182,8 +182,7 @@ fn get_item<'a>(
     items.iter().find(|crate_item| {
         matches!(
             (item.0, crate_item.kind()),
-            (DefKind::Fn, ItemKind::Fn)
-                | (DefKind::Const { is_type_const: false }, ItemKind::Const)
+            (DefKind::Fn, ItemKind::Fn) | (DefKind::Const, ItemKind::Const)
         ) && crate_item.name() == item.1
     })
 }

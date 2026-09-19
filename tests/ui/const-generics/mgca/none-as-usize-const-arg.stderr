@@ -1,0 +1,40 @@
+error: missing parameters for function definition
+  --> $DIR/none-as-usize-const-arg.rs:6:59
+   |
+LL | fn pass_enum<const N: usize, const M: usize = const { N }> {
+   |                                                           ^
+   |
+help: add a parameter list
+   |
+LL | fn pass_enum<const N: usize, const M: usize = const { N }>() {
+   |                                                           ++
+
+error: defaults for generic parameters are not allowed here
+  --> $DIR/none-as-usize-const-arg.rs:6:30
+   |
+LL | fn pass_enum<const N: usize, const M: usize = const { N }> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0107]: missing generics for enum `Option`
+  --> $DIR/none-as-usize-const-arg.rs:10:43
+   |
+LL |     pass_enum::<{ core::direct_const_arg!(None) }>
+   |                                           ^^^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL |     pass_enum::<{ core::direct_const_arg!(None<T>) }>
+   |                                               +++
+
+error: overly complex generic constant
+  --> $DIR/none-as-usize-const-arg.rs:6:47
+   |
+LL | fn pass_enum<const N: usize, const M: usize = const { N }> {
+   |                                               ^^^^^^^^^^^ const blocks are not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

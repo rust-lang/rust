@@ -3,7 +3,7 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
+use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, GenericBound, GenericParam, GenericParamKind, Item, ItemKind, Lifetime,
     LifetimeKind, LifetimeParamKind, MissingLifetimeKind, Node, TyKind,
@@ -162,7 +162,12 @@ pub fn suggest_new_region_bound(
             TyKind::OpaqueDef(opaque) => {
                 // Get the identity type for this RPIT
                 let did = opaque.def_id.to_def_id();
-                let ty = Ty::new_opaque(tcx, did, ty::GenericArgs::identity_for_item(tcx, did));
+                let ty = Ty::new_opaque(
+                    tcx,
+                    ty::IsRigid::No,
+                    did,
+                    ty::GenericArgs::identity_for_item(tcx, did),
+                );
 
                 if let Some(span) = opaque.bounds.iter().find_map(|arg| match arg {
                     GenericBound::Outlives(Lifetime {

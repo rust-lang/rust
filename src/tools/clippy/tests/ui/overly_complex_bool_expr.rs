@@ -1,5 +1,5 @@
-#![allow(unused, clippy::diverging_sub_expression)]
 #![warn(clippy::overly_complex_bool_expr)]
+#![expect(clippy::diverging_sub_expression)]
 
 fn main() {
     let a: bool = unimplemented!();

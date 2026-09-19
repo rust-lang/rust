@@ -205,3 +205,125 @@ fn main() {
         }
     }
 }
+
+mod issue_11715 {
+    use std::mem::MaybeUninit;
+    #[cfg(target_pointer_width = "64")]
+    const HUGE: usize = 4_294_967_296;
+    #[cfg(target_pointer_width = "32")]
+    const HUGE: usize = 268_435_455;
+
+    fn large_maybeuninit_vec_ice() {
+        let mut v: Vec<[MaybeUninit<u64>; HUGE]> = Vec::with_capacity(1);
+        unsafe { v.set_len(1) };
+    }
+
+    fn large_u8_vec_ice() {
+        let mut v: Vec<[u8; HUGE]> = Vec::with_capacity(1);
+        //~^ uninit_vec
+        unsafe { v.set_len(1) };
+    }
+
+    fn large_nested_maybeuninit_vec_ice() {
+        let mut v: Vec<[[MaybeUninit<u64>; HUGE]; 2]> = Vec::with_capacity(1);
+        unsafe { v.set_len(1) };
+    }
+
+    struct HeavyWrapperSafe([MaybeUninit<u64>; HUGE]);
+    fn large_struct_maybeuninit_vec_ice() {
+        let mut v: Vec<HeavyWrapperSafe> = Vec::with_capacity(1);
+        unsafe { v.set_len(1) };
+    }
+
+    struct HeavyWrapperUnsafe([u8; HUGE]);
+    fn large_struct_u8_vec_ice() {
+        let mut v: Vec<HeavyWrapperUnsafe> = Vec::with_capacity(1);
+        //~^ uninit_vec
+        unsafe { v.set_len(1) };
+    }
+
+    #[allow(clippy::large_enum_variant)]
+    enum HeavyEnum {
+        A([MaybeUninit<u64>; HUGE]),
+        B,
+    }
+    fn large_enum_vec_ice() {
+        let mut v: Vec<HeavyEnum> = Vec::with_capacity(1);
+        //~^ uninit_vec
+        unsafe { v.set_len(1) };
+    }
+
+    enum Uninhabited {}
+    fn uninhabited_enum() {
+        let mut v: Vec<Uninhabited> = Vec::with_capacity(1);
+        unsafe { v.set_len(1) };
+    }
+
+    enum SingleVariant {
+        OnlyOne,
+    }
+    fn single_variant_enum() {
+        let mut v: Vec<SingleVariant> = Vec::with_capacity(1);
+        unsafe { v.set_len(1) };
+    }
+
+    enum OneVariantU8 {
+        ThisOne([u8; HUGE]),
+    }
+    fn one_variant_u8() {
+        let mut v: Vec<OneVariantU8> = Vec::with_capacity(1);
+        //~^ uninit_vec
+        unsafe { v.set_len(1) };
+    }
+
+    enum OneVariantMaybeUninit {
+        ThisOne([MaybeUninit<u8>; HUGE]),
+    }
+    fn one_variant_maybe_uninit() {
+        let mut v: Vec<OneVariantMaybeUninit> = Vec::with_capacity(1);
+        unsafe { v.set_len(1) };
+    }
+
+    fn generic_vec_lints<T>() {
+        let mut v: Vec<T> = Vec::with_capacity(1);
+        //~^ uninit_vec
+        unsafe { v.set_len(1) };
+    }
+
+    fn generic_vec_maybeuninit<T>() {
+        let mut v: Vec<MaybeUninit<T>> = Vec::with_capacity(1);
+        unsafe { v.set_len(1) };
+    }
+
+    trait Assoc {
+        type Item;
+    }
+    fn projection_vec_lints<T: Assoc>() {
+        let mut v: Vec<<T as Assoc>::Item> = Vec::with_capacity(1);
+        //~^ uninit_vec
+        unsafe { v.set_len(1) };
+    }
+
+    struct Concrete;
+    impl Assoc for Concrete {
+        type Item = MaybeUninit<u8>;
+    }
+    fn normalized_projection_vec_ok() {
+        let mut v: Vec<<Concrete as Assoc>::Item> = Vec::with_capacity(1);
+        unsafe { v.set_len(1) };
+    }
+
+    enum E<T, U> {
+        Foo(MaybeUninit<T>),
+        Bar(U),
+    }
+    fn enum_uninhabited_zst() {
+        let mut v: Vec<E<u8, core::convert::Infallible>> = Vec::with_capacity(1);
+        unsafe { v.set_len(1) };
+    }
+    fn enum_uninhabited_non_zst() {
+        let mut v: Vec<E<u8, (u8, core::convert::Infallible)>> = Vec::with_capacity(1);
+        //~^ uninit_vec
+        unsafe { v.set_len(1) };
+    }
+}

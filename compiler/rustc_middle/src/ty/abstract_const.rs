@@ -11,9 +11,9 @@ use crate::ty::{
 #[derive(Hash, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq)]
 #[derive(TyDecodable, TyEncodable, StableHash, TypeVisitable, TypeFoldable)]
 pub enum CastKind {
-    /// thir::ExprKind::As
+    /// `thir::ExprKind::As`
     As,
-    /// thir::ExprKind::Use
+    /// `thir::ExprKind::ValueExpr`
     Use,
 }
 
@@ -44,7 +44,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.tcx
             }
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                if ty.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
+                if ty.has_type_flags(ty::TypeFlags::HAS_CONST_ALIAS) {
                     ty.super_fold_with(self)
                 } else {
                     ty
@@ -52,11 +52,18 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             fn fold_const(&mut self, c: Const<'tcx>) -> Const<'tcx> {
                 let ct = match c.kind() {
-                    ty::ConstKind::Unevaluated(uv) if let Some(def_id) = uv.kind.opt_def_id() => {
+                    ty::ConstKind::Alias(_, alias_const) => {
+                        let def_id = match alias_const.kind {
+                            ty::AliasConstKind::Projection { def_id }
+                            | ty::AliasConstKind::InherentSelf { def_id }
+                            | ty::AliasConstKind::InherentImpl { def_id }
+                            | ty::AliasConstKind::Free { def_id }
+                            | ty::AliasConstKind::Anon { def_id } => def_id,
+                        };
                         match self.tcx.thir_abstract_const(def_id) {
                             Err(e) => ty::Const::new_error(self.tcx, e),
                             Ok(Some(bac)) => {
-                                let args = self.tcx.erase_and_anonymize_regions(uv.args);
+                                let args = self.tcx.erase_and_anonymize_regions(alias_const.args);
                                 let bac = bac.instantiate(self.tcx, args).skip_norm_wip();
                                 return bac.fold_with(self);
                             }

@@ -150,7 +150,7 @@ use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, ptr};
 
-use crate::alloc::Global;
+use crate::alloc::{AllocatorNightly, Global};
 use crate::collections::TryReserveError;
 use crate::slice;
 #[cfg(not(test))]
@@ -326,7 +326,7 @@ impl<T: Ord, A: Allocator> Deref for PeekMut<'_, T, A> {
     type Target = T;
     fn deref(&self) -> &T {
         debug_assert!(!self.heap.is_empty());
-        // SAFE: PeekMut is only instantiated for non-empty heaps
+        // SAFETY: PeekMut is only instantiated for non-empty heaps
         unsafe { self.heap.data.get_unchecked(0) }
     }
 }
@@ -346,16 +346,14 @@ impl<T: Ord, A: Allocator> DerefMut for PeekMut<'_, T, A> {
             //
             // This is technique is described throughout several other places in
             // the standard library as "leak amplification".
-            unsafe {
-                // SAFETY: len > 1 so len != 0.
-                self.original_len = Some(NonZero::new_unchecked(len));
-                // SAFETY: len > 1 so all this does for now is leak elements,
-                // which is safe.
-                self.heap.data.set_len(1);
-            }
+            // SAFETY: len > 1 so len != 0.
+            self.original_len = Some(unsafe { NonZero::new_unchecked(len) });
+            // SAFETY: len > 1 so all this does for now is leak elements,
+            // which is safe.
+            unsafe { self.heap.data.set_len(1) };
         }
 
-        // SAFE: PeekMut is only instantiated for non-empty heaps
+        // SAFETY: PeekMut is only instantiated for non-empty heaps
         unsafe { self.heap.data.get_unchecked_mut(0) }
     }
 }
@@ -1258,7 +1256,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     ///
     ///     Ok(heap.pop())
     /// }
-    /// # find_max_slow(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
+    /// # find_max_slow(&[1, 2, 3]).expect("reserving capacity for 12 bytes should never fail");
     /// ```
     #[stable(feature = "try_reserve_2", since = "1.63.0")]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
@@ -1294,7 +1292,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     ///
     ///     Ok(heap.pop())
     /// }
-    /// # find_max_slow(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
+    /// # find_max_slow(&[1, 2, 3]).expect("reserving capacity for 12 bytes should never fail");
     /// ```
     #[stable(feature = "try_reserve_2", since = "1.63.0")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
@@ -1493,7 +1491,10 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<'_, T, A> {
+    pub fn drain(&mut self) -> Drain<'_, T, A>
+    where
+        A: AllocatorNightly, // needed for the `Vec::drain` call
+    {
         Drain { iter: self.data.drain(..) }
     }
 
@@ -1514,7 +1515,10 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// assert!(heap.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self) {
+    pub fn clear(&mut self)
+    where
+        A: AllocatorNightly,
+    {
         self.drain();
     }
 }
@@ -1532,11 +1536,13 @@ struct Hole<'a, T: 'a> {
 impl<'a, T> Hole<'a, T> {
     /// Creates a new `Hole` at index `pos`.
     ///
-    /// Unsafe because pos must be within the data slice.
+    /// # Safety
+    ///
+    /// `pos` must be within the data slice.
     #[inline]
     unsafe fn new(data: &'a mut [T], pos: usize) -> Self {
         debug_assert!(pos < data.len());
-        // SAFE: pos should be inside the slice
+        // SAFETY: Caller ensures pos is inside the slice.
         let elt = unsafe { ptr::read(data.get_unchecked(pos)) };
         Hole { data, elt: ManuallyDrop::new(elt), pos }
     }
@@ -1554,23 +1560,29 @@ impl<'a, T> Hole<'a, T> {
 
     /// Returns a reference to the element at `index`.
     ///
-    /// Unsafe because index must be within the data slice and not equal to pos.
+    /// # Safety
+    ///
+    /// `index` must be within the data slice and not equal to the current position.
     #[inline]
     unsafe fn get(&self, index: usize) -> &T {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
+        // SAFETY: Upheld by caller.
         unsafe { self.data.get_unchecked(index) }
     }
 
     /// Move hole to new location
     ///
-    /// Unsafe because index must be within the data slice and not equal to pos.
+    /// # Safety
+    ///
+    /// `index` must be within the data slice and not equal to the current position.
     #[inline]
     unsafe fn move_to(&mut self, index: usize) {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
+        let ptr = self.data.as_mut_ptr();
+        // ignore-tidy-undocumented-unsafe
         unsafe {
-            let ptr = self.data.as_mut_ptr();
             let index_ptr: *const _ = ptr.add(index);
             let hole_ptr = ptr.add(self.pos);
             ptr::copy_nonoverlapping(index_ptr, hole_ptr, 1);
@@ -1583,8 +1595,9 @@ impl<T> Drop for Hole<'_, T> {
     #[inline]
     fn drop(&mut self) {
         // fill the hole again
+        let pos = self.pos;
+        // ignore-tidy-undocumented-unsafe
         unsafe {
-            let pos = self.pos;
             ptr::copy_nonoverlapping(&*self.elt, self.data.get_unchecked_mut(pos), 1);
         }
     }
@@ -1949,7 +1962,7 @@ impl<T: Ord, A: Allocator> FusedIterator for DrainSorted<'_, T, A> {}
 unsafe impl<T: Ord, A: Allocator> TrustedLen for DrainSorted<'_, T, A> {}
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
-impl<T: Ord, A: Allocator> From<Vec<T, A>> for BinaryHeap<T, A> {
+impl<T: Ord, A: AllocatorNightly> From<Vec<T, A>> for BinaryHeap<T, A> {
     /// Converts a `Vec<T>` into a `BinaryHeap<T>`.
     ///
     /// This conversion happens in-place, and has *O*(*n*) time complexity.

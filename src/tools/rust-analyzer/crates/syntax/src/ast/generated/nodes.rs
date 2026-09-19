@@ -59,6 +59,7 @@ impl ArrayType {
 pub struct AsmClobberAbi {
     pub(crate) syntax: SyntaxNode,
 }
+impl ast::HasAttrs for AsmClobberAbi {}
 impl AsmClobberAbi {
     #[inline]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
@@ -150,6 +151,7 @@ impl AsmOperandExpr {
 pub struct AsmOperandNamed {
     pub(crate) syntax: SyntaxNode,
 }
+impl ast::HasAttrs for AsmOperandNamed {}
 impl ast::HasName for AsmOperandNamed {}
 impl AsmOperandNamed {
     #[inline]
@@ -193,6 +195,7 @@ impl AsmOption {
 pub struct AsmOptions {
     pub(crate) syntax: SyntaxNode,
 }
+impl ast::HasAttrs for AsmOptions {}
 impl AsmOptions {
     #[inline]
     pub fn asm_options(&self) -> AstChildren<AsmOption> { support::children(&self.syntax) }
@@ -465,7 +468,6 @@ pub struct Const {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for Const {}
-impl ast::HasDocComments for Const {}
 impl ast::HasGenericParams for Const {}
 impl ast::HasName for Const {}
 impl ast::HasVisibility for Const {}
@@ -549,6 +551,19 @@ impl DerefPat {
     #[inline]
     pub fn deref_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![deref]) }
 }
+pub struct DocComment {
+    pub(crate) syntax: SyntaxNode,
+}
+impl DocComment {
+    #[inline]
+    pub fn inner_doc_comment_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![inner_doc_comment])
+    }
+    #[inline]
+    pub fn outer_doc_comment_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![outer_doc_comment])
+    }
+}
 pub struct DynTraitType {
     pub(crate) syntax: SyntaxNode,
 }
@@ -562,7 +577,6 @@ pub struct Enum {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for Enum {}
-impl ast::HasDocComments for Enum {}
 impl ast::HasGenericParams for Enum {}
 impl ast::HasName for Enum {}
 impl ast::HasVisibility for Enum {}
@@ -585,7 +599,6 @@ pub struct ExternBlock {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for ExternBlock {}
-impl ast::HasDocComments for ExternBlock {}
 impl ExternBlock {
     #[inline]
     pub fn abi(&self) -> Option<Abi> { support::child(&self.syntax) }
@@ -598,7 +611,6 @@ pub struct ExternCrate {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for ExternCrate {}
-impl ast::HasDocComments for ExternCrate {}
 impl ast::HasVisibility for ExternCrate {}
 impl ExternCrate {
     #[inline]
@@ -640,7 +652,6 @@ pub struct Fn {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for Fn {}
-impl ast::HasDocComments for Fn {}
 impl ast::HasGenericParams for Fn {}
 impl ast::HasName for Fn {}
 impl ast::HasVisibility for Fn {}
@@ -720,16 +731,10 @@ impl ForType {
 pub struct FormatArgsArg {
     pub(crate) syntax: SyntaxNode,
 }
+impl ast::HasName for FormatArgsArg {}
 impl FormatArgsArg {
     #[inline]
-    pub fn arg_name(&self) -> Option<FormatArgsArgName> { support::child(&self.syntax) }
-    #[inline]
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-}
-pub struct FormatArgsArgName {
-    pub(crate) syntax: SyntaxNode,
-}
-impl FormatArgsArgName {
     #[inline]
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
 }
@@ -808,7 +813,6 @@ pub struct Impl {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for Impl {}
-impl ast::HasDocComments for Impl {}
 impl ast::HasGenericParams for Impl {}
 impl ast::HasVisibility for Impl {}
 impl Impl {
@@ -1005,7 +1009,6 @@ pub struct MacroCall {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for MacroCall {}
-impl ast::HasDocComments for MacroCall {}
 impl MacroCall {
     #[inline]
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
@@ -1020,7 +1023,6 @@ pub struct MacroDef {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for MacroDef {}
-impl ast::HasDocComments for MacroDef {}
 impl ast::HasName for MacroDef {}
 impl ast::HasVisibility for MacroDef {}
 impl MacroDef {
@@ -1050,7 +1052,6 @@ pub struct MacroRules {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for MacroRules {}
-impl ast::HasDocComments for MacroRules {}
 impl ast::HasName for MacroRules {}
 impl ast::HasVisibility for MacroRules {}
 impl MacroRules {
@@ -1144,7 +1145,6 @@ pub struct Module {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for Module {}
-impl ast::HasDocComments for Module {}
 impl ast::HasName for Module {}
 impl ast::HasVisibility for Module {}
 impl Module {
@@ -1475,7 +1475,6 @@ pub struct RecordField {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for RecordField {}
-impl ast::HasDocComments for RecordField {}
 impl ast::HasName for RecordField {}
 impl ast::HasVisibility for RecordField {}
 impl RecordField {
@@ -1670,7 +1669,6 @@ pub struct SourceFile {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for SourceFile {}
-impl ast::HasDocComments for SourceFile {}
 impl ast::HasModuleItem for SourceFile {}
 impl SourceFile {
     #[inline]
@@ -1684,7 +1682,6 @@ pub struct Static {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for Static {}
-impl ast::HasDocComments for Static {}
 impl ast::HasName for Static {}
 impl ast::HasVisibility for Static {}
 impl Static {
@@ -1723,7 +1720,6 @@ pub struct Struct {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for Struct {}
-impl ast::HasDocComments for Struct {}
 impl ast::HasGenericParams for Struct {}
 impl ast::HasName for Struct {}
 impl ast::HasVisibility for Struct {}
@@ -1765,7 +1761,6 @@ pub struct Trait {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for Trait {}
-impl ast::HasDocComments for Trait {}
 impl ast::HasGenericParams for Trait {}
 impl ast::HasName for Trait {}
 impl ast::HasTypeBounds for Trait {}
@@ -1825,7 +1820,6 @@ pub struct TupleField {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for TupleField {}
-impl ast::HasDocComments for TupleField {}
 impl ast::HasVisibility for TupleField {}
 impl TupleField {
     #[inline]
@@ -1883,7 +1877,6 @@ pub struct TypeAlias {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for TypeAlias {}
-impl ast::HasDocComments for TypeAlias {}
 impl ast::HasGenericParams for TypeAlias {}
 impl ast::HasName for TypeAlias {}
 impl ast::HasTypeBounds for TypeAlias {}
@@ -1982,7 +1975,6 @@ pub struct Union {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for Union {}
-impl ast::HasDocComments for Union {}
 impl ast::HasGenericParams for Union {}
 impl ast::HasName for Union {}
 impl ast::HasVisibility for Union {}
@@ -2009,7 +2001,6 @@ pub struct Use {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for Use {}
-impl ast::HasDocComments for Use {}
 impl ast::HasVisibility for Use {}
 impl Use {
     #[inline]
@@ -2062,7 +2053,6 @@ pub struct Variant {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for Variant {}
-impl ast::HasDocComments for Variant {}
 impl ast::HasName for Variant {}
 impl ast::HasVisibility for Variant {}
 impl Variant {
@@ -2174,10 +2164,15 @@ pub enum Adt {
     Union(Union),
 }
 impl ast::HasAttrs for Adt {}
-impl ast::HasDocComments for Adt {}
 impl ast::HasGenericParams for Adt {}
 impl ast::HasName for Adt {}
 impl ast::HasVisibility for Adt {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AnyAttr {
+    Attr(Attr),
+    DocComment(DocComment),
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AsmOperand {
@@ -2193,6 +2188,7 @@ pub enum AsmPiece {
     AsmOperandNamed(AsmOperandNamed),
     AsmOptions(AsmOptions),
 }
+impl ast::HasAttrs for AsmPiece {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItem {
@@ -2202,7 +2198,6 @@ pub enum AssocItem {
     TypeAlias(TypeAlias),
 }
 impl ast::HasAttrs for AssocItem {}
-impl ast::HasDocComments for AssocItem {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CfgPredicate {
@@ -2259,7 +2254,6 @@ pub enum ExternItem {
     TypeAlias(TypeAlias),
 }
 impl ast::HasAttrs for ExternItem {}
-impl ast::HasDocComments for ExternItem {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FieldList {
@@ -2376,7 +2370,6 @@ pub enum VariantDef {
     Variant(Variant),
 }
 impl ast::HasAttrs for VariantDef {}
-impl ast::HasDocComments for VariantDef {}
 impl ast::HasName for VariantDef {}
 impl ast::HasVisibility for VariantDef {}
 pub struct AnyHasArgList {
@@ -2395,15 +2388,6 @@ impl AnyHasAttrs {
     #[inline]
     pub fn new<T: ast::HasAttrs>(node: T) -> AnyHasAttrs {
         AnyHasAttrs { syntax: node.syntax().clone() }
-    }
-}
-pub struct AnyHasDocComments {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AnyHasDocComments {
-    #[inline]
-    pub fn new<T: ast::HasDocComments>(node: T) -> AnyHasDocComments {
-        AnyHasDocComments { syntax: node.syntax().clone() }
     }
 }
 pub struct AnyHasGenericArgs {
@@ -3685,6 +3669,38 @@ impl fmt::Debug for DerefPat {
         f.debug_struct("DerefPat").field("syntax", &self.syntax).finish()
     }
 }
+impl AstNode for DocComment {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        DOC_COMMENT
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == DOC_COMMENT }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for DocComment {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for DocComment {}
+impl PartialEq for DocComment {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for DocComment {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for DocComment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DocComment").field("syntax", &self.syntax).finish()
+    }
+}
 impl AstNode for DynTraitType {
     #[inline]
     fn kind() -> SyntaxKind
@@ -4099,38 +4115,6 @@ impl Clone for FormatArgsArg {
 impl fmt::Debug for FormatArgsArg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FormatArgsArg").field("syntax", &self.syntax).finish()
-    }
-}
-impl AstNode for FormatArgsArgName {
-    #[inline]
-    fn kind() -> SyntaxKind
-    where
-        Self: Sized,
-    {
-        FORMAT_ARGS_ARG_NAME
-    }
-    #[inline]
-    fn can_cast(kind: SyntaxKind) -> bool { kind == FORMAT_ARGS_ARG_NAME }
-    #[inline]
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-    }
-    #[inline]
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl hash::Hash for FormatArgsArgName {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
-}
-impl Eq for FormatArgsArgName {}
-impl PartialEq for FormatArgsArgName {
-    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
-}
-impl Clone for FormatArgsArgName {
-    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
-}
-impl fmt::Debug for FormatArgsArgName {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FormatArgsArgName").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for FormatArgsExpr {
@@ -7943,6 +7927,34 @@ impl AstNode for Adt {
         }
     }
 }
+impl From<Attr> for AnyAttr {
+    #[inline]
+    fn from(node: Attr) -> AnyAttr { AnyAttr::Attr(node) }
+}
+impl From<DocComment> for AnyAttr {
+    #[inline]
+    fn from(node: DocComment) -> AnyAttr { AnyAttr::DocComment(node) }
+}
+impl AstNode for AnyAttr {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, ATTR | DOC_COMMENT) }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            ATTR => AnyAttr::Attr(Attr { syntax }),
+            DOC_COMMENT => AnyAttr::DocComment(DocComment { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            AnyAttr::Attr(it) => &it.syntax,
+            AnyAttr::DocComment(it) => &it.syntax,
+        }
+    }
+}
 impl From<AsmConst> for AsmOperand {
     #[inline]
     fn from(node: AsmConst) -> AsmOperand { AsmOperand::AsmConst(node) }
@@ -9096,7 +9108,10 @@ impl AstNode for AnyHasAttrs {
         matches!(
             kind,
             ARRAY_EXPR
+                | ASM_CLOBBER_ABI
                 | ASM_EXPR
+                | ASM_OPERAND_NAMED
+                | ASM_OPTIONS
                 | ASSOC_ITEM_LIST
                 | AWAIT_EXPR
                 | BECOME_EXPR
@@ -9194,9 +9209,21 @@ impl From<ArrayExpr> for AnyHasAttrs {
     #[inline]
     fn from(node: ArrayExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
 }
+impl From<AsmClobberAbi> for AnyHasAttrs {
+    #[inline]
+    fn from(node: AsmClobberAbi) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
 impl From<AsmExpr> for AnyHasAttrs {
     #[inline]
     fn from(node: AsmExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<AsmOperandNamed> for AnyHasAttrs {
+    #[inline]
+    fn from(node: AsmOperandNamed) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
+}
+impl From<AsmOptions> for AnyHasAttrs {
+    #[inline]
+    fn from(node: AsmOptions) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
 }
 impl From<AssocItemList> for AnyHasAttrs {
     #[inline]
@@ -9474,136 +9501,6 @@ impl From<YieldExpr> for AnyHasAttrs {
     #[inline]
     fn from(node: YieldExpr) -> AnyHasAttrs { AnyHasAttrs { syntax: node.syntax } }
 }
-impl ast::HasDocComments for AnyHasDocComments {}
-impl AstNode for AnyHasDocComments {
-    #[inline]
-    fn can_cast(kind: SyntaxKind) -> bool {
-        matches!(
-            kind,
-            CONST
-                | ENUM
-                | EXTERN_BLOCK
-                | EXTERN_CRATE
-                | FN
-                | IMPL
-                | MACRO_CALL
-                | MACRO_DEF
-                | MACRO_RULES
-                | MODULE
-                | RECORD_FIELD
-                | SOURCE_FILE
-                | STATIC
-                | STRUCT
-                | TRAIT
-                | TUPLE_FIELD
-                | TYPE_ALIAS
-                | UNION
-                | USE
-                | VARIANT
-        )
-    }
-    #[inline]
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then_some(AnyHasDocComments { syntax })
-    }
-    #[inline]
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl hash::Hash for AnyHasDocComments {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
-}
-impl Eq for AnyHasDocComments {}
-impl PartialEq for AnyHasDocComments {
-    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
-}
-impl Clone for AnyHasDocComments {
-    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
-}
-impl fmt::Debug for AnyHasDocComments {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("AnyHasDocComments").field("syntax", &self.syntax).finish()
-    }
-}
-impl From<Const> for AnyHasDocComments {
-    #[inline]
-    fn from(node: Const) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<Enum> for AnyHasDocComments {
-    #[inline]
-    fn from(node: Enum) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<ExternBlock> for AnyHasDocComments {
-    #[inline]
-    fn from(node: ExternBlock) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<ExternCrate> for AnyHasDocComments {
-    #[inline]
-    fn from(node: ExternCrate) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<Fn> for AnyHasDocComments {
-    #[inline]
-    fn from(node: Fn) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<Impl> for AnyHasDocComments {
-    #[inline]
-    fn from(node: Impl) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<MacroCall> for AnyHasDocComments {
-    #[inline]
-    fn from(node: MacroCall) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<MacroDef> for AnyHasDocComments {
-    #[inline]
-    fn from(node: MacroDef) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<MacroRules> for AnyHasDocComments {
-    #[inline]
-    fn from(node: MacroRules) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<Module> for AnyHasDocComments {
-    #[inline]
-    fn from(node: Module) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<RecordField> for AnyHasDocComments {
-    #[inline]
-    fn from(node: RecordField) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<SourceFile> for AnyHasDocComments {
-    #[inline]
-    fn from(node: SourceFile) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<Static> for AnyHasDocComments {
-    #[inline]
-    fn from(node: Static) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<Struct> for AnyHasDocComments {
-    #[inline]
-    fn from(node: Struct) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<Trait> for AnyHasDocComments {
-    #[inline]
-    fn from(node: Trait) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<TupleField> for AnyHasDocComments {
-    #[inline]
-    fn from(node: TupleField) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<TypeAlias> for AnyHasDocComments {
-    #[inline]
-    fn from(node: TypeAlias) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<Union> for AnyHasDocComments {
-    #[inline]
-    fn from(node: Union) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<Use> for AnyHasDocComments {
-    #[inline]
-    fn from(node: Use) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
-impl From<Variant> for AnyHasDocComments {
-    #[inline]
-    fn from(node: Variant) -> AnyHasDocComments { AnyHasDocComments { syntax: node.syntax } }
-}
 impl ast::HasGenericArgs for AnyHasGenericArgs {}
 impl AstNode for AnyHasGenericArgs {
     #[inline]
@@ -9791,6 +9688,7 @@ impl AstNode for AnyHasName {
                 | CONST_PARAM
                 | ENUM
                 | FN
+                | FORMAT_ARGS_ARG
                 | IDENT_PAT
                 | MACRO_DEF
                 | MACRO_RULES
@@ -9848,6 +9746,10 @@ impl From<Enum> for AnyHasName {
 impl From<Fn> for AnyHasName {
     #[inline]
     fn from(node: Fn) -> AnyHasName { AnyHasName { syntax: node.syntax } }
+}
+impl From<FormatArgsArg> for AnyHasName {
+    #[inline]
+    fn from(node: FormatArgsArg) -> AnyHasName { AnyHasName { syntax: node.syntax } }
 }
 impl From<IdentPat> for AnyHasName {
     #[inline]
@@ -10076,6 +9978,11 @@ impl From<Variant> for AnyHasVisibility {
     fn from(node: Variant) -> AnyHasVisibility { AnyHasVisibility { syntax: node.syntax } }
 }
 impl std::fmt::Display for Adt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AnyAttr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -10350,6 +10257,11 @@ impl std::fmt::Display for DerefPat {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for DocComment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for DynTraitType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -10411,11 +10323,6 @@ impl std::fmt::Display for ForType {
     }
 }
 impl std::fmt::Display for FormatArgsArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for FormatArgsArgName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

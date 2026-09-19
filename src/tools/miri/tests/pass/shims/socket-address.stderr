@@ -23,3 +23,5 @@ LL |             cvt_gai(c::getaddrinfo(c_host.as_ptr(), ptr::null(), &hints, &m
            7: main
                at tests/pass/shims/socket-address.rs:LL:CC
 
+warning: 1 warning emitted
+

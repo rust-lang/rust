@@ -1,5 +1,5 @@
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{AnonConst, DUMMY_NODE_ID, MgcaDisambiguation, Ty, TyPat, TyPatKind, ast, token};
+use rustc_ast::{AnonConst, DUMMY_NODE_ID, Ty, TyPat, TyPatKind, ast, token};
 use rustc_errors::PResult;
 use rustc_expand::base::{self, DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
 use rustc_parse::exp;
@@ -54,26 +54,14 @@ fn parse_pat_ty<'a>(
 }
 
 fn ty_pat(kind: TyPatKind, span: Span) -> TyPat {
-    TyPat { id: DUMMY_NODE_ID, kind, span, tokens: None }
+    TyPat { id: DUMMY_NODE_ID, kind, span }
 }
 
 fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> TyPat {
     let kind = match pat.kind {
         ast::PatKind::Range(start, end, include_end) => TyPatKind::Range(
-            start.map(|value| {
-                Box::new(AnonConst {
-                    id: DUMMY_NODE_ID,
-                    value,
-                    mgca_disambiguation: MgcaDisambiguation::Direct,
-                })
-            }),
-            end.map(|value| {
-                Box::new(AnonConst {
-                    id: DUMMY_NODE_ID,
-                    value,
-                    mgca_disambiguation: MgcaDisambiguation::Direct,
-                })
-            }),
+            start.map(|value| Box::new(AnonConst { id: DUMMY_NODE_ID, value })),
+            end.map(|value| Box::new(AnonConst { id: DUMMY_NODE_ID, value })),
             include_end,
         ),
         ast::PatKind::Or(variants) => {

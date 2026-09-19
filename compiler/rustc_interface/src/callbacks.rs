@@ -10,11 +10,13 @@
 //! origin crate when the `TyCtxt` is not present in TLS.
 
 use std::fmt;
+use std::fmt::Arguments;
+use std::panic::Location;
 
-use rustc_errors::DiagInner;
-use rustc_middle::dep_graph::{DepNodeIndex, QuerySideEffect, TaskDepsRef};
+use rustc_errors::{DiagInner, DiagLocation, Level};
+use rustc_middle::dep_graph::{QuerySideEffect, TaskDepsRef};
 use rustc_middle::ty::tls;
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 
 fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
     tls::with_context_opt(|icx| {
@@ -59,13 +61,13 @@ fn track_feature(feature: Symbol) {
         };
         let tcx = icx.tcx;
 
-        if let Some(dep_node_index) = tcx.sess.used_features.lock().get(&feature).copied() {
-            tcx.dep_graph.read_index(DepNodeIndex::from_u32(dep_node_index));
+        if let Some(dep_node_index) = tcx.query_system.used_features.lock().get(&feature).copied() {
+            tcx.dep_graph.read_index(dep_node_index);
         } else {
             let dep_node_index = tcx
                 .dep_graph
                 .encode_side_effect(tcx, QuerySideEffect::CheckFeature { symbol: feature });
-            tcx.sess.used_features.lock().insert(feature, dep_node_index.as_u32());
+            tcx.query_system.used_features.lock().insert(feature, dep_node_index);
             tcx.dep_graph.read_index(dep_node_index);
         }
     })
@@ -84,6 +86,30 @@ fn def_id_debug(def_id: rustc_hir::def_id::DefId, f: &mut fmt::Formatter<'_>) ->
     write!(f, ")")
 }
 
+/// Returns true if it printed the diagnostic, which happens if a `tcx` is available.
+fn emit_bug_diagnostic(
+    span: Option<Span>,
+    args: Arguments<'_>,
+    location: &'static Location<'static>,
+) -> bool {
+    tls::with_opt(move |tcx| {
+        if let Some(tcx) = tcx {
+            let mut diag = DiagInner::new(Level::Bug, format!("{location}: {args}"));
+            if let Some(span) = span {
+                diag.span = span.into();
+            }
+            diag.emitted_at = DiagLocation::from_location(location);
+            // Emit the bug without aborting. We let `bug_impl` do the abort because it has
+            // `#[track_caller]` which gives a better location. (`#[track_caller]` doesn't work
+            // here because this function is called via a function pointer.)
+            tcx.dcx().emit_diagnostic(diag);
+            true
+        } else {
+            false
+        }
+    })
+}
+
 /// Sets up the callbacks in prior crates which we want to refer to the
 /// TyCtxt in.
 pub fn setup_callbacks() {
@@ -91,4 +117,6 @@ pub fn setup_callbacks() {
     rustc_hir::def_id::DEF_ID_DEBUG.swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     rustc_errors::TRACK_DIAGNOSTIC.swap(&(track_diagnostic as _));
     rustc_feature::TRACK_FEATURE.swap(&(track_feature as _));
+    rustc_span::macros::EMIT_BUG_DIAGNOSTIC.swap(&(emit_bug_diagnostic as _));
+    rustc_expand_queries::setup_callbacks();
 }

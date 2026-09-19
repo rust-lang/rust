@@ -12,7 +12,6 @@ rust-version.workspace = true
 [lib]
 doctest = false
 
-
 [dependencies]
 dashmap.workspace = true
 # We need to freeze the version of the crate, as it needs to match with dashmap

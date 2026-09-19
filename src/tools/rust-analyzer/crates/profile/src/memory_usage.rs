@@ -30,28 +30,25 @@ impl MemoryUsage {
                     allocated: Bytes(jemalloc_ctl::stats::allocated::read().unwrap() as isize),
                 }
             }
-            all(target_os = "linux", target_env = "gnu") => {
-                memusage_linux()
-            }
+            all(target_os = "linux", target_env = "gnu") => memusage_linux(),
             windows => {
                 // There doesn't seem to be an API for determining heap usage, so we try to
                 // approximate that by using the Commit Charge value.
 
-                use windows_sys::Win32::System::{Threading::*, ProcessStatus::*};
                 use std::mem::MaybeUninit;
+                use windows_sys::Win32::System::{ProcessStatus::*, Threading::*};
 
                 let proc = unsafe { GetCurrentProcess() };
                 let mut mem_counters = MaybeUninit::uninit();
                 let cb = size_of::<PROCESS_MEMORY_COUNTERS>();
-                let ret = unsafe { GetProcessMemoryInfo(proc, mem_counters.as_mut_ptr(), cb as u32) };
+                let ret =
+                    unsafe { GetProcessMemoryInfo(proc, mem_counters.as_mut_ptr(), cb as u32) };
                 assert!(ret != 0);
 
                 let usage = unsafe { mem_counters.assume_init().PagefileUsage };
                 MemoryUsage { allocated: Bytes(usage as isize) }
             }
-           _ => {
-                MemoryUsage { allocated: Bytes(0) }
-            }
+            _ => MemoryUsage { allocated: Bytes(0) },
         }
     }
 }

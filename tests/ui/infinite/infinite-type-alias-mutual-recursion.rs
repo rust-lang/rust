@@ -6,18 +6,18 @@
 
 #![feature(rustc_attrs)]
 #![rustc_no_implicit_bounds]
-#![cfg_attr(any(feature_old, feature_new), feature(lazy_type_alias))]
+#![cfg_attr(any(feature_old, feature_new), feature(checked_type_aliases))]
 #![allow(incomplete_features)]
 
 type X1 = X2;
 //[gated_old,gated_new]~^ ERROR cycle detected when expanding type alias `X1`
 //[feature_old]~^^ ERROR: overflow normalizing the type alias `X2`
-//[feature_new]~^^^ ERROR: type mismatch resolving `_ == X1`
+//[feature_new]~^^^ ERROR: overflow evaluating the requirement `X2 == _`
 type X2 = X3;
 //[feature_old]~^ ERROR: overflow normalizing the type alias `X3`
-//[feature_new]~^^ ERROR: type mismatch resolving `_ == X2`
+//[feature_new]~^^ ERROR: overflow evaluating the requirement `X3 == _`
 type X3 = X1;
 //[feature_old]~^ ERROR: overflow normalizing the type alias `X1`
-//[feature_new]~^^ ERROR: type mismatch resolving `_ == X3`
+//[feature_new]~^^ ERROR: overflow evaluating the requirement `X1 == _`
 
 fn main() {}

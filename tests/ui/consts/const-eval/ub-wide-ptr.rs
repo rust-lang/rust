@@ -1,15 +1,16 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 #![allow(unused, unnecessary_transmutes)]
 #![feature(ptr_metadata)]
 
 use std::{ptr, mem};
-//@ ignore-parallel-frontend different alloc ids
+
 // Strip out raw byte dumps to make comparison platform-independent:
 //@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr: "([0-9a-f][0-9a-f] |__ |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
 //@ normalize-stderr: "offset \d+" -> "offset N"
 //@ normalize-stderr: "size \d+" -> "size N"
 //@ normalize-stderr: "0x[0-9](\.\.|\])" -> "0x%$1"
+//@ normalize-stderr: "╾ALLOC\$ID╼\s+│.*╾.*╼" -> "╾ALLOC$$ID╼ │ ╾─╼"
 //@ dont-require-annotations: NOTE
 
 /// A newtype wrapper to prevent MIR generation from inserting reborrows that would affect the error
@@ -136,7 +137,6 @@ const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((
 const RAW_TRAIT_OBJ_CONTENT_INVALID: *const dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) } as *const dyn Trait; // ok because raw
 // Officially blessed way to get the vtable
 const DYN_METADATA: ptr::DynMetadata<dyn Send> = ptr::metadata::<dyn Send>(ptr::null::<i32>());
-
 
 static mut RAW_TRAIT_OBJ_VTABLE_NULL_THROUGH_REF: *const dyn Trait = unsafe {
     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))

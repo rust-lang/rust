@@ -2,7 +2,7 @@
 use std::{cell::OnceCell, ops::ControlFlow};
 
 use ::tt::TextRange;
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use cfg::CfgExpr;
 use parser::T;
 use smallvec::SmallVec;
@@ -14,7 +14,6 @@ use syntax_bridge::DocCommentDesugarMode;
 
 use crate::{
     attrs::{AstPathExt, AttrId, expand_cfg_attr, is_item_tree_filtered_attr},
-    db::ExpandDatabase,
     fixup::{self, SyntaxFixupUndoInfo},
     span_map::SpanMap,
     tt::{self, DelimSpan, Span},
@@ -46,7 +45,7 @@ struct AstAttrToProcess {
 }
 
 fn macro_input_callback(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     is_derive: bool,
     censor_item_tree_attr_ids: &[AttrId],
     krate: Crate,
@@ -293,7 +292,7 @@ fn macro_input_callback(
 }
 
 pub(crate) fn attr_macro_input_to_token_tree(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     node: &SyntaxNode,
     span_map: SpanMap<'_>,
     span: Span,

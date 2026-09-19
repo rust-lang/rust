@@ -14,6 +14,7 @@ pub(crate) fn target() -> Target {
         pointer_width: 16,
         options: TargetOptions {
             c_int_width: 16,
+            cpu: "avr2".into(),
             exe_suffix: ".elf".into(),
             linker: Some("avr-gcc".into()),
             eh_frame_header: false,
@@ -26,6 +27,8 @@ pub(crate) fn target() -> Target {
             atomic_cas: false,
             relocation_model: RelocModel::Static,
             need_explicit_cpu: true,
+            // crates with different `target-cpu`s are not link-compatible for AVR
+            requires_consistent_cpu: true,
             ..TargetOptions::default()
         },
     }

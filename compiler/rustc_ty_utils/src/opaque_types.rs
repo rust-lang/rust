@@ -8,8 +8,7 @@ use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Unnormalized,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
+use rustc_span::{Span, bug, span_bug};
 use tracing::{instrument, trace};
 
 use crate::diagnostics::{DuplicateArg, NotParam};
@@ -42,7 +41,7 @@ enum CollectionMode {
 impl<'tcx> OpaqueTypeCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, item: LocalDefId) -> Self {
         let mode = match tcx.def_kind(item) {
-            DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy => {
+            DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => {
                 CollectionMode::ImplTraitInAssocTypes
             }
             DefKind::TyAlias => CollectionMode::Taits,
@@ -186,7 +185,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
             trace!(?define);
             let mode = std::mem::replace(&mut self.mode, CollectionMode::Taits);
             let n = self.opaques.len();
-            super::sig_types::walk_types(self.tcx, define, self);
+            rustc_ty_walk::walk_types(self.tcx, define, self);
             if n == self.opaques.len() {
                 self.tcx.dcx().span_err(span, "item does not contain any opaque types");
             }
@@ -198,7 +197,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
     }
 }
 
-impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
+impl<'tcx> rustc_ty_walk::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
     fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) {
         self.visit_spanned(span, value);
@@ -210,14 +209,14 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         t.super_visit_with(self);
         match *t.kind() {
-            ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Opaque { def_id }, .. })
+            ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Opaque { def_id }, .. })
                 if def_id.is_local() =>
             {
                 self.visit_opaque_ty(alias_ty);
             }
             // Skips type aliases, as they are meant to be transparent.
             // FIXME(type_alias_impl_trait): can we require mentioning nested type aliases explicitly?
-            ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. })
+            ty::Alias(_, ty::AliasTy { kind: ty::Free { def_id }, args, .. })
                 if let Some(def_id) = def_id.as_local() =>
             {
                 if !self.seen.insert(def_id) {
@@ -230,6 +229,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     .visit_with(self);
             }
             ty::Alias(
+                _,
                 alias_ty @ ty::AliasTy { kind: ty::Projection { def_id: alias_def_id }, .. },
             ) => {
                 // This avoids having to do normalization of `Self::AssocTy` by only
@@ -299,7 +299,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                         .type_of(alias_def_id)
                         .instantiate(self.tcx, alias_ty.args)
                         .skip_norm_wip();
-                    let ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
+                    let ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
                         *ty.kind()
                     else {
                         bug!("{ty:?}")
@@ -316,27 +316,33 @@ fn opaque_types_defined_by<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: LocalDefId,
 ) -> &'tcx ty::List<LocalDefId> {
+    // Closures and coroutines are type checked with their parent
+    // Note that we also support `SyntheticCoroutineBody` since we create
+    // a MIR body for the def kind, and some MIR passes (like promotion)
+    // may require doing analysis using its typing env.
+    if tcx.is_typeck_child(item.to_def_id()) {
+        return tcx.opaque_types_defined_by(tcx.local_parent(item));
+    }
     let kind = tcx.def_kind(item);
     trace!(?kind);
     let mut collector = OpaqueTypeCollector::new(tcx, item);
     collector.collect_taits_from_defines_attr();
-    super::sig_types::walk_types(tcx, item, &mut collector);
+    rustc_ty_walk::walk_types(tcx, item, &mut collector);
 
     match kind {
         DefKind::AssocFn
         | DefKind::Fn
         | DefKind::Static { .. }
-        | DefKind::Const { .. }
-        | DefKind::AssocConst { .. }
+        | DefKind::Const
+        | DefKind::AssocConst
         | DefKind::AnonConst => {
+            // Non-type-system inline consts should be caught by `if tcx.is_typeck_child` above
+            debug_assert!(
+                kind != DefKind::AnonConst
+                    || tcx.anon_const_kind(item) != ty::AnonConstKind::NonTypeSystemInline
+            );
+
             collector.collect_taits_declared_in_body();
-        }
-        // Closures and coroutines are type checked with their parent
-        // Note that we also support `SyntheticCoroutineBody` since we create
-        // a MIR body for the def kind, and some MIR passes (like promotion)
-        // may require doing analysis using its typing env.
-        DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody => {
-            collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
         }
         DefKind::AssocTy | DefKind::TyAlias | DefKind::GlobalAsm => {}
         DefKind::OpaqueTy
@@ -348,6 +354,8 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::Trait
         | DefKind::ForeignTy
         | DefKind::TraitAlias
+        | DefKind::Closure
+        | DefKind::SyntheticCoroutineBody
         | DefKind::TyParam
         | DefKind::ConstParam
         | DefKind::Ctor(_, _)
@@ -357,7 +365,8 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::ForeignMod
         | DefKind::Field
         | DefKind::LifetimeParam
-        | DefKind::Impl { .. } => {
+        | DefKind::Impl { .. }
+        | DefKind::TestBinderConstraints => {
             span_bug!(
                 tcx.def_span(item),
                 "`opaque_types_defined_by` not defined for {} `{item:?}`",

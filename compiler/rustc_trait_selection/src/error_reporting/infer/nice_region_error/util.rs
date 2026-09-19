@@ -126,12 +126,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         region_def_id: DefId,
         hir_sig: &hir::FnSig<'_>,
     ) -> Option<Span> {
-        let fn_ty = self.tcx().type_of(scope_def_id).instantiate_identity().skip_norm_wip();
+        let tcx = self.tcx();
+        let fn_ty = tcx.type_of(scope_def_id).instantiate_identity().skip_norm_wip();
         if let ty::FnDef(_, _) = fn_ty.kind() {
-            let ret_ty = fn_ty.fn_sig(self.tcx()).output();
+            let ret_ty = fn_ty.fn_sig(tcx).output();
             let span = hir_sig.decl.output.span();
             let future_output = if hir_sig.header.is_async() {
-                ret_ty.map_bound(|ty| self.cx.get_impl_future_output_ty(ty)).transpose()
+                ret_ty.map_bound(|ty| tcx.get_impl_future_output_ty(ty)).transpose()
             } else {
                 None
             };

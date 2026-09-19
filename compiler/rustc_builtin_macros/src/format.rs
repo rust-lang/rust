@@ -132,7 +132,11 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
                     });
                     continue;
                 }
-                args.add(FormatArgument { kind: FormatArgumentKind::Named(ident), expr });
+                args.add(FormatArgument {
+                    original_span: ident.span.to(expr.span),
+                    kind: FormatArgumentKind::Named(ident),
+                    expr,
+                });
             }
             _ => {
                 let expr = p.parse_expr()?;
@@ -147,7 +151,11 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
                             .collect(),
                     }));
                 }
-                args.add(FormatArgument { kind: FormatArgumentKind::Normal, expr });
+                args.add(FormatArgument {
+                    original_span: expr.span,
+                    kind: FormatArgumentKind::Normal,
+                    expr,
+                });
             }
         }
     }
@@ -164,7 +172,6 @@ fn make_format_args(
     append_newline: bool,
     macro_span: Span,
 ) -> ExpandResult<Result<FormatArgs, ErrorGuaranteed>, ()> {
-    let msg = "format argument must be a string literal";
     let unexpanded_fmt_span = input.fmtstr.span;
 
     let MacroInput { fmtstr: efmt, mut args, is_direct_literal } = input;
@@ -185,7 +192,9 @@ fn make_format_args(
             None
         };
 
-        let ExpandResult::Ready(mac) = expr_to_spanned_string(ecx, efmt.clone(), msg) else {
+        let ExpandResult::Ready(mac) =
+            expr_to_spanned_string(ecx, efmt.clone(), "format argument must be a string literal")
+        else {
             return ExpandResult::Retry(());
         };
         match mac {
@@ -225,7 +234,7 @@ fn make_format_args(
 
                                 let mut sugg_fmt = String::new();
                                 for kind in std::iter::once(&efmt.kind)
-                                    .chain(args.explicit_args().into_iter().map(|a| &a.expr.kind))
+                                    .chain(args.explicit_args().iter().map(|a| &a.expr.kind))
                                 {
                                     sugg_fmt.push_str(if should_suggest(kind) {
                                         "{:?} "
@@ -445,7 +454,11 @@ fn make_format_args(
                         unnamed_arg_after_named_arg = true;
                         DummyResult::raw_expr(span, Some(guar))
                     };
-                    Ok(args.add(FormatArgument { kind: FormatArgumentKind::Captured(ident), expr }))
+                    Ok(args.add(FormatArgument {
+                        original_span: span,
+                        kind: FormatArgumentKind::Captured(ident),
+                        expr,
+                    }))
                 }
             }
         };
@@ -604,9 +617,8 @@ fn make_format_args(
 
     let has_unused = !unused.is_empty();
     if has_unused {
-        // If there's a lot of unused arguments,
-        // let's check if this format arguments looks like another syntax (printf / shell).
-        let detect_foreign_fmt = unused.len() > args.explicit_args().len() / 2;
+        let foreign_fmt_str =
+            if append_newline { fmt_str.strip_suffix('\n').unwrap_or(fmt_str) } else { fmt_str };
         report_missing_placeholders(
             ecx,
             unused,
@@ -614,9 +626,8 @@ fn make_format_args(
             &args,
             &pieces,
             &invalid_refs,
-            detect_foreign_fmt,
             str_style,
-            fmt_str,
+            foreign_fmt_str,
             uncooked_fmt_str.1.as_str(),
             fmt_span,
         );
@@ -721,7 +732,6 @@ fn report_missing_placeholders(
     args: &FormatArguments,
     pieces: &[parse::Piece<'_>],
     invalid_refs: &[(usize, Option<Span>, PositionUsedAs, FormatArgPositionKind)],
-    detect_foreign_fmt: bool,
     str_style: Option<usize>,
     fmt_str: &str,
     uncooked_fmt_str: &str,
@@ -770,8 +780,9 @@ fn report_missing_placeholders(
     // Used to ensure we only report translations for *one* kind of foreign format.
     let mut found_foreign = false;
 
-    // Decide if we want to look for foreign formatting directives.
-    if detect_foreign_fmt {
+    // If there's a lot of unused arguments,
+    // let's check if this format arguments looks like another syntax (printf / shell).
+    if unused.len() > args.explicit_args().len() / 2 {
         use super::format_foreign as foreign;
 
         // The set of foreign substitutions we've explained. This prevents spamming the user
@@ -926,7 +937,7 @@ fn report_redundant_format_arguments<'a>(
             suggestion_spans.push(span);
         }
 
-        let sugg = if args.named_args().len() == 0 {
+        let sugg = if args.named_args().is_empty() {
             Some(diagnostics::FormatRedundantArgsSugg { spans: suggestion_spans })
         } else {
             None

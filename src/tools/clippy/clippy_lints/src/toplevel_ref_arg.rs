@@ -5,8 +5,7 @@ use clippy_utils::{is_lint_allowed, iter_input_pats};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingMode, Body, ByRef, FnDecl, Mutability, PatKind, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 

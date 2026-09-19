@@ -1,6 +1,7 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+sha,+sse2,+ssse3,+sse4.1
+//@run-native
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;

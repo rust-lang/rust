@@ -6,3 +6,5 @@ LL |         unsafe { libc::getaddrinfo(node_c_str.as_ptr(), service_c_str.as_pt
    |
    = note: Miri cannot return proper error information from this call; only a generic error code is being returned
 
+warning: 1 warning emitted
+

@@ -17,7 +17,7 @@ use crate::{
     RootDatabase,
     imports::merge_imports::{
         MergeBehavior, NormalizationStyle, common_prefix, eq_attrs, eq_visibility,
-        try_merge_imports, use_tree_cmp,
+        try_merge_imports, use_tree_cmp, wrap_in_tree_list,
     },
 };
 
@@ -251,7 +251,7 @@ fn insert_use_with_alias_option_with_editor(
     let mut use_tree = make.use_tree(path, None, alias, false);
     if mb == Some(MergeBehavior::One)
         && use_tree.path().is_some()
-        && let Some(wrapped) = use_tree.wrap_in_tree_list_with_editor()
+        && let Some(wrapped) = wrap_in_tree_list(&use_tree, make)
     {
         use_tree = wrapped;
     }
@@ -263,7 +263,9 @@ fn insert_use_with_alias_option_with_editor(
         for existing_use in
             scope.as_syntax_node().children().filter_map(ast::Use::cast).filter(filter)
         {
-            if let Some(merged) = try_merge_imports(&existing_use, &use_item, mb) {
+            if let Some(merged) =
+                try_merge_imports(syntax_editor.make(), &existing_use, &use_item, mb)
+            {
                 syntax_editor.replace(existing_use.syntax(), merged.syntax());
                 return;
             }
@@ -312,7 +314,7 @@ impl ImportGroup {
             PathSegmentKind::SelfKw => ImportGroup::ThisModule,
             PathSegmentKind::SuperKw => ImportGroup::SuperModule,
             PathSegmentKind::CrateKw => ImportGroup::ThisCrate,
-            PathSegmentKind::Name(name) => match name.text().as_str() {
+            PathSegmentKind::Name(name) => match name.text() {
                 "std" => ImportGroup::Std,
                 "core" => ImportGroup::Std,
                 _ => ImportGroup::ExternCrate,
@@ -571,5 +573,5 @@ fn insert_use_with_editor_(
 }
 
 fn is_inner_attribute(node: SyntaxNode) -> bool {
-    ast::Attr::cast(node).map(|attr| attr.kind()) == Some(ast::AttrKind::Inner)
+    ast::AnyAttr::cast(node).map(|attr| attr.kind()) == Some(ast::AttrKind::Inner)
 }

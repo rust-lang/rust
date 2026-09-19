@@ -4,13 +4,7 @@ error: layout_of(A) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=0,
-               },
+               u8 is 0..=0,
            ),
            fields: Arbitrary {
                offsets: [
@@ -23,22 +17,13 @@ error: layout_of(A) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
+                   value: u8,
                    valid_range: 0..=0,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=0,
-               },
+               tag: u8 is 0..=0,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
@@ -69,13 +54,7 @@ error: layout_of(B) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 255..=255,
-               },
+               u8 is 255..=255,
            ),
            fields: Arbitrary {
                offsets: [
@@ -88,22 +67,13 @@ error: layout_of(B) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
+                   value: u8,
                    valid_range: 255..=255,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 255..=255,
-               },
+               tag: u8 is 255..=255,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
@@ -134,13 +104,7 @@ error: layout_of(C) = Layout {
                abi: Align(2 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I16,
-                       false,
-                   ),
-                   valid_range: 256..=256,
-               },
+               u16 is 256..=256,
            ),
            fields: Arbitrary {
                offsets: [
@@ -153,22 +117,13 @@ error: layout_of(C) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I16,
-                       false,
-                   ),
+                   value: u16,
                    valid_range: 256..=256,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I16,
-                       false,
-                   ),
-                   valid_range: 256..=256,
-               },
+               tag: u16 is 256..=256,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
@@ -199,13 +154,7 @@ error: layout_of(P) = Layout {
                abi: Align(4 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 268435456..=268435456,
-               },
+               u32 is 268435456..=268435456,
            ),
            fields: Arbitrary {
                offsets: [
@@ -218,22 +167,13 @@ error: layout_of(P) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I32,
-                       false,
-                   ),
+                   value: u32,
                    valid_range: 268435456..=268435456,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 268435456..=268435456,
-               },
+               tag: u32 is 268435456..=268435456,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
@@ -264,13 +204,7 @@ error: layout_of(T) = Layout {
                abi: Align(4 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I32,
-                       true,
-                   ),
-                   valid_range: 2164260864..=2164260864,
-               },
+               i32 is -2130706432..=-2130706432,
            ),
            fields: Arbitrary {
                offsets: [
@@ -283,22 +217,13 @@ error: layout_of(T) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I32,
-                       true,
-                   ),
+                   value: i32,
                    valid_range: 2164260864..=2164260864,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I32,
-                       true,
-                   ),
-                   valid_range: 2164260864..=2164260864,
-               },
+               tag: i32 is -2130706432..=-2130706432,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [

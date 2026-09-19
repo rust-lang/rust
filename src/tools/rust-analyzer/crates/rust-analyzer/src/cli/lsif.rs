@@ -1,5 +1,4 @@
 //! LSIF (language server index format) generator
-
 use std::env;
 use std::time::Instant;
 
@@ -10,11 +9,13 @@ use ide::{
 };
 use ide_db::{line_index, line_index::WideEncoding};
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace};
-use lsp_types::lsif;
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
 use rustc_hash::FxHashMap;
 use stdx::format_to;
+use vendored as lsif;
 use vfs::{AbsPathBuf, Vfs};
+
+mod vendored;
 
 use crate::{
     cli::flags,
@@ -38,9 +39,9 @@ struct LsifManager<'a, 'w> {
 #[derive(Clone, Copy)]
 struct Id(i32);
 
-impl From<Id> for lsp_types::NumberOrString {
+impl From<Id> for lsp_types::Code {
     fn from(Id(it): Id) -> Self {
-        lsp_types::NumberOrString::Number(it)
+        lsp_types::Code::Int(it)
     }
 }
 
@@ -145,7 +146,7 @@ impl LsifManager<'_, '_> {
         let path = path.as_path().unwrap();
         let doc_id = self.add_vertex(lsif::Vertex::Document(lsif::Document {
             language_id: "rust".to_owned(),
-            uri: lsp_types::Url::from_file_path(path).unwrap(),
+            uri: lsp_types::Uri::from_file_path(path).unwrap(),
         }));
         self.file_map.insert(id, doc_id);
         doc_id
@@ -156,7 +157,7 @@ impl LsifManager<'_, '_> {
         if let Some(hover) = token.hover {
             let hover_id = self.add_vertex(lsif::Vertex::HoverResult {
                 result: lsp_types::Hover {
-                    contents: lsp_types::HoverContents::Markup(to_proto::markup_content(
+                    contents: lsp_types::Contents::MarkupContent(to_proto::markup_content(
                         hover.markup,
                         ide::HoverDocFormat::Markdown,
                     )),
@@ -211,7 +212,7 @@ impl LsifManager<'_, '_> {
                 out_v: result_set_id.into(),
             }));
             let mut edges = token.references.iter().fold(
-                FxHashMap::<_, Vec<lsp_types::NumberOrString>>::default(),
+                FxHashMap::<_, Vec<lsp_types::Code>>::default(),
                 |mut edges, it| {
                     let entry = edges.entry((it.range.file_id, it.is_definition)).or_default();
                     entry.push((*self.range_map.get(&it.range).unwrap()).into());
@@ -321,9 +322,9 @@ impl flags::Lsif {
         let mut lsif = LsifManager::new(&analysis, db, &vfs, out);
         lsif.add_vertex(lsif::Vertex::MetaData(lsif::MetaData {
             version: String::from("0.5.0"),
-            project_root: lsp_types::Url::from_file_path(path).unwrap(),
+            project_root: lsp_types::Uri::from_file_path(path).unwrap(),
             position_encoding: lsif::Encoding::Utf16,
-            tool_info: Some(lsp_types::lsif::ToolInfo {
+            tool_info: Some(lsif::ToolInfo {
                 name: "rust-analyzer".to_owned(),
                 args: vec![],
                 version: Some(version().to_string()),

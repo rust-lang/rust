@@ -1,6 +1,10 @@
 fn main() {
-    // No `Command` on Miri and emscripten
-    #[cfg(all(not(miri), any(unix, windows), not(target_os = "emscripten")))]
+    // No `Command` on Miri, emscripten or L4Re
+    #[cfg(all(
+        not(miri),
+        any(unix, windows),
+        not(any(target_os = "emscripten", target_os = "l4re"))
+    ))]
     {
         use std::io::{Read, pipe};
         use std::{env, process};
@@ -13,10 +17,16 @@ fn main() {
 
         fn parent() {
             let me = env::current_exe().unwrap();
+            // If a custom `runner` is set up for the current target, we'll be
+            // executing `./runner ./test`, not just `./test`. For such a case,
+            // use the same arguments for child to avoid executing `runner`
+            // without an actual executable.
+            let args = env::args();
 
             let (rx, tx) = pipe().unwrap();
             assert!(
                 process::Command::new(me)
+                    .args(args)
                     .env("I_AM_THE_CHILD", "1")
                     .stdout(tx)
                     .status()

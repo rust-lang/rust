@@ -137,6 +137,8 @@ declare namespace rustdoc {
         loadDesc: function({descShard: SearchDescShard, descIndex: number}): Promise<string|null>;
         loadedDescShard: function(string, number, string);
         isDisplayed: function(): boolean;
+        searchLoaded: boolean;
+        loadSearch: function();
     }
 
     interface SearchDescShard {

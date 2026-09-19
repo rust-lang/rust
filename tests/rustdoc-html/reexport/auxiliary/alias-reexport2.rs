@@ -1,4 +1,4 @@
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 
 extern crate alias_reexport;
 

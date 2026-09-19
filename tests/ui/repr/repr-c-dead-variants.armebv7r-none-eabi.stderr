@@ -4,13 +4,7 @@ error: layout_of(Univariant) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=0,
-               },
+               u8 is 0..=0,
            ),
            fields: Arbitrary {
                offsets: [
@@ -23,35 +17,20 @@ error: layout_of(Univariant) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
+                   value: u8,
                    valid_range: 0..=0,
                },
            ),
            uninhabited: true,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=0,
-               },
+               tag: u8 is 0..=0,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
                    VariantLayout {
                        size: Size(1 bytes),
                        backend_repr: Scalar(
-                           Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=0,
-                           },
+                           u8 is 0..=0,
                        ),
                        field_offsets: [
                            Size(1 bytes),
@@ -78,21 +57,11 @@ error: layout_of(TwoVariants) = Layout {
            align: AbiAlign {
                abi: Align(1 bytes),
            },
-           backend_repr: ScalarPair(
-               Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
-               Union {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-               },
-           ),
+           backend_repr: ScalarPair {
+               a: u8 is 0..=1,
+               b: union u8,
+               b_offset: Size(1 bytes),
+           },
            fields: Arbitrary {
                offsets: [
                    Size(0 bytes),
@@ -104,42 +73,23 @@ error: layout_of(TwoVariants) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
+                   value: u8,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
+               tag: u8 is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
-                       backend_repr: ScalarPair(
-                           Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           Union {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                           },
-                       ),
+                       backend_repr: ScalarPair {
+                           a: u8 is 0..=1,
+                           b: union u8,
+                           b_offset: Size(1 bytes),
+                       },
                        field_offsets: [
                            Size(1 bytes),
                        ],
@@ -151,21 +101,11 @@ error: layout_of(TwoVariants) = Layout {
                    },
                    VariantLayout {
                        size: Size(2 bytes),
-                       backend_repr: ScalarPair(
-                           Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           Union {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                           },
-                       ),
+                       backend_repr: ScalarPair {
+                           a: u8 is 0..=1,
+                           b: union u8,
+                           b_offset: Size(1 bytes),
+                       },
                        field_offsets: [
                            Size(1 bytes),
                        ],
@@ -205,22 +145,13 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
+                   value: u8,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
+               tag: u8 is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [

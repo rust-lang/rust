@@ -2,5 +2,5 @@
 
 //@ check-pass
 //@ reference: shebang.syntax
-// ignore-tidy-end-whitespace
+// ignore-tidy-file-end-whitespace
 fn main() {}

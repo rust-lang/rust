@@ -1,6 +1,6 @@
 use std::cmp;
 use std::fmt;
-use std::ops::Deref;
+use std::ops::DerefMut;
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -90,9 +90,13 @@ impl TypeKind {
         }
     }
 
-    /// Returns the Rust prefix for this type kind i.e. `i`, `u`, or `f`.
+    /// Returns the Rust prefix for this type kind (i.e. `i` for `i16`, or `u` for `u16`). For type
+    /// kinds without any bit length at the end (e.g. `bool`), returns the whole type name.
     pub fn rust_prefix(&self) -> &str {
         match self {
+            Self::Bool => "bool",
+            Self::SvPattern => "svpattern",
+            Self::SvPrefetchOp => "svprfop",
             Self::BFloat => "bf",
             Self::Float => "f",
             Self::Int(Sign::Signed) => "i",
@@ -101,7 +105,7 @@ impl TypeKind {
             Self::Char(Sign::Unsigned) => "u",
             Self::Char(Sign::Signed) => "i",
             Self::Mask => "u",
-            _ => unreachable!("Unused type kind: {self:#?}"),
+            _ => unreachable!("type kind without Rust prefix: {self:#?}"),
         }
     }
 }
@@ -110,6 +114,15 @@ impl TypeKind {
 pub enum SimdLen {
     Scalable,
     Fixed(u32),
+}
+
+impl SimdLen {
+    pub fn expect_fixed(&self) -> u32 {
+        match self {
+            SimdLen::Fixed(lanes) => *lanes,
+            SimdLen::Scalable => panic!("`expect_fixed` with scalable length"),
+        }
+    }
 }
 
 impl std::fmt::Display for SimdLen {
@@ -169,14 +182,8 @@ impl IntrinsicType {
     }
 
     /// Returns the number of lanes of the type
-    pub fn num_lanes(&self) -> u32 {
-        self.simd_len
-            .as_ref()
-            .map(|len| match len {
-                SimdLen::Scalable => unimplemented!(),
-                SimdLen::Fixed(len) => *len,
-            })
-            .unwrap_or(1)
+    pub fn num_lanes(&self) -> SimdLen {
+        self.simd_len.unwrap_or(SimdLen::Fixed(1))
     }
 
     /// Returns the number of vectors of the type
@@ -195,9 +202,19 @@ impl IntrinsicType {
     }
 }
 
-pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
+pub trait TypeDefinition: Clone + DerefMut<Target = IntrinsicType> {
     /// Determines the load function for this type.
-    fn get_load_function(&self) -> String;
+    fn load_function(&self) -> String;
+
+    /// Determines the comparison function for this type.
+    fn comparison_function(&self) -> String {
+        match self.simd_len {
+            Some(SimdLen::Scalable) => unimplemented!("architecture-specific"),
+            Some(SimdLen::Fixed(_)) | None => {
+                default_fixed_vector_comparison(self, self.num_lanes().expect_fixed())
+            }
+        }
+    }
 
     /// Gets a string containing the typename for this type in C.
     fn c_type(&self) -> String;
@@ -208,14 +225,55 @@ pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
     /// Gets a string containing the name of the scalar type corresponding to this type if it is a
     /// vector.
     fn rust_scalar_type(&self) -> String {
-        if self.is_simd() {
-            format!(
-                "{prefix}{bits}",
-                prefix = self.kind().rust_prefix(),
-                bits = self.inner_size()
-            )
-        } else {
-            self.rust_type()
-        }
+        let mut ty = self.clone();
+        ty.simd_len = None;
+        ty.vec_len = None;
+        ty.rust_type()
     }
+
+    /// Gets a string containing the name of the scalar type corresponding to this type that should
+    /// be used as the element type for the test value array.
+    fn rust_scalar_type_for_test_value_array(&self) -> String {
+        self.rust_scalar_type()
+    }
+}
+
+/// Returns the default comparison between results of an intrinsic - casting the vectors to arrays
+/// and using `assert_eq` - using `NanEqF*` where required for floats.
+pub(crate) fn default_fixed_vector_comparison<Ty: TypeDefinition>(
+    ty: &Ty,
+    num_lanes: u32,
+) -> String {
+    let (cast_prefix, cast_suffix) = if ty.is_simd() {
+        (
+            format!(
+                "std::mem::transmute::<_, [{}; {}]>(",
+                ty.rust_scalar_type().replace("f", "NanEqF"),
+                num_lanes * ty.num_vectors()
+            ),
+            ")",
+        )
+    } else if ty.kind == TypeKind::Float {
+        (
+            match ty.inner_size() {
+                16 => format!("NanEqF16("),
+                32 => format!("NanEqF32("),
+                64 => format!("NanEqF64("),
+                _ => unimplemented!(),
+            },
+            ")",
+        )
+    } else {
+        ("".to_string(), "")
+    };
+
+    format!(
+        r#"
+assert_eq!(
+    {cast_prefix}__rust_return_value{cast_suffix},
+    {cast_prefix}__c_return_value{cast_suffix},
+    "{{id}}"
+);
+"#,
+    )
 }

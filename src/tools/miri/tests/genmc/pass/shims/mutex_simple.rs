@@ -27,7 +27,7 @@ static LOCK: Mutex<u64> = Mutex::new(0);
 
 #[unsafe(no_mangle)]
 fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
-    std::panic::abort_unwind(main_);
+    std::panic::abort_on_unwind(main_);
     0
 }
 

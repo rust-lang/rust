@@ -8,13 +8,14 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{CrateType, Lto};
+use rustc_session::config::Lto;
+use rustc_structures::CrateType;
 use tracing::info;
 
 use crate::back::symbol_export::{self, allocator_shim_symbols, symbol_name_for_instance_in_crate};
 use crate::back::write::CodegenContext;
 use crate::base::allocator_kind_for_codegen;
-use crate::errors::{DynamicLinkingWithLTO, LtoDisallowed, LtoDylib, LtoProcMacro};
+use crate::diagnostics::{DynamicLinkingWithLTO, LtoDisallowed, LtoDylib, LtoProcMacro};
 use crate::traits::*;
 
 pub struct ThinModule<B: WriteBackendMethods> {
@@ -144,17 +145,17 @@ pub(super) fn check_lto_allowed(cgcx: &CodegenContext, dcx: DiagCtxtHandle<'_>) 
     // Make sure we actually can run LTO
     for crate_type in cgcx.crate_types.iter() {
         if !crate_type_allows_lto(*crate_type) {
-            dcx.handle().emit_fatal(LtoDisallowed);
+            dcx.emit_fatal(LtoDisallowed);
         } else if *crate_type == CrateType::Dylib {
             if !cgcx.dylib_lto {
-                dcx.handle().emit_fatal(LtoDylib);
+                dcx.emit_fatal(LtoDylib);
             }
         } else if *crate_type == CrateType::ProcMacro && !cgcx.dylib_lto {
-            dcx.handle().emit_fatal(LtoProcMacro);
+            dcx.emit_fatal(LtoProcMacro);
         }
     }
 
     if cgcx.prefer_dynamic && !cgcx.dylib_lto {
-        dcx.handle().emit_fatal(DynamicLinkingWithLTO);
+        dcx.emit_fatal(DynamicLinkingWithLTO);
     }
 }

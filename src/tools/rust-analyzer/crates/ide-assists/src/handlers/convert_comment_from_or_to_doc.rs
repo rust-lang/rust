@@ -1,10 +1,12 @@
 use itertools::Itertools;
 use syntax::{
-    AstToken, Direction, SyntaxElement, TextRange,
-    ast::{self, Comment, CommentPlacement, Whitespace, edit::IndentLevel},
+    AstToken, TextRange,
+    ast::{self, AttrKind, Whitespace, edit::IndentLevel},
 };
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{
+    AssistContext, AssistId, Assists, handlers::convert_comment_block::relevant_line_comments,
+};
 
 // Assist: comment_to_doc
 //
@@ -23,7 +25,7 @@ pub(crate) fn convert_comment_from_or_to_doc(
     acc: &mut Assists,
     ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
-    let comment = ctx.find_token_at_offset::<ast::Comment>()?;
+    let comment = ctx.find_token_at_offset::<ast::AnyComment>()?;
 
     match comment.kind().doc {
         Some(_) => doc_to_comment(acc, comment),
@@ -31,7 +33,7 @@ pub(crate) fn convert_comment_from_or_to_doc(
     }
 }
 
-fn doc_to_comment(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
+fn doc_to_comment(acc: &mut Assists, comment: ast::AnyComment) -> Option<()> {
     let target = if comment.kind().shape.is_line() {
         line_comments_text_range(&comment)?
     } else {
@@ -52,7 +54,7 @@ fn doc_to_comment(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
                     let prefix = format!("{indentation}//");
                     relevant_line_comments(&comment)
                         .iter()
-                        .map(|comment| comment.text())
+                        .map(|comment| comment.text_with_markers())
                         .flat_map(|text| text.lines())
                         .map(|line| line.replacen(line_start, &prefix, 1))
                         .join("\n")
@@ -60,7 +62,7 @@ fn doc_to_comment(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
                 ast::CommentShape::Block => {
                     let block_start = comment.prefix();
                     comment
-                        .text()
+                        .text_with_markers()
                         .lines()
                         .enumerate()
                         .map(|(idx, line)| {
@@ -78,7 +80,7 @@ fn doc_to_comment(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
     )
 }
 
-fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacement) -> Option<()> {
+fn comment_to_doc(acc: &mut Assists, comment: ast::AnyComment, style: AttrKind) -> Option<()> {
     let target = if comment.kind().shape.is_line() {
         line_comments_text_range(&comment)?
     } else {
@@ -96,23 +98,23 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
                 ast::CommentShape::Line => {
                     let indentation = IndentLevel::from_token(comment.syntax());
                     let line_start = match style {
-                        CommentPlacement::Inner => format!("{indentation}//!"),
-                        CommentPlacement::Outer => format!("{indentation}///"),
+                        AttrKind::Inner => format!("{indentation}//!"),
+                        AttrKind::Outer => format!("{indentation}///"),
                     };
                     relevant_line_comments(&comment)
                         .iter()
-                        .map(|comment| comment.text())
+                        .map(|comment| comment.text_with_markers())
                         .flat_map(|text| text.lines())
                         .map(|line| line.replacen("//", &line_start, 1))
                         .join("\n")
                 }
                 ast::CommentShape::Block => {
                     let block_start = match style {
-                        CommentPlacement::Inner => "/*!",
-                        CommentPlacement::Outer => "/**",
+                        AttrKind::Inner => "/*!",
+                        AttrKind::Outer => "/**",
                     };
                     comment
-                        .text()
+                        .text_with_markers()
                         .lines()
                         .enumerate()
                         .map(|(idx, line)| {
@@ -176,7 +178,7 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
 ///     // Modules only normally get inner documentation when they are defined as a separate file.
 /// }
 /// ```
-fn can_be_doc_comment(comment: &ast::Comment) -> Option<CommentPlacement> {
+fn can_be_doc_comment(comment: &ast::AnyComment) -> Option<AttrKind> {
     use syntax::SyntaxKind::*;
 
     // if the comment is not on its own line, then we do not propose anything.
@@ -186,7 +188,7 @@ fn can_be_doc_comment(comment: &ast::Comment) -> Option<CommentPlacement> {
             Whitespace::cast(prev).filter(|w| w.text().contains('\n'))?;
         }
         // There is no previous token, this is the start of the file.
-        None => return Some(CommentPlacement::Inner),
+        None => return Some(AttrKind::Inner),
     }
 
     // check if comment is followed by: `struct`, `trait`, `mod`, `fn`, `type`, `extern crate`,
@@ -194,51 +196,10 @@ fn can_be_doc_comment(comment: &ast::Comment) -> Option<CommentPlacement> {
     let parent = comment.syntax().parent();
     let par_kind = parent.as_ref().map(|parent| parent.kind());
     matches!(par_kind, Some(STRUCT | TRAIT | MODULE | FN | TYPE_ALIAS | EXTERN_CRATE | USE | CONST))
-        .then_some(CommentPlacement::Outer)
+        .then_some(AttrKind::Outer)
 }
 
-/// The line -> block assist can  be invoked from anywhere within a sequence of line comments.
-/// relevant_line_comments crawls backwards and forwards finding the complete sequence of comments that will
-/// be joined.
-pub(crate) fn relevant_line_comments(comment: &ast::Comment) -> Vec<Comment> {
-    // The prefix identifies the kind of comment we're dealing with
-    let prefix = comment.prefix();
-    let same_prefix = |c: &ast::Comment| c.prefix() == prefix;
-
-    // These tokens are allowed to exist between comments
-    let skippable = |not: &SyntaxElement| {
-        not.clone()
-            .into_token()
-            .and_then(Whitespace::cast)
-            .map(|w| !w.spans_multiple_lines())
-            .unwrap_or(false)
-    };
-
-    // Find all preceding comments (in reverse order) that have the same prefix
-    let prev_comments = comment
-        .syntax()
-        .siblings_with_tokens(Direction::Prev)
-        .filter(|s| !skippable(s))
-        .map(|not| not.into_token().and_then(Comment::cast).filter(same_prefix))
-        .take_while(|opt_com| opt_com.is_some())
-        .flatten()
-        .skip(1); // skip the first element so we don't duplicate it in next_comments
-
-    let next_comments = comment
-        .syntax()
-        .siblings_with_tokens(Direction::Next)
-        .filter(|s| !skippable(s))
-        .map(|not| not.into_token().and_then(Comment::cast).filter(same_prefix))
-        .take_while(|opt_com| opt_com.is_some())
-        .flatten();
-
-    let mut comments: Vec<_> = prev_comments.collect();
-    comments.reverse();
-    comments.extend(next_comments);
-    comments
-}
-
-fn line_comments_text_range(comment: &ast::Comment) -> Option<TextRange> {
+fn line_comments_text_range(comment: &ast::AnyComment) -> Option<TextRange> {
     let comments = relevant_line_comments(comment);
     let first = comments.first()?;
     let indentation = IndentLevel::from_token(first.syntax());

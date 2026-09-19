@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::has_debug_impl;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::sym;
 
@@ -37,7 +37,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext<'_>, ty: Ty<'a>) -> Option<Ty<'a>> {
     match ty.kind() {
-        ty::Adt(adt, args) if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) => args.types().nth(1),
+        ty::Adt(adt, args) if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) => args.iter().nth(1)?.as_type(),
         _ => None,
     }
 }

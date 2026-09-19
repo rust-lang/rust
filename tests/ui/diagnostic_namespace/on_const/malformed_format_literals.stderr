@@ -1,0 +1,36 @@
+warning: unknown parameter `Foo`
+  --> $DIR/malformed_format_literals.rs:12:28
+   |
+LL |     message = "my message {Foo}",
+   |                            ^^^
+   |
+   = help: expect either a generic argument name or `{Self}` as format argument
+   = note: `#[warn(malformed_diagnostic_format_literals)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: unknown parameter `Bar`
+  --> $DIR/malformed_format_literals.rs:14:24
+   |
+LL |     label = "my label {Bar}",
+   |                        ^^^
+   |
+   = help: expect either a generic argument name or `{Self}` as format argument
+
+warning: unknown parameter `Baz`
+  --> $DIR/malformed_format_literals.rs:16:23
+   |
+LL |     note = "my label {Baz}",
+   |                       ^^^
+   |
+   = help: expect either a generic argument name or `{Self}` as format argument
+
+error[E0277]: my message {Foo}
+  --> $DIR/malformed_format_literals.rs:22:10
+   |
+LL |     X {}.blah();
+   |          ^^^^ my label {Bar}
+   |
+   = note: my label {Baz}
+
+error: aborting due to 1 previous error; 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0277`.

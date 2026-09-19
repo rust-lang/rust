@@ -65,8 +65,8 @@ where
 
     // Graph label
     let mut label = String::from("");
-    // FIXME: remove this unwrap
-    write_graph_label(tcx, body, &mut label).unwrap();
+    write_graph_label(tcx, body, &mut label)
+        .map_err(|_| io::Error::other("failed to write graph label"))?;
     let g = mir_fn_to_generic_graph(tcx, body);
     let settings = GraphvizSettings {
         graph_attrs: Some(graph_attrs.join(" ")),

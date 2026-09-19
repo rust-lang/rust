@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 
+use crate::cell::Cell;
 use crate::fmt::{self, Debug, Formatter};
 
 struct PadAdapter<'buf, 'state> {
@@ -47,6 +48,29 @@ impl fmt::Write for PadAdapter<'_, '_> {
         }
         self.state.on_newline = c == '\n';
         self.buf.write_char(c)
+    }
+}
+
+/// Wraps an `FnOnce` formatting closure in a type that implements [`fmt::Debug`] by calling the
+/// closure, allowing the `*_with` builder methods to forward to their `&dyn fmt::Debug`
+/// counterparts.
+///
+/// By doing this, the builder logic is monomorphized only once and not for every closure type
+/// (see #149745).
+///
+/// Formatting a `DebugOnce` consumes the closure, so attempting to format it more than once
+/// panics. This never happens because the debug builders format each value exactly once.
+struct DebugOnce<F>(Cell<Option<F>>);
+
+impl<F> fmt::Debug for DebugOnce<F>
+where
+    F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0.take() {
+            Some(value_fmt) => value_fmt(f),
+            None => panic!("formatting closure called more than once"),
+        }
     }
 }
 
@@ -130,18 +154,6 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn field(&mut self, name: &str, value: &dyn fmt::Debug) -> &mut Self {
-        self.field_with(name, |f| value.fmt(f))
-    }
-
-    /// Adds a new field to the generated struct output.
-    ///
-    /// This method is equivalent to [`DebugStruct::field`], but formats the
-    /// value using a provided closure rather than by calling [`Debug::fmt`].
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
-    pub fn field_with<F>(&mut self, name: &str, value_fmt: F) -> &mut Self
-    where
-        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
                 if !self.has_fields {
@@ -152,19 +164,59 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
                 let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut state);
                 writer.write_str(name)?;
                 writer.write_str(": ")?;
-                value_fmt(&mut writer)?;
+                value.fmt(&mut writer)?;
                 writer.write_str(",\n")
             } else {
                 let prefix = if self.has_fields { ", " } else { " { " };
                 self.fmt.write_str(prefix)?;
                 self.fmt.write_str(name)?;
                 self.fmt.write_str(": ")?;
-                value_fmt(self.fmt)
+                value.fmt(self.fmt)
             }
         });
 
         self.has_fields = true;
         self
+    }
+
+    /// Adds a new field to the generated struct output.
+    ///
+    /// This method is equivalent to [`DebugStruct::field`], but formats the
+    /// value using a provided closure rather than by calling [`Debug::fmt`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(debug_closure_helpers)]
+    ///
+    /// use std::fmt;
+    ///
+    /// struct Bar {
+    ///     bar: i32,
+    ///     another: String,
+    /// }
+    ///
+    /// impl fmt::Debug for Bar {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_struct("Bar")
+    ///            // Print `bar` as a hex value
+    ///            .field_with("bar", |fmt| write!(fmt, "{:#010x}", &self.bar))
+    ///            .field("another", &self.another)
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Bar { bar: 10, another: "Hello World".to_string() }),
+    ///     r#"Bar { bar: 0x0000000a, another: "Hello World" }"#,
+    /// );
+    /// ```
+    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    pub fn field_with<F>(&mut self, name: &str, value_fmt: F) -> &mut Self
+    where
+        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+    {
+        self.field(name, &DebugOnce(Cell::new(Some(value_fmt))))
     }
 
     /// Marks the struct as non-exhaustive, indicating to the reader that there are some other
@@ -327,18 +379,6 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn field(&mut self, value: &dyn fmt::Debug) -> &mut Self {
-        self.field_with(|f| value.fmt(f))
-    }
-
-    /// Adds a new field to the generated tuple struct output.
-    ///
-    /// This method is equivalent to [`DebugTuple::field`], but formats the
-    /// value using a provided closure rather than by calling [`Debug::fmt`].
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
-    pub fn field_with<F>(&mut self, value_fmt: F) -> &mut Self
-    where
-        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
                 if self.fields == 0 {
@@ -347,17 +387,54 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
                 let mut slot = None;
                 let mut state = Default::default();
                 let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut state);
-                value_fmt(&mut writer)?;
+                value.fmt(&mut writer)?;
                 writer.write_str(",\n")
             } else {
                 let prefix = if self.fields == 0 { "(" } else { ", " };
                 self.fmt.write_str(prefix)?;
-                value_fmt(self.fmt)
+                value.fmt(self.fmt)
             }
         });
 
         self.fields += 1;
         self
+    }
+
+    /// Adds a new field to the generated tuple struct output.
+    ///
+    /// This method is equivalent to [`DebugTuple::field`], but formats the
+    /// value using a provided closure rather than by calling [`Debug::fmt`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(debug_closure_helpers)]
+    ///
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32, String);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_tuple("Foo")
+    ///             // Print the first field as a hex value
+    ///             .field_with(|fmt| write!(fmt, "{:#010x}", &self.0))
+    ///             .field(&self.1)
+    ///             .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(10, "Hello World".to_string())),
+    ///     r#"Foo(0x0000000a, "Hello World")"#,
+    /// );
+    /// ```
+    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    pub fn field_with<F>(&mut self, value_fmt: F) -> &mut Self
+    where
+        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+    {
+        self.field(&DebugOnce(Cell::new(Some(value_fmt))))
     }
 
     /// Marks the tuple struct as non-exhaustive, indicating to the reader that there are some
@@ -453,10 +530,7 @@ struct DebugInner<'a, 'b: 'a> {
 }
 
 impl<'a, 'b: 'a> DebugInner<'a, 'b> {
-    fn entry_with<F>(&mut self, entry_fmt: F)
-    where
-        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    {
+    fn entry(&mut self, entry: &dyn fmt::Debug) {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
                 if !self.has_fields {
@@ -465,17 +539,24 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
                 let mut slot = None;
                 let mut state = Default::default();
                 let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut state);
-                entry_fmt(&mut writer)?;
+                entry.fmt(&mut writer)?;
                 writer.write_str(",\n")
             } else {
                 if self.has_fields {
                     self.fmt.write_str(", ")?
                 }
-                entry_fmt(self.fmt)
+                entry.fmt(self.fmt)
             }
         });
 
         self.has_fields = true;
+    }
+
+    fn entry_with<F>(&mut self, entry_fmt: F)
+    where
+        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+    {
+        self.entry(&DebugOnce(Cell::new(Some(entry_fmt))));
     }
 
     fn is_pretty(&self) -> bool {
@@ -546,7 +627,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn entry(&mut self, entry: &dyn fmt::Debug) -> &mut Self {
-        self.inner.entry_with(|f| entry.fmt(f));
+        self.inner.entry(entry);
         self
     }
 
@@ -554,6 +635,31 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugSet::entry`], but formats the
     /// entry using a provided closure rather than by calling [`Debug::fmt`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(debug_closure_helpers)]
+    ///
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<i32>, Vec<u32>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_set()
+    ///            .entry(&self.0)
+    ///            // Print the second member as a set
+    ///            .entry_with(|fmt| fmt.debug_set().entries(&self.1).finish())
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![10, 11], vec![12, 13])),
+    ///     "{[10, 11], {12, 13}}",
+    /// );
+    /// ```
     #[unstable(feature = "debug_closure_helpers", issue = "117729")]
     pub fn entry_with<F>(&mut self, entry_fmt: F) -> &mut Self
     where
@@ -738,7 +844,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn entry(&mut self, entry: &dyn fmt::Debug) -> &mut Self {
-        self.inner.entry_with(|f| entry.fmt(f));
+        self.inner.entry(entry);
         self
     }
 
@@ -746,6 +852,31 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugList::entry`], but formats the
     /// entry using a provided closure rather than by calling [`Debug::fmt`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(debug_closure_helpers)]
+    ///
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<i32>, Vec<u32>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_list()
+    ///            .entry(&self.0)
+    ///            // Print the second member as a set
+    ///            .entry_with(|fmt| fmt.debug_set().entries(&self.1).finish())
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![10, 11], vec![12, 13])),
+    ///     "[[10, 11], {12, 13}]",
+    /// );
+    /// ```
     #[unstable(feature = "debug_closure_helpers", issue = "117729")]
     pub fn entry_with<F>(&mut self, entry_fmt: F) -> &mut Self
     where
@@ -969,18 +1100,6 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// ```
     #[stable(feature = "debug_map_key_value", since = "1.42.0")]
     pub fn key(&mut self, key: &dyn fmt::Debug) -> &mut Self {
-        self.key_with(|f| key.fmt(f))
-    }
-
-    /// Adds the key part of a new entry to the map output.
-    ///
-    /// This method is equivalent to [`DebugMap::key`], but formats the
-    /// key using a provided closure rather than by calling [`Debug::fmt`].
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
-    pub fn key_with<F>(&mut self, key_fmt: F) -> &mut Self
-    where
-        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    {
         self.result = self.result.and_then(|_| {
             assert!(
                 !self.has_key,
@@ -995,13 +1114,13 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
                 let mut slot = None;
                 self.state = Default::default();
                 let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut self.state);
-                key_fmt(&mut writer)?;
+                key.fmt(&mut writer)?;
                 writer.write_str(": ")?;
             } else {
                 if self.has_fields {
                     self.fmt.write_str(", ")?
                 }
-                key_fmt(self.fmt)?;
+                key.fmt(self.fmt)?;
                 self.fmt.write_str(": ")?;
             }
 
@@ -1010,6 +1129,46 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
         });
 
         self
+    }
+
+    /// Adds the key part of a new entry to the map output.
+    ///
+    /// This method is equivalent to [`DebugMap::key`], but formats the
+    /// key using a provided closure rather than by calling [`Debug::fmt`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(debug_closure_helpers)]
+    ///
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<(String, i32)>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         let mut map = fmt.debug_map();
+    ///         for (k, v) in &self.0 {
+    ///             // Append "entry" to each key
+    ///             map.key_with(|fmt| write!(fmt, "entry {k}"));
+    ///             // Write values as hex
+    ///             map.value_with(|fmt| write!(fmt, "{v:#010x}"));
+    ///         }
+    ///         map.finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
+    ///     r#"{entry A: 0x0000000a, entry B: 0x0000000b}"#,
+    /// );
+    /// ```
+    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    pub fn key_with<F>(&mut self, key_fmt: F) -> &mut Self
+    where
+        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+    {
+        self.key(&DebugOnce(Cell::new(Some(key_fmt))))
     }
 
     /// Adds the value part of a new entry to the map output.
@@ -1045,28 +1204,16 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// ```
     #[stable(feature = "debug_map_key_value", since = "1.42.0")]
     pub fn value(&mut self, value: &dyn fmt::Debug) -> &mut Self {
-        self.value_with(|f| value.fmt(f))
-    }
-
-    /// Adds the value part of a new entry to the map output.
-    ///
-    /// This method is equivalent to [`DebugMap::value`], but formats the
-    /// value using a provided closure rather than by calling [`Debug::fmt`].
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
-    pub fn value_with<F>(&mut self, value_fmt: F) -> &mut Self
-    where
-        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    {
         self.result = self.result.and_then(|_| {
             assert!(self.has_key, "attempted to format a map value before its key");
 
             if self.is_pretty() {
                 let mut slot = None;
                 let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut self.state);
-                value_fmt(&mut writer)?;
+                value.fmt(&mut writer)?;
                 writer.write_str(",\n")?;
             } else {
-                value_fmt(self.fmt)?;
+                value.fmt(self.fmt)?;
             }
 
             self.has_key = false;
@@ -1075,6 +1222,46 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 
         self.has_fields = true;
         self
+    }
+
+    /// Adds the value part of a new entry to the map output.
+    ///
+    /// This method is equivalent to [`DebugMap::value`], but formats the
+    /// value using a provided closure rather than by calling [`Debug::fmt`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(debug_closure_helpers)]
+    ///
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<(String, i32)>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         let mut map = fmt.debug_map();
+    ///         for (k, v) in &self.0 {
+    ///             // Append "entry" to each key
+    ///             map.key_with(|fmt| write!(fmt, "entry {k}"));
+    ///             // Write values as hex
+    ///             map.value_with(|fmt| write!(fmt, "{v:#010x}"));
+    ///         }
+    ///         map.finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
+    ///     r#"{entry A: 0x0000000a, entry B: 0x0000000b}"#,
+    /// );
+    /// ```
+    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    pub fn value_with<F>(&mut self, value_fmt: F) -> &mut Self
+    where
+        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+    {
+        self.value(&DebugOnce(Cell::new(Some(value_fmt))))
     }
 
     /// Adds the contents of an iterator of entries to the map output.

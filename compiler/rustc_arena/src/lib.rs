@@ -10,12 +10,12 @@
 // tidy-alphabetical-start
 #![allow(clippy::mut_from_ref)] // Arena allocators are one place where this pattern is fine.
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![cfg_attr(test, feature(test))]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![doc(test(no_crate_inject, attr(deny(warnings), allow(internal_features))))]
+#![doc(test(no_crate_inject, attr(deny(warnings))))]
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
-#![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
@@ -52,10 +52,7 @@ unsafe impl<#[may_dangle] T> Drop for ArenaChunk<T> {
 impl<T> ArenaChunk<T> {
     #[inline]
     unsafe fn new(capacity: usize) -> ArenaChunk<T> {
-        ArenaChunk {
-            storage: NonNull::from(Box::leak(Box::new_uninit_slice(capacity))),
-            entries: 0,
-        }
+        ArenaChunk { storage: Box::into_non_null(Box::new_uninit_slice(capacity)), entries: 0 }
     }
 
     /// Destroys this arena chunk.
@@ -542,11 +539,12 @@ impl DroplessArena {
 
     #[inline]
     pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+        assert!(!mem::needs_drop::<T>());
+        assert!(size_of::<T>() != 0);
+
         // Warning: this function is reentrant: `iter` could hold a reference to `&self` and
         // allocate additional elements while we're iterating.
         let iter = iter.into_iter();
-        assert!(size_of::<T>() != 0);
-        assert!(!mem::needs_drop::<T>());
 
         let size_hint = iter.size_hint();
 
@@ -577,6 +575,7 @@ impl DroplessArena {
     ) -> Result<&mut [T], E> {
         // Despite the similarity with `alloc_from_iter`, we cannot reuse their fast case, as we
         // cannot know the minimum length of the iterator in this case.
+        assert!(!mem::needs_drop::<T>());
         assert!(size_of::<T>() != 0);
 
         // Takes care of reentrancy.
@@ -596,21 +595,32 @@ impl DroplessArena {
     }
 }
 
-/// Declare an `Arena` containing one dropless arena and many typed arenas (the
-/// types of the typed arenas are specified by the arguments).
+/// Declares an `Arena` that can allocate values of a variety of `Copy`, `needs_drop` and
+/// `!needs_drop` types.
 ///
-/// There are three cases of interest.
-/// - Types that are `Copy`: these need not be specified in the arguments. They
-///   will use the `DroplessArena`.
-/// - Types that are `!Copy` and `!Drop`: these must be specified in the
-///   arguments. An empty `TypedArena` will be created for each one, but the
-///   `DroplessArena` will always be used and the `TypedArena` will stay empty.
-///   This is odd but harmless, because an empty arena allocates no memory.
-/// - Types that are `!Copy` and `Drop`: these must be specified in the
-///   arguments. The `TypedArena` will be used for them.
+/// The declared arena actually contains a single [`DroplessArena`], plus a separate
+/// [`TypedArena`] for each of the types listed in the body of the macro invocation.
 ///
+/// Any type that is `Copy` can be allocated in the arena without needing to be listed
+/// explicitly. Those values will be stored in the [`DroplessArena`].
+///
+/// Types that are `!Copy` can only be allocated if they are listed in the macro invocation.
+/// For types that are `!Copy + needs_drop`, values will be stored in the corresponding
+/// [`TypedArena`] and will be dropped when the arena is dropped.
+///
+/// As an optimization, types that are `!Copy + !needs_drop` will actually be stored in the
+/// [`DroplessArena`], and the corresponding [`TypedArena`] will remain empty. This makes
+/// better use of the dropless arena's storage blocks, while the overhead of having a few
+/// unused typed-arenas is negligible.
 #[rustc_macro_transparency = "semiopaque"]
-pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
+pub macro declare_arena(
+    // Each of these entries becomes a `$name: TypedArena<$ty>` field in the arena.
+    // This allows values of non-copy type $ty to be allocated in the arena.
+    // The field names must be distinct, but have no further significance.
+    $(
+        $name:ident: $ty:ty,
+    )*
+) {
     #[derive(Default)]
     pub struct Arena<'tcx> {
         pub dropless: $crate::DroplessArena,
@@ -694,12 +704,41 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
             self.dropless.alloc_str(string)
         }
 
+        #[inline]
+        pub fn alloc_os_str(&self, os_str: &::std::ffi::OsStr) -> &::std::ffi::OsStr {
+            use ::std::ffi::OsStr;
+            if os_str.is_empty() {
+                return OsStr::new("");
+            }
+            let bytes = self.dropless.alloc_slice(os_str.as_encoded_bytes());
+            // SAFETY: These bytes are an exact copy of `os_str.as_encoded_bytes()`.
+            unsafe { OsStr::from_encoded_bytes_unchecked(bytes) }
+        }
+
+        #[inline]
+        pub fn alloc_path(&self, path: &::std::path::Path) -> &::std::path::Path {
+            use ::std::path::Path;
+            Path::new(self.alloc_os_str(path.as_os_str()))
+        }
+
         #[allow(clippy::mut_from_ref)]
         pub fn alloc_from_iter<T: ArenaAllocatable<'tcx, C>, C>(
             &'tcx self,
             iter: impl ::std::iter::IntoIterator<Item = T>,
         ) -> &mut [T] {
             T::allocate_from_iter(self, iter)
+        }
+
+        #[allow(clippy::mut_from_ref)]
+        pub fn alloc_index_slice_from_iter<I, T, C>(
+            &'tcx self,
+            iter: impl ::std::iter::IntoIterator<Item = T>,
+        ) -> &mut ::rustc_index::IndexSlice<I, T>
+        where
+            I: ::rustc_index::Idx,
+            T: ArenaAllocatable<'tcx, C>,
+        {
+            ::rustc_index::IndexSlice::from_raw_mut(self.alloc_from_iter(iter))
         }
     }
 }

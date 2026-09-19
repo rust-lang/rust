@@ -4,23 +4,24 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unimplemented-trait
 //
-// This diagnostic is triggered when rust-analyzer cannot infer some type.
+// This diagnostic is triggered when a trait bound is not satisfied.
 pub(crate) fn unimplemented_trait<'db>(
     ctx: &DiagnosticsContext<'_, 'db>,
     d: &hir::UnimplementedTrait<'db>,
 ) -> Diagnostic {
-    let message = match &d.root_trait_predicate {
-        Some(root_predicate) if *root_predicate != d.trait_predicate => format!(
-            "the trait bound `{}` is not satisfied\n\
-            required by the bound `{}`\n",
-            d.trait_predicate.display(ctx.db(), ctx.display_target),
-            root_predicate.display(ctx.db(), ctx.display_target),
-        ),
-        _ => format!(
-            "the trait bound `{}` is not satisfied",
-            d.trait_predicate.display(ctx.db(), ctx.display_target),
-        ),
-    };
+    let mut message = format!(
+        "the trait bound `{}` is not satisfied",
+        d.trait_predicate.display(ctx.db(), ctx.display_target),
+    );
+    for parent_predicate in &d.parent_trait_predicates {
+        message.push_str(&format!(
+            "\nrequired by the bound `{}`",
+            parent_predicate.display(ctx.db(), ctx.display_target),
+        ));
+    }
+    if !d.parent_trait_predicates.is_empty() {
+        message.push('\n');
+    }
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
         DiagnosticCode::RustcHardError("E0277"),
@@ -46,6 +47,10 @@ fn bar() {
     foo([1]);
  // ^^^ error: the trait bound `i32: Trait` is not satisfied
    // | required by the bound `[i32; 1]: Trait`
+    foo([[1]]);
+ // ^^^ error: the trait bound `i32: Trait` is not satisfied
+   // | required by the bound `[i32; 1]: Trait`
+   // | required by the bound `[[i32; 1]; 1]: Trait`
 }
         "#,
         );
@@ -78,10 +83,32 @@ fn foo() {
 fn foo() {
     for _ in () {}
           // ^^ error: the trait bound `(): Iterator` is not satisfied
-          // ^^ error: the trait bound `(): Iterator` is not satisfied
            // | required by the bound `(): IntoIterator`
 }
 
+        "#,
+        );
+    }
+
+    #[test]
+    fn coroutine_non_held_types_with_auto_traits() {
+        check_diagnostics(
+            r#"
+auto trait Send {}
+
+struct NonSend;
+impl !Send for NonSend {}
+
+async fn foo() -> NonSend {
+    let v = NonSend;
+    v
+}
+
+fn require_send<T: Send>(_: T) {}
+
+fn baz() {
+    require_send(foo());
+}
         "#,
         );
     }

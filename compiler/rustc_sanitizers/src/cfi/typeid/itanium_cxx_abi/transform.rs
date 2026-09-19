@@ -6,15 +6,15 @@
 
 use std::iter;
 
-use rustc_hir::{self as hir, LangItem, find_attr};
-use rustc_middle::bug;
+use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::{self as hir, find_attr};
 use rustc_middle::ty::{
     self, AssocContainer, ExistentialPredicateStableCmpExt as _, Instance, IntTy, List, TraitRef,
     Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
     Unnormalized,
 };
-use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
+use rustc_span::{DUMMY_SP, bug};
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument};
 
@@ -241,24 +241,27 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
         .flat_map(|super_poly_trait_ref| {
             tcx.associated_items(super_poly_trait_ref.def_id())
                 .in_definition_order()
-                .filter(|item| item.is_type() || item.is_type_const())
+                .filter(|item| item.can_have_equality_constraint(tcx))
                 .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                 .map(move |assoc_item| {
                     super_poly_trait_ref.map_bound(|super_trait_ref| {
-                        let projection_term = ty::AliasTerm::new_from_def_id(
-                            tcx,
-                            assoc_item.def_id,
-                            super_trait_ref.args,
-                        );
-                        let term = tcx.normalize_erasing_regions(
+                        let kind = if assoc_item.is_type() {
+                            ty::AliasTermKind::ProjectionTy { def_id: assoc_item.def_id }
+                        } else {
+                            ty::AliasTermKind::ProjectionConst { def_id: assoc_item.def_id }
+                        };
+                        let projection_term =
+                            ty::AliasTerm::new_from_args(tcx, kind, super_trait_ref.args);
+                        let term = projection_term.to_term(tcx, ty::IsRigid::No);
+                        let normalized_term = tcx.normalize_erasing_regions(
                             ty::TypingEnv::fully_monomorphized(),
-                            Unnormalized::new_wip(projection_term.to_term(tcx)),
+                            Unnormalized::new_wip(term),
                         );
-                        debug!("Projection {:?} -> {term}", projection_term.to_term(tcx),);
+                        debug!("Projection {term} -> {normalized_term}");
                         ty::ExistentialPredicate::Projection(
                             ty::ExistentialProjection::erase_self_ty(
                                 tcx,
-                                ty::ProjectionPredicate { projection_term, term },
+                                ty::ProjectionClause { projection_term, term: normalized_term },
                             ),
                         )
                     })
@@ -310,7 +313,7 @@ pub(crate) fn transform_instance<'tcx>(
     // FIXME: account for async-drop-glue
     if (matches!(instance.def, ty::InstanceKind::Virtual(..))
         && tcx.is_lang_item(instance.def_id(), LangItem::DropGlue))
-        || matches!(instance.def, ty::InstanceKind::DropGlue(..))
+        || matches!(instance.def, ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..)))
     {
         // Adjust the type ids of DropGlues
         //
@@ -364,7 +367,7 @@ pub(crate) fn transform_instance<'tcx>(
             tcx.types.unit
         };
         instance.args = tcx.mk_args_trait(self_ty, instance.args.into_iter().skip(1));
-    } else if let ty::InstanceKind::VTableShim(def_id) = instance.def
+    } else if let ty::InstanceKind::Shim(ty::ShimKind::VTable(def_id)) = instance.def
         && let Some(trait_id) = tcx.trait_of_assoc(def_id)
     {
         // Adjust the type ids of VTableShims to the type id expected in the call sites for the
@@ -461,7 +464,7 @@ pub(crate) fn transform_instance<'tcx>(
 
 fn default_or_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Option<DefId> {
     match instance.def {
-        ty::InstanceKind::Item(def_id) | ty::InstanceKind::FnPtrShim(def_id, _) => {
+        ty::InstanceKind::Item(def_id) | ty::InstanceKind::Shim(ty::ShimKind::FnPtr(def_id, _)) => {
             tcx.opt_associated_item(def_id).map(|item| item.def_id)
         }
         _ => None,
@@ -506,7 +509,7 @@ fn implemented_method<'tcx>(
         trait_method = assoc;
         method_id = trait_method_def_id;
         trait_id = tcx.parent(method_id);
-        trait_ref = ty::EarlyBinder::bind(TraitRef::from_assoc(tcx, trait_id, instance.args));
+        trait_ref = ty::EarlyBinder::bind(tcx, TraitRef::from_assoc(tcx, trait_id, instance.args));
         trait_id
     } else {
         return None;

@@ -3,6 +3,7 @@
 //@only-target: x86_64 i686
 //@[avx512]compile-flags: -C target-feature=+vpclmulqdq,+avx512f
 //@[avx]compile-flags: -C target-feature=+vpclmulqdq,+avx2
+//@run-native
 
 // The constants in the tests below are just bit patterns. They should not
 // be interpreted as integers; signedness does not make sense for them, but
@@ -18,8 +19,15 @@ use std::mem::transmute;
 fn main() {
     // Mostly copied from library/stdarch/crates/core_arch/src/x86/vpclmulqdq.rs
 
+    // These tests require vpclmuldqd, which is recent enough that contributors may be using CPUs that
+    // do not support it. But we still want to run this natively if the machine happens to have vpclmulqdq.
+    // So we bail out dynamically.
+    if !is_x86_feature_detected!("vpclmulqdq") {
+        println!("warning: skipping vpclmulqdq tests");
+        return;
+    }
+
     assert!(is_x86_feature_detected!("pclmulqdq"));
-    assert!(is_x86_feature_detected!("vpclmulqdq"));
 
     unsafe {
         test_mm256_clmulepi64_epi128();

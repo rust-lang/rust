@@ -54,9 +54,8 @@ pub enum ExternAbi {
     /// This ABI is not stable, and relies on LLVM implementation details.
     RustTail,
 
-    /// Unstable impl detail that directly uses Rust types to describe the ABI to LLVM.
-    /// Even normally-compatible Rust types can become ABI-incompatible with this ABI!
-    Unadjusted,
+    /// Unstable ABI used to call LLVM intrinsics.
+    LlvmIntrinsic,
 
     /// An ABI that rustc does not know how to call or define. Functions with this ABI can
     /// only be created using `#[naked]` functions or `extern "custom"` blocks, and can only
@@ -196,6 +195,7 @@ abi_impls! {
             Fastcall { unwind: false } =><= "fastcall",
             Fastcall { unwind: true } =><= "fastcall-unwind",
             GpuKernel =><= "gpu-kernel",
+            LlvmIntrinsic =><= "llvm-intrinsic",
             Msp430Interrupt =><= "msp430-interrupt",
             PtxKernel =><= "ptx-kernel",
             RiscvInterruptM =><= "riscv-interrupt-m",
@@ -213,7 +213,6 @@ abi_impls! {
             RustTail =><= "tail",
             Thiscall { unwind: false } =><= "thiscall",
             Thiscall { unwind: true } =><= "thiscall-unwind",
-            Unadjusted =><= "unadjusted",
             Vectorcall { unwind: false } =><= "vectorcall",
             Vectorcall { unwind: true } =><= "vectorcall-unwind",
             Win64 { unwind: false } =><= "win64",
@@ -290,8 +289,8 @@ impl ExternAbi {
     }
 
     /// Returns whether the ABI supports C variadics. This only controls whether we allow *imports*
-    /// of such functions via `extern` blocks; there's a separate check during AST construction
-    /// guarding *definitions* of variadic functions.
+    /// of such functions via `extern` blocks and definition via naked functions; there's a
+    /// separate check during AST construction guarding *definitions* of variadic functions.
     #[cfg(feature = "nightly")]
     pub fn supports_c_variadic(self) -> CVariadicStatus {
         // * C and Cdecl obviously support varargs.
@@ -343,13 +342,19 @@ impl ExternAbi {
                 // This ABI does not support calls at all (except via assembly).
                 false
             }
+            Self::RustCall => {
+                // Argument untupling requires additional support for tail calls to be possible,
+                // see <https://github.com/rust-lang/rust/pull/158248>. There is no real uses of
+                // tail calling `extern "rust-call"` functions
+                false
+            }
+
             Self::C { .. }
             | Self::System { .. }
             | Self::Rust
-            | Self::RustCall
             | Self::RustCold
             | Self::RustInvalid
-            | Self::Unadjusted
+            | Self::LlvmIntrinsic
             | Self::EfiApi
             | Self::Aapcs { .. }
             | Self::Cdecl { .. }

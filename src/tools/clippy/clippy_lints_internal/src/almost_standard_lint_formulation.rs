@@ -2,9 +2,9 @@ use crate::lint_without_lint_pass::is_lint_ref_type;
 use clippy_utils::diagnostics::span_lint_and_help;
 use regex::Regex;
 use rustc_ast::token::DocFragmentKind;
-use rustc_hir::{Attribute, Item, ItemKind, Mutability};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_attr_ir::Attribute;
+use rustc_hir::{Item, ItemKind, Mutability};
+use rustc_lint::{LateContext, LateLintPass, declare_tool_lint, impl_lint_pass};
 use rustc_span::{Span, Symbol};
 
 declare_tool_lint! {

@@ -27,6 +27,10 @@ impl ExprCollector<'_> {
         let mut named_args: FxHashMap<Symbol, usize> = Default::default();
         let mut reg_args: FxHashSet<usize> = Default::default();
         for piece in asm.asm_pieces() {
+            if !self.check_cfg(&piece) {
+                continue;
+            }
+
             let slot = operands.len();
             let mut lower_reg = |reg: Option<ast::AsmRegSpec>| {
                 let reg = reg?;
@@ -35,7 +39,7 @@ impl ExprCollector<'_> {
                     Some(InlineAsmRegOrRegClass::Reg(Symbol::intern(string.text())))
                 } else {
                     reg.name_ref().map(|name_ref| {
-                        InlineAsmRegOrRegClass::RegClass(Symbol::intern(&name_ref.text()))
+                        InlineAsmRegOrRegClass::RegClass(Symbol::intern(name_ref.text()))
                     })
                 }
             };
@@ -65,7 +69,7 @@ impl ExprCollector<'_> {
                     continue;
                 }
                 ast::AsmPiece::AsmOperandNamed(op) => {
-                    let name = op.name().map(|name| Symbol::intern(&name.text()));
+                    let name = op.name().map(|name| Symbol::intern(name.text()));
                     if let Some(name) = &name {
                         named_args.insert(name.clone(), slot);
                         named_pos.insert(slot, name.clone());

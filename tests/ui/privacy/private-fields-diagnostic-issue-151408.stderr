@@ -16,6 +16,7 @@ error[E0423]: cannot initialize a tuple struct which contains private fields
 LL |     let _ = PublicTuple();
    |             ^^^^^^^^^^^
    |
+   = note: a struct named `PublicTuple` exists in another namespace
 note: constructor is not visible here due to private fields
   --> $DIR/auxiliary/private-fields-diagnostic-aux-issue-151408.rs:18:24
    |

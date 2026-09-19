@@ -5,6 +5,6 @@ fn main() {
     }
 
     unsafe {
-        memchr(std::ptr::null(), 0, 0); //~ ERROR: Undefined Behavior: scalar size mismatch
+        memchr(std::ptr::null(), 0, 0); //~ ERROR: parameter #2 has type i32 passing argument of type u8
     };
 }

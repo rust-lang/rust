@@ -4,9 +4,8 @@ use clippy_utils::ty::implements_trait;
 use clippy_utils::{desugar_await, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::UpvarCapture;
-use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -42,11 +41,11 @@ declare_lint_pass!(RedundantAsyncBlock => [REDUNDANT_ASYNC_BLOCK]);
 impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let span = expr.span;
-        if !span.in_external_macro(cx.tcx.sess.source_map()) &&
-            let Some(body_expr) = desugar_async_block(cx, expr) &&
+        if let Some(body_expr) = desugar_async_block(cx, expr) &&
             let Some(expr) = desugar_await(peel_blocks(body_expr)) &&
             // The await prefix must not come from a macro as its content could change in the future.
             expr.span.eq_ctxt(body_expr.span) &&
+            !span.in_external_macro(cx.tcx.sess.source_map()) &&
             // The await prefix must implement Future, as implementing IntoFuture is not enough.
             let Some(future_trait) = cx.tcx.lang_items().future_trait() &&
             implements_trait(cx, cx.typeck_results().expr_ty(expr), future_trait, &[]) &&

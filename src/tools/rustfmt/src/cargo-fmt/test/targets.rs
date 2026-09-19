@@ -14,11 +14,12 @@ mod all_targets {
         source_root: &str,
         exp_targets: &[ExpTarget],
         exp_num_targets: usize,
+        strategy: CargoFmtStrategy,
     ) {
         let root_path = Path::new("tests/cargo-fmt/source").join(source_root);
         let get_path = |exp: &str| PathBuf::from(&root_path).join(exp).canonicalize().unwrap();
         let manifest_path = Path::new(&root_path).join(manifest_suffix);
-        let targets = get_targets(&CargoFmtStrategy::All, Some(manifest_path.as_path()))
+        let targets = get_targets(&strategy, Some(manifest_path.as_path()))
             .expect("Targets should have been loaded");
 
         assert_eq!(targets.len(), exp_num_targets);
@@ -58,6 +59,7 @@ mod all_targets {
                 "divergent-crate-dir-names",
                 &exp_targets,
                 3,
+                CargoFmtStrategy::All,
             );
         }
 
@@ -113,6 +115,7 @@ mod all_targets {
                 "workspaces/path-dep-above",
                 &exp_targets,
                 6,
+                CargoFmtStrategy::All,
             );
         }
 
@@ -129,6 +132,34 @@ mod all_targets {
         #[test]
         fn includes_all_packages_from_workspace_subdir() {
             assert_correct_targets_loaded("ws/a/d/f/Cargo.toml");
+        }
+    }
+
+    mod cargo_fmt_strategy_root {
+        use super::*;
+
+        #[test]
+        fn assert_correct_targets_loaded_from_root() {
+            let exp_targets = &[
+                ExpTarget {
+                    path: "inner_bin/src/main.rs",
+                    edition: Edition::E2021,
+                    kind: "bin",
+                },
+                ExpTarget {
+                    path: "inner_lib/src/lib.rs",
+                    edition: Edition::E2021,
+                    kind: "lib",
+                },
+            ];
+
+            super::assert_correct_targets_loaded(
+                "Cargo.toml",
+                "issues_6517",
+                exp_targets,
+                2,
+                CargoFmtStrategy::Root,
+            );
         }
     }
 }

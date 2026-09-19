@@ -5,7 +5,6 @@
 
 #![crate_type = "lib"]
 #![feature(sanitize)]
-#![feature(c_variadic)]
 
 #[inline]
 #[target_feature(enable = "sse2")]

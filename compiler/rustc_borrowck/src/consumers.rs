@@ -3,9 +3,9 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
-use rustc_middle::bug;
 use rustc_middle::mir::{Body, Promoted};
 use rustc_middle::ty::TyCtxt;
+use rustc_span::bug;
 
 pub use super::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
 pub use super::constraints::OutlivesConstraint;
@@ -125,8 +125,13 @@ pub fn get_bodies_with_borrowck_facts(
     root_def_id: LocalDefId,
     options: ConsumerOptions,
 ) -> FxHashMap<LocalDefId, BodyWithBorrowckFacts<'_>> {
-    let mut root_cx =
-        BorrowCheckRootCtxt::new(tcx, root_def_id, Some(BorrowckConsumer::new(options)));
+    let tainted_by_errors = Default::default();
+    let mut root_cx = BorrowCheckRootCtxt::new(
+        tcx,
+        root_def_id,
+        Some(BorrowckConsumer::new(options)),
+        &tainted_by_errors,
+    );
     root_cx.do_mir_borrowck();
     root_cx.consumer.unwrap().bodies
 }

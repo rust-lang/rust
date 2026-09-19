@@ -1,15 +1,15 @@
-error[E0271]: type mismatch resolving `<u8 as Trait>::Diverges<u8> == _`
+error[E0275]: overflow evaluating the requirement `<u8 as Trait>::Diverges<u8> == _`
   --> $DIR/normalize-diverging-alias-in-struct.rs:21:12
    |
 LL |     field: Box<<u8 as Trait>::Diverges<u8>>,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<u8 as Trait>::Diverges<u8> == _`
-   |
-note: types differ
-  --> $DIR/normalize-diverging-alias-in-struct.rs:17:31
-   |
-LL |     type Diverges<D: Trait> = D::Diverges<D>;
-   |                               ^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error[E0275]: overflow evaluating whether `Box<<u8 as Trait>::Diverges<u8>>` is well-formed
+  --> $DIR/normalize-diverging-alias-in-struct.rs:21:12
+   |
+LL |     field: Box<<u8 as Trait>::Diverges<u8>>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0271`.
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

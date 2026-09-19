@@ -1,6 +1,4 @@
-#![warn(clippy::std_instead_of_core)]
-#![warn(clippy::std_instead_of_alloc)]
-#![allow(unused_imports)]
+#![warn(clippy::std_instead_of_alloc, clippy::std_instead_of_core)]
 
 #[rustfmt::skip]
 fn issue14982() {
@@ -13,4 +11,15 @@ fn issue15143() {
     use std::{error::Error, vec::Vec, fs::File};
     //~^ std_instead_of_core
     //~| std_instead_of_alloc
+}
+
+#[rustfmt::skip]
+fn pr16964() {
+    use std::{
+        borrow::Cow,
+        //~^ std_instead_of_alloc
+        collections::BTreeSet,
+        //~^ std_instead_of_alloc
+        ffi::OsString,
+    };
 }

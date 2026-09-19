@@ -169,9 +169,9 @@ struct AddLifetimeParameter<'a, 'b>(&'a f32, &'b f64);
 struct AddLifetimeParameterBound<'a, 'b>(&'a f32, &'b f64);
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="hir_owner,predicates_of", cfg="bpass2")]
+#[rustc_clean(except="hir_owner,clauses_of", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="hir_owner,predicates_of", cfg="bpass5")]
+#[rustc_clean(except="hir_owner,clauses_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 struct AddLifetimeParameterBound<'a, 'b: 'a>(
     &'a f32,
@@ -182,9 +182,9 @@ struct AddLifetimeParameterBound<'a, 'b: 'a>(
 struct AddLifetimeParameterBoundWhereClause<'a, 'b>(&'a f32, &'b f64);
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="hir_owner,predicates_of", cfg="bpass2")]
+#[rustc_clean(except="hir_owner,clauses_of", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="hir_owner,predicates_of", cfg="bpass5")]
+#[rustc_clean(except="hir_owner,clauses_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 struct AddLifetimeParameterBoundWhereClause<'a, 'b>(
     &'a f32,
@@ -198,9 +198,9 @@ struct AddLifetimeParameterBoundWhereClause<'a, 'b>(
 struct AddTypeParameter<T1>(T1, T1);
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="hir_owner,type_of,generics_of,predicates_of", cfg="bpass2")]
+#[rustc_clean(except="hir_owner,type_of,generics_of,clauses_of", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="hir_owner,type_of,generics_of,predicates_of", cfg="bpass5")]
+#[rustc_clean(except="hir_owner,type_of,generics_of,clauses_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 struct AddTypeParameter<T1, T2>(
      // The field contains the parent's Generics, so it's dirty even though its
@@ -216,9 +216,9 @@ struct AddTypeParameter<T1, T2>(
 struct AddTypeParameterBound<T>(T);
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="hir_owner,predicates_of", cfg="bpass2")]
+#[rustc_clean(except="hir_owner,clauses_of", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="hir_owner,predicates_of", cfg="bpass5")]
+#[rustc_clean(except="hir_owner,clauses_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 struct AddTypeParameterBound<T: Send>(
     T
@@ -229,9 +229,9 @@ struct AddTypeParameterBound<T: Send>(
 struct AddTypeParameterBoundWhereClause<T>(T);
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="hir_owner,predicates_of", cfg="bpass2")]
+#[rustc_clean(except="hir_owner,clauses_of", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="hir_owner,predicates_of", cfg="bpass5")]
+#[rustc_clean(except="hir_owner,clauses_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 struct AddTypeParameterBoundWhereClause<T>(
     T
@@ -311,9 +311,9 @@ mod change_trait_bound_indirectly {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(except="hir_owner,predicates_of", cfg="bpass2")]
+    #[rustc_clean(except="hir_owner,clauses_of", cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(except="hir_owner,predicates_of", cfg="bpass5")]
+    #[rustc_clean(except="hir_owner,clauses_of", cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     struct Struct<T: Trait>(T);
 }
@@ -325,9 +325,9 @@ mod change_trait_bound_indirectly_in_where_clause {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(except="hir_owner,predicates_of", cfg="bpass2")]
+    #[rustc_clean(except="hir_owner,clauses_of", cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(except="hir_owner,predicates_of", cfg="bpass5")]
+    #[rustc_clean(except="hir_owner,clauses_of", cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     struct Struct<T>(T) where T : Trait;
 }

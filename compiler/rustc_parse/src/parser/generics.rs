@@ -7,7 +7,7 @@ use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::ThinVec;
 
 use super::{ForceCollect, Parser, Trailing, UsePreAttrPos};
-use crate::errors::{
+use crate::diagnostics::{
     self, MultipleWhereClauses, UnexpectedDefaultValueForLifetimeInGenericParameters,
     UnexpectedSelfInGenericParameters, WhereClauseBeforeTupleStructBody,
     WhereClauseBeforeTupleStructBodySugg,
@@ -25,8 +25,8 @@ impl<'a> Parser<'a> {
     /// ```text
     /// BOUND = LT_BOUND (e.g., `'a`)
     /// ```
-    fn parse_lt_param_bounds(&mut self) -> GenericBounds {
-        let mut lifetimes = Vec::new();
+    pub(crate) fn parse_lt_param_bounds(&mut self) -> GenericBounds {
+        let mut lifetimes = ThinVec::new();
         while self.check_lifetime() {
             lifetimes.push(ast::GenericBound::Outlives(self.expect_lifetime()));
 
@@ -86,7 +86,7 @@ impl<'a> Parser<'a> {
             }
             self.parse_generic_bounds()?
         } else {
-            Vec::new()
+            ThinVec::new()
         };
 
         let default = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };
@@ -125,7 +125,7 @@ impl<'a> Parser<'a> {
                     ident,
                     id: ast::DUMMY_NODE_ID,
                     attrs: preceding_attrs,
-                    bounds: Vec::new(),
+                    bounds: ThinVec::new(),
                     kind: GenericParamKind::Const { ty, span, default: None },
                     is_placeholder: false,
                     colon_span: None,
@@ -148,7 +148,7 @@ impl<'a> Parser<'a> {
             ident,
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs,
-            bounds: Vec::new(),
+            bounds: ThinVec::new(),
             kind: GenericParamKind::Const { ty, span, default },
             is_placeholder: false,
             colon_span: None,
@@ -189,7 +189,7 @@ impl<'a> Parser<'a> {
             ident,
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs,
-            bounds: Vec::new(),
+            bounds: ThinVec::new(),
             kind: GenericParamKind::Const { ty, span, default },
             is_placeholder: false,
             colon_span: None,
@@ -225,7 +225,7 @@ impl<'a> Parser<'a> {
                     let (colon_span, bounds) = if this.eat(exp!(Colon)) {
                         (Some(this.prev_token.span), this.parse_lt_param_bounds())
                     } else {
-                        (None, Vec::new())
+                        (None, ThinVec::new())
                     };
 
                     if this.check_noexpect(&token::Eq) && this.look_ahead(1, |t| t.is_lifetime()) {
@@ -260,7 +260,7 @@ impl<'a> Parser<'a> {
                     let lo = this.token.span;
                     match this.parse_ty_where_predicate_kind() {
                         Ok(_) => {
-                            this.dcx().emit_err(errors::BadAssocTypeBounds {
+                            this.dcx().emit_err(diagnostics::BadAssocTypeBounds {
                                 span: lo.to(this.prev_token.span),
                             });
                             // FIXME - try to continue parsing other generics?
@@ -276,10 +276,11 @@ impl<'a> Parser<'a> {
                     // Check for trailing attributes and stop parsing.
                     if !attrs.is_empty() {
                         if !params.is_empty() {
-                            this.dcx().emit_err(errors::AttrAfterGeneric { span: attrs[0].span });
+                            this.dcx()
+                                .emit_err(diagnostics::AttrAfterGeneric { span: attrs[0].span });
                         } else {
                             this.dcx()
-                                .emit_err(errors::AttrWithoutGenerics { span: attrs[0].span });
+                                .emit_err(diagnostics::AttrWithoutGenerics { span: attrs[0].span });
                         }
                     }
                     return Ok((None, Trailing::No, UsePreAttrPos::No));
@@ -320,7 +321,7 @@ impl<'a> Parser<'a> {
         // for example `fn invalid_path_separator::<T>() {}`
         if self.eat_noexpect(&token::PathSep) {
             self.dcx()
-                .emit_err(errors::InvalidPathSepInFnDefinition { span: self.prev_token.span });
+                .emit_err(diagnostics::InvalidPathSepInFnDefinition { span: self.prev_token.span });
         }
 
         let span_lo = self.token.span;
@@ -442,7 +443,7 @@ impl<'a> Parser<'a> {
         // change we parse those generics now, but report an error.
         if self.choose_generics_over_qpath(0) {
             let generics = self.parse_generics()?;
-            self.dcx().emit_err(errors::WhereOnGenerics { span: generics.span });
+            self.dcx().emit_err(diagnostics::WhereOnGenerics { span: generics.span });
         }
 
         loop {
@@ -475,13 +476,14 @@ impl<'a> Parser<'a> {
                 } else {
                     if let [.., last] = &attrs[..] {
                         if last.is_doc_comment() {
-                            this.dcx().emit_err(errors::DocCommentDoesNotDocumentAnything {
+                            this.dcx().emit_err(diagnostics::DocCommentDoesNotDocumentAnything {
                                 span: last.span,
                                 missing_comma: None,
                             });
                         } else {
-                            this.dcx()
-                                .emit_err(errors::AttrWithoutWherePredicates { span: last.span });
+                            this.dcx().emit_err(diagnostics::AttrWithoutWherePredicates {
+                                span: last.span,
+                            });
                         }
                     }
                     None
@@ -534,7 +536,9 @@ impl<'a> Parser<'a> {
         };
 
         match self.parse_ty_where_predicate_kind() {
-            Ok(pred) => Ok(PredicateKindOrStructBody::PredicateKind(pred)),
+            Ok(pred) => Ok(PredicateKindOrStructBody::PredicateKind(
+                ast::WherePredicateKind::BoundPredicate(pred),
+            )),
             Err(type_err) => {
                 let Some(((struct_name, body_insertion_point), mut snapshot)) = snapshot else {
                     return Err(type_err);
@@ -582,7 +586,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_ty_where_predicate_kind(&mut self) -> PResult<'a, ast::WherePredicateKind> {
+    pub(crate) fn parse_ty_where_predicate_kind(
+        &mut self,
+    ) -> PResult<'a, ast::WhereBoundPredicate> {
         // Parse optional `for<'a, 'b>`.
         // This `for` is parsed greedily and applies to the whole predicate,
         // the bounded type can have its own `for` applying only to it.
@@ -598,11 +604,11 @@ impl<'a> Parser<'a> {
             // The bounds may be empty; we intentionally accept predicates like  `Ty:`.
             let bounds = self.parse_generic_bounds()?;
 
-            return Ok(ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
+            return Ok(ast::WhereBoundPredicate {
                 bound_generic_params: bound_vars,
                 bounded_ty: ty,
                 bounds,
-            }));
+            });
         }
 
         // NOTE: If we ever end up impl'ing and stabilizing equality predicates (#20041),

@@ -1,7 +1,5 @@
-// FIXME: Ideally these suggestions would be fixed via rustfix. Blocked by rust-lang/rust#53934
-
-#![allow(clippy::write_literal)]
 #![warn(clippy::write_with_newline)]
+#![expect(clippy::write_literal)]
 
 use std::io::Write;
 

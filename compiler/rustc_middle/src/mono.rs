@@ -22,7 +22,7 @@ use tracing::debug;
 use crate::dep_graph::dep_node::{make_compile_codegen_unit, make_compile_mono_item};
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::ty::{self, GenericArgs, Instance, InstanceKind, SymbolName, Ty, TyCtxt};
+use crate::ty::{self, GenericArgs, Instance, InstanceKind, ShimKind, SymbolName, Ty, TyCtxt};
 
 /// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq)]
@@ -124,7 +124,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
             MonoItem::GlobalAsm(item_id) => {
-                SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.owner_id))
+                tcx.symbol_name(Instance::mono(tcx, item_id.owner_id.to_def_id()))
             }
         }
     }
@@ -173,7 +173,7 @@ impl<'tcx> MonoItem<'tcx> {
         // incrementality (which wants small CGUs with as many things GloballyShared as possible).
         // The heuristics implemented here do better than a completely naive approach in the
         // compiler benchmark suite, but there is no reason to believe they are optimal.
-        if let InstanceKind::DropGlue(_, Some(ty)) = instance.def {
+        if let InstanceKind::Shim(ShimKind::DropGlue(_, Some(ty))) = instance.def {
             if tcx.sess.opts.optimize == OptLevel::No {
                 return InstantiationMode::GloballyShared { may_conflict: false };
             }
@@ -278,7 +278,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::GlobalAsm(..) => return true,
         };
 
-        !tcx.instantiate_and_check_impossible_predicates((def_id, &args))
+        !tcx.instantiate_and_check_impossible_clauses((def_id, &args))
     }
 
     pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
@@ -349,6 +349,11 @@ pub struct CodegenUnit<'tcx> {
     /// contain something unique to this crate (e.g., a module path)
     /// as well as the crate name and disambiguator.
     name: Symbol,
+
+    /// Symbol name for this CGU. Backend may emit symbols prefixed with this name
+    /// and assume uniqueness.
+    symbol_name: Option<Symbol>,
+
     items: FxIndexMap<MonoItem<'tcx>, MonoItemData>,
     size_estimate: usize,
     primary: bool,
@@ -405,6 +410,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     pub fn new(name: Symbol) -> CodegenUnit<'tcx> {
         CodegenUnit {
             name,
+            symbol_name: None,
             items: Default::default(),
             size_estimate: 0,
             primary: false,
@@ -443,6 +449,14 @@ impl<'tcx> CodegenUnit<'tcx> {
     /// Marks this CGU as the one used to contain code coverage information for dead code.
     pub fn make_code_coverage_dead_code_cgu(&mut self) {
         self.is_code_coverage_dead_code_cgu = true;
+    }
+
+    pub fn symbol_name(&self) -> Symbol {
+        self.symbol_name.expect("CGU symbol name accessed before setting")
+    }
+
+    pub fn set_symbol_name(&mut self, name: Symbol) {
+        self.symbol_name = Some(name);
     }
 
     pub fn mangle_name(human_readable_name: &str) -> BaseNString {
@@ -523,20 +537,22 @@ impl<'tcx> CodegenUnit<'tcx> {
             match item {
                 MonoItem::Fn(ref instance) => match instance.def {
                     InstanceKind::Item(def) => def.as_local().map(|_| def),
-                    InstanceKind::VTableShim(..)
-                    | InstanceKind::ReifyShim(..)
-                    | InstanceKind::Intrinsic(..)
-                    | InstanceKind::FnPtrShim(..)
+                    InstanceKind::Intrinsic(..)
+                    | InstanceKind::LlvmIntrinsic(..)
                     | InstanceKind::Virtual(..)
-                    | InstanceKind::ClosureOnceShim { .. }
-                    | InstanceKind::ConstructCoroutineInClosureShim { .. }
-                    | InstanceKind::DropGlue(..)
-                    | InstanceKind::CloneShim(..)
-                    | InstanceKind::ThreadLocalShim(..)
-                    | InstanceKind::FnPtrAddrShim(..)
-                    | InstanceKind::AsyncDropGlue(..)
-                    | InstanceKind::FutureDropPollShim(..)
-                    | InstanceKind::AsyncDropGlueCtorShim(..) => None,
+                    | InstanceKind::Shim(ShimKind::VTable(..))
+                    | InstanceKind::Shim(ShimKind::Reify(..))
+                    | InstanceKind::Shim(ShimKind::FnPtr(..))
+                    | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
+                    | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
+                    | InstanceKind::Shim(ShimKind::DropGlue(..))
+                    | InstanceKind::Shim(ShimKind::Clone(..))
+                    | InstanceKind::Shim(ShimKind::ThreadLocal(..))
+                    | InstanceKind::Shim(ShimKind::FnPtrAsPtr(..))
+                    | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..))
+                    | InstanceKind::Shim(ShimKind::AsyncDropGlue(..))
+                    | InstanceKind::Shim(ShimKind::FutureDropPoll(..))
+                    | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(..)) => None,
                 },
                 MonoItem::Static(def_id) => def_id.as_local().map(|_| def_id),
                 MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.to_def_id()),

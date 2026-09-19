@@ -1,6 +1,6 @@
 #[test]
 fn quickack() {
-    use crate::net::test::LOCALHOST_IP4;
+    use crate::net::tests::LOCALHOST_IP4;
     use crate::net::{TcpListener, TcpStream};
     use crate::os::net::linux_ext::tcp::TcpStreamExt;
 
@@ -29,7 +29,7 @@ fn quickack() {
 #[test]
 #[cfg(target_os = "linux")]
 fn deferaccept() {
-    use crate::net::test::LOCALHOST_IP4;
+    use crate::net::tests::LOCALHOST_IP4;
     use crate::net::{TcpListener, TcpStream};
     use crate::os::net::linux_ext::tcp::TcpStreamExt;
     use crate::time::Duration;

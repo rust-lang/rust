@@ -15,9 +15,8 @@ use clippy_utils::paths::{PathNS, lookup_path_str};
 use rustc_ast::{self as ast, visit};
 use rustc_hir as hir;
 use rustc_hir::intravisit;
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, declare_lint_pass, impl_lint_pass};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::{declare_lint_pass, impl_lint_pass};
 use rustc_span::Span;
 use rustc_span::def_id::{DefIdSet, LocalDefId};
 
@@ -25,7 +24,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for a `#[must_use]` attribute without
     /// further information on functions and methods that return a type already
-    /// marked as `#[must_use]`.
+    /// considered as `#[must_use]`.
     ///
     /// ### Why is this bad?
     /// The attribute isn't needed. Not using the result
@@ -38,6 +37,12 @@ declare_clippy_lint! {
     /// fn double_must_use() -> Result<(), ()> {
     ///     unimplemented!();
     /// }
+    /// ```
+    ///
+    /// ### Note
+    /// The compiler may consider a type as being indirectly `#[must_use]`. For
+    /// example, although `Box<_>` itself is not `#[must_use]`, `Box<T>` will be
+    /// considered `#[must_use]` if `T` is.
     /// ```
     #[clippy::version = "1.40.0"]
     pub DOUBLE_MUST_USE,
@@ -525,7 +530,7 @@ impl Functions {
                 .iter()
                 .flat_map(|p| lookup_path_str(tcx, PathNS::Type, p))
                 .collect(),
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
         }
     }
 }

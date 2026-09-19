@@ -1,4 +1,5 @@
-use super::intrinsic::ArmIntrinsicType;
+use super::intrinsic::ArmType;
+use crate::arm::Arm;
 use crate::arm::types::parse_intrinsic_type;
 use crate::common::argument::{Argument, ArgumentList};
 use crate::common::constraint::Constraint;
@@ -57,32 +58,24 @@ struct JsonIntrinsic {
     _instructions: Option<Vec<Vec<String>>>,
 }
 
-pub fn get_neon_intrinsics(
-    filename: &Path,
-) -> Result<Vec<Intrinsic<ArmIntrinsicType>>, Box<dyn std::error::Error>> {
+pub fn get_intrinsics(filename: &Path) -> Result<Vec<Intrinsic<Arm>>, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(filename)?;
     let reader = std::io::BufReader::new(file);
     let json: Vec<JsonIntrinsic> = serde_json::from_reader(reader).expect("Couldn't parse JSON");
 
     let parsed = json
         .into_iter()
-        .filter_map(|intr| {
-            if intr.simd_isa == "Neon" {
-                Some(json_to_intrinsic(intr).expect("Couldn't parse JSON"))
-            } else {
-                None
-            }
-        })
+        .map(|intr| json_to_intrinsic(intr).expect("Couldn't parse JSON"))
         .collect();
     Ok(parsed)
 }
 
 fn json_to_intrinsic(
     mut intr: JsonIntrinsic,
-) -> Result<Intrinsic<ArmIntrinsicType>, Box<dyn std::error::Error>> {
+) -> Result<Intrinsic<Arm>, Box<dyn std::error::Error>> {
     let name = intr.name.replace(['[', ']'], "");
 
-    let result_ty = ArmIntrinsicType(parse_intrinsic_type(&intr.return_type.value)?);
+    let result_ty = ArmType(parse_intrinsic_type(&intr.return_type.value)?);
 
     let args = intr
         .arguments
@@ -120,11 +113,13 @@ fn json_to_intrinsic(
                     }
                 });
 
-            let mut arg = Argument::<ArmIntrinsicType>::new(
+            let is_predicate = arg_name == "pg";
+            let mut arg = Argument::<Arm>::new(
                 i,
                 String::from(arg_name),
-                ArmIntrinsicType(arg_ty),
+                ArmType(arg_ty),
                 constraint,
+                is_predicate,
             );
 
             // The JSON doesn't list immediates as const
@@ -138,13 +133,14 @@ fn json_to_intrinsic(
         })
         .collect();
 
-    let arguments = ArgumentList::<ArmIntrinsicType> { args };
+    let arguments = ArgumentList::<Arm> { args };
 
     Ok(Intrinsic {
         name,
         arguments,
         results: result_ty,
         arch_tags: intr.architectures,
+        extension: intr.simd_isa,
     })
 }
 

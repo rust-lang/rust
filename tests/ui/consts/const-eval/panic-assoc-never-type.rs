@@ -2,7 +2,6 @@
 //@ dont-require-annotations: NOTE
 
 // Regression test for #66975
-#![feature(never_type)]
 
 struct PrintName;
 

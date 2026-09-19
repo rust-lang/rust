@@ -98,10 +98,8 @@ where
 
         outer.opaque_accesses.update(nested.opaque_accesses)?;
 
-        let r = match r.map_err_to_rerun()? {
-            Ok(i) => Ok(i),
-            Err(NoSolution) => Err(NoSolution),
-        };
+        // Unwrap is unreachable, we would have returned on the line above.
+        let r = r.map_err_to_rerun().unwrap();
 
         if !nested.inspect.is_noop() {
             let probe_kind = probe_kind(&r);

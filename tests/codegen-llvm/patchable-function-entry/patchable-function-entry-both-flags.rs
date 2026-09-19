@@ -39,6 +39,26 @@ pub fn fun5() {}
 #[patchable_function_entry(prefix_nops = 4)]
 pub fn fun6() {}
 
+// The attribute should override patchable-function-prefix to 4
+// and patchable-function-entry to the default of 0, clearing it entirely,
+// while setting patchable-function-entry-section.
+#[no_mangle]
+#[patchable_function_entry(prefix_nops = 4, section = "foo")]
+pub fn fun7() {}
+
+// The attribute should override patchable-function-entry-section,
+// while passing through the commandline options.
+#[no_mangle]
+#[patchable_function_entry(section = "bar")]
+pub fn fun8() {}
+
+// The attribute should override patchable-function-entry to 5
+// and patchable-function-prefix to the default of 0, clearing it entirely,
+// while setting patchable-function-entry-section.
+#[no_mangle]
+#[patchable_function_entry(entry_nops = 5, section = "baz")]
+pub fn fun9() {}
+
 // CHECK: @fun0() unnamed_addr #0
 // CHECK: @fun1() unnamed_addr #1
 // CHECK: @fun2() unnamed_addr #2
@@ -46,6 +66,9 @@ pub fn fun6() {}
 // CHECK: @fun4() unnamed_addr #4
 // CHECK: @fun5() unnamed_addr #5
 // CHECK: @fun6() unnamed_addr #6
+// CHECK: @fun7() unnamed_addr #7
+// CHECK: @fun8() unnamed_addr #8
+// CHECK: @fun9() unnamed_addr #9
 
 // CHECK: attributes #0 = { {{.*}}"patchable-function-entry"="5"{{.*}}"patchable-function-prefix"="10" {{.*}} }
 // CHECK: attributes #1 = { {{.*}}"patchable-function-entry"="2"{{.*}}"patchable-function-prefix"="1" {{.*}} }
@@ -62,3 +85,12 @@ pub fn fun6() {}
 
 // CHECK: attributes #6 = { {{.*}}"patchable-function-prefix"="4"{{.*}} }
 // CHECK-NOT: attributes #6 = { {{.*}}patchable-function-entry{{.*}} }
+//
+// CHECK: attributes #7 = { {{.*}}"patchable-function-entry-section"="foo"{{.*}}"patchable-function-prefix"="4" {{.*}} }
+// CHECK-NOT: attributes #7 = { {{.*}}"patchable-function-entry"{{.*}} }
+//
+// CHECK: attributes #8 = { {{.*}}"patchable-function-entry-section"="bar"{{.*}} }
+// CHECK-NOT: attributes #8 = { {{.*}}"patchable-function-entry"{{.*}} }
+//
+// CHECK: attributes #9 = { {{.*}}"patchable-function-entry"="5"{{.*}}"patchable-function-entry-section"="baz" {{.*}} }
+// CHECK-NOT: attributes #9 = { {{.*}}"patchable-function-prefix{{.*}} }

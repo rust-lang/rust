@@ -6,10 +6,12 @@ version = "0.1.0"
 edition = "2018"
 
 [lib]
+test = false
 
 [[bin]]
 name = "subcrate"
 path = "main.rs"
+test = false
 
 [[test]]
 name = "subtest"

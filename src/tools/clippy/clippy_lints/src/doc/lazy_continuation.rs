@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_span::BytePos;

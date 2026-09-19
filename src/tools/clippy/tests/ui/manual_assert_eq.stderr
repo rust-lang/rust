@@ -84,5 +84,29 @@ LL -     assert!(vec![1] == vec![1, 2, 3]);
 LL +     assert_eq!(vec![1], vec![1, 2, 3]);
    |
 
-error: aborting due to 7 previous errors
+error: used `assert!` with an equality comparison
+  --> tests/ui/manual_assert_eq.rs:162:9
+   |
+LL |         assert!(Grow::<u8>(std::marker::PhantomData) == Grow(std::marker::PhantomData));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `assert_eq!(..)`
+   |
+LL -         assert!(Grow::<u8>(std::marker::PhantomData) == Grow(std::marker::PhantomData));
+LL +         assert_eq!(Grow::<u8>(std::marker::PhantomData), Grow(std::marker::PhantomData));
+   |
+
+error: used `assert!` with an equality comparison
+  --> tests/ui/manual_assert_eq.rs:176:9
+   |
+LL |         assert!(SelfDerefer == SelfDerefer);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `assert_eq!(..)`
+   |
+LL -         assert!(SelfDerefer == SelfDerefer);
+LL +         assert_eq!(SelfDerefer, SelfDerefer);
+   |
+
+error: aborting due to 9 previous errors
 

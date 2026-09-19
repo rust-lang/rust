@@ -57,13 +57,15 @@ mod rng_protocol {
 mod rdrand {
     cfg_select! {
         target_arch = "x86_64" => {
-            use crate::arch::x86_64 as arch;
             use arch::_rdrand64_step as rdrand_step;
+
+            use crate::arch::x86_64 as arch;
             type Word = u64;
         }
         target_arch = "x86" => {
-            use crate::arch::x86 as arch;
             use arch::_rdrand32_step as rdrand_step;
+
+            use crate::arch::x86 as arch;
             type Word = u32;
         }
     }

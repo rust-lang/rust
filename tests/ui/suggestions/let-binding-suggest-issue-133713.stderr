@@ -1,21 +1,23 @@
-error[E0423]: expected value, found builtin type `u64`
+error[E0423]: cannot find value `u64` in this scope
   --> $DIR/let-binding-suggest-issue-133713.rs:5:17
    |
 LL |     let _last = u64 = 0;
    |                 ^^^
    |
+   = note: a builtin type named `u64` exists in another namespace
 help: you might have meant to use `:` for type annotation
    |
 LL -     let _last = u64 = 0;
 LL +     let _last: u64 = 0;
    |
 
-error[E0423]: expected value, found builtin type `u64`
+error[E0423]: cannot find value `u64` in this scope
   --> $DIR/let-binding-suggest-issue-133713.rs:9:16
    |
 LL |     let _val = u64;
    |                ^^^
    |
+   = note: a builtin type named `u64` exists in another namespace
 help: you might have meant to use `:` for type annotation
    |
 LL -     let _val = u64;

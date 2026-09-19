@@ -1,18 +1,17 @@
 use super::PTR_ARG;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::res::MaybeResPath as _;
+use clippy_utils::source::SpanExt as _;
 use clippy_utils::{VEC_METHODS_SHADOWING_SLICE_METHODS, get_expr_use_or_unification_node, is_lint_allowed, sym};
 use hir::LifetimeKind;
 use rustc_abi::ExternAbi;
 use rustc_errors::Applicability;
-use rustc_hir::hir_id::{HirId, HirIdMap};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
-    self as hir, AnonConst, BindingMode, Body, Expr, ExprKind, FnSig, GenericArg, Lifetime, Mutability, Node, OwnerId,
-    Param, PatKind, QPath, TyKind,
+    self as hir, AnonConst, BindingMode, Body, Expr, ExprKind, FnSig, GenericArg, HirId, HirIdMap, Lifetime,
+    Mutability, Node, OwnerId, Param, PatKind, QPath, TyKind,
 };
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
@@ -55,7 +54,7 @@ pub(super) fn check_body<'tcx>(
                     .chain(result.replacements.iter().map(|r| {
                         (
                             r.expr_span,
-                            format!("{}{}", r.self_span.get_source_text(cx).unwrap(), r.replacement),
+                            format!("{}{}", r.self_span.get_text(cx).unwrap(), r.replacement),
                         )
                     }))
                     .collect(),
@@ -137,7 +136,7 @@ struct RefPrefix {
 }
 impl fmt::Display for RefPrefix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use fmt::Write;
+        use fmt::Write as _;
         f.write_char('&')?;
         if !self.lt.is_anonymous() {
             self.lt.ident.fmt(f)?;
@@ -150,13 +149,13 @@ impl fmt::Display for RefPrefix {
 struct DerefTyDisplay<'a, 'tcx>(&'a LateContext<'tcx>, &'a DerefTy<'tcx>);
 impl fmt::Display for DerefTyDisplay<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use std::fmt::Write;
+        use std::fmt::Write as _;
         match self.1 {
             DerefTy::Str => f.write_str("str"),
             DerefTy::Path => f.write_str("Path"),
             DerefTy::Slice(hir_ty, ty) => {
                 f.write_char('[')?;
-                match hir_ty.and_then(|s| s.get_source_text(self.0)) {
+                match hir_ty.and_then(|s| s.get_text(self.0)) {
                     Some(s) => f.write_str(&s)?,
                     None => ty.fmt(f)?,
                 }
@@ -279,7 +278,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                     diag.span_suggestion(
                                         hir_ty.span,
                                         "change this to",
-                                        match ty.span().get_source_text(cx) {
+                                        match ty.span().get_text(cx) {
                                             Some(s) => format!("&{}{s}", mutability.prefix_str()),
                                             None => format!("&{}{}", mutability.prefix_str(), args.type_at(1)),
                                         },

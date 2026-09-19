@@ -9,8 +9,7 @@ use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, AdtDef, CanonicalUserTypeAnnotation, Ty, Variance};
-use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
+use rustc_span::{Span, bug, span_bug};
 use tracing::{debug, instrument, trace};
 
 use crate::builder::ForGuard::{OutsideGuard, RefWithinGuard};
@@ -88,6 +87,7 @@ fn convert_to_hir_projections_and_truncate_for_capture(
     for mir_projection in mir_projections {
         let hir_projection = match mir_projection {
             ProjectionElem::Deref => HirProjectionKind::Deref,
+            ProjectionElem::PhantomDeref => continue,
             ProjectionElem::Field(field, _) => {
                 let variant = variant.unwrap_or(FIRST_VARIANT);
                 HirProjectionKind::Field(*field, variant)
@@ -429,6 +429,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match expr.kind {
             ExprKind::Scope { region_scope, hir_id, value } => {
                 this.in_scope((region_scope, source_info), LintLevel::Explicit(hir_id), |this| {
+                    this.push_coverage_point_for_expr(block, source_info, hir_id);
                     this.expr_as_place(block, value, mutability, fake_borrow_temps)
                 })
             }
@@ -552,7 +553,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Binary { .. }
             | ExprKind::LogicalOp { .. }
             | ExprKind::Cast { .. }
-            | ExprKind::Use { .. }
+            | ExprKind::ValueExpr { .. }
             | ExprKind::NeverToAny { .. }
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
@@ -802,6 +803,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                     }
                     ProjectionElem::Field(..)
+                    | ProjectionElem::PhantomDeref
                     | ProjectionElem::Downcast(..)
                     | ProjectionElem::OpaqueCast(..)
                     | ProjectionElem::ConstantIndex { .. }

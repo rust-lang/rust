@@ -28,6 +28,20 @@ fn test_mut_int_totalord() {
 }
 
 #[test]
+fn test_max_min_signedness() {
+    use std::cmp::{max, min};
+    // Check the "same" 8-bit values where the signedness of the operation matters
+    assert_eq!(max::<u8>(0, 255), 255);
+    assert_eq!(max::<u8>(255, 0), 255);
+    assert_eq!(min::<u8>(0, 255), 0);
+    assert_eq!(min::<u8>(255, 0), 0);
+    assert_eq!(max::<i8>(0, -1), 0);
+    assert_eq!(max::<i8>(-1, 0), 0);
+    assert_eq!(min::<i8>(0, -1), -1);
+    assert_eq!(min::<i8>(-1, 0), -1);
+}
+
+#[test]
 fn test_ord_max_min() {
     assert_eq!(1.max(2), 2);
     assert_eq!(2.max(1), 2);
@@ -279,4 +293,13 @@ mod const_cmp {
     const _: () = assert!(S(1) >= S(1));
     const _: () = assert!(S(0) < S(1));
     const _: () = assert!(S(1) > S(0));
+}
+
+mod const_splat {
+    use super::*;
+
+    const _: () = assert!(cmp::smallest(1, 2, 3, 4) == 1);
+    const _: () = assert!(cmp::smallest(4, 3, 2, 1) == 1);
+    const _: () = assert!(cmp::largest(1, 2, 3, 4) == 4);
+    const _: () = assert!(cmp::largest(4, 3, 2, 1) == 4);
 }

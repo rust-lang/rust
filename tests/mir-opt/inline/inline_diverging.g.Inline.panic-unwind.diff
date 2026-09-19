@@ -10,7 +10,7 @@
       let mut _5: !;
       let _6: !;
 +     scope 1 (inlined panic) {
-+         let mut _7: !;
++         let _7: !;
 +     }
   
       bb0: {

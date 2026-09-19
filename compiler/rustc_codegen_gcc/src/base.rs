@@ -7,7 +7,6 @@ use gccjit::{CType, Context, FunctionType, GlobalKind};
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
-use rustc_codegen_ssa::traits::DebugInfoCodegenMethods;
 use rustc_hir::attrs::{AttributeKind, Linkage};
 use rustc_hir::find_attr;
 use rustc_middle::dep_graph;
@@ -22,7 +21,7 @@ use rustc_target::spec::{Arch, RelocModel};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::{GccContext, LockedTargetInfo, LtoMode, SyncContext, gcc_util, new_context};
+use crate::{GccContext, LtoMode, SharedTargetInfo, SyncContext, gcc_util, new_context};
 
 #[cfg(feature = "master")]
 pub fn visibility_to_gcc(visibility: Visibility) -> gccjit::Visibility {
@@ -74,7 +73,7 @@ pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
 pub fn compile_codegen_unit(
     tcx: TyCtxt<'_>,
     cgu_name: Symbol,
-    target_info: LockedTargetInfo,
+    target_info: SharedTargetInfo,
     lto_supported: bool,
 ) -> (ModuleCodegen<GccContext>, u64) {
     let prof_timer = tcx.prof.generic_activity("codegen_module");
@@ -97,7 +96,7 @@ pub fn compile_codegen_unit(
     fn module_codegen(
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
-        target_info: LockedTargetInfo,
+        target_info: SharedTargetInfo,
         lto_supported: bool,
     ) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);

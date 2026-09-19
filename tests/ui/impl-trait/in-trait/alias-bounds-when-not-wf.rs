@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver
 
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 
 trait Foo {}
 
@@ -15,4 +15,5 @@ struct W<T>(T);
 fn hello(_: W<A<usize>>) {}
 //~^ ERROR: the trait bound `usize: Foo` is not satisfied
 //~| ERROR: the trait bound `usize: Foo` is not satisfied
+//~| ERROR: the type `W<A<usize>>` is not well-formed
 fn main() {}

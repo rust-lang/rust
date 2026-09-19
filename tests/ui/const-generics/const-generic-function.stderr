@@ -31,11 +31,13 @@ help: expressions must be enclosed in braces to be used as const generic argumen
 LL |     foo::<{ bar(FOO, 2) }>();
    |           +             +
 
-error[E0573]: expected type, found function `baz`
+error[E0573]: cannot find type `baz` in this scope
   --> $DIR/const-generic-function.rs:16:11
    |
 LL |     foo::<baz()>();
-   |           ^^^^^ not a type
+   |           ^^^ not found in this scope
+   |
+   = note: a function named `baz` exists in another namespace
 
 error[E0747]: unresolved item provided when a constant was expected
   --> $DIR/const-generic-function.rs:16:11

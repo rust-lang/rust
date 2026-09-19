@@ -51,6 +51,14 @@ async fn double() {
     let async_int_again = AsyncInt(0);
 }
 
+// EMIT_MIR async_drop.array-{closure#0}.ElaborateDrops.diff
+// EMIT_MIR async_drop.array-{closure#0}.StateTransform.diff
+// EMIT_MIR async_drop.array-{closure#0}.coroutine_drop_async.0.mir
+// EMIT_MIR core.future-async_drop-async_drop_in_place-{closure#0}.[AsyncInt;2].StateTransform.diff
+async fn array() {
+    let array = [AsyncInt(1), AsyncInt(2)];
+}
+
 // EMIT_MIR async_drop.elaborate_drops-{closure#0}.ElaborateDrops.diff
 // EMIT_MIR async_drop.elaborate_drops-{closure#0}.StateTransform.diff
 async fn elaborate_drops() {
@@ -90,6 +98,7 @@ fn main() {
 
     let i = 13;
     let fut = pin!(async {
+        array().await;
         elaborate_drops().await;
 
         test_async_drop(Int(0)).await;

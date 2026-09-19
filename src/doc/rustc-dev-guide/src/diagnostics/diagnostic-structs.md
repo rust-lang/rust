@@ -93,7 +93,7 @@ In the end, the `Diagnostic` derive will generate an implementation of
 `Diagnostic` that looks like the following:
 
 ```rust,ignore
-impl<'a, G: EmissionGuarantee> Diagnostic<'a> for FieldAlreadyDeclared {
+impl<'a, G> Diagnostic<'a> for FieldAlreadyDeclared {
     fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         let mut diag = Diag::new(dcx, level, "field `{$field_name}` is already declared");
         diag.set_span(self.span);
@@ -135,12 +135,12 @@ tcx.dcx().emit_err(FieldAlreadyDeclared {
   - `code = "..."` (_Optional_)
     - Specifies the error code.
 - `#[note("message")]` (_Optional_)
-  - _Applied to struct or struct fields of type `Span`, `Option<()>` or `()`._
+  - _Applied to struct or struct fields of type `Span`, `Option<()>`, `bool`, or `()`._
   - Adds a note subdiagnostic.
   - Value is the note's message.
   - If applied to a `Span` field, creates a spanned note.
 - `#[help("message")]` (_Optional_)
-  - _Applied to struct or struct fields of type `Span`, `Option<()>` or `()`._
+  - _Applied to struct or struct fields of type `Span`, `Option<()>`, `bool`, or `()`._
   - Adds a help subdiagnostic.
   - Value is the help message.
   - If applied to a `Span` field, creates a spanned help.
@@ -149,10 +149,10 @@ tcx.dcx().emit_err(FieldAlreadyDeclared {
   - Adds a label subdiagnostic.
   - Value is the label's message.
 - `#[warning("message")]` (_Optional_)
-  - _Applied to struct or struct fields of type `Span`, `Option<()>` or `()`._
+  - _Applied to struct or struct fields of type `Span`, `Option<()>`, `bool`, or `()`._
   - Adds a warning subdiagnostic.
   - Value is the warning's message.
-- `#[suggestion{,_hidden,_short,_verbose}("message", code = "...", applicability = "...")]`
+- `#[suggestion("message", code = "...", applicability = "...", style = "...")]`
   (_Optional_)
   - _Applied to `(Span, MachineApplicability)` or `Span` fields._
   - Adds a suggestion subdiagnostic.
@@ -165,6 +165,9 @@ tcx.dcx().emit_err(FieldAlreadyDeclared {
   - `applicability = "..."` (_Optional_)
     - String which must be one of `machine-applicable`, `maybe-incorrect`,
       `has-placeholders` or `unspecified`.
+  - `style = "..."` (_Optional_)
+    - Value is the style of the suggestion.
+    - String which must be one of `normal`, `short`, `hidden`, `verbose` or `tool-only`.
 - `#[subdiagnostic]`
   - _Applied to a type that implements `Subdiagnostic` (from `#[derive(Subdiagnostic)]`)._
   - Adds the subdiagnostic represented by the subdiagnostic struct.
@@ -209,7 +212,7 @@ Each `Subdiagnostic` should have one attribute applied to the struct or each var
 - `#[note(..)]` for defining a note
 - `#[help(..)]` for defining a help
 - `#[warning(..)]` for defining a warning
-- `#[suggestion{,_hidden,_short,_verbose}(..)]` for defining a suggestion
+- `#[suggestion(..)]` for defining a suggestion
 
 All of the above must provide a diagnostic message as the first positional argument.
 See [translation documentation](./translation.md) to learn more about how
@@ -276,19 +279,19 @@ However, when a subdiagnostic is added to a main diagnostic by implementing `#[d
 the following rules, introduced in [rust-lang/rust#142724](https://github.com/rust-lang/rust/pull/142724)
 apply to the handling of arguments (i.e., variables used in Fluent messages):
 
-**Argument isolation between sub diagnostics**:
+**Argument isolation between subdiagnostics**:
 Arguments set by a subdiagnostic are only available during the rendering of that subdiagnostic.
 After the subdiagnostic is rendered, all arguments it introduced are restored from the main diagnostic.
 This ensures that multiple subdiagnostics do not pollute each other's argument scope.
-For example, when using a `Vec<Subdiag>`, it iteratively adds the same argument over and over again.
+For example, when using a `Vec<Subdiag>`, each subdiagnostic may add the same argument repeatedly.
 
 **Same argument override between sub and main diagnostics**:
-If a subdiagnostic sets a argument with the same name as a arguments already in the main diagnostic,
+If a subdiagnostic sets an argument with the same name as an argument already in the main diagnostic,
 it will report an error at runtime unless both have exactly the same value.
-It has two benefits:
-- preserves the flexibility that arguments in the main diagnostic are allowed to appear in the attributes of the subdiagnostic.
-For example, There is an attribute `#[suggestion("...", code = "{new_vis}")]` in the subdiagnostic, but `new_vis` is the field in the main diagnostic struct.
-- prevents accidental overwriting or deletion of arguments required by the main diagnostic or other subdiagnostics.
+This has two benefits:
+- It preserves the flexibility for arguments in the main diagnostic to appear in attributes of the subdiagnostic.
+  For example, an attribute such as `#[suggestion("...", code = "{new_vis}")]` in the subdiagnostic can refer to `new_vis`, a field in the main diagnostic struct.
+- It prevents accidental overwriting or deletion of arguments required by the main diagnostic or other subdiagnostics.
 
 These rules guarantee that arguments injected by subdiagnostics are strictly scoped to their own rendering.
 The main diagnostic's arguments remain unaffected by subdiagnostic logic, even in the presence of name collisions.
@@ -305,7 +308,7 @@ Additionally, subdiagnostics can access arguments from the main diagnostic with 
   - Message (_Mandatory_)
     - The diagnostic message that will be shown to the user.
     - See [translation documentation](./translation.md).
-- `#[suggestion{,_hidden,_short,_verbose}("message", code = "...", applicability = "...")]`
+- `#[suggestion("message", code = "...", applicability = "...", style = "...")]`
   - _Applied to struct or enum variant.
     Mutually exclusive with struct/enum variant attributes._
   - _Mandatory_
@@ -324,13 +327,22 @@ Additionally, subdiagnostics can access arguments from the main diagnostic with 
       - `maybe-incorrect`
       - `has-placeholders`
       - `unspecified`
-- `#[multipart_suggestion{,_hidden,_short,_verbose}("message", applicability = "...")]`
+  - `style = "..."` (_Optional_)
+    - Value is the style of the suggestion.
+    - String which must be one of:
+      - `normal` (the default)
+      - `short`
+      - `hidden`
+      - `verbose`
+      - `tool-only`
+- `#[multipart_suggestion("message", applicability = "...", style = "...")]`
   - _Applied to struct or enum variant.
     Mutually exclusive with struct/enum variant attributes._
   - _Mandatory_
   - Defines the type to be representing a multipart suggestion.
   - Message (_Mandatory_): see `#[suggestion]`
   - `applicability = "..."` (_Optional_): see `#[suggestion]`
+  - `style = "..."` (_Optional_): see `#[suggestion]`
 - `#[primary_span]` (_Mandatory_ for labels and suggestions; _optional_ otherwise; not applicable
 to multipart suggestions)
   - _Applied to `Span` fields._

@@ -12,7 +12,7 @@ unsafe impl<'a, #[may_dangle] T, const N: usize> NotDrop for Implee2<'a, T, N> {
 //~^ ERROR must be applied to a lifetime or type generic parameter in `Drop` impl
 
 unsafe impl<'a, T, #[may_dangle] const N: usize> Drop for Implee1<'a, T, N> {
-    //~^ ERROR must be applied to a lifetime or type generic parameter in `Drop` impl
+    //~^ ERROR attribute cannot be used on
     fn drop(&mut self) {}
 }
 
@@ -39,15 +39,15 @@ mod fake {
     }
 }
 
-#[may_dangle] //~ ERROR must be applied to a lifetime or type generic parameter in `Drop` impl
+#[may_dangle] //~ ERROR attribute cannot be used on
 struct Dangling;
 
-#[may_dangle] //~ ERROR must be applied to a lifetime or type generic parameter in `Drop` impl
+#[may_dangle] //~ ERROR attribute cannot be used on
 impl NotDrop for () {
 }
 
-#[may_dangle] //~ ERROR must be applied to a lifetime or type generic parameter in `Drop` impl
+#[may_dangle] //~ ERROR attribute cannot be used on
 fn main() {
-    #[may_dangle] //~ ERROR must be applied to a lifetime or type generic parameter in `Drop` impl
+    #[may_dangle] //~ ERROR attribute cannot be used on
     let () = ();
 }

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::{self, Instance, Ty};
-use rustc_session::Session;
+use rustc_session::{PointerAuthSchema, Session};
 use rustc_span::Symbol;
 
 use super::BackendTypes;
@@ -19,7 +19,11 @@ pub trait MiscCodegenMethods<'tcx>: BackendTypes {
     ) {
     }
     fn get_fn(&self, instance: Instance<'tcx>) -> Self::Function;
-    fn get_fn_addr(&self, instance: Instance<'tcx>) -> Self::Value;
+    fn get_fn_addr(
+        &self,
+        instance: Instance<'tcx>,
+        pointer_auth_schema: Option<&PointerAuthSchema>,
+    ) -> Self::Value;
     fn eh_personality(&self) -> Self::Function;
     fn sess(&self) -> &Session;
     fn set_frame_pointer_type(&self, llfn: Self::Function);

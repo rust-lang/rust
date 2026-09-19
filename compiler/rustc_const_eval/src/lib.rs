@@ -1,8 +1,8 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(array_try_map)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
-#![feature(never_type)]
 #![feature(slice_ptr_get)]
 #![feature(trait_alias)]
 #![feature(unqualified_local_imports)]
@@ -12,14 +12,15 @@
 
 pub mod check_consts;
 pub mod const_eval;
-mod errors;
+mod diagnostics;
 pub mod interpret;
 pub mod util;
 
 use std::sync::atomic::AtomicBool;
 
+use rustc_middle::ty;
 use rustc_middle::util::Providers;
-use rustc_middle::{bug, ty};
+use rustc_span::bug;
 
 /// Const eval always happens in post analysis mode in order to be able to use the hidden types of
 /// opaque types. This is needed for trivial things like `size_of`, but also for using associated
@@ -33,6 +34,7 @@ fn assert_typing_mode(typing_mode: ty::TypingMode<'_>) {
             // `InterpCx::new` for more details.
             ty::TypingMode::Coherence
             | ty::TypingMode::Typeck { .. }
+            | ty::TypingMode::Reflection
             | ty::TypingMode::PostTypeckUntilBorrowck { .. }
             | ty::TypingMode::PostBorrowck { .. } => bug!(
                 "Const eval should always happens in PostAnalysis or Codegen mode. See the comment on `assert_typing_mode` for more details."

@@ -8,54 +8,54 @@ mod foo {
 
 fn main() {
     let _ = String.new();
-    //~^ ERROR expected value, found struct `String`
+    //~^ ERROR cannot find value `String` in this scope
     //~| HELP use the path separator
 
     let _ = String.default;
-    //~^ ERROR expected value, found struct `String`
+    //~^ ERROR cannot find value `String` in this scope
     //~| HELP use the path separator
 
     let _ = Vec::<()>.with_capacity(1);
-    //~^ ERROR expected value, found struct `Vec`
+    //~^ ERROR cannot find value `Vec` in this scope
     //~| HELP use the path separator
 
     let _ = Alias.new();
-    //~^ ERROR expected value, found type alias `Alias`
+    //~^ ERROR cannot find value `Alias` in this scope
     //~| HELP use the path separator
 
     let _ = Alias.default;
-    //~^ ERROR expected value, found type alias `Alias`
+    //~^ ERROR cannot find value `Alias` in this scope
     //~| HELP use the path separator
 
     let _ = foo.bar;
-    //~^ ERROR expected value, found module `foo`
+    //~^ ERROR cannot find value `foo` in this scope
     //~| HELP use the path separator
 }
 
 macro_rules! Type {
     () => {
         ::std::cell::Cell
-        //~^ ERROR expected value, found struct `::std::cell::Cell`
-        //~| ERROR expected value, found struct `::std::cell::Cell`
-        //~| ERROR expected value, found struct `::std::cell::Cell`
+        //~^ ERROR cannot find value `Cell` in module `::std::cell`
+        //~| ERROR cannot find value `Cell` in module `::std::cell`
+        //~| ERROR cannot find value `Cell` in module `::std::cell`
     };
     (alias) => {
         Alias
-        //~^ ERROR expected value, found type alias `Alias`
-        //~| ERROR expected value, found type alias `Alias`
-        //~| ERROR expected value, found type alias `Alias`
+        //~^ ERROR cannot find value `Alias` in this scope
+        //~| ERROR cannot find value `Alias` in this scope
+        //~| ERROR cannot find value `Alias` in this scope
     };
 }
 
 macro_rules! create {
     (type method) => {
         Vec.new()
-        //~^ ERROR expected value, found struct `Vec`
+        //~^ ERROR cannot find value `Vec` in this scope
         //~| HELP use the path separator
     };
     (type field) => {
         Vec.new
-        //~^ ERROR expected value, found struct `Vec`
+        //~^ ERROR cannot find value `Vec` in this scope
         //~| HELP use the path separator
     };
     (macro method) => {
@@ -71,22 +71,20 @@ macro_rules! create {
 macro_rules! check_ty {
     ($Ty:ident) => {
         $Ty.foo
-        //~^ ERROR expected value, found type alias `Alias`
-        //~| HELP use the path separator
+        //~^ HELP use the path separator
     };
 }
 macro_rules! check_ident {
     ($Ident:ident) => {
         Alias.$Ident
-        //~^ ERROR expected value, found type alias `Alias`
+        //~^ ERROR cannot find value `Alias` in this scope
         //~| HELP use the path separator
     };
 }
 macro_rules! check_ty_ident {
     ($Ty:ident, $Ident:ident) => {
         $Ty.$Ident
-        //~^ ERROR expected value, found type alias `Alias`
-        //~| HELP use the path separator
+        //~^ HELP use the path separator
     };
 }
 
@@ -118,6 +116,8 @@ fn interaction_with_macros() {
     let _ = create!(macro method alias);
 
     let _ = check_ty!(Alias);
+    //~^ ERROR cannot find value `Alias` in this scope
     let _ = check_ident!(foo);
     let _ = check_ty_ident!(Alias, foo);
+    //~^ ERROR cannot find value `Alias` in this scope
 }

@@ -4,9 +4,8 @@ use std::ops::Range;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::DenseBitSet;
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
@@ -594,7 +593,7 @@ impl<'tcx> Map<'tcx> {
         if let Some(tail) = tail {
             let ty = match tail {
                 TrackElem::Discriminant => ty.ty.discriminant_ty(tcx),
-                TrackElem::Variant(..) | TrackElem::Field(..) => todo!(),
+                TrackElem::Variant(..) | TrackElem::Field(..) => unimplemented!(),
                 TrackElem::DerefLen => tcx.types.usize,
             };
             place_index = self.register_place_index(ty, place_index, tail);
@@ -699,7 +698,7 @@ impl<'tcx> Map<'tcx> {
         // We manually iterate instead of using `children` as we need to mutate `self`.
         let mut next_child = self.places[root].first_child;
         while let Some(child) = next_child {
-            ensure_sufficient_stack(|| self.cache_preorder_invoke(child));
+            self.cache_preorder_invoke(child);
             next_child = self.places[child].next_sibling;
         }
 
@@ -1040,9 +1039,9 @@ pub fn iter_fields<'tcx>(
 }
 
 /// Returns all locals with projections that have their reference or address taken.
-pub fn excluded_locals(body: &Body<'_>) -> DenseBitSet<Local> {
+pub fn excluded_locals(body: &Body<'_>) -> GrowableBitSet<Local> {
     struct Collector {
-        result: DenseBitSet<Local>,
+        result: GrowableBitSet<Local>,
     }
 
     impl<'tcx> Visitor<'tcx> for Collector {
@@ -1055,7 +1054,7 @@ pub fn excluded_locals(body: &Body<'_>) -> DenseBitSet<Local> {
         }
     }
 
-    let mut collector = Collector { result: DenseBitSet::new_empty(body.local_decls.len()) };
+    let mut collector = Collector { result: GrowableBitSet::new_empty() };
     collector.visit_body(body);
     collector.result
 }

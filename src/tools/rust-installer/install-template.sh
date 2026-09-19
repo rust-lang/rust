@@ -611,6 +611,8 @@ install_components() {
             maybe_backup_path "$_file_install_path"
 
             run cp "$_src_dir/$_component/$_file" "$_file_install_path"
+            critical_need_ok "failed to copy file"
+
             if $_is_bin || test -x "$_src_dir/$_component/$_file"; then
                 run chmod 755 "$_file_install_path"
             else

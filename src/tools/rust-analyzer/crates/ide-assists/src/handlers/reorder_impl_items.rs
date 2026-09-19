@@ -82,7 +82,7 @@ pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_, '_>)
                 ast::AssocItem::MacroCall(_) => None,
             };
 
-            name.and_then(|n| ranks.get(n.text().as_str().trim_start_matches("r#")).copied())
+            name.and_then(|n| ranks.get(n.text().trim_start_matches("r#")).copied())
                 .unwrap_or(usize::MAX)
         })
         .collect();

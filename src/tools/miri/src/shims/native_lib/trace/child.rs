@@ -1,8 +1,9 @@
 use std::cell::RefCell;
+use std::panic::abort_on_unwind;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use ipc_channel::ipc;
+use ipc_channel::{TryRecvError, ipc};
 use nix::sys::{mman, ptrace, signal};
 use nix::unistd;
 use rustc_const_eval::interpret::{InterpResult, interp_ok};
@@ -89,7 +90,7 @@ impl Supervisor {
 
         // Unwinding might be messed up due to partly protected memory, so let's abort if something
         // breaks inside here.
-        let res = std::panic::abort_unwind(|| {
+        let res = abort_on_unwind(|| {
             // Send over the info.
             // NB: if we do not wait to receive a blank confirmation response, it is
             // possible that the supervisor is alerted of the SIGSTOP *before* it has
@@ -140,8 +141,8 @@ impl Supervisor {
             .try_recv_timeout(std::time::Duration::from_secs(5))
             .map_err(|e| {
                 match e {
-                    ipc::TryRecvError::IpcError(_) => (),
-                    ipc::TryRecvError::Empty =>
+                    TryRecvError::IpcError(_) => (),
+                    TryRecvError::Empty =>
                         panic!("Waiting for accesses from supervisor timed out!"),
                 }
             })

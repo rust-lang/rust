@@ -1,5 +1,5 @@
 error: this item has an invalid `clippy::version` attribute
-  --> tests/ui-internal/check_clippy_version_attribute.rs:40:1
+  --> tests/ui-internal/check_clippy_version_attribute.rs:39:1
    |
 LL | / declare_tool_lint! {
 LL | |
@@ -19,7 +19,7 @@ LL | #![deny(clippy::invalid_clippy_version_attribute, clippy::missing_clippy_ve
    = note: this error originates in the macro `$crate::declare_tool_lint` which comes from the expansion of the macro `declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this item has an invalid `clippy::version` attribute
-  --> tests/ui-internal/check_clippy_version_attribute.rs:49:1
+  --> tests/ui-internal/check_clippy_version_attribute.rs:48:1
    |
 LL | / declare_tool_lint! {
 LL | |
@@ -34,7 +34,7 @@ LL | | }
    = note: this error originates in the macro `$crate::declare_tool_lint` which comes from the expansion of the macro `declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this lint is missing the `clippy::version` attribute or version value
-  --> tests/ui-internal/check_clippy_version_attribute.rs:61:1
+  --> tests/ui-internal/check_clippy_version_attribute.rs:60:1
    |
 LL | / declare_tool_lint! {
 LL | |
@@ -54,7 +54,7 @@ LL | #![deny(clippy::invalid_clippy_version_attribute, clippy::missing_clippy_ve
    = note: this error originates in the macro `$crate::declare_tool_lint` which comes from the expansion of the macro `declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this lint is missing the `clippy::version` attribute or version value
-  --> tests/ui-internal/check_clippy_version_attribute.rs:70:1
+  --> tests/ui-internal/check_clippy_version_attribute.rs:69:1
    |
 LL | / declare_tool_lint! {
 LL | |

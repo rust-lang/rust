@@ -11,6 +11,7 @@ defaults:
 
 jobs:
   lints-gen:
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
     name: Generate lints
     runs-on: ubuntu-latest
     permissions:

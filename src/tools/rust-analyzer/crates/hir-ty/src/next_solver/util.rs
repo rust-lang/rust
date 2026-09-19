@@ -456,7 +456,7 @@ pub fn apply_args_to_binder<'db, T: TypeFoldable<DbInterner<'db>>>(
 
 pub fn explicit_item_bounds<'db>(
     interner: DbInterner<'db>,
-    def_id: SolverDefId,
+    def_id: SolverDefId<'db>,
 ) -> EarlyBinder<'db, impl DoubleEndedIterator<Item = Clause<'db>> + ExactSizeIterator> {
     let db = interner.db();
     let clauses = match def_id {
@@ -469,7 +469,7 @@ pub fn explicit_item_bounds<'db>(
 
 pub fn explicit_item_self_bounds<'db>(
     interner: DbInterner<'db>,
-    def_id: SolverDefId,
+    def_id: SolverDefId<'db>,
 ) -> EarlyBinder<'db, impl DoubleEndedIterator<Item = Clause<'db>> + ExactSizeIterator> {
     let db = interner.db();
     let clauses = match def_id {

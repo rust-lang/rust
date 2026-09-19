@@ -8,6 +8,7 @@ members = [
   "src/rustc-std-workspace/rustc-std-workspace-core",
   "src/rustc-std-workspace/rustc-std-workspace-std",
   "src/rustdoc-json-types",
+  "src/shim_utils",
   "src/tools/build-manifest",
   "src/tools/bump-stage0",
   "src/tools/cargotest",
@@ -58,13 +59,6 @@ exclude = [
   # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
   "obj",
 ]
-
-[profile.release.package.rustc_thread_pool]
-# The rustc fork of Rayon has deadlock detection code which intermittently
-# causes overflows in the CI (see https://github.com/rust-lang/rust/issues/90227)
-# so we turn overflow checks off for now.
-# FIXME: This workaround should be removed once #90227 is fixed.
-overflow-checks = false
 
 # These are very thin wrappers around executing lld with the right binary name.
 # Basically nothing within them can go wrong without having been explicitly logged anyway.

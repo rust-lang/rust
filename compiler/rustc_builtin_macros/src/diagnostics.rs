@@ -1,8 +1,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
-    Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan, SingleLabelManySpans,
-    Subdiagnostic, msg,
+    Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan, SingleLabelManySpans, Subdiagnostic, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
@@ -543,7 +542,7 @@ pub(crate) struct EnvNotDefinedWithUserMessage {
 }
 
 // Hand-written implementation to support custom user messages.
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for EnvNotDefinedWithUserMessage {
+impl<'a, G> Diagnostic<'a, G> for EnvNotDefinedWithUserMessage {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let mut diag = Diag::new(dcx, level, self.msg_from_user.to_string());
@@ -562,7 +561,7 @@ pub(crate) enum EnvNotDefined {
     CargoEnvVar {
         #[primary_span]
         span: Span,
-        var: Symbol,
+        var: String,
         var_expr: String,
     },
     #[diag("environment variable `{$var}` not defined at compile time")]
@@ -570,7 +569,7 @@ pub(crate) enum EnvNotDefined {
     CargoEnvVarTypo {
         #[primary_span]
         span: Span,
-        var: Symbol,
+        var: String,
         suggested_var: Symbol,
     },
     #[diag("environment variable `{$var}` not defined at compile time")]
@@ -578,7 +577,7 @@ pub(crate) enum EnvNotDefined {
     CustomEnvVar {
         #[primary_span]
         span: Span,
-        var: Symbol,
+        var: String,
         var_expr: String,
     },
 }
@@ -588,7 +587,7 @@ pub(crate) enum EnvNotDefined {
 pub(crate) struct EnvNotUnicode {
     #[primary_span]
     pub(crate) span: Span,
-    pub(crate) var: Symbol,
+    pub(crate) var: String,
 }
 
 #[derive(Diagnostic)]
@@ -774,7 +773,7 @@ pub(crate) struct FormatUnusedArg {
 // Allow the singular form to be a subdiagnostic of the multiple-unused
 // form of diagnostic.
 impl Subdiagnostic for FormatUnusedArg {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         diag.span_label(
             self.span,
             msg!(
@@ -958,7 +957,7 @@ pub(crate) struct AsmClobberNoReg {
     pub(crate) clobbers: Vec<Span>,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AsmClobberNoReg {
+impl<'a, G> Diagnostic<'a, G> for AsmClobberNoReg {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         Diag::new(
             dcx,
@@ -1036,7 +1035,7 @@ pub(crate) struct TakesNoArguments<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("the `#[{$path}]` attribute is only usable with crates of the `proc-macro` crate type")]
+#[diag("the `{$path}` attribute is only usable with crates of the `proc-macro` crate type")]
 pub(crate) struct AttributeOnlyUsableWithCrateType<'a> {
     #[primary_span]
     pub span: Span,
@@ -1095,6 +1094,13 @@ pub(crate) struct CfgSelectNoMatches {
 }
 
 #[derive(Diagnostic)]
+#[diag("a single item cannot both declare and implement EIIs")]
+pub(crate) struct EiiBothDeclAndImpl {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[eii_declaration(...)]` is only valid on macros")]
 pub(crate) struct EiiExternTargetExpectedMacro {
     #[primary_span]
@@ -1117,21 +1123,18 @@ pub(crate) struct EiiExternTargetExpectedUnsafe {
 }
 
 #[derive(Diagnostic)]
+#[diag("a single item cannot implement multiple EIIs")]
+pub(crate) struct EiiMultipleImplementations {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[{$name}]` is only valid on functions and statics")]
 pub(crate) struct EiiSharedMacroTarget {
     #[primary_span]
     pub span: Span,
     pub name: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("static cannot implement multiple EIIs")]
-#[note(
-    "this is not allowed because multiple externally implementable statics that alias may be unintuitive"
-)]
-pub(crate) struct EiiStaticMultipleImplementations {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

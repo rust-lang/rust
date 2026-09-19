@@ -1,10 +1,8 @@
+use rustc_attr_ir::diagnostic::Directive;
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::diagnostic::Directive;
-use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
-use crate::diagnostics::DiagnosticOnUnmatchedArgsOnlyForMacros;
 
 #[derive(Default)]
 pub(crate) struct OnUnmatchedArgsParser {
@@ -16,23 +14,12 @@ impl AttributeParser for OnUnmatchedArgsParser {
     const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::diagnostic, sym::on_unmatched_args],
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
-        AttributeStability::Stable, // Unstable, stability checked manually in the parser
+        AttributeStability::Stable, // Unstable, stability checked manually below
         |this, cx, args| {
-            if !cx.features().diagnostic_on_unmatched_args() {
-                return;
-            }
+            gate_diagnostic_attr!(diagnostic_on_unmatched_args);
 
             let span = cx.attr_span;
             this.span = Some(span);
-
-            if !matches!(cx.target, Target::MacroDef) {
-                cx.emit_lint(
-                    MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                    DiagnosticOnUnmatchedArgsOnlyForMacros,
-                    span,
-                );
-                return;
-            }
 
             let mode = Mode::DiagnosticOnUnmatchedArgs;
             let Some(items) = parse_list(cx, args, mode) else { return };
@@ -44,7 +31,8 @@ impl AttributeParser for OnUnmatchedArgsParser {
         },
     )];
 
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::MacroDef)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if let Some(_span) = self.span {

@@ -2,21 +2,38 @@
 //! consts.
 use std::ops;
 
-use arrayvec::ArrayVec;
+use base_db::SourceDatabase;
 use hir_expand::{InFile, Lookup};
 use span::Edition;
-use syntax::ast;
+use syntax::{SyntaxNodePtr, ast};
 use triomphe::Arc;
 
 use crate::{
     DefWithBodyId, ExpressionStoreOwnerId, HasModule,
-    db::DefDatabase,
     expr_store::{
         ExpressionStore, ExpressionStoreSourceMap, SelfParamPtr, lower::lower_body, pretty,
     },
     hir::{BindingId, ExprId, PatId},
     src::HasSource,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Param<Id> {
+    /// The id of the formal parameter. In analysis, you want to use this: it has a special status as a parameter,
+    /// while [`user_written`][Self::user_written] is just a local variable.
+    pub formal: Id,
+    /// The id that corresponds to the pattern the user wrote. In IDE, you usually want to use this.
+    ///
+    /// It will be different than [`formal`][Self::formal] for coroutine fns (async fn etc.), because we apply
+    /// a desugaring for those that copies the parameter into a local variable.
+    pub user_written: Id,
+}
+
+impl<Id: Copy> Param<Id> {
+    pub(crate) fn new(id: Id) -> Self {
+        Self { formal: id, user_written: id }
+    }
+}
 
 /// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq)]
@@ -28,13 +45,8 @@ pub struct Body {
     ///
     /// If this `Body` is for the body of a constant, this will just be
     /// empty.
-    pub params: Box<[PatId]>,
-    /// The first element, if it exists, is the real `self` binding.
-    ///
-    /// The second element is used for `async fn` (or `gen fn` etc.). These functions
-    /// have to put a `let self = self` inside the returned coroutine, and the second element
-    /// points at it.
-    pub self_params: ArrayVec<BindingId, 2>,
+    pub params: Box<[Param<PatId>]>,
+    pub self_param: Option<Param<BindingId>>,
 }
 
 impl ops::Deref for Body {
@@ -75,13 +87,16 @@ impl ops::Deref for BodySourceMap {
 #[salsa::tracked]
 impl Body {
     #[salsa::tracked(lru = 512, returns(ref))]
-    pub fn with_source_map(db: &dyn DefDatabase, def: DefWithBodyId) -> (Arc<Body>, BodySourceMap) {
+    pub fn with_source_map(
+        db: &dyn SourceDatabase,
+        def: DefWithBodyId,
+    ) -> (Arc<Body>, BodySourceMap) {
         let _p = tracing::info_span!("body_with_source_map_query").entered();
         let mut params = None;
 
         let mut is_async_fn = false;
         let mut is_gen_fn = false;
-        let InFile { file_id, value: body } = {
+        let (InFile { file_id, value: body }, syntax_node) = {
             match def {
                 DefWithBodyId::FunctionId(f) => {
                     let f = f.lookup(db);
@@ -89,34 +104,38 @@ impl Body {
                     params = src.value.param_list();
                     is_async_fn = src.value.async_token().is_some();
                     is_gen_fn = src.value.gen_token().is_some();
-                    src.map(|it| it.body().map(ast::Expr::from))
+                    let syntax_node = SyntaxNodePtr::new(src.syntax().value);
+                    (src.map(|it| it.body().map(ast::Expr::from)), syntax_node)
                 }
                 DefWithBodyId::ConstId(c) => {
                     let c = c.lookup(db);
                     let src = c.source(db);
-                    src.map(|it| it.body())
+                    let syntax_node = SyntaxNodePtr::new(src.syntax().value);
+                    (src.map(|it| it.body()), syntax_node)
                 }
                 DefWithBodyId::StaticId(s) => {
                     let s = s.lookup(db);
                     let src = s.source(db);
-                    src.map(|it| it.body())
+                    let syntax_node = SyntaxNodePtr::new(src.syntax().value);
+                    (src.map(|it| it.body()), syntax_node)
                 }
                 DefWithBodyId::VariantId(v) => {
                     let s = v.lookup(db);
                     let src = s.source(db);
-                    src.map(|it| it.const_arg()?.expr())
+                    let syntax_node = SyntaxNodePtr::new(src.syntax().value);
+                    (src.map(|it| it.const_arg()?.expr()), syntax_node)
                 }
             }
         };
         let module = def.module(db);
         let (body, source_map) =
-            lower_body(db, def, file_id, module, params, body, is_async_fn, is_gen_fn);
+            lower_body(db, def, syntax_node, file_id, module, params, body, is_async_fn, is_gen_fn);
 
         (Arc::new(body), source_map)
     }
 
     #[salsa::tracked(returns(deref))]
-    pub fn of(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<Body> {
+    pub fn of(db: &dyn SourceDatabase, def: DefWithBodyId) -> Arc<Body> {
         Self::with_source_map(db, def).0.clone()
     }
 }
@@ -128,19 +147,17 @@ impl Body {
         self.store.expr_roots().next_back().unwrap()
     }
 
-    pub fn self_param(&self) -> Option<BindingId> {
-        self.self_params.first().copied()
-    }
-
-    /// `async fn` (or `gen fn` etc.), have to put a `let self = self` inside the returned coroutine.
-    /// This function returns it.
-    pub fn coroutine_self_binding(&self) -> Option<BindingId> {
-        self.self_params.get(1).copied()
+    /// Returns `true` if this is the formal or user-written self param.
+    #[inline]
+    pub fn is_any_self_param(&self, binding: BindingId) -> bool {
+        self.self_param.is_some_and(|self_param| {
+            self_param.formal == binding || self_param.user_written == binding
+        })
     }
 
     pub fn pretty_print(
         &self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         owner: DefWithBodyId,
         edition: Edition,
     ) -> String {
@@ -149,7 +166,7 @@ impl Body {
 
     pub fn pretty_print_expr(
         &self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         owner: DefWithBodyId,
         expr: ExprId,
         edition: Edition,
@@ -159,7 +176,7 @@ impl Body {
 
     pub fn pretty_print_pat(
         &self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         owner: ExpressionStoreOwnerId,
         pat: PatId,
         oneline: bool,

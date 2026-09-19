@@ -12,11 +12,11 @@ LL | trait FromResidual<R = <Self as Try>::Residual> {
    |       ------------ this trait is not dyn compatible...
 LL |     fn from_residual(residual: R) -> Self;
    |        ^^^^^^^^^^^^^ ...because associated function `from_residual` has no `self` parameter
-help: consider turning `from_residual` into a method by giving it a `&self` argument
+help: consider turning `from_residual` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn from_residual(&self, residual: R) -> Self;
    |                      ++++++
-help: alternatively, consider constraining `from_residual` so it does not apply to trait objects
+help: alternatively, consider constraining `from_residual` so it is explicitly marked as not applying to trait objects
    |
 LL |     fn from_residual(residual: R) -> Self where Self: Sized;
    |                                           +++++++++++++++++

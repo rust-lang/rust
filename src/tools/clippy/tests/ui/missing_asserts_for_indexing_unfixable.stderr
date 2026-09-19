@@ -1,5 +1,5 @@
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:5:5
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:4:5
    |
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |     ^^^^   ^^^^   ^^^^   ^^^^   ^^^^
@@ -10,7 +10,7 @@ LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    = help: to override `-D warnings` add `#[allow(clippy::missing_asserts_for_indexing)]`
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:10:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:9:13
    |
 LL |     let _ = v[0];
    |             ^^^^
@@ -21,7 +21,7 @@ LL |     let _ = v[1..4];
    = help: consider asserting the length before indexing: `assert!(v.len() > 3);`
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:17:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:16:13
    |
 LL |     let a = v[0];
    |             ^^^^
@@ -34,7 +34,7 @@ LL |     let c = v[2];
    = help: consider asserting the length before indexing: `assert!(v.len() > 2);`
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:26:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:25:13
    |
 LL |     let _ = v1[0] + v1[12];
    |             ^^^^^   ^^^^^^
@@ -42,7 +42,7 @@ LL |     let _ = v1[0] + v1[12];
    = help: consider asserting the length before indexing: `assert!(v1.len() > 12);`
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:28:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:27:13
    |
 LL |     let _ = v2[5] + v2[15];
    |             ^^^^^   ^^^^^^
@@ -50,7 +50,7 @@ LL |     let _ = v2[5] + v2[15];
    = help: consider asserting the length before indexing: `assert!(v2.len() > 15);`
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:35:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:34:13
    |
 LL |     let _ = v2[5] + v2[15];
    |             ^^^^^   ^^^^^^
@@ -58,7 +58,7 @@ LL |     let _ = v2[5] + v2[15];
    = help: consider asserting the length before indexing: `assert!(v2.len() > 15);`
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:45:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:44:13
    |
 LL |     let _ = f.v[0] + f.v[1];
    |             ^^^^^^   ^^^^^^
@@ -66,7 +66,7 @@ LL |     let _ = f.v[0] + f.v[1];
    = help: consider asserting the length before indexing: `assert!(f.v.len() > 1);`
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:59:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:58:13
    |
 LL |     let _ = x[0] + x[1];
    |             ^^^^   ^^^^
@@ -74,7 +74,7 @@ LL |     let _ = x[0] + x[1];
    = help: consider asserting the length before indexing: `assert!(x.len() > 1);`
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:77:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:76:13
    |
 LL |     let _ = v1[1] + v1[2];
    |             ^^^^^   ^^^^^
@@ -82,7 +82,7 @@ LL |     let _ = v1[1] + v1[2];
    = help: consider asserting the length before indexing: `assert!(v1.len() > 2);`
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:85:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:84:13
    |
 LL |     let _ = v1[0] + v1[1] + v1[2];
    |             ^^^^^   ^^^^^   ^^^^^

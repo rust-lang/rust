@@ -4,7 +4,9 @@
 
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+
+use crate::PassPolicy;
 
 pub(super) struct PostAnalysisNormalize;
 
@@ -16,8 +18,9 @@ impl<'tcx> crate::MirPass<'tcx> for PostAnalysisNormalize {
         PostAnalysisNormalizeVisitor { tcx, typing_env }.visit_body_preserves_cfg(body);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // Reveals opaque types and normalizes MIR while transitioning to the runtime dialect.
+        PassPolicy::Required
     }
 }
 
@@ -63,10 +66,10 @@ impl<'tcx> MutVisitor<'tcx> for PostAnalysisNormalizeVisitor<'tcx> {
         // We have to use `try_normalize_erasing_regions` here, since it's
         // possible that we visit impossible-to-satisfy where clauses here,
         // see #91745
-        if let Ok(c) = self
-            .tcx
-            .try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(constant.const_))
-        {
+        if let Ok(c) = self.tcx.try_normalize_erasing_regions(
+            self.typing_env,
+            ty::set_aliases_to_non_rigid(self.tcx, constant.const_),
+        ) {
             constant.const_ = c;
         }
         self.super_const_operand(constant, location);
@@ -77,10 +80,21 @@ impl<'tcx> MutVisitor<'tcx> for PostAnalysisNormalizeVisitor<'tcx> {
         // We have to use `try_normalize_erasing_regions` here, since it's
         // possible that we visit impossible-to-satisfy where clauses here,
         // see #91745
-        if let Ok(t) =
-            self.tcx.try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(*ty))
-        {
+        if let Ok(t) = self.tcx.try_normalize_erasing_regions(
+            self.typing_env,
+            ty::set_aliases_to_non_rigid(self.tcx, *ty),
+        ) {
             *ty = t;
+        }
+    }
+
+    #[inline]
+    fn visit_args(&mut self, args: &mut ty::GenericArgsRef<'tcx>, _: Location) {
+        if let Ok(a) = self.tcx.try_normalize_erasing_regions(
+            self.typing_env,
+            ty::set_aliases_to_non_rigid(self.tcx, *args),
+        ) {
+            *args = a;
         }
     }
 }

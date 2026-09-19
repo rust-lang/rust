@@ -1,16 +1,10 @@
 //@aux-build: proc_macros.rs
 //@no-rustfix: overlapping suggestions
 #![warn(clippy::unit_arg)]
-#![allow(unused_must_use, unused_variables)]
-#![allow(
-    clippy::let_unit_value,
+#![expect(
     clippy::needless_question_mark,
     clippy::never_loop,
     clippy::no_effect,
-    clippy::or_fun_call,
-    clippy::self_named_constructors,
-    clippy::uninlined_format_args,
-    clippy::unnecessary_wraps,
     clippy::unused_unit
 )]
 
@@ -124,7 +118,6 @@ fn question_mark() -> Result<(), ()> {
     Ok(())
 }
 
-#[allow(dead_code)]
 mod issue_2945 {
     fn unit_fn() -> Result<(), i32> {
         Ok(())
@@ -135,7 +128,6 @@ mod issue_2945 {
     }
 }
 
-#[allow(dead_code)]
 fn returning_expr() -> Option<()> {
     Some(foo(1))
     //~^ unit_arg

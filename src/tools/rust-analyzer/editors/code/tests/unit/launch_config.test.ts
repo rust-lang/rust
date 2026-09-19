@@ -1,5 +1,9 @@
 import * as assert from "assert";
-import { Cargo } from "../../src/toolchain";
+import * as os from "os";
+import * as path from "path";
+import { mkdtemp, mkdir, rm, writeFile } from "fs/promises";
+import { Cargo, cargoPath } from "../../src/toolchain";
+import { isWindows, normalizeDriveLetter } from "../../src/util";
 import type { Context } from ".";
 
 export async function getTests(ctx: Context) {
@@ -96,4 +100,47 @@ export async function getTests(ctx: Context) {
             assert.notDeepStrictEqual(args.filter, undefined);
         });
     });
+
+    await ctx.suite("Toolchain resolution", (suite) => {
+        suite.addTest("prefers explicit CARGO from provided env", async () => {
+            const explicitCargo = path.join(os.tmpdir(), "custom-cargo");
+            assert.strictEqual(await cargoPath({ CARGO: explicitCargo }), explicitCargo);
+        });
+
+        suite.addTest("resolves cargo from provided PATH", async () => {
+            const tempDir = await mkdtemp(path.join(os.tmpdir(), "ra-cargo-path-"));
+            try {
+                const cargoBinary = path.join(tempDir, isWindows ? "cargo.exe" : "cargo");
+                await writeFile(cargoBinary, "");
+
+                const pathKey = isWindows ? "Path" : "PATH";
+                assert.strictEqual(await cargoPath({ [pathKey]: tempDir }), "cargo");
+            } finally {
+                await rm(tempDir, { recursive: true, force: true });
+            }
+        });
+
+        suite.addTest("resolves cargo from provided CARGO_HOME", async () => {
+            const cargoHome = await mkdtemp(path.join(os.tmpdir(), "ra-cargo-home-"));
+            try {
+                const binDir = path.join(cargoHome, "bin");
+                await mkdir(binDir);
+                const cargoBinary = path.join(binDir, isWindows ? "cargo.exe" : "cargo");
+                await writeFile(cargoBinary, "");
+
+                assert.strictEqual(
+                    normalizeComparablePath(await cargoPath({ PATH: "", CARGO_HOME: cargoHome })),
+                    normalizeComparablePath(cargoBinary),
+                );
+            } finally {
+                await rm(cargoHome, { recursive: true, force: true });
+            }
+        });
+    });
+}
+
+function normalizeComparablePath(filePath: string): string {
+    // Windows path comparisons should ignore drive-letter casing because `fsPath`
+    // may normalize it differently while still pointing to the same file.
+    return normalizeDriveLetter(filePath, isWindows);
 }

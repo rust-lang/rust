@@ -5,9 +5,9 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::PResult;
 use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
+use rustc_lint_defs::builtin::BAD_ASM_STYLE;
 use rustc_parse::parser::asm::*;
 use rustc_parse_format as parse;
-use rustc_session::lint;
 use rustc_span::{ErrorGuaranteed, InnerSpan, Span, Symbol, sym};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
@@ -340,7 +340,7 @@ fn expand_preparsed_asm(
                     if let Some(pos) = snippet.find(needle) {
                         let end = pos
                             + snippet[pos..]
-                                .find(|c| matches!(c, '\n' | ';' | '\\' | '"'))
+                                .find(['\n', ';', '\\', '"'])
                                 .unwrap_or(snippet[pos..].len() - 1);
                         let inner = InnerSpan::new(pos, end);
                         return template_sp.from_inner(inner);
@@ -351,7 +351,7 @@ fn expand_preparsed_asm(
 
             if template_str.contains(".intel_syntax") {
                 ecx.psess().buffer_lint(
-                    lint::builtin::BAD_ASM_STYLE,
+                    BAD_ASM_STYLE,
                     find_span(".intel_syntax"),
                     ecx.current_expansion.lint_node_id,
                     diagnostics::AvoidIntelSyntax,
@@ -359,7 +359,7 @@ fn expand_preparsed_asm(
             }
             if template_str.contains(".att_syntax") {
                 ecx.psess().buffer_lint(
-                    lint::builtin::BAD_ASM_STYLE,
+                    BAD_ASM_STYLE,
                     find_span(".att_syntax"),
                     ecx.current_expansion.lint_node_id,
                     diagnostics::AvoidAttSyntax,
@@ -437,7 +437,7 @@ fn expand_preparsed_asm(
 
                                 let positional_args = args.operands.len()
                                     - args.named_args.len()
-                                    - args.reg_args.len();
+                                    - args.reg_args.count();
                                 let positional = if positional_args != args.operands.len() {
                                     "positional "
                                 } else {
@@ -657,7 +657,6 @@ pub(super) fn expand_global_asm<'cx>(
                     vis: ast::Visibility {
                         span: sp.shrink_to_lo(),
                         kind: ast::VisibilityKind::Inherited,
-                        tokens: None,
                     },
                     span: sp,
                     tokens: None,

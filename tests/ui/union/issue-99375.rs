@@ -1,4 +1,6 @@
 //@ check-pass
+//@ reference: items.union.field-copy
+//@ reference: items.union.field-tuple
 
 union URes<R: Copy> {
     uninit: (),

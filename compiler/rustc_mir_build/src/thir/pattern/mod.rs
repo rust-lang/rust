@@ -16,15 +16,14 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, RangeEnd};
 use rustc_index::Idx;
 use rustc_middle::thir::{
-    Ascription, DerefPatBorrowMode, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
+    Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
 use rustc_middle::ty::adjustment::{PatAdjust, PatAdjustment};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, LitToConstInput, Ty, TyCtxt, const_lit_matches_ty,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::ErrorGuaranteed;
+use rustc_span::{ErrorGuaranteed, bug, span_bug};
 use tracing::{debug, instrument};
 
 pub(crate) use self::check_match::check_match;
@@ -352,11 +351,6 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                 }
                 PatKind::Deref { pin, subpattern }
             }
-            hir::PatKind::Box(subpattern) => PatKind::DerefPattern {
-                subpattern: self.lower_pattern(subpattern),
-                borrow: DerefPatBorrowMode::Box,
-            },
-
             hir::PatKind::Slice(prefix, slice, suffix) => {
                 return self.slice_or_array_pattern(pat, prefix, slice, suffix);
             }
@@ -548,7 +542,8 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
                     let args = match ty.kind() {
-                        ty::Adt(_, args) | ty::FnDef(_, args) => args,
+                        ty::FnDef(_, args) => args.no_bound_vars().unwrap(),
+                        ty::Adt(_, args) => args,
                         ty::Error(e) => {
                             // Avoid ICE (#50585)
                             return Box::new(Pat {
@@ -640,10 +635,17 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         let ty = self.typeck_results.node_type(id);
         let res = self.typeck_results.qpath_res(qpath, id);
 
-        let (def_id, user_ty) = match res {
-            Res::Def(DefKind::Const { .. }, def_id)
-            | Res::Def(DefKind::AssocConst { .. }, def_id) => {
-                (def_id, self.typeck_results.user_provided_types().get(id))
+        let kind = match res {
+            Res::Def(DefKind::Const, def_id) => ty::AliasConstKind::Free { def_id },
+
+            Res::Def(DefKind::AssocConst, def_id) => {
+                if let DefKind::Impl { of_trait: false } =
+                    self.tcx.def_kind(self.tcx.parent(def_id))
+                {
+                    ty::AliasConstKind::InherentImpl { def_id }
+                } else {
+                    ty::AliasConstKind::Projection { def_id }
+                }
             }
 
             _ => {
@@ -655,21 +657,13 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
 
         // Lower the named constant to a THIR pattern.
         let args = self.typeck_results.node_args(id);
-        // FIXME(mgca): we will need to special case IACs here to have type system compatible
-        // generic args, instead of how we represent them in body expressions.
-        let c = ty::Const::new_unevaluated(
-            self.tcx,
-            ty::UnevaluatedConst::new(
-                self.tcx,
-                ty::UnevaluatedConstKind::new_from_def_id(self.tcx, def_id),
-                args,
-            ),
-        );
+        let alias = ty::AliasConst::new(self.tcx, kind, args);
+        let c = ty::Const::new_alias(self.tcx, ty::IsRigid::No, alias);
         let mut pattern = self.const_to_pat(c, ty, id, span);
 
         // If this is an associated constant with an explicit user-written
         // type, add an ascription node (e.g. `<Foo<'a> as MyTrait>::CONST`).
-        if let Some(&user_ty) = user_ty {
+        if let Some(&user_ty) = self.typeck_results.user_provided_types().get(id) {
             let annotation = CanonicalUserTypeAnnotation {
                 user_ty: Box::new(user_ty),
                 span,

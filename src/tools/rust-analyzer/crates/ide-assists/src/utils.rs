@@ -4,8 +4,8 @@ use std::slice;
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
-    HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution, Semantics,
-    db::{ExpandDatabase, HirDatabase},
+    HasAttrs as HirHasAttrs, HasCrate, HirDisplay, InFile, ModuleDef, PathResolution, Semantics,
+    db::HirDatabase,
 };
 use ide_db::{
     RootDatabase,
@@ -13,6 +13,7 @@ use ide_db::{
     famous_defs::FamousDefs,
     path_transform::PathTransform,
     syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
+    traits::IsRequiredAssocItem,
 };
 use itertools::Itertools;
 use syntax::{
@@ -56,12 +57,7 @@ pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Ex
             });
         non_trivial_children.next().is_some()
     };
-    if stmt_list
-        .syntax()
-        .children_with_tokens()
-        .filter_map(NodeOrToken::into_token)
-        .any(|token| token.kind() == syntax::SyntaxKind::COMMENT)
-    {
+    if stmt_list.syntax().children_with_tokens().any(|it| ast::AnyComment::can_cast(it.kind())) {
         return None;
     }
 
@@ -110,6 +106,26 @@ fn needs_parens_in_call(make: &SyntaxFactory, param: &ast::Expr) -> bool {
     param.needs_parens_in_place_of(call.syntax(), callable.syntax())
 }
 
+pub(crate) fn wrap_paren_in_guard_chain(guard: ast::Expr, make: &SyntaxFactory) -> ast::Expr {
+    if needs_parens_in_guard_chain(make, &guard) { make.expr_paren(guard).into() } else { guard }
+}
+
+fn needs_parens_in_guard_chain(make: &SyntaxFactory, guard: &ast::Expr) -> bool {
+    let ast::Expr::BinExpr(if_let_and_guard) = make.expr_bin_op(
+        make.expr_unit(),
+        ast::BinaryOp::LogicOp(ast::LogicOp::And),
+        make.expr_unit(),
+    ) else {
+        stdx::never!("`SyntaxFactory::expr_bin_op` returns a `BinExpr`");
+        return false;
+    };
+    let Some(fake_guard) = if_let_and_guard.rhs() else {
+        stdx::never!("invalid make call");
+        return false;
+    };
+    guard.needs_parens_in_place_of(if_let_and_guard.syntax(), fake_guard.syntax())
+}
+
 /// This is a method with a heuristics to support test methods annotated with custom test annotations, such as
 /// `#[test_case(...)]`, `#[tokio::test]` and similar.
 /// Also a regular `#[test]` annotation is supported.
@@ -142,14 +158,15 @@ pub enum DefaultMethods {
 
 pub fn filter_assoc_items(
     sema: &Semantics<'_, RootDatabase>,
-    items: &[hir::AssocItem],
+    trait_: hir::Trait,
+    items: &[(hir::AssocItem, IsRequiredAssocItem)],
     default_methods: DefaultMethods,
     ignore_items: IgnoreAssocItems,
 ) -> Vec<InFile<ast::AssocItem>> {
-    return items
+    let mut result = items
         .iter()
         .copied()
-        .filter(|assoc_item| {
+        .filter(|(assoc_item, is_required)| {
             if ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
                 && assoc_item.attrs(sema.db).is_doc_hidden()
             {
@@ -161,44 +178,35 @@ pub fn filter_assoc_items(
                 return false;
             }
 
-            true
+            is_required.0 == (default_methods == DefaultMethods::No)
         })
+        .map(|(item, _)| (item, item.attrs(sema.db).unstable_feature(sema.db)))
         // Note: This throws away items with no source.
-        .filter_map(|assoc_item| {
+        .filter_map(|(assoc_item, unstable_feature)| {
             let item = match assoc_item {
                 hir::AssocItem::Function(it) => sema.source(it)?.map(ast::AssocItem::Fn),
                 hir::AssocItem::TypeAlias(it) => sema.source(it)?.map(ast::AssocItem::TypeAlias),
                 hir::AssocItem::Const(it) => sema.source(it)?.map(ast::AssocItem::Const),
             };
-            Some(item)
+            Some((item, unstable_feature))
         })
-        .filter(has_def_name)
-        .filter(|it| match &it.value {
-            ast::AssocItem::Fn(def) => matches!(
-                (default_methods, def.body()),
-                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
-            ),
-            ast::AssocItem::Const(def) => matches!(
-                (default_methods, def.body()),
-                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
-            ),
-            ast::AssocItem::TypeAlias(def) => matches!(
-                (default_methods, def.ty()),
-                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
-            ),
-            ast::AssocItem::MacroCall(_) => unreachable!(),
-        })
-        .collect();
+        .collect::<Vec<_>>();
 
-    fn has_def_name(item: &InFile<ast::AssocItem>) -> bool {
-        match &item.value {
-            ast::AssocItem::Fn(def) => def.name(),
-            ast::AssocItem::TypeAlias(def) => def.name(),
-            ast::AssocItem::Const(def) => def.name(),
-            ast::AssocItem::MacroCall(_) => None,
-        }
-        .is_some()
+    // Now, we want to filter unstable assoc items whose feature is not enabled, unless:
+    //  - it's required, or
+    //  - the trait has the same feature, so the user probably intends to enable it.
+    if default_methods == DefaultMethods::Only {
+        let trait_unstable_feature = trait_.attrs(sema.db).unstable_feature(sema.db);
+        let krate = trait_.krate(sema.db);
+        result.retain(|(_, item_unstable_feature)| {
+            *item_unstable_feature == trait_unstable_feature
+                || item_unstable_feature
+                    .as_ref()
+                    .is_none_or(|feature| krate.is_unstable_feature_enabled(sema.db, feature))
+        });
     }
+
+    result.into_iter().map(|(item, _)| item).collect()
 }
 
 /// Given `original_items` retrieved from the trait definition (usually by
@@ -214,6 +222,7 @@ pub fn add_trait_assoc_items_to_impl(
     trait_: hir::Trait,
     impl_: &ast::Impl,
     target_scope: &hir::SemanticsScope<'_>,
+    default_mode: DefaultMethods,
 ) -> Vec<ast::AssocItem> {
     let new_indent_level = IndentLevel::from_node(impl_.syntax()) + 1;
     original_items
@@ -221,7 +230,7 @@ pub fn add_trait_assoc_items_to_impl(
         .map(|InFile { file_id, value: original_item }| {
             let mut cloned_item = {
                 if let Some(macro_file) = file_id.macro_file() {
-                    let span_map = sema.db.expansion_span_map(macro_file);
+                    let span_map = macro_file.expansion_span_map(sema.db);
                     let item_prettified = prettify_macro_expansion(
                         sema.db,
                         original_item.syntax().clone(),
@@ -250,7 +259,10 @@ pub fn add_trait_assoc_items_to_impl(
             ast::AssocItem::cast(editor.finish().new_root().clone()).unwrap()
         })
         .filter_map(|item| match item {
-            ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
+            // We can check `fn_.body().is_none()`, but this is actually not what we want to check: some functions (`Drop::drop()`
+            // or `#[rustc_must_implement_one_of]`) have a default body that should be ignored. So the criteria is whether
+            // we requested required or defaulted methods, and not whether the method actually has a body.
+            ast::AssocItem::Fn(fn_) if default_mode == DefaultMethods::No => {
                 let (fn_editor, fn_) = SyntaxEditor::with_ast_node(&fn_);
                 let fill_expr: ast::Expr = match config.expr_fill_default {
                     ExprFillDefaultMode::Todo | ExprFillDefaultMode::Default => make.expr_todo(),
@@ -277,13 +289,15 @@ pub fn add_trait_assoc_items_to_impl(
 
 pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
     node.children_with_tokens()
-        .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
+        .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | DOC_COMMENT | ATTR))
         .map(|it| it.text_range().start())
         .unwrap_or_else(|| node.text_range().start())
 }
 
 pub(crate) fn invert_boolean_expression(make: &SyntaxFactory, expr: ast::Expr) -> ast::Expr {
-    invert_special_case(make, &expr).unwrap_or_else(|| make.expr_prefix(T![!], expr).into())
+    invert_special_case(make, &expr).unwrap_or_else(|| {
+        make.expr_prefix(T![!], wrap_paren(expr, make, ExprPrecedence::Prefix)).into()
+    })
 }
 
 fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Expr> {
@@ -322,7 +336,7 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
             let method = mce.name_ref()?;
             let arg_list = mce.arg_list()?;
 
-            let method = match method.text().as_str() {
+            let method = match method.text() {
                 "is_some" => "is_none",
                 "is_none" => "is_some",
                 "is_ok" => "is_err",
@@ -528,7 +542,7 @@ fn has_any_fn(imp: &ast::Impl, names: &[String]) -> bool {
         for item in il.assoc_items() {
             if let ast::AssocItem::Fn(f) = item
                 && let Some(name) = f.name()
-                && names.iter().any(|n| n.eq_ignore_ascii_case(&name.text()))
+                && names.iter().any(|n| n.eq_ignore_ascii_case(name.text()))
             {
                 return true;
             }
@@ -642,7 +656,7 @@ fn generate_impl_inner(
         .zip(generic_params.as_ref())
         .and_then(|(trait_, params)| generic_param_associated_bounds(make, adt, trait_, params));
 
-    let ty: ast::Type = make.ty_path(make.ident_path(&adt.name().unwrap().text())).into();
+    let ty: ast::Type = make.ty_path(make.ident_path(adt.name().unwrap().text())).into();
 
     let cfg_attrs = adt.attrs().filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))));
     match trait_ {
@@ -1175,6 +1189,15 @@ pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bo
         !is_const
     });
     is_const
+}
+
+pub(crate) fn original_range_in(
+    file_id: hir::EditionedFileId,
+    sema: &Semantics<'_, RootDatabase>,
+    value: &SyntaxNode,
+) -> Option<TextRange> {
+    let original = sema.original_range_opt(value)?;
+    (original.file_id == file_id).then_some(original.range)
 }
 
 // FIXME: #20460 When hir-ty can analyze the `never` statement at the end of block, remove it

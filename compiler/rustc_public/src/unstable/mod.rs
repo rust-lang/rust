@@ -120,16 +120,14 @@ pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::Impl { .. }
-        | DefKind::GlobalAsm => {
+        | DefKind::GlobalAsm
+        | DefKind::TestBinderConstraints => {
             unreachable!("Not a valid item kind: {kind:?}");
         }
         DefKind::Closure | DefKind::AssocFn | DefKind::Fn | DefKind::SyntheticCoroutineBody => {
             ItemKind::Fn
         }
-        DefKind::Const { .. }
-        | DefKind::InlineConst
-        | DefKind::AssocConst { .. }
-        | DefKind::AnonConst => ItemKind::Const,
+        DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => ItemKind::Const,
         DefKind::Static { .. } => ItemKind::Static,
         DefKind::Ctor(_, rustc_hir::def::CtorKind::Const) => ItemKind::Ctor(CtorKind::Const),
         DefKind::Ctor(_, rustc_hir::def::CtorKind::Fn) => ItemKind::Ctor(CtorKind::Fn),

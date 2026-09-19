@@ -123,7 +123,9 @@ fn getrandom(mut bytes: &mut [u8], insecure: bool) {
                         GETRANDOM_AVAILABLE.store(false, Relaxed);
                         break;
                     }
-                    _ => panic!("failed to generate random data"),
+                    other => {
+                        panic!("failed to generate random data: errno={other:?}, flags={flags:?}")
+                    }
                 }
             }
         }

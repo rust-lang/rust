@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::CrateNum;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, StableHash};
-use rustc_session::config::CrateType;
+use rustc_structures::CrateType;
 
 /// A list of dependencies for a certain crate type.
 pub type DependencyList = IndexVec<CrateNum, Linkage>;

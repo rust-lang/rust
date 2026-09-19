@@ -13,8 +13,8 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-home = "0.5.11"
 camino.workspace = true
+semver.workspace = true
 
 [lints]
 workspace = true

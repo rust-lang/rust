@@ -1,0 +1,14 @@
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `;`
+  --> $DIR/closure-recovery-across-statements-issue-127223.rs:6:11
+   |
+LL |     (value;);
+   |           ^ expected one of 8 possible tokens
+
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `;`
+  --> $DIR/closure-recovery-across-statements-issue-127223.rs:12:25
+   |
+LL |     std::mem::drop(value;);
+   |                         ^ expected one of 8 possible tokens
+
+error: aborting due to 2 previous errors
+

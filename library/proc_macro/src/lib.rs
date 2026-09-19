@@ -37,7 +37,7 @@
 #![warn(unreachable_pub)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-#[unstable(feature = "proc_macro_internals", issue = "27812")]
+#[unstable(feature = "proc_macro_internals", issue = "none")]
 #[doc(hidden)]
 pub mod bridge;
 
@@ -245,7 +245,6 @@ impl !Sync for TokenStream {}
 /// The contained error message is explicitly not guaranteed to be stable in any way,
 /// and may change between Rust versions or across compilations.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
-#[non_exhaustive]
 #[derive(Debug)]
 pub struct LexError(String);
 
@@ -296,7 +295,7 @@ impl TokenStream {
     /// Checks if this `TokenStream` is empty.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn is_empty(&self) -> bool {
-        self.0.as_ref().map(|h| BridgeMethods::ts_is_empty(h)).unwrap_or(true)
+        self.0.as_ref().map(BridgeMethods::ts_is_empty).unwrap_or(true)
     }
 
     /// Parses this `TokenStream` as an expression and attempts to expand any
@@ -517,7 +516,7 @@ macro_rules! extend_items {
         $(
             #[stable(feature = "token_stream_extend_ts_items", since = "1.92.0")]
             impl Extend<$item> for TokenStream {
-                fn extend<T: IntoIterator<Item = $item>>(&mut self, iter: T) {
+                fn extend<I: IntoIterator<Item = $item>>(&mut self, iter: I) {
                     self.extend(iter.into_iter().map(TokenTree::$item));
                 }
             }
@@ -575,9 +574,7 @@ pub mod token_stream {
         type IntoIter = IntoIter;
 
         fn into_iter(self) -> IntoIter {
-            IntoIter(
-                self.0.map(|v| BridgeMethods::ts_into_trees(v)).unwrap_or_default().into_iter(),
-            )
+            IntoIter(self.0.map(BridgeMethods::ts_into_trees).unwrap_or_default().into_iter())
         }
     }
 }
@@ -595,7 +592,7 @@ pub macro quote($($t:tt)*) {
     /* compiler built-in */
 }
 
-#[unstable(feature = "proc_macro_internals", issue = "27812")]
+#[unstable(feature = "proc_macro_internals", issue = "none")]
 #[doc(hidden)]
 mod quote;
 
@@ -755,14 +752,14 @@ impl Span {
 
     // Used by the implementation of `Span::quote`
     #[doc(hidden)]
-    #[unstable(feature = "proc_macro_internals", issue = "27812")]
+    #[unstable(feature = "proc_macro_internals", issue = "none")]
     pub fn save_span(&self) -> usize {
         BridgeMethods::span_save_span(self.0)
     }
 
     // Used by the implementation of `Span::quote`
     #[doc(hidden)]
-    #[unstable(feature = "proc_macro_internals", issue = "27812")]
+    #[unstable(feature = "proc_macro_internals", issue = "none")]
     pub fn recover_proc_macro_span(id: usize) -> Span {
         Span(BridgeMethods::span_recover_proc_macro_span(id))
     }
@@ -1296,7 +1293,7 @@ macro_rules! unsuffixed_int_literals {
         /// specified on this token, meaning that invocations like
         /// `Literal::i8_unsuffixed(1)` are equivalent to
         /// `Literal::u32_unsuffixed(1)`.
-        /// Literals created from negative numbers might not survive rountrips through
+        /// Literals created from negative numbers might not survive roundtrips through
         /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
         ///
         /// Literals created through this method have the `Span::call_site()`
@@ -1416,7 +1413,7 @@ impl Literal {
     /// This constructor is similar to those like `Literal::i8_unsuffixed` where
     /// the float's value is emitted directly into the token but no suffix is
     /// used, so it may be inferred to be a `f64` later in the compiler.
-    /// Literals created from negative numbers might not survive rountrips through
+    /// Literals created from negative numbers might not survive roundtrips through
     /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
@@ -1441,7 +1438,7 @@ impl Literal {
     /// specified is the preceding part of the token and `f32` is the suffix of
     /// the token. This token will always be inferred to be an `f32` in the
     /// compiler.
-    /// Literals created from negative numbers might not survive rountrips through
+    /// Literals created from negative numbers might not survive roundtrips through
     /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
@@ -1461,7 +1458,7 @@ impl Literal {
     /// This constructor is similar to those like `Literal::i8_unsuffixed` where
     /// the float's value is emitted directly into the token but no suffix is
     /// used, so it may be inferred to be a `f64` later in the compiler.
-    /// Literals created from negative numbers might not survive rountrips through
+    /// Literals created from negative numbers might not survive roundtrips through
     /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
@@ -1486,7 +1483,7 @@ impl Literal {
     /// specified is the preceding part of the token and `f64` is the suffix of
     /// the token. This token will always be inferred to be an `f64` in the
     /// compiler.
-    /// Literals created from negative numbers might not survive rountrips through
+    /// Literals created from negative numbers might not survive roundtrips through
     /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
@@ -1913,7 +1910,7 @@ pub mod tracked {
     #[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
     pub fn env_var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
         let key: &str = key.as_ref();
-        let value = BridgeMethods::injected_env_var(key).map_or_else(|| env::var(key), Ok);
+        let value = env::var(key);
         BridgeMethods::track_env_var(key, value.as_deref().ok());
         value
     }

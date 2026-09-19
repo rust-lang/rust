@@ -21,8 +21,12 @@
 
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_lexer as rustc_lexer;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_lexer;
 
 mod parsing;
 mod ptr;
@@ -30,7 +34,6 @@ mod syntax_error;
 mod syntax_node;
 #[cfg(test)]
 mod tests;
-mod token_text;
 mod validation;
 
 pub mod algo;
@@ -39,7 +42,6 @@ pub mod ast;
 pub mod fuzz;
 pub mod hacks;
 pub mod syntax_editor;
-pub mod ted;
 pub mod utils;
 
 use std::{marker::PhantomData, ops::Range};
@@ -55,7 +57,6 @@ pub use crate::{
         PreorderWithTokens, RustLanguage, SyntaxElement, SyntaxElementChildren, SyntaxNode,
         SyntaxNodeChildren, SyntaxToken, SyntaxTreeBuilder,
     },
-    token_text::TokenText,
 };
 pub use parser::{Edition, SyntaxKind, T};
 pub use rowan::{
@@ -271,11 +272,14 @@ macro_rules! match_ast {
     (match $node:ident { $($tt:tt)* }) => { $crate::match_ast!(match ($node) { $($tt)* }) };
 
     (match ($node:expr) {
-        $( $( $path:ident )::+ ($it:pat) => $res:expr, )*
+        $( $( $path:ident )::+ ($it:pat) $(if $guard:expr)? => $res:expr, )*
         _ => $catch_all:expr $(,)?
     }) => {{
-        $( if let Some($it) = $($path::)+cast($node.clone()) { $res } else )*
-        { $catch_all }
+        #[allow(clippy::question_mark, reason = "if `$catch_all` is `return None` Clippy can mark this")]
+        {
+            $( if let Some($it) = $($path::)+cast($node.clone()) $(&& $guard)? { $res } else )*
+            { $catch_all }
+        }
     }};
 }
 

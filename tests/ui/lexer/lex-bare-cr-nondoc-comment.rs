@@ -1,5 +1,5 @@
 //@ run-pass
-// ignore-tidy-cr
+// ignore-tidy-file-cr
 
 // nondoc comment with bare CR: ''
 //// nondoc comment with bare CR: ''

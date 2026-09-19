@@ -1,5 +1,7 @@
 //! impl char {}
 
+#![expect(clippy::manual_is_ascii_check, reason = "this module implements various is_ascii checks")]
+
 use super::*;
 use crate::panic::const_panic;
 use crate::slice;
@@ -343,6 +345,7 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_char_classify", since = "1.87.0")]
+    #[expect(clippy::to_digit_is_some, reason = "implements is_digit")]
     #[inline]
     pub const fn is_digit(self, radix: u32) -> bool {
         self.to_digit(radix).is_some()
@@ -470,9 +473,7 @@ impl char {
     }
 
     /// An extended version of `escape_debug` that optionally permits escaping
-    /// Extended Grapheme codepoints, single quotes, and double quotes. This
-    /// allows us to format characters like nonspacing marks better when they're
-    /// at the start of a string, and allows escaping single quotes in
+    /// single quotes and double quotes. This allows escaping single quotes in
     /// characters, and double quotes in strings.
     #[inline]
     pub(crate) fn escape_debug_ext(self, args: EscapeDebugExtArgs) -> EscapeDebug {
@@ -486,16 +487,19 @@ impl char {
             '\r' => EscapeDebug::backslash(ascii::Char::SmallR),
             '\0' => EscapeDebug::backslash(ascii::Char::Digit0),
 
-            // ASCII fast path
-            '\x20'..='\x7E' => EscapeDebug::printable(self),
+            // ASCII fast path,
+            // plus U+FF9E HALFWIDTH KATAKANA VOICED SOUND MARK
+            // and U+FF9F HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK
+            // which should not be escaped despite being grapheme extenders.
+            '\x20'..='\x7E' | '\u{FF9E}' | '\u{FF9F}' => EscapeDebug::printable(self),
 
             _ if self.is_control()
                 || self.is_private_use()
                 || self.is_whitespace()
-                || args.escape_grapheme_extender && self.is_grapheme_extender()
+                || self.is_grapheme_extender()
                 || self.is_default_ignorable()
                 || self.is_format_control()
-                || self.is_unassigned() =>
+                || !self.is_assigned() =>
             {
                 EscapeDebug::unicode(self)
             }
@@ -1139,8 +1143,9 @@ impl char {
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
     #[must_use]
+    #[unstable(feature = "char_unassigned_private_use", issue = "158322")]
     #[inline]
-    const fn is_private_use(self) -> bool {
+    pub const fn is_private_use(self) -> bool {
         // According to
         // https://www.unicode.org/policies/stability_policy.html#Property_Value,
         // the set of codepoints in `Co` will never change.
@@ -1176,54 +1181,56 @@ impl char {
         self > '\u{AC}' && unicode::Cf(self)
     }
 
-    /// Returns `true` if this `char` has not yet been assigned a meaning by Unicode, as of
+    /// Returns `true` if this `char` has been assigned a meaning by Unicode, as of
     /// [`UNICODE_VERSION`].
     ///
     /// [`UNICODE_VERSION`]: Self::UNICODE_VERSION
-    ///
-    /// These characters may have a meaning assigned in the future,
-    /// except for the 66 [noncharacters] which will never be assigned a meaning.
-    ///
-    /// [noncharacters]: https://www.unicode.org/faq/private_use#noncharacters
     ///
     /// Many of Unicode's [stability policies] apply only to assigned characters.
     ///
     /// [stability policies]: https://www.unicode.org/policies/stability_policy.html
     ///
-    /// Unassigned characters (code points with the general category of `Cn`) are [described] in Chapter 4
-    /// (Character Properties) of the Unicode Standard, and [specified] in the Unicode Character Database
-    /// by their exclusion from [`UnicodeData.txt`].
+    /// Currently unassigned characters (characters for which this method returns `false`)
+    /// may have a meaning assigned in a future version of Unicode,
+    /// except for the 66 [noncharacters] which will never be assigned a meaning.
     ///
-    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-4/#G134153
-    /// [specified]: https://www.unicode.org/reports/tr44/#GC_Values_Table
+    /// [noncharacters]: https://www.unicode.org/faq/private_use.html#noncharacters
+    ///
+    /// A character is considered assigned if it is present in [`UnicodeData.txt`].
+    /// Unassigned characters have general category `Cn`, as [described] in Chapter 4
+    /// (Character Properties) of the Unicode Standard.
+    ///
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-4/#G134153
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
-    /// ```ignore(private)
-    /// assert!('\u{FFFE}'.is_unassigned()); // noncharacter, will never be assigned
+    /// ```
+    /// #![feature(char_unassigned_private_use)]
+    /// assert!('γ'.is_assigned()); // once a character is assigned, it stays assigned forever
+    /// assert!(!'\u{FFFE}'.is_assigned()); // noncharacter, will never be assigned
     ///
-    /// //assert!('\u{7AAAA}'.is_unassigned()); // not currently assigned, but may be in the future,
-    ///                                         // so we shouldn't rely on the current status
-    ///
-    /// assert!(!'γ'.is_unassigned()); // once a character is assigned, it stays assigned forever
+    /// // Not currently assigned, but may be in the future,
+    /// // so we shouldn't rely on the current status
+    /// /* assert!(!'\u{7AAAA}'.is_assigned()); */
     /// ```
     #[must_use]
+    #[unstable(feature = "char_unassigned_private_use", issue = "158322")]
     #[inline]
-    fn is_unassigned(self) -> bool {
+    pub fn is_assigned(self) -> bool {
         match self {
-            '\0'..='\u{377}' => false,
-            '\u{378}'..='\u{3FFFD}' => unicode::Cn_planes_0_3(self),
+            '\0'..='\u{377}' => true,
+            '\u{378}'..='\u{3FFFD}' => !unicode::Cn_planes_0_3(self),
             // Assigned character ranges in planes 4 and above.
             // `src/tools/unicode-table-generator/src/main.rs` asserts that this is correct
             '\u{E0001}'
             | '\u{E0020}'..='\u{E007F}'
             | '\u{E0100}'..='\u{E01EF}'
             | '\u{F0000}'..='\u{FFFFD}'
-            | '\u{100000}'..='\u{10FFFD}' => false,
-            _ => true,
+            | '\u{100000}'..='\u{10FFFD}' => true,
+            _ => false,
         }
     }
 
@@ -1241,7 +1248,8 @@ impl char {
     ///
     /// Basic usage:
     ///
-    /// ```ignore(private)
+    /// ```
+    /// #![feature(default_ignorable)]
     /// assert!('\u{AD}'.is_default_ignorable()); // SOFT HYPHEN
     /// assert!('\u{115F}'.is_default_ignorable()); // HANGUL CHOSEONG FILLER
     /// assert!('\u{200B}'.is_default_ignorable()); // ZERO WIDTH SPACE
@@ -1252,9 +1260,11 @@ impl char {
     /// assert!(!'\n'.is_default_ignorable());
     /// assert!(!'\0'.is_default_ignorable());
     /// assert!(!'q'.is_default_ignorable());
+    /// ```
     #[must_use]
+    #[unstable(feature = "default_ignorable", issue = "160583")]
     #[inline]
-    fn is_default_ignorable(self) -> bool {
+    pub fn is_default_ignorable(self) -> bool {
         self > '\u{AC}' && unicode::Default_Ignorable_Code_Point(self)
     }
 
@@ -1803,10 +1813,32 @@ impl char {
     /// [normalization]: https://www.unicode.org/faq/normalization.html
     #[must_use = "this returns the case-folded character as a new iterator, \
                   without modifying the original"]
-    #[unstable(feature = "casefold", issue = "154742")]
+    #[unstable(feature = "casefold", issue = "157000")]
     #[inline]
     pub fn to_casefold_unnormalized(self) -> ToCasefold {
         ToCasefold(CaseMappingIter::new(conversions::to_casefold(self)))
+    }
+
+    /// Returns the code point value as a `u32`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(char_to_u32)]
+    ///
+    /// let ascii = 'a';
+    /// let heart = '❤';
+    ///
+    /// assert_eq!(ascii.to_u32(), 97_u32);
+    /// assert_eq!(heart.to_u32(), 0x2764_u32);
+    /// ```
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[unstable(feature = "char_to_u32", issue = "158938")]
+    #[rustc_const_unstable(feature = "char_to_u32", issue = "158938")]
+    #[inline(always)]
+    pub const fn to_u32(self) -> u32 {
+        self as u32
     }
 
     /// Checks if the value is within the ASCII range.
@@ -1954,6 +1986,7 @@ impl char {
     /// [to_ascii_lowercase]: #method.to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
+    #[expect(clippy::manual_ignore_case_cmp, reason = "implements eq_ignore_ascii_case")]
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &char) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()
@@ -2351,8 +2384,8 @@ impl char {
     /// before using this function.
     ///
     /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
-    /// [pct]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
-    /// [bfs]: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
+    /// [pct]: https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap07.html#tag_07_03_01
+    /// [bfs]: https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_06_05
     ///
     /// # Examples
     ///
@@ -2423,9 +2456,6 @@ impl char {
 }
 
 pub(crate) struct EscapeDebugExtArgs {
-    /// Escape Grapheme Extender codepoints?
-    pub(crate) escape_grapheme_extender: bool,
-
     /// Escape single quotes?
     pub(crate) escape_single_quote: bool,
 
@@ -2434,11 +2464,8 @@ pub(crate) struct EscapeDebugExtArgs {
 }
 
 impl EscapeDebugExtArgs {
-    pub(crate) const ESCAPE_ALL: Self = Self {
-        escape_grapheme_extender: true,
-        escape_single_quote: true,
-        escape_double_quote: true,
-    };
+    pub(crate) const ESCAPE_ALL: Self =
+        Self { escape_single_quote: true, escape_double_quote: true };
 }
 
 #[inline]

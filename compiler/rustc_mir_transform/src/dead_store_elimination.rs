@@ -12,7 +12,6 @@
 //!     will still not cause any further changes.
 //!
 
-use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -21,7 +20,9 @@ use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_mir_dataflow::impls::{
     LivenessTransferFunction, MaybeTransitiveLiveLocals, borrowed_locals,
 };
+use rustc_span::bug;
 
+use crate::PassPolicy;
 use crate::simplify::UsedInStmtLocals;
 use crate::util::most_packed_projection;
 
@@ -140,8 +141,8 @@ impl<'tcx> crate::MirPass<'tcx> for DeadStoreElimination {
         }
     }
 
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 2)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -151,9 +152,5 @@ impl<'tcx> crate::MirPass<'tcx> for DeadStoreElimination {
                 data.strip_nops();
             }
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }

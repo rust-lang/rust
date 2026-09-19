@@ -1,15 +1,16 @@
 use crate::parse::cursor::{self, Capture, Cursor};
-use crate::parse::{ActiveLint, DeprecatedLint, Lint, LintData, LintName, ParseCx, RenamedLint};
+use crate::parse::{ActiveLint, DeprecatedLint, Lint, LintData, LintName, ParseCx, ParsedLints, RenamedLint};
 use crate::utils::{
     ErrAction, FileUpdater, UpdateMode, UpdateStatus, Version, delete_dir_if_exists, delete_file_if_exists,
     expect_action, try_rename_dir, try_rename_file, walk_dir_no_dot_or_target,
 };
+use crate::{SourceFile, Span};
 use core::mem;
 use rustc_lexer::TokenKind;
 use std::collections::hash_map::Entry;
 use std::ffi::OsString;
-use std::fs;
 use std::path::Path;
+use std::{fs, path};
 
 /// Runs the `deprecate` command
 ///
@@ -22,23 +23,33 @@ use std::path::Path;
 /// If a file path could not read from or written to
 pub fn deprecate<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, name: &'env str, reason: &'env str) {
     let mut data = cx.parse_lint_decls();
-
     let Entry::Occupied(mut lint) = data.lints.entry(name) else {
-        eprintln!("error: failed to find lint `{name}`");
-        return;
+        cx.dcx.emit_unknown_lint(name);
+        cx.dcx.exit_assume_err();
     };
-    let Lint::Active(prev_lint) = mem::replace(
+    let prev_lint = mem::replace(
         lint.get_mut(),
-        Lint::Deprecated(DeprecatedLint {
-            reason,
-            version: cx.str_buf.alloc_display(cx.arena, clippy_version.rust_display()),
-        }),
-    ) else {
-        eprintln!("error: `{name}` is already deprecated");
-        return;
+        Lint {
+            name_sp: Span::new(data.deprecated_file, 0..0),
+            data: LintData::Deprecated(DeprecatedLint {
+                reason,
+                version: cx.str_buf.alloc_display(cx.arena, clippy_version.rust_display()),
+            }),
+        },
+    );
+    let LintData::Active(prev_lint_data) = prev_lint.data else {
+        cx.dcx.emit_already_deprecated(name);
+        cx.dcx.exit_assume_err();
     };
+    cx.dcx.exit_on_err();
 
-    remove_lint_declaration(name, &prev_lint, &data, &mut FileUpdater::default());
+    remove_lint_declaration(
+        name,
+        prev_lint.name_sp.file,
+        &prev_lint_data,
+        &data,
+        &mut FileUpdater::default(),
+    );
     data.gen_decls(UpdateMode::Change);
     println!("info: `{name}` has successfully been deprecated");
     println!("note: you must run `cargo uitest` to update the test results");
@@ -46,26 +57,29 @@ pub fn deprecate<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, name
 
 pub fn uplift<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_name: &'env str, new_name: &'env str) {
     let mut data = cx.parse_lint_decls();
+    let Entry::Occupied(mut lint) = data.lints.entry(old_name) else {
+        cx.dcx.emit_unknown_lint(old_name);
+        cx.dcx.exit_assume_err();
+    };
+    let prev_lint = mem::replace(
+        lint.get_mut(),
+        Lint {
+            name_sp: Span::new(data.deprecated_file, 0..0),
+            data: LintData::Renamed(RenamedLint {
+                new_name: LintName::new_rustc(new_name),
+                version: cx.str_buf.alloc_display(cx.arena, clippy_version.rust_display()),
+            }),
+        },
+    );
+    let LintData::Active(prev_lint_data) = prev_lint.data else {
+        cx.dcx.emit_already_deprecated(old_name);
+        cx.dcx.exit_assume_err();
+    };
+    cx.dcx.exit_on_err();
 
     update_rename_targets(&mut data, old_name, LintName::new_rustc(new_name));
-
-    let Entry::Occupied(mut lint) = data.lints.entry(old_name) else {
-        eprintln!("error: failed to find lint `{old_name}`");
-        return;
-    };
-    let Lint::Active(prev_lint) = mem::replace(
-        lint.get_mut(),
-        Lint::Renamed(RenamedLint {
-            new_name: LintName::new_rustc(new_name),
-            version: cx.str_buf.alloc_display(cx.arena, clippy_version.rust_display()),
-        }),
-    ) else {
-        eprintln!("error: `{old_name}` is already deprecated");
-        return;
-    };
-
     let mut updater = FileUpdater::default();
-    let remove_mod = remove_lint_declaration(old_name, &prev_lint, &data, &mut updater);
+    let remove_mod = remove_lint_declaration(old_name, prev_lint.name_sp.file, &prev_lint_data, &data, &mut updater);
     let mut update_fn = uplift_update_fn(old_name, new_name, remove_mod);
     for e in walk_dir_no_dot_or_target(".") {
         let e = expect_action(e, ErrAction::Read, ".");
@@ -84,8 +98,7 @@ pub fn uplift<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
 /// * Adds an entry to `renamed_lints.rs`.
 /// * Renames all lint attributes to the new name (e.g. `#[allow(clippy::lint_name)]`).
 /// * Renames the lint struct to the new name.
-/// * Renames the module containing the lint struct to the new name if it shares a name with the
-///   lint.
+/// * Renames the module containing the lint struct to the new name if it shares a name with the lint.
 ///
 /// # Panics
 /// Panics for the following conditions:
@@ -94,48 +107,44 @@ pub fn uplift<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
 /// * If `old_name` doesn't name an existing lint.
 /// * If `old_name` names a deprecated or renamed lint.
 pub fn rename<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_name: &'env str, new_name: &'env str) {
-    let mut updater = FileUpdater::default();
     let mut data = cx.parse_lint_decls();
+    let Entry::Occupied(mut lint) = data.lints.entry(old_name) else {
+        cx.dcx.emit_unknown_lint(old_name);
+        cx.dcx.exit_assume_err();
+    };
+    let prev_lint = mem::replace(
+        lint.get_mut(),
+        Lint {
+            name_sp: Span::new(data.deprecated_file, 0..0),
+            data: LintData::Renamed(RenamedLint {
+                new_name: LintName::new_clippy(new_name),
+                version: cx.str_buf.alloc_display(cx.arena, clippy_version.rust_display()),
+            }),
+        },
+    );
+    if !matches!(prev_lint.data, LintData::Active(_)) {
+        cx.dcx.emit_already_deprecated(old_name);
+    }
+    cx.dcx.exit_on_err();
 
     update_rename_targets(&mut data, old_name, LintName::new_clippy(new_name));
-
-    let Entry::Occupied(mut lint) = data.lints.entry(old_name) else {
-        eprintln!("error: failed to find lint `{old_name}`");
-        return;
-    };
-    let Lint::Active(mut prev_lint) = mem::replace(
-        lint.get_mut(),
-        Lint::Renamed(RenamedLint {
-            new_name: LintName::new_clippy(new_name),
-            version: cx.str_buf.alloc_display(cx.arena, clippy_version.rust_display()),
-        }),
-    ) else {
-        eprintln!("error: `{old_name}` is already deprecated");
-        return;
-    };
-
+    let mut updater = FileUpdater::default();
+    let prev_file = prev_lint.name_sp.file;
     let mut rename_mod = false;
     if let Entry::Vacant(e) = data.lints.entry(new_name) {
-        if prev_lint.module.ends_with(old_name)
-            && prev_lint
-                .path
-                .file_stem()
-                .is_some_and(|x| x.as_encoded_bytes() == old_name.as_bytes())
+        if let Some((path, file)) = prev_file.path.get().rsplit_once(path::MAIN_SEPARATOR)
+            && let Some(file) = file.strip_suffix(".rs")
+            && file == old_name
         {
-            let mut new_path = prev_lint.path.with_file_name(new_name).into_os_string();
-            new_path.push(".rs");
-            if try_rename_file(prev_lint.path.as_ref(), new_path.as_ref()) {
+            let new_path = cx
+                .str_buf
+                .alloc_display(cx.arena, format_args!("{path}{}{new_name}.rs", path::MAIN_SEPARATOR));
+            if try_rename_file(prev_file.path.get(), new_path) {
                 rename_mod = true;
+                prev_file.path.set(new_path);
             }
-
-            prev_lint.module = cx.str_buf.with(|buf| {
-                buf.push_str(&prev_lint.module[..prev_lint.module.len() - old_name.len()]);
-                buf.push_str(new_name);
-                cx.arena.alloc_str(buf)
-            });
         }
-        e.insert(Lint::Active(prev_lint));
-
+        e.insert(prev_lint);
         rename_test_files(old_name, new_name, &create_ignored_prefixes(old_name, &data));
     } else {
         println!("Renamed `{old_name}` to `{new_name}`");
@@ -160,22 +169,22 @@ pub fn rename<'cx, 'env: 'cx>(cx: ParseCx<'cx>, clippy_version: Version, old_nam
 
 /// Removes a lint's declaration and test files. Returns whether the module containing the
 /// lint was deleted.
-fn remove_lint_declaration(name: &str, lint: &ActiveLint<'_>, data: &LintData<'_>, updater: &mut FileUpdater) -> bool {
-    let delete_mod = if data.lints.iter().all(|(_, l)| {
-        if let Lint::Active(l) = l {
-            l.module != lint.module
-        } else {
-            true
-        }
-    }) {
-        delete_file_if_exists(lint.path.as_ref())
+fn remove_lint_declaration(
+    name: &str,
+    lint_file: &SourceFile<'_>,
+    lint_data: &ActiveLint<'_>,
+    data: &ParsedLints<'_>,
+    updater: &mut FileUpdater,
+) -> bool {
+    let delete_mod = if data.lints.iter().all(|(_, l)| l.name_sp.file != lint_file) {
+        delete_file_if_exists(lint_file.path.get())
     } else {
-        updater.update_file(&lint.path, &mut |_, src, dst| -> UpdateStatus {
-            let mut start = &src[..lint.declaration_range.start as usize];
+        updater.update_file(lint_file.path.get(), &mut |_, src, dst| -> UpdateStatus {
+            let mut start = &src[..lint_data.decl_range.start as usize];
             if start.ends_with("\n\n") {
                 start = &start[..start.len() - 1];
             }
-            let mut end = &src[lint.declaration_range.end as usize..];
+            let mut end = &src[lint_data.decl_range.end as usize..];
             if end.starts_with("\n\n") {
                 end = &end[1..];
             }
@@ -194,10 +203,10 @@ fn remove_lint_declaration(name: &str, lint: &ActiveLint<'_>, data: &LintData<'_
 ///
 /// This is needed because rustc doesn't allow a lint to be renamed to a lint that has
 /// also been renamed.
-fn update_rename_targets<'cx>(data: &mut LintData<'cx>, old_name: &str, new_name: LintName<'cx>) {
+fn update_rename_targets<'cx>(data: &mut ParsedLints<'cx>, old_name: &str, new_name: LintName<'cx>) {
     let old_name = LintName::new_clippy(old_name);
     for lint in data.lints.values_mut() {
-        if let Lint::Renamed(lint) = lint
+        if let LintData::Renamed(lint) = &mut lint.data
             && lint.new_name == old_name
         {
             lint.new_name = new_name;
@@ -206,7 +215,7 @@ fn update_rename_targets<'cx>(data: &mut LintData<'cx>, old_name: &str, new_name
 }
 
 /// Creates a list of prefixes to ignore when
-fn create_ignored_prefixes<'cx>(name: &str, data: &LintData<'cx>) -> Vec<&'cx str> {
+fn create_ignored_prefixes<'cx>(name: &str, data: &ParsedLints<'cx>) -> Vec<&'cx str> {
     data.lints
         .keys()
         .copied()
@@ -257,9 +266,9 @@ fn rename_test_files(old_name: &str, new_name: &str, ignored_prefixes: &[&str]) 
         old_buf.push(name);
         new_buf.extend([new_name.as_ref(), name.slice_encoded_bytes(old_name.len()..)]);
         if is_file {
-            try_rename_file(old_buf.as_ref(), new_buf.as_ref());
+            try_rename_file(&old_buf, &new_buf);
         } else {
-            try_rename_dir(old_buf.as_ref(), new_buf.as_ref());
+            try_rename_dir(&old_buf, &new_buf);
         }
         old_buf.truncate("tests/ui/".len());
         new_buf.truncate("tests/ui/".len());
@@ -274,7 +283,7 @@ fn rename_test_files(old_name: &str, new_name: &str, ignored_prefixes: &[&str]) 
     for (name, _) in &tests {
         old_buf.push(name);
         new_buf.extend([new_name.as_ref(), name.slice_encoded_bytes(old_name.len()..)]);
-        try_rename_dir(old_buf.as_ref(), new_buf.as_ref());
+        try_rename_dir(&old_buf, &new_buf);
         old_buf.truncate("tests/ui/".len());
         new_buf.truncate("tests/ui/".len());
     }
@@ -290,9 +299,9 @@ fn delete_test_files(lint: &str, ignored_prefixes: &[&str]) {
     for &(ref name, is_file) in &tests {
         buf.push(name);
         if is_file {
-            delete_file_if_exists(buf.as_ref());
+            delete_file_if_exists(&buf);
         } else {
-            delete_dir_if_exists(buf.as_ref());
+            delete_dir_if_exists(&buf);
         }
         buf.truncate("tests/ui/".len());
     }
@@ -304,7 +313,7 @@ fn delete_test_files(lint: &str, ignored_prefixes: &[&str]) {
     collect_ui_toml_test_names(lint, ignored_prefixes, &mut tests);
     for (name, _) in &tests {
         buf.push(name);
-        delete_dir_if_exists(buf.as_ref());
+        delete_dir_if_exists(&buf);
         buf.truncate("tests/ui/".len());
     }
 }
@@ -337,11 +346,9 @@ fn uplift_update_fn<'a>(
         let mut copy_pos = 0u32;
         let mut changed = false;
         let mut cursor = Cursor::new(src);
-        while let Some(ident) = cursor.find_any_ident() {
+        while let Some(ident) = cursor.find_capture_ident() {
             match cursor.get_text(ident) {
-                "mod"
-                    if remove_mod && cursor.match_all(&[cursor::Pat::Ident(old_name), cursor::Pat::Semi], &mut []) =>
-                {
+                "mod" if remove_mod && cursor.eat_ident(old_name) && cursor.eat_semi() => {
                     dst.push_str(&src[copy_pos as usize..ident.pos as usize]);
                     dst.push_str(new_name);
                     copy_pos = cursor.pos();
@@ -350,7 +357,7 @@ fn uplift_update_fn<'a>(
                     }
                     changed = true;
                 },
-                "clippy" if cursor.match_all(&[cursor::Pat::DoubleColon, cursor::Pat::Ident(old_name)], &mut []) => {
+                "clippy" if cursor.eat_double_colon() && cursor.eat_ident(old_name) => {
                     dst.push_str(&src[copy_pos as usize..ident.pos as usize]);
                     dst.push_str(new_name);
                     copy_pos = cursor.pos();
@@ -389,7 +396,9 @@ fn rename_update_fn<'a>(
                     match text {
                         // clippy::line_name or clippy::lint-name
                         "clippy" => {
-                            if cursor.match_all(&[cursor::Pat::DoubleColon, cursor::Pat::CaptureIdent], &mut captures)
+                            if cursor
+                                .match_all(&[cursor::Pat::DoubleColon, cursor::Pat::CaptureIdent], &mut captures)
+                                .is_ok()
                                 && cursor.get_text(captures[0]) == old_name
                             {
                                 dst.push_str(&src[copy_pos as usize..captures[0].pos as usize]);
@@ -400,8 +409,11 @@ fn rename_update_fn<'a>(
                         },
                         // mod lint_name
                         "mod" => {
-                            if rename_mod && let Some(pos) = cursor.match_ident(old_name) {
-                                dst.push_str(&src[copy_pos as usize..pos as usize]);
+                            if rename_mod
+                                && let Some(mod_name) = cursor.capture_ident()
+                                && cursor.get_text(mod_name) == old_name
+                            {
+                                dst.push_str(&src[copy_pos as usize..mod_name.pos as usize]);
                                 dst.push_str(new_name);
                                 copy_pos = cursor.pos();
                                 changed = true;
@@ -410,7 +422,7 @@ fn rename_update_fn<'a>(
                         // lint_name::
                         name if rename_mod && name == old_name => {
                             let name_end = cursor.pos();
-                            if cursor.match_pat(cursor::Pat::DoubleColon) {
+                            if cursor.eat_double_colon() {
                                 dst.push_str(&src[copy_pos as usize..match_start as usize]);
                                 dst.push_str(new_name);
                                 copy_pos = name_end;
@@ -449,7 +461,9 @@ fn rename_update_fn<'a>(
                 },
                 // ::lint_name
                 TokenKind::Colon
-                    if cursor.match_all(&[cursor::Pat::DoubleColon, cursor::Pat::CaptureIdent], &mut captures)
+                    if cursor
+                        .match_all(&[cursor::Pat::DoubleColon, cursor::Pat::CaptureIdent], &mut captures)
+                        .is_ok()
                         && cursor.get_text(captures[0]) == old_name =>
                 {
                     dst.push_str(&src[copy_pos as usize..captures[0].pos as usize]);

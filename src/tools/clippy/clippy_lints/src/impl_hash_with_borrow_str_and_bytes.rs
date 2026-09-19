@@ -2,9 +2,8 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::implements_trait;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::Ty;
-use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {

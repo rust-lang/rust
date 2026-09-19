@@ -1,0 +1,54 @@
+error[E0038]: the trait `Factory` is not dyn compatible
+  --> $DIR/static-constructor-prevents-dyn-no-api-guidance.rs:6:20
+   |
+LL | fn use_factory(_: &dyn Factory) {}
+   |                    ^^^^^^^^^^^ `Factory` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/static-constructor-prevents-dyn-no-api-guidance.rs:2:8
+   |
+LL | trait Factory {
+   |       ------- this trait is not dyn compatible...
+LL |     fn create() -> Box<dyn Factory>;
+   |        ^^^^^^ ...because associated function `create` has no `self` parameter
+help: consider turning `create` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
+   |
+LL |     fn create(&self) -> Box<dyn Factory>;
+   |               +++++
+help: alternatively, consider constraining `create` so it is explicitly marked as not applying to trait objects
+   |
+LL |     fn create() -> Box<dyn Factory> where Self: Sized;
+   |                                     +++++++++++++++++
+
+error[E0038]: the trait `Factory` is not dyn compatible
+  --> $DIR/static-constructor-prevents-dyn-no-api-guidance.rs:2:24
+   |
+LL |     fn create() -> Box<dyn Factory>;
+   |                        ^^^^^^^^^^^ `Factory` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/static-constructor-prevents-dyn-no-api-guidance.rs:2:8
+   |
+LL | trait Factory {
+   |       ------- this trait is not dyn compatible...
+LL |     fn create() -> Box<dyn Factory>;
+   |        ^^^^^^ ...because associated function `create` has no `self` parameter
+help: consider turning `create` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
+   |
+LL |     fn create(&self) -> Box<dyn Factory>;
+   |               +++++
+help: alternatively, consider constraining `create` so it is explicitly marked as not applying to trait objects
+   |
+LL |     fn create() -> Box<dyn Factory> where Self: Sized;
+   |                                     +++++++++++++++++
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL -     fn create() -> Box<dyn Factory>;
+LL +     fn create() -> Box<Self>;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

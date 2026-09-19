@@ -28,7 +28,7 @@ use crate::marker::{PointeeSized, Unsize};
 /// [`Unsize`][unsize] is used to mark types which can be coerced to DSTs if behind
 /// pointers. It is implemented automatically by the compiler.
 ///
-/// [dst-coerce]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
+/// [dst-coerce]: https://rust-lang.github.io/rfcs/0982-dst-coercion.html
 /// [unsize]: crate::marker::Unsize
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 #[unstable(feature = "coerce_unsized", issue = "18598")]

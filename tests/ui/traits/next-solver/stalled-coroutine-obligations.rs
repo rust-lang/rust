@@ -16,11 +16,11 @@
 fn stalled_copy_clone() {
     type T = impl Copy;
     let foo: T = async {};
-    //~^ ERROR: the trait bound
+    //~^ ERROR: type mismatch resolving `T == {async block
 
     type U = impl Clone;
     let bar: U = async {};
-    //~^ ERROR: the trait bound
+    //~^ ERROR: type mismatch resolving `U == {async block
 }
 
 auto trait Valid {}
@@ -31,13 +31,13 @@ fn stalled_auto_traits() {
     type T = impl Valid;
     let a = False;
     let foo: T = async { a };
-    //~^ ERROR: the trait bound `False: Valid` is not satisfied
+    //~^ ERROR: type mismatch resolving `T == {async block
 }
 
 
 trait Trait {
     fn stalled_send(&self, b: *mut ()) -> impl Future + Send {
-    //~^ ERROR: type mismatch resolving
+    //~^ ERROR: type mismatch resolving `impl Future + Send == {async block
         async move {
             b
         }

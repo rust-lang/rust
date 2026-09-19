@@ -20,6 +20,7 @@ pub fn rintf(x: f32) -> f32 {
         name: rintf,
         use_arch: any(
             all(target_arch = "aarch64", target_feature = "neon"),
+            all(any(target_arch = "loongarch32", target_arch = "loongarch64"), target_feature = "lsx"),
             all(target_arch = "wasm32", intrinsics_enabled),
         ),
         args: x,
@@ -35,6 +36,7 @@ pub fn rint(x: f64) -> f64 {
         name: rint,
         use_arch: any(
             all(target_arch = "aarch64", target_feature = "neon"),
+            all(any(target_arch = "loongarch32", target_arch = "loongarch64"), target_feature = "lsx"),
             all(target_arch = "wasm32", intrinsics_enabled),
         ),
         use_arch_required: x86_no_sse2,

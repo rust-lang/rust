@@ -3,7 +3,6 @@
 //! See <https://rustc-dev-guide.rust-lang.org/diagnostics.html> for an
 //! overview of how lints are implemented.
 
-use std::cell::Cell;
 use std::slice;
 
 use rustc_abi as abi;
@@ -19,7 +18,10 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::{Pat, PatKind};
-use rustc_middle::bug;
+use rustc_lint_defs::{
+    FutureIncompatibleInfo, Lint, LintExpectationId, LintId, StableLintExpectationId,
+    UnstableLintExpectationId,
+};
 use rustc_middle::lint::{LevelSpec, StableLevelSpec, UnstableLevelSpec};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
@@ -27,39 +29,54 @@ use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_n
 use rustc_middle::ty::{
     self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode, Unnormalized,
 };
-use rustc_session::lint::{
-    FutureIncompatibleInfo, Lint, LintExpectationId, LintId, StableLintExpectationId,
-    UnstableLintExpectationId,
-};
 use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, bug, sym};
 use tracing::debug;
 
 use self::TargetLint::*;
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 
-type EarlyLintPassFactory = dyn Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync;
+pub(crate) type EarlyLintPassFactory =
+    Box<dyn Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync>;
 type LateLintPassFactory =
-    dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::DynSend + sync::DynSync;
+    Box<dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::DynSend + sync::DynSync>;
 
 /// Information about the registered lints.
+//
+// About the pass factories: these should only be called once, but since we
+// want to avoid locks or interior mutability, we don't enforce this. Lints
+// should, in theory, be compatible with being constructed more than once,
+// though not necessarily in a sane manner. This is safe though.
 pub struct LintStore {
     /// Registered lints.
     lints: Vec<&'static Lint>,
 
-    /// Constructor functions for each variety of lint pass.
+    /// This lint pass kind is softly deprecated. It misses expanded code and has caused a few
+    /// errors in the past. Currently, it is only used in Clippy. New implementations
+    /// should avoid using this interface, as it might be removed in the future.
     ///
-    /// These should only be called once, but since we want to avoid locks or
-    /// interior mutability, we don't enforce this (and lints should, in theory,
-    /// be compatible with being constructed more than once, though not
-    /// necessarily in a sane manner. This is safe though.)
-    pub pre_expansion_passes: Vec<Box<EarlyLintPassFactory>>,
-    pub early_passes: Vec<Box<EarlyLintPassFactory>>,
-    pub late_passes: Vec<Box<LateLintPassFactory>>,
-    /// This is unique in that we construct them per-module, so not once.
-    pub late_module_passes: Vec<Box<LateLintPassFactory>>,
+    /// * See [rust#69838](https://github.com/rust-lang/rust/pull/69838)
+    /// * See [rust-clippy#5518](https://github.com/rust-lang/rust-clippy/pull/5518)
+    pub(crate) pre_expansion_lint_passes: Vec<EarlyLintPassFactory>,
+
+    /// These lint passes run on AST nodes.
+    pub(crate) early_lint_passes: Vec<EarlyLintPassFactory>,
+
+    /// These lint passes run on HIR nodes. Each one processes an entire crate. They don't benefit
+    /// from incremental compilation. `late_lint_mod_passes` should be used in preference where
+    /// possible; only use `late_lint_passes` for lints that implement `check_crate` and/or
+    /// `check_crate_post` and accumulate cross-module state.
+    ///
+    /// The exception is Clippy, which uses `late_lint_passes` for all late lint passes. It needs
+    /// `check_crate`/`check_crate_post` for some of its lints and uses late lint passes throughout
+    /// for consistency. This is ok because Clippy isn't wired for incremental compilation.
+    pub(crate) late_lint_passes: Vec<LateLintPassFactory>,
+
+    /// These lint passes run on HIR nodes, and are constructed per-module (i.e. multiple times).
+    /// They benefit from incremental compilation.
+    pub(crate) late_lint_mod_passes: Vec<LateLintPassFactory>,
 
     /// Lints indexed by name.
     by_name: UnordMap<String, TargetLint>,
@@ -135,10 +152,10 @@ impl LintStore {
     pub fn new() -> LintStore {
         LintStore {
             lints: vec![],
-            pre_expansion_passes: vec![],
-            early_passes: vec![],
-            late_passes: vec![],
-            late_module_passes: vec![],
+            pre_expansion_lint_passes: vec![],
+            early_lint_passes: vec![],
+            late_lint_passes: vec![],
+            late_lint_mod_passes: vec![],
             by_name: Default::default(),
             lint_groups: Default::default(),
         }
@@ -165,44 +182,24 @@ impl LintStore {
         self.lint_groups.keys().copied()
     }
 
-    pub fn register_early_pass(
-        &mut self,
-        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::DynSend + sync::DynSync,
-    ) {
-        self.early_passes.push(Box::new(pass));
+    /// See the comment on `LintStore::pre_expansion_lint_passes`.
+    pub fn register_pre_expansion_lint_pass(&mut self, pass: EarlyLintPassFactory) {
+        self.pre_expansion_lint_passes.push(pass);
     }
 
-    /// This lint pass is softly deprecated. It misses expanded code and has caused a few
-    /// errors in the past. Currently, it is only used in Clippy. New implementations
-    /// should avoid using this interface, as it might be removed in the future.
-    ///
-    /// * See [rust#69838](https://github.com/rust-lang/rust/pull/69838)
-    /// * See [rust-clippy#5518](https://github.com/rust-lang/rust-clippy/pull/5518)
-    pub fn register_pre_expansion_pass(
-        &mut self,
-        pass: impl Fn() -> EarlyLintPassObject + 'static + sync::DynSend + sync::DynSync,
-    ) {
-        self.pre_expansion_passes.push(Box::new(pass));
+    /// See the comment on `LintStore::early_lint_passes`.
+    pub fn register_early_lint_pass(&mut self, pass: EarlyLintPassFactory) {
+        self.early_lint_passes.push(pass);
     }
 
-    pub fn register_late_pass(
-        &mut self,
-        pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
-        + 'static
-        + sync::DynSend
-        + sync::DynSync,
-    ) {
-        self.late_passes.push(Box::new(pass));
+    /// See the comment on `LintStore::late_lint_passes`.
+    pub fn register_late_lint_pass(&mut self, pass: LateLintPassFactory) {
+        self.late_lint_passes.push(pass);
     }
 
-    pub fn register_late_mod_pass(
-        &mut self,
-        pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
-        + 'static
-        + sync::DynSend
-        + sync::DynSync,
-    ) {
-        self.late_module_passes.push(Box::new(pass));
+    /// See the comment on `LintStore::late_lint_mod_passes`.
+    pub fn register_late_lint_mod_pass(&mut self, pass: LateLintPassFactory) {
+        self.late_lint_mod_passes.push(pass);
     }
 
     /// Helper method for register_early/late_pass
@@ -347,13 +344,13 @@ impl LintStore {
         &self,
         lint_name: &str,
         tool_name: Option<Symbol>,
-        registered_tools: &RegisteredTools,
+        registered_lint_tools: &RegisteredTools,
     ) -> CheckLintNameResult<'_> {
         if let Some(tool_name) = tool_name {
             // FIXME: rustc and rustdoc are considered tools for lints, but not for attributes.
             if tool_name != sym::rustc
                 && tool_name != sym::rustdoc
-                && !registered_tools.contains(&Ident::with_dummy_span(tool_name))
+                && !registered_lint_tools.contains(&Ident::with_dummy_span(tool_name))
             {
                 return CheckLintNameResult::NoTool;
             }
@@ -485,11 +482,8 @@ pub struct LateContext<'tcx> {
     /// Current body, or `None` if outside a body.
     pub enclosing_body: Option<hir::BodyId>,
 
-    /// Type-checking results for the current body. Access using the `typeck_results`
-    /// and `maybe_typeck_results` methods, which handle querying the typeck results on demand.
-    // FIXME(eddyb) move all the code accessing internal fields like this,
-    // to this module, to avoid exposing it to lint logic.
-    pub(super) cached_typeck_results: Cell<Option<&'tcx ty::TypeckResults<'tcx>>>,
+    /// Type-checking results for the current body.
+    pub typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
 
     /// Parameter environment for the item we are in.
     pub param_env: ty::ParamEnv<'tcx>,
@@ -573,7 +567,7 @@ impl<'a> EarlyContext<'a> {
         features: &'a Features,
         lint_added_lints: bool,
         lint_store: &'a LintStore,
-        registered_tools: &'a RegisteredTools,
+        registered_lint_tools: &'a RegisteredTools,
         buffered: LintBuffer,
     ) -> EarlyContext<'a> {
         EarlyContext {
@@ -582,7 +576,7 @@ impl<'a> EarlyContext<'a> {
                 features,
                 lint_added_lints,
                 lint_store,
-                registered_tools,
+                registered_lint_tools,
             ),
             buffered,
         }
@@ -646,7 +640,7 @@ impl<'tcx> LateContext<'tcx> {
             && self.tcx.use_typing_mode_post_typeck_until_borrowck()
         {
             let def_id = self.tcx.hir_enclosing_body_owner(body_id.hir_id);
-            TypingMode::borrowck(self.tcx, def_id)
+            TypingMode::post_borrowck_analysis(self.tcx, def_id)
         } else {
             TypingMode::non_body_analysis()
         }
@@ -664,24 +658,13 @@ impl<'tcx> LateContext<'tcx> {
         self.tcx.type_is_use_cloned_modulo_regions(self.typing_env(), ty)
     }
 
-    /// Gets the type-checking results for the current body,
-    /// or `None` if outside a body.
-    pub fn maybe_typeck_results(&self) -> Option<&'tcx ty::TypeckResults<'tcx>> {
-        self.cached_typeck_results.get().or_else(|| {
-            self.enclosing_body.map(|body| {
-                let typeck_results = self.tcx.typeck_body(body);
-                self.cached_typeck_results.set(Some(typeck_results));
-                typeck_results
-            })
-        })
-    }
-
     /// Gets the type-checking results for the current body.
     /// As this will ICE if called outside bodies, only call when working with
     /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
+    #[inline]
     #[track_caller]
     pub fn typeck_results(&self) -> &'tcx ty::TypeckResults<'tcx> {
-        self.maybe_typeck_results().expect("`LateContext::typeck_results` called outside of body")
+        self.typeck_results.expect("`LateContext::typeck_results` called outside of body")
     }
 
     /// Returns the final resolution of a `QPath`, or `Res::Err` if unavailable.
@@ -691,7 +674,7 @@ impl<'tcx> LateContext<'tcx> {
         match *qpath {
             hir::QPath::Resolved(_, path) => path.res,
             hir::QPath::TypeRelative(..) => self
-                .maybe_typeck_results()
+                .typeck_results
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)
                 .or_else(|| {
                     self.tcx
@@ -848,7 +831,7 @@ impl<'tcx> LateContext<'tcx> {
         tcx.associated_items(trait_id)
             .find_by_ident_and_kind(tcx, Ident::with_dummy_span(name), ty::AssocTag::Type, trait_id)
             .and_then(|assoc| {
-                let proj = Ty::new_projection(tcx, assoc.def_id, [self_ty]);
+                let proj = Ty::new_projection(tcx, ty::IsRigid::No, assoc.def_id, [self_ty]);
                 tcx.try_normalize_erasing_regions(self.typing_env(), Unnormalized::new_wip(proj))
                     .ok()
             })

@@ -28,10 +28,9 @@ arbitrary = { version = "1.4.1", features = ["derive"] }
 
 # local deps
 syntax-bridge.workspace = true
-syntax.workspace = true
 
-# tt is needed for testing
-cfg = { path = ".", default-features = false, features = ["tt"] }
+# tt and syntax are needed for testing
+cfg = { path = ".", default-features = false, features = ["tt", "syntax"] }
 
 [features]
 default = []

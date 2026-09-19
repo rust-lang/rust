@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //@ revisions: stack-protector-explicit-allow stack-protector-and-control-flow-guard-explicit-allow stack-protector-deny-then-allow
 //@ check-pass
 //@ edition:future

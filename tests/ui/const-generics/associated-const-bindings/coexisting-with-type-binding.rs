@@ -12,15 +12,17 @@ trait Trait: SuperTrait {
     type N;
     type Q;
 
-    type const N: usize;
+    #[rustc_always_gca]
+    const N: usize;
 }
 
 trait SuperTrait {
-    type const Q: &'static str;
+    #[rustc_always_gca]
+    const Q: &'static str;
 }
 
 fn take0(_: impl Trait<N = 0, N = ()>) {}
 
-fn take1(_: impl Trait<Q = "...", Q = [()]>) {}
+fn take1(_: impl Trait<Q = { core::direct_const_arg!("...") }, Q = [()]>) {}
 
 fn main() {}

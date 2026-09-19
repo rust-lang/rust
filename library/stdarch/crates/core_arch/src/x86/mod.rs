@@ -40,12 +40,12 @@ types! {
     /// # Examples
     ///
     /// ```
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
     /// use std::arch::x86_64::*;
     ///
-    /// # fn main() {
     /// # #[target_feature(enable = "sse2")]
     /// # #[allow(unused_unsafe)] // temporary, to unstick CI
     /// # unsafe fn foo() { unsafe {
@@ -56,6 +56,7 @@ types! {
     /// # if is_x86_feature_detected!("sse2") { unsafe { foo() } }
     /// # }
     /// ```
+    #[doc(cfg(any(target_arch = "x86", target_arch = "x86_64")))]
     pub struct __m128i(2 x i64);
 
     /// 128-bit wide set of four `f32` types, x86-specific
@@ -83,12 +84,12 @@ types! {
     /// # Examples
     ///
     /// ```
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
     /// use std::arch::x86_64::*;
     ///
-    /// # fn main() {
     /// # #[target_feature(enable = "sse")]
     /// # #[allow(unused_unsafe)] // temporary, to unstick CI
     /// # unsafe fn foo() { unsafe {
@@ -99,6 +100,7 @@ types! {
     /// # if is_x86_feature_detected!("sse") { unsafe { foo() } }
     /// # }
     /// ```
+    #[doc(cfg(any(target_arch = "x86", target_arch = "x86_64")))]
     pub struct __m128(4 x f32);
 
     /// 128-bit wide set of two `f64` types, x86-specific
@@ -126,12 +128,12 @@ types! {
     /// # Examples
     ///
     /// ```
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
     /// use std::arch::x86_64::*;
     ///
-    /// # fn main() {
     /// # #[target_feature(enable = "sse2")]
     /// # #[allow(unused_unsafe)] // temporary, to unstick CI
     /// # unsafe fn foo() { unsafe {
@@ -142,6 +144,7 @@ types! {
     /// # if is_x86_feature_detected!("sse2") { unsafe { foo() } }
     /// # }
     /// ```
+    #[doc(cfg(any(target_arch = "x86", target_arch = "x86_64")))]
     pub struct __m128d(2 x f64);
 
     /// 256-bit wide integer vector type, x86-specific
@@ -173,12 +176,12 @@ types! {
     /// # Examples
     ///
     /// ```
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
     /// use std::arch::x86_64::*;
     ///
-    /// # fn main() {
     /// # #[target_feature(enable = "avx")]
     /// # #[allow(unused_unsafe)] // temporary, to unstick CI
     /// # unsafe fn foo() { unsafe {
@@ -189,6 +192,7 @@ types! {
     /// # if is_x86_feature_detected!("avx") { unsafe { foo() } }
     /// # }
     /// ```
+    #[doc(cfg(any(target_arch = "x86", target_arch = "x86_64")))]
     pub struct __m256i(4 x i64);
 
     /// 256-bit wide set of eight `f32` types, x86-specific
@@ -216,12 +220,12 @@ types! {
     /// # Examples
     ///
     /// ```
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
     /// use std::arch::x86_64::*;
     ///
-    /// # fn main() {
     /// # #[target_feature(enable = "avx")]
     /// # #[allow(unused_unsafe)] // temporary, to unstick CI
     /// # unsafe fn foo() { unsafe {
@@ -232,6 +236,7 @@ types! {
     /// # if is_x86_feature_detected!("avx") { unsafe { foo() } }
     /// # }
     /// ```
+    #[doc(cfg(any(target_arch = "x86", target_arch = "x86_64")))]
     pub struct __m256(8 x f32);
 
     /// 256-bit wide set of four `f64` types, x86-specific
@@ -259,12 +264,12 @@ types! {
     /// # Examples
     ///
     /// ```
+    /// # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
     /// #[cfg(target_arch = "x86")]
     /// use std::arch::x86::*;
     /// #[cfg(target_arch = "x86_64")]
     /// use std::arch::x86_64::*;
     ///
-    /// # fn main() {
     /// # #[target_feature(enable = "avx")]
     /// # #[allow(unused_unsafe)] // temporary, to unstick CI
     /// # unsafe fn foo() { unsafe {
@@ -275,6 +280,7 @@ types! {
     /// # if is_x86_feature_detected!("avx") { unsafe { foo() } }
     /// # }
     /// ```
+    #[doc(cfg(any(target_arch = "x86", target_arch = "x86_64")))]
     pub struct __m256d(4 x f64);
 }
 

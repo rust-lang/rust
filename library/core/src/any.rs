@@ -86,7 +86,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::intrinsics::{self, type_id_vtable};
+use crate::intrinsics::{self, type_id, type_id_vtable};
 use crate::mem::transmute;
 use crate::mem::type_info::{TraitImpl, TypeKind};
 use crate::{fmt, hash, ptr};
@@ -786,12 +786,10 @@ impl TypeId {
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
-    pub fn trait_info_of<T: ptr::Pointee<Metadata = ptr::DynMetadata<T>> + ?Sized + 'static>(
-        self,
-    ) -> Option<TraitImpl<T>> {
+    pub fn trait_info_of<'a, T: TryAsDynCompatible<'a> + ?Sized>(self) -> Option<TraitImpl<T>> {
         // SAFETY: The vtable was obtained for `T`, so it is guaranteed to be `DynMetadata<T>`.
         // The intrinsic can't infer this because it is designed to work with arbitrary TypeIds.
-        unsafe { transmute(self.trait_info_of_trait_type_id(const { TypeId::of::<T>() })) }
+        unsafe { transmute(self.trait_info_of_trait_type_id(const { type_id::<T>() })) }
     }
 
     /// Checks if the [TypeId] implements the trait of `trait_represented_by_type_id`. If it does it returns [TraitImpl] which can be used to build a fat pointer.
@@ -948,52 +946,218 @@ pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
     type_name::<T>()
 }
 
-/// Returns `Some(&U)` if `T` can be coerced to the trait object type `U`. Otherwise, it returns `None`.
+/// Trait that is automatically implemented for all `dyn Trait<'b, C> + 'a` without assoc type bounds.
+/// The lifetime parameter should be the same that is used to constrain generic type parameters
+/// that are turned into the dyn trait constrained by `TryAsDynCompatible`.
+///
+/// This is required for `try_as_dyn` to be able to soundly convert non-static
+/// types to `dyn Trait`.
+///
+/// Note: these requirements are sufficient for soundness, but it is unclear
+/// if they are all necessary. We may be able to lift some requirements in favor
+/// of more precise ones.
+///
+#[unstable(feature = "try_as_dyn", issue = "144361")]
+#[lang = "try_as_dyn"]
+#[rustc_deny_explicit_impl]
+pub trait TryAsDynCompatible<'a>: ptr::Pointee<Metadata = ptr::DynMetadata<Self>> {}
+
+/// Returns `Some(&U)` if `T` can be coerced to the dyn trait type `U`. Otherwise, it returns `None`.
+///
+/// <div class="warning">
+///
+/// This function is implemented on a best-effort basis. It is not always possible to determine
+/// whether a generic type implements a trait; thus, this function may produce false negatives,
+/// returning `None` even when `T` implements the requested trait.
+///
+/// `try_as_dyn` is guaranteed to return `None` if `T` does *not* implement the requested trait, but
+/// it is never guaranteed to return `Some`. It is intended  to be used for performance
+/// optimizations and debugging, and `try_as_dyn` succeeding for a particular type should never be
+/// relied upon for correctness (i.e. callers must behave correctly even if `try_as_dyn` spuriously
+/// returns `None`).
+///
+/// </div>
+///
+/// # Examples of false negatives
+///
+/// Some examples of situations where `try_as_dyn::<T, dyn Trait>` returns `None` in practice even
+/// when `T` implements `Trait`:
+/// * `T`'s impl for `Trait` is lifetime-dependent
+/// * `T`'s impl for `Trait` is a builtin impl (e.g. `dyn Debug` implements `Debug`)
+/// * `T`'s impl for `Trait` has a trait bound which requires transitively reasoning about
+/// lifetime-dependent or builtin impls
+///
+/// This list is not exhaustive. There is some detailed documentation about these limitations at
+/// <https://doc.rust-lang.org/unstable-book/library-features/try-as-dyn.html> But the gist is
+/// summarized below:
+///
+/// ## Lifetime-dependent impls
+///
+/// `try_as_dyn` does not have access to lifetime information, thus it cannot differentiate between
+/// `'static` and other lifetimes and cannot reason about outlives bounds on impls. Thus it cannot
+/// reason about impls that have `'static` lifetimes or outlives bounds of any kind.
+///
+/// The following impls are lifetime-dependent and produce false negatives when used with
+/// `try_as_dyn`:
+///
+/// ```rust
+/// # trait Trait<'a, T> {}
+/// # struct Type<'b, U>(&'b U);
+/// # use std::fmt::{Debug, Display};
+/// // impl mentions a 'static lifetime
+/// impl<'a, T: Debug, U: Display> Trait<'a, T> for Type<'static, U> {}
+/// ```
+///
+/// ```
+/// # trait Trait<'a, T> {}
+/// # struct Type<'b, U>(&'b U);
+/// # use std::fmt::{Debug, Display};
+/// // impl contains an outlives bound
+/// impl<'a, 'b, T: Debug, U: Display> Trait<'a, T> for Type<'b, U>
+///     where 'b: 'a {}
+/// ```
+///
+/// Impls that mention a generic parameter more than once are lifetime-dependent and produce false
+/// negatives, even if they don't expressly mention any lifetimes:
+///
+/// ```rust
+/// # trait Trait<T> {}
+/// // impl mentions T more than once, creating an implied lifetime dependence
+/// impl<T> Trait<T> for T {}
+/// ```
+///
+/// The following impl is lifetime-**independent**, because even though it *mentions* lifetimes,
+/// implementation of the trait is not *conditional* over the lifetimes:
+/// ```rust
+/// # trait Trait<'a, T> {}
+/// # struct Type<'b, U>(&'b U);
+/// # use std::fmt::{Debug, Display};
+/// impl<'a, 'b, T: Debug, U: Display> Trait<'a, T> for Type<'b, U> {}
+/// ```
+///
+/// Impls without generic parameters at all are also lifetime-independent, as long as they contain
+/// no `'static` lifetimes.
+///
+/// ## Builtin impls
+///
+/// Builtin impls (like `impl Debug for dyn Debug`, or automatic implementations of `Send` and
+/// `Sync`) have various obscure rules and often are not fully generic. To simplify reasoning about
+/// what is allowed and what not, all builtin impls are rejected and will neither directly nor
+/// indirectly contribute to a `Some` result.
 ///
 /// # Compile-time failures
-/// Determining whether `T` can be coerced to the trait object type `U` requires compiler trait resolution.
+/// Determining whether `T` can be coerced to the dyn trait type `U` requires compiler trait resolution.
 /// In some cases, that resolution can exceed the recursion limit,
 /// and compilation will fail instead of this function returning `None`.
+///
+/// The input type `T` must outlive the lifetime `'a` on the `dyn Trait + 'a`.
+/// This is basically the same rule that forbids `let x: &dyn Trait + 'static = &&some_local_variable;`
+/// So if you see borrow check errors around `try_as_dyn`, think about whether a normal unsizing
+/// coercion would be possible at all if you were using concrete types or had bounds on the input type.
+///
 /// # Examples
+///
+/// Using `try_as_dyn` to use bytewise comparison instead of PartialEq for certain types, similar to
+/// the standard library's optimization for slices:
 ///
 /// ```rust
 /// #![feature(try_as_dyn)]
 ///
 /// use core::any::try_as_dyn;
 ///
-/// trait Animal {
-///     fn speak(&self) -> &'static str;
+/// /// Compares two objects for equality,
+/// fn eq<T: PartialEq + ?Sized>(x: &T, y: &T) -> bool {
+///     if try_as_dyn::<T, dyn BytewiseEq>(&x).is_some() {
+///         // T implements BytewiseEq, so we cast the slices to u8 and compare their bytes
+///         // instead of calling PartialEq on each individual element.
+///         unsafe {
+///             // SAFETY: x and y are valid for reads of size_of::<T>() bytes
+///             // BytewiseEq trait guarantees we can interperet these bytes as u8's
+///             // and compare them for equality
+///             let x = &*core::ptr::slice_from_raw_parts(
+///                 (&raw const *x).cast::<u8>(),
+///                 core::mem::size_of_val(x),
+///             );
+///             let y = &*core::ptr::slice_from_raw_parts(
+///                 (&raw const *y).cast::<u8>(),
+///                 core::mem::size_of_val(y),
+///             );
+///
+///             x == y
+///         }
+///     } else {
+///         // T does not implement BytewiseEq, or try_as_dyn returned a false negative.
+///         // Fallback to PartialEq.
+///         //
+///         // BytewiseEq guarantees bytewise comparison and PartialEq will produce the same
+///         // results, so our code behaves correctly if try_as_dyn produces false negatives.
+///         x == y
+///     }
 /// }
 ///
-/// struct Dog;
-/// impl Animal for Dog {
-///     fn speak(&self) -> &'static str { "woof" }
+/// /// Marker trait for types that can be compared for equality
+/// /// using a bytewise comparison (i.e. memcmp).
+/// ///
+/// /// Implementations must ensure the type contains no uninitialized bytes,
+/// /// and that a bytewise comparison will produce the same result as PartialEq.
+/// unsafe trait BytewiseEq {}
+///
+/// unsafe impl BytewiseEq for u8 {}
+/// unsafe impl BytewiseEq for u16 {}
+/// unsafe impl BytewiseEq for u32 {}
+///
+/// // u16 implements BytewiseEq, so eq::<u16> will use bytewise comparison
+/// // (unless try_as_dyn returns a false negative)
+/// assert!(eq(&5u16, &5u16));
+///
+/// // f32 does not implement BytewiseEq, so eq::<f32> will use element-wise comparison
+/// assert!(eq(&5f32, &5f32));
+/// ```
+///
+/// Using `try_as_dyn` for debugging:
+///
+/// ```rust
+/// #![feature(try_as_dyn)]
+///
+/// use core::any::{try_as_dyn, type_name};
+/// use core::fmt::Debug;
+///
+/// /// Prints a value of type T, attempting to use its Debug implementation with try_as_dyn.
+/// fn debug_println<T: ?Sized>(x: &T) {
+///     if let Some(debug) = try_as_dyn::<T, dyn Debug>(x) {
+///         println!("{:?}", debug);
+///     } else {
+///         // T does not implement Debug, or try_as_dyn returned a false negative.
+///         // Print the name of the type instead.
+///         //
+///         // We're not relying on this for correctness; it's just for debugging,
+///         // so we can tolerate false negatives.
+///         println!("<{}>", type_name::<T>());
+///     }
 /// }
 ///
-/// struct Rock; // does not implement Animal
+/// /// This type does not implement Debug.
+/// struct NoDebug;
 ///
-/// let dog = Dog;
-/// let rock = Rock;
+/// // Prints "Hello, world!" unless try_as_dyn returns a false negative.
+/// debug_println(&"Hello, world!");
 ///
-/// let as_animal: Option<&dyn Animal> = try_as_dyn::<Dog, dyn Animal>(&dog);
-/// assert_eq!(as_animal.unwrap().speak(), "woof");
+/// // Prints the name of the type, since it does not have a Debug implementation.
+/// debug_println(&NoDebug);
 ///
-/// let not_an_animal: Option<&dyn Animal> = try_as_dyn::<Rock, dyn Animal>(&rock);
-/// assert!(not_an_animal.is_none());
+/// // The current implementation of try_as_dyn gives a false positive in this case!
+/// debug_println(&"Hello, world!" as &dyn Debug);
 /// ```
 #[must_use]
 #[unstable(feature = "try_as_dyn", issue = "144361")]
-pub const fn try_as_dyn<
-    T: Any + ?Sized + 'static,
-    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
->(
+pub const fn try_as_dyn<'a, T: ?Sized + 'a, U: TryAsDynCompatible<'a> + ?Sized>(
     t: &T,
 ) -> Option<&U> {
     // For unsized `T`, `trait_info_of` always returns `None` (vtable lookup is
     // only supported for sized types). The function therefore unconditionally
     // returns `None` in that case.
     let vtable: Option<ptr::DynMetadata<U>> =
-        const { TypeId::of::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
+        const { type_id::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
     match vtable {
         Some(dyn_metadata) => {
             let pointer = ptr::from_raw_parts(t as *const T as *const (), dyn_metadata);
@@ -1007,52 +1171,19 @@ pub const fn try_as_dyn<
     }
 }
 
-/// Returns `Some(&mut U)` if `T` can be coerced to the trait object type `U`. Otherwise, it returns `None`.
+/// Returns `Some(&mut U)` if `T` can be coerced to the dyn trait type `U`. Otherwise, it returns `None`.
 ///
-/// # Compile-time failures
-/// Determining whether `T` can be coerced to the trait object type `U` requires compiler trait resolution.
-/// In some cases, that resolution can exceed the recursion limit,
-/// and compilation will fail instead of this function returning `None`.
-/// # Examples
-///
-/// ```rust
-/// #![feature(try_as_dyn)]
-///
-/// use core::any::try_as_dyn_mut;
-///
-/// trait Animal {
-///     fn speak(&self) -> &'static str;
-/// }
-///
-/// struct Dog;
-/// impl Animal for Dog {
-///     fn speak(&self) -> &'static str { "woof" }
-/// }
-///
-/// struct Rock; // does not implement Animal
-///
-/// let mut dog = Dog;
-/// let mut rock = Rock;
-///
-/// let as_animal: Option<&mut dyn Animal> = try_as_dyn_mut::<Dog, dyn Animal>(&mut dog);
-/// assert_eq!(as_animal.unwrap().speak(), "woof");
-///
-/// let not_an_animal: Option<&mut dyn Animal> = try_as_dyn_mut::<Rock, dyn Animal>(&mut rock);
-/// assert!(not_an_animal.is_none());
-/// ```
+/// See documentation of [try_as_dyn] for details about the behaviour and limitations.
 #[must_use]
 #[unstable(feature = "try_as_dyn", issue = "144361")]
-pub const fn try_as_dyn_mut<
-    T: Any + ?Sized + 'static,
-    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
->(
+pub const fn try_as_dyn_mut<'a, T: ?Sized + 'a, U: TryAsDynCompatible<'a> + ?Sized>(
     t: &mut T,
 ) -> Option<&mut U> {
     // For unsized `T`, `trait_info_of` always returns `None` (vtable lookup is
     // only supported for sized types). The function therefore unconditionally
     // returns `None` in that case.
     let vtable: Option<ptr::DynMetadata<U>> =
-        const { TypeId::of::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
+        const { type_id::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
     match vtable {
         Some(dyn_metadata) => {
             let pointer = ptr::from_raw_parts_mut(t as *mut T as *mut (), dyn_metadata);

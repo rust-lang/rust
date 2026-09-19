@@ -1,6 +1,14 @@
 //@ run-pass
 //@ ignore-backends: gcc
-#![feature(c_variadic, const_c_variadic, const_destruct, const_raw_ptr_comparison)]
+#![feature(
+    const_c_variadic,
+    c_variadic_va_arg_safe,
+    c_variadic_int128,
+    const_destruct,
+    const_raw_ptr_comparison,
+    f128
+)]
+#![allow(unused_features)] // c_variadic_int128 is only used on 64-bit targets.
 
 use std::ffi::*;
 
@@ -12,7 +20,8 @@ use std::ffi::*;
 const unsafe extern "C" fn variadic<T: VaArgSafe>(mut ap: ...) -> (T, T) {
     let x = ap.next_arg::<T>();
     // Intersperse a small type to test alignment logic. A `u32` (i.e. `c_uint`) is the smallest
-    // type that implements `VaArgSafe`: smaller types would automatically be promoted.
+    // type that implements `VaArgSafe` (except on some 16-bit targets): smaller types would
+    // automatically be promoted.
     assert!(ap.next_arg::<u32>() == 0xAAAA_AAAA);
     let y = ap.next_arg::<T>();
 
@@ -74,5 +83,69 @@ fn main() {
         static mut B: u32 = 2u32;
         roundtrip_ptr!(*const u32, &raw const A, &raw const B);
         roundtrip_ptr!(*mut u32, &raw mut A, &raw mut B);
+
+        // The 128-bit integers only implement VaArgSafe on some targets, a subset of those that
+        // define `__int128`. We test some of those targets here.
+        cfg_select! {
+            any(
+                target_arch = "aarch64",
+                target_arch = "amdgpu",
+                target_arch = "arm64ec",
+                target_arch = "bpf",
+                target_arch = "loongarch64",
+                target_arch = "mips64",
+                target_arch = "mips64r6",
+                target_arch = "nvptx64",
+                target_arch = "powerpc64",
+                target_arch = "riscv64",
+                target_arch = "s390x",
+                target_arch = "sparc64",
+                target_arch = "wasm32",
+                target_arch = "wasm64",
+                target_arch = "x86_64",
+            ) => {
+                #[cfg(not(any(
+                    target_arch = "wasm32",
+                    target_abi = "x32",
+                    target_pointer_width = "64",
+                )))]
+                compile_error!("unexpected target architecture for 128-bit c-variadic");
+
+                roundtrip!(i128, -1, -2);
+                roundtrip!(u128, 1, 2);
+            }
+            _ => { /* unsupported */ }
+        }
+
+        cfg_select! {
+            any(
+                all(
+                    any(target_arch = "x86_64", target_arch = "x86"),
+                    not(target_vendor = "apple"),
+                    not(target_env = "msvc")
+                ),
+                all(target_arch = "powerpc64", target_feature = "vsx"),
+                all(
+                    not(windows),
+                    not(target_vendor = "apple"),
+                    any(
+                        target_arch = "aarch64",
+                        target_arch = "loongarch32",
+                        target_arch = "loongarch64",
+                        target_arch = "mips64",
+                        target_arch = "mips64r6",
+                        target_arch = "riscv64",
+                        target_arch = "s390x",
+                        target_arch = "sparc",
+                        target_arch = "sparc64",
+                        target_arch = "wasm32",
+                        target_arch = "wasm64",
+                    ),
+                ),
+            ) => {
+                roundtrip!(f128, -1.0, f128::MAX);
+            }
+            _ => { /* unsupported */ }
+        }
     }
 }

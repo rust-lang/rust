@@ -1,3 +1,4 @@
+// This code is automatically generated. DO NOT MODIFY.
 //! Hexagon scalar intrinsics
 //!
 //! This module provides intrinsics for scalar (non-HVX) Hexagon DSP operations,
@@ -34,7 +35,7 @@ use stdarch_test::assert_instr;
 
 // LLVM intrinsic declarations for Hexagon scalar operations
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.hexagon.A2.abs"]
     fn hexagon_A2_abs(_: i32) -> i32;
     #[link_name = "llvm.hexagon.A2.absp"]

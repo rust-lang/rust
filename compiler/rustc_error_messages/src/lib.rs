@@ -1,8 +1,3 @@
-// tidy-alphabetical-start
-#![allow(internal_features)]
-#![feature(rustc_attrs)]
-// tidy-alphabetical-end
-
 use std::borrow::Cow;
 
 pub use fluent_bundle::types::FluentType;
@@ -29,7 +24,6 @@ pub fn register_functions<R, M>(bundle: &mut fluent_bundle::bundle::FluentBundle
 ///
 /// Intended to be removed once diagnostics are entirely translatable.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
-#[rustc_diagnostic_item = "DiagMessage"]
 pub enum DiagMessage {
     /// Non-translatable diagnostic message or a message that has been translated eagerly.
     ///
@@ -93,21 +87,22 @@ pub struct SpanLabel {
 pub struct MultiSpan {
     primary_spans: Vec<Span>,
     span_labels: Vec<(Span, DiagMessage)>,
+    span_context: Vec<Span>,
 }
 
 impl MultiSpan {
     #[inline]
     pub fn new() -> MultiSpan {
-        MultiSpan { primary_spans: vec![], span_labels: vec![] }
+        MultiSpan { primary_spans: vec![], span_labels: vec![], span_context: vec![] }
     }
 
     pub fn from_span(primary_span: Span) -> MultiSpan {
-        MultiSpan { primary_spans: vec![primary_span], span_labels: vec![] }
+        MultiSpan { primary_spans: vec![primary_span], span_labels: vec![], span_context: vec![] }
     }
 
     pub fn from_spans(mut vec: Vec<Span>) -> MultiSpan {
         vec.sort();
-        MultiSpan { primary_spans: vec, span_labels: vec![] }
+        MultiSpan { primary_spans: vec, span_labels: vec![], span_context: vec![] }
     }
 
     pub fn push_primary_span(&mut self, primary_span: Span) {
@@ -116,6 +111,10 @@ impl MultiSpan {
 
     pub fn push_span_label(&mut self, span: Span, label: impl Into<DiagMessage>) {
         self.span_labels.push((span, label.into()));
+    }
+
+    pub fn push_span_context(&mut self, span: Span) {
+        self.span_context.push(span);
     }
 
     pub fn push_span_diag(&mut self, span: Span, diag: DiagMessage) {
@@ -188,6 +187,10 @@ impl MultiSpan {
         span_labels
     }
 
+    pub fn span_context(&self) -> &[Span] {
+        &self.span_context
+    }
+
     /// Returns the span labels as contained by `MultiSpan`.
     pub fn span_labels_raw(&self) -> &[(Span, DiagMessage)] {
         &self.span_labels
@@ -219,8 +222,8 @@ impl From<Vec<Span>> for MultiSpan {
     }
 }
 
-fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locale::Locale> {
-    icu_locale::Locale::try_from_str(&lang.to_string()).ok()
+fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locale_core::Locale> {
+    icu_locale_core::Locale::try_from_str(&lang.to_string()).ok()
 }
 
 pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValue<'_> {

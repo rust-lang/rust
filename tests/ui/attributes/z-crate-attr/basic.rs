@@ -3,10 +3,8 @@
 // the exact feature used here is causing problems feel free to replace it with another
 // perma-unstable feature.
 
-//@ compile-flags: -Zcrate-attr=feature(abi_unadjusted)
+//@ compile-flags: -Zcrate-attr=feature(allocator_internals)
 
-#![allow(dead_code)]
-
-extern "unadjusted" fn foo() {}
+#![needs_allocator]
 
 fn main() {}

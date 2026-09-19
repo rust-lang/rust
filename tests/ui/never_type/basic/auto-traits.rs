@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![feature(auto_traits)]
-#![feature(never_type)]
 
 fn main() {
     enum Void {}

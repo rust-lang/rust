@@ -82,7 +82,7 @@ fn test_units() {
 /// OCaml
 /// OpenAL OpenDNS OpenGL OpenMP OpenSSH OpenSSL OpenStreetMap OpenTelemetry
 /// OpenType
-/// WebGL WebGL2 WebGPU WebRTC WebSocket WebTransport
+/// WebAuthn WebGL WebGL2 WebGPU WebRTC WebSocket WebTransport
 /// TensorFlow
 /// TrueType
 /// iOS macOS FreeBSD NetBSD OpenBSD NixOS

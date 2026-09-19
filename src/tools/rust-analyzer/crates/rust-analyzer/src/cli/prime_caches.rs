@@ -55,7 +55,8 @@ impl flags::PrimeCaches {
         );
 
         let threads = self.num_threads.unwrap_or_else(num_cpus::get_physical);
-        ide_db::prime_caches::parallel_prime_caches(&db, threads, &|_| ());
+        let all = ide_db::base_db::all_crates(&db);
+        ide_db::prime_caches::parallel_prime_caches(&db, &all, threads, &|_| ());
 
         let elapsed = stop_watch.elapsed();
         eprintln!(

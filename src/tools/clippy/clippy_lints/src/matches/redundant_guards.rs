@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::{for_each_expr_without_closures, is_local_used};
 use clippy_utils::{is_in_const_context, sym};

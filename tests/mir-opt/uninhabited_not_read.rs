@@ -5,8 +5,6 @@
 // This would introduce a `! -> ()` coercion which would
 // be UB if we didn't disallow this explicitly.
 
-#![feature(never_type)]
-
 // EMIT_MIR uninhabited_not_read.main.SimplifyLocals-final.after.mir
 fn main() {
     // With a type annotation

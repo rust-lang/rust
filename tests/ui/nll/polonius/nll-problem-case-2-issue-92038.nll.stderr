@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `*a` as mutable more than once at a time
-  --> $DIR/nll-problem-case-2-issue-92038.rs:16:26
+  --> $DIR/nll-problem-case-2-issue-92038.rs:17:26
    |
 LL | fn reborrow(a: &mut u8) -> &mut u8 {
    |                - let's call the lifetime of this reference `'1`

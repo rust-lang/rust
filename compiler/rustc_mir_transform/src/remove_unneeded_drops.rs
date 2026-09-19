@@ -10,6 +10,7 @@ use rustc_middle::ty::TyCtxt;
 use tracing::{debug, trace};
 
 use super::simplify::simplify_cfg;
+use crate::PassPolicy;
 
 pub(super) struct RemoveUnneededDrops;
 
@@ -39,7 +40,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(true)
     }
 }

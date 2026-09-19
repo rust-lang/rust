@@ -175,6 +175,7 @@ impl<'db> LookupTable<'db> {
     /// transitive. For example `Vec<i32>` and `FxHashSet<i32>` both unify with `Iterator<Item = i32>`,
     /// but they clearly do not unify themselves.
     fn insert(&mut self, ty: Type<'db>, exprs: impl Iterator<Item = Expr<'db>>) {
+        let ty = ty.instantiate_with_errors();
         match self.data.get_mut(&ty) {
             Some(it) => {
                 it.extend_with_threshold(self.many_threshold, exprs);
@@ -228,8 +229,6 @@ pub struct TermSearchCtx<'a, 'db, DB: HirDatabase> {
 /// Configuration options for the term search
 #[derive(Debug, Clone, Copy)]
 pub struct TermSearchConfig {
-    /// Enable borrow checking, this guarantees the outputs of the `term_search` to borrow-check
-    pub enable_borrowcheck: bool,
     /// Indicate when to squash multiple trees to `Many` as there are too many to keep track
     pub many_alternatives_threshold: usize,
     /// Fuel for term search in "units of work"
@@ -238,7 +237,7 @@ pub struct TermSearchConfig {
 
 impl Default for TermSearchConfig {
     fn default() -> Self {
-        Self { enable_borrowcheck: true, many_alternatives_threshold: 1, fuel: 1200 }
+        Self { many_alternatives_threshold: 1, fuel: 1200 }
     }
 }
 

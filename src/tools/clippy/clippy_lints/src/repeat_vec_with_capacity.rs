@@ -8,8 +8,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::{expr_or_init, fn_def_id, std_or_core, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::Span;
 
 pub struct RepeatVecWithCapacity {
@@ -18,7 +17,7 @@ pub struct RepeatVecWithCapacity {
 
 impl RepeatVecWithCapacity {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 

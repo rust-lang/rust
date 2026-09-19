@@ -1,13 +1,13 @@
 use super::NEEDLESS_MATCH;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::same_type_modulo_regions;
 use clippy_utils::{
-    SpanlessEq, eq_expr_value, get_parent_expr_for_hir, higher, is_else_clause, over, peel_blocks_with_stmt,
+    SpanlessEq, eq_expr_value, get_parent_expr_for_hir, higher, is_else_clause, is_none_expr, over,
+    peel_blocks_with_stmt,
 };
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{
     Arm, BindingMode, ByRef, Expr, ExprKind, ItemKind, Node, Pat, PatExpr, PatExprKind, PatKind, Path, QPath,
 };
@@ -108,8 +108,7 @@ fn check_if_let_inner(cx: &LateContext<'_>, ctxt: SyntaxContext, if_let: &higher
             }
             let let_expr_ty = cx.typeck_results().expr_ty(if_let.let_expr);
             if let_expr_ty.is_diag_item(cx, sym::Option) {
-                return else_expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
-                    || eq_expr_value(cx, ctxt, if_let.let_expr, else_expr);
+                return is_none_expr(cx, else_expr) || eq_expr_value(cx, ctxt, if_let.let_expr, else_expr);
             }
             return eq_expr_value(cx, ctxt, if_let.let_expr, else_expr);
         }

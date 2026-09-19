@@ -20,19 +20,16 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::time::Instant;
 
-use shared_helpers::{
-    dylib_path, dylib_path_var, exe, maybe_dump, parse_rustc_stage, parse_rustc_verbose,
-    parse_value_from_args,
+use shim_utils::{
+    ArgFileCommand, collect_args, dylib_path, dylib_path_var, exe, maybe_dump, parse_rustc_stage,
+    parse_rustc_verbose, parse_value_from_args,
 };
-
-#[path = "../utils/shared_helpers.rs"]
-mod shared_helpers;
 
 #[path = "../utils/proc_macro_deps.rs"]
 mod proc_macro_deps;
 
 fn main() {
-    let orig_args = env::args_os().skip(1).collect::<Vec<_>>();
+    let orig_args = collect_args();
     let mut args = orig_args.clone();
 
     let stage = parse_rustc_stage();
@@ -95,10 +92,8 @@ fn main() {
     // Get the name of the crate we're compiling, if any.
     let crate_name = parse_value_from_args(&orig_args, "--crate-name");
 
-    // When statically linking `std` into `rustc_driver`, remove `-C prefer-dynamic`
-    if env::var("RUSTC_LINK_STD_INTO_RUSTC_DRIVER").unwrap() == "1"
-        && crate_name == Some("rustc_driver")
-    {
+    // When compiling `rustc_driver` remove `-C prefer-dynamic` to allow statically linking `std` into it
+    if crate_name == Some("rustc_driver") {
         if let Some(pos) = args.iter().enumerate().position(|(i, a)| {
             a == "-C" && args.get(i + 1).map(|a| a == "prefer-dynamic").unwrap_or(false)
         }) {
@@ -112,11 +107,11 @@ fn main() {
 
     let mut cmd = match env::var_os("RUSTC_WRAPPER_REAL") {
         Some(wrapper) if !wrapper.is_empty() => {
-            let mut cmd = Command::new(wrapper);
+            let mut cmd = ArgFileCommand::new(wrapper);
             cmd.arg(rustc_driver);
             cmd
         }
-        _ => Command::new(rustc_driver),
+        _ => ArgFileCommand::new(rustc_driver),
     };
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
@@ -165,20 +160,6 @@ fn main() {
         // The flags are stored in a RUSTC_HOST_FLAGS variable, separated by spaces.
         if let Ok(flags) = std::env::var("RUSTC_HOST_FLAGS") {
             cmd.args(flags.split(' '));
-        }
-    }
-
-    // The remap flags for the compiler and standard library sources.
-    if let Ok(maps) = env::var("RUSTC_DEBUGINFO_MAP") {
-        for map in maps.split('\t') {
-            cmd.arg("--remap-path-prefix").arg(map);
-        }
-    }
-    // The remap flags for Cargo registry sources need to be passed after the remapping for the
-    // Rust source code directory, to handle cases when $CARGO_HOME is inside the source directory.
-    if let Ok(maps) = env::var("RUSTC_CARGO_REGISTRY_SRC_TO_REMAP") {
-        for map in maps.split('\t') {
-            cmd.arg("--remap-path-prefix").arg(map);
         }
     }
 
@@ -271,6 +252,7 @@ fn main() {
         eprintln!("{prefix} libdir: {libdir:?}");
     }
 
+    let (mut cmd, arg_file) = cmd.build().unwrap();
     maybe_dump(format!("stage{}-rustc", stage + 1), &cmd);
 
     let start = Instant::now();
@@ -280,6 +262,8 @@ fn main() {
         let status = child.wait().expect(&errmsg);
         (child, status)
     };
+
+    drop(arg_file);
 
     if (env::var_os("RUSTC_PRINT_STEP_TIMINGS").is_some()
         || env::var_os("RUSTC_PRINT_STEP_RUSAGE").is_some())

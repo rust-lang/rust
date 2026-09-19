@@ -5,6 +5,6 @@ fn make<N: u32>() {}
 struct Array<N: usize>([bool; N]);
 //~^ ERROR expected trait, found builtin type `usize`
 //~| HELP you might have meant to write a const parameter here
-//~| ERROR expected value, found type parameter `N`
+//~| ERROR cannot find value `N` in this scope
 
 fn main() {}

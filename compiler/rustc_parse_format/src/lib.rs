@@ -8,7 +8,7 @@
 // We want to be able to build this crate with a stable compiler,
 // so no `#![feature]` attributes should be added.
 #![deny(unstable_features)]
-#![doc(test(attr(deny(warnings), allow(internal_features))))]
+#![doc(test(attr(deny(warnings))))]
 // tidy-alphabetical-end
 
 use std::ops::Range;
@@ -759,7 +759,7 @@ impl<'input> Parser<'input> {
             return spec;
         };
 
-        spec.ty = self.string(self.input_vec_index);
+        spec.ty = self.string(self.input_vec_index2pos(self.input_vec_index));
         spec.ty_span = {
             let end = self.input_vec_index2range(self.input_vec_index).start;
             Some(start..end)

@@ -140,17 +140,26 @@ before_script:
 script:
   - cargo clippy
   # if you want the build job to fail when encountering warnings, use
-  - cargo clippy -- -D warnings
+  - CARGO_BUILD_WARNINGS=deny cargo clippy
   # in order to also check tests and non-default crate features, use
-  - cargo clippy --all-targets --all-features -- -D warnings
+  - CARGO_BUILD_WARNINGS=deny cargo clippy --all-targets --all-features
   - cargo test
   # etc.
 ```
 
-Note that adding `-D warnings` will cause your build to fail if **any** warnings are found in your code.
+Note that setting `CARGO_BUILD_WARNINGS=deny` will cause your build to fail if **any** warnings are found in your code.
 That includes warnings found by rustc (e.g. `dead_code`, etc.). If you want to avoid this and only cause
 an error for Clippy warnings, use `#![deny(clippy::all)]` in your code or `-D clippy::all` on the command
 line. (You can swap `clippy::all` with the specific lint category you are targeting.)
+
+Also note that before Cargo 1.97, the usual way to deny all warnings was by using `-D warnings`:
+
+```shell
+cargo clippy -- -D warnings
+```
+
+However, [`CARGO_BUILD_WARNINGS`] has the benefit of not invalidating build caches,
+and is thus to be preferred going forward.
 
 ## Configuration
 
@@ -286,3 +295,5 @@ option. Files in the project may not be
 copied, modified, or distributed except according to those terms.
 
 <!-- REUSE-IgnoreEnd -->
+
+[`CARGO_BUILD_WARNINGS`]: https://doc.rust-lang.org/cargo/reference/config.html#buildwarnings

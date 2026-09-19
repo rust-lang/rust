@@ -3,9 +3,6 @@
 //@ run-pass
 //@ check-run-results
 
-#![feature(never_type)]
-
-
 trait StringifyType {
     fn stringify_type() -> &'static str;
 }

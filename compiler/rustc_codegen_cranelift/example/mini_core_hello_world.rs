@@ -1,7 +1,6 @@
 #![feature(
     no_core,
     lang_items,
-    never_type,
     extern_types,
     thread_local,
     repr_simd,

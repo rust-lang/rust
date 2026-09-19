@@ -1,4 +1,3 @@
-#![allow(dead_code, unused_mut)]
 #![warn(clippy::mut_mutex_lock)]
 
 use std::sync::{Arc, Mutex};

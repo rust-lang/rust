@@ -12,7 +12,7 @@ may be able to use more compact addressing modes.
 
 The specific ranges depend on target architectures and addressing modes available to them. \
 For x86 more detailed description of its code models can be found in
-[System V Application Binary Interface](https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf)
+[System V Application Binary Interface](https://gitlab.com/x86-psABIs/x86-64-ABI/-/jobs/artifacts/master/raw/x86-64-ABI/abi.pdf?job=build)
 specification.
 
 Supported values for this option are:
@@ -524,6 +524,15 @@ profiling data for use with profile-guided optimization (PGO). The flag takes
 an optional argument which is the path to a directory into which the
 instrumented binary will emit the collected data. See the chapter on
 [profile-guided optimization] for more information.
+
+## profile-sample-use
+
+This flag specifies the profiling data file to be used for sample-based
+profile-guided optimization (SPGO). The flag takes a mandatory argument which
+is the path to a valid `.prof` file. See the chapter on
+[profile-guided optimization] for more information.
+The `-Zdebuginfo-for-profiling` can be used to improve the quality of the
+profiling data.
 
 ## profile-use
 

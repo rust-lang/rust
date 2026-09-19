@@ -9,6 +9,7 @@
 // @lcnr: Because of this I decided to not bother and cause this to fail instead.
 // In the future we can definitely modify the compiler to accept this
 // again.
+
 #![feature(type_alias_impl_trait)]
 
 trait Trait {}
@@ -18,7 +19,7 @@ type TAIT = impl Sized;
 impl Trait for (TAIT, TAIT) {}
 
 impl Trait for (u32, i32) {}
-//~^ ERROR: conflicting implementations of trait `Trait` for type
+//~^ ERROR: conflicting implementations of trait `Trait` for type `(TAIT, TAIT)`
 
 #[define_opaque(TAIT)]
 fn define() -> TAIT {}

@@ -1,5 +1,8 @@
 //@ run-pass
 
+//! Test that a custom mut type (a wrapper over &mut T) implementing CoerceShared can be coerced
+//! into its target.
+
 #![feature(reborrow)]
 use std::marker::{CoerceShared, Reborrow};
 

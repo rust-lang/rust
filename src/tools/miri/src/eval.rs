@@ -162,8 +162,6 @@ pub struct MiriConfig {
     pub address_reuse_cross_thread_rate: f64,
     /// Round Robin scheduling with no preemption.
     pub fixed_scheduling: bool,
-    /// Always prefer the intrinsic fallback body over the native Miri implementation.
-    pub force_intrinsic_fallback: bool,
     /// Whether floating-point operations can behave non-deterministically.
     pub float_nondet: bool,
     /// Whether floating-point operations can have a non-deterministic rounding error.
@@ -210,7 +208,6 @@ impl Default for MiriConfig {
             address_reuse_rate: 0.5,
             address_reuse_cross_thread_rate: 0.1,
             fixed_scheduling: false,
-            force_intrinsic_fallback: false,
             float_nondet: true,
             float_rounding_error: FloatRoundingErrorMode::Random,
             short_fd_operations: true,
@@ -513,8 +510,8 @@ fn call_main<'tcx>(
 }
 
 /// Evaluates the entry function specified by `entry_id`.
-/// Returns `Some(return_code)` if program execution completed.
-/// Returns `None` if an evaluation error occurred.
+/// Returns `Ok(())` if program execution completed with exit code 0.
+/// Returns `Err(code)` if an evaluation error occurred or the program returned a non-0 exit code.
 pub fn eval_entry<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,

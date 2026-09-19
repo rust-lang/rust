@@ -1,7 +1,7 @@
 [relabel]
 allow-unauthenticated = [
-    "A-*", "C-*", "E-*", "I-*", "L-*", "P-*", "S-*", "T-*",
-    "good first issue", "beta-nominated"
+    "A-*", "C-*", "D-*", "E-*", "I-*", "L-*", "P-*", "S-*", "T-*",
+    "good first issue", "beta-nominated", "llm-assisted"
 ]
 
 # Allows shortcuts like `@rustbot ready`
@@ -60,8 +60,13 @@ labels = ["S-waiting-on-concerns"]
 [view-all-comments-link]
 threshold = 20
 
+# Allows `merge` and `delegate` commands for merging a PR
+# Documentation at: https://forge.rust-lang.org/triagebot/merge.html
+[merge]
+type = "merge-queue"
+
 [notify-zulip."lint-nominated"]
-zulip_stream = 577190 # #clippy/fcp
+zulip_stream = 577190 # #t-clippy/fcp
 topic = "FCP rust-clippy#{number}: {title}"
 github_comment = """\
 This lint has been nominated for inclusion.
@@ -90,11 +95,9 @@ message_on_reopen = "PR rust-clippy#{number} has been reopened."
 contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md"
 users_on_vacation = [
     "matthiaskrgr",
-    "Manishearth",
     "Alexendoo",
     "y21",
-    "blyxyas",
-    "ada4a"
+    "ada4a",
 ]
 
 [assign.owners]
@@ -110,4 +113,11 @@ users_on_vacation = [
     "@y21",
     "@samueltardieu",
     "@ada4a",
+    "@blyxyas",
 ]
+
+# Require community reviews before automatic assignment
+# Documentation at: https://forge.rust-lang.org/triagebot/pr-assignment.html#community-reviews
+[assign.community_reviews]
+minimum_approvals = 2
+label = "S-waiting-on-community-reviews"

@@ -1,6 +1,6 @@
 //! regression test for issue #72933
 //@ build-pass
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 #![crate_type = "rlib"]
 
 fn banana(v: &str) -> u32 {

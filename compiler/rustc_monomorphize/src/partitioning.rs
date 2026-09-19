@@ -98,15 +98,15 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::par_join;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::attrs::{InlineAttr, Linkage};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::mir::StatementKind;
@@ -115,11 +115,11 @@ use rustc_middle::mono::{
     MonoItemPartitions, Visibility,
 };
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
-use rustc_middle::ty::{self, InstanceKind, TyCtxt};
+use rustc_middle::ty::{self, InstanceKind, ShimKind, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
-use rustc_span::Symbol;
+use rustc_span::{Symbol, bug};
 use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
@@ -457,6 +457,13 @@ fn merge_codegen_units<'tcx>(
                 };
                 cgu.set_name(new_cgu_name);
             }
+
+            // Assign symbol name to each CGU units.
+            cgu.set_symbol_name(Symbol::intern(&rustc_symbol_mangling::mangle_cgu(
+                cx.tcx,
+                LOCAL_CRATE,
+                Either::Right(cgu.name().as_str()),
+            )));
         }
 
         // A sorted order here ensures what follows can be deterministic.
@@ -491,6 +498,12 @@ fn merge_codegen_units<'tcx>(
             let numbered_codegen_unit_name =
                 cgu_name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(suffix));
             cgu.set_name(numbered_codegen_unit_name);
+
+            cgu.set_symbol_name(Symbol::intern(&rustc_symbol_mangling::mangle_cgu(
+                cx.tcx,
+                LOCAL_CRATE,
+                Either::Left(index.try_into().unwrap()),
+            )));
         }
     }
 }
@@ -630,20 +643,22 @@ fn characteristic_def_id_of_mono_item<'tcx>(
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
                 ty::InstanceKind::Item(def) => def,
-                ty::InstanceKind::VTableShim(..)
-                | ty::InstanceKind::ReifyShim(..)
-                | ty::InstanceKind::FnPtrShim(..)
-                | ty::InstanceKind::ClosureOnceShim { .. }
-                | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-                | ty::InstanceKind::Intrinsic(..)
-                | ty::InstanceKind::DropGlue(..)
+                ty::InstanceKind::Intrinsic(..)
+                | ty::InstanceKind::LlvmIntrinsic(..)
                 | ty::InstanceKind::Virtual(..)
-                | ty::InstanceKind::CloneShim(..)
-                | ty::InstanceKind::ThreadLocalShim(..)
-                | ty::InstanceKind::FnPtrAddrShim(..)
-                | ty::InstanceKind::FutureDropPollShim(..)
-                | ty::InstanceKind::AsyncDropGlue(..)
-                | ty::InstanceKind::AsyncDropGlueCtorShim(..) => return None,
+                | ty::InstanceKind::Shim(ty::ShimKind::VTable(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::Reify(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::FnPtr(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnce { .. })
+                | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure { .. })
+                | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::Clone(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAsPtr(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::FnPtrFromPtr(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(..)) => return None,
             };
 
             // If this is a method, we want to put it into the same module as
@@ -770,6 +785,17 @@ fn static_visibility<'tcx>(
         *can_be_internalized = false;
         default_visibility(tcx, def_id, false)
     } else {
+        if tcx.def_kind(def_id).has_codegen_attrs() {
+            // Prevent EII and `rustc_std_internal_symbol` statics being internalized.
+            let attrs = tcx.codegen_fn_attrs(def_id);
+            if attrs.flags.intersects(
+                CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
+                    | CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM,
+            ) {
+                *can_be_internalized = false;
+            }
+        }
+
         Visibility::Hidden
     }
 }
@@ -794,28 +820,40 @@ fn mono_item_visibility<'tcx>(
 
     let def_id = match instance.def {
         InstanceKind::Item(def_id)
-        | InstanceKind::DropGlue(def_id, Some(_))
-        | InstanceKind::FutureDropPollShim(def_id, _, _)
-        | InstanceKind::AsyncDropGlue(def_id, _)
-        | InstanceKind::AsyncDropGlueCtorShim(def_id, _) => def_id,
+        | InstanceKind::Shim(ShimKind::DropGlue(def_id, Some(_)))
+        | InstanceKind::Shim(ShimKind::FutureDropPoll(def_id, _, _))
+        | InstanceKind::Shim(ShimKind::AsyncDropGlue(def_id, _))
+        | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(def_id, _)) => def_id,
 
         // We match the visibility of statics here
-        InstanceKind::ThreadLocalShim(def_id) => {
+        InstanceKind::Shim(ShimKind::ThreadLocal(def_id)) => {
             return static_visibility(tcx, can_be_internalized, def_id);
         }
 
         // These are all compiler glue and such, never exported, always hidden.
-        InstanceKind::VTableShim(..)
-        | InstanceKind::ReifyShim(..)
-        | InstanceKind::FnPtrShim(..)
+        InstanceKind::Shim(ShimKind::VTable(..))
+        | InstanceKind::Shim(ShimKind::Reify(..))
+        | InstanceKind::Shim(ShimKind::FnPtr(..))
         | InstanceKind::Virtual(..)
         | InstanceKind::Intrinsic(..)
-        | InstanceKind::ClosureOnceShim { .. }
-        | InstanceKind::ConstructCoroutineInClosureShim { .. }
-        | InstanceKind::DropGlue(..)
-        | InstanceKind::CloneShim(..)
-        | InstanceKind::FnPtrAddrShim(..) => return Visibility::Hidden,
+        | InstanceKind::LlvmIntrinsic(..)
+        | InstanceKind::Shim(ShimKind::ClosureOnce { .. })
+        | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
+        | InstanceKind::Shim(ShimKind::DropGlue(..))
+        | InstanceKind::Shim(ShimKind::Clone(..))
+        | InstanceKind::Shim(ShimKind::FnPtrAsPtr(..))
+        | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..)) => return Visibility::Hidden,
     };
+
+    let attrs = tcx.codegen_fn_attrs(def_id);
+    if attrs.flags.intersects(CodegenFnAttrFlags::OFFLOAD_KERNEL) {
+        *can_be_internalized = false;
+        return default_visibility(
+            tcx,
+            def_id,
+            instance.args.non_erasable_generics().next().is_some(),
+        );
+    }
 
     // Both the `start_fn` lang item and `main` itself should not be exported,
     // so we give them with `Hidden` visibility but these symbols are
@@ -1331,8 +1369,8 @@ pub(crate) fn provide(providers: &mut Providers) {
             // "Normal" functions size estimate: the number of
             // statements, plus one for the terminator.
             InstanceKind::Item(..)
-            | InstanceKind::DropGlue(..)
-            | InstanceKind::AsyncDropGlueCtorShim(..) => {
+            | InstanceKind::Shim(ShimKind::DropGlue(..))
+            | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(..)) => {
                 let mir = tcx.instance_mir(instance.def);
                 mir.basic_blocks
                     .iter()

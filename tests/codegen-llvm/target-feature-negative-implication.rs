@@ -13,7 +13,7 @@ use minicore::*;
 #[no_mangle]
 pub unsafe fn banana() {
     // CHECK-LABEL: @banana()
-    // CHECK-SAME: [[BANANAATTRS:#[0-9]+]] {
+    // CHECK-SAME: [[BANANAATTRS:#[0-9]+]]
 }
 
 // CHECK: attributes [[BANANAATTRS]]

@@ -1,0 +1,74 @@
+error: missing `kernel`
+  --> $DIR/offload_macro.rs:6:5
+   |
+LL |     core::offload::offload! { args = () }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: missing `args`
+  --> $DIR/offload_macro.rs:9:5
+   |
+LL |     core::offload::offload! { kernel = kernel }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unknown field `foo`
+  --> $DIR/offload_macro.rs:12:5
+   |
+LL |     core::offload::offload! { kernel = kernel, args = (), foo = 1 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: duplicate field `kernel`
+  --> $DIR/offload_macro.rs:15:5
+   |
+LL |     core::offload::offload! { kernel = kernel, kernel = kernel, args = () }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: duplicate field `args`
+  --> $DIR/offload_macro.rs:18:5
+   |
+LL |     core::offload::offload! { kernel = kernel, args = (), args = () }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: duplicate field `workgroup_dim`
+  --> $DIR/offload_macro.rs:21:5
+   |
+LL |     core::offload::offload! { workgroup_dim = [1, 1, 1], workgroup_dim = [1, 1, 1] }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: duplicate field `thread_dim`
+  --> $DIR/offload_macro.rs:24:5
+   |
+LL |     core::offload::offload! { thread_dim = [32, 1, 1], thread_dim = [64, 1, 1] }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: duplicate field `dyn_cache`
+  --> $DIR/offload_macro.rs:27:5
+   |
+LL |     core::offload::offload! { kernel = kernel, args = (), dyn_cache = 0, dyn_cache = 8 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: duplicate field `device`
+  --> $DIR/offload_macro.rs:30:5
+   |
+LL |     core::offload::offload! { kernel = kernel, args = (), device = 0, device = 1 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 9 previous errors
+

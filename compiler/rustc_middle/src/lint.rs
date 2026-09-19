@@ -4,13 +4,12 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, DiagLocation, Diagnostic, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
-use rustc_lint_defs::EditionFcw;
+use rustc_lint_defs::{
+    EditionFcw, FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId,
+    StableLintExpectationId, UnstableLintExpectationId, builtin,
+};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_session::Session;
-use rustc_session::lint::{
-    FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId, StableLintExpectationId,
-    UnstableLintExpectationId, builtin,
-};
 use rustc_span::{DUMMY_SP, ExpnKind, Span, Symbol, kw};
 use tracing::instrument;
 

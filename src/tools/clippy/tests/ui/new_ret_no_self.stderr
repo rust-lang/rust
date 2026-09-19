@@ -1,5 +1,5 @@
 error: methods called `new` usually return `Self`
-  --> tests/ui/new_ret_no_self.rs:50:5
+  --> tests/ui/new_ret_no_self.rs:49:5
    |
 LL | /     pub fn new(_: String) -> impl R<Item = u32> {
 LL | |
@@ -12,7 +12,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::new_ret_no_self)]`
 
 error: methods called `new` usually return `Self`
-  --> tests/ui/new_ret_no_self.rs:84:5
+  --> tests/ui/new_ret_no_self.rs:83:5
    |
 LL | /     pub fn new() -> u32 {
 LL | |
@@ -22,7 +22,7 @@ LL | |     }
    | |_____^
 
 error: methods called `new` usually return `Self`
-  --> tests/ui/new_ret_no_self.rs:95:5
+  --> tests/ui/new_ret_no_self.rs:94:5
    |
 LL | /     pub fn new(_: String) -> u32 {
 LL | |
@@ -32,7 +32,7 @@ LL | |     }
    | |_____^
 
 error: methods called `new` usually return `Self`
-  --> tests/ui/new_ret_no_self.rs:133:5
+  --> tests/ui/new_ret_no_self.rs:132:5
    |
 LL | /     pub fn new() -> (u32, u32) {
 LL | |
@@ -42,7 +42,7 @@ LL | |     }
    | |_____^
 
 error: methods called `new` usually return `Self`
-  --> tests/ui/new_ret_no_self.rs:162:5
+  --> tests/ui/new_ret_no_self.rs:161:5
    |
 LL | /     pub fn new() -> *mut V {
 LL | |
@@ -52,7 +52,7 @@ LL | |     }
    | |_____^
 
 error: methods called `new` usually return `Self`
-  --> tests/ui/new_ret_no_self.rs:182:5
+  --> tests/ui/new_ret_no_self.rs:181:5
    |
 LL | /     pub fn new() -> Option<u32> {
 LL | |
@@ -62,19 +62,19 @@ LL | |     }
    | |_____^
 
 error: methods called `new` usually return `Self`
-  --> tests/ui/new_ret_no_self.rs:237:9
+  --> tests/ui/new_ret_no_self.rs:236:9
    |
 LL |         fn new() -> String;
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: methods called `new` usually return `Self`
-  --> tests/ui/new_ret_no_self.rs:250:9
+  --> tests/ui/new_ret_no_self.rs:249:9
    |
 LL |         fn new(_: String) -> String;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: methods called `new` usually return `Self`
-  --> tests/ui/new_ret_no_self.rs:286:9
+  --> tests/ui/new_ret_no_self.rs:285:9
    |
 LL | /         fn new() -> (u32, u32) {
 LL | |
@@ -84,7 +84,7 @@ LL | |         }
    | |_________^
 
 error: methods called `new` usually return `Self`
-  --> tests/ui/new_ret_no_self.rs:315:9
+  --> tests/ui/new_ret_no_self.rs:314:9
    |
 LL | /         fn new() -> *mut V {
 LL | |
@@ -94,7 +94,7 @@ LL | |         }
    | |_________^
 
 error: methods called `new` usually return `Self`
-  --> tests/ui/new_ret_no_self.rs:387:9
+  --> tests/ui/new_ret_no_self.rs:386:9
    |
 LL | /         fn new(t: T) -> impl Into<i32> {
 LL | |
@@ -104,7 +104,7 @@ LL | |         }
    | |_________^
 
 error: methods called `new` usually return `Self`
-  --> tests/ui/new_ret_no_self.rs:408:9
+  --> tests/ui/new_ret_no_self.rs:407:9
    |
 LL | /         fn new(t: T) -> impl Trait2<(), i32> {
 LL | |

@@ -1,5 +1,5 @@
 error: used `unwrap()` on an `Option` value
-  --> tests/ui/unwrap_expect_used.rs:27:5
+  --> tests/ui/unwrap_expect_used.rs:26:5
    |
 LL |     Some(3).unwrap();
    |     ^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     Some(3).unwrap();
    = help: to override `-D warnings` add `#[allow(clippy::unwrap_used)]`
 
 error: used `expect()` on an `Option` value
-  --> tests/ui/unwrap_expect_used.rs:30:5
+  --> tests/ui/unwrap_expect_used.rs:29:5
    |
 LL |     Some(3).expect("Hello world!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     Some(3).expect("Hello world!");
    = help: to override `-D warnings` add `#[allow(clippy::expect_used)]`
 
 error: used `unwrap()` on a `Result` value
-  --> tests/ui/unwrap_expect_used.rs:46:5
+  --> tests/ui/unwrap_expect_used.rs:45:5
    |
 LL |     a.unwrap();
    |     ^^^^^^^^^^
@@ -27,7 +27,7 @@ LL |     a.unwrap();
    = note: if this value is an `Err`, it will panic
 
 error: used `expect()` on a `Result` value
-  --> tests/ui/unwrap_expect_used.rs:49:5
+  --> tests/ui/unwrap_expect_used.rs:48:5
    |
 LL |     a.expect("Hello world!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL |     a.expect("Hello world!");
    = note: if this value is an `Err`, it will panic
 
 error: used `unwrap_err()` on a `Result` value
-  --> tests/ui/unwrap_expect_used.rs:52:5
+  --> tests/ui/unwrap_expect_used.rs:51:5
    |
 LL |     a.unwrap_err();
    |     ^^^^^^^^^^^^^^
@@ -43,7 +43,7 @@ LL |     a.unwrap_err();
    = note: if this value is an `Ok`, it will panic
 
 error: used `expect_err()` on a `Result` value
-  --> tests/ui/unwrap_expect_used.rs:55:5
+  --> tests/ui/unwrap_expect_used.rs:54:5
    |
 LL |     a.expect_err("Hello error!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -51,7 +51,7 @@ LL |     a.expect_err("Hello error!");
    = note: if this value is an `Ok`, it will panic
 
 error: used `unwrap()` on a `Result` value
-  --> tests/ui/unwrap_expect_used.rs:80:17
+  --> tests/ui/unwrap_expect_used.rs:79:17
    |
 LL |         let _ = open!(file).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^
@@ -59,7 +59,7 @@ LL |         let _ = open!(file).unwrap();
    = note: if this value is an `Err`, it will panic
 
 error: used `expect()` on a `Result` value
-  --> tests/ui/unwrap_expect_used.rs:81:17
+  --> tests/ui/unwrap_expect_used.rs:80:17
    |
 LL |         let _ = open!(file).expect("can open");
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -67,7 +67,7 @@ LL |         let _ = open!(file).expect("can open");
    = note: if this value is an `Err`, it will panic
 
 error: used `unwrap_err()` on a `Result` value
-  --> tests/ui/unwrap_expect_used.rs:82:17
+  --> tests/ui/unwrap_expect_used.rs:81:17
    |
 LL |         let _ = open!(file).unwrap_err();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -75,7 +75,7 @@ LL |         let _ = open!(file).unwrap_err();
    = note: if this value is an `Ok`, it will panic
 
 error: used `expect_err()` on a `Result` value
-  --> tests/ui/unwrap_expect_used.rs:83:17
+  --> tests/ui/unwrap_expect_used.rs:82:17
    |
 LL |         let _ = open!(file).expect_err("can open");
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -83,7 +83,7 @@ LL |         let _ = open!(file).expect_err("can open");
    = note: if this value is an `Ok`, it will panic
 
 error: used `unwrap()` on an `Option` value
-  --> tests/ui/unwrap_expect_used.rs:89:5
+  --> tests/ui/unwrap_expect_used.rs:88:5
    |
 LL |     Option::unwrap(opt);
    |     ^^^^^^^^^^^^^^^^^^^
@@ -91,7 +91,7 @@ LL |     Option::unwrap(opt);
    = note: if this value is `None`, it will panic
 
 error: used `expect()` on an `Option` value
-  --> tests/ui/unwrap_expect_used.rs:90:5
+  --> tests/ui/unwrap_expect_used.rs:89:5
    |
 LL |     Option::expect(opt, "error message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -99,7 +99,7 @@ LL |     Option::expect(opt, "error message");
    = note: if this value is `None`, it will panic
 
 error: used `unwrap()` on a `Result` value
-  --> tests/ui/unwrap_expect_used.rs:93:5
+  --> tests/ui/unwrap_expect_used.rs:92:5
    |
 LL |     Result::unwrap(res);
    |     ^^^^^^^^^^^^^^^^^^^
@@ -107,7 +107,7 @@ LL |     Result::unwrap(res);
    = note: if this value is an `Err`, it will panic
 
 error: used `expect()` on a `Result` value
-  --> tests/ui/unwrap_expect_used.rs:94:5
+  --> tests/ui/unwrap_expect_used.rs:93:5
    |
 LL |     Result::expect(res, "error message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -115,7 +115,7 @@ LL |     Result::expect(res, "error message");
    = note: if this value is an `Err`, it will panic
 
 error: used `unwrap_err()` on a `Result` value
-  --> tests/ui/unwrap_expect_used.rs:95:5
+  --> tests/ui/unwrap_expect_used.rs:94:5
    |
 LL |     Result::unwrap_err(res);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -123,7 +123,7 @@ LL |     Result::unwrap_err(res);
    = note: if this value is an `Ok`, it will panic
 
 error: used `expect_err()` on a `Result` value
-  --> tests/ui/unwrap_expect_used.rs:96:5
+  --> tests/ui/unwrap_expect_used.rs:95:5
    |
 LL |     Result::expect_err(res, "error message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

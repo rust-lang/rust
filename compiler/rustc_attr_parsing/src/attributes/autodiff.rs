@@ -2,9 +2,9 @@ use std::str::FromStr;
 
 use rustc_ast::LitKind;
 use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
+use rustc_attr_ir::target::{MethodKind, Target};
+use rustc_attr_ir::{AttributeKind, RustcAutodiff};
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{AttributeKind, RustcAutodiff};
-use rustc_hir::{MethodKind, Target};
 use rustc_span::{Symbol, sym};
 use thin_vec::ThinVec;
 
@@ -19,7 +19,7 @@ pub(crate) struct RustcAutodiffParser;
 
 impl SingleAttributeParser for RustcAutodiffParser {
     const PATH: &[Symbol] = &[sym::rustc_autodiff];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),

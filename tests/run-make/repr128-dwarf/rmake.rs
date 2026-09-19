@@ -1,6 +1,9 @@
 //@ ignore-cross-compile
 //@ ignore-wasm (`object` can't handle wasm object files)
 //@ ignore-windows
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 // This test should be replaced with one in tests/debuginfo once GDB or LLDB support 128-bit enums.
 
 use std::collections::HashMap;
@@ -59,21 +62,17 @@ fn main() {
         let unit = dwarf.unit(header).unwrap();
         let mut cursor = unit.entries();
 
-        let get_name = |entry: &DebuggingInformationEntry<'_, '_, _>| {
+        let get_name = |entry: &DebuggingInformationEntry<_>| {
             let name = dwarf
-                .attr_string(
-                    &unit,
-                    entry.attr(gimli::constants::DW_AT_name).unwrap().unwrap().value(),
-                )
+                .attr_string(&unit, entry.attr(gimli::constants::DW_AT_name).unwrap().value())
                 .unwrap();
             name.to_string().unwrap().to_string()
         };
 
-        while let Some((_, entry)) = cursor.next_dfs().unwrap() {
+        while let Some(entry) = cursor.next_dfs().unwrap() {
             match entry.tag() {
                 gimli::constants::DW_TAG_variant => {
-                    let Some(value) = entry.attr(gimli::constants::DW_AT_discr_value).unwrap()
-                    else {
+                    let Some(value) = entry.attr(gimli::constants::DW_AT_discr_value) else {
                         // `std` enums might have variants without `DW_AT_discr_value`.
                         continue;
                     };
@@ -84,9 +83,11 @@ fn main() {
                     };
                     // The `DW_TAG_member` that is a child of `DW_TAG_variant` will contain the
                     // variant's name.
-                    let Some((1, child_entry)) = cursor.next_dfs().unwrap() else {
+                    let entry_depth = entry.depth;
+                    let Some(child_entry) = cursor.next_dfs().unwrap() else {
                         panic!("Missing child of DW_TAG_variant");
                     };
+                    assert_eq!(child_entry.depth, entry_depth + 1);
                     assert_eq!(child_entry.tag(), gimli::constants::DW_TAG_member);
                     let name = get_name(child_entry);
                     if let Some(expected) = variants_to_find.remove(name.as_str()) {
@@ -99,12 +100,7 @@ fn main() {
                 gimli::constants::DW_TAG_enumerator => {
                     let name = get_name(entry);
                     if let Some(expected) = enumerators_to_find.remove(name.as_str()) {
-                        match entry
-                            .attr(gimli::constants::DW_AT_const_value)
-                            .unwrap()
-                            .unwrap()
-                            .value()
-                        {
+                        match entry.attr(gimli::constants::DW_AT_const_value).unwrap().value() {
                             AttributeValue::Block(value) => {
                                 // This test uses LE byte order is used for consistent values across
                                 // architectures.

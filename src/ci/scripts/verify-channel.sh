@@ -8,7 +8,8 @@ IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
-if isCiBranch try-perf || isCiBranch automation/bors/try || isCiBranch automation/bors/auto; then
+if isCiBranch automation/bors/try-perf || \
+   isCiBranch automation/bors/try || isCiBranch automation/bors/auto; then
     echo "channel verification is only executed on PR builds"
     exit
 fi

@@ -1,0 +1,31 @@
+Content-Length: {CONTENT_LENGTH}
+
+{"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsSingleThreadExecutionRequests":true},"error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":2,"type":"event","event":"initialized"}Content-Length: {CONTENT_LENGTH}
+
+{"seq":3,"type":"response","request_seq":2,"success":true,"command":"launch","error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":4,"type":"response","request_seq":3,"success":true,"command":"configurationDone","error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":5,"type":"event","event":"stopped","body":{"reason":"entry","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: {CONTENT_LENGTH}
+
+{"seq":6,"type":"response","request_seq":4,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"main","source":{"name":"dap_repeated_next_from_call.rs","path":"{MANIFEST_DIR}/tests/ui/dap_repeated_next_from_call.rs","sourceReference":0},"line":18,"column":5}],"totalFrames":1},"error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":7,"type":"response","request_seq":5,"success":true,"command":"next","error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":8,"type":"event","event":"stopped","body":{"reason":"step","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: {CONTENT_LENGTH}
+
+{"seq":9,"type":"response","request_seq":6,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"main","source":{"name":"dap_repeated_next_from_call.rs","path":"{MANIFEST_DIR}/tests/ui/dap_repeated_next_from_call.rs","sourceReference":0},"line":19,"column":5}],"totalFrames":1},"error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":10,"type":"response","request_seq":7,"success":true,"command":"next","error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":11,"type":"event","event":"stopped","body":{"reason":"step","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: {CONTENT_LENGTH}
+
+{"seq":12,"type":"response","request_seq":8,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"main","source":{"name":"dap_repeated_next_from_call.rs","path":"{MANIFEST_DIR}/tests/ui/dap_repeated_next_from_call.rs","sourceReference":0},"line":20,"column":2}],"totalFrames":1},"error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":13,"type":"response","request_seq":9,"success":true,"command":"next","error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":14,"type":"event","event":"stopped","body":{"reason":"step","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: {CONTENT_LENGTH}
+
+{"seq":15,"type":"response","request_seq":10,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"<fn() as std::ops::FnOnce<()>>::call_once - shim(fn())","source":{"name":"function.rs","path":"{RUSTC_SYSROOT}/lib/rustlib/src/rust/library/core/src/ops/function.rs","sourceReference":0},"line":250,"column":5}],"totalFrames":1},"error":null}

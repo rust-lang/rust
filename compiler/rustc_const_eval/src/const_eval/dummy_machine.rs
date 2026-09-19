@@ -1,10 +1,11 @@
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, InterpResult};
 use rustc_middle::mir::*;
 use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::{bug, span_bug, ty};
 use rustc_span::def_id::DefId;
+use rustc_span::{bug, span_bug};
 use rustc_target::callconv::FnAbi;
 
 use crate::interpret::{
@@ -102,6 +103,16 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,
     ) -> interpret::InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
+        unimplemented!()
+    }
+
+    fn call_llvm_intrinsic(
+        _ecx: &mut InterpCx<'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+        _args: &[interpret::OpTy<'tcx, Self::Provenance>],
+        _destination: &interpret::PlaceTy<'tcx, Self::Provenance>,
+        _target: Option<BasicBlock>,
+    ) -> interpret::InterpResult<'tcx> {
         unimplemented!()
     }
 

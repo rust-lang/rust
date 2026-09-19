@@ -116,7 +116,7 @@ fn partition_at_index_loop<'a, T, F>(
                 }
 
                 v = &mut v[mid..];
-                index = index - mid;
+                index -= mid;
                 ancestor_pivot = None;
                 continue;
             }

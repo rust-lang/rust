@@ -10,7 +10,7 @@ LL | |     } {
    |
    = note: `-D clippy::blocks-in-conditions` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::blocks_in_conditions)]`
-help: try
+help: use a binding instead
    |
 LL ~     let res = {
 LL +

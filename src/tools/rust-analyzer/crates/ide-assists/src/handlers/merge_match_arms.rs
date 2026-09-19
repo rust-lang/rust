@@ -165,7 +165,7 @@ fn get_arm_types<'db>(
                     {
                         let pat_type = ctx.sema.type_of_binding_in_pat(ident_pat);
 
-                        map.insert(name.text().to_string(), pat_type);
+                        map.insert(name.text().to_owned(), pat_type);
                     }
                 }
                 _ => (),

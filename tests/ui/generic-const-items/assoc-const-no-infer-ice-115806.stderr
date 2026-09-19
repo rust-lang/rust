@@ -1,11 +1,14 @@
 error[E0119]: conflicting implementations of trait `Pins<_>` for type `NoPin`
-  --> $DIR/assoc-const-no-infer-ice-115806.rs:17:1
+  --> $DIR/assoc-const-no-infer-ice-115806.rs:18:1
    |
-LL | impl<TA> Pins<TA> for NoPin {}
-   | --------------------------- first implementation here
+LL |   impl<TA> Pins<TA> for NoPin {}
+   |   --------------------------- first implementation here
 ...
-LL | impl<USART, T> Pins<USART> for T where T: PinA<USART, A = const { &() }> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `NoPin`
+LL | / impl<USART, T> Pins<USART> for T
+LL | |
+LL | | where
+LL | |     T: PinA<USART, A = { core::direct_const_arg!(const { &() }) }>
+   | |__________________________________________________________________^ conflicting implementation for `NoPin`
    |
    = note: downstream crates may implement trait `PinA<_>` for type `NoPin`
 

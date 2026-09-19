@@ -2,6 +2,7 @@ use super::{
     FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, TrustedStep,
 };
 use crate::ascii::Char as AsciiChar;
+use crate::marker::Destruct;
 use crate::mem;
 use crate::net::{Ipv4Addr, Ipv6Addr};
 use crate::num::NonZero;
@@ -65,6 +66,31 @@ pub const trait Step: [const] Clone + [const] PartialOrd + Sized {
     /// * `Step::forward_checked(a, n) == (0..n).try_fold(a, |x, _| Step::forward_checked(&x, 1))`
     ///   * Corollary: `Step::forward_checked(a, 0) == Some(a)`
     fn forward_checked(start: Self, count: usize) -> Option<Self>;
+
+    /// Returns the value that would be obtained by taking the *successor*
+    /// of `self` `count` times along with a boolean tracking whether overflow
+    /// occurred.
+    ///
+    /// If this would overflow the range of values supported by `Self`, the
+    /// value returned is unspecified and should not be relied on, though
+    /// typically wrapping (modular arithmetic) is the most effective
+    /// implementation to enable optimizations.
+    ///
+    /// # Invariants
+    ///
+    /// For any `a`, `n`, and `m`, where no overflow occurs:
+    ///
+    /// * `Step::forward_overflowing(Step::forward_overflowing(a, n).0, m) == Step::forward_overflowing(a, n + m)`
+    ///
+    /// For any `a` and `n`, where no overflow occurs:
+    ///
+    /// * `Step::forward_overflowing(a, n) == (Step::forward_checked(a, n).unwrap(), false)`
+    ///
+    /// For any `a` and `n`:
+    ///
+    /// * `Step::forward_overflowing(a, n) == (0..n).fold((a, false), |(x, y), _| { let (s, o) = Step::forward_overflowing(x, 1); (s, y || o) })`
+    ///   * Corollary: `Step::forward_overflowing(a, 0) == (a, false)`
+    fn forward_overflowing(start: Self, count: usize) -> (Self, bool);
 
     /// Returns the value that would be obtained by taking the *successor*
     /// of `self` `count` times.
@@ -135,6 +161,31 @@ pub const trait Step: [const] Clone + [const] PartialOrd + Sized {
     /// * `Step::backward_checked(a, n) == (0..n).try_fold(a, |x, _| Step::backward_checked(x, 1))`
     ///   * Corollary: `Step::backward_checked(a, 0) == Some(a)`
     fn backward_checked(start: Self, count: usize) -> Option<Self>;
+
+    /// Returns the value that would be obtained by taking the *successor*
+    /// of `self` `count` times along with a boolean tracking whether overflow
+    /// occurred.
+    ///
+    /// If this would overflow the range of values supported by `Self`, the
+    /// value returned is unspecified and should not be relied on, though
+    /// typically wrapping (modular arithmetic) is the most effective
+    /// implementation to enable optimizations.
+    ///
+    /// # Invariants
+    ///
+    /// For any `a`, `n`, and `m`, where no overflow occurs:
+    ///
+    /// * `Step::backward_overflowing(Step::backward_overflowing(a, n).0, m) == Step::backward_overflowing(a, n + m)`
+    ///
+    /// For any `a` and `n`, where no overflow occurs:
+    ///
+    /// * `Step::backward_overflowing(a, n) == (Step::backward_checked(a, n).unwrap(), false)`
+    ///
+    /// For any `a` and `n`:
+    ///
+    /// * `Step::backward_overflowing(a, n) == (0..n).fold((a, false), |(x, y), _| { let (s, o) = Step::backward_overflowing(x, 1); (s, y || o) })`
+    ///   * Corollary: `Step::backward_overflowing(a, 0) == (a, false)`
+    fn backward_overflowing(start: Self, count: usize) -> (Self, bool);
 
     /// Returns the value that would be obtained by taking the *predecessor*
     /// of `self` `count` times.
@@ -293,6 +344,24 @@ macro_rules! step_integer_impls {
                         Err(_) => None, // if n is out of range, `unsigned_start - n` is too
                     }
                 }
+
+                #[inline]
+                fn forward_overflowing(start: Self, n: usize) -> (Self, bool) {
+                    match Self::try_from(n) {
+                        Ok(n) => start.overflowing_add(n),
+                        // if n is out of range, `start + n` must overflow
+                        Err(_) => (start.wrapping_add(n as Self), true),
+                    }
+                }
+
+                #[inline]
+                fn backward_overflowing(start: Self, n: usize) -> (Self, bool) {
+                    match Self::try_from(n) {
+                        Ok(n) => start.overflowing_sub(n),
+                        // if n is out of range, `start - n` must overflow
+                        Err(_) => (start.wrapping_sub(n as Self), true),
+                    }
+                }
             }
 
             #[allow(unreachable_patterns)]
@@ -358,6 +427,28 @@ macro_rules! step_integer_impls {
                         Err(_) => None,
                     }
                 }
+
+                #[inline]
+                fn forward_overflowing(start: Self, n: usize) -> (Self, bool) {
+                    match $u_narrower::try_from(n) {
+                        Ok(n) => start.overflowing_add_unsigned(n),
+                        // If n is out of range of e.g. u8,
+                        // then it is bigger than the entire range for i8 is wide
+                        // so `any_i8 + n` necessarily overflows i8.
+                        Err(_) => (start.wrapping_add_unsigned(n as $u_narrower), true),
+                    }
+                }
+
+                #[inline]
+                fn backward_overflowing(start: Self, n: usize) -> (Self, bool) {
+                    match $u_narrower::try_from(n) {
+                        Ok(n) => start.overflowing_sub_unsigned(n),
+                        // If n is out of range of e.g. u8,
+                        // then it is bigger than the entire range for i8 is wide
+                        // so `any_i8 - n` necessarily overflows i8.
+                        Err(_) => (start.wrapping_sub_unsigned(n as $u_narrower), true),
+                    }
+                }
             }
         )+
 
@@ -390,6 +481,16 @@ macro_rules! step_integer_impls {
                 #[inline]
                 fn backward_checked(start: Self, n: usize) -> Option<Self> {
                     start.checked_sub(n as Self)
+                }
+
+                #[inline]
+                fn forward_overflowing(start: Self, n: usize) -> (Self, bool) {
+                    start.overflowing_add(n as Self)
+                }
+
+                #[inline]
+                fn backward_overflowing(start: Self, n: usize) -> (Self, bool) {
+                    start.overflowing_sub(n as Self)
                 }
             }
 
@@ -428,6 +529,16 @@ macro_rules! step_integer_impls {
                 #[inline]
                 fn backward_checked(start: Self, n: usize) -> Option<Self> {
                     start.checked_sub(n as Self)
+                }
+
+                #[inline]
+                fn forward_overflowing(start: Self, n: usize) -> (Self, bool) {
+                    start.overflowing_add_unsigned(n as $u_wider)
+                }
+
+                #[inline]
+                fn backward_overflowing(start: Self, n: usize) -> (Self, bool) {
+                    start.overflowing_sub_unsigned(n as $u_wider)
                 }
             }
         )+
@@ -488,6 +599,31 @@ macro_rules! step_nonzero_identical_methods {
             }
             // Do saturating math (wrapping math causes UB if it wraps to Zero)
             Self::new(start.get().saturating_sub(n as $int)).unwrap_or(Self::MIN)
+        }
+
+        // Note: These NonZero overflowing implementations were chosen for
+        // code simplicity. Many alternative impls were examined, and some
+        // yielded marginally simpler assembly, but none resulted in the same
+        // loop -> arithmetic optimizations seen with the bare integers.
+
+        #[inline]
+        fn forward_overflowing(start: Self, n: usize) -> (Self, bool) {
+            // Wrapping to Zero causes UB, so saturate to MAX instead.
+            if let Some(s) = Step::forward_checked(start, n) {
+                (s, false)
+            } else {
+                (Self::MAX, true)
+            }
+        }
+
+        #[inline]
+        fn backward_overflowing(start: Self, n: usize) -> (Self, bool) {
+            // Subtracting to Zero causes UB, so saturate to MIN instead.
+            if let Some(s) = Step::backward_checked(start, n) {
+                (s, false)
+            } else {
+                (Self::MIN, true)
+            }
         }
 
         #[inline]
@@ -627,6 +763,29 @@ const impl Step for char {
         Some(unsafe { char::from_u32_unchecked(res) })
     }
 
+    // Note: These char overflowing implementations were chosen for
+    // code simplicity. Alternative impls were examined, and some
+    // yielded marginally simpler assembly, but none resulted in the same
+    // loop -> arithmetic optimizations seen with the bare integers.
+
+    #[inline]
+    fn forward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        if let Some(c) = Step::forward_checked(start, count) {
+            (c, false)
+        } else {
+            (Self::MAX, true)
+        }
+    }
+
+    #[inline]
+    fn backward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        if let Some(c) = Step::backward_checked(start, count) {
+            (c, false)
+        } else {
+            (Self::MIN, true)
+        }
+    }
+
     #[inline]
     unsafe fn forward_unchecked(start: char, count: usize) -> char {
         let start = start as u32;
@@ -683,6 +842,24 @@ const impl Step for AsciiChar {
     }
 
     #[inline]
+    fn forward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        let (s, o) = (start as usize).overflowing_add(count);
+        let ret = s & (AsciiChar::MAX as usize);
+
+        // SAFETY: Clamped to [0, MAX], must be valid ASCII
+        (unsafe { AsciiChar::from_u8_unchecked(ret as u8) }, o || ret < s)
+    }
+
+    #[inline]
+    fn backward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        let (s, o) = (start as usize).overflowing_sub(count);
+        let ret = s & (AsciiChar::MAX as usize);
+
+        // SAFETY: Clamped to [0, MAX], must be valid ASCII
+        (unsafe { AsciiChar::from_u8_unchecked(ret as u8) }, o || ret < s)
+    }
+
+    #[inline]
     unsafe fn forward_unchecked(start: AsciiChar, count: usize) -> AsciiChar {
         // SAFETY: Caller asserts that result is a valid ASCII character,
         // and therefore it is a valid u8.
@@ -722,6 +899,18 @@ const impl Step for Ipv4Addr {
     }
 
     #[inline]
+    fn forward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        let (s, o) = u32::forward_overflowing(start.to_bits(), count);
+        (Ipv4Addr::from_bits(s), o)
+    }
+
+    #[inline]
+    fn backward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        let (s, o) = u32::backward_overflowing(start.to_bits(), count);
+        (Ipv4Addr::from_bits(s), o)
+    }
+
+    #[inline]
     unsafe fn forward_unchecked(start: Ipv4Addr, count: usize) -> Ipv4Addr {
         // SAFETY: Since u32 and Ipv4Addr are losslessly convertible,
         //   this is as safe as the u32 version.
@@ -752,6 +941,18 @@ const impl Step for Ipv6Addr {
     #[inline]
     fn backward_checked(start: Ipv6Addr, count: usize) -> Option<Ipv6Addr> {
         u128::backward_checked(start.to_bits(), count).map(Ipv6Addr::from_bits)
+    }
+
+    #[inline]
+    fn forward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        let (s, o) = u128::forward_overflowing(start.to_bits(), count);
+        (Ipv6Addr::from_bits(s), o)
+    }
+
+    #[inline]
+    fn backward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        let (s, o) = u128::backward_overflowing(start.to_bits(), count);
+        (Ipv6Addr::from_bits(s), o)
     }
 
     #[inline]
@@ -800,7 +1001,7 @@ macro_rules! range_incl_exact_iter_impl {
 }
 
 /// Specialization implementations for `Range`.
-trait RangeIteratorImpl {
+const trait RangeIteratorImpl {
     type Item;
 
     // Iterator
@@ -814,7 +1015,8 @@ trait RangeIteratorImpl {
     fn spec_advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>>;
 }
 
-impl<A: Step> RangeIteratorImpl for ops::Range<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const impl<A: [const] Step + [const] Destruct> RangeIteratorImpl for ops::Range<A> {
     type Item = A;
 
     #[inline]
@@ -894,7 +1096,8 @@ impl<A: Step> RangeIteratorImpl for ops::Range<A> {
     }
 }
 
-impl<T: TrustedStep> RangeIteratorImpl for ops::Range<T> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const impl<T: [const] TrustedStep + [const] Destruct> RangeIteratorImpl for ops::Range<T> {
     #[inline]
     fn spec_next(&mut self) -> Option<T> {
         if self.start < self.end {
@@ -977,7 +1180,8 @@ impl<T: TrustedStep> RangeIteratorImpl for ops::Range<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step> Iterator for ops::Range<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const impl<A: [const] Step + [const] Destruct> Iterator for ops::Range<A> {
     type Item = A;
 
     #[inline]
@@ -1030,7 +1234,10 @@ impl<A: Step> Iterator for ops::Range<A> {
     }
 
     #[inline]
-    fn is_sorted(self) -> bool {
+    fn is_sorted(self) -> bool
+    where
+        Self: [const] Destruct,
+    {
         true
     }
 
@@ -1110,7 +1317,8 @@ range_incl_exact_iter_impl! {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step> DoubleEndedIterator for ops::Range<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const impl<A: [const] Step + [const] Destruct> DoubleEndedIterator for ops::Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         self.spec_next_back()
@@ -1186,7 +1394,6 @@ trait RangeInclusiveIteratorImpl {
     type Item;
 
     // Iterator
-    fn spec_next(&mut self) -> Option<Self::Item>;
     fn spec_try_fold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
@@ -1194,7 +1401,6 @@ trait RangeInclusiveIteratorImpl {
         R: Try<Output = B>;
 
     // DoubleEndedIterator
-    fn spec_next_back(&mut self) -> Option<Self::Item>;
     fn spec_try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
@@ -1204,22 +1410,6 @@ trait RangeInclusiveIteratorImpl {
 
 impl<A: Step> RangeInclusiveIteratorImpl for ops::RangeInclusive<A> {
     type Item = A;
-
-    #[inline]
-    default fn spec_next(&mut self) -> Option<A> {
-        if self.is_empty() {
-            return None;
-        }
-        let is_iterating = self.start < self.end;
-        Some(if is_iterating {
-            let n =
-                Step::forward_checked(self.start.clone(), 1).expect("`Step` invariants not upheld");
-            mem::replace(&mut self.start, n)
-        } else {
-            self.exhausted = true;
-            self.start.clone()
-        })
-    }
 
     #[inline]
     default fn spec_try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
@@ -1248,22 +1438,6 @@ impl<A: Step> RangeInclusiveIteratorImpl for ops::RangeInclusive<A> {
         }
 
         try { accum }
-    }
-
-    #[inline]
-    default fn spec_next_back(&mut self) -> Option<A> {
-        if self.is_empty() {
-            return None;
-        }
-        let is_iterating = self.start < self.end;
-        Some(if is_iterating {
-            let n =
-                Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
-            mem::replace(&mut self.end, n)
-        } else {
-            self.exhausted = true;
-            self.end.clone()
-        })
     }
 
     #[inline]
@@ -1298,22 +1472,6 @@ impl<A: Step> RangeInclusiveIteratorImpl for ops::RangeInclusive<A> {
 
 impl<T: TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
     #[inline]
-    fn spec_next(&mut self) -> Option<T> {
-        if self.is_empty() {
-            return None;
-        }
-        let is_iterating = self.start < self.end;
-        Some(if is_iterating {
-            // SAFETY: just checked precondition
-            let n = unsafe { Step::forward_unchecked(self.start, 1) };
-            mem::replace(&mut self.start, n)
-        } else {
-            self.exhausted = true;
-            self.start
-        })
-    }
-
-    #[inline]
     fn spec_try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
@@ -1340,22 +1498,6 @@ impl<T: TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
         }
 
         try { accum }
-    }
-
-    #[inline]
-    fn spec_next_back(&mut self) -> Option<T> {
-        if self.is_empty() {
-            return None;
-        }
-        let is_iterating = self.start < self.end;
-        Some(if is_iterating {
-            // SAFETY: just checked precondition
-            let n = unsafe { Step::backward_unchecked(self.end, 1) };
-            mem::replace(&mut self.end, n)
-        } else {
-            self.exhausted = true;
-            self.end
-        })
     }
 
     #[inline]
@@ -1394,7 +1536,14 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        self.spec_next()
+        if self.is_empty() {
+            return None;
+        }
+
+        let (n, o) = Step::forward_overflowing(self.start.clone(), 1);
+
+        self.exhausted = o;
+        Some(mem::replace(&mut self.start, n))
     }
 
     #[inline]
@@ -1425,26 +1574,13 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
             return None;
         }
 
-        if let Some(plus_n) = Step::forward_checked(self.start.clone(), n) {
-            use crate::cmp::Ordering::*;
+        let (plus_n, on) = Step::forward_overflowing(self.start.clone(), n);
+        let (plus_1, o1) = Step::forward_overflowing(plus_n.clone(), 1);
 
-            match plus_n.partial_cmp(&self.end) {
-                Some(Less) => {
-                    self.start = Step::forward(plus_n.clone(), 1);
-                    return Some(plus_n);
-                }
-                Some(Equal) => {
-                    self.start = plus_n.clone();
-                    self.exhausted = true;
-                    return Some(plus_n);
-                }
-                _ => {}
-            }
-        }
+        self.start = plus_1;
+        self.exhausted = on | o1;
 
-        self.start = self.end.clone();
-        self.exhausted = true;
-        None
+        if !on && plus_n <= self.end { Some(plus_n) } else { None }
     }
 
     #[inline]
@@ -1490,7 +1626,14 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        self.spec_next_back()
+        if self.is_empty() {
+            return None;
+        }
+
+        let (n, o) = Step::backward_overflowing(self.end.clone(), 1);
+
+        self.exhausted = o;
+        Some(mem::replace(&mut self.end, n))
     }
 
     #[inline]
@@ -1499,26 +1642,13 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
             return None;
         }
 
-        if let Some(minus_n) = Step::backward_checked(self.end.clone(), n) {
-            use crate::cmp::Ordering::*;
+        let (minus_n, on) = Step::backward_overflowing(self.end.clone(), n);
+        let (minus_1, o1) = Step::backward_overflowing(minus_n.clone(), 1);
 
-            match minus_n.partial_cmp(&self.start) {
-                Some(Greater) => {
-                    self.end = Step::backward(minus_n.clone(), 1);
-                    return Some(minus_n);
-                }
-                Some(Equal) => {
-                    self.end = minus_n.clone();
-                    self.exhausted = true;
-                    return Some(minus_n);
-                }
-                _ => {}
-            }
-        }
+        self.end = minus_1;
+        self.exhausted = on | o1;
 
-        self.end = self.start.clone();
-        self.exhausted = true;
-        None
+        if !on && minus_n >= self.start { Some(minus_n) } else { None }
     }
 
     #[inline]

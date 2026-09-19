@@ -27,6 +27,23 @@ impl<'tcx> MutVisitor<'tcx> for FixReturnPendingVisitor<'tcx> {
             && let AggregateKind::Adt(_, _, ref mut args, _, _) = **kind
         {
             *args = self.tcx.mk_args(&[self.tcx.types.unit.into()]);
+        } else if let Rvalue::Use(Operand::Constant(constant), _) = rvalue {
+            if let Some(async_gen_pending_def_id) = self.tcx.lang_items().async_gen_pending()
+                && let Const::Unevaluated(unevaluated, _) = constant.const_
+                && unevaluated.def == async_gen_pending_def_id
+            {
+                let poll_def_id = self.tcx.lang_items().poll().unwrap();
+                *rvalue = Rvalue::Aggregate(
+                    Box::new(AggregateKind::Adt(
+                        poll_def_id,
+                        VariantIdx::from_u32(1),
+                        self.tcx.mk_args(&[self.tcx.types.unit.into()]),
+                        None,
+                        None,
+                    )),
+                    IndexVec::new(),
+                );
+            }
         }
     }
 }
@@ -206,7 +223,7 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
     // Update the body's def to become the drop glue.
     let coroutine_instance = body.source.instance;
     let drop_glue = tcx.require_lang_item(LangItem::DropGlue, body.span);
-    let drop_instance = InstanceKind::DropGlue(drop_glue, Some(coroutine_ty));
+    let drop_instance = InstanceKind::Shim(ShimKind::DropGlue(drop_glue, Some(coroutine_ty)));
 
     // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
     // filename.

@@ -1,5 +1,12 @@
 // Tests for this module
-#[cfg(all(test, not(any(target_os = "emscripten", all(target_os = "wasi", target_env = "p1")))))]
+#[cfg(all(
+    test,
+    not(any(
+        target_os = "emscripten",
+        all(target_os = "wasi", target_env = "p1"),
+        target_os = "l4re"
+    ))
+))]
 mod tests;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -250,6 +257,6 @@ impl<T: ToSocketAddrs + ?Sized> ToSocketAddrs for &T {
 impl ToSocketAddrs for String {
     type Iter = vec::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
-        (&**self).to_socket_addrs()
+        (**self).to_socket_addrs()
     }
 }

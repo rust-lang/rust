@@ -20,8 +20,8 @@ fn assert_field<F: Field>() {}
 fn main() {
     // FIXME(FRTs): improve this error message, point to the `union`.
     assert_field::<field_of!(MyUnion, field)>();
-    //~^ ERROR: the trait bound `field_of!(MyUnion, field): std::field::Field` is not satisfied [E0277]
+    //~^ ERROR: the trait bound `field_of!(MyUnion, field): Field` is not satisfied [E0277]
     // FIXME(FRTs): improve this error message, point to the `enum`.
     assert_field::<field_of!(MyEnum, A.a)>();
-    //~^ ERROR: the trait bound `field_of!(MyEnum, A.a): std::field::Field` is not satisfied [E0277]
+    //~^ ERROR: the trait bound `field_of!(MyEnum, A.a): Field` is not satisfied [E0277]
 }

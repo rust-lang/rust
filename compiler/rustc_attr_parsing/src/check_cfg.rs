@@ -49,7 +49,7 @@ fn to_check_cfg_arg(name: Ident, value: Option<Symbol>, quotes: EscapeQuotes) ->
     if let Some(value) = value {
         let value = str::escape_debug(value.as_str()).to_string();
         let values = match quotes {
-            EscapeQuotes::Yes => format!("\\\"{}\\\"", value.replace("\"", "\\\\\\\\\"")),
+            EscapeQuotes::Yes => format!("\\\"{}\\\"", value.replace('"', "\\\\\\\\\"")),
             EscapeQuotes::No => format!("\"{value}\""),
         };
         format!("cfg({name}, values({values}))")
@@ -182,15 +182,15 @@ pub(crate) fn unexpected_cfg_name(
             possibilities.sort_by_key(|s| s.as_str());
 
             let get_possibilities_sub = || {
-                if !possibilities.is_empty() {
+                if possibilities.is_empty() {
+                    None
+                } else {
                     let possibilities =
-                        possibilities.iter().copied().cloned().collect::<Vec<_>>().into();
+                        possibilities.iter().copied().copied().collect::<Vec<_>>().into();
                     Some(diagnostics::unexpected_cfg_name::ExpectedValues {
                         best_match,
                         possibilities,
                     })
-                } else {
-                    None
                 }
             };
 
@@ -249,15 +249,15 @@ pub(crate) fn unexpected_cfg_name(
 
         let (possibilities, and_more) =
             sort_and_truncate_possibilities(sess, possibilities, FilterWellKnownNames::Yes);
-        let expected_names = if !possibilities.is_empty() {
+        let expected_names = if possibilities.is_empty() {
+            None
+        } else {
             let possibilities: Vec<_> =
                 possibilities.into_iter().map(|s| Ident::new(s, name_span)).collect();
             Some(diagnostics::unexpected_cfg_name::ExpectedNames {
                 possibilities: possibilities.into(),
                 and_more,
             })
-        } else {
-            None
         };
         diagnostics::unexpected_cfg_name::CodeSuggestion::SimilarValues {
             with_similar_values: similar_values,
@@ -351,14 +351,12 @@ pub(crate) fn unexpected_cfg_value(
 
         let suggestion = if let Some((value, value_span)) = value {
             // Suggest the most probable if we found one
-            if let Some(best_match) = find_best_match_for_name(&possibilities, value, None) {
-                Some(diagnostics::unexpected_cfg_value::ChangeValueSuggestion::SimilarName {
+            find_best_match_for_name(&possibilities, value, None).map(|best_match| {
+                diagnostics::unexpected_cfg_value::ChangeValueSuggestion::SimilarName {
                     span: value_span,
                     best_match,
-                })
-            } else {
-                None
-            }
+                }
+            })
         } else if let &[first_possibility] = &possibilities[..] {
             Some(diagnostics::unexpected_cfg_value::ChangeValueSuggestion::SpecifyValue {
                 span: name_span.shrink_to_hi(),
@@ -450,8 +448,7 @@ fn possible_well_known_names_for_cfg_value(sess: &Session, value: Symbol) -> Vec
             sess.check_config
                 .expecteds
                 .get(*name)
-                .map(|expected_values| expected_values.contains(&Some(value)))
-                .unwrap_or_default()
+                .is_some_and(|expected_values| expected_values.contains(&Some(value)))
         })
         .copied()
         .collect::<Vec<_>>();

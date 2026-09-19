@@ -17,22 +17,13 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
+                   value: u8,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
+               tag: u8 is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
@@ -64,10 +55,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                        largest_niche: Some(
                            Niche {
                                offset: Size(1 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
+                               value: u8,
                                valid_range: 0..=1,
                            },
                        ),
@@ -103,22 +91,13 @@ error: layout_of(MultipleAlignments) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
+                   value: u8,
                    valid_range: 0..=2,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=2,
-               },
+               tag: u8 is 0..=2,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
@@ -164,10 +143,7 @@ error: layout_of(MultipleAlignments) = Layout {
                        largest_niche: Some(
                            Niche {
                                offset: Size(1 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
+                               value: u8,
                                valid_range: 0..=1,
                            },
                        ),
@@ -203,22 +179,13 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
+                   value: u8,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
+               tag: u8 is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
@@ -250,10 +217,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                        largest_niche: Some(
                            Niche {
                                offset: Size(1 bytes),
-                               value: Int(
-                                   I16,
-                                   false,
-                               ),
+                               value: u16,
                                valid_range: 1..=65535,
                            },
                        ),
@@ -289,22 +253,13 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I16,
-                       false,
-                   ),
+                   value: u16,
                    valid_range: (..=0) | (65535..),
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I16,
-                       false,
-                   ),
-                   valid_range: (..=0) | (65535..),
-               },
+               tag: u16 is (..=0) | (65535..),
                tag_encoding: Niche {
                    untagged_variant: 1,
                    niche_variants: 0..=0,
@@ -340,10 +295,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),
-                               value: Int(
-                                   I16,
-                                   false,
-                               ),
+                               value: u16,
                                valid_range: 0..=0,
                            },
                        ),

@@ -49,7 +49,7 @@ LL |     type ImplTrait = impl Clone;
 LL |     fn f() -> Self::ImplTrait {
    |               --------------- expected `Foo::ImplTrait` because of return type
 LL |         ()
-   |         ^^ types differ
+   |         ^^ expected opaque type, found `()`
    |
    = note: expected opaque type `Foo::ImplTrait`
                 found unit type `()`

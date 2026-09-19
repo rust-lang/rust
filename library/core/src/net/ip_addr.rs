@@ -305,6 +305,35 @@ impl IpAddr {
         }
     }
 
+    /// Returns the unspecified IP address for the same IP version.
+    ///
+    /// Returns `0.0.0.0` for IPv4 and `::` for IPv6.
+    ///
+    /// Use this method when you must bind a socket to an unspecified local
+    /// address that uses the same IP version as a remote address.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(addr_unspecified_from)]
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// let ipv4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// assert_eq!(IpAddr::unspecified_from(ipv4), IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+    ///
+    /// let ipv6 = IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1));
+    /// assert_eq!(IpAddr::unspecified_from(ipv6), IpAddr::V6(Ipv6Addr::UNSPECIFIED));
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "addr_unspecified_from", issue = "158975")]
+    pub const fn unspecified_from(this: Self) -> Self {
+        match this {
+            Self::V4(_) => Self::V4(Ipv4Addr::UNSPECIFIED),
+            Self::V6(_) => Self::V6(Ipv6Addr::UNSPECIFIED),
+        }
+    }
+
     /// Returns [`true`] if this is a loopback address.
     ///
     /// See the documentation for [`Ipv4Addr::is_loopback()`] and
@@ -1192,7 +1221,8 @@ impl fmt::Display for Ipv4Addr {
         } else {
             const LONGEST_IPV4_ADDR: &str = "255.255.255.255";
 
-            let mut buf = DisplayBuffer::<{ LONGEST_IPV4_ADDR.len() }>::new();
+            let mut buf = DisplayBuffer::buffer::<{ LONGEST_IPV4_ADDR.len() }>();
+            let mut buf = DisplayBuffer::new(&mut buf);
             // Buffer is long enough for the longest possible IPv4 address, so this should never fail.
             write!(buf, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3]).unwrap();
 
@@ -2197,7 +2227,8 @@ impl fmt::Display for Ipv6Addr {
         } else {
             const LONGEST_IPV6_ADDR: &str = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff";
 
-            let mut buf = DisplayBuffer::<{ LONGEST_IPV6_ADDR.len() }>::new();
+            let mut buf = DisplayBuffer::buffer::<{ LONGEST_IPV6_ADDR.len() }>();
+            let mut buf = DisplayBuffer::new(&mut buf);
             // Buffer is long enough for the longest possible IPv6 address, so this should never fail.
             write!(buf, "{}", self).unwrap();
 

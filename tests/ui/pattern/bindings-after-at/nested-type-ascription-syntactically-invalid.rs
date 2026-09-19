@@ -22,7 +22,7 @@ fn case_1() {
 #[cfg(false)]
 fn case_2() {
     let a @ (b: u8);
-    //~^ ERROR expected one of `)`
+    //~^ ERROR a parenthesized pattern cannot be given a type
 }
 
 #[cfg(false)]

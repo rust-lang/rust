@@ -422,11 +422,11 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             for i in 0..8 {
                 let idx_lane = idx.value_lane(fx, i).load_scalar(fx);
                 let is_zero =
-                    fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThanOrEqual, idx_lane, 16);
+                    fx.bcx.ins().icmp_imm_u(IntCC::UnsignedGreaterThanOrEqual, idx_lane, 16);
                 let t_idx = fx.bcx.ins().uextend(fx.pointer_type, idx_lane);
                 let t_lane = t.value_lane_dyn(fx, t_idx).load_scalar(fx);
                 let res = fx.bcx.ins().select(is_zero, zero, t_lane);
-                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlags::trusted());
+                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlagsData::trusted());
             }
         }
         "llvm.aarch64.neon.tbl1.v16i8" => {
@@ -436,11 +436,11 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             for i in 0..16 {
                 let idx_lane = idx.value_lane(fx, i).load_scalar(fx);
                 let is_zero =
-                    fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThanOrEqual, idx_lane, 16);
+                    fx.bcx.ins().icmp_imm_u(IntCC::UnsignedGreaterThanOrEqual, idx_lane, 16);
                 let t_idx = fx.bcx.ins().uextend(fx.pointer_type, idx_lane);
                 let t_lane = t.value_lane_dyn(fx, t_idx).load_scalar(fx);
                 let res = fx.bcx.ins().select(is_zero, zero, t_lane);
-                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlags::trusted());
+                ret.place_lane(fx, i).to_ptr().store(fx, res, MemFlagsData::trusted());
             }
         }
 
@@ -605,6 +605,164 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             );
         }
 
+        "llvm.aarch64.crypto.sha1c" | "llvm.aarch64.crypto.sha1m" | "llvm.aarch64.crypto.sha1p" => {
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+            let c = c.load_scalar(fx);
+
+            let asm = match intrinsic {
+                "llvm.aarch64.crypto.sha1c" => {
+                    "fmov    s2, w1
+                     sha1c   q0, s2, v1.4s"
+                }
+                "llvm.aarch64.crypto.sha1m" => {
+                    "fmov    s2, w1
+                     sha1m   q0, s2, v1.4s"
+                }
+                "llvm.aarch64.crypto.sha1p" => {
+                    "fmov    s2, w1
+                     sha1p   q0, s2, v1.4s"
+                }
+                _ => unreachable!(),
+            };
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(asm.into())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::x1,
+                        )),
+                        value: b,
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v1,
+                        )),
+                        value: c,
+                    },
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v2,
+                        )),
+                        late: true,
+                        place: None,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.aarch64.crypto.sha1h" => {
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            let a = a.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(
+                    "fmov    s0, w0
+                     sha1h   s0, s0
+                     fmov    w0, s0"
+                        .into(),
+                )],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::x0,
+                        )),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        late: true,
+                        place: None,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.aarch64.crypto.sha1su0" => {
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+            let c = c.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha1su0 v0.4s, v1.4s, v2.4s".into())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v1,
+                        )),
+                        value: b,
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v2,
+                        )),
+                        value: c,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.aarch64.crypto.sha1su1" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha1su1 v0.4s, v1.4s".into())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v1,
+                        )),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
         "llvm.aarch64.crypto.sha256h" | "llvm.aarch64.crypto.sha256h2" => {
             intrinsic_args!(fx, args => (a, b, c); intrinsic);
 
@@ -712,6 +870,195 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             );
         }
 
+        "llvm.aarch64.crypto.sha512h" | "llvm.aarch64.crypto.sha512h2" => {
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+            let c = c.load_scalar(fx);
+
+            let asm = match intrinsic {
+                "llvm.aarch64.crypto.sha512h" => "sha512h q0, q1, v2.2d",
+                "llvm.aarch64.crypto.sha512h2" => "sha512h2 q0, q1, v2.2d",
+                _ => unreachable!(),
+            };
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(asm.into())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v1,
+                        )),
+                        value: b,
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v2,
+                        )),
+                        value: c,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.aarch64.crypto.sha512su0" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha512su0 v0.2d, v1.2d".into())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v1,
+                        )),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.aarch64.crypto.sha512su1" => {
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+            let c = c.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha512su1 v0.2d, v1.2d, v2.2d".into())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v1,
+                        )),
+                        value: b,
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v2,
+                        )),
+                        value: c,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.aarch64.crypto.eor3s.v2i64"
+        | "llvm.aarch64.crypto.eor3s.v4i32"
+        | "llvm.aarch64.crypto.eor3s.v8i16"
+        | "llvm.aarch64.crypto.eor3s.v16i8"
+        | "llvm.aarch64.crypto.eor3u.v2i64"
+        | "llvm.aarch64.crypto.eor3u.v4i32"
+        | "llvm.aarch64.crypto.eor3u.v8i16"
+        | "llvm.aarch64.crypto.eor3u.v16i8" => {
+            // https://developer.arm.com/documentation/ddi0602/2026-03/SIMD-FP-Instructions/EOR3--Three-way-exclusive-OR-
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            simd_trio_for_each_lane(
+                fx,
+                a,
+                b,
+                c,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane, c_lane| {
+                    let xor = fx.bcx.ins().bxor(a_lane, b_lane);
+                    fx.bcx.ins().bxor(xor, c_lane)
+                },
+            );
+        }
+
+        "llvm.aarch64.crypto.bcaxs.v2i64"
+        | "llvm.aarch64.crypto.bcaxs.v4i32"
+        | "llvm.aarch64.crypto.bcaxs.v8i16"
+        | "llvm.aarch64.crypto.bcaxs.v16i8"
+        | "llvm.aarch64.crypto.bcaxu.v2i64"
+        | "llvm.aarch64.crypto.bcaxu.v4i32"
+        | "llvm.aarch64.crypto.bcaxu.v8i16"
+        | "llvm.aarch64.crypto.bcaxu.v16i8" => {
+            // https://developer.arm.com/documentation/ddi0602/2026-03/SIMD-FP-Instructions/BCAX--Bit-clear-and-exclusive-OR-
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            simd_trio_for_each_lane(
+                fx,
+                a,
+                b,
+                c,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane, c_lane| {
+                    let band_not = fx.bcx.ins().band_not(b_lane, c_lane);
+                    fx.bcx.ins().bxor(a_lane, band_not)
+                },
+            );
+        }
+
+        "llvm.aarch64.crypto.rax1" => {
+            // https://developer.arm.com/documentation/ddi0602/2026-03/SIMD-FP-Instructions/RAX1--Rotate-and-exclusive-OR-
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            simd_pair_for_each_lane(
+                fx,
+                a,
+                b,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane| {
+                    let rot = fx.bcx.ins().rotl_imm_u(b_lane, 1);
+                    fx.bcx.ins().bxor(a_lane, rot)
+                },
+            );
+        }
+
+        "llvm.aarch64.crypto.xar" => {
+            // https://developer.arm.com/documentation/ddi0602/2026-03/SIMD-FP-Instructions/XAR--Exclusive-OR-and-rotate-
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            let c = c.load_scalar(fx);
+
+            simd_pair_for_each_lane(
+                fx,
+                a,
+                b,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane| {
+                    let xor = fx.bcx.ins().bxor(a_lane, b_lane);
+                    fx.bcx.ins().rotr(xor, c)
+                },
+            );
+        }
+
         "llvm.aarch64.neon.pmull64" => {
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
@@ -815,7 +1162,7 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
                     let a_lane = fx.bcx.ins().sextend(product_ty, a_lane);
                     let b_lane = fx.bcx.ins().sextend(product_ty, b_lane);
                     let product = fx.bcx.ins().imul(a_lane, b_lane);
-                    let product = fx.bcx.ins().sshr_imm(product, shift);
+                    let product = fx.bcx.ins().sshr_imm_u(product, shift);
                     let max = fx.bcx.ins().iconst(product_ty, max);
                     let result = fx.bcx.ins().smin(product, max);
                     fx.bcx.ins().ireduce(result_ty, result)

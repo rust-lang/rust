@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::{
@@ -12,15 +12,14 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
+use rustc_hir::intravisit::{InferKind, Visitor, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, Item, MatchSource, Mutability,
     Node, OwnerId, Pat, PatKind, Path, QPath, TyKind, UnOp,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, AssocTag, Ty, TyCtxt, TypeVisitableExt, TypeckResults, Unnormalized};
-use rustc_session::impl_lint_pass;
+use rustc_middle::ty::{self, AssocTag, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults, Unnormalized};
 use rustc_span::{Span, Symbol, SyntaxContext};
 use std::borrow::Cow;
 
@@ -381,8 +380,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                                     && let arg_ty = cx.tcx.erase_and_anonymize_regions(adjusted_ty)
                                     && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
-                                    && let args =
-                                        typeck.node_args_opt(hir_id).map(|args| &args[1..]).unwrap_or_default()
+                                    && let args = typeck.node_args_opt(hir_id).map_or_default(|args| &args[1..])
                                     && let impl_ty = if cx
                                         .tcx
                                         .fn_sig(fn_id)
@@ -902,6 +900,10 @@ impl TyCoercionStability {
                 | TyKind::TraitObject(..)
                 | TyKind::InferDelegation(..)
                 | TyKind::Err(_) => Self::Reborrow,
+                TyKind::View(ty, _) => {
+                    // FIXME(scrabsha): what are the semantics of view types here?
+                    Self::for_hir_ty(ty)
+                },
                 TyKind::UnsafeBinder(..) => Self::None,
             };
         }
@@ -925,21 +927,30 @@ impl TyCoercionStability {
                     continue;
                 },
                 ty::Param(_) if for_return => Self::Deref,
-                ty::Alias(ty::AliasTy {
-                    kind: ty::Free { .. } | ty::Inherent { .. },
-                    ..
-                }) => unreachable!("should have been normalized away above"),
-                ty::Alias(ty::AliasTy {
-                    kind: ty::Projection { .. },
-                    ..
-                }) if !for_return && ty.has_non_region_param() => Self::Reborrow,
+                ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Free { .. } | ty::Inherent { .. },
+                        ..
+                    },
+                ) => unreachable!("should have been normalized away above"),
+                ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Projection { .. },
+                        ..
+                    },
+                ) if !for_return && ty.has_non_region_param() => Self::Reborrow,
                 ty::Infer(_)
                 | ty::Error(_)
                 | ty::Bound(..)
-                | ty::Alias(ty::AliasTy {
-                    kind: ty::Opaque { .. },
-                    ..
-                })
+                | ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Opaque { .. },
+                        ..
+                    },
+                )
                 | ty::Placeholder(_)
                 | ty::Dynamic(..)
                 | ty::Param(_) => Self::Reborrow,
@@ -970,10 +981,13 @@ impl TyCoercionStability {
                 | ty::CoroutineClosure(..)
                 | ty::Never
                 | ty::Tuple(_)
-                | ty::Alias(ty::AliasTy {
-                    kind: ty::Projection { .. },
-                    ..
-                })
+                | ty::Alias(
+                    _,
+                    ty::AliasTy {
+                        kind: ty::Projection { .. },
+                        ..
+                    },
+                )
                 | ty::UnsafeBinder(_) => Self::Deref,
             };
         }

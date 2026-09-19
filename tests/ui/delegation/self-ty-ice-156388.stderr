@@ -1,10 +1,14 @@
-error: delegation self type is not specified
-  --> $DIR/self-ty-ice-156388.rs:5:16
+error[E0277]: the trait bound `Self: [const] Default` is not satisfied
+  --> $DIR/self-ty-ice-156388.rs:6:16
    |
 LL | reuse Default::default;
    |                ^^^^^^^
    |
-   = help: consider explicitly specifying self type: `reuse </* Type */ as Trait>::function`
+help: consider restricting type parameter `Self` with trait `Default`
+   |
+LL | reuse Default::default [const] std::default::Default;
+   |                        +++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0277`.

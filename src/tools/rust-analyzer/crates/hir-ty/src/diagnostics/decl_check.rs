@@ -19,7 +19,6 @@ use hir_def::{
     AdtId, ConstId, EnumId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
     ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
     attrs::AttrFlags,
-    db::DefDatabase,
     expr_store::Body,
     hir::Pat,
     item_tree::FieldsShape,
@@ -508,17 +507,14 @@ impl<'a> DeclValidator<'a> {
             self.validate_enum_variant_fields(*variant_id);
         }
 
-        let edition = self.edition(enum_id);
         let mut enum_variants_replacements = data
             .variants
             .keys()
             .filter_map(|name| {
-                to_camel_case(&name.display_no_db(edition).to_smolstr()).map(|new_name| {
-                    Replacement {
-                        current_name: name.clone(),
-                        suggested_text: new_name,
-                        expected_case: CaseType::UpperCamelCase,
-                    }
+                to_camel_case(name.as_str()).map(|new_name| Replacement {
+                    current_name: name.clone(),
+                    suggested_text: new_name,
+                    expected_case: CaseType::UpperCamelCase,
                 })
             })
             .peekable();
@@ -710,7 +706,7 @@ impl<'a> DeclValidator<'a> {
     ) where
         N: AstNode + HasName + fmt::Debug,
         S: HasSource<Value = N>,
-        L: Lookup<Data = S, Database = dyn DefDatabase> + HasModule + Copy,
+        L: Lookup<Data = S> + HasModule + Copy,
     {
         let to_expected_case_type = match expected_case {
             CaseType::LowerSnakeCase => to_lower_snake_case,
@@ -718,11 +714,12 @@ impl<'a> DeclValidator<'a> {
             CaseType::UpperCamelCase => to_camel_case,
         };
         let edition = self.edition(item_id);
-        let Some(replacement) =
-            to_expected_case_type(&name.display(self.db, edition).to_smolstr()).map(|new_name| {
-                Replacement { current_name: name.clone(), suggested_text: new_name, expected_case }
-            })
-        else {
+        let Some(replacement) = to_expected_case_type(name.as_str()).map(|mut new_name| {
+            if is_raw_identifier(&new_name, edition) {
+                new_name.insert_str(0, "r#");
+            }
+            Replacement { current_name: name.clone(), suggested_text: new_name, expected_case }
+        }) else {
             return;
         };
 

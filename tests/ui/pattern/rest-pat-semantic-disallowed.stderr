@@ -1,5 +1,5 @@
 error: `..` patterns are not allowed here
-  --> $DIR/rest-pat-semantic-disallowed.rs:10:13
+  --> $DIR/rest-pat-semantic-disallowed.rs:8:13
    |
 LL |     () => { .. }
    |             ^^
@@ -11,7 +11,7 @@ LL |     let mk_pat!();
    = note: this error originates in the macro `mk_pat` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `..` patterns are not allowed here
-  --> $DIR/rest-pat-semantic-disallowed.rs:18:9
+  --> $DIR/rest-pat-semantic-disallowed.rs:16:9
    |
 LL |     let ..;
    |         ^^
@@ -19,15 +19,7 @@ LL |     let ..;
    = note: only allowed in tuple, tuple struct, and slice patterns
 
 error: `..` patterns are not allowed here
-  --> $DIR/rest-pat-semantic-disallowed.rs:21:13
-   |
-LL |     let box ..;
-   |             ^^
-   |
-   = note: only allowed in tuple, tuple struct, and slice patterns
-
-error: `..` patterns are not allowed here
-  --> $DIR/rest-pat-semantic-disallowed.rs:25:13
+  --> $DIR/rest-pat-semantic-disallowed.rs:20:13
    |
 LL |         1 | .. => {}
    |             ^^
@@ -35,7 +27,7 @@ LL |         1 | .. => {}
    = note: only allowed in tuple, tuple struct, and slice patterns
 
 error: `..` patterns are not allowed here
-  --> $DIR/rest-pat-semantic-disallowed.rs:29:10
+  --> $DIR/rest-pat-semantic-disallowed.rs:24:10
    |
 LL |     let &..;
    |          ^^
@@ -43,7 +35,7 @@ LL |     let &..;
    = note: only allowed in tuple, tuple struct, and slice patterns
 
 error: `..` patterns are not allowed here
-  --> $DIR/rest-pat-semantic-disallowed.rs:30:14
+  --> $DIR/rest-pat-semantic-disallowed.rs:25:14
    |
 LL |     let &mut ..;
    |              ^^
@@ -51,7 +43,7 @@ LL |     let &mut ..;
    = note: only allowed in tuple, tuple struct, and slice patterns
 
 error: `..` patterns are not allowed here
-  --> $DIR/rest-pat-semantic-disallowed.rs:33:13
+  --> $DIR/rest-pat-semantic-disallowed.rs:28:13
    |
 LL |     let x @ ..;
    |             ^^
@@ -59,7 +51,7 @@ LL |     let x @ ..;
    = note: only allowed in tuple, tuple struct, and slice patterns
 
 error: `..` patterns are not allowed here
-  --> $DIR/rest-pat-semantic-disallowed.rs:35:17
+  --> $DIR/rest-pat-semantic-disallowed.rs:30:17
    |
 LL |     let ref x @ ..;
    |                 ^^
@@ -67,7 +59,7 @@ LL |     let ref x @ ..;
    = note: only allowed in tuple, tuple struct, and slice patterns
 
 error: `..` patterns are not allowed here
-  --> $DIR/rest-pat-semantic-disallowed.rs:36:21
+  --> $DIR/rest-pat-semantic-disallowed.rs:31:21
    |
 LL |     let ref mut x @ ..;
    |                     ^^
@@ -75,11 +67,20 @@ LL |     let ref mut x @ ..;
    = note: only allowed in tuple, tuple struct, and slice patterns
 
 error: `..` can only be used once per tuple pattern
-  --> $DIR/rest-pat-semantic-disallowed.rs:43:9
+  --> $DIR/rest-pat-semantic-disallowed.rs:38:9
    |
 LL |         ..,
    |         -- previously used here
 LL |         ..,
+   |         ^^ can only be used once per tuple pattern
+
+error: `..` can only be used once per tuple pattern
+  --> $DIR/rest-pat-semantic-disallowed.rs:39:9
+   |
+LL |         ..,
+   |         -- previously used here
+LL |         ..,
+LL |         ..
    |         ^^ can only be used once per tuple pattern
 
 error: `..` can only be used once per tuple pattern
@@ -87,25 +88,25 @@ error: `..` can only be used once per tuple pattern
    |
 LL |         ..,
    |         -- previously used here
-LL |         ..,
-LL |         ..
-   |         ^^ can only be used once per tuple pattern
-
-error: `..` can only be used once per tuple pattern
-  --> $DIR/rest-pat-semantic-disallowed.rs:49:9
-   |
-LL |         ..,
-   |         -- previously used here
 LL |         x,
 LL |         ..
    |         ^^ can only be used once per tuple pattern
 
 error: `..` can only be used once per tuple struct pattern
-  --> $DIR/rest-pat-semantic-disallowed.rs:59:9
+  --> $DIR/rest-pat-semantic-disallowed.rs:54:9
    |
 LL |         ..,
    |         -- previously used here
 LL |         ..,
+   |         ^^ can only be used once per tuple struct pattern
+
+error: `..` can only be used once per tuple struct pattern
+  --> $DIR/rest-pat-semantic-disallowed.rs:55:9
+   |
+LL |         ..,
+   |         -- previously used here
+LL |         ..,
+LL |         ..
    |         ^^ can only be used once per tuple struct pattern
 
 error: `..` can only be used once per tuple struct pattern
@@ -113,21 +114,12 @@ error: `..` can only be used once per tuple struct pattern
    |
 LL |         ..,
    |         -- previously used here
-LL |         ..,
-LL |         ..
-   |         ^^ can only be used once per tuple struct pattern
-
-error: `..` can only be used once per tuple struct pattern
-  --> $DIR/rest-pat-semantic-disallowed.rs:65:9
-   |
-LL |         ..,
-   |         -- previously used here
 LL |         x,
 LL |         ..
    |         ^^ can only be used once per tuple struct pattern
 
 error: `..` can only be used once per slice pattern
-  --> $DIR/rest-pat-semantic-disallowed.rs:73:9
+  --> $DIR/rest-pat-semantic-disallowed.rs:68:9
    |
 LL |         ..,
    |         -- previously used here
@@ -135,7 +127,7 @@ LL |         ..,
    |         ^^ can only be used once per slice pattern
 
 error: `..` can only be used once per slice pattern
-  --> $DIR/rest-pat-semantic-disallowed.rs:74:9
+  --> $DIR/rest-pat-semantic-disallowed.rs:69:9
    |
 LL |         ..,
    |         -- previously used here
@@ -144,7 +136,7 @@ LL |         ..
    |         ^^ can only be used once per slice pattern
 
 error: `..` can only be used once per slice pattern
-  --> $DIR/rest-pat-semantic-disallowed.rs:78:17
+  --> $DIR/rest-pat-semantic-disallowed.rs:73:17
    |
 LL |         ..,
    |         -- previously used here
@@ -152,7 +144,7 @@ LL |         ref x @ ..,
    |                 ^^ can only be used once per slice pattern
 
 error: `..` can only be used once per slice pattern
-  --> $DIR/rest-pat-semantic-disallowed.rs:79:21
+  --> $DIR/rest-pat-semantic-disallowed.rs:74:21
    |
 LL |         ..,
    |         -- previously used here
@@ -161,7 +153,7 @@ LL |         ref mut y @ ..,
    |                     ^^ can only be used once per slice pattern
 
 error: `..` patterns are not allowed here
-  --> $DIR/rest-pat-semantic-disallowed.rs:80:18
+  --> $DIR/rest-pat-semantic-disallowed.rs:75:18
    |
 LL |         (ref z @ ..),
    |                  ^^
@@ -169,7 +161,7 @@ LL |         (ref z @ ..),
    = note: only allowed in tuple, tuple struct, and slice patterns
 
 error: `..` can only be used once per slice pattern
-  --> $DIR/rest-pat-semantic-disallowed.rs:81:9
+  --> $DIR/rest-pat-semantic-disallowed.rs:76:9
    |
 LL |         ..,
    |         -- previously used here
@@ -178,7 +170,7 @@ LL |         ..
    |         ^^ can only be used once per slice pattern
 
 error: `..` patterns are not allowed here
-  --> $DIR/rest-pat-semantic-disallowed.rs:17:12
+  --> $DIR/rest-pat-semantic-disallowed.rs:15:12
    |
 LL |     fn foo(..: u8) {}
    |            ^^
@@ -186,7 +178,7 @@ LL |     fn foo(..: u8) {}
    = note: only allowed in tuple, tuple struct, and slice patterns
 
 error[E0282]: type annotations needed
-  --> $DIR/rest-pat-semantic-disallowed.rs:33:9
+  --> $DIR/rest-pat-semantic-disallowed.rs:28:9
    |
 LL |     let x @ ..;
    |         ^^^^^^
@@ -196,6 +188,6 @@ help: consider giving this pattern a type
 LL |     let x @ ..: /* Type */;
    |               ++++++++++++
 
-error: aborting due to 23 previous errors
+error: aborting due to 22 previous errors
 
 For more information about this error, try `rustc --explain E0282`.

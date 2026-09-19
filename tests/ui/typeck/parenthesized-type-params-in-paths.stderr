@@ -1,0 +1,87 @@
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-params-in-paths.rs:6:12
+   |
+LL |     let x: usize() = 1;
+   |            ^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-params-in-paths.rs:9:19
+   |
+LL |     let b: ::std::boxed()::Box<_> = Box::new(1);
+   |                   ^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-params-in-paths.rs:12:20
+   |
+LL |     let p = ::std::str::()::from_utf8(b"foo").unwrap();
+   |                    ^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-params-in-paths.rs:15:25
+   |
+LL |     let p = ::std::str::from_utf8::()(b"foo").unwrap();
+   |                         ^^^^^^^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-params-in-paths.rs:18:29
+   |
+LL |     let o : Box<dyn (::std::marker()::Send)> = Box::new(1);
+   |                             ^^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-params-in-paths.rs:21:35
+   |
+LL |     let o : Box<dyn Send + ::std::marker()::Sync> = Box::new(1);
+   |                                   ^^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-params-in-paths.rs:24:22
+   |
+LL |     { fn f<X: ::std::marker()::Send>() {} }
+   |                      ^^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-params-in-paths.rs:27:29
+   |
+LL |     { fn f() -> impl ::std::marker()::Send { } }
+   |                             ^^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-params-in-paths.rs:35:13
+   |
+LL | impl ::std::marker()::Copy for X {}
+   |             ^^^^^^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-params-in-paths.rs:39:13
+   |
+LL |     let d : X() = Default::default();
+   |             ^^^ only `Fn` traits may use parentheses
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/parenthesized-type-params-in-paths.rs:45:22
+   |
+LL | fn issue_161062() -> A(impl Sized) {}
+   |                      ^^^^^^^^^^^^^ only `Fn` traits may use parentheses
+   |
+help: use angle brackets instead
+   |
+LL - fn issue_161062() -> A(impl Sized) {}
+LL + fn issue_161062() -> A<impl Sized> {}
+   |
+
+error: parenthesized generic arguments cannot be used in associated type constraints
+  --> $DIR/parenthesized-type-params-in-paths.rs:52:58
+   |
+LL | fn issue_161062_assoc_constraint() -> &'static dyn Trait<Assoc(impl Sized) = usize> {
+   |                                                          ^^^^^^^^^^^^^^^^^
+   |
+help: use angle brackets instead
+   |
+LL - fn issue_161062_assoc_constraint() -> &'static dyn Trait<Assoc(impl Sized) = usize> {
+LL + fn issue_161062_assoc_constraint() -> &'static dyn Trait<Assoc<impl Sized> = usize> {
+   |
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0214`.

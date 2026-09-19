@@ -9,11 +9,20 @@ use crate::common::PassFailMode;
 use crate::json;
 use crate::runtest::{
     AllowUnused, Emit, LinkToAux, ProcRes, RunResult, TargetLocation, TestCx, TestOutput,
-    Truncated, UI_FIXED, WillExecute,
+    TestSuite, Truncated, UI_FIXED, WillExecute,
 };
 
 impl TestCx<'_> {
     pub(super) fn run_ui_test(&self) {
+        if self.config.suite == TestSuite::RustdocUi && self.props.should_fail {
+            writeln!(
+                self.stderr,
+                "`should-fail` should not be used in `rustdoc-ui` testsuite, use `failure-status` instead",
+            );
+            // Since it's expecting the test to fail/panic, we return without running anything,
+            // preventing the test to be marked as passed.
+            return;
+        }
         let pass_fail =
             self.effective_pass_fail_mode().expect("UI tests always have a pass/fail mode");
 
@@ -259,7 +268,7 @@ impl TestCx<'_> {
             // (including the revision) here to avoid the test writer having to manually specify a
             // `#![crate_name = "..."]` as a workaround. This is okay since we're only checking if
             // the fixed code is compilable.
-            if self.revision.is_some() {
+            if self.variant.revision.is_some() {
                 let crate_name =
                     self.testpaths.file.file_stem().expect("test must have a file stem");
                 // crate name must be alphanumeric or `_`.

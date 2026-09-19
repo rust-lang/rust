@@ -1,0 +1,10 @@
+error: ABI does not support guaranteed tail calls
+  --> $DIR/rust-call.rs:12:5
+   |
+LL |     become a(());
+   |     ^^^^^^^^^^^^
+   |
+   = note: `become` is not supported for `extern "rust-call"` functions
+
+error: aborting due to 1 previous error
+

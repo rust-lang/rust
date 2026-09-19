@@ -1,8 +1,8 @@
 
 //@aux-build:proc_macros.rs
 #![feature(custom_inner_attributes)]
-#![allow(clippy::needless_pub_self, unused)]
 #![warn(clippy::pub_with_shorthand)]
+#![expect(clippy::needless_pub_self)]
 #![no_main]
 #![rustfmt::skip] // rustfmt will remove `in`, understandable
                   // but very annoying for our purposes!

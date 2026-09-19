@@ -3,11 +3,11 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
-use rustc_hir::limit::Limit;
-use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{AlwaysRequiresDrop, needs_drop_components};
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt, Unnormalized};
+use rustc_span::bug;
+use rustc_structures::Limit;
 use tracing::{debug, instrument};
 
 use crate::diagnostics::NeedsDropOverflow;
@@ -222,7 +222,7 @@ where
                                 for field_ty in &witness.field_tys {
                                     queue_type(
                                         self,
-                                        EarlyBinder::bind(field_ty.ty)
+                                        EarlyBinder::bind(tcx, field_ty.ty)
                                             .instantiate(tcx, args)
                                             .skip_norm_wip(),
                                     );
@@ -374,7 +374,9 @@ fn drop_tys_helper<'tcx>(
             match subty.kind() {
                 ty::Adt(adt_id, args) => {
                     for subty in tcx.adt_drop_tys(adt_id.did())? {
-                        vec.push(EarlyBinder::bind(subty).instantiate(tcx, args).skip_norm_wip());
+                        vec.push(
+                            EarlyBinder::bind(tcx, subty).instantiate(tcx, args).skip_norm_wip(),
+                        );
                     }
                 }
                 _ => vec.push(subty),

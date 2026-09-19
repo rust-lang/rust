@@ -143,7 +143,6 @@ impl<'a> State<'a> {
                     id: DUMMY_NODE_ID,
                 })
                 .collect(),
-            tokens: None,
         };
 
         match &item.args {
@@ -217,6 +216,11 @@ impl<'a> State<'a> {
             Node::LetStmt(a) => self.print_local_decl(a),
             Node::Crate(..) => panic!("cannot print Crate"),
             Node::WherePredicate(pred) => self.print_where_predicate(pred),
+            Node::TestBinderForall(_) => panic!("cannot print Node::TestBinderForall"),
+            Node::TestBinderExists(_) => panic!("cannot print Node::TestBinderExists"),
+            Node::TestBinderBoundTypeConstraint(_) => {
+                panic!("cannot print Node::TestBinderBoundTypeConstraint")
+            }
             Node::Synthetic => unreachable!(),
             Node::Err(_) => self.word("/*ERROR*/"),
         }
@@ -475,6 +479,17 @@ impl<'a> State<'a> {
                 }
                 self.print_ident(*field);
                 self.word(")");
+            }
+            hir::TyKind::View(ty, fields) => {
+                self.word("view_type!(");
+                self.print_type(ty);
+                self.word(".{");
+                if !fields.is_empty() {
+                    self.space();
+                    self.commasep(Breaks::Inconsistent, fields, |s, f| s.print_ident(*f));
+                    self.space();
+                }
+                self.word("})");
             }
         }
         self.end(ib)
@@ -797,6 +812,9 @@ impl<'a> State<'a> {
                 self.end(ib);
                 self.end(cb);
             }
+            rustc_hir::ItemKind::TestBinderConstraints { .. } => {
+                self.word("test_binder_constraints!(/* pretty-printing not supported */)");
+            }
         }
         self.ann.post(self, AnnNode::Item(item))
     }
@@ -891,6 +909,7 @@ impl<'a> State<'a> {
                     self.commasep(Inconsistent, struct_def.fields(), |s, field| {
                         s.maybe_print_comment(field.span.lo());
                         s.print_attrs(s.attrs(field.hir_id));
+                        s.print_mut_restriction(field.mut_restriction);
                         s.print_type(field.ty);
                     });
                     self.pclose();
@@ -912,6 +931,7 @@ impl<'a> State<'a> {
                     self.hardbreak_if_not_bol();
                     self.maybe_print_comment(field.span.lo());
                     self.print_attrs(self.attrs(field.hir_id));
+                    self.print_mut_restriction(field.mut_restriction);
                     self.print_ident(field.ident);
                     self.word_nbsp(":");
                     self.print_type(field.ty);
@@ -1149,7 +1169,7 @@ impl<'a> State<'a> {
     fn print_const_item_rhs(&mut self, ct_rhs: hir::ConstItemRhs<'_>) {
         match ct_rhs {
             hir::ConstItemRhs::Body(body_id) => self.ann.nested(self, Nested::Body(body_id)),
-            hir::ConstItemRhs::TypeConst(const_arg) => self.print_const_arg(const_arg),
+            hir::ConstItemRhs::Direct(const_arg) => self.print_const_arg(const_arg),
         }
     }
 
@@ -1729,7 +1749,7 @@ impl<'a> State<'a> {
                 self.print_expr_cond_paren(result, self.precedence(result) < ExprPrecedence::Jump);
             }
             hir::ExprKind::InlineAsm(asm) => {
-                self.word("asm!");
+                self.word(format!("{}!", asm.asm_macro.macro_name()));
                 self.print_inline_asm(asm);
             }
             hir::ExprKind::OffsetOf(container, fields) => {
@@ -2076,17 +2096,6 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
-            PatKind::Box(inner) => {
-                let is_range_inner = matches!(inner.kind, PatKind::Range(..));
-                self.word("box ");
-                if is_range_inner {
-                    self.popen();
-                }
-                self.print_pat(inner);
-                if is_range_inner {
-                    self.pclose();
-                }
-            }
             PatKind::Deref(inner) => {
                 self.word("deref!");
                 self.popen();
@@ -2266,7 +2275,7 @@ impl<'a> State<'a> {
         let mut i = 0;
         let mut print_arg = |s: &mut Self, ty: Option<&hir::Ty<'_>>| {
             if Some(i) == decl.splatted().map(usize::from) {
-                s.word("#[splat]");
+                s.word("#[rustc_splat]");
             }
             if i == 0 && decl.implicit_self().has_implicit_self() {
                 s.print_implicit_self(&decl.implicit_self());
@@ -2645,16 +2654,28 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_impl_restriction(&mut self, r: &hir::ImplRestriction<'_>) {
-        match r.kind {
+    fn print_restriction<S: Into<std::borrow::Cow<'static, str>>>(
+        &mut self,
+        k: &hir::RestrictionKind<'_>,
+        prefix: S,
+    ) {
+        match k {
             hir::RestrictionKind::Unrestricted => {}
             hir::RestrictionKind::Restricted(path) => {
-                self.word("impl(");
-                self.word_nbsp("in");
+                self.word(prefix.into());
+                self.word_nbsp("(in");
                 self.print_path(path, false);
-                self.word(")");
+                self.word_nbsp(")");
             }
         }
+    }
+
+    fn print_mut_restriction(&mut self, r: &hir::MutRestriction<'_>) {
+        self.print_restriction(&r.kind, "mut");
+    }
+
+    fn print_impl_restriction(&mut self, r: &hir::ImplRestriction<'_>) {
+        self.print_restriction(&r.kind, "impl");
     }
 }
 

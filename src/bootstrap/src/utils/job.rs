@@ -1,12 +1,13 @@
 #[cfg(windows)]
-pub use for_windows::*;
+pub(crate) use self::for_windows::setup;
+use crate::core::session::Session;
 
 #[cfg(any(target_os = "haiku", target_os = "hermit", not(any(unix, windows))))]
-pub unsafe fn setup(_build: &mut crate::Build) {}
+pub(crate) unsafe fn setup(_sess: &Session) {}
 
 #[cfg(all(unix, not(target_os = "haiku")))]
-pub unsafe fn setup(build: &mut crate::Build) {
-    if build.config.low_priority {
+pub(crate) unsafe fn setup(sess: &Session) {
+    if sess.config.low_priority {
         unsafe {
             libc::setpriority(libc::PRIO_PGRP as _, 0, 10);
         }
@@ -58,9 +59,7 @@ mod for_windows {
     use windows::Win32::System::Threading::{BELOW_NORMAL_PRIORITY_CLASS, GetCurrentProcess};
     use windows::core::PCWSTR;
 
-    use crate::Build;
-
-    pub unsafe fn setup(build: &mut Build) {
+    pub(crate) unsafe fn setup(sess: &super::Session) {
         // SAFETY: pretty much everything below is unsafe
         unsafe {
             // Enable the Windows Error Reporting dialog which msys disables,
@@ -77,7 +76,7 @@ mod for_windows {
             // children will reside in the job by default.
             let mut info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
             info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-            if build.config.low_priority {
+            if sess.config.low_priority {
                 info.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_PRIORITY_CLASS;
                 info.BasicLimitInformation.PriorityClass = BELOW_NORMAL_PRIORITY_CLASS.0;
             }

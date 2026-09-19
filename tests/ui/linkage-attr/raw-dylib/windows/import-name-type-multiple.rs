@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 //@ add-minicore
 //@ compile-flags: --target i686-pc-windows-msvc
 //@ needs-llvm-components: x86
@@ -7,6 +6,7 @@
 #![no_core]
 #![crate_type = "lib"]
 
+// ignore-tidy-linelength
 #[link(name = "foo", kind = "raw-dylib", import_name_type = "decorated", import_name_type = "decorated")]
 //~^ ERROR malformed
 extern "C" { }

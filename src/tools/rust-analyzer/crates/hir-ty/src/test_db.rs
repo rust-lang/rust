@@ -7,7 +7,7 @@ use base_db::{
     SourceRootId, SourceRootInput, all_crates, relevant_crates, set_all_crates_with_durability,
 };
 
-use hir_def::{ModuleId, db::DefDatabase, nameres::crate_def_map};
+use hir_def::{ModuleId, nameres::crate_def_map};
 use hir_expand::EditionedFileId;
 use rustc_hash::FxHashMap;
 use salsa::Durability;
@@ -16,7 +16,7 @@ use syntax::TextRange;
 use test_utils::extract_annotations;
 use triomphe::Arc;
 
-#[salsa_macros::db]
+#[salsa::db]
 pub(crate) struct TestDB {
     storage: salsa::Storage<Self>,
     files: Arc<base_db::Files>,
@@ -43,7 +43,7 @@ impl Default for TestDB {
             crates_map: Default::default(),
             nonce: Nonce::new(),
         };
-        this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
+        hir_def::set_expand_proc_attr_macros(&mut this, true);
         // This needs to be here otherwise `CrateGraphBuilder` panics.
         set_all_crates_with_durability(&mut this, std::iter::empty(), Durability::HIGH);
         _ = base_db::LibraryRoots::builder(Default::default())
@@ -64,7 +64,7 @@ impl Clone for TestDB {
             files: self.files.clone(),
             crates_map: self.crates_map.clone(),
             events: self.events.clone(),
-            nonce: Nonce::new(),
+            nonce: self.nonce,
         }
     }
 }
@@ -75,7 +75,7 @@ impl fmt::Debug for TestDB {
     }
 }
 
-#[salsa_macros::db]
+#[salsa::db]
 impl SourceDatabase for TestDB {
     fn file_text(&self, file_id: base_db::FileId) -> FileText {
         self.files.file_text(file_id)
@@ -138,7 +138,7 @@ impl SourceDatabase for TestDB {
     }
 }
 
-#[salsa_macros::db]
+#[salsa::db]
 impl salsa::Database for TestDB {}
 
 impl panic::RefUnwindSafe for TestDB {}

@@ -1,0 +1,31 @@
+default_test
+W(1)
+W(2)
+arguments_mapping_works_without_return_self
+W(2)
+W(10)
+12
+default_test_args_adjustments
+W(5)
+W(5)
+10
+default_test_args_adjustments_2
+W(10)
+W(10)
+W(10)
+30
+default_test_args_adjustments_3
+W(15)
+W(15)
+W(15)
+45
+default_test_args_adjustments_4
+W(20)
+W(20)
+W(20)
+60
+default_test_with_non_self_args
+W(1)
+W(2)
+Non-self arg a: ()
+Non-self arg b: 123

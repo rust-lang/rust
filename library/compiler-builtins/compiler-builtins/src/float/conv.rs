@@ -228,29 +228,39 @@ intrinsics! {
         f64::from_bits(int_to_float::u64_to_f64_bits(i))
     }
 
-    #[cfg_attr(target_os = "uefi", unadjusted_on_win64)]
+    #[cfg(not(all(target_os = "uefi", target_arch = "x86_64")))]
     pub extern "C" fn __floatuntisf(i: u128) -> f32 {
         f32::from_bits(int_to_float::u128_to_f32_bits(i))
     }
 
-    #[cfg_attr(target_os = "uefi", unadjusted_on_win64)]
+    #[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
+    pub extern "C" fn __floatuntisf(lo: u64, hi: u64) -> f32 {
+        f32::from_bits(int_to_float::u128_to_f32_bits((u128::from(hi) << 64) | u128::from(lo)))
+    }
+
+    #[cfg(not(all(target_os = "uefi", target_arch = "x86_64")))]
     pub extern "C" fn __floatuntidf(i: u128) -> f64 {
         f64::from_bits(int_to_float::u128_to_f64_bits(i))
     }
 
-    #[ppc_alias = __floatunsikf]
+    #[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
+    pub extern "C" fn __floatuntidf(lo: u64, hi: u64) -> f64 {
+        f64::from_bits(int_to_float::u128_to_f64_bits((u128::from(hi) << 64) | u128::from(lo)))
+    }
+
+    #[ppc_name = __floatunsikf]
     #[cfg(f128_enabled)]
     pub extern "C" fn __floatunsitf(i: u32) -> f128 {
         f128::from_bits(int_to_float::u32_to_f128_bits(i))
     }
 
-    #[ppc_alias = __floatundikf]
+    #[ppc_name = __floatundikf]
     #[cfg(f128_enabled)]
     pub extern "C" fn __floatunditf(i: u64) -> f128 {
         f128::from_bits(int_to_float::u64_to_f128_bits(i))
     }
 
-    #[ppc_alias = __floatuntikf]
+    #[ppc_name = __floatuntikf]
     #[cfg(f128_enabled)]
     pub extern "C" fn __floatuntitf(i: u128) -> f128 {
         f128::from_bits(int_to_float::u128_to_f128_bits(i))
@@ -279,29 +289,39 @@ intrinsics! {
         int_to_float::signed(i, int_to_float::u64_to_f64_bits)
     }
 
-    #[cfg_attr(target_os = "uefi", unadjusted_on_win64)]
+    #[cfg(not(all(target_os = "uefi", target_arch = "x86_64")))]
     pub extern "C" fn __floattisf(i: i128) -> f32 {
         int_to_float::signed(i, int_to_float::u128_to_f32_bits)
     }
 
-    #[cfg_attr(target_os = "uefi", unadjusted_on_win64)]
+    #[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
+    pub extern "C" fn __floattisf(lo: u64, hi: u64) -> f32 {
+        int_to_float::signed((i128::from(hi) << 64) | i128::from(lo), int_to_float::u128_to_f32_bits)
+    }
+
+    #[cfg(not(all(target_os = "uefi", target_arch = "x86_64")))]
     pub extern "C" fn __floattidf(i: i128) -> f64 {
         int_to_float::signed(i, int_to_float::u128_to_f64_bits)
     }
 
-    #[ppc_alias = __floatsikf]
+    #[cfg(all(target_os = "uefi", target_arch = "x86_64"))]
+    pub extern "C" fn __floattidf(lo: u64, hi: u64) -> f64 {
+        int_to_float::signed((i128::from(hi) << 64) | i128::from(lo), int_to_float::u128_to_f64_bits)
+    }
+
+    #[ppc_name = __floatsikf]
     #[cfg(f128_enabled)]
     pub extern "C" fn __floatsitf(i: i32) -> f128 {
         int_to_float::signed(i, int_to_float::u32_to_f128_bits)
     }
 
-    #[ppc_alias = __floatdikf]
+    #[ppc_name = __floatdikf]
     #[cfg(f128_enabled)]
     pub extern "C" fn __floatditf(i: i64) -> f128 {
         int_to_float::signed(i, int_to_float::u64_to_f128_bits)
     }
 
-    #[ppc_alias = __floattikf]
+    #[ppc_name = __floattikf]
     #[cfg(f128_enabled)]
     pub extern "C" fn __floattitf(i: i128) -> f128 {
         int_to_float::signed(i, int_to_float::u128_to_f128_bits)
@@ -419,19 +439,19 @@ intrinsics! {
         float_to_unsigned_int(f)
     }
 
-    #[ppc_alias = __fixunskfsi]
+    #[ppc_name = __fixunskfsi]
     #[cfg(f128_enabled)]
     pub extern "C" fn __fixunstfsi(f: f128) -> u32 {
         float_to_unsigned_int(f)
     }
 
-    #[ppc_alias = __fixunskfdi]
+    #[ppc_name = __fixunskfdi]
     #[cfg(f128_enabled)]
     pub extern "C" fn __fixunstfdi(f: f128) -> u64 {
         float_to_unsigned_int(f)
     }
 
-    #[ppc_alias = __fixunskfti]
+    #[ppc_name = __fixunskfti]
     #[cfg(f128_enabled)]
     pub extern "C" fn __fixunstfti(f: f128) -> u128 {
         float_to_unsigned_int(f)
@@ -468,19 +488,19 @@ intrinsics! {
         float_to_signed_int(f)
     }
 
-    #[ppc_alias = __fixkfsi]
+    #[ppc_name = __fixkfsi]
     #[cfg(f128_enabled)]
     pub extern "C" fn __fixtfsi(f: f128) -> i32 {
         float_to_signed_int(f)
     }
 
-    #[ppc_alias = __fixkfdi]
+    #[ppc_name = __fixkfdi]
     #[cfg(f128_enabled)]
     pub extern "C" fn __fixtfdi(f: f128) -> i64 {
         float_to_signed_int(f)
     }
 
-    #[ppc_alias = __fixkfti]
+    #[ppc_name = __fixkfti]
     #[cfg(f128_enabled)]
     pub extern "C" fn __fixtfti(f: f128) -> i128 {
         float_to_signed_int(f)

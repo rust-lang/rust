@@ -432,7 +432,7 @@ fn generate_item_def_id_path(
         let ty = infcx
             .at(&ObligationCause::dummy(), tcx.param_env(def_id))
             .query_normalize(ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()))
-            .map(|resolved| infcx.resolve_vars_if_possible(resolved.value).skip_binder())
+            .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value).skip_binder())
             .unwrap_or(ty.skip_binder());
         if let Some(new_def_id) = ty.ty_adt_def().map(|adt| adt.did()) {
             def_id = new_def_id;
@@ -543,17 +543,20 @@ pub(crate) fn href_with_root_path(
     original_did: DefId,
     cx: &Context<'_>,
     root_path: Option<&str>,
+    preferred_name: Option<&str>,
 ) -> Result<HrefInfo, HrefError> {
     let tcx = cx.tcx();
     let def_kind = tcx.def_kind(original_did);
     let did = match def_kind {
-        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant => {
+        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
             // documented on their parent's page
             tcx.parent(original_did)
         }
         // If this a constructor, we get the parent (either a struct or a variant) and then
         // generate the link for this item.
-        DefKind::Ctor(..) => return href_with_root_path(tcx.parent(original_did), cx, root_path),
+        DefKind::Ctor(..) => {
+            return href_with_root_path(tcx.parent(original_did), cx, root_path, preferred_name);
+        }
         DefKind::ExternCrate => {
             // Link to the crate itself, not the `extern crate` item.
             if let Some(local_did) = original_did.as_local() {
@@ -564,7 +567,7 @@ pub(crate) fn href_with_root_path(
         }
         _ => original_did,
     };
-    if is_unnamable(cx.tcx(), did) {
+    if is_unnamable(tcx, did) {
         return Err(HrefError::UnnamableItem);
     }
     let cache = cx.cache();
@@ -586,12 +589,12 @@ pub(crate) fn href_with_root_path(
     }
 
     let (fqp, shortty, url_parts, is_absolute) = match cache.paths.get(&did) {
-        Some(&(ref fqp, shortty)) => (
-            fqp,
-            shortty,
+        Some(info) => (
+            info.get_preferred_path(preferred_name),
+            info.ty,
             {
-                let module_fqp = to_module_fqp(shortty, fqp.as_slice());
-                debug!(?fqp, ?shortty, ?module_fqp);
+                let module_fqp = to_module_fqp(info.ty, info.parts.as_slice());
+                debug!(?info.parts, ?info.ty, ?module_fqp);
                 href_relative_parts(module_fqp, relative_to)
             },
             false,
@@ -604,7 +607,7 @@ pub(crate) fn href_with_root_path(
             if let Some(&(ref fqp, shortty)) = cache.external_paths.get(&def_id_to_get) {
                 let module_fqp = to_module_fqp(shortty, fqp);
                 let (parts, is_absolute) = url_parts(cache, did, module_fqp, relative_to)?;
-                (fqp, shortty, parts, is_absolute)
+                (fqp.as_slice(), shortty, parts, is_absolute)
             } else if matches!(def_kind, DefKind::Macro(_)) {
                 return generate_macro_def_id_path(did, cx, root_path);
             } else if did.is_local() {
@@ -617,12 +620,20 @@ pub(crate) fn href_with_root_path(
     Ok(HrefInfo {
         url: make_href(root_path, shortty, url_parts, fqp, is_absolute),
         kind: shortty,
-        rust_path: fqp.clone(),
+        rust_path: fqp.to_vec(),
     })
 }
 
 pub(crate) fn href(did: DefId, cx: &Context<'_>) -> Result<HrefInfo, HrefError> {
-    href_with_root_path(did, cx, None)
+    href_with_root_path(did, cx, None, None)
+}
+
+pub(crate) fn href_with_path_check(
+    did: DefId,
+    cx: &Context<'_>,
+    text: &str,
+) -> Result<HrefInfo, HrefError> {
+    href_with_root_path(did, cx, None, Some(text))
 }
 
 /// Both paths should only be modules.
@@ -660,25 +671,36 @@ pub(crate) fn link_tooltip(
     did: DefId,
     fragment: &Option<UrlFragment>,
     cx: &Context<'_>,
+    preferred_name: Option<&str>,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         let cache = cx.cache();
-        let Some((fqp, shortty)) = cache.paths.get(&did).or_else(|| cache.external_paths.get(&did))
+        let Some((fqp, shortty)) = cache
+            .paths
+            .get(&did)
+            .map(|info| (info.get_preferred_path(preferred_name), info.ty))
+            .or_else(|| {
+                cache.external_paths.get(&did).map(|(fqp, shortty)| (fqp.as_slice(), *shortty))
+            })
         else {
             return Ok(());
         };
-        let fqp = if *shortty == ItemType::Primitive {
+        let fqp = if shortty == ItemType::Primitive {
             // primitives are documented in a crate, but not actually part of it
             slice::from_ref(fqp.last().unwrap())
         } else {
             fqp
         };
         if let &Some(UrlFragment::Item(id)) = fragment {
-            write!(f, "{} ", cx.tcx().def_descr(id))?;
+            let tcx = cx.tcx();
+            write!(f, "{} ", tcx.def_descr(id))?;
             for component in fqp {
                 write!(f, "{component}::")?;
             }
-            write!(f, "{}", cx.tcx().item_name(id))?;
+            if shortty == ItemType::Enum && tcx.def_kind(id) == DefKind::Field {
+                write!(f, "{}::", tcx.item_name(tcx.parent(id)))?;
+            }
+            write!(f, "{}", tcx.item_name(id))?;
         } else if !fqp.is_empty() {
             write!(f, "{shortty} ")?;
             write!(f, "{}", join_path_syms(fqp))?;
@@ -842,7 +864,7 @@ pub(crate) fn fragment(did: DefId, tcx: TyCtxt<'_>) -> impl Display {
     fmt::from_fn(move |f| {
         let def_kind = tcx.def_kind(did);
         match def_kind {
-            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant => {
+            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
                 let item_type = ItemType::from_def_id(did, tcx);
                 write!(f, "#{}.{}", item_type.as_str(), tcx.item_name(did))
             }
@@ -1251,7 +1273,9 @@ pub(crate) fn print_params(params: &[clean::Parameter], cx: &Context<'_>) -> imp
             .iter()
             .map(|param| {
                 fmt::from_fn(|f| {
-                    if let Some(name) = param.name {
+                    if param.is_splat {
+                        write!(f, "…: ")?;
+                    } else if let Some(name) = param.name {
                         write!(f, "{name}: ")?;
                     }
                     print_type(&param.type_, cx).fmt(f)
@@ -1305,7 +1329,9 @@ fn print_parameter(parameter: &clean::Parameter, cx: &Context<'_>) -> impl fmt::
             if parameter.is_const {
                 write!(f, "const ")?;
             }
-            if let Some(name) = parameter.name {
+            if parameter.is_splat {
+                write!(f, "…: ")?;
+            } else if let Some(name) = parameter.name {
                 write!(f, "{name}: ")?;
             }
             print_type(&parameter.type_, cx).fmt(f)
@@ -1421,29 +1447,29 @@ pub(crate) fn visibility_print_with_space(item: &clean::Item, cx: &Context<'_>) 
 
         match vis {
             ty::Visibility::Public => f.write_str("pub ")?,
-            ty::Visibility::Restricted(vis_did) => {
+            ty::Visibility::Restricted(vis_mod_id) => {
                 // FIXME(camelid): This may not work correctly if `item_did` is a module.
                 //                 However, rustdoc currently never displays a module's
                 //                 visibility, so it shouldn't matter.
                 let parent_module =
                     find_nearest_parent_module(cx.tcx(), item.item_id.expect_def_id());
 
-                if vis_did.is_crate_root() {
+                if vis_mod_id.is_crate_root() {
                     f.write_str("pub(crate) ")?;
-                } else if parent_module == Some(vis_did) {
+                } else if parent_module == Some(vis_mod_id) {
                     // `pub(in foo)` where `foo` is the parent module
                     // is the same as no visibility modifier; do nothing
                 } else if parent_module
-                    .and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
-                    == Some(vis_did)
+                    .and_then(|parent| find_nearest_parent_module(cx.tcx(), parent.to_def_id()))
+                    == Some(vis_mod_id)
                 {
                     f.write_str("pub(super) ")?;
                 } else {
-                    let path = cx.tcx().def_path(vis_did);
+                    let path = cx.tcx().def_path(vis_mod_id.to_def_id());
                     debug!("path={path:?}");
                     // modified from `resolved_path()` to work with `DefPathData`
                     let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                    let anchor = print_anchor(vis_did, last_name, cx);
+                    let anchor = print_anchor(vis_mod_id.to_def_id(), last_name, cx);
 
                     f.write_str("pub(in ")?;
                     for seg in &path.data[..path.data.len() - 1] {

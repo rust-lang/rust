@@ -1,35 +1,30 @@
 use std::collections::BTreeSet;
-use std::fs::{File, remove_file};
+use std::fs;
+use std::fs::File;
 use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::{env, fs};
+use std::path::PathBuf;
 
 use build_helper::ci::CiEnv;
 use build_helper::git::PathFreshness;
 use clap::CommandFactory;
-use serde::Deserialize;
 
 use super::flags::Flags;
 use super::toml::change_id::ChangeIdWrapper;
-use super::{Config, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
-use crate::ChangeId;
+use super::toml::rust::parse_codegen_backends;
+use super::{Config, DebuggerPath, LlvmCiMode, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
 use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
-use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
-use crate::core::build_steps::{llvm, test};
-use crate::core::config::toml::TomlConfig;
+use crate::core::build_steps::llvm::{LLVM_INVALIDATION_PATHS, LlvmKind, get_llvm_build_status};
+use crate::core::builder::Builder;
+use crate::core::config::flags::Subcommand;
 use crate::core::config::{
-    BootstrapOverrideLld, CompilerBuiltins, StringOrBool, Target, TargetSelection,
+    BootstrapOverrideLld, ChangeId, CompilerBuiltins, Target, TargetSelection,
 };
+use crate::core::session::Session;
 use crate::utils::tests::TestCtx;
 use crate::utils::tests::git::git_test;
 
 pub(crate) fn parse(config: &str) -> Config {
     TestCtx::new().config("check").with_default_toml_config(config).create_config()
-}
-
-fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
-    let contents = std::fs::read_to_string(file).unwrap();
-    toml::from_str(&contents).and_then(|table: toml::Value| TomlConfig::deserialize(table))
 }
 
 fn modified(upstream: impl Into<String>, changes: &[&str]) -> PathFreshness {
@@ -42,20 +37,28 @@ fn modified(upstream: impl Into<String>, changes: &[&str]) -> PathFreshness {
 #[test]
 fn download_ci_llvm() {
     let config = TestCtx::new().config("check").create_config();
-    assert!(!config.llvm_from_ci);
+    assert_eq!(config.llvm_ci_mode, LlvmCiMode::BuildLocally);
 
     // this doesn't make sense, as we are overriding it later.
     let if_unchanged_config = TestCtx::new()
         .config("check")
         .with_default_toml_config("llvm.download-ci-llvm = \"if-unchanged\"")
         .create_config();
-    if if_unchanged_config.llvm_from_ci && if_unchanged_config.is_running_on_ci() {
-        let has_changes = if_unchanged_config.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
+    if if_unchanged_config.is_running_on_ci() {
+        let build = Session::new(config.clone());
+        let builder = Builder::new(&build);
 
-        assert!(
-            !has_changes,
-            "CI LLVM can't be enabled with 'if-unchanged' while there are changes in LLVM submodule."
-        );
+        let llvm = get_llvm_build_status(&builder, builder.config.host_target);
+        let llvm = llvm.llvm_output();
+        if llvm.kind() == LlvmKind::DownloadedFromCi {
+            let has_changes =
+                if_unchanged_config.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
+
+            assert!(
+                !has_changes,
+                "CI LLVM can't be enabled with 'if-unchanged' while there are changes in LLVM submodule."
+            );
+        }
     }
 }
 
@@ -120,7 +123,11 @@ fn override_toml() {
         crate::core::config::RustcLto::Fat,
         "setting string value without quotes"
     );
-    assert_eq!(config.gdb, Some("bar".into()), "setting string value with quotes");
+    assert_eq!(
+        config.gdb,
+        Some(DebuggerPath::Path("bar".into())),
+        "setting string value with quotes"
+    );
     assert!(!config.deny_warnings, "setting boolean value");
     assert_eq!(
         config.optimized_compiler_builtins,
@@ -165,7 +172,7 @@ fn override_toml() {
             .collect(),
         "setting dictionary value"
     );
-    assert!(!config.llvm_from_ci);
+    std::assert_matches!(config.llvm_ci_mode, LlvmCiMode::BuildLocally);
     assert!(!config.download_rustc());
 }
 
@@ -204,6 +211,15 @@ fn rust_optimize() {
     assert!(parse("rust.optimize = \"s\"").rust_optimize.is_release());
     assert_eq!(parse("rust.optimize = 1").rust_optimize.get_opt_level(), Some("1".to_string()));
     assert_eq!(parse("rust.optimize = \"s\"").rust_optimize.get_opt_level(), Some("s".to_string()));
+}
+
+#[test]
+#[should_panic(expected = "Duplicate value 'llvm' for 'rust.codegen-backends'")]
+fn rejects_duplicate_codegen_backends() {
+    parse_codegen_backends(
+        vec!["llvm", "llvm", "cranelift"].into_iter().map(str::to_owned).collect(),
+        "rust",
+    );
 }
 
 #[test]
@@ -248,16 +264,6 @@ fn rust_lld() {
         parse("rust.bootstrap-override-lld = false").bootstrap_override_lld,
         BootstrapOverrideLld::None
     ));
-
-    // Also check the legacy options
-    assert!(matches!(
-        parse("rust.use-lld = true").bootstrap_override_lld,
-        BootstrapOverrideLld::External
-    ));
-    assert!(matches!(
-        parse("rust.use-lld = false").bootstrap_override_lld,
-        BootstrapOverrideLld::None
-    ));
 }
 
 #[test]
@@ -292,7 +298,7 @@ fn order_of_clippy_rules() {
     let config = TestCtx::new().config(&args[0]).args(&args[1..]).create_config();
 
     let actual = match config.cmd.clone() {
-        crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
+        Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
             let cfg = LintConfig { allow, deny, warn, forbid };
             let args_vec: Vec<String> = args.iter().map(|s| s.to_string()).collect();
             get_clippy_rules_in_order(&args_vec, &cfg)
@@ -316,7 +322,7 @@ fn clippy_rule_separate_prefix() {
     let config = TestCtx::new().config(&args[0]).args(&args[1..]).create_config();
 
     let actual = match config.cmd.clone() {
-        crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
+        Subcommand::Clippy { allow, deny, warn, forbid, .. } => {
             let cfg = LintConfig { allow, deny, warn, forbid };
             let args_vec: Vec<String> = args.iter().map(|s| s.to_string()).collect();
             get_clippy_rules_in_order(&args_vec, &cfg)

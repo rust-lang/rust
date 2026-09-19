@@ -11,17 +11,18 @@
 // correct values from the type assoc consts).
 //@ run-pass
 
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![expect(incomplete_features)]
 
 trait Trait {
-    type const N: usize;
+    #[rustc_always_gca]
+    const N: usize;
 
     fn process(&self, _: [u8; Self::N]) -> [u8; Self::N];
 }
 
 impl Trait for u8 {
-    type const N: usize = 2;
+    const N: usize = core::direct_const_arg!(2);
 
     fn process(&self, [x, y]: [u8; Self::N]) -> [u8; Self::N] {
         [self * x, self + y]
@@ -29,7 +30,7 @@ impl Trait for u8 {
 }
 
 impl<const N: usize> Trait for [u8; N] {
-    type const N: usize = N;
+    const N: usize = core::direct_const_arg!(N);
 
     fn process(&self, other: [u8; Self::N]) -> [u8; Self::N] {
         let mut result = [0; _];

@@ -10,7 +10,7 @@ use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
 use ide_db::base_db;
 use itertools::Either;
 use profile::StopWatch;
-use project_model::toolchain_info::{QueryConfig, target_data};
+use project_model::toolchain_info::{QueryConfig, target_data, version};
 use project_model::{
     CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, RustLibSource,
     RustSourceWorkspaceConfig, Sysroot,
@@ -64,6 +64,7 @@ impl Tester {
     fn new() -> Result<Self> {
         let mut path = AbsPathBuf::assert_utf8(std::env::temp_dir());
         path.push("ra-rustc-test");
+        std::fs::create_dir_all(&path)?;
         let tmp_file = path.join("ra-rustc-test.rs");
         std::fs::write(&tmp_file, "")?;
         let cargo_config = CargoConfig {
@@ -80,10 +81,13 @@ impl Tester {
             sysroot.set_workspace(loaded_sysroot);
         }
 
+        let query_config = QueryConfig::Rustc(&sysroot, tmp_file.parent().unwrap().as_ref());
+        let toolchain_version = version::get(query_config, &cargo_config.extra_env).ok().flatten();
         let target_data = target_data::get(
-            QueryConfig::Rustc(&sysroot, tmp_file.parent().unwrap().as_ref()),
+            query_config,
             None,
             &cargo_config.extra_env,
+            toolchain_version.as_ref(),
         );
 
         let workspace = ProjectWorkspace {

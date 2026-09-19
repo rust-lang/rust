@@ -3,11 +3,11 @@ use std::iter;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir;
 use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
-use rustc_middle::{bug, mir, span_bug};
-use rustc_span::ErrorGuaranteed;
+use rustc_span::{ErrorGuaranteed, bug, span_bug};
 use rustc_target::callconv::{FnAbi, PassMode};
 use tracing::{debug, instrument};
 
@@ -102,6 +102,8 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// A cold block is a block that is unlikely to be executed at runtime.
     cold_blocks: IndexVec<mir::BasicBlock, bool>,
 
+    nop_landing_pads: DenseBitSet<mir::BasicBlock>,
+
     /// The location where each MIR arg/var/tmp/ret is stored. This is
     /// usually an `PlaceRef` representing an alloca, but not always:
     /// sometimes we can skip the alloca and just store the value
@@ -136,7 +138,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.cx.tcx(),
             self.cx.typing_env(),
-            ty::EarlyBinder::bind(value),
+            ty::EarlyBinder::bind(self.cx.tcx(), value),
         )
     }
 }
@@ -215,11 +217,13 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
 
+    let nop_landing_pads = tcx.find_noop_landing_pads_for_instance(mir, instance, cx.typing_env());
+
     if tcx.features().ergonomic_clones() {
         let monomorphized_mir = instance.instantiate_mir_and_normalize_erasing_regions(
             tcx,
             ty::TypingEnv::fully_monomorphized(),
-            ty::EarlyBinder::bind(mir.clone()),
+            ty::EarlyBinder::bind(tcx, mir.clone()),
         );
         mir = tcx.arena.alloc(optimize_use_clone::<Bx>(cx, monomorphized_mir));
     }
@@ -227,14 +231,15 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let start_llbb = Bx::append_block(cx, llfn, "start");
     let mut start_bx = Bx::build(cx, start_llbb);
 
-    if mir.basic_blocks.iter().any(|bb| {
-        bb.is_cleanup || matches!(bb.terminator().unwind(), Some(mir::UnwindAction::Terminate(_)))
+    if mir::traversal::mono_reachable(&mir, tcx, instance).any(|(bb, block)| {
+        (block.is_cleanup && !nop_landing_pads.contains(bb))
+            || matches!(block.terminator().unwind(), Some(mir::UnwindAction::Terminate(_)))
     }) {
         start_bx.set_personality_fn(cx.eh_personality());
     }
 
-    let cleanup_kinds =
-        base::wants_new_eh_instructions(tcx.sess).then(|| analyze::cleanup_kinds(&mir));
+    let cleanup_kinds = base::wants_new_eh_instructions(&tcx.sess.target)
+        .then(|| analyze::cleanup_kinds(&mir, &nop_landing_pads));
 
     let cached_llbbs: IndexVec<mir::BasicBlock, CachedLlbb<Bx::BasicBlock>> =
         mir.basic_blocks
@@ -262,6 +267,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         debug_context: None,
         per_local_var_debug_info: None,
         caller_location: None,
+        nop_landing_pads,
     };
 
     // It may seem like we should iterate over `required_consts` to ensure they all successfully
@@ -269,13 +275,44 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // monomorphization, and if there is an error during collection then codegen never starts -- so
     // we don't have to do it again.
 
-    fx.fill_function_debug_context();
+    fx.fill_function_debug_context(&mut start_bx);
 
     let (per_local_var_debug_info, consts_debug_info) =
         fx.compute_per_local_var_debug_info(&mut start_bx).unzip();
     fx.per_local_var_debug_info = per_local_var_debug_info;
 
-    let traversal_order = traversal::mono_reachable_reverse_postorder(mir, tcx, instance);
+    let mut traversal_order = traversal::mono_reachable_reverse_postorder(mir, tcx, instance);
+
+    // Filter out blocks that won't be codegen'd because of nop_landing_pads optimization.
+    // FIXME: We might want to integrate the nop_landing_pads analysis into mono reachability.
+    {
+        let mut reachable = DenseBitSet::new_empty(mir.basic_blocks.len());
+        let mut to_visit = vec![mir::START_BLOCK];
+        while let Some(next) = to_visit.pop() {
+            if !reachable.insert(next) {
+                continue;
+            }
+
+            let block = &mir.basic_blocks[next];
+            let successors = block.mono_successors(tcx, instance);
+
+            if let Some(mir::UnwindAction::Cleanup(target)) = block.terminator().unwind()
+                && fx.nop_landing_pads.contains(*target)
+            {
+                // This edge will not be followed when we actually codegen, so skip generating it here.
+                //
+                // It's guaranteed that the cleanup block (`target`) occurs only in
+                // UnwindAction::Cleanup(...) -- i.e., we can't incorrectly filter too much here --
+                // because cleanup transitions must happen via UnwindAction::Cleanup.
+                to_visit.extend(successors.filter(|s| s != target));
+            } else {
+                to_visit.extend(successors);
+            }
+        }
+
+        traversal_order.retain(|bb| reachable.contains(*bb));
+    }
+
     let memory_locals = analyze::non_ssa_locals(&fx, &traversal_order);
 
     // Allocate variable and temp allocas
@@ -433,6 +470,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let arg_decl = &mir.local_decls[local];
             let arg_ty = fx.monomorphize(arg_decl.ty);
 
+            // FIXME(splat): re-tuple splatted arguments that were un-tupled in the ABI
             if Some(local) == mir.spread_arg {
                 // This argument (e.g., the last argument in the "rust-call" ABI)
                 // is a tuple that was spread at the ABI level and now we have
@@ -456,8 +494,8 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 for i in 0..tupled_arg_tys.len() {
                     let arg = &fx.fn_abi.args[idx];
                     idx += 1;
-                    if let PassMode::Cast { pad_i32: true, .. } = arg.mode {
-                        llarg_idx += 1;
+                    if let PassMode::Cast { pad_i32_count, .. } = arg.mode {
+                        llarg_idx += usize::from(pad_i32_count);
                     }
                     let pr_field = place.project_field(bx, i);
                     bx.store_fn_arg(arg, &mut llarg_idx, pr_field);
@@ -484,8 +522,8 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             let arg = &fx.fn_abi.args[idx];
             idx += 1;
-            if let PassMode::Cast { pad_i32: true, .. } = arg.mode {
-                llarg_idx += 1;
+            if let PassMode::Cast { pad_i32_count, .. } = arg.mode {
+                llarg_idx += usize::from(pad_i32_count);
             }
 
             if !memory_locals.contains(local) {
@@ -500,7 +538,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     PassMode::Direct(_) => {
                         let llarg = bx.get_param(llarg_idx);
                         llarg_idx += 1;
-                        debug_assert!(bx.is_backend_immediate(arg.layout));
+                        debug_assert!(arg.layout.backend_repr.is_scalar_or_simd());
                         return local(OperandRef {
                             val: OperandValue::Immediate(llarg),
                             layout: arg.layout,

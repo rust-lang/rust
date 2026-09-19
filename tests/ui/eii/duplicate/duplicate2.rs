@@ -2,8 +2,8 @@
 //@ aux-build: impl2.rs
 //@ aux-build: impl3.rs
 //@ ignore-backends: gcc
-// FIXME: linking on windows (specifically mingw) not yet supported, see tracking issue #125418
-//@ ignore-windows
+// FIXME(#125418): linking on Windows GNU targets is not yet supported.
+//@ ignore-windows-gnu
 // Tests the error message when there are multiple implementations of an EII in many crates.
 #![feature(extern_item_impls)]
 

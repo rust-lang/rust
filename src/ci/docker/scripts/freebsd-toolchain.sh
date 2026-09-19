@@ -1,5 +1,5 @@
 #!/bin/bash
-# ignore-tidy-linelength
+# ignore-tidy-file-linelength
 
 set -eux
 

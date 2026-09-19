@@ -168,6 +168,7 @@ case $HOST_TARGET in
     MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-freebsd run_tests
     MANY_SEEDS=16 TEST_TARGET=i686-unknown-freebsd run_tests
     MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-illumos run_tests
+    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-netbsd run_tests_minimal hello libc-env libc-misc
     ;;
   armv7-unknown-linux-gnueabihf)
     # Host
@@ -177,6 +178,7 @@ case $HOST_TARGET in
     # Not officially supported tier 2
     MANY_SEEDS=16 TEST_TARGET=x86_64-pc-solaris run_tests
     MANY_SEEDS=16 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
+    MANY_SEEDS=16 TEST_TARGET=riscv64a23-unknown-linux-gnu run_tests
     ;;
   aarch64-apple-darwin)
     # Host

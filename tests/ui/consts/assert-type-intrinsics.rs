@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![feature(core_intrinsics)]
 
 use std::intrinsics;

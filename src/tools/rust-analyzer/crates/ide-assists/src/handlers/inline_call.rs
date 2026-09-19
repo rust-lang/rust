@@ -1,11 +1,7 @@
 use std::collections::BTreeSet;
 
 use either::Either;
-use hir::{
-    FileRange, PathResolution, Semantics, TypeInfo,
-    db::{ExpandDatabase, HirDatabase},
-    sym,
-};
+use hir::{FileRange, PathResolution, Semantics, TypeInfo, db::HirDatabase, sym};
 use ide_db::{
     EditionedFileId, FxHashMap, RootDatabase,
     base_db::Crate,
@@ -79,7 +75,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_, '_>
 
     let function = ctx.sema.to_def(&ast_func)?;
 
-    let def_file_editor = SyntaxEditor::new(ast_func.syntax().ancestors().last().unwrap()).0;
+    let def_file_editor = SyntaxEditor::new(ast_func.syntax().tree_top()).0;
     let params = get_fn_params(ctx.sema.db, function, &param_list, def_file_editor.make())?;
 
     let mut file_editors = FxHashMap::default();
@@ -255,7 +251,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Opt
         return None;
     }
     let syntax = call_info.node.syntax().clone();
-    let editor = SyntaxEditor::new(syntax.ancestors().last().unwrap()).0;
+    let editor = SyntaxEditor::new(syntax.tree_top()).0;
     let params = get_fn_params(ctx.sema.db, function, &param_list, editor.make())?;
 
     if call_info.arguments.len() != params.len() {
@@ -339,31 +335,22 @@ fn get_fn_params<'db>(
     Some(params)
 }
 
-fn inline(
-    sema: &Semantics<'_, RootDatabase>,
+fn inline<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     function_def_file_id: EditionedFileId,
     function: hir::Function,
     fn_body: &ast::BlockExpr,
-    params: &[(ast::Pat, Option<ast::Type>, hir::Param<'_>)],
+    params: &[(ast::Pat, Option<ast::Type>, hir::Param<'db>)],
     CallInfo { node, arguments, generic_arg_list, krate }: &CallInfo,
     file_editor: &SyntaxEditor,
 ) -> ast::Expr {
     let make = file_editor.make();
     let file_id = sema.hir_file_for(fn_body.syntax());
-    let body_to_clone = if let Some(macro_file) = file_id.macro_file() {
-        cov_mark::hit!(inline_call_defined_in_macro);
-        let span_map = sema.db.expansion_span_map(macro_file);
-        let body_prettified =
-            prettify_macro_expansion(sema.db, fn_body.syntax().clone(), span_map, *krate);
-        if let Some(body) = ast::BlockExpr::cast(body_prettified) { body } else { fn_body.clone() }
-    } else {
-        fn_body.clone()
-    };
 
     // Capture before `with_ast_node` re-roots and loses the source-relative position.
-    let mut original_body_indent = IndentLevel::from_node(body_to_clone.syntax());
-    let body_offset = body_to_clone.syntax().text_range().start();
-    let (editor, body) = SyntaxEditor::with_ast_node(&body_to_clone);
+    let mut original_body_indent = IndentLevel::from_node(fn_body.syntax());
+    let body_offset = fn_body.syntax().text_range().start();
+    let (editor, body) = SyntaxEditor::with_ast_node(fn_body);
 
     let usages_for_locals = |local| {
         Definition::Local(local)
@@ -384,10 +371,10 @@ fn inline(
             // not only the local if it is a simple binding
             match param.as_local(sema.db) {
                 Some(l) => usages_for_locals(l)
-                    .map(|FileReference { name, range, .. }| match name {
-                        FileReferenceNode::NameRef(_) => body
+                    .map(|FileReference { name, .. }| match name {
+                        FileReferenceNode::NameRef(it) => body
                             .syntax()
-                            .covering_element(range - body_offset)
+                            .covering_element(it.syntax().text_range() - body_offset)
                             .ancestors()
                             .nth(3)
                             .and_then(ast::PathExpr::cast),
@@ -411,10 +398,10 @@ fn inline(
             .as_local(sema.db)
             .map(|self_local| {
                 usages_for_locals(self_local)
-                    .filter_map(|FileReference { name, range, .. }| match name {
-                        FileReferenceNode::NameRef(_) => {
-                            Some(body.syntax().covering_element(range - body_offset))
-                        }
+                    .filter_map(|FileReference { name, .. }| match name {
+                        FileReferenceNode::NameRef(it) => Some(
+                            body.syntax().covering_element(it.syntax().text_range() - body_offset),
+                        ),
                         _ => None,
                     })
                     .collect()
@@ -496,7 +483,7 @@ fn inline(
             let param_ty = param_ty.clone().map(|param_ty| {
                 let file_id = sema.hir_file_for(param_ty.syntax());
                 if let Some(macro_file) = file_id.macro_file() {
-                    let span_map = sema.db.expansion_span_map(macro_file);
+                    let span_map = macro_file.expansion_span_map(sema.db);
                     let param_ty_prettified = prettify_macro_expansion(
                         sema.db,
                         param_ty.syntax().clone(),
@@ -615,6 +602,13 @@ fn inline(
         )
     {
         body = new_body;
+    }
+    if let Some(macro_file) = file_id.macro_file() {
+        cov_mark::hit!(inline_call_defined_in_macro);
+        let span_map = macro_file.expansion_span_map(sema.db);
+        let body_prettified =
+            prettify_macro_expansion(sema.db, body.syntax().clone(), span_map, *krate);
+        body = ast::BlockExpr::cast(body_prettified).unwrap();
     }
 
     let is_async_fn = function.is_async(sema.db);
@@ -1466,6 +1460,38 @@ fn bar() -> u32 {
     }
 
     #[test]
+    fn inline_call_define_passed_in_macro() {
+        cov_mark::check!(inline_call_defined_in_macro);
+        check_assist(
+            inline_call,
+            r#"
+macro_rules! identity { ($($t:tt)*) => { $($t)* }; }
+identity! {
+    fn htons(hostshort: u16) {
+        let _ = hostshort;
+    }
+}
+fn foo() {
+    htons$0(123)
+}
+"#,
+            r#"
+macro_rules! identity { ($($t:tt)*) => { $($t)* }; }
+identity! {
+    fn htons(hostshort: u16) {
+        let _ = hostshort;
+    }
+}
+fn foo() {
+    {
+        let _ = 123;
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
     fn inline_call_with_self_type() {
         check_assist(
             inline_call,
@@ -1570,11 +1596,8 @@ async fn foo(arg: u32) -> u32 {
 }
 fn spawn<T>(_: T) {}
 fn main() {
-    spawn({
-        let arg = 42;
-        async move {
-            bar(arg).await * 2
-        }
+    spawn(async move {
+        bar(42).await * 2
     });
 }
 "#,
@@ -1605,12 +1628,9 @@ async fn foo(arg: u32) -> u32 {
 }
 fn spawn<T>(_: T) {}
 fn main() {
-    spawn({
-        let arg = 42;
-        async move {
-            bar(arg).await;
-            42
-        }
+    spawn(async move {
+        bar(42).await;
+        42
     });
 }
 "#,
@@ -1645,11 +1665,10 @@ fn spawn<T>(_: T) {}
 fn main() {
     let var = 42;
     spawn({
-        let x = var;
         let y = var + 1;
         let z: &u32 = &var;
         async move {
-            bar(x).await;
+            bar(var).await;
             y + y + *z
         }
     });

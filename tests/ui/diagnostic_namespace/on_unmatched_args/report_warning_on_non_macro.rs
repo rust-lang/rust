@@ -2,7 +2,7 @@
 #![feature(diagnostic_on_unmatched_args)]
 
 #[diagnostic::on_unmatched_args(message = "not allowed here")]
-//~^ WARN `#[diagnostic::on_unmatched_args]` can only be applied to macro definitions
+//~^ WARN cannot be used on
 struct Foo;
 
 fn main() {

@@ -1,4 +1,4 @@
-error: attributes cannot be applied to a function parameter's type
+error: attributes cannot be applied to types
   --> $DIR/fn-arg-doc-comment.rs:12:12
    |
 LL | fn bar(id: #[allow(dead_code)] i32) {}

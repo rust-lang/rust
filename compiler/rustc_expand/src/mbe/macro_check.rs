@@ -109,7 +109,7 @@ use rustc_ast::token::{Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::{DUMMY_NODE_ID, NodeId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DecorateDiagCompat;
-use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
+use rustc_lint_defs::builtin::META_VARIABLE_MISUSE;
 use rustc_session::parse::ParseSess;
 use rustc_span::{ErrorGuaranteed, MacroRulesNormalizedIdent, Span, kw};
 use smallvec::SmallVec;

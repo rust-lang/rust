@@ -6,6 +6,12 @@ use crate::fmt::{self, Write};
 #[cfg(not(all(target_arch = "loongarch64", target_feature = "lsx")))]
 use crate::intrinsics::const_eval_select;
 use crate::{ascii, iter, ops};
+#[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+use crate::{
+    iter::{Filter, FusedIterator},
+    slice::Split,
+    str::{BytesIsNotEmpty, IsAsciiWhitespace},
+};
 
 impl [u8] {
     /// Checks if all bytes in this slice are within the ASCII range.
@@ -62,7 +68,10 @@ impl [u8] {
             return false;
         }
 
-        #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+        #[cfg(any(
+            all(target_arch = "x86_64", target_feature = "sse2"),
+            all(target_arch = "aarch64", target_feature = "neon")
+        ))]
         {
             const CHUNK_SIZE: usize = 16;
             // The following function has two invariants:
@@ -88,7 +97,7 @@ impl [u8] {
         let mut b = other;
 
         while let ([first_a, rest_a @ ..], [first_b, rest_b @ ..]) = (a, b) {
-            if first_a.eq_ignore_ascii_case(&first_b) {
+            if first_a.eq_ignore_ascii_case(first_b) {
                 a = rest_a;
                 b = rest_b;
             } else {
@@ -108,7 +117,10 @@ impl [u8] {
     ///
     /// The caller must guarantee that the slices are equal in length, and the
     /// slice lengths are greater than or equal to `N` bytes.
-    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+    #[cfg(any(
+        all(target_arch = "x86_64", target_feature = "sse2"),
+        all(target_arch = "aarch64", target_feature = "neon")
+    ))]
     #[inline]
     const fn eq_ignore_ascii_case_chunks<const N: usize>(&self, other: &[u8]) -> bool {
         // FIXME(const-hack): The while-loops that follow should be replaced by
@@ -308,6 +320,140 @@ impl [u8] {
     pub const fn trim_ascii(&self) -> &[u8] {
         self.trim_ascii_start().trim_ascii_end()
     }
+
+    /// Splits a byte slice by ASCII whitespace.
+    ///
+    /// The returned iterator yields byte slices that are subslices of the
+    /// original byte slice, separated by any amount of ASCII whitespace.
+    ///
+    /// This uses the same definition as [`u8::is_ascii_whitespace`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(u8_split_ascii_whitespace)]
+    ///
+    /// let mut iter = b"A few words".split_ascii_whitespace();
+    ///
+    /// assert_eq!(Some(&b"A"[..]), iter.next());
+    /// assert_eq!(Some(&b"few"[..]), iter.next());
+    /// assert_eq!(Some(&b"words"[..]), iter.next());
+    ///
+    /// assert_eq!(None, iter.next());
+    /// ```
+    ///
+    /// Various kinds of ASCII whitespace are considered
+    /// (see [`u8::is_ascii_whitespace`]):
+    ///
+    /// ```
+    /// #![feature(u8_split_ascii_whitespace)]
+    ///
+    /// let mut iter = b" Mary   had\ta little  \n\t lamb".split_ascii_whitespace();
+    ///
+    /// assert_eq!(Some(&b"Mary"[..]), iter.next());
+    /// assert_eq!(Some(&b"had"[..]), iter.next());
+    /// assert_eq!(Some(&b"a"[..]), iter.next());
+    /// assert_eq!(Some(&b"little"[..]), iter.next());
+    /// assert_eq!(Some(&b"lamb"[..]), iter.next());
+    ///
+    /// assert_eq!(None, iter.next());
+    /// ```
+    ///
+    /// If the byte slice is empty or contains only ASCII whitespace, the iterator
+    /// yields no byte slices:
+    ///
+    /// ```
+    /// #![feature(u8_split_ascii_whitespace)]
+    ///
+    /// assert_eq!(b"".split_ascii_whitespace().next(), None);
+    /// assert_eq!(b"   ".split_ascii_whitespace().next(), None);
+    /// ```
+    #[must_use = "this returns the split byte slice as an iterator, without modifying the original"]
+    #[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+    #[inline]
+    pub fn split_ascii_whitespace(&self) -> SplitAsciiWhitespace<'_> {
+        let inner = self.split(IsAsciiWhitespace).filter(BytesIsNotEmpty);
+        SplitAsciiWhitespace { inner }
+    }
+}
+
+/// An iterator over the non-ASCII-whitespace subslices of a byte slice,
+/// separated by any amount of ASCII whitespace.
+///
+/// This struct is created by the [`split_ascii_whitespace`] method on [`[u8]`][byteslice].
+/// See its documentation for more.
+///
+/// [`split_ascii_whitespace`]: slice::split_ascii_whitespace
+/// [byteslice]: prim@slice
+#[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+#[derive(Clone, Debug)]
+pub struct SplitAsciiWhitespace<'a> {
+    pub(crate) inner: Filter<Split<'a, u8, IsAsciiWhitespace>, BytesIsNotEmpty>,
+}
+
+#[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+impl<'a> Iterator for SplitAsciiWhitespace<'a> {
+    type Item = &'a [u8];
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a [u8]> {
+        self.inner.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<&'a [u8]> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a [u8]> {
+        self.inner.next_back()
+    }
+}
+
+#[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+impl FusedIterator for SplitAsciiWhitespace<'_> {}
+
+impl<'a> SplitAsciiWhitespace<'a> {
+    /// Returns remainder of the split slice.
+    ///
+    /// If the iterator is empty, returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(u8_split_ascii_whitespace)]
+    ///
+    /// let mut split = b"Mary had a little lamb".split_ascii_whitespace();
+    /// assert_eq!(split.remainder(), Some(b"Mary had a little lamb".as_slice()));
+    ///
+    /// split.next();
+    /// assert_eq!(split.remainder(), Some(b"had a little lamb".as_slice()));
+    ///
+    /// split.by_ref().for_each(drop);
+    /// assert_eq!(split.remainder(), None);
+    /// ```
+    #[inline]
+    #[must_use]
+    // This is also blocked on: https://github.com/rust-lang/rust/issues/77998
+    #[unstable(feature = "u8_split_ascii_whitespace", issue = "147878")]
+    pub fn remainder(&self) -> Option<&'a [u8]> {
+        if self.inner.iter.finished {
+            return None;
+        }
+
+        Some(self.inner.iter.v)
+    }
 }
 
 impl_fn_for_zst! {
@@ -386,7 +532,7 @@ impl<'a> fmt::Display for EscapeAscii<'a> {
             b > 0x7E || b < 0x20 || b == b'\\' || b == b'\'' || b == b'"'
         }
 
-        while bytes.len() > 0 {
+        while !bytes.is_empty() {
             // fast path for the printable, non-escaped subset of ascii
             let prefix = bytes.iter().take_while(|&&b| !needs_escape(b)).count();
             // SAFETY: prefix length was derived by counting bytes in the same splice, so it's in-bounds
@@ -451,7 +597,8 @@ pub const fn is_ascii_simple(mut bytes: &[u8]) -> bool {
 /// (above) returns true, then we know the answer is false.
 #[cfg(not(any(
     all(target_arch = "x86_64", target_feature = "sse2"),
-    all(target_arch = "loongarch64", target_feature = "lsx")
+    all(target_arch = "loongarch64", target_feature = "lsx"),
+    all(target_arch = "aarch64", target_feature = "neon")
 )))]
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
@@ -584,16 +731,73 @@ fn is_ascii_sse2(bytes: &[u8]) -> bool {
     rest.iter().all(|b| b.is_ascii())
 }
 
-/// ASCII test optimized to use the `pmovmskb` instruction on `x86-64`.
-///
-/// Uses explicit SSE2 intrinsics to prevent LLVM from auto-vectorizing with
-/// broken AVX-512 code that extracts mask bits one-by-one.
-#[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+/// Chunk size for NEON vectorized ASCII checking (4x 16-byte loads).
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+const NEON_CHUNK_SIZE: usize = 64;
+
+/// Width of a single NEON vector, used to vectorize the tail left over by the
+/// unrolled `NEON_CHUNK_SIZE` loop.
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+const NEON_VECTOR_SIZE: usize = 16;
+
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+#[inline]
+fn is_ascii_neon(bytes: &[u8]) -> bool {
+    use crate::arch::aarch64::{vld1q_u8, vmaxvq_u8, vorrq_u8};
+
+    let (chunks, rest) = bytes.as_chunks::<NEON_CHUNK_SIZE>();
+
+    for chunk in chunks {
+        let ptr = chunk.as_ptr();
+        // SAFETY: chunk is 64 bytes, and `vld1q_u8` has no alignment requirement.
+        let max = unsafe {
+            let a1 = vld1q_u8(ptr);
+            let a2 = vld1q_u8(ptr.add(16));
+            let b1 = vld1q_u8(ptr.add(32));
+            let b2 = vld1q_u8(ptr.add(48));
+            // OR all chunks - if any byte has high bit set, combined will too.
+            let combined = vorrq_u8(vorrq_u8(a1, a2), vorrq_u8(b1, b2));
+            // `vmaxvq_u8` is a horizontal reduction with a longer latency than
+            // `vorrq_u8`, so it runs once per 64 bytes rather than once per load.
+            vmaxvq_u8(combined)
+        };
+        if max >= 128 {
+            return false;
+        }
+    }
+
+    // The unrolled loop above leaves up to 63 bytes, so sweep those a vector at
+    // a time before falling back to a byte-at-a-time check.
+    let (vectors, rest) = rest.as_chunks::<NEON_VECTOR_SIZE>();
+
+    for vector in vectors {
+        // SAFETY: vector is 16 bytes, and `vld1q_u8` has no alignment requirement.
+        let max = unsafe { vmaxvq_u8(vld1q_u8(vector.as_ptr())) };
+        if max >= 128 {
+            return false;
+        }
+    }
+
+    // Handle remaining bytes
+    rest.iter().all(|b| b.is_ascii())
+}
+
+/// Uses explicit SIMD intrinsics to prevent LLVM from auto-vectorizing with
+/// broken code (e.g., AVX-512 on x86-64 that extracts mask bits one-by-one).
+#[cfg(any(
+    all(target_arch = "x86_64", target_feature = "sse2"),
+    all(target_arch = "aarch64", target_feature = "neon")
+))]
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 const fn is_ascii(bytes: &[u8]) -> bool {
     const USIZE_SIZE: usize = size_of::<usize>();
     const NONASCII_MASK: usize = usize::MAX / 255 * 0x80;
+
+    #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+    const SIMD_MIN_LEN: usize = SSE2_CHUNK_SIZE;
+    #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+    const SIMD_MIN_LEN: usize = NEON_CHUNK_SIZE;
 
     const_eval_select!(
         @capture { bytes: &[u8] } -> bool:
@@ -601,11 +805,10 @@ const fn is_ascii(bytes: &[u8]) -> bool {
             is_ascii_simple(bytes)
         } else {
             // For small inputs, use usize-at-a-time processing to avoid SSE2 call overhead.
-            if bytes.len() < SSE2_CHUNK_SIZE {
-                let chunks = bytes.chunks_exact(USIZE_SIZE);
-                let remainder = chunks.remainder();
+            if bytes.len() < SIMD_MIN_LEN {
+                let (chunks, remainder) = bytes.as_chunks::<USIZE_SIZE>();
                 for chunk in chunks {
-                    let word = usize::from_ne_bytes(chunk.try_into().unwrap());
+                    let word = usize::from_ne_bytes(*chunk);
                     if (word & NONASCII_MASK) != 0 {
                         return false;
                     }
@@ -613,7 +816,10 @@ const fn is_ascii(bytes: &[u8]) -> bool {
                 return remainder.iter().all(|b| b.is_ascii());
             }
 
-            is_ascii_sse2(bytes)
+            #[cfg(all(target_arch = "x86_64", target_feature = "sse2"))]
+            { is_ascii_sse2(bytes) }
+            #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+            { is_ascii_neon(bytes) }
         }
     )
 }

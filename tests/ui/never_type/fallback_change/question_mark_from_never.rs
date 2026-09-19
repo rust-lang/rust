@@ -2,12 +2,7 @@
 //
 // See also: `tests/ui/never_type/fallback_change/from_infer_breaking_with_unit_fallback.rs`.
 //
-//@ revisions: unit never
 //@ check-pass
-#![allow(internal_features)]
-#![feature(rustc_attrs, never_type)]
-#![cfg_attr(unit, rustc_never_type_options(fallback = "unit"))]
-#![cfg_attr(never, rustc_never_type_options(fallback = "never"))]
 
 type Infallible = !;
 

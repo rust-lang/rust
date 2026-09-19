@@ -8,7 +8,7 @@ use core::panic::PanicInfo;
 
 #[panic_handler]
 #[target_feature(enable = "avx2")]
-//~^ ERROR `#[panic_handler]` function is not allowed to have `#[target_feature]`
+//~^ ERROR `#[target_feature]` cannot be applied to a `#[panic_handler]` function
 fn panic(info: &PanicInfo) -> ! {
     unimplemented!();
 }

@@ -6,7 +6,7 @@ LL | static REF: &AtomicI32 = &AtomicI32::new(42);
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾ALLOC0╼                                     │ ╾──╼
+               ╾ALLOC$ID╼                                     │ ╾──╼
            }
 
 error[E0080]: constructing invalid value of type &mut i32: encountered mutable reference or box pointing to read-only memory
@@ -17,7 +17,7 @@ LL | static REFMUT: &mut i32 = &mut 0;
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾ALLOC1╼                                     │ ╾──╼
+               ╾ALLOC$ID╼                                     │ ╾──╼
            }
 
 error[E0080]: constructing invalid value of type &Atomic<i32>: at .<deref>.v, encountered `UnsafeCell` in read-only memory
@@ -28,7 +28,7 @@ LL | static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾ALLOC2╼                                     │ ╾──╼
+               ╾ALLOC$ID╼                                     │ ╾──╼
            }
 
 error[E0080]: constructing invalid value of type &mut i32: encountered mutable reference or box pointing to read-only memory
@@ -39,7 +39,7 @@ LL | static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}};
    |
    = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾ALLOC3╼                                     │ ╾──╼
+               ╾ALLOC$ID╼                                     │ ╾──╼
            }
 
 error: encountered mutable pointer in final value of static

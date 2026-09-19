@@ -39,7 +39,7 @@ fn specializes_query_cycle(
 /// `parent_impl_def_id` is a const impl (conditionally based off of some `[const]`
 /// bounds), then `specializing_impl_def_id` must also be const for the same
 /// set of types.
-#[salsa::tracked(cycle_result = specializes_query_cycle)]
+#[salsa::tracked(cycle_result = specializes_query_cycle, returns(copy))]
 fn specializes_query(
     db: &dyn HirDatabase,
     specializing_impl_def_id: ImplId,

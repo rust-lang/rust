@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::std_or_core;
 use clippy_utils::sugg::Sugg;
@@ -262,7 +262,15 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) -> Option<
             if mirrored_exprs(left_expr, right_expr, &binding_map, BindingSource::Left) {
                 (left_expr, l_pat.span, false)
             } else if mirrored_exprs(left_expr, right_expr, &binding_map, BindingSource::Right) {
-                (left_expr, r_pat.span, true)
+                // Use the right-hand expr (the `a` side) as the key body, peeling any `&`
+                // introduced by the `.cmp(&rhs)` call so the suggestion doesn't contain a
+                // spurious borrow.
+                let right_body = if let ExprKind::AddrOf(_, _, inner) = right_expr.kind {
+                    inner
+                } else {
+                    right_expr
+                };
+                (right_body, l_pat.span, true)
             } else {
                 return None;
             };

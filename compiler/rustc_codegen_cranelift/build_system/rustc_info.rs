@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-pub(crate) fn get_host_triple(rustc: &Path) -> String {
+pub(crate) fn get_host_tuple(rustc: &Path) -> String {
     let version_info = Command::new(rustc)
         .stderr(Stdio::inherit())
         .args(["--print", "host-tuple"])

@@ -15,6 +15,7 @@ LL | #[cfg(list_all_well_known_cfgs)]
 `panic`
 `proc_macro`
 `relocation_model`
+`rust_analyzer`
 `rustfmt`
 `sanitize`
 `sanitizer_cfi_generalize_pointers`
@@ -28,6 +29,7 @@ LL | #[cfg(list_all_well_known_cfgs)]
 `target_has_atomic`
 `target_has_atomic_load_store`
 `target_has_atomic_primitive_alignment`
+`target_has_threads`
 `target_object_format`
 `target_os`
 `target_pointer_width`

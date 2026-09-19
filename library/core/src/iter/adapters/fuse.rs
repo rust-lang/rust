@@ -4,6 +4,7 @@ use crate::iter::adapters::zip::try_get_unchecked;
 use crate::iter::{
     FusedIterator, TrustedFused, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
+use crate::num::NonZero;
 use crate::ops::Try;
 
 /// An iterator that yields `None` forever after the underlying iterator
@@ -48,6 +49,10 @@ where
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         FuseImpl::next(self)
+    }
+
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        FuseImpl::advance_by(self, n)
     }
 
     #[inline]
@@ -259,6 +264,7 @@ trait FuseImpl<I> {
 
     // Functions specific to any normal Iterators
     fn next(&mut self) -> Option<Self::Item>;
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>>;
     fn nth(&mut self, n: usize) -> Option<Self::Item>;
     fn try_fold<Acc, Fold, R>(&mut self, acc: Acc, fold: Fold) -> R
     where
@@ -299,6 +305,22 @@ where
     #[inline]
     default fn next(&mut self) -> Option<<I as Iterator>::Item> {
         and_then_or_clear(&mut self.iter, Iterator::next)
+    }
+
+    #[inline]
+    default fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        let Some(iter) = &mut self.iter else {
+            return match NonZero::new(n) {
+                Some(n) => Err(n),
+                None => Ok(()),
+            };
+        };
+
+        let res = iter.advance_by(n);
+        if res.is_err() {
+            self.iter = None;
+        }
+        res
     }
 
     #[inline]
@@ -379,6 +401,17 @@ where
     #[inline]
     fn next(&mut self) -> Option<<I as Iterator>::Item> {
         self.iter.as_mut()?.next()
+    }
+
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        match &mut self.iter {
+            Some(iter) => iter.advance_by(n),
+            None => match NonZero::new(n) {
+                Some(n) => Err(n),
+                None => Ok(()),
+            },
+        }
     }
 
     #[inline]

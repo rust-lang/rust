@@ -1,5 +1,5 @@
 #![warn(clippy::unsafe_derive_deserialize)]
-#![allow(unused, clippy::missing_safety_doc)]
+#![expect(clippy::missing_safety_doc)]
 
 extern crate serde;
 

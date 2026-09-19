@@ -1,4 +1,4 @@
-use rustc_ast::ast::{self, BindingMode, ByRef, Pat, PatField, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::ast::{self, BindingMode, ByRef, Pat, PatField, PatKind};
 use rustc_span::{BytePos, Span};
 
 use crate::comment::{FindUncommented, combine_strs_with_missing_comments};
@@ -11,14 +11,15 @@ use crate::lists::{
 };
 use crate::macros::{MacroPosition, rewrite_macro};
 use crate::overflow;
-use crate::pairs::{PairParts, rewrite_pair};
+use crate::range::rewrite_range;
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::types::{PathContext, rewrite_path};
 use crate::utils::{
-    format_mutability, format_pinnedness_and_mutability, mk_sp, mk_sp_lo_plus_one, rewrite_ident,
+    format_mutability, format_pinnedness_and_mutability, format_range_end, mk_sp,
+    mk_sp_lo_plus_one, rewrite_ident,
 };
 
 /// Returns `true` if the given pattern is "short".
@@ -69,29 +70,10 @@ fn is_short_pattern_inner(context: &RewriteContext<'_>, pat: &ast::Pat) -> bool 
         ast::PatKind::TupleStruct(_, ref path, ref subpats) => {
             path.segments.len() <= 1 && subpats.len() <= 1
         }
-        ast::PatKind::Box(ref p)
-        | PatKind::Deref(ref p)
-        | ast::PatKind::Ref(ref p, _, _)
-        | ast::PatKind::Paren(ref p) => is_short_pattern_inner(context, &*p),
-        PatKind::Or(ref pats) => pats.iter().all(|p| is_short_pattern_inner(context, p)),
-    }
-}
-
-pub(crate) struct RangeOperand<'a, T> {
-    pub operand: &'a Option<Box<T>>,
-    pub span: Span,
-}
-
-impl<'a, T: Rewrite> Rewrite for RangeOperand<'a, T> {
-    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        self.rewrite_result(context, shape).ok()
-    }
-
-    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
-        match &self.operand {
-            None => Ok("".to_owned()),
-            Some(ref exp) => exp.rewrite_result(context, shape),
+        PatKind::Deref(ref p) | ast::PatKind::Ref(ref p, _, _) | ast::PatKind::Paren(ref p) => {
+            is_short_pattern_inner(context, &*p)
         }
+        PatKind::Or(ref pats) => pats.iter().all(|p| is_short_pattern_inner(context, p)),
     }
 }
 
@@ -131,7 +113,6 @@ impl Rewrite for Pat {
                     .ends_with_newline(false);
                 write_list(&items, &fmt)
             }
-            PatKind::Box(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, shape),
             PatKind::Ident(BindingMode(by_ref, mutability), ident, ref sub_pat) => {
                 let mut_prefix = format_mutability(mutability).trim();
 
@@ -291,9 +272,13 @@ impl Rewrite for Pat {
                 }
             }
             PatKind::Never => Err(RewriteError::Unknown),
-            PatKind::Range(ref lhs, ref rhs, ref end_kind) => {
-                rewrite_range_pat(context, shape, lhs, rhs, end_kind, self.span)
-            }
+            PatKind::Range(ref lhs, ref rhs, ref end_kind) => rewrite_range(
+                context,
+                shape,
+                lhs.as_deref(),
+                rhs.as_deref(),
+                format_range_end(end_kind.node),
+            ),
             PatKind::Ref(ref pat, pinnedness, mutability) => {
                 let (pin_prefix, mut_prefix) =
                     format_pinnedness_and_mutability(pinnedness, mutability);
@@ -354,50 +339,6 @@ impl Rewrite for Pat {
             PatKind::Err(_) => Err(RewriteError::Unknown),
         }
     }
-}
-
-pub(crate) fn rewrite_range_pat<T: Rewrite>(
-    context: &RewriteContext<'_>,
-    shape: Shape,
-    lhs: &Option<Box<T>>,
-    rhs: &Option<Box<T>>,
-    end_kind: &rustc_span::Spanned<RangeEnd>,
-    span: Span,
-) -> RewriteResult {
-    let infix = match end_kind.node {
-        RangeEnd::Included(RangeSyntax::DotDotDot) => "...",
-        RangeEnd::Included(RangeSyntax::DotDotEq) => "..=",
-        RangeEnd::Excluded => "..",
-    };
-    let infix = if context.config.spaces_around_ranges() {
-        let lhs_spacing = match lhs {
-            None => "",
-            Some(_) => " ",
-        };
-        let rhs_spacing = match rhs {
-            None => "",
-            Some(_) => " ",
-        };
-        format!("{lhs_spacing}{infix}{rhs_spacing}")
-    } else {
-        infix.to_owned()
-    };
-    let lspan = span.with_hi(end_kind.span.lo());
-    let rspan = span.with_lo(end_kind.span.hi());
-    rewrite_pair(
-        &RangeOperand {
-            operand: lhs,
-            span: lspan,
-        },
-        &RangeOperand {
-            operand: rhs,
-            span: rspan,
-        },
-        PairParts::infix(&infix),
-        context,
-        shape,
-        SeparatorPlace::Front,
-    )
 }
 
 fn rewrite_struct_pat(
@@ -525,12 +466,19 @@ impl Rewrite for PatField {
                     self.pat.rewrite_result(context, nested_shape)?
                 )
             };
+
+            let combine_shape = if context.config.style_edition() >= StyleEdition::Edition2027 {
+                shape
+            } else {
+                nested_shape
+            };
+
             combine_strs_with_missing_comments(
                 context,
                 &attrs_str,
                 &pat_and_id_str,
-                mk_sp(hi_pos, self.pat.span.lo()),
-                nested_shape,
+                mk_sp(hi_pos, self.ident.span.lo()),
+                combine_shape,
                 false,
             )
         }
@@ -585,7 +533,7 @@ pub(crate) fn can_be_overflowed_pat(
             | ast::PatKind::Tuple(..)
             | ast::PatKind::Struct(..)
             | ast::PatKind::TupleStruct(..) => context.use_block_indent() && len == 1,
-            ast::PatKind::Ref(ref p, _, _) | ast::PatKind::Box(ref p) => {
+            ast::PatKind::Ref(ref p, _, _) => {
                 can_be_overflowed_pat(context, &TuplePatField::Pat(p), len)
             }
             ast::PatKind::Expr(ref expr) => can_be_overflowed_expr(context, expr, len),

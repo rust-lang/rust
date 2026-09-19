@@ -1,8 +1,8 @@
-use std::fmt;
+use std::path::Path;
+use std::{env, fmt};
 
 use crate::core::config::SplitDebuginfo;
 use crate::utils::cache::{INTERNER, Interned};
-use crate::{Path, env};
 
 #[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 // N.B.: This type is used everywhere, and the entire codebase relies on it being Copy.
@@ -78,8 +78,16 @@ impl TargetSelection {
         self.contains("msvc")
     }
 
+    pub fn is_pauthtest(&self) -> bool {
+        self.contains("pauthtest")
+    }
+
     pub fn is_windows(&self) -> bool {
         self.contains("windows")
+    }
+
+    pub fn is_apple(&self) -> bool {
+        self.contains("apple")
     }
 
     pub fn is_windows_gnu(&self) -> bool {

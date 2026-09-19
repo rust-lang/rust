@@ -2,12 +2,11 @@
 //
 //@ check-pass
 
-#![feature(never_type)]
 #![expect(dropping_copy_types)]
 #![warn(unused)]
 
 fn main() {
-    let x: ! = panic!("aah"); //~ WARN unused
+    let x: ! = panic!("aah");
     drop(x); //~ WARN unreachable
     //~^ WARN unreachable
 }

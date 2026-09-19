@@ -1,4 +1,4 @@
-#![feature(proc_macro_hygiene, proc_macro_quote, box_patterns)]
+#![feature(proc_macro_hygiene, proc_macro_quote, deref_patterns)]
 #![allow(clippy::uninlined_format_args, clippy::useless_conversion)]
 
 extern crate proc_macro;
@@ -10,8 +10,8 @@ use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::token::Star;
 use syn::{
-    FnArg, ImplItem, ItemFn, ItemImpl, ItemStruct, ItemTrait, Lifetime, Pat, PatIdent, PatType, Signature, TraitItem,
-    Type, Visibility, parse_macro_input, parse_quote,
+    Attribute, FnArg, ImplItem, Item, ItemFn, ItemImpl, ItemStruct, ItemTrait, Lifetime, Pat, PatIdent, PatType,
+    Signature, TraitItem, Type, Visibility, parse_macro_input, parse_quote,
 };
 
 #[proc_macro_attribute]
@@ -42,6 +42,57 @@ pub fn fake_async_trait(_args: TokenStream, input: TokenStream) -> TokenStream {
     TokenStream::from(quote!(#item))
 }
 
+fn add_must_use_attr(attrs: &mut Vec<Attribute>) {
+    attrs.push(parse_quote!(#[must_use]));
+}
+
+fn desugar_async(attrs: &mut Vec<Attribute>, sig: &mut Signature) {
+    sig.asyncness = None;
+    add_must_use_attr(attrs);
+}
+
+#[proc_macro_attribute]
+pub fn add_must_use(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let mut item = parse_macro_input!(input as Item);
+
+    match &mut item {
+        Item::Fn(item) => add_must_use_attr(&mut item.attrs),
+        Item::Struct(item) => add_must_use_attr(&mut item.attrs),
+        Item::Union(item) => add_must_use_attr(&mut item.attrs),
+        Item::Enum(item) => add_must_use_attr(&mut item.attrs),
+        Item::Trait(item) => add_must_use_attr(&mut item.attrs),
+        _ => {},
+    }
+
+    TokenStream::from(quote!(#item))
+}
+
+#[proc_macro_attribute]
+pub fn add_must_use_to_async(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let mut item = parse_macro_input!(input as Item);
+
+    match &mut item {
+        Item::Fn(item) => desugar_async(&mut item.attrs, &mut item.sig),
+        Item::Trait(item) => {
+            for trait_item in &mut item.items {
+                if let TraitItem::Fn(method) = trait_item {
+                    desugar_async(&mut method.attrs, &mut method.sig);
+                }
+            }
+        },
+        Item::Impl(item) => {
+            for impl_item in &mut item.items {
+                if let ImplItem::Fn(method) = impl_item {
+                    desugar_async(&mut method.attrs, &mut method.sig);
+                }
+            }
+        },
+        _ => {},
+    }
+
+    TokenStream::from(quote!(#item))
+}
+
 #[proc_macro_attribute]
 pub fn rename_my_lifetimes(_args: TokenStream, input: TokenStream) -> TokenStream {
     fn make_name(count: usize) -> String {
@@ -67,7 +118,7 @@ pub fn rename_my_lifetimes(_args: TokenStream, input: TokenStream) -> TokenStrea
     for inner in &mut item.items {
         if let ImplItem::Fn(method) = inner
             && let Some(FnArg::Typed(pat_type)) = mut_receiver_of(&mut method.sig)
-            && let box Type::Reference(reference) = &mut pat_type.ty
+            && let Type::Reference(reference) = &mut pat_type.ty
         {
             // Target only unnamed lifetimes
             let name = match &reference.lifetime {

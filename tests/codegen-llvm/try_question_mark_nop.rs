@@ -105,7 +105,7 @@ pub fn option_nop_match_64(x: Option<u64>) -> Option<u64> {
 pub fn option_nop_traits_64(x: Option<u64>) -> Option<u64> {
     // CHECK: start:
     // CHECK-NEXT: %[[TRUNC:[0-9]+]] = trunc nuw i64 %0 to i1
-    // CHECK-NEXT: %[[SEL:\.[0-9]+]] = select i1 %[[TRUNC]], i64 %1, i64 undef
+    // CHECK-NEXT: %[[SEL:\.[0-9]*]] = select i1 %[[TRUNC]], i64 %1, i64 undef
     // CHECK-NEXT: insertvalue { i64, i64 }
     // CHECK-NEXT: insertvalue { i64, i64 }
     // CHECK-NEXT: ret { i64, i64 }

@@ -13,7 +13,7 @@
 #![allow(missing_docs)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated, deprecated_in_future, clippy::legacy_numeric_constants)]
 pub use core::f32::{
     DIGITS, EPSILON, INFINITY, MANTISSA_DIGITS, MAX, MAX_10_EXP, MAX_EXP, MIN, MIN_10_EXP, MIN_EXP,
     MIN_POSITIVE, NAN, NEG_INFINITY, RADIX, consts,
@@ -79,6 +79,11 @@ impl f32 {
     /// integers, round away from `0.0`.
     ///
     /// This function always returns the precise result.
+    ///
+    /// On most hardware platforms, [`round_ties_even`](Self::round_ties_even) may execute faster
+    /// than `round`. If both rounding methods fit the use case, consider using `round_ties_even`.
+    /// Note that the two methods apply different rounding rules to values exactly halfway between
+    /// two integers.
     ///
     /// # Examples
     ///
@@ -411,7 +416,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp(self) -> f32 {
-        intrinsics::expf32(self)
+        intrinsics::exp(self)
     }
 
     /// Returns `2^(self)`.
@@ -436,7 +441,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp2(self) -> f32 {
-        intrinsics::exp2f32(self)
+        intrinsics::exp2(self)
     }
 
     /// Returns the natural logarithm of the number.
@@ -471,7 +476,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f32 {
-        intrinsics::logf32(self)
+        intrinsics::log(self)
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -541,7 +546,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f32 {
-        intrinsics::log2f32(self)
+        intrinsics::log2(self)
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -574,7 +579,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f32 {
-        intrinsics::log10f32(self)
+        intrinsics::log10(self)
     }
 
     /// The positive difference of two numbers.
@@ -699,7 +704,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin(self) -> f32 {
-        intrinsics::sinf32(self)
+        intrinsics::sin(self)
     }
 
     /// Computes the cosine of a number (in radians).
@@ -723,7 +728,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cos(self) -> f32 {
-        intrinsics::cosf32(self)
+        intrinsics::cos(self)
     }
 
     /// Computes the tangent of a number (in radians).

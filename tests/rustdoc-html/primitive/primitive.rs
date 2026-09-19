@@ -15,19 +15,19 @@
 //@ !has foo/index.html '//span' '🔒'
 #[rustc_doc_primitive = "i32"]
 /// this is a test!
-mod i32 {}
+const _: () = ();
 
 //@ has foo/primitive.bool.html '//section[@id="main-content"]//div[@class="docblock"]//p' 'hello'
 #[rustc_doc_primitive = "bool"]
 /// hello
-mod bool {}
+const _: () = ();
 
 //@ has foo/primitive.f16.html '//section[@id="main-content"]//div[@class="docblock"]//p' 'hello'
 #[rustc_doc_primitive = "f16"]
 /// hello
-mod f16 {}
+const _: () = ();
 
 //@ has foo/primitive.f128.html '//section[@id="main-content"]//div[@class="docblock"]//p' 'hello'
 #[rustc_doc_primitive = "f128"]
 /// hello
-mod f128 {}
+const _: () = ();

@@ -360,12 +360,7 @@ impl File {
         let off = match pos {
             SeekFrom::Start(p) => p,
             SeekFrom::End(p) => {
-                // Seeking to position 0xFFFFFFFFFFFFFFFF causes the current position to be set to the end of the file.
-                if p == 0 {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    self.file_attr()?.size().checked_add_signed(p).ok_or(NEG_OFF_ERR)?
-                }
+                self.file_attr()?.size().checked_add_signed(p).ok_or(NEG_OFF_ERR)?
             }
             SeekFrom::Current(p) => self.tell()?.checked_add_signed(p).ok_or(NEG_OFF_ERR)?,
         };
@@ -480,6 +475,11 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
+    // UEFI does not support symlinks
+    set_perm_nofollow(p, perm)
+}
+
+pub fn set_perm_nofollow(p: &Path, perm: FilePermissions) -> io::Result<()> {
     let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
     set_perm_inner(&f, perm)
 }

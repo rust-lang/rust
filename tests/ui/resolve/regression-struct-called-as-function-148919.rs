@@ -3,7 +3,7 @@ struct Bar {}
 impl Bar {
     fn into_self(self) -> Bar {
         Bar(self)
-        //~^ ERROR expected function, tuple struct or tuple variant, found struct `Bar` [E0423]
+        //~^ ERROR cannot find function, tuple struct or tuple variant `Bar` in this scope [E0423]
     }
 }
 

@@ -6,16 +6,16 @@ use rustc_abi::{Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hashes::Hash128;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
-use rustc_hir::limit::Limit;
 use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
-use rustc_span::sym;
+use rustc_span::{bug, span_bug, sym};
+use rustc_structures::Limit;
+use rustc_type_ir::PredicateProxy;
 use rustc_type_ir::solve::SizedTraitKind;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -28,7 +28,7 @@ use crate::traits::ObligationCause;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -165,7 +165,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 | DefKind::AssocTy
                 | DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::AssocConst { .. }
+                | DefKind::AssocConst
                 | DefKind::Impl { .. },
                 def_id,
             ) => Some(def_id),
@@ -268,7 +268,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     Limit(0) => Limit(2),
                     limit => limit * 2,
                 };
-                let reported = self.dcx().emit_err(crate::error::RecursionLimitReached {
+                let reported = self.dcx().emit_err(crate::diagnostics::RecursionLimitReached {
                     span: cause.span,
                     ty,
                     suggested_limit,
@@ -377,6 +377,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         adt_did: LocalDefId,
         validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
+        impossible_self_ty: impl Fn(Self, LocalDefId) -> bool,
     ) -> Option<ty::Destructor> {
         let drop_trait = self.lang_items().drop_trait()?;
         self.ensure_result().coherent_trait(drop_trait).ok()?;
@@ -391,6 +392,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
             if validate(self, impl_did).is_err() {
                 // Already `ErrorGuaranteed`, no need to delay a span bug here.
+                continue;
+            }
+
+            if impossible_self_ty(self, adt_did) {
+                // The self ty is unnameable, so it can't be constructed in the first place.
                 continue;
             }
 
@@ -424,6 +430,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         adt_did: LocalDefId,
         validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
+        impossible_self_ty: impl Fn(Self, LocalDefId) -> bool,
     ) -> Option<ty::AsyncDestructor> {
         let async_drop_trait = self.lang_items().async_drop_trait()?;
         self.ensure_result().coherent_trait(async_drop_trait).ok()?;
@@ -438,6 +445,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
             if validate(self, impl_did).is_err() {
                 // Already `ErrorGuaranteed`, no need to delay a span bug here.
+                continue;
+            }
+
+            if impossible_self_ty(self, adt_did) {
+                // The self ty is unnameable, so it can't be constructed in the first place.
                 continue;
             }
 
@@ -597,7 +609,40 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if `def_id` refers to a definition that does not have its own
     /// type-checking context, i.e. closure, coroutine or inline const.
     pub fn is_typeck_child(self, def_id: DefId) -> bool {
-        self.def_kind(def_id).is_typeck_child()
+        match self.def_kind(def_id) {
+            DefKind::AnonConst => {
+                self.anon_const_kind(def_id) == ty::AnonConstKind::NonTypeSystemInline
+            }
+            DefKind::Closure | DefKind::SyntheticCoroutineBody => true,
+            DefKind::Mod
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::Variant
+            | DefKind::Trait
+            | DefKind::TyAlias
+            | DefKind::ForeignTy
+            | DefKind::TraitAlias
+            | DefKind::AssocTy
+            | DefKind::TyParam
+            | DefKind::Fn
+            | DefKind::Const
+            | DefKind::ConstParam
+            | DefKind::Static { .. }
+            | DefKind::Ctor(_, _)
+            | DefKind::AssocFn
+            | DefKind::AssocConst
+            | DefKind::Macro(_)
+            | DefKind::ExternCrate
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::OpaqueTy
+            | DefKind::Field
+            | DefKind::LifetimeParam
+            | DefKind::GlobalAsm
+            | DefKind::Impl { .. }
+            | DefKind::TestBinderConstraints => false,
+        }
     }
 
     /// Returns `true` if `def_id` refers to a trait (i.e., `trait Foo { ... }`).
@@ -835,7 +880,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// be shown in `impl` suggestions.
     ///
     /// [public]: TyCtxt::is_private_dep
-    /// [direct]: rustc_session::cstore::ExternCrate::is_direct
+    /// [direct]: rustc_crate_store::ExternCrate::is_direct
     pub fn is_user_visible_dep(self, key: CrateNum) -> bool {
         // `#![rustc_private]` overrides defaults to make private dependencies usable.
         if self.features().enabled(sym::rustc_private) {
@@ -894,12 +939,14 @@ impl<'tcx> TyCtxt<'tcx> {
     /// [free]: ty::Free
     /// [expand_free_alias_tys]: Self::expand_free_alias_tys
     pub fn peel_off_free_alias_tys(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) = ty.kind() else { return ty };
+        let ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. }) = ty.kind() else {
+            return ty;
+        };
 
         let limit = self.recursion_limit();
         let mut depth = 0;
 
-        while let &ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. }) = ty.kind() {
+        while let &ty::Alias(_, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) = ty.kind() {
             if !limit.value_within_limit(depth) {
                 let guar = self.dcx().delayed_bug("overflow expanding free alias type");
                 return Ty::new_error(self, guar);
@@ -928,7 +975,8 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             ty::AliasTermKind::OpaqueTy { def_id } => Some(self.variances_of(def_id)),
             ty::AliasTermKind::InherentTy { .. }
-            | ty::AliasTermKind::InherentConst { .. }
+            | ty::AliasTermKind::InherentConstSelf { .. }
+            | ty::AliasTermKind::InherentConstImpl { .. }
             | ty::AliasTermKind::FreeTy { .. }
             | ty::AliasTermKind::FreeConst { .. }
             | ty::AliasTermKind::AnonConst { .. }
@@ -993,7 +1041,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *t.kind() {
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *t.kind() {
             self.expand_opaque_ty(def_id, args).unwrap_or(t)
         } else if t.has_opaque_types() {
             t.super_fold_with(self)
@@ -1002,24 +1050,23 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
         }
     }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
-        if let ty::PredicateKind::Clause(clause) = p.kind().skip_binder()
-            && let ty::ClauseKind::Projection(projection_pred) = clause
-        {
-            p.kind()
-                .rebind(ty::ProjectionPredicate {
-                    projection_term: projection_pred.projection_term.fold_with(self),
-                    // Don't fold the term on the RHS of the projection predicate.
-                    // This is because for default trait methods with RPITITs, we
-                    // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
-                    // predicate, which would trivially cause a cycle when we do
-                    // anything that requires `TypingEnv::with_post_analysis_normalized`.
-                    term: projection_pred.term,
-                })
-                .upcast(self.tcx)
-        } else {
-            p.super_fold_with(self)
-        }
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
+        // We use `map_projection` to execute the closure only if `p` is a projection clause,
+        // to implement the logic described below (i.e. avoid folding the `term`).
+        // In all other cases, fold recursively, as normal.
+        p.map_projection(self.tcx, |bound_clause| {
+            let projection_clause = bound_clause.skip_binder();
+            bound_clause.rebind(ty::ProjectionClause {
+                projection_term: projection_clause.projection_term.fold_with(self),
+                // Don't fold the term on the RHS of the projection predicate.
+                // This is because for default trait methods with RPITITs, we
+                // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
+                // predicate, which would trivially cause a cycle when we do
+                // anything that requires `TypingEnv::with_post_analysis_normalized`.
+                term: projection_clause.term,
+            })
+        })
+        .unwrap_or_else(|| p.super_fold_with(self))
     }
 }
 
@@ -1037,7 +1084,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
         if !ty.has_type_flags(ty::TypeFlags::HAS_TY_FREE_ALIAS) {
             return ty;
         }
-        let &ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. }) = ty.kind() else {
+        let &ty::Alias(_, ty::AliasTy { kind: ty::Free { def_id }, args, .. }) = ty.kind() else {
             return ty.super_fold_with(self);
         };
         if !self.tcx.recursion_limit().value_within_limit(self.depth) {
@@ -1046,13 +1093,12 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
         }
 
         self.depth += 1;
-        let ty = ensure_sufficient_stack(|| {
-            self.tcx
-                .type_of(def_id)
-                .instantiate(self.tcx, args)
-                .skip_normalization()
-                .fold_with(self)
-        });
+        let ty = self
+            .tcx
+            .type_of(def_id)
+            .instantiate(self.tcx, args)
+            .skip_normalization()
+            .fold_with(self);
         self.depth -= 1;
         ty
     }
@@ -1269,7 +1315,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_)
             | ty::FnPtr(..) => true,
             // FIXME(unsafe_binders):
-            ty::UnsafeBinder(_) => todo!(),
+            ty::UnsafeBinder(_) => unimplemented!(),
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_not_async_drop),
             ty::Pat(elem_ty, _) | ty::Slice(elem_ty) | ty::Array(elem_ty, _) => {
                 elem_ty.is_trivially_not_async_drop()
@@ -1686,7 +1732,7 @@ pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Intrinsi
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id),
             must_be_overridden,
-            const_stable: find_attr!(tcx, def_id, RustcIntrinsicConstStableIndirect),
+            const_stable_indirect: find_attr!(tcx, def_id, RustcIntrinsicConstStableIndirect),
         })
     } else {
         None

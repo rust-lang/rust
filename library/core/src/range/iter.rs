@@ -8,7 +8,7 @@ use crate::{intrinsics, mem};
 /// By-value [`Range`] iterator.
 #[stable(feature = "new_range_api", since = "1.96.0")]
 #[derive(Debug, Clone)]
-pub struct RangeIter<A>(legacy::Range<A>);
+pub struct RangeIter<A>(pub(crate) legacy::Range<A>);
 
 impl<A> RangeIter<A> {
     #[unstable(feature = "new_range_remainder", issue = "154458")]

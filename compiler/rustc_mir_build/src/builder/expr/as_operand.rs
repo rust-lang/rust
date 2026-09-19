@@ -127,6 +127,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let source_info = this.source_info(expr.span);
             let region_scope = (region_scope, source_info);
             return this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
+                this.push_coverage_point_for_expr(block, source_info, hir_id);
                 this.as_operand(block, scope, value, local_info, needs_temporary)
             });
         }
@@ -170,6 +171,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let source_info = this.source_info(expr.span);
             let region_scope = (region_scope, source_info);
             return this.in_scope(region_scope, LintLevel::Explicit(hir_id), |this| {
+                this.push_coverage_point_for_expr(block, source_info, hir_id);
                 this.as_call_operand(block, scope, value)
             });
         }

@@ -7,7 +7,7 @@ pub(crate) mod smallsort;
 
 /// SAFETY: this is safety relevant, how does this interact with the soundness holes in
 /// specialization?
-#[rustc_unsafe_specialization_marker]
+#[unsafe(rustc_allow_lifetime_dependent_specialization)]
 pub(crate) trait FreezeMarker {}
 
 impl<T: Freeze> FreezeMarker for T {}

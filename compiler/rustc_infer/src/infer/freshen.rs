@@ -34,10 +34,10 @@
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
+use rustc_span::bug;
 
 use super::InferCtxt;
 
@@ -158,7 +158,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
 
             ty::ConstKind::Param(_)
             | ty::ConstKind::Value(_)
-            | ty::ConstKind::Unevaluated(..)
+            | ty::ConstKind::Alias(..)
             | ty::ConstKind::Expr(..)
             | ty::ConstKind::Error(_) => ct.super_fold_with(self),
         }

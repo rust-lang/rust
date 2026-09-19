@@ -16,22 +16,22 @@
 use hir::def::DefKind;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_hir as hir;
 use rustc_hir::definitions::{DefPathData, PerParentDisambiguatorState};
-use rustc_hir::{self as hir};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::interpret::{
     AllocBytes, ConstAllocation, CtfeProvenance, InterpResult, Provenance,
 };
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::span_bug;
 use tracing::{instrument, trace};
 
 use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, interp_ok};
 use crate::const_eval::DummyMachine;
-use crate::{const_eval, errors};
+use crate::{const_eval, diagnostics};
 
 pub trait CompileTimeMachine<'tcx> = Machine<
         'tcx,
@@ -160,7 +160,8 @@ fn intern_as_new_static<'tcx>(
     tcx.set_nested_alloc_id_static(alloc_id, feed.def_id());
 
     if tcx.is_thread_local_static(static_id.into()) {
-        tcx.dcx().emit_err(errors::NestedStaticInThreadLocal { span: tcx.def_span(static_id) });
+        tcx.dcx()
+            .emit_err(diagnostics::NestedStaticInThreadLocal { span: tcx.def_span(static_id) });
     }
 
     // These do not inherit the codegen attrs of the parent static allocation, since
@@ -171,7 +172,7 @@ fn intern_as_new_static<'tcx>(
     feed.eval_static_initializer(Ok(alloc));
     feed.generics_of(tcx.generics_of(static_id).clone());
     feed.def_ident_span(tcx.def_ident_span(static_id));
-    feed.explicit_predicates_of(tcx.explicit_predicates_of(static_id));
+    feed.explicit_clauses_of(tcx.explicit_clauses_of(static_id));
     feed.feed_hir();
 }
 
@@ -355,7 +356,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx>>(
     Ok(())
 }
 
-/// Intern `ret`. This function assumes that `ret` references no other allocation.
+/// Intern an allocation. This function assumes that it references no other allocation.
 #[instrument(level = "debug", skip(ecx))]
 pub fn intern_const_alloc_for_constprop<'tcx, M: CompileTimeMachine<'tcx>>(
     ecx: &mut InterpCx<'tcx, M>,

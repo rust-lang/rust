@@ -10,6 +10,7 @@
 //@ ignore-compare-mode-polonius (explicit revisions)
 //@ revisions: nll polonius legacy
 //@ [nll] known-bug: #46859
+//@ [nll] compile-flags: -Z polonius=off
 //@ [polonius] check-pass
 //@ [polonius] compile-flags: -Z polonius=next
 //@ [legacy] check-pass
@@ -47,6 +48,21 @@ fn to_refs2<T>(mut list: &mut List<T>) -> Vec<&mut T> {
     }
 
     result
+}
+
+// In a-mir-formality, the local `cursor` was (incorrectly) considered live
+// on a second borrowck pass, resulting in an incorrect error.
+fn to_refs3<'a, T>(list: &'a mut List<T>) -> &'a mut T {
+    let mut result: &'a mut T;
+    let mut cursor: &'a mut List<T> = &mut *list;
+    loop {
+        result = &mut cursor.value;
+        if let Some(n) = cursor.next.as_mut() {
+            cursor = n;
+        } else {
+            return result;
+        }
+    }
 }
 
 // Another MCVE from the same issue, but was rejected by NLLs.

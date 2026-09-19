@@ -3,7 +3,7 @@
 //@ run-pass
 
 #![feature(cfg_target_object_format)]
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 #![allow(non_upper_case_globals)]
 

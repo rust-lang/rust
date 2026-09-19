@@ -10,7 +10,6 @@ pub mod diagnostics;
 pub mod interface;
 mod limits;
 pub mod passes;
-mod proc_macro_decls;
 mod queries;
 pub mod util;
 

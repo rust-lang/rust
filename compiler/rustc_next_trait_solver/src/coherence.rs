@@ -3,8 +3,9 @@ use std::ops::ControlFlow;
 
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::lang_items::SolverAdtLangItem;
 use rustc_type_ir::{
-    self as ty, InferCtxtLike, Interner, TrivialTypeTraversalImpls, TypeVisitable,
+    self as ty, InferCtxtLike, Interner, Region, TrivialTypeTraversalImpls, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
 use tracing::instrument;
@@ -317,7 +318,7 @@ where
 {
     type Result = ControlFlow<OrphanCheckEarlyExit<I, E>>;
 
-    fn visit_region(&mut self, _r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, _r: Region<I>) -> Self::Result {
         ControlFlow::Continue(())
     }
 
@@ -362,7 +363,7 @@ where
             //   normalize to that, so we have to treat it as an uncovered ty param.
             // * Otherwise it may normalize to any non-type-generic type
             //   be it local or non-local.
-            ty::Alias(ty::AliasTy { kind, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind, .. }) => {
                 if ty.has_type_flags(
                     ty::TypeFlags::HAS_TY_PLACEHOLDER
                         | ty::TypeFlags::HAS_TY_BOUND
@@ -407,12 +408,17 @@ where
             }
 
             // For fundamental types, we just look inside of them.
+            // Certain lang items (currently, `Box`) have special behaviour here
+            // and so are special cased.
             ty::Ref(_, ty, _) => ty.visit_with(self),
             ty::Adt(def, args) => {
                 if self.def_id_is_local(def.def_id()) {
                     ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
                 } else if def.is_fundamental() {
-                    args.visit_with(self)
+                    match self.infcx.cx().as_adt_lang_item(def.def_id()) {
+                        Some(SolverAdtLangItem::OwnedBox) => args.type_at(0).visit_with(self),
+                        Some(..) | None => args.visit_with(self)
+                    }
                 } else {
                     self.found_non_local_ty(ty)
                 }

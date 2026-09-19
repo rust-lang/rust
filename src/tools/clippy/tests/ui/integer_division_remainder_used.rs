@@ -1,3 +1,4 @@
+//@aux-build: proc_macros.rs
 #![warn(clippy::integer_division_remainder_used)]
 #![expect(clippy::op_ref)]
 
@@ -38,6 +39,13 @@ fn main() {
     let i = a / &4;
     //~^ integer_division_remainder_used
 
+    // should trigger on DivAssign and RemAssign
+    let mut j = 10;
+    j /= 2;
+    //~^ integer_division_remainder_used
+    j %= 3;
+    //~^ integer_division_remainder_used
+
     // should not trigger on custom Div and Rem
     let w = CustomOps(3);
     let x = CustomOps(4);
@@ -46,4 +54,18 @@ fn main() {
     let w = CustomOps(3);
     let x = CustomOps(4);
     let z = w % x;
+
+    macro_rules! mac {
+        ($a:expr, $b:expr) => {
+            $a % $b
+            //~^ integer_division_remainder_used
+        };
+    }
+    // should not trigger if from expansion in external macro
+    let issue17048 = mac!(a, b);
+    let issue17048 = proc_macros::external! {{
+        let a = 10;
+        let b = 5;
+        a % b
+    }};
 }

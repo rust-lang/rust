@@ -1,8 +1,10 @@
-error[E0423]: expected value, found trait `Bar`
+error[E0423]: cannot find value `Bar` in this scope
   --> $DIR/issue-33876.rs:10:26
    |
 LL |     let any: &dyn Any = &Bar;
-   |                          ^^^ not a value
+   |                          ^^^ not found in this scope
+   |
+   = note: a trait named `Bar` exists in another namespace
 
 error: aborting due to 1 previous error
 

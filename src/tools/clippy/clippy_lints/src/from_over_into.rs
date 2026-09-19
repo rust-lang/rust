@@ -4,18 +4,17 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::span_is_local;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::res::MaybeResPath as _;
+use clippy_utils::source::SpanExt as _;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_path};
 use rustc_hir::{
     FnRetTy, GenericArg, GenericArgs, HirId, Impl, ImplItemId, ImplItemKind, Item, ItemKind, PatKind, Path,
     PathSegment, Ty as HirTy, TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::ty::{self, Ty};
-use rustc_session::impl_lint_pass;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, Symbol};
 
@@ -60,7 +59,7 @@ pub struct FromOverInto {
 
 impl FromOverInto {
     pub fn new(conf: &'static Conf) -> Self {
-        FromOverInto { msrv: conf.msrv }
+        FromOverInto { msrv: conf.msrv.into() }
     }
 }
 
@@ -78,7 +77,10 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && span_is_local(item.span)
             && let middle_trait_ref = cx.tcx.impl_trait_ref(item.owner_id).instantiate_identity().skip_norm_wip()
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
-            && !matches!(middle_trait_ref.args.type_at(1).kind(), ty::Alias(ty::AliasTy { kind: ty::Opaque{..} , .. }))
+            && !matches!(
+                middle_trait_ref.args.type_at(1).kind(),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque{..} , .. })
+            )
             && self.msrv.meets(cx, msrvs::RE_REBALANCING_COHERENCE)
             // skip if there's a blanket From impl, the suggested impl would conflict
             && !has_blanket_from_impl(cx, middle_trait_ref.self_ty())
@@ -197,8 +199,8 @@ fn convert_to_from(
         return None;
     };
 
-    let from = self_ty.span.get_source_text(cx)?;
-    let into = target_ty.span.get_source_text(cx)?;
+    let from = self_ty.span.get_text(cx)?;
+    let into = target_ty.span.get_text(cx)?;
 
     let mut suggestions = vec![
         // impl Into<T> for U  ->  impl From<T> for U

@@ -7,7 +7,7 @@ pub(crate) struct MustUseParser;
 impl SingleAttributeParser for MustUseParser {
     const PATH: &[Symbol] = &[sym::must_use];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
         Allow(Target::Enum),
         Allow(Target::Struct),

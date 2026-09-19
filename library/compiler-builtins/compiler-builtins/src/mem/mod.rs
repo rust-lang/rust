@@ -2,19 +2,30 @@
 #![allow(clippy::style)]
 // FIXME(e2024): this eventually needs to be removed.
 #![allow(unsafe_op_in_unsafe_fn)]
+// FIXME(bench): remove when the benchmark rustc version is updated
+#![allow(unknown_lints)]
 
 // memcpy/memmove/memset have optimized implementations on some architectures
 #[cfg_attr(all(feature = "arch", target_arch = "x86_64"), path = "x86_64.rs")]
 mod impls;
 
+#[cfg(any(windows, target_os = "uefi"))]
+#[expect(non_camel_case_types)]
+pub type wchar_t = u16;
+#[cfg(not(any(windows, target_os = "uefi")))]
+#[expect(non_camel_case_types)]
+pub type wchar_t = i32;
+
 intrinsics! {
     #[mem_builtin]
+    #[allow(suspicious_runtime_symbol_definitions)]
     pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
         impls::copy_forward(dest, src, n);
         dest
     }
 
     #[mem_builtin]
+    #[allow(suspicious_runtime_symbol_definitions)]
     pub unsafe extern "C" fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
         let delta = (dest as usize).wrapping_sub(src as usize);
         if delta >= n {
@@ -28,17 +39,20 @@ intrinsics! {
     }
 
     #[mem_builtin]
+    #[allow(suspicious_runtime_symbol_definitions)]
     pub unsafe extern "C" fn memset(s: *mut u8, c: core::ffi::c_int, n: usize) -> *mut u8 {
         impls::set_bytes(s, c as u8, n);
         s
     }
 
     #[mem_builtin]
+    #[allow(suspicious_runtime_symbol_definitions)]
     pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> core::ffi::c_int {
         impls::compare_bytes(s1, s2, n)
     }
 
     #[mem_builtin]
+    #[allow(suspicious_runtime_symbol_definitions)]
     pub unsafe extern "C" fn bcmp(s1: *const u8, s2: *const u8, n: usize) -> core::ffi::c_int {
         memcmp(s1, s2, n)
     }
@@ -46,5 +60,16 @@ intrinsics! {
     #[mem_builtin]
     pub unsafe extern "C" fn strlen(s: *const core::ffi::c_char) -> usize {
         impls::c_string_length(s)
+    }
+
+    #[mem_builtin]
+    pub unsafe extern "C" fn wcslen(s: *const crate::mem::wchar_t) -> usize {
+        let mut s = s;
+        let mut n = 0;
+        while *s != 0 {
+            n += 1;
+            s = s.add(1);
+        }
+        n
     }
 }

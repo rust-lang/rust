@@ -1,3 +1,5 @@
+//@ reference: items.union.fields.read-safety
+//@ reference: items.union.fields.write-safety
 use std::ops::AddAssign;
 use std::mem::ManuallyDrop;
 

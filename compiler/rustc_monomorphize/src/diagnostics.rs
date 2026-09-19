@@ -51,6 +51,33 @@ pub(crate) struct CouldntDumpMonoStats {
 }
 
 #[derive(Diagnostic)]
+#[diag("could not write offload monomorphization manifest to `{$path}`: {$err}")]
+pub(crate) struct OffloadManifestWriteError {
+    pub path: String,
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("could not read offload monomorphization manifest from `{$path}`: {$err}")]
+pub(crate) struct OffloadManifestReadError {
+    pub path: String,
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("generic offload kernel `{$def_path}` is not instantiated")]
+#[help(
+    "with `-Zoffload=Device` (without a manifest), generic kernels are only discovered via \
+    monomorphization; if this kernel is called from host code, pass \
+    `-Zoffload=Device=<manifest>`, using the manifest written by `-Zoffload=HostMetadata=<manifest>`"
+)]
+pub(crate) struct GenericKernelNotInstantiated {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("the above error was encountered while instantiating `{$kind} {$instance}`")]
 pub(crate) struct EncounteredErrorWhileInstantiating<'tcx> {
     #[primary_span]
@@ -74,18 +101,23 @@ pub(crate) struct EncounteredErrorWhileInstantiatingGlobalAsm {
 pub(crate) struct StartNotFound;
 
 #[derive(Diagnostic)]
-#[diag("this function {$is_call ->
-    [true] call
-    *[false] definition
-} uses {$is_scalable ->
-    [true] scalable
-    *[false] SIMD
-} vector type `{$ty}` which (with the chosen ABI) requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
-    [true] {\" \"}in the caller
-    *[false] {\"\"}
-}")]
+#[diag(
+    "this function {$is_call ->
+        [true] call
+        *[false] definition
+    } requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
+        [true] {\" \"}in the caller
+        *[false] {\"\"}
+    }"
+)]
+#[note(
+    "the function has type `{$ty}` in its signature, which is passed in {$is_scalable ->
+        [true] scalable
+        *[false] SIMD
+    } vector registers under the \"{$abi}\" ABI"
+)]
 #[help(
-    "consider enabling it globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable=\"{$required_feature}\")]`)"
+    "consider enabling the missing target feature globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable=\"{$required_feature}\")]`)"
 )]
 pub(crate) struct AbiErrorDisabledVectorType<'a> {
     #[primary_span]
@@ -97,6 +129,7 @@ pub(crate) struct AbiErrorDisabledVectorType<'a> {
     )]
     pub span: Span,
     pub required_feature: &'a str,
+    pub abi: String,
     pub ty: Ty<'a>,
     /// Whether this is a problem at a call site or at a declaration.
     pub is_call: bool,

@@ -2,8 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{is_in_cfg_test, is_in_test_function};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 
@@ -66,9 +65,9 @@ impl LateLintPass<'_> for TestsOutsideTestModule {
                 cx,
                 TESTS_OUTSIDE_TEST_MODULE,
                 sp,
-                "this function marked with #[test] is outside a #[cfg(test)] module",
+                "this function marked with `#[test]` is outside a `#[cfg(test)]` module",
                 |diag| {
-                    diag.note("move it to a testing module marked with #[cfg(test)]");
+                    diag.note("move it to a testing module marked with `#[cfg(test)]`");
                 },
             );
         }

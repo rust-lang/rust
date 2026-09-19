@@ -5,7 +5,7 @@ use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_hir::limit::Limit;
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
@@ -15,15 +15,15 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{
     self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, Variance,
 };
-use rustc_middle::{mir, span_bug};
-use rustc_span::Span;
+use rustc_span::{Span, span_bug};
+use rustc_structures::Limit;
 use rustc_target::callconv::FnAbi;
 use tracing::{debug, trace};
 
 use super::{
-    Frame, FrameInfo, GlobalId, InterpErrorInfo, InterpErrorKind, InterpResult, MPlaceTy, Machine,
-    MemPlaceMeta, Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance,
-    err_inval, interp_ok, throw_inval, throw_ub, throw_ub_format,
+    Frame, FrameInfo, GlobalId, InterpErrorKind, InterpResult, MPlaceTy, Machine, MemPlaceMeta,
+    Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance, err_inval, interp_ok,
+    throw_inval, throw_ub, throw_ub_format,
 };
 use crate::{enter_trace_span, util};
 
@@ -239,18 +239,6 @@ pub(super) fn from_known_layout<'tcx>(
     }
 }
 
-/// Turn the given error into a human-readable string. Expects the string to be printed, so if
-/// `RUSTC_CTFE_BACKTRACE` is set this will show a backtrace of the rustc internals that
-/// triggered the error.
-///
-/// This is NOT the preferred way to render an error; use `report` from `const_eval` instead.
-/// However, this is useful when error messages appear in ICEs.
-pub fn format_interp_error<'tcx>(e: InterpErrorInfo<'tcx>) -> String {
-    let (e, backtrace) = e.into_parts();
-    backtrace.print_backtrace();
-    e.to_string()
-}
-
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
@@ -362,7 +350,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             .try_instantiate_mir_and_normalize_erasing_regions(
                 *self.tcx,
                 self.typing_env,
-                ty::EarlyBinder::bind(value),
+                ty::EarlyBinder::bind(self.tcx.tcx, value),
             )
             .map_err(|_| ErrorHandled::TooGeneric(self.cur_span()))
     }
@@ -500,7 +488,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 interp_ok(Some((full_size, full_align)))
             }
             ty::Dynamic(expected_trait, _) => {
-                let vtable = metadata.unwrap_meta().to_pointer(self)?;
+                let vtable = metadata.unwrap_meta().to_pointer(self);
                 // Read size and align from vtable (already checks size).
                 interp_ok(Some(self.get_vtable_size_and_align(vtable, Some(expected_trait))?))
             }

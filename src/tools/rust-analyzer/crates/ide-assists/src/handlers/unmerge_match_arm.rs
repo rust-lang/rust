@@ -86,7 +86,7 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_, '_>) 
             //  - After the arm. In this case we always want to insert a comma after the newly
             //    inserted arm.
             //  - Missing after the arm, with no arms after. In this case we want to insert a
-            //    comma before the newly inserted arm. It can not be necessary if there arm
+            //    comma before the newly inserted arm. It can not be necessary if the arm
             //    body is a block, but we don't bother to check that.
             //  - Missing after the arm with arms after, if the arm body is a block. In this case
             //    we don't want to insert a comma at all.

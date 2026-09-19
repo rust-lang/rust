@@ -6,11 +6,11 @@ use rustc_abi::{ArmCall, CanonAbi, InterruptKind, X86Call};
 use rustc_abi::{Reg, RegKind};
 use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeCodegenMethods};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
 use rustc_session::{Session, config};
+use rustc_span::bug;
 use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, PassMode};
 #[cfg(feature = "master")]
 use rustc_target::spec::Arch;
@@ -168,11 +168,13 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     ));
                     continue;
                 }
-                PassMode::Cast { ref cast, pad_i32 } => {
-                    // add padding
-                    if pad_i32 {
-                        argument_tys.push(Reg::i32().gcc_type(cx));
-                    }
+                PassMode::Cast { ref cast, pad_i32_count } => {
+                    // Add padding.
+                    argument_tys.extend(std::iter::repeat_n(
+                        Reg::i32().gcc_type(cx),
+                        usize::from(pad_i32_count),
+                    ));
+
                     let ty = cast.gcc_type(cx);
                     apply_attrs(ty, &cast.attrs, argument_tys.len())
                 }

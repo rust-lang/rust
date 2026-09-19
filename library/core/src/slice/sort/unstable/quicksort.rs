@@ -142,12 +142,8 @@ const fn inst_partition<T, F: FnMut(&T, &T) -> bool>() -> fn(&mut [T], &T, &mut 
         // Specialize for types that are relatively cheap to copy, where branchless optimizations
         // have large leverage e.g. `u64` and `String`.
         cfg_select! {
-            feature = "optimize_for_size" => {
-                partition_lomuto_branchless_simple::<T, F>
-            }
-            _ => {
-                partition_lomuto_branchless_cyclic::<T, F>
-            }
+            feature = "optimize_for_size" => partition_lomuto_branchless_simple::<T, F>,
+            _ => partition_lomuto_branchless_cyclic::<T, F>,
         }
     } else {
         partition_hoare_branchy_cyclic::<T, F>

@@ -87,7 +87,8 @@ pub struct ReentrantLock<T: ?Sized> {
 
 cfg_select!(
     target_has_atomic = "64" => {
-        use crate::sync::atomic::{Atomic, AtomicU64, Ordering::Relaxed};
+        use crate::sync::atomic::Ordering::Relaxed;
+        use crate::sync::atomic::{Atomic, AtomicU64};
 
         struct Tid(Atomic<u64>);
 
@@ -118,11 +119,7 @@ cfg_select!(
             X.with(|p| <*const u8>::addr(p))
         }
 
-        use crate::sync::atomic::{
-            Atomic,
-            AtomicUsize,
-            Ordering,
-        };
+        use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 
         struct Tid {
             // When a thread calls `set()`, this value gets updated to
@@ -278,7 +275,7 @@ impl<T: ?Sized> ReentrantLock<T> {
     ///
     /// thread::spawn(move || {
     ///     c_lock.lock().set(10);
-    /// }).join().expect("thread::spawn failed");
+    /// }).join().expect("`thread::spawn` should not fail");
     /// assert_eq!(lock.lock().get(), 10);
     /// ```
     pub fn lock(&self) -> ReentrantLockGuard<'_, T> {

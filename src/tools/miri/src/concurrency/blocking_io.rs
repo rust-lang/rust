@@ -1,15 +1,12 @@
 use std::cell::RefMut;
 use std::collections::BTreeMap;
 use std::io;
-use std::ops::BitOrAssign;
 use std::time::Duration;
 
 use mio::event::Source;
 use mio::{Events, Interest, Poll, Token};
 
-use crate::shims::{
-    EpollEvalContextExt, FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
-};
+use crate::shims::{FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
 use crate::*;
 
 /// Capacity of the event queue which can be polled at a time.
@@ -23,7 +20,7 @@ pub trait SourceFileDescription: FileDescription {
     fn with_source(&self, f: &mut dyn FnMut(&mut dyn Source) -> io::Result<()>) -> io::Result<()>;
 
     /// Get a mutable reference to the readiness of the source.
-    fn get_readiness_mut(&self) -> RefMut<'_, BlockingIoSourceReadiness>;
+    fn get_readiness_mut(&self) -> RefMut<'_, Readiness>;
 }
 
 /// An I/O interest for a blocked thread. Note that all threads are always considered
@@ -39,58 +36,21 @@ pub enum BlockingIoInterest {
     ReadWrite,
 }
 
-/// Struct reflecting the readiness of a source file description.
-#[derive(Debug)]
-pub struct BlockingIoSourceReadiness {
-    /// Boolean whether the source is currently readable.
-    pub readable: bool,
-    /// Boolean whether the source is currently writable.
-    pub writable: bool,
-    /// Boolean whether the read end of the source has been
-    /// closed.
-    pub read_closed: bool,
-    /// Boolean whether the write end of the source has been
-    /// closed.
-    pub write_closed: bool,
-    /// Boolean whether the source currently has an error.
-    pub error: bool,
-}
-
-impl BlockingIoSourceReadiness {
-    pub fn empty() -> Self {
-        Self {
-            readable: false,
-            writable: false,
-            read_closed: false,
-            write_closed: false,
-            error: false,
-        }
-    }
-
-    /// Check whether the current readiness fulfills the blocking I/O interest of
-    /// `interest`.
+impl BlockingIoInterest {
+    /// Check whether the [`Readiness`] fulfills this blocking I/O interest.
     /// This function also returns `true` if the error readiness is set
     /// even when the requested interest might not be fulfilled.
-    fn fulfills_interest(&self, interest: &BlockingIoInterest) -> bool {
-        match interest {
-            BlockingIoInterest::Read => self.readable || self.error,
-            BlockingIoInterest::Write => self.writable || self.error,
-            BlockingIoInterest::ReadWrite => self.readable || self.writable || self.error,
+    fn is_fulfilled_by(&self, readiness: &Readiness) -> bool {
+        match self {
+            BlockingIoInterest::Read => readiness.readable || readiness.error,
+            BlockingIoInterest::Write => readiness.writable || readiness.error,
+            BlockingIoInterest::ReadWrite =>
+                readiness.readable || readiness.writable || readiness.error,
         }
     }
 }
 
-impl BitOrAssign for BlockingIoSourceReadiness {
-    fn bitor_assign(&mut self, rhs: Self) {
-        self.readable |= rhs.readable;
-        self.writable |= rhs.writable;
-        self.read_closed |= rhs.read_closed;
-        self.write_closed |= rhs.write_closed;
-        self.error |= rhs.error;
-    }
-}
-
-impl From<&mio::event::Event> for BlockingIoSourceReadiness {
+impl From<&mio::event::Event> for Readiness {
     fn from(event: &mio::event::Event) -> Self {
         Self {
             readable: event.is_readable(),
@@ -103,10 +63,9 @@ impl From<&mio::event::Event> for BlockingIoSourceReadiness {
 }
 
 struct BlockingIoSource {
-    /// The source file description which is registered into the poll.
-    /// We only store weak references such that source file descriptions
-    /// can be destroyed whilst they are registered. However, they are required
-    /// to deregister themselves when [`FileDescription::destroy`] is called.
+    /// The source file description which is registered into the poll. We only store weak references
+    /// such that source file descriptions can be destroyed whilst they are registered. They will
+    /// later be cleaned up on the next GC run.
     fd: WeakFileDescriptionRef<dyn SourceFileDescription>,
     /// The threads which are blocked on the I/O source, and the interest indicating
     /// when they should be unblocked.
@@ -119,10 +78,10 @@ struct BlockingIoSource {
 ///
 /// The semantics of this manager are that host I/O sources are registered
 /// to a [`Poll`] for their entire lifespan. Once host readiness events happen
-/// on a registered source, its internal epoll readiness gets updated -- even
-/// when the source isn't part of an active epoll instance. Also, for the entire
+/// on a registered source, its internal readiness gets updated -- even when
+/// the source isn't part of an active [`ReadinessWatcher`]. Also, for the entire
 /// lifespan of the source, threads can be added which should be unblocked
-/// once a certain [`BlockingIoSourceReadiness`] for an I/O source is satisfied.
+/// once a certain [`Readiness`] for an I/O source is satisfied.
 ///
 /// Since blocking host I/O is inherently non-deterministic, no method on this
 /// manager should be called when isolation is enabled. The only exception is
@@ -155,7 +114,7 @@ impl BlockingIoManager {
 
     /// Poll for new I/O events from the OS or wait until the timeout expired.
     /// The timeout semantics are the same as described in [`Poll::poll`].
-    /// The events also immediately get processed: threads get unblocked, and epoll readiness gets updated.
+    /// The events also immediately get processed: threads get unblocked, and fd readiness gets updated.
     fn poll<'tcx>(
         ecx: &mut MiriInterpCx<'tcx>,
         timeout: Option<Duration>,
@@ -187,28 +146,28 @@ impl BlockingIoManager {
                     .sources
                     .get(&fd_id)
                     .expect("Source should be registered");
-                let fd = source.fd.upgrade().expect(
-                    "Source file description shouldn't be destroyed whilst being registered",
-                );
+                let Some(fd) = source.fd.upgrade() else {
+                    panic!("Should not receive readiness event for closed source file description")
+                };
 
                 assert_eq!(fd.id(), fd_id);
                 // Update the readiness of the source.
-                *fd.get_readiness_mut() |= BlockingIoSourceReadiness::from(event);
+                *fd.get_readiness_mut() |= Readiness::from(event);
                 // Put FD into `event_fds` list.
                 fd
             })
             .collect::<Vec<_>>();
 
-        // Update the epoll readiness for all source file descriptions which received an event. Also,
+        // Update the readiness for all source file descriptions which received an event. Also,
         // unblock the threads which are blocked on such a source and whose interests are now fulfilled.
         for fd in event_fds.into_iter() {
-            // Update epoll readiness for the `fd` source.
-            ecx.update_epoll_active_events(fd.clone(), false)?;
+            // Update readiness for the `fd` source. This is no a "release" event since it was
+            // not triggered by the current thread, it was triggered by the outside world.
+            ecx.update_fd_readiness(fd.clone(), ReadinessUpdateFlags::NO_RELEASE_CLOCK)?;
 
-            let source =
-                ecx.machine.blocking_io.sources.get(&fd.id()).expect(
-                    "Source file description shouldn't be destroyed whilst being registered",
-                );
+            // The `update_fd_readiness` can't cause the source to be deregistered since we still
+            // hold a strong reference to the file description with `fd`.
+            let source = ecx.machine.blocking_io.sources.get(&fd.id()).unwrap();
 
             // List of all thread id's whose interests are currently fulfilled
             // and which are blocked on the `fd` source. This also includes
@@ -218,7 +177,7 @@ impl BlockingIoManager {
                 .blocked_threads
                 .iter()
                 .filter_map(|(thread_id, interest)| {
-                    fd.get_readiness_mut().fulfills_interest(interest).then_some(*thread_id)
+                    interest.is_fulfilled_by(&fd.get_readiness_mut()).then_some(*thread_id)
                 })
                 .collect::<Vec<_>>();
 
@@ -230,14 +189,6 @@ impl BlockingIoManager {
         }
 
         interp_ok(Ok(()))
-    }
-
-    /// Return whether a source file description is currently registered in the
-    /// blocking I/O poll.
-    /// This can also be used to check whether a file description is a host
-    /// I/O source.
-    pub fn contains_source(&self, source_id: &FdId) -> bool {
-        self.sources.contains_key(source_id)
     }
 
     /// Register a source file description to the blocking I/O poll.
@@ -270,31 +221,6 @@ impl BlockingIoManager {
             .unwrap_or_else(|_| panic!("Source should not already be registered"));
     }
 
-    /// Deregister a source file description from the blocking I/O poll.
-    ///
-    /// It's assumed that the file description with id `source_id` is already
-    /// removed from the file description table.
-    pub fn deregister(&mut self, source_id: FdId, source: impl SourceFileDescription) {
-        let poll =
-            self.poll.as_ref().expect("Blocking I/O should not be called with isolation enabled");
-
-        let stored_source = self.sources.remove(&source_id).expect("Source should be registered");
-        // Ensure that the source file description is already removed from the file
-        // description table.
-        assert!(
-            stored_source.fd.upgrade().is_none(),
-            "Sources must only be deregistered when they are destroyed"
-        );
-
-        // Because we only store `WeakFileDescriptionRef`s and the `stored_source` file description
-        // is already destroyed, the weak reference can no longer be upgraded. Thus, we cannot use
-        // it to deregister the source from the poll and instead use the `source` argument to deregister.
-
-        // Treat errors from deregistering as fatal. On UNIX hosts this can only
-        // fail due to system resource errors (e.g. ENOMEM or ENOSPC).
-        source.with_source(&mut |source| poll.registry().deregister(source)).unwrap();
-    }
-
     /// Add a new blocked thread to a registered source. The thread gets unblocked
     /// once its [`BlockingIoInterest`] is fulfilled when calling
     /// [`BlockingIoManager::poll`].
@@ -324,6 +250,17 @@ impl BlockingIoManager {
     pub fn remove_blocked_thread(&mut self, source_id: FdId, thread_id: ThreadId) {
         let source = self.sources.get_mut(&source_id).expect("Source should be registered");
         source.blocked_threads.remove(&thread_id).expect("Thread should be blocked on source");
+    }
+
+    /// Run garbage collector on blocking I/O manager to remove all closed source file
+    /// descriptions from the registered sources map.
+    pub fn run_gc(&mut self) {
+        // For hosts where mio uses `kqueue`, `epoll` or `IOCP` (Windows), we know that
+        // the source doesn't need to be deregistered from the `Poll` before being dropped:
+        // See <https://github.com/tokio-rs/mio/issues/1972>
+        // Thus, just removing the closed source file descriptions from the `sources` map
+        // is enough.
+        self.sources.retain(|_id, source| !source.fd.is_closed());
     }
 }
 
@@ -360,7 +297,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         // We always have to do this since the thread will de-register itself.
         this.machine.blocking_io.add_blocked_thread(source_fd.id(), this.active_thread(), interest);
 
-        if source_fd.get_readiness_mut().fulfills_interest(&interest) {
+        if interest.is_fulfilled_by(&source_fd.get_readiness_mut()) {
             // The requested readiness is currently already fulfilled for the provided source.
             // Instead of actually blocking the thread, we just run the callback function.
             callback.call(this, UnblockKind::Ready)
@@ -393,5 +330,18 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             // reachable when a system resource error (e.g. ENOMEM or ENOSPC) occurred.
             Err(e) => panic!("unexpected error while polling: {e}"),
         }
+    }
+
+    /// Returns whether there exists any thread that is blocked on host I/O.
+    fn any_thread_blocked_on_host(&self) -> bool {
+        let this = self.eval_context_ref();
+        this.machine.blocking_io.sources.values().any(|source| {
+            // There's two ways something could be blocked on this: directly,
+            // or indirectly via a readiness watcher.
+            source.blocked_threads.len() > 0
+                || source.fd.upgrade().is_some_and(|fd| {
+                    fd.readiness_watched().is_some_and(|w| w.has_watcher_with_blocked_thread())
+                })
+        })
     }
 }

@@ -12,9 +12,8 @@
 use std::fmt;
 
 use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_middle::bug;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
-use rustc_span::sym;
+use rustc_span::{bug, sym};
 
 #[derive(Clone, Debug)]
 pub(crate) struct FieldPat {
@@ -60,7 +59,11 @@ pub(crate) fn write_struct_like<'tcx>(
             {
                 variant.name.to_string()
             } else {
-                format!("{}::{}", tcx.def_path_str(adt_def.did()), variant.name)
+                ty::print::with_types_for_suggestion!(format!(
+                    "{}::{}",
+                    tcx.def_path_str(adt_def.did()),
+                    variant.name
+                ))
             };
             Some((variant, name))
         }

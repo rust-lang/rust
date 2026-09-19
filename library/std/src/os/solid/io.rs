@@ -46,6 +46,7 @@
 
 #![unstable(feature = "solid_ext", issue = "none")]
 
+use crate::alloc::Allocator;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 use crate::sys::{AsInner, FromInner, IntoInner};
@@ -257,7 +258,8 @@ macro_rules! impl_owned_fd_traits {
 impl_owned_fd_traits! { TcpStream TcpListener UdpSocket }
 
 /// This impl allows implementing traits that require `AsFd` on Arc.
-/// ```
+#[cfg_attr(target_os = "solid", doc = "```")]
+#[cfg_attr(not(target_os = "solid"), doc = "```ignore (needs solid)")]
 /// # #[cfg(target_os = "solid_asp3")] mod group_cfg {
 /// # use std::os::solid::io::AsFd;
 /// use std::net::UdpSocket;
@@ -282,7 +284,7 @@ impl<T: AsFd> AsFd for crate::rc::Rc<T> {
     }
 }
 
-impl<T: AsFd> AsFd for Box<T> {
+impl<T: AsFd, A: Allocator> AsFd for Box<T, A> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         (**self).as_fd()

@@ -22,7 +22,7 @@ help: there is a method `borrow_mut` with a similar name
 LL |     foo.borrow_mut();
    |               ++++
 
-error[E0277]: expected a `Fn(bool)` closure, found `Bar`
+error[E0277]: expected an `Fn(bool)` closure, found `Bar`
   --> $DIR/method-suggestion-trait-with-extra-generics-no-ice.rs:18:43
    |
 LL |     let foo: Box<dyn Fn(bool) -> usize> = Box::new(Bar);

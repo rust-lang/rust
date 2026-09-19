@@ -2,6 +2,7 @@ use std::env;
 use std::process::Command;
 
 use camino::{Utf8Path, Utf8PathBuf};
+pub(crate) use shim_utils::ArgFileCommand;
 
 #[cfg(test)]
 mod tests;

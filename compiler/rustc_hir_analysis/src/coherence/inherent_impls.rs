@@ -11,10 +11,9 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::find_attr;
-use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams, simplify_type};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
-use rustc_span::ErrorGuaranteed;
+use rustc_span::{ErrorGuaranteed, bug};
 
 use crate::diagnostics;
 
@@ -203,10 +202,13 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::FnPtr(..)
             | ty::Tuple(..)
             | ty::UnsafeBinder(_) => self.check_primitive_impl(id, self_ty),
-            ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Opaque { .. },
-                ..
-            })
+            ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Opaque { .. },
+                    ..
+                },
+            )
             | ty::Param(_) => {
                 Err(self.tcx.dcx().emit_err(diagnostics::InherentNominal { span: item_span }))
             }
@@ -215,7 +217,7 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
-            | ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. })
+            | ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. })
             | ty::Bound(..)
             | ty::Placeholder(_)
             | ty::Infer(_) => {

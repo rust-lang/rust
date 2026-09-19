@@ -1,8 +1,8 @@
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{
-    Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Mutability, Path, StmtKind,
-    Visibility, ast,
+    AttrKind, Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Mutability, Path,
+    StmtKind, SyntheticAttr, Visibility, ast,
 };
 use rustc_ast_pretty::pprust::path_to_string;
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -10,10 +10,10 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::diagnostics::{
-    EiiAttributeNotSupported, EiiExternTargetExpectedList, EiiExternTargetExpectedMacro,
-    EiiExternTargetExpectedUnsafe, EiiMacroExpectedMaxOneArgument, EiiOnlyOnce,
-    EiiSharedMacroInStatementPosition, EiiSharedMacroTarget, EiiStaticArgumentRequired,
-    EiiStaticDefaultApple, EiiStaticMultipleImplementations, EiiStaticMutable,
+    EiiAttributeNotSupported, EiiBothDeclAndImpl, EiiExternTargetExpectedList,
+    EiiExternTargetExpectedMacro, EiiExternTargetExpectedUnsafe, EiiMacroExpectedMaxOneArgument,
+    EiiMultipleImplementations, EiiOnlyOnce, EiiSharedMacroInStatementPosition,
+    EiiSharedMacroTarget, EiiStaticArgumentRequired, EiiStaticDefaultApple, EiiStaticMutable,
 };
 
 /// ```rust
@@ -125,16 +125,31 @@ fn eii_(
         }
     };
 
+    match kind {
+        ItemKind::Fn(func) => {
+            if func.eii_impl.is_some() {
+                ecx.dcx().emit_err(EiiBothDeclAndImpl { span: eii_attr_span });
+                return vec![Annotatable::Item(item)];
+            }
+        }
+        ItemKind::Static(stat) => {
+            if stat.eii_impl.is_some() {
+                ecx.dcx().emit_err(EiiBothDeclAndImpl { span: eii_attr_span });
+                return vec![Annotatable::Item(item)];
+            }
+        }
+        _ => unreachable!("Target was checked earlier"),
+    };
+
     // only clone what we need
     let attrs = attrs.clone();
     let vis = vis.clone();
 
     let attrs_from_decl =
         filter_attrs_for_multiple_eii_attr(ecx, attrs, eii_attr_span, &meta_item.path);
-    let (macro_attrs, foreign_item_attrs, default_func_attrs) =
-        split_attrs(ecx, item_span, attrs_from_decl);
+    let (macro_attrs, foreign_item_attrs) = split_attrs(ecx, item_span, attrs_from_decl);
 
-    let Ok(macro_name) = name_for_impl_macro(ecx, foreign_item_name, &meta_item) else {
+    let Ok(macro_name) = name_for_impl_macro(ecx, foreign_item_name, meta_item) else {
         // we don't need to wrap in Annotatable::Stmt conditionally since
         // EII can't be used on items in statement position
         return vec![Annotatable::Item(item)];
@@ -150,7 +165,6 @@ fn eii_(
         eii_attr_span,
         item_span,
         foreign_item_name,
-        default_func_attrs,
     ) {
         module_items.push(default_impl);
     }
@@ -181,43 +195,57 @@ fn split_attrs(
     ecx: &mut ExtCtxt<'_>,
     span: Span,
     attrs: ThinVec<Attribute>,
-) -> (ThinVec<Attribute>, ThinVec<Attribute>, ThinVec<Attribute>) {
+) -> (ThinVec<Attribute>, ThinVec<Attribute>) {
     let mut macro_attributes = ThinVec::new();
     let mut foreign_item_attributes = ThinVec::new();
-    let mut default_attributes = ThinVec::new();
 
     for attr in attrs {
-        match attr.name() {
-            // Inline only matters for the default function being inlined into callsites
-            Some(sym::inline) => default_attributes.push(attr),
-            // If an eii is marked a lang item, that's because we want to call its declaration, so
-            // mark the foreign item as the lang item
-            Some(sym::lang) => foreign_item_attributes.push(attr),
-            // Deprecating an eii means deprecating the macro and the foreign item
-            Some(sym::deprecated) => {
-                foreign_item_attributes.push(attr.clone());
-                macro_attributes.push(attr);
-            }
-            // The stability of an EII affects the usage of the macro and calling the foreign item
-            Some(sym::stable) | Some(sym::unstable) => {
+        match &attr.kind {
+            // Forward synthetic CfgTrace and CfgAttrTrace, these are applicable to both foreign item and macro.
+            AttrKind::Synthetic(SyntheticAttr::CfgTrace(_) | SyntheticAttr::CfgAttrTrace(_)) => {
                 foreign_item_attributes.push(attr.clone());
                 macro_attributes.push(attr);
             }
             // Doc attributes should be forwarded to the macro and the foreign item, since those are
             // the two items you interact with as a user.
             // FIXME: idk yet how EIIs show up in docs, might want to customize
-            _ if attr.is_doc_comment() => {
+            AttrKind::DocComment(_, _) => {
                 foreign_item_attributes.push(attr.clone());
                 macro_attributes.push(attr);
             }
-            Some(sym::eii) => unreachable!("should already be filtered out"),
-            _ => {
-                ecx.dcx().emit_err(EiiAttributeNotSupported { span, attr_span: attr.span() });
+            AttrKind::Normal(normal) => {
+                match normal.item.name() {
+                    // If an eii is marked a lang item, that's because we want to call its declaration, so
+                    // mark the foreign item as the lang item
+                    Some(sym::lang) => foreign_item_attributes.push(attr),
+                    // Deprecating an eii means deprecating the macro and the foreign item
+                    Some(sym::deprecated) => {
+                        foreign_item_attributes.push(attr.clone());
+                        macro_attributes.push(attr);
+                    }
+                    // The stability of an EII affects the usage of the macro and calling the foreign item
+                    Some(sym::stable) | Some(sym::unstable) => {
+                        foreign_item_attributes.push(attr.clone());
+                        macro_attributes.push(attr);
+                    }
+                    // `#[track_caller]` goes on the foreign item only: it's the symbol callers link
+                    // against, so it must carry the flag for call sites to pass the caller location.
+                    // Implementations derive it during codegen (see `EiiImpls` in `codegen_attrs.rs`),
+                    // so it must not be routed onto the default impl here.
+                    Some(sym::track_caller) => {
+                        foreign_item_attributes.push(attr);
+                    }
+                    Some(sym::eii) => unreachable!("should already be filtered out"),
+                    _ => {
+                        ecx.dcx()
+                            .emit_err(EiiAttributeNotSupported { span, attr_span: attr.span() });
+                    }
+                }
             }
         }
     }
 
-    (macro_attributes, foreign_item_attributes, default_attributes)
+    (macro_attributes, foreign_item_attributes)
 }
 
 /// Decide on the name of the macro that can be used to implement the EII.
@@ -275,23 +303,20 @@ fn generate_default_impl(
     eii_attr_span: Span,
     item_span: Span,
     foreign_item_name: Ident,
-    attrs: ThinVec<Attribute>,
 ) -> Option<Box<ast::Item>> {
+    let attrs = ThinVec::new();
+
     match item_kind {
         ItemKind::Fn(func) => {
-            if func.body.is_none() {
-                return None;
-            }
+            func.body.as_ref()?;
         }
         ItemKind::Static(stat) => {
-            if stat.expr.is_none() {
-                return None;
-            }
+            stat.expr.as_ref()?;
         }
         _ => unreachable!("Target was checked earlier"),
     };
 
-    let eii_impl = EiiImpl {
+    let eii_impl = Box::new(EiiImpl {
         node_id: DUMMY_NODE_ID,
         inner_span: macro_name.span,
         eii_macro_path: ast::Path::from_ident(macro_name),
@@ -302,24 +327,23 @@ fn generate_default_impl(
         },
         span: eii_attr_span,
         is_default: true,
-        known_eii_macro_resolution: Some(ast::EiiDecl {
-            foreign_item: ecx.path(
-                foreign_item_name.span,
-                // prefix self to explicitly escape the const block generated below
-                // NOTE: this is why EIIs can't be used on statements
-                vec![Ident::from_str_and_span("self", foreign_item_name.span), foreign_item_name],
-            ),
-            impl_unsafe,
-        }),
-    };
+        known_eii_macro_resolution: Some(ecx.path(
+            foreign_item_name.span,
+            // prefix self to explicitly escape the const block generated below
+            // NOTE: this is why EIIs can't be used on statements
+            vec![Ident::from_str_and_span("self", foreign_item_name.span), foreign_item_name],
+        )),
+    });
 
     let mut item_kind = item_kind.clone();
     match &mut item_kind {
         ItemKind::Fn(func) => {
-            func.eii_impls.push(eii_impl);
+            assert!(func.eii_impl.is_none());
+            func.eii_impl = Some(eii_impl);
         }
         ItemKind::Static(stat) => {
-            stat.eii_impls.push(eii_impl);
+            assert!(stat.eii_impl.is_none());
+            stat.eii_impl = Some(eii_impl);
         }
         _ => unreachable!("Target was checked earlier"),
     };
@@ -327,12 +351,7 @@ fn generate_default_impl(
     let anon_mod = |span: Span, stmts: ThinVec<ast::Stmt>| {
         let unit = ecx.ty(item_span, ast::TyKind::Tup(ThinVec::new()));
         let underscore = Ident::new(kw::Underscore, item_span);
-        ecx.item_const(
-            span,
-            underscore,
-            unit,
-            ast::ConstItemRhsKind::new_body(ecx.expr_block(ecx.block(span, stmts))),
-        )
+        ecx.item_const(span, underscore, unit, Some(ecx.expr_block(ecx.block(span, stmts))))
     };
 
     // const _: () = {
@@ -464,7 +483,7 @@ fn generate_attribute_macro_to_implement(
         id: ast::DUMMY_NODE_ID,
         span,
         // pub
-        vis: ast::Visibility { span, kind: ast::VisibilityKind::Public, tokens: None },
+        vis: ast::Visibility { span, kind: ast::VisibilityKind::Public },
         kind: ast::ItemKind::MacroDef(
             // macro macro_name
             macro_name,
@@ -574,16 +593,9 @@ pub(crate) fn eii_shared_macro(
         return vec![item];
     };
 
-    let eii_impls = match &mut i.kind {
-        ItemKind::Fn(func) => &mut func.eii_impls,
-        ItemKind::Static(stat) => {
-            if !stat.eii_impls.is_empty() {
-                // Reject multiple implementations on one static item
-                // because it might be unintuitive for libraries defining statics the defined statics may alias
-                ecx.dcx().emit_err(EiiStaticMultipleImplementations { span });
-            }
-            &mut stat.eii_impls
-        }
+    let eii_impl = match &mut i.kind {
+        ItemKind::Fn(func) => &mut func.eii_impl,
+        ItemKind::Static(stat) => &mut stat.eii_impl,
         _ => {
             ecx.dcx()
                 .emit_err(EiiSharedMacroTarget { span, name: path_to_string(&meta_item.path) });
@@ -606,7 +618,10 @@ pub(crate) fn eii_shared_macro(
         return vec![item];
     };
 
-    eii_impls.push(EiiImpl {
+    if eii_impl.is_some() {
+        ecx.dcx().emit_err(EiiMultipleImplementations { span });
+    }
+    *eii_impl = Some(Box::new(EiiImpl {
         node_id: DUMMY_NODE_ID,
         inner_span: meta_item.path.span,
         eii_macro_path: meta_item.path.clone(),
@@ -614,7 +629,7 @@ pub(crate) fn eii_shared_macro(
         span,
         is_default,
         known_eii_macro_resolution: None,
-    });
+    }));
 
     vec![item]
 }

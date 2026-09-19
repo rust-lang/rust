@@ -1,3 +1,7 @@
+// Check that every malformed `on` filter warns without stopping compilation.
+
+//@ check-pass
+
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
 #![allow(unused)]
@@ -44,12 +48,13 @@ trait Invalid {}
 trait DuplicateMessage {}
 
 #[rustc_on_unimplemented(message = "x", on(desugared, message = "y"))]
-//~^ ERROR invalid flag in `on`-clause
+//~^ WARN invalid flag in `on`-clause
 //~| NOTE expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `desugared`
+//~| NOTE `#[warn(malformed_diagnostic_filters)]` on by default
 trait OnInWrongPosition {}
 
 #[rustc_on_unimplemented(on(), message = "y")]
-//~^ ERROR empty `on`-clause
+//~^ WARN empty `on`-clause
 //~^^ NOTE empty `on`-clause here
 trait EmptyOn {}
 
@@ -69,42 +74,42 @@ trait OnWithoutDirectives {}
 trait NestedOn {}
 
 #[rustc_on_unimplemented(on("y", message = "y"))]
-//~^ ERROR literals inside `on`-clauses are not supported
+//~^ WARN literals inside `on`-clauses are not supported
 //~^^ NOTE unexpected literal here
 trait UnsupportedLiteral {}
 
 #[rustc_on_unimplemented(on(42, message = "y"))]
-//~^ ERROR literals inside `on`-clauses are not supported
+//~^ WARN literals inside `on`-clauses are not supported
 //~^^ NOTE unexpected literal here
 trait UnsupportedLiteral2 {}
 
 #[rustc_on_unimplemented(on(not(a, b), message = "y"))]
-//~^ ERROR expected a single predicate in `not(..)` [E0232]
+//~^ WARN expected a single predicate in `not(..)`
 //~^^ NOTE unexpected quantity of predicates here
 trait ExpectedOnePattern {}
 
 #[rustc_on_unimplemented(on(not(), message = "y"))]
-//~^ ERROR expected a single predicate in `not(..)` [E0232]
+//~^ WARN expected a single predicate in `not(..)`
 //~^^ NOTE unexpected quantity of predicates here
 trait ExpectedOnePattern2 {}
 
 #[rustc_on_unimplemented(on(thing::What, message = "y"))]
-//~^ ERROR expected an identifier inside this `on`-clause
+//~^ WARN expected an identifier inside this `on`-clause
 //~^^ NOTE expected an identifier here, not `thing::What`
 trait KeyMustBeIdentifier {}
 
 #[rustc_on_unimplemented(on(thing::What = "value", message = "y"))]
-//~^ ERROR  expected an identifier inside this `on`-clause
+//~^ WARN expected an identifier inside this `on`-clause
 //~^^ NOTE expected an identifier here, not `thing::What`
 trait KeyMustBeIdentifier2 {}
 
 #[rustc_on_unimplemented(on(aaaaaaaaaaaaaa(a, b), message = "y"))]
-//~^ ERROR this predicate is invalid
+//~^ WARN this predicate is invalid
 //~^^ NOTE expected one of `any`, `all` or `not` here, not `aaaaaaaaaaaaaa`
 trait InvalidPredicate {}
 
 #[rustc_on_unimplemented(on(something, message = "y"))]
-//~^ ERROR invalid flag in `on`-clause
+//~^ WARN invalid flag in `on`-clause
 //~^^ NOTE expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `something`
 trait InvalidFlag {}
 

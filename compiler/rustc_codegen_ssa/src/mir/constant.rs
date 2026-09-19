@@ -1,11 +1,12 @@
 use rustc_abi::BackendRepr;
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv};
 use rustc_middle::ty::{self, Ty};
-use rustc_middle::{bug, mir, span_bug};
+use rustc_span::{bug, span_bug};
 
 use super::FunctionCx;
-use crate::errors;
+use crate::diagnostics;
 use crate::mir::operand::OperandRef;
 use crate::traits::*;
 
@@ -98,7 +99,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.const_vector(&values)
             })
             .unwrap_or_else(|| {
-                bx.tcx().dcx().emit_err(errors::ShuffleIndicesEvaluation { span: constant.span });
+                bx.tcx()
+                    .dcx()
+                    .emit_err(diagnostics::ShuffleIndicesEvaluation { span: constant.span });
                 // We've errored, so we don't have to produce working code.
                 let llty = bx.backend_type(bx.layout_of(ty));
                 bx.const_undef(llty)

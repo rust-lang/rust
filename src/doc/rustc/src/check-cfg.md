@@ -99,7 +99,7 @@ the need to specify them manually.
 Well known names and values are implicitly added as long as at least one `--check-cfg` argument
 is present.
 
-As of `2026-05-15T`, the list of known names is as follows:
+As of `2026-08-11T`, the list of known names is as follows:
 
 <!--- See CheckCfg::fill_well_known in compiler/rustc_session/src/config.rs -->
 
@@ -113,6 +113,7 @@ As of `2026-05-15T`, the list of known names is as follows:
  - `panic`
  - `proc_macro`
  - `relocation_model`
+ - `rust_analyzer`
  - `rustfmt`
  - `sanitize`
  - `sanitizer_cfi_generalize_pointers`

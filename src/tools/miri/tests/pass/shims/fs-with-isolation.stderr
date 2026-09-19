@@ -14,3 +14,5 @@ warning: `rmdir` was made to return an error due to isolation
 
 warning: `opendir` was made to return an error due to isolation
 
+warning: 8 warnings emitted
+

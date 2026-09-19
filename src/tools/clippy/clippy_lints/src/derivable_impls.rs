@@ -8,10 +8,9 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::{
     self as hir, Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
 use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty, TypeckResults, VariantDef};
-use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -64,7 +63,7 @@ pub struct DerivableImpls {
 
 impl DerivableImpls {
     pub fn new(conf: &'static Conf) -> Self {
-        DerivableImpls { msrv: conf.msrv }
+        DerivableImpls { msrv: conf.msrv.into() }
     }
 }
 
@@ -105,7 +104,7 @@ fn check_struct<'tcx>(
     if let TyKind::Path(QPath::Resolved(_, p)) = self_ty.kind
         && let Some(PathSegment { args, .. }) = p.segments.last()
     {
-        let args = args.map(|a| a.args).unwrap_or_default();
+        let args = args.map_or_default(|a| a.args);
 
         // ty_args contains the generic parameters of the type declaration, while args contains the
         // arguments used at instantiation time. If both len are not equal, it means that some

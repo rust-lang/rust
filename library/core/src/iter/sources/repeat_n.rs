@@ -127,7 +127,7 @@ impl<A: Clone> Iterator for RepeatN<A> {
             return Some(tmp);
         }
 
-        return self.take_element();
+        self.take_element()
     }
 
     #[inline]
@@ -150,7 +150,7 @@ impl<A: Clone> Iterator for RepeatN<A> {
         }
 
         self.inner = None;
-        return NonZero::<usize>::new(skip - len).map(Err).unwrap_or(Ok(()));
+        NonZero::<usize>::new(skip - len).map(Err).unwrap_or(Ok(()))
     }
 
     #[inline]

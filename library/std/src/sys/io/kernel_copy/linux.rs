@@ -48,12 +48,11 @@ use libc::sendfile as sendfile64;
 use libc::sendfile64;
 use libc::{EBADF, EINVAL, ENOSYS, EOPNOTSUPP, EOVERFLOW, EPERM, EXDEV};
 
-use super::CopyState;
 use crate::cmp::min;
 use crate::fs::{File, Metadata};
 use crate::io::{
-    BufRead, BufReader, BufWriter, Error, PipeReader, PipeWriter, Read, Result, StderrLock,
-    StdinLock, StdoutLock, Take, Write,
+    self, BufRead, BufReader, BufWriter, CopyState, Error, PipeReader, PipeWriter, Read, Result,
+    StderrLock, StdinLock, StdoutLock, Take, Write,
 };
 use crate::mem::ManuallyDrop;
 use crate::net::TcpStream;
@@ -70,12 +69,98 @@ use crate::sys::weak::syscall;
 #[cfg(test)]
 mod tests;
 
-pub fn kernel_copy<R: Read + ?Sized, W: Write + ?Sized>(
-    read: &mut R,
-    write: &mut W,
-) -> Result<CopyState> {
-    let copier = Copier { read, write };
-    SpecCopy::copy(copier)
+#[doc(hidden)]
+#[unstable(feature = "io_copy_internals", reason = "implementation detail", issue = "none")]
+impl io::SpecCopy for File {
+    fn copy<R: Read + ?Sized, W: Write + ?Sized>(read: &mut R, write: &mut W) -> Result<CopyState> {
+        SpecCopy::copy(Copier { read, write })
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "io_copy_internals", reason = "implementation detail", issue = "none")]
+impl io::SpecCopy for &File {
+    fn copy<R: Read + ?Sized, W: Write + ?Sized>(read: &mut R, write: &mut W) -> Result<CopyState> {
+        SpecCopy::copy(Copier { read, write })
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "io_copy_internals", reason = "implementation detail", issue = "none")]
+impl io::SpecCopy for TcpStream {
+    fn copy<R: Read + ?Sized, W: Write + ?Sized>(read: &mut R, write: &mut W) -> Result<CopyState> {
+        SpecCopy::copy(Copier { read, write })
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "io_copy_internals", reason = "implementation detail", issue = "none")]
+impl io::SpecCopy for &TcpStream {
+    fn copy<R: Read + ?Sized, W: Write + ?Sized>(read: &mut R, write: &mut W) -> Result<CopyState> {
+        SpecCopy::copy(Copier { read, write })
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "io_copy_internals", reason = "implementation detail", issue = "none")]
+impl io::SpecCopy for UnixStream {
+    fn copy<R: Read + ?Sized, W: Write + ?Sized>(read: &mut R, write: &mut W) -> Result<CopyState> {
+        SpecCopy::copy(Copier { read, write })
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "io_copy_internals", reason = "implementation detail", issue = "none")]
+impl io::SpecCopy for &UnixStream {
+    fn copy<R: Read + ?Sized, W: Write + ?Sized>(read: &mut R, write: &mut W) -> Result<CopyState> {
+        SpecCopy::copy(Copier { read, write })
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "io_copy_internals", reason = "implementation detail", issue = "none")]
+impl io::SpecCopy for PipeReader {
+    fn copy<R: Read + ?Sized, W: Write + ?Sized>(read: &mut R, write: &mut W) -> Result<CopyState> {
+        SpecCopy::copy(Copier { read, write })
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "io_copy_internals", reason = "implementation detail", issue = "none")]
+impl io::SpecCopy for &PipeReader {
+    fn copy<R: Read + ?Sized, W: Write + ?Sized>(read: &mut R, write: &mut W) -> Result<CopyState> {
+        SpecCopy::copy(Copier { read, write })
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "io_copy_internals", reason = "implementation detail", issue = "none")]
+impl io::SpecCopy for ChildStdout {
+    fn copy<R: Read + ?Sized, W: Write + ?Sized>(read: &mut R, write: &mut W) -> Result<CopyState> {
+        SpecCopy::copy(Copier { read, write })
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "io_copy_internals", reason = "implementation detail", issue = "none")]
+impl io::SpecCopy for ChildStderr {
+    fn copy<R: Read + ?Sized, W: Write + ?Sized>(read: &mut R, write: &mut W) -> Result<CopyState> {
+        SpecCopy::copy(Copier { read, write })
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "io_copy_internals", reason = "implementation detail", issue = "none")]
+impl io::SpecCopy for StdinLock<'_> {
+    fn copy<R: Read + ?Sized, W: Write + ?Sized>(read: &mut R, write: &mut W) -> Result<CopyState> {
+        SpecCopy::copy(Copier { read, write })
+    }
+}
+
+impl io::SpecCopy for CachedFileMetadata {
+    fn copy<R: Read + ?Sized, W: Write + ?Sized>(read: &mut R, write: &mut W) -> Result<CopyState> {
+        SpecCopy::copy(Copier { read, write })
+    }
 }
 
 /// This type represents either the inferred `FileType` of a `RawFd` based on the source

@@ -3,16 +3,15 @@ use std::ops::ControlFlow;
 
 use hir::intravisit::{self, Visitor};
 use rustc_ast::Recovered;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic, SuggestionStyle, msg};
+use rustc_errors::{Applicability, Diag, Subdiagnostic, SuggestionStyle, msg};
 use rustc_hir::{self as hir, HirIdSet};
+use rustc_lint_defs::{LintId, declare_lint, fcw, impl_lint_pass};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::significant_drop_order::{
     extract_component_with_significant_dtor, ty_dtor_span,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::lint::{LintId, fcw};
-use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::{DUMMY_SP, Span};
 use smallvec::SmallVec;
 
@@ -269,7 +268,7 @@ impl_lint_pass!(
 impl<'tcx> LateLintPass<'tcx> for IfLetRescope {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if expr.span.edition().at_least_rust_2024()
-            || cx.tcx.lints_that_dont_need_to_run(()).contains(&LintId::of(IF_LET_RESCOPE))
+            || cx.tcx.skippable_lints(()).contains(&LintId::of(IF_LET_RESCOPE))
         {
             return;
         }
@@ -325,7 +324,7 @@ struct IfLetRescopeRewrite {
 }
 
 impl Subdiagnostic for IfLetRescopeRewrite {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         let mut suggestions = vec![];
         for match_head in self.match_heads {
             match match_head {
@@ -349,8 +348,7 @@ impl Subdiagnostic for IfLetRescopeRewrite {
             closing_brackets
                 .empty_alt
                 .then_some(" _ => {}".chars())
-                .into_iter()
-                .flatten()
+                .into_flat_iter()
                 .chain(repeat_n('}', closing_brackets.count))
                 .collect(),
         ));

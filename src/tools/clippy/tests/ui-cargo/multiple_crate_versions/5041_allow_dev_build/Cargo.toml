@@ -1,7 +1,7 @@
 # Should not lint for dev or build dependencies. See issue 5041.
 
 [package]
-name = "multiple_crate_versions"
+name = "multiple-crate-versions"
 version = "0.1.0"
 publish = false
 
@@ -17,3 +17,6 @@ ansi_term = "=0.11.0"
 [build-dependencies]
 ctrlc = "=3.1.0"
 ansi_term = "=0.11.0"
+
+[lints.cargo]
+unused_dependencies = "allow"

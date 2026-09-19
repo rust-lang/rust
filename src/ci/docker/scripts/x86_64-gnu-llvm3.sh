@@ -19,3 +19,7 @@ set -ex
 # Rebuild the stdlib with the size optimizations enabled and run tests again.
 RUSTFLAGS_NOT_BOOTSTRAP="--cfg feature=\"optimize_for_size\"" ../x.py --stage 1 test \
     library/std library/alloc library/core
+
+# Rebuild the stdlib forcing the use of intrinsic fallbacks and run core tests again.
+RUSTFLAGS_NOT_BOOTSTRAP="-Zforce-intrinsic-fallback" ../x.py --stage 1 test \
+    library/core

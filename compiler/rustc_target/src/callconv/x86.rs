@@ -1,9 +1,41 @@
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, HasDataLayout, Primitive, Reg, RegKind, TyAndLayout,
+    AddressSpace, Align, BackendRepr, Float, HasDataLayout, Primitive, Reg, RegKind, TyAndLayout,
 };
 
 use crate::callconv::{ArgAttribute, FnAbi, PassMode, TyAbiInterface};
 use crate::spec::{HasTargetSpec, RustcAbi};
+
+/// Is this a struct with a single float field?
+fn is_single_fp_element<'a, Ty, C>(mut layout: TyAndLayout<'a, Ty>, cx: &C) -> bool
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    // On X86 over-aligned structs are disqualified.
+    let outer_size = layout.layout.size();
+
+    loop {
+        layout = layout.peel_transparent_wrappers(cx);
+
+        return match layout.backend_repr {
+            BackendRepr::Scalar(scalar) => match scalar.primitive() {
+                Primitive::Float(float) => float.size() == outer_size,
+                Primitive::Int(_, _) | Primitive::Pointer(_) => false,
+            },
+            BackendRepr::Memory { .. } => {
+                // Structs, unions and arrays all qualify.
+                if let Some((_idx, field)) = layout.non_zst_field_ignore_alignment(cx) {
+                    // NOTE: alignment is not relevant here, checking for 1-ZST is incorrect.
+                    layout = field;
+                    continue;
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        };
+    }
+}
 
 #[derive(PartialEq)]
 pub(crate) enum Flavor {
@@ -32,11 +64,19 @@ where
             // https://www.angelcode.com/dev/callconv/callconv.html
             // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
             let t = cx.target_spec();
-            if t.abi_return_struct_as_int || opts.reg_struct_return {
+            if let Some(Float::F16) = fn_abi.ret.layout.complex_float(cx) {
+                // `_Complex _Float16` is returned as `<2 x half>`.
+                let kind = RegKind::Vector { hint_vector_elem: Primitive::Float(Float::F16) };
+                fn_abi.ret.cast_to(Reg { kind, size: fn_abi.ret.layout.size });
+            } else if t.abi_return_struct_as_int
+                || opts.reg_struct_return
+                || fn_abi.ret.layout.is_complex_number(cx)
+            {
                 // According to Clang, everyone but MSVC returns single-element
                 // float aggregates directly in a floating-point register.
-                if fn_abi.ret.layout.is_single_fp_element(cx) {
+                if is_single_fp_element(fn_abi.ret.layout, cx) {
                     match fn_abi.ret.layout.size.bytes() {
+                        2 => fn_abi.ret.cast_to(Reg::f16()),
                         4 => fn_abi.ret.cast_to(Reg::f32()),
                         8 => fn_abi.ret.cast_to(Reg::f64()),
                         _ => fn_abi.ret.make_indirect(),
@@ -92,7 +132,7 @@ where
                 Ty: TyAbiInterface<'a, C> + Copy,
             {
                 match layout.backend_repr {
-                    BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) => false,
+                    BackendRepr::Scalar(_) | BackendRepr::ScalarPair { .. } => false,
                     BackendRepr::SimdVector { .. } => true,
                     BackendRepr::Memory { .. } => {
                         for i in 0..layout.fields.count() {
@@ -211,7 +251,7 @@ where
     if !fn_abi.ret.is_ignore() {
         let has_float = match fn_abi.ret.layout.backend_repr {
             BackendRepr::Scalar(s) => matches!(s.primitive(), Primitive::Float(_)),
-            BackendRepr::ScalarPair(s1, s2) => {
+            BackendRepr::ScalarPair { a: s1, b: s2, b_offset: _ } => {
                 matches!(s1.primitive(), Primitive::Float(_))
                     || matches!(s2.primitive(), Primitive::Float(_))
             }

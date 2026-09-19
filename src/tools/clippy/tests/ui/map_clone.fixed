@@ -68,6 +68,14 @@ fn main() {
         let _ = Some(RefCell::new(String::new()).borrow()).map(|s| s.clone());
     }
 
+    // Issue #17550
+    {
+        let string = String::new();
+        let input = [&string];
+        let _: Vec<String> = input.iter().map(|s: &&String| String::clone(s)).collect();
+        let _: Vec<String> = input.iter().map(|s: &&String| <String as Clone>::clone(s)).collect();
+    }
+
     let x = Some(String::new());
     let x = x.as_ref(); // We do this to prevent triggering the `useless_asref` lint.
     let y = x.cloned();

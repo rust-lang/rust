@@ -4,7 +4,7 @@ use clippy_utils::source::{expand_past_previous_comma, snippet_opt};
 use clippy_utils::{span_extract_comments, sym};
 use rustc_ast::{FormatArgs, FormatArgsPiece};
 use rustc_errors::Applicability;
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 
 use super::{PRINTLN_EMPTY_STRING, WRITELN_EMPTY_STRING};
 

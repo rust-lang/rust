@@ -5,7 +5,7 @@
 #![expect(incomplete_features)]
 #![feature(min_generic_const_args)]
 
-pub type const TYPE_CONST : usize = 1;
+pub const TYPE_CONST: usize = core::direct_const_arg!(1);
 fn main() {
     print!("{}", TYPE_CONST)
 }

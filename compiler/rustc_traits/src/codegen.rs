@@ -4,9 +4,9 @@
 // general routines.
 
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_middle::bug;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeVisitableExt};
+use rustc_span::bug;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{
     ImplSource, Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
@@ -60,7 +60,7 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if !errors.no_errors() {
         // `rustc_monomorphize::collector` assumes there are no type errors.
         // Cycle errors are the only post-monomorphization errors possible; emit them now so
         // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
@@ -72,7 +72,7 @@ pub(crate) fn codegen_select_candidate<'tcx>(
         return Err(CodegenObligationError::Unimplemented);
     }
 
-    let impl_source = infcx.resolve_vars_if_possible(impl_source);
+    let impl_source = infcx.deeply_resolve_ignoring_regions(impl_source);
     let impl_source = tcx.erase_and_anonymize_regions(impl_source);
     if impl_source.has_non_region_infer() {
         // Unused generic types or consts on an impl get replaced with inference vars,

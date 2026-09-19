@@ -58,59 +58,88 @@
 /// assert_eq!(false as i32, 0);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_bool {}
+const _: () = ();
 
 #[rustc_doc_primitive = "never"]
 #[doc(alias = "!")]
-//
 /// The `!` type, also called "never".
 ///
-/// `!` represents the type of computations which never resolve to any value at all. For example,
-/// the [`exit`] function `fn exit(code: i32) -> !` exits the process without ever returning, and
-/// so returns `!`.
+/// `!` is the canonical uninhabited type. `!` represents the type of diverging computations --
+/// computations which never resolve to any value.
 ///
-/// `break`, `continue` and `return` expressions also have type `!`. For example we are allowed to
-/// write:
+/// Another way to look at it is that since `!` has no values (since it is uninhabited), it is a
+/// marker for unreachable code.
 ///
-/// ```
-/// #![feature(never_type)]
-/// # fn foo() -> u32 {
-/// let x: ! = {
-///     return 123
-/// };
-/// # }
-/// ```
+/// For example, the exit function is defined as returning `!`, to signify that it doesn't return
+/// normally (as it exits the process instead). Thus, any code following a call to [`exit`] is
+/// unreachable. ([`panic!`] works the same way.)
 ///
-/// Although the `let` is pointless here, it illustrates the meaning of `!`. Since `x` is never
-/// assigned a value (because `return` returns from the entire function), `x` can be given type
-/// `!`. We could also replace `return 123` with a `panic!` or a never-ending `loop` and this code
-/// would still be valid.
-///
-/// A more realistic usage of `!` is in this code:
+/// Similarly, [`return`], [`break`], [`continue`], [`become`], and infinite [`loop`] expressions
+/// all have type `!`, as the code following them is unreachable.
 ///
 /// ```
-/// # fn get_a_number() -> Option<u32> { None }
-/// # loop {
-/// let num: u32 = match get_a_number() {
-///     Some(num) => num,
-///     None => break,
-/// };
-/// # }
+/// fn meow() -> u32 {
+///     let _: ! = return 123;
+///     // code following the `return` is unreachable...
+///     // since it returns from the function
+/// }
 /// ```
 ///
-/// Both match arms must produce values of type [`u32`], but since `break` never produces a value
-/// at all we know it can never produce a value which isn't a [`u32`]. This illustrates another
-/// behavior of the `!` type - expressions with type `!` will coerce into any other type.
+/// The `let` binding above is pointless, but shows that `return` expressions have type `!`.
 ///
-/// [`u32`]: prim@u32
+/// [`return`]: ../std/keyword.return.html
+/// [`break`]: ../std/keyword.break.html
+/// [`continue`]: ../std/keyword.loop.html
+/// [`become`]: ../std/keyword.become.html
+/// [`loop`]: ../std/keyword.loop.html
 /// [`exit`]: ../std/process/fn.exit.html
 ///
-/// # `!` and generics
+/// # Never-to-any coercion
 ///
-/// ## Infallible errors
+/// The never type can be coerced to any type:
 ///
-/// The main place you'll see `!` used explicitly is in generic code. Consider the [`FromStr`]
-/// trait:
+/// ```
+/// fn nyaa<T>(x: !) -> T {
+///     x // there is an implicit ! -> T coercion here
+/// }
+/// ```
+///
+/// This is sound because a value of type `!` can never exist, and any coercion of such a value will
+/// never actually execute.
+///
+/// This is useful when an `if` branch or `match` arm returns early (or panics, or falls into an
+/// infinite loop, etc.).
+///
+/// ```
+/// fn mrrrow(option: Option<u32>) {
+///     let value = match option {
+///         // `x` has type `u32`
+///         Some(x) => x,
+///         // `return` has type `!`, which is then coerced to `u32`,
+///         // allowing the `match` to pass type checking.
+///         None => return,
+///     };
+///     // ...
+/// #   _ = value;
+/// }
+///
+/// fn miau(fallible: impl Fn() -> Result<i64, u32>) -> i64 {
+///     loop {
+///         let err = match fallible() {
+///              Ok(res) => break res,
+///              Err(err) => err,
+///         };
+///         // retry logic...
+/// #       _ = err;
+///     }
+/// }
+/// ```
+///
+/// # Infallible errors & disabling enum variants
+///
+/// The never type can also be used to mark operations as infallible.
+///
+/// Consider the [`FromStr`] trait:
 ///
 /// ```
 /// trait FromStr: Sized {
@@ -119,138 +148,82 @@ mod prim_bool {}
 /// }
 /// ```
 ///
-/// When implementing this trait for [`String`] we need to pick a type for [`Err`]. And since
-/// converting a string into a string will never result in an error, the appropriate type is `!`.
-/// (Currently the type actually used is an enum with no variants, though this is only because `!`
-/// was added to Rust at a later date and it may change in the future.) With an [`Err`] type of
-/// `!`, if we have to call [`String::from_str`] for some reason the result will be a
-/// [`Result<String, !>`] which we can unpack like this:
+/// When implementing this trait for [`String`], we need to pick a type for
+/// [`Err`][str::FromStr::Err]. And since converting a string into a string will never result in an
+/// error, we would like to guarantee to the caller that we never return [`Err(_)`][Err].
+///
+/// One way to do this is to set the error type to `!`. Since the never type has no values, the
+/// [`Err`] variant of a [`Result<T, !>`] cannot be constructed either. Moreover, the compiler can
+/// recognise this fact, and doesn't require you to handle the [`Err`] case:
 ///
 /// ```
-/// use std::str::FromStr;
+/// # use std::str::FromStr;
+/// // we can exhaustively pattern match with just `Ok`
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
-/// Since the [`Err`] variant contains a `!`, it can never occur. This means we can exhaustively
-/// match on [`Result<T, !>`] by just taking the [`Ok`] variant. This illustrates another behavior
-/// of `!` - it can be used to "delete" certain enum variants from generic types like `Result`.
+/// The same works for any enum, not just [`Result`], and also for any uninhabited type, not just
+/// `!`:
 ///
-/// ## Infinite loops
+/// ```
+/// // An enum with no variants is an example of an uninhabited type
+/// enum Void {}
 ///
-/// While [`Result<T, !>`] is very useful for removing errors, `!` can also be used to remove
-/// successes as well. If we think of [`Result<T, !>`] as "if this function returns, it has not
-/// errored," we get a very intuitive idea of [`Result<!, E>`] as well: if the function returns, it
-/// *has* errored.
+/// enum Onomatopoeias {
+///     // This variant can't be created and thus doesn't have to be matched
+///     Miu(!),
+///     // It doesn't matter if there are other fields,
+///     // as long as at least one of them is uninhabited
+///     Nya(u32, !),
+///     // Other uninhabited types have the same effect as the never type
+///     Mjau(Void),
 ///
-/// For example, consider the case of a simple web server, which can be simplified to:
-///
-/// ```ignore (hypothetical-example)
-/// loop {
-///     let (client, request) = get_request().expect("disconnected");
-///     let response = request.process();
-///     response.send(client);
+///     // Variants without uninhabited fields have to be handled as usual of course
+///     Miaow,
+///     // Even though `!` is uninhabited, `Option<!>` is inhabited by the `None` variant
+///     Myaaoo(Option<!>)
 /// }
+///
+/// use Onomatopoeias::*;
+///
+/// _ = |x: Onomatopoeias| match x {
+///     Miaow => 0,
+///     Myaaoo(None) => 1,
+/// };
 /// ```
 ///
-/// Currently, this isn't ideal, because we simply panic whenever we fail to get a new connection.
-/// Instead, we'd like to keep track of this error, like this:
-///
-/// ```ignore (hypothetical-example)
-/// loop {
-///     match get_request() {
-///         Err(err) => break err,
-///         Ok((client, request)) => {
-///             let response = request.process();
-///             response.send(client);
-///         },
-///     }
-/// }
-/// ```
-///
-/// Now, when the server disconnects, we exit the loop with an error instead of panicking. While it
-/// might be intuitive to simply return the error, we might want to wrap it in a [`Result<!, E>`]
-/// instead:
-///
-/// ```ignore (hypothetical-example)
-/// fn server_loop() -> Result<!, ConnectionError> {
-///     loop {
-///         let (client, request) = get_request()?;
-///         let response = request.process();
-///         response.send(client);
-///     }
-/// }
-/// ```
-///
-/// Now, we can use `?` instead of `match`, and the return type makes a lot more sense: if the loop
-/// ever stops, it means that an error occurred. We don't even have to wrap the loop in an `Ok`
-/// because `!` coerces to `Result<!, ConnectionError>` automatically.
-///
-/// [`String::from_str`]: str::FromStr::from_str
-/// [`String`]: ../std/string/struct.String.html
 /// [`FromStr`]: str::FromStr
+/// [`String`]: ../std/string/struct.String.html
+/// [`Ok(_)`]: Ok
 ///
-/// # `!` and traits
+/// # Implementing traits for `!`
 ///
-/// When writing your own traits, `!` should have an `impl` whenever there is an obvious `impl`
-/// which doesn't `panic!`. The reason is that functions returning an `impl Trait` where `!`
-/// does not have an `impl` of `Trait` cannot diverge as their only possible code path. In other
-/// words, they can't return `!` from every code path. As an example, this code doesn't compile:
+/// At first glance there is no reason to implement any traits for `!`. Many trait methods take
+/// `self` as an argument, so calling them on `!` is impossible.
 ///
-/// ```compile_fail
-/// use std::ops::Add;
+/// However, when `!` is used as a generic argument, it must still satisfy any trait bounds imposed
+/// on it. For example, `Result<T, E>` implements [`Clone`] if both `T` and `E` also implement it.
+/// In order for `Result<T, !>` to implement `Clone`, `!` must do so as well.
 ///
-/// fn foo() -> impl Add<u32> {
-///     unimplemented!()
-/// }
-/// ```
-///
-/// But this code does:
+/// In general, if a trait only has methods taking a `self` parameter (or `&self`, or an argument
+/// of type `Self`, etc.), consider implementing it for !. In such cases the implementation is
+/// trivial, thanks to never-to-any coercion. As an example, take the [`Debug`] trait:
 ///
 /// ```
-/// use std::ops::Add;
-///
-/// fn foo() -> impl Add<u32> {
-///     if true {
-///         unimplemented!()
-///     } else {
-///         0
-///     }
-/// }
-/// ```
-///
-/// The reason is that, in the first example, there are many possible types that `!` could coerce
-/// to, because many types implement `Add<u32>`. However, in the second example,
-/// the `else` branch returns a `0`, which the compiler infers from the return type to be of type
-/// `u32`. Since `u32` is a concrete type, `!` can and will be coerced to it. See issue [#36375]
-/// for more information on this quirk of `!`.
-///
-/// [#36375]: https://github.com/rust-lang/rust/issues/36375
-///
-/// As it turns out, though, most traits can have an `impl` for `!`. Take [`Debug`]
-/// for example:
-///
-/// ```
-/// #![feature(never_type)]
 /// # use std::fmt;
 /// # trait Debug {
 /// #     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result;
 /// # }
 /// impl Debug for ! {
-///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+///     fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+///         // we can dereference `self` (which has type `&!`) to get `!`,
+///         // which then coerces to `fmt::Result`
 ///         *self
 ///     }
 /// }
 /// ```
 ///
-/// Once again we're using `!`'s ability to coerce into any other type, in this case
-/// [`fmt::Result`]. Since this method takes a `&!` as an argument we know that it can never be
-/// called (because there is no value of type `!` for it to be called with). Writing `*self`
-/// essentially tells the compiler "We know that this code can never be run, so just treat the
-/// entire function body as having type [`fmt::Result`]". This pattern can be used a lot when
-/// implementing traits for `!`. Generally, any trait which only has methods which take a `self`
-/// parameter should have such an impl.
-///
-/// On the other hand, one trait which would not be appropriate to implement is [`Default`]:
+/// On the other hand, one trait which would not be appropriate to implement for `!` is [`Default`]:
 ///
 /// ```
 /// trait Default {
@@ -258,61 +231,59 @@ mod prim_bool {}
 /// }
 /// ```
 ///
-/// Since `!` has no values, it has no default value either. It's true that we could write an
-/// `impl` for this which simply panics, but the same is true for any type (we could `impl
-/// Default` for (eg.) [`File`] by just making [`default()`] panic.)
+/// Since `!` has no values, it has no default value either. There is no meaningful implementation
+/// for `default`, since it would have to return `!` -- in other words it would need to diverge.
+/// While one *could* write an implementation using `panic!` or an infinite loop, or something
+/// alike, that would not be useful.
 ///
-/// [`File`]: ../std/fs/struct.File.html
 /// [`Debug`]: fmt::Debug
 /// [`default()`]: Default::default
 ///
-/// # Never type fallback
+/// # `!` as `impl Trait`
 ///
-/// When the compiler sees a value of type `!` in a [coercion site], it implicitly inserts a
-/// coercion to allow the type checker to infer any type:
+/// When prototyping functions, one can use [`todo!`] (which has type `!`) to make the incomplete
+/// code type-check:
 ///
-// FIXME: use `core::convert::absurd` here instead, once it's merged
-/// ```rust,ignore (illustrative-and-has-placeholders)
-/// // this
-/// let x: u8 = panic!();
-///
-/// // is (essentially) turned by the compiler into
-/// let x: u8 = absurd(panic!());
-///
-/// // where absurd is a function with the following signature
-/// // (it's sound, because `!` always marks unreachable code):
-/// fn absurd<T>(_: !) -> T { ... }
+/// ```
+/// fn mrnjau() -> u32 {
+///     todo!() // `!` coerces to `u32`
+/// }
 /// ```
 ///
-/// This can lead to compilation errors if the type cannot be inferred:
+/// However, even though `!` can coerce to any type, this does not always work with functions
+/// returning `impl Trait`:
 ///
-/// ```compile_fail
-/// // this
-/// { panic!() };
-///
-/// // gets turned into this
-/// { absurd(panic!()) }; // error: can't infer the type of `absurd`
+/// ```compile_fail,E0277
+/// fn mjav() -> impl Iterator<Item = f32> {
+///     todo!()
+/// }
+/// ```
+/// ```text
+/// error[E0277]: `!` is not an iterator
+///  --> src/lib.rs:1:14
+///   |
+/// 1 | fn mjav() -> impl Iterator<Item = f32> {
+///   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ `!` is not an iterator
+/// 2 |     todo!()
+///   |     ------- return type was inferred to be `!` here
+///   |
+///   = help: the trait `Iterator` is not implemented for `!`
 /// ```
 ///
-/// To prevent such errors, the compiler remembers where it inserted `absurd` calls, and
-/// if it can't infer the type, it uses the fallback type instead:
-/// ```rust, ignore
-/// type Fallback = /* An arbitrarily selected type! */;
-/// { absurd::<Fallback>(panic!()) }
+/// This is because `impl Trait` is not a concrete type, but rather a way to tell the compiler that
+/// a function's return type is hidden, and the only thing which can be assumed about the hidden
+/// type is that it implements `Trait`.
+///
+/// In this case, the hidden return type is inferred to be `!`, which does not implement
+/// `Iterator`. One fix for this is to explicitly cast `!` to a type which implements the trait:
+///
 /// ```
-///
-/// This is what is known as "never type fallback".
-///
-/// Historically, the fallback type was [`()`], causing confusing behavior where `!` spontaneously
-/// coerced to `()`, even when it would not infer `()` without the fallback. The fallback was changed
-/// to `!` in the [2024 edition], and will be changed in all editions at a later date.
-///
-/// [coercion site]: <https://doc.rust-lang.org/reference/type-coercions.html#coercion-sites>
-/// [`()`]: prim@unit
-/// [2024 edition]: <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
-///
-#[unstable(feature = "never_type", issue = "35121")]
-mod prim_never {}
+/// fn mjav() -> impl Iterator<Item = f32> {
+///     todo!() as std::iter::Empty<_>
+/// }
+/// ```
+#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
+const _: () = ();
 
 // Required to make auto trait impls render.
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
@@ -448,7 +419,7 @@ impl ! {}
 /// assert_eq!(32, size_of_val(&v[..]));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_char {}
+const _: () = ();
 
 #[rustc_doc_primitive = "unit"]
 #[doc(alias = "(")]
@@ -489,7 +460,7 @@ mod prim_char {}
 /// ```
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_unit {}
+const _: () = ();
 
 // Required to make auto trait impls render.
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
@@ -616,7 +587,7 @@ impl () {}
 /// [`write`]: ptr::write
 /// [valid]: ptr#safety
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_pointer {}
+const _: () = ();
 
 #[rustc_doc_primitive = "array"]
 #[doc(alias = "[]")]
@@ -828,7 +799,7 @@ mod prim_pointer {}
 /// [slice pattern]: ../reference/patterns.html#slice-patterns
 /// [`From<Tuple>`]: convert::From
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_array {}
+const _: () = ();
 
 #[rustc_doc_primitive = "slice"]
 #[doc(alias = "[")]
@@ -942,7 +913,7 @@ mod prim_array {}
 /// [`.chunks`]: slice::chunks
 /// [`.windows`]: slice::windows
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_slice {}
+const _: () = ();
 
 #[rustc_doc_primitive = "str"]
 /// String slices.
@@ -1015,7 +986,7 @@ mod prim_slice {}
 /// called on a string slice may assume that it is valid UTF-8, which means that a non-UTF-8 string
 /// slice can lead to undefined behavior down the road.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_str {}
+const _: () = ();
 
 #[rustc_doc_primitive = "tuple"]
 #[doc(alias = "(")]
@@ -1142,7 +1113,7 @@ mod prim_str {}
 /// ```
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_tuple {}
+const _: () = ();
 
 // Required to make auto trait impls render.
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
@@ -1167,7 +1138,7 @@ impl<T> (T,) {}
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Half-precision_floating-point_format
 #[unstable(feature = "f16", issue = "116909")]
-mod prim_f16 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "f32"]
 #[doc(alias = "single")]
@@ -1333,10 +1304,12 @@ mod prim_f16 {}
 /// such as NaN, +/-Inf, or -0.0 may behave in unexpected ways, but these operations
 /// will never cause undefined behavior.
 ///
-/// Because of the unpredictable nature of compiler optimizations, the same inputs may produce
-/// different results even within a single program run. **Unsafe code must not rely on any property
-/// of the return value for soundness.** However, implementations will generally do their best to
-/// pick a reasonable tradeoff between performance and accuracy of the result.
+/// Algebraic operations are non-deterministic. This means that two invocations of such an operation
+/// with the same inputs may produce different results even within a single program run. No
+/// guarantees are made about the results of individual operations, except that they produce *some*
+/// valid floating-point value. **Unsafe code must not rely on any property of the return value for
+/// soundness.** However, implementations will generally do their best to pick a reasonable tradeoff
+/// between performance and accuracy of the result.
 ///
 /// For example:
 ///
@@ -1362,8 +1335,23 @@ mod prim_f16 {}
 /// x = ((a + b) + c) + d; // As written
 /// x = (a + c) + (b + d); // Reordered to shorten critical path and enable vectorization
 /// ```
+///
+/// The following example demonstrates the non-determinism:
+///
+/// ```
+/// # #![allow(unused_assignments)]
+/// # let a: f32 = 1.0;
+/// # let b: f32 = 2.0;
+/// let x1 = a.algebraic_add(b);
+/// let x2 = a.algebraic_add(b);
+/// assert_eq!(x1.to_bits(), x1.to_bits()); // this is guaranteed
+/// # if false {
+/// assert_eq!(x1.to_bits(), x2.to_bits()); // but this may fail
+/// assert!(!x2.is_nan()); // this may also fail, even if there was no NaN input
+/// # }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_f32 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "f64"]
 #[doc(alias = "double")]
@@ -1377,7 +1365,7 @@ mod prim_f32 {}
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Double-precision_floating-point_format
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_f64 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "f128"]
 #[doc(alias = "quad")]
@@ -1400,31 +1388,31 @@ mod prim_f64 {}
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Quadruple-precision_floating-point_format
 #[unstable(feature = "f128", issue = "116909")]
-mod prim_f128 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "i8"]
 //
 /// The 8-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_i8 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "i16"]
 //
 /// The 16-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_i16 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "i32"]
 //
 /// The 32-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_i32 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "i64"]
 //
 /// The 64-bit signed integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_i64 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "i128"]
 //
@@ -1442,31 +1430,31 @@ mod prim_i64 {}
 /// do not use the same alignment. `i128` is intended to always match `__int128` and does not
 /// attempt to match `_BitInt(128)` on platforms without `__int128`.
 #[stable(feature = "i128", since = "1.26.0")]
-mod prim_i128 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "u8"]
 //
 /// The 8-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_u8 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "u16"]
 //
 /// The 16-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_u16 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "u32"]
 //
 /// The 32-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_u32 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "u64"]
 //
 /// The 64-bit unsigned integer type.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_u64 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "u128"]
 //
@@ -1474,7 +1462,7 @@ mod prim_u64 {}
 ///
 /// Please see [the documentation for `i128`](prim@i128) for information on ABI compatibility.
 #[stable(feature = "i128", since = "1.26.0")]
-mod prim_u128 {}
+const _: () = ();
 
 #[rustc_doc_primitive = "isize"]
 //
@@ -1484,7 +1472,7 @@ mod prim_u128 {}
 /// location in memory. For example, on a 32 bit target, this is 4 bytes
 /// and on a 64 bit target, this is 8 bytes.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_isize {}
+const _: () = ();
 
 #[rustc_doc_primitive = "usize"]
 //
@@ -1494,7 +1482,7 @@ mod prim_isize {}
 /// location in memory. For example, on a 32 bit target, this is 4 bytes
 /// and on a 64 bit target, this is 8 bytes.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_usize {}
+const _: () = ();
 
 #[rustc_doc_primitive = "reference"]
 #[doc(alias = "&")]
@@ -1655,7 +1643,7 @@ mod prim_usize {}
 ///
 /// [allocation]: ptr#allocation
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_ref {}
+const _: () = ();
 
 #[rustc_doc_primitive = "fn"]
 //
@@ -1930,7 +1918,7 @@ mod prim_ref {}
 /// In addition, all *safe* function pointers implement [`Fn`], [`FnMut`], and [`FnOnce`], because
 /// these traits are specially known to the compiler.
 #[stable(feature = "rust1", since = "1.0.0")]
-mod prim_fn {}
+const _: () = ();
 
 // Required to make auto trait impls render.
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls

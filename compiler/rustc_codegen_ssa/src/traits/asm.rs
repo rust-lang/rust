@@ -1,6 +1,7 @@
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::Instance;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::ty::{Instance, Ty};
 use rustc_span::Span;
 use rustc_target::asm::InlineAsmRegOrRegClass;
 
@@ -26,12 +27,11 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
         out_place: Option<PlaceRef<'tcx, B::Value>>,
     },
     Const {
-        string: String,
+        value: Scalar,
+        /// Type of the constant. This is needed to extract width and signedness.
+        ty: Ty<'tcx>,
     },
-    SymFn {
-        instance: Instance<'tcx>,
-    },
-    SymStatic {
+    SymThreadLocalStatic {
         def_id: DefId,
     },
     Label {
@@ -41,9 +41,14 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
 
 #[derive(Debug)]
 pub enum GlobalAsmOperandRef<'tcx> {
-    Const { string: String },
-    SymFn { instance: Instance<'tcx> },
-    SymStatic { def_id: DefId },
+    Const {
+        value: Scalar,
+        /// Type of the constant. This is needed to extract width and signedness.
+        ty: Ty<'tcx>,
+    },
+    SymThreadLocalStatic {
+        def_id: DefId,
+    },
 }
 
 pub trait AsmBuilderMethods<'tcx>: BackendTypes {
@@ -61,12 +66,17 @@ pub trait AsmBuilderMethods<'tcx>: BackendTypes {
 }
 
 pub trait AsmCodegenMethods<'tcx> {
+    /// Codegen a module-level assembly block.
+    ///
+    /// NOTE: the target features must be the rust target feature names, not backend target
+    /// feature names. This argument is used to forward target features on naked functions.
     fn codegen_global_asm(
         &mut self,
         template: &[InlineAsmTemplatePiece],
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         line_spans: &[Span],
+        extra_rust_target_features: &[String],
     );
 
     /// The mangled name of this instance

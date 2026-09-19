@@ -1,6 +1,10 @@
 # Async closures/"coroutine-closures"
 
-Please read [RFC 3668](https://rust-lang.github.io/rfcs/3668-async-closures.html) to understand the general motivation of the feature. This is a very technical and somewhat "vertical" chapter; ideally we'd split this and sprinkle it across all the relevant chapters, but for the purposes of understanding async closures *holistically*, I've put this together all here in one chapter.
+Please read [RFC 3668] to understand the general motivation of the feature.
+This is a very technical and somewhat "vertical" chapter;
+ideally, we'd split this and sprinkle it across all the relevant chapters,
+but for the purposes of understanding async closures *holistically*,
+I've put this together all here in one chapter.
 
 ## Coroutine-closures -- a technical deep dive
 
@@ -8,7 +12,8 @@ Coroutine-closures are a generalization of async closures, being special syntax 
 
 For now, the only usable kind of coroutine-closure is the async closure, and supporting async closures is the extent of this PR. We may eventually support `gen || {}`, etc., and most of the problems and curiosities described in this document apply to all coroutine-closures in general.
 
-As a consequence of the code being somewhat general, this document may flip between calling them "async closures" and "coroutine-closures". The future that is returned by the async closure will generally be called the "coroutine" or the "child coroutine".
+As a consequence of the code being somewhat general, this document may flip between calling them "async closures" and "coroutine-closures".
+The future that is returned by the async closure will generally be called the "coroutine" or the "child coroutine".
 
 ### HIR
 
@@ -20,7 +25,10 @@ The closure-kind of the async block is `ClosureKind::Closure(CoroutineKind::Desu
 
 [^k2]: <https://github.com/rust-lang/rust/blob/5ca0e9fa9b2f92b463a0a2b0b34315e09c0b7236/compiler/rustc_ast_lowering/src/expr.rs#L1117>
 
-Like `async fn`, when lowering an async closure's body, we need to unconditionally move all of the closures arguments into the body so they are captured. This is handled by `lower_coroutine_body_with_moved_arguments`[^l1]. The only notable quirk with this function is that the async block we end up generating as a capture kind of `CaptureBy::ByRef`[^l2]. We later force all of the *closure args* to be captured by-value[^l3], but we don't want the *whole* async block to act as if it were an `async move`, since that would defeat the purpose of the self-borrowing of an async closure.
+Like `async fn`, when lowering an async closure's body, we need to unconditionally move all of the closures arguments into the body so they are captured.
+This is handled by `lower_coroutine_body_with_moved_arguments`[^l1].
+The only notable quirk with this function is that the async block we end up generating as a capture kind of `CaptureBy::ByRef`[^l2].
+We later force all of the *closure args* to be captured by-value[^l3], but we don't want the *whole* async block to act as if it were an `async move`, since that would defeat the purpose of the self-borrowing of an async closure.
 
 [^l1]: <https://github.com/rust-lang/rust/blob/5ca0e9fa9b2f92b463a0a2b0b34315e09c0b7236/compiler/rustc_ast_lowering/src/item.rs#L1096-L1100>
 
@@ -28,7 +36,7 @@ Like `async fn`, when lowering an async closure's body, we need to unconditional
 
 [^l3]: <https://github.com/rust-lang/rust/blob/5ca0e9fa9b2f92b463a0a2b0b34315e09c0b7236/compiler/rustc_hir_typeck/src/upvar.rs#L250-L256>
 
-### `rustc_middle::ty` Representation
+### `rustc_middle::ty` representation
 
 For the purposes of keeping the implementation mostly future-compatible (i.e. with gen `|| {}` and `async gen || {}`), most of this section calls async closures "coroutine-closures".
 
@@ -36,7 +44,8 @@ The main thing that this PR introduces is a new `TyKind` called `CoroutineClosur
 
 [^t1]: <https://github.com/rust-lang/rust/blob/5ca0e9fa9b2f92b463a0a2b0b34315e09c0b7236/compiler/rustc_type_ir/src/ty_kind.rs#L163-L168>
 
-We introduce a new `TyKind` instead of generalizing the existing `TyKind::Closure` due to major representational differences in the type. The major differences between `CoroutineClosure`s can be explored by first inspecting the `CoroutineClosureArgsParts`, which is the "unpacked" representation of the coroutine-closure's generics.
+We introduce a new `TyKind` instead of generalizing the existing `TyKind::Closure` due to major representational differences in the type.
+The major differences between `CoroutineClosure`s can be explored by first inspecting the `CoroutineClosureArgsParts`, which is the "unpacked" representation of the coroutine-closure's generics.
 
 #### Similarities to closures
 
@@ -44,11 +53,13 @@ Like a closure, we have `parent_args`, a `closure_kind_ty`, and a `tupled_upvars
 
 #### The signature
 
-A traditional closure has a `fn_sig_as_fn_ptr_ty` which it uses to represent the signature of the closure. In contrast, we store the signature of a coroutine closure in a somewhat "exploded" way, since coroutine-closures have *two* signatures depending on what `AsyncFn*` trait you call it with (see below sections).
+A traditional closure has a `fn_sig_as_fn_ptr_ty` which it uses to represent the signature of the closure.
+In contrast, we store the signature of a coroutine closure in a somewhat "exploded" way, since coroutine-closures have *two* signatures depending on what `AsyncFn*` trait you call it with (see below sections).
 
 Conceptually, the coroutine-closure may be thought as containing several different signature types depending on whether it is being called by-ref or by-move.
 
-To conveniently recreate both of these signatures, the `signature_parts_ty` stores all of the relevant parts of the coroutine returned by this coroutine-closure. This signature parts type will have the general shape of `fn(tupled_inputs, resume_ty) -> (return_ty, yield_ty)`, where `resume_ty`, `return_ty`, and `yield_ty` are the respective types for the *coroutine* returned by the coroutine-closure[^c1].
+To conveniently recreate both of these signatures, the `signature_parts_ty` stores all of the relevant parts of the coroutine returned by this coroutine-closure.
+This signature parts type will have the general shape of `fn(tupled_inputs, resume_ty) -> (return_ty, yield_ty)`, where `resume_ty`, `return_ty`, and `yield_ty` are the respective types for the *coroutine* returned by the coroutine-closure[^c1].
 
 [^c1]: <https://github.com/rust-lang/rust/blob/5ca0e9fa9b2f92b463a0a2b0b34315e09c0b7236/compiler/rustc_type_ir/src/ty_kind/closure.rs#L221-L229>
 
@@ -76,9 +87,10 @@ To most easily construct the `Coroutine` that a coroutine-closure returns, you c
 
 Most of the args to that function will be components that you can get out of the `CoroutineArgs`, except for the `goal_kind: ClosureKind` which controls which flavor of coroutine to return based off of the `ClosureKind` passed in -- i.e. it will prepare the by-ref coroutine if `ClosureKind::Fn | ClosureKind::FnMut`, and the by-move coroutine if `ClosureKind::FnOnce`.
 
-### Trait Hierarchy
+### Trait hierarchy
 
-We introduce a parallel hierarchy of `Fn*` traits that are implemented for . The motivation for the introduction was covered in a blog post: [Async Closures](https://hackmd.io/@compiler-errors/async-closures).
+We introduce a parallel hierarchy of `Fn*` traits that are implemented for .
+The motivation for the introduction was covered in a blog post: [Async Closures](https://hackmd.io/@compiler-errors/async-closures).
 
 All currently-stable callable types (i.e., closures, function items, function pointers, and `dyn Fn*` trait objects) automatically implement `AsyncFn*() -> T` if they implement `Fn*() -> Fut` for some output type `Fut`, and `Fut` implements `Future<Output = T>`[^tr1].
 
@@ -88,23 +100,27 @@ Async closures implement `AsyncFn*` as their bodies permit; i.e. if they end up 
 
 #### Lending
 
-We may in the future move `AsyncFn*` onto a more general set of `LendingFn*` traits; however, there are some concrete technical implementation details that limit our ability to use `LendingFn` ergonomically in the compiler today. These have to do with:
+We may in the future move `AsyncFn*` onto a more general set of `LendingFn*` traits; however, there are some concrete technical implementation details that limit our ability to use `LendingFn` ergonomically in the compiler today.
+These have to do with:
 
 - Closure signature inference.
 - Limitations around higher-ranked trait bounds.
 - Shortcomings with error messages.
 
-These limitations, plus the fact that the underlying trait should have no effect on the user experience of async closures and async `Fn` trait bounds, leads us to `AsyncFn*` for now. To ensure we can eventually move to these more general traits, the precise `AsyncFn*` trait definitions (including the associated types) are left as an implementation detail.
+These limitations, plus the fact that the underlying trait should have no effect on the user experience of async closures and async `Fn` trait bounds, leads us to `AsyncFn*` for now.
+To ensure we can eventually move to these more general traits, the precise `AsyncFn*` trait definitions (including the associated types) are left as an implementation detail.
 
 #### When do async closures implement the regular `Fn*` traits?
 
 We mention above that "regular" callable types can implement `AsyncFn*`, but the reverse question exists of "can async closures implement `Fn*` too"? The short answer is "when it's valid", i.e. when the coroutine that would have been returned from `AsyncFn`/`AsyncFnMut` does not actually have any upvars that are "lent" from the parent coroutine-closure.
 
-See the "follow-up: when do..." section below for an elaborated answer. The full answer describes a pretty interesting and hopefully thorough heuristic that is used to ensure that most async closures "just work".
+See the "follow-up: when do..." section below for an elaborated answer.
+The full answer describes a pretty interesting and hopefully thorough heuristic that is used to ensure that most async closures "just work".
 
 ### Tale of two bodies...
 
-When async closures are called with `AsyncFn`/`AsyncFnMut`, they return a coroutine that borrows from the closure. However, when they are called via `AsyncFnOnce`, we consume that closure, and cannot return a coroutine that borrows from data that is now dropped.
+When async closures are called with `AsyncFn`/`AsyncFnMut`, they return a coroutine that borrows from the closure.
+However, when they are called via `AsyncFnOnce`, we consume that closure, and cannot return a coroutine that borrows from data that is now dropped.
 
 To work around this limitation, we synthesize a separate by-move MIR body for calling `AsyncFnOnce::call_once` on a coroutine-closure that can be called by-ref.
 
@@ -120,18 +136,24 @@ This query synthesizes a new MIR body by copying the MIR body of the coroutine a
 
 [^b2]: <https://github.com/rust-lang/rust/blob/5ca0e9fa9b2f92b463a0a2b0b34315e09c0b7236/compiler/rustc_mir_transform/src/coroutine/by_move_body.rs#L131-L195>
 
-Since we've synthesized a new def id, this query is also responsible for feeding a ton of other relevant queries for the MIR body. This query is `ensure()`d[^b3] during the `mir_promoted` query, since it operates on the *built* mir of the coroutine.
+Since we've synthesized a new def id, this query is also responsible for feeding a ton of other relevant queries for the MIR body.
+This query is `ensure()`d[^b3] during the `mir_promoted` query, since it operates on the *built* mir of the coroutine.
 
 [^b3]: <https://github.com/rust-lang/rust/blob/5ca0e9fa9b2f92b463a0a2b0b34315e09c0b7236/compiler/rustc_mir_transform/src/lib.rs#L339-L342>
 
 ### Closure signature inference
 
-The closure signature inference algorithm for async closures is a bit more complicated than the inference algorithm for "traditional" closures. Like closures, we iterate through all of the clauses that may be relevant (for the expectation type passed in)[^deduce1].
+The closure signature inference algorithm for async closures is a bit more complicated than the inference algorithm for "traditional" closures.
+Like closures, we iterate through all of the clauses that may be relevant (for the expectation type passed in)[^deduce1].
 
 To extract a signature, we consider two situations:
-* Projection predicates with `AsyncFnOnce::Output`, which we will use to extract the inputs and output type for the closure. This corresponds to the situation that there was a `F: AsyncFn*() -> T` bound[^deduce2].
-* Projection predicates with `FnOnce::Output`, which we will use to extract the inputs. For the output, we also try to deduce an output by looking for relevant `Future::Output` projection predicates. This corresponds to the situation that there was an `F: Fn*() -> T, T: Future<Output = U>` bound.[^deduce3]
-    * If there is no `Future` bound, we simply use a fresh infer var for the output. This corresponds to the case where one can pass an async closure to a combinator function like `Option::map`.[^deduce4]
+* Projection predicates with `AsyncFnOnce::Output`, which we will use to extract the inputs and output type for the closure.
+  This corresponds to the situation that there was a `F: AsyncFn*() -> T` bound[^deduce2].
+* Projection predicates with `FnOnce::Output`, which we will use to extract the inputs.
+  For the output, we also try to deduce an output by looking for relevant `Future::Output` projection predicates.
+  This corresponds to the situation that there was an `F: Fn*() -> T, T: Future<Output = U>` bound.[^deduce3]
+    * If there is no `Future` bound, we simply use a fresh infer var for the output.
+      This corresponds to the case where one can pass an async closure to a combinator function like `Option::map`.[^deduce4]
 
 [^deduce1]: <https://github.com/rust-lang/rust/blob/5ca0e9fa9b2f92b463a0a2b0b34315e09c0b7236/compiler/rustc_hir_typeck/src/closure.rs#L345-L362>
 
@@ -149,7 +171,7 @@ We defer[^call1] the computation of a coroutine-closure's "kind" (i.e. its maxim
 
 [^call1]: <https://github.com/rust-lang/rust/blob/705cfe0e966399e061d64dd3661bfbc57553ed87/compiler/rustc_hir_typeck/src/callee.rs#L169-L210>
 
-Unlike regular closures, whose return type does not change depending on what `Fn*` trait we call it with, coroutine-closures *do* end up returning different coroutine types depending on the flavor of `AsyncFn*` trait used to call it. 
+Unlike regular closures, whose return type does not change depending on what `Fn*` trait we call it with, coroutine-closures *do* end up returning different coroutine types depending on the flavor of `AsyncFn*` trait used to call it.
 
 Specifically, while the def-id of the returned coroutine does not change, the upvars[^call2] (which are either borrowed or moved from the parent coroutine-closure) and the coroutine-kind[^call3] are dependent on the calling mode.
 
@@ -165,7 +187,9 @@ We introduce a `AsyncFnKindHelper` trait which allows us to defer the question o
 
 #### Ok, so why?
 
-This seems a bit roundabout and complex, and I admit that it is. But let's think of the "do nothing" alternative -- we could instead mark all `AsyncFn*` goals as ambiguous until upvar analysis, at which point we would know exactly what to put into the upvars of the coroutine we return. However, this is actually *very* detrimental to inference in the program, since it means that programs like this would not be valid:
+This seems a bit roundabout and complex, and I admit that it is.
+But let's think of the "do nothing" alternative -- we could instead mark all `AsyncFn*` goals as ambiguous until upvar analysis, at which point we would know exactly what to put into the upvars of the coroutine we return.
+However, this is actually *very* detrimental to inference in the program, since it means that programs like this would not be valid:
 
 ```rust,ignore
 let c = async || -> String { .. };
@@ -179,27 +203,35 @@ So *instead*, we use this alias (in this case, a projection: `AsyncFnKindHelper:
 
 ### Upvar analysis
 
-By and large, the upvar analysis for coroutine-closures and their child coroutines proceeds like normal upvar analysis. However, there are several interesting bits that happen to account for async closures' special natures:
+By and large, the upvar analysis for coroutine-closures and their child coroutines proceeds like normal upvar analysis.
+However, there are several interesting bits that happen to account for async closures' special natures:
 
 #### Forcing all inputs to be captured
 
-Like async fn, all input arguments are captured. We explicitly force[^f1] all of these inputs to be captured by move so that the future coroutine returned by async closures does not depend on whether the input is *used* by the body or not, which would impart an interesting semver hazard.
+Like async fn, all input arguments are captured.
+We explicitly force[^f1] all of these inputs to be captured by move so that the future coroutine returned by async closures does not depend on whether the input is *used* by the body or not, which would impart an interesting semver hazard.
 
 [^f1]: <https://github.com/rust-lang/rust/blob/7c7bb7dc017545db732f5cffec684bbaeae0a9a0/compiler/rustc_hir_typeck/src/upvar.rs#L250-L259>
 
 #### Computing the by-ref captures
 
-For a coroutine-closure that supports `AsyncFn`/`AsyncFnMut`, we must also compute the relationship between the captures of the coroutine-closure and its child coroutine. Specifically, the coroutine-closure may `move` a upvar into its captures, but the coroutine may only borrow that upvar.
+For a coroutine-closure that supports `AsyncFn`/`AsyncFnMut`, we must also compute the relationship between the captures of the coroutine-closure and its child coroutine.
+Specifically, the coroutine-closure may `move` a upvar into its captures, but the coroutine may only borrow that upvar.
 
-We compute the "`coroutine_captures_by_ref_ty`" by looking at all of the child coroutine's captures and comparing them to the corresponding capture of the parent coroutine-closure[^br1]. This `coroutine_captures_by_ref_ty` ends up being represented as a `for<'env> fn() -> captures...` type, with the additional binder lifetime representing the "`&self`" lifetime of calling `AsyncFn::async_call` or `AsyncFnMut::async_call_mut`. We instantiate that binder later when actually calling the methods.
+We compute the "`coroutine_captures_by_ref_ty`" by looking at all of the child coroutine's captures and comparing them to the corresponding capture of the parent coroutine-closure[^br1].
+This `coroutine_captures_by_ref_ty` ends up being represented as a `for<'env> fn() -> captures...` type, with the additional binder lifetime representing the "`&self`" lifetime of calling `AsyncFn::async_call` or `AsyncFnMut::async_call_mut`.
+We instantiate that binder later when actually calling the methods.
 
 [^br1]: <https://github.com/rust-lang/rust/blob/7c7bb7dc017545db732f5cffec684bbaeae0a9a0/compiler/rustc_hir_typeck/src/upvar.rs#L375-L471>
 
-Note that not every by-ref capture from the parent coroutine-closure results in a "lending" borrow. See the **Follow-up: When do async closures implement the regular `Fn*` traits?** section below for more details, since this intimately influences whether or not the coroutine-closure is allowed to implement the `Fn*` family of traits.
+Note that not every by-ref capture from the parent coroutine-closure results in a "lending" borrow.
+See the **Follow-up: When do async closures implement the regular `Fn*` traits?** section below for more details, since this intimately influences whether or not the coroutine-closure is allowed to implement the `Fn*` family of traits.
 
 #### By-move body + `FnOnce` quirk
 
-There are several situations where the closure upvar analysis ends up inferring upvars for the coroutine-closure's child coroutine that are too relaxed, and end up resulting in borrow-checker errors. This is best illustrated via examples. For example, given:
+There are several situations where the closure upvar analysis ends up inferring upvars for the coroutine-closure's child coroutine that are too relaxed, and end up resulting in borrow-checker errors.
+This is best illustrated via examples.
+For example, given:
 
 ```rust
 fn force_fnonce<T: async FnOnce()>(t: T) -> T { t }
@@ -210,7 +242,8 @@ let c = force_fnonce(async move || {
 });
 ```
 
-`x` will be moved into the coroutine-closure, but the coroutine that is returned would only borrow `&x`. However, since `force_fnonce` forces the coroutine-closure to `AsyncFnOnce`, which is not *lending*, we must force the capture to happen by-move[^bm1].
+`x` will be moved into the coroutine-closure, but the coroutine that is returned would only borrow `&x`.
+However, since `force_fnonce` forces the coroutine-closure to `AsyncFnOnce`, which is not *lending*, we must force the capture to happen by-move[^bm1].
 
 Similarly:
 
@@ -233,13 +266,16 @@ let c = async move || {
 
 Well, first of all, all async closures implement `FnOnce` since they can always be called *at least once*.
 
-For `Fn`/`FnMut`, the detailed answer involves answering a related question: is the coroutine-closure lending? Because if it is, then it cannot implement the non-lending `Fn`/`FnMut` traits.
+For `Fn`/`FnMut`, the detailed answer involves answering a related question: is the coroutine-closure lending?
+Because if it is, then it cannot implement the non-lending `Fn`/`FnMut` traits.
 
-Determining when the coroutine-closure must *lend* its upvars is implemented in the `should_reborrow_from_env_of_parent_coroutine_closure` helper function[^u1]. Specifically, this needs to happen in two places:
+Determining when the coroutine-closure must *lend* its upvars is implemented in the `should_reborrow_from_env_of_parent_coroutine_closure` helper function[^u1].
+Specifically, this needs to happen in two places:
 
 [^u1]: <https://github.com/rust-lang/rust/blob/7c7bb7dc017545db732f5cffec684bbaeae0a9a0/compiler/rustc_hir_typeck/src/upvar.rs#L1818-L1860>
 
-1.  Are we borrowing data owned by the parent closure? We can determine if that is the case by checking if the parent capture is by-move, EXCEPT if we apply a deref projection, which means we're reborrowing a reference that we captured by-move.
+1.  Are we borrowing data owned by the parent closure?
+    We can determine if that is the case by checking if the parent capture is by-move, EXCEPT if we apply a deref projection, which means we're reborrowing a reference that we captured by-move.
 
 ```rust
 let x = &1i32; // Let's call this lifetime `'1`.
@@ -250,7 +286,8 @@ let c = async move || {
 };
 ```
 
-2. If a coroutine is mutably borrowing from a parent capture, then that mutable borrow cannot live for longer than either the parent *or* the borrow that we have on the original upvar. Therefore we always need to borrow the child capture with the lifetime of the parent coroutine-closure's env.
+2. If a coroutine is mutably borrowing from a parent capture, then that mutable borrow cannot live for longer than either the parent *or* the borrow that we have on the original upvar.
+   Therefore we always need to borrow the child capture with the lifetime of the parent coroutine-closure's env.
 
 ```rust
 let mut x = 1i32;
@@ -264,7 +301,8 @@ let c = async || {
 };
 ```
 
-If either of these cases apply, then we should capture the borrow with the lifetime of the parent coroutine-closure's env. Luckily, if this function is not correct, then the program is not unsound, since we still borrowck and validate the choices made from this function -- the only side-effect is that the user may receive unnecessary borrowck errors.
+If either of these cases apply, then we should capture the borrow with the lifetime of the parent coroutine-closure's env.
+Luckily, if this function is not correct, then the program is not unsound, since we still borrowck and validate the choices made from this function -- the only side-effect is that the user may receive unnecessary borrowck errors.
 
 ### Instance resolution
 
@@ -278,7 +316,8 @@ If a coroutine-closure has a closure-kind of `FnMut`/`Fn`, then the same applies
 
 [^res3]: <https://github.com/rust-lang/rust/blob/705cfe0e966399e061d64dd3661bfbc57553ed87/compiler/rustc_ty_utils/src/instance.rs#L312-L326>
 
-This is represented by the `ConstructCoroutineInClosureShim`[^i1]. The `receiver_by_ref` bool will be true if this is the instance of `Fn::call`/`FnMut::call_mut`.[^i2] The coroutine that all of these instances returns corresponds to the by-move body we will have synthesized by this point.[^i3]
+This is represented by the `ConstructCoroutineInClosureShim`[^i1].
+The `receiver_by_ref` bool will be true if this is the instance of `Fn::call`/`FnMut::call_mut`.[^i2] The coroutine that all of these instances returns corresponds to the by-move body we will have synthesized by this point.[^i3]
 
 [^i1]: <https://github.com/rust-lang/rust/blob/705cfe0e966399e061d64dd3661bfbc57553ed87/compiler/rustc_middle/src/ty/instance.rs#L129-L134>
 
@@ -288,10 +327,13 @@ This is represented by the `ConstructCoroutineInClosureShim`[^i1]. The `receiver
 
 ### Borrow-checking
 
-It turns out that borrow-checking async closures is pretty straightforward. After adding a new `DefiningTy::CoroutineClosure`[^bck1] variant, and teaching borrowck how to generate the signature of the coroutine-closure[^bck2], borrowck proceeds totally fine.
+It turns out that borrow-checking async closures is pretty straightforward.
+After adding a new `DefiningTy::CoroutineClosure`[^bck1] variant, and teaching borrowck how to generate the signature of the coroutine-closure[^bck2], borrowck proceeds totally fine.
 
 One thing to note is that we don't borrow-check the synthetic body we make for by-move coroutines, since by construction (and the validity of the by-ref coroutine body it was derived from) it must be valid.
 
 [^bck1]: <https://github.com/rust-lang/rust/blob/705cfe0e966399e061d64dd3661bfbc57553ed87/compiler/rustc_borrowck/src/universal_regions.rs#L110-L115>
 
 [^bck2]: <https://github.com/rust-lang/rust/blob/7c7bb7dc017545db732f5cffec684bbaeae0a9a0/compiler/rustc_borrowck/src/universal_regions.rs#L743-L790>
+
+[RFC 3668]: https://rust-lang.github.io/rfcs/3668-async-closures.html

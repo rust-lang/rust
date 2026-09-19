@@ -11,8 +11,8 @@ LL |     type Bar: [const] Add;
    |               ^^^^^^^^^^^ required by this bound in `Foo::Bar`
 help: make the `impl` of trait `Add` `const`
    |
-LL | impl const Add for NonConstAdd {
-   |      +++++
+LL | const impl Add for NonConstAdd {
+   | +++++
 
 error: aborting due to 1 previous error
 

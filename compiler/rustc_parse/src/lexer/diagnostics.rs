@@ -5,7 +5,7 @@ use rustc_span::Span;
 use rustc_span::source_map::SourceMap;
 
 use super::UnmatchedDelim;
-use crate::errors::MismatchedClosingDelimiter;
+use crate::diagnostics::MismatchedClosingDelimiter;
 use crate::pprust;
 
 #[derive(Default)]
@@ -19,6 +19,10 @@ pub(super) struct TokenTreeDiagInfo {
 
     /// Collect empty block spans that might have been auto-inserted by editors.
     pub empty_block_spans: Vec<Span>,
+
+    /// Spans of `&&`/`||` tokens that directly open a brace-delimited block,
+    /// which usually means the user meant to continue an if-let chain.
+    pub if_let_chain_hint_spans: Vec<Span>,
 
     /// Collect the spans of braces (Open, Close). Used only
     /// for detecting if blocks are empty and only braces.
@@ -123,6 +127,10 @@ pub(super) fn report_suspicious_mismatch_block(
             err.span_label(parent.0, "this opening brace...");
             err.span_label(parent.1, "...matches this closing brace");
         }
+    }
+
+    for span in diag_info.if_let_chain_hint_spans.iter() {
+        err.span_label(*span, "you might have meant to continue an if-let chain here");
     }
 }
 

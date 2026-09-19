@@ -278,6 +278,24 @@ fn has_comment() -> Vec<usize> {
     v
 }
 
+mod issue16451 {
+
+    fn expect_on_return_expr() -> std::collections::BTreeMap<(), ()> {
+        let stuff = std::collections::BTreeMap::new();
+
+        // TODO: Fill `stuff`
+
+        #[expect(clippy::let_and_return)]
+        stuff
+    }
+
+    fn cfg_on_return_expr() -> i32 {
+        let x = 5;
+        #[cfg(debug_assertions)]
+        x
+    }
+}
+
 fn wrongly_unmangled_macros() -> i32 {
     let x = 1;
     macro_rules! plus_one {

@@ -1,28 +1,40 @@
-use super::intrinsic::ArmIntrinsicType;
+use super::intrinsic::ArmType;
 use crate::common::intrinsic_helpers::{
-    IntrinsicType, IntrinsicTypeDefinition, Sign, SimdLen, TypeKind,
+    IntrinsicType, Sign, SimdLen, TypeDefinition, TypeKind, default_fixed_vector_comparison,
 };
+use itertools::Itertools;
 
-impl IntrinsicTypeDefinition for ArmIntrinsicType {
+impl TypeDefinition for ArmType {
     /// Gets a string containing the typename for this type in C format.
     fn c_type(&self) -> String {
         let prefix = self.kind.c_prefix();
 
-        if let Some(bit_len) = self.bit_len {
-            match (self.simd_len, self.vec_len) {
-                (None, None) => format!("{prefix}{bit_len}_t"),
-                (Some(SimdLen::Fixed(simd)), None) => format!("{prefix}{bit_len}x{simd}_t"),
-                (Some(SimdLen::Fixed(simd)), Some(vec)) => {
-                    format!("{prefix}{bit_len}x{simd}x{vec}_t")
-                }
-                (Some(SimdLen::Scalable), None) => format!("sv{prefix}{bit_len}_t"),
-                (Some(SimdLen::Scalable), Some(vec)) => {
-                    format!("sv{prefix}{bit_len}x{vec}_t")
-                }
-                (None, Some(_)) => todo!("{self:#?}"), // Likely an invalid case
+        match (self.bit_len, self.simd_len, self.vec_len) {
+            // e.g. `bool`
+            (Some(_), None, None) if matches!(self.kind, TypeKind::Bool) => {
+                format!("{prefix}")
             }
-        } else {
-            todo!("{self:#?}")
+            // e.g. `float32_t`, `int64_t`
+            (Some(bit_len), None, None) => format!("{prefix}{bit_len}_t"),
+            // e.g. `float32x2_t`, `int64x2_t`
+            (Some(bit_len), Some(SimdLen::Fixed(simd)), None) => {
+                format!("{prefix}{bit_len}x{simd}_t")
+            }
+            // e.g. `float32x2x3_t`, `int64x2x3_t`
+            (Some(bit_len), Some(SimdLen::Fixed(simd)), Some(vec)) => {
+                format!("{prefix}{bit_len}x{simd}x{vec}_t")
+            }
+            // e.g. `svbool_t`
+            (Some(_), Some(SimdLen::Scalable), None) if matches!(self.kind, TypeKind::Bool) => {
+                format!("sv{prefix}_t")
+            }
+            // e.g. `svfloat32_t`, `svint64_t`
+            (Some(bit_len), Some(SimdLen::Scalable), None) => format!("sv{prefix}{bit_len}_t"),
+            // e.g. `svfloat32x3_t`, `svint64x3_t`
+            (Some(bit_len), Some(SimdLen::Scalable), Some(vec)) => {
+                format!("sv{prefix}{bit_len}x{vec}_t")
+            }
+            _ => todo!("{self:#?}"),
         }
     }
 
@@ -30,50 +42,127 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
         let rust_prefix = self.kind.rust_prefix();
         let c_prefix = self.kind.c_prefix();
 
-        if let Some(bit_len) = self.bit_len {
-            match (self.simd_len, self.vec_len) {
-                (None, None) => format!("{rust_prefix}{bit_len}"),
-                (Some(SimdLen::Fixed(simd)), None) => format!("{c_prefix}{bit_len}x{simd}_t"),
-                (Some(SimdLen::Fixed(simd)), Some(vec)) => {
-                    format!("{c_prefix}{bit_len}x{simd}x{vec}_t")
-                }
-                (Some(SimdLen::Scalable), None) => format!("sv{c_prefix}{bit_len}_t"),
-                (Some(SimdLen::Scalable), Some(vec)) => {
-                    format!("sv{c_prefix}{bit_len}x{vec}_t")
-                }
-                (None, Some(_)) => todo!("{self:#?}"), // Likely an invalid case
+        match (self.bit_len, self.simd_len, self.vec_len) {
+            // e.g. `svpattern`
+            (None, _, _) => format!("{rust_prefix}"),
+            // e.g. `bool`
+            (Some(_), None, None) if matches!(self.kind, TypeKind::Bool) => {
+                format!("{rust_prefix}")
             }
+            // e.g. `i32`
+            (Some(bit_len), None, None) => format!("{rust_prefix}{bit_len}"),
+            // e.g. `int32x2_t`
+            (Some(bit_len), Some(SimdLen::Fixed(simd)), None) => {
+                format!("{c_prefix}{bit_len}x{simd}_t")
+            }
+            // e.g. `int32x2x3_t`
+            (Some(bit_len), Some(SimdLen::Fixed(simd)), Some(vec)) => {
+                format!("{c_prefix}{bit_len}x{simd}x{vec}_t")
+            }
+            // e.g. `svbool_t`
+            (Some(_), Some(SimdLen::Scalable), None) if matches!(self.kind, TypeKind::Bool) => {
+                format!("sv{c_prefix}_t")
+            }
+            // e.g. `svint32_t`
+            (Some(bit_len), Some(SimdLen::Scalable), None) => format!("sv{c_prefix}{bit_len}_t"),
+            // e.g. `svint32x3_t`
+            (Some(bit_len), Some(SimdLen::Scalable), Some(vec)) => {
+                format!("sv{c_prefix}{bit_len}x{vec}_t")
+            }
+            (Some(_), None, Some(_)) => todo!("{self:#?}"),
+        }
+    }
+
+    fn rust_scalar_type_for_test_value_array(&self) -> String {
+        if self.kind() == TypeKind::Bool && self.num_lanes() == SimdLen::Scalable {
+            let mut ty = self.clone();
+            ty.kind = TypeKind::Int(Sign::Signed);
+            ty.rust_scalar_type()
         } else {
-            todo!("{self:#?}")
+            self.rust_scalar_type()
         }
     }
 
     /// Determines the load function for this type.
-    fn get_load_function(&self) -> String {
-        if let IntrinsicType {
-            kind: k,
-            bit_len: Some(bl),
-            vec_len,
-            ..
-        } = **self
-        {
-            let quad = if self.num_lanes() * bl > 64 { "q" } else { "" };
+    fn load_function(&self) -> String {
+        if let Some(bl) = self.bit_len {
+            match self.num_lanes() {
+                SimdLen::Scalable => {
+                    format!(
+                        "svld{len}_{type}{bl}",
+                        len = self.num_vectors(),
+                        type = self.rust_intrinsic_name_prefix(),
+                    )
+                }
+                SimdLen::Fixed(num_lanes) => {
+                    format!(
+                        "vld{len}{quad}_{type}{bl}",
+                        quad = if num_lanes * bl > 64 { "q" } else { "" },
+                        len = self.num_vectors(),
+                        type = self.rust_intrinsic_name_prefix(),
+                    )
+                }
+            }
+        } else {
+            todo!("load_function IntrinsicType: {self:#?}")
+        }
+    }
+
+    fn comparison_function(&self) -> String {
+        if let SimdLen::Fixed(num_lanes) = self.num_lanes() {
+            return default_fixed_vector_comparison(self, num_lanes);
+        }
+
+        // Returns `of` when `num_vectors == 1` otherwise returns the appropriate `svget` invocation
+        // for `of`.
+        let get = |num_vectors: u32, idx: u32, from: &'static str| -> String {
+            if num_vectors == 1 {
+                return from.to_string();
+            }
 
             format!(
-                "vld{len}{quad}_{type}{size}",
-                type = match k {
-                    TypeKind::Int(Sign::Unsigned) => "u",
-                    TypeKind::Int(Sign::Signed) => "s",
-                    TypeKind::Float => "f",
-                    TypeKind::Poly => "p",
-                    x => todo!("get_load_function TypeKind: {x:#?}"),
-                },
-                size = bl,
-                quad = quad,
-                len = vec_len.unwrap_or(1),
+                "svget{num_vectors}_{ty}{bl}::<{idx}>({from})",
+                ty = self.rust_intrinsic_name_prefix(),
+                bl = self.inner_size(),
             )
-        } else {
-            todo!("get_load_function IntrinsicType: {self:#?}")
+        };
+
+        let prefix = match self.kind {
+            TypeKind::Bool => "svbool".to_owned(),
+            kind => format!("sv{}{}", kind.c_prefix(), self.inner_size()),
+        };
+
+        let n = self.num_vectors();
+        (0..n)
+            .format_with("\n", |i, fmt| {
+                fmt(&format_args!(
+                    r#"
+assert_eq!(
+    {prefix}_to_slice(&{rust_return_value}),
+    {prefix}_to_slice(&{c_return_value}),
+    "{{id}}-({i_plus_one}/{n})"
+);
+"#,
+                    rust_return_value = get(n, i, "__rust_return_value"),
+                    c_return_value = get(n, i, "__c_return_value"),
+                    i_plus_one = i + 1, // so that the output is "1/2" and "2/2"
+                ))
+            })
+            .to_string()
+    }
+}
+
+impl ArmType {
+    /// Returns the Rust prefix for the name of an intrinsic with this type kind (i.e. `s` for
+    /// `i16`, or `u` for `u16`). For type kinds without any bit length at the end (e.g. `bool`),
+    /// returns the whole type name.
+    pub fn rust_intrinsic_name_prefix(&self) -> &str {
+        match self.kind() {
+            TypeKind::Char(Sign::Signed) => "s",
+            TypeKind::Int(Sign::Signed) => "s",
+            TypeKind::Poly => "p",
+            TypeKind::Bool => "s",
+            _ => self.kind.rust_prefix(),
         }
     }
 }

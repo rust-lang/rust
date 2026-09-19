@@ -1,9 +1,10 @@
 //! Conversion of internal Rust compiler `ty` items to stable ones.
 
 use rustc_middle::ty::Ty;
-use rustc_middle::{bug, mir, ty};
+use rustc_middle::{mir, ty};
 use rustc_public_bridge::Tables;
 use rustc_public_bridge::context::CompilerCtxt;
+use rustc_span::bug;
 
 use crate::alloc;
 use crate::compiler_interface::BridgeTys;
@@ -32,10 +33,14 @@ impl<'tcx> Stable<'tcx> for ty::AliasTy<'tcx> {
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         let ty::AliasTy { args, kind, .. } = self;
-        crate::ty::AliasTy {
-            def_id: tables.alias_def(kind.def_id()),
-            args: args.stable(tables, cx),
-        }
+        // rustc_public must change its API once we introduce a variant without a def_id.
+        let def_id = match *kind {
+            ty::AliasTyKind::Projection { def_id }
+            | ty::AliasTyKind::Inherent { def_id }
+            | ty::AliasTyKind::Opaque { def_id }
+            | ty::AliasTyKind::Free { def_id } => def_id,
+        };
+        crate::ty::AliasTy { def_id: tables.alias_def(def_id), args: args.stable(tables, cx) }
     }
 }
 
@@ -56,7 +61,8 @@ impl<'tcx> Stable<'tcx> for ty::AliasTerm<'tcx> {
             | ty::AliasTermKind::AnonConst { def_id }
             | ty::AliasTermKind::ProjectionConst { def_id }
             | ty::AliasTermKind::FreeConst { def_id }
-            | ty::AliasTermKind::InherentConst { def_id } => def_id,
+            | ty::AliasTermKind::InherentConstSelf { def_id }
+            | ty::AliasTermKind::InherentConstImpl { def_id } => def_id,
         };
         crate::ty::AliasTerm { def_id: tables.alias_def(def_id), args: args.stable(tables, cx) }
     }
@@ -456,13 +462,13 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             )),
             ty::FnDef(def_id, generic_args) => TyKind::RigidTy(RigidTy::FnDef(
                 tables.fn_def(*def_id),
-                generic_args.stable(tables, cx),
+                generic_args.no_bound_vars().unwrap().stable(tables, cx),
             )),
             ty::FnPtr(sig_tys, hdr) => {
                 TyKind::RigidTy(RigidTy::FnPtr(sig_tys.with(*hdr).stable(tables, cx)))
             }
             // FIXME(unsafe_binders):
-            ty::UnsafeBinder(_) => todo!(),
+            ty::UnsafeBinder(_) => unimplemented!(),
             ty::Dynamic(existential_predicates, region) => TyKind::RigidTy(RigidTy::Dynamic(
                 existential_predicates
                     .iter()
@@ -474,7 +480,9 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
                 tables.closure_def(*def_id),
                 generic_args.stable(tables, cx),
             )),
-            ty::CoroutineClosure(..) => todo!("FIXME(async_closures): Lower these to SMIR"),
+            ty::CoroutineClosure(..) => {
+                unimplemented!("FIXME(async_closures): Lower these to SMIR")
+            }
             ty::Coroutine(def_id, generic_args) => TyKind::RigidTy(RigidTy::Coroutine(
                 tables.coroutine_def(*def_id),
                 generic_args.stable(tables, cx),
@@ -483,7 +491,7 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
                 fields.iter().map(|ty| ty.stable(tables, cx)).collect(),
             )),
-            ty::Alias(alias_ty) => {
+            ty::Alias(_, alias_ty) => {
                 TyKind::Alias(alias_ty.kind.stable(tables, cx), alias_ty.stable(tables, cx))
             }
             ty::Param(param_ty) => TyKind::Param(param_ty.stable(tables, cx)),
@@ -548,16 +556,18 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
                 }
             }
             ty::ConstKind::Param(param) => crate::ty::TyConstKind::Param(param.stable(tables, cx)),
-            ty::ConstKind::Unevaluated(uv) => {
-                let Some(def_id) = uv.kind.opt_def_id() else {
-                    // FIXME: implement (both AliasTy and UnevaluatedConst will be needing this soon)
-                    panic!(
-                        "non-defid unevaluated constants are not supported by rustc_public at the moment"
-                    )
+            ty::ConstKind::Alias(_, alias_const) => {
+                // rustc_public must change its API once we introduce a variant without a def_id.
+                let def_id = match alias_const.kind {
+                    ty::AliasConstKind::Projection { def_id }
+                    | ty::AliasConstKind::InherentSelf { def_id }
+                    | ty::AliasConstKind::InherentImpl { def_id }
+                    | ty::AliasConstKind::Free { def_id }
+                    | ty::AliasConstKind::Anon { def_id } => def_id,
                 };
                 crate::ty::TyConstKind::Unevaluated(
                     tables.const_def(def_id),
-                    uv.args.stable(tables, cx),
+                    alias_const.args.stable(tables, cx),
                 )
             }
             ty::ConstKind::Error(_) => unreachable!(),
@@ -747,13 +757,6 @@ impl<'tcx> Stable<'tcx> for ty::PredicateKind<'tcx> {
             }
             PredicateKind::Ambiguous => crate::ty::PredicateKind::Ambiguous,
             PredicateKind::NormalizesTo(_pred) => unimplemented!(),
-            PredicateKind::AliasRelate(a, b, alias_relation_direction) => {
-                crate::ty::PredicateKind::AliasRelate(
-                    a.kind().stable(tables, cx),
-                    b.kind().stable(tables, cx),
-                    alias_relation_direction.stable(tables, cx),
-                )
-            }
         }
     }
 }
@@ -775,8 +778,8 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
                 crate::ty::ClauseKind::RegionOutlives(region_outlives.stable(tables, cx))
             }
             ClauseKind::TypeOutlives(type_outlives) => {
-                let ty::OutlivesPredicate::<_, _>(a, b) = type_outlives;
-                crate::ty::ClauseKind::TypeOutlives(crate::ty::OutlivesPredicate(
+                let ty::OutlivesClause::<_, _>(a, b) = type_outlives;
+                crate::ty::ClauseKind::TypeOutlives(crate::ty::OutlivesClause(
                     a.stable(tables, cx),
                     b.stable(tables, cx),
                 ))
@@ -795,10 +798,10 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
                 crate::ty::ClauseKind::ConstEvaluatable(const_.stable(tables, cx))
             }
             ClauseKind::HostEffect(..) => {
-                todo!()
+                unimplemented!()
             }
             ClauseKind::UnstableFeature(_) => {
-                todo!()
+                unimplemented!()
             }
         }
     }
@@ -843,60 +846,48 @@ impl<'tcx> Stable<'tcx> for ty::CoercePredicate<'tcx> {
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::AliasRelationDirection {
-    type T = crate::ty::AliasRelationDirection;
-
-    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        use rustc_middle::ty::AliasRelationDirection::*;
-        match self {
-            Equate => crate::ty::AliasRelationDirection::Equate,
-            Subtype => crate::ty::AliasRelationDirection::Subtype,
-        }
-    }
-}
-
-impl<'tcx> Stable<'tcx> for ty::TraitPredicate<'tcx> {
-    type T = crate::ty::TraitPredicate;
+impl<'tcx> Stable<'tcx> for ty::TraitClause<'tcx> {
+    type T = crate::ty::TraitClause;
 
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let ty::TraitPredicate { trait_ref, polarity } = self;
-        crate::ty::TraitPredicate {
+        let ty::TraitClause { trait_ref, polarity } = self;
+        crate::ty::TraitClause {
             trait_ref: trait_ref.stable(tables, cx),
             polarity: polarity.stable(tables, cx),
         }
     }
 }
 
-impl<'tcx, T> Stable<'tcx> for ty::OutlivesPredicate<'tcx, T>
+impl<'tcx, T> Stable<'tcx> for ty::OutlivesClause<'tcx, T>
 where
     T: Stable<'tcx>,
 {
-    type T = crate::ty::OutlivesPredicate<T::T, Region>;
+    type T = crate::ty::OutlivesClause<T::T, Region>;
 
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let ty::OutlivesPredicate(a, b) = self;
-        crate::ty::OutlivesPredicate(a.stable(tables, cx), b.stable(tables, cx))
+        let ty::OutlivesClause(a, b) = self;
+        crate::ty::OutlivesClause(a.stable(tables, cx), b.stable(tables, cx))
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::ProjectionPredicate<'tcx> {
-    type T = crate::ty::ProjectionPredicate;
+impl<'tcx> Stable<'tcx> for ty::ProjectionClause<'tcx> {
+    type T = crate::ty::ProjectionClause;
 
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let ty::ProjectionPredicate { projection_term, term } = self;
-        crate::ty::ProjectionPredicate {
+        let ty::ProjectionClause { projection_term, term } = self;
+        crate::ty::ProjectionClause {
             projection_term: projection_term.stable(tables, cx),
             term: term.kind().stable(tables, cx),
         }
@@ -911,19 +902,18 @@ impl<'tcx> Stable<'tcx> for ty::ImplPolarity {
         match self {
             Positive => crate::ty::ImplPolarity::Positive,
             Negative => crate::ty::ImplPolarity::Negative,
-            Reservation => crate::ty::ImplPolarity::Reservation,
         }
     }
 }
 
-impl<'tcx> Stable<'tcx> for ty::PredicatePolarity {
-    type T = crate::ty::PredicatePolarity;
+impl<'tcx> Stable<'tcx> for ty::ClausePolarity {
+    type T = crate::ty::ClausePolarity;
 
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        use rustc_middle::ty::PredicatePolarity::*;
+        use rustc_middle::ty::ClausePolarity::*;
         match self {
-            Positive => crate::ty::PredicatePolarity::Positive,
-            Negative => crate::ty::PredicatePolarity::Negative,
+            Positive => crate::ty::ClausePolarity::Positive,
+            Negative => crate::ty::ClausePolarity::Negative,
         }
     }
 }
@@ -987,21 +977,11 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
         let kind = match self.def {
             ty::InstanceKind::Item(..) => crate::mir::mono::InstanceKind::Item,
             ty::InstanceKind::Intrinsic(..) => crate::mir::mono::InstanceKind::Intrinsic,
+            ty::InstanceKind::LlvmIntrinsic(..) => crate::mir::mono::InstanceKind::LlvmIntrinsic,
             ty::InstanceKind::Virtual(_def_id, idx) => {
                 crate::mir::mono::InstanceKind::Virtual { idx }
             }
-            ty::InstanceKind::VTableShim(..)
-            | ty::InstanceKind::ReifyShim(..)
-            | ty::InstanceKind::FnPtrAddrShim(..)
-            | ty::InstanceKind::ClosureOnceShim { .. }
-            | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceKind::ThreadLocalShim(..)
-            | ty::InstanceKind::DropGlue(..)
-            | ty::InstanceKind::CloneShim(..)
-            | ty::InstanceKind::FnPtrShim(..)
-            | ty::InstanceKind::FutureDropPollShim(..)
-            | ty::InstanceKind::AsyncDropGlue(..)
-            | ty::InstanceKind::AsyncDropGlueCtorShim(..) => crate::mir::mono::InstanceKind::Shim,
+            ty::InstanceKind::Shim(..) => crate::mir::mono::InstanceKind::Shim,
         };
         crate::mir::mono::Instance { def, kind }
     }
@@ -1059,7 +1039,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
             ExternAbi::CmseNonSecureEntry => Abi::CCmseNonSecureEntry,
             ExternAbi::System { unwind } => Abi::System { unwind },
             ExternAbi::RustCall => Abi::RustCall,
-            ExternAbi::Unadjusted => Abi::Unadjusted,
+            ExternAbi::LlvmIntrinsic => Abi::LlvmIntrinsic,
             ExternAbi::RustCold => Abi::RustCold,
             ExternAbi::RustPreserveNone => Abi::RustPreserveNone,
             ExternAbi::RustTail => Abi::RustTail,
@@ -1072,7 +1052,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::ExternAbi {
     }
 }
 
-impl<'tcx> Stable<'tcx> for rustc_session::cstore::ForeignModule {
+impl<'tcx> Stable<'tcx> for rustc_crate_store::ForeignModule {
     type T = crate::ty::ForeignModule;
 
     fn stable<'cx>(

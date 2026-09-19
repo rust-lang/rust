@@ -1,11 +1,10 @@
 //@edition:2018
 
 #![warn(clippy::needless_splitn)]
-#![allow(clippy::iter_skip_next, clippy::iter_nth_zero, clippy::manual_split_once)]
+#![expect(clippy::iter_nth_zero, clippy::manual_split_once)]
 
 extern crate itertools;
 
-#[allow(unused_imports)]
 use itertools::Itertools;
 
 fn main() {

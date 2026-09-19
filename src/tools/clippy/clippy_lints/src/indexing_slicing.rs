@@ -5,9 +5,8 @@ use clippy_utils::ty::{deref_chain, get_adt_inherent_method};
 use clippy_utils::{higher, is_from_proc_macro, is_in_test, sym};
 use rustc_ast::ast::RangeLimits;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::{self, Ty};
-use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -245,7 +244,7 @@ fn to_const_range(cx: &LateContext<'_>, range: higher::Range<'_>, array_size: u1
     let e = range.end.map(|expr| ecx.eval(expr));
     let end = match e {
         Some(Some(Constant::Int(x))) => {
-            if range.limits == RangeLimits::Closed {
+            if range.ty.limits() == RangeLimits::Closed {
                 Some(x + 1)
             } else {
                 Some(x)
@@ -280,7 +279,7 @@ fn ty_has_applicable_get_function<'tcx>(
         && let generic_ty = option_generic_param.expect_ty().peel_refs()
         // FIXME: ideally this would handle type params and projections properly, for now just assume it's the same type
         && (cx.typeck_results().expr_ty(index_expr).peel_refs() == generic_ty.peel_refs()
-            || matches!(generic_ty.peel_refs().kind(), ty::Param(_) | ty::Alias(_)))
+            || matches!(generic_ty.peel_refs().kind(), ty::Param(_) | ty::Alias(_, _)))
     {
         true
     } else {

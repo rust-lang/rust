@@ -6,9 +6,11 @@
 // contains control flow.
 
 #![feature(abi_gpu_kernel)]
+#![feature(gpu_offload)]
 #![feature(rustc_attrs)]
-#![feature(core_intrinsics)]
 #![no_main]
+
+// CHECK: @.offload_sizes.[[K:[^ ]*foo]] = private unnamed_addr constant
 
 // CHECK: define{{( dso_local)?}} void @main()
 // CHECK-NOT: define
@@ -18,21 +20,20 @@
 // CHECK: br label %bb3
 // CHECK-NOT define
 // CHECK: bb3
-// CHECK: call void @__tgt_target_data_begin_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 1, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull @.offload_sizes.foo, ptr nonnull @.offload_maptypes.foo.begin, ptr null, ptr null)
-// CHECK: = call i32 @__tgt_target_kernel(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 256, i32 32, ptr nonnull @.foo.region_id, ptr nonnull %kernel_args)
-// CHECK-NEXT: call void @__tgt_target_data_end_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 1, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull @.offload_sizes.foo, ptr nonnull @.offload_maptypes.foo.end, ptr null, ptr null)
+// CHECK: call void @__tgt_target_data_begin_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 1, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull @.offload_sizes.[[K]], ptr nonnull @.offload_maptypes.[[K]].begin, ptr null, ptr null)
+// CHECK: = call i32 @__tgt_target_kernel(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 256, i32 32, ptr nonnull @.[[K]].region_id, ptr nonnull %kernel_args)
+// CHECK-NEXT: call void @__tgt_target_data_end_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 1, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull @.offload_sizes.[[K]], ptr nonnull @.offload_maptypes.[[K]].end, ptr null, ptr null)
 #[unsafe(no_mangle)]
 unsafe fn main() {
     let A = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
 
     for i in 0..100 {
-        core::intrinsics::offload::<_, _, ()>(
-            foo,
-            [256, 1, 1],
-            [32, 1, 1],
-            0,
-            (A.as_ptr() as *const [f32; 6],),
-        );
+        core::offload::offload! {
+            kernel = foo,
+            workgroup_dim = [256, 1, 1],
+            thread_dim = [32, 1, 1],
+            args = (A.as_ptr() as *const [f32; 6],),
+        }
     }
 }
 

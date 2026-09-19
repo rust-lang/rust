@@ -1,5 +1,5 @@
 //@ check-pass
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 //@ edition: 2021
 
 fn main() {

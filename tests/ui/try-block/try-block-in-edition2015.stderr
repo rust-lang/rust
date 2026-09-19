@@ -7,12 +7,13 @@ LL |
 LL |         let x = 5;
    |         ^^^ expected identifier, found keyword
 
-error[E0574]: expected struct, variant or union type, found macro `try`
+error[E0574]: cannot find struct, variant or union type `try` in this scope
   --> $DIR/try-block-in-edition2015.rs:4:33
    |
 LL |     let try_result: Option<_> = try {
-   |                                 ^^^ not a struct, variant or union type
+   |                                 ^^^ not found in this scope
    |
+   = note: a macro named `try` exists in another namespace
    = note: if you want the `try` keyword, you need Rust 2018 or later
 help: use `!` to invoke the macro
    |

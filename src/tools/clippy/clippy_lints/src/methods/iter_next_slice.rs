@@ -1,7 +1,7 @@
 use super::ITER_NEXT_SLICE;
 use super::utils::derefs_to_slice;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{get_parent_expr, higher};
 use rustc_ast::ast;
@@ -38,9 +38,10 @@ pub(super) fn check<'tcx>(
             && let Some(higher::Range {
                 start: Some(start_expr),
                 end: None,
-                limits: ast::RangeLimits::HalfOpen,
+                ty: range_ty,
                 span: _,
             }) = higher::Range::hir(cx, index_expr)
+            && let ast::RangeLimits::HalfOpen = range_ty.limits()
             && let hir::ExprKind::Lit(start_lit) = &start_expr.kind
             && let ast::LitKind::Int(start_idx, _) = start_lit.node
         {

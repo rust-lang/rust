@@ -1,0 +1,4 @@
+break tests/ui/cli_next_same_line_call.rs:4
+continue
+next
+quit

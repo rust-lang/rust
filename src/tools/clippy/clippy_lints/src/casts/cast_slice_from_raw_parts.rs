@@ -35,6 +35,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
         && let ctxt = expr.span.ctxt()
         && cast_expr.span.ctxt() == ctxt
         && msrv.meets(cx, msrvs::PTR_SLICE_RAW_PARTS)
+        && !expr.span.in_external_macro(cx.tcx.sess.source_map())
     {
         let func = match rpk {
             RawPartsKind::Immutable => "from_raw_parts",

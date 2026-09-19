@@ -3,18 +3,17 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::higher::If;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
-use clippy_utils::{eq_expr_value, is_in_const_context, peel_blocks, peel_blocks_with_stmt, sym};
-use itertools::Itertools;
+use clippy_utils::{eq_expr_value, is_in_const_context, is_integer_literal, peel_blocks, peel_blocks_with_stmt, sym};
+use itertools::Itertools as _;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::Res;
 use rustc_hir::{Arm, BinOpKind, Block, Expr, ExprKind, HirId, PatKind, PathSegment, PrimTy, QPath, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::Ty;
-use rustc_session::impl_lint_pass;
 use rustc_span::{Span, SyntaxContext};
 use std::cmp::Ordering;
 use std::ops::Deref;
@@ -97,7 +96,7 @@ pub struct ManualClamp {
 
 impl ManualClamp {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -140,7 +139,13 @@ struct InputMinMax<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for ManualClamp {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if !expr.span.from_expansion() && !is_in_const_context(cx) {
+        // Cheap kind check before the costlier const context query.
+        if matches!(
+            expr.kind,
+            ExprKind::If(..) | ExprKind::Match(..) | ExprKind::MethodCall(..) | ExprKind::Call(..)
+        ) && !expr.span.from_expansion()
+            && !is_in_const_context(cx)
+        {
             let suggestion = is_if_elseif_else_pattern(cx, expr)
                 .or_else(|| is_max_min_pattern(cx, expr))
                 .or_else(|| is_call_max_min_pattern(cx, expr))
@@ -155,6 +160,15 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
     }
 
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
+        // Cheap `if`-statement check before the costlier const context query.
+        if !block
+            .stmts
+            .iter()
+            .any(|stmt| matches!(stmt.kind, StmtKind::Expr(e) if matches!(e.kind, ExprKind::If(..))))
+        {
+            return;
+        }
+
         if is_in_const_context(cx) || !self.msrv.meets(cx, msrvs::CLAMP) {
             return;
         }
@@ -293,18 +307,19 @@ fn is_if_elseif_else_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
 /// ```
 fn is_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<ClampSuggestion<'tcx>> {
     if let ExprKind::MethodCall(seg_second, receiver, [arg_second], _) = expr.kind
+        && let ExprKind::MethodCall(seg_first, input, [arg_first], _) = &receiver.kind
+        // Match method names before the costlier type queries.
+        && let Some((min, max)) = match (seg_first.ident.name, seg_second.ident.name) {
+            (sym::min, sym::max) => Some((arg_second, arg_first)),
+            (sym::max, sym::min) => Some((arg_first, arg_second)),
+            _ => None,
+        }
         && (cx.typeck_results().expr_ty_adjusted(receiver).is_floating_point()
             || cx.ty_based_def(expr).assoc_fn_parent(cx).is_diag_item(cx, sym::Ord))
-        && let ExprKind::MethodCall(seg_first, input, [arg_first], _) = &receiver.kind
         && (cx.typeck_results().expr_ty_adjusted(input).is_floating_point()
             || cx.ty_based_def(receiver).assoc_fn_parent(cx).is_diag_item(cx, sym::Ord))
     {
         let is_float = cx.typeck_results().expr_ty_adjusted(input).is_floating_point();
-        let (min, max) = match (seg_first.ident.name, seg_second.ident.name) {
-            (sym::min, sym::max) => (arg_second, arg_first),
-            (sym::max, sym::min) => (arg_first, arg_second),
-            _ => return None,
-        };
         Some(ClampSuggestion {
             params: InputMinMax {
                 input,
@@ -367,12 +382,16 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
             && let Some(inner_seg) = segment(cx, inner_fn)
             && let Some(outer_seg) = segment(cx, outer_fn)
         {
-            let (input, inner_arg) = match (is_const_evaluatable(cx, first), is_const_evaluatable(cx, second)) {
+            let typeck = cx.typeck_results();
+            let (input, inner_arg) = match (
+                is_const_evaluatable(cx.tcx, typeck, first),
+                is_const_evaluatable(cx.tcx, typeck, second),
+            ) {
                 (true, false) => (second, first),
                 (false, true) => (first, second),
                 _ => return None,
             };
-            let is_float = cx.typeck_results().expr_ty_adjusted(input).is_floating_point();
+            let is_float = typeck.expr_ty_adjusted(input).is_floating_point();
             let (min, max) = match (inner_seg, outer_seg) {
                 (FunctionType::CmpMin, FunctionType::CmpMax) => (outer_arg, inner_arg),
                 (FunctionType::CmpMax, FunctionType::CmpMin) => (inner_arg, outer_arg),
@@ -625,8 +644,8 @@ impl<'tcx> BinaryOp<'tcx> {
 ///
 ///     - Which can appear on the left or right side of either statement
 ///
-///     - The binary operators must define a finite range for the shared argument. To put this in
-///       the terms of Rust `std` library, the following ranges are acceptable
+///     - The binary operators must define a finite range for the shared argument. To put this in the terms of Rust
+///       `std` library, the following ranges are acceptable
 ///
 ///         - `Range`
 ///         - `RangeInclusive`
@@ -634,8 +653,8 @@ impl<'tcx> BinaryOp<'tcx> {
 ///       And all other range types are not accepted. For the purposes of `clamp` it's irrelevant
 ///       whether the range is inclusive or not, the output is the same.
 ///
-/// - The result of each if statement must be equal to the argument unique to that if statement. The
-///   result can not be the shared argument in either case.
+/// - The result of each if statement must be equal to the argument unique to that if statement. The result can not be
+///   the shared argument in either case.
 fn is_clamp_meta_pattern<'tcx>(
     cx: &LateContext<'tcx>,
     ctxt: SyntaxContext,
@@ -698,6 +717,9 @@ fn is_clamp_meta_pattern<'tcx>(
     if exprs.iter().any(|e| peel_blocks(e).can_have_side_effects()) {
         return None;
     }
+    let first_bin = try_normalize_unsigned_eq_to_ord(cx, first_bin, first_expr).unwrap_or(*first_bin);
+    let second_bin = try_normalize_unsigned_eq_to_ord(cx, second_bin, second_expr).unwrap_or(*second_bin);
+    let (first_bin, second_bin) = (&first_bin, &second_bin);
     if !(is_ord_op(first_bin.op) && is_ord_op(second_bin.op)) {
         return None;
     }
@@ -749,6 +771,47 @@ fn block_stmt_with_last<'tcx>(block: &'tcx Block<'tcx>) -> impl Iterator<Item = 
 
 fn is_ord_op(op: BinOpKind) -> bool {
     matches!(op, BinOpKind::Ge | BinOpKind::Gt | BinOpKind::Le | BinOpKind::Lt)
+}
+
+/// For unsigned integer types, `x == 0` is equivalent to `x < 1`. This normalizes such `==`
+/// comparisons to `<` when the result expression evaluates to 1, enabling clamp detection for
+/// patterns like:
+///
+/// ```ignore
+/// if x == 0 { x = 1; } else if x > y { x = y; }
+/// ```
+fn try_normalize_unsigned_eq_to_ord<'tcx>(
+    cx: &LateContext<'tcx>,
+    bin: &BinaryOp<'tcx>,
+    result_expr: &'tcx Expr<'tcx>,
+) -> Option<BinaryOp<'tcx>> {
+    if bin.op != BinOpKind::Eq {
+        return None;
+    }
+
+    // both sides of the expression have the same type, so checking either of them is sufficient
+    if !matches!(cx.typeck_results().expr_ty(bin.left).kind(), rustc_middle::ty::Uint(_)) {
+        return None;
+    }
+
+    // Handles both `x == 0` and the Yoda notation `0 == x`.
+    let input = if is_integer_literal(bin.right, 0) {
+        bin.left
+    } else if is_integer_literal(bin.left, 0) {
+        bin.right
+    } else {
+        return None;
+    };
+
+    if is_integer_literal(result_expr, 1) {
+        Some(BinaryOp {
+            op: BinOpKind::Lt,
+            left: input,
+            right: result_expr,
+        })
+    } else {
+        None
+    }
 }
 
 /// Really similar to Cow, but doesn't have a `Clone` requirement.

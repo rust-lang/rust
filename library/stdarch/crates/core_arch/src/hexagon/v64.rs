@@ -1,3 +1,4 @@
+// This code is automatically generated. DO NOT MODIFY.
 //! Hexagon HVX 64-byte vector mode intrinsics
 //!
 //! This module provides intrinsics for the Hexagon Vector Extensions (HVX)
@@ -74,7 +75,7 @@ types! {
 
 // LLVM intrinsic declarations for 64-byte vector mode
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.hexagon.V6.extractw"]
     fn extractw(_: HvxVector, _: i32) -> i32;
     #[link_name = "llvm.hexagon.V6.get.qfext"]

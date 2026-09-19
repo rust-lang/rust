@@ -30,8 +30,8 @@ use crate::{
 
 pub(crate) fn handle_cancel(state: &mut GlobalState, params: CancelParams) -> anyhow::Result<()> {
     let id: lsp_server::RequestId = match params.id {
-        lsp_types::NumberOrString::Number(id) => id.into(),
-        lsp_types::NumberOrString::String(id) => id.into(),
+        lsp_types::Id::Int(id) => id.into(),
+        lsp_types::Id::String(id) => id.into(),
     };
     state.cancel(id);
     Ok(())
@@ -41,7 +41,7 @@ pub(crate) fn handle_work_done_progress_cancel(
     state: &mut GlobalState,
     params: WorkDoneProgressCancelParams,
 ) -> anyhow::Result<()> {
-    if let lsp_types::NumberOrString::String(s) = &params.token
+    if let lsp_types::ProgressToken::String(s) = &params.token
         && let Some(id) = s.strip_prefix("rust-analyzer/flycheck/")
         && let Ok(id) = id.parse::<u32>()
         && let Some(flycheck) = state.flycheck.get(id as usize)
@@ -84,8 +84,12 @@ pub(crate) fn handle_did_open_text_document(
             return Ok(());
         }
 
-        let contents = params.text_document.text.into_bytes();
-        state.vfs.write().0.set_file_contents(path, Some(contents));
+        // Library files are immutable: the client never becomes authoritative over their
+        // contents, disk is the truth.
+        if !state.source_root_config.path_is_library(&path) {
+            let contents = params.text_document.text.into_bytes();
+            state.vfs.write().0.set_file_contents(path, Some(contents));
+        }
         if state.config.discover_workspace_config().is_some() {
             tracing::debug!("queuing task");
             let _ = state
@@ -103,7 +107,7 @@ pub(crate) fn handle_did_change_text_document(
 ) -> anyhow::Result<()> {
     let _p = tracing::info_span!("handle_did_change_text_document").entered();
 
-    if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
+    if let Ok(path) = from_proto::vfs_path(&params.text_document.text_document_identifier.uri) {
         let Some(DocumentData { version, data }) = state.mem_docs.get_mut(&path) else {
             tracing::error!(?path, "unexpected DidChangeTextDocument");
             return Ok(());
@@ -120,7 +124,10 @@ pub(crate) fn handle_did_change_text_document(
         .into_bytes();
         if *data != new_contents {
             data.clone_from(&new_contents);
-            state.vfs.write().0.set_file_contents(path, Some(new_contents));
+            // Library files are immutable, changes to them are ignored.
+            if !state.source_root_config.path_is_library(&path) {
+                state.vfs.write().0.set_file_contents(path, Some(new_contents));
+            }
         }
     }
     Ok(())
@@ -156,6 +163,14 @@ pub(crate) fn handle_did_save_text_document(
     params: DidSaveTextDocumentParams,
 ) -> anyhow::Result<()> {
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
+        // Library files are immutable and not watched, so the save is the only chance to
+        // pick up the changed disk contents.
+        if state.source_root_config.path_is_library(&vfs_path)
+            && let Some(path) = vfs_path.as_path()
+        {
+            state.loader.handle.invalidate(path.to_path_buf());
+        }
+
         let snap = state.snapshot();
         let file_id = try_default!(snap.vfs_path_to_file_id(&vfs_path)?);
         let sr = snap.analysis.source_root_id(file_id)?;
@@ -215,7 +230,7 @@ pub(crate) fn handle_did_change_configuration(
 ) -> anyhow::Result<()> {
     // As stated in https://github.com/microsoft/language-server-protocol/issues/676,
     // this notification's parameters should be ignored and the actual config queried separately.
-    state.send_request::<lsp_types::request::WorkspaceConfiguration>(
+    state.send_request::<lsp_types::ConfigurationRequest>(
         lsp_types::ConfigurationParams {
             items: vec![lsp_types::ConfigurationItem {
                 scope_uri: None,
@@ -331,12 +346,10 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                         // have this problem. Remove the line below when triomphe::Arc has an UnwindSafe impl
                         // like std::sync::Arc's.
                         let world = world;
-                        stdx::always!(
-                            world.flycheck.len() == 1,
-                            "should have exactly one flycheck handle when invocation strategy is once"
-                        );
                         let saved_file = vfs_path.as_path().map(ToOwned::to_owned);
-                        world.flycheck[0].restart_workspace(saved_file);
+                        if let Some(flycheck) = world.flycheck.first() {
+                            flycheck.restart_workspace(saved_file);
+                        }
                         Ok(())
                     })
                 }
@@ -553,7 +566,7 @@ pub(crate) fn handle_run_flycheck(
 
 pub(crate) fn handle_abort_run_test(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
     if state.test_run_session.take().is_some() {
-        state.send_notification::<lsp_ext::EndRunTest>(());
+        state.send_notification::<lsp_ext::EndRunTestNotification>(());
     }
     Ok(())
 }

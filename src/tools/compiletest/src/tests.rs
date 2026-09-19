@@ -1,4 +1,6 @@
-use crate::debuggers::{extract_gdb_version, extract_lldb_version};
+use semver::Version;
+
+use crate::debuggers::{LldbVersion, extract_gdb_version, extract_lldb_version};
 use crate::is_test;
 
 #[test]
@@ -48,12 +50,18 @@ fn test_extract_gdb_version() {
 #[test]
 fn test_extract_lldb_version() {
     // Apple variants
-    assert_eq!(extract_lldb_version("LLDB-179.5"), Some(179));
-    assert_eq!(extract_lldb_version("lldb-300.2.51"), Some(300));
+    assert_eq!(extract_lldb_version("LLDB-179.5"), Some(LldbVersion::Apple([179, 5, 0, 0])));
+    assert_eq!(extract_lldb_version("lldb-300.2.51"), Some(LldbVersion::Apple([300, 2, 51, 0])));
 
     // Upstream versions
-    assert_eq!(extract_lldb_version("lldb version 6.0.1"), Some(600));
-    assert_eq!(extract_lldb_version("lldb version 9.0.0"), Some(900));
+    assert_eq!(
+        extract_lldb_version("lldb version 6.0.1"),
+        Some(LldbVersion::Llvm(Version::new(6, 0, 1)))
+    );
+    assert_eq!(
+        extract_lldb_version("lldb version 9.0.0"),
+        Some(LldbVersion::Llvm(Version::new(9, 0, 0)))
+    );
 }
 
 #[test]

@@ -2,7 +2,6 @@
 //@ aux-crate:dep=must_use_result_unit_uninhabited_extern_crate.rs
 
 #![deny(unused_must_use)]
-#![feature(never_type)]
 
 use core::ops::{ControlFlow, ControlFlow::Continue};
 use dep::{MyUninhabited, MyUninhabitedNonexhaustive};

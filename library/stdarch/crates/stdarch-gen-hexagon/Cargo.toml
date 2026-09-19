@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 regex = "1.10"
+stdarch-gen-common = { path = "../stdarch-gen-common" }

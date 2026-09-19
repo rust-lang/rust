@@ -1,10 +1,10 @@
-error: `#[repr(packed)]` attribute cannot be used on enums
-  --> $DIR/thaw-validate-invalid-enum.rs:3:1
+error: the `repr(packed)` attribute cannot be used on enums
+  --> $DIR/thaw-validate-invalid-enum.rs:3:3
    |
 LL | #[repr(packed)]
-   | ^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^
    |
-   = help: `#[repr(packed)]` can be applied to structs and unions
+   = help: the `repr(packed)` attribute can be applied to structs and unions
 
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
   --> $DIR/thaw-validate-invalid-enum.rs:14:9

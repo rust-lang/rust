@@ -1,4 +1,5 @@
 use stdx::trim_indent;
+use syntax::ast::syntax_factory::SyntaxFactory;
 use test_fixture::WithFixture;
 use test_utils::{CURSOR_MARKER, assert_eq_text};
 
@@ -1430,7 +1431,8 @@ fn check_merge_only_fail(ra_fixture0: &str, ra_fixture1: &str, mb: MergeBehavior
         .find_map(ast::Use::cast)
         .unwrap();
 
-    let result = try_merge_imports(&use0, &use1, mb);
+    let make = SyntaxFactory::without_mappings();
+    let result = try_merge_imports(&make, &use0, &use1, mb);
     assert_eq!(result.map(|u| u.to_string()), None);
 }
 
@@ -1495,7 +1497,8 @@ fn check_merge(ra_fixture0: &str, ra_fixture1: &str, last: &str, mb: MergeBehavi
         .find_map(ast::Use::cast)
         .unwrap();
 
-    let result = try_merge_imports(&use0, &use1, mb);
+    let make = SyntaxFactory::without_mappings();
+    let result = try_merge_imports(&make, &use0, &use1, mb);
     assert_eq!(result.map(|u| u.to_string().trim().to_owned()), Some(last.trim().to_owned()));
 }
 
@@ -1525,7 +1528,8 @@ fn merge_gated_imports_with_different_values() {
         .find_map(ast::Use::cast)
         .unwrap();
 
-    let result = try_merge_imports(&use0, &use1, MergeBehavior::Crate);
+    let make = SyntaxFactory::without_mappings();
+    let result = try_merge_imports(&make, &use0, &use1, MergeBehavior::Crate);
     assert_eq!(result, None);
 }
 

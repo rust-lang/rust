@@ -1,7 +1,6 @@
 use super::needless_pass_by_value::requires_exact_signature;
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::source::HasSession as _;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{inherits_cfg, is_from_proc_macro, is_self};
 use core::ops::ControlFlow;
@@ -14,10 +13,9 @@ use rustc_hir::{
     PatKind,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarId, UpvarPath};
-use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
 use rustc_span::{BytePos, Span};
@@ -207,7 +205,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             // We retrieve all the closures declared in the function because they will not be found
             // by `euv::Delegate`.
             let mut closures: FxIndexSet<LocalDefId> = FxIndexSet::default();
-            for_each_expr(cx, body, |expr| {
+            for_each_expr(cx.tcx, body, |expr| {
                 if let ExprKind::Closure(closure) = expr.kind {
                     closures.insert(closure.def_id);
                 }
@@ -269,7 +267,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                 // If the argument is never used mutably, we emit the warning.
                 let sp = input.span;
                 if let rustc_hir::TyKind::Ref(_, inner_ty) = input.kind {
-                    let Some(after_mut_span) = cx.sess().source_map().span_extend_to_prev_str(
+                    let Some(after_mut_span) = cx.tcx.sess.source_map().span_extend_to_prev_str(
                         inner_ty.ty.span.shrink_to_lo(),
                         "mut",
                         true,

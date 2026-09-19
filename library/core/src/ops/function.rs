@@ -1,5 +1,5 @@
 use crate::marker::Tuple;
-
+use crate::ptr::NonNull;
 /// The version of the call operator that takes an immutable receiver.
 ///
 /// Instances of `Fn` can be called repeatedly without mutating state.
@@ -67,7 +67,7 @@ use crate::marker::Tuple;
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected a `{This:resolved}` closure, found `{Self}`",
+    message = "expected an `{This:resolved}` closure, found `{Self}`",
     label = "expected an `{This:resolved}` closure, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
@@ -154,7 +154,7 @@ pub const trait Fn<Args: Tuple>: [const] FnMut<Args> {
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected a `{This:resolved}` closure, found `{Self}`",
+    message = "expected an `{This:resolved}` closure, found `{Self}`",
     label = "expected an `{This:resolved}` closure, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
@@ -233,7 +233,7 @@ pub const trait FnMut<Args: Tuple>: FnOnce<Args> {
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected a `{This:resolved}` closure, found `{Self}`",
+    message = "expected an `{This:resolved}` closure, found `{Self}`",
     label = "expected an `{This:resolved}` closure, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
@@ -310,4 +310,41 @@ mod impls {
             (*self).call_mut(args)
         }
     }
+}
+
+unsafe extern "C" {
+    /// A type representing a pointer to a function pointer.
+    #[unstable(feature = "fn_static", issue = "148768")]
+    #[lang = "code"]
+    pub type Code;
+}
+
+/// A common trait implemented by all function pointers.
+#[unstable(feature = "fn_static", issue = "148768")]
+#[lang = "fn_ptr_trait"]
+#[fundamental]
+#[rustc_deny_explicit_impl]
+#[rustc_dyn_incompatible_trait]
+pub trait FnPtr: Copy {
+    /// Returns the address of the function pointer.
+    #[unstable(feature = "fn_static", issue = "148768")]
+    fn addr(self) -> usize {
+        self.as_ptr().addr().get()
+    }
+
+    /// Returns the function pointer as a [`NonNull<Code>`].
+    #[unstable(feature = "fn_static", issue = "148768")]
+    #[lang = "fn_ptr_as_ptr"]
+    fn as_ptr(self) -> NonNull<Code>;
+
+    /// Constructs a function pointer from a `NonNull` pointer.
+    ///
+    /// # Safety
+    ///
+    /// The function pointer must have been obtained
+    /// from an [`FnPtr::as_ptr`] call from a function
+    /// pointer type that is ABI compatible.
+    #[unstable(feature = "fn_static", issue = "148768")]
+    #[lang = "fn_ptr_from_ptr"]
+    unsafe fn from_ptr(ptr: NonNull<Code>) -> Self;
 }

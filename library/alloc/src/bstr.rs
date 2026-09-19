@@ -12,7 +12,7 @@ use core::ops::{
     Deref, DerefMut, DerefPure, Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive,
     RangeTo, RangeToInclusive,
 };
-use core::str::FromStr;
+use core::str::{FromStr, Utf8Error};
 use core::{fmt, hash};
 
 use crate::borrow::{Cow, ToOwned};
@@ -42,7 +42,7 @@ use crate::vec::Vec;
 /// showing invalid UTF-8 as hex escapes or the Unicode replacement character, respectively.
 #[unstable(feature = "bstr", issue = "134915")]
 #[repr(transparent)]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 #[doc(alias = "BString")]
 pub struct ByteString(pub Vec<u8>);
 
@@ -60,6 +60,24 @@ impl ByteString {
     #[inline]
     pub(crate) fn as_mut_bytestr(&mut self) -> &mut ByteStr {
         ByteStr::from_bytes_mut(&mut self.0)
+    }
+    /// Try to get a `String` representation of the `&ByteString`, if it is
+    /// valid UTF-8.
+    ///
+    /// This method is named `to_string()` because we want `ByteString` to
+    /// implement `Display`, but the `ToString` trait has a blanket
+    /// implementation for types that implement `Display`, and the trait version
+    /// will use the Unicode replacement character rather than returning a
+    /// `Result` and allowing for the possibility of the content not being UTF-8.
+    #[unstable(feature = "bstr_to_string", issue = "134915")]
+    #[rustc_allow_incoherent_impl]
+    pub fn to_string(&self) -> Result<String, Utf8Error> {
+        // Avoid allocating a copy of the contents for invalid UTF-8
+        if let Err(e) = str::from_utf8(&self.0) {
+            return Err(e);
+        }
+        // SAFETY: we just checked that the contents are valid UTF-8
+        Ok(unsafe { String::from_utf8_unchecked(self.0.clone()) })
     }
 }
 
@@ -92,7 +110,7 @@ impl fmt::Debug for ByteString {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
+#[unstable(feature = "bstr_to_string", issue = "134915")]
 impl fmt::Display for ByteString {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -168,13 +186,6 @@ impl BorrowMut<ByteStr> for ByteString {
 }
 
 // `impl BorrowMut<ByteStr> for Vec<u8>` omitted to avoid inference failures
-
-#[unstable(feature = "bstr", issue = "134915")]
-impl Default for ByteString {
-    fn default() -> Self {
-        ByteString(Vec::new())
-    }
-}
 
 // Omitted due to inference failures
 //
@@ -263,7 +274,7 @@ impl<'a> From<&'a ByteString> for Cow<'a, ByteStr> {
 #[unstable(feature = "bstr", issue = "134915")]
 impl FromIterator<char> for ByteString {
     #[inline]
-    fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
+    fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> Self {
         ByteString(iter.into_iter().collect::<String>().into_bytes())
     }
 }
@@ -271,7 +282,7 @@ impl FromIterator<char> for ByteString {
 #[unstable(feature = "bstr", issue = "134915")]
 impl FromIterator<u8> for ByteString {
     #[inline]
-    fn from_iter<T: IntoIterator<Item = u8>>(iter: T) -> Self {
+    fn from_iter<I: IntoIterator<Item = u8>>(iter: I) -> Self {
         ByteString(iter.into_iter().collect())
     }
 }
@@ -279,7 +290,7 @@ impl FromIterator<u8> for ByteString {
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> FromIterator<&'a str> for ByteString {
     #[inline]
-    fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
+    fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> Self {
         ByteString(iter.into_iter().collect::<String>().into_bytes())
     }
 }
@@ -287,7 +298,7 @@ impl<'a> FromIterator<&'a str> for ByteString {
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> FromIterator<&'a [u8]> for ByteString {
     #[inline]
-    fn from_iter<T: IntoIterator<Item = &'a [u8]>>(iter: T) -> Self {
+    fn from_iter<I: IntoIterator<Item = &'a [u8]>>(iter: I) -> Self {
         let mut buf = Vec::new();
         for b in iter {
             buf.extend_from_slice(b);
@@ -299,7 +310,7 @@ impl<'a> FromIterator<&'a [u8]> for ByteString {
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> FromIterator<&'a ByteStr> for ByteString {
     #[inline]
-    fn from_iter<T: IntoIterator<Item = &'a ByteStr>>(iter: T) -> Self {
+    fn from_iter<I: IntoIterator<Item = &'a ByteStr>>(iter: I) -> Self {
         let mut buf = Vec::new();
         for b in iter {
             buf.extend_from_slice(&b.0);
@@ -311,7 +322,7 @@ impl<'a> FromIterator<&'a ByteStr> for ByteString {
 #[unstable(feature = "bstr", issue = "134915")]
 impl FromIterator<ByteString> for ByteString {
     #[inline]
-    fn from_iter<T: IntoIterator<Item = ByteString>>(iter: T) -> Self {
+    fn from_iter<I: IntoIterator<Item = ByteString>>(iter: I) -> Self {
         let mut buf = Vec::new();
         for mut b in iter {
             buf.append(&mut b.0);
@@ -322,10 +333,10 @@ impl FromIterator<ByteString> for ByteString {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl FromStr for ByteString {
-    type Err = core::convert::Infallible;
+    type Err = !;
 
     #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, !> {
         Ok(ByteString(s.as_bytes().to_vec()))
     }
 }
@@ -674,5 +685,26 @@ impl<'a> TryFrom<&'a ByteStr> for String {
     #[inline]
     fn try_from(s: &'a ByteStr) -> Result<Self, Self::Error> {
         Ok(core::str::from_utf8(&s.0)?.into())
+    }
+}
+
+impl ByteStr {
+    /// Try to get a `String` representation of the `&ByteStr`, if it is valid
+    /// UTF-8.
+    ///
+    /// This method is named `to_string()` because we want `ByteStr` to
+    /// implement `Display`, but the `ToString` trait has a blanket
+    /// implementation for types that implement `Display`, and the trait version
+    /// will use the Unicode replacement character rather than returning a
+    /// `Result` and allowing for the possibility of the content not being UTF-8.
+    #[unstable(feature = "bstr_to_string", issue = "134915")]
+    #[rustc_allow_incoherent_impl]
+    pub fn to_string(&self) -> Result<String, Utf8Error> {
+        // Avoid allocating a copy of the contents for invalid UTF-8
+        if let Err(e) = str::from_utf8(&self.0) {
+            return Err(e);
+        }
+        // SAFETY: we just checked that the contents are valid UTF-8
+        Ok(unsafe { String::from_utf8_unchecked(self.0.to_vec()) })
     }
 }

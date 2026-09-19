@@ -1,30 +1,30 @@
 #![feature(diagnostic_on_type_error)]
 
 #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
-//~^ WARN `#[diagnostic::on_type_error]` can only be applied to enums, structs or unions
+//~^ WARN cannot be used on
 fn function() {}
 
 #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
-//~^ WARN `#[diagnostic::on_type_error]` can only be applied to enums, structs or unions
+//~^ WARN cannot be used on
 static STATIC: i32 = 0;
 
 #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
-//~^ WARN `#[diagnostic::on_type_error]` can only be applied to enums, structs or unions
+//~^ WARN cannot be used on
 mod module {}
 
 #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
-//~^ WARN `#[diagnostic::on_type_error]` can only be applied to enums, structs or unions
+//~^ WARN cannot be used on
 trait Trait {}
 
 #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
-//~^ WARN `#[diagnostic::on_type_error]` can only be applied to enums, structs or unions
+//~^ WARN cannot be used on
 type TypeAlias = i32;
 
 struct SomeStruct;
 
 impl SomeStruct {
     #[diagnostic::on_type_error(note = "custom on_type_error note: not an ADT")]
-    //~^ WARN `#[diagnostic::on_type_error]` can only be applied to enums, structs or unions
+    //~^ WARN cannot be used on
     fn method() {}
 }
 

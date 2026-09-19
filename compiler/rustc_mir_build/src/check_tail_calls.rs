@@ -1,16 +1,14 @@
 use rustc_abi::ExternAbi;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::span_bug;
 use rustc_middle::thir::visit::{self, Visitor};
 use rustc_middle::thir::{BodyTy, Expr, ExprId, ExprKind, Thir};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Span, span_bug};
 
 pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let (thir, expr) = tcx.thir_body(def)?;
@@ -27,8 +25,7 @@ pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), E
         tcx,
         thir,
         found_errors: Ok(()),
-        // FIXME(#132279): we're clearly in a body here.
-        typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
+        typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def),
         is_closure,
         caller_def_id: def,
     };
@@ -95,6 +92,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         }
 
         if let &ty::FnDef(did, args) = ty.kind() {
+            let args = args.no_bound_vars().unwrap();
             // Closures in thir look something akin to
             // `for<'a> extern "rust-call" fn(&'a [closure@...], ()) -> <[closure@...] as FnOnce<()>>::Output {<[closure@...] as Fn<()>>::call}`
             // So we have to check for them in this weird way...
@@ -147,7 +145,9 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         // ```
         // we should think what is the expected behavior here.
         // (we should probably just accept this by revealing opaques?)
-        if caller_sig.inputs_and_output != callee_sig.inputs_and_output {
+        if caller_sig.inputs_and_output != callee_sig.inputs_and_output
+            && !matches!(callee_sig.abi(), ExternAbi::RustTail)
+        {
             let caller_ty = self.tcx.type_of(self.caller_def_id).skip_binder();
 
             self.report_signature_mismatch(
@@ -188,6 +188,12 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
 
         if callee_sig.c_variadic() {
             self.report_c_variadic_callee(expr.span);
+        }
+
+        for &arg_ty in callee_sig.inputs() {
+            if !arg_ty.is_sized(self.tcx, self.typing_env) {
+                self.report_unsized_argument(expr.span, arg_ty);
+            }
         }
     }
 
@@ -417,6 +423,17 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
 
         self.found_errors = Err(err);
     }
+
+    fn report_unsized_argument(&mut self, sp: Span, arg_ty: Ty<'tcx>) {
+        let err = self
+            .tcx
+            .dcx()
+            .struct_span_err(sp, format!("unsized arguments cannot be used in a tail call"))
+            .with_note(format!("unsized argument of type `{arg_ty}`"))
+            .emit();
+
+        self.found_errors = Err(err);
+    }
 }
 
 impl<'a, 'tcx> Visitor<'a, 'tcx> for TailCallCkVisitor<'a, 'tcx> {
@@ -425,14 +442,12 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for TailCallCkVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'a Expr<'tcx>) {
-        ensure_sufficient_stack(|| {
-            if let ExprKind::Become { value } = expr.kind {
-                let call = &self.thir[value];
-                self.check_tail_call(call, expr);
-            }
+        if let ExprKind::Become { value } = expr.kind {
+            let call = &self.thir[value];
+            self.check_tail_call(call, expr);
+        }
 
-            visit::walk_expr(self, expr);
-        });
+        visit::walk_expr(self, expr);
     }
 }
 

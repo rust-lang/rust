@@ -12,14 +12,14 @@ struct PersonWithAge {
 
 fn main() {
     let wilfred = PersonOnlyName("Name1".to_owned());
-    //~^ ERROR expected function, tuple struct or tuple variant, found struct `PersonOnlyName` [E0423]
+    //~^ ERROR cannot find function, tuple struct or tuple variant `PersonOnlyName` in this scope [E0423]
 
-    let bill = PersonWithAge( //~ ERROR expected function, tuple struct or tuple variant, found struct `PersonWithAge` [E0423]
+    let bill = PersonWithAge( //~ ERROR cannot find function, tuple struct or tuple variant `PersonWithAge` in this scope [E0423]
         "Name2".to_owned(),
         20,
         180,
     );
 
     let person = PersonWithAge("Name3".to_owned());
-    //~^ ERROR expected function, tuple struct or tuple variant, found struct `PersonWithAge` [E0423]
+    //~^ ERROR cannot find function, tuple struct or tuple variant `PersonWithAge` in this scope [E0423]
 }

@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::ref_patterns)]
 
 fn use_in_pattern() {
@@ -18,5 +17,15 @@ fn use_in_binding() {
 
 fn use_in_parameter(ref x: i32) {}
 //~^ ref_patterns
+
+struct Foo {}
+
+// shouldn't trigger the lint
+#[automatically_derived]
+impl Foo {
+    fn foo() {
+        if let Some(ref x) = Some(1) {}
+    }
+}
 
 fn main() {}

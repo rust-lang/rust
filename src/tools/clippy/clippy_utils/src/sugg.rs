@@ -14,7 +14,7 @@ use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::{FakeReadCause, Mutability};
 use rustc_middle::ty;
-use rustc_span::{BytePos, CharPos, Pos, Span, SyntaxContext};
+use rustc_span::{BytePos, CharPos, Pos as _, Span, SyntaxContext};
 use std::borrow::Cow;
 use std::fmt::{self, Display, Write as _};
 use std::ops::{Add, Neg, Not, Sub};
@@ -72,8 +72,8 @@ impl<'a> Sugg<'a> {
     ///
     /// - Applicability level `Unspecified` will never be changed.
     /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
-    /// - If the default value is used and the applicability level is `MachineApplicable`, change it
-    ///   to `HasPlaceholders`
+    /// - If the default value is used and the applicability level is `MachineApplicable`, change it to
+    ///   `HasPlaceholders`
     pub fn hir_with_applicability(
         cx: &LateContext<'_>,
         expr: &hir::Expr<'_>,
@@ -133,7 +133,7 @@ impl<'a> Sugg<'a> {
         mut get_snippet: impl FnMut(Span) -> Cow<'a, str>,
     ) -> Self {
         if let Some(range) = higher::Range::hir(cx, expr) {
-            let op = AssocOp::Range(range.limits);
+            let op = AssocOp::Range(range.ty.limits());
             let start = range.start.map_or("".into(), |expr| get_snippet(expr.span));
             let end = range.end.map_or("".into(), |expr| get_snippet(expr.span));
 
@@ -248,6 +248,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Array(..)
             | ast::ExprKind::While(..)
             | ast::ExprKind::Await(..)
+            | ast::ExprKind::DirectConstArg(..)
             | ast::ExprKind::Err(_)
             | ast::ExprKind::Dummy
             | ast::ExprKind::UnsafeBinderCast(..) => Sugg::NonParen(snippet(expr.span)),
@@ -715,19 +716,19 @@ pub trait DiagExt<T: LintContext> {
         applicability: Applicability,
     );
 
-    /// Suggest to add an item before another.
+    /// Suggest to add an item after another.
     ///
     /// The item should not be indented (except for inner indentation).
     ///
     /// # Example
     ///
     /// ```rust,ignore
-    /// diag.suggest_prepend_item(cx, item,
+    /// diag.suggest_append_item(cx, item,
     /// "fn foo() {
     ///     bar();
     /// }");
     /// ```
-    fn suggest_prepend_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str, applicability: Applicability);
+    fn suggest_append_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str, applicability: Applicability);
 
     /// Suggest to completely remove an item.
     ///
@@ -759,24 +760,19 @@ impl<T: LintContext> DiagExt<T> for rustc_errors::Diag<'_, ()> {
         }
     }
 
-    fn suggest_prepend_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str, applicability: Applicability) {
+    fn suggest_append_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str, applicability: Applicability) {
         if let Some(indent) = indentation(cx, item) {
-            let span = item.with_hi(item.lo());
-
-            let mut first = true;
-            let new_item = new_item
-                .lines()
-                .map(|l| {
-                    if first {
-                        first = false;
-                        format!("{l}\n")
-                    } else {
-                        format!("{indent}{l}\n")
-                    }
-                })
-                .collect::<String>();
-
-            self.span_suggestion(span, msg.to_string(), format!("{new_item}\n{indent}"), applicability);
+            let span = item.shrink_to_hi();
+            let mut new_item_code = String::new();
+            for l in new_item.lines() {
+                writeln!(new_item_code, "{indent}{l}").unwrap();
+            }
+            self.span_suggestion(
+                span,
+                msg.to_string(),
+                format!("\n\n{}", new_item_code.strip_suffix('\n').unwrap()),
+                applicability,
+            );
         }
     }
 
@@ -970,8 +966,8 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                 // Note about method calls:
                 // - compiler automatically dereference references if the target type is a reference (works also for
                 //   function call)
-                // - `self` arguments in the case of `x.is_something()` are also automatically (de)referenced, and
-                //   no projection should be suggested
+                // - `self` arguments in the case of `x.is_something()` are also automatically (de)referenced, and no
+                //   projection should be suggested
                 if let Some(parent_expr) = get_parent_expr_for_hir(self.cx, cmt.hir_id) {
                     match &parent_expr.kind {
                         // given expression is the self argument and will be handled completely by the compiler

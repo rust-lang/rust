@@ -2,13 +2,16 @@ use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::iter;
 use std::process::Command;
+use std::str::FromStr;
 use std::sync::OnceLock;
 
 use build_helper::git::GitConfig;
 use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 
+use crate::debuggers::LldbVersion;
 use crate::edition::Edition;
+use crate::executor::TestVariant;
 use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
 
@@ -227,15 +230,15 @@ pub(crate) enum CodegenBackend {
     Llvm,
 }
 
-impl<'a> TryFrom<&'a str> for CodegenBackend {
-    type Error = &'static str;
+impl FromStr for CodegenBackend {
+    type Err = &'static str;
 
-    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value.to_lowercase().as_str() {
             "cranelift" => Ok(Self::Cranelift),
             "gcc" => Ok(Self::Gcc),
             "llvm" => Ok(Self::Llvm),
-            _ => Err("unknown backend"),
+            _ => Err("unknown codegen backend"),
         }
     }
 }
@@ -344,6 +347,12 @@ pub(crate) struct Config {
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage0/bin/rustc`
     pub(crate) stage0_rustc_path: Option<Utf8PathBuf>,
 
+    /// Path to the run-make-support .rlib file, used to build `run-make` recipes.
+    pub(crate) run_make_support_rlib: Option<Utf8PathBuf>,
+
+    /// Path to the run-make-support .rmeta file, used to build `run-make` recipes.
+    pub(crate) run_make_support_rmeta: Option<Utf8PathBuf>,
+
     /// Path to the stage 1 or higher `rustc` used to obtain target information via
     /// `--print=all-target-specs-json` and similar queries.
     ///
@@ -352,6 +361,11 @@ pub(crate) struct Config {
     /// compiler, whereas target specs must be obtained from a stage 1+ compiler
     /// (in case the JSON format has changed since the last bootstrap bump).
     pub(crate) query_rustc_path: Option<Utf8PathBuf>,
+
+    /// Path to the libraries needed to run the compiler at [`Self::query_rustc_path`].
+    ///
+    /// If unset, [`Self::host_compile_lib_path`] will be used instead.
+    pub(crate) query_rustc_lib_path: Option<Utf8PathBuf>,
 
     /// Path to the `rustdoc`-under-test. Like [`Self::rustc_path`], this `rustdoc` is *staged*.
     pub(crate) rustdoc_path: Option<Utf8PathBuf>,
@@ -451,18 +465,6 @@ pub(crate) struct Config {
     /// [`TestMode::CoverageMap`].
     pub(crate) suite: TestSuite,
 
-    /// When specified, **only** the specified [`Debugger`] will be used to run against the
-    /// `tests/debuginfo` test suite. When unspecified, `compiletest` will attempt to find all three
-    /// of {`lldb`, `cdb`, `gdb`} implicitly, and then try to run the `debuginfo` test suite against
-    /// all three debuggers.
-    ///
-    /// FIXME: this implicit behavior is really nasty, in that it makes it hard for the user to
-    /// control *which* debugger(s) are available and used to run the debuginfo test suite. We
-    /// should have `bootstrap` allow the user to *explicitly* configure the debuggers, and *not*
-    /// try to implicitly discover some random debugger from the user environment. This makes the
-    /// debuginfo test suite particularly hard to work with.
-    pub(crate) debugger: Option<Debugger>,
-
     /// Run ignored tests *unconditionally*, overriding their ignore reason.
     ///
     /// FIXME: this is wired up through the test execution logic, but **not** accessible from
@@ -551,6 +553,11 @@ pub(crate) struct Config {
     /// *only* applied to the [`PassFailMode::RunPass`] test crate and not its auxiliaries.
     pub(crate) optimize_tests: bool,
 
+    /// Whether rustdoc should disable CSS/JS minification when generating docs for tests.
+    ///
+    /// Forwarded from bootstrap's `build.docs-minification = false`.
+    pub(crate) disable_minification: bool,
+
     /// Target platform tuple.
     pub(crate) target: String,
 
@@ -596,7 +603,7 @@ pub(crate) struct Config {
     /// Version of LLDB.
     ///
     /// FIXME: `lldb_version` is *derived* from lldb, but it's *not* technically a config!
-    pub(crate) lldb_version: Option<u32>,
+    pub(crate) lldb_version: Option<LldbVersion>,
 
     /// Version of LLVM.
     ///
@@ -772,6 +779,8 @@ pub(crate) struct Config {
     pub(crate) parallel_frontend_threads: u32,
     /// Number of times to execute each test.
     pub(crate) iteration_count: u32,
+
+    pub(crate) wasm_proc_macros: bool,
 }
 
 impl Config {
@@ -1192,7 +1201,10 @@ pub(crate) fn query_rustc_output(
     let query_rustc_path = config.query_rustc_path.as_deref().unwrap_or(&config.rustc_path);
 
     let mut command = Command::new(query_rustc_path);
-    add_dylib_path(&mut command, iter::once(&config.host_compile_lib_path));
+    add_dylib_path(
+        &mut command,
+        iter::once(config.query_rustc_lib_path.as_deref().unwrap_or(&config.host_compile_lib_path)),
+    );
     command.args(&config.target_rustcflags).args(args);
     command.env("RUSTC_BOOTSTRAP", "1");
     command.envs(envs);
@@ -1305,13 +1317,13 @@ pub(crate) fn output_relative_path(config: &Config, relative_dir: &Utf8Path) -> 
 pub(crate) fn output_testname_unique(
     config: &Config,
     testpaths: &TestPaths,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) -> Utf8PathBuf {
     let mode = config.compare_mode.as_ref().map_or("", |m| m.to_str());
-    let debugger = config.debugger.as_ref().map_or("", |m| m.to_str());
+    let debugger = variant.debugger.as_ref().map_or("", |m| m.to_str());
     Utf8PathBuf::from(&testpaths.file.file_stem().unwrap())
         .with_extra_extension(config.mode.output_dir_disambiguator())
-        .with_extra_extension(revision.unwrap_or(""))
+        .with_extra_extension(variant.revision().unwrap_or(""))
         .with_extra_extension(mode)
         .with_extra_extension(debugger)
 }
@@ -1322,10 +1334,10 @@ pub(crate) fn output_testname_unique(
 pub(crate) fn output_base_dir(
     config: &Config,
     testpaths: &TestPaths,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) -> Utf8PathBuf {
     output_relative_path(config, &testpaths.relative_dir)
-        .join(output_testname_unique(config, testpaths, revision))
+        .join(output_testname_unique(config, testpaths, variant))
 }
 
 /// Absolute path to the base filename used as output for the given
@@ -1334,9 +1346,9 @@ pub(crate) fn output_base_dir(
 pub(crate) fn output_base_name(
     config: &Config,
     testpaths: &TestPaths,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) -> Utf8PathBuf {
-    output_base_dir(config, testpaths, revision).join(testpaths.file.file_stem().unwrap())
+    output_base_dir(config, testpaths, variant).join(testpaths.file.file_stem().unwrap())
 }
 
 /// Absolute path to the directory to use for incremental compilation. Example:
@@ -1344,7 +1356,7 @@ pub(crate) fn output_base_name(
 pub(crate) fn incremental_dir(
     config: &Config,
     testpaths: &TestPaths,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) -> Utf8PathBuf {
-    output_base_name(config, testpaths, revision).with_extension("inc")
+    output_base_name(config, testpaths, variant).with_extension("inc")
 }

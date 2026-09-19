@@ -11,7 +11,7 @@
 //! A [prim@`char`] and its [`char::len_utf8`].
 
 #[rustc_doc_primitive = "char"]
-mod char {}
+const _: () = ();
 
 impl char {
     pub fn len_utf8(self) -> usize {

@@ -7,7 +7,7 @@ use rustc_middle::thir::visit::Visitor;
 use rustc_middle::ty::abstract_const::CastKind;
 use rustc_middle::ty::{self, Expr, LitToConstInput, TyCtxt, TypeVisitableExt};
 use rustc_middle::{mir, thir};
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use tracing::instrument;
 
 use crate::diagnostics::{GenericConstantTooComplex, GenericConstantTooComplexSub};
@@ -54,7 +54,7 @@ fn recurse_build<'tcx>(
         &ExprKind::PlaceUnwrapUnsafeBinder { .. }
         | &ExprKind::ValueUnwrapUnsafeBinder { .. }
         | &ExprKind::WrapUnsafeBinder { .. } => {
-            todo!("FIXME(unsafe_binders)")
+            unimplemented!("FIXME(unsafe_binders)")
         }
         &ExprKind::Literal { lit, neg } => {
             let sp = node.span;
@@ -70,12 +70,21 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::ZstLiteral { user_ty: _ } => ty::Const::zero_sized(tcx, node.ty),
         &ExprKind::NamedConst { def_id, args, user_ty: _ } => {
-            let uneval = ty::UnevaluatedConst::new(
-                tcx,
-                ty::UnevaluatedConstKind::new_from_def_id(tcx, def_id),
-                args,
-            );
-            ty::Const::new_unevaluated(tcx, uneval)
+            let kind = match tcx.def_kind(def_id) {
+                DefKind::AssocConst => {
+                    if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(def_id)) {
+                        ty::AliasConstKind::InherentImpl { def_id }
+                    } else {
+                        ty::AliasConstKind::Projection { def_id }
+                    }
+                }
+                DefKind::Const => ty::AliasConstKind::Free { def_id },
+                DefKind::AnonConst => ty::AliasConstKind::Anon { def_id },
+                kind => bug!("unexpected DefKind in THIR ExprKind::NamedConst: {kind:?}"),
+            };
+
+            let alias = ty::AliasConst::new(tcx, kind, args);
+            ty::Const::new_alias(tcx, ty::IsRigid::No, alias)
         }
         ExprKind::ConstParam { param, .. } => ty::Const::new_param(tcx, *param),
 
@@ -115,10 +124,10 @@ fn recurse_build<'tcx>(
                 maybe_supported_error(GenericConstantTooComplexSub::BlockNotSupported(node.span))?
             }
         }
-        // `ExprKind::Use` happens when a `hir::ExprKind::Cast` is a
+        // `ExprKind::ValueExpr` happens when a `hir::ExprKind::Cast` is a
         // "coercion cast" i.e. using a coercion or is a no-op.
         // This is important so that `N as usize as usize` doesn't unify with `N as usize`. (untested)
-        &ExprKind::Use { source } => {
+        &ExprKind::ValueExpr { source } => {
             let value_ty = body.exprs[source].ty;
             let value = recurse_build(tcx, body, source, root_span)?;
             ty::Const::new_expr(tcx, Expr::new_cast(tcx, CastKind::Use, value_ty, value, node.ty))
@@ -213,7 +222,7 @@ fn recurse_build<'tcx>(
             error(GenericConstantTooComplexSub::OperationNotSupported(node.span))?
         }
         ExprKind::Reborrow { .. } => {
-            todo!();
+            unimplemented!();
         }
     })
 }
@@ -275,7 +284,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::LogicalOp { .. }
             | thir::ExprKind::Unary { .. }
             | thir::ExprKind::Cast { .. }
-            | thir::ExprKind::Use { .. }
+            | thir::ExprKind::ValueExpr { .. }
             | thir::ExprKind::NeverToAny { .. }
             | thir::ExprKind::PointerCoercion { .. }
             | thir::ExprKind::Loop { .. }
@@ -313,7 +322,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::ThreadLocalRef(_)
             | thir::ExprKind::Yield { .. } => false,
             thir::ExprKind::Reborrow { .. } => {
-                todo!();
+                unimplemented!();
             }
         }
     }
@@ -370,7 +379,7 @@ fn thir_abstract_const<'tcx>(
         // we want to look into them or treat them as opaque projections.
         //
         // Right now we do neither of that and simply always fail to unify them.
-        DefKind::AnonConst | DefKind::InlineConst => (),
+        DefKind::AnonConst => (),
         _ => return Ok(None),
     }
 
@@ -385,7 +394,7 @@ fn thir_abstract_const<'tcx>(
 
     let root_span = body.exprs[body_id].span;
 
-    Ok(Some(ty::EarlyBinder::bind(recurse_build(tcx, body, body_id, root_span)?)))
+    Ok(Some(ty::EarlyBinder::bind(tcx, recurse_build(tcx, body, body_id, root_span)?)))
 }
 
 pub(crate) fn provide(providers: &mut Providers) {

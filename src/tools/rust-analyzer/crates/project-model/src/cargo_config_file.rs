@@ -1,6 +1,7 @@
 //! Read `.cargo/config.toml` as a TOML table
 use paths::{AbsPath, Utf8Path, Utf8PathBuf};
 use rustc_hash::FxHashMap;
+use stdx::tempfile::NamedTempDir;
 use toml::{
     Spanned,
     de::{DeTable, DeValue},
@@ -17,11 +18,15 @@ impl CargoConfigFile {
         manifest: &ManifestPath,
         extra_env: &FxHashMap<String, Option<String>>,
         sysroot: &Sysroot,
+        config_path: Option<&AbsPath>,
     ) -> Option<Self> {
         let mut cargo_config = sysroot.tool(Tool::Cargo, manifest.parent(), extra_env);
         cargo_config
             .args(["-Z", "unstable-options", "config", "get", "--format", "toml", "--show-origin"])
             .env("RUSTC_BOOTSTRAP", "1");
+        if let Some(config_path) = config_path {
+            cargo_config.arg("--config").arg(config_path);
+        }
         if manifest.is_rust_manifest() {
             cargo_config.arg("-Zscript");
         }
@@ -135,13 +140,15 @@ impl<'a> CargoConfigFileReader<'a> {
 pub(crate) struct LockfileCopy {
     pub(crate) path: Utf8PathBuf,
     pub(crate) usage: LockfileUsage,
-    _temp_dir: temp_dir::TempDir,
+    _temp_dir: NamedTempDir,
 }
 
 pub(crate) enum LockfileUsage {
     /// Rust [1.82.0, 1.95.0). `cargo <subcmd> --lockfile-path <lockfile path>`
     WithFlag,
-    /// Rust >= 1.95.0. `CARGO_RESOLVER_LOCKFILE_PATH=<lockfile path> cargo <subcmd>`
+    /// Rust [1.95.0, 1.97.0). `CARGO_RESOLVER_LOCKFILE_PATH=<lockfile path> cargo -Zlockfile-path <subcmd>`
+    WithEnvVarUnstable,
+    /// Rust >= 1.97.0. `CARGO_RESOLVER_LOCKFILE_PATH=<lockfile path> cargo <subcmd>`
     WithEnvVar,
 }
 
@@ -158,7 +165,7 @@ pub(crate) fn make_lockfile_copy(
             build: semver::BuildMetadata::EMPTY,
         };
 
-    const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_ENV: semver::Version =
+    const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_ENV_UNSTABLE: semver::Version =
         semver::Version {
             major: 1,
             minor: 95,
@@ -167,30 +174,31 @@ pub(crate) fn make_lockfile_copy(
             build: semver::BuildMetadata::EMPTY,
         };
 
+    const MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_ENV: semver::Version =
+        semver::Version {
+            major: 1,
+            minor: 97,
+            patch: 0,
+            pre: semver::Prerelease::EMPTY,
+            build: semver::BuildMetadata::EMPTY,
+        };
+
     let usage = if *toolchain_version >= MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_ENV {
         LockfileUsage::WithEnvVar
+    } else if *toolchain_version >= MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_ENV_UNSTABLE
+    {
+        LockfileUsage::WithEnvVarUnstable
     } else if *toolchain_version >= MINIMUM_TOOLCHAIN_VERSION_SUPPORTING_LOCKFILE_PATH_FLAG {
         LockfileUsage::WithFlag
     } else {
         return None;
     };
 
-    let temp_dir = temp_dir::TempDir::with_prefix("rust-analyzer").ok()?;
-    let path: Utf8PathBuf = temp_dir.path().join("Cargo.lock").try_into().ok()?;
-    let path = match std::fs::copy(lockfile_path, &path) {
-        Ok(_) => {
-            tracing::debug!("Copied lock file from `{}` to `{}`", lockfile_path, path);
-            path
-        }
-        // lockfile does not yet exist, so we can just create a new one in the temp dir
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => path,
-        Err(e) => {
-            tracing::warn!("Failed to copy lock file from `{lockfile_path}` to `{path}`: {e}",);
-            return None;
-        }
-    };
+    let temp_dir = NamedTempDir::new("rust-analyzer").ok()?;
+    let path = temp_dir.path().join("Cargo.lock");
+    std::fs::copy(lockfile_path.as_std_path(), &path).ok()?;
 
-    Some(LockfileCopy { path, usage, _temp_dir: temp_dir })
+    Some(LockfileCopy { path: Utf8PathBuf::from_path_buf(path).ok()?, usage, _temp_dir: temp_dir })
 }
 
 #[test]

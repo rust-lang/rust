@@ -18,6 +18,45 @@ use crate::formats::item_type::ItemType;
 use crate::html::render::{IndexItem, IndexItemInfo};
 use crate::visit_lib::RustdocEffectiveVisibilities;
 
+pub(crate) struct PathInfo {
+    /// Parts of the fully qualified path. So in `foo::bar::bib`, it will
+    /// be `["foo", "bar", "bib"]`.
+    pub(crate) parts: Vec<Symbol>,
+    pub(crate) ty: ItemType,
+    /// When a reexport inline an item, we can end up with the same `DefId` with multiple local
+    /// targets. So in case like:
+    ///
+    /// ```
+    /// /// Link to [`a2`].
+    /// pub use std::ffi::os_str::OsString as a1;
+    /// /// Link to [`a1`].
+    /// pub use std::ffi::os_str::OsString as a2;
+    /// /// Link to [`a2`].
+    /// pub use std::ffi::os_str::OsString as a3;
+    /// ```
+    ///
+    /// To ensure that `a1` and `a2` links to `a1` and `a2` which have the same `DefId`, we need
+    /// to store both `a1` and `a2` paths.
+    ///
+    /// The path stored in `parts` is not present in `alternatives`.
+    pub(crate) alternatives: Vec<Vec<Symbol>>,
+}
+
+impl PathInfo {
+    pub(crate) fn get_preferred_path(&self, preferred_name: Option<&str>) -> &[Symbol] {
+        if let Some(preferred_name) = preferred_name
+            && let Some(alternative_path) = self
+                .alternatives
+                .iter()
+                .find(|path| path.last().is_some_and(|last| last.as_str() == preferred_name))
+        {
+            alternative_path
+        } else {
+            &self.parts
+        }
+    }
+}
+
 /// This cache is used to store information about the [`clean::Crate`] being
 /// rendered in order to provide more useful documentation. This contains
 /// information like all implementors of a trait, all traits a type implements,
@@ -42,7 +81,7 @@ pub(crate) struct Cache {
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    pub(crate) paths: FxIndexMap<DefId, (Vec<Symbol>, ItemType)>,
+    pub(crate) paths: FxIndexMap<DefId, PathInfo>,
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
@@ -233,6 +272,30 @@ impl Cache {
     }
 }
 
+impl CacheBuilder<'_, '_> {
+    /// Extends `dids` with ones that an impl should be associated with for a type appearing in its
+    /// `Self` type or trait generic arguments, accounting for references and `#[fundamental]`
+    /// wrappers.
+    ///
+    /// This ensures that impls like `impl Trait<Box<Local>> for Foreign`, `impl Trait for
+    /// Box<Local>`, and other variations of these, are documented on `Local`'s page.
+    fn extend_with_fundamental_dids(&self, ty: &clean::Type, dids: &mut FxIndexSet<DefId>) {
+        dids.extend(ty.def_id(self.cache));
+        // without_borrowed_ref allows cases like `impl Trait<&Box<Local>> for Foreign` to be
+        // handled by this function. (This is rare in practice, but easy to handle here.)
+        if let clean::Type::Path { path } = ty.without_borrowed_ref()
+            && let Some(generics) = path.generics()
+            && let ty::Adt(adt, _) =
+                self.tcx.type_of(path.def_id()).instantiate_identity().skip_norm_wip().kind()
+            && adt.is_fundamental()
+        {
+            for inner in generics {
+                self.extend_with_fundamental_dids(inner, dids);
+            }
+        }
+    }
+}
+
 impl DocFolder for CacheBuilder<'_, '_> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if item.item_id.is_local() {
@@ -334,7 +397,8 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::ForeignTypeItem
             | clean::MacroItem(..)
             | clean::ProcMacroItem(..)
-            | clean::VariantItem(..) => {
+            | clean::VariantItem(..)
+            | clean::PrimitiveItem(..) => {
                 use rustc_data_structures::fx::IndexEntry as Entry;
 
                 let skip_because_unstable = matches!(
@@ -352,20 +416,30 @@ impl DocFolder for CacheBuilder<'_, '_> {
                     let item_def_id = item.item_id.expect_def_id();
                     match self.cache.paths.entry(item_def_id) {
                         Entry::Vacant(entry) => {
-                            entry.insert((self.cache.stack.clone(), item.type_()));
+                            entry.insert(PathInfo {
+                                parts: self.cache.stack.clone(),
+                                ty: item.type_(),
+                                alternatives: Vec::new(),
+                            });
                         }
                         Entry::Occupied(mut entry) => {
-                            if entry.get().0.len() > self.cache.stack.len() {
-                                entry.insert((self.cache.stack.clone(), item.type_()));
+                            // Shorter paths are preferred by default.
+                            if entry.get().parts.len() > self.cache.stack.len() {
+                                let old_parts = std::mem::replace(
+                                    &mut entry.get_mut().parts,
+                                    self.cache.stack.clone(),
+                                );
+                                // We only keep the old path if it's a different (final) name.
+                                if old_parts.last() != self.cache.stack.last() {
+                                    entry.get_mut().alternatives.push(old_parts);
+                                }
+                            }
+                            if !entry.get().alternatives.contains(&self.cache.stack) {
+                                entry.get_mut().alternatives.push(self.cache.stack.clone());
                             }
                         }
                     }
                 }
-            }
-            clean::PrimitiveItem(..) => {
-                self.cache
-                    .paths
-                    .insert(item.item_id.expect_def_id(), (self.cache.stack.clone(), item.type_()));
             }
 
             clean::ExternCrateItem { .. }
@@ -418,22 +492,9 @@ impl DocFolder for CacheBuilder<'_, '_> {
                 // Note: matching twice to restrict the lifetime of the `i` borrow.
                 let mut dids = FxIndexSet::default();
                 match i.for_ {
-                    clean::Type::Path { ref path }
-                    | clean::BorrowedRef { type_: clean::Type::Path { ref path }, .. } => {
-                        dids.insert(path.def_id());
-                        if let Some(generics) = path.generics()
-                            && let ty::Adt(adt, _) = self
-                                .tcx
-                                .type_of(path.def_id())
-                                .instantiate_identity()
-                                .skip_norm_wip()
-                                .kind()
-                            && adt.is_fundamental()
-                        {
-                            for ty in generics {
-                                dids.extend(ty.def_id(self.cache));
-                            }
-                        }
+                    clean::Type::Path { .. }
+                    | clean::BorrowedRef { type_: clean::Type::Path { .. }, .. } => {
+                        self.extend_with_fundamental_dids(&i.for_, &mut dids);
                     }
                     clean::DynTrait(ref bounds, _)
                     | clean::BorrowedRef { type_: clean::DynTrait(ref bounds, _), .. } => {
@@ -452,7 +513,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
                     && let Some(generics) = trait_.generics()
                 {
                     for bound in generics {
-                        dids.extend(bound.def_id(self.cache));
+                        self.extend_with_fundamental_dids(bound, &mut dids);
                     }
                 }
                 let impl_item = Impl { impl_item: item };
@@ -559,7 +620,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             // in a field of the cache whose elements are added to the search index later,
             // after cache building is complete (see `handle_orphan_impl_child`).
             match cache.paths.get(&parent_did) {
-                Some((fqp, _)) => (Some(parent_did), &fqp[..fqp.len() - 1]),
+                Some(info) => (Some(parent_did), &info.parts[..info.parts.len() - 1]),
                 None => {
                     handle_orphan_impl_child(cache, item, parent_did);
                     return;

@@ -2,14 +2,14 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::Msrv;
+use clippy_utils::paths::{PathNS, lookup_path};
 use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Block, Body, HirId, Path, PathSegment, StabilityLevel, StableSince};
-use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, Lint, LintContext as _, impl_lint_pass};
 use rustc_span::symbol::kw;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -101,7 +101,7 @@ impl StdReexports {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             lint_points: Option::default(),
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
         }
     }
 
@@ -124,14 +124,14 @@ enum LintPoint {
 impl<'tcx> LateLintPass<'tcx> for StdReexports {
     fn check_path(&mut self, cx: &LateContext<'tcx>, path: &Path<'tcx>, _: HirId) {
         if let Res::Def(def_kind, def_id) = path.res
+            && !matches!(def_kind, DefKind::Macro(_))
             && let Some(first_segment) = get_first_segment(path)
+            && let Res::Def(DefKind::Mod, crate_def_id) = first_segment.res
+            && crate_def_id.is_crate_root()
             && is_stable(cx, def_id, self.msrv)
             && !path.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, &first_segment.ident)
-            && !matches!(def_kind, DefKind::Macro(_))
             && let Some(last_segment) = path.segments.last()
-            && let Res::Def(DefKind::Mod, crate_def_id) = first_segment.res
-            && crate_def_id.is_crate_root()
         {
             let (lint, used_mod, replace_with) = match first_segment.ident.name {
                 sym::std => match cx.tcx.crate_name(def_id.krate) {
@@ -148,6 +148,14 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                     return;
                 },
             };
+
+            // Only the crate name is replaced, so the rest of the path has to name the same item in
+            // the target crate. `std::collections::Bound` for instance reaches `core::ops::Bound`
+            // through a legacy re-export, and `core::collections` does not exist.
+            if !resolves_in(cx, path, def_kind, def_id, replace_with) {
+                self.lint_if_finish(cx, first_segment.ident.span, LintPoint::Conflict);
+                return;
+            }
 
             self.lint_if_finish(
                 cx,
@@ -219,6 +227,31 @@ fn emit_lints(cx: &LateContext<'_>, lint_points: Option<(Span, Vec<LintPoint>)>)
     }
 }
 
+/// Checks whether `path` still resolves to `def_id` once its crate name is replaced with
+/// `replace_with`.
+///
+/// [`lookup_path`] is expensive, so this is only called once a path is about to be linted.
+fn resolves_in(cx: &LateContext<'_>, path: &Path<'_>, def_kind: DefKind, def_id: DefId, replace_with: &str) -> bool {
+    let ns = match def_kind.ns() {
+        Some(Namespace::TypeNS) => PathNS::Type,
+        Some(Namespace::ValueNS) => PathNS::Value,
+        Some(Namespace::MacroNS) => PathNS::Macro,
+        None => PathNS::Arbitrary,
+    };
+
+    let mut segments = Vec::with_capacity(path.segments.len());
+    segments.push(Symbol::intern(replace_with));
+    segments.extend(
+        path.segments
+            .iter()
+            .skip_while(|segment| segment.ident.name == kw::PathRoot)
+            .skip(1)
+            .map(|segment| segment.ident.name),
+    );
+
+    lookup_path(cx.tcx, ns, &segments).contains(&def_id)
+}
+
 /// Returns the first named segment of a [`Path`].
 ///
 /// If this is a global path (such as `::std::fmt::Debug`), then the segment after [`kw::PathRoot`]
@@ -238,20 +271,21 @@ fn get_first_segment<'tcx>(path: &Path<'tcx>) -> Option<&'tcx PathSegment<'tcx>>
 /// Does not catch individually moved items
 fn is_stable(cx: &LateContext<'_>, mut def_id: DefId, msrv: Msrv) -> bool {
     loop {
-        if let Some(stability) = cx.tcx.lookup_stability(def_id)
-            && let StabilityLevel::Stable {
-                since,
-                allowed_through_unstable_modules: None,
-            } = stability.level
-        {
-            let stable = match since {
-                StableSince::Version(v) => msrv.meets(cx, v),
-                StableSince::Current => msrv.current(cx).is_none(),
-                StableSince::Err(_) => false,
-            };
-
-            if !stable {
-                return false;
+        if let Some(stability) = cx.tcx.lookup_stability(def_id) {
+            match stability.level {
+                // Workaround for items from `core::intrinsics` with a stable export in a different module.
+                // Not that we ignore the `since` field as we are already accessing the item in question.
+                StabilityLevel::Stable {
+                    allowed_through_unstable_modules: Some(_),
+                    ..
+                } => return true,
+                StabilityLevel::Stable { since, .. } => match since {
+                    StableSince::Version(v) if !msrv.meets(cx, v) => return false,
+                    StableSince::Current if msrv.current(cx).is_none() => return false,
+                    StableSince::Err(_) => return false,
+                    StableSince::Version(_) | StableSince::Current => {},
+                },
+                StabilityLevel::Unstable { .. } => return false,
             }
         }
 

@@ -23,6 +23,31 @@
 
 set -e
 
+# Fetches the contents of a file from GitHub using the REST API.
+# Usage: fetch_github_file OWNER REPO PATH OUTPUT_PATH
+fetch_github_file() {
+    owner="$1"
+    repo="$2"
+    path="$3"
+    output="$4"
+
+    # Hack to repurpose the function's positional parameters to conditionally
+    # pass curl headers. The GITHUB_TOKEN should be set to help avoid rate
+    # limits.
+    if [ -n "${GITHUB_TOKEN:-}" ]
+    then
+        set -- -H "Authorization: Bearer $GITHUB_TOKEN"
+    else
+        set --
+    fi
+
+    curl -L -o "$output" \
+        -H "Accept: application/vnd.github.raw" \
+        "$@" \
+        -H "X-GitHub-Api-Version: 2026-03-10" \
+        "https://api.github.com/repos/$owner/$repo/contents/$path"
+}
+
 html_dir="$(rustc +nightly --print sysroot)/share/doc/rust/html"
 
 if [ ! -d "$html_dir" ]
@@ -95,12 +120,10 @@ fi
 if [ ! -e "linkchecker/main.rs" ] || [ "$iterative" = "0" ]
 then
     echo "Downloading linkchecker source..."
-    nightly_hash=$(rustc +nightly -Vv | grep commit-hash | cut -f2 -d" ")
-    url="https://raw.githubusercontent.com/rust-lang/rust"
     mkdir linkchecker
-    curl -o linkchecker/Cargo.lock ${url}/${nightly_hash}/Cargo.lock
-    curl -o linkchecker/Cargo.toml ${url}/${nightly_hash}/src/tools/linkchecker/Cargo.toml
-    curl -o linkchecker/main.rs ${url}/${nightly_hash}/src/tools/linkchecker/main.rs
+    fetch_github_file rust-lang rust Cargo.lock linkchecker/Cargo.lock
+    fetch_github_file rust-lang rust src/tools/linkchecker/Cargo.toml linkchecker/Cargo.toml
+    fetch_github_file rust-lang rust src/tools/linkchecker/main.rs linkchecker/main.rs
 fi
 
 echo "Building book \"$book_name\"..."

@@ -1,10 +1,11 @@
 use std::borrow::Cow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{HasSession, SpanRangeExt as _};
+use clippy_utils::source::SpanExt as _;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, GenericArg, HirId, LetStmt, Node, Path, TyKind};
 use rustc_lint::LateContext;
+use rustc_middle::ty::print::with_types_for_suggestion;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
@@ -95,7 +96,7 @@ pub(super) fn check<'tcx>(
                 diag.span_suggestion(
                     span,
                     "consider adding missing annotations",
-                    format!("{}::<{from_ty}, {to_ty}>", last.ident),
+                    with_types_for_suggestion!(format!("{}::<{from_ty}, {to_ty}>", last.ident)),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -107,15 +108,18 @@ pub(super) fn check<'tcx>(
 fn ty_cannot_be_named(ty: Ty<'_>) -> bool {
     matches!(
         ty.kind(),
-        ty::Alias(ty::AliasTy {
-            kind: ty::Opaque { .. } | ty::Inherent { .. },
-            ..
-        })
+        ty::Alias(
+            _,
+            ty::AliasTy {
+                kind: ty::Opaque { .. } | ty::Inherent { .. },
+                ..
+            }
+        )
     )
 }
 
-fn maybe_name_by_expr<'a>(sess: &impl HasSession, span: Span, default: &'a str) -> Cow<'a, str> {
-    span.with_source_text(sess, |name| {
+fn maybe_name_by_expr<'a>(cx: &LateContext<'_>, span: Span, default: &'a str) -> Cow<'a, str> {
+    span.with_source_text(cx, |name| {
         (name.len() + 9 < default.len()).then_some(format!("`{name}`'s type").into())
     })
     .flatten()

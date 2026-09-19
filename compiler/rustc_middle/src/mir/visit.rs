@@ -347,27 +347,29 @@ macro_rules! make_mir_visitor {
                         ty::InstanceKind::Item(_def_id) => {}
 
                         ty::InstanceKind::Intrinsic(_def_id)
-                        | ty::InstanceKind::VTableShim(_def_id)
-                        | ty::InstanceKind::ReifyShim(_def_id, _)
+                        | ty::InstanceKind::LlvmIntrinsic(_def_id)
+                        | ty::InstanceKind::Shim(ty::ShimKind::VTable(_def_id))
+                        | ty::InstanceKind::Shim(ty::ShimKind::Reify(_def_id, _))
                         | ty::InstanceKind::Virtual(_def_id, _)
-                        | ty::InstanceKind::ThreadLocalShim(_def_id)
-                        | ty::InstanceKind::ClosureOnceShim { call_once: _def_id, closure: _, track_caller: _ }
-                        | ty::InstanceKind::ConstructCoroutineInClosureShim {
+                        | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(_def_id))
+                        | ty::InstanceKind::Shim(ty::ShimKind::ClosureOnce { call_once: _def_id, closure: _, track_caller: _ })
+                        | ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure {
                             coroutine_closure_def_id: _def_id,
                             receiver_by_ref: _,
-                        }
-                        | ty::InstanceKind::DropGlue(_def_id, None) => {}
+                        })
+                        | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_def_id, None)) => {}
 
-                        ty::InstanceKind::FnPtrShim(_def_id, ty)
-                        | ty::InstanceKind::DropGlue(_def_id, Some(ty))
-                        | ty::InstanceKind::CloneShim(_def_id, ty)
-                        | ty::InstanceKind::FnPtrAddrShim(_def_id, ty)
-                        | ty::InstanceKind::AsyncDropGlue(_def_id, ty)
-                        | ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, ty) => {
+                        ty::InstanceKind::Shim(ty::ShimKind::FnPtr(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_def_id, Some(ty)))
+                        | ty::InstanceKind::Shim(ty::ShimKind::Clone(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAsPtr(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::FnPtrFromPtr(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_def_id, ty))
+                        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_def_id, ty)) => {
                             // FIXME(eddyb) use a better `TyContext` here.
                             self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                         }
-                        ty::InstanceKind::FutureDropPollShim(_def_id, proxy_ty, impl_ty) => {
+                        ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(_def_id, proxy_ty, impl_ty)) => {
                             self.visit_ty($(& $mutability)? *proxy_ty, TyContext::Location(location));
                             self.visit_ty($(& $mutability)? *impl_ty, TyContext::Location(location));
                         }
@@ -668,7 +670,7 @@ macro_rules! make_mir_visitor {
                     OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) | InvalidEnumConstruction(op) => {
                         self.visit_operand(op, location);
                     }
-                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference | ResumedAfterDrop(_) => {
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference | NullReferenceConstructed | ResumedAfterDrop(_) => {
                         // Nothing to visit
                     }
                     MisalignedPointerDereference { required, found } => {
@@ -916,7 +918,7 @@ macro_rules! make_mir_visitor {
                 }) = composite {
                     self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     for elem in projection {
-                        let ProjectionElem::Field(_, ty) = elem else { bug!() };
+                        let ProjectionElem::Field(_, ty) = elem else { rustc_span::bug!() };
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
                 }
@@ -1082,7 +1084,6 @@ macro_rules! super_body {
             $self.visit_local_decl(local, & $($mutability)? $body.local_decls[local]);
         }
 
-        #[allow(unused_macro_rules)]
         macro_rules! type_annotations {
             (mut) => ($body.user_type_annotations.iter_enumerated_mut());
             () => ($body.user_type_annotations.iter_enumerated());
@@ -1178,6 +1179,7 @@ macro_rules! visit_place_fns {
                     if ty != new_ty { Some(PlaceElem::UnwrapUnsafeBinder(new_ty)) } else { None }
                 }
                 PlaceElem::Deref
+                | PlaceElem::PhantomDeref
                 | PlaceElem::ConstantIndex { .. }
                 | PlaceElem::Subslice { .. }
                 | PlaceElem::Downcast(..) => None,
@@ -1262,6 +1264,7 @@ macro_rules! visit_place_fns {
                     );
                 }
                 ProjectionElem::Deref
+                | ProjectionElem::PhantomDeref
                 | ProjectionElem::Subslice { from: _, to: _, from_end: _ }
                 | ProjectionElem::ConstantIndex { offset: _, min_length: _, from_end: _ }
                 | ProjectionElem::Downcast(_, _) => {}
@@ -1354,8 +1357,6 @@ pub enum MutatingUseContext {
     /// f(&mut x.y);
     /// ```
     Projection,
-    /// Retagging, a "Stacked Borrows" shadow state operation
-    Retag,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

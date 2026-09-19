@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_lazy_eval;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{expr_type_is_certain, implements_trait};
 use clippy_utils::visitors::for_each_expr;
@@ -30,9 +30,26 @@ pub(super) fn check<'tcx>(
     args: &'tcx [hir::Expr<'_>],
     msrv: Msrv,
 ) {
+    // Bail out early unless the method is one that `check_unwrap_or_default` or
+    // `check_or_fn_call` can lint, to avoid walking the argument of every method call.
+    if !matches!(
+        name,
+        sym::unwrap_or
+            | sym::unwrap_or_else
+            | sym::or_insert
+            | sym::or_insert_with
+            | sym::get_or_insert
+            | sym::map_or
+            | sym::ok_or
+            | sym::or
+            | sym::and
+    ) {
+        return;
+    }
+
     if let [arg] = args {
         let inner_arg = peel_blocks(arg);
-        for_each_expr(cx, inner_arg, |ex| {
+        for_each_expr(cx.tcx, inner_arg, |ex| {
             // `or_fun_call` lint needs to take nested expr into account,
             // but `unwrap_or_default` lint doesn't, we don't want something like:
             // `opt.unwrap_or(Foo { inner: String::default(), other: 1 })` to get replaced by
@@ -72,7 +89,7 @@ pub(super) fn check<'tcx>(
     // `map_or` takes two arguments
     if let [arg, lambda] = args {
         let inner_arg = peel_blocks(arg);
-        for_each_expr(cx, inner_arg, |ex| {
+        for_each_expr(cx.tcx, inner_arg, |ex| {
             let is_top_most_expr = ex.hir_id == inner_arg.hir_id;
             match ex.kind {
                 hir::ExprKind::Call(fun, fun_args) => {
@@ -112,10 +129,27 @@ fn check_unwrap_or_default(
     method_span: Span,
     msrv: Msrv,
 ) -> bool {
+    let sugg = match (name, call_expr.is_some()) {
+        (sym::unwrap_or, true) | (sym::unwrap_or_else, false) => sym::unwrap_or_default,
+        (sym::or_insert, true) | (sym::or_insert_with, false) => sym::or_default,
+        _ => return false,
+    };
+
     let receiver_ty = cx.typeck_results().expr_ty_adjusted(receiver).peel_refs();
 
     // Check MSRV, but only for `Result::unwrap_or_default`
     if receiver_ty.is_diag_item(cx, sym::Result) && !msrv.meets(cx, msrvs::RESULT_UNWRAP_OR_DEFAULT) {
+        return false;
+    }
+
+    // `Default` for raw pointers is only stable since 1.88.0, so the suggestion would not compile
+    // below that MSRV (#17379). Only reachable under `-Zbuild-std`, hence not covered by our UI
+    // tests against a precompiled `std` — removing this breaks no test, but does bring the false
+    // positive back for build-std users.
+    if let Some(call_expr) = call_expr
+        && cx.typeck_results().expr_ty(call_expr).is_raw_ptr()
+        && !msrv.meets(cx, msrvs::RAW_PTR_DEFAULT)
+    {
         return false;
     }
 
@@ -138,7 +172,7 @@ fn check_unwrap_or_default(
             let output_ty = cx
                 .tcx
                 .fn_sig(def_id)
-                .instantiate(cx.tcx, args)
+                .instantiate(cx.tcx, args.no_bound_vars().unwrap())
                 .skip_norm_wip()
                 .skip_binder()
                 .output();
@@ -148,12 +182,6 @@ fn check_unwrap_or_default(
         } else {
             false
         }
-    };
-
-    let sugg = match (name, call_expr.is_some()) {
-        (sym::unwrap_or, true) | (sym::unwrap_or_else, false) => sym::unwrap_or_default,
-        (sym::or_insert, true) | (sym::or_insert_with, false) => sym::or_default,
-        _ => return false,
     };
 
     let Some(suggested_method_def_id) = receiver_ty.ty_adt_def().and_then(|adt_def| {

@@ -1,5 +1,5 @@
 //@ check-fail
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 
 fn main() {
     """	" //~ ERROR

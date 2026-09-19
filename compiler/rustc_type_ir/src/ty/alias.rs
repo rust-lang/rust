@@ -5,9 +5,7 @@ use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
 
-use crate::predicate::AliasTermKind;
-use crate::ty_kind::AliasTyKind;
-use crate::{Interner, UnevaluatedConstKind};
+use crate::{AliasConstKind, AliasTermKind, AliasTyKind, Interner};
 
 /// Represents an alias of a type, constant, or other term-like item.
 ///
@@ -53,4 +51,8 @@ impl<I: Interner, K: Copy> Alias<I, K> {
 
 pub type AliasTerm<I> = Alias<I, AliasTermKind<I>>;
 pub type AliasTy<I> = Alias<I, AliasTyKind<I>>;
-pub type UnevaluatedConst<I> = Alias<I, UnevaluatedConstKind<I>>;
+pub type ProjectionAliasTy<I> = Alias<I, <I as Interner>::TraitAssocTyId>;
+pub type InherentAliasTy<I> = Alias<I, <I as Interner>::InherentAssocTyId>;
+pub type OpaqueAliasTy<I> = Alias<I, <I as Interner>::OpaqueTyId>;
+pub type FreeAliasTy<I> = Alias<I, <I as Interner>::FreeTyAliasId>;
+pub type AliasConst<I> = Alias<I, AliasConstKind<I>>;

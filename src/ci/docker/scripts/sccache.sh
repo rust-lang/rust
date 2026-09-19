@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# ignore-tidy-linelength
+# ignore-tidy-file-linelength
 
 set -ex
 

@@ -28,6 +28,9 @@ pub enum Kind {
     Anything,
     Integer,
     Pointer,
+    // We prefer to directly lower to things that our Enzyme backend supports.
+    // However, it's sometimes convenient to pass ptr+int as one type.
+    RustSlice,
     Half,
     Float,
     Double,
@@ -57,6 +60,9 @@ impl TypeTree {
         }
         Self(ints)
     }
+    pub fn add_indirection(self) -> Self {
+        Self(vec![Type { offset: 0, size: 1, kind: Kind::Pointer, child: self }])
+    }
 }
 
 #[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, StableHash)]
@@ -71,6 +77,11 @@ pub struct Type {
     pub size: usize,
     pub kind: Kind,
     pub child: TypeTree,
+}
+impl Type {
+    pub fn from_ty(offset: isize, other: &Type) -> Self {
+        Self { offset, size: other.size, kind: other.kind, child: other.child.clone() }
+    }
 }
 
 impl Type {

@@ -9,27 +9,28 @@ use clippy_utils::macros::{
     root_macro_call_first_node,
 };
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
-use clippy_utils::source::{SpanRangeExt, snippet, snippet_opt};
+use clippy_utils::res::MaybeDef as _;
+use clippy_utils::source::{SpanExt as _, snippet, snippet_opt};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_from_proc_macro, is_in_test, peel_hir_expr_while, sym, trait_ref_of_method};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_ast::FormatTrait::{Binary, Debug, Display, LowerExp, LowerHex, Octal, Pointer, UpperExp, UpperHex};
 use rustc_ast::{
     BorrowKind, FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount,
     FormatOptions, FormatPlaceholder, Mutability,
 };
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{RustcVersion, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
-use rustc_hir::{Expr, ExprKind, LangItem, RustcVersion, find_attr};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_hir::{Expr, ExprKind};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
-use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Unnormalized, Upcast};
-use rustc_session::impl_lint_pass;
+use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Unnormalized, Upcast as _};
 use rustc_span::edition::Edition::Edition2021;
-use rustc_span::{BytePos, Pos, Span, Symbol};
-use rustc_trait_selection::infer::TyCtxtInferExt;
+use rustc_span::{BytePos, Pos as _, Span, Symbol};
+use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause, Selection, SelectionContext};
 
 declare_clippy_lint! {
@@ -327,7 +328,7 @@ impl<'tcx> FormatArgs<'tcx> {
         let ty_msrv_map = make_ty_msrv_map(tcx);
         Self {
             format_args,
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             ignore_mixed: conf.allow_mixed_uninlined_format_args,
             ty_msrv_map,
             has_derived_debug: FxHashMap::default(),
@@ -380,7 +381,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
     /// Check if there is a comma after the last format macro arg.
     fn check_trailing_comma(&self) {
         let span = self.macro_call.span;
-        if let Some(src) = span.get_source_text(self.cx)
+        if let Some(src) = span.get_text(self.cx)
             && let Some(src) = src.strip_suffix([')', ']', '}'])
             && let src = src.trim_end_matches(|c: char| c.is_whitespace() && c != '\n')
             && let Some(src) = src.strip_suffix(',')
@@ -694,7 +695,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 count_needed_derefs(receiver_ty, cx.typeck_results().expr_adjustments(receiver).iter())
             && implements_trait(cx, target, display_trait_id, &[])
             && let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait()
-            && let Some(receiver_snippet) = receiver.span.source_callsite().get_source_text(cx)
+            && let Some(receiver_snippet) = receiver.span.source_callsite().get_text(cx)
         {
             let needs_ref = !implements_trait(cx, receiver_ty, sized_trait_id, &[]);
             if n_needed_derefs == 0 && !needs_ref {

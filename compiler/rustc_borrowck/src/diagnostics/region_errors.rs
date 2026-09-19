@@ -8,16 +8,15 @@ use rustc_hir::QPath::Resolved;
 use rustc_hir::WherePredicateKind::BoundPredicate;
 use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{PolyTraitRef, TyKind, WhereBoundPredicate};
 use rustc_infer::infer::{NllRegionVariableOrigin, SubregionOrigin};
-use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{AnnotationSource, ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::{
     self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitor, fold_regions,
 };
-use rustc_span::{Ident, Span, kw};
+use rustc_span::{Ident, Span, bug, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::nice_region_error::{
     self, HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor, find_anon_type,
@@ -28,8 +27,9 @@ use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 use tracing::{debug, instrument, trace};
 
 use super::{LIMITATION_NOTE, OutlivesSuggestionBuilder, RegionName, RegionNameSource};
+use crate::consumers::{OutlivesConstraint, RegionInferenceContext};
 use crate::nll::ConstraintDescription;
-use crate::region_infer::{BlameConstraint, TypeTest};
+use crate::region_infer::TypeTest;
 use crate::session_diagnostics::{
     FnMutError, FnMutReturnTypeErr, GenericDoesNotLiveLongEnough, LifetimeOutliveErr,
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
@@ -134,7 +134,7 @@ pub(crate) struct ErrorConstraintInfo<'tcx> {
     pub(super) span: Span,
 }
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
+impl<'tcx> RegionInferenceContext<'tcx> {
     /// Converts a region inference variable into a `ty::Region` that
     /// we can use for error reporting. If `r` is universally bound,
     /// then we use the name that we have on record for it. If `r` is
@@ -142,20 +142,20 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// to find a good name from that. Returns `None` if we can't find
     /// one (e.g., this is just some random part of the CFG).
     pub(super) fn to_error_region(&self, r: RegionVid) -> Option<ty::Region<'tcx>> {
-        self.to_error_region_vid(r).and_then(|r| self.regioncx.region_definition(r).external_name)
+        self.to_error_region_vid(r).and_then(|r| self.region_definition(r).external_name)
     }
 
     /// Returns the `RegionVid` corresponding to the region returned by
     /// `to_error_region`.
     pub(super) fn to_error_region_vid(&self, r: RegionVid) -> Option<RegionVid> {
-        if self.regioncx.universal_regions().is_universal_region(r) {
+        if self.universal_regions().is_universal_region(r) {
             Some(r)
         } else {
             // We just want something nameable, even if it's not
             // actually an upper bound.
-            let upper_bound = self.regioncx.approx_universal_upper_bound(r);
+            let upper_bound = self.approx_universal_upper_bound(r);
 
-            if self.regioncx.upper_bound_in_region_scc(r, upper_bound) {
+            if self.upper_bound_in_region_scc(r, upper_bound) {
                 self.to_error_region_vid(upper_bound)
             } else {
                 None
@@ -179,14 +179,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if let Some(r) = self.to_error_region(fr)
             && let ty::ReLateParam(late_param) = r.kind()
             && let ty::LateParamRegionKind::ClosureEnv = late_param.kind
-            && let DefiningTy::Closure(_, args) = self.regioncx.universal_regions().defining_ty
+            && let DefiningTy::Closure(_, args) = self.universal_regions().defining_ty
         {
             return args.as_closure().kind() == ty::ClosureKind::FnMut;
         }
 
         false
     }
+}
 
+impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     // For generic associated types (GATs) which implied 'static requirement
     // from higher-ranked trait bounds (HRTB). Try to locate span of the trait
     // and the span which bounded to the trait for adding 'static lifetime suggestion
@@ -309,12 +311,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 RegionErrorKind::TypeTestError { type_test } => {
                     // Try to convert the lower-bound region into something named we can print for
                     // the user.
-                    let lower_bound_region = self.to_error_region(type_test.lower_bound);
+                    let lower_bound_region = self.regioncx.to_error_region(type_test.lower_bound);
 
                     let type_test_span = type_test.span;
 
                     if let Some(lower_bound_region) = lower_bound_region {
-                        let generic_ty = self.name_regions(
+                        let generic_ty = self.regioncx.name_regions(
                             self.infcx.tcx,
                             type_test.generic_kind.to_ty(self.infcx.tcx),
                         );
@@ -324,7 +326,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             self.body.source.def_id().expect_local(),
                             type_test_span,
                             Some(origin),
-                            self.name_regions(self.infcx.tcx, type_test.generic_kind),
+                            self.regioncx.name_regions(self.infcx.tcx, type_test.generic_kind),
                             lower_bound_region,
                         ));
                     } else {
@@ -411,8 +413,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         };
 
         // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-        let cause =
-            self.regioncx.best_blame_constraint(longer_fr, origin_longer, error_vid).0.cause;
+        let best_blame = self.regioncx.best_blame_constraint(longer_fr, origin_longer, error_vid);
+        let cause = best_blame.to_obligation_cause();
 
         // FIXME these methods should have better names, and also probably not be this generic.
         // FIXME note that we *throw away* the error element here! We probably want to
@@ -443,17 +445,18 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ) {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let (blame_constraint, path) =
-            self.regioncx.best_blame_constraint(fr, fr_origin, outlived_fr);
-        let BlameConstraint { category, cause, variance_info, .. } = blame_constraint;
+        let best_blame = self.regioncx.best_blame_constraint(fr, fr_origin, outlived_fr);
+        let OutlivesConstraint { category, span, variance_info, .. } = *best_blame.constraint();
+        let path = best_blame.path();
 
-        debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);
+        debug!("report_region_error: category={:?} {:?} {:?}", category, span, variance_info);
 
         // Check if we can use one of the "nice region errors".
-        if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
+        if let (Some(f), Some(o)) =
+            (self.regioncx.to_error_region(fr), self.regioncx.to_error_region(outlived_fr))
+        {
             let infer_err = self.infcx.err_ctxt();
-            let nice =
-                NiceRegionError::new_from_span(&infer_err, self.mir_def_id(), cause.span, o, f);
+            let nice = NiceRegionError::new_from_span(&infer_err, self.mir_def_id(), span, o, f);
             if let Some(diag) = nice.try_report_from_nll() {
                 self.buffer_error(diag);
                 return;
@@ -470,18 +473,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             fr_is_local, outlived_fr_is_local, category
         );
 
-        let errci = ErrorConstraintInfo { fr, outlived_fr, category, span: cause.span };
+        let errci = ErrorConstraintInfo { fr, outlived_fr, category, span };
 
         let mut diag = match (category, fr_is_local, outlived_fr_is_local) {
-            (ConstraintCategory::SolverRegionConstraint(span), _, _) => {
-                let mut d = self.dcx().struct_span_err(
-                    span,
-                    "unsatisfied lifetime constraint from -Zassumptions-on-binders :3",
-                );
-                d.note("meoow :c");
-                d
-            }
-            (ConstraintCategory::Return(kind), true, false) if self.is_closure_fn_mut(fr) => {
+            (ConstraintCategory::SolverRegionConstraint(span), _, _) => self
+                .dcx()
+                .struct_span_err(span, "higher-ranked lifetime bound could not be satisfied"),
+            (ConstraintCategory::Return(kind), true, false)
+                if self.regioncx.is_closure_fn_mut(fr) =>
+            {
                 self.report_fnmut_error(&errci, kind)
             }
             (ConstraintCategory::Assignment, true, false)
@@ -556,10 +556,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         }
 
-        self.add_placeholder_from_predicate_note(&mut diag, &path);
-        self.add_sized_or_copy_bound_info(&mut diag, category, &path);
+        self.add_placeholder_from_predicate_note(&mut diag, path);
+        self.add_sized_or_copy_bound_info(&mut diag, category, path);
 
-        for constraint in &path {
+        for constraint in path {
             if let ConstraintCategory::Cast { is_raw_ptr_dyn_type_cast: true, .. } =
                 constraint.category
             {
@@ -599,11 +599,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         &self,
         errci: &ErrorConstraintInfo<'tcx>,
         kind: ReturnConstraint,
-    ) -> Diag<'infcx> {
+    ) -> Diag<'diag> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
-        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *output_ty.kind() {
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *output_ty.kind() {
             output_ty = self.infcx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip()
         };
 
@@ -668,7 +668,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ///    |     ^^^^^^^^^^ `x` escapes the function body here
     /// ```
     #[instrument(level = "debug", skip(self))]
-    fn report_escaping_data_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'infcx> {
+    fn report_escaping_data_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'diag> {
         let ErrorConstraintInfo { span, category, .. } = errci;
 
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
@@ -702,7 +702,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         let mut diag =
-            borrowck_errors::borrowed_data_escapes_closure(self.infcx.tcx, *span, escapes_from);
+            borrowck_errors::borrowed_data_escapes_closure(self.dcx(), *span, escapes_from);
 
         if let Some((Some(outlived_fr_name), outlived_fr_span)) = outlived_fr_name_and_span {
             diag.span_label(
@@ -736,7 +736,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // Only show an extra note if we can find an 'error region' for both of the region
         // variables. This avoids showing a noisy note that just mentions 'synthetic' regions
         // that don't help the user understand the error.
-        match (self.to_error_region(errci.fr), self.to_error_region(errci.outlived_fr)) {
+        match (
+            self.regioncx.to_error_region(errci.fr),
+            self.regioncx.to_error_region(errci.outlived_fr),
+        ) {
             (Some(f), Some(o)) => {
                 self.maybe_suggest_constrain_dyn_trait_impl(&mut diag, f, o, category);
 
@@ -776,7 +779,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ///    |     ^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it
     ///    |                    is returning data with lifetime `'b`
     /// ```
-    fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'infcx> {
+    fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'diag> {
         let ErrorConstraintInfo { fr, outlived_fr, span, category, .. } = errci;
 
         let mir_def_name = self.infcx.tcx.def_descr(self.mir_def_id().to_def_id());
@@ -842,7 +845,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         outlived_fr: RegionVid,
     ) {
         if let (Some(f), Some(outlived_f)) =
-            (self.to_error_region(fr), self.to_error_region(outlived_fr))
+            (self.regioncx.to_error_region(fr), self.regioncx.to_error_region(outlived_fr))
         {
             if outlived_f.kind() != ty::ReStatic {
                 return;
@@ -950,7 +953,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             tcx,
             self.infcx.typing_env(self.infcx.param_env),
             fn_did,
-            self.infcx.resolve_vars_if_possible(args),
+            self.infcx.deeply_resolve_ignoring_regions(args.no_bound_vars().unwrap()),
         ) else {
             return;
         };
@@ -1013,7 +1016,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 
     fn suggest_adding_lifetime_params(&self, diag: &mut Diag<'_>, sub: RegionVid, sup: RegionVid) {
-        let (Some(sub), Some(sup)) = (self.to_error_region(sub), self.to_error_region(sup)) else {
+        let (Some(sub), Some(sup)) =
+            (self.regioncx.to_error_region(sub), self.regioncx.to_error_region(sup))
+        else {
             return;
         };
 
@@ -1155,21 +1160,21 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         });
 
-        let preds = tcx.predicates_of(method_def_id).instantiate(tcx, args);
+        let clauses = tcx.clauses_of(method_def_id).instantiate(tcx, args);
 
         let ocx = ObligationCtxt::new(&self.infcx);
-        ocx.register_obligations(preds.iter().map(|(pred, span)| {
-            trace!(?pred);
+        ocx.register_obligations(clauses.iter().map(|(clause, span)| {
+            trace!(?clause);
             Obligation::misc(
                 tcx,
                 span,
                 self.mir_def_id(),
                 self.infcx.param_env,
-                pred.skip_norm_wip(),
+                clause.skip_norm_wip(),
             )
         }));
 
-        if ocx.evaluate_obligations_error_on_ambiguity().is_empty() && count > 0 {
+        if ocx.evaluate_obligations_error_on_ambiguity().no_errors() && count > 0 {
             diag.span_suggestion_verbose(
                 tcx.hir_body(*body).value.peel_blocks().span.shrink_to_lo(),
                 msg!("dereference the return value"),

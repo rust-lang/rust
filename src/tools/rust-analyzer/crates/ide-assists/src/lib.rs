@@ -358,6 +358,7 @@ mod handlers {
             reorder_impl_items::reorder_impl_items,
             replace_arith_op::replace_arith_with_checked,
             replace_arith_op::replace_arith_with_saturating,
+            replace_arith_op::replace_arith_with_strict,
             replace_arith_op::replace_arith_with_wrapping,
             replace_derive_with_manual_impl::replace_derive_with_manual_impl,
             replace_if_let_with_match::replace_if_let_with_match,

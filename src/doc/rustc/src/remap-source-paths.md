@@ -51,11 +51,21 @@ The valid scopes are:
 - `diagnostics` - apply remappings to printed compiler diagnostics
 - `debuginfo` - apply remappings to debug information
 - `coverage` - apply remappings to coverage information
-- `object` - apply remappings to all paths in compiled executables or libraries, but not elsewhere. Currently an alias for `macro,coverage,debuginfo`.
+- `object` - apply remappings to all paths in compiled executables and libraries, but not elsewhere.
+   - Currently an alias for `macro,coverage,debuginfo`.
+   - Does not apply to `rustc` generated metadata (see below for more details).
 - `all` (default) - an alias for all of the above (and unstable scopes), also equivalent to supplying only `--remap-path-prefix` without `--remap-path-scope`.
 
 The scopes accepted by `--remap-path-scope` are not exhaustive - new scopes may be added in future releases for eventual stabilisation.
 This implies that the `all` scope can correspond to different scopes between releases.
+
+### Metadata impact
+
+Scopes do not apply to `rustc` generated metadata, as having the local paths is required for correctness.
+
+As a result, any artifacts that contain `rustc` metadata, such as `.rmeta`, `.rlib`, dylib, and proc-macro will retain the local paths.
+
+Only the `all` scope applies (on a best-effort basis) path remapping to `rustc` metadata. If your goal is reproducible builds (including metadata) use the `all` scope (or omit `--remap-path-scope` entirely).
 
 ### Example
 

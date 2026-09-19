@@ -146,7 +146,7 @@ fn test_epoll_ctl_del() {
         events: (EPOLLIN | EPOLLOUT | EPOLLET_OR_ZERO) as u32,
         u64: u64::try_from(fds[1]).unwrap(),
     };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
+    let res = unsafe { libc::epoll_ctl(epfd, EPOLL_CTL_ADD, fds[1], &mut ev) };
     assert_eq!(res, 0);
 
     // Test EPOLL_CTL_DEL.
@@ -158,10 +158,8 @@ fn test_epoll_ctl_del() {
 // This test is for one fd registered under two different epoll instance.
 fn test_two_epoll_instance() {
     // Create two epoll instance.
-    let epfd1 = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd1, -1);
-    let epfd2 = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd2, -1);
+    let epfd1 = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
+    let epfd2 = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
@@ -217,7 +215,7 @@ fn test_epoll_eventfd() {
     let fd = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
 
     // Write 1 to the eventfd instance.
-    libc_utils::write_all(fd, &1_u64.to_ne_bytes()).unwrap();
+    eventfd::write_val(fd, 1).unwrap();
 
     // Create an epoll instance.
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -230,14 +228,15 @@ fn test_epoll_eventfd() {
     check_epoll_wait_noblock(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fd }]);
 
     // Write 0 to the eventfd.
-    libc_utils::write_all(fd, &0_u64.to_ne_bytes()).unwrap();
+    eventfd::write_val(fd, 0).unwrap();
 
     // This does not change the status, so we should get no event.
     // However, Linux performs a spurious wakeup.
     check_epoll_wait_noblock(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fd }]);
 
     // Read from the eventfd.
-    libc_utils::read_exact_array::<8>(fd).unwrap();
+    let val = eventfd::read_val(fd).unwrap();
+    assert_eq!(val, 1);
 
     // This consumes the event, so the read status is gone. However, deactivation
     // does not trigger an event.
@@ -245,7 +244,7 @@ fn test_epoll_eventfd() {
     check_epoll_wait_noblock(epfd, &[Ev { events: EPOLLOUT, data: fd }]);
 
     // Write the maximum possible value.
-    libc_utils::write_all(fd, &(u64::MAX - 1).to_ne_bytes()).unwrap();
+    eventfd::write_val(fd, u64::MAX - 1).unwrap();
 
     // This reactivates reads, therefore triggering an event. Writing is no longer possible.
     check_epoll_wait_noblock(epfd, &[Ev { events: EPOLLIN, data: fd }]);
@@ -308,7 +307,7 @@ fn test_closed_fd() {
     epoll_ctl_add(epfd, fd, EPOLLIN | EPOLLOUT | EPOLLET_OR_ZERO).unwrap();
 
     // Write to the eventfd instance.
-    libc_utils::write_all(fd, &1_u64.to_ne_bytes()).unwrap();
+    eventfd::write_val(fd, 1).unwrap();
 
     // Close the eventfd.
     errno_check(unsafe { libc::close(fd) });
@@ -340,11 +339,16 @@ fn test_not_fully_closed_fd() {
     // Close the original fd that being used to register with epoll.
     errno_check(unsafe { libc::close(fd) });
 
-    // Notification should still be provided because the file description is not closed.
-    check_epoll_wait_noblock(epfd, &[Ev { events: EPOLLOUT, data: fd }]);
+    // Notification should still be provided because the file description is not closed -- except on
+    // Illumos which tracks file descriptors, not file descriptions.
+    if cfg!(target_os = "illumos") {
+        check_epoll_wait_noblock(epfd, &[]);
+    } else {
+        check_epoll_wait_noblock(epfd, &[Ev { events: EPOLLOUT, data: fd }]);
+    }
 
     // Write to the eventfd instance to produce notification.
-    libc_utils::write_all(newfd, &1_u64.to_ne_bytes()).unwrap();
+    eventfd::write_val(newfd, 1).unwrap();
 
     // Close the dupped fd.
     errno_check(unsafe { libc::close(newfd) });
@@ -361,7 +365,7 @@ fn test_event_overwrite() {
         errno_result(unsafe { libc::eventfd(0, libc::EFD_NONBLOCK | libc::EFD_CLOEXEC) }).unwrap();
 
     // Write to the eventfd instance.
-    libc_utils::write_all(fd, &1_u64.to_ne_bytes()).unwrap();
+    eventfd::write_val(fd, 1).unwrap();
 
     // Create an epoll instance.
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -370,9 +374,8 @@ fn test_event_overwrite() {
     epoll_ctl_add(epfd, fd, EPOLLIN | EPOLLOUT | EPOLLET_OR_ZERO).unwrap();
 
     // Read from the eventfd instance.
-    let mut buf: [u8; 8] = [0; 8];
-    let res = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8) };
-    assert_eq!(res, 8);
+    let val = eventfd::read_val(fd).unwrap();
+    assert_eq!(val, 1);
 
     // Check result from epoll_wait.
     check_epoll_wait_noblock(epfd, &[Ev { events: EPOLLOUT, data: fd }]);
@@ -570,8 +573,7 @@ fn test_epoll_ctl_epfd_equal_fd() {
 // epfd that shouldn't receive a notification in edge-triggered mode.
 fn test_epoll_ctl_notification() {
     // Create an epoll instance.
-    let epfd0 = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd0, -1);
+    let epfd0 = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance.
     let mut fds = [-1, -1];
@@ -584,8 +586,7 @@ fn test_epoll_ctl_notification() {
     check_epoll_wait_noblock(epfd0, &[Ev { events: EPOLLOUT, data: fds[0] }]);
 
     // Create another epoll instance.
-    let epfd1 = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd1, -1);
+    let epfd1 = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Register the same file description for epfd1.
     epoll_ctl_add(epfd1, fds[0], EPOLLIN | EPOLLOUT | EPOLLET_OR_ZERO).unwrap();
@@ -638,7 +639,7 @@ fn test_epoll_registered_mode_switch() {
     let fd = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
 
     // Write 1 to the eventfd instance.
-    libc_utils::write_all(fd, &1_u64.to_ne_bytes()).unwrap();
+    eventfd::write_val(fd, 1).unwrap();
 
     // Create an epoll instance.
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -685,15 +686,14 @@ fn test_issue_3858() {
     // Close the old epoll instance, so the new FD is now the only FD.
     errno_check(unsafe { libc::close(epfd) });
 
-    // Write to the eventfd instance.
-    libc_utils::write_all(fd, &1_u64.to_ne_bytes()).unwrap();
+    // Write to the eventfd instance to update its readiness.
+    eventfd::write_val(fd, 1).unwrap();
 }
 
 /// Ensure that if a socket becomes un-writable, we don't see it any more.
 fn test_issue_4374() {
     // Create an epoll instance.
-    let epfd0 = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd0, -1);
+    let epfd0 = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance, make it non-blocking.
     let mut fds = [-1, -1];
@@ -721,8 +721,7 @@ fn test_issue_4374() {
 /// Same as above, but for becoming un-readable.
 fn test_issue_4374_reads() {
     // Create an epoll instance.
-    let epfd0 = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd0, -1);
+    let epfd0 = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create a socketpair instance, make it non-blocking.
     let mut fds = [-1, -1];

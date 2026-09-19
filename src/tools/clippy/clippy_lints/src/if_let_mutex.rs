@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{eq_expr_value, higher, sym};
 use core::ops::ControlFlow;
 use rustc_errors::Diag;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::SyntaxContext;
 use rustc_span::edition::Edition::Edition2024;
 

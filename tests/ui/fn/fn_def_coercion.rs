@@ -6,7 +6,7 @@ fn foo<T>(t: T) -> T {
     t
 }
 
-fn f<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) {
+fn f<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) { //~ ERROR one or more
     let mut x = foo::<&'a ()>; //~ ERROR: lifetime may not live long enough
     x = foo::<&'b ()>; //~ ERROR: lifetime may not live long enough
     x = foo::<&'c ()>;
@@ -25,7 +25,7 @@ fn h<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) {
     let _: &'a () = x(c);
 }
 
-fn i<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) {
+fn i<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) { //~ ERROR one or more
     let mut x = foo::<&'c ()>;
     x = foo::<&'b ()>; //~ ERROR lifetime may not live long enough
     x = foo::<&'a ()>; //~ ERROR lifetime may not live long enough
@@ -34,7 +34,7 @@ fn i<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) {
     x(c);
 }
 
-fn j<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) {
+fn j<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) { //~ ERROR one or more
     let x = match true {
         true => foo::<&'b ()>,  //~ ERROR lifetime may not live long enough
         false => foo::<&'a ()>, //~ ERROR lifetime may not live long enough

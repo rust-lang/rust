@@ -287,12 +287,14 @@ impl DocFolder for ImportStripper<'_> {
             clean::ImportItem(imp)
                 if !self.document_hidden && self.import_should_be_hidden(&i, imp) =>
             {
+                debug!("ImportStripper: stripping {:?}", i.name);
                 None
             }
             // clean::ImportItem(_) if !self.document_hidden && i.is_doc_hidden() => None,
             clean::ExternCrateItem { .. } | clean::ImportItem(..)
                 if i.visibility(self.tcx) != Some(Visibility::Public) =>
             {
+                debug!("ImportStripper: stripping {:?}", i.name);
                 None
             }
             _ => Some(self.fold_item_recur(i)),

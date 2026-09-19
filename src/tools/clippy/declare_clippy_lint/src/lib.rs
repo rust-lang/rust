@@ -1,11 +1,9 @@
 #![feature(macro_metavar_expr_concat, rustc_private)]
 
-extern crate rustc_lint;
+// Needed by `declare_clippy_lint!`.
+pub extern crate rustc_lint;
 
 use rustc_lint::{Lint, LintId, LintStore};
-
-// Needed by `declare_clippy_lint!`.
-pub extern crate rustc_session;
 
 #[derive(Default)]
 pub struct LintListBuilder {
@@ -48,7 +46,8 @@ impl LintListBuilder {
 
     pub fn register(self, store: &mut LintStore) {
         store.register_lints(&self.lints);
-        store.register_group(true, "clippy::all", Some("clippy_all"), self.all);
+        store.register_group(true, "clippy::default", Some("clippy_all"), self.all);
+        store.register_group_alias("clippy::default", "clippy::all");
         store.register_group(true, "clippy::cargo", Some("clippy_cargo"), self.cargo);
         store.register_group(true, "clippy::complexity", Some("clippy_complexity"), self.complexity);
         store.register_group(
@@ -129,7 +128,7 @@ macro_rules! declare_clippy_lint_inner {
         $desc:literal
         $(, @eval_always = $eval_always:literal)?
     ) => {
-        $crate::rustc_session::declare_tool_lint! {
+        $crate::rustc_lint::declare_tool_lint! {
             $(#[doc = $docs])*
             #[clippy::version = $version]
             $vis clippy::$lint_name,

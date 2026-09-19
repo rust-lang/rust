@@ -99,7 +99,7 @@ Here are a few things you can do to help the Rust project after filing an ICE:
 See also [applying and removing labels][labeling].
 
 [bisect]: https://rust-lang.github.io/cargo-bisect-rustc/
-[crash test]: tests/compiletest.html#crash-tests
+[crash test]: tests/compiletest.md#crash-tests
 [labeling]: https://forge.rust-lang.org/release/issue-triaging.html#applying-and-removing-labels
 
 ## Minimization

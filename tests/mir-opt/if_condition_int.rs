@@ -85,7 +85,7 @@ fn opt_multiple_ifs(x: u32) -> u32 {
 }
 
 // EMIT_MIR if_condition_int.dont_remove_comparison.SimplifyComparisonIntegral.diff
-// test that we optimize, but do not remove the b statement, as that is used later on
+// the switchInt can be optimized but the b statement can't be removed as it's used later on
 fn dont_remove_comparison(a: i8) -> i32 {
     // CHECK-LABEL: fn dont_remove_comparison(
     // CHECK: [[b:_.*]] = Eq(copy _1, const 17_i8);
@@ -100,6 +100,76 @@ fn dont_remove_comparison(a: i8) -> i32 {
     match b {
         false => 10 + b as i32,
         true => 100 + b as i32,
+    }
+}
+
+// EMIT_MIR if_condition_int.dont_remove_moved_comparison.SimplifyComparisonIntegral.diff
+// like dont_remove_comparison above, but with switchInt(move _N) - regression test for #158206
+#[custom_mir(dialect = "runtime")]
+fn dont_remove_moved_comparison(a: i8) -> i32 {
+    // CHECK-LABEL: fn dont_remove_moved_comparison(
+    // CHECK: [[b:_.*]] = Eq(copy _1, const 17_i8);
+    // CHECK: [[cast:_.*]] = copy [[b]] as i32 (IntToInt);
+    // CHECK: switchInt(copy _1) -> [17: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
+    // CHECK: [[BB1]]:
+    // CHECK: _0 = copy [[cast]];
+    // CHECK: [[BB2]]:
+    // CHECK: _0 = Add(copy [[cast]], const 1_i32);
+    mir! {
+        let b: bool;
+        let c: i32;
+        let d: i32;
+        {
+            b = a == 17;
+            c = b as i32;
+            match Move(b) {
+                true => bb1,
+                _ => bb2,
+            }
+
+        }
+        bb1 = {
+            RET = c;
+            Return()
+        }
+        bb2 = {
+            RET = c + 1;
+            Return()
+        }
+    }
+}
+
+// EMIT_MIR if_condition_int.dont_opt_storage_live_after_comparison.SimplifyComparisonIntegral.diff
+// Regression test for https://github.com/rust-lang/rust/issues/158231.
+#[custom_mir(dialect = "runtime")]
+fn dont_opt_storage_live_after_comparison(a: bool) {
+    // CHECK-LABEL: fn dont_opt_storage_live_after_comparison(
+    // CHECK: [[b:_.*]] = copy _1 as u32 (IntToInt);
+    // CHECK: [[cmp:_.*]] = Eq(copy [[b]], const 42_u32);
+    // CHECK: StorageDead([[b]]);
+    // CHECK: StorageLive([[b]]);
+    // CHECK: switchInt(move [[cmp]]) -> [1: {{bb.*}}, otherwise: {{bb.*}}];
+    mir! {
+        let b: u32;
+        let c: bool;
+        {
+            StorageLive(b);
+            Goto(bb1)
+        }
+        bb1 = {
+            b = a as u32;
+            c = b == 42;
+            StorageDead(b);
+            StorageLive(b);
+            match Move(c) {
+                true => bb1,
+                _ => bb2,
+            }
+        }
+        bb2 = {
+            StorageDead(b);
+            Return()
+        }
     }
 }
 

@@ -18,3 +18,5 @@ LL |     let _ = VALUE.compare_exchange_weak(99, 99, Relaxed, SeqCst);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
 
 Verification complete with 1 executions. No errors found.
+warning: 3 warnings emitted
+

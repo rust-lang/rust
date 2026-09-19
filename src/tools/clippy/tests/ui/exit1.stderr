@@ -1,5 +1,5 @@
 error: usage of `process::exit`
-  --> tests/ui/exit1.rs:5:9
+  --> tests/ui/exit1.rs:6:9
    |
 LL |         std::process::exit(4);
    |         ^^^^^^^^^^^^^^^^^^^^^
@@ -7,5 +7,22 @@ LL |         std::process::exit(4);
    = note: `-D clippy::exit` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::exit)]`
 
-error: aborting due to 1 previous error
+error: usage of `process::exit`
+  --> tests/ui/exit1.rs:29:10
+   |
+LL |     mac!(std::process::exit(1));
+   |          ^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of `process::exit`
+  --> tests/ui/exit1.rs:25:13
+   |
+LL |             std::process::exit($x);
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     mac!(ex 1);
+   |     ---------- in this macro invocation
+   |
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
 

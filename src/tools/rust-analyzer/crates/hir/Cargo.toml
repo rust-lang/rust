@@ -22,6 +22,7 @@ smallvec.workspace = true
 tracing = { workspace = true, features = ["attributes"] }
 triomphe.workspace = true
 la-arena.workspace = true
+salsa.workspace = true
 
 ra-ap-rustc_type_ir.workspace = true
 

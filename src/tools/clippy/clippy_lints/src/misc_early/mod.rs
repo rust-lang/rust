@@ -10,8 +10,7 @@ mod zero_prefixed_literal;
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{Expr, ExprKind, Generics, LitFloatType, LitIntType, LitKind, Pat};
 use rustc_ast::token;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, declare_lint_pass};
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -322,10 +321,6 @@ impl EarlyLintPass for MiscEarlyLints {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat) {
-        if pat.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
-
         unneeded_field_pattern::check(cx, pat);
         redundant_pattern::check(cx, pat);
         redundant_at_rest_pattern::check(cx, pat);
@@ -333,11 +328,15 @@ impl EarlyLintPass for MiscEarlyLints {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if expr.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
-
-        if let ExprKind::Lit(lit) = expr.kind {
+        // `check_lit` only lints integer literals and suffixed float literals.
+        if let ExprKind::Lit(lit) = expr.kind
+            && match lit.kind {
+                token::LitKind::Integer => true,
+                token::LitKind::Float => lit.suffix.is_some(),
+                _ => false,
+            }
+            && !expr.span.in_external_macro(cx.sess().source_map())
+        {
             MiscEarlyLints::check_lit(cx, lit, expr.span);
         }
     }

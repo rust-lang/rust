@@ -19,7 +19,7 @@ RUN curl -L "https://developer.arm.com/-/media/Files/downloads/gnu/14.3.rel1/bin
 RUN tar -xvf "${TOOLCHAIN}.tar.xz"
 RUN mkdir /toolchains && mv "./${TOOLCHAIN}" /toolchains
 
-RUN wget https://mirrors.edge.kernel.org/pub/tools/llvm/files/llvm-22.1.4-x86_64.tar.gz -O llvm.tar.xz
+RUN wget https://ci-mirrors.rust-lang.org/llvm/llvm-22.1.4-x86_64.tar.gz -O llvm.tar.xz
 RUN mkdir llvm
 RUN tar -xvf llvm.tar.xz --strip-components=1 -C llvm
 

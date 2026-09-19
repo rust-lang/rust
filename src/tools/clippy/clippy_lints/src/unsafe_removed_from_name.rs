@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::ast::{Item, ItemKind, UseTree, UseTreeKind};
-use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, declare_lint_pass};
 use rustc_span::Span;
 use rustc_span::symbol::Ident;
 
@@ -53,8 +52,8 @@ fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext<'_>, span: Span) {
         },
         UseTreeKind::Simple(None) | UseTreeKind::Glob(_) => {},
         UseTreeKind::Nested { ref items, .. } => {
-            for (use_tree, _) in items {
-                check_use_tree(use_tree, cx, span);
+            for use_tree in items {
+                check_use_tree(&use_tree.inner, cx, span);
             }
         },
     }

@@ -4,6 +4,7 @@
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
 #![cfg_attr(unix, feature(unix_file_vectored_at))]
+#![allow(unused_features)] // feature use depends on target
 
 use std::collections::BTreeMap;
 use std::ffi::OsString;
@@ -35,19 +36,28 @@ fn main() {
     test_file_set_len();
     test_file_sync();
     test_rename();
+    // Only these targets lower `File::set_times` to the `futimens` shim (macOS/Windows differ).
+    if cfg!(any(
+        target_os = "linux",
+        target_os = "freebsd",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "android"
+    )) {
+        test_file_set_times();
+    }
     // Windows file handling is very incomplete.
     if cfg!(not(windows)) {
         test_directory();
         test_canonicalize();
-        #[cfg(not(target_os = "solaris"))]
+        #[cfg(not(target_os = "solaris"))] // does not have flock
         test_flock();
-        #[cfg(not(target_os = "android"))]
         test_hard_link();
 
         test_readv_writev();
         #[cfg(unix)]
         test_pread_pwrite();
-        #[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
+        #[cfg(all(unix, not(target_os = "solaris")))]
         test_preadv_pwritev();
     }
 }
@@ -258,6 +268,34 @@ fn test_file_sync() {
         file.sync_data().unwrap_err();
         file.sync_all().unwrap_err();
     }
+
+    remove_file(&path).unwrap();
+}
+
+fn test_file_set_times() {
+    use std::fs::FileTimes;
+    use std::time::{Duration, SystemTime};
+
+    let path = utils::prepare_with_content("miri_test_fs_set_times.txt", b"hello");
+    let file = OpenOptions::new().write(true).open(&path).unwrap();
+
+    // Use fixed, whole-second timestamps to avoid sub-second granularity differences between
+    // file systems.
+    let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000_000_000);
+    let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(1_234_567_890);
+
+    // Setting both timestamps round-trips through the file's metadata.
+    file.set_times(FileTimes::new().set_accessed(accessed).set_modified(modified)).unwrap();
+    let metadata = file.metadata().unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), modified);
+
+    // Setting only the modification time (`UTIME_OMIT` for access) leaves the access time alone.
+    let newer_modified = SystemTime::UNIX_EPOCH + Duration::from_secs(2_000_000_000);
+    file.set_times(FileTimes::new().set_modified(newer_modified)).unwrap();
+    let metadata = file.metadata().unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), newer_modified);
 
     remove_file(&path).unwrap();
 }
@@ -475,11 +513,9 @@ fn test_readv_writev() {
 
 /// Test vectored reads and vectored writes with byte offsets.
 ///
-/// **Note**: We skip this test on Solaris and Android targets. This is
-/// because Solaris doesn't have `preadv`/`pwritev`, and on Android the
-/// standard library uses `syscall(...)` for vectored reads/writes with
-/// offsets because older Android versions also didn't have `preadv`/`pwritev`.
-#[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
+/// **Note**: We skip this test on Solaris targets because Solaris doesn't
+/// have `preadv`/`pwritev`.
+#[cfg(all(unix, not(target_os = "solaris")))]
 fn test_preadv_pwritev() {
     use std::os::unix::fs::FileExt;
 
@@ -521,8 +557,6 @@ fn test_preadv_pwritev() {
     assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
 }
 
-// std uses `libc::link` on Android which we do not support.
-#[cfg(not(target_os = "android"))]
 fn test_hard_link() {
     let source = utils::prepare_with_content("miri_test_fs_hard_link_source.txt", b"hello");
     let link = utils::prepare("miri_test_fs_hard_link_link.txt");

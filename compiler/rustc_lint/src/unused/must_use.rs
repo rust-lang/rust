@@ -1,16 +1,17 @@
 use std::iter;
 
 use rustc_errors::pluralize;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem, find_attr};
+use rustc_hir::{self as hir, find_attr};
 use rustc_infer::traits::util::elaborate;
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty::{self, Ty, Unnormalized};
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, Symbol, sym};
 use tracing::instrument;
 
-use crate::lints::{
+use crate::diagnostics::{
     UnusedClosure, UnusedCoroutine, UnusedDef, UnusedDefSuggestion, UnusedOp, UnusedOpSuggestion,
     UnusedResult,
 };
@@ -143,7 +144,7 @@ pub fn is_ty_must_use<'tcx>(
         return IsTyMustUse::Trivial;
     }
 
-    let parent_mod_did = cx.tcx.parent_module(expr.hir_id).to_def_id();
+    let parent_mod_did = cx.tcx.parent_module(expr.hir_id);
     let is_uninhabited =
         |t: Ty<'tcx>| !t.is_inhabited_from(cx.tcx, parent_mod_did, cx.typing_env());
 
@@ -176,10 +177,12 @@ pub fn is_ty_must_use<'tcx>(
         ty::Adt(def, _) => {
             is_def_must_use(cx, def.did(), expr.span).map_or(IsTyMustUse::No, IsTyMustUse::Yes)
         }
-        ty::Alias(ty::AliasTy {
-            kind: ty::Opaque { def_id: def } | ty::Projection { def_id: def },
-            ..
-        }) => {
+        ty::Alias(
+            _,
+            ty::AliasTy {
+                kind: ty::Opaque { def_id: def } | ty::Projection { def_id: def }, ..
+            },
+        ) => {
             elaborate(
                 cx.tcx,
                 cx.tcx
@@ -296,7 +299,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
 
         if let hir::ExprKind::Match(await_expr, _arms, hir::MatchSource::AwaitDesugar) = expr.kind
             && let ty = cx.typeck_results().expr_ty(await_expr)
-            && let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: future_def_id }, .. }) = ty.kind()
+            && let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: future_def_id }, .. }) = ty.kind()
             && cx.tcx.ty_is_opaque_future(ty)
             && let async_fn_def_id = cx.tcx.parent(*future_def_id)
             && matches!(cx.tcx.def_kind(async_fn_def_id), DefKind::Fn | DefKind::AssocFn)

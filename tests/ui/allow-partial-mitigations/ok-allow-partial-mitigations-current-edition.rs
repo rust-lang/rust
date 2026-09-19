@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //@ revisions: control-flow-guard-2024-default control-flow-guard-2024-deny-reset-by-mitigation stack-protector-2024-deny-reset-by-mitigation stack-protector-2024-allow-deny-reset-by-mitigation
 //@ check-pass
 //@ ignore-nvptx64 stack protector is not supported

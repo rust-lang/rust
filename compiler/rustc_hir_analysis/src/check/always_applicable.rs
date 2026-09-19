@@ -8,14 +8,14 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
-use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::span_bug;
+use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::util::CheckRegions;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
-use rustc_span::sym;
+use rustc_span::{span_bug, sym};
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
+use crate::check::missing_items_must_implement_one_of_err;
 use crate::diagnostics;
 use crate::hir::def_id::{DefId, LocalDefId};
 
@@ -42,12 +42,7 @@ pub(crate) fn check_drop_impl(
     match tcx.impl_polarity(drop_impl_did) {
         ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
-            return Err(tcx.dcx().emit_err(diagnostics::DropImplPolarity::Negative {
-                span: tcx.def_span(drop_impl_did),
-            }));
-        }
-        ty::ImplPolarity::Reservation => {
-            return Err(tcx.dcx().emit_err(diagnostics::DropImplPolarity::Reservation {
+            return Err(tcx.dcx().emit_err(diagnostics::NegativeDropImplPolarity {
                 span: tcx.def_span(drop_impl_did),
             }));
         }
@@ -138,6 +133,45 @@ pub(crate) fn check_negative_auto_trait_impl<'tcx>(
     }
 }
 
+/// Checks if the self ty's where-clauses are able to be proven. For instance, if we have multiple
+/// overlapping drop impls, and we have `[T]: Sized` on both the impls and the self ty, we shouldn't
+/// error or ICE, since neither the ADT nor the impls are nameable in practice.
+///
+/// We already emit errors for the case where the impossible bound exists only on the self ty, or
+/// only on the impl(s).
+pub(crate) fn is_impossible_self_ty(tcx: TyCtxt<'_>, adt_did: LocalDefId) -> bool {
+    let clauses = tcx.clauses_of(adt_did).clauses;
+    if clauses.is_empty() {
+        return false;
+    }
+
+    // Be conservative in cases where we have `W<T: ?Sized>` and a method like `Self: Sized`,
+    // since that method *may* have some substitutions where the predicates hold.
+    //
+    // This replicates the logic we use in coherence.
+    let infcx = tcx
+        .infer_ctxt()
+        .ignoring_regions()
+        .with_next_trait_solver(true)
+        .enable_next_solver_overflow_fcw(false)
+        .build(TypingMode::Coherence);
+    let param_env = ty::ParamEnv::empty();
+    let args = infcx.fresh_args_for_item(tcx.def_span(adt_did), adt_did.to_def_id());
+
+    let obligations = clauses.iter().map(|(clause, span)| {
+        Obligation::new(
+            tcx,
+            ObligationCause::dummy_with_span(*span),
+            param_env,
+            ty::EarlyBinder::bind(tcx, *clause).instantiate(tcx, args).skip_norm_wip(),
+        )
+    });
+
+    let ocx = ObligationCtxt::new(&infcx);
+    ocx.register_obligations(obligations);
+    ocx.try_evaluate_obligations().has_errors()
+}
+
 fn ensure_impl_params_and_item_params_correspond<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_def_id: LocalDefId,
@@ -152,7 +186,7 @@ fn ensure_impl_params_and_item_params_correspond<'tcx>(
     let item_span = tcx.def_span(adt_def_id);
     let self_descr = tcx.def_descr(adt_def_id);
     let polarity = match tcx.impl_polarity(impl_def_id) {
-        ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+        ty::ImplPolarity::Positive => "",
         ty::ImplPolarity::Negative => "!",
     };
     let trait_name = tcx.item_name(tcx.impl_trait_id(impl_def_id.to_def_id()));
@@ -192,8 +226,9 @@ fn ensure_all_fields_are_const_destruct<'tcx>(
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let impl_span = tcx.def_span(impl_def_id.to_def_id());
-    let env =
-        ty::EarlyBinder::bind(tcx.param_env(impl_def_id)).instantiate_identity().skip_norm_wip();
+    let env = ty::EarlyBinder::bind(tcx, tcx.param_env(impl_def_id))
+        .instantiate_identity()
+        .skip_norm_wip();
     let args = ty::GenericArgs::identity_for_item(tcx, impl_def_id);
     let destruct_trait = tcx.lang_items().destruct_trait().unwrap();
     for field in tcx.adt_def(adt_def_id).all_fields() {
@@ -207,7 +242,7 @@ fn ensure_all_fields_are_const_destruct<'tcx>(
             tcx,
             cause,
             env,
-            ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+            ty::ClauseKind::HostEffect(ty::HostEffectClause {
                 trait_ref: ty::TraitRef::new(tcx, destruct_trait, [field_ty]),
                 constness: ty::BoundConstness::Maybe,
             }),
@@ -263,7 +298,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     let impl_span = tcx.def_span(impl_def_id.to_def_id());
     let trait_name = tcx.item_name(tcx.impl_trait_id(impl_def_id.to_def_id()));
     let polarity = match tcx.impl_polarity(impl_def_id) {
-        ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+        ty::ImplPolarity::Positive => "",
         ty::ImplPolarity::Negative => "!",
     };
     // Take the param-env of the adt and instantiate the args that show up in
@@ -281,7 +316,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     // reference the params from the ADT instead of from the impl which is bad UX. To resolve
     // this we "rename" the ADT's params to be the impl's params which should not affect behaviour.
     let impl_adt_ty = Ty::new_adt(tcx, tcx.adt_def(adt_def_id), adt_to_impl_args);
-    let adt_env = ty::EarlyBinder::bind(tcx.param_env(adt_def_id))
+    let adt_env = ty::EarlyBinder::bind_unchecked(tcx.param_env(adt_def_id))
         .instantiate(tcx, adt_to_impl_args)
         .skip_norm_wip();
 
@@ -292,7 +327,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     ocx.eq(&ObligationCause::dummy_with_span(impl_span), adt_env, fresh_adt_ty, impl_adt_ty)
         .expect("equating fully generic trait ref should never fail");
 
-    for (clause, span) in tcx.predicates_of(impl_def_id).instantiate(tcx, fresh_impl_args) {
+    for (clause, span) in tcx.clauses_of(impl_def_id).instantiate(tcx, fresh_impl_args) {
         let normalize_cause = traits::ObligationCause::misc(span, impl_def_id);
         let pred = ocx.normalize(&normalize_cause, adt_env, clause);
         let cause = traits::ObligationCause::new(
@@ -310,7 +345,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     // obligation cause code, and perhaps some custom logic in `report_region_errors`.
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if !errors.no_errors() {
         let mut guar = None;
         let mut root_predicates = FxHashSet::default();
         for error in errors {
@@ -393,11 +428,12 @@ fn check_drop_xor_pin_drop<'tcx>(
     match (drop_span, pin_drop_span) {
         (None, None) => {
             if tcx.features().pin_ergonomics() {
-                return Err(tcx.dcx().emit_err(crate::diagnostics::MissingOneOfTraitItem {
-                    span: tcx.def_span(drop_impl_did),
-                    note: None,
-                    missing_items_msg: "drop`, `pin_drop".to_string(),
-                }));
+                return Err(missing_items_must_implement_one_of_err(
+                    tcx,
+                    drop_impl_did,
+                    [sym::drop, sym::pin_drop].into_iter(),
+                    None,
+                ));
             } else {
                 return Err(tcx
                     .dcx()

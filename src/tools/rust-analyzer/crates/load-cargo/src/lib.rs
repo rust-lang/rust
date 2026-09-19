@@ -11,16 +11,15 @@ extern crate rustc_driver as _;
 use std::{any::Any, collections::hash_map::Entry, mem, path::Path, sync};
 
 use crossbeam_channel::{Receiver, unbounded};
-use hir_expand::{
-    db::ExpandDatabase,
-    proc_macro::{
-        ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
-        ProcMacrosBuilder,
-    },
+use hir_expand::proc_macro::{
+    ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
+    ProcMacrosBuilder,
 };
 use ide_db::{
     ChangeWithProcMacros, FxHashMap, RootDatabase,
-    base_db::{CrateGraphBuilder, Env, ProcMacroLoadingError, SourceRoot, SourceRootId},
+    base_db::{
+        CrateGraphBuilder, Env, ProcMacroLoadingError, SourceDatabase, SourceRoot, SourceRootId,
+    },
     prime_caches,
 };
 use itertools::Itertools;
@@ -171,7 +170,7 @@ pub fn load_workspace_into_db(
             .map(|(crate_id, path)| {
                 (
                     crate_id,
-                    path.map_or_else(Err, |(_, path)| {
+                    path.and_then(|(_, path)| {
                         proc_macro_server.as_ref().map_err(Clone::clone).and_then(
                             |proc_macro_server| load_proc_macro(proc_macro_server, &path, &[]),
                         )
@@ -198,7 +197,8 @@ pub fn load_workspace_into_db(
     );
 
     if load_config.prefill_caches {
-        prime_caches::parallel_prime_caches(db, load_config.num_worker_threads, &|_| ());
+        let all = ide_db::base_db::all_crates(db);
+        prime_caches::parallel_prime_caches(db, &all, load_config.num_worker_threads, &|_| ());
     }
 
     Ok((vfs, proc_macro_server.and_then(Result::ok)))
@@ -409,6 +409,19 @@ impl SourceRootConfig {
             .collect()
     }
 
+    /// Returns whether `path` belongs to a library (non-local) source root, such as the
+    /// sysroot sources or a cargo registry dependency.
+    ///
+    /// Paths that belong to no configured file set are *not* considered library files, as
+    /// files outside of any loaded workspace (for example scratch files) fall into the
+    /// catch-all file set despite being client-editable.
+    pub fn path_is_library(&self, path: &VfsPath) -> bool {
+        match self.fsc.classify_path(path) {
+            Some(idx) => !self.local_filesets.contains(&(idx as u64)),
+            None => false,
+        }
+    }
+
     /// Maps local source roots to their parent source roots by bytewise comparing of root paths .
     /// If a `SourceRoot` doesn't have a parent and is local then it is not contained in this mapping but it can be asserted that it is a root `SourceRoot`.
     pub fn source_root_parent_map(&self) -> FxHashMap<SourceRootId, SourceRootId> {
@@ -569,7 +582,7 @@ struct Expander(proc_macro_api::ProcMacro);
 impl ProcMacroExpander for Expander {
     fn expand(
         &self,
-        db: &dyn ExpandDatabase,
+        db: &dyn SourceDatabase,
         subtree: &tt::TopSubtree,
         attrs: Option<&tt::TopSubtree>,
         env: &Env,
@@ -659,7 +672,7 @@ impl ProcMacroExpander for Expander {
 
                     let call_site_file = macro_call_loc.kind.file_id();
 
-                    let resolved = db.resolve_span(current_span);
+                    let resolved = hir_expand::resolve_span(db, current_span);
 
                     current_ctx = macro_call_loc.ctxt;
                     current_span = Span {
@@ -676,7 +689,7 @@ impl ProcMacroExpander for Expander {
                     }
                 }
 
-                let resolved = db.resolve_span(current_span);
+                let resolved = hir_expand::resolve_span(db, current_span);
 
                 Ok(SubResponse::SpanSourceResult {
                     file_id: resolved.file_id.span_file_id(db).as_u32(),
@@ -705,8 +718,8 @@ impl ProcMacroExpander for Expander {
                     let call_site_ast_id = macro_call_loc.kind.erased_ast_id();
 
                     if let Some(editioned_file_id) = call_site_file.file_id() {
-                        let range = db
-                            .ast_id_map(editioned_file_id.into())
+                        let range = hir_expand::HirFileId::from(editioned_file_id)
+                            .ast_id_map(db)
                             .get_erased(call_site_ast_id)
                             .text_range();
 
@@ -749,7 +762,7 @@ impl ProcMacroExpander for Expander {
 }
 
 fn resolve_sub_span(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     file_id: u32,
     ast_id: u32,
     range: TextRange,
@@ -761,7 +774,7 @@ fn resolve_sub_span(
         anchor: SpanAnchor { file_id: editioned_file_id, ast_id },
         ctx: SyntaxContext::root(editioned_file_id.edition()),
     };
-    db.resolve_span(span)
+    hir_expand::resolve_span(db, span)
 }
 
 #[cfg(test)]

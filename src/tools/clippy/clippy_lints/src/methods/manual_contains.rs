@@ -3,6 +3,7 @@ use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::peel_hir_pat_refs;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
+use clippy_utils::usage::local_used_in;
 use rustc_ast::UnOp;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -80,7 +81,7 @@ fn try_get_eligible_arg<'tcx>(
             }
         },
         _ => {
-            if switch_to_eager_eval(cx, expr) {
+            if switch_to_eager_eval(cx, expr) && !local_used_in(cx, closure_arg_id, expr) {
                 Some((get_snippet(expr, true), expr))
             } else {
                 None

@@ -114,7 +114,7 @@ const KNOWN_ARCH: [&str; 20] = [
 
 const KNOWN_ENV: [&str; 7] = ["eabihf", "gnu", "gnueabihf", "msvc", "relibc", "sgx", "uclibc"];
 
-const KNOWN_OS: [&str; 20] = [
+const KNOWN_OS: [&str; 21] = [
     "cuda",
     "dragonfly",
     "emscripten",
@@ -128,6 +128,7 @@ const KNOWN_OS: [&str; 20] = [
     "netbsd",
     "none",
     "openbsd",
+    "ps3",
     "psp",
     "redox",
     "solaris",

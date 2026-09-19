@@ -11,9 +11,9 @@ trait Trait {
 
 impl Trait for () {
     reuse std::path::<> as bar;
-    //~^ ERROR expected function, found module `std::path`
+    //~^ ERROR cannot find function `path` in crate `std`
     reuse core::<> as bar2;
-    //~^ ERROR expected function, found crate `core`
+    //~^ ERROR cannot find function `core` in this scope
 }
 
 fn main() {}

@@ -682,7 +682,7 @@ impl ToTokens for LLVMLink {
         let signature = self.signature.as_ref().unwrap();
         let links = self.links.as_ref().unwrap();
         tokens.append_all(quote! {
-            unsafe extern "unadjusted" {
+            unsafe extern "llvm-intrinsic" {
                 #(#links)*
                 #signature;
             }
@@ -1604,6 +1604,7 @@ impl Intrinsic {
                             (Some(BaseTypeKind::Float), Some(BaseTypeKind::Float)) => ex,
                             (Some(BaseTypeKind::UInt), Some(BaseTypeKind::UInt)) => ex,
                             (Some(BaseTypeKind::Poly), Some(BaseTypeKind::Poly)) => ex,
+                            (Some(BaseTypeKind::Bool), Some(BaseTypeKind::Bool)) => ex,
 
                             (None, None) => ex,
                             _ => unreachable!(
@@ -1801,9 +1802,8 @@ fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut Tok
             body_current = &mut body_unsafe;
         }
         ex.to_tokens(body_current);
-        let is_last = matches!(pos, itertools::Position::Last | itertools::Position::Only);
         let is_llvm_link = matches!(ex, Expression::LLVMLink(_));
-        if !is_last && !is_llvm_link {
+        if !pos.is_last && !is_llvm_link {
             body_current.append(Punct::new(';', Spacing::Alone));
         }
     }

@@ -87,12 +87,14 @@ LL |     👀::full_of_✨()
 error[E0425]: cannot find function `i_like_to_😄_a_lot` in this scope
   --> $DIR/emoji-identifiers.rs:13:13
    |
-LL | fn i_like_to_😅_a_lot() -> 👀 {
-   | ----------------------------- similarly named function `i_like_to_😅_a_lot` defined here
-...
 LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
-   |             ^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^ not found in this scope
    |
+note: similarly named function `i_like_to_😅_a_lot` defined here
+  --> $DIR/emoji-identifiers.rs:8:1
+   |
+LL | fn i_like_to_😅_a_lot() -> 👀 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a function with a similar name exists
    |
 LL -     let _ = i_like_to_😄_a_lot() ➖ 4;

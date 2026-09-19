@@ -1,12 +1,14 @@
 error[E0425]: cannot find value `y` in this scope
   --> $DIR/mismatched_generic_args.rs:19:9
    |
-LL | pub fn add<const U: Dimension>(x: Quantity<f32, U>) -> Quantity<f32, U> {
-   |                  - similarly named const parameter `U` defined here
-LL |
 LL |     x + y
-   |         ^
+   |         ^ not found in this scope
    |
+note: similarly named const parameter `U` defined here
+  --> $DIR/mismatched_generic_args.rs:17:18
+   |
+LL | pub fn add<const U: Dimension>(x: Quantity<f32, U>) -> Quantity<f32, U> {
+   |                  ^
 help: a const parameter with a similar name exists
    |
 LL -     x + y

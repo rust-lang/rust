@@ -1,5 +1,5 @@
 error: a never pattern is always unreachable
-  --> $DIR/ICE-133117-duplicate-never-arm.rs:9:26
+  --> $DIR/ICE-133117-duplicate-never-arm.rs:8:26
    |
 LL |         (!|!) if true => {}
    |                          ^^
@@ -8,7 +8,7 @@ LL |         (!|!) if true => {}
    |                          help: remove this expression
 
 error: a never pattern is always unreachable
-  --> $DIR/ICE-133117-duplicate-never-arm.rs:10:26
+  --> $DIR/ICE-133117-duplicate-never-arm.rs:9:26
    |
 LL |         (!|!) if true => {}
    |                          ^^

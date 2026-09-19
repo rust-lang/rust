@@ -1,17 +1,13 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _};
 use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_context};
-use clippy_utils::{
-    SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, peel_blocks, sym,
-};
+use clippy_utils::{SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, sym};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_hir::{BinOpKind, Expr, ExprKind, Node};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
-use rustc_span::{Spanned, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -96,28 +92,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Check if the string is transformed to byte array and casted back to string.
-    ///
-    /// ### Why is this bad?
-    /// It's unnecessary, the string can be used directly.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// &"Hello World!"[6..11];
-    /// ```
-    #[clippy::version = "1.50.0"]
-    pub STRING_FROM_UTF8_AS_BYTES,
-    complexity,
-    "casting string slices to byte slices and back"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for the `as_bytes` method called on string literals
     /// that contain only ASCII characters.
     ///
@@ -186,61 +160,29 @@ declare_clippy_lint! {
     "slicing a string"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Warns about calling `str::trim` (or variants) before `str::split_whitespace`.
-    ///
-    /// ### Why is this bad?
-    /// `split_whitespace` already ignores leading and trailing whitespace.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// " A B C ".trim().split_whitespace();
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// " A B C ".split_whitespace();
-    /// ```
-    #[clippy::version = "1.62.0"]
-    pub TRIM_SPLIT_WHITESPACE,
-    style,
-    "using `str::trim()` or alike before `str::split_whitespace`"
-}
-
 declare_lint_pass!(StrToString => [STR_TO_STRING]);
 
 declare_lint_pass!(StringAdd => [STRING_ADD, STRING_ADD_ASSIGN, STRING_SLICE]);
 
-declare_lint_pass!(StringLitAsBytes => [
-    STRING_FROM_UTF8_AS_BYTES,
-    STRING_LIT_AS_BYTES,
-]);
-
-declare_lint_pass!(TrimSplitWhitespace => [TRIM_SPLIT_WHITESPACE]);
+declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES]);
 
 impl<'tcx> LateLintPass<'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        let ctxt = e.span.ctxt();
-        if ctxt.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
         match e.kind {
-            ExprKind::Binary(
-                Spanned {
-                    node: BinOpKind::Add, ..
-                },
-                left,
-                _,
-            ) if is_string(cx, left) => {
-                if !is_lint_allowed(cx, STRING_ADD_ASSIGN, e.hir_id) {
-                    let parent = get_parent_expr(cx, e);
-                    if let Some(p) = parent
-                            && let ExprKind::Assign(target, _, _) = p.kind
-                            // avoid duplicate matches
-                            && SpanlessEq::new(cx).eq_expr(ctxt, target, left)
-                    {
-                        return;
-                    }
+            ExprKind::Binary(op, lhs, _)
+                if let BinOpKind::Add = op.node
+                    && cx.typeck_results().expr_ty(lhs).is_lang_item(cx, LangItem::String)
+                    && let ctxt = e.span.ctxt()
+                    && op.span.ctxt() == ctxt
+                    && !ctxt.in_external_macro(cx.tcx.sess.source_map()) =>
+            {
+                if !is_lint_allowed(cx, STRING_ADD_ASSIGN, e.hir_id)
+                    && let Node::Expr(parent) = cx.tcx.parent_hir_node(e.hir_id)
+                    && let ExprKind::Assign(assign_lhs, ..) = parent.kind
+                    && parent.span.ctxt() == ctxt
+                    && SpanlessEq::new(cx).eq_expr(ctxt, assign_lhs, lhs)
+                {
+                    return;
                 }
                 span_lint(
                     cx,
@@ -249,7 +191,16 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                     "you added something to a string. Consider using `String::push_str()` instead",
                 );
             },
-            ExprKind::Assign(target, src, _) if is_string(cx, target) && is_add(cx, ctxt, src, target) => {
+            ExprKind::Assign(lhs, rhs, _)
+                if let ExprKind::Binary(op, add_lhs, _) = rhs.kind
+                    && let BinOpKind::Add = op.node
+                    && cx.typeck_results().expr_ty(lhs).is_lang_item(cx, LangItem::String)
+                    && let ctxt = e.span.ctxt()
+                    && SpanlessEq::new(cx).eq_expr(ctxt, lhs, add_lhs)
+                    && rhs.span.ctxt() == ctxt
+                    && op.span.ctxt() == ctxt
+                    && !ctxt.in_external_macro(cx.tcx.sess.source_map()) =>
+            {
                 span_lint(
                     cx,
                     STRING_ADD_ASSIGN,
@@ -258,39 +209,24 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                          `String::push_str()` instead",
                 );
             },
-            ExprKind::Index(target, _idx, _) => {
-                let e_ty = cx.typeck_results().expr_ty_adjusted(target).peel_refs();
-                if e_ty.is_str() || e_ty.is_lang_item(cx, LangItem::String) {
-                    span_lint(
-                        cx,
-                        STRING_SLICE,
-                        e.span,
-                        "indexing into a string may panic if the index is within a UTF-8 character",
-                    );
-                }
+            ExprKind::Index(base, ..)
+                if let ty::Ref(_, ty, _) = *cx.typeck_results().expr_ty_adjusted(base).kind()
+                    && match *ty.kind() {
+                        ty::Adt(def, _) => def.is_lang_item(cx, LangItem::String),
+                        ty::Str => true,
+                        _ => false,
+                    }
+                    && !e.span.in_external_macro(cx.tcx.sess.source_map()) =>
+            {
+                span_lint(
+                    cx,
+                    STRING_SLICE,
+                    e.span,
+                    "indexing into a string may panic if the index is within a UTF-8 character",
+                );
             },
             _ => {},
         }
-    }
-}
-
-fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    cx.typeck_results()
-        .expr_ty(e)
-        .peel_refs()
-        .is_lang_item(cx, LangItem::String)
-}
-
-fn is_add(cx: &LateContext<'_>, ctxt: SyntaxContext, src: &Expr<'_>, target: &Expr<'_>) -> bool {
-    match peel_blocks(src).kind {
-        ExprKind::Binary(
-            Spanned {
-                node: BinOpKind::Add, ..
-            },
-            left,
-            _,
-        ) => SpanlessEq::new(cx).eq_expr(ctxt, target, left),
-        _ => false,
     }
 }
 
@@ -301,45 +237,11 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use rustc_ast::LitKind;
 
-        if let ExprKind::Call(fun, [bytes_arg]) = e.kind
-            // Find `std::str::converts::from_utf8` or `std::primitive::str::from_utf8`
-            && let Some(sym::str_from_utf8 | sym::str_inherent_from_utf8) =
-                fun.res(cx).opt_diag_name(cx)
-
-            // Find string::as_bytes
-            && let ExprKind::AddrOf(BorrowKind::Ref, _, args) = bytes_arg.kind
-            && let ExprKind::Index(left, right, _) = args.kind
-            && let (method_names, expressions, _) = method_calls(left, 1)
-            && method_names == [sym::as_bytes]
-            && expressions.len() == 1
-            && expressions[0].1.is_empty()
-
-            // Check for slicer
-            && let ExprKind::Struct(&qpath, _, _) = right.kind
-            && cx.tcx.qpath_is_lang_item(qpath, LangItem::Range)
-        {
-            let mut applicability = Applicability::MachineApplicable;
-            let string_expression = &expressions[0].0;
-
-            let snippet_app = snippet_with_applicability(cx, string_expression.span, "..", &mut applicability);
-            let (right_snip, _) = snippet_with_context(cx, right.span, e.span.ctxt(), "..", &mut applicability);
-
-            span_lint_and_sugg(
-                cx,
-                STRING_FROM_UTF8_AS_BYTES,
-                e.span,
-                "calling a slice of `as_bytes()` with `from_utf8` should be not necessary",
-                "try",
-                format!("Some(&{snippet_app}[{right_snip}])"),
-                applicability,
-            );
-        }
-
-        if !e.span.in_external_macro(cx.sess().source_map())
-            && let ExprKind::MethodCall(path, receiver, ..) = &e.kind
+        if let ExprKind::MethodCall(path, receiver, ..) = &e.kind
             && path.ident.name == sym::as_bytes
             && let ExprKind::Lit(lit) = &receiver.kind
             && let LitKind::Str(lit_content, _) = &lit.node
+            && !e.span.in_external_macro(cx.sess().source_map())
         {
             let callsite = snippet(cx, receiver.span.source_callsite(), r#""foo""#);
             let mut applicability = Applicability::MachineApplicable;
@@ -455,36 +357,4 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
             );
         }
     }
-}
-
-impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
-        let tyckres = cx.typeck_results();
-        if let ExprKind::MethodCall(path, split_recv, [], split_ws_span) = expr.kind
-            && path.ident.name == sym::split_whitespace
-            && let Some(split_ws_def_id) = tyckres.type_dependent_def_id(expr.hir_id)
-            && cx.tcx.is_diagnostic_item(sym::str_split_whitespace, split_ws_def_id)
-            && let ExprKind::MethodCall(path, _trim_recv, [], trim_span) = split_recv.kind
-            && let trim_fn_name @ (sym::trim | sym::trim_start | sym::trim_end) = path.ident.name
-            && let Some(trim_def_id) = tyckres.type_dependent_def_id(split_recv.hir_id)
-            && is_one_of_trim_diagnostic_items(cx, trim_def_id)
-        {
-            span_lint_and_sugg(
-                cx,
-                TRIM_SPLIT_WHITESPACE,
-                trim_span.with_hi(split_ws_span.lo()),
-                format!("found call to `str::{trim_fn_name}` before `str::split_whitespace`"),
-                format!("remove `{trim_fn_name}()`"),
-                String::new(),
-                Applicability::MachineApplicable,
-            );
-        }
-    }
-}
-
-fn is_one_of_trim_diagnostic_items(cx: &LateContext<'_>, trim_def_id: DefId) -> bool {
-    matches!(
-        cx.tcx.get_diagnostic_name(trim_def_id),
-        Some(sym::str_trim | sym::str_trim_start | sym::str_trim_end)
-    )
 }

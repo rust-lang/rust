@@ -7,8 +7,7 @@ use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::{is_inside_always_const_context, msrvs};
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -39,7 +38,7 @@ pub struct AssertionsOnConstants {
 }
 impl AssertionsOnConstants {
     pub fn new(conf: &Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -52,7 +51,9 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
                 _ => return,
             }
             && let Some((condition, _)) = find_assert_args(cx, e, macro_call.expn)
-            && is_const_evaluatable(cx, condition)
+            // Check if the whole expression can be moved into a const context.
+            // Note that const eval can evaluate things which cannot be moved (e.g. `false && x`).
+            && is_const_evaluatable(cx.tcx, cx.typeck_results(), condition)
             && let Some((Constant::Bool(assert_val), const_src)) =
                 ConstEvalCtxt::new(cx).eval_with_source(condition, macro_call.span.ctxt())
             && let in_const_context = is_inside_always_const_context(cx.tcx, e.hir_id)

@@ -1,7 +1,7 @@
 use rustc_abi::{AddressSpace, Float, Integer, Primitive, Reg, Scalar};
-use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
+use rustc_span::bug;
 use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi};
 
 use super::BackendTypes;
@@ -127,28 +127,12 @@ pub trait LayoutTypeCodegenMethods<'tcx>: BackendTypes {
     /// [`from_immediate`](super::BuilderMethods::from_immediate) and
     /// [`to_immediate_scalar`](super::BuilderMethods::to_immediate_scalar).
     fn immediate_backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
-    fn is_backend_immediate(&self, layout: TyAndLayout<'tcx>) -> bool;
-    fn is_backend_scalar_pair(&self, layout: TyAndLayout<'tcx>) -> bool;
     fn scalar_pair_element_backend_type(
         &self,
         layout: TyAndLayout<'tcx>,
         index: usize,
         immediate: bool,
     ) -> Self::Type;
-
-    /// A type that produces an [`OperandValue::Ref`] when loaded.
-    ///
-    /// AKA one that's not a ZST, not `is_backend_immediate`, and
-    /// not `is_backend_scalar_pair`. For such a type, a
-    /// [`load_operand`] doesn't actually `load` anything.
-    ///
-    /// [`OperandValue::Ref`]: crate::mir::operand::OperandValue::Ref
-    /// [`load_operand`]: super::BuilderMethods::load_operand
-    fn is_backend_ref(&self, layout: TyAndLayout<'tcx>) -> bool {
-        !(layout.is_zst()
-            || self.is_backend_immediate(layout)
-            || self.is_backend_scalar_pair(layout))
-    }
 }
 
 // For backends that support CFI using type membership (i.e., testing whether a given pointer is

@@ -21,6 +21,7 @@ extend-exclude = [
 # right now. Entries should look like `mipsel = "mipsel"`.
 #
 # tidy-alphabetical-start
+EXPORTAS = "EXPORTAS" # MSVC linker keyword used with /EXPORT directives
 anser = "anser" # an ANSI parsing package used by rust-analyzer
 arange = "arange" # short for A-range
 childs = "childs"
@@ -74,6 +75,7 @@ ERROR_REQ_NOT_ACCEP = "ERROR_REQ_NOT_ACCEP"
 EnzymeTypeTreeShiftIndiciesEq = "EnzymeTypeTreeShiftIndiciesEq"
 EnzymeTypeTreeShiftIndiciesEqFn = "EnzymeTypeTreeShiftIndiciesEqFn"
 Oppen = "Oppen" # Derek C. Oppen, author of "Pretty Printing" (1979)
+PUNICODE_STRING = "PUNICODE_STRING"
 # typos treats this as two different camelcase words (`SETTIN` and `Gs`)
 # Tracked in: https://github.com/crate-ci/typos/issues/745
 SETTINGs = "SETTINGs"

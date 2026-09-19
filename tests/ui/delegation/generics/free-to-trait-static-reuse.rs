@@ -20,17 +20,9 @@ reuse <usize as Trait>::static_method as bar { self + 1 }
 reuse <usize as Trait>::static_method::<'static, Vec<i32>, false> as bar2;
 
 reuse Trait::static_method as error { self - 123 }
-//~^ ERROR: type annotations needed
-//~| ERROR: delegation self type is not specified
 reuse Trait::<'static, i32, 123>::static_method as error2;
-//~^ ERROR: type annotations needed
-//~| ERROR: delegation self type is not specified
 reuse Trait::<'static, i32, 123>::static_method::<'static, String, false> as error3;
-//~^ ERROR: type annotations needed
-//~| ERROR: delegation self type is not specified
 reuse Trait::static_method::<'static, Vec<i32>, false> as error4 { self + 4 }
-//~^ ERROR: type annotations needed
-//~| ERROR: delegation self type is not specified
 
 reuse <String as Trait>::static_method as error5;
 //~^ ERROR: the trait bound `String: Trait<'a, T, X>` is not satisfied

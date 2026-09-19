@@ -1,6 +1,6 @@
+use rustc_attr_ir::AttributeKind;
+use rustc_attr_ir::target::Target;
 use rustc_feature::AttributeStability;
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::NoArgsAttributeParser;
@@ -12,7 +12,7 @@ pub(crate) struct PinV2Parser;
 
 impl NoArgsAttributeParser for PinV2Parser {
     const PATH: &[Symbol] = &[sym::pin_v2];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Enum),
         Allow(Target::Struct),
         Allow(Target::Union),

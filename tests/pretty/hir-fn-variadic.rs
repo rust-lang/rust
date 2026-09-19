@@ -2,8 +2,6 @@
 //@ pretty-mode:hir
 //@ pp-exact:hir-fn-variadic.pp
 
-#![feature(c_variadic)]
-
 extern "C" {
     pub fn foo(x: i32, va1: ...);
 }

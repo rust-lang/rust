@@ -2,6 +2,7 @@
 // Tests that a doc comment will not preclude a field from being considered a diagnostic argument
 //@ normalize-stderr: "the following other types implement trait `IntoDiagArg`:(?:.*\n){0,9}\s+and \d+ others" -> "normalized in stderr"
 //@ normalize-stderr: "(COMPILER_DIR/.*\.rs):[0-9]+:[0-9]+" -> "$1:LL:CC"
+//@ normalize-stderr: "rustc_errors::Diag::<'a, G>::arg" -> "Diag::<'a, G>::arg"
 
 // The proc_macro2 crate handles spans differently when on beta/stable release rather than nightly,
 // changing the output of this test. Since Subdiagnostic is strictly internal to the compiler

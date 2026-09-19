@@ -39,9 +39,8 @@ pub(crate) fn expand_assert<'cx>(
                 segments: cx
                     .std_path(&[sym::panic, sym::panic_2021])
                     .into_iter()
-                    .map(|ident| PathSegment::from_ident(ident))
+                    .map(PathSegment::from_ident)
                     .collect(),
-                tokens: None,
             }
         } else {
             // Before edition 2021, we call `panic!()` unqualified,

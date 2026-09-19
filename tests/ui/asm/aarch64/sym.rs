@@ -1,5 +1,6 @@
 //@ only-aarch64
 //@ only-linux
+//@ ignore-ohos does not use #[thread_local]
 //@ needs-asm-support
 //@ run-pass
 

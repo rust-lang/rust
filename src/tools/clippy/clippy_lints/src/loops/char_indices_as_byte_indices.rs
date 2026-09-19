@@ -1,11 +1,12 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{eq_expr_value, higher, sym};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::{Expr, ExprKind, LangItem, Node, Pat, PatKind};
+use rustc_hir::{Expr, ExprKind, Node, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol};
@@ -48,7 +49,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>, iterable: &Expr
             && let PatKind::Binding(_, binding_id, ..) = pat.kind
         {
             // Destructured iterator element `(idx, _)`, look for uses of the binding
-            for_each_expr(cx, body, |expr| {
+            for_each_expr(cx.tcx, body, |expr| {
                 if expr.res_local_id() == Some(binding_id) {
                     check_index_usage(cx, expr, pat, enumerate_span, chars_span, chars_recv);
                 }
@@ -56,7 +57,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>, iterable: &Expr
             });
         } else if let PatKind::Binding(_, binding_id, ..) = pat.kind {
             // Bound as a tuple, look for `tup.0`
-            for_each_expr(cx, body, |expr| {
+            for_each_expr(cx.tcx, body, |expr| {
                 if let ExprKind::Field(e, field) = expr.kind
                     && e.res_local_id() == Some(binding_id)
                     && field.name == sym::integer(0)

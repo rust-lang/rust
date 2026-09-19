@@ -32,7 +32,7 @@ note: type in trait
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
    = note: expected signature `fn(&Bar2)`
-              found signature `#[target_features] fn(&Bar2)`
+              found signature `#[target_feature(..)] fn(&Bar2)`
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

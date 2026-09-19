@@ -1,7 +1,0 @@
-#![warn(clippy::len_zero)]
-#![feature(exact_size_is_empty)]
-
-fn issue15890(vertices: &mut dyn ExactSizeIterator<Item = u8>) -> bool {
-    vertices.len() == 0
-    //~^ len_zero
-}

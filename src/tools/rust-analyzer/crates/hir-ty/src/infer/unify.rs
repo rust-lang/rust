@@ -3,7 +3,7 @@
 use std::fmt;
 
 use base_db::Crate;
-use hir_def::{ExpressionStoreOwnerId, GenericParamId, TraitId};
+use hir_def::{GenericParamId, TraitId};
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     TyVid, TypeFoldable, TypeVisitableExt,
@@ -14,7 +14,7 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
 use crate::{
-    InferenceDiagnostic, Span,
+    InferBodyId, InferenceDiagnostic, Span,
     db::HirDatabase,
     next_solver::{
         Canonical, ClauseKind, Const, ConstKind, DbInterner, ErrorGuaranteed, GenericArg,
@@ -144,7 +144,7 @@ impl<'db> InferenceTable<'db> {
         db: &'db dyn HirDatabase,
         trait_env: ParamEnv<'db>,
         krate: Crate,
-        owner: ExpressionStoreOwnerId,
+        owner: InferBodyId<'db>,
     ) -> Self {
         let interner = DbInterner::new_with(db, krate);
         let typing_mode = TypingMode::typeck_for_body(interner, owner.into());
@@ -314,7 +314,11 @@ impl<'db> InferenceTable<'db> {
     }
 
     /// Create a `GenericArgs` full of infer vars for `def`.
-    pub(crate) fn fresh_args_for_item(&self, span: Span, def: SolverDefId) -> GenericArgs<'db> {
+    pub(crate) fn fresh_args_for_item(
+        &self,
+        span: Span,
+        def: SolverDefId<'db>,
+    ) -> GenericArgs<'db> {
         self.infer_ctxt.fresh_args_for_item(span, def)
     }
 
@@ -582,6 +586,7 @@ pub(super) mod resolve_completely {
                 | InferenceDiagnostic::CannotIndexInto { found: ty, .. }
                 | InferenceDiagnostic::ExpectedFunction { found: ty, .. }
                 | InferenceDiagnostic::ExpectedArrayOrSlicePat { found: ty, .. }
+                | InferenceDiagnostic::UnaryOperatorCannotBeApplied { found: ty, .. }
                 | InferenceDiagnostic::UnresolvedField { receiver: ty, .. }
                 | InferenceDiagnostic::UnresolvedMethodCall { receiver: ty, .. } = diagnostic
                     && ty.as_ref().references_non_lt_error()

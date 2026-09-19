@@ -1,8 +1,7 @@
 error: backticks are unbalanced
-  --> tests/ui/doc/unbalanced_ticks.rs:6:5
+  --> tests/ui/doc/unbalanced_ticks.rs:6:1
    |
-LL |   /// This is a doc comment with `unbalanced_tick marks and several words that
-   |  _____^
+LL | / /// This is a doc comment with `unbalanced_tick marks and several words that
 LL | |
 LL | | /// should be `encompassed_by` tick marks because they `contain_underscores`.
 LL | | /// Because of the initial `unbalanced_tick` pair, the error message is

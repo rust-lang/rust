@@ -6,17 +6,24 @@ use rustc_abi::ExternAbi;
 use rustc_ast::{AssignOpKind, Label};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic,
-    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic, IntoDiagArg,
+    Level, MultiSpan, Subdiagnostic, msg,
 };
 use rustc_hir as hir;
 use rustc_hir::ExprKind;
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::Ty;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::{Ident, Span, Spanned, Symbol};
 
 use crate::FnCtxt;
+
+#[derive(Diagnostic)]
+#[diag("using pointers in asm `const` operand is experimental")]
+pub(crate) struct AsmConstPtrUnstable {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("base expression required after `..`", code = E0797)]
@@ -100,6 +107,7 @@ impl IntoDiagArg for ReturnLikeStatementKind {
     }
 }
 
+// FIXME(splat): add "non-splatted" to all 4 instances of this error message
 #[derive(Diagnostic)]
 #[diag("functions with the \"rust-call\" ABI must take a single non-self tuple argument")]
 pub(crate) struct RustCallIncorrectArgs {
@@ -254,17 +262,6 @@ pub(crate) enum NeverTypeFallbackFlowingIntoUnsafe {
     },
 }
 
-#[derive(Diagnostic)]
-#[help("specify the types explicitly")]
-#[diag("this function depends on never type fallback being `()`")]
-pub(crate) struct DependencyOnUnitNeverTypeFallback<'tcx> {
-    #[note("in edition 2024, the requirement `{$obligation}` will fail")]
-    pub obligation_span: Span,
-    pub obligation: ty::Predicate<'tcx>,
-    #[subdiagnostic]
-    pub sugg: SuggestAnnotations,
-}
-
 #[derive(Clone)]
 pub(crate) enum SuggestAnnotation {
     Unit(Span),
@@ -278,7 +275,7 @@ pub(crate) struct SuggestAnnotations {
     pub suggestions: Vec<SuggestAnnotation>,
 }
 impl Subdiagnostic for SuggestAnnotations {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         if self.suggestions.is_empty() {
             return;
         }
@@ -341,7 +338,7 @@ pub(crate) struct TypeMismatchFruTypo {
 }
 
 impl Subdiagnostic for TypeMismatchFruTypo {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         diag.arg("expr", self.expr.as_deref().unwrap_or("NONE"));
 
         // Only explain that `a ..b` is a range if it's split up
@@ -564,7 +561,7 @@ pub(crate) struct RemoveSemiForCoerce {
 }
 
 impl Subdiagnostic for RemoveSemiForCoerce {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         let mut multispan: MultiSpan = self.semi.into();
         multispan.push_span_label(
             self.expr,
@@ -707,7 +704,7 @@ pub(crate) struct BreakNonLoop<'a> {
     pub break_expr_span: Span,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'_, G> for BreakNonLoop<'a> {
+impl<'a, G> Diagnostic<'_, G> for BreakNonLoop<'a> {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(dcx, level, msg!("`break` with value from a `{$kind}` loop"));
@@ -811,10 +808,13 @@ pub(crate) struct OutsideLoop<'a> {
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct OutsideLoopSuggestion {
-    #[suggestion_part(code = "'block: ")]
+    #[suggestion_part(code = "{block_prefix}")]
     pub block_span: Span,
     #[suggestion_part(code = " 'block")]
     pub break_spans: Vec<Span>,
+    #[suggestion_part(code = " }}")]
+    pub wrap_end: Option<Span>,
+    pub block_prefix: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -906,7 +906,7 @@ pub(crate) enum CastUnknownPointerSub {
 }
 
 impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         match self {
             CastUnknownPointerSub::To(span) => {
                 let msg = msg!("needs more type information");
@@ -1202,7 +1202,7 @@ pub(crate) struct NakedFunctionsAsmBlock {
     pub non_asms: Vec<Span>,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
+impl<G> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(
@@ -1318,4 +1318,22 @@ pub(crate) struct FloatLiteralF32Fallback {
         applicability = "machine-applicable"
     )]
     pub span: Option<Span>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "parentheses are required to parse this as an expression",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct ExprParenthesesNeeded {
+    #[suggestion_part(code = "(")]
+    left: Span,
+    #[suggestion_part(code = ")")]
+    right: Span,
+}
+
+impl ExprParenthesesNeeded {
+    pub(crate) fn surrounding(s: Span) -> Self {
+        ExprParenthesesNeeded { left: s.shrink_to_lo(), right: s.shrink_to_hi() }
+    }
 }

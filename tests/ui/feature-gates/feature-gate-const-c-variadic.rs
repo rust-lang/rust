@@ -1,5 +1,3 @@
-#![feature(c_variadic)]
-
 fn main() {
     const unsafe extern "C" fn foo(ap: ...) {
         //~^ ERROR c-variadic const function definitions are unstable

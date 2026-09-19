@@ -1,5 +1,5 @@
 #![warn(clippy::reversed_empty_ranges)]
-#![allow(clippy::uninlined_format_args)]
+#![expect(clippy::uninlined_format_args)]
 
 fn main() {
     const MAX_LEN: usize = 42;

@@ -4,7 +4,7 @@
 
 //@compile-flags: --crate-type=lib
 #![expect(incomplete_features)]
-#![feature(inherent_associated_types, min_generic_const_args)]
+#![feature(inherent_associated_types, min_generic_const_args, macroless_generic_const_args)]
 trait Trait {}
 
 struct Struct<const N: usize>;

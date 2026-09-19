@@ -31,7 +31,7 @@
 //! }
 //! ```
 
-use hir::{MacroCallId, Name, db::ExpandDatabase};
+use hir::{MacroCallId, Name};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     SymbolKind, documentation::HasDocs, path_transform::PathTransform,
@@ -112,7 +112,10 @@ fn complete_trait_impl_name(
             .find(|child| {
                 !matches!(
                     child.kind(),
-                    SyntaxKind::COMMENT | SyntaxKind::WHITESPACE | SyntaxKind::ATTR
+                    SyntaxKind::COMMENT
+                        | SyntaxKind::DOC_COMMENT
+                        | SyntaxKind::WHITESPACE
+                        | SyntaxKind::ATTR
                 )
             })
             .unwrap_or_else(|| SyntaxElement::Node(real_file_item.clone()));
@@ -161,8 +164,8 @@ fn complete_trait_impl(
     if let Some(hir_impl) = ctx.sema.to_def(impl_def) {
         get_missing_assoc_items(&ctx.sema, impl_def)
             .into_iter()
-            .filter(|item| ctx.check_stability_and_hidden(*item))
-            .for_each(|item| {
+            .filter(|(item, _)| ctx.check_stability_and_hidden(*item))
+            .for_each(|(item, _)| {
                 use self::ImplCompletionKind::*;
                 match (item, kind) {
                     (hir::AssocItem::Function(func), All | Fn) => {
@@ -265,6 +268,7 @@ fn get_transformed_assoc_item(
     ctx: &CompletionContext<'_, '_>,
     assoc_item: ast::AssocItem,
     impl_def: hir::Impl,
+    macro_file: Option<MacroCallId>,
 ) -> Option<ast::AssocItem> {
     let trait_ = impl_def.trait_(ctx.db)?;
     let source_scope = &ctx.sema.scope(assoc_item.syntax())?;
@@ -278,7 +282,16 @@ fn get_transformed_assoc_item(
     let assoc_item = ast::AssocItem::cast(transform.apply(assoc_item.syntax()))?;
     let (editor, assoc_item) = SyntaxEditor::with_ast_node(&assoc_item);
     assoc_item.remove_attrs_and_docs(&editor);
-    ast::AssocItem::cast(editor.finish().new_root().clone())
+    let transformed = editor.finish().new_root().clone();
+
+    let prettied = if let Some(macro_file) = macro_file {
+        let span_map = macro_file.expansion_span_map(ctx.db);
+        prettify_macro_expansion(ctx.db, transformed, span_map, ctx.krate.into())
+    } else {
+        transformed
+    };
+
+    ast::AssocItem::cast(prettied)
 }
 
 /// Transform a relevant associated item to inline generics from the impl, remove attrs and docs, etc.
@@ -383,7 +396,9 @@ fn add_type_alias_impl(
 
     if let Some(source) = ctx.sema.source(type_alias) {
         let assoc_item = ast::AssocItem::TypeAlias(source.value);
-        if let Some(transformed_item) = get_transformed_assoc_item(ctx, assoc_item, impl_def) {
+        if let Some(transformed_item) =
+            get_transformed_assoc_item(ctx, assoc_item, impl_def, source.file_id.macro_file())
+        {
             let transformed_ty = match transformed_item {
                 ast::AssocItem::TypeAlias(ty) => ty,
                 _ => unreachable!(),
@@ -458,14 +473,15 @@ fn add_const_impl(
         && let Some(source) = ctx.sema.source(const_)
     {
         let assoc_item = ast::AssocItem::Const(source.value);
-        if let Some(transformed_item) = get_transformed_assoc_item(ctx, assoc_item, impl_def) {
+        if let Some(transformed_item) =
+            get_transformed_assoc_item(ctx, assoc_item, impl_def, source.file_id.macro_file())
+        {
             let transformed_const = match transformed_item {
                 ast::AssocItem::Const(const_) => const_,
                 _ => unreachable!(),
             };
 
-            let label =
-                make_const_compl_syntax(ctx, &transformed_const, source.file_id.macro_file());
+            let label = make_const_compl_syntax(&transformed_const);
             let replacement = format!("{label} ");
 
             let mut item =
@@ -488,17 +504,8 @@ fn add_const_impl(
     }
 }
 
-fn make_const_compl_syntax(
-    ctx: &CompletionContext<'_, '_>,
-    const_: &ast::Const,
-    macro_file: Option<MacroCallId>,
-) -> SmolStr {
-    let const_ = if let Some(macro_file) = macro_file {
-        let span_map = ctx.db.expansion_span_map(macro_file);
-        prettify_macro_expansion(ctx.db, const_.syntax().clone(), span_map, ctx.krate.into())
-    } else {
-        const_.syntax().clone()
-    };
+fn make_const_compl_syntax(const_: &ast::Const) -> SmolStr {
+    let const_ = const_.syntax();
 
     let start = const_.text_range().start();
     let const_end = const_.text_range().end();
@@ -511,7 +518,7 @@ fn make_const_compl_syntax(
     let len = end - start;
     let range = TextRange::new(0.into(), len);
 
-    let syntax = const_.text().slice(range).to_string();
+    let syntax = const_.text().slice(range).to_smolstr();
 
     format_smolstr!("{} =", syntax.trim_end())
 }
@@ -522,7 +529,7 @@ fn function_declaration(
     macro_file: Option<MacroCallId>,
 ) -> String {
     let node = if let Some(macro_file) = macro_file {
-        let span_map = ctx.db.expansion_span_map(macro_file);
+        let span_map = macro_file.expansion_span_map(ctx.db);
         prettify_macro_expansion(ctx.db, node.syntax().clone(), span_map, ctx.krate.into())
     } else {
         node.syntax().clone()
@@ -537,9 +544,10 @@ fn function_declaration(
         .map_or(end, |f| f.text_range().start());
 
     let len = end - start;
-    let syntax = node.text().slice(..len).to_string();
+    let mut syntax = node.text().slice(..len).to_string();
+    syntax.truncate(syntax.trim_end().len());
 
-    syntax.trim_end().to_owned()
+    syntax
 }
 
 #[cfg(test)]
@@ -1360,9 +1368,47 @@ noop! {
 struct Test;
 
 impl Foo for Test {
-    fn foo(&mut self,bar: i64,baz: &mut u32) -> Result<(),u32> {
+    fn foo(&mut self, bar: i64, baz: &mut u32) -> Result<(), u32> {
     $0
 }
+}
+"#,
+        );
+
+        check_edit(
+            "type T",
+            r#"
+macro_rules! noop {
+    ($($item: item)*) => {
+        $($item)*
+    }
+}
+
+noop! {
+    trait Foo {
+        type T where Self: Sized;
+    }
+}
+
+impl Foo for () {
+    $0
+}
+"#,
+            r#"
+macro_rules! noop {
+    ($($item: item)*) => {
+        $($item)*
+    }
+}
+
+noop! {
+    trait Foo {
+        type T where Self: Sized;
+    }
+}
+
+impl Foo for () {
+    type T = $0 where Self: Sized;
 }
 "#,
         );
@@ -1397,7 +1443,7 @@ macro_rules! define_method {
 }
 trait AnotherTrait { define_method!(); }
 impl AnotherTrait for () {
-    fn method(&mut self,params: <ty!()as SomeTrait>::Output) {
+    fn method(&mut self, params: <ty!()as SomeTrait>::Output) {
     $0
 }
 }
@@ -1435,7 +1481,7 @@ macro_rules! define_method {
 }
 trait AnotherTrait<T: SomeTrait> { define_method!(T); }
 impl AnotherTrait<i32> for () {
-    fn method(&mut self,params: <ty!(T)as SomeTrait>::Output) {
+    fn method(&mut self, params: <ty!(T)as SomeTrait>::Output) {
     $0
 }
 }

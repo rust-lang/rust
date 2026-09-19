@@ -103,7 +103,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                     scope 7 {
                     }
                     scope 11 (inlined std::ptr::without_provenance::<T>) {
-                        scope 12 (inlined without_provenance_mut::<T>) {
+                        scope 12 (inlined std::ptr::without_provenance_mut::<T>) {
                         }
                     }
                     scope 13 (inlined NonNull::<T>::as_ptr) {

@@ -4,7 +4,10 @@ use std::path::Path;
 mod common;
 
 #[test]
-#[cfg_attr(any(target_os = "emscripten", target_os = "wasi", target_env = "sgx"), ignore)]
+#[cfg_attr(
+    any(target_os = "emscripten", target_os = "wasi", target_env = "sgx", target_os = "l4re"),
+    ignore
+)]
 fn test_self_exe_path() {
     let path = current_exe();
     assert!(path.is_ok());

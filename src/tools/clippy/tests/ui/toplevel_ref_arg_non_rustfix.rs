@@ -1,7 +1,6 @@
 //@aux-build:proc_macros.rs
 
 #![warn(clippy::toplevel_ref_arg)]
-#![allow(unused)]
 
 extern crate proc_macros;
 use proc_macros::{external, inline_macros};

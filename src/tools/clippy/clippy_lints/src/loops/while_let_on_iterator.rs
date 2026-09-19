@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use super::WHILE_LET_ON_ITERATOR;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::visitors::is_res_used;
 use clippy_utils::{as_some_pattern, get_enclosing_loop_or_multi_call_closure, higher, is_refutable};

@@ -86,7 +86,7 @@
 +         _40 = std::future::ResumeTy(move _41);
 +         _39 = copy (_1.0: &mut {async fn body of b()});
 +         _38 = discriminant((*_39));
-+         switchInt(move _38) -> [0: bb47, 1: bb46, 2: bb45, 3: bb43, 4: bb44, otherwise: bb7];
++         switchInt(move _38) -> [0: bb46, 1: bb45, 2: bb44, 3: bb42, 4: bb43, otherwise: bb7];
       }
   
       bb1: {
@@ -309,7 +309,7 @@
       bb23: {
           StorageDead(_21);
 -         drop(_1) -> [return: bb24, unwind: bb50];
-+         goto -> bb41;
++         goto -> bb24;
       }
   
       bb24: {
@@ -486,14 +486,10 @@
   
 -     bb50 (cleanup): {
 +     bb40 (cleanup): {
-+         goto -> bb42;
++         goto -> bb41;
 +     }
 + 
-+     bb41: {
-+         goto -> bb24;
-+     }
-+ 
-+     bb42 (cleanup): {
++     bb41 (cleanup): {
 +         discriminant((*_39)) = 2;
           resume;
       }
@@ -501,7 +497,7 @@
 -     bb51 (cleanup): {
 -         StorageDead(_23);
 -         goto -> bb52;
-+     bb43: {
++     bb42: {
 +         StorageLive(_3);
 +         StorageLive(_4);
 +         StorageLive(_19);
@@ -513,7 +509,7 @@
 -     bb52 (cleanup): {
 -         StorageDead(_21);
 -         goto -> bb55;
-+     bb44: {
++     bb43: {
 +         StorageLive(_21);
 +         StorageLive(_35);
 +         StorageLive(_36);
@@ -524,21 +520,21 @@
 -     bb53 (cleanup): {
 -         StorageDead(_6);
 -         goto -> bb54;
-+     bb45: {
-+         assert(const false, "`async fn` resumed after panicking") -> [success: bb45, unwind continue];
++     bb44: {
++         assert(const false, "`async fn` resumed after panicking") -> [success: bb44, unwind continue];
       }
   
 -     bb54 (cleanup): {
 -         StorageDead(_4);
 -         StorageDead(_3);
 -         goto -> bb55;
-+     bb46: {
-+         assert(const false, "`async fn` resumed after completion") -> [success: bb46, unwind continue];
++     bb45: {
++         assert(const false, "`async fn` resumed after completion") -> [success: bb45, unwind continue];
       }
   
 -     bb55 (cleanup): {
 -         drop(_1) -> [return: bb50, unwind terminate(cleanup)];
-+     bb47: {
++     bb46: {
 +         StorageLive(_3);
 +         StorageLive(_4);
 +         StorageLive(_5);

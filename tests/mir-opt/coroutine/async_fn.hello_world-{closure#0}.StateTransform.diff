@@ -95,7 +95,7 @@
 +         _36 = std::future::ResumeTy(move _37);
 +         _35 = copy (_1.0: &mut {async fn body of hello_world()});
 +         _34 = discriminant((*_35));
-+         switchInt(move _34) -> [0: bb33, 1: bb32, 2: bb31, 3: bb30, otherwise: bb8];
++         switchInt(move _34) -> [0: bb32, 1: bb31, 2: bb30, 3: bb29, otherwise: bb8];
       }
   
       bb1: {
@@ -259,7 +259,7 @@
 -         drop(_1) -> [return: bb15, unwind: bb32];
 +         nop;
 +         nop;
-+         goto -> bb28;
++         goto -> bb15;
       }
   
       bb15: {
@@ -396,14 +396,10 @@
   
 -     bb32 (cleanup): {
 +     bb27 (cleanup): {
-+         goto -> bb29;
++         goto -> bb28;
 +     }
 + 
-+     bb28: {
-+         goto -> bb15;
-+     }
-+ 
-+     bb29 (cleanup): {
++     bb28 (cleanup): {
 +         discriminant((*_35)) = 2;
           resume;
       }
@@ -412,7 +408,7 @@
 -         StorageDead(_18);
 -         StorageDead(_10);
 -         goto -> bb34;
-+     bb30: {
++     bb29: {
 +         StorageLive(_5);
 +         StorageLive(_9);
 +         StorageLive(_10);
@@ -435,15 +431,15 @@
 -         StorageDead(_4);
 -         StorageDead(_3);
 -         drop(_1) -> [return: bb32, unwind terminate(cleanup)];
++     bb30: {
++         assert(const false, "`async fn` resumed after panicking") -> [success: bb30, unwind continue];
++     }
++ 
 +     bb31: {
-+         assert(const false, "`async fn` resumed after panicking") -> [success: bb31, unwind continue];
++         assert(const false, "`async fn` resumed after completion") -> [success: bb31, unwind continue];
 +     }
 + 
 +     bb32: {
-+         assert(const false, "`async fn` resumed after completion") -> [success: bb32, unwind continue];
-+     }
-+ 
-+     bb33: {
 +         nop;
 +         (((*_35) as variant#3).0: [u8; 1]) = [const 0_u8; 1];
 +         nop;

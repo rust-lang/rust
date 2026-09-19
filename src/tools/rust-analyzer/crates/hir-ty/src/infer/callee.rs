@@ -33,7 +33,7 @@ enum CallStep<'db> {
     Overloaded(MethodCallee<'db>),
 }
 
-impl<'db> InferenceContext<'_, 'db> {
+impl<'db> InferenceContext<'db> {
     pub(crate) fn infer_call(
         &mut self,
         call_expr: ExprId,
@@ -106,7 +106,7 @@ impl<'db> InferenceContext<'_, 'db> {
         call_expr: ExprId,
         callee_expr: ExprId,
         arg_exprs: &[ExprId],
-        autoderef: &mut InferenceContextAutoderef<'_, '_, 'db>,
+        autoderef: &mut InferenceContextAutoderef<'_, 'db>,
         error_reported: &mut bool,
     ) -> Option<CallStep<'db>> {
         let final_ty = autoderef.final_ty();
@@ -173,6 +173,8 @@ impl<'db> InferenceContext<'_, 'db> {
                 // impl forces the closure kind to `FnOnce` i.e. `u8`.
                 let kind_ty = autoderef.ctx().table.next_ty_var(call_expr.into());
                 let interner = autoderef.ctx().interner();
+
+                // Ignore splatting, it is unsupported on closures.
                 let call_sig = interner.mk_fn_sig(
                     [coroutine_closure_sig.tupled_inputs_ty],
                     coroutine_closure_sig.to_coroutine(
@@ -538,8 +540,8 @@ pub(crate) struct DeferredCallResolution<'db> {
     fn_sig: FnSig<'db>,
 }
 
-impl<'a, 'db> DeferredCallResolution<'db> {
-    pub(crate) fn resolve(self, ctx: &mut InferenceContext<'a, 'db>) {
+impl<'db> DeferredCallResolution<'db> {
+    pub(crate) fn resolve(self, ctx: &mut InferenceContext<'db>) {
         debug!("DeferredCallResolution::resolve() {:?}", self);
 
         // we should not be invoked until the closure kind has been
@@ -583,13 +585,7 @@ impl<'a, 'db> DeferredCallResolution<'db> {
                     method_callee.args,
                 );
             }
-            None => {
-                assert!(
-                    ctx.lang_items.FnOnce.is_none(),
-                    "Expected to find a suitable `Fn`/`FnMut`/`FnOnce` implementation for `{:?}`",
-                    self.closure_ty
-                )
-            }
+            None => {}
         }
     }
 }

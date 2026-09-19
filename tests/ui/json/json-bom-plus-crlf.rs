@@ -3,7 +3,7 @@
 //@ compile-flags: --json=diagnostic-short --error-format=json
 //@ reference: input.byte-order-mark
 //@ reference: input.crlf
-// ignore-tidy-cr
+// ignore-tidy-file-cr
 
 // For easier verifying, the byte offsets in this file should match those
 // in the json_bom_plus_crlf_multifile_aux.rs - given the actual fn is

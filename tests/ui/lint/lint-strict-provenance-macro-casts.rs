@@ -1,23 +1,22 @@
 #![feature(strict_provenance_lints)]
-#![deny(lossy_provenance_casts)]
-#![deny(fuzzy_provenance_casts)]
+#![deny(implicit_provenance_casts)]
 
 macro_rules! cast {
     ($e:expr, $t:ty) => {
         $e as $t
-        //~^ ERROR under strict provenance it is considered bad style to cast pointer `*const u8` to integer `usize`
-        //~| ERROR strict provenance disallows casting integer `usize` to pointer `*const u8`
+        //~^ ERROR cast from `*const u8` to `usize`
+        //~| ERROR cast from `usize` to `*const u8`
     };
 }
 
 macro_rules! p2i {
     ($e:expr) => { $e as usize };
-    //~^ ERROR under strict provenance it is considered bad style to cast pointer `*const u8` to integer `usize`
+    //~^ ERROR cast from `*const u8` to `usize`
 }
 
 macro_rules! i2p {
     ($e:expr) => { $e as *const () };
-    //~^ ERROR strict provenance disallows casting integer `usize` to pointer `*const ()`
+    //~^ ERROR cast from `usize` to `*const ()`
 }
 
 fn main() {

@@ -1,9 +1,9 @@
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::print::{PrintTraitPredicateExt as _, TraitPredPrintModifiersAndPath};
+use rustc_middle::ty::print::{PrintTraitClauseExt as _, TraitClausePrintModifiersAndPath};
 use rustc_middle::ty::{self, BottomUpFolder, Ty, TypeFoldable, Unnormalized};
-use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, kw};
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
         }
 
         let def_id = opaque.def_id.to_def_id();
-        let infcx = &cx.tcx.infer_ctxt().ignoring_regions().build(cx.typing_mode());
+        let infcx = &cx.tcx.infer_ctxt().build(cx.typing_mode());
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
         // of the associated type.
@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 let Some(proj_term) = proj.term.as_type() else { return };
 
                 // HACK: `impl Trait<Assoc = impl Trait2>` from an RPIT is "ok"...
-                if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: opaque_def_id }, .. }) =
+                if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: opaque_def_id }, .. }) =
                     *proj_term.kind()
                     && cx.tcx.parent(opaque_def_id) == def_id
                     && matches!(
@@ -130,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     return;
                 }
 
-                let proj_ty = proj.projection_term.expect_ty().to_ty(cx.tcx);
+                let proj_ty = proj.projection_term.expect_ty().to_ty(cx.tcx,ty::IsRigid::No);
                 // For every instance of the projection type in the bounds,
                 // replace them with the term we're assigning to the associated
                 // type in our opaque type.
@@ -157,7 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                         cx.param_env,
                         Unnormalized::new_wip(assoc_pred),
                     );
-                    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+                    if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                         // Can't normalize for some reason...?
                         continue;
                     }
@@ -172,12 +172,12 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     // If that predicate doesn't hold modulo regions (but passed during type-check),
                     // then we must've taken advantage of the hack in `project_and_unify_types` where
                     // we replace opaques with inference vars. Emit a warning!
-                    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+                    if !ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                         // If it's a trait bound and an opaque that doesn't satisfy it,
                         // then we can emit a suggestion to add the bound.
                         let add_bound = match (proj_term.kind(), assoc_pred.kind().skip_binder()) {
                             (
-                                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }),
+                                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }),
                                 ty::ClauseKind::Trait(trait_pred),
                             ) => Some(AddBound {
                                 suggest_span: cx.tcx.def_span(*def_id).shrink_to_hi(),
@@ -192,6 +192,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                             OpaqueHiddenInferredBoundLint {
                                 ty: Ty::new_opaque(
                                     cx.tcx,
+                                    ty::IsRigid::No,
                                     def_id,
                                     ty::GenericArgs::identity_for_item(cx.tcx, def_id),
                                 ),
@@ -228,5 +229,5 @@ struct OpaqueHiddenInferredBoundLint<'tcx> {
 struct AddBound<'tcx> {
     #[primary_span]
     suggest_span: Span,
-    trait_ref: TraitPredPrintModifiersAndPath<'tcx>,
+    trait_ref: TraitClausePrintModifiersAndPath<'tcx>,
 }

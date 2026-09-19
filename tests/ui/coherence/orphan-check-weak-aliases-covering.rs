@@ -7,7 +7,7 @@
 //@ aux-crate:foreign=parametrized-trait.rs
 //@ edition:2021
 
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 #![allow(incomplete_features)]
 
 type Alias<T> = LocalWrapper<T>;

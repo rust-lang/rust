@@ -74,6 +74,10 @@ implemented as a hard-coded list, these traits have a special marker attribute
 on them: `#[doc(notable_trait)]`. This means that you can apply this attribute
 to your own trait to include it in the "Notable traits" dialog in documentation.
 
+In addition to the "Notable traits" dialog, every type that implements a
+`#[doc(notable_trait)]` trait renders a colored badge for that trait at the top
+of its page, making the relationship easy to spot when browsing the type.
+
 The `#[doc(notable_trait)]` attribute currently requires the `#![feature(doc_notable_trait)]`
 feature gate. For more information, see [its chapter in the Unstable Book][unstable-notable_trait]
 and [its tracking issue][issue-notable_trait].
@@ -126,7 +130,7 @@ To do so, the `#[doc(keyword = "...")]` attribute is used. Example:
 
 /// Some documentation about the keyword.
 #[doc(keyword = "break")]
-mod empty_mod {}
+const _: () = ();
 ```
 
 ### Document builtin attributes
@@ -143,7 +147,7 @@ To do so, the `#[doc(attribute = "...")]` attribute is used. Example:
 
 /// Some documentation about the attribute.
 #[doc(attribute = "repr")]
-mod empty_mod {}
+const _: () = ();
 ```
 
 ### Use the Rust logo as the crate logo
@@ -197,15 +201,24 @@ themselves marked as unstable. To use any of these options, pass `-Z unstable-op
 the flag in question to Rustdoc on the command-line. To do this from Cargo, you can either use the
 `RUSTDOCFLAGS` environment variable or the `cargo rustdoc` command.
 
-### `--merge`, `--parts-out-dir`, and `--include-parts-dir`
+### `--write-doc-meta-dir`, and `--read-doc-meta-dir`
 
 These options control how rustdoc handles files that combine data from multiple crates.
 
-By default, they act like `--merge=shared` is set, and `--parts-out-dir` and `--include-parts-dir`
-are turned off. The `--merge=shared` mode causes rustdoc to load the existing data in the out-dir,
-combine the new crate data into it, and write the result. This is very easy to use in scripts that
-manually invoke rustdoc, but it's also slow, because it performs O(crates) work on
-every crate, meaning it performs O(crates<sup>2</sup>) work.
+By default, rustdoc will read the doc meta from the doc output dir itself and merge them together.
+This is very easy to use in scripts that manually invoke rustdoc, but it's also slow, because it
+performs O(crates) work on every crate, meaning it performs O(crates<sup>2</sup>) work. When
+`--write-doc-meta-dir` and/or `--read-doc-meta-dir` are supplied, this is turned off.
+
+When `--write-doc-meta-dir` is supplied, rustdoc will write the crate's shared metadata to
+that directory. This is an *intermediate mode* where it may write some files to the doc output
+directory, but some features won't work until it is finalized.
+
+When `--read-doc-meta-dir` is supplied, rustdoc runs in *finalize mode*. No crate source code is
+passed to rustdoc when it runs in this mode. Multiple `--read-doc-meta-dir` can be passed to
+rustdoc, so your build system can split the state between multiple directories if that helps.
+
+`--write-doc-meta-dir` and `--read-doc-meta-dir` cannot both be passed to the same rustdoc invocation.
 
 ```console
 $ rustdoc crate1.rs --out-dir=doc
@@ -217,13 +230,32 @@ rd_("fcrate1fcrate2")
 ```
 
 To delay shared-data merging until the end of a build, so that you only have to perform O(crates)
-work, use `--merge=none` on every crate except the last one, which will use `--merge=finalize`.
+work, use `--write-doc-meta-dir` on every crate, and the last will use `--read-doc-meta-dir`.
+
+You can use separate metadata directories:
 
 ```console
-$ rustdoc +nightly crate1.rs --merge=none --parts-out-dir=crate1.d -Zunstable-options
+$ rustdoc +nightly crate1.rs --write-doc-meta-dir=crate1.d -Zunstable-options
 $ cat doc/search.index/crateNames/*
 cat: 'doc/search.index/crateNames/*': No such file or directory
-$ rustdoc +nightly crate2.rs --merge=finalize --include-parts-dir=crate1.d -Zunstable-options
+$ rustdoc +nightly crate2.rs --write-doc-meta-dir=crate2.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+cat: 'doc/search.index/crateNames/*': No such file or directory
+$ rustdoc +nightly --read-doc-meta-dir=crate1.d --read-doc-meta-dir=crate2.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+rd_("fcrate1fcrate2")
+```
+
+Or you can use a single metadata directory for all of the crates:
+
+```console
+$ rustdoc +nightly crate1.rs --write-doc-meta-dir=meta.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+cat: 'doc/search.index/crateNames/*': No such file or directory
+$ rustdoc +nightly crate2.rs --write-doc-meta-dir=meta.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+cat: 'doc/search.index/crateNames/*': No such file or directory
+$ rustdoc +nightly --read-doc-meta-dir=meta.d -Zunstable-options
 $ cat doc/search.index/crateNames/*
 rd_("fcrate1fcrate2")
 ```
@@ -490,6 +522,15 @@ Calculating code examples follows these rules:
   * static
   * typedef
 2. If one of the previously listed items has a code example, then it'll be counted.
+
+If you use the `-o` option with it, it will generate the file into the given older name. For example:
+
+```shell
+rustdoc foo.rs --show-coverage -o doc
+```
+
+Will generate a `foo.txt` into the `doc` folder. If the `-o` option isn't passed, it will display
+on stdout.
 
 ### JSON output
 
@@ -771,8 +812,7 @@ Defines which scopes of paths should be remapped by --remap-path-prefix.
 `rustdoc` (and by extension `rustc`) have a special `documentation` remapping scope, it
 permits remapping source paths that ends up in the generated documentation.
 
-Currently the scope can only be specified from `rustc`, due to the lack of an equivalent
-`--remap-path-scope` flag in `rustc`.
+It can specified with `--remap-path-scope=documentation`.
 
 ## `#[doc(cfg)]` and `#[doc(auto_cfg)]`
 
@@ -850,12 +890,63 @@ pub mod futures {
 
 Then, the `unix` cfg will never be displayed into the documentation.
 
-Rustdoc currently hides `doc` and `doctest` attributes by default and reserves the right to change the list of "hidden by default" attributes.
-
-The attribute accepts only a list of identifiers or key/value items. So you can write:
+The syntax of `hide` is as follows: you can list as many `cfg` name as you want:
 
 ```rust,ignore (nightly)
-#[doc(auto_cfg(hide(unix, doctest, feature = "something")))]
+#[doc(auto_cfg(hide(feature, target_os)))]
+```
+
+With the above example, it means that `#[cfg(feature)]` and `#[cfg(target_os)]` won't be displayed in the docs. However, `#[cfg(target_os = "linux)]` or `#[cfg(feature = "something")]` will be displayed because only the key without values was marked as hidden. if you want to hide some values, you can do:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(hide(feature, target_os, values("something", "linux"))))]
+```
+
+In this case, `#[cfg(feature = "linux")]`, `#[cfg(feature = "something")]`, `#[cfg(target_os = "something")]` and `#[cfg(target_os = "linux")]` will be hidden. All listed keys will be impacted by `values(...)`. You can split them by having two `hide`:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(
+    hide(feature, values("something")),
+    hide(target_os, values("linux")),
+))]
+```
+
+Now, only `#[cfg(feature = "something")]` and `#[cfg(target_os = "linux")]` will be hidden. If you want to hide a key and all its values, you can use `any()`:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(
+    hide(feature, values(any())),
+))]
+```
+
+If you want to hide only when there is no value you can use `none()`:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(
+    hide(feature, values("something", none())),
+))]
+```
+
+So now, if you want to forbid all values for a key, but allow the key itself, you can do:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(
+    hide(feature, values(any())), // We completely hide "feature".
+    show(feature), // We show again "feature" (but not any value).
+))]
+```
+
+If the previous example, both `#[cfg(feature)]` and `#[cfg(feature = "something")]` will be hidden.
+
+Rustdoc currently hides `test`, `doc` and `doctest` attributes by default and reserves the right to change the list of "hidden by default" attributes.
+
+The attribute accepts only a list of identifiers and `values()`. So you can write:
+
+```rust,ignore (nightly)
+#[doc(auto_cfg(
+    hide(unix, doctest),
+    hide(feature, values("something")),
+))]
 #[doc(auto_cfg(hide()))]
 ```
 
@@ -865,7 +956,7 @@ But you cannot write:
 #[doc(auto_cfg(hide(not(unix))))]
 ```
 
-So if we use `doc(auto_cfg(hide(unix)))`, it means it will hide all mentions of `unix`:
+So if we use `doc(auto_cfg(hide(unix)))`, it means it will hide all mentions of `unix` without a value:
 
 ```rust,ignore (nightly)
 #[cfg(unix)] // nothing displayed
@@ -877,14 +968,6 @@ However, it only impacts the `unix` cfg, not the feature:
 
 ```rust,ignore (nightly)
 #[cfg(feature = "unix")] // `feature = "unix"` is displayed
-```
-
-If `cfg_auto(show(...))` and `cfg_auto(hide(...))` are used to show/hide a same `cfg` on a same item, it'll emit an error. Example:
-
-```rust,ignore (nightly)
-#[doc(auto_cfg(hide(unix)))]
-#[doc(auto_cfg(show(unix)))] // Error!
-pub fn foo() {}
 ```
 
 Using this attribute will re-enable `auto_cfg` if it was disabled at this location:
@@ -904,20 +987,14 @@ pub mod module {
 }
 ```
 
-However, using `doc(auto_cfg = ...)` and `doc(auto_cfg(...))` on the same item will emit an error:
-
-```rust,ignore (nightly)
-#[doc(auto_cfg = false)]
-#[doc(auto_cfg(hide(unix)))] // error
-pub fn foo() {}
-```
-
 The reason behind this is that `doc(auto_cfg = ...)` enables or disables the feature, whereas `doc(auto_cfg(...))` enables it unconditionally, making the first attribute to appear useless as it will be overidden by the next `doc(auto_cfg)` attribute.
 
 ### `#[doc(auto_cfg(show(...)))]`
 
 This attribute does the opposite of `#[doc(auto_cfg(hide(...)))]`: if you used `#[doc(auto_cfg(hide(...)))]` and want to revert its effect on an item and its descendants, you can use `#[doc(auto_cfg(show(...)))]`.
 It only applies to `#[doc(auto_cfg = true)]`, not to `#[doc(cfg(...))]`.
+
+It follows the same syntax rules as for `#[doc(auto_cfg(hide(...)))]`.
 
 For example:
 
@@ -936,7 +1013,10 @@ pub mod futures {
 The attribute accepts only a list of identifiers or key/value items. So you can write:
 
 ```rust,ignore (nightly)
-#[doc(auto_cfg(show(unix, doctest, feature = "something")))]
+#[doc(auto_cfg(
+    show(unix, doctest),
+    show(feature, values("something")),
+))]
 #[doc(auto_cfg(show()))]
 ```
 

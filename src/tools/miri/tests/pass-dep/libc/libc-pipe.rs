@@ -1,6 +1,7 @@
 //@ignore-target: windows # No libc pipe on Windows
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-deterministic-concurrency
+//@run-native
 use std::thread;
 
 #[path = "../../utils/libc.rs"]
@@ -23,6 +24,7 @@ fn main() {
     test_pipe2();
     test_pipe_setfl_getfl();
     test_pipe_fcntl_threaded();
+    test_send_recv();
 }
 
 fn test_pipe() {
@@ -39,7 +41,7 @@ fn test_pipe() {
     let data = b"123";
     write_all(fds[1], data).unwrap();
     let mut buf4: [u8; 5] = [0; 5];
-    let (part1, rest) = read_split_slice(fds[0], &mut buf4).unwrap();
+    let (part1, rest) = read_partial(fds[0], &mut buf4).unwrap();
     assert_eq!(part1[..], data[..part1.len()]);
     // Write 2 more bytes so we can exactly fill the `rest`.
     write_all(fds[1], b"34").unwrap();
@@ -68,7 +70,7 @@ fn test_pipe_threaded() {
     thread2.join().unwrap();
 }
 
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+// FIXME(static_mut_refs): use raw pointers instead of references
 #[allow(static_mut_refs)]
 fn test_race() {
     static mut VAL: u8 = 0;
@@ -196,4 +198,26 @@ fn test_pipe_fcntl_threaded() {
     let buf = read_exact_array::<5>(fds[0]).unwrap();
     thread1.join().unwrap();
     assert_eq!(&buf, b"abcde");
+}
+
+/// `send` and `recv` should fail on pipes as they are not sockets.
+/// Since pipes are implemented using virtual sockets in Miri, we test
+/// that those operations correctly fail.
+fn test_send_recv() {
+    let mut fds = [-1, -1];
+    errno_check(unsafe { libc::pipe(fds.as_mut_ptr()) });
+
+    let mut buffer = [1u8; 16];
+
+    let err = unsafe {
+        errno_result(libc::send(fds[0], buffer.as_mut_ptr().cast(), buffer.len(), 0)).unwrap_err()
+    };
+    // `send` should fail because the pipe isn't a socket.
+    assert_eq!(err.raw_os_error(), Some(libc::ENOTSOCK));
+
+    let err = unsafe {
+        errno_result(libc::recv(fds[0], buffer.as_mut_ptr().cast(), buffer.len(), 0)).unwrap_err()
+    };
+    // `recv` should fail because the pipe isn't a socket.
+    assert_eq!(err.raw_os_error(), Some(libc::ENOTSOCK));
 }

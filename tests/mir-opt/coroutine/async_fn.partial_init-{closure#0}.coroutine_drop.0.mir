@@ -47,7 +47,7 @@ fn partial_init::{closure#0}(_1: &mut {async fn body of partial_init()}) -> () {
 
     bb0: {
         _27 = discriminant((*_1));
-        switchInt(move _27) -> [0: bb11, 3: bb14, otherwise: bb15];
+        switchInt(move _27) -> [0: bb11, 3: bb12, otherwise: bb13];
     }
 
     bb1: {
@@ -71,7 +71,7 @@ fn partial_init::{closure#0}(_1: &mut {async fn body of partial_init()}) -> () {
         StorageDead(_5);
         StorageDead(_4);
         nop;
-        goto -> bb12;
+        goto -> bb5;
     }
 
     bb5: {
@@ -105,18 +105,10 @@ fn partial_init::{closure#0}(_1: &mut {async fn body of partial_init()}) -> () {
     }
 
     bb11: {
-        goto -> bb13;
-    }
-
-    bb12: {
-        goto -> bb5;
-    }
-
-    bb13: {
         goto -> bb10;
     }
 
-    bb14: {
+    bb12: {
         StorageLive(_4);
         StorageLive(_5);
         StorageLive(_8);
@@ -125,7 +117,7 @@ fn partial_init::{closure#0}(_1: &mut {async fn body of partial_init()}) -> () {
         goto -> bb1;
     }
 
-    bb15: {
+    bb13: {
         return;
     }
 }

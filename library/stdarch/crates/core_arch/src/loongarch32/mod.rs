@@ -3,7 +3,7 @@
 use crate::arch::asm;
 
 #[allow(improper_ctypes)]
-unsafe extern "unadjusted" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.loongarch.cacop.w"]
     fn __cacop(a: i32, b: i32, c: i32);
     #[link_name = "llvm.loongarch.csrrd.w"]

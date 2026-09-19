@@ -7,5 +7,5 @@ pub struct S([usize; 8]);
 
 pub fn outer_function(x: S, y: S) -> usize {
     (#[no_mangle] || y.0[0])()
-    //~^ ERROR `#[no_mangle]` attribute cannot be used on closures
+    //~^ ERROR the `no_mangle` attribute cannot be used on closures
 }

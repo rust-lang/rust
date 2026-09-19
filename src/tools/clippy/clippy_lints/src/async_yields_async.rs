@@ -7,8 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, QPath,
 };
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does

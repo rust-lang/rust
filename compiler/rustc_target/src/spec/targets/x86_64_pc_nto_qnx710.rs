@@ -1,12 +1,12 @@
-use crate::spec::base::nto_qnx;
+use crate::spec::base::qnx_sdp;
 use crate::spec::{Env, Target};
 
 pub(crate) fn target() -> Target {
-    let mut target = nto_qnx::x86_64();
-    target.metadata.description =
-        Some("x86 64-bit QNX Neutrino 7.1 RTOS with io-pkt network stack".into());
+    let mut target = qnx_sdp::x86_64();
+    target.metadata.description = Some("x86 64-bit QNX SDP 7.1 with io-pkt network stack".into());
     target.options.pre_link_args =
-        nto_qnx::pre_link_args(nto_qnx::ApiVariant::Default, nto_qnx::Arch::X86_64);
+        qnx_sdp::pre_link_args(qnx_sdp::ApiVariant::Default, qnx_sdp::Arch::X86_64);
+    // for QNX SDP 7.x, we keep target_os = "nto" for backwards compatibility, and use target_env to specify which version
     target.options.env = Env::Nto71;
     target
 }

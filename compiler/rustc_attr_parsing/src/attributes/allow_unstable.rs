@@ -2,8 +2,9 @@ use std::iter;
 
 use rustc_feature::AttributeStability;
 
+use super::macro_attrs::check_macro_only;
 use super::prelude::*;
-use crate::session_diagnostics;
+use crate::diagnostics;
 
 pub(crate) struct AllowInternalUnstableParser;
 impl CombineAttributeParser for AllowInternalUnstableParser {
@@ -11,12 +12,8 @@ impl CombineAttributeParser for AllowInternalUnstableParser {
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> =
         |items, span| AttributeKind::AllowInternalUnstable(items, span);
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
-        Allow(Target::MacroDef),
-        Allow(Target::Fn),
-        Warn(Target::Field),
-        Warn(Target::Arm),
-    ]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::MacroDef), Allow(Target::Fn)]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
     const STABILITY: AttributeStability = unstable!(allow_internal_unstable);
 
@@ -28,6 +25,10 @@ impl CombineAttributeParser for AllowInternalUnstableParser {
             .into_iter()
             .zip(iter::repeat(cx.attr_span))
     }
+
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        check_macro_only(cx, attr_span);
+    }
 }
 
 pub(crate) struct UnstableFeatureBoundParser;
@@ -36,7 +37,7 @@ impl CombineAttributeParser for UnstableFeatureBoundParser {
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::UnstableFeatureBound(items);
     const STABILITY: AttributeStability = unstable!(staged_api);
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Impl { of_trait: true }),
         Allow(Target::Trait),
@@ -59,7 +60,7 @@ impl CombineAttributeParser for RustcAllowConstFnUnstableParser {
     type Item = Symbol;
     const CONVERT: ConvertFn<Self::Item> =
         |items, first_span| AttributeKind::RustcAllowConstFnUnstable(items, first_span);
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
@@ -87,7 +88,7 @@ fn parse_unstable(
     let mut res = Vec::new();
 
     let Some(list) = args.as_list() else {
-        cx.emit_err(session_diagnostics::ExpectsFeatureList {
+        cx.emit_err(diagnostics::ExpectsFeatureList {
             span: cx.attr_span,
             name: symbol.to_ident_string(),
         });
@@ -99,7 +100,7 @@ fn parse_unstable(
         if let Some(ident) = param.meta_item_no_args().and_then(|i| i.path().word()) {
             res.push(ident.name);
         } else {
-            cx.emit_err(session_diagnostics::ExpectsFeatures {
+            cx.emit_err(diagnostics::ExpectsFeatures {
                 span: param_span,
                 name: symbol.to_ident_string(),
             });

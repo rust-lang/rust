@@ -5,7 +5,7 @@
             Struct(
                 Struct {
                     id: StructId(
-                        3c00,
+                        0680,
                     ),
                 },
             ),
@@ -13,7 +13,7 @@
         loc: DeclarationLocation {
             hir_file_id: FileId(
                 EditionedFileId(
-                    Id(2c01),
+                    Id(481),
                 ),
             ),
             ptr: SyntaxNodePtr {
@@ -34,7 +34,6 @@
         is_assoc: false,
         is_import: false,
         do_not_complete: Yes,
-        _marker: PhantomData<&()>,
     },
     FileSymbol {
         name: "Foo",
@@ -42,7 +41,7 @@
             Struct(
                 Struct {
                     id: StructId(
-                        3c00,
+                        0680,
                     ),
                 },
             ),
@@ -50,7 +49,7 @@
         loc: DeclarationLocation {
             hir_file_id: FileId(
                 EditionedFileId(
-                    Id(2c00),
+                    Id(480),
                 ),
             ),
             ptr: SyntaxNodePtr {
@@ -71,6 +70,5 @@
         is_assoc: false,
         is_import: true,
         do_not_complete: Yes,
-        _marker: PhantomData<&()>,
     },
 ]

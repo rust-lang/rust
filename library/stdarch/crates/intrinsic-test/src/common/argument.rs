@@ -1,35 +1,45 @@
 use itertools::Itertools;
 
+use crate::common::SupportedArchitecture;
 use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::values::test_values_array_name;
 
-use super::PASSES;
 use super::constraint::Constraint;
-use super::intrinsic_helpers::IntrinsicTypeDefinition;
+use super::intrinsic_helpers::TypeDefinition;
+use super::{PASSES, PREDICATE_LOCAL};
 
 /// An argument for the intrinsic.
 #[derive(Debug, PartialEq, Clone)]
-pub struct Argument<T: IntrinsicTypeDefinition> {
+pub struct Argument<A: SupportedArchitecture> {
     /// The argument's index in the intrinsic function call.
     pub pos: usize,
     /// The argument name.
     pub name: String,
     /// The type of the argument.
-    pub ty: T,
+    pub ty: A::Type,
     /// Any constraints that are on this argument
     pub constraint: Option<Constraint>,
+    /// Is the argument a predicate for a scalable intrinsic?
+    pub is_predicate: bool,
 }
 
-impl<T> Argument<T>
+impl<A> Argument<A>
 where
-    T: IntrinsicTypeDefinition,
+    A: SupportedArchitecture,
 {
-    pub fn new(pos: usize, name: String, ty: T, constraint: Option<Constraint>) -> Self {
+    pub fn new(
+        pos: usize,
+        name: String,
+        ty: A::Type,
+        constraint: Option<Constraint>,
+        is_predicate: bool,
+    ) -> Self {
         Argument {
             pos,
             name,
             ty,
             constraint,
+            is_predicate,
         }
     }
 
@@ -37,8 +47,14 @@ where
         self.ty.c_type()
     }
 
+    /// Generates local variable name for the value passed to this argument
     pub fn generate_name(&self) -> String {
-        format!("{}_val", self.name)
+        // The same predicate is used for scalable intrinsic invocations
+        if self.is_predicate {
+            format!("{PREDICATE_LOCAL}")
+        } else {
+            format!("{}_val", self.name)
+        }
     }
 
     pub fn is_simd(&self) -> bool {
@@ -63,13 +79,13 @@ where
 
 /// Arguments of an intrinsic - including parameters that end up being const generics.
 #[derive(Debug, PartialEq, Clone)]
-pub struct ArgumentList<T: IntrinsicTypeDefinition> {
-    pub args: Vec<Argument<T>>,
+pub struct ArgumentList<A: SupportedArchitecture> {
+    pub args: Vec<Argument<A>>,
 }
 
-impl<T> ArgumentList<T>
+impl<A> ArgumentList<A>
 where
-    T: IntrinsicTypeDefinition,
+    A: SupportedArchitecture,
 {
     /// Returns a string with the arguments in `self` as a parameter list for a wrapper fn
     /// definition in C (e.g. `$ty1 $arg1, $ty2 $arg2`).
@@ -175,18 +191,14 @@ where
     pub fn load_values_rust(&self) -> String {
         self.iter()
             .filter(|&arg| !arg.has_constraint())
+            .filter(|&arg| !arg.is_predicate)
             .enumerate()
             .map(|(idx, arg)| {
                 if arg.is_simd() {
-                    format!(
-                        "let {name} = {load}({vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _);\n",
-                        name = arg.generate_name(),
-                        vals_name = test_values_array_name(&arg.ty),
-                        load = arg.ty.get_load_function(),
-                    )
+                    A::load_call(arg, idx)
                 } else {
                     format!(
-                        "let {name} = {vals_name}[(i+{idx}) % {PASSES}];\n",
+                        "let {name} = {vals_name}[(i+{idx}) % {PASSES}];",
                         name = arg.generate_name(),
                         vals_name = test_values_array_name(&arg.ty),
                     )
@@ -196,7 +208,7 @@ where
     }
 
     /// Returns an iterator over the contained arguments
-    pub fn iter(&self) -> std::slice::Iter<'_, Argument<T>> {
+    pub fn iter(&self) -> std::slice::Iter<'_, Argument<A>> {
         self.args.iter()
     }
 }

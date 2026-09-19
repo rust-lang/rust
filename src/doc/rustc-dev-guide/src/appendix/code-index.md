@@ -29,15 +29,15 @@ Item            |  Kind    | Short description           | Chapter            | 
 `Ty<'tcx>` | struct | This is the internal representation of a type used for type checking | [Type checking] | [compiler/rustc_middle/src/ty/mod.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html)
 `TyCtxt<'tcx>` | struct | The "typing context". This is the central data structure in the compiler. It is the context that you use to perform all manner of queries | [The `ty` modules] | [compiler/rustc_middle/src/ty/context.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html)
 
-[The HIR]: ../hir.html
-[Identifiers in the HIR]: ../hir.html#hir-id
-[The parser]: ../the-parser.html
-[The Rustc Driver and Interface]: ../rustc-driver/intro.html
-[Type checking]: ../hir-typeck/summary.html
-[The `ty` modules]: ../ty.html
-[Rustdoc]: ../rustdoc.html
-[Emitting Diagnostics]: ../diagnostics.html
-[Macro expansion]: ../macro-expansion.html
-[Name resolution]: ../name-resolution.html
-[Parameter Environment]: ../typing-parameter-envs.html
-[Trait Solving: Goals and Clauses]: ../traits/goals-and-clauses.html#domain-goals
+[The HIR]: ../hir.md
+[Identifiers in the HIR]: ../hir.md#hir-id
+[The parser]: ../the-parser.md
+[The Rustc Driver and Interface]: ../rustc-driver/intro.md
+[Type checking]: ../hir-typeck/summary.md
+[The `ty` modules]: ../ty.md
+[Rustdoc]: ../rustdoc.md
+[Emitting Diagnostics]: ../diagnostics.md
+[Macro expansion]: ../macro-expansion.md
+[Name resolution]: ../name-resolution.md
+[Parameter Environment]: ../typing-parameter-envs.md
+[Trait Solving: Goals and Clauses]: ../traits/goals-and-clauses.md#domain-goals

@@ -721,7 +721,8 @@ impl StrExt for str {
     fn to_lowercase_smolstr(&self) -> SmolStr {
         let len = self.len();
         if len <= INLINE_CAP {
-            let (buf, rest) = inline_convert_while_ascii(self, u8::to_ascii_lowercase);
+            // SAFETY: `to_ascii_lowercase` always converts ASCII to ASCII
+            let (buf, rest) = unsafe { inline_convert_while_ascii(self, u8::to_ascii_lowercase) };
             from_buf_and_chars(buf, len - rest.len(), rest.chars().flat_map(|c| c.to_lowercase()))
         } else {
             self.to_lowercase().into()
@@ -732,7 +733,8 @@ impl StrExt for str {
     fn to_uppercase_smolstr(&self) -> SmolStr {
         let len = self.len();
         if len <= INLINE_CAP {
-            let (buf, rest) = inline_convert_while_ascii(self, u8::to_ascii_uppercase);
+            // SAFETY: `to_ascii_uppercase` always converts ASCII to ASCII
+            let (buf, rest) = unsafe { inline_convert_while_ascii(self, u8::to_ascii_uppercase) };
             from_buf_and_chars(buf, len - rest.len(), rest.chars().flat_map(|c| c.to_uppercase()))
         } else {
             self.to_uppercase().into()
@@ -848,8 +850,13 @@ unsafe fn replacen_1_ascii(src: &str, mut map: impl FnMut(&u8) -> u8) -> SmolStr
 }
 
 /// Inline version of std fn `convert_while_ascii`. `s` must have len <= 23.
+///
+/// # Safety
+///
+/// If the input to `convert` is valid ASCII (<= 0x7F),
+/// then the output must be as well.
 #[inline]
-fn inline_convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> ([u8; INLINE_CAP], &str) {
+unsafe fn inline_convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> ([u8; INLINE_CAP], &str) {
     // Process the input in chunks of 16 bytes to enable auto-vectorization.
     // Previously the chunk size depended on the size of `usize`,
     // but on 32-bit platforms with sse or neon is also the better choice.

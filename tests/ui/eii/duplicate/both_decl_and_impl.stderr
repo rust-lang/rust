@@ -1,0 +1,28 @@
+error: a single item cannot both declare and implement EIIs
+  --> $DIR/both_decl_and_impl.rs:11:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: only a small subset of attributes are supported on externally implementable items
+  --> $DIR/both_decl_and_impl.rs:21:1
+   |
+LL | fn d(x: u64) {}
+   | ^^^^^^^^^^^^
+   |
+note: this attribute is not supported
+  --> $DIR/both_decl_and_impl.rs:20:1
+   |
+LL | #[c]
+   | ^^^^
+
+error: `#[c]` function required, but not found
+  --> $DIR/both_decl_and_impl.rs:16:4
+   |
+LL | fn c(x: u64);
+   |    ^ expected because `#[c]` was declared here in crate `both_decl_and_impl`
+   |
+   = help: expected at least one implementation in crate `both_decl_and_impl` or any of its dependencies
+
+error: aborting due to 3 previous errors
+

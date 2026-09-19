@@ -68,6 +68,18 @@ fn f() {}
 /// Here's a second paragraph. It would be preferable to put the details here.
 pub fn issue_14274() {}
 
+#[rustfmt::skip]
+/// This doc comment contains two references: [this](https://fooooooooooooooooooooooooooooooooooooooooooooooooooooooooo.example.com)
+/// and [this](https://fooooooooooooooooooooooooooooooooooooooooooooooooooooooooo.example.com)
+pub fn issue_13315() {}
+
+#[rustfmt::skip]
+/// Some function. This doc-string paragraph is too long. Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of [Lorem Ipsum](https://fooooooooooooooooooooooooooooooooooooooooooooooooooooooooo.example.com).
+//~^ too_long_first_doc_paragraph
+///
+/// Here's a second paragraph. It would be preferable to put the details here.
+pub fn issue_1331_warn() {}
+
 fn main() {
     // test code goes here
 }

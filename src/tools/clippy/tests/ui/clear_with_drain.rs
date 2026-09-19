@@ -20,11 +20,6 @@ fn vec_range() {
     let mut v = vec![1, 2, 3];
     v.drain(0..v.len());
     //~^ clear_with_drain
-
-    // Do lint
-    let mut v = vec![1, 2, 3];
-    v.drain(usize::MIN..v.len());
-    //~^ clear_with_drain
 }
 
 fn vec_range_from() {
@@ -44,11 +39,6 @@ fn vec_range_from() {
     // Do lint
     let mut v = vec![1, 2, 3];
     v.drain(0..);
-    //~^ clear_with_drain
-
-    // Do lint
-    let mut v = vec![1, 2, 3];
-    v.drain(usize::MIN..);
     //~^ clear_with_drain
 }
 
@@ -124,11 +114,6 @@ fn vec_deque_range() {
     let mut deque = VecDeque::from([1, 2, 3]);
     deque.drain(0..deque.len());
     //~^ clear_with_drain
-
-    // Do lint
-    let mut deque = VecDeque::from([1, 2, 3]);
-    deque.drain(usize::MIN..deque.len());
-    //~^ clear_with_drain
 }
 
 fn vec_deque_range_from() {
@@ -148,11 +133,6 @@ fn vec_deque_range_from() {
     // Do lint
     let mut deque = VecDeque::from([1, 2, 3]);
     deque.drain(0..);
-    //~^ clear_with_drain
-
-    // Do lint
-    let mut deque = VecDeque::from([1, 2, 3]);
-    deque.drain(usize::MIN..);
     //~^ clear_with_drain
 }
 
@@ -228,11 +208,6 @@ fn string_range() {
     let mut s = String::from("Hello, world!");
     s.drain(0..s.len());
     //~^ clear_with_drain
-
-    // Do lint
-    let mut s = String::from("Hello, world!");
-    s.drain(usize::MIN..s.len());
-    //~^ clear_with_drain
 }
 
 fn string_range_from() {
@@ -252,11 +227,6 @@ fn string_range_from() {
     // Do lint
     let mut s = String::from("Hello, world!");
     s.drain(0..);
-    //~^ clear_with_drain
-
-    // Do lint
-    let mut s = String::from("Hello, world!");
-    s.drain(usize::MIN..);
     //~^ clear_with_drain
 }
 

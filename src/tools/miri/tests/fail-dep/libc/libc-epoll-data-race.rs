@@ -16,8 +16,7 @@ use libc_utils::*;
 
 fn main() {
     // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
+    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
     // Create two socketpair instances.
     let mut fds_a = [-1, -1];

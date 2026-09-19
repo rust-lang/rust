@@ -3,12 +3,11 @@ use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_middle::bug;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AssocItem, BottomUpFolder, Ty, TypeFoldable, TypeVisitableExt};
-use rustc_span::{DUMMY_SP, Ident, Span, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, bug, span_bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCause;
 use tracing::instrument;
@@ -44,7 +43,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_compatible_variants(err, expr, expected, expr_ty)
             || self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty)
             || self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty)
-            || self.suggest_no_capture_closure(err, expected, expr_ty)
+            || self.suggest_closure_to_fn_ptr_coercion(err, expr, expected, expr_ty)
             || self.suggest_boxing_when_appropriate(
                 err,
                 expr.peel_blocks().span,
@@ -261,7 +260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mut expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         allow_two_phase: AllowTwoPhase,
     ) -> Result<Ty<'tcx>, Diag<'a>> {
-        let expected = self.resolve_vars_with_obligations(expected);
+        let expected = self.deeply_resolve_ignoring_regions_with_obligations(expected);
 
         let e = match self.coerce(expr, checked_ty, expected, allow_two_phase, None) {
             Ok(ty) => return Ok(ty),
@@ -276,7 +275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ));
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
-        let expr_ty = self.resolve_vars_if_possible(checked_ty);
+        let expr_ty = self.deeply_resolve_ignoring_regions(checked_ty);
         let mut err =
             self.err_ctxt().report_mismatched_types(&cause, self.param_env, expected, expr_ty, e);
 
@@ -332,7 +331,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut expr_finder = FindExprs { hir_id: local_hir_id, uses: init.into_iter().collect() };
-        let body = self.tcx.hir_body_owned_by(self.body_id);
+        let body = self.tcx.hir_body_owned_by(self.body_def_id);
         expr_finder.visit_expr(body.value);
 
         // Replaces all of the variables in the given type with a fresh inference variable.
@@ -402,15 +401,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Unify the method signature with our incompatible arg, to
                     // do inference in the *opposite* direction and to find out
                     // what our ideal rcvr ty would look like.
+                    let Some(input_arg) = method.sig.inputs().get(idx + 1) else {
+                        if method.sig.splatted().is_some() {
+                            // FIXME(splat): when the arg is splatted, adjust its index, to handle the type mismatch properly
+                            return None;
+                        } else {
+                            span_bug!(
+                                self.tcx.def_span(method.def_id),
+                                "arg index {} out of bounds for method with {} inputs",
+                                idx + 1,
+                                method.sig.inputs().len(),
+                            );
+                        }
+                    };
                     let _ = self
                         .at(&ObligationCause::dummy(), self.param_env)
-                        .eq(DefineOpaqueTypes::Yes, method.sig.inputs()[idx + 1], arg_ty)
+                        .eq(DefineOpaqueTypes::Yes, *input_arg, arg_ty)
                         .ok()?;
                     self.select_obligations_where_possible(|errs| {
                         // Yeet the errors, we're already reporting errors.
                         errs.clear();
                     });
-                    Some(self.resolve_vars_if_possible(possible_rcvr_ty))
+                    Some(self.deeply_resolve_ignoring_regions(possible_rcvr_ty))
                 });
                 let Some(rcvr_ty) = possible_rcvr_ty else { return false };
                 rcvr_ty
@@ -533,7 +545,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .borrow()
                                 .type_dependent_def_id(parent_expr.hir_id)
                         && let ideal_arg_ty =
-                            self.resolve_vars_if_possible(ideal_method.sig.inputs()[idx + 1])
+                            self.deeply_resolve_ignoring_regions(ideal_method.sig.inputs()[idx + 1])
                         && !ideal_arg_ty.has_non_region_infer()
                     {
                         self.emit_type_mismatch_suggestions(
@@ -698,9 +710,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         error: Option<TypeError<'tcx>>,
     ) {
-        match (self.tcx.parent_hir_node(expr.hir_id), error) {
+        // Skip nested block to find the correct parent node to point at.
+        let mut current_hir_id = expr.hir_id;
+        let parent = self
+            .tcx
+            .hir_parent_iter(expr.hir_id)
+            .find_map(|(parent_hir_id, parent)| match parent {
+                hir::Node::Block(block)
+                    if block.expr.is_some_and(|expr| expr.hir_id == current_hir_id) =>
+                {
+                    current_hir_id = parent_hir_id;
+                    None
+                }
+                hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Block(block, _), .. })
+                    if block.hir_id == current_hir_id =>
+                {
+                    current_hir_id = parent_hir_id;
+                    None
+                }
+                parent => Some(parent),
+            })
+            .expect("an expression must have a non-block ancestor");
+
+        match (parent, error) {
             (hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), init: Some(init), .. }), _)
-                if init.hir_id == expr.hir_id && !ty.span.source_equal(init.span) =>
+                if init.hir_id == current_hir_id && !ty.span.source_equal(init.span) =>
             {
                 // Point at `let` assignment type.
                 err.span_label(ty.span, "expected due to this");
@@ -720,8 +754,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         hir::Path {
                             res:
                                 hir::def::Res::Def(
-                                    hir::def::DefKind::Static { .. }
-                                    | hir::def::DefKind::Const { .. },
+                                    hir::def::DefKind::Static { .. } | hir::def::DefKind::Const,
                                     def_id,
                                 ),
                             ..

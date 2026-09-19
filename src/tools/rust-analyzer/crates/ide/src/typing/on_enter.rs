@@ -1,7 +1,7 @@
 //! Handles the `Enter` key press, including comment continuation and
 //! indentation in brace-delimited constructs.
 
-use ide_db::{FilePosition, RootDatabase};
+use ide_db::{FilePosition, RootDatabase, source_change::SnippetEdit};
 use syntax::{
     AstNode, SmolStr, SourceFile,
     SyntaxKind::*,
@@ -55,7 +55,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Text
     let file = parse.tree();
     let token = file.syntax().token_at_offset(position.offset).left_biased()?;
 
-    if let Some(comment) = ast::Comment::cast(token.clone()) {
+    if let Some(comment) = ast::AnyComment::cast(token.clone()) {
         return on_enter_in_comment(&comment, &file, position.offset);
     }
 
@@ -70,7 +70,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Text
 }
 
 fn on_enter_in_comment(
-    comment: &ast::Comment,
+    comment: &ast::AnyComment,
     file: &ast::SourceFile,
     offset: TextSize,
 ) -> Option<TextEdit> {
@@ -113,7 +113,8 @@ fn on_enter_in_braces(l_curly: SyntaxToken, position: FilePosition) -> Option<Te
         return None;
     }
 
-    let (r_curly, content) = brace_contents_on_same_line(&l_curly)?;
+    let (r_curly, mut content) = brace_contents_on_same_line(&l_curly)?;
+    SnippetEdit::escape_snippet_bits(&mut content);
     let indent = IndentLevel::from_token(&l_curly);
     Some(TextEdit::replace(
         TextRange::new(position.offset, r_curly.text_range().start()),
@@ -158,7 +159,7 @@ fn brace_contents_on_same_line(l_curly: &SyntaxToken) -> Option<(SyntaxToken, St
     }
 }
 
-fn followed_by_comment(comment: &ast::Comment) -> bool {
+fn followed_by_comment(comment: &ast::AnyComment) -> bool {
     let ws = match comment.syntax().next_token().and_then(ast::Whitespace::cast) {
         Some(it) => it,
         None => return false,
@@ -166,7 +167,7 @@ fn followed_by_comment(comment: &ast::Comment) -> bool {
     if ws.spans_multiple_lines() {
         return false;
     }
-    ws.syntax().next_token().and_then(ast::Comment::cast).is_some()
+    ws.syntax().next_token().and_then(ast::AnyComment::cast).is_some()
 }
 
 fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
@@ -681,6 +682,24 @@ use path::{$0
     Thing
 };
             "#,
+        );
+    }
+
+    #[test]
+    fn escapes_dollar_sign_in_brace_contents() {
+        do_check(
+            r#"
+fn f() {
+    const {$0$bar};
+}
+"#,
+            r#"
+fn f() {
+    const {
+        $0\$bar
+    };
+}
+"#,
         );
     }
 }

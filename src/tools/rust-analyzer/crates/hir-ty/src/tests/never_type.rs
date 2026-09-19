@@ -115,6 +115,21 @@ fn test() {
 }
 
 #[test]
+fn array_repeat_never_can_be_reinferred() {
+    check_no_mismatches(
+        r#"
+fn test() {
+    let y = [return; 2];
+    match y {
+        [(1, _), (_, false)] => {}
+        [_, _] => {}
+    }
+}
+"#,
+    );
+}
+
+#[test]
 fn match_no_arm() {
     check_types(
         r#"
@@ -888,6 +903,17 @@ fn foo() {
 }
 
 #[test]
+fn diverging_destructuring_assignment_coerces_rhs() {
+    check_no_mismatches(
+        r#"
+fn main() {
+    if (() = return) {}
+}
+"#,
+    );
+}
+
+#[test]
 fn never_coercion_in_struct_update_syntax() {
     check_no_mismatches(
         r#"
@@ -897,6 +923,33 @@ struct Struct {
 
 fn example() -> Struct {
     Struct { ..loop {} }
+}
+    "#,
+    );
+}
+
+#[test]
+fn never_await() {
+    check_no_mismatches(
+        r#"
+//- minicore: future
+async fn test() -> ! {
+    loop {}
+}
+
+pub async fn test1() -> ! {
+    test().await;
+}
+    "#,
+    );
+}
+
+#[test]
+fn break_diverge() {
+    check_no_mismatches(
+        r#"
+fn test() -> i32 {
+    let loop_value = loop { break (return 5); };
 }
     "#,
     );

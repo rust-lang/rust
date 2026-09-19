@@ -54,7 +54,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Add | Sub | BitOr | BitAnd | BitXor => {
                 assert!(left.layout.ty.is_raw_ptr());
                 assert_eq!(right.layout.ty, this.tcx.types.usize);
-                let ptr = left.to_scalar().to_pointer(this)?;
+                let ptr = left.to_scalar().to_pointer(this);
                 // We do the actual operation with usize-typed scalars.
                 let left = ImmTy::from_uint(ptr.addr().bytes(), this.machine.layouts.usize);
                 let result = this.binary_op(bin_op, &left, right)?;

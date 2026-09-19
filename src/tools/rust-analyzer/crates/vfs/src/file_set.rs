@@ -28,7 +28,7 @@ impl FileSet {
     /// If either `path`'s [`anchor`](AnchoredPath::anchor) or the resolved path is not in
     /// the set, returns [`None`].
     pub fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
-        let mut base = self.paths[&path.anchor].clone();
+        let mut base = self.paths.get(&path.anchor)?.clone();
         base.pop();
         let path = base.join(path.path)?;
         self.files.get(&path).copied()
@@ -126,6 +126,14 @@ impl FileSetConfig {
     /// Get the lexicographically ordered vector of the underlying map.
     pub fn roots(&self) -> Vec<(Vec<u8>, u64)> {
         self.map.stream().into_byte_vec()
+    }
+
+    /// Returns the index of the set `path` would be partitioned into, or `None` if it
+    /// belongs to none of the configured sets (that is, the catch-all set for everything
+    /// else).
+    pub fn classify_path(&self, path: &VfsPath) -> Option<usize> {
+        let idx = self.classify(path, &mut Vec::new());
+        (idx != self.len() - 1).then_some(idx)
     }
 
     /// Returns the set index for the given `path`.

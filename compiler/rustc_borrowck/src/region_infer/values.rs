@@ -5,10 +5,10 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_index::Idx;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::{IntervalSet, SparseIntervalMatrix};
-use rustc_middle::bug;
 use rustc_middle::mir::{BasicBlock, Location};
 use rustc_middle::ty::{self, RegionVid};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
 use crate::BorrowIndex;
@@ -178,7 +178,7 @@ impl LivenessValues {
 
     /// Returns an iterator of all the points where `region` is live.
     fn live_points(&self, region: RegionVid) -> impl Iterator<Item = PointIndex> {
-        self.point_liveness(region).into_iter().flat_map(|set| set.iter())
+        self.point_liveness(region).map(|set| set.iter()).into_flat_iter()
     }
 
     /// For debugging purposes, returns a pretty-printed string of the points where the `region` is
@@ -348,13 +348,13 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     pub(crate) fn locations_outlived_by(&self, r: N) -> impl Iterator<Item = Location> {
         self.points
             .row(r)
-            .into_iter()
-            .flat_map(move |set| set.iter().map(move |p| self.location_map.to_location(p)))
+            .map(move |set| set.iter().map(move |p| self.location_map.to_location(p)))
+            .into_flat_iter()
     }
 
     /// Returns just the universal regions that are contained in a given region's value.
     pub(crate) fn universal_regions_outlived_by(&self, r: N) -> impl Iterator<Item = RegionVid> {
-        self.free_regions.row(r).into_iter().flat_map(|set| set.iter())
+        self.free_regions.row(r).map(|set| set.iter()).into_flat_iter()
     }
 
     /// Returns all the elements contained in a given region's value.
@@ -364,8 +364,8 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     ) -> impl Iterator<Item = ty::PlaceholderRegion<'tcx>> {
         self.placeholders
             .row(r)
-            .into_iter()
-            .flat_map(|set| set.iter())
+            .map(|set| set.iter())
+            .into_flat_iter()
             .map(move |p| self.placeholder_indices.lookup_placeholder(p))
     }
 
@@ -407,16 +407,6 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     pub(crate) fn contains_free_region(&self, scc: N, free_region: RegionVid) -> bool {
         self.free_regions.contains(scc, free_region)
     }
-}
-
-/// For debugging purposes, returns a pretty-printed string of the given points.
-pub(crate) fn pretty_print_points(
-    location_map: &DenseLocationMap,
-    points: impl IntoIterator<Item = PointIndex>,
-) -> String {
-    pretty_print_region_elements(
-        points.into_iter().map(|p| location_map.to_location(p)).map(RegionElement::Location),
-    )
 }
 
 /// For debugging purposes, returns a pretty-printed string of the given region elements.

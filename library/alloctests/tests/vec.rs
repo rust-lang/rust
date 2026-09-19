@@ -1028,6 +1028,15 @@ fn test_into_iter_next_chunk() {
 }
 
 #[test]
+fn test_into_iter_next_chunk_back() {
+    let mut iter = b"lorem".to_vec().into_iter();
+
+    assert_eq!(iter.next_chunk_back().unwrap(), [b'e', b'm']); // N is inferred as 2
+    assert_eq!(iter.next_chunk_back().unwrap(), [b'l', b'o', b'r']); // N is inferred as 3
+    assert_eq!(iter.next_chunk_back::<4>().unwrap_err().as_slice(), &[]); // N is explicitly 4
+}
+
+#[test]
 fn test_into_iter_clone() {
     fn iter_equal<I: Iterator<Item = i32>>(it: I, slice: &[i32]) {
         let v: Vec<i32> = it.collect();
@@ -1130,6 +1139,14 @@ fn test_into_iter_zst() {
 
     let mut it = vec![C, C].into_iter();
     it.next_chunk::<4>().unwrap_err();
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk_back::<1>().unwrap();
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk_back::<4>().unwrap_err();
     drop(it);
 }
 
@@ -1320,6 +1337,25 @@ fn test_from_cow() {
     let owned = vec!["owned", "(vec)"];
     assert_eq!(Vec::from(Cow::Borrowed(borrowed)), vec!["borrowed", "(slice)"]);
     assert_eq!(Vec::from(Cow::Owned(owned)), vec!["owned", "(vec)"]);
+}
+
+#[test]
+fn test_partial_eq_cow_symmetric() {
+    let v: Vec<i32> = vec![1, 2, 3];
+    let c: Cow<'_, [i32]> = Cow::Borrowed(&[1, 2, 3]);
+
+    assert_eq!(c, v);
+    assert_eq!(v, c);
+
+    let s: &[i32] = &[1, 2, 3];
+    assert_eq!(s, c);
+
+    let mut arr = [1, 2, 3];
+    let ms: &mut [i32] = &mut arr;
+    assert_eq!(ms, c);
+
+    let v2: Vec<i32> = vec![1, 2, 4];
+    assert!(v2 != c);
 }
 
 #[allow(dead_code)]
@@ -2541,7 +2577,7 @@ fn test_extend_from_within_panicking_clone() {
 }
 
 #[test]
-#[should_panic = "vec len overflow"]
+#[should_panic = "the product of vec len and N shouldn't overflow"]
 fn test_into_flattened_size_overflow() {
     let v = vec![[(); usize::MAX]; 2];
     let _ = v.into_flattened();
@@ -2789,4 +2825,27 @@ fn const_make_global_empty_or_zst_regression() {
     };
 
     assert_eq!(ZST_SLICE, &[(), (), ()]);
+}
+
+#[test]
+fn const_heap_vec_macro() {
+    const X: &'static [u32] = {
+        let x: Vec<u32> = vec![];
+        assert!(x == []);
+        x.const_make_global()
+    };
+
+    const Y: &'static [u32] = {
+        let y: Vec<u32> = vec![1, 2, 3];
+        assert!(y == [1, 2, 3]);
+        y.const_make_global()
+    };
+
+    // This arm isn't const yet.
+    // const Z: &'static [u32] = {
+    //     vec![4; 2].const_make_global()
+    // };
+
+    assert_eq!(X, []);
+    assert_eq!(Y, [1, 2, 3]);
 }

@@ -8,7 +8,7 @@ use rustc_next_trait_solver::delegate::SolverDelegate;
 use rustc_type_ir::{
     AliasTyKind, GenericArgKind, InferCtxtLike, InferTy, Interner, PredicatePolarity, TypeFlags,
     TypeVisitableExt,
-    inherent::{IntoKind, Term as _, Ty as _},
+    inherent::{Const as _, IntoKind, Term as _, Ty as _},
     lang_items::SolverTraitLangItem,
     solve::{Certainty, FetchEligibleAssocItemResponse, NoSolution, VisibleForLeakCheck},
 };
@@ -130,7 +130,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
     fn add_item_bounds_for_hidden_type(
         &self,
-        opaque_id: OpaqueTyIdWrapper,
+        opaque_id: OpaqueTyIdWrapper<'_>,
         args: GenericArgs<'db>,
         param_env: ParamEnv<'db>,
         hidden_ty: Ty<'db>,
@@ -262,19 +262,24 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         let ec = match uv.def.0 {
             GeneralConstId::ConstId(c) => {
                 let subst = uv.args;
-                self.cx().db.const_eval(c, subst, None).ok()?
+                self.cx().db.const_eval(c, subst, None)
             }
-            GeneralConstId::StaticId(c) => self.cx().db.const_eval_static(c).ok()?,
+            GeneralConstId::StaticId(c) => self.cx().db.const_eval_static(c),
             GeneralConstId::AnonConstId(c) => {
                 let subst = uv.args;
-                self.cx().db.anon_const_eval(c, subst, None).ok()?
+                self.cx().db.anon_const_eval(c, subst, None)
             }
         };
-        Some(Const::new_from_allocation(
-            self.interner,
-            &ec,
-            ParamEnvAndCrate { param_env, krate: self.interner.expect_crate() },
-        ))
+        let konst = match ec {
+            Ok(ec) => Const::new_from_allocation(
+                self.interner,
+                &ec,
+                ParamEnvAndCrate { param_env, krate: self.interner.expect_crate() },
+            ),
+            // FIXME: Not all evaluation errors should return an error const, rustc returns None on `EvaluateConstErr::{HasGenericsOrInfers, InvalidConstParamTy}`.
+            Err(_) => Const::new_error(self.interner, ErrorGuaranteed),
+        };
+        Some(konst)
     }
 
     fn compute_goal_fast_path(

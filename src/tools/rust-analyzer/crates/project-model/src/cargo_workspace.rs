@@ -36,6 +36,7 @@ pub struct CargoWorkspace {
     targets: Arena<TargetData>,
     workspace_root: AbsPathBuf,
     target_directory: AbsPathBuf,
+    build_directory: Option<AbsPathBuf>,
     manifest_path: ManifestPath,
     is_virtual_workspace: bool,
     /// Whether this workspace represents the sysroot workspace.
@@ -133,6 +134,8 @@ pub struct CargoConfig {
     pub extra_args: Vec<String>,
     /// Extra args passed only to `cargo metadata`, not other cargo commands.
     pub metadata_extra_args: Vec<String>,
+    /// Path to an extra config file passed to every cargo invocation via `--config`.
+    pub config_path: Option<AbsPathBuf>,
     /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, Option<String>>,
     pub invocation_strategy: InvocationStrategy,
@@ -324,6 +327,8 @@ pub struct CargoMetadataConfig {
     pub extra_args: Vec<String>,
     /// Extra args passed directly to `cargo metadata` without filtering.
     pub metadata_extra_args: Vec<String>,
+    /// Path to an extra config file passed to `cargo metadata` via `--config`.
+    pub config_path: Option<AbsPathBuf>,
     /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, Option<String>>,
     /// What kind of metadata are we fetching: workspace, rustc, or sysroot.
@@ -355,6 +360,7 @@ impl CargoWorkspace {
 
         let workspace_root = AbsPathBuf::assert(meta.workspace_root);
         let target_directory = AbsPathBuf::assert(meta.target_directory);
+        let build_directory = meta.build_directory.map(AbsPathBuf::assert);
         let mut is_virtual_workspace = true;
         let mut requires_rustc_private = false;
 
@@ -513,6 +519,7 @@ impl CargoWorkspace {
             targets,
             workspace_root,
             target_directory,
+            build_directory,
             manifest_path: ws_manifest_path,
             is_virtual_workspace,
             requires_rustc_private,
@@ -542,6 +549,10 @@ impl CargoWorkspace {
 
     pub fn target_directory(&self) -> &AbsPath {
         &self.target_directory
+    }
+
+    pub fn build_directory(&self) -> Option<&AbsPath> {
+        self.build_directory.as_deref()
     }
 
     pub fn package_flag(&self, package: &PackageData) -> String {
@@ -684,6 +695,10 @@ impl FetchMetadata {
             }
         }
         other_options.extend(config.metadata_extra_args.iter().cloned());
+        if let Some(config_path) = &config.config_path {
+            other_options.push("--config".to_owned());
+            other_options.push(config_path.to_string());
+        }
 
         let mut lockfile_copy = None;
         if cargo_toml.is_rust_manifest() {
@@ -696,9 +711,18 @@ impl FetchMetadata {
         }
 
         if !config.targets.is_empty() {
-            other_options.extend(
-                config.targets.iter().flat_map(|it| ["--filter-platform".to_owned(), it.clone()]),
-            );
+            let mut has_json_target = false;
+            other_options.extend(config.targets.iter().flat_map(|target| {
+                has_json_target |= target.ends_with(".json");
+                ["--filter-platform".to_owned(), target.clone()]
+            }));
+            if has_json_target
+                && config.toolchain_version.as_ref().is_some_and(|version| {
+                    *version >= toolchain::MINIMUM_TOOLCHAIN_VERSION_REQUIRING_JSON_TARGET_SPEC_FLAG
+                })
+            {
+                other_options.push("-Zjson-target-spec".to_owned());
+            }
         }
 
         command.other_options(other_options.clone());
@@ -763,8 +787,11 @@ impl FetchMetadata {
                     other_options.push("--lockfile-path".to_owned());
                     other_options.push(lockfile_copy.path.to_string());
                 }
-                LockfileUsage::WithEnvVar => {
+                LockfileUsage::WithEnvVarUnstable => {
                     other_options.push("-Zlockfile-path".to_owned());
+                    command.env("CARGO_RESOLVER_LOCKFILE_PATH", lockfile_copy.path.as_os_str());
+                }
+                LockfileUsage::WithEnvVar => {
                     command.env("CARGO_RESOLVER_LOCKFILE_PATH", lockfile_copy.path.as_os_str());
                 }
             }

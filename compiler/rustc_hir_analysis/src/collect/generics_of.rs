@@ -4,12 +4,11 @@ use std::ops::ControlFlow;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, AmbigArg, GenericParamKind, HirId, Node};
-use rustc_middle::span_bug;
+use rustc_lint_defs::builtin::INVALID_TYPE_PARAM_DEFAULT;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::lint;
-use rustc_span::{Span, kw, sym};
+use rustc_span::{Span, kw, span_bug, sym};
 use tracing::{debug, instrument};
 
 use crate::middle::resolve_bound_vars as rbv;
@@ -124,11 +123,11 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     //        ^ parent_def_id
                     //
                     // then we only want to return generics for params to the left of `N`. If we don't do that we
-                    // end up with that const looking like: `ty::ConstKind::Unevaluated(def_id, args: [N#0])`.
+                    // end up with that const looking like: `ty::ConstKind::Alias(def_id, args: [N#0])`.
                     //
                     // This causes ICEs (#86580) when building the args for Foo in `fn foo() -> Foo { .. }` as
                     // we instantiate the defaults with the partially built args when we build the args. Instantiating
-                    // the `N#0` on the unevaluated const indexes into the empty args we're in the process of building.
+                    // the `N#0` on the alias const indexes into the empty args we're in the process of building.
                     //
                     // We fix this by having this function return the parent's generics ourselves and truncating the
                     // generics to only include non-forward declared params (with the exception of the `Self` ty)
@@ -138,9 +137,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     // the def id of the `{ N + 1 }` anon const
                     // struct Foo<const N: usize, const M: usize = { N + 1 }>;
                     //
-                    // This has some implications for how we get the predicates available to the anon const
-                    // see `explicit_predicates_of` for more information on this
-                    let generics = tcx.generics_of(parent_did);
+                    // This has some implications for how we get the clauses available to the anon const
+                    // see `explicit_clauses_of` for more information on this
+                    let parent_def_id = tcx.local_parent(param_id);
+                    let generics = tcx.generics_of(parent_def_id);
                     let param_def_idx = generics.param_def_id_to_index[&param_id.to_def_id()];
                     // In the above example this would be .params[..N#0]
                     let own_params = generics.params_to(param_def_idx as usize, tcx).to_owned();
@@ -162,13 +162,17 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ty::AnonConstKind::GCE => Some(parent_did),
 
                 // Field defaults are allowed to use generic parameters, e.g. `field: u32 = /*defid: N + 1*/`
-                ty::AnonConstKind::NonTypeSystem
+                ty::AnonConstKind::NonTypeSystemAnon
                     if matches!(tcx.parent_hir_node(hir_id), Node::TyPat(_) | Node::Field(_)) =>
                 {
                     Some(parent_did)
                 }
                 // Default to no generic parameters for other kinds of anon consts
-                ty::AnonConstKind::NonTypeSystem => None,
+                ty::AnonConstKind::NonTypeSystemAnon => None,
+                ty::AnonConstKind::NonTypeSystemInline => span_bug!(
+                    tcx.def_span(def_id),
+                    "a DefKind::AnonConst with a HIR parent of hir::Node::AnonConst should never be an AnonConstKind::NonTypeSystemInline"
+                ),
             }
         }
         Node::ConstBlock(_)
@@ -214,6 +218,17 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             "synthetic HIR should have its `generics_of` explicitly fed"
         ),
 
+        Node::ConstArg(..) | Node::Infer(hir::InferArg { kind: hir::InferArgKind::Const, .. }) => {
+            // These can show up in mGCA when representing "direct" const arguments. The
+            // DefCollector cannot know whether an anon const will be represented by an actual HIR
+            // Node::AnonConst, or whether it will be represented directly, so it must generate a
+            // DefId. If it ends up being direct, this DefId is then attached to the top-level
+            // ConstArg, which is what we are seeing here.
+            debug_assert!(tcx.features().min_generic_const_args());
+            // Forward to the real parent.
+            Some(tcx.local_parent(def_id))
+        }
+
         _ => span_bug!(tcx.def_span(def_id), "generics_of: unexpected node kind {node:?}"),
     };
 
@@ -242,8 +257,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         let generics = tcx.generics_of(def_id);
         assert!(!has_self);
         parent_has_self = generics.has_self;
-        own_start = generics.count() as u32;
-        generics.parent_count + generics.own_params.len()
+        let count = generics.count();
+        own_start = count as u32;
+        count
     });
 
     let mut own_params: Vec<_> = Vec::with_capacity(hir_generics.params.len() + has_self as usize);
@@ -280,7 +296,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         ParamDefaultPolicy::Allowed => {}
                         ParamDefaultPolicy::FutureCompatForbidden => {
                             tcx.emit_node_span_lint(
-                                lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
+                                INVALID_TYPE_PARAM_DEFAULT,
                                 param.hir_id,
                                 param.span,
                                 GenericParametersForbiddenHere { msg: MESSAGE },

@@ -9,6 +9,7 @@ use crate::os::cygwin::net::{SocketAddrExt, UnixSocketExt};
 use crate::os::linux::net::{SocketAddrExt, UnixSocketExt};
 #[cfg(any(target_os = "android", target_os = "linux"))]
 use crate::os::unix::io::AsRawFd;
+use crate::path::Path;
 use crate::test_helpers::tmpdir;
 use crate::thread;
 use crate::time::Duration;
@@ -23,6 +24,35 @@ macro_rules! or_panic {
 }
 
 #[test]
+fn sock_addr_from_pathname() {
+    let address = or_panic!(SocketAddr::from_pathname("/path/to/socket"));
+    assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
+}
+
+// the trailing NUL is not counted in the reported length on freebsd, netbsd
+// and qnx, and a caller may bind(2) without one anywhere
+#[test]
+fn sock_addr_without_trailing_nul() {
+    const PATH: &[u8] = b"/path/to/socket";
+
+    // SAFETY: all zeros is a valid representation for `sockaddr_un`.
+    let mut addr: libc::sockaddr_un = unsafe { crate::mem::zeroed() };
+    addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
+    for (dst, &src) in addr.sun_path.iter_mut().zip(PATH) {
+        *dst = src as _;
+    }
+    let offset = crate::mem::offset_of!(libc::sockaddr_un, sun_path);
+
+    // length excluding the NUL, as reported by freebsd, netbsd and qnx
+    let address = or_panic!(SocketAddr::from_parts(addr, (offset + PATH.len()) as _));
+    assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
+
+    // length including the NUL, as reported by linux
+    let address = or_panic!(SocketAddr::from_parts(addr, (offset + PATH.len() + 1) as _));
+    assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
+}
+
+#[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 #[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn basic() {
@@ -32,6 +62,7 @@ fn basic() {
     let msg2 = b"world!";
 
     let listener = or_panic!(UnixListener::bind(&socket_path));
+    assert_eq!(Some(&*socket_path), listener.local_addr().unwrap().as_pathname());
     let thread = thread::spawn(move || {
         let mut stream = or_panic!(listener.accept()).0;
         let mut buf = [0; 5];
@@ -79,6 +110,8 @@ fn pair() {
     let msg2 = b"world!";
 
     let (mut s1, mut s2) = or_panic!(UnixStream::pair());
+    assert!(s1.local_addr().unwrap().is_unnamed());
+    assert!(s2.peer_addr().unwrap().is_unnamed());
     let thread = thread::spawn(move || {
         // s1 must be moved in or the test will hang!
         let mut buf = [0; 5];
@@ -176,7 +209,7 @@ fn long_path() {
 }
 
 #[test]
-#[cfg(not(target_os = "nto"))]
+#[cfg(not(any(target_os = "nto", target_os = "qnx")))]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 #[cfg_attr(target_os = "cygwin", ignore)] // Cygwin connect needs handshake
 #[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]

@@ -1,5 +1,5 @@
 error: literal with an empty format string
-  --> tests/ui/write_literal_unfixable.rs:10:24
+  --> tests/ui/write_literal_unfixable.rs:9:24
    |
 LL |     writeln!(v, r"{}", '"');
    |                        ^^^
@@ -8,7 +8,7 @@ LL |     writeln!(v, r"{}", '"');
    = help: to override `-D warnings` add `#[allow(clippy::write_literal)]`
 
 error: literal with an empty format string
-  --> tests/ui/write_literal_unfixable.rs:14:28
+  --> tests/ui/write_literal_unfixable.rs:13:28
    |
 LL |     writeln!(v, r#"{}{}"#, '#', '"');
    |                            ^^^^^^^^

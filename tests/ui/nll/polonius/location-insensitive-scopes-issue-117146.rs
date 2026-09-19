@@ -3,6 +3,7 @@
 // region.
 
 //@ revisions: nll polonius
+//@ [nll] compile-flags: -Zpolonius=off
 //@ [polonius] compile-flags: -Zpolonius=next
 
 fn main() {

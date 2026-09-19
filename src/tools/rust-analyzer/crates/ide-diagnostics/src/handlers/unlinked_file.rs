@@ -3,14 +3,15 @@
 use std::iter;
 
 use hir::crate_def_map;
-use hir::{InFile, ModuleSource};
+use hir::{EditionedFileId, InFile, ModuleSource};
 use ide_db::text_edit::TextEdit;
 use ide_db::{FileId, FileRange, base_db::SourceDatabase, source_change::SourceChange};
 use ide_db::{base_db, line_index};
 use paths::Utf8Component;
 use syntax::{
-    AstNode, TextRange,
+    AstNode, Edition, TextRange,
     ast::{self, HasModuleItem, HasName, edit::IndentLevel},
+    utils::{is_identifier, is_raw_identifier},
 };
 
 use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, Severity, fix};
@@ -22,10 +23,11 @@ use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, Severity, fi
 pub(crate) fn unlinked_file(
     ctx: &DiagnosticsContext<'_, '_>,
     acc: &mut Vec<Diagnostic>,
-    file_id: FileId,
+    editioned_file_id: EditionedFileId,
 ) {
+    let file_id = editioned_file_id.file_id(ctx.sema.db);
     let mut range = TextRange::up_to(line_index(ctx.sema.db, file_id).len());
-    let fixes = fixes(ctx, file_id, range);
+    let fixes = fixes(ctx, editioned_file_id, range);
     // FIXME: This is a hack for the vscode extension to notice whether there is an autofix or not before having to resolve diagnostics.
     // This is to prevent project linking popups from appearing when there is an autofix. https://github.com/rust-lang/rust-analyzer/issues/14523
     let message = if fixes.is_none() {
@@ -74,13 +76,15 @@ pub(crate) fn unlinked_file(
 
 fn fixes(
     ctx: &DiagnosticsContext<'_, '_>,
-    file_id: FileId,
+    editioned_file_id: EditionedFileId,
     trigger_range: TextRange,
 ) -> Option<Vec<Assist>> {
     // If there's an existing module that could add `mod` or `pub mod` items to include the unlinked file,
     // suggest that as a fix.
 
     let db = ctx.sema.db;
+    let file_id = editioned_file_id.file_id(db);
+    let edition = editioned_file_id.edition(db);
 
     let source_root = ctx.sema.db.file_source_root(file_id).source_root_id(db);
     let source_root = ctx.sema.db.source_root(source_root).source_root(db);
@@ -136,6 +140,7 @@ fn fixes(
         return make_fixes(
             parent_file_id.file_id(ctx.sema.db),
             source,
+            edition,
             &module_name,
             trigger_range,
         );
@@ -169,6 +174,7 @@ fn fixes(
             return make_fixes(
                 parent_id,
                 module.definition_source(ctx.sema.db).value,
+                edition,
                 &module_name,
                 trigger_range,
             );
@@ -193,6 +199,7 @@ fn fixes(
             return make_fixes(
                 parent_file_id.file_id(ctx.sema.db),
                 source,
+                edition,
                 &module_name,
                 trigger_range,
             );
@@ -202,9 +209,26 @@ fn fixes(
     None
 }
 
+/// Convert a module name along with its visibility to code.
+/// In most cases, this just adds the visibility and keyword beforehand,
+/// but the exceptions are non-identifiers and keywords.
+fn format_mod_name(mod_name: &str, visibility_and_keyword: &str, edition: Edition) -> String {
+    if is_identifier(mod_name, edition) {
+        format!("{visibility_and_keyword} {mod_name};")
+    } else {
+        if is_raw_identifier(mod_name, edition) {
+            format!("{visibility_and_keyword} r#{mod_name};")
+        } else {
+            let file_name = format!("{mod_name}.rs");
+            format!("#[path = {file_name:?}]\n{visibility_and_keyword} mod_name;")
+        }
+    }
+}
+
 fn make_fixes(
     parent_file_id: FileId,
     source: ModuleSource,
+    edition: Edition,
     new_mod_name: &str,
     trigger_range: TextRange,
 ) -> Option<Vec<Assist>> {
@@ -212,9 +236,9 @@ fn make_fixes(
         matches!(item, ast::Item::Module(m) if m.item_list().is_none())
     }
 
-    let mod_decl = format!("mod {new_mod_name};");
-    let pub_mod_decl = format!("pub mod {new_mod_name};");
-    let pub_crate_mod_decl = format!("pub(crate) mod {new_mod_name};");
+    let mod_decl = format_mod_name(new_mod_name, "mod", edition);
+    let pub_mod_decl = format_mod_name(new_mod_name, "pub mod", edition);
+    let pub_crate_mod_decl = format_mod_name(new_mod_name, "pub(crate) mod", edition);
 
     let mut mod_decl_builder = TextEdit::builder();
     let mut pub_mod_decl_builder = TextEdit::builder();
@@ -545,6 +569,90 @@ mod bar {
 //- /main.rs
 include!("bar/foo/mod.rs");
 //- /bar/foo/mod.rs
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_with_strict_keyword_move() {
+        check_fix(
+            r#"
+//- /main.rs
+//- /move.rs
+$0
+"#,
+            r#"
+mod r#move;
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_with_weak_keyword_safe() {
+        check_fix(
+            r#"
+//- /main.rs
+//- /safe.rs
+$0
+"#,
+            r#"
+mod safe;
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_with_reserved_keyword_abstract() {
+        check_fix(
+            r#"
+//- /main.rs
+//- /abstract.rs
+$0
+"#,
+            r#"
+mod r#abstract;
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_with_unescaped_keyword_crate() {
+        check_fix(
+            r#"
+//- /main.rs
+//- /crate.rs
+$0
+"#,
+            r#"#[path = "crate.rs"]
+mod mod_name;
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_invalid_symbol_in_module_name() {
+        check_fix(
+            r#"
+//- /main.rs
+//- /my-file.rs
+$0
+"#,
+            r#"#[path = "my-file.rs"]
+mod mod_name;
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_numeric_module_name() {
+        check_fix(
+            r#"
+//- /main.rs
+//- /0000.rs
+$0
+"#,
+            r#"#[path = "0000.rs"]
+mod mod_name;
 "#,
         );
     }

@@ -1,11 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{get_parent_expr, is_mutable};
 use rustc_hir::{Expr, ExprField, ExprKind, Path, QPath, StructTailExpr, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::{DesugaringKind, Ident};
 
 declare_clippy_lint! {

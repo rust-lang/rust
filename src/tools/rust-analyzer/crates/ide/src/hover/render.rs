@@ -6,7 +6,6 @@ use hir::{
     Adt, AsAssocItem, AsExternAssocItem, CaptureKind, DisplayTarget, DropGlue,
     DynCompatibilityViolation, HasCrate, HasSource, HirDisplay, Layout, LayoutError,
     MethodViolationCode, Name, Semantics, Symbol, Trait, Type, TypeInfo, Variant,
-    db::ExpandDatabase,
 };
 use ide_db::{
     RootDatabase,
@@ -327,13 +326,7 @@ pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<Hove
         _ => return None,
     };
 
-    let tmp;
-    let needle = if is_clippy {
-        tmp = format!("clippy::{}", token.text());
-        &tmp
-    } else {
-        token.text()
-    };
+    let needle = if is_clippy { &format!("clippy::{}", token.text()) } else { token.text() };
 
     let lint =
         lints.binary_search_by_key(&needle, |lint| lint.label).ok().map(|idx| &lints[idx])?;
@@ -345,7 +338,7 @@ pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<Hove
 
 pub(super) fn process_markup(
     db: &RootDatabase,
-    def: Definition,
+    def: Definition<'_>,
     markup: &Markup,
     markup_range_map: Option<hir::Docs>,
     config: &HoverConfig<'_>,
@@ -359,7 +352,11 @@ pub(super) fn process_markup(
     Markup::from(markup)
 }
 
-fn definition_owner_name(db: &RootDatabase, def: Definition, edition: Edition) -> Option<String> {
+fn definition_owner_name(
+    db: &RootDatabase,
+    def: Definition<'_>,
+    edition: Edition,
+) -> Option<String> {
     match def {
         Definition::Field(f) => {
             let parent = f.parent_def(db);
@@ -442,21 +439,18 @@ pub(super) fn path(
     edition: Edition,
 ) -> String {
     let crate_name = module.krate(db).display_name(db).as_ref().map(|it| it.to_string());
-    let module_path = module
-        .path_to_root(db)
-        .into_iter()
-        .rev()
-        .flat_map(|it| it.name(db).map(|name| name.display(db, edition).to_string()));
+    let module_path = module.path_segments(db).map(|it| it.display(db, edition).to_string());
     crate_name.into_iter().chain(module_path).chain(item_name).join("::")
 }
 
 pub(super) fn definition(
     db: &RootDatabase,
-    def: Definition,
+    def: Definition<'_>,
     famous_defs: Option<&FamousDefs<'_, '_>>,
     notable_traits: &[(Trait, Vec<(Option<Type<'_>>, Name)>)],
     macro_arm: Option<u32>,
     render_extras: bool,
+    render_private_fields: bool,
     subst_types: Option<&Vec<(Symbol, Type<'_>)>>,
     config: &HoverConfig<'_>,
     edition: Edition,
@@ -466,22 +460,27 @@ pub(super) fn definition(
     let label = match def {
         Definition::Trait(trait_) => trait_
             .display_limited(db, config.max_trait_assoc_items_count, display_target)
+            .with_private_fields(render_private_fields)
             .to_string(),
-        Definition::Adt(adt @ (Adt::Struct(_) | Adt::Union(_))) => {
-            adt.display_limited(db, config.max_fields_count, display_target).to_string()
-        }
-        Definition::EnumVariant(variant) => {
-            variant.display_limited(db, config.max_fields_count, display_target).to_string()
-        }
-        Definition::Adt(adt @ Adt::Enum(_)) => {
-            adt.display_limited(db, config.max_enum_variants_count, display_target).to_string()
-        }
+        Definition::Adt(adt @ (Adt::Struct(_) | Adt::Union(_))) => adt
+            .display_limited(db, config.max_fields_count, display_target)
+            .with_private_fields(render_private_fields)
+            .to_string(),
+        Definition::EnumVariant(variant) => variant
+            .display_limited(db, config.max_fields_count, display_target)
+            .with_private_fields(render_private_fields)
+            .to_string(),
+        Definition::Adt(adt @ Adt::Enum(_)) => adt
+            .display_limited(db, config.max_enum_variants_count, display_target)
+            .with_private_fields(render_private_fields)
+            .to_string(),
         Definition::SelfType(impl_def) => {
             let self_ty = &impl_def.self_ty(db);
             match self_ty.as_adt() {
-                Some(adt) => {
-                    adt.display_limited(db, config.max_fields_count, display_target).to_string()
-                }
+                Some(adt) => adt
+                    .display_limited(db, config.max_fields_count, display_target)
+                    .with_private_fields(render_private_fields)
+                    .to_string(),
                 None => self_ty.display(db, display_target).to_string(),
             }
         }
@@ -497,7 +496,11 @@ pub(super) fn definition(
         }
         _ => def.label(db, display_target),
     };
-    let docs = def.docs_with_rangemap(db, famous_defs, display_target);
+    let docs = if config.documentation {
+        def.docs_with_rangemap(db, famous_defs, display_target)
+    } else {
+        None
+    };
     let value = || match def {
         Definition::EnumVariant(it) => {
             if !it.parent_enum(db).is_data_carrying(db) {
@@ -506,7 +509,7 @@ pub(super) fn definition(
                         Some(if it >= 10 { format!("{it} ({it:#X})") } else { format!("{it}") })
                     }
                     Err(err) => {
-                        let res = it.value(db).map(|it| format!("{it:?}"));
+                        let res = it.value(db).map(|it| it.to_string());
                         if env::var_os("RA_DEV").is_some() {
                             let res = res.as_deref().unwrap_or("");
                             Some(format!(
@@ -526,7 +529,8 @@ pub(super) fn definition(
             let body = it.eval(db);
             Some(match body {
                 Ok(it) => match it.render_debug(db) {
-                    Ok(it) => it,
+                    Ok(rendered) if rendered.is_empty() => it.render(db, display_target),
+                    Ok(rendered) => rendered,
                     Err(err) => {
                         let it = it.render(db, display_target);
                         if env::var_os("RA_DEV").is_some() {
@@ -543,7 +547,7 @@ pub(super) fn definition(
                     let source = it.source(db)?;
                     let mut body = source.value.body()?.syntax().clone();
                     if let Some(macro_file) = source.file_id.macro_file() {
-                        let span_map = db.expansion_span_map(macro_file);
+                        let span_map = macro_file.expansion_span_map(db);
                         body = prettify_macro_expansion(db, body, span_map, it.krate(db).into());
                     }
                     if env::var_os("RA_DEV").is_some() {
@@ -558,7 +562,9 @@ pub(super) fn definition(
             let body = it.eval(db);
             Some(match body {
                 Ok(it) => match it.render_debug(db) {
-                    Ok(it) => it,
+                    Ok(rendered) if rendered.is_empty() => it.render(db, display_target),
+                    Ok(rendered) => rendered,
+
                     Err(err) => {
                         let it = it.render(db, display_target);
                         if env::var_os("RA_DEV").is_some() {
@@ -575,7 +581,7 @@ pub(super) fn definition(
                     let source = it.source(db)?;
                     let mut body = source.value.body()?.syntax().clone();
                     if let Some(macro_file) = source.file_id.macro_file() {
-                        let span_map = db.expansion_span_map(macro_file);
+                        let span_map = macro_file.expansion_span_map(db);
                         body = prettify_macro_expansion(db, body, span_map, it.krate(db).into());
                     }
                     if env::var_os("RA_DEV").is_some() {
@@ -836,6 +842,29 @@ pub(super) fn literal(
     }
     .original;
 
+    let parse_float = |text: &str| {
+        if ty.as_builtin().map(|it| it.is_f16()).unwrap_or(false) {
+            match text.parse::<f16>() {
+                Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
+                Err(e) => Err(e.0.to_owned()),
+            }
+        } else if ty.as_builtin().map(|it| it.is_f32()).unwrap_or(false) {
+            match text.parse::<f32>() {
+                Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
+                Err(e) => Err(e.to_string()),
+            }
+        } else if ty.as_builtin().map(|it| it.is_f128()).unwrap_or(false) {
+            match text.parse::<f128>() {
+                Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
+                Err(e) => Err(e.0.to_owned()),
+            }
+        } else {
+            match text.parse::<f64>() {
+                Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
+                Err(e) => Err(e.to_string()),
+            }
+        }
+    };
     let value = match_ast! {
         match token {
             ast::String(string)     => string.value().as_ref().map_err(|e| format!("{e:?}")).map(ToString::to_string),
@@ -843,29 +872,9 @@ pub(super) fn literal(
             ast::CString(string)    => string.value().as_ref().map_err(|e| format!("{e:?}")).map(|it| std::str::from_utf8(it).map_or_else(|e| format!("{e:?}"), ToOwned::to_owned)),
             ast::Char(char)         => char  .value().as_ref().map_err(|e| format!("{e:?}")).map(ToString::to_string),
             ast::Byte(byte)         => byte  .value().as_ref().map_err(|e| format!("{e:?}")).map(|it| format!("0x{it:X}")),
-            ast::FloatNumber(num) => {
-                let text = num.value_string();
-                if ty.as_builtin().map(|it| it.is_f16()).unwrap_or(false) {
-                    match text.parse::<f16>() {
-                        Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
-                        Err(e) => Err(e.0.to_owned()),
-                    }
-                } else if ty.as_builtin().map(|it| it.is_f32()).unwrap_or(false) {
-                    match text.parse::<f32>() {
-                        Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
-                        Err(e) => Err(e.to_string()),
-                    }
-                } else if ty.as_builtin().map(|it| it.is_f128()).unwrap_or(false) {
-                    match text.parse::<f128>() {
-                        Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
-                        Err(e) => Err(e.0.to_owned()),
-                    }
-                } else {
-                    match text.parse::<f64>() {
-                        Ok(num) => Ok(format!("{num} (bits: 0x{:X})", num.to_bits())),
-                        Err(e) => Err(e.to_string()),
-                    }
-                }
+            ast::FloatNumber(num) => parse_float(&num.value_string()),
+            ast::IntNumber(num) if matches!(num.suffix(), Some("f16" | "f32" | "f64" | "f128")) => {
+                parse_float(&num.value_string())
             },
             ast::IntNumber(num) => match num.value() {
                 Ok(num) => Ok(format!("{num} (0x{num:X}|0b{num:b})")),
@@ -1071,7 +1080,7 @@ fn closure_ty(
     Some(res)
 }
 
-fn definition_path(db: &RootDatabase, &def: &Definition, edition: Edition) -> Option<String> {
+fn definition_path(db: &RootDatabase, &def: &Definition<'_>, edition: Edition) -> Option<String> {
     if matches!(
         def,
         Definition::TupleField(_)

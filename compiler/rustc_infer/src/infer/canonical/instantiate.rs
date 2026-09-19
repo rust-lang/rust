@@ -11,6 +11,7 @@ use rustc_middle::ty::{
     self, DelayedMap, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
+use rustc_type_ir::PredicateProxy;
 
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
 
@@ -124,7 +125,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for CanonicalInstantiator<'tcx> {
         }
     }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
         if p.has_type_flags(TypeFlags::HAS_CANONICAL_BOUND) { p.super_fold_with(self) } else { p }
     }
 
@@ -143,17 +144,18 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for CanonicalInstantiator<'tcx> {
         // is both expensive (depending on the size of the clauses) and a pure function.
         let index = *self
             .tcx
+            .caches
             .highest_var_in_clauses_cache
             .lock()
             .entry(c)
             .or_insert_with(|| highest_var_in_clauses(c));
         let c_args = &self.var_values[..=index];
 
-        if let Some(c) = self.tcx.clauses_cache.lock().get(&(c, c_args)) {
+        if let Some(c) = self.tcx.caches.clauses_cache.lock().get(&(c, c_args)) {
             c
         } else {
             let folded = c.super_fold_with(self);
-            self.tcx.clauses_cache.lock().insert((c, c_args), folded);
+            self.tcx.caches.clauses_cache.lock().insert((c, c_args), folded);
             folded
         }
     }

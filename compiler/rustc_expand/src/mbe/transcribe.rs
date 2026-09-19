@@ -84,7 +84,10 @@ impl<'psess> TranscrCtx<'psess, '_> {
 struct Marker {
     expand_id: LocalExpnId,
     transparency: Transparency,
-    cache: FxHashMap<SyntaxContext, SyntaxContext>,
+    // Most macro bodies have only one context. Keep that entry inline and
+    // allocate the map only for additional contexts in generated macros.
+    cache: Option<(SyntaxContext, SyntaxContext)>,
+    fallback_cache: FxHashMap<SyntaxContext, SyntaxContext>,
 }
 
 impl Marker {
@@ -94,11 +97,17 @@ impl Marker {
         // by itself. All tokens in a macro body typically have the same syntactic context, unless
         // it's some advanced case with macro-generated macros. So if we cache the marked version
         // of that context once, we'll typically have a 100% cache hit rate after that.
-        *span = span.map_ctxt(|ctxt| {
-            *self
-                .cache
+        *span = span.map_ctxt(|ctxt| match self.cache {
+            Some((original, marked)) if original == ctxt => marked,
+            None => {
+                let marked = ctxt.apply_mark(self.expand_id.to_expn_id(), self.transparency);
+                self.cache = Some((ctxt, marked));
+                marked
+            }
+            _ => *self
+                .fallback_cache
                 .entry(ctxt)
-                .or_insert_with(|| ctxt.apply_mark(self.expand_id.to_expn_id(), self.transparency))
+                .or_insert_with(|| ctxt.apply_mark(self.expand_id.to_expn_id(), self.transparency)),
         });
     }
 }
@@ -179,7 +188,7 @@ pub(super) fn transcribe<'a>(
     let mut tscx = TranscrCtx {
         psess,
         interp,
-        marker: Marker { expand_id, transparency, cache: Default::default() },
+        marker: Marker { expand_id, transparency, cache: None, fallback_cache: Default::default() },
         repeats: Vec::new(),
         stack: smallvec![Frame::new_delimited(
             src,
@@ -505,7 +514,7 @@ fn transcribe_pnr<'tx>(
             mk_delimited(item.span, MetaVarKind::Item, TokenStream::from_ast(item))
         }
         ParseNtResult::Block(block) => {
-            mk_delimited(block.span, MetaVarKind::Block, TokenStream::from_ast(block))
+            mk_delimited(block.node.span, MetaVarKind::Block, TokenStream::from_ast(block))
         }
         ParseNtResult::Stmt(stmt) => {
             let stream = if let StmtKind::Empty = stmt.kind {
@@ -517,7 +526,7 @@ fn transcribe_pnr<'tx>(
             mk_delimited(stmt.span, MetaVarKind::Stmt, stream)
         }
         ParseNtResult::Pat(pat, pat_kind) => {
-            mk_delimited(pat.span, MetaVarKind::Pat(*pat_kind), TokenStream::from_ast(pat))
+            mk_delimited(pat.node.span, MetaVarKind::Pat(*pat_kind), TokenStream::from_ast(pat))
         }
         ParseNtResult::Expr(expr, kind) => {
             let (can_begin_literal_maybe_minus, can_begin_string_literal) = match &expr.kind {
@@ -541,22 +550,22 @@ fn transcribe_pnr<'tx>(
             mk_delimited(lit.span, MetaVarKind::Literal, TokenStream::from_ast(lit))
         }
         ParseNtResult::Ty(ty) => {
-            let is_path = matches!(&ty.kind, TyKind::Path(None, _path));
-            mk_delimited(ty.span, MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
+            let is_path = matches!(&ty.node.kind, TyKind::Path(None, _path));
+            mk_delimited(ty.node.span, MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
         }
         ParseNtResult::Meta(attr_item) => {
-            let has_meta_form = attr_item.meta_kind().is_some();
+            let has_meta_form = attr_item.node.meta_kind().is_some();
             mk_delimited(
-                attr_item.span(),
+                attr_item.node.span,
                 MetaVarKind::Meta { has_meta_form },
                 TokenStream::from_ast(attr_item),
             )
         }
         ParseNtResult::Path(path) => {
-            mk_delimited(path.span, MetaVarKind::Path, TokenStream::from_ast(path))
+            mk_delimited(path.node.span, MetaVarKind::Path, TokenStream::from_ast(path))
         }
         ParseNtResult::Vis(vis) => {
-            mk_delimited(vis.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
+            mk_delimited(vis.node.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
         }
         ParseNtResult::Guard(guard) => {
             // FIXME(macro_guard_matcher):
@@ -565,9 +574,12 @@ fn transcribe_pnr<'tx>(
 
             let leading_if_span =
                 guard.span_with_leading_if.with_hi(guard.span_with_leading_if.lo() + BytePos(2));
-            let mut ts =
-                TokenStream::token_alone(token::Ident(kw::If, IdentIsRaw::No), leading_if_span);
-            ts.push_stream(TokenStream::from_ast(&guard.cond));
+            let ts = std::iter::once(TokenTree::token_alone(
+                token::Ident(kw::If, IdentIsRaw::No),
+                leading_if_span,
+            ))
+            .chain(TokenStream::from_ast(&guard.cond).iter().cloned())
+            .collect();
 
             mk_delimited(guard.span_with_leading_if, MetaVarKind::Guard, ts)
         }

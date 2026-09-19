@@ -28,7 +28,7 @@ mod struct_ {
     impl S {
         fn foo() {
             let Self = S;
-            //[struct_]~^ ERROR expected value, found struct `S`
+            //[struct_]~^ ERROR cannot find value `S` in this scope
             //[struct_]~| ERROR expected unit struct, found self constructor `Self`
         }
     }

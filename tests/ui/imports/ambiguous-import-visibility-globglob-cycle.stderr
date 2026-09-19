@@ -1,0 +1,8 @@
+error: Direct: pub(in crate::axiomatic), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+  --> $DIR/ambiguous-import-visibility-globglob-cycle.rs:23:9
+   |
+LL |         pub struct CollectionDescriptor {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

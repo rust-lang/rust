@@ -174,12 +174,21 @@ pub impl(self) trait CommandExt {
     #[stable(feature = "windows_process_extensions", since = "1.16.0")]
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command;
 
+    /// Places the child process on the desktop named `desktop` by setting the
+    /// `lpDesktop` field of the [STARTUPINFO][1] passed to `CreateProcess`.
+    ///
+    /// The name may be a desktop or a `window-station\desktop` path.
+    ///
+    /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/ns-processthreadsapi-startupinfow>
+    #[unstable(feature = "windows_process_extensions_desktop", issue = "158852")]
+    fn desktop<S: AsRef<OsStr>>(&mut self, desktop: S) -> &mut process::Command;
+
     /// Sets the field `wShowWindow` of [STARTUPINFO][1] that is passed to `CreateProcess`.
     /// Allowed values are the ones listed in
     /// <https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow>
     ///
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/ns-processthreadsapi-startupinfow>
-    #[unstable(feature = "windows_process_extensions_show_window", issue = "127544")]
+    #[stable(feature = "windows_process_extensions_show_window", since = "CURRENT_RUSTC_VERSION")]
     fn show_window(&mut self, cmd_show: u16) -> &mut process::Command;
 
     /// Forces all arguments to be wrapped in quote (`"`) characters.
@@ -273,7 +282,8 @@ pub impl(self) trait CommandExt {
     ///
     /// # Example
     ///
-    /// ```
+    #[cfg_attr(windows, doc = "```")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_process_extensions_async_pipes)]
     /// use std::os::windows::process::CommandExt;
     /// use std::process::{Command, Stdio};
@@ -304,7 +314,8 @@ pub impl(self) trait CommandExt {
     ///
     /// # Example
     ///
-    /// ```
+    #[cfg_attr(windows, doc = "```")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_process_extensions_raw_attribute)]
     /// use std::os::windows::io::AsRawHandle;
     /// use std::os::windows::process::{CommandExt, ProcThreadAttributeList};
@@ -381,6 +392,11 @@ impl CommandExt for process::Command {
         self
     }
 
+    fn desktop<S: AsRef<OsStr>>(&mut self, desktop: S) -> &mut process::Command {
+        self.as_inner_mut().desktop(desktop.as_ref());
+        self
+    }
+
     fn show_window(&mut self, cmd_show: u16) -> &mut process::Command {
         self.as_inner_mut().show_window(Some(cmd_show));
         self
@@ -435,14 +451,23 @@ impl CommandExt for process::Command {
     }
 }
 
-#[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+#[stable(
+    feature = "windows_process_extensions_main_thread_handle",
+    since = "CURRENT_RUSTC_VERSION"
+)]
 pub impl(self) trait ChildExt {
     /// Extracts the main thread raw handle, without taking ownership
-    #[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+    #[stable(
+        feature = "windows_process_extensions_main_thread_handle",
+        since = "CURRENT_RUSTC_VERSION"
+    )]
     fn main_thread_handle(&self) -> BorrowedHandle<'_>;
 }
 
-#[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+#[stable(
+    feature = "windows_process_extensions_main_thread_handle",
+    since = "CURRENT_RUSTC_VERSION"
+)]
 impl ChildExt for process::Child {
     fn main_thread_handle(&self) -> BorrowedHandle<'_> {
         self.handle.main_thread_handle()
@@ -502,7 +527,8 @@ impl<'a> Drop for ProcThreadAttributeList<'a> {
     ///
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-deleteprocthreadattributelist>
     fn drop(&mut self) {
-        let lp_attribute_list = self.attribute_list.as_mut_ptr().cast::<c_void>();
+        let lp_attribute_list =
+            self.attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>();
         unsafe { sys::c::DeleteProcThreadAttributeList(lp_attribute_list) }
     }
 }
@@ -563,8 +589,9 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     ///
     /// # Example
     ///
-    #[cfg_attr(target_vendor = "win7", doc = "```no_run")]
-    #[cfg_attr(not(target_vendor = "win7"), doc = "```")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
+    #[cfg_attr(all(windows, target_vendor = "win7"), doc = "```no_run")]
+    #[cfg_attr(all(windows, not(target_vendor = "win7")), doc = "```")]
     /// #![feature(windows_process_extensions_raw_attribute)]
     /// use std::ffi::c_void;
     /// use std::os::windows::process::{CommandExt, ProcThreadAttributeList};
@@ -672,7 +699,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
         // `InitializeProcThreadAttributeList` to properly initialize the list.
         sys::cvt(unsafe {
             sys::c::InitializeProcThreadAttributeList(
-                attribute_list.as_mut_ptr().cast::<c_void>(),
+                attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>(),
                 attribute_count,
                 0,
                 &mut required_size,
@@ -686,7 +713,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
         for (&attribute, value) in self.attributes.iter().take(attribute_count as usize) {
             sys::cvt(unsafe {
                 sys::c::UpdateProcThreadAttribute(
-                    attribute_list.as_mut_ptr().cast::<c_void>(),
+                    attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>(),
                     0,
                     attribute,
                     value.ptr,

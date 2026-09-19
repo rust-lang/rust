@@ -16,11 +16,5 @@ error: `#![doc(auto_cfg(hide(...)))]` expects a list of items
 LL | #![doc(auto_cfg(hide))]
    |                 ^^^^
 
-error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or key/value items
-  --> $DIR/doc_cfg_hide.rs:5:22
-   |
-LL | #![doc(auto_cfg(hide(not(windows))))]
-   |                      ^^^^^^^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

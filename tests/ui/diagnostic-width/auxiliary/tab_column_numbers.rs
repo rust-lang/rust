@@ -1,4 +1,4 @@
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 
 pub struct S;
 impl S {

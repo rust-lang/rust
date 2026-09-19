@@ -22,7 +22,7 @@ help: add the missing parameter from the trait
 LL |     fn call(&self, args: Args) -> u32 {
    |                  ++++++++++++
 
-error[E0277]: expected a `FnMut(u32)` closure, found `S`
+error[E0277]: expected an `FnMut(u32)` closure, found `S`
   --> $DIR/issue-39259.rs:6:25
    |
 LL | impl Fn(u32) -> u32 for S {

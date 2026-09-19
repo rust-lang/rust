@@ -1,17 +1,28 @@
-use genmc_sys::{MemOrdering, RMWBinOp};
+use genmc_sys::{GenmcHandlerResult, MemOrdering, RMWBinOp};
 use rustc_abi::Size;
 use rustc_const_eval::interpret::{InterpResult, interp_ok};
-use rustc_middle::mir;
 use rustc_middle::mir::interpret;
 use rustc_middle::ty::ScalarInt;
+use rustc_middle::{mir, throw_ub_format};
 
 use super::GenmcScalar;
 use crate::alloc_addresses::EvalContextExt as _;
-use crate::intrinsics::AtomicRmwOp;
 use crate::*;
 
 /// Maximum size memory access in bytes that GenMC supports.
 pub(super) const MAX_ACCESS_SIZE: u64 = 8;
+
+/// Convert a [`GenmcHandlerResult`] into an `InterpResult`, raising the matching Miri error.
+// FIXME(genmc): improve error handling.
+pub(super) fn get_outcome<'tcx, T>(result: GenmcHandlerResult<T>) -> InterpResult<'tcx, T> {
+    match result {
+        // A handler producing an invalid result means that the execution is moot.
+        GenmcHandlerResult::Invalid => throw_machine_stop!(TerminationInfo::GenmcMoot),
+        GenmcHandlerResult::Error(e) => throw_ub_format!("{e}"),
+        GenmcHandlerResult::Ok(outcome) => interp_ok(outcome),
+    }
+}
+
 /// Inverse function to `scalar_to_genmc_scalar`.
 ///
 /// Convert a Miri `Scalar` to a `GenmcScalar`.
@@ -29,15 +40,14 @@ pub fn scalar_to_genmc_scalar<'tcx>(
             let value: u64 = scalar_int.to_uint(scalar_int.size()).try_into().unwrap();
             GenmcScalar { value, provenance: 0, is_init: true }
         }
-        rustc_const_eval::interpret::Scalar::Ptr(pointer, size) => {
+        rustc_const_eval::interpret::Scalar::Ptr(pointer, _ptr_size) => {
             // FIXME(genmc,borrow tracking): Borrow tracking information is lost.
             let addr = crate::Pointer::from(pointer).addr();
             if let crate::Provenance::Wildcard = pointer.provenance {
                 throw_unsup_format!("Pointers with wildcard provenance not allowed in GenMC mode");
             }
             let (alloc_id, _size, _prov_extra) =
-                rustc_const_eval::interpret::Machine::ptr_get_alloc(ecx, pointer, size.into())
-                    .unwrap();
+                rustc_const_eval::interpret::Machine::ptr_get_alloc(ecx, pointer, 0).unwrap();
             let base_addr = ecx.addr_from_alloc_id(alloc_id, None)?;
             // Add the base_addr alloc_id pair to the map.
             genmc_ctx.exec_state.genmc_shared_allocs_map.borrow_mut().insert(base_addr, alloc_id);
@@ -166,6 +176,7 @@ pub(super) fn to_genmc_rmw_op(atomic_op: AtomicRmwOp, is_signed: bool) -> RMWBin
         (AtomicRmwOp::Max, true) => RMWBinOp::Max,
         (AtomicRmwOp::Min, false) => RMWBinOp::UMin,
         (AtomicRmwOp::Max, false) => RMWBinOp::UMax,
+        (AtomicRmwOp::Swap, _is_signed) => RMWBinOp::Xchg,
         (AtomicRmwOp::MirOp { op, neg }, _is_signed) =>
             match (op, neg) {
                 (mir::BinOp::Add, false) => RMWBinOp::Add,

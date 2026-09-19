@@ -5,12 +5,12 @@ use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_hashes::Hash64;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_middle::bug;
 use rustc_middle::ty::print::{PrettyPrinter, Print, PrintError, Printer};
 use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, Instance, ReifyReason, Ty, TyCtxt, TypeVisitableExt,
     Unnormalized,
 };
+use rustc_span::bug;
 use tracing::debug;
 
 pub(super) fn mangle<'tcx>(
@@ -35,6 +35,11 @@ pub(super) fn mangle<'tcx>(
             | DefPathData::SyntheticCoroutineBody => {
                 instance_ty = tcx.type_of(ty_def_id).instantiate_identity().skip_norm_wip();
                 debug!(?instance_ty);
+                break;
+            }
+            DefPathData::GlobalAsm => {
+                // `global_asm!` doesn't have a type.
+                instance_ty = tcx.types.unit;
                 break;
             }
             _ => {
@@ -62,13 +67,13 @@ pub(super) fn mangle<'tcx>(
     let mut p = LegacySymbolMangler { tcx, path: SymbolPath::new(), keep_within_component: false };
     p.print_def_path(
         def_id,
-        if let ty::InstanceKind::DropGlue(_, _)
-        | ty::InstanceKind::AsyncDropGlueCtorShim(_, _)
-        | ty::InstanceKind::FutureDropPollShim(_, _, _) = instance.def
+        if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, _))
+        | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(_, _))
+        | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(_, _, _)) = instance.def
         {
             // Add the name of the dropped type to the symbol name
             &*instance.args
-        } else if let ty::InstanceKind::AsyncDropGlue(_, ty) = instance.def {
+        } else if let ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(_, ty)) = instance.def {
             let ty::Coroutine(_, cor_args) = ty.kind() else {
                 bug!();
             };
@@ -81,13 +86,13 @@ pub(super) fn mangle<'tcx>(
     .unwrap();
 
     match instance.def {
-        ty::InstanceKind::ThreadLocalShim(..) => {
+        ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..)) => {
             p.write_str("{{tls-shim}}").unwrap();
         }
-        ty::InstanceKind::VTableShim(..) => {
+        ty::InstanceKind::Shim(ty::ShimKind::VTable(..)) => {
             p.write_str("{{vtable-shim}}").unwrap();
         }
-        ty::InstanceKind::ReifyShim(_, reason) => {
+        ty::InstanceKind::Shim(ty::ShimKind::Reify(_, reason)) => {
             p.write_str("{{reify-shim").unwrap();
             match reason {
                 Some(ReifyReason::FnPtr) => p.write_str("-fnptr").unwrap(),
@@ -98,14 +103,17 @@ pub(super) fn mangle<'tcx>(
         }
         // FIXME(async_closures): This shouldn't be needed when we fix
         // `Instance::ty`/`Instance::def_id`.
-        ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref, .. } => {
+        ty::InstanceKind::Shim(ty::ShimKind::ConstructCoroutineInClosure {
+            receiver_by_ref,
+            ..
+        }) => {
             p.write_str(if receiver_by_ref { "{{by-move-shim}}" } else { "{{by-ref-shim}}" })
                 .unwrap();
         }
         _ => {}
     }
 
-    if let ty::InstanceKind::FutureDropPollShim(..) = instance.def {
+    if let ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(..)) = instance.def {
         let _ = p.write_str("{{drop-shim}}");
     }
 
@@ -242,15 +250,17 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
     fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
         match *ty.kind() {
             // Print all nominal types as paths (unlike `pretty_print_type`).
-            ty::FnDef(def_id, args)
-            | ty::Alias(ty::AliasTy {
-                kind: ty::Projection { def_id } | ty::Opaque { def_id },
-                args,
-                ..
-            })
+            ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { def_id } | ty::Opaque { def_id }, args, ..
+                },
+            )
             | ty::Closure(def_id, args)
             | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
+
+            ty::FnDef(def_id, args) => self.print_def_path(def_id, args.no_bound_vars().unwrap()),
 
             // The `pretty_print_type` formatting of array size depends on
             // -Zverbose-internals flag, so we cannot reuse it here.
@@ -269,7 +279,7 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
                 Ok(())
             }
 
-            ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
                 panic!("unexpected inherent projection")
             }
 

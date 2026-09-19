@@ -1,4 +1,4 @@
-# `riscv32{i,im,ima,imc,imac,imafc}-unknown-none-elf`
+# `riscv32{i,im,ima,imc,imfc,imac,imafc}-unknown-none-elf`
 
 **Tier: 2**
 
@@ -6,11 +6,24 @@ Bare-metal target for RISC-V CPUs with the RV32I, RV32IM, RV32IMC, RV32IMAFC and
 
 **Tier: 3**
 
-Bare-metal target for RISC-V CPUs with the RV32IMA ISA.
+Bare-metal target for RISC-V CPUs with the RV32IMA and RV32IMFC ISAs.
+
+The `riscv32imfc-unknown-none-elf` target covers RV32IMFC cores that have
+hardware single-precision floating point (the `F` extension, using the `ilp32f`
+ABI) but *no* atomic (`A`) extension. Like `riscv32imc-unknown-none-elf`, it is
+built with `+forced-atomics`: atomic loads/stores lower to plain loads/stores
+(sound on a single hart) and `lr`/`sc`/`amo*` instructions are never emitted, so
+it does not trap on a core without the `A` extension. Compare-and-swap and other
+read-modify-write atomics are disabled (`atomic_cas = false`); downstream crates
+that need them use a critical-section polyfill (e.g. `portable-atomic`).
 
 ## Target maintainers
 
 * Rust Embedded Working Group, [RISC-V team](https://github.com/rust-embedded/wg#the-risc-v-team)
+
+The `riscv32imfc-unknown-none-elf` target is additionally maintained by:
+
+* [@sanchuanhehe](https://github.com/sanchuanhehe)
 
 ## Requirements
 

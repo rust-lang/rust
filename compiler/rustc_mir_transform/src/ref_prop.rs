@@ -3,14 +3,15 @@ use std::borrow::Cow;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::bug;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{MaybeStorageDead, always_storage_live_locals};
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
+use crate::PassPolicy;
 use crate::ssa::{SsaLocals, StorageLiveLocals};
 
 /// Propagate references using SSA analysis.
@@ -72,8 +73,8 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 pub(super) struct ReferencePropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        PassPolicy::optional(ctx.mir_opt_level() >= 2)
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -81,10 +82,6 @@ impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
         debug!(def_id = ?body.source.def_id());
         move_to_copy_pointers(tcx, body);
         while propagate_ssa(tcx, body) {}
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

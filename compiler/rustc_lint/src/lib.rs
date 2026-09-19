@@ -8,7 +8,7 @@
 //!
 //! Most lints can be written as [`LintPass`] instances. These run after
 //! all other analyses. The `LintPass`es built into rustc are defined
-//! within [rustc_session::lint::builtin],
+//! within [rustc_lint_defs::builtin],
 //! which has further comments on how to add such a lint.
 //! rustc can also load external lint plugins, as is done for Clippy.
 //!
@@ -20,10 +20,9 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
-#![feature(rustc_attrs)]
+#![feature(option_into_flat_iter)]
 #![feature(titlecase)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
@@ -32,6 +31,7 @@ mod async_closures;
 mod async_fn_in_trait;
 mod autorefs;
 pub mod builtin;
+mod c_void_returns;
 mod context;
 mod dangling;
 mod default_could_be_derived;
@@ -45,10 +45,10 @@ mod expect;
 mod for_loops_over_fallibles;
 mod foreign_modules;
 mod function_cast_as_integer;
-mod fuzzy_provenance_casts;
 mod gpukernel_abi;
 mod if_let_rescope;
 mod impl_trait_overcaptures;
+mod implicit_provenance_casts;
 mod interior_mutable_consts;
 mod internal;
 mod invalid_from_utf8;
@@ -56,8 +56,6 @@ mod late;
 mod let_underscore;
 mod levels;
 pub mod lifetime_syntax;
-mod lints;
-mod lossy_provenance_casts;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
 mod multiple_supertrait_upcastable;
@@ -70,8 +68,10 @@ mod opaque_hidden_inferred_bound;
 mod passes;
 mod precedence;
 mod ptr_nulls;
+mod raw_borrows_via_references;
 mod redundant_semicolon;
 mod reference_casting;
+mod runtime_symbols;
 mod shadowed_into_iter;
 mod static_mut_refs;
 mod traits;
@@ -86,6 +86,7 @@ use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use autorefs::*;
 use builtin::*;
+use c_void_returns::*;
 use dangling::*;
 use default_could_be_derived::DefaultCouldBeDerived;
 use deref_into_dyn_supertrait::*;
@@ -94,16 +95,15 @@ use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
 use function_cast_as_integer::*;
-use fuzzy_provenance_casts::FuzzyProvenanceCasts;
 use gpukernel_abi::*;
 use if_let_rescope::IfLetRescope;
 use impl_trait_overcaptures::ImplTraitOvercaptures;
+use implicit_provenance_casts::ImplicitProvenanceCasts;
 use interior_mutable_consts::*;
 use internal::*;
 use invalid_from_utf8::*;
 use let_underscore::*;
 use lifetime_syntax::*;
-use lossy_provenance_casts::LossyProvenanceCasts;
 use macro_expr_fragment_specifier_2024_migration::*;
 use map_unit_fn::*;
 use multiple_supertrait_upcastable::*;
@@ -115,9 +115,12 @@ use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
 use precedence::*;
 use ptr_nulls::*;
+use raw_borrows_via_references::*;
 use redundant_semicolon::*;
 use reference_casting::*;
-use rustc_hir::def_id::LocalModDefId;
+use runtime_symbols::*;
+use rustc_data_structures::unord::UnordSet;
+use rustc_hir::def_id::LocalModId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use shadowed_into_iter::ShadowedIntoIter;
@@ -140,8 +143,11 @@ pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use levels::LintLevelsBuilder;
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_errors::BufferedEarlyLint;
-pub use rustc_session::lint::Level::{self, *};
-pub use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec};
+pub use rustc_lint_defs::Level::{self, *};
+pub use rustc_lint_defs::{
+    Applicability, FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec, declare_lint,
+    declare_lint_pass, declare_tool_lint, impl_lint_pass,
+};
 
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
@@ -150,8 +156,8 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { lint_mod, ..*providers };
 }
 
-fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
+fn lint_mod(tcx: TyCtxt<'_>, mod_id: LocalModId) {
+    late_lint_mod(tcx, mod_id, BuiltinCombinedLateLintModPass::new());
 }
 
 early_lint_methods!(
@@ -159,7 +165,9 @@ early_lint_methods!(
     [
         pub BuiltinCombinedPreExpansionLintPass,
         [
+            // tidy-alphabetical-start
             KeywordIdents: KeywordIdents,
+            // tidy-alphabetical-end
         ]
     ]
 );
@@ -169,22 +177,24 @@ early_lint_methods!(
     [
         pub BuiltinCombinedEarlyLintPass,
         [
-            UnusedParens: UnusedParens::default(),
-            UnusedBraces: UnusedBraces,
-            UnusedImportBraces: UnusedImportBraces,
-            UnsafeCode: UnsafeCode,
-            SpecialModuleName: SpecialModuleName,
+            // tidy-alphabetical-start
             AnonymousParameters: AnonymousParameters,
-            EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
-            NonCamelCaseTypes: NonCamelCaseTypes,
-            WhileTrue: WhileTrue,
-            NonAsciiIdents: NonAsciiIdents,
-            IncompleteInternalFeatures: IncompleteInternalFeatures,
-            RedundantSemicolons: RedundantSemicolons,
-            UnusedDocComment: UnusedDocComment,
-            Expr2024: Expr2024,
-            Precedence: Precedence,
             DoubleNegations: DoubleNegations,
+            EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
+            Expr2024: Expr2024,
+            IncompleteInternalFeatures: IncompleteInternalFeatures,
+            NonAsciiIdents: NonAsciiIdents,
+            NonCamelCaseTypes: NonCamelCaseTypes,
+            Precedence: Precedence,
+            RedundantSemicolons: RedundantSemicolons,
+            SpecialModuleName: SpecialModuleName,
+            UnsafeCode: UnsafeCode,
+            UnusedBraces: UnusedBraces,
+            UnusedDocComment: UnusedDocComment,
+            UnusedImportBraces: UnusedImportBraces,
+            UnusedParens: UnusedParens::default(),
+            WhileTrue: WhileTrue,
+            // tidy-alphabetical-end
         ]
     ]
 );
@@ -194,9 +204,11 @@ early_lint_methods!(
     [
         InternalCombinedEarlyLintPass,
         [
-            LintPassImpl: LintPassImpl,
-            ImplicitSysrootCrateImport: ImplicitSysrootCrateImport,
+            // tidy-alphabetical-start
             BadUseOfFindAttr: BadUseOfFindAttr,
+            ImplicitSysrootCrateImport: ImplicitSysrootCrateImport,
+            LintPassImpl: LintPassImpl,
+            // tidy-alphabetical-end
         ]
     ]
 );
@@ -204,70 +216,74 @@ early_lint_methods!(
 late_lint_methods!(
     declare_combined_late_lint_pass,
     [
-        BuiltinCombinedModuleLateLintPass,
+        BuiltinCombinedLateLintModPass,
         [
-            ForLoopsOverFallibles: ForLoopsOverFallibles,
-            DefaultCouldBeDerived: DefaultCouldBeDerived,
-            DerefIntoDynSupertrait: DerefIntoDynSupertrait,
-            DropForgetUseless: DropForgetUseless,
-            ImproperCTypesLint: ImproperCTypesLint,
-            ImproperGpuKernelLint: ImproperGpuKernelLint,
-            InvalidFromUtf8: InvalidFromUtf8,
-            VariantSizeDifferences: VariantSizeDifferences,
-            PathStatements: PathStatements,
-            LetUnderscore: LetUnderscore,
-            InvalidReferenceCasting: InvalidReferenceCasting,
-            ImplicitAutorefs: ImplicitAutorefs,
-            // Depends on referenced function signatures in expressions
-            UnusedResults: UnusedResults,
-            UnitBindings: UnitBindings,
-            NonUpperCaseGlobals: NonUpperCaseGlobals,
-            NonShorthandFieldPatterns: NonShorthandFieldPatterns,
-            UnusedAllocation: UnusedAllocation,
-            // Depends on types used in type definitions
-            MissingCopyImplementations: MissingCopyImplementations,
-            // Depends on referenced function signatures in expressions
-            PtrNullChecks: PtrNullChecks,
-            MutableTransmutes: MutableTransmutes,
-            TypeAliasBounds: TypeAliasBounds,
-            TrivialConstraints: TrivialConstraints,
-            TypeLimits: TypeLimits::new(),
-            NonSnakeCase: NonSnakeCase,
-            InvalidNoMangleItems: InvalidNoMangleItems,
-            // Depends on effective visibilities
-            UnreachablePub: UnreachablePub,
-            ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
-            InvalidValue: InvalidValue,
-            DerefNullPtr: DerefNullPtr,
-            UnstableFeatures: UnstableFeatures,
-            UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
-            ShadowedIntoIter: ShadowedIntoIter,
-            DropTraitConstraints: DropTraitConstraints,
-            DanglingPointers: DanglingPointers,
-            NonPanicFmt: NonPanicFmt,
-            NoopMethodCall: NoopMethodCall,
-            EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
-            InvalidAtomicOrdering: InvalidAtomicOrdering,
+            // tidy-alphabetical-start
             AsmLabels: AsmLabels,
-            OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
-            MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
-            MapUnitFn: MapUnitFn,
-            MissingDebugImplementations: MissingDebugImplementations,
-            MissingDoc: MissingDoc,
             AsyncClosureUsage: AsyncClosureUsage,
             AsyncFnInTrait: AsyncFnInTrait,
-            NonLocalDefinitions: NonLocalDefinitions::default(),
-            InteriorMutableConsts: InteriorMutableConsts,
-            ImplTraitOvercaptures: ImplTraitOvercaptures,
-            IfLetRescope: IfLetRescope::default(),
-            StaticMutRefs: StaticMutRefs,
-            UnqualifiedLocalImports: UnqualifiedLocalImports,
-            FunctionCastsAsInteger: FunctionCastsAsInteger,
+            CVoidReturns: CVoidReturns,
             CheckTransmutes: CheckTransmutes,
-            LifetimeSyntax: LifetimeSyntax,
+            DanglingPointers: DanglingPointers,
+            DefaultCouldBeDerived: DefaultCouldBeDerived,
+            DerefIntoDynSupertrait: DerefIntoDynSupertrait,
+            DerefNullPtr: DerefNullPtr,
+            DropForgetUseless: DropForgetUseless,
+            DropTraitConstraints: DropTraitConstraints,
+            EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
+            ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
+            ForLoopsOverFallibles: ForLoopsOverFallibles,
+            FunctionCastsAsInteger: FunctionCastsAsInteger,
+            IfLetRescope: IfLetRescope::default(),
+            ImplTraitOvercaptures: ImplTraitOvercaptures,
+            ImplicitAutorefs: ImplicitAutorefs,
+            ImplicitProvenanceCasts: ImplicitProvenanceCasts,
+            ImproperCTypesLint: ImproperCTypesLint,
+            ImproperGpuKernelLint: ImproperGpuKernelLint,
+            InteriorMutableConsts: InteriorMutableConsts,
             InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
-            FuzzyProvenanceCasts: FuzzyProvenanceCasts,
-            LossyProvenanceCasts: LossyProvenanceCasts,
+            InvalidAtomicOrdering: InvalidAtomicOrdering,
+            InvalidFromUtf8: InvalidFromUtf8,
+            InvalidNoMangleItems: InvalidNoMangleItems,
+            InvalidReferenceCasting: InvalidReferenceCasting,
+            InvalidValue: InvalidValue,
+            LetUnderscore: LetUnderscore,
+            LifetimeSyntax: LifetimeSyntax,
+            MapUnitFn: MapUnitFn,
+            // Depends on types used in type definitions
+            MissingCopyImplementations: MissingCopyImplementations,
+            MissingDebugImplementations: MissingDebugImplementations,
+            MissingDoc: MissingDoc,
+            MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
+            MutableTransmutes: MutableTransmutes,
+            NonLocalDefinitions: NonLocalDefinitions::default(),
+            NonPanicFmt: NonPanicFmt,
+            NonShorthandFieldPatterns: NonShorthandFieldPatterns,
+            NonSnakeCase: NonSnakeCase,
+            NonUpperCaseGlobals: NonUpperCaseGlobals,
+            NoopMethodCall: NoopMethodCall,
+            OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
+            PathStatements: PathStatements,
+            // Depends on referenced function signatures in expressions
+            PtrNullChecks: PtrNullChecks,
+            RawBorrowsViaReferences: RawBorrowsViaReferences,
+            RuntimeSymbols: RuntimeSymbols,
+            ShadowedIntoIter: ShadowedIntoIter,
+            StaticMutRefs: StaticMutRefs,
+            TrivialConstraints: TrivialConstraints,
+            TypeAliasBounds: TypeAliasBounds,
+            TypeLimits: TypeLimits::new(),
+            UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
+            UnitBindings: UnitBindings,
+            UnqualifiedLocalImports: UnqualifiedLocalImports,
+            // Depends on effective visibilities
+            UnreachablePub: UnreachablePub,
+            UnstableFeatures: UnstableFeatures,
+            UnusedAllocation: UnusedAllocation,
+            // Depends on referenced function signatures in expressions
+            UnusedResults: UnusedResults,
+            VariantSizeDifferences: VariantSizeDifferences,
+            // tidy-alphabetical-end
         ]
     ]
 );
@@ -275,17 +291,19 @@ late_lint_methods!(
 late_lint_methods!(
     declare_combined_late_lint_pass,
     [
-        InternalCombinedModuleLateLintPass,
+        InternalCombinedLateLintModPass,
         [
-            DefaultHashTypes: DefaultHashTypes,
-            QueryStability: QueryStability,
-            TyTyKind: TyTyKind,
-            TypeIr: TypeIr,
+            // tidy-alphabetical-start
             BadOptAccess: BadOptAccess,
+            DefaultHashTypes: DefaultHashTypes,
             DisallowedPassByRef: DisallowedPassByRef,
+            QueryStability: QueryStability,
+            RustcMustMatchExhaustively: RustcMustMatchExhaustively,
             SpanUseEqCtxt: SpanUseEqCtxt,
             SymbolInternStringLiteral: SymbolInternStringLiteral,
-            RustcMustMatchExhaustively: RustcMustMatchExhaustively,
+            TyTyKind: TyTyKind,
+            TypeIr: TypeIr,
+            // tidy-alphabetical-end
         ]
     ]
 );
@@ -303,7 +321,7 @@ pub fn new_lint_store(internal_lints: bool) -> LintStore {
 
 /// Tell the `LintStore` about all the built-in lints (the ones
 /// defined in this crate and the ones defined in
-/// `rustc_session::lint::builtin`).
+/// `rustc_lint_defs::builtin`).
 fn register_builtins(store: &mut LintStore) {
     macro_rules! add_lint_group {
         ($name:expr, $($lint:ident),*) => (
@@ -313,7 +331,7 @@ fn register_builtins(store: &mut LintStore) {
 
     store.register_lints(&BuiltinCombinedPreExpansionLintPass::lint_vec());
     store.register_lints(&BuiltinCombinedEarlyLintPass::lint_vec());
-    store.register_lints(&BuiltinCombinedModuleLateLintPass::lint_vec());
+    store.register_lints(&BuiltinCombinedLateLintModPass::lint_vec());
     store.register_lints(&foreign_modules::lint_vec());
     store.register_lints(&hardwired::lint_vec());
 
@@ -332,9 +350,7 @@ fn register_builtins(store: &mut LintStore) {
         UNUSED_ASSIGNMENTS,
         DEAD_CODE,
         UNUSED_MUT,
-        // FIXME: add this lint when it becomes stable,
-        // see https://github.com/rust-lang/rust/issues/115585.
-        // UNREACHABLE_CFG_SELECT_PREDICATES,
+        UNREACHABLE_CFG_SELECT_PREDICATES,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
         UNUSED_MUST_USE,
@@ -351,7 +367,8 @@ fn register_builtins(store: &mut LintStore) {
         UNUSED_PARENS,
         UNUSED_BRACES,
         REDUNDANT_SEMICOLONS,
-        MAP_UNIT_FN
+        MAP_UNIT_FN,
+        REPEATED_REPRS
     );
 
     add_lint_group!("let_underscore", LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK);
@@ -406,6 +423,8 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("static_mut_ref", "static_mut_refs");
     store.register_renamed("temporary_cstring_as_ptr", "dangling_pointers_from_temporaries");
     store.register_renamed("elided_named_lifetimes", "mismatched_lifetime_syntaxes");
+    store.register_renamed("fuzzy_provenance_casts", "implicit_provenance_casts");
+    store.register_renamed("lossy_provenance_casts", "implicit_provenance_casts");
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
@@ -553,7 +572,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_removed(
         "unsupported_naked_functions",
         "converted into hard error, see RFC 2972 \
-         <https://github.com/rust-lang/rfcs/blob/master/text/2972-constrained-naked.md> for more information",
+         <https://rust-lang.github.io/rfcs/2972-constrained-naked.html> for more information",
     );
     store.register_removed(
         "mutable_borrow_reservation_conflict",
@@ -690,14 +709,25 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, \
          see <https://github.com/rust-lang/rust/issues/78586> for more information",
     );
+    store.register_removed(
+        "no_mangle_generic_items",
+        "converted into hard error, \
+         generic items must always be mangled",
+    );
+    store.register_removed(
+        "dependency_on_unit_never_type_fallback",
+        "the code warned by this lint no longer compiles",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
     store.register_lints(&InternalCombinedEarlyLintPass::lint_vec());
-    store.register_early_pass(|| Box::new(InternalCombinedEarlyLintPass::new()));
+    store.register_early_lint_pass(Box::new(|| Box::new(InternalCombinedEarlyLintPass::new())));
 
-    store.register_lints(&InternalCombinedModuleLateLintPass::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(InternalCombinedModuleLateLintPass::new()));
+    store.register_lints(&InternalCombinedLateLintModPass::lint_vec());
+    store.register_late_lint_mod_pass(Box::new(|_| {
+        Box::new(InternalCombinedLateLintModPass::new())
+    }));
 
     store.register_group(
         false,
@@ -740,6 +770,22 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(RUSTC_MUST_MATCH_EXHAUSTIVELY),
         ],
     );
+}
+
+/// Is a pass (which contains `lints`) required to run? Maybe not, e.g. for dependencies built with
+/// `--cap-lints=allow`.
+///
+/// Note: this is a conservative estimate intended for optimization purposes. It might return
+/// `true` for a pass that need not run, but it will never return `false` for a pass that must run.
+pub fn is_lint_pass_required(skippable: &UnordSet<LintId>, lints: &LintVec) -> bool {
+    // A pass without any lints? Clippy sometimes does this, to collect things while traversing.
+    // Such a pass must always run.
+    if lints.is_empty() {
+        return true;
+    }
+
+    // Otherwise, the pass must run unless all lints within are skippable.
+    !lints.iter().all(|lint| skippable.contains(&LintId::of(lint)))
 }
 
 #[cfg(test)]

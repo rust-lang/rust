@@ -2,12 +2,12 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
-    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
+    Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic, IntoDiagArg,
+    Level, MultiSpan, Subdiagnostic, msg,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
+use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{self as hir, AmbigArg, FnRetTy, GenericParamKind, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
@@ -21,11 +21,11 @@ use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlig
 pub(crate) mod note_and_explain;
 
 #[derive(Diagnostic)]
-#[diag("unable to construct a constant value for the unevaluated constant {$unevaluated}")]
+#[diag("unable to construct a constant value for the alias const {$alias_const}")]
 pub(crate) struct UnableToConstructConstantValue<'a> {
     #[primary_span]
     pub span: Span,
-    pub unevaluated: ty::UnevaluatedConst<'a>,
+    pub alias_const: ty::AliasConst<'a>,
 }
 
 pub(crate) struct NegativePositiveConflict<'tcx> {
@@ -36,7 +36,7 @@ pub(crate) struct NegativePositiveConflict<'tcx> {
     pub positive_impl_span: Result<Span, Symbol>,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for NegativePositiveConflict<'_> {
+impl<G> Diagnostic<'_, G> for NegativePositiveConflict<'_> {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(
@@ -89,7 +89,7 @@ pub(crate) enum AdjustSignatureBorrow {
 }
 
 impl Subdiagnostic for AdjustSignatureBorrow {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         match self {
             AdjustSignatureBorrow::Borrow { to_borrow } => {
                 diag.arg("borrow_len", to_borrow.len());
@@ -188,9 +188,7 @@ pub(crate) struct AnnotationRequired<'a> {
     #[subdiagnostic]
     pub bad_label: Option<InferenceBadError<'a>>,
     #[subdiagnostic]
-    pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
-    #[subdiagnostic]
-    pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    pub subdiagnostic: Option<SourceKindSubdiag<'a>>,
 }
 
 // Copy of `AnnotationRequired` for E0283
@@ -210,9 +208,7 @@ pub(crate) struct AmbiguousImpl<'a> {
     #[subdiagnostic]
     pub bad_label: Option<InferenceBadError<'a>>,
     #[subdiagnostic]
-    pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
-    #[subdiagnostic]
-    pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    pub subdiagnostic: Option<SourceKindSubdiag<'a>>,
 }
 
 // Copy of `AnnotationRequired` for E0284
@@ -232,9 +228,7 @@ pub(crate) struct AmbiguousReturn<'a> {
     #[subdiagnostic]
     pub bad_label: Option<InferenceBadError<'a>>,
     #[subdiagnostic]
-    pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
-    #[subdiagnostic]
-    pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    pub subdiagnostic: Option<SourceKindSubdiag<'a>>,
 }
 
 // Used when a better one isn't available
@@ -294,7 +288,7 @@ pub(crate) enum SourceKindSubdiag<'a> {
         x_kind: &'static str,
         prefix_kind: UnderspecifiedArgKind,
         prefix: &'a str,
-        arg_name: String,
+        arg_name: &'a str,
     },
     #[label(
         "cannot infer {$is_type ->
@@ -308,7 +302,7 @@ pub(crate) enum SourceKindSubdiag<'a> {
             *[false] parameter {$param_name}
         }"
     )]
-    GenericLabel {
+    Generic {
         #[primary_span]
         span: Span,
         is_type: bool,
@@ -316,48 +310,9 @@ pub(crate) enum SourceKindSubdiag<'a> {
         parent_exists: bool,
         parent_prefix: String,
         parent_name: String,
+        #[subdiagnostic]
+        suggestion: Option<SpecifyGenericParamsSuggestion>,
     },
-    #[suggestion(
-        "consider specifying the generic {$arg_count ->
-            [one] argument
-            *[other] arguments
-        }",
-        style = "verbose",
-        code = "::<{args}>",
-        applicability = "has-placeholders"
-    )]
-    GenericSuggestion {
-        #[primary_span]
-        span: Span,
-        arg_count: usize,
-        args: String,
-    },
-    #[suggestion(
-        "consider specifying a concrete type for the type parameter `{$param}`",
-        style = "verbose",
-        code = "::</* Type */>",
-        applicability = "has-placeholders"
-    )]
-    GenericTypeSuggestion {
-        #[primary_span]
-        span: Span,
-        param: String,
-    },
-    #[suggestion(
-        "consider specifying a const for the const parameter `{$param}`",
-        style = "verbose",
-        code = "::</* CONST */>",
-        applicability = "has-placeholders"
-    )]
-    ConstGenericSuggestion {
-        #[primary_span]
-        span: Span,
-        param: String,
-    },
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum SourceKindMultiSuggestion<'a> {
     #[multipart_suggestion(
         "try using a fully qualified path to specify the expected types",
         style = "verbose",
@@ -386,7 +341,7 @@ pub(crate) enum SourceKindMultiSuggestion<'a> {
     },
 }
 
-impl<'a> SourceKindMultiSuggestion<'a> {
+impl<'a> SourceKindSubdiag<'a> {
     pub(crate) fn new_fully_qualified(
         span: Span,
         def_path: String,
@@ -419,6 +374,50 @@ impl<'a> SourceKindMultiSuggestion<'a> {
     }
 }
 
+/// Suggestion to specify generic parameter(s) via `::<>`.
+#[derive(Subdiagnostic)]
+pub(crate) enum SpecifyGenericParamsSuggestion {
+    #[suggestion(
+        "consider specifying the generic {$arg_count ->
+            [one] argument
+            *[other] arguments
+        }",
+        style = "verbose",
+        code = "::<{args}>",
+        applicability = "has-placeholders"
+    )]
+    GenericSuggestion {
+        #[primary_span]
+        span: Span,
+        arg_count: usize,
+        args: String,
+    },
+    // FIXME: there is really no reason for `Generic{Type,Const}Suggestion` to be separate
+    // variants, all of these should be unified.
+    #[suggestion(
+        "consider specifying a concrete type for the type parameter `{$param}`",
+        style = "verbose",
+        code = "::</* Type */>",
+        applicability = "has-placeholders"
+    )]
+    GenericTypeSuggestion {
+        #[primary_span]
+        span: Span,
+        param: String,
+    },
+    #[suggestion(
+        "consider specifying a const for the const parameter `{$param}`",
+        style = "verbose",
+        code = "::</* CONST */>",
+        applicability = "has-placeholders"
+    )]
+    ConstGenericSuggestion {
+        #[primary_span]
+        span: Span,
+        param: String,
+    },
+}
+
 pub(crate) enum RegionOriginNote<'a> {
     Plain {
         span: Span,
@@ -438,7 +437,7 @@ pub(crate) enum RegionOriginNote<'a> {
 }
 
 impl Subdiagnostic for RegionOriginNote<'_> {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         let label_or_note = |diag: &mut Diag<'_, G>, span, msg: DiagMessage| {
             let sub_count = diag.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = diag.children.iter().filter(|d| !d.span.is_dummy()).count();
@@ -533,7 +532,7 @@ pub(crate) enum LifetimeMismatchLabels {
 }
 
 impl Subdiagnostic for LifetimeMismatchLabels {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         match self {
             LifetimeMismatchLabels::InRet { param_span, ret_span, span, label_var1 } => {
                 diag.span_label(param_span, msg!("this parameter and the return type are declared with different lifetimes..."));
@@ -606,7 +605,7 @@ pub(crate) struct AddLifetimeParamsSuggestion<'a> {
 }
 
 impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         let mut mk_suggestion = || {
             let Some(anon_reg) = self.tcx.is_suitable_region(self.generic_param_scope, self.sub)
             else {
@@ -740,13 +739,12 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 return false;
             }
             if introduce_new {
-                let new_param_suggestion = if let Some(first) =
-                    generics.params.iter().find(|p| !p.name.ident().span.is_empty())
-                {
-                    (first.span.shrink_to_lo(), format!("{suggestion_param_name}, "))
-                } else {
-                    (generics.span, format!("<{suggestion_param_name}>"))
-                };
+                let new_param_suggestion =
+                    if let Some(span) = generics.span_for_lifetime_suggestion() {
+                        (span, format!("{suggestion_param_name}, "))
+                    } else {
+                        (generics.span, format!("<{suggestion_param_name}>"))
+                    };
 
                 visitor.suggestions.push(new_param_suggestion);
             }
@@ -791,7 +789,7 @@ pub(crate) struct IntroducesStaticBecauseUnmetLifetimeReq {
 }
 
 impl Subdiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
-    fn add_to_diag<G: EmissionGuarantee>(mut self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(mut self, diag: &mut Diag<'_, G>) {
         self.unmet_requirements.push_span_label(
             self.binding_span,
             msg!("introduces a `'static` lifetime requirement"),
@@ -1186,7 +1184,7 @@ pub(crate) struct ConsiderBorrowingParamHelp {
 }
 
 impl Subdiagnostic for ConsiderBorrowingParamHelp {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         let mut type_param_span: MultiSpan = self.spans.clone().into();
         for &span in &self.spans {
             // Seems like we can't call f() here as Into<DiagMessage> is required
@@ -1204,9 +1202,9 @@ impl Subdiagnostic for ConsiderBorrowingParamHelp {
 #[diag("`impl` item signature doesn't match `trait` item signature")]
 pub(crate) struct TraitImplDiff {
     #[primary_span]
-    #[label("found `{$found}`")]
+    #[label("found `{$found_short}`")]
     pub sp: Span,
-    #[label("expected `{$expected}`")]
+    #[label("expected `{$expected_short}`")]
     pub trait_sp: Span,
     #[note(
         "expected signature `{$expected}`
@@ -1219,6 +1217,8 @@ pub(crate) struct TraitImplDiff {
         "verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output"
     )]
     pub rel_help: bool,
+    pub expected_short: String,
+    pub found_short: String,
     pub expected: String,
     pub found: String,
 }
@@ -1424,6 +1424,18 @@ pub(crate) enum ConsiderAddingAwait {
     FutureSuggMultiple {
         #[suggestion_part(code = ".await")]
         spans: Vec<Span>,
+    },
+    #[multipart_suggestion(
+        "consider making the function `async` and `await`ing on the `Future`",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    MakeFunctionAsync {
+        #[suggestion_part(code = "{async_prefix}")]
+        async_span: Span,
+        async_prefix: String,
+        #[suggestion_part(code = ".await")]
+        await_span: Span,
     },
 }
 
@@ -1649,7 +1661,7 @@ pub(crate) struct SuggestTuplePatternMany {
 }
 
 impl Subdiagnostic for SuggestTuplePatternMany {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         diag.arg("path", self.path);
         let message = msg!("try wrapping the pattern in a variant of `{$path}`");
         diag.multipart_suggestions(
@@ -1895,7 +1907,7 @@ pub(crate) struct AddPreciseCapturingAndParams {
 }
 
 impl Subdiagnostic for AddPreciseCapturingAndParams {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         diag.arg("new_lifetime", self.new_lifetime);
         diag.multipart_suggestion(
             msg!("add a `use<...>` bound to explicitly capture `{$new_lifetime}` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate"),
@@ -2035,7 +2047,7 @@ pub struct AddPreciseCapturingForOvercapture {
 }
 
 impl Subdiagnostic for AddPreciseCapturingForOvercapture {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
         let applicability = if self.apit_spans.is_empty() {
             Applicability::MachineApplicable
         } else {

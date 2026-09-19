@@ -34,8 +34,10 @@
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/ModRef.h"
 #include "llvm/Support/Signals.h"
+#include "llvm/Support/SpecialCaseList.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Support/VirtualFileSystem.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include <iostream>
@@ -160,110 +162,9 @@ extern "C" void LLVMRustPrintStatisticsJSON(RustStringRef OutBuf) {
   llvm::PrintStatisticsJSON(OS);
 }
 
-// Some of the functions here rely on LLVM modules that may not always be
-// available. As such, we only try to build it in the first place, if
-// llvm.offload is enabled.
-#ifdef OFFLOAD
-static Error writeFile(StringRef Filename, StringRef Data) {
-  Expected<std::unique_ptr<FileOutputBuffer>> OutputOrErr =
-      FileOutputBuffer::create(Filename, Data.size());
-  if (!OutputOrErr)
-    return OutputOrErr.takeError();
-  std::unique_ptr<FileOutputBuffer> Output = std::move(*OutputOrErr);
-  llvm::copy(Data, Output->getBufferStart());
-  if (Error E = Output->commit())
-    return E;
-  return Error::success();
+extern "C" bool LLVMRustIsCall(LLVMValueRef V) {
+  return llvm::isa<llvm::CallBase>(llvm::unwrap(V));
 }
-
-// This is the first of many steps in creating a binary using llvm offload,
-// to run code on the gpu. Concrete, it replaces the following binary use:
-// clang-offload-packager -o device.bin
-//  --image=file=device.bc,triple=amdgcn-amd-amdhsa,arch=gfx90a,kind=openmp
-// The input module is the rust code compiled for a gpu target like amdgpu.
-// Based on clang/tools/clang-offload-packager/ClangOffloadPackager.cpp
-extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM,
-                                     const char *HostOutPath) {
-  std::string Storage;
-  llvm::raw_string_ostream OS1(Storage);
-  llvm::WriteBitcodeToFile(*unwrap(M), OS1);
-  OS1.flush();
-  auto MB = llvm::MemoryBuffer::getMemBufferCopy(Storage, "device.bc");
-
-  SmallVector<char, 1024> BinaryData;
-  raw_svector_ostream OS2(BinaryData);
-
-  OffloadBinary::OffloadingImage ImageBinary{};
-  ImageBinary.TheImageKind = object::IMG_Bitcode;
-  ImageBinary.Image = std::move(MB);
-  ImageBinary.TheOffloadKind = object::OFK_OpenMP;
-
-  std::string TripleStr = TM.getTargetTriple().str();
-  llvm::StringRef CPURef = TM.getTargetCPU();
-  ImageBinary.StringData["triple"] = TripleStr;
-  ImageBinary.StringData["arch"] = CPURef;
-  llvm::SmallString<0> Buffer = OffloadBinary::write(ImageBinary);
-  if (Buffer.size() % OffloadBinary::getAlignment() != 0)
-    // Offload binary has invalid size alignment
-    return false;
-  OS2 << Buffer;
-  if (Error E = writeFile(HostOutPath,
-                          StringRef(BinaryData.begin(), BinaryData.size())))
-    return false;
-  return true;
-}
-
-extern "C" bool LLVMRustOffloadEmbedBufferInModule(LLVMModuleRef HostM,
-                                                   const char *HostOutPath) {
-  auto MBOrErr = MemoryBuffer::getFile(HostOutPath);
-  if (!MBOrErr) {
-    auto E = MBOrErr.getError();
-    auto _B = errorCodeToError(E);
-    return false;
-  }
-  MemoryBufferRef Buf = (*MBOrErr)->getMemBufferRef();
-  Module *M = unwrap(HostM);
-  StringRef SectionName = ".llvm.offloading";
-  Align Alignment = Align(8);
-  llvm::embedBufferInModule(*M, Buf, SectionName, Alignment);
-  return true;
-}
-
-// Clone OldFn into NewFn, remapping its arguments to RebuiltArgs.
-// Each arg of OldFn is replaced with the corresponding value in RebuiltArgs.
-// For scalars, RebuiltArgs contains the value cast and/or truncated to the
-// original type.
-extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn,
-                                      const LLVMValueRef *RebuiltArgs) {
-  llvm::Function *oldFn = llvm::unwrap<llvm::Function>(OldFn);
-  llvm::Function *newFn = llvm::unwrap<llvm::Function>(NewFn);
-
-  // Map old arguments to new arguments. We skip the first dyn_ptr argument,
-  // since it can't be used directly by user code.
-  llvm::ValueToValueMapTy vmap;
-  auto newArgIt = newFn->arg_begin();
-  newArgIt->setName("dyn_ptr");
-
-  unsigned i = 0;
-  for (auto &oldArg : oldFn->args()) {
-    vmap[&oldArg] = unwrap<Value>(RebuiltArgs[i++]);
-  }
-
-  llvm::SmallVector<llvm::ReturnInst *, 8> returns;
-  llvm::CloneFunctionInto(newFn, oldFn, vmap,
-                          llvm::CloneFunctionChangeType::LocalChangesOnly,
-                          returns);
-
-  BasicBlock &entry = newFn->getEntryBlock();
-  BasicBlock &clonedEntry = *std::next(newFn->begin());
-
-  if (entry.getTerminator())
-    entry.getTerminator()->eraseFromParent();
-
-  IRBuilder<> B(&entry);
-  B.CreateBr(&clonedEntry);
-}
-#endif
 
 extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,
                                               size_t NameLen) {
@@ -762,6 +663,20 @@ extern "C" bool LLVMRustInlineAsmVerify(LLVMTypeRef Ty, char *Constraints,
       unwrap<FunctionType>(Ty), StringRef(Constraints, ConstraintsLen)));
 }
 
+extern "C" void LLVMRustAppendModuleInlineAsm(
+    LLVMModuleRef M, const char *Asm, size_t AsmLen, const char *TargetFeatures,
+    size_t TargetFeaturesLen, const char *TargetCPU, size_t TargetCPULen) {
+#if LLVM_VERSION_GE(23, 0)
+  Module::GlobalAsmProperties Props;
+  Props.TargetFeatures = std::string(TargetFeatures, TargetFeaturesLen);
+  Props.TargetCPU = std::string(TargetCPU, TargetCPULen);
+  unwrap(M)->appendModuleInlineAsm(
+      Module::GlobalAsmFragment(std::string(Asm, AsmLen), Props));
+#else
+  unwrap(M)->appendModuleInlineAsm(StringRef(Asm, AsmLen));
+#endif
+}
+
 template <typename DIT> DIT *unwrapDIPtr(LLVMMetadataRef Ref) {
   return (DIT *)(Ref ? unwrap<Metadata>(Ref) : nullptr);
 }
@@ -971,10 +886,6 @@ static std::optional<DIFile::ChecksumKind> fromRust(LLVMRustChecksumKind Kind) {
 extern "C" uint32_t LLVMRustDebugMetadataVersion() {
   return DEBUG_METADATA_VERSION;
 }
-
-extern "C" uint32_t LLVMRustVersionPatch() { return LLVM_VERSION_PATCH; }
-
-extern "C" uint32_t LLVMRustVersionMinor() { return LLVM_VERSION_MINOR; }
 
 extern "C" uint32_t LLVMRustVersionMajor() { return LLVM_VERSION_MAJOR; }
 
@@ -1286,11 +1197,9 @@ extern "C" void LLVMRustWriteValueToString(LLVMValueRef V, RustStringRef Str) {
   }
 }
 
-DEFINE_SIMPLE_CONVERSION_FUNCTIONS(Twine, LLVMTwineRef)
-
-extern "C" void LLVMRustWriteTwineToString(LLVMTwineRef T, RustStringRef Str) {
+extern "C" void LLVMRustWriteTwineToString(const Twine *T, RustStringRef Str) {
   auto OS = RawRustStringOstream(Str);
-  unwrap(T)->print(OS);
+  T->print(OS);
 }
 
 extern "C" void LLVMRustUnpackOptimizationDiagnostic(
@@ -1326,13 +1235,13 @@ enum class LLVMRustDiagnosticLevel {
 
 extern "C" void LLVMRustUnpackInlineAsmDiagnostic(
     LLVMDiagnosticInfoRef DI, LLVMRustDiagnosticLevel *LevelOut,
-    uint64_t *CookieOut, LLVMTwineRef *MessageOut) {
+    uint64_t *CookieOut, const Twine **MessageOut) {
   // Undefined to call this not on an inline assembly diagnostic!
   llvm::DiagnosticInfoInlineAsm *IA =
       static_cast<llvm::DiagnosticInfoInlineAsm *>(unwrap(DI));
 
   *CookieOut = IA->getLocCookie();
-  *MessageOut = wrap(&IA->getMsgStr());
+  *MessageOut = &IA->getMsgStr();
 
   switch (IA->getSeverity()) {
   case DS_Error:
@@ -1421,22 +1330,20 @@ LLVMRustGetDiagInfoKind(LLVMDiagnosticInfoRef DI) {
   return toRust((DiagnosticKind)unwrap(DI)->getKind());
 }
 
-DEFINE_SIMPLE_CONVERSION_FUNCTIONS(SMDiagnostic, LLVMSMDiagnosticRef)
-
-extern "C" LLVMSMDiagnosticRef LLVMRustGetSMDiagnostic(LLVMDiagnosticInfoRef DI,
+extern "C" const SMDiagnostic *LLVMRustGetSMDiagnostic(LLVMDiagnosticInfoRef DI,
                                                        uint64_t *Cookie) {
   llvm::DiagnosticInfoSrcMgr *SM =
       static_cast<llvm::DiagnosticInfoSrcMgr *>(unwrap(DI));
   *Cookie = SM->getLocCookie();
-  return wrap(&SM->getSMDiag());
+  return &SM->getSMDiag();
 }
 
 extern "C" bool
-LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef, RustStringRef MessageOut,
+LLVMRustUnpackSMDiagnostic(const SMDiagnostic *DRef, RustStringRef MessageOut,
                            RustStringRef BufferOut,
                            LLVMRustDiagnosticLevel *LevelOut, unsigned *LocOut,
                            unsigned *RangesOut, size_t *NumRanges) {
-  SMDiagnostic &D = *unwrap(DRef);
+  const SMDiagnostic &D = *DRef;
   auto MessageOS = RawRustStringOstream(MessageOut);
   MessageOS << D.getMessage();
 
@@ -1495,6 +1402,10 @@ LLVMRustBuildMemMove(LLVMBuilderRef B, LLVMValueRef Dst, unsigned DstAlign,
   return wrap(unwrap(B)->CreateMemMove(unwrap(Dst), MaybeAlign(DstAlign),
                                        unwrap(Src), MaybeAlign(SrcAlign),
                                        unwrap(Size), IsVolatile));
+}
+
+extern "C" LLVMValueRef LLVMRustBuildVScale(LLVMBuilderRef B, LLVMTypeRef Ty) {
+  return wrap(unwrap(B)->CreateVScale(unwrap(Ty)));
 }
 
 extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B, LLVMValueRef Dst,
@@ -1844,6 +1755,35 @@ extern "C" bool LLVMRustIsTargetIntrinsic(unsigned ID) {
   return Intrinsic::isTargetIntrinsic(ID);
 }
 
+extern "C" LLVMValueRef LLVMRustConstPtrAuth(LLVMValueRef Ptr, uint32_t Key,
+                                             uint64_t Disc,
+                                             LLVMValueRef AddrDiversity,
+                                             LLVMValueRef DeactivationSymbol) {
+  auto *C = cast<Constant>(unwrap<Value>(Ptr));
+  assert(C->getType()->isPointerTy() && "Expected pointer type");
+  assert(!isa<UndefValue>(C) && "Unexpected undef in const_ptr_auth");
+  assert(!isa<ConstantPointerNull>(C) && "Unexpected null in const_ptr_auth");
+
+  LLVMContext &Ctx = C->getContext();
+  auto *KeyC = ConstantInt::get(Type::getInt32Ty(Ctx), Key);
+  auto *DiscC = ConstantInt::get(Type::getInt64Ty(Ctx), Disc);
+  auto *PTy = cast<PointerType>(C->getType());
+  Constant *AddrDiv =
+      AddrDiversity ? dyn_cast<Constant>(unwrap<Value>(AddrDiversity))
+                    : ConstantPointerNull::get(cast<PointerType>(C->getType()));
+  assert(AddrDiv && "Failed to get Address Diversity");
+#if LLVM_VERSION_GE(22, 0)
+  Constant *DeactivationSym =
+      DeactivationSymbol ? dyn_cast<Constant>(unwrap<Value>(DeactivationSymbol))
+                         : ConstantPointerNull::get(PTy);
+  assert(DeactivationSym && "Failed to get Deactivation Symbol");
+
+  return wrap(ConstantPtrAuth::get(C, KeyC, DiscC, AddrDiv, DeactivationSym));
+#else
+  return wrap(ConstantPtrAuth::get(C, KeyC, DiscC, AddrDiv));
+#endif
+}
+
 // Statically assert that the fixed metadata kind IDs declared in
 // `metadata_kind.rs` match the ones actually used by LLVM.
 #define FIXED_MD_KIND(VARIANT, VALUE)                                          \
@@ -1895,3 +1835,176 @@ FIXED_MD_KIND(MD_noalias_addrspace, 41)
 // LLVM versions, it's fine to omit them from this list; in that case Rust-side
 // code cannot declare them as fixed IDs and must look them up by name instead.
 #undef FIXED_MD_KIND
+
+class RustSanitizerSpecialCaseList : public llvm::SpecialCaseList {
+public:
+  static std::unique_ptr<RustSanitizerSpecialCaseList>
+  create(const std::vector<std::string> &Paths, llvm::vfs::FileSystem &VFS,
+         std::string &Error) {
+    std::unique_ptr<RustSanitizerSpecialCaseList> SSCL(
+        new RustSanitizerSpecialCaseList());
+    if (SSCL->createInternal(Paths, VFS, Error)) {
+      SSCL->createSanitizerSections();
+      return SSCL;
+    }
+    return nullptr;
+  }
+
+  std::pair<unsigned, unsigned>
+  inSectionBlame(uint32_t Mask, llvm::StringRef SectionName,
+                 llvm::StringRef Prefix, llvm::StringRef Query,
+                 llvm::StringRef Category = llvm::StringRef()) const {
+    for (auto It = SanitizerSections.rbegin(); It != SanitizerSections.rend();
+         ++It) {
+      bool Matches = false;
+      if (Mask != 0 && (It->Mask & Mask) != 0) {
+        Matches = true;
+      } else if (!SectionName.empty() && matchSection(It->S, SectionName)) {
+        Matches = true;
+      }
+      if (Matches) {
+        unsigned LineNum = getLastMatch(It->S, Prefix, Query, Category);
+        if (LineNum > 0)
+          return {getFileIndex(It->S), LineNum};
+      }
+    }
+    return NotFound;
+  }
+
+private:
+  struct SanitizerSection {
+    uint32_t Mask;
+    const Section &S;
+    SanitizerSection(uint32_t Mask, const Section &S) : Mask(Mask), S(S) {}
+  };
+
+  std::vector<SanitizerSection> SanitizerSections;
+
+#if LLVM_VERSION_GE(22, 0)
+  static bool matchSection(const Section &S, llvm::StringRef Name) {
+    return S.matchName(Name);
+  }
+  unsigned getLastMatch(const Section &S, llvm::StringRef Prefix,
+                        llvm::StringRef Query, llvm::StringRef Category) const {
+    return S.getLastMatch(Prefix, Query, Category);
+  }
+  static unsigned getFileIndex(const Section &S) { return S.fileIndex(); }
+#else
+  static bool matchSection(const Section &S, llvm::StringRef Name) {
+    return S.SectionMatcher && S.SectionMatcher->match(Name) != 0;
+  }
+  unsigned getLastMatch(const Section &S, llvm::StringRef Prefix,
+                        llvm::StringRef Query, llvm::StringRef Category) const {
+    return llvm::SpecialCaseList::inSectionBlame(S.Entries, Prefix, Query,
+                                                 Category);
+  }
+  static unsigned getFileIndex(const Section &S) { return S.FileIdx; }
+#endif
+
+  void createSanitizerSections() {
+#if LLVM_VERSION_GE(22, 0)
+    const auto &SecList = sections();
+#else
+    const auto &SecList = Sections;
+#endif
+    for (const auto &S : SecList) {
+      uint32_t Mask = 0;
+
+      // All sanitizers: [all]
+      if (matchSection(S, "all"))
+        Mask |= ~0u;
+
+      // Address: [address]
+      if (matchSection(S, "address"))
+        Mask |= (1 << 0);
+      // Leak: [leak]
+      if (matchSection(S, "leak"))
+        Mask |= (1 << 1);
+      // Memory: [memory]
+      if (matchSection(S, "memory"))
+        Mask |= (1 << 2);
+      // Thread: [thread]
+      if (matchSection(S, "thread"))
+        Mask |= (1 << 3);
+      // HWAddress: [hwaddress]
+      if (matchSection(S, "hwaddress"))
+        Mask |= (1 << 4);
+
+      // CFI (indirect call checking): [cfi], [cfi-icall]
+      if (matchSection(S, "cfi") || matchSection(S, "cfi-icall"))
+        Mask |= (1 << 5);
+
+      // MemTag: [memtag], [memtag-stack], [memtag-heap], [memtag-globals]
+      if (matchSection(S, "memtag") || matchSection(S, "memtag-stack") ||
+          matchSection(S, "memtag-heap") || matchSection(S, "memtag-globals"))
+        Mask |= (1 << 6);
+      // ShadowCallStack: [shadow-call-stack], [shadowcallstack]
+      if (matchSection(S, "shadow-call-stack") ||
+          matchSection(S, "shadowcallstack"))
+        Mask |= (1 << 7);
+      // KCFI: [kcfi]
+      if (matchSection(S, "kcfi"))
+        Mask |= (1 << 8);
+      // KernelAddress: [kernel-address], [kasan]
+      if (matchSection(S, "kernel-address") || matchSection(S, "kasan"))
+        Mask |= (1 << 9);
+      // KernelHWAddress: [kernel-hwaddress], [khwasan]
+      if (matchSection(S, "kernel-hwaddress") || matchSection(S, "khwasan"))
+        Mask |= (1 << 10);
+      // SafeStack: [safe-stack] (Clang standard), [safestack]
+      if (matchSection(S, "safe-stack") || matchSection(S, "safestack"))
+        Mask |= (1 << 11);
+      // DataFlow: [dataflow]
+      if (matchSection(S, "dataflow"))
+        Mask |= (1 << 12);
+      // Realtime: [realtime]
+      if (matchSection(S, "realtime"))
+        Mask |= (1 << 13);
+
+      SanitizerSections.emplace_back(Mask, S);
+    }
+  }
+};
+
+extern "C" LLVMSpecialCaseListRef
+LLVMRustSpecialCaseListCreate(const char **Paths, size_t NumPaths,
+                              RustStringRef ErrorMsg) {
+  std::string Error;
+  std::vector<std::string> PathsVec(Paths, Paths + NumPaths);
+  std::unique_ptr<RustSanitizerSpecialCaseList> SCL =
+      RustSanitizerSpecialCaseList::create(
+          PathsVec, *llvm::vfs::getRealFileSystem(), Error);
+  if (!SCL) {
+    LLVMRustStringWriteImpl(ErrorMsg, Error.data(), Error.size());
+    return nullptr;
+  }
+  return reinterpret_cast<LLVMSpecialCaseListRef>(SCL.release());
+}
+
+extern "C" void LLVMRustSpecialCaseListDestroy(LLVMSpecialCaseListRef List) {
+  delete reinterpret_cast<RustSanitizerSpecialCaseList *>(List);
+}
+
+struct LLVMRustSpecialCaseListBlame {
+  uint32_t FileIdx;
+  uint32_t LineNo;
+};
+
+extern "C" void
+LLVMRustSpecialCaseListInSectionBlame(LLVMSpecialCaseListRef List,
+                                      uint32_t Mask, const char *Section,
+                                      const char *Prefix, const char *Query,
+                                      LLVMRustSpecialCaseListBlame *OutNoSan,
+                                      LLVMRustSpecialCaseListBlame *OutSan) {
+  auto *SSCL = reinterpret_cast<RustSanitizerSpecialCaseList *>(List);
+  llvm::StringRef SectionStr = Section ? Section : "";
+  std::pair<unsigned, unsigned> NoSan =
+      SSCL->inSectionBlame(Mask, SectionStr, Prefix, Query);
+  OutNoSan->FileIdx = NoSan.first;
+  OutNoSan->LineNo = NoSan.second;
+
+  std::pair<unsigned, unsigned> San =
+      SSCL->inSectionBlame(Mask, SectionStr, Prefix, Query, "sanitize");
+  OutSan->FileIdx = San.first;
+  OutSan->LineNo = San.second;
+}

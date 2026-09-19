@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::{fulfill_or_allowed, get_parent_as_impl, sym};
 use rustc_data_structures::unord::UnordItems;
 use rustc_hir::def::Res;
@@ -8,9 +8,8 @@ use rustc_hir::{
     FnRetTy, GenericArg, GenericBound, HirId, ImplItem, ImplItemKind, ImplicitSelfKind, Item, ItemKind, Mutability,
     Node, OpaqueTyOrigin, PathSegment, PrimTy, QPath, TraitItemId, TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::{self, FnSig, Ty};
-use rustc_session::declare_lint_pass;
 use rustc_span::symbol::kw;
 use rustc_span::{Ident, Span, Symbol};
 use rustc_trait_selection::traits::supertrait_def_ids;
@@ -149,8 +148,14 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Iden
 }
 
 fn extract_future_output<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
-    if let ty::Alias(alias_ty) = ty.kind()
-        && let Some(Node::OpaqueTy(opaque)) = cx.tcx.hir_get_if_local(alias_ty.kind.def_id())
+    if let ty::Alias(
+        _,
+        ty::AliasTy {
+            kind: ty::Opaque { def_id },
+            ..
+        },
+    ) = *ty.kind()
+        && let Some(Node::OpaqueTy(opaque)) = cx.tcx.hir_get_if_local(def_id)
         && let OpaqueTyOrigin::AsyncFn { .. } = opaque.origin
         && let [GenericBound::Trait(trait_ref)] = &opaque.bounds
         && let Some(segment) = trait_ref.trait_ref.path.segments.last()

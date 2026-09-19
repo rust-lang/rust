@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use rustc_session::Session;
+use rustc_session::EarlySession;
 
 pub mod apple;
 pub mod archive;
@@ -15,12 +15,14 @@ mod symbol_edit;
 pub mod symbol_export;
 pub mod write;
 
+pub use symbol_export::{exported_non_generic_symbols_helper, reachable_non_generics_helper};
+
 /// The target triple depends on the deployment target, and is required to
 /// enable features such as cross-language LTO, and for picking the right
 /// Mach-O commands.
 ///
 /// Certain optimizations also depend on the deployment target.
-pub fn versioned_llvm_target(sess: &Session) -> Cow<'_, str> {
+pub fn versioned_llvm_target(sess: &EarlySession) -> Cow<'_, str> {
     if sess.target.is_like_darwin {
         apple::add_version_to_llvm_target(&sess.target.llvm_target, sess.apple_deployment_target())
             .into()

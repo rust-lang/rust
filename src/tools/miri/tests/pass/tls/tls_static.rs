@@ -8,7 +8,7 @@
 //! dereferencing the pointer on `t2` resolves to `t1`'s thread-local. In this
 //! test, we also check that thread-locals act as per-thread statics.
 
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 #![feature(thread_local)]
 

@@ -1,11 +1,11 @@
 error[E0658]: use of an internal attribute
-  --> $DIR/feature-gate-test.rs:1:1
+  --> $DIR/feature-gate-test.rs:1:3
    |
 LL | #[rustc_comptime]
-   | ^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
-   = note: the `#[rustc_comptime]` attribute is an internal implementation detail that will never be stable
+   = note: the `rustc_comptime` attribute is an internal implementation detail that will never be stable
 
 error: aborting due to 1 previous error
 

@@ -9,7 +9,7 @@ LL |         x().await;
 LL |         x().await;
    |         ^ value used here after move
    |
-note: `async_call_once` takes ownership of the receiver `self`, which moves `x`
+note: `std::ops::AsyncFnOnce::async_call_once` takes ownership of the receiver `self`, which moves `x`
   --> $SRC_DIR/core/src/ops/async_function.rs:LL:COL
 help: you could `clone` the value and consume it, if the `NoCopy: Clone` trait bound could be satisfied
    |

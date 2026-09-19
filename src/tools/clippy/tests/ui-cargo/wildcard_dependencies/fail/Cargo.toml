@@ -1,5 +1,5 @@
 [package]
-name = "wildcard_dependencies"
+name = "wildcard-dependencies"
 version = "0.1.0"
 publish = false
 
@@ -7,3 +7,6 @@ publish = false
 
 [dependencies]
 regex = "*"
+
+[lints.cargo]
+unused_dependencies = "allow"

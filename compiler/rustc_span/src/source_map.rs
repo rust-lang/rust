@@ -174,6 +174,18 @@ struct SourceMapFiles {
     stable_id_to_source_file: UnhashMap<StableSourceFileId, Arc<SourceFile>>,
 }
 
+impl std::fmt::Debug for SourceMapFiles {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let SourceMapFiles { source_files, stable_id_to_source_file: _ } = self;
+
+        f.debug_list()
+            .entries(
+                source_files.iter().map(|f| f.name.prefer_remapped_unconditionally().to_string()),
+            )
+            .finish()
+    }
+}
+
 /// Used to construct a `SourceMap` with `SourceMap::with_inputs`.
 pub struct SourceMapInputs {
     pub file_loader: Box<dyn FileLoader + Send + Sync>,
@@ -201,6 +213,28 @@ pub struct SourceMap {
     ///
     /// If this is equal to `hash_kind` then the checksum won't be computed twice.
     checksum_hash_kind: Option<SourceFileHashAlgorithm>,
+}
+
+impl std::fmt::Debug for SourceMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let SourceMap {
+            files,
+            file_loader,
+            path_mapping,
+            working_dir,
+            hash_kind,
+            checksum_hash_kind,
+        } = self;
+
+        f.debug_struct("SourceMap")
+            .field("files", files)
+            .field("file_loader", &format_args!("<file_loader@{file_loader:p}>"))
+            .field("path_mapping", path_mapping)
+            .field("working_dir", working_dir)
+            .field("hash_kind", hash_kind)
+            .field("checksum_hash_kind", checksum_hash_kind)
+            .finish()
+    }
 }
 
 impl SourceMap {
@@ -562,9 +596,13 @@ impl SourceMap {
     /// Extracts the source surrounding the given `Span` using the `extract_source` function. The
     /// extract function takes three arguments: a string slice containing the source, an index in
     /// the slice for the beginning of the span and an index in the slice for the end of the span.
-    pub fn span_to_source<F, T>(&self, sp: Span, extract_source: F) -> Result<T, SpanSnippetError>
+    pub fn span_to_source<F, T>(
+        &self,
+        sp: Span,
+        mut extract_source: F,
+    ) -> Result<T, SpanSnippetError>
     where
-        F: Fn(&str, usize, usize) -> Result<T, SpanSnippetError>,
+        F: FnMut(&str, usize, usize) -> Result<T, SpanSnippetError>,
     {
         let local_begin = self.lookup_byte_offset(sp.lo());
         let local_end = self.lookup_byte_offset(sp.hi());
@@ -719,7 +757,7 @@ impl SourceMap {
     pub fn span_extend_while(
         &self,
         span: Span,
-        f: impl Fn(char) -> bool,
+        mut f: impl FnMut(char) -> bool,
     ) -> Result<Span, SpanSnippetError> {
         self.span_to_source(span, |s, _start, end| {
             let n = s[end..].char_indices().find(|&(_, c)| !f(c)).map_or(s.len() - end, |(i, _)| i);
@@ -1117,7 +1155,7 @@ pub fn get_source_map() -> Option<Arc<SourceMap>> {
     with_session_globals(|session_globals| session_globals.source_map.clone())
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FilePathMapping {
     mapping: Vec<(PathBuf, PathBuf)>,
     filename_remapping_scopes: RemapPathScopeComponents,

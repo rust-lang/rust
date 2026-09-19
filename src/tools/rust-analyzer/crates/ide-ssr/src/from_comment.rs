@@ -22,7 +22,7 @@ pub fn ssr_from_comment(
         let file = file_id.parse(db);
         file.tree().syntax().token_at_offset(frange.range.start()).find_map(ast::Comment::cast)
     }?;
-    let comment_text_without_prefix = comment.text().strip_prefix(comment.prefix()).unwrap();
+    let comment_text_without_prefix = comment.text_without_markers();
     let ssr_rule = comment_text_without_prefix.parse().ok()?;
 
     let lookup_context = FilePosition { file_id: frange.file_id, offset: frange.range.start() };

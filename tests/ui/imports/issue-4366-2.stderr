@@ -10,12 +10,13 @@ note: type alias `a::b::Bar` exists but is inaccessible
 LL |         type Bar = isize;
    |         ^^^^^^^^^^^^^^^^^ not accessible
 
-error[E0423]: expected function, found module `foo`
+error[E0423]: cannot find function `foo` in this scope
   --> $DIR/issue-4366-2.rs:26:5
    |
 LL |     foo();
-   |     ^^^ not a function
+   |     ^^^ not found in this scope
    |
+   = note: a module named `foo` exists in another namespace
 note: function `m1::foo` exists but is inaccessible
   --> $DIR/issue-4366-2.rs:22:5
    |

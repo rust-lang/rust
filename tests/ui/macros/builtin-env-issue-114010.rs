@@ -5,6 +5,6 @@ env![r#"oopsie"#];
 //~^ ERROR environment variable `oopsie` not defined at compile time
 
 env![r#"a""a"#];
-//~^ ERROR environment variable `a""a` not defined at compile time
+//~^ ERROR environment variable `a\"\"a` not defined at compile time
 
 fn main() {}

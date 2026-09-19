@@ -179,10 +179,10 @@ fn main() {
 }
 "#,
         expect![[r#"
-            ct RC (use dep::RC)                    ()
+            ct RC  = () (use dep::RC)              ()
             st Rc (use dep::Rc)                    Rc
             st Rcar (use dep::Rcar)              Rcar
-            ct RC (use dep::some_module::RC)       ()
+            ct RC  = () (use dep::some_module::RC) ()
             st Rc (use dep::some_module::Rc)       Rc
             st Rcar (use dep::some_module::Rcar) Rcar
         "#]],
@@ -207,8 +207,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-            ct RC (use dep::RC)              ()
-            ct RC (use dep::some_module::RC) ()
+            ct RC  = () (use dep::RC)              ()
+            ct RC  = () (use dep::some_module::RC) ()
         "#]],
     );
 }
@@ -244,6 +244,34 @@ fn main() {
             st ThirdStruct (use dep::some_module::ThirdStruct)                ThirdStruct
             st AfterThirdStruct (use dep::some_module::AfterThirdStruct) AfterThirdStruct
             st ThiiiiiirdStruct (use dep::some_module::ThiiiiiirdStruct) ThiiiiiirdStruct
+        "#]],
+    );
+}
+
+#[test]
+fn fuzzy_completion_order_is_case_insensitive_and_deterministic() {
+    check(
+        r#"
+//- /lib.rs crate:dep
+pub mod zed {
+    pub struct HIRThing;
+}
+pub mod alpha {
+    pub struct HIRThing;
+}
+pub struct BeforeHIRThing;
+pub struct HiiirThing;
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    hir$0
+}
+"#,
+        expect![[r#"
+            st HIRThing (use dep::alpha::HIRThing)            HIRThing
+            st HIRThing (use dep::zed::HIRThing)              HIRThing
+            st BeforeHIRThing (use dep::BeforeHIRThing) BeforeHIRThing
+            st HiiirThing (use dep::HiiirThing)             HiiirThing
         "#]],
     );
 }
@@ -976,7 +1004,7 @@ fn main() {
     check(
         fixture,
         expect![[r#"
-            ct TEST_ASSOC (use foo::Item) usize
+            ct TEST_ASSOC  = 3 (use foo::Item) usize
         "#]],
     );
 
@@ -1020,7 +1048,7 @@ fn main() {
     check(
         fixture,
         expect![[r#"
-            ct TEST_ASSOC (use foo::bar) usize
+            ct TEST_ASSOC  = 3 (use foo::bar) usize
         "#]],
     );
 
@@ -1114,7 +1142,7 @@ fn main() {
     TES$0
 }"#,
         expect![[r#"
-            ct TEST_CONST (use foo::TEST_CONST) usize
+            ct TEST_CONST  = 3 (use foo::TEST_CONST) usize
         "#]],
     );
 
@@ -1131,7 +1159,7 @@ fn main() {
     tes$0
 }"#,
         expect![[r#"
-            ct TEST_CONST (use foo::TEST_CONST)               usize
+            ct TEST_CONST  = 3 (use foo::TEST_CONST)          usize
             fn test_function() (use foo::test_function) fn() -> i32
         "#]],
     );
@@ -1280,10 +1308,10 @@ fn no_inherent_candidates_proposed() {
     check(
         r#"
 mod baz {
-    pub trait DefDatabase {
+    pub trait SourceDatabase {
         fn method1(&self);
     }
-    pub trait HirDatabase: DefDatabase {
+    pub trait HirDatabase: SourceDatabase {
         fn method2(&self);
     }
 }
@@ -1299,10 +1327,10 @@ mod bar {
     check(
         r#"
 mod baz {
-    pub trait DefDatabase {
+    pub trait SourceDatabase {
         fn method1(&self);
     }
-    pub trait HirDatabase: DefDatabase {
+    pub trait HirDatabase: SourceDatabase {
         fn method2(&self);
     }
 }
@@ -1318,10 +1346,10 @@ mod bar {
     check(
         r#"
 mod baz {
-    pub trait DefDatabase {
+    pub trait SourceDatabase {
         fn method1(&self);
     }
-    pub trait HirDatabase: DefDatabase {
+    pub trait HirDatabase: SourceDatabase {
         fn method2(&self);
     }
 }
@@ -1407,7 +1435,7 @@ fn function() {
 }
 "#,
         expect![[r#"
-            ct FooConst (use module::FooConst)
+            ct FooConst  = () (use module::FooConst)
             st FooStruct (use module::FooStruct)
         "#]],
     );

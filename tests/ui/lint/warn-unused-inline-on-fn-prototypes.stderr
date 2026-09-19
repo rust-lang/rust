@@ -1,10 +1,10 @@
-error: `#[inline]` attribute cannot be used on required trait methods
-  --> $DIR/warn-unused-inline-on-fn-prototypes.rs:4:5
+error: the `inline` attribute cannot be used on required trait methods
+  --> $DIR/warn-unused-inline-on-fn-prototypes.rs:4:7
    |
 LL |     #[inline]
-   |     ^^^^^^^^^
+   |       ^^^^^^
    |
-   = help: `#[inline]` can only be applied to functions with a body
+   = help: the `inline` attribute can only be applied to functions with a body
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 note: the lint level is defined here
   --> $DIR/warn-unused-inline-on-fn-prototypes.rs:1:9
@@ -12,13 +12,13 @@ note: the lint level is defined here
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
-error: `#[inline]` attribute cannot be used on foreign functions
-  --> $DIR/warn-unused-inline-on-fn-prototypes.rs:10:5
+error: the `inline` attribute cannot be used on foreign functions
+  --> $DIR/warn-unused-inline-on-fn-prototypes.rs:10:7
    |
 LL |     #[inline]
-   |     ^^^^^^^^^
+   |       ^^^^^^
    |
-   = help: `#[inline]` can only be applied to functions with a body
+   = help: the `inline` attribute can only be applied to functions with a body
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 2 previous errors

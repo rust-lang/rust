@@ -1,0 +1,46 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2024
+   LL|       |//@ min-llvm-version: 23
+   LL|       |
+   LL|       |// Basic test for method calls and chained method calls.
+   LL|       |
+   LL|       |#[rustfmt::skip]
+   LL|      1|fn call_method() {
+   LL|      1|    let thing = Thing;
+   LL|       |
+   LL|      1|    thing
+   LL|      1|        .
+   LL|      1|        method
+   LL|      1|        (
+   LL|      1|            "arg"
+   LL|      1|        )
+   LL|       |    ;
+   LL|       |
+   LL|      1|    thing
+   LL|      1|        .
+   LL|      1|        method
+   LL|      1|        (
+   LL|      1|            "arg"
+   LL|      1|        )
+   LL|      1|        .
+   LL|      1|        method
+   LL|      1|        (
+   LL|      1|            "arg"
+   LL|      1|        )
+   LL|       |    ;
+   LL|      1|}
+   LL|       |
+   LL|       |struct Thing;
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |impl Thing {
+   LL|       |    fn method(&self, _arg: &str) -> &Self {
+   LL|       |        self
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    call_method();
+   LL|       |}
+

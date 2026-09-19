@@ -190,31 +190,39 @@ fn encodable_body(
 
     let encode_body = match s.variants() {
         [] => {
-            quote! {
-                match *self {}
-            }
+            quote! {}
         }
-        [_] => {
-            let encode_inner = s.each_variant(|vi| {
-                vi.bindings()
-                    .iter()
-                    .map(|binding| {
-                        let bind_ident = &binding.binding;
-                        let result = quote! {
-                            ::rustc_serialize::Encodable::<#encoder_ty>::encode(
-                                #bind_ident,
-                                __encoder,
-                            );
-                        };
-                        result
-                    })
-                    .collect::<TokenStream>()
-            });
+        // Unit-like types don't need to encode anything.
+        // This covers fieldless structs and enums with zero or one fieldless variant.
+        [vi] if vi.bindings().is_empty() => {
+            quote! {}
+        }
+        [vi] => {
+            let pat = vi.pat();
+            let body = vi
+                .bindings()
+                .iter()
+                .map(|binding| {
+                    let bind_ident = &binding.binding;
+                    let result = quote! {
+                        ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                            #bind_ident,
+                            __encoder,
+                        );
+                    };
+                    result
+                })
+                .collect::<TokenStream>();
+
             quote! {
-                match *self { #encode_inner }
+                let #pat = *self;
+                #body
             }
         }
         _ => {
+            // This code generates two separate match statements on purpose, because
+            //  LLVM can optimize the first one into direct discriminant read.
+            //  See: https://github.com/rust-lang/rust/pull/108440
             let disc = {
                 let mut variant_idx = 0usize;
                 let encode_inner = s.each_variant(|_| {
@@ -241,29 +249,30 @@ fn encodable_body(
                 }
             };
 
-            let mut variant_idx = 0usize;
-            let encode_inner = s.each_variant(|vi| {
-                let encode_fields: TokenStream = vi
-                    .bindings()
-                    .iter()
-                    .map(|binding| {
-                        let bind_ident = &binding.binding;
-                        let result = quote! {
-                            ::rustc_serialize::Encodable::<#encoder_ty>::encode(
-                                #bind_ident,
-                                __encoder,
-                            );
-                        };
-                        result
-                    })
-                    .collect();
-                variant_idx += 1;
-                encode_fields
-            });
-            quote! {
-                #disc
-                match *self {
-                    #encode_inner
+            if s.variants().iter().all(|v| v.bindings().is_empty()) {
+                // Avoid generating second match statement if all variants are fieldless
+                disc
+            } else {
+                let encode_inner = s.each_variant(|vi| -> TokenStream {
+                    vi.bindings()
+                        .iter()
+                        .map(|binding| {
+                            let bind_ident = &binding.binding;
+                            let result = quote! {
+                                ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                                    #bind_ident,
+                                    __encoder,
+                                );
+                            };
+                            result
+                        })
+                        .collect()
+                });
+                quote! {
+                    #disc
+                    match *self {
+                        #encode_inner
+                    }
                 }
             }
         }

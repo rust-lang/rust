@@ -8,5 +8,14 @@ LL |         if let _ = return true && false {};
    |
    = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
 
-warning: 1 warning emitted
+warning: unreachable pattern
+  --> $DIR/protect-precedences.rs:13:16
+   |
+LL |         if let _ = return true && false {};
+   |                ^ matches no values because `!` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+   = note: `#[warn(unreachable_patterns)]` (part of `#[warn(unused)]`) on by default
+
+warning: 2 warnings emitted
 

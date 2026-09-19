@@ -1,8 +1,9 @@
 use std::fmt::Debug;
 
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::LangItem;
 pub use rustc_infer::infer::*;
+use rustc_infer::traits::TraitErrors;
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{
@@ -25,18 +26,18 @@ impl<'tcx> InferCtxt<'tcx> {
             let Ok(()) = ocx.eq(&ObligationCause::dummy(), param_env, a, b) else {
                 return false;
             };
-            ocx.try_evaluate_obligations().is_empty()
+            ocx.try_evaluate_obligations().no_errors()
         })
     }
 
     fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-        let ty = self.resolve_vars_if_possible(ty);
+        let ty = self.deeply_resolve_ignoring_regions(ty);
         let copy_def_id = self.tcx.require_lang_item(LangItem::Copy, DUMMY_SP);
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id)
     }
 
     fn type_is_clone_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-        let ty = self.resolve_vars_if_possible(ty);
+        let ty = self.deeply_resolve_ignoring_regions(ty);
         let clone_def_id = self.tcx.require_lang_item(LangItem::Clone, DUMMY_SP);
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, clone_def_id)
     }
@@ -46,7 +47,7 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
-        let ty = self.resolve_vars_if_possible(ty);
+        let ty = self.deeply_resolve_ignoring_regions(ty);
         let use_cloned_def_id = self.tcx.require_lang_item(LangItem::UseCloned, DUMMY_SP);
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, use_cloned_def_id)
     }
@@ -115,7 +116,7 @@ impl<'tcx> InferCtxt<'tcx> {
         trait_def_id: DefId,
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> Option<Vec<traits::FulfillmentError<'tcx>>> {
+    ) -> Option<TraitErrors<traits::FulfillmentError<'tcx>>> {
         self.probe(|_snapshot| {
             let ocx = ObligationCtxt::new_with_diagnostics(self);
             ocx.register_obligation(Obligation::new(

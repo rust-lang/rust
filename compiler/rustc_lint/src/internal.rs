@@ -7,12 +7,12 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, HirId, find_attr};
-use rustc_middle::ty::{self, GenericArgsRef, PredicatePolarity};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_lint_defs::{declare_lint_pass, declare_tool_lint};
+use rustc_middle::ty::{self, ClausePolarity, GenericArgsRef};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{Span, sym};
 
-use crate::lints::{
+use crate::diagnostics::{
     AttributeKindInFindAttr, BadOptAccessDiag, DefaultHashTypesDiag,
     ImplicitSysrootCrateImportDiag, LintPassByHand, NonGlobImportTypeIrInherent, QueryInstability,
     QueryUntracked, RustcMustMatchExhaustivelyNotExhaustive, SpanUseEqCtxtDiag,
@@ -129,19 +129,22 @@ fn has_unstable_into_iter_predicate<'tcx>(
     let Some(into_iter_fn_def_id) = cx.tcx.lang_items().into_iter_fn() else {
         return false;
     };
-    let predicates = cx.tcx.predicates_of(callee_def_id).instantiate(cx.tcx, generic_args);
-    for (predicate, _) in predicates {
-        let Some(trait_pred) = predicate.as_trait_clause() else {
+    let clauses = cx.tcx.clauses_of(callee_def_id).instantiate(cx.tcx, generic_args);
+    for (clause, _) in clauses {
+        let Some(trait_clause) = clause.as_trait_clause() else {
             continue;
         };
-        if trait_pred.def_id() != into_iterator_def_id
-            || trait_pred.polarity() != PredicatePolarity::Positive
+        if trait_clause.def_id() != into_iterator_def_id
+            || trait_clause.polarity() != ClausePolarity::Positive
         {
             continue;
         }
         // `IntoIterator::into_iter` has no additional method args.
-        let into_iter_fn_args =
-            cx.tcx.instantiate_bound_regions_with_erased(trait_pred.skip_norm_wip()).trait_ref.args;
+        let into_iter_fn_args = cx
+            .tcx
+            .instantiate_bound_regions_with_erased(trait_clause.skip_norm_wip())
+            .trait_ref
+            .args;
         let Ok(Some(instance)) = ty::Instance::try_resolve(
             cx.tcx,
             cx.typing_env(),
@@ -170,7 +173,13 @@ fn get_callee_span_generic_args_and_args<'tcx>(
         && let callee_ty = cx.typeck_results().expr_ty(callee)
         && let ty::FnDef(callee_def_id, generic_args) = callee_ty.kind()
     {
-        return Some((*callee_def_id, callee.span, generic_args, None, args));
+        return Some((
+            *callee_def_id,
+            callee.span,
+            generic_args.no_bound_vars().unwrap(),
+            None,
+            args,
+        ));
     }
     if let ExprKind::MethodCall(segment, recv, args, _) = expr.kind
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
@@ -677,9 +686,6 @@ impl EarlyLintPass for BadUseOfFindAttr {
                         find_attr_kind_in_pat(cx, pat);
                     }
                 }
-                PatKind::Box(pat) => {
-                    find_attr_kind_in_pat(cx, pat);
-                }
                 PatKind::Deref(pat) => {
                     find_attr_kind_in_pat(cx, pat);
                 }
@@ -754,7 +760,6 @@ fn pat_is_not_exhaustive_heuristic(pat: &hir::Pat<'_>) -> Option<(Span, &'static
         hir::PatKind::Or(..) => None,
         hir::PatKind::Never => None,
         hir::PatKind::Tuple(..) => None,
-        hir::PatKind::Box(pat) => pat_is_not_exhaustive_heuristic(&*pat),
         hir::PatKind::Deref(pat) => pat_is_not_exhaustive_heuristic(&*pat),
         hir::PatKind::Ref(pat, _, _) => pat_is_not_exhaustive_heuristic(&*pat),
         hir::PatKind::Expr(..) => None,

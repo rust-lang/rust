@@ -38,9 +38,15 @@ const _: () = {
 };
 
 impl<'db> Region<'db> {
-    pub fn new(_interner: DbInterner<'db>, kind: RegionKind<'db>) -> Self {
+    /// You should avoid using this if you can, since we want `Region` to be defined in `rustc_type_ir` and then this method
+    /// will become more difficult to use.
+    pub fn new_without_interner(kind: RegionKind<'db>) -> Self {
         let kind = unsafe { std::mem::transmute::<RegionKind<'db>, RegionKind<'static>>(kind) };
         Self { interned: Interned::new_gc(RegionInterned(kind)) }
+    }
+
+    pub fn new(_interner: DbInterner<'db>, kind: RegionKind<'db>) -> Self {
+        Self::new_without_interner(kind)
     }
 
     pub fn inner(&self) -> &RegionKind<'db> {
@@ -73,6 +79,15 @@ impl<'db> Region<'db> {
         bound: BoundRegion<'db>,
     ) -> Region<'db> {
         Region::new(interner, RegionKind::ReBound(BoundVarIndexKind::Bound(index), bound))
+    }
+
+    pub fn new_late_param(
+        interner: DbInterner<'db>,
+        scope: SolverDefId<'db>,
+        bound_region: BoundRegion<'db>,
+    ) -> Region<'db> {
+        let late_bound_region = LateParamRegion { scope, bound_region };
+        Region::new(interner, RegionKind::ReLateParam(late_bound_region))
     }
 
     pub fn is_placeholder(&self) -> bool {
@@ -155,17 +170,13 @@ pub struct EarlyParamRegion {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, GenericTypeVisitable)]
-/// The parameter representation of late-bound function parameters, "some region
-/// at least as big as the scope `fr.scope`".
+/// Represents a liberated late-bound function lifetime parameter.
 ///
-/// Similar to a placeholder region as we create `LateParam` regions when entering a binder
-/// except they are always in the root universe and instead of using a boundvar to distinguish
-/// between others we use the `DefId` of the parameter. For this reason the `bound_region` field
-/// should basically always be `BoundRegionKind::Named` as otherwise there is no way of telling
-/// different parameters apart.
+/// This denotes some region at least as big as `scope`. It is similar to a placeholder region
+/// created when entering a binder, except it always lives in the root universe.
 pub struct LateParamRegion<'db> {
-    pub scope: SolverDefId,
-    pub bound_region: BoundRegionKind<'db>,
+    pub scope: SolverDefId<'db>,
+    pub bound_region: BoundRegion<'db>,
 }
 
 impl std::fmt::Debug for LateParamRegion<'_> {

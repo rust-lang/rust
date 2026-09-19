@@ -7,17 +7,17 @@
 /// <TR
 /// >
 /// <TH
-//~^ ERROR: unclosed HTML tag `TH`
 /// >key
+//~^^ ERROR: unclosed HTML tag `TH`
 /// </TD
-//~^ ERROR: unopened HTML tag `TD`
 /// >
+//~^^ ERROR: unopened HTML tag `TD`
 /// <TH
-//~^ ERROR: unclosed HTML tag `TH`
 /// >value
+//~^^ ERROR: unclosed HTML tag `TH`
 /// </TD
-//~^ ERROR: unopened HTML tag `TD`
 /// >
+//~^^ ERROR: unopened HTML tag `TD`
 /// </TR
 /// >
 /// </TABLE

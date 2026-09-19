@@ -11,8 +11,6 @@ host_arch="$(uname -m | sed 's/arm64/aarch64/')"
 # calling docker, otherwise docker will create them but they will be owned
 # by root.
 mkdir -p target
-cargo generate-lockfile
-cargo generate-lockfile --manifest-path builtins-test-intrinsics/Cargo.toml
 
 run() {
     local target="$1"
@@ -60,7 +58,7 @@ run() {
             "IMAGE=${DOCKER_BASE_IMAGE:-rustlang/rust:nightly}"
         )
         run_args=(-v "compiler-builtins-cache:/builtins-target")
-        run_cmd="$run_cmd HOME=/tmp" "USING_CONTAINER_RUSTC=1"
+        run_cmd="$run_cmd HOME=/tmp USING_CONTAINER_RUSTC=1"
     fi
 
     if [ -d compiler-rt ]; then

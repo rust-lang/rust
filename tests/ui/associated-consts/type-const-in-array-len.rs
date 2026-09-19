@@ -1,12 +1,11 @@
 //@ check-pass
 
-#![feature(min_generic_const_args)]
-#![feature(inherent_associated_types)]
+#![feature(min_generic_const_args, macroless_generic_const_args, inherent_associated_types)]
 
 // Test case from #138226: generic impl with multiple type parameters
 struct Foo<A, B>(A, B);
 impl<A, B> Foo<A, B> {
-    type const LEN: usize = 4;
+    const LEN: usize = core::direct_const_arg!(4);
 
     fn foo() {
         let _ = [5; Self::LEN];
@@ -16,7 +15,7 @@ impl<A, B> Foo<A, B> {
 // Test case from #138226: generic impl with const parameter
 struct Bar<const N: usize>;
 impl<const N: usize> Bar<N> {
-    type const LEN: usize = 4;
+    const LEN: usize = core::direct_const_arg!(4);
 
     fn bar() {
         let _ = [0; Self::LEN];
@@ -26,7 +25,7 @@ impl<const N: usize> Bar<N> {
 // Test case from #150960: non-generic impl with const block
 struct Baz;
 impl Baz {
-    type const LEN: usize = 4;
+    const LEN: usize = core::direct_const_arg!(4);
 
     fn baz() {
         let _ = [0; { Self::LEN }];

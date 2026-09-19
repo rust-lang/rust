@@ -42,7 +42,7 @@ fn baz() {
             "#,
         // This should not contain `FooDesc {…}`.
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             en Enum                    Enum
             fn baz()                   fn()
             fn create_foo(…)   fn(&FooDesc)
@@ -141,7 +141,7 @@ impl Unit {
 "#,
         // `self` is in here twice, once as the module, once as the local
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             cp CONST_PARAM
             en Enum                    Enum
             fn function()              fn()
@@ -208,7 +208,7 @@ impl Unit {
 }
 "#,
         expect![[r#"
-            ct CONST                   Unit
+            ct CONST  = Unit           Unit
             en Enum                    Enum
             fn function()              fn()
             ma makro!(…) macro_rules! makro
@@ -907,12 +907,12 @@ fn func() {
 }
 "#,
         expect![[r#"
-            ct ASSOC_CONST  const ASSOC_CONST: ()
-            fn assoc_fn()                    fn()
-            ta AssocType      type AssocType = ()
-            ev RecordV {…} RecordV { field: u32 }
-            ev TupleV(…)              TupleV(u32)
-            ev UnitV                        UnitV
+            ct ASSOC_CONST  = () const ASSOC_CONST: ()
+            fn assoc_fn()                         fn()
+            ta AssocType           type AssocType = ()
+            ev RecordV {…}      RecordV { field: u32 }
+            ev TupleV(…)                   TupleV(u32)
+            ev UnitV                             UnitV
         "#]],
     );
 }
@@ -2658,7 +2658,7 @@ fn main() {
 }
     "#,
         expect![[r#"
-            ct CONST                     Unit
+            ct CONST  = Unit             Unit
             en Enum                      Enum
             fn function()                fn()
             fn main()                    fn()
@@ -2990,7 +2990,7 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            ct CONST                       Unit
+            ct CONST  = Unit               Unit
             en Enum                        Enum
             fn foo()                       fn()
             fn function()                  fn()
@@ -3005,6 +3005,76 @@ fn foo() {
             un Union                      Union
             ev TupleV(…)            TupleV(u32)
             bt u32                          u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn flyimport_excluded_enum_variants_from_flyimport() {
+    check_with_config(
+        CompletionConfig {
+            exclude_flyimport: vec![(
+                "ra_test_fixture::Foo".to_owned(),
+                AutoImportExclusionType::Variants,
+            )],
+            ..TEST_CONFIG
+        },
+        r#"
+enum Foo {
+    Variant1,
+    Variant2,
+}
+fn foo() {
+    V$0
+}
+        "#,
+        expect![[r#"
+            ct CONST  = Unit           Unit
+            en Enum                    Enum
+            en Foo                      Foo
+            fn foo()                   fn()
+            fn function()              fn()
+            ma makro!(…) macro_rules! makro
+            md module::
+            sc STATIC                  Unit
+            st Record                Record
+            st Tuple                  Tuple
+            st Unit                    Unit
+            un Union                  Union
+            ev TupleV(…)        TupleV(u32)
+            bt u32                      u32
             kw async
             kw const
             kw crate::
@@ -3208,6 +3278,7 @@ fn bar() {
             ma panic!(…)                         macro_rules! panic
             ma print!(…)                         macro_rules! print
             md core::
+            md panic::
             md result:: (use core::result)
             md rust_2015:: (use core::prelude::rust_2015)
             md rust_2018:: (use core::prelude::rust_2018)
@@ -4106,6 +4177,69 @@ fn main() {
             sn macro_rules
             sn pd
             sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn no_await_on_error_type() {
+    check(
+        r#"
+//- minicore: future
+fn foo(t: T) {
+    let _ = t.$0;
+}
+        "#,
+        expect![[r#"
+                sn box  Box::new(expr)
+                sn call function(expr)
+                sn const      const {}
+                sn dbg      dbg!(expr)
+                sn dbgr    dbg!(&expr)
+                sn deref         *expr
+                sn if       if expr {}
+                sn match match expr {}
+                sn not           !expr
+                sn ref           &expr
+                sn refm      &mut expr
+                sn return  return expr
+                sn unsafe    unsafe {}
+                sn while while expr {}
+            "#]],
+    );
+}
+
+#[test]
+fn const_is_type_owner() {
+    check(
+        r#"
+pub struct Boo;
+pub struct A(Boo);
+impl A {
+    const X: A = A(B$0);
+}
+    "#,
+        expect![[r#"
+            sp Self    A
+            st A       A
+            st Boo   Boo
+            st Boo   Boo
+            bt u32   u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+            ex A::X.0
+            ex Boo
         "#]],
     );
 }

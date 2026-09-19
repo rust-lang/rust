@@ -87,23 +87,27 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
+#[repr(C)]
 struct NoPadding16 {
     x: u16,
     y: i16
 }
 
+#[repr(C)]
 struct NoPadding32 {
     x: i32,
     y: f32,
     z: u32
 }
 
+#[repr(C)]
 struct NoPadding64 {
     x: f64,
     y: i64,
     z: u64
 }
 
+#[repr(C)]
 struct NoPadding163264 {
     a: i16,
     b: u16,
@@ -111,11 +115,13 @@ struct NoPadding163264 {
     d: u64
 }
 
+#[repr(C)]
 struct InternalPadding {
     x: u16,
     y: i64
 }
 
+#[repr(C)]
 struct PaddingAtEnd {
     x: i64,
     y: u16

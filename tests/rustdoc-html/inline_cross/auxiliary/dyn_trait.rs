@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 
 pub type Ty0 = dyn for<'any> FnOnce(&'any str) -> bool;
 

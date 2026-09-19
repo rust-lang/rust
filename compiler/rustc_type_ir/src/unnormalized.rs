@@ -1,13 +1,16 @@
 use std::marker::PhantomData;
 
 use derive_where::derive_where;
+#[cfg(feature = "nightly")]
+use rustc_macros::StableHash_NoContext;
 use rustc_type_ir_macros::TypeVisitable_Generic;
 
+use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use crate::inherent::*;
 use crate::upcast::Upcast;
 use crate::{
-    Binder, BoundConstness, ClauseKind, HostEffectPredicate, Interner, PredicatePolarity,
-    TraitPredicate, TraitRef,
+    Binder, BoundConstness, ClauseKind, ClausePolarity, HostEffectClause, Interner, TraitClause,
+    TraitRef,
 };
 
 /// A wrapper for values that need normalization.
@@ -25,7 +28,8 @@ use crate::{
 /// e.g., `Unnormalized<I, I::Clause>`.
 ///
 /// [here]: https://rust-lang.zulipchat.com/#narrow/channel/364551-t-types.2Ftrait-system-refactor/topic/Eager.20normalization.2C.20ahoy.21/with/582996293
-#[derive_where(Clone, Copy, PartialOrd, PartialEq, Debug; T)]
+#[derive_where(Clone, Copy, PartialOrd, PartialEq, Eq, Hash, Debug; T)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 #[derive(TypeVisitable_Generic)]
 pub struct Unnormalized<I: Interner, T> {
     value: T,
@@ -36,7 +40,7 @@ pub struct Unnormalized<I: Interner, T> {
 
 impl<I: Interner, T> Unnormalized<I, T> {
     /// Should only be used in limited situations where you produce an potentially
-    /// unnormalized value, like in (Early)Binder/GenericPredicates instantiation.
+    /// unnormalized value, like in (Early)Binder/GenericClauses instantiation.
     pub fn new(value: T) -> Unnormalized<I, T> {
         Unnormalized { value, _tcx: PhantomData }
     }
@@ -87,6 +91,16 @@ impl<I: Interner, T> Unnormalized<I, T> {
     }
 }
 
+impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Unnormalized<I, T> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(Unnormalized::new(self.value.try_fold_with(folder)?))
+    }
+
+    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        Unnormalized::new(self.value.fold_with(folder))
+    }
+}
+
 impl<I: Interner, T, U> Unnormalized<I, (T, U)> {
     pub fn unzip(self) -> (Unnormalized<I, T>, Unnormalized<I, U>) {
         (Unnormalized::new(self.value.0), Unnormalized::new(self.value.1))
@@ -100,7 +114,7 @@ impl<I: Interner, T> Unnormalized<I, Binder<I, T>> {
 }
 
 impl<I: Interner> Unnormalized<I, I::Clause> {
-    pub fn as_trait_clause(self) -> Option<Unnormalized<I, Binder<I, TraitPredicate<I>>>> {
+    pub fn as_trait_clause(self) -> Option<Unnormalized<I, Binder<I, TraitClause<I>>>> {
         self.value.as_trait_clause().map(|v| Unnormalized::new(v))
     }
 
@@ -109,7 +123,7 @@ impl<I: Interner> Unnormalized<I, I::Clause> {
     }
 }
 
-impl<I: Interner> Unnormalized<I, Binder<I, TraitPredicate<I>>> {
+impl<I: Interner> Unnormalized<I, Binder<I, TraitClause<I>>> {
     pub fn self_ty(self) -> Unnormalized<I, Binder<I, I::Ty>> {
         self.map(|pred| pred.self_ty())
     }
@@ -119,7 +133,7 @@ impl<I: Interner> Unnormalized<I, Binder<I, TraitPredicate<I>>> {
     }
 
     #[inline]
-    pub fn polarity(self) -> PredicatePolarity {
+    pub fn polarity(self) -> ClausePolarity {
         self.value.skip_binder().polarity
     }
 }
@@ -141,7 +155,7 @@ impl<I: Interner> Unnormalized<I, Binder<I, TraitRef<I>>> {
         let inner = self
             .value
             .map_bound(|trait_ref| {
-                ClauseKind::HostEffect(HostEffectPredicate { trait_ref, constness })
+                ClauseKind::HostEffect(HostEffectClause { trait_ref, constness })
             })
             .upcast(cx);
         Unnormalized::new(inner)

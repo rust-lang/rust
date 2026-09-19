@@ -113,7 +113,16 @@ define-function: (
         focus: ".search-input"
         // We write the actual query.
         write-into: (".search-input", |query|)
+        // We press `Enter` to be sure the query will be run.
         press-key: 'Enter'
+        call-function: ("wait-for-search-results", {})
+    }
+)
+
+define-function: (
+    "wait-for-search-results",
+    [],
+    block {
         // wait for the search to start
         wait-for: "#search-tabs"
         // then wait for it to finish

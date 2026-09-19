@@ -1,0 +1,6 @@
+
+running 1 test
+test $DIR/doctest-ignore-32556.rs - foo (line 9) ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in $TIME
+

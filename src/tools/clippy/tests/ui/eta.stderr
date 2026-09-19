@@ -268,5 +268,11 @@ error: redundant closure
 LL |     (0..10).flat_map(|x| (0..10).map(|y| closure(y))).count();
    |                                      ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `&*closure`
 
-error: aborting due to 44 previous errors
+error: redundant closure
+  --> tests/ui/eta.rs:681:37
+   |
+LL | ...                   .reduce(|a, b| add(a, b))
+   |                               ^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `&add`
+
+error: aborting due to 45 previous errors
 

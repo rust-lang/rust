@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 
 use rustc_hir as hir;
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::check::check_function_signature;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::traits::WellFormedLoc;
@@ -90,7 +90,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         }
 
         // Check that argument is Sized.
-        if !params_can_be_unsized {
+        if !params_can_be_unsized || fn_sig.abi() == rustc_abi::ExternAbi::RustTail {
             fcx.require_type_is_sized(
                 param_ty,
                 param.ty_span,
@@ -177,7 +177,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
         tcx.dcx().span_err(span, "should have no const parameters");
     }
 
-    let panic_info_did = tcx.require_lang_item(hir::LangItem::PanicInfo, span);
+    let panic_info_did = tcx.require_lang_item(LangItem::PanicInfo, span);
 
     // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
     let panic_info_ty = tcx

@@ -5,7 +5,7 @@ LL | fn foo<T>(x: <(*const T,) as Id>::This) -> (*const T,)
    |                                            ----------- expected `(*const T,)` because of return type
 ...
 LL |     x
-   |     ^ types differ
+   |     ^ expected `(*const T,)`, found associated type
    |
    = note:        expected tuple `(*const T,)`
            found associated type `<(*const T,) as Id>::This`

@@ -29,7 +29,7 @@ use std::{
 
 use base_db::{
     CrateOrigin, InternedSourceRootId, LangCrateOrigin, LibraryRoots, LocalRoots, SourceRootId,
-    source_root_crates,
+    salsa::SalsaValue, source_root_crates,
 };
 use fst::{Automaton, Streamer, raw::IndexedValue};
 use hir::{
@@ -40,7 +40,6 @@ use hir::{
 };
 use itertools::Itertools;
 use rayon::prelude::*;
-use salsa::Update;
 
 use crate::RootDatabase;
 
@@ -360,7 +359,7 @@ fn resolve_path_to_modules(
     candidate_modules.into_iter().map(|(module, _)| module).collect()
 }
 
-#[derive(Default)]
+#[derive(Default, SalsaValue)]
 pub struct SymbolIndex<'db> {
     symbols: Box<[FileSymbol<'db>]>,
     map: fst::Map<Vec<u8>>,
@@ -472,18 +471,6 @@ impl Eq for SymbolIndex<'_> {}
 impl Hash for SymbolIndex<'_> {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.symbols.hash(hasher)
-    }
-}
-
-unsafe impl Update for SymbolIndex<'_> {
-    unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
-        let this = unsafe { &mut *old_pointer };
-        if *this == new_value {
-            false
-        } else {
-            *this = new_value;
-            true
-        }
     }
 }
 

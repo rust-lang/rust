@@ -118,6 +118,9 @@ pub(crate) fn complete_dot(
                 ctx: dot_access.ctx,
             };
             complete_methods(ctx, &iter, &traits_in_scope, |func| {
+                if func.name(ctx.db) == hir::sym::into_iter {
+                    return;
+                }
                 acc.add_method(ctx, &dot_access, func, Some(iter_sym.clone()), None)
             });
         }
@@ -393,6 +396,27 @@ impl A {
                 me foo()      fn(&self)
             "#]],
         )
+    }
+
+    #[test]
+    fn method_completion_with_late_bound_lifetime_in_return_type() {
+        check_no_kw(
+            r#"
+//- minicore: deref
+struct RelPath;
+struct StripPrefixError;
+enum Result<T, E> { Ok(T), Err(E) }
+impl RelPath {
+    fn strip_prefix<'a>(&'a self) -> Result<&'a RelPath, StripPrefixError> {
+        let path: &RelPath = self.strip_$0;
+        loop {}
+    }
+}
+"#,
+            expect![[r#"
+                me strip_prefix() fn(&'a self) -> Result<&RelPath, StripPrefixError>
+            "#]],
+        );
     }
 
     #[test]
@@ -1660,7 +1684,6 @@ fn foo() {
             expect![[r#"
                 me into_iter() (as IntoIterator)                fn(self) -> <Self as IntoIterator>::IntoIter
                 me into_iter().by_ref() (as Iterator)                             fn(&mut self) -> &mut Self
-                me into_iter().into_iter() (as IntoIterator)    fn(self) -> <Self as IntoIterator>::IntoIter
                 me into_iter().next() (as Iterator)        fn(&mut self) -> Option<<Self as Iterator>::Item>
                 me into_iter().nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
             "#]],
@@ -1694,7 +1717,6 @@ fn foo() {
                 me into_iter() (as IntoIterator)           fn(self) -> <Self as IntoIterator>::IntoIter
                 me iter()                                                             fn(&self) -> Iter
                 me iter().by_ref() (as Iterator)                             fn(&mut self) -> &mut Self
-                me iter().into_iter() (as IntoIterator)    fn(self) -> <Self as IntoIterator>::IntoIter
                 me iter().next() (as Iterator)        fn(&mut self) -> Option<<Self as Iterator>::Item>
                 me iter().nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
             "#]],

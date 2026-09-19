@@ -1,25 +1,22 @@
-#![feature(box_patterns)]
 #![feature(control_flow_into_value)]
+#![feature(deref_patterns)]
 #![feature(exact_div)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
+#![feature(macro_metavar_expr)]
 #![feature(macro_metavar_expr_concat)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
-#![allow(
-    clippy::missing_docs_in_private_items,
-    clippy::must_use_candidate,
-    clippy::literal_string_with_formatting_args
-)]
+#![expect(clippy::literal_string_with_formatting_args, clippy::must_use_candidate)]
 #![warn(
+    rust_2018_idioms,
     trivial_casts,
     trivial_numeric_casts,
-    rust_2018_idioms,
     unused_lifetimes,
     unused_qualifications,
     rustc::internal
@@ -29,6 +26,7 @@ extern crate rustc_abi;
 extern crate rustc_arena;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
+extern crate rustc_attr_ir;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
@@ -42,8 +40,8 @@ extern crate rustc_lint;
 extern crate rustc_middle;
 extern crate rustc_parse_format;
 extern crate rustc_resolve;
-extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_structures;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
 
@@ -69,12 +67,15 @@ mod arbitrary_source_item_ordering;
 mod arc_with_non_send_sync;
 mod as_conversions;
 mod asm_syntax;
+mod assert_is_empty;
 mod assertions_on_constants;
 mod assertions_on_result_states;
 mod assigning_clones;
 mod async_yields_async;
 mod attrs;
 mod await_holding_invalid;
+mod bit_width;
+mod block_scrutinee;
 mod blocks_in_conditions;
 mod bool_assert_comparison;
 mod bool_comparison;
@@ -102,6 +103,7 @@ mod default_constructed_unit_structs;
 mod default_instead_of_iter_empty;
 mod default_numeric_fallback;
 mod default_union_representation;
+mod definition_in_module_root;
 mod dereference;
 mod derivable_impls;
 mod derive;
@@ -263,6 +265,7 @@ mod needless_for_each;
 mod needless_ifs;
 mod needless_late_init;
 mod needless_maybe_sized;
+mod needless_nonzero_get;
 mod needless_parens_on_range_literals;
 mod needless_pass_by_ref_mut;
 mod needless_pass_by_value;
@@ -280,6 +283,7 @@ mod non_octal_unix_permissions;
 mod non_send_fields_in_send_ty;
 mod non_std_lazy_statics;
 mod non_zero_suggestions;
+mod nonnull_unchecked_on_box_ptr;
 mod nonstandard_macro_braces;
 mod octal_escapes;
 mod only_used_in_recursion;
@@ -325,6 +329,7 @@ mod regex;
 mod repeat_vec_with_capacity;
 mod replace_box;
 mod reserve_after_initialization;
+mod rest_when_destructuring_struct;
 mod return_self_not_must_use;
 mod returns;
 mod same_length_and_capacity;
@@ -411,20 +416,19 @@ mod zero_sized_map_values;
 mod zombie_processes;
 // end lints modules, do not remove this comment, it's used in `update_lints`
 
-use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
+use clippy_config::{Conf, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_lint::Lint;
+use rustc_lint::is_lint_pass_required;
 use rustc_middle::ty::TyCtxt;
 use utils::attr_collector::AttrStorage;
 
 pub fn explain(name: &str) -> i32 {
     let target = format!("clippy::{}", name.to_ascii_uppercase());
-
     if let Some(info) = declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
         println!("{}", sanitize_explanation(info.explanation));
         // Check if the lint has configuration
-        let mut mdconf = get_configuration_metadata();
+        let mut mdconf = Conf::get_metadata();
         let name = name.to_ascii_lowercase();
         mdconf.retain(|cconf| cconf.lints.contains(&&*name));
         if !mdconf.is_empty() {
@@ -454,7 +458,10 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     // NOTE: Do not add any more pre-expansion passes. These should be removed eventually.
     // Due to the architecture of the compiler, currently `cfg_attr` attributes on crate
     // level (i.e `#![cfg_attr(...)]`) will still be expanded even when using a pre-expansion pass.
-    store.register_pre_expansion_pass(move || Box::new(attrs::EarlyAttributes::new(conf)));
+    store.register_pre_expansion_lint_pass(Box::new(move || Box::new(attrs::EarlyAttributes::new(conf))));
+    store.register_pre_expansion_lint_pass(Box::new(move || {
+        Box::new(nonstandard_macro_braces::MacroBraces::new(conf))
+    }));
 
     let format_args_storage = FormatArgsStorage::default();
     let attr_storage = AttrStorage::default();
@@ -462,19 +469,14 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     {
         let format_args = format_args_storage.clone();
         let attrs = attr_storage.clone();
-        store.early_passes.push(Box::new(move || {
+        store.register_early_lint_pass(Box::new(move || {
             Box::new(CombinedEarlyLintPass::new(conf, format_args.clone(), attrs.clone()))
         }));
     }
 
-    store.late_passes.push(Box::new(move |tcx: TyCtxt<'_>| {
-        let dont_need = tcx.lints_that_dont_need_to_run(());
-        let is_active = |lints: &rustc_lint::LintVec| {
-            lints.is_empty()
-                || !lints
-                    .iter()
-                    .all(|lint| dont_need.contains(&rustc_lint::LintId::of(lint)))
-        };
+    store.register_late_lint_pass(Box::new(move |tcx: TyCtxt<'_>| {
+        let skippable_lints = tcx.skippable_lints(());
+        let is_active = |lints: &rustc_lint::LintVec| is_lint_pass_required(skippable_lints, lints);
         Box::new(CombinedLateLintPass::new(
             tcx,
             conf,
@@ -500,7 +502,7 @@ rustc_lint::early_lint_methods!(
         UnnestedOrPatterns: unnested_or_patterns::UnnestedOrPatterns = unnested_or_patterns::UnnestedOrPatterns::new(conf),
         EarlyFunctions: functions::EarlyFunctions = functions::EarlyFunctions,
         Documentation: doc::Documentation = doc::Documentation::new(conf),
-        SuspiciousOperationGroupings: suspicious_operation_groupings::SuspiciousOperationGroupings = suspicious_operation_groupings::SuspiciousOperationGroupings,
+        SuspiciousOperationGroupings: suspicious_operation_groupings::SuspiciousOperationGroupings = <suspicious_operation_groupings::SuspiciousOperationGroupings>::default(),
         DoubleParens: double_parens::DoubleParens = double_parens::DoubleParens,
         UnsafeNameRemoval: unsafe_removed_from_name::UnsafeNameRemoval = unsafe_removed_from_name::UnsafeNameRemoval,
         ElseIfWithoutElse: else_if_without_else::ElseIfWithoutElse = else_if_without_else::ElseIfWithoutElse,
@@ -509,7 +511,6 @@ rustc_lint::early_lint_methods!(
         MiscEarlyLints: misc_early::MiscEarlyLints = misc_early::MiscEarlyLints,
         UnusedUnit: unused_unit::UnusedUnit = unused_unit::UnusedUnit,
         Precedence: precedence::Precedence = precedence::Precedence,
-        RedundantElse: redundant_else::RedundantElse = redundant_else::RedundantElse,
         NeedlessArbitrarySelfType: needless_arbitrary_self_type::NeedlessArbitrarySelfType = needless_arbitrary_self_type::NeedlessArbitrarySelfType,
         LiteralDigitGrouping: literal_representation::LiteralDigitGrouping = literal_representation::LiteralDigitGrouping::new(conf),
         DecimalLiteralRepresentation: literal_representation::DecimalLiteralRepresentation = literal_representation::DecimalLiteralRepresentation::new(conf),
@@ -534,7 +535,6 @@ rustc_lint::early_lint_methods!(
         PartialPubFields: partial_pub_fields::PartialPubFields = partial_pub_fields::PartialPubFields,
         UnderscoreTyped: let_with_type_underscore::UnderscoreTyped = let_with_type_underscore::UnderscoreTyped,
         ExcessiveNesting: excessive_nesting::ExcessiveNesting = excessive_nesting::ExcessiveNesting::new(conf),
-        RefPatterns: ref_patterns::RefPatterns = ref_patterns::RefPatterns,
         NeedlessElse: needless_else::NeedlessElse = needless_else::NeedlessElse,
         RawStrings: raw_strings::RawStrings = raw_strings::RawStrings::new(conf),
         Visibility: visibility::Visibility = visibility::Visibility,
@@ -543,6 +543,7 @@ rustc_lint::early_lint_methods!(
         CfgNotTest: cfg_not_test::CfgNotTest = cfg_not_test::CfgNotTest,
         EmptyLineAfter: empty_line_after::EmptyLineAfter = empty_line_after::EmptyLineAfter::new(),
         InlineTraitBounds: inline_trait_bounds::InlineTraitBounds = inline_trait_bounds::InlineTraitBounds::default(),
+        DefinitionInModuleRoot: definition_in_module_root::DefinitionInModuleRoot = definition_in_module_root::DefinitionInModuleRoot::default(),
         // add early passes here, used by `cargo dev new_lint`
     ]]
 );
@@ -572,6 +573,7 @@ rustc_lint::late_lint_methods!(
         UnnecessaryMutPassed: unnecessary_mut_passed::UnnecessaryMutPassed = unnecessary_mut_passed::UnnecessaryMutPassed,
         SignificantDropTightening: significant_drop_tightening::SignificantDropTightening<'tcx> = <significant_drop_tightening::SignificantDropTightening<'_>>::default(),
         LenZero: len_zero::LenZero = len_zero::LenZero::new(conf),
+        AssertIsEmpty: assert_is_empty::AssertIsEmpty = assert_is_empty::AssertIsEmpty,
         LenWithoutIsEmpty: len_without_is_empty::LenWithoutIsEmpty = len_without_is_empty::LenWithoutIsEmpty,
         Attributes: attrs::Attributes = attrs::Attributes::new(conf),
         BlocksInConditions: blocks_in_conditions::BlocksInConditions = blocks_in_conditions::BlocksInConditions,
@@ -628,7 +630,7 @@ rustc_lint::late_lint_methods!(
         CopyAndPaste: ifs::CopyAndPaste<'tcx> = ifs::CopyAndPaste::new(tcx, conf),
         CopyIterator: copy_iterator::CopyIterator = copy_iterator::CopyIterator,
         UselessFormat: format::UselessFormat = format::UselessFormat::new(format_args.clone()),
-        Swap: swap::Swap = swap::Swap,
+        Swap: swap::Swap = swap::Swap::new(conf),
         PanickingOverflowChecks: panicking_overflow_checks::PanickingOverflowChecks = panicking_overflow_checks::PanickingOverflowChecks,
         NewWithoutDefault: new_without_default::NewWithoutDefault = <new_without_default::NewWithoutDefault>::default(),
         DisallowedNames: disallowed_names::DisallowedNames = disallowed_names::DisallowedNames::new(conf),
@@ -691,7 +693,7 @@ rustc_lint::late_lint_methods!(
         ToDigitIsSome: to_digit_is_some::ToDigitIsSome = to_digit_is_some::ToDigitIsSome::new(conf),
         LargeStackArrays: large_stack_arrays::LargeStackArrays = large_stack_arrays::LargeStackArrays::new(conf),
         LargeConstArrays: large_const_arrays::LargeConstArrays = large_const_arrays::LargeConstArrays::new(conf),
-        FloatingPointArithmetic: floating_point_arithmetic::FloatingPointArithmetic = floating_point_arithmetic::FloatingPointArithmetic,
+        FloatingPointArithmetic: floating_point_arithmetic::FloatingPointArithmetic = floating_point_arithmetic::FloatingPointArithmetic::new(conf),
         AsConversions: as_conversions::AsConversions = as_conversions::AsConversions,
         LetUnderscore: let_underscore::LetUnderscore = let_underscore::LetUnderscore,
         ExcessiveBools: excessive_bools::ExcessiveBools = excessive_bools::ExcessiveBools::new(conf),
@@ -732,9 +734,10 @@ rustc_lint::late_lint_methods!(
         UndocumentedUnsafeBlocks: undocumented_unsafe_blocks::UndocumentedUnsafeBlocks = undocumented_unsafe_blocks::UndocumentedUnsafeBlocks::new(conf),
         FormatArgs: format_args::FormatArgs<'tcx> = format_args::FormatArgs::new(tcx, conf, format_args.clone()),
         TrailingEmptyArray: trailing_empty_array::TrailingEmptyArray = trailing_empty_array::TrailingEmptyArray,
-        NeedlessLateInit: needless_late_init::NeedlessLateInit = needless_late_init::NeedlessLateInit,
+        NeedlessLateInit: needless_late_init::NeedlessLateInit<'tcx> = needless_late_init::NeedlessLateInit::new(conf),
         ReturnSelfNotMustUse: return_self_not_must_use::ReturnSelfNotMustUse = return_self_not_must_use::ReturnSelfNotMustUse,
         NumberedFields: init_numbered_fields::NumberedFields = init_numbered_fields::NumberedFields,
+        ManualBitWidth: bit_width::ManualBitWidth = bit_width::ManualBitWidth::new(conf),
         ManualBits: manual_bits::ManualBits = manual_bits::ManualBits::new(conf),
         DefaultUnionRepresentation: default_union_representation::DefaultUnionRepresentation = default_union_representation::DefaultUnionRepresentation,
         OnlyUsedInRecursion: only_used_in_recursion::OnlyUsedInRecursion = <only_used_in_recursion::OnlyUsedInRecursion>::default(),
@@ -745,7 +748,6 @@ rustc_lint::late_lint_methods!(
         UnnecessaryOwnedEmptyStrings: unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings = unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings,
         FormatPushString: format_push_string::FormatPushString = format_push_string::FormatPushString::new(format_args.clone()),
         LargeIncludeFile: large_include_file::LargeIncludeFile = large_include_file::LargeIncludeFile::new(conf),
-        TrimSplitWhitespace: strings::TrimSplitWhitespace = strings::TrimSplitWhitespace,
         RcCloneInVecInit: rc_clone_in_vec_init::RcCloneInVecInit = rc_clone_in_vec_init::RcCloneInVecInit,
         SwapPtrToRef: swap_ptr_to_ref::SwapPtrToRef = swap_ptr_to_ref::SwapPtrToRef,
         TypeParamMismatch: mismatching_type_param_order::TypeParamMismatch = mismatching_type_param_order::TypeParamMismatch,
@@ -765,7 +767,7 @@ rustc_lint::late_lint_methods!(
         BoolToIntWithIf: bool_to_int_with_if::BoolToIntWithIf = bool_to_int_with_if::BoolToIntWithIf,
         BoxDefault: box_default::BoxDefault = box_default::BoxDefault,
         ImplicitSaturatingAdd: implicit_saturating_add::ImplicitSaturatingAdd = implicit_saturating_add::ImplicitSaturatingAdd,
-        MissingTraitMethods: missing_trait_methods::MissingTraitMethods = missing_trait_methods::MissingTraitMethods,
+        MissingTraitMethods: missing_trait_methods::MissingTraitMethods = missing_trait_methods::MissingTraitMethods::new(conf),
         FromRawWithVoidPtr: from_raw_with_void_ptr::FromRawWithVoidPtr = from_raw_with_void_ptr::FromRawWithVoidPtr,
         ConfusingXorAndPow: suspicious_xor_used_as_pow::ConfusingXorAndPow = suspicious_xor_used_as_pow::ConfusingXorAndPow,
         ManualIsAsciiCheck: manual_is_ascii_check::ManualIsAsciiCheck = manual_is_ascii_check::ManualIsAsciiCheck::new(conf),
@@ -837,7 +839,7 @@ rustc_lint::late_lint_methods!(
         UnusedTraitNames: unused_trait_names::UnusedTraitNames = unused_trait_names::UnusedTraitNames::new(conf),
         ManualIgnoreCaseCmp: manual_ignore_case_cmp::ManualIgnoreCaseCmp = manual_ignore_case_cmp::ManualIgnoreCaseCmp,
         UnnecessaryLiteralBound: unnecessary_literal_bound::UnnecessaryLiteralBound = unnecessary_literal_bound::UnnecessaryLiteralBound,
-        ArbitrarySourceItemOrdering: arbitrary_source_item_ordering::ArbitrarySourceItemOrdering = arbitrary_source_item_ordering::ArbitrarySourceItemOrdering::new(conf),
+        ArbitrarySourceItemOrdering: arbitrary_source_item_ordering::ArbitrarySourceItemOrdering = arbitrary_source_item_ordering::ArbitrarySourceItemOrdering::new(tcx, conf),
         UselessConcat: useless_concat::UselessConcat = useless_concat::UselessConcat,
         UnneededStructPattern: unneeded_struct_pattern::UnneededStructPattern = unneeded_struct_pattern::UnneededStructPattern,
         UnnecessarySemicolon: unnecessary_semicolon::UnnecessarySemicolon = <unnecessary_semicolon::UnnecessarySemicolon>::default(),
@@ -845,7 +847,7 @@ rustc_lint::late_lint_methods!(
         ManualOptionAsSlice: manual_option_as_slice::ManualOptionAsSlice = manual_option_as_slice::ManualOptionAsSlice::new(conf),
         SingleOptionMap: single_option_map::SingleOptionMap = single_option_map::SingleOptionMap,
         RedundantTestPrefix: redundant_test_prefix::RedundantTestPrefix = redundant_test_prefix::RedundantTestPrefix,
-        ClonedRefToSliceRefs: cloned_ref_to_slice_refs::ClonedRefToSliceRefs<'tcx> = cloned_ref_to_slice_refs::ClonedRefToSliceRefs::new(conf),
+        ClonedRefToSliceRefs: cloned_ref_to_slice_refs::ClonedRefToSliceRefs = cloned_ref_to_slice_refs::ClonedRefToSliceRefs::new(conf),
         InfallibleTryFrom: infallible_try_from::InfallibleTryFrom = infallible_try_from::InfallibleTryFrom,
         CoerceContainerToAny: coerce_container_to_any::CoerceContainerToAny = coerce_container_to_any::CoerceContainerToAny,
         ToplevelRefArg: toplevel_ref_arg::ToplevelRefArg = toplevel_ref_arg::ToplevelRefArg,
@@ -862,6 +864,12 @@ rustc_lint::late_lint_methods!(
         ByteCharSlice: byte_char_slices::ByteCharSlice = byte_char_slices::ByteCharSlice,
         ManualAssertEq: manual_assert_eq::ManualAssertEq = manual_assert_eq::ManualAssertEq,
         WithCapacityZero: with_capacity_zero::WithCapacityZero = with_capacity_zero::WithCapacityZero,
+        RefPatterns: ref_patterns::RefPatterns = ref_patterns::RefPatterns,
+        RedundantElse: redundant_else::RedundantElse = redundant_else::RedundantElse,
+        RestWhenDestructuringStruct: rest_when_destructuring_struct::RestWhenDestructuringStruct = rest_when_destructuring_struct::RestWhenDestructuringStruct,
+        BlockScrutinee: block_scrutinee::BlockScrutinee = block_scrutinee::BlockScrutinee,
+        NonnullUncheckedOnBoxPtr: nonnull_unchecked_on_box_ptr::NonnullUncheckedOnBoxPtr = nonnull_unchecked_on_box_ptr::NonnullUncheckedOnBoxPtr::new(conf),
+        NeedlessNonzeroGet: needless_nonzero_get::NeedlessNonzeroGet = needless_nonzero_get::NeedlessNonzeroGet::new(conf),
         // add late passes here, used by `cargo dev new_lint`
     ]]
 );

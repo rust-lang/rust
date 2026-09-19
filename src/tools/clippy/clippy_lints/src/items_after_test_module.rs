@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt as _;
 use clippy_utils::{fulfill_or_allowed, is_cfg_test, is_from_proc_macro};
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir::{HirId, Item, ItemKind, Mod};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::hygiene::AstPass;
 use rustc_span::{ExpnKind, sym};
 
@@ -66,9 +65,9 @@ impl LateLintPass<'_> for ItemsAfterTestModule {
 
         let after: Vec<_> = items
             .filter(|item| {
-                // Ignore the generated test main function
-                if let ItemKind::Fn { ident, .. } = item.kind
-                    && ident.name == sym::main
+                // Ignore the generated test main function and `extern crate test`
+                if (matches!(item.kind, ItemKind::Fn { ident, .. } if ident.name == sym::main)
+                    || matches!(item.kind, ItemKind::ExternCrate(None, ident) if ident.name == sym::test))
                     && item.span.ctxt().outer_expn_data().kind == ExpnKind::AstPass(AstPass::TestHarness)
                 {
                     false
@@ -99,7 +98,7 @@ impl LateLintPass<'_> for ItemsAfterTestModule {
                     if let Some(prev) = mod_pos.checked_sub(1)
                         && let prev = cx.tcx.hir_item(module.item_ids[prev])
                         && let items_span = last.span.with_lo(test_mod.span.hi())
-                        && let Some(items) = items_span.get_source_text(cx)
+                        && let Some(items) = items_span.get_text(cx)
                     {
                         diag.multipart_suggestion_with_style(
                             "move the items to before the test module was defined",

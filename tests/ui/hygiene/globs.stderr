@@ -1,12 +1,14 @@
 error[E0425]: cannot find function `f` in this scope
   --> $DIR/globs.rs:23:9
    |
-LL |     pub fn g() {}
-   |     ---------- similarly named function `g` defined here
-...
 LL |         f();
-   |         ^
+   |         ^ not found in this scope
    |
+note: similarly named function `g` defined here
+  --> $DIR/globs.rs:9:5
+   |
+LL |     pub fn g() {}
+   |     ^^^^^^^^^^
 help: a function with a similar name exists
    |
 LL -         f();
@@ -20,11 +22,8 @@ LL + use foo::f;
 error[E0425]: cannot find function `g` in this scope
   --> $DIR/globs.rs:16:5
    |
-LL |       pub fn f() {}
-   |       ---------- similarly named function `f` defined here
-...
 LL |       g();
-   |       ^
+   |       ^ not found in this scope
 ...
 LL | /     m! {
 LL | |         use bar::*;
@@ -33,6 +32,11 @@ LL | |         f();
 LL | |     }
    | |_____- in this macro invocation
    |
+note: similarly named function `f` defined here
+  --> $DIR/globs.rs:5:5
+   |
+LL |     pub fn f() {}
+   |     ^^^^^^^^^^
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a function with a similar name exists
    |

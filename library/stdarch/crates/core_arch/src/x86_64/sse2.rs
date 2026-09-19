@@ -6,7 +6,7 @@ use crate::core_arch::x86::*;
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.x86.sse2.cvtsd2si64"]
     fn cvtsd2si64(a: __m128d) -> i64;
     #[link_name = "llvm.x86.sse2.cvttsd2si64"]
@@ -59,7 +59,7 @@ pub fn _mm_cvttsd_si64x(a: __m128d) -> i64 {
     _mm_cvttsd_si64(a)
 }
 
-/// Stores a 64-bit integer value in the specified memory location.
+/// Stores a 64-bit integer value in an 8-byte aligned memory location.
 /// To minimize caching, the data is flagged as non-temporal (unlikely to be
 /// used again soon).
 ///

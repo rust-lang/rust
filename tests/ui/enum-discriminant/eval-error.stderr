@@ -4,13 +4,13 @@ error: unions cannot have zero fields
 LL | union Foo2 {}
    | ^^^^^^^^^^^^^
 
-error: `#[repr(packed)]` attribute cannot be used on enums
-  --> $DIR/eval-error.rs:24:1
+error: the `repr(packed)` attribute cannot be used on enums
+  --> $DIR/eval-error.rs:24:3
    |
 LL | #[repr(u8, packed)]
-   | ^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^
    |
-   = help: `#[repr(packed)]` can be applied to structs and unions
+   = help: the `repr(packed)` attribute can be applied to structs and unions
 
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
   --> $DIR/eval-error.rs:2:5

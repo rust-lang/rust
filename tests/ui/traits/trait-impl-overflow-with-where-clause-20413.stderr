@@ -7,7 +7,7 @@ LL | struct NoData<T>;
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
-error[E0275]: overflow evaluating the requirement `NoData<NoData<NoData<NoData<NoData<NoData<NoData<...>>>>>>>: Foo`
+error[E0275]: overflow evaluating the requirement `NoData<NoData<NoData<NoData<NoData<NoData<NoData<_>>>>>>>: Foo`
   --> $DIR/trait-impl-overflow-with-where-clause-20413.rs:9:36
    |
 LL | impl<T> Foo for T where NoData<T>: Foo {
@@ -22,7 +22,7 @@ LL | impl<T> Foo for T where NoData<T>: Foo {
    = note: 126 redundant requirements hidden
    = note: required for `NoData<T>` to implement `Foo`
 
-error[E0275]: overflow evaluating the requirement `AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<...>>>>>>>: Bar`
+error[E0275]: overflow evaluating the requirement `AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<_>>>>>>>: Bar`
   --> $DIR/trait-impl-overflow-with-where-clause-20413.rs:28:42
    |
 LL | impl<T> Bar for T where EvenLessData<T>: Baz {
@@ -42,7 +42,7 @@ LL | impl<T> Bar for T where EvenLessData<T>: Baz {
    = note: 125 redundant requirements hidden
    = note: required for `EvenLessData<T>` to implement `Baz`
 
-error[E0275]: overflow evaluating the requirement `EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<...>>>>>>>: Baz`
+error[E0275]: overflow evaluating the requirement `EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<_>>>>>>>: Baz`
   --> $DIR/trait-impl-overflow-with-where-clause-20413.rs:35:42
    |
 LL | impl<T> Baz for T where AlmostNoData<T>: Bar {

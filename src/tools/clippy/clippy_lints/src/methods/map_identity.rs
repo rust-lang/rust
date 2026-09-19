@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{is_expr_untyped_identity_function, is_mutable, path_to_local_with_projections};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, ExprKind, Node, PatKind};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_span::{Span, Symbol, sym};
 
 use super::MAP_IDENTITY;

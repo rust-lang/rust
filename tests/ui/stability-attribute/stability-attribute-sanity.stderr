@@ -1,8 +1,8 @@
 error[E0539]: malformed `stable` attribute input
-  --> $DIR/stability-attribute-sanity.rs:8:5
+  --> $DIR/stability-attribute-sanity.rs:8:7
    |
 LL |     #[stable(feature = "a", since = "4.4.4", reason)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------^
    |                                              |
    |                                              valid arguments are `feature` or `since`
    |
@@ -13,10 +13,10 @@ LL +     #[stable(feature = "name", since = "version")]
    |
 
 error[E0539]: malformed `stable` attribute input
-  --> $DIR/stability-attribute-sanity.rs:11:5
+  --> $DIR/stability-attribute-sanity.rs:11:7
    |
 LL |     #[stable(feature = "a", since)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^-----^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^-----^
    |                             |
    |                             expected this to be of the form `since = "..."`
    |
@@ -27,10 +27,10 @@ LL +     #[stable(feature = "name", since = "version")]
    |
 
 error[E0539]: malformed `stable` attribute input
-  --> $DIR/stability-attribute-sanity.rs:14:5
+  --> $DIR/stability-attribute-sanity.rs:14:7
    |
 LL |     #[stable(feature, since = "3.3.3")]
-   |     ^^^^^^^^^-------^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^-------^^^^^^^^^^^^^^^^^^
    |              |
    |              expected this to be of the form `feature = "..."`
    |
@@ -41,10 +41,10 @@ LL +     #[stable(feature = "name", since = "version")]
    |
 
 error[E0539]: malformed `stable` attribute input
-  --> $DIR/stability-attribute-sanity.rs:17:5
+  --> $DIR/stability-attribute-sanity.rs:17:7
    |
 LL |     #[stable(feature = "a", since(b))]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^--------^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^--------^
    |                             |
    |                             expected this to be of the form `since = "..."`
    |
@@ -55,10 +55,10 @@ LL +     #[stable(feature = "name", since = "version")]
    |
 
 error[E0539]: malformed `stable` attribute input
-  --> $DIR/stability-attribute-sanity.rs:20:5
+  --> $DIR/stability-attribute-sanity.rs:20:7
    |
 LL |     #[stable(feature(b), since = "3.3.3")]
-   |     ^^^^^^^^^----------^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^----------^^^^^^^^^^^^^^^^^^
    |              |
    |              expected this to be of the form `feature = "..."`
    |

@@ -1,7 +1,7 @@
 use rustc_feature::AttributeStability;
 
 use super::prelude::*;
-use crate::session_diagnostics::EmptyConfusables;
+use crate::diagnostics::EmptyConfusables;
 
 #[derive(Default)]
 pub(crate) struct ConfusablesParser {
@@ -32,7 +32,7 @@ impl AttributeParser for ConfusablesParser {
             this.first_span.get_or_insert(cx.attr_span);
         },
     )];
-    const ALLOWED_TARGETS: AllowedTargets =
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::Method(MethodKind::Inherent))]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {

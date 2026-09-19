@@ -1,20 +1,6 @@
 # What Bootstrapping does
 
-[*Bootstrapping*][boot] is the process of using a compiler to compile itself.
-More accurately, it means using an older compiler to compile a newer version of the same compiler.
-
-This raises a chicken-and-egg paradox: where did the first compiler come from?
-It must have been written in a different language.
-In Rust's case, it was [written in OCaml][ocaml-compiler].
-However, it was abandoned long ago, and the
-only way to build a modern version of `rustc` is with a slightly less modern version.
-
-This is exactly how [`./x.py`] works: it downloads the current beta release of
-`rustc`, then uses it to compile the new compiler.
-
-[`./x.py`]: https://github.com/rust-lang/rust/blob/HEAD/x.py
-
-Note that this documentation mostly covers user-facing information.
+NOTE: this documentation mostly covers user-facing information.
 See [bootstrap/README.md][bootstrap-internals] to read about bootstrap internals.
 
 [bootstrap-internals]: https://github.com/rust-lang/rust/blob/HEAD/src/bootstrap/README.md
@@ -61,8 +47,8 @@ graph TD
 ### Stage 0: the pre-compiled compiler
 
 The stage0 compiler is by default the very recent _beta_ `rustc` compiler and its
-associated dynamic libraries, which `./x.py` will download for you.
-(You can also configure `./x.py` to change stage0 to something else.)
+associated dynamic libraries, which bootstrap will download for you.
+(You can also configure this in `bootstrap.toml` to change stage0 to something else.)
 
 The precompiled stage0 compiler is then used only to compile [`src/bootstrap`] and [`compiler/rustc`]
 with precompiled stage0 std.
@@ -103,7 +89,7 @@ build the new compiler with an older compiler and then use that to build the new
 compiler with itself.
 
 For development, you usually only want to use `--stage 1` flag to build things.
-See [Building the compiler](../how-to-build-and-run.html#building-the-compiler).
+See [Building the compiler](../how-to-build-and-run.md#building-the-compiler).
 
 ### Stage 3: the same-result test
 
@@ -155,7 +141,6 @@ There are two methods used:
 
 [boot]: https://en.wikipedia.org/wiki/Bootstrapping_(compilers)
 [intrinsics]: ../../appendix/glossary.md#intrinsic
-[ocaml-compiler]: https://github.com/rust-lang/rust/tree/ef75860a0a72f79f97216f8aaa5b388d98da6480/src/boot
 
 ## Understanding stages of bootstrap
 
@@ -372,7 +357,7 @@ Finally, `MAGIC_EXTRA_RUSTFLAGS` bypasses the
 
 - `RUSTDOCFLAGS`, `RUSTDOCFLAGS_BOOTSTRAP` and `RUSTDOCFLAGS_NOT_BOOTSTRAP` are
   analogous to `RUSTFLAGS`, but for `rustdoc`.
-- `CARGOFLAGS` will pass arguments to cargo itself (e.g. `--timings`).
+- `CARGOFLAGS` will pass arguments to cargo itself.
   `CARGOFLAGS_BOOTSTRAP` and `CARGOFLAGS_NOT_BOOTSTRAP` work analogously to `RUSTFLAGS_BOOTSTRAP`.
 - `--test-args` will pass arguments through to the test runner.
   For `tests/ui`,

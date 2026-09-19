@@ -1,42 +1,42 @@
-error: `#[optimize]` attribute cannot be used on structs
-  --> $DIR/optimize.rs:8:1
+error: the `optimize` attribute cannot be used on structs
+  --> $DIR/optimize.rs:8:3
    |
 LL | #[optimize(speed)]
-   | ^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^
    |
-   = help: `#[optimize]` can only be applied to functions
+   = help: the `optimize` attribute can only be applied to functions
 
-error: `#[optimize]` attribute cannot be used on expressions
-  --> $DIR/optimize.rs:12:5
+error: the `optimize` attribute cannot be used on expressions
+  --> $DIR/optimize.rs:12:7
    |
 LL |     #[optimize(speed)]
-   |     ^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[optimize]` can only be applied to functions
+   = help: the `optimize` attribute can only be applied to functions
 
-error: `#[optimize]` attribute cannot be used on modules
-  --> $DIR/optimize.rs:21:1
+error: the `optimize` attribute cannot be used on modules
+  --> $DIR/optimize.rs:21:3
    |
 LL | #[optimize(speed)]
-   | ^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^
    |
-   = help: `#[optimize]` can only be applied to functions
+   = help: the `optimize` attribute can only be applied to functions
 
-error: `#[optimize]` attribute cannot be used on inherent impl blocks
-  --> $DIR/optimize.rs:24:1
+error: the `optimize` attribute cannot be used on inherent impl blocks
+  --> $DIR/optimize.rs:24:3
    |
 LL | #[optimize(speed)]
-   | ^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^
    |
-   = help: `#[optimize]` can only be applied to functions
+   = help: the `optimize` attribute can only be applied to functions
 
-error: `#[optimize]` attribute cannot be used on required trait methods
-  --> $DIR/optimize.rs:45:5
+error: the `optimize` attribute cannot be used on required trait methods
+  --> $DIR/optimize.rs:45:7
    |
 LL |     #[optimize(speed)]
-   |     ^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^
    |
-   = help: `#[optimize]` can only be applied to functions with a body
+   = help: the `optimize` attribute can only be applied to functions with a body
 
 error: multiple `optimize` attributes
   --> $DIR/optimize.rs:59:1

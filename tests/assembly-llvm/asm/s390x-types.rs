@@ -7,28 +7,16 @@
 //@[s390x_vector] needs-llvm-components: systemz
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, repr_simd, f16, f128)]
+#![feature(no_core, f16, f128)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
 
 type ptr = *const i32;
-
-#[repr(simd)]
-pub struct Simd<T, const N: usize>([T; N]);
-
-impl<T: Copy, const N: usize> Copy for Simd<T, N> {}
-
-type i8x16 = Simd<i8, 16>;
-type i16x8 = Simd<i16, 8>;
-type i32x4 = Simd<i32, 4>;
-type i64x2 = Simd<i64, 2>;
-type f16x8 = Simd<f16, 8>;
-type f32x4 = Simd<f32, 4>;
-type f64x2 = Simd<f64, 2>;
 
 extern "C" {
     fn extern_func();

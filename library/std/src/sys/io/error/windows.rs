@@ -1,5 +1,5 @@
 use crate::sys::pal::{api, c};
-use crate::{io, ptr};
+use crate::{fmt, io, ptr};
 
 #[cfg(test)]
 mod tests;
@@ -61,8 +61,11 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
         c::ERROR_POSSIBLE_DEADLOCK => return Deadlock,
         c::ERROR_NOT_SAME_DEVICE => return CrossesDevices,
         c::ERROR_TOO_MANY_LINKS => return TooManyLinks,
+        c::ERROR_TOO_MANY_OPEN_FILES => return TooManyOpenFiles,
         c::ERROR_FILENAME_EXCED_RANGE => return InvalidFilename,
         c::ERROR_CANT_RESOLVE_FILENAME => return FilesystemLoop,
+        c::ERROR_IO_DEVICE => return InputOutputError,
+        c::ERROR_NEGATIVE_SEEK => return InvalidInput,
         _ => {}
     }
 
@@ -81,6 +84,7 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
         c::WSAENETDOWN => NetworkDown,
         c::WSAENETUNREACH => NetworkUnreachable,
         c::WSAEDQUOT => QuotaExceeded,
+        c::WSAEMFILE => TooManyOpenFiles,
         // Not a perfect mapping but this error is only returned when writing to
         // a socket after shutting down the write-end. On Unix targets, EPIPE is
         // returned in those cases.
@@ -91,7 +95,7 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
 }
 
 /// Gets a detailed string description for the given error number.
-pub fn error_string(mut errnum: i32) -> String {
+pub fn format_error(mut errnum: i32, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let mut buf = [0 as c::WCHAR; 2048];
 
     unsafe {
@@ -127,21 +131,15 @@ pub fn error_string(mut errnum: i32) -> String {
         if res == 0 {
             // Sometimes FormatMessageW can fail e.g., system doesn't like 0 as langId,
             let fm_err = errno();
-            return format!("OS Error {errnum} (FormatMessageW() returned error {fm_err})");
+            return write!(f, "OS Error {errnum} (FormatMessageW() returned error {fm_err})");
         }
 
         match String::from_utf16(&buf[..res]) {
-            Ok(mut msg) => {
+            Ok(msg) => {
                 // Trim trailing CRLF inserted by FormatMessageW
-                let len = msg.trim_ascii_end().len();
-                msg.truncate(len);
-                msg
+                f.write_str(msg.trim_ascii_end())
             }
-            Err(..) => format!(
-                "OS Error {} (FormatMessageW() returned \
-                 invalid UTF-16)",
-                errnum
-            ),
+            Err(..) => write!(f, "OS Error {} (FormatMessageW() returned invalid UTF-16)", errnum),
         }
     }
 }

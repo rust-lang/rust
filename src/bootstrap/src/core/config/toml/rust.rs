@@ -1,12 +1,17 @@
 //! This module defines the `Rust` struct, which represents the `[rust]` table
 //! in the `bootstrap.toml` configuration file.
 
+use std::collections::BTreeSet;
+use std::path::PathBuf;
+
 use build_helper::ci::CiEnv;
 use serde::{Deserialize, Deserializer};
 
+use crate::core::backend::CodegenBackendKind;
+use crate::core::config::macros::define_config;
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::{DebuginfoLevel, Merge, ReplaceOpt, StringOrBool};
-use crate::{BTreeSet, CodegenBackendKind, HashSet, PathBuf, TargetSelection, define_config, exit};
+use crate::core::config::{CompressDebuginfo, DebuginfoLevel, StringOrBool, TargetSelection};
+use crate::utils::helpers;
 
 define_config! {
     /// TOML representation of how the Rust build is configured.
@@ -28,6 +33,7 @@ define_config! {
         debuginfo_level_std: Option<DebuginfoLevel> = "debuginfo-level-std",
         debuginfo_level_tools: Option<DebuginfoLevel> = "debuginfo-level-tools",
         debuginfo_level_tests: Option<DebuginfoLevel> = "debuginfo-level-tests",
+        compress_debuginfo: Option<CompressDebuginfo> = "compress-debuginfo",
         backtrace: Option<bool> = "backtrace",
         incremental: Option<bool> = "incremental",
         default_linker: Option<String> = "default-linker",
@@ -48,14 +54,13 @@ define_config! {
         llvm_bitcode_linker: Option<bool> = "llvm-bitcode-linker",
         lld: Option<bool> = "lld",
         bootstrap_override_lld: Option<BootstrapOverrideLld> = "bootstrap-override-lld",
-        // FIXME: Remove this option in Spring 2026
-        bootstrap_override_lld_legacy: Option<BootstrapOverrideLld> = "use-lld",
         llvm_tools: Option<bool> = "llvm-tools",
         deny_warnings: Option<bool> = "deny-warnings",
         backtrace_on_ice: Option<bool> = "backtrace-on-ice",
         verify_llvm_ir: Option<bool> = "verify-llvm-ir",
         thin_lto_import_instr_limit: Option<u32> = "thin-lto-import-instr-limit",
         remap_debuginfo: Option<bool> = "remap-debuginfo",
+        // FIXME: Remove this option in Q1 2027
         jemalloc: Option<bool> = "jemalloc",
         test_compare_mode: Option<bool> = "test-compare-mode",
         llvm_libunwind: Option<String> = "llvm-libunwind",
@@ -63,8 +68,10 @@ define_config! {
         ehcont_guard: Option<bool> = "ehcont-guard",
         new_symbol_mangling: Option<bool> = "new-symbol-mangling",
         annotate_moves_size_limit: Option<u64> = "annotate-moves-size-limit",
-        profile_generate: Option<String> = "profile-generate",
-        profile_use: Option<String> = "profile-use",
+        // FIXME: Remove this option at the end of 2026
+        profile_generate: Option<PathBuf> = "profile-generate",
+        // FIXME: Remove this option at the end of 2026
+        profile_use: Option<PathBuf> = "profile-use",
         // ignored; this is set from an env var set by bootstrap.py
         download_rustc: Option<StringOrBool> = "download-rustc",
         lto: Option<String> = "lto",
@@ -72,6 +79,8 @@ define_config! {
         std_features: Option<BTreeSet<String>> = "std-features",
         break_on_ice: Option<bool> = "break-on-ice",
         parallel_frontend_threads: Option<u32> = "parallel-frontend-threads",
+        stdlib_semver_baseline: Option<String> = "stdlib-semver-baseline",
+        wasm_proc_macros: Option<bool> = "wasm-proc-macros",
     }
 }
 
@@ -292,6 +301,10 @@ pub fn check_incompatible_options_for_ci_rustc(
         ci_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins.clone());
     err!(current_optimized_compiler_builtins, optimized_compiler_builtins, "build");
 
+    let current_allocator = current_config_toml.build.as_ref().and_then(|b| b.allocator);
+    let allocator = ci_config_toml.build.as_ref().and_then(|b| b.allocator);
+    err!(current_allocator, allocator, "build");
+
     // We always build the in-tree compiler on cross targets, so we only care
     // about the host target here.
     let host_str = host.to_string();
@@ -304,10 +317,17 @@ pub fn check_incompatible_options_for_ci_rustc(
         ))?;
 
         let profiler = &ci_cfg.profiler;
-        err!(current_cfg.profiler, profiler, "build");
+        err!(current_cfg.profiler, profiler, format!("target.{host_str}"));
 
         let optimized_compiler_builtins = &ci_cfg.optimized_compiler_builtins;
-        err!(current_cfg.optimized_compiler_builtins, optimized_compiler_builtins, "build");
+        err!(
+            current_cfg.optimized_compiler_builtins,
+            optimized_compiler_builtins,
+            format!("target.{host_str}")
+        );
+
+        err!(current_cfg.allocator, &ci_cfg.allocator, format!("target.{host_str}"));
+        err!(current_cfg.jemalloc, &ci_cfg.jemalloc, format!("target.{host_str}"));
     }
 
     let (Some(current_rust_config), Some(ci_rust_config)) =
@@ -322,6 +342,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         randomize_layout,
         debug_logging,
         debuginfo_level_rustc,
+        compress_debuginfo,
         llvm_tools,
         llvm_bitcode_linker,
         stack_protector,
@@ -376,8 +397,9 @@ pub fn check_incompatible_options_for_ci_rustc(
         break_on_ice: _,
         parallel_frontend_threads: _,
         bootstrap_override_lld: _,
-        bootstrap_override_lld_legacy: _,
         rustflags: _,
+        stdlib_semver_baseline: _,
+        wasm_proc_macros: _,
     } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:
@@ -389,6 +411,7 @@ pub fn check_incompatible_options_for_ci_rustc(
 
     err!(current_rust_config.optimize, optimize, "rust");
     err!(current_rust_config.randomize_layout, randomize_layout, "rust");
+    err!(current_rust_config.compress_debuginfo, compress_debuginfo, "rust");
     err!(current_rust_config.debug_logging, debug_logging, "rust");
     err!(current_rust_config.debuginfo_level_rustc, debuginfo_level_rustc, "rust");
     err!(current_rust_config.rpath, rpath, "rust");
@@ -407,6 +430,7 @@ pub fn check_incompatible_options_for_ci_rustc(
 
 pub(crate) const BUILTIN_CODEGEN_BACKENDS: &[&str] = &["llvm", "cranelift", "gcc"];
 
+/// FIXME(Zalathar): This is partly redundant with the parsing code in [`CodegenBackendKind`].
 pub(crate) fn parse_codegen_backends(
     backends: Vec<String>,
     section: &str,
@@ -422,28 +446,38 @@ pub(crate) fn parse_codegen_backends(
                 Please, use '{stripped}' instead."
             )
         }
-        if !BUILTIN_CODEGEN_BACKENDS.contains(&backend.as_str()) {
-            if CiEnv::is_rust_lang_managed_ci_job() {
-                eprintln!("Unknown codegen backend {backend}");
-                exit!(1);
-            }
-
-            println!(
-                "HELP: '{backend}' for '{section}.codegen-backends' might fail. \
-                List of known codegen backends: {BUILTIN_CODEGEN_BACKENDS:?}"
-            );
-        }
         let backend = match backend.as_str() {
             "llvm" => CodegenBackendKind::Llvm,
             "cranelift" => CodegenBackendKind::Cranelift,
             "gcc" => CodegenBackendKind::Gcc,
             backend => CodegenBackendKind::Custom(backend.to_string()),
         };
+
+        if found_backends.contains(&backend) {
+            panic!(
+                "Duplicate value '{}' for '{section}.codegen-backends'. \
+                Each codegen backend should only be specified once.",
+                backend.name()
+            );
+        }
+
+        if !BUILTIN_CODEGEN_BACKENDS.contains(&backend.name()) {
+            if CiEnv::is_rust_lang_managed_ci_job() {
+                eprintln!("Unknown codegen backend {}", backend.name());
+                helpers::exit_process(1);
+            }
+
+            println!(
+                "HELP: '{}' for '{section}.codegen-backends' might fail. \
+                List of known codegen backends: {BUILTIN_CODEGEN_BACKENDS:?}",
+                backend.name()
+            );
+        }
         found_backends.push(backend);
     }
     if found_backends.is_empty() {
         eprintln!("ERROR: `{section}.codegen-backends` should not be set to `[]`");
-        exit!(1);
+        helpers::exit_process(1);
     }
     found_backends
 }

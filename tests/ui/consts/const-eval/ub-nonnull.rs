@@ -1,8 +1,10 @@
 // Strip out raw byte dumps to make comparison platform-independent:
 //@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?─*╼ )+ *│.*" -> "HEX_DUMP"
+//@ normalize-stderr: "╾ALLOC\$ID╼\s+│.*╾.*╼" -> "╾ALLOC$$ID╼ │ ╾─╼"
+//@ normalize-stderr: "[0-9a-f][0-9a-f]( [0-9a-f][0-9a-f]){3,7} ╾ALLOC\$ID╼" -> "HEX_DUMP ╾ALLOC$$ID╼ │ ╾─╼"
 //@ dont-require-annotations: NOTE
-//@ ignore-parallel-frontend different alloc ids
+
 #![allow(invalid_value)] // make sure we cannot allow away the errors tested here
 #![feature(rustc_attrs, ptr_metadata)]
 
@@ -17,9 +19,9 @@ const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
 //~^ ERROR invalid value
 
 const OUT_OF_BOUNDS_PTR: NonNull<u8> = { unsafe {
-    let ptr: &[u8; 256] = mem::transmute(&0u8); // &0 gets promoted so it does not dangle
+    let ptr: *const [u8; 256] = mem::transmute(&0u8); // &0 gets promoted so it does not dangle
     // Use address-of-element for pointer arithmetic. This could wrap around to null!
-    let out_of_bounds_ptr = &ptr[255]; //~ ERROR in-bounds pointer arithmetic failed
+    let out_of_bounds_ptr = &(*ptr)[255]; //~ ERROR in-bounds pointer arithmetic failed
     mem::transmute(out_of_bounds_ptr)
 } };
 

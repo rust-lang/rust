@@ -2,12 +2,12 @@ use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{PanicCall, find_assert_args, root_macro_call_first_node};
 use clippy_utils::source::walk_span_to_context;
-use clippy_utils::ty::implements_trait;
+use clippy_utils::ty::{deref_chain, implements_trait};
 use clippy_utils::{is_in_const_context, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::declare_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
+use rustc_middle::ty::{self, Ty};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -16,6 +16,12 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// `assert_{eq,ne}!` and `debug_assert_{eq,ne}!` achieves the same goal, and provides some
     /// additional debug information
+    ///
+    /// ### Known problems
+    /// This lint cannot determine how large the `Debug` output of the compared values will be.
+    /// To avoid producing excessively large assertion output, it ignores comparisons involving
+    /// byte-slice-like types. These include byte slices and types that dereference to a byte slice
+    /// or implement `AsRef<[u8]>` without also implementing `AsRef<str>`.
     ///
     /// ### Example
     /// ```no_run
@@ -82,6 +88,9 @@ impl LateLintPass<'_> for ManualAssertEq {
             // Printing raw pointers isn't very useful
             && !lhs_ty.is_raw_ptr()
             && !rhs_ty.is_raw_ptr()
+            // Byte buffers can be large and their debug output is rarely useful
+            && !is_byte_slice_like(cx, lhs_ty)
+            && !is_byte_slice_like(cx, rhs_ty)
             // The output of `(debug_)assert_eq` isn't very useful when one of the sides is a constant value
             && if eq_kind == EqKind::Ne {
                    let ecx = ConstEvalCtxt::new(cx);
@@ -119,4 +128,32 @@ impl LateLintPass<'_> for ManualAssertEq {
             );
         }
     }
+}
+
+fn is_byte_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    let byte_slice = Ty::new_slice(cx.tcx, cx.tcx.types.u8);
+    let ty = ty.peel_refs();
+
+    if ty == byte_slice {
+        return true;
+    }
+    if matches!(ty.kind(), ty::Adt(..))
+        && cx.tcx.get_diagnostic_item(sym::AsRef).is_some_and(|trait_id| {
+            implements_trait(cx, ty, trait_id, &[byte_slice.into()])
+                && !implements_trait(cx, ty, trait_id, &[cx.tcx.types.str_.into()])
+        })
+    {
+        return true;
+    }
+
+    for (depth, ty) in deref_chain(cx, ty).enumerate().skip(1) {
+        if !cx.tcx.recursion_limit().value_within_limit(depth) {
+            return false;
+        }
+        if ty == byte_slice {
+            return true;
+        }
+    }
+
+    false
 }

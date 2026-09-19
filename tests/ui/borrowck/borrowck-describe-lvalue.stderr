@@ -1,46 +1,3 @@
-error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/borrowck-describe-lvalue.rs:253:13
-   |
-LL |             let y = &mut x;
-   |                     ------ first mutable borrow occurs here
-LL |             &mut x;
-   |             ^^^^^^ second mutable borrow occurs here
-LL |             *y = 1;
-   |             ------ first borrow later used here
-
-error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/borrowck-describe-lvalue.rs:263:20
-   |
-LL |                    let y = &mut x;
-   |                            ------ first mutable borrow occurs here
-LL |                    &mut x;
-   |                    ^^^^^^ second mutable borrow occurs here
-LL |                    *y = 1;
-   |                    ------ first borrow later used here
-
-error: captured variable cannot escape `FnMut` closure body
-  --> $DIR/borrowck-describe-lvalue.rs:261:16
-   |
-LL |           let mut x = 0;
-   |               ----- variable defined here
-LL |              || {
-   |               - inferred to be a `FnMut` closure
-LL | /                || {
-LL | |                    let y = &mut x;
-   | |                                 - variable captured here
-LL | |                    &mut x;
-LL | |                    *y = 1;
-LL | |                    drop(y);
-LL | |                 }
-   | |_________________^ returns a closure that contains a reference to a captured variable, which then escapes the closure body
-   |
-   = note: `FnMut` closures only have access to their captured variables while they are executing...
-   = note: ...therefore, they cannot allow references to captured variables to escape
-help: consider adding 'move' keyword before the nested closure
-   |
-LL |                move || {
-   |                ++++
-
 error[E0503]: cannot use `f.x` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:37:9
    |
@@ -322,6 +279,49 @@ LL |             &[_, F {x: ref xf, ..}] => println!("{}", xf),
 ...
 LL |         drop(x);
    |              - mutable borrow later used here
+
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> $DIR/borrowck-describe-lvalue.rs:253:13
+   |
+LL |             let y = &mut x;
+   |                     ------ first mutable borrow occurs here
+LL |             &mut x;
+   |             ^^^^^^ second mutable borrow occurs here
+LL |             *y = 1;
+   |             ------ first borrow later used here
+
+error: captured variable cannot escape `FnMut` closure body
+  --> $DIR/borrowck-describe-lvalue.rs:261:16
+   |
+LL |           let mut x = 0;
+   |               ----- variable defined here
+LL |              || {
+   |               - inferred to be a `FnMut` closure
+LL | /                || {
+LL | |                    let y = &mut x;
+   | |                                 - variable captured here
+LL | |                    &mut x;
+LL | |                    *y = 1;
+LL | |                    drop(y);
+LL | |                 }
+   | |_________________^ returns a closure that contains a reference to a captured variable, which then escapes the closure body
+   |
+   = note: `FnMut` closures only have access to their captured variables while they are executing...
+   = note: ...therefore, they cannot allow references to captured variables to escape
+help: consider adding 'move' keyword before the nested closure
+   |
+LL |                move || {
+   |                ++++
+
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> $DIR/borrowck-describe-lvalue.rs:263:20
+   |
+LL |                    let y = &mut x;
+   |                            ------ first mutable borrow occurs here
+LL |                    &mut x;
+   |                    ^^^^^^ second mutable borrow occurs here
+LL |                    *y = 1;
+   |                    ------ first borrow later used here
 
 error[E0502]: cannot borrow `*block.current` as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-describe-lvalue.rs:206:29

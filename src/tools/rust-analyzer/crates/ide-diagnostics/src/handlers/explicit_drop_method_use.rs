@@ -127,9 +127,7 @@ fn fix_path(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{
-        check_diagnostics, check_diagnostics_with_disabled, check_fix, check_fix_with_disabled,
-    };
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn method_call_diagnostic() {
@@ -289,7 +287,7 @@ fn main(mut a: A) {
 
     #[test]
     fn path_diagnostic() {
-        check_diagnostics_with_disabled(
+        check_diagnostics(
             r#"
 //- minicore: drop
 struct A;
@@ -301,10 +299,6 @@ fn main(mut a: A) {
     d(&mut a);
 }
 "#,
-            // Because of the error, the code isn't analyzed further (?), and so `d` is warned on as unused.
-            // Arguably a bug in r-a (rustc doesn't emit a warning in this case)
-            // FIXME: remove this once r-a no longer warns
-            &["unused_variables"],
         );
     }
 
@@ -312,7 +306,7 @@ fn main(mut a: A) {
     // NOTE: Here, the fix is not completely correct, as it doesn't replace `d(&mut a)` with `d(a)`.
     // Oh well, rustc doesn't either
     fn path_fix() {
-        check_fix_with_disabled(
+        check_fix(
             r#"
 //- minicore: drop
 struct A;
@@ -332,10 +326,6 @@ fn main(mut a: A) {
     d(&mut a);
 }
 "#,
-            // Because of the error, the code isn't analyzed further (?), and so `d` is warned on as unused.
-            // Arguably a bug in r-a (rustc doesn't emit a warning in this case)
-            // FIXME: remove this once r-a no longer warns
-            &["unused_variables"],
         );
     }
 

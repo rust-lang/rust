@@ -19,8 +19,8 @@ use std::collections::HashSet;
 use run_make_support::object::read::Object;
 use run_make_support::object::read::archive::ArchiveFile;
 use run_make_support::object::{ObjectSection, ObjectSymbol, RelocationTarget};
-use run_make_support::rfs::{read, read_dir};
-use run_make_support::{cargo, object, path, target};
+use run_make_support::rfs::read;
+use run_make_support::{cargo, object, path, recursive_find_files, target};
 
 fn main() {
     let target_dir = path("target");
@@ -44,18 +44,14 @@ fn main() {
         .env("LIB", std::env::var("LIB").unwrap_or_default())
         .run();
 
-    let rlibs_path = target_dir.join(target()).join("debug").join("deps");
-    let compiler_builtins_rlib = read_dir(rlibs_path)
-        .find_map(|e| {
-            let path = e.unwrap().path();
-            let file_name = path.file_name().unwrap().to_str().unwrap();
-            if file_name.starts_with("libcompiler_builtins") && file_name.ends_with(".rlib") {
-                Some(path)
-            } else {
-                None
-            }
-        })
-        .unwrap();
+    // The rlib file is emitted as an intermediate build artifacts.
+    // Do not hardcode the path.
+    let mut rlibs = recursive_find_files(&target_dir.join(target()).join("debug"), |path| {
+        let file_name = path.file_name().unwrap().to_str().unwrap();
+        file_name.starts_with("libcompiler_builtins") && file_name.ends_with(".rlib")
+    });
+    assert_eq!(rlibs.len(), 1, "expected exactly one compiler_builtins rlib: {rlibs:?}");
+    let compiler_builtins_rlib = rlibs.pop().unwrap();
 
     // rlib files are archives, where the archive members each a CGU, and we also have one called
     // lib.rmeta which is the encoded metadata. Each of the CGUs is an object file.

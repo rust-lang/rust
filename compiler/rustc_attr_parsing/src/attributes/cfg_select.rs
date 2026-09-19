@@ -1,21 +1,22 @@
 use rustc_ast::token::Token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, NodeId, token};
+use rustc_attr_ir::target::Target;
+use rustc_attr_ir::{AttrPath, CfgEntry};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Diagnostic, MultiSpan};
+use rustc_errors::Diagnostic;
 use rustc_feature::Features;
-use rustc_hir::attrs::CfgEntry;
-use rustc_hir::{AttrPath, Target};
+use rustc_lint_defs::builtin::UNREACHABLE_CFG_SELECT_PREDICATES;
 use rustc_parse::exp;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::Session;
-use rustc_session::lint::builtin::UNREACHABLE_CFG_SELECT_PREDICATES;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
 use crate::parser::{AllowExprMetavar, MetaItemOrLitParser};
 use crate::{
-    AttributeParser, AttributeTemplate, ParsedDescription, ShouldEmit, diagnostics, parse_cfg_entry,
+    AttributeParser, AttributeTemplate, EvalConfigResult, ParsedDescription, ShouldEmit,
+    diagnostics, parse_cfg_entry,
 };
 
 #[derive(Clone)]
@@ -47,25 +48,33 @@ pub struct CfgSelectBranches {
 impl CfgSelectBranches {
     /// Removes the top-most branch for which `predicate` returns `true`,
     /// or the wildcard if none of the reachable branches satisfied the predicate.
-    pub fn pop_first_match<F>(&mut self, predicate: F) -> Option<(TokenStream, Span)>
+    pub fn pop_first_match<F>(&mut self, predicate: F) -> Option<(CfgEntry, TokenStream, Span)>
     where
-        F: Fn(&CfgEntry) -> bool,
+        F: Fn(&CfgEntry) -> EvalConfigResult,
     {
-        for (index, (cfg, _, _)) in self.reachable.iter().enumerate() {
-            if predicate(cfg) {
-                let matched = self.reachable.remove(index);
-                return Some((matched.1, matched.2));
+        for (index, (cfg, _, _)) in self.reachable.iter_mut().enumerate() {
+            match predicate(cfg) {
+                EvalConfigResult::True => {
+                    return Some(self.reachable.remove(index));
+                }
+                EvalConfigResult::False { reason } => {
+                    *cfg = reason;
+                }
             }
         }
 
-        self.wildcard.take().map(|(_, tts, span)| (tts, span))
+        self.wildcard.take().map(|(_, tts, span)| (CfgEntry::Bool(true, span), tts, span))
     }
 
     /// Consume this value and iterate over all the `TokenStream`s that it stores.
-    pub fn into_iter_tts(self) -> impl Iterator<Item = (TokenStream, Span)> {
-        let it1 = self.reachable.into_iter().map(|(_, tts, span)| (tts, span));
-        let it2 = self.wildcard.into_iter().map(|(_, tts, span)| (tts, span));
-        let it3 = self.unreachable.into_iter().map(|(_, tts, span)| (tts, span));
+    pub fn into_iter_tts(self) -> impl Iterator<Item = (CfgEntry, TokenStream, Span)> {
+        let it1 = self.reachable.into_iter();
+        let it2 =
+            self.wildcard.into_iter().map(|(_, tts, span)| (CfgEntry::Bool(true, span), tts, span));
+        let it3 = self
+            .unreachable
+            .into_iter()
+            .map(|(_, tts, span)| (CfgEntry::Bool(false, span), tts, span));
 
         it1.chain(it2).chain(it3)
     }
@@ -78,16 +87,15 @@ pub fn parse_cfg_select(
     lint_node_id: NodeId,
 ) -> Result<CfgSelectBranches, ErrorGuaranteed> {
     let mut branches = CfgSelectBranches::default();
-    let mut branch_attr_error: Option<ErrorGuaranteed> = None;
 
     while p.token != token::Eof {
-        reject_branch_outer_attrs(p, &mut branch_attr_error)?;
+        p.recover_from_outer_attributes("`cfg_select` branches").map_err(|e| e.emit())?;
 
         if p.eat_keyword(exp!(Underscore)) {
             let underscore = p.prev_token;
             p.expect(exp!(FatArrow)).map_err(|e| e.emit())?;
 
-            let tts = p.parse_delimited_token_tree().map_err(|e| e.emit())?;
+            let tts = p.parse_cfg_select_branch_rhs().map_err(|e| e.emit())?;
             let span = underscore.span.to(p.token.span);
 
             match branches.wildcard {
@@ -126,7 +134,7 @@ pub fn parse_cfg_select(
 
             p.expect(exp!(FatArrow)).map_err(|e| e.emit())?;
 
-            let tts = p.parse_delimited_token_tree().map_err(|e| e.emit())?;
+            let tts = p.parse_cfg_select_branch_rhs().map_err(|e| e.emit())?;
             let span = cfg_span.to(p.token.span);
 
             match branches.wildcard {
@@ -134,10 +142,6 @@ pub fn parse_cfg_select(
                 Some(_) => branches.unreachable.push((CfgSelectPredicate::Cfg(cfg), tts, span)),
             }
         }
-    }
-
-    if let Some(guar) = branch_attr_error {
-        return Err(guar);
     }
 
     let it = branches
@@ -150,27 +154,6 @@ pub fn parse_cfg_select(
     lint_unreachable(p, it, lint_node_id);
 
     Ok(branches)
-}
-
-fn reject_branch_outer_attrs(
-    p: &mut Parser<'_>,
-    branch_attr_error: &mut Option<ErrorGuaranteed>,
-) -> Result<(), ErrorGuaranteed> {
-    let Some(spans) = p.parse_cfg_select_branch_outer_attrs().map_err(|e| e.emit())? else {
-        return Ok(());
-    };
-
-    for (spans, msg) in [
-        (spans.doc_comments, "doc comments are not allowed on `cfg_select` branches"),
-        (spans.attrs, "attributes are not allowed on `cfg_select` branches"),
-    ] {
-        if !spans.is_empty() {
-            branch_attr_error
-                .get_or_insert(p.dcx().struct_span_err(MultiSpan::from_spans(spans), msg).emit());
-        }
-    }
-
-    Ok(())
 }
 
 fn lint_unreachable(
@@ -228,7 +211,9 @@ fn lint_unreachable(
                         }
                     }
                 }
-                Some(_) => { /* for now we don't bother solving these */ }
+                Some(_) => {
+                    // FIXME(https://github.com/rust-lang/rust/pull/149960#issuecomment-3780301699): expand capabilities.
+                }
             },
             CfgEntry::Not(inner, _) => match &**inner {
                 CfgEntry::NameValue { name, value: None, .. } => {
@@ -247,7 +232,9 @@ fn lint_unreachable(
                         }
                     }
                 }
-                _ => { /* for now we don't bother solving these */ }
+                _ => {
+                    // FIXME(https://github.com/rust-lang/rust/pull/149960#issuecomment-3780301699): expand capabilities.
+                }
             },
             CfgEntry::All(_, _) | CfgEntry::Any(_, _) => {
                 /* for now we don't bother solving these */

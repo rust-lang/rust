@@ -67,7 +67,7 @@ pub(super) enum CastTo {
 }
 /// Returns `Some` if the type cast is between 2 integral types that differ
 /// only in signedness, otherwise `None`. The value of `Some` is which
-/// signedness is casted to.
+/// signedness is cast to.
 pub(super) fn is_signedness_cast(cast_from: Ty<'_>, cast_to: Ty<'_>) -> Option<CastTo> {
     match (cast_from.kind(), cast_to.kind()) {
         (ty::Int(from), ty::Uint(to)) if from.to_unsigned() == *to => Some(CastTo::Unsigned),

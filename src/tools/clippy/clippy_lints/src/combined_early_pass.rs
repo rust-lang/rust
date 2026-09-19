@@ -10,8 +10,8 @@
 //! method disappears entirely, and the passes that do override become direct,
 //! inlined calls. No vtable, no per-node dynamic dispatch.
 //!
-//! Unlike the late combine there is no `active` gate. rustc drops fully-disabled
-//! late passes via `lints_that_dont_need_to_run`, but the early pass runner has
+//! Unlike the late combine fields are not optional. rustc drops fully-disabled
+//! late passes via `skippable_lints`, but the early pass runner has
 //! no such filtering, so a plain forward is equivalent and loses nothing.
 //!
 //! [`combined_late_pass`]: crate::combined_late_pass
@@ -79,8 +79,8 @@ macro_rules! combined_early_lint_pass {
             }
             fn get_lints(&self) -> rustc_lint::LintVec {
                 // Reserve at least one slot per pass up front to skip the early reallocations.
-                let mut lints = Vec::with_capacity([$(stringify!($field)),*].len());
-                $(lints.extend(self.$field.get_lints());)*
+                let mut lints = Vec::with_capacity(${count($field)});
+                $(lints.extend(<$fty>::lint_vec());)*
                 lints
             }
         }

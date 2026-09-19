@@ -1,0 +1,9 @@
+error[E0433]: cannot find module `Ident` in this scope
+  --> $DIR/remove-unused-private-import-errors.rs:16:5
+   |
+LL |     Ident::x();
+   |     ^^^^^ `Ident` is a variant, not a module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

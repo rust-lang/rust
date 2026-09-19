@@ -1,8 +1,8 @@
 error[E0539]: malformed `cfg_attr` attribute input
-  --> $DIR/malformed-special-attrs.rs:3:1
+  --> $DIR/malformed-special-attrs.rs:3:3
    |
 LL | #[cfg_attr]
-   | ^^^^^^^^^^^ expected this to be a list
+   |   ^^^^^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: must be of the form
@@ -11,10 +11,10 @@ LL | #[cfg_attr(predicate, attr1, attr2, ...)]
    |           ++++++++++++++++++++++++++++++
 
 error[E0539]: malformed `cfg_attr` attribute input
-  --> $DIR/malformed-special-attrs.rs:6:1
+  --> $DIR/malformed-special-attrs.rs:6:3
    |
 LL | #[cfg_attr = ""]
-   | ^^^^^^^^^^^^^^^^ expected this to be a list
+   |   ^^^^^^^^^^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: must be of the form

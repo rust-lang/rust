@@ -1,0 +1,41 @@
+error[E0277]: the trait bound `ForeignType<u8>: Clone` is not satisfied
+  --> $DIR/method_call.rs:21:30
+   |
+LL |         let _ = Clone::clone(&f);
+   |                              ^^ the trait `Clone` is not implemented for `ForeignType<u8>`
+
+error[E0599]: no method named `clone` found for struct `ForeignType<T>` in the current scope
+  --> $DIR/method_call.rs:24:19
+   |
+LL |         let _ = f.clone();
+   |                   ^^^^^ method not found in `ForeignType<u8>`
+
+error[E0277]: the trait bound `LocalType<u8>: Clone` is not satisfied
+  --> $DIR/method_call.rs:31:30
+   |
+LL |         let _ = Clone::clone(&l);
+   |                              ^^ the trait `Clone` is not implemented for `LocalType<u8>`
+   |
+help: consider annotating `LocalType<u8>` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | pub struct LocalType<T>(pub T);
+   |
+
+error[E0599]: no method named `clone` found for struct `LocalType<T>` in the current scope
+  --> $DIR/method_call.rs:34:19
+   |
+LL | pub struct LocalType<T>(pub T);
+   | ----------------------- method `clone` not found for this struct
+...
+LL |         let _ = l.clone();
+   |                   ^^^^^ method not found in `LocalType<u8>`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `clone`, perhaps you need to implement it:
+           candidate #1: `Clone`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

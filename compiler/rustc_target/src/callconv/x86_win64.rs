@@ -1,4 +1,4 @@
-use rustc_abi::{BackendRepr, Float, Integer, Primitive, Size, TyAbiInterface};
+use rustc_abi::{BackendRepr, Integer, Primitive, Size, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg};
 use crate::spec::{HasTargetSpec, RustcAbi};
@@ -12,7 +12,7 @@ where
     let fixup = |a: &mut ArgAbi<'_, Ty>, is_ret: bool| {
         match a.layout.backend_repr {
             BackendRepr::Memory { sized: false } => {}
-            BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {
+            BackendRepr::ScalarPair { .. } | BackendRepr::Memory { sized: true } => {
                 match a.layout.size.bits() {
                     8 => a.cast_to(Reg::i8()),
                     16 => a.cast_to(Reg::i16()),
@@ -35,11 +35,7 @@ where
                         // FIXME(#134288): This may change for the `-msvc` targets in the future.
                         a.cast_to(Reg::opaque_vector(Size::from_bits(128)));
                     }
-                } else if a.layout.size.bytes() > 8
-                    && !matches!(scalar.primitive(), Primitive::Float(Float::F128))
-                {
-                    // Match what LLVM does for `f128` so that `compiler-builtins` builtins match up
-                    // with what LLVM expects.
+                } else if a.layout.size.bytes() > 8 {
                     a.make_indirect();
                 } else {
                     a.extend_integer_width_to(32);

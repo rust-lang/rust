@@ -4,7 +4,7 @@ error[E0080]: memory access failed: attempting to access 4 bytes, but got 0x100[
 LL |     copy_nonoverlapping(0x100 as *const i32, dangle, 1);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `COPY_OOB_1` failed here
 
-error[E0080]: memory access failed: attempting to access 4 bytes, but got ALLOC0+0x28 which is at or beyond the end of the allocation of size 4 bytes
+error[E0080]: memory access failed: attempting to access 4 bytes, but got ALLOC$ID+0x28 which is at or beyond the end of the allocation of size 4 bytes
   --> $DIR/copy-intrinsic.rs:28:5
    |
 LL |     copy_nonoverlapping(dangle, 0x100 as *mut i32, 1);

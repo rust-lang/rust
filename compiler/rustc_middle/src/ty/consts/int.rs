@@ -6,6 +6,7 @@ use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_span::bug;
 
 use crate::ty::TyCtxt;
 
@@ -260,26 +261,21 @@ impl ScalarInt {
         Self::try_from_uint(i, tcx.data_layout.pointer_size())
     }
 
-    /// Try to convert this ScalarInt to the raw underlying bits.
-    /// Fails if the size is wrong. Generally a wrong size should lead to a panic,
-    /// but Miri sometimes wants to be resilient to size mismatches,
-    /// so the interpreter will generally use this `try` method.
+    /// Convert this ScalarInt to the underlying bits.
     #[inline]
-    pub fn try_to_bits(self, target_size: Size) -> Result<u128, Size> {
-        assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        if target_size.bytes() == u64::from(self.size.get()) {
-            self.check_data();
-            Ok(self.data)
-        } else {
-            Err(self.size())
-        }
-    }
+    pub fn to_bits(self, expected_size: Size) -> u128 {
+        let self_size = u64::from(self.size.get());
+        if expected_size.bytes() != self_size {
+            #[cold]
+            fn invalid(expected_size: u64, self_size: u64) -> ! {
+                panic!("ScalarInt has size {self_size} but expected {expected_size}")
+            }
 
-    #[inline]
-    pub fn to_bits(self, target_size: Size) -> u128 {
-        self.try_to_bits(target_size).unwrap_or_else(|size| {
-            bug!("expected int of size {}, but got size {}", target_size.bytes(), size.bytes())
-        })
+            invalid(expected_size.bytes(), self_size);
+        }
+
+        self.check_data();
+        self.data
     }
 
     /// Extracts the bits from the scalar without checking the size.

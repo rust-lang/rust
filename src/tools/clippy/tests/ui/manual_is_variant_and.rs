@@ -253,6 +253,19 @@ fn issue16419_msrv() {
     let _ = opt.is_some_and(then_fn) || opt.is_none();
 }
 
+#[clippy::msrv = "1.69"]
+fn check_map_msrv_is_some_and(opt: Option<i32>) {
+    let _ = opt.map(|x| x > 0) == Some(true);
+    let _ = opt.map(|x| x > 0) != Some(false);
+}
+
+#[clippy::msrv = "1.81"]
+fn check_map_msrv_is_none_or(opt: Option<i32>) {
+    let _ = opt.map(|x| x > 0) == Some(true);
+    //~^ manual_is_variant_and
+    let _ = opt.map(|x| x > 0) != Some(false);
+}
+
 fn issue16518(opt: Option<i32>) {
     let condition = |x: &i32| *x > 10;
 

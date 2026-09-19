@@ -2,6 +2,8 @@
 // valid when dropped. This test confirms that behavior.
 // This is not a stable guarantee!
 
+#![allow(dropping_copy_types)]
+
 use std::ptr;
 
 fn main() {

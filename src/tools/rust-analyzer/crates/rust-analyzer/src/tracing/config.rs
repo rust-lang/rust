@@ -20,16 +20,16 @@ use crate::tracing::json;
 pub struct Config<T> {
     pub writer: T,
     pub filter: String,
-    /// The meaning of CHALK_DEBUG is to tell chalk crates
-    /// (i.e. chalk-solve, chalk-ir, chalk-recursive) how to filter tracing
+    /// The meaning of SOLVER_DEBUG is to tell the solver crates
+    /// (i.e. rustc_type_ir, rustc_next_trait_solver) how to filter tracing
     /// logs. But now we can only have just one filter, which means we have to
-    /// merge chalk filter to our main filter (from RA_LOG env).
+    /// merge the solver filter to our main filter (from RA_LOG env).
     ///
-    /// The acceptable syntax of CHALK_DEBUG is `target[span{field=value}]=level`.
+    /// The acceptable syntax of SOLVER_DEBUG is `target[span{field=value}]=level`.
     /// As the value should only affect chalk crates, we'd better manually
-    /// specify the target. And for simplicity, CHALK_DEBUG only accept the value
+    /// specify the target. And for simplicity, SOLVER_DEBUG only accept the value
     /// that specify level.
-    pub chalk_filter: Option<String>,
+    pub solver_filter: Option<String>,
     /// Filtering syntax, set in a shell:
     /// ```text
     /// env RA_PROFILE=*             // dump everything
@@ -75,22 +75,24 @@ where
         }
         .with_filter(targets_filter);
 
-        let chalk_layer = match self.chalk_filter {
-            Some(chalk_filter) => {
+        let solver_layer = match self.solver_filter {
+            Some(solver_filter) => {
                 let level: LevelFilter =
-                    chalk_filter.parse().with_context(|| "invalid chalk log filter")?;
+                    solver_filter.parse().with_context(|| "invalid solver log filter")?;
 
-                let chalk_filter = Targets::new()
-                    .with_target("chalk_solve", level)
-                    .with_target("chalk_ir", level)
-                    .with_target("chalk_recursive", level);
+                // Once with `ra_ap_` and once without; in-tree r-a uses without, out-of-tree uses with.
+                let solver_filter = Targets::new()
+                    .with_target("ra_ap_rustc_type_ir", level)
+                    .with_target("rustc_type_ir", level)
+                    .with_target("ra_ap_rustc_next_trait_solver", level)
+                    .with_target("rustc_next_trait_solver", level);
                 // TODO: remove `.with_filter(LevelFilter::OFF)` on the `None` branch.
                 HierarchicalLayer::default()
                     .with_indent_lines(true)
                     .with_ansi(false)
                     .with_indent_amount(2)
                     .with_writer(io::stderr)
-                    .with_filter(chalk_filter)
+                    .with_filter(solver_filter)
                     .boxed()
             }
             None => None::<HierarchicalLayer>.with_filter(LevelFilter::OFF).boxed(),
@@ -122,7 +124,7 @@ where
             .with(ra_fmt_layer)
             .with(json_profiler_layer)
             .with(profiler_layer)
-            .with(chalk_layer);
+            .with(solver_layer);
 
         tracing::subscriber::set_global_default(subscriber)?;
 

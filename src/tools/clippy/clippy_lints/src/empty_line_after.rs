@@ -1,15 +1,14 @@
 use std::borrow::Cow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{SpanRangeExt, snippet_indent};
+use clippy_utils::source::{SpanExt as _, snippet_indent};
 use clippy_utils::tokenize_with_text;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{AssocItemKind, AttrKind, AttrStyle, Attribute, Crate, Item, ItemKind, ModKind, NodeId};
 use rustc_errors::{Applicability, Diag, SuggestionStyle};
 use rustc_lexer::TokenKind;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, kw, sym};
 
 declare_clippy_lint! {
@@ -251,7 +250,7 @@ impl Stop {
         Some(Self {
             span: attr.span,
             kind: match attr.kind {
-                AttrKind::Normal(_) => StopKind::Attr,
+                AttrKind::Normal(_) | AttrKind::Synthetic(_) => StopKind::Attr,
                 AttrKind::DocComment(comment_kind, _) => StopKind::Doc(comment_kind),
             },
             first: file.lookup_line(file.relative_position(lo))?,
@@ -288,7 +287,7 @@ impl<'a> Gap<'a> {
         let prev_stop = prev_chunk.last()?;
         let next_stop = next_chunk.first()?;
         let gap_span = prev_stop.span.between(next_stop.span);
-        let gap_snippet = gap_span.get_source_text(cx)?;
+        let gap_snippet = gap_span.get_text(cx)?;
 
         let mut has_comment = false;
         let mut empty_lines = Vec::new();

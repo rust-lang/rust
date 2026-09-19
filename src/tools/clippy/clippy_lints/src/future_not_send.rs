@@ -4,17 +4,16 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::return_ty;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::print::PrintTraitRefExt;
+use rustc_infer::infer::TyCtxtInferExt as _;
+use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
+use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, AliasTy, Binder, ClauseKind, PredicateKind, Ty, TyCtxt, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    Unnormalized,
+    self, AliasTy, Binder, ClauseKind, PredicateKind, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _,
+    TypeVisitor, Unnormalized,
 };
-use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt as _;
 use rustc_trait_selection::traits::{self, FulfillmentError, ObligationCtxt};
 
 declare_clippy_lint! {
@@ -76,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             return;
         }
         let ret_ty = return_ty(cx, cx.tcx.local_def_id_to_hir_id(fn_def_id).expect_owner());
-        if let ty::Alias(AliasTy { kind: ty::Opaque{def_id}, args, .. }) = *ret_ty.kind()
+        if let ty::Alias(_, AliasTy { kind: ty::Opaque{def_id}, args, .. }) = *ret_ty.kind()
             && let Some(future_trait) = cx.tcx.lang_items().future_trait()
             && let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send)
             && let preds = cx.tcx.explicit_item_self_bounds(def_id)
@@ -102,7 +101,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             // This is to prevent emitting warnings for e.g. holding a `<Fut as Future>::Output` across await
             // points, where `Fut` is a type parameter.
 
-            let is_send = send_errors.iter().all(|err| {
+            let is_send = send_errors.as_slice().iter().all(|err| {
                 err.obligation
                     .predicate
                     .as_trait_clause()
@@ -149,6 +148,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for TyParamAtTopLevelVisitor {
         match ty.kind() {
             ty::Param(_) => ControlFlow::Break(true),
             ty::Alias(
+                _,
                 ty @ AliasTy {
                     kind: ty::Projection { .. },
                     ..

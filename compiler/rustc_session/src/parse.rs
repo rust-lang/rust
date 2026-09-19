@@ -22,7 +22,7 @@ use crate::Session;
 use crate::lint::{Lint, LintId};
 
 /// Collected spans during parsing for places where a certain feature was
-/// used and should be feature gated accordingly in `check_crate`.
+/// used and should be feature gated accordingly in `check_crate` in `rustc_ast_passes`.
 #[derive(Default)]
 pub struct GatedSpans {
     pub spans: Lock<FxHashMap<Symbol, Vec<Span>>>,

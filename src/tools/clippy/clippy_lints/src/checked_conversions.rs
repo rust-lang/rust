@@ -5,8 +5,7 @@ use clippy_utils::source::snippet_with_context;
 use clippy_utils::{SpanlessEq, is_in_const_context, is_integer_literal, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, TyKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::impl_lint_pass;
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::{Symbol, SyntaxContext};
 
 declare_clippy_lint! {
@@ -42,7 +41,7 @@ pub struct CheckedConversions {
 
 impl CheckedConversions {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
