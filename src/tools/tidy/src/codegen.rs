@@ -20,7 +20,7 @@ fn has_supported_extension(path: &Path) -> bool {
 }
 
 pub fn check(path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("codegen").path(path));
+    let check = tidy_ctx.start_check(CheckId::new("codegen").path(path));
 
     fn skip(path: &Path, is_dir: bool) -> bool {
         if path.file_name().is_some_and(|name| name.to_string_lossy().starts_with(".#")) {
