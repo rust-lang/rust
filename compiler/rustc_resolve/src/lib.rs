@@ -336,7 +336,7 @@ enum ResolutionError<'ra> {
 
 #[derive(Debug)]
 enum VisResolutionError {
-    Relative2018(Span, ast::Path),
+    Relative2018(Span, ast::Path, bool),
     AncestorOnly(Span),
     FailedToResolve {
         span: Span,
