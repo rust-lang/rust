@@ -46,7 +46,8 @@ impl<'a, 'tcx> ProjectionIter<'a, 'tcx> {
         let last = if place.as_local().is_none() {
             Some(place)
         } else {
-            debug_assert!(deref_chain.is_empty());
+            // CopyForDeref of a local after OpaqueCast is stripped (#160800).
+            debug_assert!(deref_chain.iter().all(|p| p.projection.is_empty()));
             None
         };
 
@@ -59,21 +60,28 @@ impl<'tcx> Iterator for ProjectionIter<'_, 'tcx> {
 
     #[inline]
     fn next(&mut self) -> Option<(PlaceRef<'tcx>, PlaceElem<'tcx>)> {
-        let place = self.places.read()?;
+        loop {
+            let place = self.places.read()?;
 
-        // the projection should never be empty except for a bare local which is handled in new
-        let partial_place =
-            PlaceRef { local: place.local, projection: &place.projection[..self.proj_idx] };
-        let elem = place.projection[self.proj_idx];
+            // CopyForDeref of a local (empty projection) after OpaqueCast stripping (#160800).
+            if place.projection.is_empty() {
+                self.places.advance();
+                continue;
+            }
 
-        if self.proj_idx == place.projection.len() - 1 {
-            self.proj_idx = 0;
-            self.places.advance();
-        } else {
-            self.proj_idx += 1;
+            let partial_place =
+                PlaceRef { local: place.local, projection: &place.projection[..self.proj_idx] };
+            let elem = place.projection[self.proj_idx];
+
+            if self.proj_idx == place.projection.len() - 1 {
+                self.proj_idx = 0;
+                self.places.advance();
+            } else {
+                self.proj_idx += 1;
+            }
+
+            return Some((partial_place, elem));
         }
-
-        Some((partial_place, elem))
     }
 }
 
