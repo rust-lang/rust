@@ -989,6 +989,17 @@ pub(crate) struct DocAttributeNotAttribute {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#![doc({$attr_name})]` must be a trait attribute")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct DocAttrNotTraitLevel {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(
     "`#[target_feature]` cannot be applied to a {$kind ->
         [panic_handler] `#[panic_handler]`

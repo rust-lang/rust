@@ -15,7 +15,16 @@ define-function: (
         assert-css: (".notable-trait-badge-blue", {"background-color": |blue|, "border-color": |blue|})
         assert-css: (".notable-trait-badge-magenta", {"background-color": |magenta|, "border-color": |magenta|})
         assert-css: (".notable-trait-badge-cyan", {"background-color": |cyan|, "border-color": |cyan|})
-        assert-css: (".notable-trait-badge-transparent", {"background-color": |transparent|, "border-color": |transparent_border|})
+        assert-css: (".notable-trait-badge-transparent", {
+            "background-color": |transparent|,
+            "border-color": |transparent_border|,
+        })
+        store-css: (".top-doc > .docblock", {"margin-left": top_docblock_margin_left})
+        assert-css: (".notable-trait-badge-container", {"margin-left": |top_docblock_margin_left|})
+        store-position: (".top-doc > .docblock", {"x": top_docblock_x})
+        assert-position: (".notable-trait-badge-container", {"x": |top_docblock_x|})
+        store-position: (".top-doc > summary::before", {"x": top_docblock_toggle_x})
+        assert-position: (".notable-trait-badge-container > a.tooltip", {"x": |top_docblock_toggle_x|})
     }
 )
 call-function: ("switch-theme", {"theme": "dark"})
@@ -56,3 +65,17 @@ call-function: ("test-badges", {
     "transparent": "transparent",
     "transparent_border": "#5c6773",
 })
+
+assert-false: ".tooltip.popover"
+click: ".notable-trait-badge-container > a.tooltip"
+wait-for: ".tooltip.popover"
+assert-text: (".tooltip.popover h3", "Notable traits for NotableTraitColors")
+assert-count: (".tooltip.popover .where", 8)
+assert-text: (".tooltip.popover .where:nth-child(1)", "impl Grey for NotableTraitColors")
+assert-text: (".tooltip.popover .where:nth-child(2)", "impl Red for NotableTraitColors")
+assert-text: (".tooltip.popover .where:nth-child(3)", "impl Green for NotableTraitColors")
+assert-text: (".tooltip.popover .where:nth-child(4)", "impl Yellow for NotableTraitColors")
+assert-text: (".tooltip.popover .where:nth-child(5)", "impl Blue for NotableTraitColors")
+assert-text: (".tooltip.popover .where:nth-child(6)", "impl Magenta for NotableTraitColors")
+assert-text: (".tooltip.popover .where:nth-child(7)", "impl Cyan for NotableTraitColors")
+assert-text: (".tooltip.popover .where:nth-child(8)", "impl Transparent for NotableTraitColors")

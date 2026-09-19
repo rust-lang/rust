@@ -1652,15 +1652,25 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
+	margin-left: var(--docblock-indent);
+	position: relative;
 }
 
-.notable-trait-badge-container > a {
+.notable-trait-badge-container > a.tooltip {
+	position: absolute;
+	width: 16px;
+	line-height: 1.5rem;
+	vertical-align: center;
+	left: calc(-1 * var(--docblock-indent));
+}
+
+.notable-trait-badge-container > a:not(.tooltip) {
 	display: flex;
 	align-items: center;
 	width: fit-content;
 	height: 1.5rem;
-	padding: 0 14px;
-	border-radius: var(--code-block-border-radius);
+	padding: 0 0.5rem;
+	border-radius: 0.75rem;
 	font-size: 1rem;
 	font-weight: normal;
 	color: var(--main-color);
@@ -1703,7 +1713,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	border: solid 1px var(--border-color);
 }
 
-.notable-trait-badge-container > a:hover {
+.notable-trait-badge-container > a:hover:not(.tooltip) {
 	text-decoration: none;
 	border: solid 1px var(--settings-button-border-focus);
 }

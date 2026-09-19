@@ -148,7 +148,7 @@ nav.sub {
 	--notable-badge-blue: oklch(0.88 0.21 240);
 	--notable-badge-magenta: oklch(0.88 0.21 320);
 	--notable-badge-cyan: oklch(0.88 0.21 180);
-	--notable-badge-transparent: white;
+	--notable-badge-transparent: transparent;
 }
 /* End theme: light */
 
