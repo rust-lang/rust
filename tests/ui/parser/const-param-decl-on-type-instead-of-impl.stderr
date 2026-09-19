@@ -35,9 +35,9 @@ LL |     path::path::Struct::<const N: usize>()
    |     ^^^^ use of unresolved module or unlinked crate `path`
    |
    = help: you might be missing a crate named `path`
-help: consider importing this module
+help: consider importing this similarly named struct
    |
-LL + use std::path;
+LL + use std::path::Path;
    |
 help: if you import `path`, refer to it directly
    |

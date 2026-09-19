@@ -41,7 +41,8 @@ impl Trait for S {
 
 mod prefix {}
 reuse unresolved_prefix::{a, b, c}; //~ ERROR cannot find module or crate `unresolved_prefix`
-reuse prefix::{self, super, crate}; //~ ERROR `crate` in paths can only be used in start position
-//~^ ERROR cannot find function `self` in module `prefix`
+reuse prefix::{self, super, crate}; //~ ERROR `super` in paths can only be used in start position
+//~^ ERROR `crate` in paths can only be used in start position
+//~^^ ERROR cannot find function `self` in module `prefix`
 
 fn main() {}

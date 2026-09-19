@@ -1943,6 +1943,11 @@ error[E0433]: cannot find type `Hashmap` in this scope
    |
 LL |     let _ = Hashmap::new();
    |             ^^^^^^^ use of undeclared type `Hashmap`
+   |
+help: consider importing this similarly named struct
+   |
+LL + use std::collections::HashMap;
+   |
 
 error: aborting due to 169 previous errors
 

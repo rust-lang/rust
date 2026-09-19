@@ -92,6 +92,28 @@ LL | reuse prefix::{self, super, crate};
    |
    = note: a module named `prefix::self` exists in another namespace
 
+error[E0433]: `super` in paths can only be used in start position
+  --> $DIR/bad-resolve.rs:44:22
+   |
+LL | reuse prefix::{self, super, crate};
+   |                      ^^^^^ can only be used in path start position
+   |
+help: consider importing this similarly named enum
+   |
+LL + use std::path::Prefix;
+   |
+
+error[E0433]: `crate` in paths can only be used in start position
+  --> $DIR/bad-resolve.rs:44:29
+   |
+LL | reuse prefix::{self, super, crate};
+   |                             ^^^^^ can only be used in path start position
+   |
+help: consider importing this similarly named enum
+   |
+LL + use std::path::Prefix;
+   |
+
 error[E0186]: method `foo` has a `&self` declaration in the trait, but not in the impl
   --> $DIR/bad-resolve.rs:34:11
    |
@@ -118,13 +140,7 @@ LL | reuse unresolved_prefix::{a, b, c};
    |
    = help: you might be missing a crate named `unresolved_prefix`
 
-error[E0433]: `crate` in paths can only be used in start position
-  --> $DIR/bad-resolve.rs:44:29
-   |
-LL | reuse prefix::{self, super, crate};
-   |                             ^^^^^ can only be used in path start position
-
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 
 Some errors have detailed explanations: E0046, E0186, E0324, E0407, E0423, E0425, E0433, E0575, E0576.
 For more information about an error, try `rustc --explain E0046`.

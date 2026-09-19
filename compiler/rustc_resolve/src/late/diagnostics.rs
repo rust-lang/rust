@@ -973,18 +973,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 ident.name.as_str().to_lowercase() == ident_lookup.name.as_str().to_lowercase()
             }
         };
-        let is_expected = &|res| {
-            if case_sensitive {
-                source.is_expected(res)
-            } else {
-                if following_seg.is_none() {
-                    source.is_expected(res)
-                } else {
-                    matches!(res, Res::Def(DefKind::Mod, _)) //fixme(GTimothy):check that this is
-                    // necessary/correct
-                }
-            }
-        };
+        let is_expected = &|res| source.is_expected(res);
         let ns = source.namespace();
         let is_enum_variant = &|res| matches!(res, Res::Def(DefKind::Variant, _));
         let path_str = Segment::names_to_string(path);

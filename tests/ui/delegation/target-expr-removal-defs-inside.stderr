@@ -5,27 +5,9 @@ LL |     some::path::<{ fn foo() {} }>::xd();
    |     ^^^^ use of unresolved module or unlinked crate `some`
    |
    = help: you might be missing a crate named `some`
-help: consider importing this module
+help: consider importing this similarly named struct
    |
-LL + use std::path;
-   |
-help: if you import `path`, refer to it directly
-   |
-LL -     some::path::<{ fn foo() {} }>::xd();
-LL +     path::<{ fn foo() {} }>::xd();
-   |
-
-error[E0433]: cannot find module or crate `some` in this scope
-  --> $DIR/target-expr-removal-defs-inside.rs:49:5
-   |
-LL |     some::path::<{ fn foo() {} }>::xd();
-   |     ^^^^ use of unresolved module or unlinked crate `some`
-   |
-   = help: you might be missing a crate named `some`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider importing this module
-   |
-LL + use std::path;
+LL + use std::path::Path;
    |
 help: if you import `path`, refer to it directly
    |
@@ -41,9 +23,9 @@ LL |     some::path::<{ fn foo() {} }>::xd();
    |
    = help: you might be missing a crate named `some`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider importing this module
+help: consider importing this similarly named struct
    |
-LL + use std::path;
+LL + use std::path::Path;
    |
 help: if you import `path`, refer to it directly
    |
@@ -59,9 +41,27 @@ LL |     some::path::<{ fn foo() {} }>::xd();
    |
    = help: you might be missing a crate named `some`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: consider importing this module
+help: consider importing this similarly named struct
    |
-LL + use std::path;
+LL + use std::path::Path;
+   |
+help: if you import `path`, refer to it directly
+   |
+LL -     some::path::<{ fn foo() {} }>::xd();
+LL +     path::<{ fn foo() {} }>::xd();
+   |
+
+error[E0433]: cannot find module or crate `some` in this scope
+  --> $DIR/target-expr-removal-defs-inside.rs:49:5
+   |
+LL |     some::path::<{ fn foo() {} }>::xd();
+   |     ^^^^ use of unresolved module or unlinked crate `some`
+   |
+   = help: you might be missing a crate named `some`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider importing this similarly named struct
+   |
+LL + use std::path::Path;
    |
 help: if you import `path`, refer to it directly
    |
