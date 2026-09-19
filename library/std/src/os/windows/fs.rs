@@ -81,6 +81,8 @@ pub trait FileExt {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
+    /// #![feature(seek_read_exact_seek_write_all)]
+    ///
     /// use std::io;
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
@@ -208,6 +210,8 @@ pub trait FileExt {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
+    /// #![feature(seek_read_exact_seek_write_all)]
+    ///
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
     ///
