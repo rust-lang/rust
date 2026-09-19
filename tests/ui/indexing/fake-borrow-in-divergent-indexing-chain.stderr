@@ -1,0 +1,51 @@
+error[E0510]: cannot assign `x` in indexing expression
+  --> $DIR/fake-borrow-in-divergent-indexing-chain.rs:10:12
+   |
+LL |     x[0][{ x = y; 0 }][{ return; 0 }];
+   |     ----   ^^^^^ cannot assign
+   |     |
+   |     value is immutable in indexing expression
+
+error[E0510]: cannot assign `x` in indexing expression
+  --> $DIR/fake-borrow-in-divergent-indexing-chain.rs:20:12
+   |
+LL |     x[0][{ x = y; return; 0 }];
+   |     ----   ^^^^^ cannot assign
+   |     |
+   |     value is immutable in indexing expression
+
+error[E0510]: cannot assign `x` in indexing expression
+  --> $DIR/fake-borrow-in-divergent-indexing-chain.rs:27:12
+   |
+LL |     x[0][{ x = y; panic!(); 0 }];
+   |     ----   ^^^^^ cannot assign
+   |     |
+   |     value is immutable in indexing expression
+
+error[E0510]: cannot assign `x` in indexing expression
+  --> $DIR/fake-borrow-in-divergent-indexing-chain.rs:35:16
+   |
+LL |         x[0][{ x = y; break 'b; 0 }];
+   |         ----   ^^^^^ cannot assign
+   |         |
+   |         value is immutable in indexing expression
+
+error[E0510]: cannot assign `x` in indexing expression
+  --> $DIR/fake-borrow-in-divergent-indexing-chain.rs:44:16
+   |
+LL |         x[0][{ x = y; continue; 0 }];
+   |         ----   ^^^^^ cannot assign
+   |         |
+   |         value is immutable in indexing expression
+
+error[E0510]: cannot assign `x` in indexing expression
+  --> $DIR/fake-borrow-in-divergent-indexing-chain.rs:52:12
+   |
+LL |     x[0][{ x = y; become always_become_after_mutation(); 0 }];
+   |     ----   ^^^^^ cannot assign
+   |     |
+   |     value is immutable in indexing expression
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0510`.
