@@ -16,6 +16,7 @@ impl DeserTrait<'_> for &'static MyTrait {}
 //~^ ERROR expected a type, found a trait
 
 fn test() -> impl Send {
+    //~^ ERROR type annotations needed
     testfn(&DeserStruct)
 }
 
