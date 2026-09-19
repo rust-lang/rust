@@ -4,7 +4,7 @@
 
 use std::ffi::{CStr, CString, OsString};
 use std::fs::{self, File, canonicalize, create_dir, remove_dir, remove_file};
-use std::io::{Error, ErrorKind, Write};
+use std::io::{ErrorKind, Write};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
@@ -60,6 +60,7 @@ fn main() {
     test_ioctl();
     test_opendir_closedir();
     test_readdir();
+    test_dirfd();
     #[cfg(target_os = "linux")]
     test_statx_on_file_path();
     #[cfg(target_os = "linux")]
@@ -123,14 +124,13 @@ fn test_statx_on_file_descriptor() {
 
     unsafe {
         let mut stx = MaybeUninit::<libc::statx>::zeroed();
-        let ret = libc::statx(
+        errno_check(libc::statx(
             file.as_raw_fd(),
             c"".as_ptr(),
             libc::AT_EMPTY_PATH,
             libc::STATX_BASIC_STATS | libc::STATX_BTIME,
             stx.as_mut_ptr(),
-        );
-        assert_eq!(ret, 0, "statx failed: {}", std::io::Error::last_os_error());
+        ));
 
         let stx = stx.assume_init();
         let meta = file.metadata().unwrap();
@@ -151,14 +151,13 @@ fn test_statx_on_file_path() {
 
     unsafe {
         let mut stx = MaybeUninit::<libc::statx>::zeroed();
-        let ret = libc::statx(
+        errno_check(libc::statx(
             libc::AT_FDCWD,
             c_path.as_ptr(),
             0,
             libc::STATX_BASIC_STATS | libc::STATX_BTIME,
             stx.as_mut_ptr(),
-        );
-        assert_eq!(ret, 0, "statx failed: {}", std::io::Error::last_os_error());
+        ));
 
         let stx = stx.assume_init();
         let meta = fs::metadata(&path).unwrap();
@@ -342,9 +341,9 @@ fn test_rename() {
     assert!(path2.metadata().unwrap().is_file());
 
     // Renaming a nonexistent file should fail
-    let res = unsafe { libc::rename(c_path1.as_ptr(), c_path2.as_ptr()) };
-    assert_eq!(res, -1);
-    assert_eq!(Error::last_os_error().kind(), ErrorKind::NotFound);
+    let err =
+        errno_result(unsafe { libc::rename(c_path1.as_ptr(), c_path2.as_ptr()) }).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::NotFound);
 
     remove_file(&path2).unwrap();
 }
@@ -366,8 +365,7 @@ fn test_ftruncate<T: From<i32>>(
     let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) };
 
     // Truncate to a bigger size
-    let mut res = unsafe { ftruncate(fd, T::from(10)) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { ftruncate(fd, T::from(10)) });
     assert_eq!(file.metadata().unwrap().len(), 10);
 
     // Write after truncate
@@ -376,8 +374,7 @@ fn test_ftruncate<T: From<i32>>(
     assert_eq!(file.metadata().unwrap().len(), 10);
 
     // Truncate to smaller size
-    res = unsafe { ftruncate(fd, T::from(2)) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { ftruncate(fd, T::from(2)) });
     assert_eq!(file.metadata().unwrap().len(), 2);
 
     remove_file(&path).unwrap();
@@ -708,7 +705,7 @@ fn test_sync_file_range() {
     file.write(bytes).unwrap();
 
     // Test calling sync_file_range on the file.
-    let result_1 = unsafe {
+    errno_check(unsafe {
         libc::sync_file_range(
             file.as_raw_fd(),
             0,
@@ -717,12 +714,12 @@ fn test_sync_file_range() {
                 | libc::SYNC_FILE_RANGE_WRITE
                 | libc::SYNC_FILE_RANGE_WAIT_AFTER,
         )
-    };
+    });
     drop(file);
 
     // Test calling sync_file_range on a file opened for reading.
     let file = File::open(&path).unwrap();
-    let result_2 = unsafe {
+    errno_check(unsafe {
         libc::sync_file_range(
             file.as_raw_fd(),
             0,
@@ -731,12 +728,10 @@ fn test_sync_file_range() {
                 | libc::SYNC_FILE_RANGE_WRITE
                 | libc::SYNC_FILE_RANGE_WAIT_AFTER,
         )
-    };
+    });
     drop(file);
 
     remove_file(&path).unwrap();
-    assert_eq!(result_1, 0);
-    assert_eq!(result_2, 0);
 }
 
 fn test_fstat() {
@@ -748,8 +743,7 @@ fn test_fstat() {
     let fd = file.as_raw_fd();
 
     let mut stat = MaybeUninit::<libc::stat>::uninit();
-    let res = unsafe { libc::fstat(fd, stat.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::fstat(fd, stat.as_mut_ptr()) });
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_size, 5);
@@ -769,8 +763,7 @@ fn test_stat() {
     let cpath = CString::new(path.as_os_str().as_bytes()).unwrap();
 
     let mut stat = MaybeUninit::<libc::stat>::uninit();
-    let res = unsafe { libc::stat(cpath.as_ptr(), stat.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::stat(cpath.as_ptr(), stat.as_mut_ptr()) });
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_size, 5);
@@ -794,8 +787,7 @@ fn test_lstat() {
     let cpath = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
 
     let mut stat = MaybeUninit::<libc::stat>::uninit();
-    let res = unsafe { libc::lstat(cpath.as_ptr(), stat.as_mut_ptr()) };
-    assert_eq!(res, 0);
+    errno_check(unsafe { libc::lstat(cpath.as_ptr(), stat.as_mut_ptr()) });
     let stat = unsafe { stat.assume_init_ref() };
 
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFLNK);
@@ -902,8 +894,8 @@ fn test_read_and_uninit() {
             assert_eq!(libc::read(fd, buf.as_mut_ptr().cast::<std::ffi::c_void>(), 1), 1);
             let buf = buf.assume_init();
             assert_eq!(buf, 1);
-            assert_eq!(libc::close(fd), 0);
-            assert_eq!(libc::unlink(cpath.as_ptr()), 0);
+            errno_check(libc::close(fd));
+            errno_check(libc::unlink(cpath.as_ptr()));
         }
     }
     {
@@ -925,7 +917,7 @@ fn test_read_and_uninit() {
                     "wrong result at pos {i}"
                 );
             }
-            assert_eq!(libc::close(fd), 0);
+            errno_check(libc::close(fd));
         }
         remove_file(&path).unwrap();
     }
@@ -951,7 +943,7 @@ fn test_ioctl() {
         assert_eq!(errno, libc::EBADF);
 
         let fd = libc::open(name.as_ptr(), libc::O_RDONLY);
-        assert_eq!(libc::ioctl(fd, libc::FIOCLEX), 0);
+        errno_check(libc::ioctl(fd, libc::FIOCLEX));
     }
 }
 
@@ -962,7 +954,7 @@ fn test_opendir_closedir() {
     let cpath = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
     let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };
     assert!(!dir.is_null());
-    assert_eq!(unsafe { libc::closedir(dir) }, 0);
+    errno_check(unsafe { libc::closedir(dir) });
 
     // dir should not exist
     remove_dir(&path).unwrap();
@@ -1011,7 +1003,7 @@ fn test_readdir() {
             let name_str = name.to_string_lossy();
             entries.push(name_str.into_owned());
         }
-        assert_eq!(libc::closedir(dirp), 0);
+        errno_check(libc::closedir(dirp));
         entries.sort();
         assert_eq!(&entries, &[".", "..", "file1.txt", "file2.txt"]);
     }
@@ -1021,8 +1013,34 @@ fn test_readdir() {
     remove_dir(&dir_path).unwrap();
 }
 
+fn test_dirfd() {
+    use std::mem::MaybeUninit;
+
+    let path = utils::prepare_dir("miri_test_libc_opendir_closedir");
+    create_dir(&path).expect("create_dir failed");
+    let cpath = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };
+    assert!(!dir.is_null());
+
+    let dirfd = unsafe { libc::dirfd(dir) };
+
+    let mut stat = MaybeUninit::<libc::stat>::uninit();
+    errno_check(unsafe { libc::fstat(dirfd, stat.as_mut_ptr()) });
+    let stat = unsafe { stat.assume_init_ref() };
+
+    assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFDIR);
+    assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+
+    // Check that all fields are initialized.
+    check_stat_fields(stat);
+
+    errno_check(unsafe { libc::closedir(dir) });
+}
+
 /// Check that all common fields of a `stat` struct are initialized.
 pub fn check_stat_fields(stat: &libc::stat) {
+    let _st_size = stat.st_size;
+    let _st_mode = stat.st_mode;
     let _st_nlink = stat.st_nlink;
     let _st_blksize = stat.st_blksize;
     let _st_blocks = stat.st_blocks;
