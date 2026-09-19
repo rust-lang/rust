@@ -819,10 +819,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("unsupported flags for `statx`: {flags:#x}")
         }
 
-        // The docs are kind of unclear about what empty paths should do when the
-        // flag is *not* set, so we just bail.
+        // Empty path requires corresponding flag.
         if path.is_empty() && !empty_path_flag {
-            throw_unsup_format!("statx only supports empty paths if `AT_EMPTY_PATH` is set");
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
         }
 
         // Reject if isolation is enabled.

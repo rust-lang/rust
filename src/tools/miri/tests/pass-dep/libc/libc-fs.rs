@@ -121,6 +121,7 @@ fn test_statx_on_file_descriptor() {
     let bytes = b"hello";
     let path = utils::prepare_with_content("miri_test_libc_statx_fd.txt", bytes);
     let file = File::open(&path).unwrap();
+    let meta = file.metadata().unwrap();
 
     unsafe {
         let mut stx = MaybeUninit::<libc::statx>::zeroed();
@@ -133,8 +134,21 @@ fn test_statx_on_file_descriptor() {
         ));
 
         let stx = stx.assume_init();
-        let meta = file.metadata().unwrap();
         assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
+    }
+
+    // If we don't set AT_EMPTY_PATH, we get an error.
+    unsafe {
+        let mut stx = MaybeUninit::<libc::statx>::zeroed();
+        let err = errno_result(libc::statx(
+            file.as_raw_fd(),
+            c"".as_ptr(),
+            0,
+            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            stx.as_mut_ptr(),
+        ))
+        .unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
     }
 
     drop(file);
@@ -148,6 +162,7 @@ fn test_statx_on_file_path() {
     let bytes = b"hello";
     let path = utils::prepare_with_content("miri_test_libc_statx.txt", bytes);
     let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let meta = fs::metadata(&path).unwrap();
 
     unsafe {
         let mut stx = MaybeUninit::<libc::statx>::zeroed();
@@ -160,7 +175,21 @@ fn test_statx_on_file_path() {
         ));
 
         let stx = stx.assume_init();
-        let meta = fs::metadata(&path).unwrap();
+        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
+    }
+
+    // Setting AT_EMPTY_PATH is fine even if the path is not actually empty.
+    unsafe {
+        let mut stx = MaybeUninit::<libc::statx>::zeroed();
+        errno_check(libc::statx(
+            libc::AT_FDCWD,
+            c_path.as_ptr(),
+            libc::AT_EMPTY_PATH,
+            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            stx.as_mut_ptr(),
+        ));
+
+        let stx = stx.assume_init();
         assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
     }
 
@@ -175,20 +204,13 @@ fn test_statx_empty_path_on_pipe() {
 
         let mut statx_buf = std::mem::MaybeUninit::<libc::statx>::zeroed();
 
-        let ret = libc::statx(
+        errno_check(libc::statx(
             fds[0],
             c"".as_ptr(),
             libc::AT_EMPTY_PATH,
             libc::STATX_BASIC_STATS,
             statx_buf.as_mut_ptr(),
-        );
-
-        assert_eq!(
-            ret,
-            0,
-            "statx on pipe with AT_EMPTY_PATH failed: {}",
-            std::io::Error::last_os_error()
-        );
+        ));
 
         let statx_buf = statx_buf.assume_init();
 
