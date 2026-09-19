@@ -1,7 +1,6 @@
 #![attr = Feature([pin_ergonomics#0])]
-#![attr = LintCheck([LintCheck {name: ["dead_code"], attr_index: 0,
-lint_index: 0, kind: Allow}, LintCheck {name: ["incomplete_features"],
-attr_index: 0, lint_index: 1, kind: Allow}])]
+#![attr = LintCheck([LintCheck {name: ["dead_code"], kind: Allow},
+LintCheck {name: ["incomplete_features"], kind: Allow}])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;

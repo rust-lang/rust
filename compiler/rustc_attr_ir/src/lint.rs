@@ -28,8 +28,6 @@ impl LintCheckKind {
 pub struct LintCheck {
     pub name: ThinVec<Symbol>,
     pub span: Span,
-    pub attr_index: u16,
-    pub lint_index: u16,
     pub kind: LintCheckKind,
     pub reason: Option<Symbol>,
     /// Needed by `LintExpectationId` to track fulfilled expectations

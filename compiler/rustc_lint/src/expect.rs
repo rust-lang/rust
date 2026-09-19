@@ -38,10 +38,7 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
                 // We are an `eval_always` query, so looking at the attribute's `AttrId` is ok.
 
                 let lint_checks = find_attr!(tcx, id.hir_id, LintCheck(lints) => lints).unwrap();
-                let attr_id = lint_checks
-                    .iter()
-                    .find_map(|l| (l.attr_index == id.attr_index).then_some(l.attr_id.attr_id))
-                    .unwrap();
+                let attr_id = lint_checks[id.lint_index as usize].attr_id.attr_id;
 
                 (attr_id, id.lint_index)
             }
