@@ -295,6 +295,7 @@ pub enum TypeRelativeDelegationRes {
     Ok(DefId),
     Ambig(ErrorGuaranteed),
     Error(ErrorGuaranteed),
+    InherentFnNotFound,
 }
 
 #[derive(Debug, StableHash)]

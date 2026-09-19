@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use ast::visit::Visitor;
-use hir::def::DefKind;
+use hir::def::{DefKind, Res};
 use rustc_ast::{self as ast, AssocItemKind, Delegation, DelegationSource, Item, ItemKind, NodeId};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
@@ -20,7 +20,8 @@ use crate::delegation::resolution::resolver::DelegationResolver;
 use crate::diagnostics::{
     AmbiguousDelegationToInherentImpl, CycleInDelegationSignatureResolution,
     DelegationAttemptedBlockWithDefsDeletion, DelegationAttemptedBlockWithDefsRelowering,
-    DelegationBlockSpecifiedWhenNoParams, UnresolvedDelegationCallee,
+    DelegationBlockSpecifiedWhenNoParams, FailedToResolveDelegationToInherentImpl,
+    UnresolvedDelegationCallee,
 };
 
 /// Simple (hack or heuristic) resolution of some delegations to inherent impls
@@ -66,8 +67,16 @@ pub(crate) fn resolve_type_relative_delegations(
                     _ => unreachable!("we are processing only delegations"),
                 };
 
-                let res = r.partial_res_map.get(&delegation.id);
-                let res = res.and_then(|res| res.base_res().opt_def_id());
+                let delegation_base_res =
+                    r.partial_res_map.get(&delegation.id).map(|res| res.base_res());
+                let is_inherent_self = matches!(
+                    delegation_base_res,
+                    Some(Res::SelfTyAlias { is_trait_impl: false, .. })
+                );
+                let res = delegation_base_res.and_then(|res| match res {
+                    Res::SelfTyAlias { alias_to, is_trait_impl: false, .. } => Some(alias_to),
+                    other => other.opt_def_id(),
+                });
                 let ident = delegation.path.segments.last().map(|s| s.ident);
 
                 let span = delegation.last_segment_span();
@@ -100,6 +109,9 @@ pub(crate) fn resolve_type_relative_delegations(
                                         TypeRelativeDelegationRes::Ok(res.to_def_id())
                                     }
                                 },
+                                _ if is_inherent_self => {
+                                    TypeRelativeDelegationRes::InherentFnNotFound
+                                }
                                 _ => default_error_res(),
                             }
                         }
@@ -344,6 +356,9 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             Some(res) => match *res {
                 TypeRelativeDelegationRes::Ok(sig_id) => Ok(sig_id),
                 TypeRelativeDelegationRes::Error(err) => Err(err),
+                TypeRelativeDelegationRes::InherentFnNotFound => {
+                    Err(tcx.dcx().emit_err(FailedToResolveDelegationToInherentImpl { span }))
+                }
                 TypeRelativeDelegationRes::Ambig(_) => {
                     Err(tcx.dcx().emit_err(AmbiguousDelegationToInherentImpl { span }))
                 }
