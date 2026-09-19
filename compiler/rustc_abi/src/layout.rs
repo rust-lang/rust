@@ -5,8 +5,8 @@ use std::range::{RangeFrom, RangeInclusive, RangeToInclusive};
 use std::{cmp, iter};
 
 use rustc_hashes::Hash64;
-use rustc_index::Idx;
 use rustc_index::bit_set::BitMatrix;
+use rustc_index::{Idx, StableIdx};
 use tracing::{debug, trace};
 
 use crate::{
@@ -88,8 +88,8 @@ rustc_index::newtype_index! {
 // for non-ZST uninhabited data (mostly partial initialization).
 fn absent<'a, FieldIdx, VariantIdx, F>(fields: &IndexSlice<FieldIdx, F>) -> bool
 where
-    FieldIdx: Idx,
-    VariantIdx: Idx,
+    FieldIdx: StableIdx,
+    VariantIdx: StableIdx,
     F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
 {
     let uninhabited = fields.iter().any(|f| f.is_uninhabited());
@@ -178,7 +178,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         Self { cx }
     }
 
-    pub fn array_like<FieldIdx: Idx, VariantIdx: Idx, F>(
+    pub fn array_like<FieldIdx: StableIdx, VariantIdx: Idx, F>(
         &self,
         element: &LayoutData<FieldIdx, VariantIdx>,
         count_if_sized: Option<u64>, // None for slices
@@ -208,8 +208,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         number_of_vectors: NumScalableVectors,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
     where
-        FieldIdx: Idx,
-        VariantIdx: Idx,
+        FieldIdx: StableIdx,
+        VariantIdx: StableIdx,
         F: AsRef<LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
     {
         vector_type_layout(
@@ -227,8 +227,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         repr_packed: bool,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
     where
-        FieldIdx: Idx,
-        VariantIdx: Idx,
+        FieldIdx: StableIdx,
+        VariantIdx: StableIdx,
         F: AsRef<LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
     {
         let kind = if repr_packed { SimdVectorKind::PackedFixed } else { SimdVectorKind::Fixed };
@@ -242,9 +242,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     pub fn coroutine<
         'a,
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
-        VariantIdx: Idx,
-        FieldIdx: Idx,
-        LocalIdx: Idx,
+        VariantIdx: StableIdx,
+        FieldIdx: StableIdx,
+        LocalIdx: StableIdx,
     >(
         &self,
         local_layouts: &IndexSlice<LocalIdx, F>,
@@ -265,8 +265,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
     pub fn univariant<
         'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
+        FieldIdx: StableIdx,
+        VariantIdx: StableIdx,
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
@@ -340,8 +340,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
     pub fn layout_of_struct_or_enum<
         'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
+        FieldIdx: StableIdx,
+        VariantIdx: StableIdx,
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
@@ -394,8 +394,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
     pub fn layout_of_union<
         'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
+        FieldIdx: StableIdx,
+        VariantIdx: StableIdx,
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
@@ -522,8 +522,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     /// single-variant enums are just structs, if you think about it
     fn layout_of_struct<
         'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
+        FieldIdx: StableIdx,
+        VariantIdx: StableIdx,
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
@@ -575,8 +575,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
     fn layout_of_enum<
         'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
+        FieldIdx: StableIdx,
+        VariantIdx: StableIdx,
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
@@ -1080,8 +1080,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
     fn univariant_biased<
         'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
+        FieldIdx: StableIdx,
+        VariantIdx: StableIdx,
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     >(
         &self,
@@ -1426,8 +1426,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
     fn format_field_niches<
         'a,
-        FieldIdx: Idx,
-        VariantIdx: Idx,
+        FieldIdx: StableIdx,
+        VariantIdx: StableIdx,
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
     >(
         &self,
@@ -1472,8 +1472,8 @@ fn vector_type_layout<FieldIdx, VariantIdx, F>(
     count: u64,
 ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F>
 where
-    FieldIdx: Idx,
-    VariantIdx: Idx,
+    FieldIdx: StableIdx,
+    VariantIdx: StableIdx,
     F: AsRef<LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
 {
     let elt = element.as_ref();

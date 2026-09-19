@@ -3,8 +3,8 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::find_attr;
-use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
+use rustc_index::{IndexVec, StableIdx};
 use rustc_lint_defs::builtin::{UNUSED_ASSIGNMENTS, UNUSED_VARIABLES};
 use rustc_middle::mir::visit::{
     MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
@@ -1284,6 +1284,8 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
 rustc_index::newtype_index! {
     pub struct PlaceIndex {}
 }
+
+impl StableIdx for PlaceIndex {}
 
 impl DebugWithContext<MaybeLivePlaces<'_, '_>> for PlaceIndex {
     fn fmt_with(

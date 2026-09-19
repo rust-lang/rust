@@ -9,7 +9,7 @@
 //! Thomas Lengauer and Robert Endre Tarjan.
 //! <https://www.cs.princeton.edu/courses/archive/spr03/cs423/download/dominators.pdf>
 
-use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec, StableIdx};
 
 use super::ControlFlowGraph;
 
@@ -414,7 +414,7 @@ struct Time {
     finish: u32,
 }
 
-fn compute_access_time<N: Idx>(
+fn compute_access_time<N: StableIdx>(
     start_node: N,
     immediate_dominators: &IndexSlice<N, Option<N>>,
 ) -> IndexVec<N, Time> {

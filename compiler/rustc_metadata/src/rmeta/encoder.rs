@@ -527,7 +527,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     .set(def_id.local_def_index, def_path_hash.local_hash().as_u64());
             }
         } else {
-            for (def_index, def_key, def_path_hash) in defs.enumerated_keys_and_path_hashes() {
+            // FIXME DefIndex must be remapped deterministically when encoding the metadata.
+            // Otherwise, the parallel frontend will not produce reproducible metadata
+            for (def_index, def_key, def_path_hash) in
+                defs.unstable_enumerated_keys_and_path_hashes()
+            {
                 let def_key = self.lazy(def_key);
                 self.tables.def_keys.set_some(def_index, def_key);
                 self.tables.def_path_hashes.set(def_index, def_path_hash.local_hash().as_u64());

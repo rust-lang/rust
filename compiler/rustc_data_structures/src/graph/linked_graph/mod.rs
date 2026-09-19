@@ -23,7 +23,7 @@
 use std::fmt::Debug;
 
 use rustc_index::bit_set::DenseBitSet;
-use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec, StableIdx};
 use tracing::debug;
 
 #[cfg(test)]
@@ -99,6 +99,8 @@ impl Idx for NodeIndex {
         self.0
     }
 }
+
+impl StableIdx for NodeIndex {}
 
 impl<N: Debug, E: Debug> LinkedGraph<N, E> {
     pub fn new() -> Self {

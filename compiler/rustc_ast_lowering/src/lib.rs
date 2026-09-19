@@ -609,7 +609,8 @@ fn index_ast<'tcx>(
     let index = indexer.index;
     let resolver = Arc::new(resolver);
     return tcx.arena.alloc_index_slice_from_iter::<LocalDefId, _, _>(
-        index.into_iter().map(|owner| Steal::new((Arc::clone(&resolver), owner))),
+        // Using `unstable_into_iter` is fine here, since `index` was assigned deterministically here
+        index.unstable_into_iter().map(|owner| Steal::new((Arc::clone(&resolver), owner))),
     );
 
     struct Indexer<'s, 'hir> {

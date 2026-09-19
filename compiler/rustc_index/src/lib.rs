@@ -12,7 +12,7 @@ mod idx;
 mod slice;
 mod vec;
 
-pub use idx::{Idx, IntoSliceIdx};
+pub use idx::{Idx, IntoSliceIdx, StableIdx};
 pub use rustc_index_macros::newtype_index;
 pub use slice::IndexSlice;
 #[doc(no_inline)]
