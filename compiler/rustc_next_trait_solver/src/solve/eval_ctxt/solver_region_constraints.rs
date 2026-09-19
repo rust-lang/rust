@@ -8,7 +8,6 @@ use rustc_type_ir::outlives::{Component, push_outlives_components};
 use rustc_type_ir::region_constraint::TransitiveRelationBuilder;
 use rustc_type_ir::region_constraint::{
     And, Assumptions, LeafRegionConstraint, Or, eagerly_handle_placeholders_in_universe,
-    propagate_ambiguity,
 };
 use rustc_type_ir::{
     AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, Region, TypeVisitable, TypeVisitableExt,
@@ -115,17 +114,24 @@ where
     pub(super) fn eagerly_handle_placeholders(&mut self) -> Result<Certainty, NoSolution> {
         let constraint = self.delegate.get_solver_region_constraint();
 
-        let smallest_universe = self.max_input_universe.index();
-        let largest_universe = self.delegate.universe().index();
-        debug!(?smallest_universe, largest_universe);
+        let smallest_universe = self.max_input_universe;
+        let largest_universe = self.delegate.universe();
+        debug!("smallest_universe={smallest_universe:#?}, largest_universe={largest_universe:#?}");
 
-        let constraint = ((smallest_universe + 1)..=largest_universe)
-            .map(|u| UniverseIndex::from_usize(u))
+        if !self
+            .delegate
+            .has_placeholder_assumptions(((smallest_universe + 1)..=largest_universe).into())
+        {
+            return Ok(Certainty::AMBIGUOUS);
+        }
+
+        // Walk around that `Step` trait is nightly only.
+        let constraint = ((smallest_universe.index() + 1)..=largest_universe.index())
+            .map(UniverseIndex::from_usize)
             .rev()
             .fold(constraint, |constraint, u| {
                 eagerly_handle_placeholders_in_universe(&**self.delegate, constraint, u)
             });
-        let constraint = propagate_ambiguity(constraint);
 
         debug!("final constraint={:?}", constraint);
         self.delegate.overwrite_solver_region_constraint(constraint.clone(), self.origin_span);
@@ -164,7 +170,9 @@ where
                 Or::new_leaf(PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r, ()))
             }
             Alias(_, alias) => self.destructure_alias_outlives(*alias, r),
-            UnresolvedInferenceVariable(_) => Or::new_ambig(()),
+            UnresolvedInferenceVariable(_) => {
+                panic!("Shouldn't destructure type outlives when ty vars exist")
+            }
             Param(_) => panic!("Params should have been canonicalized to placeholders"),
             EscapingAlias(components) => self.destructure_components(components, r),
         }

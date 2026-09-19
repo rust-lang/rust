@@ -528,8 +528,7 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
     let constraint =
         pull_region_outlives_constraints_out_of_universe(infcx, constraint, u, &assumptions);
 
-    // 4. force the constraint to ambiguous if it could be `false` in future reruns
-    propagate_ambiguity(constraint)
+    constraint
 }
 
 /// Filter our region constraints to not include constraints between region variables from `u` and
@@ -613,50 +612,6 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
     )
 }
 
-/// Force the whole constraint to be ambiguous if it contains ambiguities which could
-/// have caused the constraint to be `false` if they had been `false` themselves.
-///
-/// For example if we have `'a: 'b AND ambig`  it's possible that if we had more inference
-/// information we could have produced a better region constraint than `ambig`, and that
-/// constraint may then have gone on to be false, at which point we would have `'a: 'b AND false`
-/// causing the whole constraint to be `false`.
-///
-/// If we're not careful we can wind up returning `'a: 'b AND ambig` from passing trait solver
-/// goals and then upon rerunning wind up returning `NoSolution` which would be dubious :3
-///
-/// This is inherently conservative and this method should be called as little as possible as it
-/// can cause us to get ambiguities instead of `NoSolution` (for example if `'a: 'b` is `false`),
-/// which can affect coherence, candidate selection, etc.
-///
-/// FIXME(-Zassumptions-on-binders): this method should probably be trait-solver internal as it only
-/// matters at trait solver query boundaries. We currently call it in more than just that location
-#[instrument(level = "debug", ret)]
-pub fn propagate_ambiguity<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
-    constraint: RegionConstraint<I, S>,
-) -> RegionConstraint<I, S> {
-    if let Some(ambig) = constraint.and_constraint.0.iter().find(|c| c.is_ambig()) {
-        return RegionConstraint::new_leaf(ambig.clone());
-    }
-
-    for and in constraint.or_constraint.0.iter() {
-        // FIXME(-Zassumptions-on-binders): This is overly conservative. If we have:
-        // `'a: 'b OR ambig` we don't necessarily want to propagate ambiguity here
-        // as we might end up with `'a: 'b` being satisfied in which case we unnecessarily
-        // errored here.
-        //
-        // It's fine if the `ambig` wound up being `false` as that wouldn't cause a goal to
-        // become `NoSolution`, it would instead result in us returning the `'a: 'b` constraint
-        // by itself.
-        //
-        // `rust-lang/project-assumptions-on-binders#21`
-        if let Some(ambig) = and.0.iter().find(|c| c.is_ambig()) {
-            return RegionConstraint::new_leaf(ambig.clone());
-        }
-    }
-
-    constraint
-}
-
 /// Handles converting region outlives constraints involving placeholders from `u` into OR constraints
 /// involving regions from smaller universes with known relationships to the placeholder. For example:
 /// ```ignore (not rust)
@@ -685,7 +640,7 @@ fn pull_region_outlives_constraints_out_of_universe<
     infcx: &Infcx,
     constraint: RegionConstraint<I>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> RegionConstraint<I> {
     assert!(max_universe(infcx, constraint.clone()) <= u);
 
@@ -714,14 +669,6 @@ fn pull_region_outlives_constraints_out_of_universe<
                         pulled_constraints.push(Or::new_leaf(c));
                         continue;
                     }
-
-                    let assumptions = match assumptions {
-                        Some(assumptions) => assumptions,
-                        None => {
-                            pulled_constraints.push(Or::new_ambig(()));
-                            continue;
-                        }
-                    };
 
                     let mut candidates = vec![];
 
@@ -837,7 +784,7 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
     infcx: &Infcx,
     constraint: RegionConstraint<I>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> RegionConstraint<I> {
     use LeafRegionConstraint::*;
 
@@ -882,7 +829,7 @@ fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder
     ty: I::Ty,
     region: Region<I>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> Or<I> {
     use LeafRegionConstraint::*;
 
@@ -892,11 +839,6 @@ fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder
     if region_u != u && ty_u != u {
         return Or::new_leaf(PlaceholderTyOutlives(ty, region, ()));
     }
-
-    let assumptions = match assumptions {
-        Some(assumptions) => assumptions,
-        None => return Or::new_ambig(()),
-    };
 
     let mut candidates = vec![];
 
@@ -928,7 +870,7 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
     infcx: &Infcx,
     bound_outlives: Binder<I, (AliasTy<I>, Region<I>)>,
     u: UniverseIndex,
-    assumptions: &Option<Assumptions<I>>,
+    assumptions: &Assumptions<I>,
 ) -> Or<I> {
     use LeafRegionConstraint::*;
 
@@ -977,14 +919,6 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
             candidates.push(Or::new_ambig(()));
         }
     }
-
-    let assumptions = match assumptions {
-        Some(assumptions) => assumptions,
-        None => {
-            candidates.push(Or::new_ambig(()));
-            return candidates.into_iter().fold(Or::new_false(), |acc, c| Or::build_or(acc, c));
-        }
-    };
 
     // Actually look at the assumptions and matching our higher ranked alias outlives goal
     // against potentially higher ranked type outlives assumptions.
@@ -1237,14 +1171,14 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
     {
         self.infcx.enter_forall_with_empty_assumptions(a, |a| {
             let u = self.infcx.universe();
-            self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
+            self.infcx.insert_placeholder_assumptions(u, Assumptions::empty());
             let b = self.infcx.instantiate_binder_with_infer(b);
             self.relate(a, b)
         })?;
 
         self.infcx.enter_forall_with_empty_assumptions(b, |b| {
             let u = self.infcx.universe();
-            self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
+            self.infcx.insert_placeholder_assumptions(u, Assumptions::empty());
             let a = self.infcx.instantiate_binder_with_infer(a);
             self.relate(a, b)
         })?;

@@ -5,7 +5,7 @@ use std::ops::ControlFlow;
 use rustc_macros::StableHash;
 use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::region_constraint::{self, RegionConstraint};
+use rustc_type_ir::region_constraint::RegionConstraint;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{
@@ -1289,13 +1289,19 @@ where
         f: impl FnOnce(&mut Self, T) -> U,
     ) -> U {
         self.delegate.enter_forall_without_assumptions(value, |value| {
+            // Invariant: we shouldn't insert empty assumptions if assumptions computation fails.
+            // When handling placeholder constraints, we rely on vacancies to force ambiguity.
             let u = self.delegate.universe();
-            let assumptions = if self.cx().assumptions_on_binders() {
-                self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)
-            } else {
-                None
-            };
-            self.delegate.insert_placeholder_assumptions(u, assumptions);
+            if self.cx().assumptions_on_binders()
+                && let Some(assumptions) = self.region_assumptions_for_placeholders_in_universe(
+                    value.clone(),
+                    u,
+                    param_env,
+                )
+            {
+                self.delegate.insert_placeholder_assumptions(u, assumptions);
+            }
+
             f(self, value)
         })
     }
@@ -1669,10 +1675,6 @@ where
         let region_constraints = if self.cx().assumptions_on_binders() {
             ExternalRegionConstraints::NextGen(if let Certainty::Yes = certainty {
                 let constraint = self.delegate.get_solver_region_constraint();
-                debug_assert_eq!(
-                    constraint,
-                    region_constraint::propagate_ambiguity(constraint.clone())
-                );
                 constraint
             } else {
                 RegionConstraint::new_true()

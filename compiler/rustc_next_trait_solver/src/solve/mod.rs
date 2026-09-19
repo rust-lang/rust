@@ -92,15 +92,6 @@ where
         let ty::OutlivesClause(ty, lt) = goal.predicate;
         let ty = self.normalize(GoalSource::Misc, goal.param_env, ty::Unnormalized::new_wip(ty))?;
 
-        if self.cx().assumptions_on_binders() {
-            use rustc_type_ir::region_constraint::RegionConstraint;
-
-            let constraint = self.destructure_type_outlives(ty, lt);
-            self.register_solver_region_constraint(RegionConstraint::new_from_or(constraint));
-        } else {
-            self.register_ty_outlives(ty, lt);
-        }
-
         // The normalized type can still contain non-rigid higher ranked aliases if their
         // normalization ends up with ambiguity. Or we have non-rigid aliases inside rigid ones.
         // Infer vars may be resolved to types/consts containing non-rigid aliases later.
@@ -109,6 +100,18 @@ where
         if ty.has_non_region_infer() || ty.has_non_rigid_aliases() {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
         } else {
+            // We drop region constraints in ambiguous response so there's no need to add them in
+            // the ambiguous branch. Also this guarantees we don't have ty vars when destructuring
+            // type outlives.
+            if self.cx().assumptions_on_binders() {
+                use rustc_type_ir::region_constraint::RegionConstraint;
+
+                let constraint = self.destructure_type_outlives(ty, lt);
+                self.register_solver_region_constraint(RegionConstraint::new_from_or(constraint));
+            } else {
+                self.register_ty_outlives(ty, lt);
+            }
+
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         }
     }
