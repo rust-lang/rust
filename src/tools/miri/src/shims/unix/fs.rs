@@ -17,7 +17,7 @@ use crate::shims::FdId;
 use crate::shims::files::{DirHandle, FdNum, FileHandle};
 use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::sig::Varargs;
-use crate::shims::unix::fd::{FlockOp, UnixFileDescription};
+use crate::shims::unix::fd::{EvalContextExt as _, FlockOp, UnixFileDescription};
 use crate::*;
 
 /// An open directory stream, tracked by DirTable.
@@ -1332,6 +1332,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if this.machine.fds.get(open_dir.fd_num).is_none_or(|fd| fd.id() != open_dir.fd_id) {
             throw_ub_format!("the backing FD for this DIR stream has been tampered with");
         }
+        // And close it.
+        this.close(open_dir.fd_num)?;
 
         if let Some(entry) = open_dir.entry.take() {
             this.deallocate_ptr(entry, None, MiriMemoryKind::Runtime.into())?;

@@ -1035,6 +1035,10 @@ fn test_dirfd() {
     check_stat_fields(stat);
 
     errno_check(unsafe { libc::closedir(dir) });
+
+    // `closedir` should also have closed the stream.
+    let err = errno_result(unsafe { libc::close(dirfd) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
 }
 
 /// Check that all common fields of a `stat` struct are initialized.
