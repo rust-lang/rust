@@ -1,4 +1,3 @@
-//~ ERROR overflow evaluating the requirement `for<'a> {closure@$DIR/overflow-during-mono.rs:14:41: 14:44}: FnMut(&'a _)`
 //@ build-fail
 //@ compile-flags: -Zwrite-long-types-to-disk=yes
 
@@ -15,6 +14,7 @@ fn quicksort<It: Clone + Iterator<Item = T>, I: IntoIterator<IntoIter = It>, T: 
             let greater = i.filter(|y| &x <= y);
 
             let mut v = quicksort(less);
+            //~^ ERROR reached the recursion limit while instantiating
             let u = quicksort(greater);
             v.push(x);
             v.extend(u);
