@@ -13,7 +13,7 @@ use std::fmt;
 use std::fmt::Arguments;
 use std::panic::Location;
 
-use rustc_errors::DiagInner;
+use rustc_errors::{DiagInner, DiagLocation, Level};
 use rustc_middle::dep_graph::{QuerySideEffect, TaskDepsRef};
 use rustc_middle::ty::tls;
 use rustc_span::{Span, Symbol};
@@ -86,16 +86,26 @@ fn def_id_debug(def_id: rustc_hir::def_id::DefId, f: &mut fmt::Formatter<'_>) ->
     write!(f, ")")
 }
 
-fn emit_bug_diagnostic(span: Option<Span>, args: Arguments<'_>, location: &Location<'_>) {
+/// Returns true if it printed the diagnostic, which happens if a `tcx` is available.
+fn emit_bug_diagnostic(
+    span: Option<Span>,
+    args: Arguments<'_>,
+    location: &'static Location<'static>,
+) -> bool {
     tls::with_opt(move |tcx| {
         if let Some(tcx) = tcx {
-            let message = format!("{location}: {args}");
+            let mut diag = DiagInner::new(Level::Bug, format!("{location}: {args}"));
             if let Some(span) = span {
-                tcx.dcx().struct_span_bug(span, message)
-            } else {
-                tcx.dcx().struct_bug(message)
+                diag.span = span.into();
             }
-            .emit_producing_nothing();
+            diag.emitted_at = DiagLocation::from_location(location);
+            // Emit the bug without aborting. We let `bug_impl` do the abort because it has
+            // `#[track_caller]` which gives a better location. (`#[track_caller]` doesn't work
+            // here because this function is called via a function pointer.)
+            tcx.dcx().emit_diagnostic(diag);
+            true
+        } else {
+            false
         }
     })
 }

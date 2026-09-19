@@ -1,0 +1,26 @@
+error: internal compiler error: compiler/rustc_mir_transform/src/validate.rs:LL:CC: broken MIR in Item(DefId(0:6 ~ track7[HASH]::main)) (after pass LintAndRemoveUninhabited) at bb0[1]:
+                                encountered `Move` of a non-local, non-box place in `Call` terminator: _0 = bar(move (_1.0: i32)) -> [return: bb1, unwind continue]
+  --> $DIR/track7.rs:LL:CC
+   |
+LL |             Call(RET = bar(Move(a.0)), ReturnTo(retblock), UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: -Ztrack-diagnostics: created at compiler/rustc_mir_transform/src/validate.rs:LL:CC
+
+
+thread 'rustc' ($TID) panicked at compiler/rustc_mir_transform/src/validate.rs:LL:CC:
+Box<dyn Any>
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+note: using internal features is not supported and expected to cause internal compiler errors when used incorrectly
+
+note: rustc $VERSION running on $TARGET
+
+note: compiler flags: ... -Z ui-testing ... -Z track-diagnostics
+
+query stack during panic:
+#0 [mir_built] building MIR for `main`
+#1 [has_ffi_unwind_calls] checking if `main` contains FFI-unwind calls
+... and 3 other queries... use `env RUST_BACKTRACE=1` to see the full query stack
+error: aborting due to 1 previous error
+
