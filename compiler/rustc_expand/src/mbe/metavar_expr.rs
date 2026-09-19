@@ -282,7 +282,7 @@ fn parse_ident_from_token<'psess>(
     let mut err = psess
         .dcx()
         .struct_span_err(token.span, format!("expected identifier, found `{token_str}`"));
-    err.span_suggestion(
+    err.span_suggestion_short(
         token.span,
         format!("try removing `{token_str}`"),
         "",

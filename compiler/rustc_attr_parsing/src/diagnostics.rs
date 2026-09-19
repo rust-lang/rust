@@ -1604,7 +1604,7 @@ impl<'a, G> Diagnostic<'a, G> for AttributeParseError<'_> {
         match &self.reason {
             AttributeParseErrorReason::ExpectedStringLiteral { byte_string } => {
                 if let Some(start_point_span) = byte_string {
-                    diag.span_suggestion(
+                    diag.span_suggestion_short(
                         *start_point_span,
                         "consider removing the prefix",
                         "",

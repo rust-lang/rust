@@ -360,7 +360,7 @@ impl Subdiagnostic for TypeMismatchFruTypo {
             );
         }
 
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             self.expr_span.shrink_to_hi(),
             msg!(
                 "to set the remaining fields{$expr ->
@@ -718,7 +718,7 @@ impl<'a, G> Diagnostic<'_, G> for BreakNonLoop<'a> {
         if let Some(head) = self.head {
             diag.span_label(head, msg!("you can't `break` with a value in a `{$kind}` loop"));
         }
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             self.span,
             msg!("use `break` on its own without a value inside this `{$kind}` loop"),
             self.suggestion,
@@ -736,7 +736,7 @@ impl<'a, G> Diagnostic<'_, G> for BreakNonLoop<'a> {
                     diag.downgrade_to_delayed_bug();
                 }
                 _ => {
-                    diag.span_suggestion(
+                    diag.span_suggestion_verbose(
                         self.break_expr_span,
                         msg!("alternatively, you might have meant to use the available loop label"),
                         label.ident,
@@ -1249,7 +1249,7 @@ pub(crate) fn maybe_emit_plus_equals_diagnostic<'a>(
 
         err.span_label(assign_op.span, "cannot use `+=` in a let chain");
 
-        err.span_suggestion(
+        err.span_suggestion_short(
             assign_op.span,
             "you might have meant to compare with `==` instead of assigning with `+=`",
             "==",

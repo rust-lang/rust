@@ -1717,7 +1717,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span,
                 StashKey::UnderscoreForArrayLengths,
                 |err| {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         span,
                         "consider specifying the array length",
                         array_len,

@@ -1653,7 +1653,7 @@ impl<'a> Diagnostic<'a, ()> for NonFmtPanicUnused {
             .with_arg("count", self.count)
             .with_note(msg!("this message is not used as a format string when given without arguments, but will be in Rust 2021"));
         if let Some(span) = self.suggestion {
-            diag.span_suggestion(
+            diag.span_suggestion_verbose(
                 span.shrink_to_hi(),
                 msg!(
                     "add the missing {$count ->
@@ -1664,7 +1664,7 @@ impl<'a> Diagnostic<'a, ()> for NonFmtPanicUnused {
                 ", ...",
                 Applicability::HasPlaceholders,
             );
-            diag.span_suggestion(
+            diag.span_suggestion_verbose(
                 span.shrink_to_lo(),
                 msg!(r#"or add a "{"{"}{"}"}" format string to use the message literally"#),
                 "\"{}\", ",

@@ -1458,7 +1458,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     self.dcx(),
                     span,
                     E0741,
-                    "`{ty_str}` must implement `ConstParamTy` to be used as the type of a const generic parameter",
+                    "`{ty_str}` must implement `ConstParamTy` to be used as the type of a const \
+                     generic parameter",
                 );
                 // Only suggest derive if this isn't a derived obligation,
                 // and the struct is local.
@@ -1466,7 +1467,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && obligation.cause.code().parent().is_none()
                 {
                     if ty.is_structural_eq_shallow(self.tcx) {
-                        diag.span_suggestion(
+                        diag.span_suggestion_verbose(
                             span.shrink_to_lo(),
                             format!("add `#[derive(ConstParamTy)]` to the {}", def.descr()),
                             "#[derive(ConstParamTy)]\n",
@@ -1475,7 +1476,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     } else {
                         // FIXME(adt_const_params): We should check there's not already an
                         // overlapping `Eq`/`PartialEq` impl.
-                        diag.span_suggestion(
+                        diag.span_suggestion_verbose(
                             span.shrink_to_lo(),
                             format!(
                                 "add `#[derive(ConstParamTy, PartialEq, Eq)]` to the {}",

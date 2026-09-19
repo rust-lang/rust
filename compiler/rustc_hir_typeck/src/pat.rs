@@ -2646,7 +2646,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         };
-        err.span_suggestion(
+        err.span_suggestion_verbose(
             sp,
             format!(
                 "include the missing field{} in the pattern{}",
@@ -2669,7 +2669,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
             Applicability::MachineApplicable,
         );
-        err.span_suggestion(
+        err.span_suggestion_verbose(
             sp,
             format!(
                 "if you don't care about {these} missing field{s}, you can explicitly ignore {them}",
@@ -2693,7 +2693,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
             Applicability::MachineApplicable,
         );
-        err.span_suggestion(
+        err.span_suggestion_verbose(
             sp,
             "or always ignore missing fields here",
             format!("{prefix}..{postfix}"),
