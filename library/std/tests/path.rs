@@ -2505,9 +2505,11 @@ fn normalize_lexically() {
         assert_eq!(Path::new(a).normalize_lexically().unwrap(), PathBuf::from(b));
     }
 
+    // On error, the partially-normalized path (leading `..` preserved) is returned.
     #[track_caller]
-    fn check_err(a: &str) {
-        assert!(Path::new(a).normalize_lexically().is_err());
+    fn check_err(a: &str, partial: &str) {
+        let err = Path::new(a).normalize_lexically().unwrap_err();
+        assert_eq!(err.into_partial(), PathBuf::from(partial));
     }
 
     // Relative paths
@@ -2519,35 +2521,50 @@ fn normalize_lexically() {
     check_ok("./a/b", "./a/b");
     check_ok("a/../b/c/..", "b");
 
-    check_err("..");
-    check_err("../..");
-    check_err("a/../..");
-    check_err("a/../../b");
-    check_err("a/../../b/c");
-    check_err("a/../b/../..");
+    // Escaping paths return an error carrying the partial normalization.
+    check_err("..", "..");
+    check_err("../..", "../..");
+    check_err("a/../..", "..");
+    check_err("a/../../b", "../b");
+    check_err("a/../../b/c", "../b/c");
+    check_err("a/../b/../..", "..");
+    check_err("../a/b/../c", "../a/c");
+    check_err("./..", "..");
+    check_err("./../a", "../a");
+    check_err("./a/../..", "..");
 
-    // Check we don't escape the root or prefix
+    // Absolute paths pin `..` at the root rather than escaping it.
     #[cfg(unix)]
     {
-        check_err("/..");
-        check_err("/a/../..");
+        check_ok("/..", "/");
+        check_ok("/a/../..", "/");
+        check_ok("/../a", "/a");
+        // Pinning composes with later components: `..` stops at root, then `c` is appended.
+        check_ok("/a/b/../../../c", "/c");
     }
     #[cfg(windows)]
     {
-        check_err(r"C:\..");
-        check_err(r"C:\a\..\..");
+        check_ok(r"C:\..", r"C:\");
+        check_ok(r"C:\a\..\..", r"C:\");
 
-        check_err(r"C:..");
-        check_err(r"C:a\..\..");
+        check_ok(r"\\server\share\..", r"\\server\share\");
+        check_ok(r"\\server\share\a\..\..", r"\\server\share\");
 
-        check_err(r"\\server\share\..");
-        check_err(r"\\server\share\a\..\..");
+        check_ok(r"\..", r"\");
+        check_ok(r"\a\..\..", r"\");
 
-        check_err(r"\..");
-        check_err(r"\a\..\..");
+        check_ok(r"\\?\UNC\server\share\..", r"\\?\UNC\server\share\");
+        check_ok(r"\\?\UNC\server\share\a\..\..", r"\\?\UNC\server\share\");
 
-        check_err(r"\\?\UNC\server\share\..");
-        check_err(r"\\?\UNC\server\share\a\..\..");
+        // Verbatim disk prefix: `..` pins to the verbatim root.
+        check_ok(r"\\?\C:\..", r"\\?\C:\");
+        check_ok(r"\\?\C:\a\..\..", r"\\?\C:\");
+
+        // Drive-relative paths (no `RootDir`) are not absolute, so `..` above
+        // the prefix still escapes the base directory and is an error. The partial
+        // keeps the escaping `..` after the drive prefix (no separator is inserted).
+        check_err(r"C:..", r"C:..");
+        check_err(r"C:a\..\..", r"C:..");
     }
 }
 
