@@ -75,7 +75,9 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
         | ty::PredicateKind::Ambiguous => {
             FulfillmentErrorCode::Select(SelectionError::Unimplemented)
         }
-        ty::PredicateKind::ConstEquate(..) | ty::PredicateKind::NormalizesTo(..) => {
+        ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::NormalizesTo(..)
+        | ty::PredicateKind::BoundFromClause(..) => {
             bug!("unexpected goal: {obligation:?}")
         }
     };

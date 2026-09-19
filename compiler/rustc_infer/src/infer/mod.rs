@@ -1607,15 +1607,34 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow().solver_region_constraint_storage.get_constraint()
     }
 
+    pub fn get_solver_region_constraints(&self) -> Vec<SolverRegionConstraint<'tcx>> {
+        self.inner.borrow().solver_region_constraint_storage.constraints().to_vec()
+    }
+
+    pub fn has_solver_region_constraints(&self) -> bool {
+        !self.inner.borrow().solver_region_constraint_storage.constraints().is_empty()
+    }
+
+    pub fn take_solver_region_constraints(&self) -> Vec<SolverRegionConstraint<'tcx>> {
+        let mut inner = self.inner.borrow_mut();
+        let constraints = inner.solver_region_constraint_storage.take();
+        inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraints {
+            old_constraints: constraints.clone(),
+        });
+        constraints
+    }
+
     pub fn overwrite_solver_region_constraint(&self, constraint: SolverRegionConstraint<'tcx>) {
         assert!(
             !constraint.has_escaping_bound_vars(),
             "solver region constraint has escaping bound vars, which is indicative of a bug in how constraints are handled: {constraint:?}",
         );
         let mut inner = self.inner.borrow_mut();
-        let old_constraint = inner.solver_region_constraint_storage.get_constraint();
-        inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });
-        inner.solver_region_constraint_storage.overwrite(constraint);
+        let old_constraints = inner.solver_region_constraint_storage.take();
+        inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraints { old_constraints });
+        if !constraint.is_true() {
+            inner.solver_region_constraint_storage.push(constraint);
+        }
     }
 
     /// See the [`region_constraints::RegionConstraintCollector::verify_generic_bound`] method.

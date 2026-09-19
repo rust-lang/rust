@@ -1,0 +1,72 @@
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-nested-equalities-reject.rs:89:13
+   |
+LL |     move || Box::new(value)
+   |             ^^^^^^^^^^^^^^^
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-nested-equalities-reject.rs:17:5
+   |
+LL |     Box::new(value)
+   |     ^^^^^^^^^^^^^^^
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-nested-equalities-reject.rs:30:5
+   |
+LL |     Box::new(value)
+   |     ^^^^^^^^^^^^^^^
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-nested-equalities-reject.rs:39:5
+   |
+LL |     Box::new(value)
+   |     ^^^^^^^^^^^^^^^
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/projected-callable-nested-equalities-reject.rs:48:5
+   |
+LL | fn unrelated<C: Other<U, Assoc = T>, T, U>(value: T) -> Box<dyn std::any::Any> {
+   |                                                             ----------------- this `dyn Trait` has an implicit `'static` lifetime bound
+LL |     Box::new(value)
+   |     ^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `T` must be valid for the static lifetime...
+   |     ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn unrelated<C: Other<U, Assoc = T>, T: 'static, U>(value: T) -> Box<dyn std::any::Any> {
+   |                                       +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/projected-callable-nested-equalities-reject.rs:48:5
+   |
+LL | fn unrelated<C: Other<U, Assoc = T>, T, U>(value: T) -> Box<dyn std::any::Any> {
+   |                                                             ----------------- this `dyn Trait` has an implicit `'static` lifetime bound
+LL |     Box::new(value)
+   |     ^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `T` must be valid for the static lifetime...
+   |     ...so that the type `T` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL | fn unrelated<C: Other<U, Assoc = T>, T: 'static, U>(value: T) -> Box<dyn std::any::Any> {
+   |                                       +++++++++
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-nested-equalities-reject.rs:64:5
+   |
+LL |     Box::new(value)
+   |     ^^^^^^^^^^^^^^^
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-nested-equalities-reject.rs:77:5
+   |
+LL |     Box::new(value)
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0310`.

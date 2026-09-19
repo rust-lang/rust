@@ -290,7 +290,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
     match self_ty.kind() {
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
         ty::FnDef(def_id, args) => {
-            let sig = cx.fn_sig(def_id);
+            let sig = cx.fn_sig_for_fn_traits(def_id);
             if sig.skip_binder().is_fn_trait_compatible() && !cx.has_target_features(def_id) {
                 Ok(Some(
                     sig.instantiate(cx, args.no_bound_vars().unwrap())
@@ -493,8 +493,11 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
             ))
         }
 
-        ty::FnDef(def_id, _) => {
-            let sig = self_ty.fn_sig(cx);
+        ty::FnDef(def_id, args) => {
+            let sig = cx
+                .fn_sig_for_fn_traits(def_id)
+                .instantiate(cx, args.no_bound_vars().unwrap())
+                .skip_norm_wip();
             if sig.is_fn_trait_compatible() && !cx.has_target_features(def_id) {
                 fn_item_to_async_callable(cx, sig)
             } else {
@@ -696,7 +699,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
             // FIXME
             let args = args.no_bound_vars().unwrap();
 
-            let sig = cx.fn_sig(def_id);
+            let sig = cx.fn_sig_for_fn_traits(def_id);
             if sig.skip_binder().is_fn_trait_compatible()
                 && !cx.has_target_features(def_id)
                 && cx.fn_is_const(def_id)

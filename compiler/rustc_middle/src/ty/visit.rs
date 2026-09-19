@@ -1,3 +1,5 @@
+mod output_dependency;
+
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxIndexSet;

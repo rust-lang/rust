@@ -57,6 +57,8 @@ where
 
     fn trait_def_id(self, cx: I) -> I::TraitId;
 
+    fn as_predicate(self, cx: I) -> I::Predicate;
+
     /// Consider a clause, which consists of a "assumption" and some "requirements",
     /// to satisfy a goal. If the requirements hold, then attempt to satisfy our
     /// goal by equating it with the assumption.
@@ -518,6 +520,11 @@ where
         match assemble_from {
             AssembleCandidatesFrom::All => {
                 self.assemble_builtin_impl_candidates(goal, &mut candidates)?;
+                let abstract_self =
+                    matches!(normalized_self_ty.kind(), ty::Alias(..) | ty::Placeholder(..));
+                if abstract_self {
+                    self.assemble_declaration_candidates(goal, &mut candidates)?;
+                }
                 // For performance we only assemble impls if there are no candidates
                 // which would shadow them. This is necessary to avoid hangs in rayon,
                 // see trait-system-refactor-initiative#109 for more details.
@@ -549,8 +556,12 @@ where
                     self.assemble_impl_candidates(goal, &mut candidates)?;
                     self.assemble_object_bound_candidates(goal, &mut candidates);
                 }
+                if !abstract_self {
+                    self.assemble_declaration_candidates(goal, &mut candidates)?;
+                }
             }
             AssembleCandidatesFrom::EnvAndBounds => {
+                self.assemble_declaration_candidates(goal, &mut candidates)?;
                 // This is somewhat inconsistent and may make #57893 slightly easier to exploit.
                 // However, it matches the behavior of the old solver. See
                 // `tests/ui/traits/next-solver/normalization-shadowing/use_object_if_empty_env.rs`.

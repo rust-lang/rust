@@ -358,7 +358,7 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> And<I, S> {
     }
 }
 
-#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, S)]
+#[derive_where(Clone, Hash, PartialEq, Eq, Debug; I: Interner, S)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 /// An `And` and an `Or` constraint both in canonical forms, with two additional constraints:
@@ -707,6 +707,11 @@ fn pull_region_outlives_constraints_out_of_universe<
                     pulled_constraints.push(Or::new_leaf(c.clone()));
                 }
                 RegionOutlives(region_1, region_2, ()) => {
+                    // Eliminating an existential can leave a reflexive edge
+                    // on a placeholder. It holds without any binder assumption.
+                    if region_1 == region_2 {
+                        continue;
+                    }
                     let region_1_u = max_universe(infcx, region_1);
                     let region_2_u = max_universe(infcx, region_2);
 

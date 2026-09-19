@@ -1,0 +1,33 @@
+error[E0581]: return type references lifetime `'a`, which is not constrained by the fn input types
+  --> $DIR/unconstrained-late-bound-regions.rs:12:47
+   |
+LL | type FnPtr0 = for<'a> fn(NotInjective<'a>) -> &'a ();
+   |                                               ^^^^^^
+
+error[E0277]: expected an `Fn()` closure, found `()`
+  --> $DIR/unconstrained-late-bound-regions.rs:14:57
+   |
+LL | type FnPtr1 = for<'a> fn(NotInjectiveEither<'a, ()>) -> NotInjectiveEither<'a, ()>;
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected an `Fn()` closure, found `()`
+   |
+   = help: the trait `Fn()` is not implemented for `()`
+   = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `NotInjectiveEither`
+  --> $DIR/unconstrained-late-bound-regions.rs:25:15
+   |
+LL | type NotInjectiveEither<'a, Linchpin> = Linchpin
+   |      ------------------ required by a bound in this type alias
+LL | where
+LL |     Linchpin: Fn() -> &'a ();
+   |               ^^^^^^^^^^^^^^ required by this bound in `NotInjectiveEither`
+
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/unconstrained-late-bound-regions.rs:17:50
+   |
+LL | type DynCl = dyn for<'a> Fn(NotInjective<'a>) -> &'a ();
+   |                                                  ^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0581, E0582.
+For more information about an error, try `rustc --explain E0277`.

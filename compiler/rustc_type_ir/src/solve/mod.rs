@@ -612,6 +612,10 @@ impl<I: Interner> Eq for Response<I> {}
 pub enum ExternalRegionConstraints<I: Interner> {
     /// normal region constraints used on stable/when -Znext-solver is used by itself
     Old(Vec<(ty::RegionConstraint<I>, VisibleForLeakCheck)>),
+    Combined {
+        constraints: Vec<(ty::RegionConstraint<I>, VisibleForLeakCheck)>,
+        solver_constraints: RegionConstraint<I>,
+    },
     /// new form of region constraints used when `-Zassumptions-on-binders` is enabled.
     /// supports ORs.
     NextGen(RegionConstraint<I>),
@@ -621,6 +625,9 @@ impl<I: Interner> ExternalRegionConstraints<I> {
     pub fn is_empty(&self) -> bool {
         match self {
             Self::Old(r) => r.is_empty(),
+            Self::Combined { constraints, solver_constraints } => {
+                constraints.is_empty() && solver_constraints.is_true()
+            }
             Self::NextGen(r) => r.is_true(),
         }
     }

@@ -1,0 +1,35 @@
+error[E0277]: expected an `FnOnce(_)` closure, found `unsafe fn(u32) -> u32 {unsafe_identity}`
+  --> $DIR/builtin-callable-output-reject.rs:41:20
+   |
+LL |     let _ = invoke(unsafe_identity, 1);
+   |             ------ ^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |             |
+   |             required by a bound introduced by this call
+   |
+   = help: the trait `FnOnce(_)` is not implemented for fn item `unsafe fn(u32) -> u32 {unsafe_identity}`
+   = note: unsafe function cannot be called generically without an unsafe block
+note: required by a bound in `invoke`
+  --> $DIR/builtin-callable-output-reject.rs:6:20
+   |
+LL | fn invoke<A, R, F: FnOnce(A) -> R>(f: F, arg: A) -> R {
+   |                    ^^^^^^^^^^^^^^ required by this bound in `invoke`
+
+error[E0277]: expected an `FnOnce(_)` closure, found `unsafe fn(u32) -> u32`
+  --> $DIR/builtin-callable-output-reject.rs:44:20
+   |
+LL |     let _ = invoke(pointer, 1);
+   |             ------ ^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |             |
+   |             required by a bound introduced by this call
+   |
+   = help: the trait `FnOnce(_)` is not implemented for `unsafe fn(u32) -> u32`
+   = note: unsafe function cannot be called generically without an unsafe block
+note: required by a bound in `invoke`
+  --> $DIR/builtin-callable-output-reject.rs:6:20
+   |
+LL | fn invoke<A, R, F: FnOnce(A) -> R>(f: F, arg: A) -> R {
+   |                    ^^^^^^^^^^^^^^ required by this bound in `invoke`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

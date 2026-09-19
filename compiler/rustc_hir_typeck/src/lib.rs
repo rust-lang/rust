@@ -258,6 +258,17 @@ fn typeck_with_inspect<'tcx>(
         fcx.handle_opaque_type_uses_next();
     }
 
+    if !fcx.deferred_late_bound_region_checks.borrow().is_empty() {
+        let param_env = rustc_trait_selection::traits::bound_regions::output_dependency_param_env(
+            tcx,
+            def_id.to_def_id(),
+        );
+        for mut check in fcx.deferred_late_bound_region_checks.borrow_mut().drain(..) {
+            check.dependency = fcx.deeply_resolve_ignoring_regions(check.dependency);
+            check.check(tcx, def_id, param_env);
+        }
+    }
+
     // This must be the last thing before `report_ambiguity_errors` below except `select_obligations_where_possible`.
     // So don't put anything after this.
     fcx.drain_stalled_coroutine_obligations();

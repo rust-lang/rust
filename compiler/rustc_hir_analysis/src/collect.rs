@@ -711,6 +711,14 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         None
     }
 
+    fn defer_late_bound_region_check(
+        &self,
+        _check: crate::hir_ty_lowering::bound_regions::LateBoundRegionCheck<'tcx>,
+    ) {
+        // The item well-formedness pass checks the completed types and clauses.
+        // Querying the parameter environment while lowering them would cycle.
+    }
+
     fn lower_fn_sig(
         &self,
         decl: &hir::FnDecl<'_>,

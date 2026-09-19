@@ -211,6 +211,9 @@ pub struct ClosureRegionRequirements<'tcx> {
     /// Requirements between the various free regions defined in
     /// indices.
     pub outlives_requirements: Vec<ClosureOutlivesRequirement<'tcx>>,
+
+    /// Each group requires one of its alternative conjunctions to hold.
+    pub(crate) outlives_alternatives: Vec<Vec<Vec<ClosureOutlivesRequirement<'tcx>>>>,
 }
 
 /// Indicates an outlives-constraint between a type or between two
@@ -407,15 +410,21 @@ fn borrowck_check_region_constraints<'diag, 'tcx>(
         location_table,
         location_map,
         universal_region_relations,
-        region_bound_pairs: _,
-        known_type_outlives_obligations: _,
-        constraints,
+        region_bound_pairs,
+        known_type_outlives_obligations,
+        mut constraints,
         deferred_closure_requirements,
         deferred_opaque_type_errors,
         polonius_facts,
         polonius_context,
     }: CollectRegionConstraintsResult<'tcx>,
 ) -> PropagatedBorrowCheckResults<'tcx> {
+    constraints.flush_solver_region_constraints(
+        &infcx,
+        &universal_region_relations,
+        &region_bound_pairs,
+        &known_type_outlives_obligations,
+    );
     assert!(!infcx.has_opaque_types_in_storage());
     assert!(deferred_closure_requirements.is_empty());
     let tcx = root_cx.tcx;

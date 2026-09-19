@@ -9,7 +9,7 @@ use rustc_type_ir::solve::{
     AliasBoundKind, NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased, RerunNonErased,
     SizedTraitKind,
 };
-use rustc_type_ir::{self as ty, Interner, Unnormalized, elaborate};
+use rustc_type_ir::{self as ty, Interner, Unnormalized, Upcast as _, elaborate};
 use tracing::instrument;
 
 use super::assembly::{Candidate, structural_traits};
@@ -37,6 +37,10 @@ where
 
     fn trait_def_id(self, _: I) -> I::TraitId {
         self.def_id()
+    }
+
+    fn as_predicate(self, cx: I) -> I::Predicate {
+        ty::ClauseKind::HostEffect(self).upcast(cx)
     }
 
     fn fast_reject_assumption(

@@ -103,6 +103,9 @@ pub enum PredicateKind<I: Interner> {
     /// It is likely more useful to think of this as a function `normalizes_to(alias)`,
     /// whose return value is written into `term`.
     NormalizesTo(ty::NormalizesTo<I>),
+
+    /// Prove a predicate using an established clause and its declaration requirements.
+    BoundFromClause(I::Clause, I::Predicate),
 }
 
 impl<I: Interner> Eq for PredicateKind<I> {}
@@ -139,6 +142,9 @@ impl<I: Interner> fmt::Debug for PredicateKind<I> {
             PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({c1:?}, {c2:?})"),
             PredicateKind::Ambiguous => write!(f, "Ambiguous"),
             PredicateKind::NormalizesTo(p) => p.fmt(f),
+            PredicateKind::BoundFromClause(alias, predicate) => {
+                write!(f, "BoundFromClause({alias:?}, {predicate:?})")
+            }
         }
     }
 }

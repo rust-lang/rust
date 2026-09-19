@@ -1,0 +1,19 @@
+error: lifetime may not live long enough
+  --> $DIR/builtin-callable-output-reject.rs:25:5
+   |
+LL | fn escaping_item(value: &u32) -> &'static u32 {
+   |                         - let's call the lifetime of this reference `'1`
+LL |     invoke(borrow, value)
+   |     ^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/builtin-callable-output-reject.rs:32:5
+   |
+LL | fn escaping_pointer(value: &u32) -> &'static u32 {
+   |                            - let's call the lifetime of this reference `'1`
+LL |     let pointer: for<'a> fn(&'a u32) -> &'a u32 = borrow;
+LL |     invoke(pointer, value)
+   |     ^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
+
+error: aborting due to 2 previous errors
+

@@ -151,9 +151,17 @@ where
                 Ok(output)
             })?;
         output.error_info = error_info;
-        if let Some(QueryRegionConstraints { constraints, assumptions }) = output.constraints {
+        if let Some(QueryRegionConstraints {
+            constraints,
+            assumptions,
+            solver_region_constraints,
+        }) = output.constraints
+        {
             region_constraints.constraints.extend(constraints.iter().cloned());
             region_constraints.assumptions.extend(assumptions.iter().cloned());
+            region_constraints
+                .solver_region_constraints
+                .extend(solver_region_constraints.iter().cloned());
         }
         output.constraints = if region_constraints.is_empty() {
             None

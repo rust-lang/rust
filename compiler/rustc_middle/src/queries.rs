@@ -1201,6 +1201,14 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// The callable signature used for builtin `Fn` implementations and function
+    /// pointer coercions. The declaration's explicit lifetime arguments are
+    /// still described by `fn_sig`.
+    query fn_sig_for_fn_traits(key: DefId) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
+        desc { "computing callable signature of `{}`", tcx.def_path_str(key) }
+        cache_on_disk
+    }
+
     /// Performs lint checking for the module.
     query lint_mod(key: LocalModId) {
         desc { "linting {}", describe_as_module(key, tcx) }

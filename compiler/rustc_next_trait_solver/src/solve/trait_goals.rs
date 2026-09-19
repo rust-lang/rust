@@ -49,6 +49,10 @@ where
         self.def_id()
     }
 
+    fn as_predicate(self, cx: I) -> I::Predicate {
+        self.upcast(cx)
+    }
+
     fn consider_additional_alias_assumptions(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,

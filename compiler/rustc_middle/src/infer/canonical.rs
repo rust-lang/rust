@@ -26,6 +26,7 @@ use std::collections::hash_map::Entry;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{StableHash, TypeFoldable, TypeVisitable};
+use rustc_span::Span;
 pub use rustc_type_ir as ir;
 use smallvec::SmallVec;
 
@@ -71,6 +72,7 @@ impl<'tcx> Default for OriginalQueryValues<'tcx> {
 pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
     pub region_constraints: QueryRegionConstraints<'tcx>,
+    pub solver_region_constraints: Vec<ir::region_constraint::RegionConstraint<TyCtxt<'tcx>, Span>>,
     pub certainty: Certainty,
     pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
     pub value: R,
@@ -81,6 +83,7 @@ pub struct QueryResponse<'tcx, R> {
 pub struct QueryRegionConstraints<'tcx> {
     pub constraints: Vec<QueryRegionConstraint<'tcx>>,
     pub assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
+    pub solver_region_constraints: Vec<ir::region_constraint::RegionConstraint<TyCtxt<'tcx>, Span>>,
 }
 
 impl QueryRegionConstraints<'_> {
@@ -91,8 +94,8 @@ impl QueryRegionConstraints<'_> {
     /// discharge a requirement from another query, which is a potential problem if we did throw
     /// away these assumptions because there were no constraints.
     pub fn is_empty(&self) -> bool {
-        let QueryRegionConstraints { constraints, assumptions } = self;
-        constraints.is_empty() && assumptions.is_empty()
+        let QueryRegionConstraints { constraints, assumptions, solver_region_constraints } = self;
+        constraints.is_empty() && assumptions.is_empty() && solver_region_constraints.is_empty()
     }
 }
 
