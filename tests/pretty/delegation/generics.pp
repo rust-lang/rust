@@ -10,8 +10,8 @@ use ::std::prelude::rust_2015::*;
 
 mod free_to_trait {
     trait Trait<'a, XX, Y, T = (), const N: usize = 2> {
-        fn method<A, B>(&self, t: (T, A, B), slice: &'_ [usize; N]) { }
-        fn r#static<A, B>(t: (T, A, B), slice: &'_ [usize; N]) { }
+        fn method<A, B>(&self, t: (T, A, B), slice: &[usize; N]) { }
+        fn r#static<A, B>(t: (T, A, B), slice: &[usize; N]) { }
     }
 
     struct X;
@@ -108,8 +108,8 @@ mod free_to_trait {
 
 mod trait_impl_to_trait {
     trait Trait<'a, X, Y, T = (), const N: usize = 2> {
-        fn foo(&self, t: (T, T, T), slice: &'_ [usize; N]) { }
-        fn bar(&self, t: (T, T, T), slice: &'_ [usize; N]) { }
+        fn foo(&self, t: (T, T, T), slice: &[usize; N]) { }
+        fn bar(&self, t: (T, T, T), slice: &[usize; N]) { }
     }
 
     struct S;
