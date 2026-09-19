@@ -3,17 +3,10 @@ mod strategy {
     mod grisu;
 }
 
-use core::num::imp::flt2dec::{DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS, decode};
+use core::num::imp::flt2dec::{MAX_SIG_DIGITS, decode};
 use std::io::Write;
 
 use test::{Bencher, black_box};
-
-pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
-    match decode(v).1 {
-        FullDecoded::Finite(decoded) => decoded,
-        full_decoded => panic!("expected finite, got {full_decoded:?} instead"),
-    }
-}
 
 #[bench]
 fn bench_small_shortest(b: &mut Bencher) {
