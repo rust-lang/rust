@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::fmt;
 
 use askama::Template;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefIdMap, DefIdSet};
 use rustc_middle::ty::TyCtxt;
@@ -442,7 +442,7 @@ fn sidebar_assoc_items<'a>(
     let mut assoc_fns = Vec::new();
     let mut methods = Vec::new();
     if let Some(v) = cache.impls.get(&did) {
-        let mut used_links = FxHashSet::default();
+        let mut used_links = UsedLinks::default();
         let mut id_map = IdMap::new();
 
         {
@@ -524,7 +524,7 @@ fn sidebar_deref_methods<'a>(
     impl_: &Impl,
     v: &[Impl],
     derefs: &mut DefIdSet,
-    used_links: &mut FxHashSet<String>,
+    used_links: &mut UsedLinks,
     deref_id_map: &'a DefIdMap<String>,
 ) {
     let c = cx.cache();
@@ -745,15 +745,26 @@ fn sidebar_render_assoc_items(
     ]);
 }
 
-fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
-    if used_links.insert(url.clone()) {
+/// Tracks sidebar link anchors so duplicates get unique names.
+#[derive(Default)]
+struct UsedLinks {
+    links: FxHashSet<String>,
+    /// Next number to try for each anchor.
+    next_suffix: FxHashMap<String, usize>,
+}
+
+fn get_next_url(used_links: &mut UsedLinks, url: String) -> String {
+    if used_links.links.insert(url.clone()) {
         return url;
     }
-    let mut add = 1;
-    while !used_links.insert(format!("{url}-{add}")) {
-        add += 1;
+    let add = used_links.next_suffix.entry(url.clone()).or_insert(1);
+    loop {
+        let candidate = format!("{url}-{add}");
+        *add += 1;
+        if used_links.links.insert(candidate.clone()) {
+            return candidate;
+        }
     }
-    format!("{url}-{add}")
 }
 
 enum GetMethodsMode<'r, 'l> {
@@ -764,7 +775,7 @@ enum GetMethodsMode<'r, 'l> {
 fn get_methods<'a>(
     i: &'a clean::Impl,
     mut mode: GetMethodsMode<'_, 'a>,
-    used_links: &mut FxHashSet<String>,
+    used_links: &mut UsedLinks,
     tcx: TyCtxt<'_>,
 ) -> impl Iterator<Item = Link<'a>> {
     i.items.iter().filter_map(move |item| {
@@ -802,7 +813,7 @@ fn get_methods<'a>(
 
 fn get_associated_constants<'a>(
     i: &'a clean::Impl,
-    used_links: &mut FxHashSet<String>,
+    used_links: &mut UsedLinks,
 ) -> impl Iterator<Item = Link<'a>> {
     i.items.iter().filter_map(|item| {
         if let Some(ref name) = item.name
@@ -820,7 +831,7 @@ fn get_associated_constants<'a>(
 
 fn get_associated_types<'a>(
     i: &'a clean::Impl,
-    used_links: &mut FxHashSet<String>,
+    used_links: &mut UsedLinks,
 ) -> impl Iterator<Item = Link<'a>> {
     i.items.iter().filter_map(|item| {
         if let Some(ref name) = item.name
