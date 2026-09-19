@@ -18,13 +18,13 @@ pub(crate) fn expand_deriving_partial_eq(
 ) {
     let structural_trait_def = TraitDef {
         span,
-        path: path_std!(marker::StructuralPartialEq),
+        path: path_std!(cx, span, marker::StructuralPartialEq),
         skip_path_as_bound: true, // crucial!
         needs_copy_as_bound_if_packed: false,
         // The `StructuralPartialEq` impl must have the *same* bounds as the `PartialEq` impl,
         // or it will apply in situations where it should not, such as in the bug
         // <https://github.com/rust-lang/rust/issues/147714>.
-        additional_bounds: smallvec![path_std!(cmp::PartialEq)],
+        additional_bounds: smallvec![path_std!(cx, span, cmp::PartialEq)],
         // We really don't support unions, but that's already checked by the impl generated below;
         // a second check here would lead to redundant error messages.
         supports_unions: true,
@@ -51,7 +51,7 @@ pub(crate) fn expand_deriving_partial_eq(
 
     let trait_def = TraitDef {
         span,
-        path: path_std!(cmp::PartialEq),
+        path: path_std!(cx, span, cmp::PartialEq),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),

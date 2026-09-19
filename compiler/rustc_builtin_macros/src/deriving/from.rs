@@ -5,7 +5,7 @@ use rustc_expand::base::{DummyResult, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
-use crate::deriving::generic::ty::{Path, Ty};
+use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::pathvec;
 use crate::diagnostics;
@@ -52,7 +52,7 @@ pub(crate) fn expand_deriving_from(
         Err(guar) => cx.ty(span, ast::TyKind::Err(guar)),
     });
 
-    let path = Path::new_(pathvec!(convert::From), vec![Box::new(from_type.clone())]);
+    let path = new_path(cx, span, pathvec!(convert::From), &[Box::new(from_type.clone())]);
 
     // Generate code like this:
     //

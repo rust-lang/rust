@@ -50,7 +50,7 @@ pub(crate) fn expand_deriving_clone(
             }
         }
         ItemKind::Union(..) => {
-            bounds = smallvec![path_std!(marker::Copy)];
+            bounds = smallvec![path_std!(cx, span, marker::Copy)];
             is_simple = true;
             substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, true));
         }
@@ -62,7 +62,7 @@ pub(crate) fn expand_deriving_clone(
     if is_simple {
         let trivial_def = TraitDef {
             span,
-            path: path_std!(clone::TrivialClone),
+            path: path_std!(cx, span, clone::TrivialClone),
             skip_path_as_bound: false,
             needs_copy_as_bound_if_packed: true,
             additional_bounds: bounds.clone(),
@@ -81,7 +81,7 @@ pub(crate) fn expand_deriving_clone(
 
     let trait_def = TraitDef {
         span,
-        path: path_std!(clone::Clone),
+        path: path_std!(cx, span, clone::Clone),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: bounds,

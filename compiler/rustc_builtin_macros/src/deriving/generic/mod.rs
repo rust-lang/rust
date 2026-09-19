@@ -191,7 +191,7 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, respan, sym};
 pub(crate) use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
-use ty::{Path, Ref, Self_, Ty};
+use ty::{Ref, Self_, Ty};
 
 use crate::{deriving, diagnostics};
 
@@ -202,7 +202,7 @@ pub(crate) struct TraitDef<'a> {
     pub span: Span,
 
     /// Path of the trait, including any type parameters
-    pub path: Path,
+    pub path: ast::Path,
 
     /// Whether to skip adding the current trait as a bound to the type parameters of the type.
     pub skip_path_as_bound: bool,
@@ -212,7 +212,7 @@ pub(crate) struct TraitDef<'a> {
 
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
-    pub additional_bounds: SmallVec<[Path; 1]>,
+    pub additional_bounds: SmallVec<[ast::Path; 1]>,
 
     /// Can this trait be derived for unions?
     pub supports_unions: bool,
@@ -571,8 +571,6 @@ impl<'a> TraitDef<'a> {
         methods: impl Iterator<Item = Box<ast::AssocItem>>,
         is_packed: bool,
     ) -> Box<ast::Item> {
-        let trait_path = self.path.to_path(cx, self.span);
-
         // Transform associated types from `deriving::ty::Ty` into `ast::AssocItem`
         let associated_types = self.associated_types.iter().map(|&(ident, ref type_def)| {
             Box::new(ast::AssocItem {
@@ -613,11 +611,11 @@ impl<'a> TraitDef<'a> {
                     let bounds: ThinVec<_> = self
                         .additional_bounds
                         .iter()
-                        .map(|p| cx.trait_bound(p.to_path(cx, span), self.is_const))
+                        .map(|p| cx.trait_bound(ast::Path { span, ..p.clone() }, self.is_const))
                         .chain(
                             // Add a bound for the current trait.
                             self.skip_path_as_bound.not().then(|| {
-                                let mut trait_path = trait_path.clone();
+                                let mut trait_path = self.path.clone();
                                 trait_path.span = span;
                                 cx.trait_bound(trait_path, self.is_const)
                             }),
@@ -625,8 +623,8 @@ impl<'a> TraitDef<'a> {
                         .chain({
                             // Add a `Copy` bound if required.
                             if is_packed && self.needs_copy_as_bound_if_packed {
-                                let p = deriving::path_std!(marker::Copy);
-                                Some(cx.trait_bound(p.to_path(cx, span), self.is_const))
+                                let p = deriving::path_std!(cx, span, marker::Copy);
+                                Some(cx.trait_bound(p, self.is_const))
                             } else {
                                 None
                             }
@@ -692,18 +690,18 @@ impl<'a> TraitDef<'a> {
                     let mut bounds: ThinVec<_> = self
                         .additional_bounds
                         .iter()
-                        .map(|p| cx.trait_bound(p.to_path(cx, self.span), self.is_const))
+                        .map(|p| cx.trait_bound(p.clone(), self.is_const))
                         .collect();
 
                     // Require the current trait.
                     if !self.skip_path_as_bound {
-                        bounds.push(cx.trait_bound(trait_path.clone(), self.is_const));
+                        bounds.push(cx.trait_bound(self.path.clone(), self.is_const));
                     }
 
                     // Add a `Copy` bound if required.
                     if is_packed && self.needs_copy_as_bound_if_packed {
-                        let p = deriving::path_std!(marker::Copy);
-                        bounds.push(cx.trait_bound(p.to_path(cx, self.span), self.is_const));
+                        let p = deriving::path_std!(cx, self.span, marker::Copy);
+                        bounds.push(cx.trait_bound(p, self.is_const));
                     }
 
                     if !bounds.is_empty() {
@@ -730,7 +728,7 @@ impl<'a> TraitDef<'a> {
         let trait_generics = Generics { params, where_clause, span };
 
         // Create the reference to the trait.
-        let trait_ref = cx.trait_ref(trait_path);
+        let trait_ref = cx.trait_ref(self.path.clone());
 
         let self_params: Vec<_> = generics
             .params

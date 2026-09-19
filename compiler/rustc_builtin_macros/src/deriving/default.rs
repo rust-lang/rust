@@ -22,7 +22,7 @@ pub(crate) fn expand_deriving_default(
 
     let trait_def = TraitDef {
         span,
-        path: Path::new(vec![kw::Default, sym::Default]),
+        path: new_path(cx, span, &[kw::Default, sym::Default], &[]),
         skip_path_as_bound: has_a_default_variant(item),
         needs_copy_as_bound_if_packed: false,
         additional_bounds: SmallVec::new(),

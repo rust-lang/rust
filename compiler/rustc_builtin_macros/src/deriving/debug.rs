@@ -16,11 +16,11 @@ pub(crate) fn expand_deriving_debug(
     is_const: bool,
 ) {
     // &mut ::std::fmt::Formatter
-    let fmtr = Ref(Box::new(Path(path_std!(fmt::Formatter))), ast::Mutability::Mut);
+    let fmtr = Ref(Box::new(Path(path_std!(cx, span, fmt::Formatter))), ast::Mutability::Mut);
 
     let trait_def = TraitDef {
         span,
-        path: path_std!(fmt::Debug),
+        path: path_std!(cx, span, fmt::Debug),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
@@ -30,7 +30,7 @@ pub(crate) fn expand_deriving_debug(
             generics: cx.empty_generics(span),
             explicit_self: true,
             nonself_args: smallvec![(fmtr, sym::character('f'))],
-            ret_ty: Path(path_std!(fmt::Result)),
+            ret_ty: Path(path_std!(cx, span, fmt::Result)),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy:
                 FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless,

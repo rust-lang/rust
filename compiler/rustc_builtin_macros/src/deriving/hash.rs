@@ -14,7 +14,7 @@ pub(crate) fn expand_deriving_hash(
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
-    let path = path_std!(hash::Hash);
+    let path = path_std!(cx, span, hash::Hash);
 
     let typaram = sym::__H;
 
