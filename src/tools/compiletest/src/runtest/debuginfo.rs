@@ -89,10 +89,12 @@ impl TestCx<'_> {
             .arg(&debugger_script)
             .arg(&exe_file);
 
+        let aux_dir = self.aux_output_dir_name();
+
         let debugger_run_result = self.compose_and_run(
             cdb,
             self.config.target_run_lib_path.as_path(),
-            None, // aux_path
+            Some(aux_dir.as_path()),
             None, // input
         );
 
