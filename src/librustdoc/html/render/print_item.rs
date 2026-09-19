@@ -105,6 +105,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             clean::KeywordItem => "Keyword ",
             clean::AttributeItem => "Attribute ",
             clean::TraitAliasItem(..) => "Trait Alias ",
+            clean::FeatureItem => "Feature ",
             _ => {
                 // We don't generate pages for any other type.
                 unreachable!();
@@ -211,6 +212,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             clean::TraitAliasItem(ta) => {
                 write!(buf, "{}", item_trait_alias(cx, item, ta))
             }
+            clean::FeatureItem => write!(buf, "{}", item_feature(cx, item)),
             _ => {
                 // We don't generate pages for any other type.
                 unreachable!();
@@ -278,17 +280,18 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
         // the order of item types in the listing
         fn reorder(ty: ItemType) -> u8 {
             match ty {
-                ItemType::ExternCrate => 0,
-                ItemType::Import => 1,
-                ItemType::Primitive => 2,
-                ItemType::Module => 3,
-                ItemType::Macro => 4,
-                ItemType::Struct => 5,
-                ItemType::Enum => 6,
-                ItemType::Constant => 7,
-                ItemType::Static => 8,
-                ItemType::Trait => 9,
-                ItemType::Function => 10,
+                ItemType::Feature => 0,
+                ItemType::ExternCrate => 1,
+                ItemType::Import => 2,
+                ItemType::Primitive => 3,
+                ItemType::Module => 4,
+                ItemType::Macro => 5,
+                ItemType::Struct => 6,
+                ItemType::Enum => 7,
+                ItemType::Constant => 8,
+                ItemType::Static => 9,
+                ItemType::Trait => 10,
+                ItemType::Function => 11,
                 ItemType::TypeAlias => 12,
                 ItemType::Union => 13,
                 _ => 14 + ty as u8,
@@ -2212,6 +2215,10 @@ fn item_foreign_type(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
 }
 
 fn item_keyword_or_attribute(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
+    document(cx, it, None, HeadingOffset::H2)
+}
+
+fn item_feature(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
     document(cx, it, None, HeadingOffset::H2)
 }
 

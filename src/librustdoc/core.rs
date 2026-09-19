@@ -348,6 +348,7 @@ pub(crate) fn run_global_ctxt(
     show_coverage: bool,
     render_options: RenderOptions,
     output_format: OutputFormat,
+    documented_features: Vec<crate::config::Feature>,
 ) -> (clean::Crate, RenderOptions, Cache, FxHashMap<rustc_span::BytePos, Vec<ExpandedCode>>) {
     // Certain queries assume that some checks were run elsewhere
     // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
@@ -407,7 +408,7 @@ pub(crate) fn run_global_ctxt(
         ctxt.external_traits.insert(sized_trait_did, sized_trait);
     }
 
-    let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
+    let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt, documented_features));
 
     if krate.module.doc_value().is_empty() {
         let help = format!(
