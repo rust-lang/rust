@@ -5,7 +5,7 @@ use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
 use core::iter::{FusedIterator, TrustedLen};
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop};
+use core::mem::{self, ManuallyDrop, needs_drop};
 use core::ops::{Bound, Index, RangeBounds};
 use core::ptr;
 
@@ -205,6 +205,17 @@ pub struct BTreeMap<
 #[stable(feature = "btree_drop", since = "1.7.0")]
 unsafe impl<#[may_dangle] K, #[may_dangle] V, A: AllocatorClone> Drop for BTreeMap<K, V, A> {
     fn drop(&mut self) {
+        // If both types of key and value are without drop, we don't need to traverse every element.
+        // We rather just drop nodes.
+        if !needs_drop::<K>() && !needs_drop::<V>() {
+            if let Some(root) = self.root.take() {
+                // SAFETY: we won't use the tree again.
+                unsafe { root.into_dying().deallocate_subtree((*self.alloc).clone()) };
+            }
+            // SAFETY: Drop the allocator and won't use it again
+            unsafe { ManuallyDrop::drop(&mut self.alloc) };
+            return;
+        }
         // ignore-tidy-undocumented-unsafe
         drop(unsafe { ptr::read(self) }.into_iter())
     }

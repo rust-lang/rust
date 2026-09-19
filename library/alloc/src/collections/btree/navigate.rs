@@ -807,3 +807,23 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         }
     }
 }
+
+impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
+    /// # Safety
+    ///
+    /// This deallocates the subtree and the subtree shouldn't be accessed anymore.
+    pub(super) unsafe fn deallocate_subtree<A: AllocatorClone>(self, alloc: A) {
+        let mut node = self.first_leaf_edge().into_node().forget_type();
+        loop {
+            // SAFETY: Nodes are deallocated in postorder, and each node is deallocated exactly once.
+            if let Some(parent) = unsafe { node.deallocate_and_ascend(alloc.clone()) } {
+                node = match parent.right_kv() {
+                    Ok(kv) => kv.right_edge().descend().first_leaf_edge().into_node().forget_type(),
+                    Err(last_edge) => last_edge.into_node().forget_type(),
+                }
+            } else {
+                return;
+            }
+        }
+    }
+}
