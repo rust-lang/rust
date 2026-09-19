@@ -13,7 +13,7 @@ use rustc_ast::{
     LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
 };
 use rustc_errors::{Applicability, Diag, PResult};
-use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, kw, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::attr::InnerAttrForbiddenReason;
@@ -483,7 +483,7 @@ impl<'a> Parser<'a> {
                 ),
             };
             self.dcx().emit_err(diagnostics::InvalidCurlyInLetElse {
-                span: span.with_lo(span.hi() - BytePos(1)),
+                span: self.psess.source_map().end_point(span),
                 sugg,
             });
         }
