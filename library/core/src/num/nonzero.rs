@@ -1412,7 +1412,8 @@ macro_rules! nonzero_integer {
         }
 
         #[stable(feature = "nonzero_parse", since = "1.35.0")]
-        impl FromStr for NonZero<$Int> {
+        #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+        const impl FromStr for NonZero<$Int> {
             type Err = ParseIntError;
 
             /// Parses a non-zero integer from a string slice with decimal digits.
