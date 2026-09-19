@@ -1,6 +1,8 @@
 //! A mini version of ast::Ty, which is easier to use, and features an explicit `Self` type to use
 //! when specifying impls to be derived.
 
+use std::iter::once;
+
 pub(crate) use Ty::*;
 use rustc_ast::{self as ast, GenericArg, GenericParamKind, Generics, TyKind};
 use rustc_expand::base::ExtCtxt;
@@ -40,14 +42,16 @@ impl Path {
         self_ty: Ident,
         self_generics: &Generics,
     ) -> ast::Path {
-        let mut idents = self.path.iter().map(|s| Ident::new(*s, span)).collect::<Vec<_>>();
+        let idents = self.path.iter().map(|s| Ident::new(*s, span));
         let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics));
         let params = tys.map(GenericArg::Type).collect();
 
-        if let PathKind::Std = self.kind {
+        let idents = if let PathKind::Std = self.kind {
             let def_site = cx.with_def_site_ctxt(DUMMY_SP);
-            idents.insert(0, Ident::new(kw::DollarCrate, def_site));
-        }
+            once(Ident::new(kw::DollarCrate, def_site)).chain(idents).collect()
+        } else {
+            idents.collect()
+        };
         cx.path_all(span, false, idents, params)
     }
 }
