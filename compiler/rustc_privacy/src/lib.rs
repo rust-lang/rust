@@ -1174,7 +1174,17 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
     fn check_def_id(&self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
-            self.tcx.dcx().emit_err(ItemIsPrivate { span: self.span, kind, descr: descr.into() });
+            let (kind, descr) = match self.tcx.def_kind(def_id) {
+                DefKind::Fn | DefKind::AssocFn => {
+                    (self.tcx.def_descr(def_id), self.tcx.def_path_str(def_id))
+                }
+                _ => (kind, descr.to_string()),
+            };
+            self.tcx.dcx().emit_err(ItemIsPrivate {
+                span: self.span,
+                kind,
+                descr: (&descr).into(),
+            });
         }
         is_error
     }
