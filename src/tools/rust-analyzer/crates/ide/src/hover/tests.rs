@@ -8849,6 +8849,19 @@ identity! {
             cfg predicate evaluated: `true` (`test`)
         "#]],
     );
+    check(
+        r#"
+//- /lib1.rs crate:dep cfg:opt_level=3
+#[macro_export]
+macro_rules! expand_cfg { ($val:tt) => { #[cfg(opt_level = $val)] fn f(){} }; }
+//- /main.rs crate:bin deps:dep cfg:test,dbg=false,opt_level=2
+dep::expand_cfg!("$02");
+"#,
+        expect![[r#"
+            *"2"*
+            cfg predicate evaluated: `true` (`opt_level="2"`)
+        "#]],
+    );
 }
 
 #[test]
