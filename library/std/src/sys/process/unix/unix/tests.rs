@@ -1,4 +1,7 @@
+use crate::collections::HashSet;
+use crate::os::fd::AsRawFd;
 use crate::fs;
+use crate::io;
 use crate::os::unix::fs::MetadataExt;
 use crate::os::unix::process::{CommandExt, ExitStatusExt};
 use crate::panic::catch_unwind;
@@ -212,6 +215,46 @@ fn fd_test_swap() {
 fn fd_test_close_time() {
     fd_impls::test_close_time(false);
     fd_impls::test_close_time(true);
+}
+
+#[test]
+fn test_fd_child_status_conflict() {
+    // Test based on
+    // https://github.com/rust-lang/rust/pull/145687/changes/cda572f6ba69#r2896721202
+
+    // Open a bunch of FDs that we can pass to the child
+    let (pipe_reader, _pipe_writer) = io::pipe().unwrap();
+    let mut pipes = Vec::new();
+    let mut pipe_fds = HashSet::new();
+    for _ in 0..100 {
+        let pipe = pipe_reader.try_clone().unwrap();
+        pipe_fds.insert(pipe.as_raw_fd());
+        pipes.push(pipe);
+    }
+    pipe_fds.insert(pipe_reader.as_raw_fd());
+    pipes.push(pipe_reader);
+
+    // Prepare a command that will never succeed, and force fork+exec
+    let mut cmd = Command::new("I don't exist!");
+    unsafe { cmd.pre_exec(|| Ok(())) };
+
+    // Pass the child our dummy FDs, using all FD numbers that may be available as
+    // the destination.
+    let mut next_dst_fd = 0;
+    for pipe in pipes {
+        while pipe_fds.contains(&next_dst_fd) {
+            next_dst_fd += 1;
+        }
+        cmd.fd(next_dst_fd, pipe);
+        next_dst_fd += 1;
+    }
+
+    // The hope is that at this point, one of our `.fd()`s has a `new_fd` happens to
+    // overlap with what gets picked for our pipe/socket/pidfd to communicate child
+    // status back. If so and we don't account for this, the child's pipe to the parent
+    // will get clobbered and the failure status won't be reported back.
+
+    assert!(cmd.spawn().is_err());
 }
 
 #[track_caller]
