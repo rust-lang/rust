@@ -262,10 +262,22 @@ impl CombineAttributeParser for LinkParser {
     }
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        let Some(item) = cx.target_item else { return };
-        let ItemKind::ForeignMod(fm) = &item.kind else { return };
+        if cx.target != Target::ForeignMod {
+            return;
+        }
+
+        let item = cx.target_item.expect("missing AST target item for Target::ForeignMod");
+        let ItemKind::ForeignMod(fm) = &item.kind else {
+            panic!("expected foreign module AST target item for Target::ForeignMod");
+        };
         let abi = fm.abi.map_or(ExternAbi::FALLBACK, |abi| {
-            abi.symbol_unescaped.as_str().parse().unwrap_or(ExternAbi::Rust)
+            abi.symbol_unescaped.as_str().parse().unwrap_or_else(|_| {
+                cx.dcx().span_delayed_bug(
+                    abi.span,
+                    "LinkParser::finalize_check was unable to pre-detect the ABI, so it continues to use the recovery value solely to check for unused_attributes in the lint; a user error E0703 will be reported later in lower_abi",
+                );
+                ExternAbi::Rust
+            })
         });
         if matches!(abi, ExternAbi::Rust) {
             cx.emit_lint(UNUSED_ATTRIBUTES, Link, attr_span);
