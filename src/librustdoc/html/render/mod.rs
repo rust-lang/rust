@@ -1720,16 +1720,16 @@ fn notable_traits_decl_write_html<'cx>(
     cx: &Context<'_>,
 ) -> Result<(), fmt::Error> {
     let mut notable_impls = notable_impls.peekable();
-    let has_notable_impl = if let Some((impl_, _)) = notable_impls.peek() {
+    let code_tags_closing = if let Some((impl_, _)) = notable_impls.peek() {
         write!(
             f,
             "<h3>Notable traits for <code>{}</code></h3>\
             <pre><code>",
             print_type(&impl_.for_, cx),
         )?;
-        true
+        "</code></pre>"
     } else {
-        false
+        ""
     };
 
     for (impl_, trait_did) in notable_impls {
@@ -1758,9 +1758,7 @@ fn notable_traits_decl_write_html<'cx>(
         }
     }
 
-    if !has_notable_impl {
-        f.write_str("</code></pre>")?;
-    }
+    f.write_str(code_tags_closing)?;
 
     Ok(())
 }
