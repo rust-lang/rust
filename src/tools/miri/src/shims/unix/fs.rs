@@ -543,7 +543,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // If `flag` has any bits left set, those are not supported.
         if flag != 0 {
-            throw_unsup_format!("unsupported flags {:#x}", flag);
+            throw_unsup_format!("unsupported flags for `open`: {flag:#x}");
         }
 
         // Reject if isolation is enabled.
@@ -804,8 +804,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let statxbuf = this.deref_pointer_as(statxbuf_op, this.libc_ty_layout("statx"))?;
         let path = this.read_path_from_c_str(pathname_ptr)?.into_owned();
 
+        // Parse flags.
+        let mut flags = flags;
+        // AT_EMPTY_PATH
         let at_empty_path = this.eval_libc_i32("AT_EMPTY_PATH");
         let empty_path_flag = flags & at_empty_path == at_empty_path;
+        flags &= !at_empty_path;
+        // AT_SYMLINK_NOFOLLOW
+        let at_symlink_nofollow = this.eval_libc_i32("AT_SYMLINK_NOFOLLOW");
+        let symlink_nofollow_flag = flags & at_symlink_nofollow == at_symlink_nofollow;
+        flags &= !at_symlink_nofollow;
+        // Complain about unknown flags.
+        if flags != 0 {
+            throw_unsup_format!("unsupported flags for `statx`: {flags:#x}")
+        }
 
         // The docs are kind of unclear about what empty paths should do when the
         // flag is *not* set, so we just bail.
@@ -819,21 +831,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
-        // If the `AT_SYMLINK_NOFOLLOW` flag is set, we query the file's metadata without following
-        // symbolic links.
-        let follow_symlink = flags & this.eval_libc_i32("AT_SYMLINK_NOFOLLOW") == 0;
-
         // If the path is empty, and the AT_EMPTY_PATH flag is set, we query the open file
         // represented by dirfd, whether it's a directory or otherwise.
         let metadata = if path.is_absolute() {
             // absolute path, dirfd is ignored.
-            FileMetadata::from_path(this, &path, follow_symlink)?
+            FileMetadata::from_path(this, &path, !symlink_nofollow_flag)?
         } else if path.is_empty() {
             // no path, load metadata about dirfd
             FileMetadata::from_fd_num(this, dirfd)?
         } else if dirfd == this.eval_libc_i32("AT_FDCWD") {
             // relative to current working directory
-            FileMetadata::from_path(this, &path, follow_symlink)?
+            FileMetadata::from_path(this, &path, !symlink_nofollow_flag)?
         } else {
             // relative to dirfd, which must be a directory handle
             let Some(fd) = this.machine.fds.get(dirfd) else {
@@ -1403,7 +1411,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // We only support `fallocate` as a replacement for `posix_fallocate` on linux,
         // so a non-default `mode` is not supported.
         if mode != 0 {
-            throw_unsup_format!("unsupported flags for `fallocate` in `mode` argument: {mode}")
+            throw_unsup_format!("unsupported flags for `fallocate` in `mode` argument: {mode:#x}")
         }
 
         match this.fallocate_impl(fd, offset, size)? {
