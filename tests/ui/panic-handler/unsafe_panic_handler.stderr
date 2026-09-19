@@ -1,0 +1,12 @@
+warning: `#[panic_handler]` functions can't be `unsafe`
+  --> $DIR/unsafe_panic_handler.rs:8:1
+   |
+LL | unsafe fn handle(_: &PanicInfo) -> ! {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162967 <https://github.com/rust-lang/rust/issues/162967>
+   = note: `#[warn(unsafe_panic_handlers)]` on by default
+
+warning: 1 warning emitted
+
