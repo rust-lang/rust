@@ -16,13 +16,7 @@ pub(super) fn take_mut<T>(v: &mut T, change: impl FnOnce(T) -> T) {
 /// If a panic occurs in the `change` closure, the entire process will be aborted.
 #[inline]
 pub(super) fn replace<T, R>(v: &mut T, change: impl FnOnce(T) -> (T, R)) -> R {
-    struct PanicGuard;
-    impl Drop for PanicGuard {
-        fn drop(&mut self) {
-            intrinsics::abort()
-        }
-    }
-    let guard = PanicGuard;
+    let guard = mem::DropGuard::new((), |()| intrinsics::abort());
     // SAFETY: v is valid for reads and we write a new value before returning.
     let value = unsafe { ptr::read(v) };
     let (new_value, ret) = change(value);
@@ -30,6 +24,6 @@ pub(super) fn replace<T, R>(v: &mut T, change: impl FnOnce(T) -> (T, R)) -> R {
     unsafe {
         ptr::write(v, new_value);
     }
-    mem::forget(guard);
+    mem::DropGuard::dismiss(guard);
     ret
 }
