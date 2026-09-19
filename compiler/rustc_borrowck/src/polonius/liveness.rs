@@ -1,4 +1,5 @@
 use rustc_index::IndexVec;
+use rustc_index::interval::{IntervalSet, SparseIntervalMatrix};
 use rustc_middle::mir::Local;
 use rustc_middle::ty::{GenericArg, RegionVid, Ty};
 use rustc_mir_dataflow::points::PointIndex;
@@ -82,17 +83,17 @@ impl<'tcx> DeferredLocals<'tcx> {
 
 /// For a given region, the relevant liveness and variance information.
 pub(super) struct RegionLiveness<'a> {
-    region: RegionVid,
     pub(super) direction: ConstraintDirection,
-    liveness: &'a LivenessValues,
+    live_points: Option<&'a IntervalSet<PointIndex>>,
 }
 
 impl<'a> RegionLiveness<'a> {
+    #[inline]
     pub(super) fn new<'tcx>(
         region: RegionVid,
         live_region_variances: &LiveRegionVariances,
         universal_regions: &UniversalRegions<'tcx>,
-        liveness: &'a LivenessValues,
+        live_points: &'a SparseIntervalMatrix<RegionVid, PointIndex>,
     ) -> Self {
         // Universal regions propagate loans along the CFG, i.e. forwards only.
         let is_universal_region = universal_regions.is_universal_region(region);
@@ -113,10 +114,11 @@ impl<'a> RegionLiveness<'a> {
                 .flatten()
                 .unwrap_or(ConstraintDirection::Bidirectional)
         };
-        Self { region, direction, liveness }
+        let live_points = live_points.row(region);
+        Self { direction, live_points }
     }
 
     pub(super) fn is_live_at(&self, point: PointIndex) -> bool {
-        self.liveness.points().contains(self.region, point)
+        self.live_points.map_or(false, |points| points.contains(point))
     }
 }

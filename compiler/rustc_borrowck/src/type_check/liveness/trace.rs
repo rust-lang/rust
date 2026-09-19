@@ -398,6 +398,8 @@ impl<'a, 'tcx> LivenessComputation<'a, 'tcx> {
     ) where
         'tcx: 'drop_data,
     {
+        let _timer = self.infcx.tcx.prof.generic_activity("borrowck_liveness_compute");
+
         self.reset_local_state();
         self.add_defs_for(local);
         self.compute_use_live_points_for(local);

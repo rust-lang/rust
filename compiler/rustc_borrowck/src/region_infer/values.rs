@@ -87,6 +87,7 @@ impl LivenessValues {
 
     /// Returns the liveness matrix of points where each region is live. Panics if the liveness
     /// values have been created without any per-point data (that is, for promoteds).
+    #[inline]
     pub(crate) fn points(&self) -> &SparseIntervalMatrix<RegionVid, PointIndex> {
         if let LiveRegions::AtPoints(points) = &self.live_regions {
             points

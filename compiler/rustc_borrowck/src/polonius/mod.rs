@@ -205,7 +205,7 @@ impl<'a> LivenessSource<'a> for DeferredLivenessSource<'a, '_> {
             region,
             self.live_region_variances,
             self.universal_regions,
-            self.liveness,
+            self.liveness.points(),
         )
     }
 

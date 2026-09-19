@@ -38,7 +38,7 @@ impl<'a, 'tcx> LivenessSource<'a> for CachedLivenessSource<'a, 'tcx> {
             region,
             self.live_region_variances,
             self.universal_regions,
-            self.liveness,
+            self.liveness.points(),
         )
     }
     fn location_map(&self) -> &'a DenseLocationMap {
