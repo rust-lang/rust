@@ -1,11 +1,12 @@
 //@ compile-flags: -Zdeduplicate-diagnostics=yes
 
 #![warn(absolute_paths_not_starting_with_crate, reason = 0)]
-//~^ ERROR malformed lint attribute
-//~| NOTE reason must be a string literal
+//~^ ERROR malformed `warn` attribute input
+//~| NOTE expected a string literal here
+//~| NOTE for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
 #![warn(anonymous_parameters, reason = b"consider these, for we have condemned them")]
-//~^ ERROR malformed lint attribute
-//~| NOTE reason must be a string literal
+//~^ ERROR malformed `warn` attribute input
+//~| NOTE expected a normal string literal, not a byte string literal
 #![warn(bare_trait_objects, reasons = "leaders to no sure land, guides their bearings lost")]
 //~^ ERROR malformed lint attribute
 //~| NOTE bad attribute argument
