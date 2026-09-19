@@ -89,7 +89,9 @@ pub impl(self) trait OsStringExt {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl OsStringExt for OsString {
     fn from_wide(wide: &[u16]) -> OsString {
-        FromInner::from_inner(Buf { inner: Wtf8Buf::from_wide(wide) })
+        no_code! {
+            FromInner::from_inner(Buf { inner: Wtf8Buf::from_wide(wide) })
+        }
     }
 }
 
@@ -126,7 +128,9 @@ pub impl(self) trait OsStrExt {
 impl OsStrExt for OsStr {
     #[inline]
     fn encode_wide(&self) -> EncodeWide<'_> {
-        EncodeWide { inner: self.as_inner().inner.encode_wide() }
+        no_code! {
+            EncodeWide { inner: self.as_inner().inner.encode_wide() }
+        }
     }
 }
 

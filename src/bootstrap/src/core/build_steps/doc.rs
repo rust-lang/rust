@@ -708,7 +708,14 @@ impl CommandLineStep for Std {
             .expect("non-utf8 paths are unsupported");
         let mut extra_args = match self.format {
             DocumentationFormat::Html => {
-                vec!["--markdown-css", "rust.css", "--markdown-no-toc", "--index-page", &index_page]
+                vec![
+                    "--markdown-css",
+                    "rust.css",
+                    "--markdown-no-toc",
+                    "--index-page",
+                    &index_page,
+                    "--generate-link-to-definition",
+                ]
             }
             DocumentationFormat::Json => vec![],
         };
