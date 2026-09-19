@@ -1,0 +1,22 @@
+error[E0283]: type annotations needed: cannot satisfy `T: Trait<'_>`
+  --> $DIR/dont-merge-distinct-region-constraints.rs:15:19
+   |
+LL |     needs_trait::<T>();
+   |                   ^
+   |
+note: multiple `impl`s or `where` clauses satisfying `T: Trait<'_>` found
+  --> $DIR/dont-merge-distinct-region-constraints.rs:9:8
+   |
+LL |     T: Trait<'a>,
+   |        ^^^^^^^^^
+LL |     T: Trait<'b>,
+   |        ^^^^^^^^^
+note: required by a bound in `needs_trait`
+  --> $DIR/dont-merge-distinct-region-constraints.rs:5:23
+   |
+LL | fn needs_trait<'a, T: Trait<'a>>() {}
+   |                       ^^^^^^^^^ required by this bound in `needs_trait`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

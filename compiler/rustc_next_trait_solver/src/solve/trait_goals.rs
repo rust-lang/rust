@@ -1500,7 +1500,7 @@ where
         failed_candidate_info: FailedCandidateInfo,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         if self.typing_mode().is_coherence() {
-            return if let Some((response, _)) = self.try_merge_candidates(&candidates) {
+            return if let Some((response, _)) = self.try_merge_trait_candidates(&candidates) {
                 Ok((response, Some(TraitGoalProvenVia::Misc)))
             } else {
                 self.flounder(&candidates).map(|r| (r, None))
@@ -1531,7 +1531,7 @@ where
             let alias_bounds: Vec<_> = candidates
                 .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound(..)))
                 .collect();
-            return if let Some((response, _)) = self.try_merge_candidates(&alias_bounds) {
+            return if let Some((response, _)) = self.try_merge_trait_candidates(&alias_bounds) {
                 Ok((response, Some(TraitGoalProvenVia::AliasBound)))
             } else {
                 Ok((self.bail_with_ambiguity(&alias_bounds), None))
@@ -1547,7 +1547,7 @@ where
             let where_bounds: Vec<_> = candidates
                 .extract_if(.., |c| matches!(c.source, CandidateSource::ParamEnv(_)))
                 .collect();
-            let Some((response, info)) = self.try_merge_candidates(&where_bounds) else {
+            let Some((response, info)) = self.try_merge_trait_candidates(&where_bounds) else {
                 return Ok((self.bail_with_ambiguity(&where_bounds), None));
             };
             match info {
@@ -1587,7 +1587,7 @@ where
             let alias_bounds: Vec<_> = candidates
                 .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound(_)))
                 .collect();
-            return if let Some((response, _)) = self.try_merge_candidates(&alias_bounds) {
+            return if let Some((response, _)) = self.try_merge_trait_candidates(&alias_bounds) {
                 Ok((response, Some(TraitGoalProvenVia::AliasBound)))
             } else {
                 Ok((self.bail_with_ambiguity(&alias_bounds), None))
@@ -1612,7 +1612,7 @@ where
             TraitGoalProvenVia::Misc
         };
 
-        if let Some((response, _)) = self.try_merge_candidates(&candidates) {
+        if let Some((response, _)) = self.try_merge_trait_candidates(&candidates) {
             Ok((response, Some(proven_via)))
         } else {
             self.flounder(&candidates).map(|r| (r, None))
