@@ -52,7 +52,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.74.0"]
     pub NEEDLESS_BORROWS_FOR_GENERIC_ARGS,
-    style,
+    nursery,
     "taking a reference that is going to be automatically dereferenced"
 }
 
