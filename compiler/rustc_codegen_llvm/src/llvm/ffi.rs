@@ -1711,6 +1711,22 @@ unsafe extern "C" {
         NumBundles: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
+
+    // BTF relocations
+    pub(crate) fn LLVMRustBuildPreserveUnionAccessIndex<'a>(
+        B: &Builder<'a>,
+        Base: &'a Value,
+        FieldIndex: c_uint,
+        DbgInfo: Option<&'a Metadata>,
+    ) -> &'a Value;
+    pub(crate) fn LLVMRustBuildPreserveStructAccessIndex<'a>(
+        B: &Builder<'a>,
+        ElTy: &'a Type,
+        Base: &'a Value,
+        Index: c_uint,
+        FieldIndex: c_uint,
+        DbgInfo: Option<&'a Metadata>,
+    ) -> &'a Value;
 }
 
 // FFI bindings for `DIBuilder` functions in the LLVM-C API.

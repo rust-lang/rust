@@ -529,6 +529,7 @@ enum ImplTraitPosition {
     Cast,
     ImplSelf,
     OffsetOf,
+    BtfFieldInfo,
 }
 
 impl std::fmt::Display for ImplTraitPosition {
@@ -555,6 +556,7 @@ impl std::fmt::Display for ImplTraitPosition {
             ImplTraitPosition::Cast => "cast expression types",
             ImplTraitPosition::ImplSelf => "impl headers",
             ImplTraitPosition::OffsetOf => "`offset_of!` parameters",
+            ImplTraitPosition::BtfFieldInfo => "BTF field info query parameters",
         };
 
         write!(f, "{name}")

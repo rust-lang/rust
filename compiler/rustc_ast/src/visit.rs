@@ -502,6 +502,7 @@ macro_rules! common_visitor_and_walkers {
             BoundAsyncness,
             BoundConstness,
             BoundPolarity,
+            BtfRelocKind,
             ByRef,
             Closure,
             Const,
@@ -1114,6 +1115,8 @@ macro_rules! common_visitor_and_walkers {
                     visit_visitable!(vis, kind, expr, ty),
                 ExprKind::DirectConstArg(expr) =>
                     visit_visitable!(vis, expr),
+                ExprKind::BtfFieldInfo(kind, container, fields) =>
+                    visit_visitable!(vis, kind, container, fields),
                 ExprKind::Err(_guar) => {}
                 ExprKind::Dummy => {}
             }

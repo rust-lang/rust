@@ -2056,3 +2056,10 @@ pub(crate) struct UnusedDuplicate {
     )]
     pub warning: bool,
 }
+
+#[derive(Diagnostic)]
+#[diag("the `btf_relocatable` attribute can only be used on BPF architecture")]
+pub(crate) struct BtfRelocatableOnNonBpfArch {
+    #[primary_span]
+    pub span: Span,
+}

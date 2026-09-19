@@ -468,6 +468,12 @@ language_item_table! {
 
     // Experimental lang item for `Reflection and comptime`(https://goals.rust-lang.org/2025h2/reflection-and-comptime.html)
     FnPtr,                   sym::FnPtr,               fn_ptr,                     Target::Struct,         GenericRequirement::None;
+
+    // Experimental lang items for BTF CO-RE relocations.
+    BtfPreserveAccessIndex,       sym::btf_preserve_access_index,      btf_preserve_access_index,      Target::Fn, GenericRequirement::Exact(1);
+    BtfPreserveFieldByteOffset,   sym::btf_preserve_field_byte_offset, btf_preserve_field_byte_offset, Target::Fn, GenericRequirement::Exact(0);
+    BtfPreserveFieldByteSize,     sym::btf_preserve_field_byte_size,   btf_preserve_field_byte_size,   Target::Fn, GenericRequirement::Exact(0);
+    BtfPreserveFieldExists,       sym::btf_preserve_field_exists,      btf_preserve_field_exists,      Target::Fn, GenericRequirement::Exact(0);
 }
 
 /// The requirement imposed on the generics of a lang item

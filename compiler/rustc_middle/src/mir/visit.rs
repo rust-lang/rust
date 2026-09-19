@@ -809,7 +809,6 @@ macro_rules! make_mir_visitor {
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
 
-
                 }
             }
 

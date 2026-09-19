@@ -619,6 +619,11 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ExprKind::Type(le, lt), ExprKind::Type(re, rt)) => self.eq_expr(le, re) && self.eq_ty(lt, rt),
             (ExprKind::Unary(l_op, le), ExprKind::Unary(r_op, re)) => l_op == r_op && self.eq_expr(le, re),
             (ExprKind::Yield(le, _), ExprKind::Yield(re, _)) => return self.eq_expr(le, re),
+            (ExprKind::BtfFieldInfo(l_kind, l_container, l_fields), ExprKind::BtfFieldInfo(r_kind, r_container, r_fields)) => {
+                l_kind == r_kind
+                    && self.eq_ty(l_container, r_container)
+                    && over(l_fields, r_fields, |l, r| l.name == r.name)
+            },
             (
                 // Else branches for branches above, grouped as per `match_same_arms`.
                 | ExprKind::AddrOf(..)
@@ -653,6 +658,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 | ExprKind::Unary(..)
                 | ExprKind::Yield(..)
                 | ExprKind::UnsafeBinderCast(..)
+                | ExprKind::BtfFieldInfo(..)
 
                 // --- Special cases that do not have a positive branch.
 
@@ -1400,6 +1406,13 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty(ty);
                 }
             },
+            ExprKind::BtfFieldInfo(kind, container, fields) => {
+                mem::discriminant(kind).hash(&mut self.s);
+                self.hash_ty(container);
+                for field in *fields {
+                    self.hash_name(field.name);
+                }
+            }
             ExprKind::Err(_) => {},
         }
     }
