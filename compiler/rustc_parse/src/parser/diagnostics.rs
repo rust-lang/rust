@@ -2844,7 +2844,11 @@ impl<'a> Parser<'a> {
         {
             return false;
         }
-        let label = self.eat_label().expect("just checked if a label exists");
+        let (label, err) = self.eat_label();
+        if let Some(e) = err {
+            e.emit();
+        }
+        let label = label.expect("just checked if a label exists");
         self.bump(); // eat `:`
         let span = label.ident.span.to(self.prev_token.span);
         let mut diag = self
