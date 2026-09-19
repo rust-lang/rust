@@ -1,11 +1,3 @@
-error[E0433]: cannot find module or crate `net` in this scope
-  --> $DIR/case-insensitive-import.rs:21:9
-   |
-LL |         net::shutdown::Both
-   |         ^^^ use of unresolved module or unlinked crate `net`
-   |
-   = help: you might be missing a crate named `net`
-
 error[E0433]: cannot find `shutdown` in `net`
   --> $DIR/case-insensitive-import.rs:24:19
    |
@@ -79,6 +71,23 @@ LL |         both
 help: consider importing this similarly named unit variant
    |
 LL +     use std::net::Shutdown::Both;
+   |
+
+error[E0433]: cannot find module or crate `net` in this scope
+  --> $DIR/case-insensitive-import.rs:21:9
+   |
+LL |         net::shutdown::Both
+   |         ^^^ use of unresolved module or unlinked crate `net`
+   |
+   = help: you might be missing a crate named `net`
+help: consider importing this similarly named enum
+   |
+LL +     use std::net::Shutdown;
+   |
+help: if you import `shutdown`, refer to it directly
+   |
+LL -         net::shutdown::Both
+LL +         shutdown::Both
    |
 
 error: aborting due to 8 previous errors
