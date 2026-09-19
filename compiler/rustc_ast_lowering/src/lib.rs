@@ -56,7 +56,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Namespace, PerNS, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
@@ -179,6 +179,8 @@ struct PerOwnerLoweringState<'a, 'hir> {
     /// Collect items that were created by lowering the current owner.
     children: LocalDefIdMap<hir::MaybeOwner<'hir>>,
 
+    paths_from_private_deps: SortedMap<hir::ItemLocalId, CrateNum>,
+
     // -- Transient --
     impl_trait_defs: Vec<hir::GenericParam<'hir>>,
     impl_trait_bounds: Vec<hir::WherePredicate<'hir>>,
@@ -209,6 +211,7 @@ impl<'a, 'hir> PerOwnerLoweringState<'a, 'hir> {
             trait_map: Default::default(),
             delayed_lints: Vec::new(),
             children: LocalDefIdMap::default(),
+            paths_from_private_deps: Default::default(),
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
         }
@@ -233,6 +236,7 @@ impl<'a, 'hir> PerOwnerLoweringState<'a, 'hir> {
         let trait_map = self.trait_map;
         let delayed_lints = Steal::new(self.delayed_lints.into_boxed_slice());
         let children = self.children;
+        let paths_from_private_deps = self.paths_from_private_deps;
 
         #[cfg(debug_assertions)]
         for (id, attrs) in attrs.iter() {
@@ -262,6 +266,8 @@ impl<'a, 'hir> PerOwnerLoweringState<'a, 'hir> {
                 parenting.stable_hash(&mut hcx, &mut stable_hasher);
                 trait_map.stable_hash(&mut hcx, &mut stable_hasher);
                 children.stable_hash(&mut hcx, &mut stable_hasher);
+                paths_from_private_deps.stable_hash(&mut hcx, &mut stable_hasher);
+
                 stable_hasher.finish()
             })
         });
@@ -274,6 +280,7 @@ impl<'a, 'hir> PerOwnerLoweringState<'a, 'hir> {
             trait_map,
             delayed_lints,
             children,
+            paths_from_private_deps,
         })
     }
 }
@@ -960,6 +967,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .children
             .extend_unord(info.children.items().map(|(&def_id, &info)| (def_id, info)));
 
+        self.curr_owner.paths_from_private_deps.insert_presorted(
+            info.paths_from_private_deps.iter().map(|(key, value)| (key.clone(), value.clone())),
+        );
+
         debug_assert!(!self.curr_owner.children.contains_key(&owner_id.def_id));
         self.curr_owner.children.insert(owner_id.def_id, hir::MaybeOwner::Owner(info));
     }
@@ -985,6 +996,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         if let Some(traits) = self.curr_owner.owner.trait_map.get(&ast_node_id) {
             self.curr_owner.trait_map.insert(hir_id.local_id, *traits);
+        }
+
+        if let Some(&krate) = self.curr_owner.owner.paths_from_private_deps.get(&ast_node_id) {
+            self.curr_owner.paths_from_private_deps.insert(hir_id.local_id, krate);
         }
 
         // Check whether the same `NodeId` is lowered more than once.
