@@ -53,7 +53,9 @@ use itertools::Either;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, RustcVersion};
+use rustc_hir::attrs::{
+    AttributeKind, DeprecatedSince, Deprecation, NotableTraitColor, RustcVersion,
+};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{ConstStability, Mutability, StabilityLevel, StableSince};
@@ -1712,13 +1714,64 @@ fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt:
     })
 }
 
-fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
+fn notable_traits_decl_write_html<'cx>(
+    notable_impls: impl Iterator<Item = (&'cx clean::Impl, DefId)>,
+    f: &mut fmt::Formatter<'_>,
+    cx: &Context<'_>,
+) -> Result<(), fmt::Error> {
+    let mut notable_impls = notable_impls.peekable();
+    let has_notable_impl = if let Some((impl_, _)) = notable_impls.peek() {
+        write!(
+            f,
+            "<h3>Notable traits for <code>{}</code></h3>\
+            <pre><code>",
+            print_type(&impl_.for_, cx),
+        )?;
+        true
+    } else {
+        false
+    };
+
+    for (impl_, trait_did) in notable_impls {
+        write!(f, "<div class=\"where\">{}</div>", print_impl(impl_, false, cx))?;
+        for it in &impl_.items {
+            let clean::AssocTypeItem(tydef, ..) = &it.kind else {
+                continue;
+            };
+
+            let empty_set = FxIndexSet::default();
+            let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
+
+            write!(
+                f,
+                "<div class=\"where\">    {};</div>",
+                assoc_type(
+                    it,
+                    &tydef.generics,
+                    &[], // intentionally leaving out bounds
+                    Some(&tydef.type_),
+                    src_link,
+                    0,
+                    cx,
+                )
+            )?;
+        }
+    }
+
+    if !has_notable_impl {
+        f.write_str("</code></pre>")?;
+    }
+
+    Ok(())
+}
+
+fn notable_traits_decl_for_type(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
     let did = ty.def_id(cx.cache()).expect("notable_traits_button already checked this");
 
     let impls = cx.cache().impls.get(&did).expect("notable_traits_button already checked this");
 
     let out = fmt::from_fn(|f| {
-        let mut notable_impls = impls
+        let notable_impls = impls
             .iter()
             .map(|impl_| impl_.inner_impl())
             .filter(|impl_| impl_.polarity == ty::ImplPolarity::Positive)
@@ -1736,60 +1789,57 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                 } else {
                     None
                 }
-            })
-            .peekable();
+            });
 
-        let has_notable_impl = if let Some((impl_, _)) = notable_impls.peek() {
-            write!(
-                f,
-                "<h3>Notable traits for <code>{}</code></h3>\
-                <pre><code>",
-                print_type(&impl_.for_, cx),
-            )?;
-            true
-        } else {
-            false
-        };
-
-        for (impl_, trait_did) in notable_impls {
-            write!(f, "<div class=\"where\">{}</div>", print_impl(impl_, false, cx))?;
-            for it in &impl_.items {
-                let clean::AssocTypeItem(tydef, ..) = &it.kind else {
-                    continue;
-                };
-
-                let empty_set = FxIndexSet::default();
-                let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
-
-                write!(
-                    f,
-                    "<div class=\"where\">    {};</div>",
-                    assoc_type(
-                        it,
-                        &tydef.generics,
-                        &[], // intentionally leaving out bounds
-                        Some(&tydef.type_),
-                        src_link,
-                        0,
-                        cx,
-                    )
-                )?;
-            }
-        }
-
-        if !has_notable_impl {
-            f.write_str("</code></pre>")?;
-        }
-
-        Ok(())
+        notable_traits_decl_write_html(notable_impls, f, cx)
     })
     .to_string();
 
     (format!("{:#}", print_type(ty, cx)), out)
 }
 
-fn notable_traits_json<'a>(tys: impl Iterator<Item = &'a clean::Type>, cx: &Context<'_>) -> String {
-    let mut mp = tys.map(|ty| notable_traits_decl(ty, cx)).collect::<IndexMap<_, _>>();
+fn notable_traits_decl_for_item(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
+    let out = fmt::from_fn(|f| {
+        let notable_impls = if let Some(def_id) = item.def_id()
+            && !is_notable_trait_passthrough(def_id, cx)
+            && let Some(impls) = cx.cache().impls.get(&def_id)
+        {
+            impls
+                .iter()
+                .map(Impl::inner_impl)
+                .filter(|impl_| impl_.polarity == ty::ImplPolarity::Positive)
+                .filter_map(|impl_| {
+                    if let Some(trait_) = &impl_.trait_
+                        && let trait_did = trait_.def_id()
+                        && let Some(trait_) = cx.cache().traits.get(&trait_did)
+                        && trait_.is_notable_trait(cx.tcx())
+                    {
+                        Some((impl_, trait_did))
+                    } else {
+                        None
+                    }
+                })
+        } else {
+            return Ok(());
+        };
+        notable_traits_decl_write_html(notable_impls, f, cx)
+    })
+    .to_string();
+
+    Some((item.name?.to_string(), out))
+}
+
+fn notable_traits_json<'a>(
+    tys: impl Iterator<Item = &'a clean::Type>,
+    item: &clean::Item,
+    cx: &Context<'_>,
+) -> String {
+    let mut mp = tys.map(|ty| notable_traits_decl_for_type(ty, cx)).collect::<IndexMap<_, _>>();
+    if let Some((item_name, item_decl)) = notable_traits_decl_for_item(item, cx)
+        && !item_decl.is_empty()
+    {
+        mp.insert(item_name, item_decl);
+    }
     mp.sort_unstable_keys();
     serde_json::to_string(&mp).expect("serialize (string, string) -> json object cannot fail")
 }
@@ -1799,6 +1849,8 @@ pub(crate) struct NotableTraitBadge {
     pub full_path: String,
     /// Relative URL to the trait page, or `None` if it cannot be linked.
     pub href: Option<String>,
+    /// One of the color names.
+    pub color: NotableTraitColor,
 }
 
 /// Returns all `#[doc(notable_trait)]` traits that `item` implements, to be
@@ -1816,15 +1868,15 @@ pub(crate) fn notable_trait_badges(item: &clean::Item, cx: &Context<'_>) -> Vec<
             .filter_map(|impl_| {
                 if let Some(trait_) = &impl_.trait_
                     && let trait_did = trait_.def_id()
-                    && let Some(trait_) = cx.cache().traits.get(&trait_did)
-                    && trait_.is_notable_trait(tcx)
+                    && cx.cache().traits.contains_key(&trait_did)
+                    && let Some(&color) = tcx.doc_notable_trait(trait_did)
                 {
                     let name = tcx.item_name(trait_did).to_string();
                     let (full_path, href) = match href(trait_did, cx) {
                         Ok(info) => (join_path_syms(&info.rust_path), Some(info.url)),
                         Err(_) => (tcx.def_path_str(trait_did), None),
                     };
-                    Some((name.clone(), NotableTraitBadge { name, full_path, href }))
+                    Some((name.clone(), NotableTraitBadge { name, full_path, href, color }))
                 } else {
                     None
                 }

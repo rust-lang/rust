@@ -665,6 +665,7 @@ symbols! {
         cold,
         cold_path,
         collapse_debuginfo,
+        color,
         column,
         common,
         compare_bytes,
