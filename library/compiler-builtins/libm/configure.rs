@@ -27,12 +27,14 @@ pub struct Config {
     pub target_features: Vec<String>,
     pub reliable_f128: bool,
     pub reliable_f16: bool,
+    pub verbose_build: bool,
 }
 
 impl Config {
     pub fn from_env(library: Library) -> Self {
         println!("cargo:rerun-if-env-changed=LIBM_BUILD_VERBOSE");
-        if env_flag("LIBM_BUILD_VERBOSE") {
+        let verbose_build = env_flag("LIBM_BUILD_VERBOSE");
+        if verbose_build {
             VERBOSE_BUILD.store(true, Relaxed);
         }
 
@@ -48,7 +50,7 @@ impl Config {
             .filter_map(|(name, _value)| name.strip_prefix("CARGO_FEATURE_").map(ToOwned::to_owned))
             .map(|s| s.to_lowercase().replace("_", "-"))
             .collect();
-        if VERBOSE_BUILD.load(Relaxed) {
+        if verbose_build {
             for feature in &cargo_features {
                 println!("cargo:warning=feature `{feature}` enabled");
             }
@@ -73,6 +75,7 @@ impl Config {
             // with `RUSTC_BOOTSTRAP=1` (which is required to use the types anyway).
             reliable_f128: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F128").is_some(),
             reliable_f16: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F16").is_some(),
+            verbose_build,
         }
     }
 
@@ -109,10 +112,12 @@ pub fn emit(cfg: &Config) {
     // To compile builtins-test-intrinsics for thumb targets, where there is no libc
     let thumb = split[0].starts_with("thumb");
 
-    // compiler-rt `cfg`s away some intrinsics for thumbv6m and thumbv8m.base because
-    // these targets do not have full Thumb-2 support but only original Thumb-1.
-    // We have to cfg our code accordingly.
-    let thumb_1 = split[0] == "thumbv6m" || split[0] == "thumbv8m.base";
+    // compiler-rt `cfg`s away some intrinsics for targets that do not have full Thumb-2 support
+    // but only original Thumb-1. We have to cfg our code accordingly.
+    let thumb1_only = matches!(
+        split[0].as_str(),
+        "thumbv4t" | "thumbv5te" | "thumbv6" | "thumbv6m" | "thumbv8m.base"
+    );
 
     // Shorthand to detect i586 targets
     let x86_no_sse2 = cfg.target_arch == "x86" && !cfg.target_features.iter().any(|f| f == "sse2");
@@ -120,9 +125,24 @@ pub fn emit(cfg: &Config) {
     // If set, enable `no-panic` for `libm`. Requires LTO (`release-opt` profile).
     let assert_no_panic = env_flag("ENSURE_NO_PANIC");
 
+    // Ensure that thumb is set when expected. We match on target name rather than using target
+    // features directly, since `arm_target_feature` is unfortunately not yet stable. If any
+    // target features are present, we are running on nightly and can do these checks.
+    if cfg.verbose_build && !cfg.target_features.is_empty() {
+        if thumb {
+            assert!(cfg.has_target_feature("thumb-mode"));
+        }
+        if thumb1_only {
+            assert!(cfg.has_target_feature("thumb-mode"));
+            assert!(!cfg.has_target_feature("thumb2"));
+        } else if thumb {
+            assert!(cfg.has_target_feature("thumb2"));
+        }
+    }
+
     // Arch shorthand config is used in most crates.
     set_cfg("thumb", thumb);
-    set_cfg("thumb_1", thumb_1);
+    set_cfg("thumb1_only", thumb1_only);
     set_cfg("x86_no_sse2", x86_no_sse2);
 
     match cfg.library {
