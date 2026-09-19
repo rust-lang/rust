@@ -1179,8 +1179,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 err
             }
-            ResolutionError::CannotCaptureDynamicEnvironmentInFnItem => {
-                self.dcx().create_err(diagnostics::CannotCaptureDynamicEnvironmentInFnItem { span })
+            ResolutionError::CannotCaptureDynamicEnvironmentInFnItem { suggest_closure } => {
+                self.dcx().create_err(diagnostics::CannotCaptureDynamicEnvironmentInFnItem {
+                    span,
+                    suggest_closure,
+                })
             }
             ResolutionError::AttemptToUseNonConstantValueInConstant {
                 ident,
