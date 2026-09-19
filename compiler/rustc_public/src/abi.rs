@@ -76,12 +76,14 @@ pub enum PassMode {
     /// The caller places the value in memory and passes a pointer to it.
     /// When `on_stack` is true, the value is placed at a fixed stack offset
     /// rather than passed as a regular pointer argument.
-    Indirect {
+    Indirect { attrs: ArgAttributes, on_stack: bool },
+    /// Pass the unsized argument indirectly via a hidden pointer.
+    ///
+    /// The caller places the value in memory and passes a pointer to it.
+    IndirectUnsized {
         attrs: ArgAttributes,
         /// Attributes for the metadata pointer (vtable or length) of unsized arguments.
-        /// Only present for unsized types (e.g., `dyn Trait`, `[T]`).
-        meta_attrs: Option<ArgAttributes>,
-        on_stack: bool,
+        meta_attrs: ArgAttributes,
     },
 }
 

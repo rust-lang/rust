@@ -644,6 +644,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 load_cast(bx, cast_ty, llslot, self.fn_abi.ret.layout.align.abi)
             }
+            PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
         };
         bx.ret(llval);
     }
@@ -1285,6 +1286,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // Copy the arguments that use `PassMode::Indirect { on_stack: false , ..}`
             // to temporary stack allocations. See the comment above.
             for (i, arg) in first_args.iter().enumerate() {
+                if matches!(fn_abi.args[i].mode, PassMode::IndirectUnsized { .. }) {
+                    bug!("extern \"tail\" arguments must not be unsized");
+                }
+
                 if !matches!(fn_abi.args[i].mode, PassMode::Indirect { on_stack: false, .. }) {
                     continue;
                 }
@@ -1977,7 +1982,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 _ => bug!("codegen_argument: {:?} invalid for pair argument", op),
             },
-            PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => match op.val {
+            PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => match op.val {
                 Ref(PlaceValue { llval: a, llextra: Some(b), .. }) => {
                     llargs.push(a);
                     llargs.push(b);
@@ -2011,7 +2016,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     (scratch.val.llval, scratch.val.align, true)
                 }
                 PassMode::Direct(_) => (op.immediate(), arg.layout.align.abi, false),
-                PassMode::Ignore | PassMode::Pair(..) => unreachable!("handled above"),
+                PassMode::Ignore | PassMode::Pair(..) | PassMode::IndirectUnsized { .. } => {
+                    unreachable!("handled above")
+                }
             },
             Ref(op_place_val) => match arg.mode {
                 PassMode::Indirect { attrs, on_stack, .. } => {
@@ -2033,6 +2040,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         (op_place_val.llval, op_place_val.align, true)
                     }
                 }
+                PassMode::IndirectUnsized { .. } => unreachable!("handled above"),
                 _ => (op_place_val.llval, op_place_val.align, true),
             },
             ZeroSized => match arg.mode {

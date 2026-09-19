@@ -242,12 +242,12 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         match &self.mode {
             PassMode::Ignore => {}
             // Sized indirect arguments
-            PassMode::Indirect { attrs, meta_attrs: None, on_stack: _ } => {
+            PassMode::Indirect { attrs, on_stack: _ } => {
                 let align = attrs.pointee_align.unwrap_or(self.layout.align.abi);
                 OperandValue::Ref(PlaceValue::new_sized(val, align)).store(bx, dst);
             }
             // Unsized indirect arguments cannot be stored
-            PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
+            PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => {
                 bug!("unsized `ArgAbi` cannot be stored");
             }
             PassMode::Cast { cast, pad_i32_count: _ } => {
@@ -303,11 +303,11 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Pair(..) => {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
-            PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
+            PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => {
                 bug!("unsized `ArgAbi` cannot be stored");
             }
             PassMode::Direct(_)
-            | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ }
+            | PassMode::Indirect { attrs: _, on_stack: _ }
             | PassMode::Cast { .. } => {
                 let next_arg = next();
                 self.store(bx, next_arg, dst);
@@ -372,6 +372,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 llargument_tys.push(cx.type_ptr());
                 cx.type_void()
             }
+            PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
         };
 
         for arg in args {
@@ -394,7 +395,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
-                PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
+                PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => {
                     // Construct the type of a (wide) pointer to `ty`, and pass its two fields.
                     // Any two ABI-compatible unsized types have the same metadata type and
                     // moreover the same metadata value leads to the same dynamic size and
@@ -405,7 +406,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
-                PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => cx.type_ptr(),
+                PassMode::Indirect { attrs: _, on_stack: _ } => cx.type_ptr(),
                 PassMode::Cast { cast, pad_i32_count } => {
                     // Add padding.
                     llargument_tys.extend(std::iter::repeat_n(
@@ -495,7 +496,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply_range_attr(llvm::AttributePlace::ReturnValue, scalar);
                 }
             }
-            PassMode::Indirect { attrs, meta_attrs: _, on_stack } => {
+            PassMode::Indirect { attrs, on_stack } => {
                 assert!(!on_stack);
                 let i = apply(attrs);
                 let sret = llvm::CreateStructRetAttr(
@@ -514,6 +515,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     );
                 }
             }
+            PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
             PassMode::Cast { cast, pad_i32_count: _ } => {
                 cast.attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
             }
@@ -522,7 +524,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         for arg in self.args.iter() {
             match &arg.mode {
                 PassMode::Ignore => {}
-                PassMode::Indirect { attrs, meta_attrs: None, on_stack: true } => {
+                PassMode::Indirect { attrs, on_stack: true } => {
                     let i = apply(attrs);
                     let byval = llvm::CreateByValAttr(
                         cx.llcx,
@@ -536,7 +538,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         apply_range_attr(llvm::AttributePlace::Argument(i), scalar);
                     }
                 }
-                PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
+                PassMode::Indirect { attrs, on_stack: false } => {
                     let i = apply(attrs);
                     if cx.sess().opts.optimize != config::OptLevel::No {
                         attributes::apply_to_llfn(
@@ -546,8 +548,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         );
                     }
                 }
-                PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
-                    assert!(!on_stack);
+                PassMode::IndirectUnsized { attrs, meta_attrs } => {
                     apply(attrs);
                     apply(meta_attrs);
                 }
@@ -625,7 +626,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Direct(attrs) => {
                 attrs.apply_attrs_to_callsite(llvm::AttributePlace::ReturnValue, bx.cx, callsite);
             }
-            PassMode::Indirect { attrs, meta_attrs: _, on_stack } => {
+            PassMode::Indirect { attrs, on_stack } => {
                 assert!(!on_stack);
                 let i = apply(bx.cx, attrs);
                 let sret = llvm::CreateStructRetAttr(
@@ -634,6 +635,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 );
                 attributes::apply_to_callsite(callsite, llvm::AttributePlace::Argument(i), &[sret]);
             }
+            PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
             PassMode::Cast { cast, pad_i32_count: _ } => {
                 cast.attrs.apply_attrs_to_callsite(
                     llvm::AttributePlace::ReturnValue,
@@ -646,7 +648,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         for arg in self.args.iter() {
             match &arg.mode {
                 PassMode::Ignore => {}
-                PassMode::Indirect { attrs, meta_attrs: None, on_stack: true } => {
+                PassMode::Indirect { attrs, on_stack: true } => {
                     let i = apply(bx.cx, attrs);
                     let byval = llvm::CreateByValAttr(
                         bx.cx.llcx,
@@ -658,11 +660,10 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         &[byval],
                     );
                 }
-                PassMode::Direct(attrs)
-                | PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
+                PassMode::Direct(attrs) | PassMode::Indirect { attrs, on_stack: false } => {
                     apply(bx.cx, attrs);
                 }
-                PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack: _ } => {
+                PassMode::IndirectUnsized { attrs, meta_attrs } => {
                     apply(bx.cx, attrs);
                     apply(bx.cx, meta_attrs);
                 }

@@ -131,6 +131,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 argument_tys.push(cx.type_ptr_to(self.ret.layout.gcc_type(cx)));
                 cx.type_void()
             }
+            PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
         };
         #[cfg(feature = "master")]
         let mut non_null_args = Vec::new();
@@ -178,7 +179,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     let ty = cast.gcc_type(cx);
                     apply_attrs(ty, &cast.attrs, argument_tys.len())
                 }
-                PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: true } => {
+                PassMode::Indirect { attrs: _, on_stack: true } => {
                     // This is a "byval" argument, so we don't apply the `restrict` attribute on it.
                     on_stack_param_indices.insert(argument_tys.len());
                     arg.layout.gcc_type(cx)
@@ -186,11 +187,10 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Direct(attrs) => {
                     apply_attrs(arg.layout.immediate_gcc_type(cx), &attrs, argument_tys.len())
                 }
-                PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
+                PassMode::Indirect { attrs, on_stack: false } => {
                     apply_attrs(cx.type_ptr_to(arg.layout.gcc_type(cx)), &attrs, argument_tys.len())
                 }
-                PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
-                    assert!(!on_stack);
+                PassMode::IndirectUnsized { attrs, meta_attrs } => {
                     // Construct the type of a (wide) pointer to `ty`, and pass its two fields.
                     // Any two ABI-compatible unsized types have the same metadata type and
                     // moreover the same metadata value leads to the same dynamic size and

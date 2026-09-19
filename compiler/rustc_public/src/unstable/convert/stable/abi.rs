@@ -172,11 +172,15 @@ impl<'tcx> Stable<'tcx> for callconv::PassMode {
             callconv::PassMode::Cast { pad_i32_count, cast } => {
                 PassMode::Cast { pad_i32_count: *pad_i32_count, cast: cast.stable(tables, cx) }
             }
-            callconv::PassMode::Indirect { attrs, meta_attrs, on_stack } => PassMode::Indirect {
-                attrs: attrs.stable(tables, cx),
-                meta_attrs: meta_attrs.map(|a| a.stable(tables, cx)),
-                on_stack: *on_stack,
-            },
+            callconv::PassMode::Indirect { attrs, on_stack } => {
+                PassMode::Indirect { attrs: attrs.stable(tables, cx), on_stack: *on_stack }
+            }
+            callconv::PassMode::IndirectUnsized { attrs, meta_attrs } => {
+                PassMode::IndirectUnsized {
+                    attrs: attrs.stable(tables, cx),
+                    meta_attrs: meta_attrs.stable(tables, cx),
+                }
+            }
         }
     }
 }
