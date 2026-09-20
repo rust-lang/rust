@@ -68,7 +68,7 @@ pub(crate) fn expand_kernel(
     let dcx = ecx.sess.dcx();
 
     let Some((vis, sig, ident, generics, body)) = extract_fn(&item) else {
-        dcx.emit_err(diagnostics::AutoDiffInvalidApplication { span: item.span() });
+        dcx.emit_err(diagnostics::OffloadKernelInvalidApplication { span: item.span() });
         return vec![item];
     };
 
