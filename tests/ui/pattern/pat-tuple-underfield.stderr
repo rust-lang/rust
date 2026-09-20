@@ -1,6 +1,7 @@
 error[E0532]: expected unit struct, unit variant or constant, found tuple variant `E::S`
   --> $DIR/pat-tuple-underfield.rs:56:9
    |
+LL | enum E {
 LL |     S(i32, f32),
    |     ----------- `E::S` defined here
 ...
