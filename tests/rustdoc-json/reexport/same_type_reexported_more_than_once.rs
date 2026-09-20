@@ -7,11 +7,11 @@ mod inner {
     pub trait Trait {}
 }
 
-//@ set export_id = "$.index[?(@.docs=='First re-export')].id"
+//@ set export_id = "$.index[?(@.docs[0].text=='First re-export')].id"
 //@ is "$.index[?(@.inner.use.name=='Trait')].inner.use.id" $trait_id
 /// First re-export
 pub use inner::Trait;
-//@ set reexport_id = "$.index[?(@.docs=='Second re-export')].id"
+//@ set reexport_id = "$.index[?(@.docs[0].text=='Second re-export')].id"
 //@ is "$.index[?(@.inner.use.name=='Reexport')].inner.use.id" $trait_id
 /// Second re-export
 pub use inner::Trait as Reexport;

@@ -21,7 +21,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
 use rustc_resolve::rustdoc::{
-    MalformedGenerics, has_primitive_or_keyword_or_attribute_docs, prepare_to_doc_link_resolution,
+    MalformedGenerics, has_primitive_or_keyword_or_attribute_docs, prepare_fragments,
     source_span_for_markdown_range, strip_generics_from_path,
 };
 use rustc_span::def_id::ModId;
@@ -1105,7 +1105,7 @@ impl LinkCollector<'_, '_> {
                     self.cx
                         .cache
                         .intra_doc_links
-                        .entry(item.item_or_reexport_id())
+                        .entry(ItemId::DefId(item_id))
                         .or_default()
                         .insert(link);
                 }
@@ -1116,7 +1116,7 @@ impl LinkCollector<'_, '_> {
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
         // so we know which module it came from.
-        for (item_id, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
+        for (item_id, doc) in prepare_fragments(&item.attrs.doc_strings).iter() {
             if !may_have_doc_links(&doc) {
                 continue;
             }

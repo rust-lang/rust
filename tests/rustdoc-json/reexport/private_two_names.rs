@@ -7,14 +7,14 @@ mod style {
     pub struct Color;
 }
 
-//@ is "$.index[?(@.docs=='First re-export')].inner.use.id" $color_struct_id
-//@ is "$.index[?(@.docs=='First re-export')].inner.use.name" \"Color\"
-//@ set color_export_id = "$.index[?(@.docs=='First re-export')].id"
+//@ is "$.index[?(@.docs[0].text=='First re-export')].inner.use.id" $color_struct_id
+//@ is "$.index[?(@.docs[0].text=='First re-export')].inner.use.name" \"Color\"
+//@ set color_export_id = "$.index[?(@.docs[0].text=='First re-export')].id"
 /// First re-export
 pub use style::Color;
-//@ is "$.index[?(@.docs=='Second re-export')].inner.use.id" $color_struct_id
-//@ is "$.index[?(@.docs=='Second re-export')].inner.use.name" \"Colour\"
-//@ set colour_export_id = "$.index[?(@.docs=='Second re-export')].id"
+//@ is "$.index[?(@.docs[0].text=='Second re-export')].inner.use.id" $color_struct_id
+//@ is "$.index[?(@.docs[0].text=='Second re-export')].inner.use.name" \"Colour\"
+//@ set colour_export_id = "$.index[?(@.docs[0].text=='Second re-export')].id"
 /// Second re-export
 pub use style::Color as Colour;
 

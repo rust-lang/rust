@@ -114,8 +114,8 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Make `Stability` work with non-self-describing formats
-pub const FORMAT_VERSION: u32 = 61;
+// Latest feature: parse reexport and item docs separately
+pub const FORMAT_VERSION: u32 = 62;
 
 /// The root of the emitted JSON blob.
 ///
@@ -254,6 +254,19 @@ pub struct ItemSummary {
     pub kind: ItemKind,
 }
 
+/// A Markdown document with resolved links.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "rkyv_0_8", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv_0_8", rkyv(derive(Debug)))]
+pub struct Doc {
+    /// The text, with postprocessing and concatenation performed so that the document can be
+    /// parsed with a pulldown-cmark, commonmark-hs, or another Markdown processor that
+    /// implements CommonMark with GFM extensions.
+    pub text: String,
+    /// This mapping resolves [intra-doc links](https://rust-lang.github.io/rfcs/1946-intra-rustdoc-links.html) from the docstring to their IDs
+    pub links: HashMap<String, Id>,
+}
+
 /// Anything that can hold documentation - modules, structs, enums, functions, traits, etc.
 ///
 /// The `Item` data type holds fields that can apply to any of these,
@@ -275,11 +288,9 @@ pub struct Item {
     /// By default all documented items are public, but you can tell rustdoc to output private items
     /// so this field is needed to differentiate.
     pub visibility: Visibility,
-    /// The full markdown docstring of this item. Absent if there is no documentation at all,
-    /// Some("") if there is some documentation but it is empty (EG `#[doc = ""]`).
-    pub docs: Option<String>,
-    /// This mapping resolves [intra-doc links](https://rust-lang.github.io/rfcs/1946-intra-rustdoc-links.html) from the docstring to their IDs
-    pub links: HashMap<String, Id>,
+    /// The full markdown docstring of this item. Empty if there is no documentation at all,
+    /// `vec![Doc { text: "" }]` if there is some documentation but it is empty (EG `#[doc = ""]`).
+    pub docs: Vec<Doc>,
     /// Attributes on this item.
     ///
     /// Does not include:

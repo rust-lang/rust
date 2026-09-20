@@ -13,7 +13,7 @@ impl From<Box<Local>> for String {
         String::new()
     }
 }
-//@ set from_box_local = "$.index[?(@.docs=='from box local')].id"
+//@ set from_box_local = "$.index[?(@.docs[0].text=='from box local')].id"
 //@ has "$.index[?(@.name=='Local')].inner.struct.impls[*]" $from_box_local
 
 // Reference to a fundamental wrapper.
@@ -23,7 +23,7 @@ impl<'a> From<&'a Box<Local>> for u16 {
         0
     }
 }
-//@ set from_ref_box_local = "$.index[?(@.docs=='from ref box local')].id"
+//@ set from_ref_box_local = "$.index[?(@.docs[0].text=='from ref box local')].id"
 //@ has "$.index[?(@.name=='Local')].inner.struct.impls[*]" $from_ref_box_local
 
 // Nested two levels deep in Self.
@@ -33,7 +33,7 @@ impl From<u32> for Box<Box<Local>> {
         Box::new(Box::new(Local))
     }
 }
-//@ set u32_for_box_box_local = "$.index[?(@.docs=='u32 for box box local')].id"
+//@ set u32_for_box_box_local = "$.index[?(@.docs[0].text=='u32 for box box local')].id"
 //@ has "$.index[?(@.name=='Local')].inner.struct.impls[*]" $u32_for_box_box_local
 
 // Mixed fundamental wrappers in Self.
@@ -43,7 +43,7 @@ impl From<u64> for Pin<Box<Local>> {
         Pin::new(Box::new(Local))
     }
 }
-//@ set u64_for_pin_box_local = "$.index[?(@.docs=='u64 for pin box local')].id"
+//@ set u64_for_pin_box_local = "$.index[?(@.docs[0].text=='u64 for pin box local')].id"
 //@ has "$.index[?(@.name=='Local')].inner.struct.impls[*]" $u64_for_pin_box_local
 
 // A non-fundamental wrapper must not associate the impl with Local, but the impl must still be
@@ -52,6 +52,6 @@ pub trait Marker {}
 
 /// marker for vec local
 impl Marker for Vec<Local> {}
-//@ set marker_for_vec_local = "$.index[?(@.docs=='marker for vec local')].id"
+//@ set marker_for_vec_local = "$.index[?(@.docs[0].text=='marker for vec local')].id"
 //@ !has "$.index[?(@.name=='Local')].inner.struct.impls[*]" $marker_for_vec_local
 //@ has "$.index[?(@.name=='Marker')].inner.trait.implementations[*]" $marker_for_vec_local

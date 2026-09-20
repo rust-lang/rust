@@ -17,23 +17,23 @@
 //@ set ASSOC_CONST = "$.index[?(@.name=='ASSOC_CONST')].id"
 //@ set method = "$.index[?(@.name=='method')].id"
 
-//@ is "$.index[?(@.name=='non_page')].links['`Struct::struct_field`']" $struct_field
-//@ is "$.index[?(@.name=='non_page')].links['`Enum::Variant`']" $Variant
-//@ is "$.index[?(@.name=='non_page')].links['`Trait::AssocType`']" $AssocType
-//@ is "$.index[?(@.name=='non_page')].links['`Trait::ASSOC_CONST`']" $ASSOC_CONST
-//@ is "$.index[?(@.name=='non_page')].links['`Trait::method`']" $method
+//@ is "$.index[?(@.name=='non_page')].docs[*].links['`Struct::struct_field`']" $struct_field
+//@ is "$.index[?(@.name=='non_page')].docs[*].links['`Enum::Variant`']" $Variant
+//@ is "$.index[?(@.name=='non_page')].docs[*].links['`Trait::AssocType`']" $AssocType
+//@ is "$.index[?(@.name=='non_page')].docs[*].links['`Trait::ASSOC_CONST`']" $ASSOC_CONST
+//@ is "$.index[?(@.name=='non_page')].docs[*].links['`Trait::method`']" $method
 
 // Regression test for <https://github.com/rust-lang/rust/issues/152511>:
 // link target IDs for associated items need matching `paths` entries.
 //@ jq_set crate = '.index[] | select(.name == "non_page")'
-//@ jq_set struct_field_link = '$crate.links["`Struct::struct_field`"]'
-//@ jq_set variant_field_link = '$crate.links["`Enum::StructVariant::field`"]'
-//@ jq_set assoc_type_link = '$crate.links["`Trait::AssocType`"]'
-//@ jq_set assoc_const_link = '$crate.links["`Trait::ASSOC_CONST`"]'
-//@ jq_set method_link = '$crate.links["`Trait::method`"]'
-//@ jq_set vec_push_link = '$crate.links["`std::vec::Vec::push`"]'
-//@ jq_set error_kind_link = '$crate.links["`std::io::ErrorKind::NotFound`"]'
-//@ jq_set usize_max_link = '$crate.links["`usize::MAX`"]'
+//@ jq_set struct_field_link = '$crate.docs[] | .links["`Struct::struct_field`"]'
+//@ jq_set variant_field_link = '$crate.docs[] | .links["`Enum::StructVariant::field`"]'
+//@ jq_set assoc_type_link = '$crate.docs[] | .links["`Trait::AssocType`"]'
+//@ jq_set assoc_const_link = '$crate.docs[] | .links["`Trait::ASSOC_CONST`"]'
+//@ jq_set method_link = '$crate.docs[] | .links["`Trait::method`"]'
+//@ jq_set vec_push_link = '$crate.docs[] | .links["`std::vec::Vec::push`"]'
+//@ jq_set error_kind_link = '$crate.docs[] | .links["`std::io::ErrorKind::NotFound`"]'
+//@ jq_set usize_max_link = '$crate.docs[] | .links["`usize::MAX`"]'
 //@ jq_is '.paths["\($struct_field_link)"].path' '["non_page", "Struct", "struct_field"]'
 //@ jq_is '.paths["\($variant_field_link)"].path' '["non_page", "Enum", "StructVariant", "field"]'
 //@ jq_is '.paths["\($assoc_type_link)"].path' '["non_page", "Trait", "AssocType"]'

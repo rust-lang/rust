@@ -21,7 +21,7 @@ use rustc_metadata::rendered_const;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_resolve::rustdoc::{
-    DocFragment, add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments,
+    DocFragment, attrs_to_doc_fragments, inner_docs, prepare_fragments, span_of_fragments,
 };
 use rustc_session::Session;
 use rustc_span::def_id::{CRATE_DEF_ID, ModId};
@@ -121,6 +121,42 @@ impl ItemId {
             | ItemId::Blanket { for_: id, .. }
             | ItemId::DefId(id) => id.krate,
         }
+    }
+
+    pub(crate) fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
+        use crate::html::format::{href_with_path_check, link_tooltip};
+
+        let Some(links) = cx.cache().intra_doc_links.get(&self) else {
+            return vec![];
+        };
+        links
+            .iter()
+            .filter_map(|ItemLink { link: s, link_text, page_id: id, fragment }| {
+                debug!(?id);
+                if let Ok(HrefInfo { mut url, .. }) = href_with_path_check(*id, cx, link_text) {
+                    debug!(?url);
+                    match fragment {
+                        Some(UrlFragment::Item(def_id)) => {
+                            write!(url, "{}", crate::html::format::fragment(*def_id, cx.tcx()))
+                                .unwrap();
+                        }
+                        Some(UrlFragment::UserWritten(raw)) => {
+                            url.push('#');
+                            url.push_str(raw);
+                        }
+                        None => {}
+                    }
+                    Some(RenderedLink {
+                        original_text: s.clone(),
+                        new_text: link_text.clone(),
+                        tooltip: link_tooltip(*id, fragment, cx, Some(link_text)).to_string(),
+                        href: url,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 
@@ -363,7 +399,7 @@ impl fmt::Debug for Item {
             fmt.field("attrs", &self.attrs).field("kind", &self.kind).field("cfg", &self.cfg);
         } else {
             fmt.field("kind", &self.type_());
-            fmt.field("docs", &self.doc_value());
+            fmt.field("docs", &self.doc_values().values().cloned().collect::<Vec<String>>());
         }
         fmt.finish()
     }
@@ -507,16 +543,20 @@ impl Item {
             .unwrap_or_else(|| self.span(tcx).map_or(DUMMY_SP, |span| span.inner()))
     }
 
-    /// Combine all doc strings into a single value handling indentation and newlines as needed.
-    pub(crate) fn doc_value(&self) -> String {
-        self.attrs.doc_value()
+    /// Combine each reexport's docstrings into one docstring per item, handling indentation and
+    /// newlines as needed.
+    pub(crate) fn doc_values(&self) -> FxIndexMap<Option<DefId>, String> {
+        self.attrs.doc_values()
     }
 
-    /// Combine all doc strings into a single value handling indentation and newlines as needed.
+    /// Combine each reexport's docstrings into one docstring per item.
+    ///
     /// Returns `None` is there's no documentation at all, and `Some("")` if there is some
     /// documentation but it is empty (e.g. `#[doc = ""]`).
-    pub(crate) fn opt_doc_value(&self) -> Option<String> {
-        self.attrs.opt_doc_value()
+    ///
+    /// The trailing newline is trimmed.
+    pub(crate) fn opt_doc_values(&self) -> Option<FxIndexMap<Option<DefId>, String>> {
+        self.attrs.opt_doc_values()
     }
 
     pub(crate) fn from_def_id_and_parts(
@@ -557,58 +597,6 @@ impl Item {
                 inline_stmt_id: None,
             }),
         }
-    }
-
-    /// If the item has doc comments from a reexport, returns the item id of that reexport,
-    /// otherwise returns returns the item id.
-    ///
-    /// This is used as a key for caching intra-doc link resolution,
-    /// to prevent two reexports of the same item from using the same cache.
-    pub(crate) fn item_or_reexport_id(&self) -> ItemId {
-        // added documentation on a reexport is always prepended.
-        self.attrs
-            .doc_strings
-            .first()
-            .map(|x| x.item_id)
-            .flatten()
-            .map(ItemId::from)
-            .unwrap_or(self.item_id)
-    }
-
-    pub(crate) fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
-        use crate::html::format::{href_with_path_check, link_tooltip};
-
-        let Some(links) = cx.cache().intra_doc_links.get(&self.item_or_reexport_id()) else {
-            return vec![];
-        };
-        links
-            .iter()
-            .filter_map(|ItemLink { link: s, link_text, page_id: id, fragment }| {
-                debug!(?id);
-                if let Ok(HrefInfo { mut url, .. }) = href_with_path_check(*id, cx, link_text) {
-                    debug!(?url);
-                    match fragment {
-                        Some(UrlFragment::Item(def_id)) => {
-                            write!(url, "{}", crate::html::format::fragment(*def_id, cx.tcx()))
-                                .unwrap();
-                        }
-                        Some(UrlFragment::UserWritten(raw)) => {
-                            url.push('#');
-                            url.push_str(raw);
-                        }
-                        None => {}
-                    }
-                    Some(RenderedLink {
-                        original_text: s.clone(),
-                        new_text: link_text.clone(),
-                        tooltip: link_tooltip(*id, fragment, cx, Some(link_text)).to_string(),
-                        href: url,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect()
     }
 
     /// Find a list of all link names, without finding their href.
@@ -1095,21 +1083,26 @@ impl Attributes {
         Attributes { doc_strings, other_attrs }
     }
 
-    /// Combine all doc strings into a single value handling indentation and newlines as needed.
-    pub(crate) fn doc_value(&self) -> String {
-        self.opt_doc_value().unwrap_or_default()
+    /// Combine each reexport's docstrings into one docstring per item, handling indentation and
+    /// newlines as needed.
+    pub(crate) fn doc_values(&self) -> FxIndexMap<Option<DefId>, String> {
+        self.opt_doc_values().unwrap_or_default()
     }
 
-    /// Combine all doc strings into a single value handling indentation and newlines as needed.
+    /// Combine each reexport's docstrings into one docstring per item.
+    ///
     /// Returns `None` is there's no documentation at all, and `Some("")` if there is some
     /// documentation but it is empty (e.g. `#[doc = ""]`).
-    pub(crate) fn opt_doc_value(&self) -> Option<String> {
+    ///
+    /// The trailing newline is trimmed.
+    pub(crate) fn opt_doc_values(&self) -> Option<FxIndexMap<Option<DefId>, String>> {
         (!self.doc_strings.is_empty()).then(|| {
-            let mut res = String::new();
-            for frag in &self.doc_strings {
-                add_doc_fragment(&mut res, frag);
+            let mut res = prepare_fragments(&self.doc_strings);
+            for string in res.values_mut() {
+                if string.as_bytes().last() == Some(&b'\n') {
+                    string.pop();
+                }
             }
-            res.pop();
             res
         })
     }

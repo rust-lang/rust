@@ -21,7 +21,9 @@ fn run_test(input: &str, expected: &str) {
         let mut s = create_doc_fragment(input);
         unindent_doc_fragments(&mut s);
         let attrs = Attributes { doc_strings: s, other_attrs: Default::default() };
-        assert_eq!(attrs.doc_value(), expected);
+        let doc_values = attrs.doc_values();
+        assert_eq!(doc_values.len(), 1);
+        assert_eq!(doc_values.values().next().expect("must have exactly one doc"), expected);
     });
 }
 

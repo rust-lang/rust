@@ -11,8 +11,8 @@ mod mod1 {
         struct Mod2Private;
     }
 
-    //@ set mod2_use_id = "$.index[?(@.docs=='Mod2 re-export')].id"
-    //@ is "$.index[?(@.docs=='Mod2 re-export')].inner.use.name" \"mod2\"
+    //@ set mod2_use_id = "$.index[?(@.docs[0].text=='Mod2 re-export')].id"
+    //@ is "$.index[?(@.docs[0].text=='Mod2 re-export')].inner.use.name" \"mod2\"
     /// Mod2 re-export
     pub use self::mod2::*;
 
@@ -22,8 +22,8 @@ mod mod1 {
     struct Mod1Private;
 }
 
-//@ set mod1_use_id = "$.index[?(@.docs=='Mod1 re-export')].id"
-//@ is "$.index[?(@.docs=='Mod1 re-export')].inner.use.name" \"mod1\"
+//@ set mod1_use_id = "$.index[?(@.docs[0].text=='Mod1 re-export')].id"
+//@ is "$.index[?(@.docs[0].text=='Mod1 re-export')].inner.use.name" \"mod1\"
 /// Mod1 re-export
 pub use mod1::*;
 
