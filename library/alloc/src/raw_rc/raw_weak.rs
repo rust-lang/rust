@@ -230,13 +230,20 @@ where
         !ptr::eq(self.ptr.as_ptr(), other.ptr.as_ptr())
     }
 
+    /// Returns the `RefCounts` object inside the reference-counted allocation if `self` is
+    /// non-dangling.
+    #[cfg(not(no_sync))]
+    pub(crate) fn ref_counts(&self) -> Option<&RefCounts> {
+        // SAFETY: We have checked `self` is non-dangling.
+        (!is_dangling(self.ptr.cast())).then(|| unsafe { self.ref_counts_unchecked() })
+    }
+
     /// Returns the `RefCounts` object inside the reference-counted allocation, assume `self` is
     /// non-dangling.
     ///
     /// # Safety
     ///
     /// `self` is non-dangling.
-    #[cfg(not(no_global_oom_handling))]
     pub(super) unsafe fn ref_counts_unchecked(&self) -> &RefCounts {
         // SAFETY: Caller guarantees `self` is non-dangling.
         unsafe { self.value_ptr_unchecked().ref_counts_ptr().as_ref() }
