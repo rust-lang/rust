@@ -521,8 +521,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             predicates: vec![],
             recursion_limit: usize::min(16, tcx.recursion_limit().0),
         };
-        let _ = self
-            .with_disabled_next_solver_overflow_fcw(|| self.visit_proof_tree(goal, &mut visitor));
+
+        // HACK: avoid computing goal chains for dependencies by relying on the fact that
+        // `cargo` passes `lint_cap=allow` to deps. This should mitigate some of the perf/rss
+        // regression when compiling crates whose deps trigger a large number of these FCWs.
+        if !matches!(tcx.sess.opts.lint_cap, Some(rustc_lint_defs::Level::Allow)) {
+            let _ = self.with_disabled_next_solver_overflow_fcw(|| {
+                self.visit_proof_tree(goal, &mut visitor)
+            });
+        }
+
         tcx.emit_node_span_lint(
             RECURSION_DEPTH_EXCEEDING_LIMIT,
             CRATE_HIR_ID,
