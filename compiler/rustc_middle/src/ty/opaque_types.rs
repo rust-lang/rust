@@ -201,14 +201,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                     Some(GenericArgKind::Const(c1)) => c1,
                     Some(u) => panic!("const mapped to unexpected kind: {u:?}"),
                     None => {
-                        let guar = self
-                            .tcx
-                            .dcx()
-                            .create_err(ConstNotUsedTraitAlias {
-                                ct: ct.to_string(),
-                                span: self.span,
-                            })
-                            .emit();
+                        let guar = self.tcx.dcx().emit_err(ConstNotUsedTraitAlias {
+                            ct: ct.to_string(),
+                            span: self.span,
+                        });
                         ty::Const::new_error(self.tcx, guar)
                     }
                 }

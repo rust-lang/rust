@@ -481,12 +481,10 @@ fn expand_preparsed_asm(
                                 Some(&idx) => Some(idx),
                                 None => {
                                     let span = arg.position_span;
-                                    ecx.dcx()
-                                        .create_err(diagnostics::AsmNoMatchedArgumentName {
-                                            name: name.to_owned(),
-                                            span: span_in_template(span),
-                                        })
-                                        .emit();
+                                    ecx.dcx().emit_err(diagnostics::AsmNoMatchedArgumentName {
+                                        name: name.to_owned(),
+                                        span: span_in_template(span),
+                                    });
                                     None
                                 }
                             }

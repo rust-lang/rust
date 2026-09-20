@@ -1225,9 +1225,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         span_bug!(import.span, "inconsistent resolution for an import");
                     }
                 } else if self.privacy_errors.is_empty() {
-                    self.dcx()
-                        .create_err(CannotDetermineImportResolution { span: import.span })
-                        .emit();
+                    self.dcx().emit_err(CannotDetermineImportResolution { span: import.span });
                 }
 
                 module
@@ -1459,9 +1457,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             span_bug!(import.span, "inconsistent resolution for an import");
                         }
                     } else if this.privacy_errors.is_empty() {
-                        this.dcx()
-                            .create_err(CannotDetermineImportResolution { span: import.span })
-                            .emit();
+                        this.dcx().emit_err(CannotDetermineImportResolution { span: import.span });
                     }
                 }
                 Err(..) => {
@@ -1681,12 +1677,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 diagnostic: diagnostic.into(),
             });
         } else if ns == TypeNS {
-            let err = if crate_private_reexport {
-                self.dcx().create_err(CannotBeReexportedCratePublicNS { span: import.span, ident })
+            if crate_private_reexport {
+                self.dcx().emit_err(CannotBeReexportedCratePublicNS { span: import.span, ident });
             } else {
-                self.dcx().create_err(CannotBeReexportedPrivateNS { span: import.span, ident })
-            };
-            err.emit();
+                self.dcx().emit_err(CannotBeReexportedPrivateNS { span: import.span, ident });
+            }
         } else {
             let mut err = if crate_private_reexport {
                 self.dcx().create_err(CannotBeReexportedCratePublic { span: import.span, ident })

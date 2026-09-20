@@ -1178,23 +1178,21 @@ impl<'a> Parser<'a> {
                         {
                             err.cancel();
                             let type_str = pprust::path_to_string(&path);
-                            self.dcx()
-                                .create_err(crate::diagnostics::ParenthesesWithStructFields {
-                                    span,
-                                    braces_for_struct: crate::diagnostics::BracesForStructLiteral {
-                                        first: open_paren,
-                                        second: close_paren,
-                                        r#type: type_str.clone(),
-                                    },
-                                    no_fields_for_fn: crate::diagnostics::NoFieldsForFnCall {
-                                        r#type: type_str,
-                                        fields: fields
-                                            .into_iter()
-                                            .map(|field| field.span.until(field.expr.span))
-                                            .collect(),
-                                    },
-                                })
-                                .emit()
+                            self.dcx().emit_err(crate::diagnostics::ParenthesesWithStructFields {
+                                span,
+                                braces_for_struct: crate::diagnostics::BracesForStructLiteral {
+                                    first: open_paren,
+                                    second: close_paren,
+                                    r#type: type_str.clone(),
+                                },
+                                no_fields_for_fn: crate::diagnostics::NoFieldsForFnCall {
+                                    r#type: type_str,
+                                    fields: fields
+                                        .into_iter()
+                                        .map(|field| field.span.until(field.expr.span))
+                                        .collect(),
+                                },
+                            })
                         } else {
                             err.emit()
                         };
@@ -3654,16 +3652,12 @@ impl<'a> Parser<'a> {
             )?;
 
             let guar = if is_underscore_entry_point {
-                self.dcx()
-                    .create_err(crate::diagnostics::StructLiteralPlaceholderPath { span })
-                    .emit()
+                self.dcx().emit_err(crate::diagnostics::StructLiteralPlaceholderPath { span })
             } else {
-                self.dcx()
-                    .create_err(crate::diagnostics::StructLiteralWithoutPathLate {
-                        span: expr.span,
-                        suggestion_span: expr.span.shrink_to_lo(),
-                    })
-                    .emit()
+                self.dcx().emit_err(crate::diagnostics::StructLiteralWithoutPathLate {
+                    span: expr.span,
+                    suggestion_span: expr.span.shrink_to_lo(),
+                })
             };
 
             Ok(Some(self.mk_expr_err(expr.span, guar)))

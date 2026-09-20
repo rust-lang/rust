@@ -3512,9 +3512,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     {
                         res
                     } else {
-                        let err = dcx
-                            .create_err(NoVariantNamed { span: variant.span, ident: variant, ty })
-                            .emit();
+                        let err =
+                            dcx.emit_err(NoVariantNamed { span: variant.span, ident: variant, ty });
                         return Ty::new_error(tcx, err);
                     }
                 } else {
@@ -3552,8 +3551,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
                     Ty::new_field_representing_type(tcx, ty, variant_idx, field_idx)
                 } else {
-                    let err =
-                        dcx.create_err(NoFieldOnType { span: ident.span, field: ident, ty }).emit();
+                    let err = dcx.emit_err(NoFieldOnType { span: ident.span, field: ident, ty });
                     Ty::new_error(tcx, err)
                 }
             }
@@ -3561,8 +3559,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let index = match field.as_str().parse::<usize>() {
                     Ok(idx) => idx,
                     Err(_) => {
-                        let err =
-                            dcx.create_err(NoFieldOnType { span: field.span, field, ty }).emit();
+                        let err = dcx.emit_err(NoFieldOnType { span: field.span, field, ty });
                         return Ty::new_error(tcx, err);
                     }
                 };
@@ -3572,7 +3569,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 if tys.get(index).is_some() {
                     Ty::new_field_representing_type(tcx, ty, FIRST_VARIANT, index.into())
                 } else {
-                    let err = dcx.create_err(NoFieldOnType { span: field.span, field, ty }).emit();
+                    let err = dcx.emit_err(NoFieldOnType { span: field.span, field, ty });
                     Ty::new_error(tcx, err)
                 }
             }

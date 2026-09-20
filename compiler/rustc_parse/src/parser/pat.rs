@@ -1936,17 +1936,15 @@ impl<'a> Parser<'a> {
             let subpat = if let Some(box_span) = is_box {
                 let prefix_span = box_span.until(boxed_span);
 
-                self.dcx()
-                    .create_err(diagnostics::BoxPatsRemoved {
-                        span: box_span,
-                        sugg_deref_macro_call: diagnostics::UseDerefMacro {
-                            field: Some((prefix_span, fieldname)),
-                            before: boxed_span.shrink_to_lo(),
-                            after: hi.shrink_to_hi(),
-                        },
-                        sugg_removal: prefix_span,
-                    })
-                    .emit();
+                self.dcx().emit_err(diagnostics::BoxPatsRemoved {
+                    span: box_span,
+                    sugg_deref_macro_call: diagnostics::UseDerefMacro {
+                        field: Some((prefix_span, fieldname)),
+                        before: boxed_span.shrink_to_lo(),
+                        after: hi.shrink_to_hi(),
+                    },
+                    sugg_removal: prefix_span,
+                });
 
                 self.mk_pat(lo.to(hi), PatKind::Deref(Box::new(fieldpat)))
             } else {
