@@ -432,6 +432,8 @@ fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
         // - with +vsx <https://github.com/llvm/llvm-project/pull/216613>
         // - without +vsx <https://github.com/rust-lang/rust/issues/125109>
         (Arch::PowerPC, _) => false,
+        // AIX does not support f128.
+        (Arch::PowerPC64, Os::Aix) => false,
         // ABI bugs on BE without +vsx <https://github.com/rust-lang/rust/issues/125109>.
         (Arch::PowerPC64, _) => cfg.internal_target_features.contains(&sym::vsx),
         // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838> (fixed in llvm22)
