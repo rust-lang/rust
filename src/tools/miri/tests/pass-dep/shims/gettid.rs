@@ -99,6 +99,8 @@ mod queried {
             // Apple also has two documented return values for invalid threads and null pointers
             let res = libc::pthread_threadid_np(libc::pthread_t::MAX, &mut 0);
             assert_eq!(res, libc::ESRCH, "expected ESRCH for invalid TID");
+            let res = libc::pthread_threadid_np(0xdeadbeef, &mut 0);
+            assert_eq!(res, libc::ESRCH, "expected ESRCH for invalid TID");
             let res = libc::pthread_threadid_np(0, ptr::null_mut());
             assert_eq!(res, libc::EINVAL, "invalid EINVAL for a null pointer");
         }

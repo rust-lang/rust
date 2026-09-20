@@ -1,5 +1,7 @@
 //@ignore-target: windows # No pthreads on Windows
 //@ignore-target: android # No pthread_{get,set}name_np on Android
+//@run-native
+
 use std::ffi::{CStr, CString};
 use std::thread;
 
@@ -201,24 +203,4 @@ fn main() {
         .unwrap()
         .join()
         .unwrap();
-
-    // Now set the name for a non-existing thread and verify error codes.
-    let invalid_thread = 0xdeadbeef;
-    let error = {
-        cfg_select! {
-            target_os = "linux" => libc::ENOENT,
-            _ => libc::ESRCH,
-        }
-    };
-
-    #[cfg(not(target_os = "macos"))]
-    {
-        // macOS has no `setname` function accepting a thread id as the first argument.
-        let res = unsafe { libc::pthread_setname_np(invalid_thread, [0].as_ptr()) };
-        assert_eq!(res, error);
-    }
-
-    let mut buf = [0; 64];
-    let res = unsafe { libc::pthread_getname_np(invalid_thread, buf.as_mut_ptr(), buf.len()) };
-    assert_eq!(res, error);
 }

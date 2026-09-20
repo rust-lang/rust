@@ -213,7 +213,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )? {
                     ThreadNameResult::Ok => Scalar::from_u32(0),
                     ThreadNameResult::NameTooLong => this.eval_libc("ENAMETOOLONG"),
-                    ThreadNameResult::ThreadNotFound => unreachable!(),
                 };
                 // Contrary to the manpage, `pthread_setname_np` on macOS still
                 // returns an integer indicating success.
@@ -240,7 +239,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ThreadNameResult::Ok => Scalar::from_u32(0),
                     // `NameTooLong` is possible when the buffer is zero sized,
                     ThreadNameResult::NameTooLong => Scalar::from_u32(0),
-                    ThreadNameResult::ThreadNotFound => this.eval_libc("ESRCH"),
                 };
                 this.write_scalar(res, dest)?;
             }
