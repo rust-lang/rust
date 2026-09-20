@@ -96,7 +96,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Do not suggest the other syntax if we are in trait impl:
             // the desugaring would contain an associated type constraint.
             if !is_impl {
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     span,
                     "use parenthetical notation instead",
                     fn_trait_to_string(self.tcx(), trait_segment, true),
@@ -2035,7 +2035,7 @@ impl<'a, 'tcx> rustc_errors::Diagnostic<'a, ()> for AmbiguityBetweenVariantAndAs
         could_refer_to(DefKind::Variant, variant_def_id, "");
         could_refer_to(mode.def_kind_for_diagnostics(), item_def_id, " also");
 
-        lint.span_suggestion(
+        lint.span_suggestion_verbose(
             span,
             "use fully-qualified syntax",
             format!("<{} as {}>::{}", self_ty, tcx.item_name(bound_def_id), segment_ident),
