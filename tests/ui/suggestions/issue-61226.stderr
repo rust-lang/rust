@@ -5,9 +5,13 @@ LL | struct X {}
    | ----------- `X` defined here
 LL | fn main() {
 LL |     let _ = vec![X]; //…
-   |                  ^ help: use struct literal syntax instead: `X {}`
+   |                  ^
    |
    = note: a struct named `X` exists in another namespace
+help: use struct literal syntax instead
+   |
+LL |     let _ = vec![X {}]; //…
+   |                    ++
 
 error: aborting due to 1 previous error
 

@@ -2442,7 +2442,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 &expression,
                                 applicability,
                             ) {
-                                err.span_suggestion(
+                                err.span_suggestion_verbose(
                                     span,
                                     format!("use struct {descr} syntax instead"),
                                     expression,
@@ -2637,7 +2637,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             self.r.def_span(def_id),
                             format!("`{path_str}` defined here"),
                         );
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             span,
                             "use this syntax instead",
                             path_str,
@@ -2654,7 +2654,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     || "/* fields */".to_string(),
                     |field_ids| vec!["_"; field_ids.len()].join(", "),
                 );
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     span,
                     "use the tuple variant pattern syntax instead",
                     format!("{path_str}({fields})"),

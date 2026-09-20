@@ -29,7 +29,12 @@ LL |     Empty4()
    |     -------- `E::Empty4` defined here
 ...
 LL |         E::Empty4 => ()
-   |         ^^^^^^^^^ help: use the tuple variant pattern syntax instead: `E::Empty4()`
+   |         ^^^^^^^^^
+   |
+help: use the tuple variant pattern syntax instead
+   |
+LL |         E::Empty4() => ()
+   |                  ++
 
 error[E0532]: expected unit struct, unit variant or constant, found tuple variant `XE::XEmpty5`
   --> $DIR/empty-struct-tuple-pat.rs:33:9

@@ -29,7 +29,13 @@ LL | struct S;
    | --------- `S` defined here
 ...
 LL |         S(()) => {}
-   |         ^^^^^ help: use this syntax instead: `S`
+   |         ^^^^^
+   |
+help: use this syntax instead
+   |
+LL -         S(()) => {}
+LL +         S => {}
+   |
 
 error: aborting due to 2 previous errors
 
