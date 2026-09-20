@@ -676,6 +676,9 @@ fn run_test(
     let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
 
     compiler.args(&compiler_args);
+    for lib in &rustdoc_options.native_lib_strs {
+        compiler.arg(format!("-l{lib}"));
+    }
 
     // If this is a merged doctest, we need to write it into a file instead of using stdin
     // because if the size of the merged doctests is too big, it'll simply break stdin.

@@ -78,7 +78,6 @@ fn forwarded_rustc_args_preserve_command_line_order() {
             "--cfg=a",
             "-O",
             "-Zfoo",
-            "-lbar",
             "-Lx",
             "-Ly",
             "--extern=e=path",
@@ -87,4 +86,19 @@ fn forwarded_rustc_args_preserve_command_line_order() {
             "--check-cfg=cfg(a)",
         ]
     );
+}
+
+#[test]
+fn overridden_short_flags_resolve_to_rustdoc_declarations() {
+    let matches = rustdoc_getopts()
+        .parse([
+            "-o", "out", "-L", "search", "-h", "-h", "-V", "-V", "-v", "-v", "--test", "--test",
+        ])
+        .unwrap();
+    assert_eq!(matches.opt_str("out-dir").as_deref(), Some("out"));
+    assert_eq!(matches.opt_strs("library-path"), ["search"]);
+    assert_eq!(matches.opt_count("help"), 2);
+    assert_eq!(matches.opt_count("version"), 2);
+    assert_eq!(matches.opt_count("verbose"), 2);
+    assert_eq!(matches.opt_count("test"), 2);
 }

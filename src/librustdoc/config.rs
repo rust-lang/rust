@@ -92,6 +92,8 @@ pub(crate) struct Options {
     pub(crate) unstable_opts: UnstableOptions,
     /// Compiler options, in command-line order, to hand to the compiler building doctests.
     pub(crate) forwarded_rustc_args: Vec<String>,
+    /// Native libraries (`-l`) to link into doctest binaries.
+    pub(crate) native_lib_strs: Vec<String>,
     /// The target used to compile the crate against.
     pub(crate) target: TargetTuple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
@@ -853,6 +855,7 @@ impl Options {
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
         let test_builder = matches.opt_str("test-builder").map(PathBuf::from);
         let forwarded_rustc_args = forwarded_rustc_args(matches);
+        let native_lib_strs = matches.opt_strs("l");
         let extern_strs = matches.opt_strs("extern");
         let test_runtool = matches.opt_str("test-runtool");
         let test_runtool_args = matches.opt_strs("test-runtool-arg");
@@ -906,6 +909,7 @@ impl Options {
             codegen_options,
             unstable_opts,
             forwarded_rustc_args,
+            native_lib_strs,
             target,
             edition,
             sysroot,
@@ -984,6 +988,9 @@ pub(crate) fn markdown_input(input: &Input) -> Option<&Path> {
 /// Re-serializes, in their original command-line order, the options that the compiler building
 /// doctests must see. Order is preserved because rustc resolves `-O` against `-C opt-level` and
 /// `-g` against `-C debuginfo` by position.
+///
+/// `-l` is deliberately absent: these arguments are shared with the merged-doctest runner, which
+/// links the native libraries through the bundle rlib and must not be given them a second time.
 pub(crate) fn forwarded_rustc_args(matches: &getopts::Matches) -> Vec<String> {
     let mut args = Vec::new();
     for (name, prefix) in [
@@ -991,7 +998,6 @@ pub(crate) fn forwarded_rustc_args(matches: &getopts::Matches) -> Vec<String> {
         ("check-cfg", "--check-cfg="),
         ("library-path", "-L"),
         ("extern", "--extern="),
-        ("l", "-l"),
         ("codegen", "-C"),
         ("Z", "-Z"),
     ] {

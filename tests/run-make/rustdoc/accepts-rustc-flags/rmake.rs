@@ -17,4 +17,16 @@ fn main() {
 
     build_native_static_lib("cfoo");
     rustdoc().input("lib.rs").arg("--test").arg("-L").arg(cwd()).arg("-lstatic=cfoo").run();
+
+    // Merged doctests link the native library through the bundle rlib, not the runner.
+    rustdoc()
+        .input("lib.rs")
+        .edition("2024")
+        .arg("--test")
+        .arg("-Zunstable-options")
+        .arg("--merge-doctests=yes")
+        .arg("-L")
+        .arg(cwd())
+        .arg("-lstatic:+whole-archive=cfoo")
+        .run();
 }
