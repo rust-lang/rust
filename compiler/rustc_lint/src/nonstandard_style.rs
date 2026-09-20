@@ -311,7 +311,7 @@ impl NonSnakeCase {
                                 suggestion: sc_ident,
                             }
                         } else {
-                            NonSnakeCaseDiagSub::SuggestionAndNote { sc, span }
+                            NonSnakeCaseDiagSub::RawIdent { sc, span }
                         }
                     } else {
                         NonSnakeCaseDiagSub::ConvertSuggestion { span, suggestion: sc }
