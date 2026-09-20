@@ -174,6 +174,7 @@
 //! )
 //! ```
 
+use std::iter::once;
 use std::ops::Not;
 use std::{iter, vec};
 
@@ -819,18 +820,10 @@ impl<'a> TraitDef<'a> {
         let field_tys = struct_def.fields().iter().map(|field| &*field.ty);
 
         let methods = self.methods.iter().filter_map(|method_def| {
-            let ArgDetails { selflike_args } = method_def.extract_arg_details(cx, self);
-
             let body = if from_scratch || method_def.is_static() {
                 method_def.call_substructure_method(cx, self, StaticStruct(struct_def))
             } else {
-                method_def.expand_struct_method_body(
-                    cx,
-                    self,
-                    struct_def,
-                    &selflike_args,
-                    is_packed,
-                )
+                method_def.expand_struct_method_body(cx, self, struct_def, is_packed)
             };
 
             method_def.create_method(cx, self, body)
@@ -854,12 +847,10 @@ impl<'a> TraitDef<'a> {
             .map(|field| &*field.ty);
 
         let methods = self.methods.iter().filter_map(|method_def| {
-            let ArgDetails { selflike_args } = method_def.extract_arg_details(cx, self);
-
             let body = if from_scratch || method_def.is_static() {
                 method_def.call_substructure_method(cx, self, StaticEnum(enum_def))
             } else {
-                method_def.expand_enum_method_body(cx, self, enum_def, type_ident, selflike_args)
+                method_def.expand_enum_method_body(cx, self, enum_def, type_ident)
             };
 
             method_def.create_method(cx, self, body)
@@ -868,12 +859,6 @@ impl<'a> TraitDef<'a> {
         let is_packed = false; // enums are never packed
         self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
     }
-}
-
-struct ArgDetails {
-    /// Expressions for `&self` (if present) and also any other
-    /// args with the same type (e.g. the `other` arg in `PartialEq::eq`).
-    selflike_args: ThinVec<Box<Expr>>,
 }
 
 impl<'a> MethodDef<'a> {
@@ -893,28 +878,19 @@ impl<'a> MethodDef<'a> {
         !self.explicit_self
     }
 
-    fn extract_arg_details(&self, cx: &ExtCtxt<'_>, trait_: &TraitDef<'_>) -> ArgDetails {
-        let mut selflike_args = ThinVec::new();
+    /// Expressions for `&self` and also any other
+    /// args with the same type (e.g. the `other` arg in `PartialEq::eq`).
+    fn get_selflike_args(&self, cx: &ExtCtxt<'_>, trait_: &TraitDef<'_>) -> ThinVec<Box<Expr>> {
+        assert!(self.explicit_self);
+
         let span = trait_.span;
 
-        if self.explicit_self {
-            // This constructs a fresh `self` path.
-            selflike_args.push(cx.expr_self(span));
-        }
-
-        for (ty, name) in self.nonself_args.iter() {
-            let ident = Ident::new(*name, span);
-            let arg_expr = cx.expr_ident(span, ident);
-
-            match ty {
-                // Selflike (`&Self`) arguments only occur in non-static methods.
-                Ref(Self_, _) if self.explicit_self => selflike_args.push(arg_expr),
-                Self_ => cx.dcx().span_bug(span, "`Self` in non-return position"),
-                _ => (),
-            }
-        }
-
-        ArgDetails { selflike_args }
+        once(cx.expr_self(span))
+            .chain(self.nonself_args.iter().filter_map(|(ty, name)| match ty {
+                Ref(Self_, _) => Some(cx.expr_ident(span, Ident::new(*name, span))),
+                _ => None,
+            }))
+            .collect()
     }
 
     fn create_method(
@@ -1023,13 +999,12 @@ impl<'a> MethodDef<'a> {
         cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'b>,
         struct_def: &'b VariantData,
-        selflike_args: &[Box<Expr>],
         is_packed: bool,
     ) -> BlockOrExpr {
-        assert!(selflike_args.len() == 1 || selflike_args.len() == 2);
+        let selflike_args = self.get_selflike_args(cx, trait_);
 
         let selflike_fields =
-            trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, is_packed);
+            trait_.create_struct_field_access_fields(cx, &selflike_args, struct_def, is_packed);
         self.call_substructure_method(cx, trait_, Struct(struct_def, selflike_fields))
     }
 
@@ -1074,13 +1049,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'b>,
         enum_def: &'b EnumDef,
         type_ident: Ident,
-        mut selflike_args: ThinVec<Box<Expr>>,
     ) -> BlockOrExpr {
-        assert!(
-            !selflike_args.is_empty(),
-            "static methods must use `expand_static_enum_method_body`",
-        );
-
         let span = trait_.span;
         let variants = &enum_def.variants;
 
@@ -1092,12 +1061,13 @@ impl<'a> MethodDef<'a> {
         // `match *self {}`. This produces machine code identical to `unsafe {
         // core::intrinsics::unreachable() }` while being safe and stable.
         if variants.is_empty() {
-            selflike_args.truncate(1);
-            let match_arg = cx.expr_deref(span, selflike_args.pop().unwrap());
+            let match_arg = cx.expr_deref(span, cx.expr_self(span));
             let match_arms = ThinVec::new();
             let expr = cx.expr_match(span, match_arg, match_arms);
             return BlockOrExpr(ThinVec::new(), Some(expr));
         }
+
+        let selflike_args = self.get_selflike_args(cx, trait_);
 
         let prefixes = iter::once("__self".to_string())
             .chain((1..selflike_args.len()).map(|arg_count| format!("__arg{arg_count}")))
