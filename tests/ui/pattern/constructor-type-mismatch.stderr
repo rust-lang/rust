@@ -31,7 +31,7 @@ LL | struct S;
 LL |         S(()) => {}
    |         ^^^^^
    |
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         S(()) => {}
 LL +         S => {}

@@ -12,7 +12,7 @@ note: similarly named tuple struct `XEmpty6` defined here
    |
 LL | pub struct XEmpty6();
    | ^^^^^^^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         Empty2() => ()
 LL +         Empty2 => ()
@@ -39,7 +39,7 @@ note: similarly named tuple struct `XEmpty6` defined here
    |
 LL | pub struct XEmpty6();
    | ^^^^^^^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         XEmpty2() => ()
 LL +         XEmpty2 => ()
@@ -64,7 +64,7 @@ note: similarly named tuple struct `XEmpty6` defined here
    |
 LL | pub struct XEmpty6();
    | ^^^^^^^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         Empty2(..) => ()
 LL +         Empty2 => ()
@@ -91,7 +91,7 @@ note: similarly named tuple struct `XEmpty6` defined here
    |
 LL | pub struct XEmpty6();
    | ^^^^^^^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         XEmpty2(..) => ()
 LL +         XEmpty2 => ()
@@ -111,7 +111,7 @@ LL |     Empty4
 LL |         E::Empty4() => ()
    |         ^^^^^^^^^^^
    |
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         E::Empty4() => ()
 LL +         E::Empty4 => ()
@@ -133,7 +133,7 @@ note: similarly named tuple variant `XEmpty5` defined here
    |
 LL |     XEmpty5(),
    |     ^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         XE::XEmpty4() => (),
 LL +         XE::XEmpty4 => (),
@@ -153,7 +153,7 @@ LL |     Empty4
 LL |         E::Empty4(..) => ()
    |         ^^^^^^^^^^^^^
    |
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         E::Empty4(..) => ()
 LL +         E::Empty4 => ()
@@ -175,7 +175,7 @@ note: similarly named tuple variant `XEmpty5` defined here
    |
 LL |     XEmpty5(),
    |     ^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         XE::XEmpty4(..) => (),
 LL +         XE::XEmpty4 => (),

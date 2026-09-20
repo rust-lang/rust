@@ -7,7 +7,7 @@ LL |         NoColor,
 LL |           Color::NoColor(_) => { }
    |           ^^^^^^^^^^^^^^^^^
    |
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -           Color::NoColor(_) => { }
 LL +           Color::NoColor => { }

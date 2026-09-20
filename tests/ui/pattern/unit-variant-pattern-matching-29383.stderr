@@ -7,7 +7,7 @@ LL |     A,
 LL |         Some(E::A(..)) => {}
    |              ^^^^^^^^
    |
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         Some(E::A(..)) => {}
 LL +         Some(E::A) => {}
@@ -22,7 +22,7 @@ LL |     B,
 LL |         Some(E::B(..)) => {}
    |              ^^^^^^^^
    |
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         Some(E::B(..)) => {}
 LL +         Some(E::B) => {}

@@ -12,7 +12,7 @@ note: similarly named tuple variant `B` defined here
    |
 LL |     B(isize, isize),
    |     ^^^^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         A::D(_) => (),
 LL +         A::D => (),

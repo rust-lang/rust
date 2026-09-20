@@ -24,7 +24,7 @@ note: similarly named tuple struct `Z1` defined here
    |
 LL | struct Z1();
    | ^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         Z0() => {}
 LL +         Z0 => {}
@@ -49,7 +49,7 @@ note: similarly named tuple struct `Z1` defined here
    |
 LL | struct Z1();
    | ^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         Z0(_) => {}
 LL +         Z0 => {}
@@ -74,7 +74,7 @@ note: similarly named tuple struct `Z1` defined here
    |
 LL | struct Z1();
    | ^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         Z0(_, _) => {}
 LL +         Z0 => {}
@@ -99,7 +99,7 @@ note: similarly named tuple variant `Z1` defined here
    |
 LL |     Z1(),
    |     ^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         E1::Z0() => {}
 LL +         E1::Z0 => {}
@@ -124,7 +124,7 @@ note: similarly named tuple variant `Z1` defined here
    |
 LL |     Z1(),
    |     ^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         E1::Z0(_) => {}
 LL +         E1::Z0 => {}
@@ -149,7 +149,7 @@ note: similarly named tuple variant `Z1` defined here
    |
 LL |     Z1(),
    |     ^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         E1::Z0(_, _) => {}
 LL +         E1::Z0 => {}

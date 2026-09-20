@@ -2639,7 +2639,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         );
                         err.span_suggestion_verbose(
                             span,
-                            "use this syntax instead",
+                            "use the unit struct syntax instead",
                             path_str,
                             Applicability::MaybeIncorrect,
                         );

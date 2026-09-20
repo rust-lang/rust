@@ -7,7 +7,7 @@ LL |     Cow,
 LL |         FarmAnimal::Cow(_) => "moo".to_string(),
    |         ^^^^^^^^^^^^^^^^^^
    |
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         FarmAnimal::Cow(_) => "moo".to_string(),
 LL +         FarmAnimal::Cow => "moo".to_string(),
