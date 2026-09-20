@@ -289,7 +289,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SubregionOrigin::CheckAssociatedTypeBounds { ref parent, .. } => {
                 self.note_region_origin(err, parent);
             }
-            SubregionOrigin::AscribeUserTypeProvePredicate(span) => {
+            SubregionOrigin::AscribeUserTypeProvePredicate(span, _) => {
                 RegionOriginNote::Plain { span, msg: msg!("...so that the where clause holds") }
                     .add_to_diag(err);
             }
@@ -546,7 +546,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 err
             }
-            SubregionOrigin::AscribeUserTypeProvePredicate(span) => {
+            SubregionOrigin::AscribeUserTypeProvePredicate(span, _) => {
                 let instantiated = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     generic_param_scope,
