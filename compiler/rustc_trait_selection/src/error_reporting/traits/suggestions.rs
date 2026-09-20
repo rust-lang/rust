@@ -4449,11 +4449,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         format!("required because it appears within the type `{ty_str}`")
                     };
                     match *ty.kind() {
-                        ty::Adt(def, _) => {
+                        ty::Adt(def, args) => {
                             let msg = msg();
                             match tcx.opt_item_ident(def.did()) {
                                 Some(ident) => {
-                                    err.span_note(ident.span, msg);
+                                    let mut spans = MultiSpan::from(ident.span);
+                                    if def.did().is_local()
+                                        && let Some(pred) = predicate.as_trait_clause()
+                                    {
+                                        let field_ty = self.deeply_resolve_ignoring_regions(
+                                            pred.skip_binder().self_ty(),
+                                        );
+                                        for field in def.all_fields() {
+                                            if field.ty(tcx, args).skip_norm_wip() == field_ty {
+                                                spans.push_span_label(
+                                                    tcx.def_span(field.did),
+                                                    "required by this field",
+                                                );
+                                            }
+                                        }
+                                    }
+                                    err.span_note(spans, msg);
                                 }
                                 None => {
                                     err.note(msg);

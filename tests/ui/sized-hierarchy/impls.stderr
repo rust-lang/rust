@@ -292,7 +292,9 @@ note: required because it appears within the type `StructAllFieldsMetaSized`
   --> $DIR/impls.rs:235:12
    |
 LL |     struct StructAllFieldsMetaSized { x: [u8], y: [u8] }
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^   -------  ------- required by this field
+   |                                       |
+   |                                       required by this field
 note: required by a bound in `needs_sized`
   --> $DIR/impls.rs:13:19
    |
@@ -310,7 +312,9 @@ note: required because it appears within the type `StructAllFieldsUnsized`
   --> $DIR/impls.rs:243:12
    |
 LL |     struct StructAllFieldsUnsized { x: Foo, y: Foo }
-   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^   ------  ------ required by this field
+   |                                     |
+   |                                     required by this field
 note: required by a bound in `needs_sized`
   --> $DIR/impls.rs:13:19
    |
@@ -328,7 +332,9 @@ note: required because it appears within the type `StructAllFieldsUnsized`
   --> $DIR/impls.rs:243:12
    |
 LL |     struct StructAllFieldsUnsized { x: Foo, y: Foo }
-   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^   ------  ------ required by this field
+   |                                     |
+   |                                     required by this field
 note: required by a bound in `needs_metasized`
   --> $DIR/impls.rs:16:23
    |
@@ -346,7 +352,7 @@ note: required because it appears within the type `StructLastFieldMetaSized`
   --> $DIR/impls.rs:252:12
    |
 LL |     struct StructLastFieldMetaSized { x: u32, y: [u8] }
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^           ------- required by this field
 note: required by a bound in `needs_sized`
   --> $DIR/impls.rs:13:19
    |
@@ -364,7 +370,7 @@ note: required because it appears within the type `StructLastFieldUnsized`
   --> $DIR/impls.rs:259:12
    |
 LL |     struct StructLastFieldUnsized { x: u32, y: Foo }
-   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^           ------ required by this field
 note: required by a bound in `needs_sized`
   --> $DIR/impls.rs:13:19
    |
@@ -382,7 +388,7 @@ note: required because it appears within the type `StructLastFieldUnsized`
   --> $DIR/impls.rs:259:12
    |
 LL |     struct StructLastFieldUnsized { x: u32, y: Foo }
-   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^           ------ required by this field
 note: required by a bound in `needs_metasized`
   --> $DIR/impls.rs:16:23
    |
