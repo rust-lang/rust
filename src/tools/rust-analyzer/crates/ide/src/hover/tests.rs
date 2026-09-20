@@ -8862,6 +8862,39 @@ dep::expand_cfg!("$02");
             cfg predicate evaluated: `true` (`opt_level="2"`)
         "#]],
     );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn test() { cfg!($0opt_level = "2") }
+"#,
+        expect![[r#"
+            *opt_level*
+            cfg predicate evaluated: `true` (`opt_level="2"`)
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn test() { cfg!($0opt_level = "3") }
+"#,
+        expect![[r#"
+            *opt_level*
+            cfg predicate evaluated: `false` (`opt_level="3"`)
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn test() { cfg!(and(false, $0opt_level = "2")) }
+"#,
+        expect![[r#"
+            *opt_level*
+            cfg predicate evaluated: `true` (`opt_level="2"`)
+        "#]],
+    );
 }
 
 #[test]
