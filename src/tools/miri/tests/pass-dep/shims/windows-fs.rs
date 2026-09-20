@@ -71,7 +71,7 @@ unsafe fn test_create_dir_file() {
 }
 
 unsafe fn test_create_normal_file() {
-    let temp = utils::tmp().join("test.txt");
+    let temp = utils::tmp().join("test_create_normal_file.txt");
     let raw_path = to_wide_cstr(&temp);
     let handle = CreateFileW(
         raw_path.as_ptr(),
@@ -111,6 +111,8 @@ unsafe fn test_create_normal_file() {
     if CloseHandle(handle) == 0 {
         panic!("Failed to close file")
     };
+
+    fs::remove_file(&temp).unwrap();
 }
 
 /// Tests that CREATE_ALWAYS sets the error value correctly based on whether the file already exists
@@ -146,6 +148,8 @@ unsafe fn test_create_always_twice() {
     if CloseHandle(handle) == 0 {
         panic!("Failed to close file")
     };
+
+    fs::remove_file(&temp).unwrap();
 }
 
 /// Tests that OPEN_ALWAYS sets the error value correctly based on whether the file already exists
@@ -181,6 +185,8 @@ unsafe fn test_open_always_twice() {
     if CloseHandle(handle) == 0 {
         panic!("Failed to close file")
     };
+
+    fs::remove_file(&temp).unwrap();
 }
 
 // TODO: Once we support more of the std API, it would be nice to test against an actual symlink
