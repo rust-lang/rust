@@ -377,7 +377,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let attributes = if file_type.is_dir() {
             this.eval_windows_u32("c", "FILE_ATTRIBUTE_DIRECTORY")
         } else if file_type.is_file() {
-            this.eval_windows_u32("c", "FILE_ATTRIBUTE_NORMAL")
+            // Normal files seem to have the "archive" attribute. There's also
+            // `FILE_ATTRIBUTE_NORMAL` but that's for files without any other attribute which,
+            // apparently, is not normal.
+            this.eval_windows_u32("c", "FILE_ATTRIBUTE_ARCHIVE")
         } else {
             this.eval_windows_u32("c", "FILE_ATTRIBUTE_DEVICE")
         };
