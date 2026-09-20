@@ -14,11 +14,12 @@ use rustc_span::{BytePos, ExpnKind};
 use crate::clean::{self, PrimitiveType, rustc_span};
 use crate::html::sources;
 
-/// This is a stripped down version of [`rustc_span::Span`] that only contains the start and end byte positions of the span.
+/// This is a stripped down version of [`rustc_span::Span`] that only contains the start and end
+/// byte positions of the span.
 ///
-/// Profiling showed that the `Span` interner was taking up a lot of the run-time when highlighting, and since we
-/// never actually use the context and parent that are stored in a normal `Span`, we can replace its usages with this
-/// one, which is much cheaper to construct.
+/// Profiling showed that the `Span` interner was taking up a lot of the run-time when highlighting,
+/// and since we never actually use the context and parent that are stored in a normal `Span`, we
+/// can replace its usages with this one, which is much cheaper to construct.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Span {
     lo: BytePos,

@@ -417,6 +417,7 @@ fn generate_item_def_id_path(
     root_path: Option<&str>,
 ) -> Result<HrefInfo, HrefError> {
     use rustc_middle::traits::ObligationCause;
+    use rustc_middle::ty;
     use rustc_trait_selection::infer::TyCtxtInferExt;
     use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 
@@ -434,7 +435,19 @@ fn generate_item_def_id_path(
             .query_normalize(ty::Binder::dummy(ty.instantiate_identity().skip_norm_wip()))
             .map(|resolved| infcx.deeply_resolve_ignoring_regions(resolved.value).skip_binder())
             .unwrap_or(ty.skip_binder());
-        if let Some(new_def_id) = ty.ty_adt_def().map(|adt| adt.did()) {
+        // If this is a dyn trait, we want to get the actual trait from which the method comes from.
+        // Since a `dyn trait` (as of 2026) can only be composed of a trait plus auto traits, we
+        // look for the trait and ignore auto traits.
+        if let ty::Dynamic(traits, _) = ty.kind()
+            && let Some(trait_def_id) =
+                traits.iter().find_map(|trait_| match trait_.skip_binder() {
+                    ty::ExistentialPredicate::Trait(t) => Some(t.def_id),
+                    ty::ExistentialPredicate::Projection(p) => Some(p.trait_ref(tcx).def_id),
+                    ty::ExistentialPredicate::AutoTrait(_) => None,
+                })
+        {
+            def_id = trait_def_id;
+        } else if let Some(new_def_id) = ty.ty_adt_def().map(|adt| adt.did()) {
             def_id = new_def_id;
         } else {
             prim = PrimitiveType::from_ty(ty);
