@@ -7,6 +7,8 @@ LL |         self.unsatisfied()
 note: required by a bound in `Foo::<T, N>::unsatisfied`
   --> $DIR/ct-var-in-collect_all_mismatches.rs:15:12
    |
+LL | impl<T, const N: usize> Foo<T, N> {
+...
 LL |     fn unsatisfied(self)
 LL |     where
 LL |         T: Bar<N>,

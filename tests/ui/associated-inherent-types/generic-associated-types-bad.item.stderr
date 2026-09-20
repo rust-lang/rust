@@ -7,6 +7,7 @@ LL | const _: Ty::Pr<String> = String::new();
 note: required by a bound in `Ty::Pr`
   --> $DIR/generic-associated-types-bad.rs:10:16
    |
+LL | impl Ty {
 LL |     type Pr<T: Copy> = T;
    |                ^^^^ required by this bound in `Ty::Pr`
 
@@ -19,6 +20,7 @@ LL | const _: Ty::Pr<String> = String::new();
 note: required by a bound in `Ty::Pr`
   --> $DIR/generic-associated-types-bad.rs:10:16
    |
+LL | impl Ty {
 LL |     type Pr<T: Copy> = T;
    |                ^^^^ required by this bound in `Ty::Pr`
 

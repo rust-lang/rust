@@ -3964,9 +3964,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let sm = tcx.sess.source_map();
                 if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy =
                     tcx.def_kind(item_def_id)
-                    && let Some(ident) = tcx.opt_item_ident(tcx.parent(item_def_id))
                 {
-                    multispan.push_span_context(ident.span);
+                    let span = tcx.def_span(tcx.parent(item_def_id)).shrink_to_lo();
+                    multispan.push_span_context(span);
                 }
                 if let Some(ident) = tcx.opt_item_ident(item_def_id) {
                     multispan.push_span_context(ident.span);
