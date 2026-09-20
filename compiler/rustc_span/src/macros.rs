@@ -25,7 +25,9 @@ pub macro bug {
         bug!("impossible case reached")
     ),
     ($($arg:tt)+) => (
-        bug_impl(None, std::format_args!($($arg)+), Location::caller())
+        // Use the full path of `bug_impl` to make sure rust-analyzer can resolve it,
+        // to avoid bogus type errors about `()` versus `!`.
+        $crate::macros::bug_impl(None, std::format_args!($($arg)+), Location::caller())
     ),
 }
 
@@ -39,7 +41,9 @@ pub macro bug {
 ///
 /// [`DiagCtxtHandle::span_delayed_bug`]: ../../rustc_errors/struct.DiagCtxtHandle.html#method.span_delayed_bug
 pub macro span_bug($span:expr, $($arg:tt)+){
-   bug_impl(Some($span), std::format_args!($($arg)+), Location::caller())
+    // Use the full path of `bug_impl` to make sure rust-analyzer can resolve it,
+    // to avoid bogus type errors about `()` versus `!`.
+    $crate::macros::bug_impl(Some($span), std::format_args!($($arg)+), Location::caller())
 }
 
 #[cold]
