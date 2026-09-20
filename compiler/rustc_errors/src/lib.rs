@@ -57,6 +57,7 @@ pub use rustc_macros::msg;
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker, catch_fatal_errors};
+pub use rustc_span::macros::ExplicitBug;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
@@ -255,10 +256,6 @@ fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a s
         None
     }
 }
-
-/// Signifies that the compiler died with an explicit call to `.bug`
-/// or `.span_bug` rather than a failed assertion, etc.
-pub struct ExplicitBug;
 
 /// Signifies that the compiler died due to a delayed bug rather than a failed
 /// assertion, etc.

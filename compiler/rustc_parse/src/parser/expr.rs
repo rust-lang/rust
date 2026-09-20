@@ -34,8 +34,9 @@ use super::{
     AttrWrapper, BlockMode, ClosureSpans, ExpTokenPair, ForceCollect, Parser, PathStyle,
     Restrictions, SemiColonMode, SeqSep, TokenType, Trailing, UsePreAttrPos,
 };
-use crate::diagnostics::ExprParenthesesNeeded;
-use crate::{diagnostics, exp, maybe_recover_from_interpolated_ty_qpath};
+use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
+
+mod diagnostics;
 
 #[derive(Debug)]
 pub(super) enum DestructuredFloat {
@@ -151,7 +152,6 @@ impl<'a> Parser<'a> {
         self.expected_token_types.insert(TokenType::Operator);
         while let Some(op) = self.check_assoc_op() {
             let lhs_span = self.interpolated_or_expr_span(&lhs);
-            let cur_op_span = self.token.span;
             let restrictions = if op.node.is_assign_like() {
                 self.restrictions & Restrictions::NO_STRUCT_LITERAL
             } else {
@@ -165,134 +165,60 @@ impl<'a> Parser<'a> {
             } {
                 break;
             }
-            // Check for deprecated `...` syntax
-            if self.token == token::DotDotDot && op.node == AssocOp::Range(RangeLimits::Closed) {
-                self.err_dotdotdot_syntax(self.token.span);
-            }
 
-            if self.token == token::LArrow {
-                self.err_larrow_operator(self.token.span);
-            }
+            self.reject_dotdotdot_expr_op();
+            self.reject_larrow_expr_op();
 
             parsed_something = true;
             self.bump();
-            if op.node.is_comparison() {
-                if let Some(expr) = self.check_no_chained_comparison(&lhs, &op)? {
-                    return Ok((expr, parsed_something));
-                }
-            }
 
-            // Look for JS' `===` and `!==` and recover
-            if let AssocOp::Binary(bop @ BinOpKind::Eq | bop @ BinOpKind::Ne) = op.node
-                && self.token == token::Eq
-                && self.prev_token.span.hi() == self.token.span.lo()
+            if op.node.is_comparison()
+                && let Some(expr) = self.check_no_chained_comparison(&lhs, &op)?
             {
-                let sp = op.span.to(self.token.span);
-                let sugg = bop.as_str().into();
-                let invalid = format!("{sugg}=");
-                self.dcx().emit_err(diagnostics::InvalidComparisonOperator {
-                    span: sp,
-                    invalid: invalid.clone(),
-                    sub: diagnostics::InvalidComparisonOperatorSub::Correctable {
-                        span: sp,
-                        invalid,
-                        correct: sugg,
-                    },
-                });
-                self.bump();
+                return Ok((expr, parsed_something));
             }
 
-            // Look for PHP's `<>` and recover
-            if op.node == AssocOp::Binary(BinOpKind::Lt)
-                && self.token == token::Gt
-                && self.prev_token.span.hi() == self.token.span.lo()
-            {
-                let sp = op.span.to(self.token.span);
-                self.dcx().emit_err(diagnostics::InvalidComparisonOperator {
-                    span: sp,
-                    invalid: "<>".into(),
-                    sub: diagnostics::InvalidComparisonOperatorSub::Correctable {
-                        span: sp,
-                        invalid: "<>".into(),
-                        correct: "!=".into(),
-                    },
-                });
-                self.bump();
-            }
+            self.recover_from_strict_eq_op(op);
+            self.recover_from_diamond_ne_op();
+            self.recover_from_spaceship_cmp_op();
+            self.recover_from_postfix_inc_op(&lhs, starts_stmt)?;
+            self.recover_from_postfix_dec_op(&lhs, starts_stmt)?;
 
-            // Look for C++'s `<=>` and recover
-            if op.node == AssocOp::Binary(BinOpKind::Le)
-                && self.token == token::Gt
-                && self.prev_token.span.hi() == self.token.span.lo()
-            {
-                let sp = op.span.to(self.token.span);
-                self.dcx().emit_err(diagnostics::InvalidComparisonOperator {
-                    span: sp,
-                    invalid: "<=>".into(),
-                    sub: diagnostics::InvalidComparisonOperatorSub::Spaceship(sp),
-                });
-                self.bump();
-            }
-
-            if self.prev_token == token::Plus
-                && self.token == token::Plus
-                && self.prev_token.span.between(self.token.span).is_empty()
-            {
-                let op_span = self.prev_token.span.to(self.token.span);
-                // Eat the second `+`
-                self.bump();
-                lhs = self.recover_from_postfix_increment(lhs, op_span, starts_stmt)?;
-                continue;
-            }
-
-            if self.prev_token == token::Minus
-                && self.token == token::Minus
-                && self.prev_token.span.between(self.token.span).is_empty()
-                && !self.look_ahead(1, |tok| tok.can_begin_expr())
-            {
-                let op_span = self.prev_token.span.to(self.token.span);
-                // Eat the second `-`
-                self.bump();
-                lhs = self.recover_from_postfix_decrement(lhs, op_span, starts_stmt)?;
-                continue;
-            }
-
-            let op_span = op.span;
-            let op = op.node;
-            // Special cases:
-            if op == AssocOp::Cast {
-                lhs = self.parse_assoc_op_cast(lhs, lhs_span, op_span, ExprKind::Cast)?;
-                continue;
-            } else if let AssocOp::Range(limits) = op {
-                // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
-                // generalise it to the Fixity::None code.
-                lhs = self.parse_expr_range(prec, lhs, limits, cur_op_span)?;
-                break;
-            }
-
-            let min_prec = match op.fixity() {
+            let min_prec = match op.node.fixity() {
                 Fixity::Right => Bound::Included(prec),
                 Fixity::Left | Fixity::None => Bound::Excluded(prec),
             };
-            let rhs = self.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
-                this.parse_expr_assoc(min_prec)
-            })?;
 
-            let span = self.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span);
-            lhs = match op {
-                AssocOp::Binary(ast_op) => {
-                    let binary = self.mk_binary(respan(cur_op_span, ast_op), lhs, rhs);
-                    self.mk_expr(span, binary)
-                }
-                AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs, cur_op_span)),
-                AssocOp::AssignOp(aop) => {
-                    let aopexpr = self.mk_assign_op(respan(cur_op_span, aop), lhs, rhs);
-                    self.mk_expr(span, aopexpr)
-                }
-                AssocOp::Cast | AssocOp::Range(_) => {
-                    self.dcx().span_bug(span, "AssocOp should have been handled by special case")
-                }
+            let finish_parsing_bin_op = |this: &mut Self| {
+                let rhs = this.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
+                    this.parse_expr_assoc(min_prec)
+                })?;
+                let span = this.mk_expr_sp(&lhs, lhs_span, op.span, rhs.span);
+                Ok((rhs, span))
             };
+
+            lhs = match op.node {
+                AssocOp::Binary(ast_op) => {
+                    let (rhs, span) = finish_parsing_bin_op(self)?;
+                    self.mk_expr(span, self.mk_binary(respan(op.span, ast_op), lhs, rhs))
+                }
+                AssocOp::AssignOp(aop) => {
+                    let (rhs, span) = finish_parsing_bin_op(self)?;
+                    self.mk_expr(span, self.mk_assign_op(respan(op.span, aop), lhs, rhs))
+                }
+                AssocOp::Assign => {
+                    let (rhs, span) = finish_parsing_bin_op(self)?;
+                    self.mk_expr(span, ExprKind::Assign(lhs, rhs, op.span))
+                }
+                AssocOp::Cast => {
+                    self.parse_assoc_op_cast(lhs, lhs_span, op.span, ExprKind::Cast)?
+                }
+                AssocOp::Range(limits) => self.parse_expr_range(min_prec, lhs, limits, op.span)?,
+            };
+
+            if let AssocOp::Range(_) = op.node {
+                break;
+            }
         }
 
         Ok((lhs, parsed_something))
@@ -337,64 +263,44 @@ impl<'a> Parser<'a> {
     /// but the next token implies this should be parsed as an expression.
     /// For example: `if let Some(x) = x { x } else { 0 } / 2`.
     fn error_found_expr_would_be_stmt(&self, lhs: &Expr) {
-        self.dcx().emit_err(diagnostics::FoundExprWouldBeStmt {
+        self.dcx().emit_err(crate::diagnostics::FoundExprWouldBeStmt {
             span: self.token.span,
             token: pprust::token_to_string(&self.token),
-            suggestion: ExprParenthesesNeeded::surrounding(lhs.span),
+            suggestion: crate::diagnostics::ExprParenthesesNeeded::surrounding(lhs.span),
         });
     }
 
     /// Possibly translate the current token to an associative operator.
     /// The method does not advance the current token.
-    ///
-    /// Also performs recovery for `and` / `or` which are mistaken for `&&` and `||` respectively.
     pub(super) fn check_assoc_op(&self) -> Option<Spanned<AssocOp>> {
-        let (op, span) = match (AssocOp::from_token(&self.token), self.token.ident()) {
-            // When parsing const expressions, stop parsing when encountering `>`.
-            (
-                Some(
-                    AssocOp::Binary(BinOpKind::Shr | BinOpKind::Gt | BinOpKind::Ge)
-                    | AssocOp::AssignOp(AssignOpKind::ShrAssign),
-                ),
-                _,
-            ) if self.restrictions.contains(Restrictions::CONST_EXPR) => {
-                return None;
-            }
-            // When recovering patterns as expressions, stop parsing when encountering an
-            // assignment `=`, an alternative `|`, or a range `..`.
-            (
-                Some(
-                    AssocOp::Assign
-                    | AssocOp::AssignOp(_)
-                    | AssocOp::Binary(BinOpKind::BitOr)
-                    | AssocOp::Range(_),
-                ),
-                _,
-            ) if self.restrictions.contains(Restrictions::IS_PAT) => {
-                return None;
-            }
-            (Some(op), _) => (op, self.token.span),
-            (None, Some((Ident { name: sym::and, span }, IdentIsRaw::No)))
-                if self.may_recover() =>
-            {
-                self.dcx().emit_err(diagnostics::InvalidLogicalOperator {
-                    span: self.token.span,
-                    incorrect: "and".into(),
-                    sub: diagnostics::InvalidLogicalOperatorSub::Conjunction(self.token.span),
-                });
-                (AssocOp::Binary(BinOpKind::And), span)
-            }
-            (None, Some((Ident { name: sym::or, span }, IdentIsRaw::No))) if self.may_recover() => {
-                self.dcx().emit_err(diagnostics::InvalidLogicalOperator {
-                    span: self.token.span,
-                    incorrect: "or".into(),
-                    sub: diagnostics::InvalidLogicalOperatorSub::Disjunction(self.token.span),
-                });
-                (AssocOp::Binary(BinOpKind::Or), span)
-            }
-            _ => return None,
-        };
-        Some(respan(span, op))
+        let op = AssocOp::from_token(&self.token);
+
+        // When parsing const expressions, stop parsing when encountering `>`.
+        if self.restrictions.contains(Restrictions::CONST_EXPR)
+            && let Some(op) = op
+            && let AssocOp::Binary(BinOpKind::Shr | BinOpKind::Gt | BinOpKind::Ge)
+            | AssocOp::AssignOp(AssignOpKind::ShrAssign) = op
+        {
+            return None;
+        }
+
+        // When recovering patterns as expressions, stop parsing when encountering an
+        // assignment `=`, an alternative `|`, or a range `..`.
+        if self.restrictions.contains(Restrictions::IS_PAT)
+            && let Some(op) = op
+            && let AssocOp::Assign
+            | AssocOp::AssignOp(_)
+            | AssocOp::Binary(BinOpKind::BitOr)
+            | AssocOp::Range(_) = op
+        {
+            return None;
+        }
+
+        if let Some(op) = op {
+            return Some(respan(self.token.span, op));
+        }
+
+        self.recover_from_alpha_logic_op()
     }
 
     /// Checks if this expression is a successfully parsed statement.
@@ -406,7 +312,7 @@ impl<'a> Parser<'a> {
     /// The other two variants are handled in `parse_prefix_range_expr` below.
     fn parse_expr_range(
         &mut self,
-        prec: ExprPrecedence,
+        min_prec: Bound<ExprPrecedence>,
         lhs: Box<Expr>,
         limits: RangeLimits,
         cur_op_span: Span,
@@ -414,7 +320,7 @@ impl<'a> Parser<'a> {
         let rhs = if self.is_at_start_of_range_notation_rhs() {
             let maybe_lt = self.token;
             Some(
-                self.parse_expr_assoc(Bound::Excluded(prec))
+                self.parse_expr_assoc(min_prec)
                     .map_err(|err| self.maybe_err_dotdotlt_syntax(maybe_lt, err))?,
             )
         } else {
@@ -441,14 +347,11 @@ impl<'a> Parser<'a> {
     /// Parses prefix-forms of range notation: `..expr`, `..`, `..=expr`.
     fn parse_expr_prefix_range(&mut self, attrs: AttrWrapper) -> PResult<'a, Box<Expr>> {
         if !attrs.is_empty() {
-            let err = diagnostics::DotDotRangeAttribute { span: self.token.span };
+            let err = crate::diagnostics::DotDotRangeAttribute { span: self.token.span };
             self.dcx().emit_err(err);
         }
 
-        // Check for deprecated `...` syntax.
-        if self.token == token::DotDotDot {
-            self.err_dotdotdot_syntax(self.token.span);
-        }
+        self.reject_dotdotdot_expr_op();
 
         debug_assert!(
             self.token.is_range_separator(),
@@ -513,7 +416,7 @@ impl<'a> Parser<'a> {
             }
             // `+lit`
             token::Plus if this.look_ahead(1, |tok| tok.is_numeric_lit()) => {
-                let mut err = diagnostics::LeadingPlusNotSupported {
+                let mut err = crate::diagnostics::LeadingPlusNotSupported {
                     span: lo,
                     remove_plus: None,
                     add_parentheses: None,
@@ -521,7 +424,8 @@ impl<'a> Parser<'a> {
 
                 // a block on the LHS might have been intended to be an expression instead
                 if let Some(sp) = this.psess.ambiguous_block_expr_parse.borrow().get(&lo) {
-                    err.add_parentheses = Some(ExprParenthesesNeeded::surrounding(*sp));
+                    err.add_parentheses =
+                        Some(crate::diagnostics::ExprParenthesesNeeded::surrounding(*sp));
                 } else {
                     err.remove_plus = Some(lo);
                 }
@@ -539,8 +443,14 @@ impl<'a> Parser<'a> {
                 this.bump();
                 this.bump();
 
-                let operand_expr = this.parse_expr_dot_or_call(attrs)?;
-                this.recover_from_prefix_increment(operand_expr, pre_span, starts_stmt)
+                let operand = this.parse_expr_dot_or_call(attrs)?;
+                return Err(this.report_inc_dec_op(
+                    &operand,
+                    starts_stmt,
+                    diagnostics::IncOrDec::Inc,
+                    diagnostics::UnaryFixity::Pre,
+                    pre_span,
+                ));
             }
             token::Ident(..)
                 if this.token.is_keyword(kw::Move)
@@ -551,7 +461,7 @@ impl<'a> Parser<'a> {
             token::Ident(..) if this.may_recover() && this.is_mistaken_not_ident_negation() => {
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
             }
-            _ => return this.parse_expr_dot_or_call(attrs),
+            _ => this.parse_expr_dot_or_call(attrs),
         }
     }
 
@@ -574,7 +484,7 @@ impl<'a> Parser<'a> {
 
     /// Recover on `~expr` in favor of `!expr`.
     fn recover_tilde_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        self.dcx().emit_err(diagnostics::TildeAsUnaryOperator(lo));
+        self.dcx().emit_err(crate::diagnostics::TildeAsUnaryOperator(lo));
 
         self.parse_expr_unary(lo, UnOp::Not)
     }
@@ -605,14 +515,14 @@ impl<'a> Parser<'a> {
         let negated_token = self.look_ahead(1, |t| *t);
 
         let sub_diag = if negated_token.is_numeric_lit() {
-            diagnostics::NotAsNegationOperatorSub::SuggestNotBitwise
+            crate::diagnostics::NotAsNegationOperatorSub::SuggestNotBitwise
         } else if negated_token.is_bool_lit() {
-            diagnostics::NotAsNegationOperatorSub::SuggestNotLogical
+            crate::diagnostics::NotAsNegationOperatorSub::SuggestNotLogical
         } else {
-            diagnostics::NotAsNegationOperatorSub::SuggestNotDefault
+            crate::diagnostics::NotAsNegationOperatorSub::SuggestNotDefault
         };
 
-        self.dcx().emit_err(diagnostics::NotAsNegationOperator {
+        self.dcx().emit_err(crate::diagnostics::NotAsNegationOperator {
             negated: negated_token.span,
             negated_desc: super::token_descr(&negated_token),
             // Span the `not` plus trailing whitespace to avoid
@@ -683,7 +593,7 @@ impl<'a> Parser<'a> {
                         match self.parse_expr_labeled(label, false) {
                             Ok(expr) => {
                                 type_err.cancel();
-                                self.dcx().emit_err(diagnostics::MalformedLoopLabel {
+                                self.dcx().emit_err(crate::diagnostics::MalformedLoopLabel {
                                     span: label.ident.span,
                                     suggestion: label.ident.span.shrink_to_lo(),
                                 });
@@ -709,23 +619,24 @@ impl<'a> Parser<'a> {
 
                         let args_span = self.look_ahead(1, |t| t.span).to(span_after_type);
                         match self.token.kind {
-                            token::Lt => {
-                                self.dcx().emit_err(diagnostics::ComparisonInterpretedAsGeneric {
+                            token::Lt => self.dcx().emit_err(
+                                crate::diagnostics::ComparisonInterpretedAsGeneric {
                                     comparison: self.token.span,
                                     r#type: pprust::path_to_string(&path),
                                     args: args_span,
-                                    suggestion: diagnostics::ComparisonInterpretedAsGenericSugg {
-                                        left: expr.span.shrink_to_lo(),
-                                        right: expr.span.shrink_to_hi(),
-                                    },
-                                })
-                            }
+                                    suggestion:
+                                        crate::diagnostics::ComparisonInterpretedAsGenericSugg {
+                                            left: expr.span.shrink_to_lo(),
+                                            right: expr.span.shrink_to_hi(),
+                                        },
+                                },
+                            ),
                             token::Shl => {
-                                self.dcx().emit_err(diagnostics::ShiftInterpretedAsGeneric {
+                                self.dcx().emit_err(crate::diagnostics::ShiftInterpretedAsGeneric {
                                     shift: self.token.span,
                                     r#type: pprust::path_to_string(&path),
                                     args: args_span,
-                                    suggestion: diagnostics::ShiftInterpretedAsGenericSugg {
+                                    suggestion: crate::diagnostics::ShiftInterpretedAsGenericSugg {
                                         left: expr.span.shrink_to_lo(),
                                         right: expr.span.shrink_to_hi(),
                                     },
@@ -835,8 +746,10 @@ impl<'a> Parser<'a> {
     }
 
     fn error_remove_borrow_lifetime(&self, span: Span, lt_span: Span) {
-        self.dcx()
-            .emit_err(diagnostics::LifetimeInBorrowExpression { span, lifetime_span: lt_span });
+        self.dcx().emit_err(crate::diagnostics::LifetimeInBorrowExpression {
+            span,
+            lifetime_span: lt_span,
+        });
     }
 
     /// Parse `mut?` or `[ raw | pin ] [ const | mut ]`.
@@ -895,7 +808,7 @@ impl<'a> Parser<'a> {
                 // Recovery for `expr->suffix`.
                 self.bump();
                 let span = self.prev_token.span;
-                self.dcx().emit_err(diagnostics::ExprRArrowCall { span });
+                self.dcx().emit_err(crate::diagnostics::ExprRArrowCall { span });
                 true
             } else {
                 self.eat(exp!(Dot))
@@ -1018,7 +931,7 @@ impl<'a> Parser<'a> {
             }
             _ => (span, actual),
         };
-        self.dcx().emit_err(diagnostics::UnexpectedTokenAfterDot { span, actual });
+        self.dcx().emit_err(crate::diagnostics::UnexpectedTokenAfterDot { span, actual });
     }
 
     /// We need an identifier or integer, but the next token is a float.
@@ -1135,7 +1048,7 @@ impl<'a> Parser<'a> {
                     // Parse this both to give helpful error messages and to
                     // verify it can be done with this parser setup.
                     ExprKind::Index(ref left, ref _right, span) => {
-                        self.dcx().emit_err(diagnostics::ArrayIndexInOffsetOf(span));
+                        self.dcx().emit_err(crate::diagnostics::ArrayIndexInOffsetOf(span));
                         current = left;
                     }
                     ExprKind::Lit(token::Lit {
@@ -1144,10 +1057,12 @@ impl<'a> Parser<'a> {
                         suffix,
                     }) => {
                         if let Some(suffix) = suffix {
-                            self.dcx().emit_err(diagnostics::InvalidLiteralSuffixOnTupleIndex {
-                                span: current.span,
-                                suffix,
-                            });
+                            self.dcx().emit_err(
+                                crate::diagnostics::InvalidLiteralSuffixOnTupleIndex {
+                                    span: current.span,
+                                    suffix,
+                                },
+                            );
                         }
                         match self.break_up_float(symbol, current.span) {
                             // 1e2
@@ -1187,14 +1102,15 @@ impl<'a> Parser<'a> {
                                 fields.insert(start_idx, *ident)
                             }
                             _ => {
-                                self.dcx().emit_err(diagnostics::InvalidOffsetOf(current.span));
+                                self.dcx()
+                                    .emit_err(crate::diagnostics::InvalidOffsetOf(current.span));
                                 break;
                             }
                         }
                         break;
                     }
                     _ => {
-                        self.dcx().emit_err(diagnostics::InvalidOffsetOf(current.span));
+                        self.dcx().emit_err(crate::diagnostics::InvalidOffsetOf(current.span));
                         break;
                     }
                 }
@@ -1204,12 +1120,12 @@ impl<'a> Parser<'a> {
                 break;
             } else if trailing_dot.is_none() {
                 // This loop should only repeat if there is a trailing dot.
-                self.dcx().emit_err(diagnostics::InvalidOffsetOf(self.token.span));
+                self.dcx().emit_err(crate::diagnostics::InvalidOffsetOf(self.token.span));
                 break;
             }
         }
         if let Some(dot) = trailing_dot {
-            self.dcx().emit_err(diagnostics::InvalidOffsetOf(dot));
+            self.dcx().emit_err(crate::diagnostics::InvalidOffsetOf(dot));
         }
         Ok(fields.into_iter().collect())
     }
@@ -1223,7 +1139,7 @@ impl<'a> Parser<'a> {
         suffix: Option<Symbol>,
     ) -> Box<Expr> {
         if let Some(suffix) = suffix {
-            self.dcx().emit_err(diagnostics::InvalidLiteralSuffixOnTupleIndex {
+            self.dcx().emit_err(crate::diagnostics::InvalidLiteralSuffixOnTupleIndex {
                 span: ident_span,
                 suffix,
             });
@@ -1310,14 +1226,14 @@ impl<'a> Parser<'a> {
                             err.cancel();
                             let type_str = pprust::path_to_string(&path);
                             self.dcx()
-                                .create_err(diagnostics::ParenthesesWithStructFields {
+                                .create_err(crate::diagnostics::ParenthesesWithStructFields {
                                     span,
-                                    braces_for_struct: diagnostics::BracesForStructLiteral {
+                                    braces_for_struct: crate::diagnostics::BracesForStructLiteral {
                                         first: open_paren,
                                         second: close_paren,
                                         r#type: type_str.clone(),
                                     },
-                                    no_fields_for_fn: diagnostics::NoFieldsForFnCall {
+                                    no_fields_for_fn: crate::diagnostics::NoFieldsForFnCall {
                                         r#type: type_str,
                                         fields: fields
                                             .into_iter()
@@ -1419,7 +1335,7 @@ impl<'a> Parser<'a> {
             if let Some(args) = seg.args {
                 // See `StashKey::GenericInFieldExpr` for more info on why we stash this.
                 self.dcx()
-                    .create_err(diagnostics::FieldExpressionWithGeneric(args.span()))
+                    .create_err(crate::diagnostics::FieldExpressionWithGeneric(args.span()))
                     .stash(seg.ident.span, StashKey::GenericInFieldExpr);
             }
 
@@ -1491,7 +1407,9 @@ impl<'a> Parser<'a> {
                     // If the input is something like `if a { 1 } else { 2 } | if a { 3 } else { 4 }`
                     // then suggest parens around the lhs.
                     if let Some(sp) = this.psess.ambiguous_block_expr_parse.borrow().get(&lo) {
-                        err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
+                        err.subdiagnostic(crate::diagnostics::ExprParenthesesNeeded::surrounding(
+                            *sp,
+                        ));
                     }
                     err
                 })
@@ -1689,7 +1607,8 @@ impl<'a> Parser<'a> {
         let (span, kind) = if self.eat(exp!(Bang)) {
             // MACRO INVOCATION expression
             if qself.is_some() {
-                self.dcx().emit_err(diagnostics::MacroInvocationWithQualifiedPath(path.span));
+                self.dcx()
+                    .emit_err(crate::diagnostics::MacroInvocationWithQualifiedPath(path.span));
             }
             let lo = path.span;
             let mac = Box::new(MacCall { path, args: self.parse_delim_args()? });
@@ -1734,7 +1653,7 @@ impl<'a> Parser<'a> {
         {
             let (lit, _) =
                 self.recover_unclosed_char(label_.ident, Parser::mk_token_lit_char, |self_| {
-                    self_.dcx().create_err(diagnostics::UnexpectedTokenAfterLabel {
+                    self_.dcx().create_err(crate::diagnostics::UnexpectedTokenAfterLabel {
                         span: self_.token.span,
                         remove_label: None,
                         enclose_in_block: None,
@@ -1746,7 +1665,7 @@ impl<'a> Parser<'a> {
             && (self.check_noexpect(&TokenKind::Comma) || self.check_noexpect(&TokenKind::Gt))
         {
             // We're probably inside of a `Path<'a>` that needs a turbofish
-            let guar = self.dcx().emit_err(diagnostics::UnexpectedTokenAfterLabel {
+            let guar = self.dcx().emit_err(crate::diagnostics::UnexpectedTokenAfterLabel {
                 span: self.token.span,
                 remove_label: None,
                 enclose_in_block: None,
@@ -1754,7 +1673,7 @@ impl<'a> Parser<'a> {
             consume_colon = false;
             Ok(self.mk_expr_err(lo, guar))
         } else {
-            let mut err = diagnostics::UnexpectedTokenAfterLabel {
+            let mut err = crate::diagnostics::UnexpectedTokenAfterLabel {
                 span: self.token.span,
                 remove_label: None,
                 enclose_in_block: None,
@@ -1791,7 +1710,7 @@ impl<'a> Parser<'a> {
                     return expr;
                 }
 
-                err.enclose_in_block = Some(diagnostics::UnexpectedTokenAfterLabelSugg {
+                err.enclose_in_block = Some(crate::diagnostics::UnexpectedTokenAfterLabelSugg {
                     left: span.shrink_to_lo(),
                     right: span.shrink_to_hi(),
                 });
@@ -1807,7 +1726,7 @@ impl<'a> Parser<'a> {
         }?;
 
         if !ate_colon && consume_colon {
-            self.dcx().emit_err(diagnostics::RequireColonAfterLabeledExpression {
+            self.dcx().emit_err(crate::diagnostics::RequireColonAfterLabeledExpression {
                 span: expr.span,
                 label: lo,
                 label_end: lo.between(tok_sp),
@@ -1856,7 +1775,7 @@ impl<'a> Parser<'a> {
         self.bump(); // `catch`
 
         let span = lo.to(self.prev_token.span);
-        self.dcx().emit_err(diagnostics::DoCatchSyntaxRemoved { span });
+        self.dcx().emit_err(crate::diagnostics::DoCatchSyntaxRemoved { span });
 
         self.parse_try_block(lo)
     }
@@ -1916,9 +1835,9 @@ impl<'a> Parser<'a> {
             // The value expression can be a labeled loop, see issue #86948, e.g.:
             // `loop { break 'label: loop { break 'label 42; }; }`
             let lexpr = self.parse_expr_labeled(label, true)?;
-            self.dcx().emit_err(diagnostics::LabeledLoopInBreak {
+            self.dcx().emit_err(crate::diagnostics::LabeledLoopInBreak {
                 span: lexpr.span,
-                sub: diagnostics::WrapInParentheses::Expression {
+                sub: crate::diagnostics::WrapInParentheses::Expression {
                     left: lexpr.span.shrink_to_lo(),
                     right: lexpr.span.shrink_to_hi(),
                 },
@@ -1945,8 +1864,8 @@ impl<'a> Parser<'a> {
                         BREAK_WITH_LABEL_AND_LOOP,
                         lo.to(expr.span),
                         ast::CRATE_NODE_ID,
-                        diagnostics::BreakWithLabelAndLoop {
-                            sub: diagnostics::BreakWithLabelAndLoopSub {
+                        crate::diagnostics::BreakWithLabelAndLoop {
+                            sub: crate::diagnostics::BreakWithLabelAndLoopSub {
                                 left: span.shrink_to_lo(),
                                 right: span.shrink_to_hi(),
                             },
@@ -2028,8 +1947,9 @@ impl<'a> Parser<'a> {
         self.bump(); // `#`
 
         let Some((ident, IdentIsRaw::No)) = self.token.ident() else {
-            let err =
-                self.dcx().create_err(diagnostics::ExpectedBuiltinIdent { span: self.token.span });
+            let err = self
+                .dcx()
+                .create_err(crate::diagnostics::ExpectedBuiltinIdent { span: self.token.span });
             return Err(err);
         };
         self.psess.gated_spans.gate(sym::builtin_syntax, ident.span);
@@ -2039,7 +1959,7 @@ impl<'a> Parser<'a> {
         let ret = if let Some(res) = parse(self, lo, ident)? {
             Ok(res)
         } else {
-            let err = self.dcx().create_err(diagnostics::UnknownBuiltinConstruct {
+            let err = self.dcx().create_err(crate::diagnostics::UnknownBuiltinConstruct {
                 span: lo.to(ident.span),
                 name: ident,
             });
@@ -2188,7 +2108,7 @@ impl<'a> Parser<'a> {
                 }
             });
             if let Some(recovered) = recovered {
-                self.dcx().emit_err(diagnostics::FloatLiteralRequiresIntegerPart {
+                self.dcx().emit_err(crate::diagnostics::FloatLiteralRequiresIntegerPart {
                     span: recovered.span,
                     suggestion: recovered.span.shrink_to_lo(),
                 });
@@ -2322,9 +2242,9 @@ impl<'a> Parser<'a> {
         let mut snapshot = self.create_snapshot_for_diagnostic();
         match snapshot.parse_expr_array_or_repeat(exp!(CloseBrace)) {
             Ok(arr) => {
-                let guar = self.dcx().emit_err(diagnostics::ArrayBracketsInsteadOfBraces {
+                let guar = self.dcx().emit_err(crate::diagnostics::ArrayBracketsInsteadOfBraces {
                     span: arr.span,
-                    sub: diagnostics::ArrayBracketsInsteadOfBracesSugg {
+                    sub: crate::diagnostics::ArrayBracketsInsteadOfBracesSugg {
                         left: lo,
                         right: snapshot.prev_token.span,
                     },
@@ -2370,7 +2290,7 @@ impl<'a> Parser<'a> {
                         .span_to_snippet(snapshot.token.span)
                         .is_ok_and(|snippet| snippet == "]") =>
                 {
-                    return Err(self.dcx().create_err(diagnostics::MissingSemicolonBeforeArray {
+                    return Err(self.dcx().create_err(crate::diagnostics::MissingSemicolonBeforeArray {
                         open_delim: open_delim_span,
                         semicolon: prev_span.shrink_to_hi(),
                     }));
@@ -2396,10 +2316,10 @@ impl<'a> Parser<'a> {
         }
 
         if self.token.is_metavar_block() {
-            self.dcx().emit_err(diagnostics::InvalidBlockMacroSegment {
+            self.dcx().emit_err(crate::diagnostics::InvalidBlockMacroSegment {
                 span: self.token.span,
                 context: lo.to(self.token.span),
-                wrap: diagnostics::WrapInExplicitBlock {
+                wrap: crate::diagnostics::WrapInExplicitBlock {
                     lo: self.token.span.shrink_to_lo(),
                     hi: self.token.span.shrink_to_hi(),
                 },
@@ -2571,9 +2491,9 @@ impl<'a> Parser<'a> {
             // Check for `move async` and recover
             if self.check_keyword(exp!(Async)) {
                 let move_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
-                Err(self
-                    .dcx()
-                    .create_err(diagnostics::AsyncMoveOrderIncorrect { span: move_async_span }))
+                Err(self.dcx().create_err(crate::diagnostics::AsyncMoveOrderIncorrect {
+                    span: move_async_span,
+                }))
             } else {
                 Ok(CaptureBy::Value { move_kw: move_kw_span })
             }
@@ -2583,9 +2503,9 @@ impl<'a> Parser<'a> {
             // Check for `use async` and recover
             if self.check_keyword(exp!(Async)) {
                 let use_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
-                Err(self
-                    .dcx()
-                    .create_err(diagnostics::AsyncUseOrderIncorrect { span: use_async_span }))
+                Err(self.dcx().create_err(crate::diagnostics::AsyncUseOrderIncorrect {
+                    span: use_async_span,
+                }))
             } else {
                 Ok(CaptureBy::Use { use_kw: use_kw_span })
             }
@@ -2667,10 +2587,10 @@ impl<'a> Parser<'a> {
                 ExprKind::Binary(Spanned { span: binop_span, .. }, _, right)
                     if let ExprKind::Block(_, None) = right.kind =>
                 {
-                    let guar = this.dcx().emit_err(diagnostics::IfExpressionMissingThenBlock {
+                    let guar = this.dcx().emit_err(crate::diagnostics::IfExpressionMissingThenBlock {
                         if_span: lo,
                         missing_then_block_sub:
-                            diagnostics::IfExpressionMissingThenBlockSub::UnfinishedCondition(
+                            crate::diagnostics::IfExpressionMissingThenBlockSub::UnfinishedCondition(
                                 cond_span.shrink_to_lo().to(*binop_span),
                             ),
                         let_else_sub: None,
@@ -2678,10 +2598,11 @@ impl<'a> Parser<'a> {
                     std::mem::replace(right, this.mk_expr_err(binop_span.shrink_to_hi(), guar))
                 }
                 ExprKind::Block(_, None) => {
-                    let guar = this.dcx().emit_err(diagnostics::IfExpressionMissingCondition {
-                        if_span: lo.with_neighbor(cond.span).shrink_to_hi(),
-                        block_span: self.psess.source_map().start_point(cond_span),
-                    });
+                    let guar =
+                        this.dcx().emit_err(crate::diagnostics::IfExpressionMissingCondition {
+                            if_span: lo.with_neighbor(cond.span).shrink_to_hi(),
+                            block_span: self.psess.source_map().start_point(cond_span),
+                        });
                     std::mem::replace(&mut cond, this.mk_expr_err(cond_span.shrink_to_hi(), guar))
                 }
                 _ => {
@@ -2699,13 +2620,14 @@ impl<'a> Parser<'a> {
             if let Some(block) = recover_block_from_condition(self) {
                 block
             } else {
-                let let_else_sub = matches!(cond.kind, ExprKind::Let(..))
-                    .then(|| diagnostics::IfExpressionLetSomeSub { if_span: lo.until(cond_span) });
+                let let_else_sub = matches!(cond.kind, ExprKind::Let(..)).then(|| {
+                    crate::diagnostics::IfExpressionLetSomeSub { if_span: lo.until(cond_span) }
+                });
 
-                let guar = self.dcx().emit_err(diagnostics::IfExpressionMissingThenBlock {
+                let guar = self.dcx().emit_err(crate::diagnostics::IfExpressionMissingThenBlock {
                     if_span: lo,
                     missing_then_block_sub:
-                        diagnostics::IfExpressionMissingThenBlockSub::AddThenBlock(
+                        crate::diagnostics::IfExpressionMissingThenBlockSub::AddThenBlock(
                             cond_span.shrink_to_hi(),
                         ),
                     let_else_sub,
@@ -2798,9 +2720,9 @@ impl<'a> Parser<'a> {
     /// Parses a `let $pat = $expr` pseudo-expression.
     fn parse_expr_let(&mut self, restrictions: Restrictions) -> PResult<'a, Box<Expr>> {
         let recovered: Recovered = if !restrictions.contains(Restrictions::ALLOW_LET) {
-            let err = diagnostics::ExpectedExpressionFoundLet {
+            let err = crate::diagnostics::ExpectedExpressionFoundLet {
                 span: self.token.span,
-                reason: diagnostics::ForbiddenLetReason::OtherForbidden,
+                reason: crate::diagnostics::ForbiddenLetReason::OtherForbidden,
                 missing_let: None,
                 comparison: None,
             };
@@ -2822,7 +2744,7 @@ impl<'a> Parser<'a> {
             CommaRecoveryMode::LikelyTuple,
         )?;
         if self.token == token::EqEq {
-            self.dcx().emit_err(diagnostics::ExpectedEqForLetExpr {
+            self.dcx().emit_err(crate::diagnostics::ExpectedEqForLetExpr {
                 span: self.token.span,
                 sugg_span: self.token.span,
             });
@@ -2888,7 +2810,7 @@ impl<'a> Parser<'a> {
                             || matches!(cond.kind, ExprKind::MacCall(..)))
                     =>
                 {
-                    self.dcx().emit_err(diagnostics::ExpectedElseBlock {
+                    self.dcx().emit_err(crate::diagnostics::ExpectedElseBlock {
                         first_tok_span,
                         first_tok,
                         else_span,
@@ -2924,7 +2846,7 @@ impl<'a> Parser<'a> {
             let attributes = x0.span.until(branch_span);
             let last = xn.span;
             let ctx = if is_ctx_else { "else" } else { "if" };
-            self.dcx().emit_err(diagnostics::OuterAttributeNotAllowedOnIfElse {
+            self.dcx().emit_err(crate::diagnostics::OuterAttributeNotAllowedOnIfElse {
                 last,
                 branch_span,
                 ctx_span,
@@ -2939,7 +2861,7 @@ impl<'a> Parser<'a> {
             && let BinOpKind::And = binop
             && let ExprKind::If(cond, ..) = &right.kind
         {
-            Err(self.dcx().create_err(diagnostics::UnexpectedIfWithIf(
+            Err(self.dcx().create_err(crate::diagnostics::UnexpectedIfWithIf(
                 binop_span.shrink_to_hi().to(cond.span.shrink_to_lo()),
             )))
         } else {
@@ -2989,12 +2911,12 @@ impl<'a> Parser<'a> {
                     let right = self.prev_token.span.between(self.look_ahead(1, |t| t.span));
                     self.bump(); // )
                     err.cancel();
-                    self.dcx().emit_err(diagnostics::ParenthesesInForHead {
+                    self.dcx().emit_err(crate::diagnostics::ParenthesesInForHead {
                         span,
                         // With e.g. `for (x) in y)` this would replace `(x) in y)`
                         // with `x) in y)` which is syntactically invalid.
                         // However, this is prevented before we get here.
-                        sugg: diagnostics::ParenthesesInForHeadSugg { left, right },
+                        sugg: crate::diagnostics::ParenthesesInForHeadSugg { left, right },
                     });
                     Ok((self.mk_pat(start_span.to(right), ast::PatKind::Wild), expr))
                 } else {
@@ -3029,7 +2951,7 @@ impl<'a> Parser<'a> {
             && self.token.kind != token::OpenBrace
             && self.may_recover()
         {
-            let guar = self.dcx().emit_err(diagnostics::MissingExpressionInForLoop {
+            let guar = self.dcx().emit_err(crate::diagnostics::MissingExpressionInForLoop {
                 span: expr.span.shrink_to_lo(),
             });
             let err_expr = self.mk_expr(expr.span, ExprKind::Err(guar));
@@ -3071,7 +2993,7 @@ impl<'a> Parser<'a> {
             let else_span = self.token.span;
             self.bump();
             let else_clause = self.parse_expr_else()?;
-            self.dcx().emit_err(diagnostics::LoopElseNotSupported {
+            self.dcx().emit_err(crate::diagnostics::LoopElseNotSupported {
                 span: else_span.to(else_clause.span),
                 loop_kind,
                 loop_kw,
@@ -3085,18 +3007,18 @@ impl<'a> Parser<'a> {
             // Possibly using JS syntax (#75311).
             let span = self.token.span;
             self.bump();
-            (span, Some(diagnostics::MissingInInForLoopSub::InNotOf(span)))
+            (span, Some(crate::diagnostics::MissingInInForLoopSub::InNotOf(span)))
         } else if self.eat(exp!(Eq)) {
             let span = self.prev_token.span;
-            (span, Some(diagnostics::MissingInInForLoopSub::InNotEq(span)))
+            (span, Some(crate::diagnostics::MissingInInForLoopSub::InNotEq(span)))
         } else {
             let span = self.prev_token.span.between(self.token.span);
             let sub = (!self.for_loop_head_has_in())
-                .then_some(diagnostics::MissingInInForLoopSub::AddIn(span));
+                .then_some(crate::diagnostics::MissingInInForLoopSub::AddIn(span));
             (span, sub)
         };
 
-        self.dcx().emit_err(diagnostics::MissingInInForLoop { span, sub });
+        self.dcx().emit_err(crate::diagnostics::MissingInInForLoop { span, sub });
     }
 
     /// Whether the `for` loop header already contains an `in` before its body.
@@ -3166,7 +3088,7 @@ impl<'a> Parser<'a> {
         if let Some((ident, is_raw)) = self.token.lifetime() {
             // Disallow `'fn`, but with a better error message than `expect_lifetime`.
             if is_raw == IdentIsRaw::No && ident.without_first_quote().is_reserved() {
-                self.dcx().emit_err(diagnostics::KeywordLabel { span: ident.span });
+                self.dcx().emit_err(crate::diagnostics::KeywordLabel { span: ident.span });
             }
 
             self.bump();
@@ -3263,18 +3185,20 @@ impl<'a> Parser<'a> {
         let err = |this: &Parser<'_>, stmts: Vec<ast::Stmt>| {
             let span = stmts[0].span.to(stmts[stmts.len() - 1].span);
 
-            let guar = this.dcx().emit_err(diagnostics::MatchArmBodyWithoutBraces {
+            let guar = this.dcx().emit_err(crate::diagnostics::MatchArmBodyWithoutBraces {
                 statements: span,
                 arrow: arrow_span,
                 num_statements: stmts.len(),
                 sub: if stmts.len() > 1 {
-                    diagnostics::MatchArmBodyWithoutBracesSugg::AddBraces {
+                    crate::diagnostics::MatchArmBodyWithoutBracesSugg::AddBraces {
                         left: span.shrink_to_lo(),
                         right: span.shrink_to_hi(),
                         num_statements: stmts.len(),
                     }
                 } else {
-                    diagnostics::MatchArmBodyWithoutBracesSugg::UseComma { semicolon: semi_sp }
+                    crate::diagnostics::MatchArmBodyWithoutBracesSugg::UseComma {
+                        semicolon: semi_sp,
+                    }
                 },
             });
             (span, guar)
@@ -3492,7 +3416,7 @@ impl<'a> Parser<'a> {
                         .is_ok();
                     if pattern_follows && snapshot.check(exp!(FatArrow)) {
                         err.cancel();
-                        let guar = this.dcx().emit_err(diagnostics::MissingCommaAfterMatchArm {
+                        let guar = this.dcx().emit_err(crate::diagnostics::MissingCommaAfterMatchArm {
                             span: arm_span.shrink_to_hi(),
                         });
                         return Ok(Recovered::Yes(guar));
@@ -3585,9 +3509,9 @@ impl<'a> Parser<'a> {
                 checker.visit_expr(&mut guard.cond);
 
                 let right = self.prev_token.span;
-                self.dcx().emit_err(diagnostics::ParenthesesInMatchPat {
+                self.dcx().emit_err(crate::diagnostics::ParenthesesInMatchPat {
                     span: vec![left, right],
-                    sugg: diagnostics::ParenthesesInMatchPatSugg { left, right },
+                    sugg: crate::diagnostics::ParenthesesInMatchPatSugg { left, right },
                 });
 
                 if let Some(guar) = checker.found_incorrect_let_chain {
@@ -3664,7 +3588,9 @@ impl<'a> Parser<'a> {
 
         let (attrs, body) = self.parse_inner_attrs_and_block(None)?;
         if self.eat_keyword(exp!(Catch)) {
-            Err(self.dcx().create_err(diagnostics::CatchAfterTry { span: self.prev_token.span }))
+            Err(self
+                .dcx()
+                .create_err(crate::diagnostics::CatchAfterTry { span: self.prev_token.span }))
         } else {
             let span = span_lo.to(body.span);
             let gate_sym =
@@ -3767,9 +3693,9 @@ impl<'a> Parser<'a> {
                 match self.parse_expr_struct(qself.clone(), path.clone(), false) {
                     Ok(expr) => {
                         // This is a struct literal, but we don't accept them here.
-                        self.dcx().emit_err(diagnostics::StructLiteralNotAllowedHere {
+                        self.dcx().emit_err(crate::diagnostics::StructLiteralNotAllowedHere {
                             span: expr.span,
-                            sub: diagnostics::StructLiteralNotAllowedHereSugg {
+                            sub: crate::diagnostics::StructLiteralNotAllowedHereSugg {
                                 left: path.span.shrink_to_lo(),
                                 right: expr.span.shrink_to_hi(),
                             },
@@ -3811,10 +3737,12 @@ impl<'a> Parser<'a> {
             )?;
 
             let guar = if is_underscore_entry_point {
-                self.dcx().create_err(diagnostics::StructLiteralPlaceholderPath { span }).emit()
+                self.dcx()
+                    .create_err(crate::diagnostics::StructLiteralPlaceholderPath { span })
+                    .emit()
             } else {
                 self.dcx()
-                    .create_err(diagnostics::StructLiteralWithoutPathLate {
+                    .create_err(crate::diagnostics::StructLiteralWithoutPathLate {
                         span: expr.span,
                         suggestion_span: expr.span.shrink_to_lo(),
                     })
@@ -3846,8 +3774,8 @@ impl<'a> Parser<'a> {
         let in_if_guard = self.restrictions.contains(Restrictions::IN_IF_GUARD);
 
         let async_block_err = |e: &mut Diag<'_>, span: Span| {
-            diagnostics::AsyncBlockIn2015 { span }.add_to_diag(e);
-            diagnostics::HelpUseLatestEdition::new().add_to_diag(e);
+            crate::diagnostics::AsyncBlockIn2015 { span }.add_to_diag(e);
+            crate::diagnostics::HelpUseLatestEdition::new().add_to_diag(e);
         };
 
         while self.token != close.tok {
@@ -4029,7 +3957,7 @@ impl<'a> Parser<'a> {
         if self.token != token::Comma {
             return;
         }
-        self.dcx().emit_err(diagnostics::CommaAfterBaseStruct {
+        self.dcx().emit_err(crate::diagnostics::CommaAfterBaseStruct {
             span: span.to(self.prev_token.span),
             comma: self.token.span,
         });
@@ -4040,7 +3968,8 @@ impl<'a> Parser<'a> {
         if !self.look_ahead(1, |t| t == close) && self.eat(exp!(DotDotDot)) {
             // recover from typo of `...`, suggest `..`
             let span = self.prev_token.span;
-            self.dcx().emit_err(diagnostics::MissingDotDot { token_span: span, sugg_span: span });
+            self.dcx()
+                .emit_err(crate::diagnostics::MissingDotDot { token_span: span, sugg_span: span });
             return true;
         }
         false
@@ -4053,7 +3982,7 @@ impl<'a> Parser<'a> {
         let label = format!("'{}", ident.name);
         let ident = Ident::new(Symbol::intern(&label), ident.span);
 
-        self.dcx().emit_err(diagnostics::ExpectedLabelFoundIdent {
+        self.dcx().emit_err(crate::diagnostics::ExpectedLabelFoundIdent {
             span: ident.span,
             start: ident.span.shrink_to_lo(),
         });
@@ -4080,7 +4009,7 @@ impl<'a> Parser<'a> {
                         || t == &token::CloseParen
                 });
             if is_wrong {
-                return Err(this.dcx().create_err(diagnostics::ExpectedStructField {
+                return Err(this.dcx().create_err(crate::diagnostics::ExpectedStructField {
                     span: this.look_ahead(1, |t| t.span),
                     ident_span: this.token.span,
                     token: pprust::token_to_string(&this.look_ahead(1, |t| *t)),
@@ -4121,18 +4050,10 @@ impl<'a> Parser<'a> {
             return;
         }
 
-        self.dcx().emit_err(diagnostics::EqFieldInit {
+        self.dcx().emit_err(crate::diagnostics::EqFieldInit {
             span: self.token.span,
             eq: field_name.span.shrink_to_hi().to(self.token.span),
         });
-    }
-
-    fn err_dotdotdot_syntax(&self, span: Span) {
-        self.dcx().emit_err(diagnostics::DotDotDot { span });
-    }
-
-    fn err_larrow_operator(&self, span: Span) {
-        self.dcx().emit_err(diagnostics::LeftArrowOperator { span });
     }
 
     fn mk_assign_op(&self, assign_op: AssignOp, lhs: Box<Expr>, rhs: Box<Expr>) -> ExprKind {
@@ -4282,9 +4203,9 @@ struct CondChecker<'a> {
     parser: &'a Parser<'a>,
     let_chains_policy: LetChainsPolicy,
     depth: u32,
-    forbid_let_reason: Option<diagnostics::ForbiddenLetReason>,
-    missing_let: Option<diagnostics::MaybeMissingLet>,
-    comparison: Option<diagnostics::MaybeComparison>,
+    forbid_let_reason: Option<crate::diagnostics::ForbiddenLetReason>,
+    missing_let: Option<crate::diagnostics::MaybeMissingLet>,
+    comparison: Option<crate::diagnostics::MaybeComparison>,
     found_incorrect_let_chain: Option<ErrorGuaranteed>,
 }
 
@@ -4311,12 +4232,13 @@ impl MutVisitor for CondChecker<'_> {
             ExprKind::Let(_, _, _, ref mut recovered @ Recovered::No) => {
                 if let Some(reason) = self.forbid_let_reason {
                     let error = match reason {
-                        diagnostics::ForbiddenLetReason::NotSupportedOr(or_span) => {
-                            self.parser.dcx().emit_err(diagnostics::OrInLetChain { span: or_span })
-                        }
+                        crate::diagnostics::ForbiddenLetReason::NotSupportedOr(or_span) => self
+                            .parser
+                            .dcx()
+                            .emit_err(crate::diagnostics::OrInLetChain { span: or_span }),
                         _ => {
                             let guar = self.parser.dcx().emit_err(
-                                diagnostics::ExpectedExpressionFoundLet {
+                                crate::diagnostics::ExpectedExpressionFoundLet {
                                     span,
                                     reason,
                                     missing_let: self.missing_let,
@@ -4336,7 +4258,9 @@ impl MutVisitor for CondChecker<'_> {
                         LetChainsPolicy::AlwaysAllowed => (),
                         LetChainsPolicy::EditionDependent { current_edition } => {
                             if !current_edition.at_least_rust_2024() || !span.at_least_rust_2024() {
-                                self.parser.dcx().emit_err(diagnostics::LetChainPre2024 { span });
+                                self.parser
+                                    .dcx()
+                                    .emit_err(crate::diagnostics::LetChainPre2024 { span });
                             }
                         }
                     }
@@ -4346,22 +4270,24 @@ impl MutVisitor for CondChecker<'_> {
                 mut_visit::walk_expr(self, e);
             }
             ExprKind::Binary(Spanned { node: BinOpKind::Or, span: or_span }, _, _)
-                if let None | Some(diagnostics::ForbiddenLetReason::NotSupportedOr(_)) =
+                if let None | Some(crate::diagnostics::ForbiddenLetReason::NotSupportedOr(_)) =
                     self.forbid_let_reason =>
             {
                 let forbid_let_reason = self.forbid_let_reason;
                 self.forbid_let_reason =
-                    Some(diagnostics::ForbiddenLetReason::NotSupportedOr(or_span));
+                    Some(crate::diagnostics::ForbiddenLetReason::NotSupportedOr(or_span));
                 mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
             }
             ExprKind::Paren(ref inner)
-                if let None | Some(diagnostics::ForbiddenLetReason::NotSupportedParentheses(_)) =
+                if let None
+                | Some(crate::diagnostics::ForbiddenLetReason::NotSupportedParentheses(_)) =
                     self.forbid_let_reason =>
             {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason =
-                    Some(diagnostics::ForbiddenLetReason::NotSupportedParentheses(inner.span));
+                self.forbid_let_reason = Some(
+                    crate::diagnostics::ForbiddenLetReason::NotSupportedParentheses(inner.span),
+                );
                 mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
             }
@@ -4399,13 +4325,14 @@ impl MutVisitor for CondChecker<'_> {
                         if let Some(later_rhs) = find_let_some(rhs)
                             && depth > 0
                         {
-                            let guar =
-                                self.parser.dcx().emit_err(diagnostics::LetChainMissingLet {
+                            let guar = self.parser.dcx().emit_err(
+                                crate::diagnostics::LetChainMissingLet {
                                     span: lhs.span,
                                     label_span: expr_span,
                                     rhs_span: later_rhs.span,
                                     sug_span: lhs.span.shrink_to_lo(),
-                                });
+                                },
+                            );
 
                             self.found_incorrect_let_chain = Some(guar);
                         }
@@ -4413,7 +4340,8 @@ impl MutVisitor for CondChecker<'_> {
                 }
 
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(diagnostics::ForbiddenLetReason::OtherForbidden);
+                self.forbid_let_reason =
+                    Some(crate::diagnostics::ForbiddenLetReason::OtherForbidden);
                 let missing_let = self.missing_let;
                 if let ExprKind::Binary(_, _, rhs) = &lhs.kind
                     && let ExprKind::Path(_, _)
@@ -4422,10 +4350,11 @@ impl MutVisitor for CondChecker<'_> {
                     | ExprKind::Array(_) = rhs.kind
                 {
                     self.missing_let =
-                        Some(diagnostics::MaybeMissingLet { span: rhs.span.shrink_to_lo() });
+                        Some(crate::diagnostics::MaybeMissingLet { span: rhs.span.shrink_to_lo() });
                 }
                 let comparison = self.comparison;
-                self.comparison = Some(diagnostics::MaybeComparison { span: span.shrink_to_hi() });
+                self.comparison =
+                    Some(crate::diagnostics::MaybeComparison { span: span.shrink_to_hi() });
                 mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
                 self.missing_let = missing_let;
@@ -4447,7 +4376,8 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Tup(_)
             | ExprKind::Paren(_) => {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(diagnostics::ForbiddenLetReason::OtherForbidden);
+                self.forbid_let_reason =
+                    Some(crate::diagnostics::ForbiddenLetReason::OtherForbidden);
                 mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
             }
@@ -4455,7 +4385,8 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Type(ref mut op, _)
             | ExprKind::UnsafeBinderCast(_, ref mut op, _) => {
                 let forbid_let_reason = self.forbid_let_reason;
-                self.forbid_let_reason = Some(diagnostics::ForbiddenLetReason::OtherForbidden);
+                self.forbid_let_reason =
+                    Some(crate::diagnostics::ForbiddenLetReason::OtherForbidden);
                 self.visit_expr(op);
                 self.forbid_let_reason = forbid_let_reason;
             }

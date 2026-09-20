@@ -4,12 +4,14 @@
 
 #![crate_type = "lib"]
 
+#[repr(C)]
 pub struct S24 {
     a: i8,
     b: i8,
     c: i8,
 }
 
+#[repr(C)]
 pub struct S48 {
     a: i16,
     b: i16,

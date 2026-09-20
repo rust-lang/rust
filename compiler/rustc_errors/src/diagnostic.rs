@@ -93,10 +93,13 @@ pub struct DiagLocation {
 }
 
 impl DiagLocation {
+    pub fn from_location(loc: &'static panic::Location<'static>) -> Self {
+        DiagLocation { file: loc.file().into(), line: loc.line(), col: loc.column() }
+    }
+
     #[track_caller]
     pub fn caller() -> Self {
-        let loc = panic::Location::caller();
-        DiagLocation { file: loc.file().into(), line: loc.line(), col: loc.column() }
+        Self::from_location(panic::Location::caller())
     }
 }
 
@@ -1300,7 +1303,7 @@ impl<'a, G> Diag<'a, G> {
     }
 
     /// Most `emit` methods use this as a starting point.
-    pub fn emit_producing_nothing(mut self) {
+    fn emit_producing_nothing(mut self) {
         let diag = self.take_diag();
         self.dcx.emit_diagnostic(diag);
     }
