@@ -36,14 +36,12 @@ use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{Arch, Os};
 
 use crate::alloc_addresses::EvalContextExt;
-use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
 use crate::concurrency::data_race::{self, NaReadType, NaWriteType};
 use crate::concurrency::sync::SyncObj;
 use crate::concurrency::{
     AllocDataRaceHandler, GenmcCtx, GenmcEvalContextExt as _, GlobalDataRaceHandler, weak_memory,
 };
 use crate::helpers::is_no_core;
-use crate::shims::readiness::DelayedReadinessUpdates;
 use crate::*;
 
 /// First real-time signal.
@@ -557,7 +555,7 @@ pub struct MiriMachine<'tcx> {
     pub(crate) dirs: shims::DirTable,
 
     /// Managing file descriptors whose readiness needs to be updated.
-    pub(crate) delayed_readiness_updates: Rc<DelayedReadinessUpdates>,
+    pub(crate) delayed_readiness_updates: Rc<shims::DelayedReadinessUpdates>,
 
     /// This machine's monotone clock.
     pub(crate) monotonic_clock: MonotonicClock,
@@ -572,7 +570,7 @@ pub struct MiriMachine<'tcx> {
     /// This has no effect at all, it is just tracked to produce the correct result
     /// in `sched_getaffinity`
     /// This will be `None` when running `#![no_core]` crates.
-    pub(crate) thread_cpu_affinity: Option<FxHashMap<ThreadId, CpuAffinityMask>>,
+    pub(crate) thread_cpu_affinity: Option<FxHashMap<ThreadId, shims::CpuAffinityMask>>,
 
     /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
     pub(crate) layouts: PrimitiveLayouts<'tcx>,
@@ -751,9 +749,9 @@ impl<'tcx> MiriMachine<'tcx> {
         let stack_size =
             if tcx.pointer_size().bits() < 32 { page_size * 4 } else { page_size * 16 };
         assert!(
-            usize::try_from(config.num_cpus).unwrap() <= cpu_affinity::MAX_CPUS,
+            usize::try_from(config.num_cpus).unwrap() <= shims::cpu_affinity::MAX_CPUS,
             "miri only supports up to {} CPUs, but {} were configured",
-            cpu_affinity::MAX_CPUS,
+            shims::cpu_affinity::MAX_CPUS,
             config.num_cpus
         );
         let threads = ThreadManager::new(config);
@@ -764,7 +762,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 let mut affinity = FxHashMap::default();
                 affinity.insert(
                     threads.active_thread(),
-                    CpuAffinityMask::new(&layout_cx, config.num_cpus),
+                    shims::CpuAffinityMask::new(&layout_cx, config.num_cpus),
                 );
                 Some(affinity)
             } else {
@@ -790,7 +788,7 @@ impl<'tcx> MiriMachine<'tcx> {
             isolated_op: config.isolated_op,
             validation: config.validation,
             fds: shims::FdTable::init(config.mute_stdout_stderr),
-            delayed_readiness_updates: Rc::new(DelayedReadinessUpdates::default()),
+            delayed_readiness_updates: Rc::new(shims::DelayedReadinessUpdates::default()),
             dirs: Default::default(),
             layouts,
             threads,

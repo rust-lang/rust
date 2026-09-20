@@ -137,7 +137,6 @@ pub use crate::clock::{Deadline, Instant, MonotonicClock, TimeoutClock, TimeoutS
 pub use crate::concurrency::blocking_io::{
     BlockingIoInterest, BlockingIoManager, EvalContextExt as _, SourceFileDescription,
 };
-pub use crate::concurrency::cpu_affinity::MAX_CPUS;
 pub use crate::concurrency::data_race::{
     AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _,
 };
@@ -166,6 +165,7 @@ pub use crate::machine::{
 pub use crate::operator::EvalContextExt as _;
 pub use crate::provenance_gc::{EvalContextExt as _, LiveAllocs, VisitProvenance, VisitWith};
 pub use crate::shims::EmulateItemResult;
+pub use crate::shims::cpu_affinity::MAX_CPUS;
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
 pub use crate::shims::foreign_items::{DynSym, EvalContextExt as _};
 pub use crate::shims::io_error::{EvalContextExt as _, IoError, LibcError};
