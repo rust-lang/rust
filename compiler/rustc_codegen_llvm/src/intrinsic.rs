@@ -351,7 +351,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     }
                 }
 
-                emit_va_arg(self, args[0], result_layout.ty)
+                emit_va_arg(self, args[0], result_layout)
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
