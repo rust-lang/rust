@@ -158,9 +158,13 @@ fn main() {
                     assert_eq!(res, 0);
                 }
                 target_os = "macos" => {
-                    // Name is too long.
+                    // Name is too long. macOS apparently returns this via errno!
                     assert!(cstr.to_bytes_with_nul().len() > MAX_THREAD_NAME_LEN);
-                    assert_eq!(res, libc::ENAMETOOLONG);
+                    assert_eq!(res, -1);
+                    assert_eq!(
+                        std::io::Error::last_os_error().raw_os_error().unwrap(),
+                        libc::ENAMETOOLONG,
+                    );
                 }
                 _ => {
                     // Name is too long.
