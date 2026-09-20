@@ -71,7 +71,7 @@ unsafe fn test_create_dir_file() {
 }
 
 unsafe fn test_create_normal_file() {
-    let temp = utils::tmp().join("test.txt");
+    let temp = utils::prepare("test_create_normal_file.txt");
     let raw_path = to_wide_cstr(&temp);
     let handle = CreateFileW(
         raw_path.as_ptr(),
@@ -87,10 +87,24 @@ unsafe fn test_create_normal_file() {
     if GetFileInformationByHandle(handle, &mut info) == 0 {
         panic!("Failed to get file information: {}", GetLastError())
     };
+    // FIXME: this test is wrong, somehow. It doesn't pass when run natively.
+    // <https://github.com/rust-lang/miri/issues/5335>
     assert!(info.dwFileAttributes & FILE_ATTRIBUTE_NORMAL != 0);
     if CloseHandle(handle) == 0 {
         panic!("Failed to close file")
     };
+
+    // Creating the file again should fail due to CREATE_NEW.
+    let handle = CreateFileW(
+        raw_path.as_ptr(),
+        GENERIC_READ | GENERIC_WRITE,
+        FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+        ptr::null_mut(),
+        CREATE_NEW,
+        0,
+        ptr::null_mut(),
+    );
+    assert_eq!(handle.addr(), usize::MAX, "CreateFileW did not fail");
 
     // Test metadata-only handle
     let handle = CreateFileW(
@@ -115,7 +129,7 @@ unsafe fn test_create_normal_file() {
 
 /// Tests that CREATE_ALWAYS sets the error value correctly based on whether the file already exists
 unsafe fn test_create_always_twice() {
-    let temp = utils::tmp().join("test_create_always.txt");
+    let temp = utils::prepare("test_create_always.txt");
     let raw_path = to_wide_cstr(&temp);
     let handle = CreateFileW(
         raw_path.as_ptr(),
@@ -150,7 +164,7 @@ unsafe fn test_create_always_twice() {
 
 /// Tests that OPEN_ALWAYS sets the error value correctly based on whether the file already exists
 unsafe fn test_open_always_twice() {
-    let temp = utils::tmp().join("test_open_always.txt");
+    let temp = utils::prepare("test_open_always.txt");
     let raw_path = to_wide_cstr(&temp);
     let handle = CreateFileW(
         raw_path.as_ptr(),
@@ -209,7 +223,7 @@ unsafe fn test_open_always_twice() {
 // }
 
 unsafe fn test_delete_file() {
-    let temp = utils::tmp().join("test_delete_file.txt");
+    let temp = utils::prepare("test_delete_file.txt");
     let raw_path = to_wide_cstr(&temp);
     let _ = fs::File::create(&temp).unwrap();
 
@@ -230,7 +244,7 @@ unsafe fn test_ntstatus_to_dos() {
 }
 
 unsafe fn test_file_read_write() {
-    let temp = utils::tmp().join("test_file_read_write.txt");
+    let temp = utils::prepare("test_file_read_write.txt");
     let file = fs::File::create(&temp).unwrap();
     let handle = file.as_raw_handle();
 
@@ -281,7 +295,7 @@ unsafe fn test_file_read_write() {
 }
 
 unsafe fn test_set_file_info() {
-    let temp = utils::tmp().join("test_set_file.txt");
+    let temp = utils::prepare("test_set_file.txt");
     let mut file = fs::File::create(&temp).unwrap();
     let handle = file.as_raw_handle();
 
@@ -307,7 +321,7 @@ unsafe fn test_set_file_info() {
 }
 
 unsafe fn test_dup_handle() {
-    let temp = utils::tmp().join("test_dup.txt");
+    let temp = utils::prepare("test_dup.txt");
 
     let mut file1 = fs::File::options().read(true).write(true).create(true).open(&temp).unwrap();
 
@@ -340,7 +354,7 @@ unsafe fn test_dup_handle() {
 }
 
 unsafe fn test_file_seek() {
-    let temp = utils::tmp().join("test_file_seek.txt");
+    let temp = utils::prepare("test_file_seek.txt");
     let mut file = fs::File::options().create(true).write(true).read(true).open(&temp).unwrap();
     file.write_all(b"Hello, World!\n").unwrap();
 
@@ -365,7 +379,7 @@ unsafe fn test_file_seek() {
 }
 
 unsafe fn test_flush_buffers() {
-    let temp = utils::tmp().join("test_flush_buffers.txt");
+    let temp = utils::prepare("test_flush_buffers.txt");
     let file = fs::File::options().create(true).write(true).read(true).open(&temp).unwrap();
     if FlushFileBuffers(file.as_raw_handle()) == 0 {
         panic!("Failed to flush buffers");
@@ -378,10 +392,8 @@ unsafe fn test_flush_buffers() {
 }
 
 unsafe fn test_move_file() {
-    let tmp_dir = utils::tmp();
-
-    let temp = tmp_dir.join("test_move_file.txt");
-    let temp_new = tmp_dir.join("test_move_file_new.txt");
+    let temp = utils::prepare("test_move_file.txt");
+    let temp_new = utils::prepare("test_move_file_new.txt");
     let mut file = fs::File::options().create(true).write(true).open(&temp).unwrap();
     file.write_all(b"Hello, World!\n").unwrap();
 

@@ -419,6 +419,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.machine.threads.active_thread()
         } else {
             // Our pthread_t is just the raw ThreadId.
+            // macOS documents this to return an error and indeed it does not seem to segfault.
             let Ok(thread) = this.thread_id_try_from(thread) else {
                 return interp_ok(this.eval_libc("ESRCH"));
             };

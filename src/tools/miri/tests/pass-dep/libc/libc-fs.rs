@@ -509,11 +509,9 @@ fn test_posix_realpath_alloc() {
     use std::os::unix::ffi::{OsStrExt, OsStringExt};
 
     let buf;
-    let path = utils::tmp().join("miri_test_libc_posix_realpath_alloc");
+    let path = utils::prepare("miri_test_libc_posix_realpath_alloc");
     let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
 
-    // Cleanup before test.
-    remove_file(&path).ok();
     // Create file.
     drop(File::create(&path).unwrap());
     unsafe {
@@ -534,13 +532,11 @@ fn test_posix_realpath_noalloc() {
     use std::ffi::{CStr, CString};
     use std::os::unix::ffi::OsStrExt;
 
-    let path = utils::tmp().join("miri_test_libc_posix_realpath_noalloc");
+    let path = utils::prepare("miri_test_libc_posix_realpath_noalloc");
     let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
 
     let mut v = vec![0; libc::PATH_MAX as usize];
 
-    // Cleanup before test.
-    remove_file(&path).ok();
     // Create file.
     drop(File::create(&path).unwrap());
     unsafe {
@@ -574,9 +570,7 @@ fn test_posix_realpath_errors() {
 fn test_posix_fadvise() {
     use std::io::Write;
 
-    let path = utils::tmp().join("miri_test_libc_posix_fadvise.txt");
-    // Cleanup before test
-    remove_file(&path).ok();
+    let path = utils::prepare("miri_test_libc_posix_fadvise.txt");
 
     // Set up an open file
     let mut file = File::create(&path).unwrap();
@@ -738,9 +732,7 @@ fn test_fallocate<T: From<i32>>(
 fn test_sync_file_range() {
     use std::io::Write;
 
-    let path = utils::tmp().join("miri_test_libc_sync_file_range.txt");
-    // Cleanup before test.
-    remove_file(&path).ok();
+    let path = utils::prepare("miri_test_libc_sync_file_range.txt");
 
     // Write to a file.
     let mut file = File::create(&path).unwrap();
@@ -913,9 +905,7 @@ fn test_isatty() {
         libc::isatty(libc::STDERR_FILENO);
 
         // But when we open a file, it is definitely not a TTY.
-        let path = utils::tmp().join("notatty.txt");
-        // Cleanup before test.
-        remove_file(&path).ok();
+        let path = utils::prepare("notatty.txt");
         let file = File::create(&path).unwrap();
 
         assert_eq!(libc::isatty(file.as_raw_fd()), 0);
