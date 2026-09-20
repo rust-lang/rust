@@ -147,7 +147,7 @@ note: required by a bound in `Callable::CALL`
 LL | trait Callable<T: Bar> {
    |                   ^^^ required by this bound in `Callable::CALL`
 LL |     const CALL: fn();
-   |           ---- required by a bound in this associated constant
+   |
 
 error: aborting due to 9 previous errors
 

@@ -3962,21 +3962,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let short_item_name = with_forced_trimmed_paths!(tcx.def_path_str(item_def_id));
                 let mut multispan = MultiSpan::from(span);
                 let sm = tcx.sess.source_map();
+                if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy =
+                    tcx.def_kind(item_def_id)
+                    && let Some(ident) = tcx.opt_item_ident(tcx.parent(item_def_id))
+                {
+                    multispan.push_span_context(ident.span);
+                }
                 if let Some(ident) = tcx.opt_item_ident(item_def_id) {
-                    let same_line =
-                        match (sm.lookup_line(ident.span.hi()), sm.lookup_line(span.lo())) {
-                            (Ok(l), Ok(r)) => l.line == r.line,
-                            _ => true,
-                        };
-                    if ident.span.is_visible(sm) && !ident.span.overlaps(span) && !same_line {
-                        multispan.push_span_label(
-                            ident.span,
-                            format!(
-                                "required by a bound in this {}",
-                                tcx.def_kind(item_def_id).descr(item_def_id)
-                            ),
-                        );
-                    }
+                    multispan.push_span_context(ident.span);
                 }
                 let mut a = "a";
                 let mut this = "this bound";

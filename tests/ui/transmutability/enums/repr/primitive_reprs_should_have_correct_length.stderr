@@ -8,7 +8,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -29,7 +28,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -50,7 +48,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -71,7 +68,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -92,7 +88,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -113,7 +108,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -134,7 +128,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -155,7 +148,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -176,7 +168,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -197,7 +188,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -218,7 +208,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -239,7 +228,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -260,7 +248,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -281,7 +268,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -302,7 +288,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -323,7 +308,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -344,7 +328,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -365,7 +348,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -386,7 +368,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
@@ -407,7 +388,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: TransmuteFrom<Src, {
    |  ______________^

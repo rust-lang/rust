@@ -16,7 +16,6 @@ note: required by a bound in `Wrapper::do_something_wrapper`
   --> $DIR/explicit-reference-cast-unrelated-leaf.rs:10:20
    |
 LL |     fn do_something_wrapper<O, F>(self, _: F)
-   |        -------------------- required by a bound in this associated function
 LL |     where
 LL |         for<'a> F: Output<'a>,
    |                    ^^^^^^^^^^ required by this bound in `Wrapper::do_something_wrapper`
@@ -37,7 +36,6 @@ note: required by a bound in `Wrapper::do_something_wrapper`
   --> $DIR/explicit-reference-cast-unrelated-leaf.rs:11:20
    |
 LL |     fn do_something_wrapper<O, F>(self, _: F)
-   |        -------------------- required by a bound in this associated function
 ...
 LL |         for<'a> O: From<<F as Output<'a>>::Type>,
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Wrapper::do_something_wrapper`

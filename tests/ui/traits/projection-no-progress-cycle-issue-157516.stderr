@@ -9,6 +9,7 @@ LL |     T::Object::OPS
 note: required by a bound in `Driver::Object`
   --> $DIR/projection-no-progress-cycle-issue-157516.rs:12:22
    |
+LL | trait Driver {
 LL |     type Object<Ctx: Bound>: Alloc;
    |                      ^^^^^ required by this bound in `Driver::Object`
 help: use the fully qualified path to an implementation

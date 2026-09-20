@@ -311,6 +311,7 @@ LL |     type Type<T: [const] Trait> = ();
 note: required by a bound in `NonConstTrait::Type`
   --> $DIR/conditionally-const-invalid-places.rs:24:34
    |
+LL | trait NonConstTrait {
 LL |     type Type<T: [const] Trait>: [const] Trait;
    |                                  ^^^^^^^^^^^^^ required by this bound in `NonConstTrait::Type`
 
