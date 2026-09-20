@@ -58,13 +58,14 @@ pub(crate) fn expand_deriving_hash(
 }
 
 fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
-    let [state_expr] = substr.nonselflike_args else {
-        cx.dcx().span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
-    };
     let call_hash = |span, expr| {
         let strs = cx.std_path(&[sym::hash, sym::Hash, sym::hash]);
         let hash_path = cx.expr_path(cx.path_global(span, strs));
-        let expr = cx.expr_call(span, hash_path, thin_vec![expr, state_expr.clone()]);
+        let expr = cx.expr_call(
+            span,
+            hash_path,
+            thin_vec![expr, cx.expr_ident(span, Ident::new(sym::state, span))],
+        );
         cx.stmt_expr(expr)
     };
 

@@ -44,6 +44,10 @@ pub(crate) fn expand_deriving_debug(
     trait_def.expand(cx, item, push)
 }
 
+fn formatter_ident(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
+    cx.expr_ident(span, Ident::new(sym::character('f'), span))
+}
+
 fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let fmt_detail = cx.sess.opts.unstable_opts.fmt_debug;
     if fmt_detail == FmtDebug::None {
@@ -58,7 +62,7 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> 
     };
 
     let name = cx.expr_str(span, ident.name);
-    let fmt = substr.nonselflike_args[0].clone();
+    let fmt = formatter_ident(cx, span);
 
     // Fieldless enums have been special-cased earlier
     if fmt_detail == FmtDebug::Shallow {
@@ -214,7 +218,7 @@ fn show_fieldless_enum(
     def: &EnumDef,
     substr: Substructure<'_>,
 ) -> BlockOrExpr {
-    let fmt = substr.nonselflike_args[0].clone();
+    let fmt = formatter_ident(cx, span);
     let arms = def
         .variants
         .iter()

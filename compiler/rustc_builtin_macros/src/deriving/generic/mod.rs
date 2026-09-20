@@ -272,9 +272,6 @@ pub(crate) enum FieldlessVariantsStrategy {
 pub(crate) struct Substructure<'a> {
     /// ident of self
     pub type_ident: Ident,
-    /// Verbatim access to any non-selflike arguments, i.e. arguments that
-    /// don't have type `&Self`.
-    pub nonselflike_args: &'a [Box<Expr>],
     pub fields: SubstructureFields<'a>,
 }
 
@@ -824,17 +821,10 @@ impl<'a> TraitDef<'a> {
         let field_tys = struct_def.fields().iter().map(|field| &*field.ty);
 
         let methods = self.methods.iter().filter_map(|method_def| {
-            let ArgDetails { selflike_args, nonselflike_args } =
-                method_def.extract_arg_details(cx, self);
+            let ArgDetails { selflike_args } = method_def.extract_arg_details(cx, self);
 
             let body = if from_scratch || method_def.is_static() {
-                method_def.call_substructure_method(
-                    cx,
-                    self,
-                    type_ident,
-                    &nonselflike_args,
-                    StaticStruct(struct_def),
-                )
+                method_def.call_substructure_method(cx, self, type_ident, StaticStruct(struct_def))
             } else {
                 method_def.expand_struct_method_body(
                     cx,
@@ -842,7 +832,6 @@ impl<'a> TraitDef<'a> {
                     struct_def,
                     type_ident,
                     &selflike_args,
-                    &nonselflike_args,
                     is_packed,
                 )
             };
@@ -868,26 +857,12 @@ impl<'a> TraitDef<'a> {
             .map(|field| &*field.ty);
 
         let methods = self.methods.iter().filter_map(|method_def| {
-            let ArgDetails { selflike_args, nonselflike_args } =
-                method_def.extract_arg_details(cx, self);
+            let ArgDetails { selflike_args } = method_def.extract_arg_details(cx, self);
 
             let body = if from_scratch || method_def.is_static() {
-                method_def.call_substructure_method(
-                    cx,
-                    self,
-                    type_ident,
-                    &nonselflike_args,
-                    StaticEnum(enum_def),
-                )
+                method_def.call_substructure_method(cx, self, type_ident, StaticEnum(enum_def))
             } else {
-                method_def.expand_enum_method_body(
-                    cx,
-                    self,
-                    enum_def,
-                    type_ident,
-                    selflike_args,
-                    &nonselflike_args,
-                )
+                method_def.expand_enum_method_body(cx, self, enum_def, type_ident, selflike_args)
             };
 
             method_def.create_method(cx, self, body)
@@ -902,8 +877,6 @@ struct ArgDetails {
     /// Expressions for `&self` (if present) and also any other
     /// args with the same type (e.g. the `other` arg in `PartialEq::eq`).
     selflike_args: ThinVec<Box<Expr>>,
-    /// Expressions for all the remaining args.
-    nonselflike_args: Vec<Box<Expr>>,
 }
 
 impl<'a> MethodDef<'a> {
@@ -912,11 +885,10 @@ impl<'a> MethodDef<'a> {
         cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
-        nonselflike_args: &[Box<Expr>],
         fields: SubstructureFields<'_>,
     ) -> BlockOrExpr {
         let span = trait_.span;
-        let substructure = Substructure { type_ident, nonselflike_args, fields };
+        let substructure = Substructure { type_ident, fields };
         let f: &CombineSubstructureFunc<'_> = &self.combine_substructure;
         f(cx, span, substructure)
     }
@@ -927,7 +899,6 @@ impl<'a> MethodDef<'a> {
 
     fn extract_arg_details(&self, cx: &ExtCtxt<'_>, trait_: &TraitDef<'_>) -> ArgDetails {
         let mut selflike_args = ThinVec::new();
-        let mut nonselflike_args = Vec::new();
         let span = trait_.span;
 
         if self.explicit_self {
@@ -943,11 +914,11 @@ impl<'a> MethodDef<'a> {
                 // Selflike (`&Self`) arguments only occur in non-static methods.
                 Ref(Self_, _) if self.explicit_self => selflike_args.push(arg_expr),
                 Self_ => cx.dcx().span_bug(span, "`Self` in non-return position"),
-                _ => nonselflike_args.push(arg_expr),
+                _ => (),
             }
         }
 
-        ArgDetails { selflike_args, nonselflike_args }
+        ArgDetails { selflike_args }
     }
 
     fn create_method(
@@ -1058,20 +1029,13 @@ impl<'a> MethodDef<'a> {
         struct_def: &'b VariantData,
         type_ident: Ident,
         selflike_args: &[Box<Expr>],
-        nonselflike_args: &[Box<Expr>],
         is_packed: bool,
     ) -> BlockOrExpr {
         assert!(selflike_args.len() == 1 || selflike_args.len() == 2);
 
         let selflike_fields =
             trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, is_packed);
-        self.call_substructure_method(
-            cx,
-            trait_,
-            type_ident,
-            nonselflike_args,
-            Struct(struct_def, selflike_fields),
-        )
+        self.call_substructure_method(cx, trait_, type_ident, Struct(struct_def, selflike_fields))
     }
 
     /// ```
@@ -1116,7 +1080,6 @@ impl<'a> MethodDef<'a> {
         enum_def: &'b EnumDef,
         type_ident: Ident,
         mut selflike_args: ThinVec<Box<Expr>>,
-        nonselflike_args: &[Box<Expr>],
     ) -> BlockOrExpr {
         assert!(
             !selflike_args.is_empty(),
@@ -1198,7 +1161,6 @@ impl<'a> MethodDef<'a> {
                             cx,
                             trait_,
                             type_ident,
-                            nonselflike_args,
                             EnumDiscr(discr_field, None),
                         );
                         discr_let_stmts.append(&mut discr_check.0);
@@ -1209,7 +1171,6 @@ impl<'a> MethodDef<'a> {
                             cx,
                             trait_,
                             type_ident,
-                            nonselflike_args,
                             AllFieldlessEnum(enum_def),
                         );
                     }
@@ -1222,7 +1183,6 @@ impl<'a> MethodDef<'a> {
                     cx,
                     trait_,
                     type_ident,
-                    nonselflike_args,
                     EnumMatching(variant, Vec::new()),
                 );
             }
@@ -1264,13 +1224,7 @@ impl<'a> MethodDef<'a> {
                 // Build up code associated with such a case.
                 let substructure = EnumMatching(variant, fields);
                 let arm_expr = self
-                    .call_substructure_method(
-                        cx,
-                        trait_,
-                        type_ident,
-                        nonselflike_args,
-                        substructure,
-                    )
+                    .call_substructure_method(cx, trait_, type_ident, substructure)
                     .into_expr(cx, span);
 
                 cx.arm(span, single_pat, arm_expr)
@@ -1289,7 +1243,6 @@ impl<'a> MethodDef<'a> {
                         cx,
                         trait_,
                         type_ident,
-                        nonselflike_args,
                         EnumMatching(v, Vec::new()),
                     )
                     .into_expr(cx, span),
@@ -1335,7 +1288,6 @@ impl<'a> MethodDef<'a> {
                 cx,
                 trait_,
                 type_ident,
-                nonselflike_args,
                 EnumDiscr(discr_field, Some(get_match_expr(selflike_args))),
             );
             discr_let_stmts.append(&mut discr_check_plus_match.0);
