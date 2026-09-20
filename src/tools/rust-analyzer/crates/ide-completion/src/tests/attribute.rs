@@ -924,6 +924,12 @@ struct Foo;
 }
 
 #[test]
+fn attr_before_arg() {
+    check_edit("allow", r#"#[$0()] fn main() {}"#, r#"#[allow()] fn main() {}"#);
+    check_edit("cfg_attr", r#"#[c$0(test)] fn main() {}"#, r#"#[cfg_attr(test)] fn main() {}"#);
+}
+
+#[test]
 fn issue_17479() {
     check(
         r#"

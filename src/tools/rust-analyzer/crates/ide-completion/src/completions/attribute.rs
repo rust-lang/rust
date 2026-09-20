@@ -74,6 +74,7 @@ pub(crate) fn complete_attribute_path(
     &AttrCtx { kind, annotated_item_kind, ref derive_helpers }: &AttrCtx,
 ) {
     let is_inner = kind == AttrKind::Inner;
+    let arg_exists = ctx.original_token.next_token().is_some_and(|it| it.kind().is_l_delimiter());
 
     for (derive_helper, derive_name) in derive_helpers {
         let mut item = CompletionItem::new(
@@ -147,6 +148,12 @@ pub(crate) fn complete_attribute_path(
             .zip(qualifiers)
             .take_while(|(s, q)| s.name_ref().is_some_and(|t| t.text() == **q))
             .count();
+        if let Some(s) = snippet.as_mut()
+            && (arg_exists && s.ends_with(')'))
+            && let Some(at) = s.find('(')
+        {
+            s.truncate(at);
+        }
         if matching_qualifiers != qualifiers.len() {
             let prefix = qualifiers[matching_qualifiers..].join("::");
             label = format!("{prefix}::{label}");
