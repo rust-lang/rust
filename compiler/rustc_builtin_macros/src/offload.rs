@@ -1,6 +1,7 @@
 use rustc_ast::ast;
 use rustc_ast::token::{Delimiter, IdentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::{DUMMY_NODE_ID, ast};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::config::Offload;
 use rustc_span::{DUMMY_SP, Ident, Span, sym};
@@ -179,14 +180,24 @@ pub(crate) fn expand_kernel(
     let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
     let inline_never = outer_normal_attr(&inline_never_attr, new_id, span);
 
-    let host_item = {
-        let mut item = ecx.item(
-            span,
-            thin_vec![rustc_offload_kernel, inline_never],
-            ast::ItemKind::Fn(host_fn),
-        );
-        item.vis = vis;
-        Annotatable::Item(item)
+    let mut host_item_ecx =
+        ecx.item(span, thin_vec![rustc_offload_kernel, inline_never], ast::ItemKind::Fn(host_fn));
+    let host_item = match &item {
+        Annotatable::Item(_) => {
+            host_item_ecx.vis = vis;
+            Annotatable::Item(host_item_ecx)
+        }
+        Annotatable::Stmt(_) => {
+            host_item_ecx.vis = vis;
+            Annotatable::Stmt(Box::new(ast::Stmt {
+                id: DUMMY_NODE_ID,
+                kind: ast::StmtKind::Item(host_item_ecx),
+                span,
+            }))
+        }
+        _ => {
+            unreachable!("item kind checked previously")
+        }
     };
 
     if compile_for_device(ecx) { vec![device_item] } else { vec![host_item] }
