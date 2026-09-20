@@ -263,6 +263,15 @@ impl<'a> Parser<'a> {
                     RecoverQuestionMark::Yes,
                 ) {
                     Ok(ty) => ty,
+                    Err(e) if self.may_recover() => {
+                        while !matches!(
+                            self.token.kind,
+                            TokenKind::OpenBrace | TokenKind::CloseBrace | TokenKind::Semi
+                        ) {
+                            self.bump();
+                        }
+                        self.mk_ty(self.prev_token.span, TyKind::Err(e.emit_err()))
+                    }
                     Err(e) => return Err(e),
                 },
             )
