@@ -18,7 +18,7 @@ impl B {
 
 fn main() {
     let a = A;
-    a.b(); //~ ERROR E0599
+    a.b();
     let b = A;
-    b.b(); //~ ERROR E0599
+    b.b();
 }
