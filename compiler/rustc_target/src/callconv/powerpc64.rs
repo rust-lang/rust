@@ -2,7 +2,7 @@
 // Alignment of 128 bit types is not currently handled, this will
 // need to be fixed when PowerPC vector support is added.
 
-use rustc_abi::{HasDataLayout, Integer, Numeric, TyAbiInterface};
+use rustc_abi::{FieldsShape, HasDataLayout, Integer, Numeric, TyAbiInterface, TyAndLayout};
 
 use crate::callconv::{Align, ArgAbi, CastTarget, FnAbi, Reg, RegKind, Uniform};
 use crate::spec::{HasTargetSpec, LlvmAbi, Os};
@@ -14,6 +14,30 @@ enum ABI {
     AIX,   // used by AIX OS, big-endian only
 }
 use ABI::*;
+
+/// Whether `layout` is or contains a union with more than one non-1-ZST field.
+///
+/// `homogeneous_aggregate` merges the fields of a union, so it cannot tell such a union from a
+/// structure. This walks the layout a second time; keep the array and 1-ZST handling here in sync
+/// with `homogeneous_aggregate`.
+fn contains_multi_field_union<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> bool
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    let fields =
+        || (0..layout.fields.count()).map(|i| layout.field(cx, i)).filter(|f| !f.is_1zst());
+    match layout.fields {
+        FieldsShape::Primitive => false,
+        FieldsShape::Union(_) => {
+            fields().count() > 1 || fields().any(|f| contains_multi_field_union(cx, f))
+        }
+        FieldsShape::Array { count, .. } => {
+            count > 0 && contains_multi_field_union(cx, layout.field(cx, 0))
+        }
+        FieldsShape::Arbitrary { .. } => fields().any(|f| contains_multi_field_union(cx, f)),
+    }
+}
 
 fn is_homogeneous_aggregate<'a, Ty, C>(
     cx: &C,
@@ -27,7 +51,8 @@ where
     arg.layout.homogeneous_aggregate(cx).ok().and_then(|ha| ha.unit()).and_then(|unit| {
         // ELFv1 and AIX only passes one-member aggregates transparently.
         // ELFv2 passes up to eight uniquely addressable members.
-        if ((abi == ELFv1 || abi == AIX) && arg.layout.size > unit.size)
+        if ((abi == ELFv1 || abi == AIX)
+            && (arg.layout.size > unit.size || contains_multi_field_union(cx, arg.layout)))
             || arg.layout.size > unit.size.checked_mul(8, cx).unwrap()
         {
             return None;

@@ -94,3 +94,54 @@ pub struct Hfa4V2F64 {
 pub extern "C" fn test_hfa_4_f64x2(a: Hfa4V2F64) {
     hint::black_box(a);
 }
+
+// A one-member aggregate containing a float is passed in a floating point register.
+#[repr(C)]
+pub struct OneFloatStruct {
+    pub a: f32,
+}
+impl Copy for OneFloatStruct {}
+
+// ppc64: define void @test_struct_one_float(float %0)
+// ppc64_vsx: define void @test_struct_one_float(float %0)
+// ppc64le: define void @test_struct_one_float(float %0)
+#[unsafe(no_mangle)]
+pub extern "C" fn test_struct_one_float(a: OneFloatStruct) {
+    hint::black_box(a);
+}
+
+// A union with several members is not a one-member aggregate, so on ELFv1 it is not passed in a
+// floating point register. See https://github.com/rust-lang/rust/issues/162011.
+#[repr(C)]
+pub union TwoFloats {
+    pub a: f32,
+    pub b: f32,
+}
+
+// ppc64: define void @test_union_two_floats(i32 %0)
+// ppc64_vsx: define void @test_union_two_floats(i32 %0)
+// ppc64le: define void @test_union_two_floats(float %0)
+#[unsafe(no_mangle)]
+pub extern "C" fn test_union_two_floats(a: TwoFloats) {
+    hint::black_box(a);
+}
+
+// A zero-sized union contributes no data, so it doesn't disqualify the aggregate.
+#[repr(C)]
+pub union ZstUnion {
+    pub a: (),
+}
+
+#[repr(C)]
+pub struct OneFloatAndZstUnion {
+    pub a: f32,
+    pub u: ZstUnion,
+}
+
+// ppc64: define void @test_struct_one_float_and_zst_union(float %0)
+// ppc64_vsx: define void @test_struct_one_float_and_zst_union(float %0)
+// ppc64le: define void @test_struct_one_float_and_zst_union(float %0)
+#[unsafe(no_mangle)]
+pub extern "C" fn test_struct_one_float_and_zst_union(a: OneFloatAndZstUnion) {
+    hint::black_box(a);
+}
