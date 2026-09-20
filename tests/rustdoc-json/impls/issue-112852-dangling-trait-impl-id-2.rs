@@ -1,5 +1,5 @@
-//@ has "$.index[?(@.docs=='Here')]"
-//@ !has "$.index[?(@.docs=='Not Here')]"
+//@ has "$.index[?(@.docs[0].text=='Here')]"
+//@ !has "$.index[?(@.docs[0].text=='Not Here')]"
 //@ !has "$.index[?(@.name == 'HiddenPubStruct')]"
 //@ has "$.index[?(@.name == 'NotHiddenPubStruct')]"
 //@ has "$.index[?(@.name=='PubTrait')]"

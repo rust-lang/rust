@@ -6,7 +6,7 @@ macro_rules! repro {
     () => {};
 }
 
-//@ set repro2_id = "$.index[?(@.docs=='Re-export')].id"
+//@ set repro2_id = "$.index[?(@.docs[0].text=='Re-export')].id"
 /// Re-export
 pub use crate::repro as repro2;
 

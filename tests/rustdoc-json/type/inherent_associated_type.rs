@@ -18,6 +18,6 @@ impl Owner {
     /// iat
     pub type Metadata = OwnerMetadata;
 }
-//@ set iat = '$.index[?(@.docs=="iat")].id'
-//@ is '$.index[?(@.docs=="impl")].inner.impl.items[*]' $iat
-//@ is '$.index[?(@.docs=="iat")].inner.assoc_type.type.resolved_path.id' $OwnerMetadata
+//@ set iat = '$.index[?(@.docs[0].text=="iat")].id'
+//@ is '$.index[?(@.docs[0].text=="impl")].inner.impl.items[*]' $iat
+//@ is '$.index[?(@.docs[0].text=="iat")].inner.assoc_type.type.resolved_path.id' $OwnerMetadata
