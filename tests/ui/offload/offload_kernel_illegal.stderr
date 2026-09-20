@@ -1,47 +1,61 @@
-error[E0658]: macro attributes on statements are unstable
-  --> $DIR/offload_kernel_illegal.rs:49:5
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/offload_kernel_illegal.rs:9:5
    |
-LL |     #[autodiff_forward(df7, Dual)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[core::offload::offload_kernel]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: macro attributes on statements are unstable
+  --> $DIR/offload_kernel_illegal.rs:4:5
+   |
+LL |     #[core::offload::offload_kernel]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: autodiff must be applied to function
-  --> $DIR/offload_kernel_illegal.rs:51:5
+error: offload_kernel must be applied to function
+  --> $DIR/offload_kernel_illegal.rs:6:5
    |
 LL |     let mut x = 5;
    |     ^^^^^^^^^^^^^^
 
 error[E0658]: macro attributes on expressions are unstable
-  --> $DIR/offload_kernel_illegal.rs:54:5
+  --> $DIR/offload_kernel_illegal.rs:9:5
    |
-LL |     #[autodiff_forward(df7, Dual)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[core::offload::offload_kernel]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: autodiff must be applied to function
-  --> $DIR/offload_kernel_illegal.rs:55:5
+error: offload_kernel must be applied to function
+  --> $DIR/offload_kernel_illegal.rs:10:5
    |
 LL |     x = x + 3;
    |     ^
 
 error[E0658]: macro attributes on statements are unstable
-  --> $DIR/offload_kernel_illegal.rs:60:5
+  --> $DIR/offload_kernel_illegal.rs:15:5
    |
-LL |     #[autodiff_forward(df7, Dual)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[core::offload::offload_kernel]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: autodiff must be applied to function
-  --> $DIR/offload_kernel_illegal.rs:62:5
+error: offload_kernel must be applied to function
+  --> $DIR/offload_kernel_illegal.rs:17:5
    |
 LL |     let add_one_v2 = |x: u32| -> u32 { x + 1 };
-   |   
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
