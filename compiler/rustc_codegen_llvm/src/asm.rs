@@ -752,8 +752,13 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     // We use i32 as the type for discarded outputs
                     'w'
                 };
-                if class == 'x' && reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) {
-                    // LLVM doesn't recognize x30. use lr instead.
+
+                if class == 'x'
+                    && reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30)
+                    && llvm_util::get_version() < (23, 0, 0)
+                {
+                    // FIXME(llvm): LLVM <23 does not recognize `x30` as a register name.
+                    // This workaround can be removed when support for LLVM 22 is dropped.
                     "{lr}".to_string()
                 } else {
                     format!("{{{}{}}}", class, idx)
