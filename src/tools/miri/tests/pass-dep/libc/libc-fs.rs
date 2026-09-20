@@ -87,12 +87,12 @@ fn assert_statx_matches_metadata(stx: &libc::statx, meta: &fs::Metadata, expecte
     let mask = stx.stx_mask;
 
     // Guaranteed by the shim on any Linux target.
-    assert!(mask & libc::STATX_SIZE != 0);
-    assert_eq!(stx.stx_size, expected_size);
     assert!(mask & libc::STATX_TYPE != 0);
     assert_eq!((stx.stx_mode as libc::mode_t) & libc::S_IFMT, libc::S_IFREG);
     assert!(mask & libc::STATX_MODE != 0);
     assert_ne!((stx.stx_mode as libc::mode_t) & !libc::S_IFMT, 0);
+    assert!(mask & libc::STATX_SIZE != 0);
+    assert_eq!(stx.stx_size, expected_size);
 
     // Host-dependent enrichment: only assert when the mask says the field is real.
     if mask & libc::STATX_INO != 0 {
@@ -214,12 +214,12 @@ fn test_statx_empty_path_on_pipe() {
 
         let statx_buf = statx_buf.assume_init();
 
-        assert_ne!(statx_buf.stx_mask & libc::STATX_SIZE, 0);
-        assert_eq!(statx_buf.stx_size, 0);
         assert_ne!(statx_buf.stx_mask & libc::STATX_TYPE, 0);
         assert_eq!((statx_buf.stx_mode as libc::mode_t) & libc::S_IFMT, libc::S_IFIFO);
         assert_ne!(statx_buf.stx_mask & libc::STATX_MODE, 0);
         assert_ne!((statx_buf.stx_mode as libc::mode_t) & !libc::S_IFMT, 0);
+        assert_ne!(statx_buf.stx_mask & libc::STATX_SIZE, 0);
+        assert_eq!(statx_buf.stx_size, 0);
 
         if cfg!(miri) {
             // Synthetic metadata must not advertise host-only fields.
@@ -768,9 +768,9 @@ fn test_fstat() {
     errno_check(unsafe { libc::fstat(fd, stat.as_mut_ptr()) });
     let stat = unsafe { stat.assume_init_ref() };
 
-    assert_eq!(stat.st_size, 5);
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
     assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    assert_eq!(stat.st_size, 5);
 
     // Check that all fields are initialized.
     check_stat_fields(stat);
@@ -780,17 +780,21 @@ fn test_fstat() {
 
 fn test_stat() {
     use std::mem::MaybeUninit;
+    // Also make sure we *do* follow symlinks.
 
     let path = utils::prepare_with_content("miri_test_libc_stat.txt", b"hello");
-    let cpath = CString::new(path.as_os_str().as_bytes()).unwrap();
+    let symlink_path = utils::prepare("miri_test_libc_lstat_symlink.txt");
+    std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
+
+    let cpath = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
 
     let mut stat = MaybeUninit::<libc::stat>::uninit();
     errno_check(unsafe { libc::stat(cpath.as_ptr(), stat.as_mut_ptr()) });
     let stat = unsafe { stat.assume_init_ref() };
 
-    assert_eq!(stat.st_size, 5);
     assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
     assert_ne!(stat.st_mode & !libc::S_IFMT, 0, "some permission should be set");
+    assert_eq!(stat.st_size, 5);
 
     // Check that all fields are initialized.
     check_stat_fields(stat);
@@ -803,7 +807,6 @@ fn test_lstat() {
 
     let path = utils::prepare_with_content("miri_test_libc_lstat.txt", b"hello");
     let symlink_path = utils::prepare("miri_test_libc_lstat_symlink.txt");
-
     std::os::unix::fs::symlink(&path, &symlink_path).unwrap();
 
     let cpath = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
