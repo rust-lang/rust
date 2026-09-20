@@ -1,6 +1,6 @@
 #![attr = Feature([adt_const_params#0, gca_adts#0, gca_min_const_items#0,
 gca_macroless_args#0])]
-#![attr = LintCheck([LintCheck {name: ["dead_code"], kind: Allow}])]
+#![attr = LintCheck([LintCheck {lint_name: "dead_code", kind: Allow}])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;

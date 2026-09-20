@@ -34,7 +34,7 @@ pub trait PrintAttribute {
     fn print_attribute(&self, p: &mut Printer);
 }
 
-impl<T: PrintAttribute> PrintAttribute for &T {
+impl<T: ?Sized + PrintAttribute> PrintAttribute for &T {
     fn should_render(&self) -> bool {
         T::should_render(self)
     }
@@ -43,7 +43,7 @@ impl<T: PrintAttribute> PrintAttribute for &T {
         T::print_attribute(self, p)
     }
 }
-impl<T: PrintAttribute> PrintAttribute for Box<T> {
+impl<T: ?Sized + PrintAttribute> PrintAttribute for Box<T> {
     fn should_render(&self) -> bool {
         self.deref().should_render()
     }
@@ -63,7 +63,8 @@ impl<T: PrintAttribute> PrintAttribute for Option<T> {
         }
     }
 }
-impl<T: PrintAttribute> PrintAttribute for ThinVec<T> {
+
+impl<T: PrintAttribute> PrintAttribute for [T] {
     fn should_render(&self) -> bool {
         self.is_empty() || self[0].should_render()
     }
@@ -79,6 +80,16 @@ impl<T: PrintAttribute> PrintAttribute for ThinVec<T> {
             last_printed = i.should_render();
         }
         p.word("]");
+    }
+}
+
+impl<T: PrintAttribute> PrintAttribute for ThinVec<T> {
+    fn should_render(&self) -> bool {
+        self.as_slice().should_render()
+    }
+
+    fn print_attribute(&self, p: &mut Printer) {
+        self.as_slice().print_attribute(p)
     }
 }
 impl<T: PrintAttribute, T2: PrintAttribute> PrintAttribute for FxIndexMap<T, T2> {
