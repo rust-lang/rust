@@ -1,9 +1,13 @@
 use std::fmt;
-use std::panic::Location;
+use std::panic::{Location, panic_any};
 
 use rustc_data_structures::AtomicRef;
 
 use crate::Span;
+
+/// Signifies that the compiler died with an explicit call to `.bug` or `.span_bug` rather than a
+/// failed assertion, etc.
+pub struct ExplicitBug;
 
 /// A macro for triggering an ICE.
 /// Calling `bug` instead of panicking will result in a nicer error message and should
@@ -40,12 +44,32 @@ pub macro span_bug($span:expr, $($arg:tt)+){
 
 #[cold]
 #[track_caller]
-pub fn bug_impl(span: Option<Span>, args: fmt::Arguments<'_>, location: &Location<'_>) -> ! {
-    (*EMIT_BUG_DIAGNOSTIC)(span, args, location);
-    panic!("{args}")
+pub fn bug_impl(
+    span: Option<Span>,
+    args: fmt::Arguments<'_>,
+    location: &'static Location<'static>,
+) -> ! {
+    // Emit the bug without aborting.
+    let emitted = (*EMIT_BUG_DIAGNOSTIC)(span, args, location);
+
+    if emitted {
+        // Panic with `ExplicitBug`, which tells `report_ice` that it's expected, e.g. originating
+        // from `bug!` or `dcx.emit_bug(..)`.
+        panic_any(ExplicitBug);
+    } else {
+        // Panic with just a string, which means it's unexpected.
+        panic_any(format!("{args}"));
+    }
 }
 
-pub static EMIT_BUG_DIAGNOSTIC: AtomicRef<fn(Option<Span>, fmt::Arguments<'_>, &Location<'_>)> =
-    AtomicRef::new(&(default_emit_diagnostic as _));
+pub static EMIT_BUG_DIAGNOSTIC: AtomicRef<
+    fn(Option<Span>, fmt::Arguments<'_>, &'static Location<'static>) -> bool,
+> = AtomicRef::new(&(default_emit_bug_diagnostic as _));
 
-fn default_emit_diagnostic(_: Option<Span>, _: fmt::Arguments<'_>, _: &Location<'_>) {}
+fn default_emit_bug_diagnostic(
+    _: Option<Span>,
+    _args: fmt::Arguments<'_>,
+    _location: &'static Location<'static>,
+) -> bool {
+    false
+}

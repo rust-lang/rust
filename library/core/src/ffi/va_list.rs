@@ -416,6 +416,55 @@ cfg_select! {
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
 unsafe impl VaArgSafe for f64 {}
 
+// Implement `VaArgSafe` for f128 on targets where either:
+//
+// - clang provides `__float128`
+// - `long double` is IEEE f128 on the platform.
+//
+// When updating this cfg, also update the tests to match. Currently this condition
+// is duplicated in:
+//
+// - tests/ui/c-variadic/roundtrip.rs
+// - tests/run-make/c-link-to-rust-va-list-fn/checkrust.rs
+//
+// # Known incompatibilities
+//
+// Testing versus clang exposed bugs in clang. GCC has no known incompatibilities.
+//
+// - Clang <= 23 on sparc, see https://github.com/llvm/llvm-project/pull/214981.
+// - Clang <= 23 on x86, see https://github.com/llvm/llvm-project/issues/217747.
+cfg_select! {
+    any(
+        all(target_arch = "x86_64", not(target_vendor = "apple"), not(target_env = "msvc")),
+        all(target_arch = "x86", not(target_vendor = "apple"), not(target_env = "msvc")),
+        // PowerPC requires VSX (only little endian has it enabled by default).
+        all(target_arch = "powerpc64", target_feature = "vsx"),
+        all(
+            not(windows),
+            not(target_vendor = "apple"),
+            any(
+                target_arch = "aarch64",
+                target_arch = "loongarch32",
+                target_arch = "loongarch64",
+                target_arch = "mips64",
+                target_arch = "mips64r6",
+                target_arch = "riscv32",
+                target_arch = "riscv64",
+                target_arch = "s390x",
+                target_arch = "sparc",
+                target_arch = "sparc64",
+                target_arch = "wasm32",
+                target_arch = "wasm64",
+            ),
+        ),
+    ) => {
+        #[unstable_feature_bound(f128)]
+        #[unstable(feature = "f128", issue = "116909")]
+        unsafe impl VaArgSafe for f128 {}
+    }
+    _ => { /* unsupported */ }
+}
+
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
 unsafe impl<T> VaArgSafe for *mut T {}
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]

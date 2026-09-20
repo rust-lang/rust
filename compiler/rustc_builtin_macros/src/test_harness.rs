@@ -364,7 +364,12 @@ fn add_main(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
     });
 
     // Integrate the new item into existing module structures.
-    let items = AstFragment::Items(smallvec![test_extern_stmt, main]);
+    // `extern crate test;` is only needed with the default runner.
+    let items = AstFragment::Items(if cx.test_runner.is_none() {
+        smallvec![test_extern_stmt, main]
+    } else {
+        smallvec![main]
+    });
     c.items.extend(cx.ext_cx.monotonic_expander().fully_expand_fragment(items).make_items());
 }
 

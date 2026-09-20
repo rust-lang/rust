@@ -775,9 +775,23 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 if has_default {
                     // need to store default and type of default
                     let ct = tcx.const_param_default(param.def_id).skip_binder();
-                    if let ty::ConstKind::Alias(_, alias_const) = ct.kind()
-                        && let Some(def_id) = alias_const.kind.opt_def_id()
-                    {
+                    if let ty::ConstKind::Alias(_, alias_const) = ct.kind() {
+                        let def_id = match alias_const.kind {
+                            ty::AliasConstKind::Projection { def_id } => def_id,
+                            ty::AliasConstKind::InherentSelf { def_id } => {
+                                // NOTE: typically, InherentSelf is illegal to pass to type_of,
+                                // because the generic args are incorrect (type_of expects impl-form
+                                // arguments). However, we are just checking ensure_ok().type_of(),
+                                // we are not instantiating the result, so it's OK here.
+                                def_id
+                            }
+                            ty::AliasConstKind::InherentImpl { .. } => span_bug!(
+                                tcx.def_span(param.def_id),
+                                "const_param_default should return an unnormalized constant, which should always be InherentSelf, not InherentImpl"
+                            ),
+                            ty::AliasConstKind::Free { def_id } => def_id,
+                            ty::AliasConstKind::Anon { def_id } => def_id,
+                        };
                         tcx.ensure_ok().type_of(def_id);
                     }
                 }

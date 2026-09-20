@@ -8,6 +8,7 @@ use rustc_middle::middle::codegen_fn_attrs::{
 };
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_sanitizers::ignorelist::SanitizerIgnoreList;
+use rustc_session::Session;
 use rustc_session::config::{
     BranchProtection, FunctionReturn, InstrumentMcount, InstrumentMcountOpts, OptLevel, PAuthKey,
     PacRet,
@@ -23,7 +24,7 @@ use crate::llvm::AttributePlace::Function;
 use crate::llvm::{
     self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects, Value,
 };
-use crate::{Session, attributes, llvm_util};
+use crate::{attributes, llvm_util};
 
 pub(crate) fn apply_to_llfn(llfn: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
     if !attrs.is_empty() {

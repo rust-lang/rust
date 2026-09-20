@@ -557,9 +557,13 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
             }
             ty::ConstKind::Param(param) => crate::ty::TyConstKind::Param(param.stable(tables, cx)),
             ty::ConstKind::Alias(_, alias_const) => {
-                let Some(def_id) = alias_const.kind.opt_def_id() else {
-                    // FIXME: implement (both AliasTy and AliasConst will be needing this soon)
-                    panic!("non-defid alias consts are not supported by rustc_public at the moment")
+                // rustc_public must change its API once we introduce a variant without a def_id.
+                let def_id = match alias_const.kind {
+                    ty::AliasConstKind::Projection { def_id }
+                    | ty::AliasConstKind::InherentSelf { def_id }
+                    | ty::AliasConstKind::InherentImpl { def_id }
+                    | ty::AliasConstKind::Free { def_id }
+                    | ty::AliasConstKind::Anon { def_id } => def_id,
                 };
                 crate::ty::TyConstKind::Unevaluated(
                     tables.const_def(def_id),

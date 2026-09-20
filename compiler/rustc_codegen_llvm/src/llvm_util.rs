@@ -6,6 +6,7 @@ use std::sync::Once;
 use std::{ptr, slice, str};
 
 use libc::c_int;
+use rustc_abi::Endian;
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::wants_wasm_eh;
 use rustc_codegen_ssa::target_features::internal_target_features;
@@ -15,7 +16,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_fs_util::path_to_c_string;
 use rustc_session::config::{NATIVE_CPU, PrintKind, PrintRequest};
 use rustc_session::{EarlySession, Session};
-use rustc_span::bug;
+use rustc_span::{bug, sym};
 use rustc_target::spec::{
     Arch, CfgAbi, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport, Target,
 };
@@ -394,6 +395,7 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
 fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
     let target_arch = &target.arch;
     let target_os = &target.options.os;
+    let target_endian = &target.options.endian;
     let target_env = &target.options.env;
     let target_abi = &target.options.cfg_abi;
     let target_pointer_width = target.pointer_width;
@@ -426,9 +428,12 @@ fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
         // Selection bug <https://github.com/llvm/llvm-project/issues/95471>. This issue is closed
         // but basic math still does not work.
         (Arch::Nvptx64, _) => false,
-        // ABI bugs <https://github.com/rust-lang/rust/issues/125109> et al. (full
-        // list at <https://github.com/rust-lang/rust/issues/116909>)
-        (Arch::PowerPC | Arch::PowerPC64, _) => false,
+        // ABI/LLVM bugs:
+        // - with +vsx <https://github.com/llvm/llvm-project/pull/216613>
+        // - without +vsx <https://github.com/rust-lang/rust/issues/125109>
+        (Arch::PowerPC, _) => false,
+        // ABI bugs on BE without +vsx <https://github.com/rust-lang/rust/issues/125109>.
+        (Arch::PowerPC64, _) => cfg.internal_target_features.contains(&sym::vsx),
         // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838> (fixed in llvm22)
         (Arch::Sparc, _) if major < 22 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054> (fixed in llvm23)
@@ -456,9 +461,13 @@ fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
         // (ld is `f64`), anything other than Linux (Windows and MacOS use `f64`), and `x86`
         // (ld is 80-bit extended precision).
         //
+        // On big-endian powerpc the symbol selection is correct, despite __ibmf128 being
+        // long double on the target, but the f128 symbols are not defined.
+        //
         // musl does not implement the symbols required for f128 math at all.
         _ if *target_env == Env::Musl => false,
         (Arch::X86_64, _) => false,
+        (Arch::PowerPC | Arch::PowerPC64, _) if *target_endian == Endian::Big => false,
         (_, Os::Linux) if target_pointer_width == 64 => true,
         _ => false,
     } && cfg.has_reliable_f128;
