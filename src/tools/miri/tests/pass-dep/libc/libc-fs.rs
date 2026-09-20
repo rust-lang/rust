@@ -193,6 +193,22 @@ fn test_statx_on_file_path() {
         assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
     }
 
+    // dirfd is ignored because our path is absolute.
+    assert!(path.is_absolute());
+    unsafe {
+        let mut stx = MaybeUninit::<libc::statx>::zeroed();
+        errno_check(libc::statx(
+            999, // dirfd
+            c_path.as_ptr(),
+            libc::AT_EMPTY_PATH,
+            libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            stx.as_mut_ptr(),
+        ));
+
+        let stx = stx.assume_init();
+        assert_statx_matches_metadata(&stx, &meta, bytes.len() as u64);
+    }
+
     remove_file(&path).unwrap();
 }
 
@@ -329,6 +345,11 @@ fn test_dup() {
         assert!(third_len > 0);
         let third_len = third_len as usize;
         assert_eq!(third_buf[..third_len], remaining_bytes[..third_len]);
+
+        // Cleanup
+        let err = errno_result(libc::close(99)).unwrap_err(); // new_fd2, already closed above!
+        assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
+        errno_check(libc::close(999)); // new_fd3
     }
 }
 
