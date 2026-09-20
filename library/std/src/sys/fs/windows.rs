@@ -263,26 +263,27 @@ impl OpenOptions {
     }
 
     fn get_access_mode(&self) -> io::Result<u32> {
-        match (self.read, self.write, self.append, self.access_mode) {
-            (.., Some(mode)) => Ok(mode),
-            (_, false, false, None) if self.truncate || self.create || self.create_new => {
+        if let Some(access) = self.access_mode {
+            return Ok(access);
+        }
+
+        match (self.read, self.write, self.append) {
+            (_, false, false) if self.truncate || self.create || self.create_new => {
                 Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
                     "creating or truncating a file requires write or append access",
                 ))
             }
-            (_, _, true, None) if self.truncate && !self.create_new => Err(io::Error::new(
+            (_, _, true) if self.truncate && !self.create_new => Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "append and truncate cannot both be enabled",
             )),
-            (true, false, false, None) => Ok(c::GENERIC_READ),
-            (false, true, false, None) => Ok(c::GENERIC_WRITE),
-            (true, true, false, None) => Ok(c::GENERIC_READ | c::GENERIC_WRITE),
-            (false, _, true, None) => Ok(c::FILE_GENERIC_WRITE & !c::FILE_WRITE_DATA),
-            (true, _, true, None) => {
-                Ok(c::GENERIC_READ | (c::FILE_GENERIC_WRITE & !c::FILE_WRITE_DATA))
-            }
-            (false, false, false, None) => Err(io::Error::new(
+            (true, false, false) => Ok(c::GENERIC_READ),
+            (false, true, false) => Ok(c::GENERIC_WRITE),
+            (true, true, false) => Ok(c::GENERIC_READ | c::GENERIC_WRITE),
+            (false, _, true) => Ok(c::FILE_GENERIC_WRITE & !c::FILE_WRITE_DATA),
+            (true, _, true) => Ok(c::GENERIC_READ | (c::FILE_GENERIC_WRITE & !c::FILE_WRITE_DATA)),
+            (false, false, false) => Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "must specify at least one of read, write, or append access",
             )),
