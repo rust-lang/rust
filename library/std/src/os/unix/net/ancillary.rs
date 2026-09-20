@@ -39,7 +39,7 @@ pub(super) fn recv_vectored_with_ancillary_from(
         let mut msg_name: [u8; SOCK_MAX_SIZE] = [0; SOCK_MAX_SIZE];
         let mut msg: libc::msghdr = zeroed();
         msg.msg_name = (&raw mut msg_name) as *mut _;
-        msg.msg_namelen = size_of::<libc::sockaddr_un>() as libc::socklen_t;
+        msg.msg_namelen = SOCK_MAX_SIZE as libc::socklen_t;
         msg.msg_iov = bufs.as_mut_ptr().cast();
         msg.msg_iovlen = bufs.len() as _;
         msg.msg_controllen = ancillary.buffer.len() as _;
