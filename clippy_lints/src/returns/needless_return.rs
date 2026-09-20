@@ -6,7 +6,7 @@ use clippy_utils::{
 };
 
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::lint::LintCheckKind;
+use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -184,19 +184,18 @@ fn check_final_expr<'tcx>(
             match cx.tcx.hir_attrs(expr.hir_id) {
                 [] => {},
                 [Attribute::Parsed(AttributeKind::LintCheck(lints))] => {
-                    if lints
-                        .iter()
-                        .filter(|lint| matches!(lint.kind, LintCheckKind::Expect))
-                        .any(|lint| {
-                            matches!(
-                                &*lint.name,
-                                [
-                                    sym::clippy,
-                                    sym::needless_return | sym::style | sym::all | sym::warnings
-                                ]
-                            )
-                        })
-                    {
+                    if lints.iter().any(|lint| {
+                        matches!(
+                            lint,
+                            LintCheck {
+                                tool_name: Some(sym::clippy),
+                                lint_name: sym::needless_return | sym::style | sym::all | sym::warnings,
+                                rest: None,
+                                kind: LintCheckKind::Expect,
+                                ..
+                            }
+                        )
+                    }) {
                         // This is an expectation of the `needless_return` lint
                     } else {
                         return;
