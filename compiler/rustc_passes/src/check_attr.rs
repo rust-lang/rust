@@ -1514,22 +1514,36 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_lint_check(&self, hir_id: HirId, lints: &[LintCheck]) {
-        for LintCheck { name, span, .. } in lints {
-            match &**name {
-                [sym::dead_code_pub_in_binary] => {
+        for lint in lints {
+            let LintCheck {
+                tool_name: None,
+                lint_name,
+                lint_span,
+                rest: None,
+                kind: _,
+                reason: _,
+                attr_id: _,
+                attr_span: _,
+            } = *lint
+            else {
+                continue;
+            };
+
+            match lint_name {
+                sym::dead_code_pub_in_binary => {
                     if !self.tcx.crate_types().contains(&CrateType::Executable) {
                         self.tcx.emit_node_span_lint(
                             UNUSED_ATTRIBUTES,
                             hir_id,
-                            *span,
+                            lint_span,
                             diagnostics::Unused {
-                                attr_span: *span,
+                                attr_span: lint_span,
                                 note: diagnostics::UnusedNote::NoEffectDeadCodePubInBinary,
                             },
                         );
                     }
                 }
-                [sym::linker_messages | sym::linker_info] => {
+                sym::linker_messages | sym::linker_info => {
                     if hir_id == CRATE_HIR_ID
                         && self
                             .tcx
@@ -1540,9 +1554,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         self.tcx.emit_node_span_lint(
                             UNUSED_ATTRIBUTES,
                             hir_id,
-                            *span,
+                            lint_span,
                             diagnostics::Unused {
-                                attr_span: *span,
+                                attr_span: lint_span,
                                 note: diagnostics::UnusedNote::LinkerMessagesBinaryCrateOnly,
                             },
                         );

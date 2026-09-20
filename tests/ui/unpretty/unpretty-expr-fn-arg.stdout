@@ -1,4 +1,4 @@
-#![attr = LintCheck([LintCheck {name: ["dead_code"], kind: Allow}])]
+#![attr = LintCheck([LintCheck {lint_name: "dead_code", kind: Allow}])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
