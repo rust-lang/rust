@@ -1085,6 +1085,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 typo,
                 Applicability::MaybeIncorrect,
             );
+        } else {
+            diag.span_label(
+                segment.ident.span,
+                format!(
+                    "not an associated item of trait `{trait_name}`, so `{trait_name}` is \
+                    interpreted as a type",
+                    trait_name = tcx.item_name(trait_def_id),
+                ),
+            );
         }
     }
 }
