@@ -429,15 +429,17 @@ fn cfg_select_expand(
 }
 
 fn cfg_expand(
-    db: &dyn SourceDatabase,
-    id: MacroCallId,
+    _db: &dyn SourceDatabase,
+    _id: MacroCallId,
     tt: &tt::TopSubtree,
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
-    let loc = id.loc(db);
-    let expr = CfgExpr::parse(tt);
-    let enabled = loc.krate.cfg_options(db).check(&expr) != Some(false);
-    let expanded = if enabled { quote!(span=>true) } else { quote!(span=>false) };
+    let pound = mk_pound(span);
+    // Support ide features, like completion and hover
+    // This implementation should not be used for 'cfg_select' because 'cfg_select' expands any token.
+    let expanded = quote! {span =>
+        builtin #pound cfg #tt
+    };
     ExpandResult::ok(expanded)
 }
 
