@@ -4,7 +4,7 @@ use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::{IntoSpan as _, SpanExt as _, snippet, snippet_block_with_applicability};
 use clippy_utils::{can_use_if_let_chains, span_contains_cfg, span_contains_non_whitespace, sym, tokenize_with_text};
 use rustc_ast::BinOpKind;
-use rustc_attr_ir::lint::LintCheckKind;
+use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, StmtKind};
@@ -243,15 +243,18 @@ impl CollapsibleIf {
             [Attribute::Parsed(AttributeKind::LintCheck(lints))]
                 if lints
                     .iter()
-                    .filter(|lint| matches!(lint.kind, LintCheckKind::Expect))
-                    .filter_map(|lint| {
-                        if let [sym::clippy, lint_name] = &*lint.name {
-                            Some(lint_name)
-                        } else {
-                            None
-                        }
+                    .filter(|lint| {
+                        matches!(
+                            lint,
+                            LintCheck {
+                                tool_name: Some(sym::clippy),
+                                rest: None,
+                                kind: LintCheckKind::Expect,
+                                ..
+                            }
+                        )
                     })
-                    .any(|lint| [expected_lint_name, sym::style, sym::all].contains(lint)) =>
+                    .any(|lint| [expected_lint_name, sym::style, sym::all].contains(&lint.lint_name)) =>
             {
                 let attr_span = lints.first().unwrap().attr_span.to(lints.last().unwrap().attr_span);
                 // There is an `expect` attribute -- check that there is no _other_ significant text
