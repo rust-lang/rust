@@ -28,6 +28,15 @@ fn extract_fn(
             }
             _ => None,
         },
+        Annotatable::Stmt(stmt) => match &stmt.kind {
+            ast::StmtKind::Item(iitem) => match &iitem.kind {
+                ast::ItemKind::Fn(ast::Fn { sig, ident, generics, body, .. }) => {
+                    Some((iitem.vis.clone(), sig.clone(), *ident, generics.clone(), body.clone()))
+                }
+                _ => None,
+            },
+            _ => None,
+        },
         _ => None,
     }
 }
