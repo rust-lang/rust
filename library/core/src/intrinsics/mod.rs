@@ -154,8 +154,20 @@ pub const unsafe fn atomic_cxchgweak<
 /// Loads the current value of the pointer.
 /// `T` must be an integer or pointer type.
 ///
+/// # Safety
+///
+/// * If `VOLATILE` is `true`, this is equivalent to [Atomic::load_volatile].
+///   Refer to the documentation of that method for safety requirements.
+///
+/// * If `VOLATILE` is `false`, this is equivalent to [Atomic::from_ptr] followed
+///   by [Atomic::load]. Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `load` method. For example, [`AtomicBool::load`].
+///
+/// [Atomic::load_volatile]: AtomicI32::load_volatile
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::load]: AtomicI32::load
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
@@ -165,8 +177,20 @@ pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering, const VOLATI
 /// Stores the value at the specified memory location.
 /// `T` must be an integer or pointer type.
 ///
+/// # Safety
+///
+/// * If `VOLATILE` is `true`, this is equivalent to [Atomic::store_volatile].
+///   Refer to the documentation of that method for safety requirements.
+///
+/// * If `VOLATILE` is `false`, this is equivalent to [Atomic::from_ptr] followed
+///   by [Atomic::store]. Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `store` method. For example, [`AtomicBool::store`].
+///
+/// [Atomic::store_volatile]: AtomicI32::store_volatile
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::store]: AtomicI32::store
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
