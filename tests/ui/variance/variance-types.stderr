@@ -34,5 +34,23 @@ error: [A: +, B: -, C: o]
 LL | enum Enum<A,B,C> {
    | ^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: [A: +]
+  --> $DIR/variance-types.rs:42:1
+   |
+LL | struct PhantomDataIsCovariant<A> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [A: o]
+  --> $DIR/variance-types.rs:47:1
+   |
+LL | struct UnsafeCellIsInvariant<A> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [A: +]
+  --> $DIR/variance-types.rs:52:1
+   |
+LL | struct CovariantUnsafeCellIsCovariant<A> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
 
