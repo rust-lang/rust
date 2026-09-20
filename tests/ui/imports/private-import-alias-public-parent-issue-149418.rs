@@ -1,4 +1,4 @@
-
+//@ run-rustfix
 //@ edition: 2024
 
 // Private import aliases should suggest their source through an accessible parent module or

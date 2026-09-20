@@ -13,7 +13,7 @@ note: ...and refers to the constant `PEAR` which is defined here
   --> $DIR/private-import-alias-private-parent-issue-149418.rs:10:9
    |
 LL |         pub const PEAR: &str = "Pear";
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ you could import this directly
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0603]: constant import `fruit` is private
   --> $DIR/private-import-alias-private-parent-issue-149418.rs:26:44
@@ -30,12 +30,7 @@ note: ...and refers to the constant `PEAR` which is defined here
   --> $DIR/private-import-alias-private-parent-issue-149418.rs:19:9
    |
 LL |         pub const PEAR: &str = "Pear";
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ you could import this directly
-help: import `fruit` directly
-   |
-LL -     let _ = delicious_snacks_without_self::fruit;
-LL +     let _ = fruits::fruit;
-   |
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
