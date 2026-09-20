@@ -87,10 +87,24 @@ unsafe fn test_create_normal_file() {
     if GetFileInformationByHandle(handle, &mut info) == 0 {
         panic!("Failed to get file information: {}", GetLastError())
     };
+    // FIXME: this test is wrong, somehow. It doesn't pass when run natively.
+    // <https://github.com/rust-lang/miri/issues/5335>
     assert!(info.dwFileAttributes & FILE_ATTRIBUTE_NORMAL != 0);
     if CloseHandle(handle) == 0 {
         panic!("Failed to close file")
     };
+
+    // Creating the file again should fail due to CREATE_NEW.
+    let handle = CreateFileW(
+        raw_path.as_ptr(),
+        GENERIC_READ | GENERIC_WRITE,
+        FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+        ptr::null_mut(),
+        CREATE_NEW,
+        0,
+        ptr::null_mut(),
+    );
+    assert_eq!(handle.addr(), usize::MAX, "CreateFileW did not fail");
 
     // Test metadata-only handle
     let handle = CreateFileW(
