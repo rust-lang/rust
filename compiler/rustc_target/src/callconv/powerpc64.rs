@@ -15,27 +15,38 @@ enum ABI {
 }
 use ABI::*;
 
-/// Whether `layout` is or contains a union with more than one non-1-ZST field.
+/// Whether `layout` is or contains a union.
 ///
-/// `homogeneous_aggregate` merges the fields of a union, so it cannot tell such a union from a
-/// structure. This walks the layout a second time; keep the array and 1-ZST handling here in sync
-/// with `homogeneous_aggregate`.
-fn contains_multi_field_union<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> bool
+/// `homogeneous_aggregate` merges the fields of a union, so it cannot tell a union from a
+/// structure. This walks the layout a second time; keep the array handling here in sync with
+/// `homogeneous_aggregate`. ZSTs are ignored entirely, as both GCC and Clang do.
+///
+/// This does not look at enums that are represented as unions at the ABI level (e.g. a
+/// `#[repr(C)]` enum with fields). That does not matter here: enums can only have integer
+/// discriminants, and `is_homogeneous_aggregate` rejects anything containing an integer, so an
+/// enum can never be a float or vector homogeneous aggregate.
+fn is_or_contains_union<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> bool
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    let fields =
-        || (0..layout.fields.count()).map(|i| layout.field(cx, i)).filter(|f| !f.is_1zst());
+    if layout.is_zst() {
+        return false;
+    }
     match layout.fields {
         FieldsShape::Primitive => false,
+        // A `repr(transparent)` union is guaranteed to be ABI-compatible with its single
+        // non-1-ZST field, so look through it instead of rejecting it.
         FieldsShape::Union(_) => {
-            fields().count() > 1 || fields().any(|f| contains_multi_field_union(cx, f))
+            match layout.non_1zst_field(cx).filter(|_| layout.is_transparent()) {
+                Some((_, field)) => is_or_contains_union(cx, field),
+                None => true,
+            }
         }
-        FieldsShape::Array { count, .. } => {
-            count > 0 && contains_multi_field_union(cx, layout.field(cx, 0))
+        FieldsShape::Array { .. } => is_or_contains_union(cx, layout.field(cx, 0)),
+        FieldsShape::Arbitrary { .. } => {
+            (0..layout.fields.count()).any(|i| is_or_contains_union(cx, layout.field(cx, i)))
         }
-        FieldsShape::Arbitrary { .. } => fields().any(|f| contains_multi_field_union(cx, f)),
     }
 }
 
@@ -52,7 +63,7 @@ where
         // ELFv1 and AIX only passes one-member aggregates transparently.
         // ELFv2 passes up to eight uniquely addressable members.
         if ((abi == ELFv1 || abi == AIX)
-            && (arg.layout.size > unit.size || contains_multi_field_union(cx, arg.layout)))
+            && (arg.layout.size > unit.size || is_or_contains_union(cx, arg.layout)))
             || arg.layout.size > unit.size.checked_mul(8, cx).unwrap()
         {
             return None;

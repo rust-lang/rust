@@ -145,3 +145,80 @@ pub struct OneFloatAndZstUnion {
 pub extern "C" fn test_struct_one_float_and_zst_union(a: OneFloatAndZstUnion) {
     hint::black_box(a);
 }
+
+// On ELFv1 unions are not considered aggregates for the ABI, so they are never passed in a
+// floating point register, not even when they have a single field or are nested within an
+// aggregate. See https://github.com/rust-lang/rust/issues/162011.
+#[repr(C)]
+pub union OneFloat {
+    pub a: f32,
+}
+
+// ppc64: define void @test_union_one_float(i32 %0)
+// ppc64_vsx: define void @test_union_one_float(i32 %0)
+// ppc64le: define void @test_union_one_float(float %0)
+#[unsafe(no_mangle)]
+pub extern "C" fn test_union_one_float(a: OneFloat) {
+    hint::black_box(a);
+}
+
+#[repr(C)]
+pub struct StructOfUnion {
+    pub u: OneFloat,
+}
+
+// ppc64: define void @test_struct_of_union(i32 %0)
+// ppc64_vsx: define void @test_struct_of_union(i32 %0)
+// ppc64le: define void @test_struct_of_union(float %0)
+#[unsafe(no_mangle)]
+pub extern "C" fn test_struct_of_union(a: StructOfUnion) {
+    hint::black_box(a);
+}
+
+#[repr(C)]
+pub union UnionOfStruct {
+    pub s: OneFloatStruct,
+}
+
+// ppc64: define void @test_union_of_struct(i32 %0)
+// ppc64_vsx: define void @test_union_of_struct(i32 %0)
+// ppc64le: define void @test_union_of_struct(float %0)
+#[unsafe(no_mangle)]
+pub extern "C" fn test_union_of_struct(a: UnionOfStruct) {
+    hint::black_box(a);
+}
+
+// A `repr(transparent)` union like `MaybeUninit` is guaranteed to be ABI-compatible with its single
+// non-1-ZST field, so it is passed in a floating point register like the field would be.
+//
+// ppc64: define void @test_transparent_union_one_float(float %a)
+// ppc64_vsx: define void @test_transparent_union_one_float(float %a)
+// ppc64le: define void @test_transparent_union_one_float(float %a)
+#[unsafe(no_mangle)]
+pub extern "C" fn test_transparent_union_one_float(a: MaybeUninit<f32>) {
+    hint::black_box(a);
+}
+
+#[repr(C)]
+pub struct StructOfTransparentUnion {
+    pub u: MaybeUninit<f32>,
+}
+
+// ppc64: define void @test_struct_of_transparent_union(float %0)
+// ppc64_vsx: define void @test_struct_of_transparent_union(float %0)
+// ppc64le: define void @test_struct_of_transparent_union(float %0)
+#[unsafe(no_mangle)]
+pub extern "C" fn test_struct_of_transparent_union(a: StructOfTransparentUnion) {
+    hint::black_box(a);
+}
+
+// A `repr(transparent)` union whose field is itself a union is still not passed in a floating
+// point register on ELFv1.
+//
+// ppc64: define void @test_transparent_union_of_union(i32 %0)
+// ppc64_vsx: define void @test_transparent_union_of_union(i32 %0)
+// ppc64le: define void @test_transparent_union_of_union(float %0)
+#[unsafe(no_mangle)]
+pub extern "C" fn test_transparent_union_of_union(a: MaybeUninit<OneFloat>) {
+    hint::black_box(a);
+}
