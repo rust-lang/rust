@@ -2382,10 +2382,10 @@ pub fn parse_crate_edition(
         }),
         None => {
             if has_input {
-                early_dcx.early_note_for_missing_crate_edition(format!(
+                eprintln!(
                     "`--edition` is unspecified, defaulting to `{DEFAULT_EDITION}` while the \
-                     latest is `{LATEST_STABLE_EDITION}`; it must be one of: {edition_list}",
-                ));
+                     latest is `{LATEST_STABLE_EDITION}`; it must be one of: {edition_list}\n",
+                );
             }
             DEFAULT_EDITION
         }
