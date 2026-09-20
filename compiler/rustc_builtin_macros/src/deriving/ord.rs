@@ -1,11 +1,11 @@
 use rustc_ast::Safety;
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-use crate::deriving::partial_ord::discr_data_order;
+use crate::deriving::partial_ord::{OrdlikeDerive, cmp_body, discr_data_order};
 use crate::deriving::path_std;
 
 pub(crate) fn expand_deriving_ord(
@@ -54,10 +54,6 @@ pub(crate) fn cs_cmp(
     substr: Substructure<'_>,
     discr_then_data: bool,
 ) -> BlockOrExpr {
-    let test_id = Ident::new(sym::cmp, span);
-    let equal_path = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
-    let cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
-
     // Builds:
     //
     // match ::core::cmp::Ord::cmp(&self.x, &other.x) {
@@ -65,32 +61,6 @@ pub(crate) fn cs_cmp(
     //         ::core::cmp::Ord::cmp(&self.y, &other.y),
     //     cmp => cmp,
     // }
-    let expr = cs_foldr(
-        cx,
-        span,
-        substr,
-        |field| {
-            let other_expr =
-                field.other_selflike_expr.expect("not exactly 2 arguments in `derive(Ord)`");
-            let args = thin_vec![field.self_expr, other_expr];
-            cx.expr_call_global(field.span, cmp_path.clone(), args)
-        },
-        |span, mut expr1, expr2| {
-            if !discr_then_data
-                && let ast::ExprKind::Match(_, arms, _) = &mut expr1.kind
-                && let Some(last) = arms.last_mut()
-                && let ast::PatKind::Wild = last.pat.kind
-            {
-                last.body = Some(expr2);
-                expr1
-            } else {
-                let eq_arm = cx.arm(span, cx.pat_path(span, equal_path.clone()), expr1);
-                let neq_arm =
-                    cx.arm(span, cx.pat_ident(span, test_id), cx.expr_ident(span, test_id));
-                cx.expr_match(span, expr2, thin_vec![eq_arm, neq_arm])
-            }
-        },
-        || cx.expr_path(equal_path.clone()),
-    );
+    let expr = cmp_body(cx, span, substr, discr_then_data, OrdlikeDerive::Ord);
     BlockOrExpr::new_expr(expr)
 }
