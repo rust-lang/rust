@@ -571,7 +571,7 @@ impl<'a> TraitDef<'a> {
         methods: impl Iterator<Item = Box<ast::AssocItem>>,
         is_packed: bool,
     ) -> Box<ast::Item> {
-        let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
+        let trait_path = self.path.to_path(cx, self.span);
 
         // Transform associated types from `deriving::ty::Ty` into `ast::AssocItem`
         let associated_types = self.associated_types.iter().map(|&(ident, ref type_def)| {
@@ -589,7 +589,7 @@ impl<'a> TraitDef<'a> {
                     generics: Generics::default(),
                     after_where_clause: ast::WhereClause::default(),
                     bounds: ThinVec::new(),
-                    ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
+                    ty: Some(type_def.to_ty(cx, self.span)),
                 })),
                 tokens: None,
             })
@@ -613,9 +613,7 @@ impl<'a> TraitDef<'a> {
                     let bounds: ThinVec<_> = self
                         .additional_bounds
                         .iter()
-                        .map(|p| {
-                            cx.trait_bound(p.to_path(cx, span, type_ident, generics), self.is_const)
-                        })
+                        .map(|p| cx.trait_bound(p.to_path(cx, span), self.is_const))
                         .chain(
                             // Add a bound for the current trait.
                             self.skip_path_as_bound.not().then(|| {
@@ -628,10 +626,7 @@ impl<'a> TraitDef<'a> {
                             // Add a `Copy` bound if required.
                             if is_packed && self.needs_copy_as_bound_if_packed {
                                 let p = deriving::path_std!(marker::Copy);
-                                Some(cx.trait_bound(
-                                    p.to_path(cx, span, type_ident, generics),
-                                    self.is_const,
-                                ))
+                                Some(cx.trait_bound(p.to_path(cx, span), self.is_const))
                             } else {
                                 None
                             }
@@ -697,12 +692,7 @@ impl<'a> TraitDef<'a> {
                     let mut bounds: ThinVec<_> = self
                         .additional_bounds
                         .iter()
-                        .map(|p| {
-                            cx.trait_bound(
-                                p.to_path(cx, self.span, type_ident, generics),
-                                self.is_const,
-                            )
-                        })
+                        .map(|p| cx.trait_bound(p.to_path(cx, self.span), self.is_const))
                         .collect();
 
                     // Require the current trait.
@@ -713,10 +703,7 @@ impl<'a> TraitDef<'a> {
                     // Add a `Copy` bound if required.
                     if is_packed && self.needs_copy_as_bound_if_packed {
                         let p = deriving::path_std!(marker::Copy);
-                        bounds.push(cx.trait_bound(
-                            p.to_path(cx, self.span, type_ident, generics),
-                            self.is_const,
-                        ));
+                        bounds.push(cx.trait_bound(p.to_path(cx, self.span), self.is_const));
                     }
 
                     if !bounds.is_empty() {
@@ -774,6 +761,7 @@ impl<'a> TraitDef<'a> {
         // Other crates don't need stability attributes, so adding them is not useful, but libcore needs them
         // on all const trait impls.
         if self.is_const && cx.ecfg.features.staged_api() {
+            // #[rustc_const_unstable(feature = "derive_const", issue = "118304")]
             attrs.push(
                 cx.attr_nested(
                     rustc_ast::AttrItem {
@@ -837,9 +825,9 @@ impl<'a> TraitDef<'a> {
     ) -> Box<ast::Item> {
         let field_tys = struct_def.fields().iter().map(|field| &*field.ty);
 
-        let methods = self.methods.iter().map(|method_def| {
-            let ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys } =
-                method_def.extract_arg_details(cx, self, type_ident, generics);
+        let methods = self.methods.iter().filter_map(|method_def| {
+            let ArgDetails { selflike_args, nonselflike_args } =
+                method_def.extract_arg_details(cx, self);
 
             let body = if from_scratch || method_def.is_static() {
                 method_def.call_substructure_method(
@@ -861,15 +849,7 @@ impl<'a> TraitDef<'a> {
                 )
             };
 
-            method_def.create_method(
-                cx,
-                self,
-                type_ident,
-                generics,
-                explicit_self,
-                nonself_arg_tys,
-                body,
-            )
+            method_def.create_method(cx, self, body)
         });
 
         self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
@@ -890,8 +870,8 @@ impl<'a> TraitDef<'a> {
             .map(|field| &*field.ty);
 
         let methods = self.methods.iter().filter_map(|method_def| {
-            let ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys } =
-                method_def.extract_arg_details(cx, self, type_ident, generics);
+            let ArgDetails { selflike_args, nonselflike_args } =
+                method_def.extract_arg_details(cx, self);
 
             let body = if from_scratch || method_def.is_static() {
                 method_def.call_substructure_method(
@@ -912,21 +892,7 @@ impl<'a> TraitDef<'a> {
                 )
             };
 
-            // `assert_fields_are_eq` has an empty default implementation
-            if body.0.is_empty() && body.1.is_none() && method_def.name == sym::assert_fields_are_eq
-            {
-                return None;
-            }
-
-            Some(method_def.create_method(
-                cx,
-                self,
-                type_ident,
-                generics,
-                explicit_self,
-                nonself_arg_tys,
-                body,
-            ))
+            method_def.create_method(cx, self, body)
         });
 
         let is_packed = false; // enums are never packed
@@ -935,15 +901,11 @@ impl<'a> TraitDef<'a> {
 }
 
 struct ArgDetails {
-    /// The `&self` arg, if present.
-    explicit_self: Option<ast::ExplicitSelf>,
     /// Expressions for `&self` (if present) and also any other
     /// args with the same type (e.g. the `other` arg in `PartialEq::eq`).
     selflike_args: ThinVec<Box<Expr>>,
     /// Expressions for all the remaining args.
     nonselflike_args: Vec<Box<Expr>>,
-    /// Additional information about all the args other than `&self`.
-    nonself_arg_tys: Vec<(Ident, Box<ast::Ty>)>,
 }
 
 impl<'a> MethodDef<'a> {
@@ -965,70 +927,66 @@ impl<'a> MethodDef<'a> {
         !self.explicit_self
     }
 
-    fn extract_arg_details(
-        &self,
-        cx: &ExtCtxt<'_>,
-        trait_: &TraitDef<'_>,
-        type_ident: Ident,
-        generics: &Generics,
-    ) -> ArgDetails {
+    fn extract_arg_details(&self, cx: &ExtCtxt<'_>, trait_: &TraitDef<'_>) -> ArgDetails {
         let mut selflike_args = ThinVec::new();
         let mut nonselflike_args = Vec::new();
-        let mut nonself_arg_tys = Vec::new();
         let span = trait_.span;
 
-        let explicit_self = self.explicit_self.then(|| {
+        if self.explicit_self {
             // This constructs a fresh `self` path.
             selflike_args.push(cx.expr_self(span));
-            respan(span, SelfKind::Region(None, ast::Mutability::Not))
-        });
+        }
 
         for (ty, name) in self.nonself_args.iter() {
-            let ast_ty = ty.to_ty(cx, span, type_ident, generics);
             let ident = Ident::new(*name, span);
-            nonself_arg_tys.push((ident, ast_ty));
-
             let arg_expr = cx.expr_ident(span, ident);
 
             match ty {
                 // Selflike (`&Self`) arguments only occur in non-static methods.
-                Ref(Self_, _) if !self.is_static() => selflike_args.push(arg_expr),
+                Ref(Self_, _) if self.explicit_self => selflike_args.push(arg_expr),
                 Self_ => cx.dcx().span_bug(span, "`Self` in non-return position"),
                 _ => nonselflike_args.push(arg_expr),
             }
         }
 
-        ArgDetails { explicit_self, selflike_args, nonselflike_args, nonself_arg_tys }
+        ArgDetails { selflike_args, nonselflike_args }
     }
 
     fn create_method(
         &self,
         cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
-        type_ident: Ident,
-        generics: &Generics,
-        explicit_self: Option<ast::ExplicitSelf>,
-        nonself_arg_tys: Vec<(Ident, Box<ast::Ty>)>,
         body: BlockOrExpr,
-    ) -> Box<ast::AssocItem> {
+    ) -> Option<Box<ast::AssocItem>> {
+        // `assert_fields_are_eq` has an empty default implementation
+        if body.0.is_empty() && body.1.is_none() && self.name == sym::assert_fields_are_eq {
+            return None;
+        }
         let span = trait_.span;
         // Create the generics that aren't for `Self`.
         let fn_generics = self.generics.clone();
 
-        let args = {
-            let self_arg = explicit_self.map(|explicit_self| {
-                let ident = Ident::new(kw::SelfLower, span);
-                ast::Param::from_self(ast::AttrVec::default(), explicit_self, ident)
-            });
-            let nonself_args =
-                nonself_arg_tys.into_iter().map(|(name, ty)| cx.param(span, name, ty));
-            self_arg.into_iter().chain(nonself_args).collect()
-        };
+        let self_arg = self.explicit_self.then(|| {
+            let ident = Ident::new(kw::SelfLower, span);
+            ast::Param::from_self(
+                ast::AttrVec::default(),
+                respan(span, SelfKind::Region(None, ast::Mutability::Not)),
+                ident,
+            )
+        });
+        let args = self_arg
+            .into_iter()
+            .chain(self.nonself_args.iter().map(|(ty, name)| {
+                let ast_ty = ty.to_ty(cx, span);
+                let ident = Ident::new(*name, span);
+                cx.param(span, ident, ast_ty)
+            }))
+            .collect();
 
         let ret_type = if let Ty::Unit = &self.ret_ty {
             ast::FnRetTy::Default(span)
         } else {
-            ast::FnRetTy::Ty(self.ret_ty.to_ty(cx, span, type_ident, generics))
+            ast::FnRetTy::Ty(self.ret_ty.to_ty(cx, span))
         };
 
         let method_ident = Ident::new(self.name, span);
@@ -1041,7 +999,7 @@ impl<'a> MethodDef<'a> {
         let defaultness = ast::Defaultness::Implicit;
 
         // Create the method.
-        Box::new(ast::AssocItem {
+        Some(Box::new(ast::AssocItem {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
             span,
@@ -1057,7 +1015,7 @@ impl<'a> MethodDef<'a> {
                 eii_impl: None,
             })),
             tokens: None,
-        })
+        }))
     }
 
     /// The normal case uses field access.
@@ -1197,24 +1155,21 @@ impl<'a> MethodDef<'a> {
         // let __self_discr = ::core::intrinsics::discriminant_value(self);
         // let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         // ```
-        let get_discr_pieces = |cx: &ExtCtxt<'_>| {
-            let discr_idents: Vec<_> = prefixes
+        let get_discr_pieces = || {
+            let discr_idents = prefixes
                 .iter()
-                .map(|name| Ident::from_str_and_span(&format!("{name}_discr"), span))
-                .collect();
+                .map(|name| Ident::from_str_and_span(&format!("{name}_discr"), span));
 
-            let mut discr_exprs: Vec<_> = discr_idents
-                .iter()
-                .map(|&ident| cx.expr_addr_of(span, cx.expr_ident(span, ident)))
-                .collect();
+            let mut discr_exprs =
+                discr_idents.clone().map(|ident| cx.expr_addr_of(span, cx.expr_ident(span, ident)));
 
-            let self_expr = discr_exprs.remove(0);
-            let other_selflike_exprs = discr_exprs;
+            let self_expr = discr_exprs.next().unwrap();
+            let other_selflike_exprs = discr_exprs.collect();
             let discr_field =
                 FieldInfo { span, name: None, self_expr, other_selflike_exprs, maybe_scalar: true };
 
-            let discr_let_stmts: ThinVec<_> = iter::zip(&discr_idents, &selflike_args)
-                .map(|(&ident, selflike_arg)| {
+            let discr_let_stmts: ThinVec<_> = iter::zip(discr_idents, &selflike_args)
+                .map(|(ident, selflike_arg)| {
                     let variant_value = deriving::call_intrinsic(
                         cx,
                         span,
@@ -1238,7 +1193,7 @@ impl<'a> MethodDef<'a> {
                         // If the type is fieldless and the trait uses the discriminant and
                         // there are multiple variants, we need just an operation on
                         // the discriminant(s).
-                        let (discr_field, mut discr_let_stmts) = get_discr_pieces(cx);
+                        let (discr_field, mut discr_let_stmts) = get_discr_pieces();
                         let mut discr_check = self.call_substructure_method(
                             cx,
                             trait_,
@@ -1373,7 +1328,7 @@ impl<'a> MethodDef<'a> {
         // to add a discriminant check operation before the match. Otherwise, the match
         // is enough.
         if unify_fieldless_variants && variants.len() > 1 {
-            let (discr_field, mut discr_let_stmts) = get_discr_pieces(cx);
+            let (discr_field, mut discr_let_stmts) = get_discr_pieces();
 
             // Combine a discriminant check with the match.
             let mut discr_check_plus_match = self.call_substructure_method(
@@ -1523,62 +1478,44 @@ impl<'a> TraitDef<'a> {
     }
 }
 
-/// The function passed to `cs_fold` is called repeatedly with a value of this
-/// type. It describes one part of the code generation. The result is always an
-/// expression.
-pub(crate) enum CsFold {
-    /// The basic case: a field expression for one or more selflike args. E.g.
-    /// for `PartialEq::eq` this is something like `self.x == other.x`.
-    Single(FieldInfo),
-
-    /// The combination of two field expressions. E.g. for `PartialEq::eq` this
-    /// is something like `<field1 equality> && <field2 equality>`.
-    Combine(Span, Box<Expr>, Box<Expr>),
-
-    // The fallback case for a struct or enum variant with no fields.
-    Fieldless,
-}
-
 /// Folds over fields, combining the expressions for each field in a sequence.
 /// Statics may not be folded over.
-pub(crate) fn cs_fold<F>(
-    use_foldl: bool,
+pub(crate) fn cs_foldr(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     substructure: Substructure<'_>,
-    mut f: F,
-) -> Box<Expr>
-where
-    F: FnMut(&ExtCtxt<'_>, CsFold) -> Box<Expr>,
-{
+    // The basic case: a field expression for one or more selflike args. E.g.
+    // for `PartialEq::eq` this is something like `self.x == other.x`.
+    single: impl Fn(FieldInfo) -> Box<Expr>,
+    // The combination of two field expressions. E.g. for `PartialEq::eq` this
+    // is something like `<field1 equality> && <field2 equality>`.
+    combine: impl Fn(Span, Box<Expr>, Box<Expr>) -> Box<Expr>,
+    // The fallback case for a struct or enum variant with no fields.
+    fieldless: impl Fn() -> Box<Expr>,
+) -> Box<Expr> {
     match substructure.fields {
         EnumMatching(.., all_fields) | Struct(_, all_fields) => {
             let mut fields = all_fields.into_iter();
-
-            let base_field = if use_foldl { fields.next() } else { fields.next_back() };
+            let base_field = fields.next_back();
 
             let Some(base_field) = base_field else {
-                return f(cx, CsFold::Fieldless);
+                return fieldless();
             };
 
-            let base_expr = f(cx, CsFold::Single(base_field));
+            let base_expr = single(base_field);
 
             let op = |old, field: FieldInfo| {
                 let span = field.span;
-                let new = f(cx, CsFold::Single(field));
-                f(cx, CsFold::Combine(span, old, new))
+                let new = single(field);
+                combine(span, old, new)
             };
 
-            if use_foldl { fields.fold(base_expr, op) } else { fields.rfold(base_expr, op) }
+            fields.rfold(base_expr, op)
         }
         EnumDiscr(discr_field, match_expr) => {
-            let discr_check_expr = f(cx, CsFold::Single(discr_field));
+            let discr_check_expr = single(discr_field);
             if let Some(match_expr) = match_expr {
-                if use_foldl {
-                    f(cx, CsFold::Combine(trait_span, discr_check_expr, match_expr))
-                } else {
-                    f(cx, CsFold::Combine(trait_span, match_expr, discr_check_expr))
-                }
+                combine(trait_span, match_expr, discr_check_expr)
             } else {
                 discr_check_expr
             }
