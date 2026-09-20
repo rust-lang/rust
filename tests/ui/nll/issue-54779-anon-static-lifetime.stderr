@@ -4,7 +4,7 @@ error[E0521]: borrowed data escapes outside of method
 LL |         cx: &dyn DebugContext,
    |         --  - let's call the lifetime of this reference `'1`
    |         |
-   |         `cx` is a reference that is only valid in the method body
+   |         `cx` is only valid in the method body
 ...
 LL |         bar.debug_with(cx);
    |         ^^^^^^^^^^^^^^^^^^
