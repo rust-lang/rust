@@ -79,6 +79,24 @@ fn has_only_region_constraints<I: Interner>(response: ty::Canonical<I, Response<
         && normalization_nested_goals.is_empty()
 }
 
+/// Whether two canonical responses are exactly equal except for their
+/// explicit region constraints.
+fn equal_response_modulo_region_constraints<I: Interner>(
+    a: &CanonicalResponse<I>,
+    b: &CanonicalResponse<I>,
+) -> bool {
+    let a_external_constraints = &*a.value.external_constraints;
+    let b_external_constraints = &*b.value.external_constraints;
+
+    a.max_universe == b.max_universe
+        && a.var_kinds == b.var_kinds
+        && a.value.certainty == b.value.certainty
+        && a.value.var_values == b.value.var_values
+        && a_external_constraints.opaque_types == b_external_constraints.opaque_types
+        && a_external_constraints.normalization_nested_goals
+            == b_external_constraints.normalization_nested_goals
+}
+
 impl<'a, D, I> EvalCtxt<'a, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -315,13 +333,32 @@ where
             candidate.result.value.certainty == Certainty::Yes
                 && has_no_inference_or_external_constraints(candidate.result)
         });
-        if let Some((i, c)) = always_applicable {
-            return Some((c.result, MergeCandidateInfo::AlwaysApplicable(i)));
+
+        if let Some((i, candidate)) = always_applicable {
+            return Some((candidate.result, MergeCandidateInfo::AlwaysApplicable(i)));
         }
 
         let one: CanonicalResponse<I> = candidates[0].result;
+
+        // equal responses can still have region constraints.
         if candidates[1..].iter().all(|candidate| candidate.result == one) {
             return Some((one, MergeCandidateInfo::EqualResponse));
+        }
+
+        // If candidates differ only in region constraints, their merged region
+        // constraints are an `Or` of their respective constraints. If one of them
+        // has no region constraints, the `Or` constraint evaluates to `true`.
+        if candidates[1..]
+            .iter()
+            .all(|candidate| equal_response_modulo_region_constraints(&one, &candidate.result))
+            && let Some(candidate) = candidates.iter().find(|candidate| {
+                let ExternalConstraintsData { ref region_constraints, .. } =
+                    *candidate.result.value.external_constraints;
+
+                region_constraints.is_empty()
+            })
+        {
+            return Some((candidate.result, MergeCandidateInfo::EqualResponse));
         }
 
         None
