@@ -69,7 +69,7 @@ fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_
         cx.stmt_expr(expr)
     };
 
-    let (stmts, match_expr) = match substr.fields {
+    let (stmts, match_expr) = match substr {
         Struct(_, fields) | EnumMatching(.., fields) => {
             let stmts =
                 fields.into_iter().map(|field| call_hash(field.span, field.self_expr)).collect();

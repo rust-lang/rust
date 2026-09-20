@@ -64,7 +64,7 @@ fn show_substructure(
         return BlockOrExpr::new_expr(cx.expr_ok(span, cx.expr_tuple(span, ThinVec::new())));
     }
 
-    let (ident, vdata, fields) = match substr.fields {
+    let (ident, vdata, fields) = match substr {
         Struct(vdata, fields) => (type_ident, vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
         AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, type_ident),

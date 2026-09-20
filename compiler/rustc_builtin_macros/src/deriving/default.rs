@@ -36,7 +36,7 @@ pub(crate) fn expand_deriving_default(
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(|cx, trait_span, substr| {
-                match substr.fields {
+                match substr {
                     StaticStruct(variant_data) => {
                         default_struct_substructure(cx, trait_span, variant_data)
                     }

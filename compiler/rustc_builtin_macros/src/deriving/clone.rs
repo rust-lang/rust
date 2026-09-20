@@ -149,7 +149,7 @@ fn cs_clone_simple(
             &[sym::clone, sym::AssertParamIsCopy],
         );
     } else {
-        match substr.fields {
+        match substr {
             StaticStruct(vdata, ..) => {
                 process_variant(vdata);
             }
@@ -175,7 +175,7 @@ fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> Blo
     let ctor_path;
     let all_fields;
     let vdata;
-    match substr.fields {
+    match substr {
         Struct(vdata_, af) => {
             ctor_path = cx.path(trait_span, vec![self_ident]);
             all_fields = af;

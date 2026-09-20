@@ -178,7 +178,7 @@ use std::iter::once;
 use std::ops::Not;
 use std::{iter, vec};
 
-pub(crate) use SubstructureFields::*;
+pub(crate) use Substructure::*;
 pub(crate) use rustc_ast as ast;
 use rustc_ast::token::{IdentKind, LitKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
@@ -269,11 +269,6 @@ pub(crate) enum FieldlessVariantsStrategy {
     SpecializeIfAllVariantsFieldless,
 }
 
-/// All the data about the data structure/method being derived upon.
-pub(crate) struct Substructure<'a> {
-    pub fields: SubstructureFields<'a>,
-}
-
 /// Summary of the relevant parts of a struct/enum field.
 pub(crate) struct FieldInfo {
     pub span: Span,
@@ -290,7 +285,7 @@ pub(crate) struct FieldInfo {
 }
 
 /// A summary of the possible sets of fields.
-pub(crate) enum SubstructureFields<'a> {
+pub(crate) enum Substructure<'a> {
     /// A non-static method where `Self` is a struct.
     Struct(&'a ast::VariantData, Vec<FieldInfo>),
 
@@ -866,12 +861,9 @@ impl<'a> MethodDef<'a> {
         &self,
         cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
-        fields: SubstructureFields<'_>,
+        substructure: Substructure<'_>,
     ) -> BlockOrExpr {
-        let span = trait_.span;
-        let substructure = Substructure { fields };
-        let f: &CombineSubstructureFunc<'_> = &self.combine_substructure;
-        f(cx, span, substructure)
+        (self.combine_substructure)(cx, trait_.span, substructure)
     }
 
     fn is_static(&self) -> bool {
@@ -1397,7 +1389,7 @@ pub(crate) fn cs_foldr(
     // The fallback case for a struct or enum variant with no fields.
     fieldless: impl Fn() -> Box<Expr>,
 ) -> Box<Expr> {
-    match substructure.fields {
+    match substructure {
         EnumMatching(.., all_fields) | Struct(_, all_fields) => {
             let mut fields = all_fields.into_iter();
             let base_field = fields.next_back();
