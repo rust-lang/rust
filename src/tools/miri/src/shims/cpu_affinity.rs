@@ -142,8 +142,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.write_bytes_ptr(mask, cpuset.as_slice()[..byte_count].iter().copied())?;
             this.write_null(dest)?;
         } else {
-            // The thread whose ID is pid could not be found
-            this.set_errno_and_return_neg1(LibcError("ESRCH"), dest)?;
+            unreachable!("we validated the thread ID above");
         }
 
         interp_ok(())
