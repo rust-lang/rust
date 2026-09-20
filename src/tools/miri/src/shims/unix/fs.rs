@@ -715,8 +715,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
-        // `stat` always follows symlinks.
-        let metadata = match FileMetadata::from_path(this, &path, true)? {
+        let metadata = match FileMetadata::from_host(this, fs::metadata(path))? {
             Ok(metadata) => metadata,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
@@ -744,7 +743,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
-        let metadata = match FileMetadata::from_path(this, &path, false)? {
+        let metadata = match FileMetadata::from_host(this, fs::symlink_metadata(path))? {
             Ok(metadata) => metadata,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
@@ -819,11 +818,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("unsupported flags for `statx`: {flags:#x}")
         }
 
-        // Empty path requires corresponding flag.
-        if path.is_empty() && !empty_path_flag {
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
-        }
-
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`statx`", reject_with)?;
@@ -832,15 +826,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // If the path is empty, and the AT_EMPTY_PATH flag is set, we query the open file
         // represented by dirfd, whether it's a directory or otherwise.
-        let metadata = if path.is_absolute() {
-            // absolute path, dirfd is ignored.
-            FileMetadata::from_path(this, &path, !symlink_nofollow_flag)?
-        } else if path.is_empty() {
-            // no path, load metadata about dirfd
+        let metadata = if path.is_empty() {
+            // no path: invalid by default, load metadata about dirfd with flag
+            if !empty_path_flag {
+                return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
+            }
             FileMetadata::from_fd_num(this, dirfd)?
-        } else if dirfd == this.eval_libc_i32("AT_FDCWD") {
-            // relative to current working directory
-            FileMetadata::from_path(this, &path, !symlink_nofollow_flag)?
+        } else if path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD") {
+            // Either absolute path (dirfd is ignored) or relative to working directory.
+            FileMetadata::from_host(
+                this,
+                if symlink_nofollow_flag { fs::symlink_metadata(path) } else { fs::metadata(path) },
+            )?
         } else {
             // relative to dirfd, which must be a directory handle
             let Some(fd) = this.machine.fds.get(dirfd) else {
@@ -1913,17 +1910,6 @@ struct FileMetadata {
 }
 
 impl FileMetadata {
-    fn from_path<'tcx>(
-        ecx: &mut MiriInterpCx<'tcx>,
-        path: &Path,
-        follow_symlink: bool,
-    ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
-        let metadata =
-            if follow_symlink { std::fs::metadata(path) } else { std::fs::symlink_metadata(path) };
-
-        FileMetadata::from_meta(ecx, metadata)
-    }
-
     fn from_fd_num<'tcx>(
         ecx: &mut MiriInterpCx<'tcx>,
         fd_num: i32,
@@ -1932,8 +1918,8 @@ impl FileMetadata {
             return interp_ok(Err(LibcError("EBADF")));
         };
         match fd.metadata()? {
-            Either::Left(host) => Self::from_meta(ecx, host),
-            Either::Right(name) => Self::synthetic(ecx, name),
+            Either::Left(host) => Self::from_host(ecx, host),
+            Either::Right(mode_name) => Self::synthetic(ecx, mode_name),
         }
     }
 
@@ -1961,7 +1947,7 @@ impl FileMetadata {
         }))
     }
 
-    fn from_meta<'tcx>(
+    fn from_host<'tcx>(
         ecx: &mut MiriInterpCx<'tcx>,
         metadata: Result<std::fs::Metadata, std::io::Error>,
     ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
