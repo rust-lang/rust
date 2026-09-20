@@ -26,7 +26,7 @@ impl LintParser {
     fn parse(&mut self, kind: LintCheckKind, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
         let attr_span = cx.attr_span;
         let attr_id = cx.attr_id.expect("no `AttrId` for lint attribute");
-        let mut lints: Vec<(ThinVec<Symbol>, Span)> = Vec::new();
+        let mut lints: Vec<(Option<Symbol>, Symbol, Option<Box<[Symbol]>>, Span)> = Vec::new();
 
         if let Some(list) = cx.expect_list(args, cx.attr_span) {
             let mut parsers = list.sub_parsers();
@@ -52,7 +52,23 @@ impl LintParser {
                 if let Some(p) = item.meta_item() {
                     match p.args() {
                         ArgParser::NoArgs => {
-                            lints.push((p.path().segments().map(|i| i.name).collect(), p.span()))
+                            let (tool_name, lint_name, rest) = match &*p.path().0.segments {
+                                [] => unreachable!(),
+                                [lint_name] => (None, lint_name.ident.name, None),
+                                [tool_name, lint_name] => {
+                                    (Some(tool_name.ident.name), lint_name.ident.name, None)
+                                }
+                                [tool_name, lint_name, rest @ ..] => {
+                                    let rest = rest
+                                        .iter()
+                                        .map(|s| s.ident.name)
+                                        .collect::<Vec<_>>()
+                                        .into();
+                                    (Some(tool_name.ident.name), lint_name.ident.name, Some(rest))
+                                }
+                            };
+
+                            lints.push((tool_name, lint_name, rest, p.span()))
                         }
                         // We're found a `reason = "reason"` but we're not the last element.
                         ArgParser::NameValue(nv) if p.path().word_is(sym::reason) => {
@@ -95,8 +111,17 @@ impl LintParser {
                 );
             }
 
-            for (name, span) in lints.into_iter() {
-                self.lints.push(LintCheck { name, span, kind, attr_id, reason, attr_span })
+            for (tool_name, lint_name, rest, lint_span) in lints.into_iter() {
+                self.lints.push(LintCheck {
+                    tool_name,
+                    lint_name,
+                    lint_span,
+                    kind,
+                    attr_id,
+                    reason,
+                    attr_span,
+                    rest,
+                })
             }
         }
     }
