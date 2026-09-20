@@ -10,6 +10,9 @@ note: required because it appears within the type `Record<*const c_void>`
    |
 LL | struct Record<T> {
    |        ^^^^^^
+LL |     unrelated: u8,
+LL |     value: T,
+   |     -------- required by this field
 note: required by a bound in `require_send`
   --> $DIR/non-send-field-location-issue-146016.rs:38:20
    |
@@ -28,11 +31,16 @@ note: required because it appears within the type `Record<*const c_void>`
    |
 LL | struct Record<T> {
    |        ^^^^^^
+LL |     unrelated: u8,
+LL |     value: T,
+   |     -------- required by this field
 note: required because it appears within the type `Nested<*const c_void>`
   --> $DIR/non-send-field-location-issue-146016.rs:29:8
    |
 LL | struct Nested<T> {
    |        ^^^^^^
+LL |     value: Record<T>,
+   |     ---------------- required by this field
 note: required by a bound in `require_send`
   --> $DIR/non-send-field-location-issue-146016.rs:38:20
    |
@@ -51,6 +59,11 @@ note: required because it appears within the type `Multiple<*const c_void>`
    |
 LL | enum Multiple<T> {
    |      ^^^^^^^^
+LL |     Empty,
+LL |     Values { first: T, second: T },
+   |              --------  --------- required by this field
+   |              |
+   |              required by this field
 note: required by a bound in `require_send`
   --> $DIR/non-send-field-location-issue-146016.rs:38:20
    |
@@ -76,6 +89,9 @@ note: required because it appears within the type `Foo`
    |
 LL | enum Foo {
    |      ^^^
+LL |     Case(i32),
+LL |     Case2(Bar),
+   |           --- required by this field
    = note: required for `std::sync::mpsc::Receiver<Foo>` to implement `Send`
 note: required because `rx` is used within this closure
   --> $DIR/non-send-field-location-issue-146016.rs:55:41

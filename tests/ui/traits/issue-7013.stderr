@@ -12,6 +12,8 @@ note: required because it appears within the type `B`
    |
 LL | struct B {
    |        ^
+LL |     v: Option<Rc<RefCell<A>>>
+   |     ------------------------- required by this field
    = note: required for the cast from `Box<B>` to `Box<dyn Foo + Send>`
 
 error: aborting due to 1 previous error

@@ -141,6 +141,8 @@ note: required because it appears within the type `Dst<(dyn A + 'static)>`
    |
 LL | struct Dst<X: ?Sized> {
    |        ^^^
+LL |     x: X,
+   |     ---- required by this field
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
