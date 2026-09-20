@@ -6,7 +6,7 @@ pub mod inner {
     //@ ismany "$.index[?(@.name=='inner')].inner.module.items[*]" $public_id
     pub struct Public;
 }
-//@ set import_id = "$.index[?(@.docs=='Re-export')].id"
+//@ set import_id = "$.index[?(@.docs[0].text=='Re-export')].id"
 //@ !has "$.index[?(@.inner.use.name=='Public')]"
 //@ is "$.index[?(@.inner.use.name=='NewName')].inner.use.source" \"inner::Public\"
 /// Re-export
