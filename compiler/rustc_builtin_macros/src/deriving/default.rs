@@ -38,7 +38,7 @@ pub(crate) fn expand_deriving_default(
             combine_substructure: combine_substructure(|cx, trait_span, substr| {
                 match substr.fields {
                     StaticStruct(variant_data) => {
-                        default_struct_substructure(cx, trait_span, substr, variant_data)
+                        default_struct_substructure(cx, trait_span, variant_data)
                     }
                     StaticEnum(enum_def) => {
                         default_enum_substructure(cx, trait_span, enum_def, item.span)
@@ -66,17 +66,16 @@ fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
 fn default_struct_substructure(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
-    substr: Substructure<'_>,
     variant_data: &VariantData,
 ) -> BlockOrExpr {
     let expr = match variant_data {
-        VariantData::Unit(_) => cx.expr_ident(trait_span, substr.type_ident),
+        VariantData::Unit(_) => cx.expr_ident(trait_span, Ident::new(kw::SelfUpper, trait_span)),
         VariantData::Tuple(fields, _) => {
             let exprs = fields
                 .iter()
                 .map(|field| default_call(cx, field.span.with_ctxt(trait_span.ctxt())))
                 .collect();
-            cx.expr_call_ident(trait_span, substr.type_ident, exprs)
+            cx.expr_call_ident(trait_span, Ident::new(kw::SelfUpper, trait_span), exprs)
         }
         VariantData::Struct { fields, .. } => {
             let default_fields = fields
@@ -96,7 +95,7 @@ fn default_struct_substructure(
                     cx.field_imm(span, field.ident.unwrap(), value)
                 })
                 .collect();
-            cx.expr_struct_ident(trait_span, substr.type_ident, default_fields)
+            cx.expr_struct_ident(trait_span, Ident::new(kw::SelfUpper, trait_span), default_fields)
         }
     };
     BlockOrExpr::new_expr(expr)

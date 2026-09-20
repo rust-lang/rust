@@ -171,17 +171,18 @@ fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> Blo
         cx.expr_call_global(field.span, fn_path.clone(), args)
     };
 
+    let self_ident = Ident::new(kw::SelfUpper, trait_span);
     let ctor_path;
     let all_fields;
     let vdata;
     match substr.fields {
         Struct(vdata_, af) => {
-            ctor_path = cx.path(trait_span, vec![substr.type_ident]);
+            ctor_path = cx.path(trait_span, vec![self_ident]);
             all_fields = af;
             vdata = vdata_;
         }
         EnumMatching(.., variant, af) => {
-            ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.ident]);
+            ctor_path = cx.path(trait_span, vec![self_ident, variant.ident]);
             all_fields = af;
             vdata = &variant.data;
         }

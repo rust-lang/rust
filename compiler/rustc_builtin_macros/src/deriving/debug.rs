@@ -34,7 +34,12 @@ pub(crate) fn expand_deriving_debug(
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy:
                 FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless,
-            combine_substructure: combine_substructure(show_substructure),
+            combine_substructure: combine_substructure(|cx, span, substr| show_substructure(
+                cx,
+                span,
+                substr,
+                item.kind.ident().unwrap()
+            )),
         }],
         associated_types: SmallVec::new(),
         is_const,
@@ -48,16 +53,21 @@ fn formatter_ident(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
     cx.expr_ident(span, Ident::new(sym::character('f'), span))
 }
 
-fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
+fn show_substructure(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    substr: Substructure<'_>,
+    type_ident: Ident,
+) -> BlockOrExpr {
     let fmt_detail = cx.sess.opts.unstable_opts.fmt_debug;
     if fmt_detail == FmtDebug::None {
         return BlockOrExpr::new_expr(cx.expr_ok(span, cx.expr_tuple(span, ThinVec::new())));
     }
 
     let (ident, vdata, fields) = match substr.fields {
-        Struct(vdata, fields) => (substr.type_ident, vdata, fields),
+        Struct(vdata, fields) => (type_ident, vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
-        AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, substr),
+        AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, type_ident),
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 
@@ -216,14 +226,14 @@ fn show_fieldless_enum(
     cx: &ExtCtxt<'_>,
     span: Span,
     def: &EnumDef,
-    substr: Substructure<'_>,
+    type_ident: Ident,
 ) -> BlockOrExpr {
     let fmt = formatter_ident(cx, span);
     let arms = def
         .variants
         .iter()
         .map(|v| {
-            let variant_path = cx.path(span, vec![substr.type_ident, v.ident]);
+            let variant_path = cx.path(span, vec![type_ident, v.ident]);
             let pat = match &v.data {
                 ast::VariantData::Tuple(fields, _) => {
                     debug_assert!(fields.is_empty());

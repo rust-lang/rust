@@ -270,8 +270,6 @@ pub(crate) enum FieldlessVariantsStrategy {
 
 /// All the data about the data structure/method being derived upon.
 pub(crate) struct Substructure<'a> {
-    /// ident of self
-    pub type_ident: Ident,
     pub fields: SubstructureFields<'a>,
 }
 
@@ -824,13 +822,12 @@ impl<'a> TraitDef<'a> {
             let ArgDetails { selflike_args } = method_def.extract_arg_details(cx, self);
 
             let body = if from_scratch || method_def.is_static() {
-                method_def.call_substructure_method(cx, self, type_ident, StaticStruct(struct_def))
+                method_def.call_substructure_method(cx, self, StaticStruct(struct_def))
             } else {
                 method_def.expand_struct_method_body(
                     cx,
                     self,
                     struct_def,
-                    type_ident,
                     &selflike_args,
                     is_packed,
                 )
@@ -860,7 +857,7 @@ impl<'a> TraitDef<'a> {
             let ArgDetails { selflike_args } = method_def.extract_arg_details(cx, self);
 
             let body = if from_scratch || method_def.is_static() {
-                method_def.call_substructure_method(cx, self, type_ident, StaticEnum(enum_def))
+                method_def.call_substructure_method(cx, self, StaticEnum(enum_def))
             } else {
                 method_def.expand_enum_method_body(cx, self, enum_def, type_ident, selflike_args)
             };
@@ -884,11 +881,10 @@ impl<'a> MethodDef<'a> {
         &self,
         cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
-        type_ident: Ident,
         fields: SubstructureFields<'_>,
     ) -> BlockOrExpr {
         let span = trait_.span;
-        let substructure = Substructure { type_ident, fields };
+        let substructure = Substructure { fields };
         let f: &CombineSubstructureFunc<'_> = &self.combine_substructure;
         f(cx, span, substructure)
     }
@@ -1027,7 +1023,6 @@ impl<'a> MethodDef<'a> {
         cx: &ExtCtxt<'_>,
         trait_: &TraitDef<'b>,
         struct_def: &'b VariantData,
-        type_ident: Ident,
         selflike_args: &[Box<Expr>],
         is_packed: bool,
     ) -> BlockOrExpr {
@@ -1035,7 +1030,7 @@ impl<'a> MethodDef<'a> {
 
         let selflike_fields =
             trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, is_packed);
-        self.call_substructure_method(cx, trait_, type_ident, Struct(struct_def, selflike_fields))
+        self.call_substructure_method(cx, trait_, Struct(struct_def, selflike_fields))
     }
 
     /// ```
@@ -1157,12 +1152,8 @@ impl<'a> MethodDef<'a> {
                         // there are multiple variants, we need just an operation on
                         // the discriminant(s).
                         let (discr_field, mut discr_let_stmts) = get_discr_pieces();
-                        let mut discr_check = self.call_substructure_method(
-                            cx,
-                            trait_,
-                            type_ident,
-                            EnumDiscr(discr_field, None),
-                        );
+                        let mut discr_check =
+                            self.call_substructure_method(cx, trait_, EnumDiscr(discr_field, None));
                         discr_let_stmts.append(&mut discr_check.0);
                         return BlockOrExpr(discr_let_stmts, discr_check.1);
                     }
@@ -1170,7 +1161,6 @@ impl<'a> MethodDef<'a> {
                         return self.call_substructure_method(
                             cx,
                             trait_,
-                            type_ident,
                             AllFieldlessEnum(enum_def),
                         );
                     }
@@ -1182,7 +1172,6 @@ impl<'a> MethodDef<'a> {
                 return self.call_substructure_method(
                     cx,
                     trait_,
-                    type_ident,
                     EnumMatching(variant, Vec::new()),
                 );
             }
@@ -1223,9 +1212,8 @@ impl<'a> MethodDef<'a> {
                 // Self arg, assuming all are instances of VariantK.
                 // Build up code associated with such a case.
                 let substructure = EnumMatching(variant, fields);
-                let arm_expr = self
-                    .call_substructure_method(cx, trait_, type_ident, substructure)
-                    .into_expr(cx, span);
+                let arm_expr =
+                    self.call_substructure_method(cx, trait_, substructure).into_expr(cx, span);
 
                 cx.arm(span, single_pat, arm_expr)
             })
@@ -1239,13 +1227,8 @@ impl<'a> MethodDef<'a> {
                 // variants. The index and actual variant aren't meaningful in
                 // this case, so just use dummy values.
                 Some(
-                    self.call_substructure_method(
-                        cx,
-                        trait_,
-                        type_ident,
-                        EnumMatching(v, Vec::new()),
-                    )
-                    .into_expr(cx, span),
+                    self.call_substructure_method(cx, trait_, EnumMatching(v, Vec::new()))
+                        .into_expr(cx, span),
                 )
             }
             _ if variants.len() > 1 && selflike_args.len() > 1 => {
@@ -1287,7 +1270,6 @@ impl<'a> MethodDef<'a> {
             let mut discr_check_plus_match = self.call_substructure_method(
                 cx,
                 trait_,
-                type_ident,
                 EnumDiscr(discr_field, Some(get_match_expr(selflike_args))),
             );
             discr_let_stmts.append(&mut discr_check_plus_match.0);
