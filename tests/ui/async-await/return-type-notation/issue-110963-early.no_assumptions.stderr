@@ -10,9 +10,15 @@ LL | |         if !hc.check().await {
 LL | |             log_health_check_failure().await;
 LL | |         }
 LL | |     });
-   | |______^ implementation of `Send` is not general enough
+   | |______^
+...
+LL |   fn spawn<F>(future: F) -> JoinHandle
+   |      ----- due to a where-clause on `spawn`...
+LL |   where
+LL |       F: Future + Send + 'static,
+   |                   ---- unsatisfied where-clause on `spawn`
    |
-   = note: `Send` would have to be implemented for the type `impl Future<Output = bool> { <HC as HealthCheck>::check<'0>(..) }`, for any two lifetimes `'0` and `'1`...
+   = note: ...`Send` would have to be implemented for the type `impl Future<Output = bool> { <HC as HealthCheck>::check<'0>(..) }`, for any two lifetimes `'0` and `'1`...
    = note: ...but `Send` is actually implemented for the type `impl Future<Output = bool> { <HC as HealthCheck>::check<'2>(..) }`, for some specific lifetime `'2`
 
 error: implementation of `Send` is not general enough
@@ -27,9 +33,15 @@ LL | |         if !hc.check().await {
 LL | |             log_health_check_failure().await;
 LL | |         }
 LL | |     });
-   | |______^ implementation of `Send` is not general enough
+   | |______^
+...
+LL |   fn spawn<F>(future: F) -> JoinHandle
+   |      ----- due to a where-clause on `spawn`...
+LL |   where
+LL |       F: Future + Send + 'static,
+   |                   ---- unsatisfied where-clause on `spawn`
    |
-   = note: `Send` would have to be implemented for the type `impl Future<Output = bool> { <HC as HealthCheck>::check<'0>(..) }`, for any two lifetimes `'0` and `'1`...
+   = note: ...`Send` would have to be implemented for the type `impl Future<Output = bool> { <HC as HealthCheck>::check<'0>(..) }`, for any two lifetimes `'0` and `'1`...
    = note: ...but `Send` is actually implemented for the type `impl Future<Output = bool> { <HC as HealthCheck>::check<'2>(..) }`, for some specific lifetime `'2`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

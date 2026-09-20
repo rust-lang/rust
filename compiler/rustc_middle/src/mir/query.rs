@@ -7,6 +7,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_span::def_id::DefId;
 use rustc_span::{Span, Symbol};
 
 use super::{ConstValue, SourceInfo};
@@ -129,7 +130,7 @@ pub enum ConstraintCategory<'tcx> {
     /// A constraint from a user-written predicate
     /// with the provided span, written on the item
     /// with the given `DefId`
-    Predicate(Span),
+    Predicate(Span, DefId),
 
     /// A "boring" constraint (caused by the given location) is one that
     /// the user probably doesn't want to see described in diagnostics,
