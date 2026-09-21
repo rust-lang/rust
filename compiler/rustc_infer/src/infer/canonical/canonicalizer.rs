@@ -8,11 +8,11 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_index::Idx;
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, BoundVar, Flags, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeFoldable,
     TypeFolder, TypeSuperFoldable, TypeVisitableExt, TypingModeEqWrapper,
 };
+use rustc_span::bug;
 use rustc_type_ir::PredicateProxy;
 use smallvec::SmallVec;
 use tracing::debug;
@@ -165,7 +165,7 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
                 .inner
                 .borrow_mut()
                 .unwrap_region_constraints()
-                .opportunistic_resolve_var(canonicalizer.tcx, vid);
+                .shallow_resolve_region_var(canonicalizer.tcx, vid);
             debug!(
                 "canonical: region var found with vid {vid:?}, \
                      opportunistically resolved to {r:?}",
@@ -183,7 +183,7 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
                     .inner
                     .borrow_mut()
                     .unwrap_region_constraints()
-                    .probe_value(vid)
+                    .try_resolve_region_var(vid)
                     .unwrap_err();
                 canonicalizer.canonical_var_for_region(CanonicalVarKind::Region(universe), r)
             }
@@ -363,7 +363,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             }
 
             ty::Infer(ty::IntVar(vid)) => {
-                let nt = self.infcx.unwrap().opportunistic_resolve_int_var(vid);
+                let nt = self.infcx.unwrap().shallow_resolve_int_var(vid);
                 if nt != t {
                     return self.fold_ty(nt);
                 } else {
@@ -371,7 +371,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 }
             }
             ty::Infer(ty::FloatVar(vid)) => {
-                let nt = self.infcx.unwrap().opportunistic_resolve_float_var(vid);
+                let nt = self.infcx.unwrap().shallow_resolve_float_var(vid);
                 if nt != t {
                     return self.fold_ty(nt);
                 } else {

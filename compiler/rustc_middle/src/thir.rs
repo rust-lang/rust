@@ -24,7 +24,7 @@ use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
 use rustc_index::{IndexVec, newtype_index};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeVisitable};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, bug};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use tracing::instrument;
 
@@ -661,7 +661,7 @@ pub struct PatExtra<'tcx> {
     ///
     /// This is used by some diagnostics for non-exhaustive matches, to map
     /// the pattern node back to the `DefId` of its original constant.
-    pub expanded_const: Option<DefId>,
+    pub expanded_const: Option<ty::AliasConstKind<'tcx>>,
 
     /// User-written types that must be preserved into MIR so that they can be
     /// checked.

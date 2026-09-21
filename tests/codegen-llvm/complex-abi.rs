@@ -103,7 +103,8 @@
 
 #![feature(no_core, lang_items, f16, f128)]
 #![no_core]
-#![allow(improper_ctypes)] // only Complex<{float}> is guaranteed to be ABI-compatible for now
+// only Complex<{float}> is guaranteed to be ABI-compatible for now
+#![expect(improper_ctypes_definitions)]
 #![crate_type = "lib"]
 
 extern crate minicore;

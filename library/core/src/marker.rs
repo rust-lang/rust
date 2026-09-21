@@ -1076,8 +1076,8 @@ pub trait Tuple {}
 
 /// Creates a new style directly represented const argument.
 /// ```ignore (cannot test this from within core yet)
-/// type const BAR<const N: usize>: usize = N;
-/// type const FOO<const N: usize>: usize = direct!(BAR::<N>);
+/// const BAR<const N: usize>: usize = direct_const_arg!(N);
+/// const FOO<const N: usize>: usize = direct_const_arg!(BAR::<N>);
 /// ```
 #[rustc_builtin_macro(direct_const_arg)]
 #[unstable(feature = "min_generic_const_args", issue = "132980")]
@@ -1302,7 +1302,7 @@ marker_impls! {
 ///             value,
 ///         });
 ///         Self {
-///             inner: NonNull::from(Box::leak(inner)),
+///             inner: Box::into_non_null(inner),
 ///         }
 ///     }
 /// }

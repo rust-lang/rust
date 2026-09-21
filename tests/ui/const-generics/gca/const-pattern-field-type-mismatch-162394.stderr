@@ -1,5 +1,5 @@
 error: the constant `"foo"` is not of type `()`
-  --> $DIR/const-pattern-field-type-mismatch-162394.rs:16:5
+  --> $DIR/const-pattern-field-type-mismatch-162394.rs:17:5
    |
 LL |     const A2: Foo = Self::FooA("foo");
    |     ^^^^^^^^^^^^^ expected `()`, found `&'static str`

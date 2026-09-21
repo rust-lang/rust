@@ -11,13 +11,12 @@ use rustc_hir::{self as hir, HirId, find_attr};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
-use rustc_middle::bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::{self, FnSig, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Ident, Span, bug, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -103,7 +102,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.check_expr(callee_expr),
         };
 
-        let expr_ty = self.resolve_vars_with_obligations(original_callee_ty);
+        let expr_ty = self.deeply_resolve_ignoring_regions_with_obligations(original_callee_ty);
 
         let mut autoderef = self.autoderef(callee_expr.span, expr_ty);
         let mut result = None;
@@ -237,7 +236,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         autoderef: &Autoderef<'a, 'tcx>,
     ) -> Option<CallStep<'tcx>> {
-        let adjusted_ty = self.resolve_vars_with_obligations(autoderef.final_ty());
+        let adjusted_ty =
+            self.deeply_resolve_ignoring_regions_with_obligations(autoderef.final_ty());
 
         // If the callee is a function pointer or a closure, then we're all set.
         match *adjusted_ty.kind() {
@@ -736,7 +736,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return do_check();
                 }
 
-                resolved_inputs = self.resolve_vars_if_possible(formal_input_tys.to_vec());
+                resolved_inputs = self.deeply_resolve_ignoring_regions(formal_input_tys.to_vec());
             }
 
             // Fool typechecker by placing an adjusted type of the first arg to avoid errors.
@@ -873,7 +873,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (rest_span, format!(").{}({rest_snippet}", segment.ident)),
                     ]
                 };
-                let self_ty = self.resolve_vars_if_possible(pick.callee.sig.inputs()[0]);
+                let self_ty = self.deeply_resolve_ignoring_regions(pick.callee.sig.inputs()[0]);
                 diag.multipart_suggestion(
                     format!(
                         "use the `.` operator to call the method `{}{}` on `{self_ty}`",
@@ -925,7 +925,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(self, qpath)));
         }
 
-        let callee_ty = self.resolve_vars_if_possible(callee_ty);
+        let callee_ty = self.deeply_resolve_ignoring_regions(callee_ty);
         let mut path = None;
         let mut err = self.dcx().create_err(diagnostics::InvalidCallee {
             span: callee_expr.span,

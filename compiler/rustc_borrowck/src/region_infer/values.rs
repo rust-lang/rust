@@ -5,10 +5,10 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_index::Idx;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::{IntervalSet, SparseIntervalMatrix};
-use rustc_middle::bug;
 use rustc_middle::mir::{BasicBlock, Location};
 use rustc_middle::ty::{self, RegionVid};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
 use crate::BorrowIndex;
@@ -407,16 +407,6 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     pub(crate) fn contains_free_region(&self, scc: N, free_region: RegionVid) -> bool {
         self.free_regions.contains(scc, free_region)
     }
-}
-
-/// For debugging purposes, returns a pretty-printed string of the given points.
-pub(crate) fn pretty_print_points(
-    location_map: &DenseLocationMap,
-    points: impl IntoIterator<Item = PointIndex>,
-) -> String {
-    pretty_print_region_elements(
-        points.into_iter().map(|p| location_map.to_location(p)).map(RegionElement::Location),
-    )
 }
 
 /// For debugging purposes, returns a pretty-printed string of the given region elements.

@@ -28,7 +28,6 @@ use rustc_lint_defs::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_IMPORT_VISIBILITIES,
     AMBIGUOUS_PANIC_IMPORTS, MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
-use rustc_middle::bug;
 use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_session::Session;
 use rustc_session::utils::was_invoked_from_cargo;
@@ -38,7 +37,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{
-    BytePos, Ident, RemapPathScopeComponents, Span, Spanned, Symbol, SyntaxContext, kw, sym,
+    BytePos, Ident, RemapPathScopeComponents, Span, Spanned, Symbol, SyntaxContext, bug, kw, sym,
 };
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, instrument};
@@ -358,7 +357,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if let Some(ambiguity_warning) = ambiguity_error.warning {
                 let node_id = match ambiguity_error.b1.0.kind {
                     DeclKind::Import { import, .. } => import.root_id,
-                    DeclKind::Def(_) => CRATE_NODE_ID,
+                    DeclKind::Def(..) => CRATE_NODE_ID,
                 };
 
                 let lint = match ambiguity_warning {
@@ -809,7 +808,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     DefKind::Static { .. } => {
                         Some(diagnostics::GenericParamsFromOuterItemStaticOrConst::Static)
                     }
-                    DefKind::Const { .. } => {
+                    DefKind::Const => {
                         Some(diagnostics::GenericParamsFromOuterItemStaticOrConst::Const)
                     }
                     _ => None,
@@ -993,8 +992,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 Res::Def(
                                     DefKind::Ctor(CtorOf::Variant, CtorKind::Const)
                                         | DefKind::Ctor(CtorOf::Struct, CtorKind::Const)
-                                        | DefKind::Const { .. }
-                                        | DefKind::AssocConst { .. },
+                                        | DefKind::Const
+                                        | DefKind::AssocConst,
                                     _,
                                 )
                             )
@@ -1005,8 +1004,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let kind_matches: [fn(DefKind) -> bool; 4] = [
                             |kind| matches!(kind, DefKind::Ctor(CtorOf::Variant, CtorKind::Const)),
                             |kind| matches!(kind, DefKind::Ctor(CtorOf::Struct, CtorKind::Const)),
-                            |kind| matches!(kind, DefKind::Const { .. }),
-                            |kind| matches!(kind, DefKind::AssocConst { .. }),
+                            |kind| matches!(kind, DefKind::Const),
+                            |kind| matches!(kind, DefKind::AssocConst),
                         ];
                         let mut local_names = vec![];
                         self.add_module_candidates(
@@ -1522,7 +1521,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // Never recommend deprecated helper attributes.
                 }
                 Scope::MacroRules(macro_rules_scope) => {
-                    if let MacroRulesScope::Def(macro_rules_def) = macro_rules_scope.get() {
+                    if let MacroRulesScope::Def(macro_rules_def) = *macro_rules_scope.read() {
                         let res = macro_rules_def.decl.res();
                         if filter_fn(res) {
                             suggestions.push(TypoSuggestion::new(
@@ -2112,7 +2111,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Not in scope: check if the name refers to a trait importable from elsewhere.
-        if macro_kind == MacroKind::Derive {
+        // An exact derive macro candidate is much more likely to be intended than any
+        // same-named traits, so we only consider them if there are no import suggestions for the derive macro.
+        if macro_kind == MacroKind::Derive && import_suggestions.is_empty() {
             let trait_candidates =
                 self.lookup_import_candidates(ident, TypeNS, parent_scope, |res| {
                     matches!(res, Res::Def(DefKind::Trait, _))
@@ -2465,7 +2466,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// If the binding refers to a tuple struct constructor with fields,
     /// returns the span of its fields.
     fn ctor_fields_span(&self, decl: Decl<'_>) -> Option<Span> {
-        let DeclKind::Def(Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id)) =
+        let DeclKind::Def(Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id), _) =
             decl.kind
         else {
             return None;
@@ -2735,7 +2736,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             match binding.kind {
                 DeclKind::Import { source_decl, import, .. } => {
-                    let through_reexport = !matches!(source_decl.kind, DeclKind::Def(_));
+                    let through_reexport = !matches!(source_decl.kind, DeclKind::Def(..));
                     let uses_relative_path = import
                         .module_path
                         .first()
@@ -2810,7 +2811,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         sugg_paths.push((path, through_reexport));
                     }
                 }
-                DeclKind::Def(_) => {}
+                DeclKind::Def(..) => {}
             }
             let first = binding == first_binding;
             let def_span = self.tcx.sess.source_map().guess_head_span(binding.span);

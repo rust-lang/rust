@@ -1,7 +1,7 @@
-use rustc_ast::{MetaItem, Mutability, Safety};
-use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::{Span, sym};
-use thin_vec::thin_vec;
+use rustc_ast::{Mutability, Safety};
+use rustc_expand::base::ExtCtxt;
+use rustc_span::{Ident, Span, sym};
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
@@ -10,9 +10,8 @@ use crate::deriving::path_std;
 pub(crate) fn expand_deriving_hash(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
     let path = path_std!(hash::Hash);
@@ -20,6 +19,18 @@ pub(crate) fn expand_deriving_hash(
     let typaram = sym::__H;
 
     let arg = Path::new_local(typaram);
+
+    let param = {
+        let path = cx.path_all(span, false, cx.std_path(&[sym::hash, sym::Hasher]), Vec::new());
+        cx.typaram(span, Ident::new(typaram, span), thin_vec![cx.trait_bound(path, false)], None)
+    };
+
+    let generics = ast::Generics {
+        params: thin_vec![param],
+        where_clause: ast::WhereClause { has_where_token: false, predicates: ThinVec::new(), span },
+        span,
+    };
+
     let hash_trait_def = TraitDef {
         span,
         path,
@@ -29,7 +40,7 @@ pub(crate) fn expand_deriving_hash(
         supports_unions: false,
         methods: smallvec![MethodDef {
             name: sym::hash,
-            generics: Bounds { bounds: vec![(typaram, vec![path_std!(hash::Hasher)])] },
+            generics,
             explicit_self: true,
             nonself_args: smallvec![(Ref(Box::new(Path(arg)), Mutability::Mut), sym::state)],
             ret_ty: Unit,
@@ -43,10 +54,10 @@ pub(crate) fn expand_deriving_hash(
         document: true,
     };
 
-    hash_trait_def.expand(cx, mitem, item, push);
+    hash_trait_def.expand(cx, item, push);
 }
 
-fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
+fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let [state_expr] = substr.nonselflike_args else {
         cx.dcx().span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
     };
@@ -60,15 +71,15 @@ fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'
     let (stmts, match_expr) = match substr.fields {
         Struct(_, fields) | EnumMatching(.., fields) => {
             let stmts =
-                fields.iter().map(|field| call_hash(field.span, field.self_expr.clone())).collect();
+                fields.into_iter().map(|field| call_hash(field.span, field.self_expr)).collect();
             (stmts, None)
         }
         EnumDiscr(discr_field, match_expr) => {
             assert!(discr_field.other_selflike_exprs.is_empty());
-            let stmts = thin_vec![call_hash(discr_field.span, discr_field.self_expr.clone())];
-            (stmts, match_expr.clone())
+            let stmts = thin_vec![call_hash(discr_field.span, discr_field.self_expr)];
+            (stmts, match_expr)
         }
-        _ => cx.dcx().span_bug(trait_span, "impossible substructure in `derive(Hash)`"),
+        _ => cx.dcx().span_bug(trait_span, "unexpected substructure in `derive(Hash)`"),
     };
 
     BlockOrExpr::new_mixed(stmts, match_expr)

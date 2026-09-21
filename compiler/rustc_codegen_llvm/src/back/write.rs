@@ -34,6 +34,7 @@ use crate::back::profiling::{
 use crate::builder::SBuilder;
 use crate::builder::gpu_offload::scalar_width;
 use crate::common::AsCCharPtr;
+use crate::context::SimpleCx;
 use crate::diagnostics::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, ParseTargetMachineConfig,
     UnsupportedCompression, WithLlvmError, WriteBytecode,
@@ -41,7 +42,7 @@ use crate::diagnostics::{
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
 use crate::llvm::{self, DiagnosticInfo};
 use crate::type_::llvm_type_ptr;
-use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes, base, common, llvm_util};
+use crate::{LlvmCodegenBackend, ModuleLlvm, attributes, base, common, llvm_util};
 
 pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> ! {
     match llvm::last_error() {
@@ -100,18 +101,9 @@ fn write_output_file<'ll>(
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::WriteOutput { path: output }))
 }
 
-/// If `for_cfg` is `true` then we are creating this machine for the purpose of populating
-/// [`rustc_codegen_ssa::TargetConfig`] based on what LLVM actually enables in this configuration.
-/// `-Ctarget-feature` should be ignored in that case since it is already processed separately.
-pub(crate) fn create_informational_target_machine(
-    sess: &Session,
-    for_cfg: bool,
-) -> OwnedTargetMachine {
+pub(crate) fn create_informational_target_machine(sess: &Session) -> OwnedTargetMachine {
     let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
-    // Can't use query system here quite yet because this function is invoked before the query
-    // system/tcx is set up.
-    let features = llvm_util::global_llvm_features(sess, for_cfg);
-    target_machine_factory(sess, config::OptLevel::No, &features)(sess.dcx(), config)
+    target_machine_factory(sess, config::OptLevel::No)(sess.dcx(), config)
 }
 
 pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMachine {
@@ -129,11 +121,7 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
         Some(tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, mod_name));
     let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
 
-    target_machine_factory(
-        tcx.sess,
-        tcx.backend_optimization_level(()),
-        tcx.global_backend_features(()),
-    )(tcx.dcx(), config)
+    target_machine_factory(tcx.sess, tcx.backend_optimization_level(()))(tcx.dcx(), config)
 }
 
 fn to_llvm_opt_settings(cfg: config::OptLevel) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize) {
@@ -195,7 +183,6 @@ fn to_llvm_float_abi(float_abi: Option<FloatAbi>) -> llvm::FloatAbi {
 pub(crate) fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
-    target_features: &[String],
 ) -> TargetMachineFactoryFn<LlvmCodegenBackend> {
     // Self-profile timer for creating a _factory_.
     let _prof_timer = sess.prof.generic_activity("target_machine_factory");
@@ -212,12 +199,11 @@ pub(crate) fn target_machine_factory(
 
     let code_model = to_llvm_code_model(sess.code_model());
 
-    // This is used to set cfg_has_threads, so all logic must be in this method.
     let singlethread = sess.target.singlethread(&sess.internal_target_features);
 
     let triple = SmallCStr::new(&versioned_llvm_target(sess));
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
-    let features = CString::new(target_features.join(",")).unwrap();
+    let features = CString::new(sess.global_backend_features.join(",")).unwrap();
     let abi = SmallCStr::new(sess.target.llvm_abiname.desc());
     let trap_unreachable =
         sess.opts.unstable_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);
@@ -255,7 +241,7 @@ pub(crate) fn target_machine_factory(
         }
     };
 
-    let use_wasm_eh = wants_wasm_eh(sess);
+    let use_wasm_eh = wants_wasm_eh(&sess.target);
 
     let large_data_threshold = sess.opts.unstable_opts.large_data_threshold.unwrap_or(0);
 

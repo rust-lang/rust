@@ -243,7 +243,7 @@ where
             ty::Bivariant => {
                 let has_non_region_infer = |arg: I::GenericArg| {
                     arg.has_non_region_infer()
-                        && infcx.resolve_vars_if_possible(arg).has_non_region_infer()
+                        && infcx.deeply_resolve_ignoring_regions(arg).has_non_region_infer()
                 };
                 if has_non_region_infer(a) || has_non_region_infer(b) {
                     has_unconstrained_bivariant_arg = true;

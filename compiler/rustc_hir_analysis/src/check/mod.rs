@@ -91,10 +91,9 @@ use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, OutlivesClause, Region, Ty, TyCtxt, TypingMode,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::ObligationCauseExt as _;
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
@@ -126,7 +125,11 @@ pub(super) fn provide(providers: &mut Providers) {
 }
 
 fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor> {
-    let dtor = tcx.calculate_dtor(def_id, always_applicable::check_drop_impl);
+    let dtor = tcx.calculate_dtor(
+        def_id,
+        always_applicable::check_drop_impl,
+        always_applicable::is_impossible_self_ty,
+    );
     if dtor.is_none() && tcx.features().async_drop() {
         if let Some(async_dtor) = adt_async_destructor(tcx, def_id) {
             // When type has AsyncDrop impl, but doesn't have Drop impl, generate error
@@ -138,7 +141,11 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor>
 }
 
 fn adt_async_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::AsyncDestructor> {
-    let result = tcx.calculate_async_dtor(def_id, always_applicable::check_drop_impl);
+    let result = tcx.calculate_async_dtor(
+        def_id,
+        always_applicable::check_drop_impl,
+        always_applicable::is_impossible_self_ty,
+    );
     // Async drop in libstd/libcore would become insta-stable — catch that mistake.
     if result.is_some() && tcx.features().staged_api() {
         span_bug!(tcx.def_span(def_id), "don't use async drop in libstd, it becomes insta-stable");

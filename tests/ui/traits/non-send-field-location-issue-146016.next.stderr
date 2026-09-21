@@ -1,0 +1,106 @@
+error[E0277]: `*const c_void` cannot be sent between threads safely
+  --> $DIR/non-send-field-location-issue-146016.rs:41:20
+   |
+LL |     require_send::<Record<Bar>>();
+   |                    ^^^^^^^^^^^ `*const c_void` cannot be sent between threads safely
+   |
+   = help: within `Record<*const c_void>`, the trait `Send` is not implemented for `*const c_void`
+note: required because it appears within the type `Record<*const c_void>`
+  --> $DIR/non-send-field-location-issue-146016.rs:24:8
+   |
+LL | struct Record<T> {
+   |        ^^^^^^
+LL |     unrelated: u8,
+LL |     value: T,
+   |     -------- required by this field
+note: required by a bound in `require_send`
+  --> $DIR/non-send-field-location-issue-146016.rs:38:20
+   |
+LL | fn require_send<T: Send>() {}
+   |                    ^^^^ required by this bound in `require_send`
+
+error[E0277]: `*const c_void` cannot be sent between threads safely
+  --> $DIR/non-send-field-location-issue-146016.rs:43:20
+   |
+LL |     require_send::<Nested<Bar>>();
+   |                    ^^^^^^^^^^^ `*const c_void` cannot be sent between threads safely
+   |
+   = help: within `Nested<*const c_void>`, the trait `Send` is not implemented for `*const c_void`
+note: required because it appears within the type `Record<*const c_void>`
+  --> $DIR/non-send-field-location-issue-146016.rs:24:8
+   |
+LL | struct Record<T> {
+   |        ^^^^^^
+LL |     unrelated: u8,
+LL |     value: T,
+   |     -------- required by this field
+note: required because it appears within the type `Nested<*const c_void>`
+  --> $DIR/non-send-field-location-issue-146016.rs:29:8
+   |
+LL | struct Nested<T> {
+   |        ^^^^^^
+LL |     value: Record<T>,
+   |     ---------------- required by this field
+note: required by a bound in `require_send`
+  --> $DIR/non-send-field-location-issue-146016.rs:38:20
+   |
+LL | fn require_send<T: Send>() {}
+   |                    ^^^^ required by this bound in `require_send`
+
+error[E0277]: `*const c_void` cannot be sent between threads safely
+  --> $DIR/non-send-field-location-issue-146016.rs:45:20
+   |
+LL |     require_send::<Multiple<Bar>>();
+   |                    ^^^^^^^^^^^^^ `*const c_void` cannot be sent between threads safely
+   |
+   = help: within `Multiple<*const c_void>`, the trait `Send` is not implemented for `*const c_void`
+note: required because it appears within the type `Multiple<*const c_void>`
+  --> $DIR/non-send-field-location-issue-146016.rs:33:6
+   |
+LL | enum Multiple<T> {
+   |      ^^^^^^^^
+LL |     Empty,
+LL |     Values { first: T, second: T },
+   |              --------  --------- required by this field
+   |              |
+   |              required by this field
+note: required by a bound in `require_send`
+  --> $DIR/non-send-field-location-issue-146016.rs:38:20
+   |
+LL | fn require_send<T: Send>() {}
+   |                    ^^^^ required by this bound in `require_send`
+
+error[E0277]: `*const c_void` cannot be sent between threads safely
+  --> $DIR/non-send-field-location-issue-146016.rs:55:27
+   |
+LL |       let h = thread::spawn(move || match rx.recv().unwrap() {
+   |  _____________-------------_^
+   | |             |
+   | |             required by a bound introduced by this call
+LL | |
+LL | |         Foo::Case(x) => println!("{:?}", x),
+LL | |         Foo::Case2(b) => println!("{:?}", b),
+LL | |     });
+   | |_____^ `*const c_void` cannot be sent between threads safely
+   |
+   = help: within `Foo`, the trait `Send` is not implemented for `*const c_void`
+note: required because it appears within the type `Foo`
+  --> $DIR/non-send-field-location-issue-146016.rs:19:6
+   |
+LL | enum Foo {
+   |      ^^^
+LL |     Case(i32),
+LL |     Case2(Bar),
+   |           --- required by this field
+   = note: required for `std::sync::mpsc::Receiver<Foo>` to implement `Send`
+note: required because `rx` is used within this closure
+  --> $DIR/non-send-field-location-issue-146016.rs:55:41
+   |
+LL |     let h = thread::spawn(move || match rx.recv().unwrap() {
+   |                                         ^^
+note: required by a bound in `spawn`
+  --> $SRC_DIR/std/src/thread/functions.rs:LL:COL
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

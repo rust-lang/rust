@@ -3,7 +3,7 @@
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(allocator_api)]
 
-use std::alloc::{AllocError, Allocator, Layout};
+use std::alloc::{AllocError, Allocator, Global, Layout};
 use std::cell::Cell;
 use std::mem::MaybeUninit;
 use std::ptr::{self, NonNull};
@@ -118,8 +118,48 @@ fn test3() {
     foo(A, b1);
 }
 
+fn test_into_raw() {
+    struct MyMetadataAlloc;
+
+    fn widen(layout: Layout) -> Layout {
+        Layout::from_size_align(layout.size() + 10, layout.align())
+            .unwrap_or_else(|_| std::process::abort())
+    }
+    unsafe impl Allocator for MyMetadataAlloc {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            let ptr = Global.allocate(widen(layout))?;
+
+            // store some important metadata
+            unsafe { ptr.cast::<u8>().add(layout.size() + 5).write(42) }
+
+            Ok(NonNull::slice_from_raw_parts(ptr.cast(), layout.size()))
+        }
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            // SAFETY: we get back a pointer with the same provenance as
+            // returned by `allocate`, valid over the full `size() + 10` bytes.
+            unsafe {
+                assert_eq!(ptr.add(layout.size() + 5).replace(1), 42);
+                Global.deallocate(ptr, widen(layout))
+            }
+        }
+    }
+
+    unsafe {
+        let b = Box::new_in(1i32, MyMetadataAlloc);
+
+        let (r, alloc) = Box::into_raw_with_allocator(b);
+
+        // ptr is valid
+        assert_eq!(std::mem::replace(&mut *r, 2), 1);
+
+        // ptr can be deallocated again
+        drop(Box::from_raw_in(r, alloc));
+    }
+}
+
 fn main() {
     test1();
     test2();
     test3();
+    test_into_raw();
 }

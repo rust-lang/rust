@@ -465,7 +465,7 @@ fn local_href_for_res(cx: &DocContext<'_>, module_id: DefId, res: Res<NodeId>) -
 
     if matches!(
         cx.tcx.def_kind(did),
-        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant
+        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant
     ) || !did.is_local()
     {
         return None;

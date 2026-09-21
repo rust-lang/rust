@@ -1512,7 +1512,7 @@ impl AtomicBool {
         Err(prev)
     }
 
-    /// Fetches the value, applies a function to it that it return a new value.
+    /// Fetches the value, and applies a function to it that returns a new value.
     /// The new value is stored and the old value is returned.
     ///
     /// See also: [`try_update`](`AtomicBool::try_update`).
@@ -2339,7 +2339,7 @@ impl<T> AtomicPtr<T> {
         Err(prev)
     }
 
-    /// Fetches the value, applies a function to it that it return a new value.
+    /// Fetches the value, and applies a function to it that returns a new value.
     /// The new value is stored and the old value is returned.
     ///
     /// See also: [`try_update`](`AtomicPtr::try_update`).
@@ -3810,7 +3810,7 @@ macro_rules! atomic_int {
                 Err(prev)
             }
 
-            /// Fetches the value, applies a function to it that it return a new value.
+            /// Fetches the value, and applies a function to it that returns a new value.
             /// The new value is stored and the old value is returned.
             ///
             #[doc = concat!("See also: [`try_update`](`", stringify!($atomic_type), "::try_update`).")]

@@ -1,6 +1,17 @@
 use core::num::{Complex, Wrapping};
 
 #[test]
+fn complex_default() {
+    assert_eq!(Complex::<i32>::default(), Complex::new(0, 0));
+    assert_eq!(Complex::<f32>::default(), Complex::new(0.0, 0.0));
+
+    // The default is the additive unit.
+    let a = Complex::new(1, 2);
+    assert_eq!(a + Complex::<i32>::default(), a);
+    assert_eq!(Complex::<i32>::default() + a, a);
+}
+
+#[test]
 fn complex_addition() {
     let a = Complex::new(1, 2);
     let b = Complex::new(3, 4);
@@ -41,4 +52,24 @@ fn complex_subtraction() {
     let b = Complex::new(3.0, 4.0);
     assert_eq!(a - b, Complex::new(a.re - b.re, a.im - b.im));
     assert_eq!(a - 8.0, Complex::new(a.re - 8.0, a.im));
+}
+
+#[test]
+fn complex_conjugate() {
+    assert_eq!(Complex::new(1, 2).conjugate(), Complex::new(1, -2));
+    assert_eq!(Complex::new(1, -2).conjugate(), Complex::new(1, 2));
+
+    assert_eq!(Complex::new(1.0, 2.0).conjugate(), Complex::new(1.0, -2.0));
+    assert_eq!(Complex::new(1.0, -2.0).conjugate(), Complex::new(1.0, 2.0));
+    assert_eq!(Complex::new(1.0, f32::INFINITY).conjugate(), Complex::new(1.0, f32::NEG_INFINITY));
+}
+
+#[test]
+fn complex_negation() {
+    assert_eq!(-Complex::new(1, 2), Complex::new(-1, -2));
+    assert_eq!(-Complex::new(1, -2), Complex::new(-1, 2));
+
+    assert_eq!(-Complex::new(1.0, 2.0), Complex::new(-1.0, -2.0));
+    assert_eq!(-Complex::new(1.0, -2.0), Complex::new(-1.0, 2.0));
+    assert_eq!(-Complex::new(1.0, f32::INFINITY), Complex::new(-1.0, f32::NEG_INFINITY),);
 }

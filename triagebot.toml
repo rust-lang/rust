@@ -702,6 +702,7 @@ topic = "#{number}: {title}"
 message_on_add = """\
 @*T-types* issue #{number} "{title}" has been nominated for team discussion.
 """
+github_comment = ":robot: A [dedicated `#t-types/nominated` topic]({zulip_topic_url}) has been opened for humans to discuss this issue :robot:"
 message_on_remove = "Issue #{number}'s nomination has been removed. Thanks all for participating!"
 message_on_close = "Issue #{number} has been closed. Thanks for participating!"
 message_on_reopen = "Issue #{number} has been reopened. Pinging @*T-types*."
@@ -850,7 +851,7 @@ zulip_stream = 542373 # #t-libs/backports
 topic = "#{number}: beta-nominated"
 message_on_add = [
     """\
-@*T-libs-fcp* PR #{number} "{title}" has been nominated for beta backport.
+@*T-libs-ping* PR #{number} "{title}" has been nominated for beta backport.
 """,
     """\
 /poll Should #{number} be beta backported?
@@ -874,7 +875,7 @@ zulip_stream = 542373 # #t-libs/backports
 topic = "#{number}: stable-nominated"
 message_on_add = [
     """\
-@*T-libs-fcp* PR #{number} "{title}" has been nominated for stable backport.
+@*T-libs-ping* PR #{number} "{title}" has been nominated for stable backport.
 """,
     """\
 /poll Approve stable backport of #{number}?
@@ -1434,9 +1435,6 @@ cc = ["@Urgau"]
 [mentions."src/doc/rustc/src/check-cfg"]
 cc = ["@Urgau"]
 
-[mentions."src/doc/rustc/src/platform-support"]
-cc = ["@Noratrieb"]
-
 [mentions."tests/codegen-llvm/sanitizer"]
 cc = ["@rcvalle"]
 
@@ -1551,6 +1549,14 @@ cc = ["@mejrs"]
 [mentions."compiler/rustc_attr_ir/src/diagnostic.rs"]
 message = "Some changes occurred to diagnostic attributes."
 cc = ["@mejrs"]
+
+[mentions."RELEASES.md"]
+message = """
+`RELEASES.md` was changed. Upon merging, each section will be automatically synced with its \
+corresponding GitHub releases, but **only from the `main` branch**.
+
+If it's not already the case, make sure to also merge the changes in the `main` branch.
+"""
 
 # Content-based mentions
 

@@ -6,6 +6,7 @@ use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_span::bug;
 
 use crate::ty::TyCtxt;
 

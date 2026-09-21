@@ -15,7 +15,8 @@ enum MyEnum<T> {
 }
 
 trait Trait {
-    type const ASSOC: u32;
+    #[rustc_always_gca]
+    const ASSOC: u32;
 }
 
 fn with_point<const P: Point>() -> Point {

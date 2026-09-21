@@ -4,7 +4,8 @@ use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::interpret::{AllocInit, Allocation, GlobalAlloc, InterpResult, Pointer};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{PolyExistentialPredicate, Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
-use rustc_middle::{mir, span_bug, ty};
+use rustc_middle::{mir, ty};
+use rustc_span::span_bug;
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::debug;
 

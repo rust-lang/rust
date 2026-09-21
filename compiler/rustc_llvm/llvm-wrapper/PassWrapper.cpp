@@ -89,15 +89,31 @@ extern "C" void LLVMRustTimeTraceProfilerFinish(const char *FileName) {
   timeTraceProfilerCleanup();
 }
 
-extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
-                                   const char *Feature) {
-  TargetMachine *Target = unwrap(TM);
-#if LLVM_VERSION_GE(23, 0)
-  const MCSubtargetInfo &MCInfo = Target->getMCSubtargetInfo();
+extern "C" MCSubtargetInfo *
+LLVMRustCreateMCSubtargetInfo(const char *TripleStr, const char *CPU,
+                              const char *Features) {
+  std::string Error;
+  auto Trip = Triple(Triple::normalize(TripleStr));
+  const llvm::Target *TheTarget = TargetRegistry::lookupTarget(Trip, Error);
+  if (TheTarget == nullptr) {
+    LLVMRustSetLastError(Error.c_str());
+    return nullptr;
+  }
+
+#if LLVM_VERSION_GE(22, 0)
+  return TheTarget->createMCSubtargetInfo(Trip, CPU, Features);
 #else
-  const MCSubtargetInfo &MCInfo = *Target->getMCSubtargetInfo();
+  return TheTarget->createMCSubtargetInfo(Trip.str(), CPU, Features);
 #endif
-  return MCInfo.checkFeatures(std::string("+") + Feature);
+}
+
+extern "C" bool LLVMRustMCSubtargetInfoHasFeature(MCSubtargetInfo *MCInfo,
+                                                  const char *Feature) {
+  return MCInfo->checkFeatures(std::string("+") + Feature);
+}
+
+extern "C" void LLVMRustDisposeMCSubtargetInfo(MCSubtargetInfo *MCInfo) {
+  delete MCInfo;
 }
 
 /// Check whether the target has a specific assembly mnemonic like `ret` or
@@ -409,9 +425,11 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     }
   }
 
+#if LLVM_VERSION_LT(24, 0)
   if (Singlethread) {
     Options.ThreadModel = ThreadModel::Single;
   }
+#endif
 
   if (UseWasmEH)
     Options.ExceptionModel = ExceptionHandling::Wasm;
@@ -440,9 +458,11 @@ extern "C" void LLVMRustAddLibraryInfo(LLVMTargetMachineRef T,
     TLII.disableAllFunctions();
   unwrap(PMR)->add(new TargetLibraryInfoWrapperPass(TLII));
 #if LLVM_VERSION_GE(24, 0)
-  unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
-      Options->ExceptionModel, Options->EABIVersion, Options->MCOptions.ABIName,
-      Options->VecLib));
+  // LLVM 24 removed TargetOptions::EABIVersion and ExceptionModel; the EABI
+  // version and exception model are now derived from the target triple and
+  // module flags respectively instead.
+  unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(Options->MCOptions.ABIName,
+                                                 Options->VecLib));
 #elif LLVM_VERSION_GE(22, 0)
   unwrap(PMR)->add(new RuntimeLibraryInfoWrapper(
       TargetTriple, Options->ExceptionModel, Options->FloatABIType,

@@ -6,6 +6,7 @@ use crate::ffi::c_char;
 use crate::intrinsics::const_eval_select;
 use crate::iter::FusedIterator;
 use crate::marker::PhantomData;
+use crate::num::niche_types::UsizeNoHighBitMinusOne;
 use crate::ptr::NonNull;
 use crate::slice::memchr;
 use crate::{fmt, ops, range, slice, str};
@@ -262,7 +263,12 @@ impl CStr {
         // means the call to `from_bytes_with_nul_unchecked` is correct.
         //
         // The cast from c_char to u8 is ok because a c_char is always one byte.
-        unsafe { Self::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr.cast(), len + 1)) }
+        unsafe {
+            Self::from_bytes_with_nul_unchecked(slice::from_raw_parts(
+                ptr.cast(),
+                len.as_inner() + 1,
+            ))
+        }
     }
 
     /// Creates a C string wrapper from a byte slice with any number of nuls.
@@ -750,9 +756,9 @@ const impl AsRef<CStr> for CStr {
 #[inline]
 #[unstable(feature = "cstr_internals", issue = "none")]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
-const unsafe fn strlen(ptr: *const c_char) -> usize {
+const unsafe fn strlen(ptr: *const c_char) -> UsizeNoHighBitMinusOne {
     const_eval_select!(
-        @capture { s: *const c_char = ptr } -> usize:
+        @capture { s: *const c_char = ptr } -> UsizeNoHighBitMinusOne:
         if const {
             let mut len = 0;
 
@@ -761,15 +767,16 @@ const unsafe fn strlen(ptr: *const c_char) -> usize {
                 len += 1;
             }
 
-            len
+            UsizeNoHighBitMinusOne::new(len).unwrap()
         } else {
             unsafe extern "C" {
                 /// Provided by libc or compiler_builtins.
                 fn strlen(s: *const c_char) -> usize;
             }
 
-            // SAFETY: Outer caller has provided a pointer to a valid C string.
-            unsafe { strlen(s) }
+            // SAFETY: Outer caller has provided a pointer to a valid C string,
+            // and its length is within bounds.
+            unsafe { UsizeNoHighBitMinusOne::new_unchecked(strlen(s)) }
         }
     )
 }
@@ -841,7 +848,7 @@ impl Iterator for Bytes<'_> {
     #[inline]
     fn count(self) -> usize {
         // SAFETY: We always hold a valid pointer to a C string
-        unsafe { strlen(self.ptr.as_ptr().cast()) }
+        unsafe { strlen(self.ptr.as_ptr().cast()) }.as_inner()
     }
 }
 

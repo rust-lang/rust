@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::res::MaybeDef as _;
 use clippy_utils::sym;
-use rustc_hir::attrs::LangItem;
+use rustc_attr_ir::LangItem;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::layout::LayoutOf as _;

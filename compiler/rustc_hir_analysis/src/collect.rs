@@ -37,8 +37,8 @@ use rustc_middle::ty::{
     self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
     fold_regions,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::def_id::LocalModId;
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -496,6 +496,10 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
 
     fn item_def_id(&self) -> LocalDefId {
         self.item_def_id
+    }
+
+    fn mod_id(&self) -> LocalModId {
+        self.tcx.parent_module_from_def_id(self.item_def_id)
     }
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
@@ -1539,11 +1543,11 @@ pub fn suggest_impl_trait<'tcx>(
             );
             // FIXME(compiler-errors): We may benefit from resolving regions here.
             if ocx.try_evaluate_obligations().no_errors()
-                && let item_ty = infcx.resolve_vars_if_possible(item_ty)
+                && let item_ty = infcx.deeply_resolve_ignoring_regions(item_ty)
                 && let Some(item_ty) = item_ty.make_suggestable(infcx.tcx, false, None)
                 && let Some(sugg) = formatter(
                     infcx.tcx,
-                    infcx.resolve_vars_if_possible(args),
+                    infcx.deeply_resolve_ignoring_regions(args),
                     trait_def_id,
                     assoc_item_def_id,
                     item_ty,

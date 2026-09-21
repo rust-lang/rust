@@ -1,0 +1,23 @@
+
+running 1 test
+test $DIR/doctest-macro-38219.rs - foo (line 7) ... FAILED
+
+failures:
+
+---- $DIR/doctest-macro-38219.rs - foo (line 7) stdout ----
+error[E0425]: cannot find value `fail` in this scope
+  --> $DIR/doctest-macro-38219.rs:8:1
+   |
+LL | fail
+   | ^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.
+Couldn't compile the test.
+
+failures:
+    $DIR/doctest-macro-38219.rs - foo (line 7)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

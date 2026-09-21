@@ -5,10 +5,10 @@ use clippy_utils::source::{SpanExt as _, snippet, snippet_with_applicability};
 use clippy_utils::{SpanlessEq, SpanlessHash, is_from_proc_macro};
 use core::hash::{Hash, Hasher};
 use itertools::Itertools as _;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, IndexEntry};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::Res;
 use rustc_hir::{
     AmbigArg, BoundPolarity, GenericBound, Generics, Item, ItemKind, Node, Path, PathSegment, PredicateOrigin, QPath,

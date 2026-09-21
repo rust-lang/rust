@@ -132,7 +132,11 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
                     });
                     continue;
                 }
-                args.add(FormatArgument { kind: FormatArgumentKind::Named(ident), expr });
+                args.add(FormatArgument {
+                    original_span: ident.span.to(expr.span),
+                    kind: FormatArgumentKind::Named(ident),
+                    expr,
+                });
             }
             _ => {
                 let expr = p.parse_expr()?;
@@ -147,7 +151,11 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
                             .collect(),
                     }));
                 }
-                args.add(FormatArgument { kind: FormatArgumentKind::Normal, expr });
+                args.add(FormatArgument {
+                    original_span: expr.span,
+                    kind: FormatArgumentKind::Normal,
+                    expr,
+                });
             }
         }
     }
@@ -446,7 +454,11 @@ fn make_format_args(
                         unnamed_arg_after_named_arg = true;
                         DummyResult::raw_expr(span, Some(guar))
                     };
-                    Ok(args.add(FormatArgument { kind: FormatArgumentKind::Captured(ident), expr }))
+                    Ok(args.add(FormatArgument {
+                        original_span: span,
+                        kind: FormatArgumentKind::Captured(ident),
+                        expr,
+                    }))
                 }
             }
         };

@@ -5,11 +5,11 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
 #![feature(decl_macro)]
 #![feature(file_buffered)]
 #![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
-#![feature(trim_prefix_suffix)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
@@ -1344,15 +1344,17 @@ fn warn_on_confusing_output_filename_flag(
             || config::CG_OPTIONS.iter().any(|option| eq_ignore_separators(option.name(), filename))
             || fake_args.iter().any(|arg| eq_ignore_separators(arg, filename))
         {
-            early_dcx.early_warn(
-                "option `-o` has no space between flag name and value, which can be confusing",
-            );
-            early_dcx.early_note(format!(
-                "output filename `-o {name}` is applied instead of a flag named `o{name}`"
-            ));
-            early_dcx.early_help(format!(
-                "insert a space between `-o` and `{name}` if this is intentional: `-o {name}`"
-            ));
+            early_dcx
+                .early_struct_warn(
+                    "option `-o` has no space between flag name and value, which can be confusing",
+                )
+                .with_note(format!(
+                    "output filename `-o {name}` is applied instead of a flag named `o{name}`"
+                ))
+                .with_help(format!(
+                    "insert a space between `-o` and `{name}` if this is intentional: `-o {name}`"
+                ))
+                .emit();
         }
     }
 }
@@ -1598,7 +1600,7 @@ fn report_ice(
 
     let limit_frames = if backtrace { None } else { Some(2) };
 
-    interface::try_print_query_stack(dcx, limit_frames, file);
+    interface::try_print_query_stack(limit_frames, file);
 
     // We don't trust this callback not to panic itself, so run it at the end after we're sure we've
     // printed all the relevant info.

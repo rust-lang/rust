@@ -8,14 +8,13 @@ use std::iter;
 use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, PredicateObligations};
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, DelayedSet, GenericArgsRef, PredicateProxy, Term, TermKind, Ty, TyCtxt,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{Span, sym};
+use rustc_span::{Span, bug, sym};
 use tracing::{debug, instrument};
 
 use crate::infer::InferCtxt;
@@ -98,7 +97,7 @@ pub fn unnormalized_obligations<'tcx>(
     span: Span,
     body_def_id: LocalDefId,
 ) -> Option<PredicateObligations<'tcx>> {
-    debug_assert_eq!(term, infcx.resolve_vars_if_possible(term));
+    debug_assert_eq!(term, infcx.deeply_resolve_ignoring_regions(term));
 
     // However, if `term` IS an unresolved inference variable, returns `None`,
     // because we are not able to make any progress at all. This is to prevent

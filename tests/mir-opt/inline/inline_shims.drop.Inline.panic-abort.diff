@@ -22,30 +22,26 @@
 +                         scope 6 (inlined alloc::raw_vec::RawVecInner::ptr::<A>) {
 +                             scope 7 (inlined alloc::raw_vec::RawVecInner::non_null::<A>) {
 +                                 let mut _12: std::ptr::NonNull<u8>;
-+                                 scope 8 (inlined std::ptr::Unique::<u8>::cast::<A>) {
-+                                     scope 9 (inlined NonNull::<u8>::cast::<A>) {
-+                                         scope 10 (inlined NonNull::<u8>::as_ptr) {
-+                                         }
++                                 scope 8 (inlined NonNull::<u8>::cast::<A>) {
++                                     scope 9 (inlined NonNull::<u8>::as_ptr) {
 +                                     }
 +                                 }
-+                                 scope 11 (inlined std::ptr::Unique::<A>::as_non_null_ptr) {
-+                                 }
 +                             }
-+                             scope 12 (inlined NonNull::<A>::as_ptr) {
++                             scope 10 (inlined NonNull::<A>::as_ptr) {
 +                             }
 +                         }
 +                     }
 +                 }
-+                 scope 13 (inlined std::ptr::mut_ptr::<impl *mut A>::cast_slice) {
-+                     scope 14 (inlined slice_from_raw_parts_mut::<A>) {
-+                         scope 15 (inlined std::ptr::from_raw_parts_mut::<[A], A>) {
++                 scope 11 (inlined std::ptr::mut_ptr::<impl *mut A>::cast_slice) {
++                     scope 12 (inlined slice_from_raw_parts_mut::<A>) {
++                         scope 13 (inlined std::ptr::from_raw_parts_mut::<[A], A>) {
 +                         }
 +                     }
 +                 }
-+                 scope 16 (inlined std::ptr::mut_ptr::<impl *mut [A]>::drop_in_place) {
-+                     scope 17 (inlined drop_in_place::<[A]>) {
++                 scope 14 (inlined std::ptr::mut_ptr::<impl *mut [A]>::drop_in_place) {
++                     scope 15 (inlined drop_in_place::<[A]>) {
 +                         let mut _13: &mut [A];
-+                         scope 18 (inlined std::ptr::drop_glue::<[A]> - shim(Some([A]))) {
++                         scope 16 (inlined std::ptr::drop_glue::<[A]> - shim(Some([A]))) {
 +                             let mut _14: usize;
 +                             let mut _15: *mut A;
 +                             let mut _16: bool;
@@ -55,9 +51,9 @@
 +             }
 +         }
 +     }
-+     scope 19 (inlined drop_in_place::<Option<B>>) {
++     scope 17 (inlined drop_in_place::<Option<B>>) {
 +         let mut _17: &mut std::option::Option<B>;
-+         scope 20 (inlined std::ptr::drop_glue::<Option<B>> - shim(Some(Option<B>))) {
++         scope 18 (inlined std::ptr::drop_glue::<Option<B>> - shim(Some(Option<B>))) {
 +             let mut _18: isize;
 +             let mut _19: isize;
 +         }
@@ -77,7 +73,7 @@
 +         StorageLive(_9);
 +         StorageLive(_10);
 +         StorageLive(_12);
-+         _12 = copy (((((*_7).0: alloc::raw_vec::RawVec<A>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
++         _12 = copy ((((*_7).0: alloc::raw_vec::RawVec<A>).0: alloc::raw_vec::RawVecInner).0: std::ptr::NonNull<u8>);
 +         _10 = copy _12 as *mut A (Transmute);
 +         StorageDead(_12);
 +         _11 = copy ((*_7).1: usize);

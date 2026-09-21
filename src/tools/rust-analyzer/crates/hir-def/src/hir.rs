@@ -800,7 +800,6 @@ pub enum Pat {
         inner: PatId,
     },
     NotNull,
-    ConstBlock(ExprId),
     /// An expression inside a pattern. That can only occur inside assignments.
     ///
     /// E.g. in `(a, *b) = (1, &mut 2)`, `*b` is an expression.
@@ -813,7 +812,6 @@ impl Pat {
             Pat::Range { .. }
             | Pat::Lit(..)
             | Pat::Path(..)
-            | Pat::ConstBlock(..)
             | Pat::Wild
             | Pat::Missing
             | Pat::Rest

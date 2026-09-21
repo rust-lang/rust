@@ -71,6 +71,8 @@ jobs:
           os: ubuntu-26.04
         - target: armv7-unknown-linux-gnueabihf
           os: ubuntu-26.04
+        - target: thumbv7neon-unknown-linux-gnueabihf
+          os: ubuntu-26.04
         - target: i586-unknown-linux-gnu
           os: ubuntu-26.04
         - target: i686-unknown-linux-gnu
@@ -114,19 +116,18 @@ jobs:
           os: windows-2025-vs2026
         - target: x86_64-pc-windows-msvc
           os: windows-2025-vs2026
-        # FIXME(rust-lang/compiler-builtins#1306): disabled due to broken environment
-        # - target: i686-pc-windows-gnu
-        #   os: windows-2025-vs2026
-        #   channel: nightly-i686-gnu
+        - target: i686-pc-windows-gnu
+          os: windows-2025-vs2026
+          host_toolchain: nightly-x86_64-gnu
         - target: x86_64-pc-windows-gnu
           os: windows-2025-vs2026
-          channel: nightly-x86_64-gnu
+          host_toolchain: nightly-x86_64-gnu
     runs-on: ${{ matrix.os }}
     needs: [calculate_vars]
     env:
       BUILD_ONLY: ${{ matrix.build_only }}
       JOB_TARGET: ${{ matrix.target }}
-      JOB_CHANNEL: ${{ matrix.channel }}
+      JOB_HOST_TOOLCHAIN: ${{ matrix.host_toolchain }}
       MAY_SKIP_LIBM_CI: ${{ needs.calculate_vars.outputs.may_skip_libm_ci }}
       RUN_IN_DOCKER: ${{ matrix.os == 'ubuntu-26.04' }}
     steps:
@@ -134,13 +135,19 @@ jobs:
       run: |
         uname -a
         lscpu || (sysctl -a | grep cpu) || true
-        echo "home: ${HOME:-not found}"
-        pwd
+        echo "home: ${HOME:-not found} pwd: $(pwd)"
+    - name: Configure Windows PATH
+      if: contains(matrix.target, 'windows-gnu')
+      run: |
+        # Put the msys bash in PATH so future launches use it rather than the default
+        # git bash. This give us access to pacman.
+        echo "C:\msys64\ucrt64\bin" >> "$GITHUB_PATH"
+        echo "C:\msys64\usr\bin" >> "$GITHUB_PATH"
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with: { persist-credentials: false }
 
     - name: Set up dependencies and Rust
-      run: ./ci/install-test-deps.sh "$JOB_TARGET" "$JOB_CHANNEL" "$RUN_IN_DOCKER"
+      run: ./ci/install-test-deps.sh "$JOB_TARGET" "$JOB_HOST_TOOLCHAIN"
 
     - uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2.85.11
       continue-on-error: true

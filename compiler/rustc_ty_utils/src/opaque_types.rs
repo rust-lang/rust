@@ -8,8 +8,7 @@ use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Unnormalized,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
+use rustc_span::{Span, bug, span_bug};
 use tracing::{instrument, trace};
 
 use crate::diagnostics::{DuplicateArg, NotParam};
@@ -42,7 +41,7 @@ enum CollectionMode {
 impl<'tcx> OpaqueTypeCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, item: LocalDefId) -> Self {
         let mode = match tcx.def_kind(item) {
-            DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy => {
+            DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => {
                 CollectionMode::ImplTraitInAssocTypes
             }
             DefKind::TyAlias => CollectionMode::Taits,
@@ -334,8 +333,8 @@ fn opaque_types_defined_by<'tcx>(
         DefKind::AssocFn
         | DefKind::Fn
         | DefKind::Static { .. }
-        | DefKind::Const { .. }
-        | DefKind::AssocConst { .. }
+        | DefKind::Const
+        | DefKind::AssocConst
         | DefKind::AnonConst => {
             // Non-type-system inline consts should be caught by `if tcx.is_typeck_child` above
             debug_assert!(

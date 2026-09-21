@@ -107,7 +107,7 @@ pub use rustc_const_eval::interpret::*;
 pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
 pub use rustc_data_structures::either::Either;
 pub use rustc_log::tracing::{self, info, trace, warn};
-pub use rustc_middle::{bug, span_bug};
+pub use rustc_span::{bug, span_bug};
 
 #[cfg(all(feature = "native-lib", unix))]
 pub mod native_lib {
