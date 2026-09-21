@@ -16,7 +16,6 @@ use tracing::{debug, info, instrument};
 use super::NoSolution;
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::error_reporting::traits::OverflowCause;
-use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::normalize::needs_normalization;
@@ -26,120 +25,7 @@ use crate::traits::{
 };
 
 #[extension(pub trait QueryNormalizeExt<'tcx>)]
-impl<'a, 'tcx> At<'a, 'tcx> {
-    /// Normalize `value` in the context of the inference context,
-    /// yielding a resulting type, or an error if `value` cannot be
-    /// normalized. If you don't care about regions, you should prefer
-    /// `normalize_erasing_regions`, which is more efficient.
-    ///
-    /// If the normalization succeeds, returns back the normalized
-    /// value along with various outlives relations (in the form of
-    /// obligations that must be discharged).
-    ///
-    /// This normalization should *only* be used when the projection is well-formed and
-    /// does not have possible ambiguity (contains inference variables).
-    ///
-    /// After codegen, when lifetimes do not matter, it is preferable to instead
-    /// use [`TyCtxt::normalize_erasing_regions`], which wraps this procedure.
-    ///
-    /// N.B. Once the new solver is stabilized this method of normalization will
-    /// likely be removed as trait solver operations are already cached by the query
-    /// system making this redundant.
-    fn query_normalize<T>(self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        debug!(
-            "normalize::<{}>(value={:?}, param_env={:?}, cause={:?})",
-            std::any::type_name::<T>(),
-            value,
-            self.param_env,
-            self.cause,
-        );
-
-        // This is actually a consequence by the way `normalize_erasing_regions` works currently.
-        // Because it needs to call the `normalize_generic_arg_after_erasing_regions`, it folds
-        // through tys and consts in a `TypeFoldable`. Importantly, it skips binders, leaving us
-        // with trying to normalize with escaping bound vars.
-        //
-        // Here, we just add the universes that we *would* have created had we passed through the binders.
-        //
-        // We *could* replace escaping bound vars eagerly here, but it doesn't seem really necessary.
-        // The rest of the code is already set up to be lazy about replacing bound vars,
-        // and only when we actually have to normalize.
-        let universes = if value.has_escaping_bound_vars() {
-            let mut max_visitor =
-                MaxEscapingBoundVarVisitor { outer_index: ty::INNERMOST, escaping: 0 };
-            value.visit_with(&mut max_visitor);
-            vec![None; max_visitor.escaping]
-        } else {
-            vec![]
-        };
-
-        if self.infcx.next_trait_solver() {
-            match crate::solve::deeply_normalize_with_skipped_universes::<_, FulfillmentError<'tcx>>(
-                self,
-                Unnormalized::new_wip(value),
-                universes,
-            ) {
-                Ok(value) => {
-                    return Ok(Normalized { value, obligations: PredicateObligations::new() });
-                }
-                Err(errors) => {
-                    // We're imitating the old solver's behavior of eagerly reporting overflow
-                    // errors here. Otherwise we might silently ignore such errors. See #161542.
-                    if let Some((overflowed_obligation, suggest_higher_limit)) =
-                        errors.into_iter().find_map(|e| match e.code {
-                            FulfillmentErrorCode::Ambiguity {
-                                overflow: Some(suggest_higher_limit),
-                            } => Some((e.root_obligation, suggest_higher_limit)),
-                            _ => None,
-                        })
-                    {
-                        self.infcx.err_ctxt().report_overflow_obligation(
-                            &overflowed_obligation,
-                            suggest_higher_limit,
-                        );
-                    } else {
-                        return Err(NoSolution);
-                    }
-                }
-            }
-        }
-
-        if !needs_normalization(self.infcx, &value) {
-            return Ok(Normalized { value, obligations: PredicateObligations::new() });
-        }
-
-        let mut normalizer = QueryNormalizer {
-            infcx: self.infcx,
-            cause: self.cause,
-            param_env: self.param_env,
-            obligations: PredicateObligations::new(),
-            cache: SsoHashMap::new(),
-            anon_depth: 0,
-            universes,
-        };
-
-        let result = value.try_fold_with(&mut normalizer);
-        info!(
-            "normalize::<{}>: result={:?} with {} obligations",
-            std::any::type_name::<T>(),
-            result,
-            normalizer.obligations.len(),
-        );
-        debug!(
-            "normalize::<{}>: obligations={:?}",
-            std::any::type_name::<T>(),
-            normalizer.obligations,
-        );
-        result.map(|value| Normalized { value, obligations: normalizer.obligations })
-    }
-}
-
-
-#[extension(pub trait QueryNormalizeExt<'tcx>)]
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Normalize `value` in the context of the inference context,
     /// yielding a resulting type, or an error if `value` cannot be
     /// normalized. If you don't care about regions, you should prefer
@@ -159,20 +45,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// likely be removed as trait solver operations are already cached by the query
     /// system making this redundant.
     fn query_normalize<T>(
-        self, 
+        &self, 
         value: T,
-        param_env: ty::ParamEnv<'tcx>, 
-        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        cause: ObligationCause<'tcx>,
     ) -> Result<Normalized<'tcx, T>, NoSolution>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         debug!(
-            "normalize::<{}>(value={:?}, param_env={:?}, cause={:?})",
+            "normalize::<{}>(value={:?}, param_env={:?})",
             std::any::type_name::<T>(),
             value,
             param_env,
-            cause,
         );
 
         // This is actually a consequence by the way `normalize_erasing_regions` works currently.
@@ -196,9 +81,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         if self.next_trait_solver() {
             match crate::solve::deeply_normalize_with_skipped_universes::<_, ScrubbedTraitError<'tcx>>(
-                self,
+                &self,
                 Unnormalized::new_wip(value),
                 universes,
+                param_env,
+                &cause,
             ) {
                 Ok(value) => {
                     return Ok(Normalized { value, obligations: PredicateObligations::new() });
@@ -209,14 +96,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         }
 
-        if !needs_normalization(self.infcx, &value) {
+        if !needs_normalization(&self, &value) {
             return Ok(Normalized { value, obligations: PredicateObligations::new() });
         }
 
         let mut normalizer = QueryNormalizer {
             infcx: &self,
-            cause: self,
-            param_env: self.param_env,
+            cause: &cause,
+            param_env: param_env,
             obligations: PredicateObligations::new(),
             cache: SsoHashMap::new(),
             anon_depth: 0,

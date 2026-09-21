@@ -215,7 +215,7 @@ where
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, T>,
     ) -> T {
-        let infer_ok = self.infcx.at(cause, param_env).normalize(value);
+        let infer_ok = self.infcx.normalize(value, param_env, cause);
         self.register_infer_ok_obligations(infer_ok)
     }
 
@@ -428,10 +428,9 @@ where
 
             // implied_bounds.insert(ty);
             let cause = ObligationCause::misc(span, def_id);
-            match self
-                .infcx
-                .at(&cause, param_env)
-                .deeply_normalize(Unnormalized::new_wip(ty), &mut *self.engine.borrow_mut())
+            let infcx = self.infcx;
+            match infcx
+                .deeply_normalize(Unnormalized::new_wip(ty), &mut *self.engine.borrow_mut(), param_env, &cause)
             {
                 // Insert well-formed types, ignoring duplicates.
                 Ok(normalized) => drop(implied_bounds.insert(normalized)),
@@ -448,7 +447,7 @@ where
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, T>,
     ) -> Result<T, ThinVec<E>> {
-        self.infcx.at(cause, param_env).deeply_normalize(value, &mut *self.engine.borrow_mut())
+        self.infcx.deeply_normalize(value, &mut *self.engine.borrow_mut(), param_env, cause)
     }
 
     pub fn structurally_normalize_ty(
@@ -458,8 +457,7 @@ where
         value: Unnormalized<'tcx, Ty<'tcx>>,
     ) -> Result<Ty<'tcx>, ThinVec<E>> {
         self.infcx
-            .at(cause, param_env)
-            .structurally_normalize_ty(value, &mut *self.engine.borrow_mut())
+            .structurally_normalize_ty(value, &mut *self.engine.borrow_mut(), param_env, cause)
     }
 
     pub fn structurally_normalize_const(
@@ -469,8 +467,7 @@ where
         value: Unnormalized<'tcx, ty::Const<'tcx>>,
     ) -> Result<ty::Const<'tcx>, ThinVec<E>> {
         self.infcx
-            .at(cause, param_env)
-            .structurally_normalize_const(value, &mut *self.engine.borrow_mut())
+            .structurally_normalize_const(value, &mut *self.engine.borrow_mut(), param_env, cause)
     }
 
     pub fn structurally_normalize_term(
@@ -480,7 +477,6 @@ where
         value: Unnormalized<'tcx, ty::Term<'tcx>>,
     ) -> Result<ty::Term<'tcx>, ThinVec<E>> {
         self.infcx
-            .at(cause, param_env)
-            .structurally_normalize_term(value, &mut *self.engine.borrow_mut())
+            .structurally_normalize_term(value, &mut *self.engine.borrow_mut(), param_env, cause)
     }
 }
