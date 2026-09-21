@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+
+<!-- These changes will be available on the stable released channel alongside Rust 1.100 -->
+## [1.11.0] 2026-11-12
+
 ### Fixed
 - Preserve attributes on `fn` type parameters [#6590](https://github.com/rust-lang/rustfmt/pull/6590).
 - Preserve inner attributes from `loop`, `for` and `while` expressions [#6010](https://github.com/rust-lang/rustfmt/pull/6010).
