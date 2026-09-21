@@ -106,7 +106,7 @@ impl Dir {
     }
 
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
-        remove_dir(path)
+        remove_dir(self.path.join(path))
     }
 }
 
