@@ -140,6 +140,7 @@ impl AttributeKind {
             RustcDumpItemBounds => No,
             RustcDumpLayout(..) => No,
             RustcDumpObjectLifetimeDefaults => No,
+            RustcDumpPtrauthDiscriminator(..) => No,
             RustcDumpSymbolName(..) => Yes,
             RustcDumpUserArgs => No,
             RustcDumpVariances => No,

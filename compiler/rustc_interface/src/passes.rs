@@ -35,7 +35,7 @@ use rustc_middle::ty::{self, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
-use rustc_passes::{abi_test, input_stats, layout_test};
+use rustc_passes::{abi_test, input_stats, layout_test, ptrauth_test};
 use rustc_resolve::{Resolver, ResolverOutputs};
 use rustc_session::config::{Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::diagnostics::feature_err;
@@ -1187,6 +1187,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     });
 
     sess.time("layout_testing", || layout_test::test_layout(tcx));
+    sess.time("ptrauth_testing", || ptrauth_test::test_ptrauth_discriminator(tcx));
     sess.time("abi_testing", || abi_test::test_abi(tcx));
 }
 
