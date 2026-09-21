@@ -746,25 +746,13 @@ fn sidebar_render_assoc_items(
 }
 
 /// Tracks sidebar link anchors so duplicates get unique names.
-#[derive(Default)]
-struct UsedLinks {
-    links: FxHashSet<String>,
-    /// Next number to try for each anchor.
-    next_suffix: FxHashMap<String, usize>,
-}
+type UsedLinks = FxHashMap<String, usize>;
 
 fn get_next_url(used_links: &mut UsedLinks, url: String) -> String {
-    if used_links.links.insert(url.clone()) {
-        return url;
-    }
-    let add = used_links.next_suffix.entry(url.clone()).or_insert(1);
-    loop {
-        let candidate = format!("{url}-{add}");
-        *add += 1;
-        if used_links.links.insert(candidate.clone()) {
-            return candidate;
-        }
-    }
+    let count = used_links.entry(url.clone()).or_insert(0);
+    let res = if *count == 0 { url } else { format!("{url}-{count}") };
+    *count += 1;
+    res
 }
 
 enum GetMethodsMode<'r, 'l> {
