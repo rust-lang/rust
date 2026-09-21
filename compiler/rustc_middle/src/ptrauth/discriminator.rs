@@ -21,11 +21,12 @@
 //!
 //! ### 1. Type normalization and lowering
 //!
-//!    Rust types are converted into a language-independent representation
-//!    (`ClangDiscTy`) that mirrors the type categories used by Clang when computing
-//!    function pointer discriminators. This includes canonicalization such as
-//!    treating all pointer-like types uniformly and mapping Rust constructs onto
-//!    their closest C equivalents.
+//!    Rust types are first canonicalized according to ABI representation
+//!    (treating ABI-equivalent wrappers and niche representations as their
+//!    underlying representation, and treating pointer-like types uniformly),
+//!    then converted into a language-independent representation (`ClangDiscTy`)
+//!    that mirrors the type categories used by Clang when computing function
+//!    pointer discriminators.
 //!
 //!    One notable exception is C `_Complex`. Rust has no corresponding native type,
 //!    so there is no canonical Rust representation to map onto Clang's `_Complex`
@@ -92,11 +93,10 @@
 //! `extern "C"` and `extern "System"` function types only. It does NOT attempt
 //! to model full Rust type system rules.
 
-use rustc_abi::{ExternAbi, Size};
+use rustc_abi::{ExternAbi, Size, TagEncoding, Variants};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, Unnormalized};
 use rustc_session::PointerAuthSchema;
-use rustc_span::sym;
 
 use crate::ptrauth::llvm_siphash::llvm_pointer_auth_stable_siphash;
 use crate::ty::consts::ConstExt;
@@ -244,7 +244,7 @@ impl<'tcx> FnPtrTypeDiscriminatorInput<'tcx> {
         self.abi
     }
 
-    fn from_sig(sig: ty::FnSig<'tcx>) -> Self {
+    pub fn from_sig(sig: ty::FnSig<'tcx>) -> Self {
         FnPtrTypeDiscriminatorInput {
             inputs: sig.inputs(),
             output: sig.output(),
@@ -409,16 +409,14 @@ fn collect_fn_ptr_discriminators_inner<'tcx>(
     }
 }
 
-/// Computes the Clang-compatible function pointer type discriminator.
-///
 /// This is the low-level discriminator computation routine operating on an
 /// already constructed `FnPtrTypeDiscriminatorInput`.
-fn compute_fn_ptr_type_discriminator<'tcx>(
+fn encode_fn_ptr_type_discriminator<'tcx>(
     tcx: TyCtxt<'tcx>,
     input: &FnPtrTypeDiscriminatorInput<'tcx>,
-) -> u16 {
+) -> Option<PtrauthEncoder> {
     if !matches!(input.abi, ExternAbi::C { .. } | ExternAbi::System { .. }) {
-        return 0;
+        return None;
     }
 
     let mut enc = PtrauthEncoder::new();
@@ -436,9 +434,30 @@ fn compute_fn_ptr_type_discriminator<'tcx>(
 
     enc.push(b'E');
 
-    let hash = enc.finish();
+    Some(enc)
+}
 
-    hash.into()
+/// Computes the Clang-compatible function pointer type discriminator (hashed).
+///
+/// Returns `0` for function ABIs that are not supported by the Clang-compatible
+/// encoding.
+pub fn compute_fn_ptr_type_discriminator<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    input: &FnPtrTypeDiscriminatorInput<'tcx>,
+) -> u16 {
+    encode_fn_ptr_type_discriminator(tcx, input).map(|enc| enc.finish().into()).unwrap_or(0)
+}
+
+/// Returns the raw Clang-compatible type encoding used as input to the
+/// discriminator hash.
+///
+/// This is primarily used for debugging and comparing Rust's encoding against
+/// Clang's `encodeTypeForFunctionPointerAuth`.
+pub fn debug_encode_fn_ptr_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    input: &FnPtrTypeDiscriminatorInput<'tcx>,
+) -> String {
+    encode_fn_ptr_type_discriminator(tcx, input).map(|enc| enc.debug_string()).unwrap_or_default()
 }
 
 // Clang disc type.
@@ -454,6 +473,9 @@ enum ClangDiscTy<'tcx> {
     // - raw pointers (`*const T`, `*mut T`)
     // - Rust references (`&T`, `&mut T`)
     // - function pointers
+    // - `Box<T, Global>` (canonicalized to a raw pointer)
+    // - `NonNull<T>` (canonicalized through its transparent representation)
+    // - DST pointer-like types (`dyn Trait`, slices, `str`)
     // All collapse to a single Clang-compatible 'P' node.
     Pointer,
 
@@ -471,39 +493,59 @@ enum ClangDiscTy<'tcx> {
     Void,
 }
 
-// Canonicalize types that are ABI-compatible with C's nullable pointer
-// convention, so the rest of this encoder can treat them like the corresponding
-// plain pointer type.
-//
-// Rust guarantees the null-pointer optimization for references, function
-// pointers, Box, NonNull, and NonZero*. `Option<fn>` and `Option<&T>` are
-// therefore unwrapped here. `Option<*mut T>` and `Option<*const T>` are
-// deliberately left unchanged: raw pointers are not covered by the NPO
-// guarantee and are handled by the general `Adt` arm in `to_clang_disc_ty`.
-//
-// Also peels `repr(transparent)` wrappers to canonicalize them to their
-// underlying type.
-fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+/// Canonicalizes Rust types that have the same ABI representation as a simpler
+/// C-compatible type for discriminator purposes.
+///
+/// This is intentionally representation-based rather than purely semantic:
+/// types that have the same ABI representation are lowered to the same
+/// discriminator type. This includes:
+/// - pattern types, which are transparent with respect to representation;
+/// - `Box<T, Global>`, which is represented as a thin pointer;
+/// - size-0, alignment-1 types, which are represented like `()`;
+/// - `repr(transparent)` wrappers, which are represented like their non-ZST
+///   field;
+/// - two-variant niche enums, which are represented like their payload field.
+///
+/// The canonicalization is repeated until reaching a fixed point because one
+/// transformation can expose another canonicalization opportunity.
+fn canonicalize_abi_compatible_type<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+
     loop {
         let before = ty;
 
-        if let ty::Adt(def, args) = ty.kind()
-            && tcx.is_diagnostic_item(sym::Option, def.did())
-        {
-            let inner = args.type_at(0);
-            if let ty::FnPtr(..) | ty::Ref(..) = inner.kind() {
-                ty = inner;
+        if let ty::Pat(base, _) = ty.kind() {
+            ty = *base;
+        }
+
+        if ty.is_box_global(tcx) {
+            ty = Ty::new_imm_ptr(
+                tcx,
+                ty.boxed_ty().expect("is_box_global() returned true, so this must be a Box"),
+            );
+        }
+
+        if let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) {
+            if layout.is_zst() && layout.align.abi.bytes() == 1 {
+                ty = tcx.types.unit;
+            } else if matches!(ty.kind(), ty::Adt(..)) {
+                let cx = LayoutCx::new(tcx, typing_env);
+                ty = layout.peel_transparent_wrappers(&cx).ty;
             }
         }
 
-        // Only ADTs can be repr(transparent); skip the layout query entirely
-        // for everything else.
-        if matches!(ty.kind(), ty::Adt(..)) {
-            let typing_env = ty::TypingEnv::fully_monomorphized();
-
-            if let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) {
-                let cx = LayoutCx::new(tcx, typing_env);
-                ty = layout.peel_transparent_wrappers(&cx).ty;
+        if let ty::Adt(def, args) = ty.kind()
+            && def.is_enum()
+            && def.variants().len() == 2
+            && let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty))
+            && let Variants::Multiple {
+                tag_encoding: TagEncoding::Niche { untagged_variant, .. },
+                ..
+            } = layout.variants
+        {
+            let variant = def.variant(untagged_variant);
+            if let [field] = &variant.fields.raw[..] {
+                ty = tcx.normalize_erasing_regions(typing_env, field.ty(tcx, args));
             }
         }
 
@@ -533,7 +575,7 @@ fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -> Ty<'tcx> {
 ///   `_Complex` types.
 /// This must remain in sync with Clang's `encodeTypeForFunctionPointerAuth`.
 fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> {
-    let ty = canonicalize_c_type(tcx, ty);
+    let ty = canonicalize_abi_compatible_type(tcx, ty);
     match ty.kind() {
         // C void / Rust ()
         _ if ty.is_unit() => ClangDiscTy::Void,
@@ -545,7 +587,8 @@ fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> 
         ty::Int(_) | ty::Uint(_) => ClangDiscTy::Int,
         ty::Float(f) => ClangDiscTy::Float(f),
 
-        // everything pointer-like collapses
+        // Pointer-like types form a discriminator boundary: the pointee type
+        // does not participate in the encoding.
         ty::RawPtr(..) | ty::Ref(..) | ty::FnPtr(..) | ty::Dynamic(..) | ty::Slice(_) | ty::Str => {
             ClangDiscTy::Pointer
         }
@@ -610,6 +653,10 @@ impl PtrauthEncoder {
 
     fn finish(&self) -> u16 {
         llvm_pointer_auth_stable_siphash(&self.buf)
+    }
+
+    fn debug_string(&self) -> String {
+        String::from_utf8_lossy(&self.buf).into_owned()
     }
 }
 
