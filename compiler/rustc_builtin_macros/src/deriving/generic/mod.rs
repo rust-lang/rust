@@ -462,14 +462,30 @@ impl<'a> TraitDef<'a> {
         push: &mut dyn FnMut(Box<ast::Item>),
         from_scratch: bool,
     ) {
+        let span = self.span;
         let is_packed = matches!(
             AttributeParser::parse_limited_sym(cx.sess, &item.attrs, &[sym::repr]),
             Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
         );
 
         let mut newitem = match &item.kind {
-            ast::ItemKind::Struct(ident, generics, struct_def) => {
-                self.expand_struct_def(cx, struct_def, *ident, generics, from_scratch, is_packed)
+            ast::ItemKind::Union(..) if !self.supports_unions => {
+                cx.dcx().emit_err(diagnostics::DeriveUnion { span });
+                return;
+            }
+            ast::ItemKind::Struct(ident, generics, struct_def)
+            | ast::ItemKind::Union(ident, generics, struct_def) => {
+                let fields = struct_def.fields().iter();
+                let methods = self.methods.iter().filter_map(|method_def| {
+                    let body = if from_scratch || method_def.is_static() {
+                        method_def.call_substructure_method(cx, span, StaticStruct(struct_def))
+                    } else {
+                        method_def.expand_struct_method_body(cx, span, struct_def, is_packed)
+                    };
+
+                    method_def.create_method(cx, span, body)
+                });
+                self.create_derived_impl(cx, *ident, generics, fields, methods, is_packed)
             }
             ast::ItemKind::Enum(ident, generics, enum_def) => {
                 // We can skip generating the impl here, because `repr(packed)`
@@ -479,22 +495,17 @@ impl<'a> TraitDef<'a> {
                 if is_packed {
                     return;
                 }
-                self.expand_enum_def(cx, enum_def, *ident, generics, from_scratch)
-            }
-            ast::ItemKind::Union(ident, generics, struct_def) => {
-                if self.supports_unions {
-                    self.expand_struct_def(
-                        cx,
-                        struct_def,
-                        *ident,
-                        generics,
-                        from_scratch,
-                        is_packed,
-                    )
-                } else {
-                    cx.dcx().emit_err(diagnostics::DeriveUnion { span: self.span });
-                    return;
-                }
+                let fields = enum_def.variants.iter().flat_map(|variant| variant.data.fields());
+                let methods = self.methods.iter().filter_map(|method_def| {
+                    let body = if from_scratch || method_def.is_static() {
+                        method_def.call_substructure_method(cx, span, StaticEnum(enum_def))
+                    } else {
+                        method_def.expand_enum_method_body(cx, span, enum_def, *ident)
+                    };
+
+                    method_def.create_method(cx, span, body)
+                });
+                self.create_derived_impl(cx, *ident, generics, fields, methods, is_packed)
             }
             _ => unreachable!(),
         };
@@ -558,7 +569,7 @@ impl<'a> TraitDef<'a> {
         cx: &ExtCtxt<'_>,
         type_ident: Ident,
         generics: &Generics,
-        field_tys: impl Iterator<Item = &'a ast::Ty>,
+        fields: impl Iterator<Item = &'a ast::FieldDef>,
         methods: impl Iterator<Item = Box<ast::AssocItem>>,
         is_packed: bool,
     ) -> Box<ast::Item> {
@@ -666,8 +677,8 @@ impl<'a> TraitDef<'a> {
             .collect();
 
         if !ty_param_names.is_empty() {
-            for field_ty in field_tys {
-                let field_ty_params = find_type_parameters(field_ty, &ty_param_names, cx);
+            for field in fields {
+                let field_ty_params = find_type_parameters(&field.ty, &ty_param_names, cx);
 
                 for field_ty_param in field_ty_params {
                     // if we have already handled this type, skip it
@@ -801,59 +812,6 @@ impl<'a> TraitDef<'a> {
                 items: methods.chain(associated_types).collect(),
             }),
         )
-    }
-
-    fn expand_struct_def(
-        &self,
-        cx: &ExtCtxt<'_>,
-        struct_def: &'a VariantData,
-        type_ident: Ident,
-        generics: &Generics,
-        from_scratch: bool,
-        is_packed: bool,
-    ) -> Box<ast::Item> {
-        let span = self.span;
-        let field_tys = struct_def.fields().iter().map(|field| &*field.ty);
-
-        let methods = self.methods.iter().filter_map(|method_def| {
-            let body = if from_scratch || method_def.is_static() {
-                method_def.call_substructure_method(cx, span, StaticStruct(struct_def))
-            } else {
-                method_def.expand_struct_method_body(cx, span, struct_def, is_packed)
-            };
-
-            method_def.create_method(cx, span, body)
-        });
-
-        self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
-    }
-
-    fn expand_enum_def(
-        &self,
-        cx: &ExtCtxt<'_>,
-        enum_def: &'a EnumDef,
-        type_ident: Ident,
-        generics: &Generics,
-        from_scratch: bool,
-    ) -> Box<ast::Item> {
-        let field_tys = enum_def
-            .variants
-            .iter()
-            .flat_map(|variant| variant.data.fields())
-            .map(|field| &*field.ty);
-
-        let methods = self.methods.iter().filter_map(|method_def| {
-            let body = if from_scratch || method_def.is_static() {
-                method_def.call_substructure_method(cx, self.span, StaticEnum(enum_def))
-            } else {
-                method_def.expand_enum_method_body(cx, self.span, enum_def, type_ident)
-            };
-
-            method_def.create_method(cx, self.span, body)
-        });
-
-        let is_packed = false; // enums are never packed
-        self.create_derived_impl(cx, type_ident, generics, field_tys, methods, is_packed)
     }
 }
 
