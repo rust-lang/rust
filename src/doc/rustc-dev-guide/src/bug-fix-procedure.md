@@ -96,9 +96,7 @@ declare_lint! {
     pub YOUR_LINT_HERE,
     Warn,
     "illegal use of foo bar baz"
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #1234) // your tracking issue here!
-    },
+    @future_incompatible = future_release_error(1234); // your tracking issue here!
 }
 
 // 2. Add a dedicated lint pass for it.
@@ -230,9 +228,7 @@ declare_lint! {
     pub OVERLAPPING_INHERENT_IMPLS,
     Deny, // this may also say Warning
     "two overlapping inherent impls define an item with the same name were erroneously allowed",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #1234), // your tracking issue here!
-    },
+    @future_incompatible = future_release_error(1234); // your tracking issue here!
 }
 ```
 

@@ -726,9 +726,7 @@ declare_lint! {
     pub ANONYMOUS_PARAMETERS,
     Allow,
     "detects anonymous parameters",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2018 "slug-of-edition-guide-page")
-    };
+    @future_incompatible = edition_error(2018, "slug-of-edition-guide-page");
 }
 ```
 

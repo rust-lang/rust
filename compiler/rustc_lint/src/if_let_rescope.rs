@@ -5,7 +5,7 @@ use hir::intravisit::{self, Visitor};
 use rustc_ast::Recovered;
 use rustc_errors::{Applicability, Diag, Subdiagnostic, SuggestionStyle, msg};
 use rustc_hir::{self as hir, HirIdSet};
-use rustc_lint_defs::{LintId, declare_lint, fcw, impl_lint_pass};
+use rustc_lint_defs::{LintId, declare_lint, impl_lint_pass};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::significant_drop_order::{
@@ -83,9 +83,7 @@ declare_lint! {
     Allow,
     "`if let` assigns a shorter lifetime to temporary values being pattern-matched against in Edition 2024 and \
     rewriting in `match` is an option to preserve the semantics up to Edition 2021",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionSemanticsChange 2024 "temporary-if-let-scope"),
-    };
+    @future_incompatible = edition_semantics_change(2024, "temporary-if-let-scope");
 }
 
 /// Lint for potential change in program semantics of `if let`s

@@ -1,7 +1,7 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, Stmt};
-use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
+use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty::{Mutability, TyKind};
 use rustc_span::{BytePos, Span};
 
@@ -51,10 +51,7 @@ declare_lint! {
     pub STATIC_MUT_REFS,
     Warn,
     "creating a shared reference to mutable static",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2024 "static-mut-references"),
-        explain_reason: false,
-    };
+    @future_incompatible = edition_error(2024, "static-mut-references").dont_explain_reason();
     @edition Edition2024 => Deny;
 }
 

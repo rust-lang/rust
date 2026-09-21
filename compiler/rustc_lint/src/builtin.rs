@@ -32,7 +32,7 @@ use rustc_hir::intravisit::FnKind as HirFnKind;
 use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin};
 // Lints from rustc_lint_defs
 pub use rustc_lint_defs::builtin::*;
-use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw, impl_lint_pass};
+use rustc_lint_defs::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -702,9 +702,7 @@ declare_lint! {
     pub ANONYMOUS_PARAMETERS,
     Warn,
     "detects anonymous parameters",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2018 "trait-fn-parameters"),
-    };
+    @future_incompatible = edition_error(2018, "trait-fn-parameters");
 }
 
 declare_lint_pass!(
@@ -1553,9 +1551,7 @@ declare_lint! {
     pub ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
     Warn,
     "`...` range patterns are deprecated",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2021 "warnings-promoted-to-error"),
-    };
+    @future_incompatible = edition_error(2021, "warnings-promoted-to-error");
 }
 
 #[derive(Default)]
@@ -1688,9 +1684,7 @@ declare_lint! {
     pub KEYWORD_IDENTS_2018,
     Allow,
     "detects edition keywords being used as an identifier",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2018 "new-keywords"),
-    };
+    @future_incompatible = edition_error(2018, "new-keywords");
 }
 
 declare_lint! {
@@ -1732,9 +1726,7 @@ declare_lint! {
     pub KEYWORD_IDENTS_2024,
     Allow,
     "detects edition keywords being used as an identifier",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(EditionError 2024 "gen-keyword"),
-    };
+    @future_incompatible = edition_error(2024, "gen-keyword");
 }
 
 declare_lint_pass!(
@@ -3151,10 +3143,7 @@ declare_lint! {
     pub INTERNAL_EQ_TRAIT_METHOD_IMPLS,
     Warn,
     "manual implementation of the internal `Eq::assert_receiver_is_total_eq` method",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #152336),
-        report_in_deps: false,
-    };
+    @future_incompatible = future_release_error(152336).report_in_deps(false);
 }
 
 declare_lint_pass!(InternalEqTraitMethodImpls => [INTERNAL_EQ_TRAIT_METHOD_IMPLS]);

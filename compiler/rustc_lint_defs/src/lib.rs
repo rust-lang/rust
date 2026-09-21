@@ -447,7 +447,77 @@ pub enum FutureIncompatibilityReason {
     Unreachable,
 }
 
+/// Constructs [`FutureIncompatibilityReason::FutureReleaseError`]; see it's documentation for more
+/// information.
+pub const fn future_release_error(issue_number: usize) -> FutureIncompatibleInfo {
+    FutureIncompatibleInfo::new(FutureIncompatibilityReason::FutureReleaseError(ReleaseFcw {
+        issue_number,
+    }))
+}
+
+/// Constructs [`FutureIncompatibilityReason::FutureReleaseSemanticsChange`]; see it's documentation for more
+/// information.
+pub const fn future_release_semantics_change(issue_number: usize) -> FutureIncompatibleInfo {
+    FutureIncompatibleInfo::new(FutureIncompatibilityReason::FutureReleaseSemanticsChange(
+        ReleaseFcw { issue_number },
+    ))
+}
+
+/// Constructs [`FutureIncompatibilityReason::EditionError`]; see it's documentation for more
+/// information.
+pub const fn edition_error(edition: u16, page_slug: &'static str) -> FutureIncompatibleInfo {
+    FutureIncompatibleInfo::new(FutureIncompatibilityReason::EditionError(EditionFcw {
+        edition: edition_from_u16(edition),
+        page_slug,
+    }))
+}
+
+/// Constructs [`FutureIncompatibilityReason::EditionSemanticsChange`]; see it's documentation for more
+/// information.
+pub const fn edition_semantics_change(
+    edition: u16,
+    page_slug: &'static str,
+) -> FutureIncompatibleInfo {
+    FutureIncompatibleInfo::new(FutureIncompatibilityReason::EditionSemanticsChange(EditionFcw {
+        edition: edition_from_u16(edition),
+        page_slug,
+    }))
+}
+
+pub const fn custom_future_incompatible(
+    message: &'static str,
+    issue_number: usize,
+) -> FutureIncompatibleInfo {
+    FutureIncompatibleInfo::new(FutureIncompatibilityReason::Custom(
+        message,
+        ReleaseFcw { issue_number },
+    ))
+}
+
+const fn edition_from_u16(x: u16) -> Edition {
+    match x {
+        2015 => Edition::Edition2015,
+        2018 => Edition::Edition2018,
+        2021 => Edition::Edition2021,
+        2024 => Edition::Edition2024,
+        _ => panic!("invalid edition number"),
+    }
+}
+
 impl FutureIncompatibleInfo {
+    const fn new(reason: FutureIncompatibilityReason) -> Self {
+        FutureIncompatibleInfo { reason, explain_reason: true, report_in_deps: false }
+    }
+
+    /// Sets [`Self::explain_reason`] to false.
+    pub const fn dont_explain_reason(self) -> Self {
+        Self { explain_reason: false, ..self }
+    }
+
+    pub const fn report_in_deps(self, b: bool) -> Self {
+        Self { report_in_deps: b, ..self }
+    }
+
     pub const fn default_fields_for_macro() -> Self {
         FutureIncompatibleInfo {
             reason: FutureIncompatibilityReason::Unreachable,
@@ -702,30 +772,28 @@ macro_rules! declare_lint {
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
      $(@eval_always = $eval_always:literal)?
      $(@feature_gate = $gate:ident;)?
-     $(@future_incompatible = FutureIncompatibleInfo {
-        reason: $reason:expr,
-        $($field:ident : $val:expr),* $(,)*
-     }; )?
+     $(@future_incompatible = $future_incompatible:expr;)?
      $(@edition $lint_edition:ident => $edition_level:ident;)?
      $(@msrv = $msrv:literal;)?
      $($v:ident),*) => (
         $(#[$attr])*
-        $vis static $NAME: &$crate::Lint = &$crate::Lint {
-            name: stringify!($NAME),
-            default_level: $crate::$Level,
-            desc: $desc,
-            is_externally_loaded: false,
-            $($v: true,)*
-            $(feature_gate: Some(rustc_span::sym::$gate),)?
-            $(future_incompatible: Some($crate::FutureIncompatibleInfo {
-                reason: $reason,
-                $($field: $val,)*
-                ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
-            }),)?
-            $(edition_lint_opts: Some((::rustc_span::edition::Edition::$lint_edition, $crate::$edition_level)),)?
-            $(eval_always: $eval_always,)?
-            $(rust_version: Some($crate::Lint::parse_rust_version($msrv)),)?
-            ..$crate::Lint::default_fields_for_macro()
+        $vis static $NAME: &$crate::Lint = {
+            #[allow(unused_imports)]
+            use $crate::{future_release_error, future_release_semantics_change, edition_error, edition_semantics_change};
+
+            &$crate::Lint {
+                name: stringify!($NAME),
+                default_level: $crate::$Level,
+                desc: $desc,
+                is_externally_loaded: false,
+                $($v: true,)*
+                $(feature_gate: Some(rustc_span::sym::$gate),)?
+                $(future_incompatible: Some($future_incompatible),)?
+                $(edition_lint_opts: Some((::rustc_span::edition::Edition::$lint_edition, $crate::$edition_level)),)?
+                $(eval_always: $eval_always,)?
+                $(rust_version: Some($crate::Lint::parse_rust_version($msrv)),)?
+                ..$crate::Lint::default_fields_for_macro()
+            }
         };
     );
 }
@@ -799,56 +867,5 @@ macro_rules! declare_lint_pass {
     ($(#[$m:meta])* $name:ident => [$($lint:expr),* $(,)?]) => {
         $(#[$m])* #[derive(Copy, Clone)] pub struct $name;
         $crate::impl_lint_pass!($name => [$($lint),*]);
-    };
-}
-
-/// Helper macro to create [`FutureIncompatibilityReason`].
-#[macro_export]
-macro_rules! fcw {
-    (FutureReleaseError # $issue_number: literal) => {
-       $crate:: FutureIncompatibilityReason::FutureReleaseError($crate::ReleaseFcw { issue_number: $issue_number })
-    };
-    (FutureReleaseSemanticsChange # $issue_number: literal) => {
-        $crate::FutureIncompatibilityReason::FutureReleaseSemanticsChange($crate::ReleaseFcw {
-            issue_number: $issue_number,
-        })
-    };
-    ($description: literal # $issue_number: literal) => {
-        $crate::FutureIncompatibilityReason::Custom($description, $crate::ReleaseFcw {
-            issue_number: $issue_number,
-        })
-    };
-    (EditionError $edition_name: tt $page_slug: literal) => {
-        $crate::FutureIncompatibilityReason::EditionError($crate::EditionFcw {
-            edition: fcw!(@edition $edition_name),
-            page_slug: $page_slug,
-        })
-    };
-    (EditionSemanticsChange $edition_name: tt $page_slug: literal) => {
-        $crate::FutureIncompatibilityReason::EditionSemanticsChange($crate::EditionFcw {
-            edition: fcw!(@edition $edition_name),
-            page_slug: $page_slug,
-        })
-    };
-    (EditionAndFutureReleaseSemanticsChange $edition_name: tt $page_slug: literal) => {
-        $crate::FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange($crate::EditionFcw {
-            edition: fcw!(@edition $edition_name),
-            page_slug: $page_slug,
-        })
-    };
-    (EditionAndFutureReleaseError $edition_name: tt $page_slug: literal) => {
-        $crate::FutureIncompatibilityReason::EditionAndFutureReleaseError($crate::EditionFcw {
-            edition: fcw!(@edition $edition_name),
-            page_slug: $page_slug,
-        })
-    };
-    (@edition 2024) => {
-        rustc_span::edition::Edition::Edition2024
-    };
-    (@edition 2021) => {
-        rustc_span::edition::Edition::Edition2021
-    };
-    (@edition 2018) => {
-        rustc_span::edition::Edition::Edition2018
     };
 }
