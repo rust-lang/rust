@@ -955,7 +955,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             let msg_lifetimes =
                 format!("remove the lifetime argument{s}", s = pluralize!(num_redundant_lt_args));
 
-            err.span_suggestion(
+            err.span_suggestion_short(
                 span_redundant_lt_args,
                 msg_lifetimes,
                 "",
@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 s = pluralize!(num_redundant_gen_args),
             );
 
-            err.span_suggestion(
+            err.span_suggestion_short(
                 span_redundant_type_or_const_args,
                 msg_types_or_consts,
                 "",
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 // no code, which would trigger an `assert!` later. Ideally, we would do something a
                 // bit more principled. See closed PR #109082.
             } else {
-                err.span_suggestion(span, msg, "", Applicability::MaybeIncorrect);
+                err.span_suggestion_short(span, msg, "", Applicability::MaybeIncorrect);
             }
         } else if redundant_lifetime_args && redundant_type_or_const_args {
             remove_lifetime_args(err);
