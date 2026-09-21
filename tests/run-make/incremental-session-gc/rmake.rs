@@ -33,11 +33,9 @@ fn main() {
     );
 
     compile();
-    let sessions = shallow_find_directories(crate_dir, |_| true);
-    assert_eq!(sessions.len(), 2, "{sessions:?}");
-    assert!(sessions.contains(&newer));
-    let current = sessions.into_iter().find(|session| *session != newer).unwrap();
-    assert!(!current.file_name().unwrap().to_str().unwrap().ends_with("-working"));
+    let current = session_dir();
+    assert_ne!(previous, newer);
+    assert!(!newer.exists(), "superseded session was not collected: {previous:?}");
     assert_eq!(rfs::read_to_string(current.join("sentinel")), "previous session");
 }
 

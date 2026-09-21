@@ -1844,11 +1844,7 @@ pub struct IncrCompSession {
     /// The directory containing all cached data. Cached data from a previous
     /// session can be read out of it and new data for the current session will
     /// be written into it.
-    pub session_directory: PathBuf,
-    /// `_lock_file` is never directly used, but its presence
-    /// alone has an effect, because the file will unlock when the session is
-    /// dropped.
-    pub _lock_file: flock::Lock,
+    pub session_directory: flock::LockedDir,
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
