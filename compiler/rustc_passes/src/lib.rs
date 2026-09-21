@@ -28,6 +28,7 @@ pub mod input_stats;
 mod lang_items;
 pub mod layout_test;
 mod lib_features;
+pub mod ptrauth_test;
 mod reachable;
 pub mod stability;
 mod upvars;
