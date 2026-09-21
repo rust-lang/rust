@@ -21,6 +21,11 @@
 //@ lldb-check:[...] strong=11, weak=1 { value = 111 }
 //@ lldb-command:v arc
 //@ lldb-check:[...] strong=21, weak=1 { data = 222 }
+//@ lldb-command:continue
+//@ lldb-command:v rc_u64
+//@ lldb-check:[...] rc_u64 = strong=1, weak=0 { value = 10 }
+//@ lldb-command:v rc_usize
+//@ lldb-check:[...] rc_usize = strong=1, weak=0 { value = 20 }
 
 // === CDB TESTS ==================================================================================
 
@@ -130,6 +135,11 @@ fn main() {
     let slice_arc: Arc<[u32]> = Arc::from(vec![4, 5, 6]);
     inc_ref_count(&slice_arc, 60);
     let slice_arc_weak = Arc::downgrade(&slice_arc);
+
+    zzz(); // #break
+
+    let rc_u64 = Rc::new(10u64);
+    let rc_usize = Rc::new(20usize);
 
     zzz(); // #break
 }

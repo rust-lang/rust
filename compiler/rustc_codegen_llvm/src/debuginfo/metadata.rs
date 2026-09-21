@@ -6,6 +6,7 @@ use std::{assert_matches, iter, ptr};
 
 use libc::{c_longlong, c_uint};
 use rustc_abi::{Align, Layout, NumScalableVectors, Size};
+use rustc_ast::{IntTy, UintTy};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -793,9 +794,50 @@ fn build_basic_type_di_node<'ll, 'tcx>(
         _ => bug!("debuginfo::build_basic_type_di_node - `t` is invalid type"),
     };
 
-    let ty_di_node = create_basic_type(cx, name, cx.size_of(t), encoding);
+    // Around LLDB 21 or 22, LLDB started using prebuilt Clang type nodes for primitives rather than
+    // reading the full DWARF data. These nodes are based on the size and signedness of the
+    // primitive, and ignore pretty much all other fields. This causes 2 issues:
+    // 1. type names get normalized to C-style names which isn't ideal. The normalization occurs
+    // even in generic args.
+    // 2. if you have a generic type `S<T>`, and 2 instantiations are `S<u64>`
+    // and `S<usize>` (on a 64-bit target), the use of prebuilt nodes causes a name collision.
+    // Whichever instantiation is interacted with first will work fine, all others will break a
+    // bunch of stuff in the LLDB pipeline. To avoid this, we explicitly treat `usize` and `isize`
+    // as typedefs of their equivalent types. For more info see: llvm/llvm-project#196812
 
-    if !cpp_like_debuginfo {
+    let mut needs_typedef = cpp_like_debuginfo;
+
+    let ty_di_node = match t.kind() {
+        ty::Uint(UintTy::Usize) => {
+            needs_typedef = true;
+
+            let equivalent = match t.primitive_size(cx.tcx).bits() {
+                8 => cx.tcx.types.u8,
+                16 => cx.tcx.types.u16,
+                32 => cx.tcx.types.u32,
+                64 => cx.tcx.types.u64,
+                128 => cx.tcx.types.u128,
+                x => bug!("Unexpected signed int size {x}"),
+            };
+            type_di_node(cx, equivalent)
+        }
+        ty::Int(IntTy::Isize) => {
+            needs_typedef = true;
+
+            let equivalent = match t.primitive_size(cx.tcx).bits() {
+                8 => cx.tcx.types.i8,
+                16 => cx.tcx.types.i16,
+                32 => cx.tcx.types.i32,
+                64 => cx.tcx.types.i64,
+                128 => cx.tcx.types.i128,
+                x => bug!("Unexpected signed int size: {x}"),
+            };
+            type_di_node(cx, equivalent)
+        }
+        _ => create_basic_type(cx, name, cx.size_of(t), encoding),
+    };
+
+    if !needs_typedef {
         return DINodeCreationResult::new(ty_di_node, false);
     }
 

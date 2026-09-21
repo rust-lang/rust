@@ -1,7 +1,7 @@
 {
  "bless_metadata": {
   "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
-  "debugger_version": "lldb version 22.1.2 (https://github.com/llvm/llvm-project revision 1ab49a973e210e97d61e5db6557180dcb92c3e98)\n  clang revision 1ab49a973e210e97d61e5db6557180dcb92c3e98\n  llvm revision 1ab49a973e210e97d61e5db6557180dcb92c3e98",
+  "debugger_version": "lldb version 22.1.8 (https://github.com/llvm/llvm-project revision ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)\n  clang revision ca7933e47d3a3451d81e72ac174dcb5aa28b59d1\n  llvm revision ca7933e47d3a3451d81e72ac174dcb5aa28b59d1",
   "feature_flags": "LLDBFeature.StaticFields|TypeRecognizers|Float128"
  },
  "breakpoints": [
@@ -173,7 +173,7 @@
     },
     {
      "name": "length",
-     "type": "unsigned long long",
+     "type": "usize",
      "offset": 8
     }
    ]
@@ -182,9 +182,9 @@
    "size": 8,
    "type_class": 4096
   },
-  "unsigned long long": {
+  "usize": {
    "size": 8,
-   "type_class": 4,
+   "type_class": 32768,
    "basic_type": 18
   },
   "int": {
@@ -203,7 +203,7 @@
     },
     {
      "name": "len",
-     "type": "unsigned long long",
+     "type": "usize",
      "offset": 16
     }
    ],
@@ -311,7 +311,7 @@
    "fields": [
     {
      "name": "__0",
-     "type": "unsigned long long",
+     "type": "usize",
      "offset": 0
     }
    ]
@@ -327,6 +327,11 @@
     "unsigned long long"
    ]
   },
+  "unsigned long long": {
+   "size": 8,
+   "type_class": 4,
+   "basic_type": 18
+  },
   "&str": {
    "size": 16,
    "type_class": 16384,
@@ -338,7 +343,7 @@
     },
     {
      "name": "length",
-     "type": "unsigned long long",
+     "type": "usize",
      "offset": 8
     }
    ]
@@ -365,7 +370,7 @@
     },
     {
      "name": "len",
-     "type": "unsigned long long",
+     "type": "usize",
      "offset": 16
     }
    ],

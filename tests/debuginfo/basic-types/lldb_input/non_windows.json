@@ -12,7 +12,7 @@
     "value": false
    },
    "i": {
-    "type": "long",
+    "type": "isize",
     "pretty_print": "-1",
     "value": -1
    },
@@ -43,7 +43,7 @@
     "value": -64
    },
    "u": {
-    "type": "unsigned long",
+    "type": "usize",
     "pretty_print": "1",
     "value": 1
    },
