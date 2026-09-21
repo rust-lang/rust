@@ -1,6 +1,8 @@
 use rustc_data_structures::owned_slice::OwnedSlice;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::def_path_hash_map::{Config as HashMapConfig, DefPathHashMap};
+use rustc_data_structures::sorted_map::SortedMap;
+use rustc_hashes::Hash64;
+use rustc_hir::def_path_hash_map::Config as HashMapConfig;
+use rustc_hir::definitions::DefPathToIndexMap;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::def_id::{DefIndex, DefPathHash};
 
@@ -8,8 +10,8 @@ use crate::rmeta::EncodeContext;
 use crate::rmeta::decoder::BlobDecodeContext;
 
 pub(crate) enum DefPathHashMapRef<'tcx> {
-    OwnedFromMetadata(odht::HashTable<HashMapConfig, OwnedSlice>),
-    BorrowedFromTcx(&'tcx DefPathHashMap),
+    OwnedFromMetadata(odht::HashTable<HashMapConfig, OwnedSlice>, SortedMap<Hash64, DefIndex>),
+    BorrowedFromTcx(&'tcx DefPathToIndexMap),
 }
 
 impl DefPathHashMapRef<'_> {
@@ -18,8 +20,14 @@ impl DefPathHashMapRef<'_> {
         &self,
         def_path_hash: &DefPathHash,
     ) -> Option<DefIndex> {
-        match *self {
-            DefPathHashMapRef::OwnedFromMetadata(ref map) => map.get(&def_path_hash.local_hash()),
+        match self {
+            DefPathHashMapRef::OwnedFromMetadata(det_map, non_det_map) => {
+                let hash = &def_path_hash.local_hash();
+                match det_map.get(hash) {
+                    Some(index) => Some(index),
+                    None => non_det_map.get(hash).copied(),
+                }
+            }
             DefPathHashMapRef::BorrowedFromTcx(_) => {
                 panic!("DefPathHashMap::BorrowedFromTcx variant only exists for serialization")
             }
@@ -30,26 +38,15 @@ impl DefPathHashMapRef<'_> {
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefPathHashMapRef<'tcx> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
         match *self {
-            DefPathHashMapRef::BorrowedFromTcx(def_path_hash_map) => {
-                let mut map = def_path_hash_map.clone();
-
-                let definitions = e.tcx.definitions();
-
-                #[allow(rustc::potential_query_instability)]
-                for (orig, remap) in &e.def_indexes_remapping {
-                    map.insert(
-                        &definitions
-                            .def_path_hash(LocalDefId { local_def_index: *orig })
-                            .local_hash(),
-                        remap,
-                    );
-                }
-
-                let bytes = map.raw_bytes();
+            DefPathHashMapRef::BorrowedFromTcx(map) => {
+                let bytes = map.det_part.raw_bytes();
                 e.emit_usize(bytes.len());
                 e.emit_raw_bytes(bytes);
+
+                #[allow(rustc::potential_query_instability)]
+                map.non_det_part.range(..).encode(e);
             }
-            DefPathHashMapRef::OwnedFromMetadata(_) => {
+            DefPathHashMapRef::OwnedFromMetadata(..) => {
                 panic!("DefPathHashMap::OwnedFromMetadata variant only exists for deserialization")
             }
         }
@@ -70,6 +67,10 @@ impl<'a> Decodable<BlobDecodeContext<'a>> for DefPathHashMapRef<'static> {
         let inner = odht::HashTable::from_raw_bytes(o).unwrap_or_else(|e| {
             panic!("decode error: {e}");
         });
-        DefPathHashMapRef::OwnedFromMetadata(inner)
+
+        let elements = Vec::<(Hash64, DefIndex)>::decode(d);
+        let non_det_map = SortedMap::from_presorted_elements(elements);
+
+        DefPathHashMapRef::OwnedFromMetadata(inner, non_det_map)
     }
 }
