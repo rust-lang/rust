@@ -33,7 +33,9 @@ use rustc_index::{Idx, IndexVec};
 use rustc_infer::traits::TraitErrors;
 use rustc_lint_defs::builtin::MUST_NOT_SUSPEND;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, CoroutineArgs, CoroutineArgsExt, Ty, TyCtxt, TypingMode};
+use rustc_middle::ty::{
+    self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, Ty, TyCtxt, TypingMode,
+};
 use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
     always_storage_live_locals,
@@ -329,8 +331,9 @@ impl StorageConflictVisitor<'_> {
     }
 }
 
-#[tracing::instrument(level = "trace", skip(liveness, body))]
+#[tracing::instrument(level = "trace", skip(tcx, liveness, body))]
 pub(super) fn compute_layout<'tcx>(
+    tcx: TyCtxt<'tcx>,
     liveness: LivenessInfo,
     body: &Body<'tcx>,
 ) -> (
@@ -371,7 +374,7 @@ pub(super) fn compute_layout<'tcx>(
             };
 
             CoroutineSavedTy {
-                ty: decl.ty,
+                ty: EarlyBinder::bind(tcx, decl.ty),
                 source_info: decl.source_info,
                 ignore_for_traits,
                 // Will be set later when walking debuginfo.
@@ -414,7 +417,11 @@ pub(super) fn compute_layout<'tcx>(
             // just use the first one here. That's fine; fields do not move
             // around inside coroutines, so it doesn't matter which variant
             // index we access them by.
-            remap[reverse_local_map[saved_local]] = Some((tys[saved_local].ty, variant_index, idx));
+            remap[reverse_local_map[saved_local]] = Some((
+                tys[saved_local].ty.instantiate_identity().skip_norm_wip(),
+                variant_index,
+                idx,
+            ));
         }
         variant_source_info.push(source_info_at_suspension_point);
     }
@@ -467,7 +474,7 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     // Extract locals which are live across suspension point into `layout`
     // `remap` gives a mapping from local indices onto coroutine struct indices
     // `storage_liveness` tells us which locals have live storage at suspension points
-    let (_, coroutine_layout, _) = compute_layout(liveness_info, body);
+    let (_, coroutine_layout, _) = compute_layout(tcx, liveness_info, body);
 
     check_suspend_tys(tcx, &coroutine_layout, body);
     check_field_tys_sized(tcx, &coroutine_layout, def_id);
@@ -502,7 +509,7 @@ fn check_field_tys_sized<'tcx>(
                 ObligationCauseCode::SizedCoroutineInterior(def_id),
             ),
             param_env,
-            field_ty.ty,
+            field_ty.ty.instantiate_identity().skip_norm_wip(),
             tcx.require_lang_item(LangItem::Sized, field_ty.source_info.span),
         );
     }
@@ -525,14 +532,16 @@ fn check_suspend_tys<'tcx>(tcx: TyCtxt<'tcx>, layout: &CoroutineLayout<'tcx>, bo
             let decl = &layout.field_tys[local];
             debug!(?decl);
 
-            if !decl.ignore_for_traits && linted_tys.insert(decl.ty) {
+            let ty = decl.ty.instantiate_identity().skip_norm_wip();
+
+            if !decl.ignore_for_traits && linted_tys.insert(ty) {
                 let Some(hir_id) = decl.source_info.scope.lint_root(&body.source_scopes) else {
                     continue;
                 };
 
                 check_must_not_suspend_ty(
                     tcx,
-                    decl.ty,
+                    ty,
                     hir_id,
                     SuspendCheckData {
                         source_span: decl.source_info.span,
