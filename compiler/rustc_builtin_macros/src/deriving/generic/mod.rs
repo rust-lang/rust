@@ -294,7 +294,7 @@ pub(crate) enum Substructure<'a> {
     /// variants has any fields).
     AllFieldlessEnum(&'a ast::EnumDef),
 
-    /// Matching variants of the enum: variant index, ast::Variant,
+    /// Matching variants of the enum: ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
     /// variant.
     EnumMatching(&'a ast::Variant, Vec<FieldInfo>),
@@ -587,7 +587,6 @@ impl<'a> TraitDef<'a> {
         let mut where_clause = ast::WhereClause::default();
         where_clause.span = generics.where_clause.span;
         let ctxt = self.span.ctxt();
-        let span = generics.span.with_ctxt(ctxt);
 
         // Create the generic parameters
         let params: ThinVec<_> = generics
@@ -716,7 +715,7 @@ impl<'a> TraitDef<'a> {
             }
         }
 
-        let trait_generics = Generics { params, where_clause, span };
+        let trait_generics = Generics { params, where_clause, span: generics.span.with_ctxt(ctxt) };
 
         // Create the reference to the trait.
         let trait_ref = cx.trait_ref(self.path.clone());
@@ -741,8 +740,6 @@ impl<'a> TraitDef<'a> {
         let path =
             cx.path_all(type_ident.span.with_ctxt(ctxt), false, vec![type_ident], self_params);
         let self_type = cx.ty_path(path);
-        let rustc_const_unstable =
-            cx.path_ident(self.span, Ident::new(sym::rustc_const_unstable, self.span));
 
         let mut attrs = thin_vec![cx.attr_word(sym::automatically_derived, self.span),];
 
@@ -750,6 +747,9 @@ impl<'a> TraitDef<'a> {
         // Other crates don't need stability attributes, so adding them is not useful, but libcore needs them
         // on all const trait impls.
         if self.is_const && cx.ecfg.features.staged_api() {
+            let rustc_const_unstable =
+                cx.path_ident(self.span, Ident::new(sym::rustc_const_unstable, self.span));
+
             // #[rustc_const_unstable(feature = "derive_const", issue = "118304")]
             attrs.push(
                 cx.attr_nested(
@@ -1173,9 +1173,7 @@ impl<'a> MethodDef<'a> {
         let first_fieldless = variants.iter().find(|v| v.data.fields().is_empty());
         let default = match first_fieldless {
             Some(v) if unify_fieldless_variants => {
-                // We need a default case that handles all the fieldless
-                // variants. The index and actual variant aren't meaningful in
-                // this case, so just use dummy values.
+                // We need a default case that handles all the fieldless variants.
                 Some(
                     self.call_substructure_method(cx, trait_, EnumMatching(v, Vec::new()))
                         .into_expr(cx, span),
@@ -1183,7 +1181,7 @@ impl<'a> MethodDef<'a> {
             }
             _ if variants.len() > 1 && selflike_args.len() > 1 => {
                 // Because we know that all the arguments will match if we reach
-                // the match expression we add the unreachable intrinsics as the
+                // the match expression we add the unreachable intrinsic as the
                 // result of the default which should help llvm in optimizing it.
                 Some(deriving::call_unreachable(cx, span))
             }
@@ -1205,7 +1203,7 @@ impl<'a> MethodDef<'a> {
             let match_arg = if selflike_args.len() == 1 {
                 selflike_args.pop().unwrap()
             } else {
-                cx.expr(span, ast::ExprKind::Tup(selflike_args))
+                cx.expr_tuple(span, selflike_args)
             };
             cx.expr_match(span, match_arg, match_arms)
         };
@@ -1242,9 +1240,8 @@ impl<'a> TraitDef<'a> {
             .map(|prefix| {
                 let pieces_iter =
                     struct_def.fields().iter().enumerate().map(|(i, struct_field)| {
-                        let sp = struct_field.span.with_ctxt(self.span.ctxt());
                         let ident = self.mk_pattern_ident(prefix, i);
-                        let path = ident.with_span_pos(sp);
+                        let path = ident.with_span_pos(struct_field.span);
                         (struct_field.ident, cx.pat_ident(path.span, path))
                     });
 
@@ -1277,7 +1274,7 @@ impl<'a> TraitDef<'a> {
 
     fn create_fields<F>(&self, struct_def: &'a VariantData, mk_exprs: F) -> Vec<FieldInfo>
     where
-        F: Fn(usize, &ast::FieldDef, Span) -> Vec<Box<ast::Expr>>,
+        F: Fn(usize, &ast::FieldDef, Span) -> Vec<Box<Expr>>,
     {
         struct_def
             .fields()
