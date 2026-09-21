@@ -10,7 +10,7 @@ use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisit
 use rustc_span::{Span, Symbol};
 
 use super::{ConstValue, SourceInfo};
-use crate::ty::{self, CoroutineArgsExt, Ty};
+use crate::ty::{self, CoroutineArgsExt, EarlyBinder, Ty};
 
 rustc_index::newtype_index! {
     #[stable_hash]
@@ -22,7 +22,9 @@ rustc_index::newtype_index! {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[derive(TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub struct CoroutineSavedTy<'tcx> {
-    pub ty: Ty<'tcx>,
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub ty: EarlyBinder<'tcx, Ty<'tcx>>,
     /// Source info corresponding to the local in the original MIR body.
     pub source_info: SourceInfo,
     /// Whether the local should be ignored for trait bound computations.
