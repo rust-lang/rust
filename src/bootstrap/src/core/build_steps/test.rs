@@ -2202,26 +2202,20 @@ impl CommandLineStep for MirOpt {
 
         run(self.target);
 
-        // Run more targets with `--bless`. But we always run the host target first, since some
-        // tests use very specific `only` clauses that are not covered by the target set below.
-        if builder.config.cmd.bless() {
-            // All that we really need to do is cover all combinations of 32/64-bit and unwind/abort,
-            // but while we're at it we might as well flex our cross-compilation support. This
-            // selection covers all our tier 1 operating systems and architectures using only tier
-            // 1 targets.
+        // All that we really need to do is cover all combinations of 32/64-bit and unwind/abort,
+        // but while we're at it we might as well flex our cross-compilation support. This
+        // selection covers all our tier 1 operating systems and architectures using only tier
+        // 1 targets.
 
-            for target in ["aarch64-unknown-linux-gnu", "i686-pc-windows-msvc"] {
-                run(TargetSelection::from_user(target));
-            }
+        for target in ["aarch64-unknown-linux-gnu", "i686-pc-windows-msvc"] {
+            run(TargetSelection::from_user(target));
+        }
 
-            for target in ["x86_64-apple-darwin", "i686-unknown-linux-musl"] {
-                let target = TargetSelection::from_user(target);
-                let panic_abort_target = builder.ensure(MirOptPanicAbortSyntheticTarget {
-                    compiler: self.compiler,
-                    base: target,
-                });
-                run(panic_abort_target);
-            }
+        for target in ["x86_64-apple-darwin", "i686-unknown-linux-musl"] {
+            let target = TargetSelection::from_user(target);
+            let panic_abort_target = builder
+                .ensure(MirOptPanicAbortSyntheticTarget { compiler: self.compiler, base: target });
+            run(panic_abort_target);
         }
     }
 }
