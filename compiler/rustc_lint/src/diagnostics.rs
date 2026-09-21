@@ -1912,7 +1912,7 @@ impl<'a> Diagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 if let Some(const_anon) = const_anon {
                     diag.note(msg!("items in an anonymous const item (`const _: () = {\"{\"} ... {\"}\"}`) are treated as in the same scope as the anonymous const's declaration for the purpose of this lint"));
                     if let Some(const_anon) = const_anon {
-                        diag.span_suggestion(
+                        diag.span_suggestion_verbose(
                             const_anon,
                             msg!("use a const-anon item to suppress this lint"),
                             "_",
