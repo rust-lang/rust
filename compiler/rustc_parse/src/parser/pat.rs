@@ -2,7 +2,7 @@ use std::ops::Bound;
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::NtPatKind::*;
-use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token};
+use rustc_ast::token::{self, IdentKind, MetaVarKind, Token};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
@@ -353,7 +353,7 @@ impl<'a> Parser<'a> {
             matches!(
                 &token.uninterpolate().kind,
                 token::FatArrow // e.g. `a | => 0,`.
-                | token::Ident(kw::If, token::IdentIsRaw::No) // e.g. `a | if expr`.
+                | token::Ident(kw::If, token::IdentKind::Normal) // e.g. `a | if expr`.
                 | token::Eq // e.g. `let a | = 0`.
                 | token::Semi // e.g. `let a |;`.
                 | token::Colon // e.g. `let a | :`.
@@ -842,7 +842,7 @@ impl<'a> Parser<'a> {
                     None => PatKind::Path(qself, path),
                 }
             }
-        } else if let Some((lt, IdentIsRaw::No)) = self.token.lifetime()
+        } else if let Some((lt, IdentKind::Normal)) = self.token.lifetime()
             // In pattern position, we're totally fine with using "next token isn't colon"
             // as a heuristic. We could probably just always try to recover if it's a lifetime,
             // because we never have `'a: label {}` in a pattern position anyways, but it does
