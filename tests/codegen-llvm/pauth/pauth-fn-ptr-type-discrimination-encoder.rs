@@ -17,6 +17,7 @@
 
 #![feature(repr_simd)]
 #![feature(simd_ffi)]
+#![feature(f16, f128)]
 #![feature(no_core, lang_items)]
 #![no_std]
 #![no_core]
@@ -28,22 +29,30 @@ use minicore::{c_void, mem};
 // Builtin types.
 extern "C" {
     fn f_i32(x: i32) -> i32;
+    fn f_h(x: f16) -> f16;
     fn f_f(x: f32) -> f32;
     fn f_d(x: f64) -> f64;
     fn f_2d(x: f64, y: f64) -> f64;
-    fn f_ld(x: f64) -> f64;
+    fn f_ld(x: f128) -> f128;
     fn f_v() -> ();
 }
 type fn_i32 = unsafe extern "C" fn(i32) -> i32;
+type fn_h = unsafe extern "C" fn(f16) -> f16;
 type fn_f = unsafe extern "C" fn(f32) -> f32;
 type fn_d = unsafe extern "C" fn(f64) -> f64;
 type fn_2d = unsafe extern "C" fn(f64, f64) -> f64;
+type fn_ld = unsafe extern "C" fn(f128) -> f128;
 type fn_v = unsafe extern "C" fn() -> ();
 // discriminator: 2981 (0x0BA5), encoding: FiiE
 // DISC: @{{.*}}T_I32 = constant ptr ptrauth (ptr @f_i32, i32 0, i64 2981), align 8
 // NO_DISC: @{{.*}}T_I32 = constant ptr ptrauth (ptr @f_i32, i32 0), align 8
 #[used]
 static T_I32: fn_i32 = f_i32;
+// discriminator: 37553 (0x92B1), encoding: FDF16_DF16_E
+// DISC: @{{.*}}T_H = constant ptr ptrauth (ptr @f_h, i32 0, i64 37553), align 8
+// NO_DISC: @{{.*}}T_H = constant ptr ptrauth (ptr @f_h, i32 0), align 8
+#[used]
+static T_H: fn_h = f_h;
 // discriminator: 28450 (0x6F22), encoding: FffE
 // DISC: @{{.*}}T_F = constant ptr ptrauth (ptr @f_f, i32 0, i64 28450), align 8
 // NO_DISC: @{{.*}}T_F = constant ptr ptrauth (ptr @f_f, i32 0), align 8
@@ -59,6 +68,11 @@ static T_D: fn_d = f_d;
 // NO_DISC: @{{.*}}T_2D = constant ptr ptrauth (ptr @f_2d, i32 0), align 8
 #[used]
 static T_2D: fn_2d = f_2d;
+// discriminator: 51179 (0xC7EB), encoding: FggE
+// DISC: @{{.*}}T_LD = constant ptr ptrauth (ptr @f_ld, i32 0, i64 51179), align 8
+// NO_DISC: @{{.*}}T_LD = constant ptr ptrauth (ptr @f_ld, i32 0), align 8
+#[used]
+static T_LD: fn_ld = f_ld;
 // discriminator: 18983 (0x4A27), encoding: FvE
 // DISC: @{{.*}}T_V = constant ptr ptrauth (ptr @f_v, i32 0, i64 18983), align 8
 // NO_DISC: @{{.*}}T_V = constant ptr ptrauth (ptr @f_v, i32 0), align 8
@@ -239,15 +253,21 @@ pub fn main() {
         // DISC: %{{.*}} = call i32 ptrauth (ptr @f_i32, i32 0, i64 2981)(i32 123) {{.*}} [ "ptrauth"(i32 0, i64 2981) ]
         // NO_DISC: %{{.*}} = call i32 ptrauth (ptr @f_i32, i32 0)(i32 123) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
         let _ = T_I32(123);
-        // DISC: %{{.*}} = call float ptrauth (ptr @f_f, i32 0, i64 28450)(float 1.250000e+00) {{.*}} [ "ptrauth"(i32 0, i64 28450) ]
-        // NO_DISC: %{{.*}} = call float ptrauth (ptr @f_f, i32 0)(float 1.250000e+00) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
+        // DISC: %{{.*}} = call half ptrauth (ptr @f_h, i32 0, i64 37553)(half {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 37553) ]
+        // NO_DISC: %{{.*}} = call half ptrauth (ptr @f_h, i32 0)(half {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
+        let _ = T_H(1.25);
+        // DISC: %{{.*}} = call float ptrauth (ptr @f_f, i32 0, i64 28450)(float {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 28450) ]
+        // NO_DISC: %{{.*}} = call float ptrauth (ptr @f_f, i32 0)(float {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
         let _ = T_F(1.25);
-        // DISC: %{{.*}} = call double ptrauth (ptr @f_d, i32 0, i64 43115)(double 2.500000e+00) {{.*}} [ "ptrauth"(i32 0, i64 43115) ]
-        // NO_DISC: %{{.*}} = call double ptrauth (ptr @f_d, i32 0)(double 2.500000e+00) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
+        // DISC: %{{.*}} = call double ptrauth (ptr @f_d, i32 0, i64 43115)(double {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 43115) ]
+        // NO_DISC: %{{.*}} = call double ptrauth (ptr @f_d, i32 0)(double {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
         let _ = T_D(2.5);
-        // DISC: %{{.*}} = call double ptrauth (ptr @f_2d, i32 0, i64 38695)(double 1.000000e+00, double 2.000000e+00) {{.*}} [ "ptrauth"(i32 0, i64 38695) ]
-        // NO_DISC: %{{.*}} = call double ptrauth (ptr @f_2d, i32 0)(double 1.000000e+00, double 2.000000e+00) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
+        // DISC: %{{.*}} = call double ptrauth (ptr @f_2d, i32 0, i64 38695)(double {{.*}}, double {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 38695) ]
+        // NO_DISC: %{{.*}} = call double ptrauth (ptr @f_2d, i32 0)(double {{.*}}, double {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
         let _ = T_2D(1.0, 2.0);
+        // DISC: %{{.*}} = call fp128 ptrauth (ptr @f_ld, i32 0, i64 51179)(fp128 {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 51179) ]
+        // NO_DISC: %{{.*}} = call fp128 ptrauth (ptr @f_ld, i32 0)(fp128 {{.*}}) {{.*}} [ "ptrauth"(i32 0, i64 0) ]
+        let _ = T_LD(1.0f128);
         // DISC: call void ptrauth (ptr @f_v, i32 0, i64 18983)() {{.*}} [ "ptrauth"(i32 0, i64 18983) ]
         // NO_DISC: call void ptrauth (ptr @f_v, i32 0)() {{.*}} [ "ptrauth"(i32 0, i64 0) ]
         T_V();
