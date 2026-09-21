@@ -1099,6 +1099,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // to use `hir_crate_items`.
     tcx.ensure_done().hir_crate_items(());
 
+    tcx.untracked().definitions.write().commit_end_of_determinism();
+
     rustc_passes::delegation::check_glob_and_list_delegations_target_expr(tcx);
 
     let sess = tcx.sess;
