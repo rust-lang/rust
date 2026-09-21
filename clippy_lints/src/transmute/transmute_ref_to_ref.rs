@@ -22,9 +22,8 @@ pub(super) fn check<'tcx>(
             && ty_to.is_str()
             && let ty::Uint(ty::UintTy::U8) = slice_ty.kind()
             && from_mutbl == to_mutbl
+            && let Some(top_crate) = std_or_core(cx)
         {
-            let Some(top_crate) = std_or_core(cx) else { return true };
-
             let postfix = if from_mutbl == Mutability::Mut { "_mut" } else { "" };
 
             span_lint_and_sugg(
