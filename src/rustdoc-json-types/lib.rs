@@ -289,7 +289,27 @@ pub struct Item {
     /// so this field is needed to differentiate.
     pub visibility: Visibility,
     /// The full markdown docstring of this item. Empty if there is no documentation at all,
-    /// `vec![Doc { text: "" }]` if there is some documentation but it is empty (EG `#[doc = ""]`).
+    /// `vec![Doc { text: "" }]` if there is some documentation but it is empty (EG `#[doc = ""]`),
+    /// and multiple items if a reexport and the original both have docstrings.
+    ///
+    /// ```rust
+    /// /// Reexport docs
+    /// pub use Thing1 as Thing2;
+    ///
+    /// /// Original docs
+    /// pub struct Thing1;
+    /// ```
+    ///
+    /// ```json
+    /// {
+    ///     "name": "Thing2",
+    ///     "docs": [
+    ///         { "text": "Reexport docs", "links": [] },
+    ///         { "text": "Original docs", "links": [] },
+    ///     ],
+    ///     ...
+    /// }
+    /// ```
     pub docs: Vec<Doc>,
     /// Attributes on this item.
     ///

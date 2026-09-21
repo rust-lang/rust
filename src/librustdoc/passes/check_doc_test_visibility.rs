@@ -30,8 +30,13 @@ pub(super) fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -
 
 impl DocVisitor<'_> for DocTestVisibilityLinter<'_, '_> {
     fn visit_item(&mut self, item: &Item) {
-        for text in item.doc_values().values() {
-            look_for_tests(self.cx, &text, item);
+        let doc_values = item.doc_values();
+        if doc_values.is_empty() {
+            look_for_tests(self.cx, "", item);
+        } else {
+            for text in doc_values.values() {
+                look_for_tests(self.cx, &text, item);
+            }
         }
 
         self.visit_item_recur(item)
