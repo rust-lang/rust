@@ -34,13 +34,13 @@ LL |     pub fn documented() -> Self {
 error: safe function's docs have unnecessary `# Safety` section
   --> tests/ui/unnecessary_unsafety_doc.rs:127:9
    |
+LL | macro_rules! very_safe {
+...
 LL |         pub fn drive() {
    |         ^^^^^^^^^^^^^^
 ...
 LL | very_safe!();
    | ------------ in this macro invocation
-   |
-   = note: this error originates in the macro `very_safe` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for safe trait have unnecessary `# Safety` section
   --> tests/ui/unnecessary_unsafety_doc.rs:156:1

@@ -146,13 +146,14 @@ LL +     foo2!(foo!(()));
 error: the `dbg!` macro is intended as a debugging tool
   --> tests/ui/dbg_macro/dbg_macro.rs:46:13
    |
+LL |     macro_rules! expand_to_dbg {
+LL |         () => {
 LL |             dbg!();
    |             ^^^^^^
 ...
 LL |     expand_to_dbg!();
    |     ---------------- in this macro invocation
    |
-   = note: this error originates in the macro `expand_to_dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: remove the invocation before committing it to a version control system
    |
 LL -             dbg!();

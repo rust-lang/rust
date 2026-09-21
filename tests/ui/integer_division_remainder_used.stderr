@@ -70,13 +70,13 @@ LL |     j %= 3;
 error: use of `%` has been disallowed in this context
   --> tests/ui/integer_division_remainder_used.rs:60:13
    |
+LL |     macro_rules! mac {
+LL |         ($a:expr, $b:expr) => {
 LL |             $a % $b
    |             ^^^^^^^
 ...
 LL |     let issue17048 = mac!(a, b);
    |                      ---------- in this macro invocation
-   |
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 12 previous errors
 

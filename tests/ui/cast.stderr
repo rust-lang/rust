@@ -670,17 +670,19 @@ LL |         (a.abs() * b.pow(2) / c.abs()) as u32
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:532:21
    |
+LL |     macro_rules! m {
+LL |         () => {
 LL |             let _ = i32::MIN as u32; // cast_sign_loss
    |                     ^^^^^^^^^^^^^^^ help: if this is intentional, use `cast_unsigned()` instead: `i32::MIN.cast_unsigned()`
 ...
 LL |     m!();
    |     ---- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: casting `u32` to `u8` may truncate the value
   --> tests/ui/cast.rs:535:21
    |
+LL |     macro_rules! m {
+...
 LL |             let _ = u32::MAX as u8; // cast_possible_truncation
    |                     ^^^^^^^^^^^^^^
 ...
@@ -688,7 +690,6 @@ LL |     m!();
    |     ---- in this macro invocation
    |
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: ... or use `try_from` and handle the error accordingly
    |
 LL -             let _ = u32::MAX as u8; // cast_possible_truncation
@@ -698,6 +699,8 @@ LL +             let _ = u8::try_from(u32::MAX); // cast_possible_truncation
 error: casting `f64` to `f32` may truncate the value
   --> tests/ui/cast.rs:538:21
    |
+LL |     macro_rules! m {
+...
 LL |             let _ = std::f64::consts::PI as f32; // cast_possible_truncation
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
@@ -705,7 +708,6 @@ LL |     m!();
    |     ---- in this macro invocation
    |
    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: casting `i64` to `usize` may truncate the value on targets with 32-bit wide pointers
   --> tests/ui/cast.rs:549:5

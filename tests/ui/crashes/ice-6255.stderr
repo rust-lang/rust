@@ -1,17 +1,19 @@
 error: macro-expanded `extern crate` items cannot shadow names passed with `--extern`
   --> tests/ui/crashes/ice-6255.rs:6:9
    |
+LL | macro_rules! define_other_core {
+LL |     ( ) => {
 LL |         extern crate std as core;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | define_other_core!();
    | -------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `define_other_core` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `core` is ambiguous
   --> tests/ui/crashes/ice-6255.rs:12:5
    |
+LL | macro_rules! define_other_core {
+...
 LL |     core::panic!();
    |     ^^^^ ambiguous name
    |
@@ -26,7 +28,6 @@ LL |         extern crate std as core;
 LL | define_other_core!();
    | -------------------- in this macro invocation
    = help: use `crate::core` to refer to this crate unambiguously
-   = note: this error originates in the macro `define_other_core` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 
