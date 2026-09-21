@@ -175,7 +175,7 @@ impl<'a> Parser<'a> {
                     // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
                     // the AST for typechecking.
                     err.span_label(ident_span, "while parsing this `fn`");
-                    Ok(err.emit())
+                    Ok(err.emit_err())
                 } else if self.token == token::RArrow
                     && let Some(fn_params_end) = fn_params_end
                 {
@@ -700,7 +700,7 @@ impl<'a> Parser<'a> {
             p.recover_vcs_conflict_marker();
             let snapshot = p.create_snapshot_for_diagnostic();
             let param = p.parse_param_general(fn_parse_mode, first_param).or_else(|e| {
-                let guar = e.emit();
+                let guar = e.emit_err();
                 // When parsing a param failed, we should check to make the span of the param
                 // not contain '(' before it.
                 // For example when parsing `*mut Self` in function `fn oof(*mut Self)`.
@@ -776,7 +776,7 @@ impl<'a> Parser<'a> {
                         first_param,
                         fn_parse_mode,
                     ) {
-                        let guar = err.emit();
+                        let guar = err.emit_err();
                         let mut arg = dummy_arg(ident, guar);
                         arg.span = pat_span;
                         Ok((arg, Trailing::No, UsePreAttrPos::No))

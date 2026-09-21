@@ -1346,8 +1346,8 @@ pub enum FnAbiError<'tcx> {
     Layout(LayoutError<'tcx>),
 }
 
-impl<'a, 'b, G> Diagnostic<'a, G> for FnAbiError<'b> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+impl<'a, 'b> Diagnostic<'a> for FnAbiError<'b> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         match self {
             Self::Layout(e) => Diag::new(dcx, level, e.to_string()),
         }

@@ -211,7 +211,7 @@ fn ensure_impl_params_and_item_params_correspond<'tcx>(
                      as the {self_descr} definition",
         ),
     );
-    Err(err.emit())
+    Err(err.emit_err())
 }
 
 fn ensure_all_fields_are_const_destruct<'tcx>(
@@ -278,7 +278,7 @@ fn ensure_all_fields_are_const_destruct<'tcx>(
                     None,
                 );
             }
-            Err(diag.emit())
+            Err(diag.emit_err())
         })
         .collect()
 }
@@ -362,7 +362,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
                         but the {self_descr} it is implemented for does not",
                     )
                     .with_span_note(item_span, "the implementor must specify the same requirement")
-                    .emit(),
+                    .emit_err(),
                 );
             }
         }
@@ -395,7 +395,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
                     but the {self_descr} it is implemented for does not",
                 )
                 .with_span_note(item_span, "the implementor must specify the same requirement")
-                .emit(),
+                .emit_err(),
             );
         }
         return Err(guar.unwrap());

@@ -560,8 +560,7 @@ impl server::Server for Rustc<'_, '_> {
 
     fn emit_diagnostic(&mut self, diagnostic: Diagnostic<Self::Span>) {
         let message = rustc_errors::DiagMessage::from(diagnostic.message);
-        let mut diag: Diag<'_, ()> =
-            Diag::new(self.psess().dcx(), diagnostic.level.to_internal(), message);
+        let mut diag = Diag::new(self.psess().dcx(), diagnostic.level.to_internal(), message);
         diag.span(MultiSpan::from_spans(diagnostic.spans));
         for child in diagnostic.children {
             diag.sub(child.level.to_internal(), child.message, MultiSpan::from_spans(child.spans));

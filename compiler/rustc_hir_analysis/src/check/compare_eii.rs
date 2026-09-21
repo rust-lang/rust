@@ -201,7 +201,7 @@ pub(crate) fn compare_eii_statics<'tcx>(
         );
         diag.span_note(eii_attr_span, "expected this because of this attribute");
 
-        return Err(diag.emit());
+        return Err(diag.emit_err());
     }
 
     // Check that all obligations are satisfied by the implementation's
@@ -349,7 +349,7 @@ fn check_early_region_bounds<'tcx>(
     });
 
     diag.span_label(eii_attr_span, format!("required because of this attribute"));
-    return Err(diag.emit());
+    return Err(diag.emit_err());
 }
 
 fn check_number_of_arguments<'tcx>(
@@ -447,7 +447,7 @@ fn report_number_of_arguments_mismatch<'tcx>(
 
     err.span_label(eii_attr_span, format!("required because of this attribute"));
 
-    err.emit()
+    err.emit_err()
 }
 
 fn report_eii_mismatch<'tcx>(
@@ -521,7 +521,7 @@ fn report_eii_mismatch<'tcx>(
         None,
     );
 
-    diag.emit()
+    diag.emit_err()
 }
 
 #[instrument(level = "debug", skip(infcx))]

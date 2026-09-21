@@ -12,7 +12,7 @@ pub(crate) fn expand<'cx>(
     let closure = match parse_closure(cx, sp, tts) {
         Ok(parsed) => parsed,
         Err(err) => {
-            return ExpandResult::Ready(DummyResult::any(sp, err.emit()));
+            return ExpandResult::Ready(DummyResult::any(sp, err.emit_err()));
         }
     };
 

@@ -399,8 +399,8 @@ pub enum TargetDataLayoutError<'a> {
 }
 
 #[cfg(feature = "nightly")]
-impl<G> Diagnostic<'_, G> for TargetDataLayoutError<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for TargetDataLayoutError<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         match self {
             TargetDataLayoutError::InvalidAddressSpace { addr_space, err, cause } => {
                 Diag::new(dcx, level, msg!("invalid address space `{$addr_space}` for `{$cause}` in \"data-layout\": {$err}"))

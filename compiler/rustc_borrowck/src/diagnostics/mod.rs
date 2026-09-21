@@ -642,9 +642,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     ///
     /// This is very similar to `fn suggest_static_lifetime_for_gat_from_hrtb` which handles this
     /// note for failed type tests instead of outlives errors.
-    fn add_placeholder_from_predicate_note<G>(
+    fn add_placeholder_from_predicate_note(
         &self,
-        diag: &mut Diag<'_, G>,
+        diag: &mut Diag<'_>,
         path: &[OutlivesConstraint<'tcx>],
     ) {
         let tcx = self.infcx.tcx;
@@ -704,9 +704,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
     /// Add a label to region errors and borrow explanations when outlives constraints arise from
     /// proving a type implements `Sized` or `Copy`.
-    fn add_sized_or_copy_bound_info<G>(
+    fn add_sized_or_copy_bound_info(
         &self,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         blamed_category: ConstraintCategory<'tcx>,
         path: &[OutlivesConstraint<'tcx>],
     ) {

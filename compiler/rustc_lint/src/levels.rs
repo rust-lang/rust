@@ -960,12 +960,8 @@ where
             lint_from_cli: bool,
         }
 
-        impl<'a, 'b> Diagnostic<'a, ()> for UnknownLint<'b> {
-            fn into_diag(
-                self,
-                dcx: DiagCtxtHandle<'a>,
-                level: rustc_errors::Level,
-            ) -> Diag<'a, ()> {
+        impl<'a, 'b> Diagnostic<'a> for UnknownLint<'b> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: rustc_errors::Level) -> Diag<'a> {
                 let Self { sess, lint_id, feature, lint_from_cli } = self;
                 let mut lint = Diag::new(dcx, level, msg!("unknown lint: `{$name}`"))
                     .with_arg("name", lint_id.lint.name_lower())
@@ -1013,7 +1009,7 @@ where
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         let level_spec = self.lint_level_spec(lint);
         emit_lint_base(self.sess, lint, level_spec, span, decorator)
@@ -1024,14 +1020,14 @@ where
         &self,
         lint: &'static Lint,
         span: MultiSpan,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         let level_spec = self.lint_level_spec(lint);
         emit_lint_base(self.sess, lint, level_spec, Some(span), decorator);
     }
 
     #[track_caller]
-    pub fn emit_lint(&self, lint: &'static Lint, decorator: impl for<'a> Diagnostic<'a, ()>) {
+    pub fn emit_lint(&self, lint: &'static Lint, decorator: impl for<'a> Diagnostic<'a>) {
         let level_spec = self.lint_level_spec(lint);
         emit_lint_base(self.sess, lint, level_spec, None, decorator);
     }

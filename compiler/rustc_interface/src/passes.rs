@@ -72,7 +72,7 @@ pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
             parser.parse_crate_mod()
         })
         .unwrap_or_else(|parse_error| {
-            let guar: ErrorGuaranteed = parse_error.emit();
+            let guar: ErrorGuaranteed = parse_error.emit_err();
             guar.raise_fatal();
         });
 
@@ -1057,13 +1057,13 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
 
 struct DiagCallback<'tcx> {
     callback: Box<
-        dyn for<'b> FnOnce(DiagCtxtHandle<'b>, Level, &dyn Any) -> Diag<'b, ()> + DynSend + DynSync,
+        dyn for<'b> FnOnce(DiagCtxtHandle<'b>, Level, &dyn Any) -> Diag<'b> + DynSend + DynSync,
     >,
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> Diagnostic<'a, ()> for DiagCallback<'tcx> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a, 'tcx> Diagnostic<'a> for DiagCallback<'tcx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         (self.callback)(dcx, level, self.tcx.sess)
     }
 }

@@ -72,10 +72,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     RegionResolutionError::ConcreteFailure(origin, sub, sup) => {
                         if sub.is_placeholder() || sup.is_placeholder() {
                             self.report_placeholder_failure(generic_param_scope, origin, sub, sup)
-                                .emit()
+                                .emit_err()
                         } else {
                             self.report_concrete_failure(generic_param_scope, origin, sub, sup)
-                                .emit()
+                                .emit_err()
                         }
                     }
 
@@ -104,7 +104,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 sub_r,
                                 sup_r,
                             )
-                            .emit()
+                            .emit_err()
                         } else if sup_r.is_placeholder() {
                             self.report_placeholder_failure(
                                 generic_param_scope,
@@ -112,7 +112,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 sub_r,
                                 sup_r,
                             )
-                            .emit()
+                            .emit_err()
                         } else {
                             self.report_sub_sup_conflict(
                                 generic_param_scope,
@@ -147,7 +147,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             sub_r,
                             sup_r,
                         )
-                        .emit()
+                        .emit_err()
                     }
 
                     RegionResolutionError::CannotNormalize(clause, origin) => {
@@ -156,7 +156,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.tcx
                             .dcx()
                             .struct_span_err(origin.span(), format!("cannot normalize `{clause}`"))
-                            .emit()
+                            .emit_err()
                     }
                 }
             };
@@ -704,7 +704,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         sub: Region<'tcx>,
     ) -> ErrorGuaranteed {
         self.construct_generic_bound_failure(generic_param_scope, span, origin, bound_kind, sub)
-            .emit()
+            .emit_err()
     }
 
     pub fn construct_generic_bound_failure(
@@ -1051,7 +1051,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return if sub_region.is_error() | sup_region.is_error() {
                 err.delay_as_bug()
             } else {
-                err.emit()
+                err.emit_err()
             };
         }
 
@@ -1068,7 +1068,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
 
         self.note_region_origin(&mut err, &sub_origin);
-        if sub_region.is_error() | sup_region.is_error() { err.delay_as_bug() } else { err.emit() }
+        if sub_region.is_error() | sup_region.is_error() {
+            err.delay_as_bug()
+        } else {
+            err.emit_err()
+        }
     }
 
     fn report_inference_failure(&self, var_origin: RegionVariableOrigin<'tcx>) -> Diag<'_> {
