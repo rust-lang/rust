@@ -1,0 +1,54 @@
+error: expected one of `,` or `>`, found `T1`
+  --> $DIR/lifetime-preceding-type-in-generic-args.rs:10:20
+   |
+LL | struct A1 {
+   |        -- while parsing this struct
+LL |     x: Foo<'static T1>,
+   |                    ^^ expected one of `,` or `>`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |     x: Foo<'static> T1>,
+   |                   +
+
+error: expected one of `,` or `>`, found keyword `mut`
+  --> $DIR/lifetime-preceding-type-in-generic-args.rs:15:20
+   |
+LL | struct A2 {
+   |        -- while parsing this struct
+LL |     x: Foo<'static mut T1>,
+   |                    ^^^ expected one of `,` or `>`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |     x: Foo<'static> mut T1>,
+   |                   +
+
+error: expected one of `,` or `>`, found `T1`
+  --> $DIR/lifetime-preceding-type-in-generic-args.rs:20:20
+   |
+LL | struct A3 {
+   |        -- while parsing this struct
+LL |     x: Bar<'static T1, T2>,
+   |                    ^^ expected one of `,` or `>`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |     x: Bar<'static> T1, T2>,
+   |                   +
+
+error: expected one of `,` or `>`, found `T2`
+  --> $DIR/lifetime-preceding-type-in-generic-args.rs:25:24
+   |
+LL | struct A4 {
+   |        -- while parsing this struct
+LL |     x: Bar<T1, 'static T2>,
+   |                        ^^ expected one of `,` or `>`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |     x: Bar<T1, 'static> T2>,
+   |                       +
+
+error: aborting due to 4 previous errors
+
