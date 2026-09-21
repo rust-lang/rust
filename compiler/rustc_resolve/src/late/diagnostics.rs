@@ -1220,7 +1220,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         err.note("constructor is not visible here due to private fields");
                     }
                 } else {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         call_span,
                         format!("try calling `{ident}` as a method"),
                         format!("self.{path_str}({args_snippet})"),
