@@ -765,12 +765,15 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if let Some((did, item)) = self.lookup_doc_alias_name(path, source.namespace()) {
             let item_name = item.name;
             let suggestion_name = self.r.tcx.item_name(did);
-            err.span_suggestion(
+            err.span_suggestion_verbose(
                 item.span,
-                format!("`{suggestion_name}` has a name defined in the doc alias attribute as `{item_name}`"),
-                    suggestion_name,
-                    Applicability::MaybeIncorrect
-                );
+                format!(
+                    "`{suggestion_name}` has a name defined in the doc alias attribute as \
+                     `{item_name}`",
+                ),
+                suggestion_name,
+                Applicability::MaybeIncorrect,
+            );
 
             return (err, Vec::new());
         };
@@ -2517,7 +2520,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         // The span contains a type alias so we should be able to
                         // replace `type` with `trait`.
                         let snip = snip.replacen("type", "trait", 1);
-                        err.span_suggestion(span, msg, snip, Applicability::MaybeIncorrect);
+                        err.span_suggestion_verbose(span, msg, snip, Applicability::MaybeIncorrect);
                     } else {
                         err.span_help(span, msg);
                     }

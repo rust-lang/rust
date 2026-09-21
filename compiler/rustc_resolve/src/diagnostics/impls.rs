@@ -572,6 +572,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         err.emit();
+
+        if ns == TypeNS {
+            // Duplicated types wreak havoc on other errors, like impls selecting the wrong
+            // type causing wrong number of generic params and other assorted number of
+            // irrelevant nonsense, so avoid advancing to the next compiler stage.
+            self.raise_fatal_after_resolve = true;
+        }
         self.name_already_seen.insert(name, span);
     }
 
@@ -2872,7 +2879,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 break;
             }
         }
-
         err.emit();
     }
 

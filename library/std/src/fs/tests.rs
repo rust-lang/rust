@@ -1908,6 +1908,14 @@ fn open_flavors() {
 }
 
 #[test]
+#[cfg(windows)]
+fn windows_access_mode_override() {
+    // ensure that using access_mode negates the need for using write or append
+    use crate::os::windows::fs::OpenOptionsExt;
+    File::options().create(true).access_mode(0).open(tmpdir().join("foo.txt")).unwrap();
+}
+
+#[test]
 fn _assert_send_sync() {
     fn _assert_send_sync<T: Send + Sync>() {}
     _assert_send_sync::<OpenOptions>();

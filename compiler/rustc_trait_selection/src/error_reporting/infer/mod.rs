@@ -413,7 +413,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     match scrut_ty {
                         Some(ty) if expected == ty => {
                             let source_map = self.tcx.sess.source_map();
-                            err.span_suggestion(
+                            err.span_suggestion_short(
                                 source_map.end_point(cause.span),
                                 "try removing this `?`",
                                 "",
@@ -452,7 +452,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         match scrut_ty {
                             Some(ty) if expected == ty => {
                                 let source_map = self.tcx.sess.source_map();
-                                err.span_suggestion(
+                                err.span_suggestion_short(
                                     source_map.end_point(cause.span),
                                     "try removing this `?`",
                                     "",

@@ -361,7 +361,6 @@ fn borrowck_collect_region_constraints<'tcx>(
         deferred_closure_requirements,
         polonius_context,
     } = type_check::type_check(
-        root_cx,
         &infcx,
         body,
         &promoted,

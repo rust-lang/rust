@@ -1039,13 +1039,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some((fail, ty, expr.span))
             }
         };
+        let endpoints = [lhs, rhs];
         let mut lhs = calc_side(lhs);
         let mut rhs = calc_side(rhs);
 
         if let (Some((true, ..)), _) | (_, Some((true, ..))) = (lhs, rhs) {
             // There exists a side that didn't meet our criteria that the end-point
             // be of a numeric or char type, as checked in `calc_side` above.
-            let guar = self.emit_err_pat_range(span, lhs, rhs);
+            let guar = self.emit_err_pat_range(span, lhs, rhs, endpoints);
             return Ty::new_error(self.tcx, guar);
         }
 
@@ -1081,7 +1082,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Some((ref mut fail, _, _)) = rhs {
                 *fail = true;
             }
-            let guar = self.emit_err_pat_range(span, lhs, rhs);
+            let guar = self.emit_err_pat_range(span, lhs, rhs, endpoints);
             return Ty::new_error(self.tcx, guar);
         }
         ty
@@ -1098,7 +1099,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         lhs: Option<(bool, Ty<'tcx>, Span)>,
         rhs: Option<(bool, Ty<'tcx>, Span)>,
+        endpoints: [Option<&hir::PatExpr<'tcx>>; 2],
     ) -> ErrorGuaranteed {
+        if !(lhs, rhs).references_error() {
+            // Range endpoints must resolve to constants, not local variables.
+            // Label both runtime endpoints before the type error.
+            let mut spans = Vec::new();
+            for expr in endpoints.into_iter().flatten() {
+                if let hir::PatExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
+                    && matches!(path.res, Res::Local(_))
+                {
+                    spans.push(expr.span);
+                }
+            }
+            if !spans.is_empty() {
+                return self.dcx().emit_err(diagnostics::NonConstPathInPattern { spans });
+            }
+        }
+
         let span = match (lhs, rhs) {
             (Some((true, ..)), Some((true, ..))) => span,
             (Some((true, _, sp)), _) => sp,
@@ -1462,7 +1480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 _ if let Some((sp, msg, sugg)) = mut_var_suggestion => {
-                    err.span_suggestion(sp, msg, sugg, Applicability::MachineApplicable);
+                    err.span_suggestion_verbose(sp, msg, sugg, Applicability::MachineApplicable);
                 }
                 _ => {} // don't provide suggestions in other cases #55175
             }
@@ -2649,7 +2667,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         };
-        err.span_suggestion(
+        err.span_suggestion_verbose(
             sp,
             format!(
                 "include the missing field{} in the pattern{}",
@@ -2672,7 +2690,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
             Applicability::MachineApplicable,
         );
-        err.span_suggestion(
+        err.span_suggestion_verbose(
             sp,
             format!(
                 "if you don't care about {these} missing field{s}, you can explicitly ignore {them}",
@@ -2696,7 +2714,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
             Applicability::MachineApplicable,
         );
-        err.span_suggestion(
+        err.span_suggestion_verbose(
             sp,
             "or always ignore missing fields here",
             format!("{prefix}..{postfix}"),

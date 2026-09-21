@@ -426,6 +426,17 @@ pub fn to_lower(c: char) -> [char; 3] {
         return [c.to_ascii_lowercase(), '\0', '\0'];
     }
 
+    // The rest of Latin-1: À..=Þ (except ×) add 0x20, everything else maps to itself.
+    if c <= '\u{FF}' {
+        return match c {
+            '\u{C0}'..='\u{DE}' if c != '\u{D7}' => {
+                // SAFETY: U+00C0..=U+00DE plus 0x20 lands in U+00E0..=U+00FE.
+                [unsafe { char::from_u32_unchecked(c as u32 + 0x20) }, '\0', '\0']
+            }
+            _ => [c, '\0', '\0'],
+        };
+    }
+
     lookup(c, &LOWERCASE_LUT).unwrap_or([c, '\0', '\0'])
 }
 
@@ -433,6 +444,20 @@ pub fn to_upper(c: char) -> [char; 3] {
     // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[:Changes_When_Uppercased:]-[:ASCII:]&abb=on
     if c < '\u{B5}' {
         return [c.to_ascii_uppercase(), '\0', '\0'];
+    }
+    // The rest of Latin-1: µ maps to U+039C, ß expands to SS,
+    // à..=þ (except ÷) subtract 0x20, ÿ maps to U+0178.
+    if c <= '\u{FF}' {
+        return match c {
+            '\u{B5}' => ['\u{39C}', '\0', '\0'],
+            '\u{DF}' => ['S', 'S', '\0'],
+            '\u{E0}'..='\u{FE}' if c != '\u{F7}' => {
+                // SAFETY: U+00E0..=U+00FE minus 0x20 lands in U+00C0..=U+00DE.
+                [unsafe { char::from_u32_unchecked(c as u32 - 0x20) }, '\0', '\0']
+            }
+            '\u{FF}' => ['\u{178}', '\0', '\0'],
+            _ => [c, '\0', '\0'],
+        };
     }
 
     lookup(c, &UPPERCASE_LUT).unwrap_or([c, '\0', '\0'])

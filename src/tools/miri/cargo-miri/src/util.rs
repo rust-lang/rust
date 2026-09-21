@@ -39,7 +39,15 @@ impl CrateRunInfo {
     /// Gather all the information we need.
     pub fn collect(args: impl Iterator<Item = String>, capture_stdin: bool) -> Self {
         let args = args.collect();
-        let env = env::vars_os().collect();
+        let env = env::vars_os()
+            .filter(|(var, _val)| {
+                // We only need to bother with env vars cargo actually sets.
+                // We try to avoid storing anything that may contain secrets.
+                var.to_str().is_some_and(|var| {
+                    var == "OUT_DIR" || (var.starts_with("CARGO_") && !var.ends_with("_TOKEN"))
+                })
+            })
+            .collect();
         let current_dir = env::current_dir().unwrap().into_os_string();
 
         let mut stdin = Vec::new();
