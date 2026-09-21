@@ -1620,7 +1620,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // implied by wf, but also because that would possibly result in
         // erroneous errors later on.
         let InferOk { value: output, obligations: _ } =
-            self.at(&ObligationCause::dummy(), param_env).normalize(Unnormalized::new_wip(output));
+            self.normalize(Unnormalized::new_wip(output), param_env, &ObligationCause::dummy());
 
         if output.is_ty_var() { None } else { Some((def_id_or_name, output, inputs)) }
     }
@@ -5048,8 +5048,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             )
         });
         let InferOk { value: projection_ty, .. } = self
-            .at(&obligation.cause, obligation.param_env)
-            .normalize(Unnormalized::new_wip(projection_ty));
+            .normalize(Unnormalized::new_wip(projection_ty), obligation.param_env, &obligation.cause);
 
         debug!(
             normalized_projection_type = ?self.deeply_resolve_ignoring_regions(projection_ty)
@@ -5534,7 +5533,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Extract `<U as Deref>::Target` assoc type and check that it is `T`
             && let Some(deref_target_did) = tcx.lang_items().deref_target()
             && let projection = Ty::new_projection_from_args(tcx,ty::IsRigid::No, deref_target_did, tcx.mk_args(&[ty::GenericArg::from(found_ty)]))
-            && let InferOk { value: deref_target, obligations } = infcx.at(&ObligationCause::dummy(), param_env).normalize(Unnormalized::new_wip(projection))
+            && let InferOk { value: deref_target, obligations } = infcx.normalize(Unnormalized::new_wip(projection), param_env, &ObligationCause::dummy())
             && obligations.iter().all(|obligation| infcx.predicate_must_hold_modulo_regions(obligation))
             && infcx.can_eq(param_env, deref_target, target_ty)
         {

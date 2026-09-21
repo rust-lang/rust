@@ -46,7 +46,7 @@ pub enum DefineOpaqueTypes {
     No,
 }
 
-#[deprecated("Get rid of this :(")]
+// #[deprecated = "Get rid of this :("]
 #[derive(Clone, Copy)]
 pub struct At<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,

@@ -1047,7 +1047,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let a_sig = self.sig_for_fn_def_coercion(a, Some(b_hdr.safety()))?;
 
                 let InferOk { value: a_sig, mut obligations } =
-                    self.at(&self.cause, self.param_env).normalize(Unnormalized::new_wip(a_sig));
+                    self.normalize(self.cause.span.clone(), Unnormalized::new_wip(a_sig));
                 let a = Ty::new_fn_ptr(self.tcx, a_sig);
 
                 let adjust = Adjust::Pointer(PointerCoercion::ReifyFnPointer(b_hdr.safety()));

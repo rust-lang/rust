@@ -24,7 +24,7 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Par
     let PseudoCanonicalInput { typing_env, value } = goal;
     let (infcx, param_env) = tcx.infer_ctxt().ignoring_regions().build_with_typing_env(typing_env);
     let cause = ObligationCause::dummy();
-    match infcx.at(&cause, param_env).query_normalize(value) {
+    match infcx.query_normalize(value, param_env, cause) {
         Ok(Normalized { value: normalized_value, obligations: normalized_obligations }) => {
             // We don't care about the `obligations`; they are
             // always only region relations, and we are about to
