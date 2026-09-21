@@ -1,8 +1,8 @@
 error[E0080]: runtime values cannot be referenced in patterns
-  --> $DIR/never-in-range-pat.rs:10:12
+  --> $DIR/runtime-range-endpoints-issue-131327.rs:20:11
    |
-LL |         0..x => {}
-   |            ^ references a runtime value
+LL |         ..y => (),
+   |           ^ references a runtime value
 
 error: aborting due to 1 previous error
 
