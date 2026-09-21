@@ -377,10 +377,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         hidden_ty: Ty<'tcx>,
         span: Span,
     ) {
-        self.inner
-            .borrow_mut()
-            .opaque_types()
-            .add_duplicate(opaque_type_key, ty::ProvisionalHiddenType { span, ty: hidden_ty })
+        self.inner.borrow_mut().add_duplicate_opaque_type(
+            opaque_type_key,
+            ty::ProvisionalHiddenType { span, ty: hidden_ty },
+        )
     }
 
     fn reset_opaque_types(&self) {

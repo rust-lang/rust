@@ -229,6 +229,26 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
+    fn register_opaque_type(
+        &mut self,
+        key: OpaqueTypeKey<'tcx>,
+        hidden_type: ProvisionalHiddenType<'tcx>,
+    ) -> Option<Ty<'tcx>> {
+        self.bump_stalled_goal_generation();
+        self.opaque_types().register(key, hidden_type)
+    }
+
+    #[inline]
+    fn add_duplicate_opaque_type(
+        &mut self,
+        key: OpaqueTypeKey<'tcx>,
+        hidden_type: ProvisionalHiddenType<'tcx>,
+    ) {
+        self.bump_stalled_goal_generation();
+        self.opaque_types().add_duplicate(key, hidden_type);
+    }
+
+    #[inline]
     fn int_unification_table(&mut self) -> UnificationTable<'_, 'tcx, ty::IntVid> {
         self.int_unification_storage.with_log(&mut self.undo_log)
     }
@@ -1200,7 +1220,13 @@ impl<'tcx> InferCtxt<'tcx> {
 
     #[instrument(level = "debug", skip(self), ret)]
     pub fn take_opaque_types(&self) -> Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)> {
-        self.inner.borrow_mut().opaque_type_storage.take_opaque_types().collect()
+        let inner = &mut *self.inner.borrow_mut();
+
+        if !inner.opaque_type_storage.is_empty() {
+            inner.bump_stalled_goal_generation();
+        }
+
+        inner.opaque_type_storage.take_opaque_types().collect()
     }
 
     #[instrument(level = "debug", skip(self), ret)]

@@ -236,7 +236,6 @@ where
             let pass_generation = infcx.stalled_goal_generation();
 
             let mut any_changed = false;
-            let mut overflowed = false;
             let mut all_pending_trackable = true;
             let mut stalled_on_empty_opaques = false;
 
@@ -337,18 +336,10 @@ where
                         } else {
                             all_pending_trackable = false;
                         }
-
                         true
                     }
                 }
             });
-            if overflowed {
-                self.all_pending_trackable = false;
-                self.obligations.on_fulfillment_overflow(infcx);
-                // Only return true errors that we have accumulated while processing.
-                return errors;
-            }
-
             if !any_changed {
                 self.all_pending_trackable = all_pending_trackable;
                 self.stalled_on_empty_opaques = stalled_on_empty_opaques;
