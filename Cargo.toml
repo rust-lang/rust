@@ -69,3 +69,17 @@ insta = { version = "1.48.0", features = ["filters"] }
 [package.metadata.rust-analyzer]
 # This package uses #[feature(rustc_private)]
 rustc_private = true
+
+[lints.clippy]
+# allow all rules with a low priority ..
+all = { level = "allow", priority = -1 }
+# so we can pick out an exact subset of rules to deny
+correctness = "deny"
+char_lit_as_u8 = "deny"
+four_forward_slashes = "deny"
+non_minimal_cfg = "deny"
+print_literal = "deny"
+same_item_push = "deny"
+single_char_add_str = "deny"
+to_string_in_format_args = "deny"
+unconditional_recursion = "deny"

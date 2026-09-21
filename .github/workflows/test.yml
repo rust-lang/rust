@@ -78,7 +78,7 @@ jobs:
       env:
         RUSTFLAGS: -D warnings
         CARGO_UNSTABLE_BUILD_DIR_NEW_LAYOUT: true
-      run: cargo run --manifest-path ci/Cargo.toml build-and-test
+      run: cargo run --locked --manifest-path ci/Cargo.toml build-and-test
 
   test-conclusion:
     name: "test conclusion"
