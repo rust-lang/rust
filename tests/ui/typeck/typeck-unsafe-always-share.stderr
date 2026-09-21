@@ -42,6 +42,8 @@ note: required because it appears within the type `MySync<NoSync>`
    |
 LL | struct MySync<T> {
    |        ^^^^^^
+LL |     u: UnsafeCell<T>
+   |     ---------------- required by this field
 note: required by a bound in `test`
   --> $DIR/typeck-unsafe-always-share.rs:15:12
    |

@@ -104,12 +104,10 @@ fn check_c_variadic_abi(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: ExternAbi,
     match abi.supports_c_variadic() {
         CVariadicStatus::Stable => {}
         CVariadicStatus::NotSupported => {
-            tcx.dcx()
-                .create_err(diagnostics::VariadicFunctionCompatibleConvention {
-                    span,
-                    convention: &format!("{abi}"),
-                })
-                .emit();
+            tcx.dcx().emit_err(diagnostics::VariadicFunctionCompatibleConvention {
+                span,
+                convention: &format!("{abi}"),
+            });
         }
         CVariadicStatus::Unstable { feature } => {
             if !tcx.features().enabled(feature) {
@@ -172,7 +170,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
                 tcx.ensure_ok().eval_static_initializer(item_def_id);
                 check::maybe_check_static_with_link_section(tcx, item_def_id);
             }
-            DefKind::Const { .. }
+            DefKind::Const
                 if !tcx.generics_of(item_def_id).own_requires_monomorphization()
                     && tcx.const_of_item(item_def_id).is_none() =>
             {
@@ -203,7 +201,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     // while the enclosing body is type-checked. Doing this in the pass above lets the parallel
     // front end reach the nested body owner first, computing (and caching) an error type for
     // the anon const that then conflicts with the type fed later on.
-    tcx.par_hir_body_owners(|item_def_id| {
+    //
+    // This must not be parallelized since `coroutine_by_move_body_def_id` creates new `DefId`-s
+    // inside, which must be done in deterministic order to have reproducible binaries.
+    tcx.hir_body_owners().for_each(|item_def_id| {
         // Ensure we generate the new `DefId` before finishing `check_crate`.
         // Afterwards we freeze the list of `DefId`s.
         if tcx.needs_coroutine_by_move_body_def_id(item_def_id.to_def_id()) {

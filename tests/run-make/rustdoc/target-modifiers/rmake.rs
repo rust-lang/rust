@@ -5,6 +5,9 @@
 //!
 //! Please see https://github.com/rust-lang/rust/issues/144521.
 
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 use run_make_support::{rustc, rustdoc};
 
 fn main() {

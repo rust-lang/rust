@@ -916,7 +916,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
 
                 let handle = this.read_handle(handle, "GetThreadDescription")?;
-                let name_ptr = this.deref_pointer_as(name_ptr, this.machine.layouts.mut_raw_ptr)?; // the pointer where we should store the ptr to the name
+                let name_ptr =
+                    this.deref_pointer_as(name_ptr, this.machine.layouts.unit_ptr_mut)?; // the pointer where we should store the ptr to the name
 
                 let thread = match handle {
                     Handle::Thread(thread) => thread,

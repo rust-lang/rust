@@ -2,10 +2,9 @@ use std::mem;
 
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_middle::bug;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, InferConst, Term, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use tracing::{debug, instrument, warn};
 
 use super::{PredicateEmittingRelation, Relate, RelateResult, TypeRelation};

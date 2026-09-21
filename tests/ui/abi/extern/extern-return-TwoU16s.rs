@@ -1,6 +1,6 @@
 //@ run-pass
-#![allow(improper_ctypes)]
 
+#[repr(C)]
 pub struct TwoU16s {
     one: u16,
     two: u16,

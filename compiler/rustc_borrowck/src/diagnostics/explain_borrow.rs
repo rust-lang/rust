@@ -2,7 +2,7 @@
 
 use std::assert_matches;
 
-use rustc_errors::{Applicability, Diag, EmissionGuarantee};
+use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_infer::infer::NllRegionVariableOrigin;
@@ -55,10 +55,10 @@ impl<'tcx> BorrowExplanation<'tcx> {
     pub(crate) fn is_explained(&self) -> bool {
         !matches!(self, BorrowExplanation::Unexplained)
     }
-    pub(crate) fn add_explanation_to_diagnostic<G: EmissionGuarantee>(
+    pub(crate) fn add_explanation_to_diagnostic(
         &self,
         cx: &MirBorrowckCtxt<'_, '_, 'tcx>,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         borrow_desc: &str,
         borrow_span: Option<Span>,
         multiple_borrow_span: Option<(Span, Span)>,
@@ -437,10 +437,10 @@ impl<'tcx> BorrowExplanation<'tcx> {
         }
     }
 
-    fn add_object_lifetime_default_note<G: EmissionGuarantee>(
+    fn add_object_lifetime_default_note(
         &self,
         tcx: TyCtxt<'tcx>,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         unsize_ty: Ty<'tcx>,
     ) {
         if let ty::Adt(def, args) = unsize_ty.kind() {
@@ -494,9 +494,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
         }
     }
 
-    fn add_lifetime_bound_suggestion_to_diagnostic<G: EmissionGuarantee>(
+    fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         category: &ConstraintCategory<'tcx>,
         span: Span,
         region_name: &RegionName,
@@ -523,14 +523,14 @@ impl<'tcx> BorrowExplanation<'tcx> {
     }
 }
 
-fn suggest_rewrite_if_let<G: EmissionGuarantee>(
+fn suggest_rewrite_if_let(
     tcx: TyCtxt<'_>,
     expr: &hir::Expr<'_>,
     pat: &str,
     init: &hir::Expr<'_>,
     conseq: &hir::Expr<'_>,
     alt: Option<&hir::Expr<'_>>,
-    err: &mut Diag<'_, G>,
+    err: &mut Diag<'_>,
 ) {
     let source_map = tcx.sess.source_map();
     err.span_note(

@@ -6,10 +6,6 @@
 //!
 //! This test builds and runs the applications for various thumb targets using qemu.
 //!
-//! How to run this
-//! $ ./x.py clean
-//! $ ./x.py test --target thumbv6m-none-eabi,thumbv7m-none-eabi tests/run-make
-//!
 //! For supported targets, see `example/.cargo/config.toml`
 //!
 //! FIXME: https://github.com/rust-lang/rust/issues/128733 this test uses external

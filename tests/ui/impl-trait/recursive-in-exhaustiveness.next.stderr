@@ -4,6 +4,7 @@ error[E0282]: type annotations needed for `(_,)`
 LL |     let (x,) = (build(x),);
    |         ^^^^
    |
+   = note: cannot infer type of hidden type of opaque
 help: consider giving this pattern a type, where the placeholder `_` is specified
    |
 LL |     let (x,): (_,) = (build(x),);
@@ -15,6 +16,7 @@ error[E0282]: type annotations needed for `((_,),)`
 LL |     let (x,) = (build2(x),);
    |         ^^^^
    |
+   = note: cannot infer type of hidden type of opaque
 help: consider giving this pattern a type, where the placeholder `_` is specified
    |
 LL |     let (x,): ((_,),) = (build2(x),);
@@ -25,6 +27,8 @@ error[E0282]: type annotations needed
    |
 LL | fn build3<T>(x: T) -> impl Sized {
    |                       ^^^^^^^^^^ cannot infer type
+   |
+   = note: cannot infer type of hidden type of opaque
 
 error: aborting due to 3 previous errors
 

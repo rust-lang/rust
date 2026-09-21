@@ -1,6 +1,8 @@
 error[E0659]: `A` is ambiguous
   --> $DIR/issue-114682-1.rs:23:5
    |
+LL | macro_rules! mac {
+...
 LL |     A!();
    |     ^ ambiguous name
    |
@@ -22,7 +24,6 @@ note: `A` could also refer to the macro imported here
 LL | pub use m::*;
    |         ^^^^
    = help: use `crate::A` to refer to this macro unambiguously
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

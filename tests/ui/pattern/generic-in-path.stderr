@@ -2,7 +2,6 @@ error[E0158]: constant pattern cannot depend on generic parameters
   --> $DIR/generic-in-path.rs:12:9
    |
 LL | impl<const N: usize> Thing<N> {
-   | -----------------------------
 LL |     const A: Self = Thing;
    |     ------------- constant defined here
 ...

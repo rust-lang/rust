@@ -7,7 +7,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_errors::timings::TimingSection;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::{DepGraph, WorkProductMap};
+use rustc_middle::dep_graph::{DepGraph, WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 use rustc_session::{IncrCompSession, Session};
@@ -99,8 +99,8 @@ impl Linker {
             let (id, product) = rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
                 sess,
                 incr_comp_session.as_ref().unwrap(),
-                "metadata",
-                &[("rmeta", path)],
+                WorkProduct::METADATA_WORKPRODUCT_CGU_NAME,
+                &[(OutputType::Metadata.extension(), path)],
                 &[],
             );
             work_products.insert(id, product);

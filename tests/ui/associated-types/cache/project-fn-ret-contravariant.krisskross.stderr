@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/project-fn-ret-contravariant.rs:46:4
+  --> $DIR/project-fn-ret-contravariant.rs:47:4
    |
 LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
    |              -- -- lifetime `'b` defined here
@@ -12,7 +12,7 @@ LL |    (a, b)
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/project-fn-ret-contravariant.rs:46:4
+  --> $DIR/project-fn-ret-contravariant.rs:47:4
    |
 LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
    |              -- -- lifetime `'b` defined here
@@ -24,7 +24,13 @@ LL |    (a, b)
    |
    = help: consider adding the following bound: `'b: 'a`
 
-help: `'a` and `'b` must be the same: replace one with the other
+error: one or more lifetime errors were found in this item
+  --> $DIR/project-fn-ret-contravariant.rs:43:4
+   |
+LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
+   |    ^^^^^^^^^
+   |
+   = help: `'a` and `'b` must be the same: replace one with the other
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 

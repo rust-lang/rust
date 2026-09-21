@@ -21,7 +21,7 @@ use rustc_target::spec::{Arch, RelocModel};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::{GccContext, LockedTargetInfo, LtoMode, SyncContext, gcc_util, new_context};
+use crate::{GccContext, LtoMode, SharedTargetInfo, SyncContext, gcc_util, new_context};
 
 #[cfg(feature = "master")]
 pub fn visibility_to_gcc(visibility: Visibility) -> gccjit::Visibility {
@@ -73,7 +73,7 @@ pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
 pub fn compile_codegen_unit(
     tcx: TyCtxt<'_>,
     cgu_name: Symbol,
-    target_info: LockedTargetInfo,
+    target_info: SharedTargetInfo,
     lto_supported: bool,
 ) -> (ModuleCodegen<GccContext>, u64) {
     let prof_timer = tcx.prof.generic_activity("codegen_module");
@@ -96,7 +96,7 @@ pub fn compile_codegen_unit(
     fn module_codegen(
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
-        target_info: LockedTargetInfo,
+        target_info: SharedTargetInfo,
         lto_supported: bool,
     ) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);
@@ -214,6 +214,7 @@ pub fn compile_codegen_unit(
             // -fsyntax-only), forbid the compilation when get_target_info() is called on a
             // context.
             let f16_type_supported = target_info.supports_target_dependent_type(CType::Float16);
+            let f16b_type_supported = target_info.supports_target_dependent_type(CType::BFloat16);
             let f32_type_supported = target_info.supports_target_dependent_type(CType::Float32);
             let f64_type_supported = target_info.supports_target_dependent_type(CType::Float64);
             let f128_type_supported = target_info.supports_target_dependent_type(CType::Float128);
@@ -225,6 +226,7 @@ pub fn compile_codegen_unit(
                 tcx,
                 u128_type_supported,
                 f16_type_supported,
+                f16b_type_supported,
                 f32_type_supported,
                 f64_type_supported,
                 f128_type_supported,

@@ -20,11 +20,11 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_middle::mir;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, GenericArgs, List, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, mir, span_bug};
-use rustc_span::{Span, Spanned};
+use rustc_span::{Span, Spanned, bug, span_bug};
 use tracing::{debug, instrument};
 
 use crate::PassPolicy;

@@ -33,14 +33,13 @@ use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateO
 // Lints from rustc_lint_defs
 pub use rustc_lint_defs::builtin::*;
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw, impl_lint_pass};
-use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, AssocContainer, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast, VariantDef,
 };
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Spanned, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Spanned, Symbol, bug, kw, sym};
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits;
@@ -196,7 +195,7 @@ impl UnsafeCode {
         &self,
         cx: &EarlyContext<'_>,
         span: Span,
-        decorate: impl for<'a> Diagnostic<'a, ()>,
+        decorate: impl for<'a> Diagnostic<'a>,
     ) {
         // This comes from a macro that has `#[allow_internal_unsafe]`.
         if span.allows_unsafe() {
@@ -1401,7 +1400,7 @@ declare_lint! {
     /// See [RFC 2056] for more details. This feature is currently only
     /// available on the nightly channel, see [tracking issue #48214].
     ///
-    /// [RFC 2056]: https://github.com/rust-lang/rfcs/blob/master/text/2056-allow-trivial-where-clause-constraints.md
+    /// [RFC 2056]: https://rust-lang.github.io/rfcs/2056-allow-trivial-where-clause-constraints.html
     /// [tracking issue #48214]: https://github.com/rust-lang/rust/issues/48214
     TRIVIAL_BOUNDS,
     Warn,
@@ -1758,11 +1757,11 @@ impl KeywordIdents {
             match tt {
                 // Only report non-raw idents.
                 TokenTree::Token(token, _) => {
-                    if let Some((ident, token::IdentIsRaw::No)) = token.ident() {
+                    if let Some((ident, token::IdentKind::Normal)) = token.ident() {
                         if !prev_dollar {
                             self.check_ident_token(cx, UnderMacro(true), ident, "");
                         }
-                    } else if let Some((ident, token::IdentIsRaw::No)) = token.lifetime() {
+                    } else if let Some((ident, token::IdentKind::Normal)) = token.lifetime() {
                         self.check_ident_token(
                             cx,
                             UnderMacro(true),

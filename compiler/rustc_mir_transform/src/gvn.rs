@@ -111,14 +111,13 @@ use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexVec, newtype_index};
-use rustc_middle::bug;
 use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, bug};
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
@@ -1061,7 +1060,6 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     fn simplify_rvalue(
         &mut self,
-        lhs: &Place<'tcx>,
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
@@ -1930,19 +1928,15 @@ fn op_to_prop_const<'tcx>(
     // If this constant is already represented as an `Allocation`,
     // try putting it into global memory to return it.
     if let Either::Left(mplace) = op.as_mplace_or_imm() {
-        let (size, _align) = ecx.size_and_align_of_val(&mplace).discard_err()??;
+        let (alloc_id, offset, _) = ecx.ptr_try_get_alloc_id(mplace.ptr(), 0).ok()?;
 
         // Do not try interning a value that contains provenance.
         // Due to https://github.com/rust-lang/rust/issues/128775, doing so could lead to bugs.
         // FIXME: remove this hack once that issue is fixed.
-        let alloc_ref = ecx.get_ptr_alloc(mplace.ptr(), size).discard_err()??;
-        if alloc_ref.has_provenance() {
+        if ecx.has_provenance_in_alloc(alloc_id).discard_err()? {
             return None;
         }
 
-        let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
-        let (prov, offset) = pointer.prov_and_relative_offset();
-        let alloc_id = prov.alloc_id();
         intern_const_alloc_for_constprop(ecx, alloc_id).discard_err()?;
 
         // `alloc_id` may point to a static. Codegen will choke on an `Indirect` with anything
@@ -2004,11 +1998,6 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
 
     fn try_as_evaluated_constant(&mut self, index: VnIndex) -> Option<Const<'tcx>> {
         let op = self.eval_to_const(index)?;
-        if op.layout.is_unsized() {
-            // Do not attempt to propagate unsized locals.
-            return None;
-        }
-
         let value = op_to_prop_const(&mut self.ecx, op)?;
 
         // Check that we do not leak a pointer.
@@ -2100,7 +2089,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
     ) {
         self.simplify_place_projection(lhs, location);
 
-        let value = self.simplify_rvalue(lhs, rvalue, location);
+        let value = self.simplify_rvalue(rvalue, location);
         if let Some(value) = value {
             // FIXME: Is it correct to make these retagging assignments?
             if let Some(const_) = self.try_as_constant(value) {

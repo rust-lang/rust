@@ -21,9 +21,9 @@ use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::{
-    self, DefiningScopeKind, DefinitionSiteHiddenType, Flags, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    Unnormalized, fold_regions,
+    self, DefiningScopeKind, DefinitionSiteHiddenType, Flags, PredicateProxy, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, Unnormalized, fold_regions,
 };
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
@@ -619,7 +619,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         guar
                     } else {
                         let (Ok(guar) | Err(guar)) =
-                            prev.build_mismatch_error(&hidden_type, tcx).map(|d| d.emit());
+                            prev.build_mismatch_error(&hidden_type, tcx).map(|d| d.emit_err());
                         guar
                     };
                     *entry = DefinitionSiteHiddenType::new_error(tcx, guar);
@@ -656,7 +656,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 .dcx()
                 .struct_span_err(span, "cannot resolve opaque type")
                 .with_code(E0720)
-                .emit();
+                .emit_err();
             self.typeck_results
                 .hidden_types
                 .insert(def_id, DefinitionSiteHiddenType::new_error(tcx, guar));
@@ -807,8 +807,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let obligations = self.fcx.take_hir_typeck_potentially_region_dependent_goals();
         if self.fcx.tainted_by_errors().is_none() {
             for obligation in obligations {
-                let (predicate, mut cause) =
-                    self.fcx.resolve_vars_if_possible((obligation.predicate, obligation.cause));
+                let (predicate, mut cause) = self
+                    .fcx
+                    .deeply_resolve_ignoring_regions((obligation.predicate, obligation.cause));
                 if predicate.has_non_region_infer() {
                     self.fcx.dcx().span_delayed_bug(
                         cause.span,
@@ -833,7 +834,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let value = self.fcx.resolve_vars_if_possible(value);
+        let value = self.fcx.deeply_resolve_ignoring_regions(value);
 
         let mut goals = vec![];
         let value =
@@ -847,7 +848,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             goals
                 .into_iter()
                 .map(|pred| {
-                    self.fcx.resolve_vars_if_possible(pred).fold_with(&mut Resolver::new(
+                    self.fcx.deeply_resolve_ignoring_regions(pred).fold_with(&mut Resolver::new(
                         self.fcx,
                         span,
                         self.body,
@@ -876,7 +877,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let value = self.fcx.resolve_vars_if_possible(value);
+        let value = self.fcx.deeply_resolve_ignoring_regions(value);
 
         let mut goals = vec![];
         let value =
@@ -946,7 +947,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     TypeAnnotationNeeded::E0282,
                     false,
                 )
-                .emit()
+                .emit_err()
         }
     }
 
@@ -1032,7 +1033,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
         self.handle_term(ct, ty::Const::outer_exclusive_binder, ty::Const::new_error)
     }
 
-    fn fold_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, predicate: P) -> P {
         assert!(
             !self.should_normalize,
             "normalizing predicates in writeback is not generally sound"

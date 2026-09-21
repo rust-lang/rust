@@ -175,12 +175,21 @@ fn issue_8154() {
     std::mem::swap(&mut s.0.x, &mut s.0.y);
 }
 
-const fn issue_9864(mut u: u32) -> u32 {
+#[clippy::msrv = "1.84"]
+const fn const_swap_msrv_too_low(mut u: u32) -> u32 {
     let mut v = 10;
 
     let temp = u;
     u = v;
     v = temp;
+    u + v
+}
+
+#[clippy::msrv = "1.85"]
+const fn const_swap_msrv_met(mut u: u32) -> u32 {
+    let mut v = 10;
+
+    std::mem::swap(&mut u, &mut v);
     u + v
 }
 

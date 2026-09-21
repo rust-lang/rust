@@ -5,11 +5,11 @@ use rustc_infer::traits::{
     ImplDerivedHostCause, ImplSource, Obligation, ObligationCause, ObligationCauseCode,
     PredicateObligation,
 };
-use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::elaborate::elaborate;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, Ty, Unnormalized};
+use rustc_span::span_bug;
 use thin_vec::{ThinVec, thin_vec};
 
 use super::SelectionContext;
@@ -33,7 +33,7 @@ pub fn evaluate_host_effect_obligation<'tcx>(
         );
     }
 
-    let ref obligation = selcx.infcx.resolve_vars_if_possible(obligation.clone());
+    let ref obligation = selcx.infcx.deeply_resolve_ignoring_regions(obligation.clone());
 
     // Force ambiguity for infer self ty.
     if obligation.predicate.self_ty().is_ty_var() {

@@ -351,3 +351,46 @@ fn issue_158875_make_mut_dont_leak_allocator() {
 fn new_uninit_slice_capacity_overflow() {
     let _ = Arc::<[u8]>::new_uninit_slice(isize::MAX as usize);
 }
+
+mod arc_allocator_provenance {
+    //! Regression tests for issues where the pointer passed back to the allocator
+    //! only had the provenance of a reborrow, which is unsound with allocators
+    //! that store metadata next to the allocation.
+    //! Mainly meant to be run in Miri (but should also work outside it).
+
+    use std::alloc::{AllocError, Allocator, Global, Layout};
+    use std::ptr::NonNull;
+    use std::sync::Arc;
+
+    struct MyMetadataAlloc;
+
+    fn widen(layout: Layout) -> Layout {
+        Layout::from_size_align(layout.size() + 10, layout.align())
+            .unwrap_or_else(|_| std::process::abort())
+    }
+
+    unsafe impl Allocator for MyMetadataAlloc {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            // imagine we are storing metadata in the extra bytes
+            let ptr = Global.allocate(widen(layout))?;
+            Ok(NonNull::slice_from_raw_parts(ptr.cast(), layout.size()))
+        }
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            // SAFETY: we get back a pointer with the same provenance as was
+            // returned by `allocate`, so it's okay to deallocate the full
+            // `layout.size() + 10` bytes through it.
+            unsafe { Global.deallocate(ptr, widen(layout)) }
+        }
+    }
+
+    #[test]
+    fn issue_162719() {
+        drop(Arc::<i32, _>::new_uninit_in(MyMetadataAlloc));
+        drop(Arc::new_in(1i32, MyMetadataAlloc));
+    }
+
+    #[test]
+    fn issue_162720() {
+        drop(Arc::new_cyclic_in(|_| 1i32, MyMetadataAlloc));
+    }
+}

@@ -2,10 +2,6 @@
 //! for a collection of thumb targets. This is a smoke test that verifies that both cargo
 //! and rustc work in this case.
 //!
-//! How to run this
-//! $ ./x.py clean
-//! $ ./x.py test --target thumbv6m-none-eabi,thumbv7m-none-eabi tests/run-make-cargo
-//!
 //! Supported targets:
 //! - thumbv6m-none-eabi (Bare Cortex-M0, M0+, M1)
 //! - thumbv7em-none-eabi (Bare Cortex-M4, M7)

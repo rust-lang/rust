@@ -10,6 +10,8 @@
 //@ ignore-cross-compile
 //@ needs-dynamic-linking
 //@ only-nightly (requires unstable rustc flag)
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 // This test trips a check in the MSVC linker for an outdated processor:
 // "LNK1322: cannot avoid potential ARM hazard (Cortex-A53 MPCore processor bug #843419)"

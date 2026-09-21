@@ -4,7 +4,8 @@
 #![allow(incomplete_features, dead_code)]
 
 trait Trait {
-    type const CT: usize;
+    #[rustc_always_gca]
+    const CT: usize;
 }
 
 struct Type<const N: usize> {
@@ -12,7 +13,7 @@ struct Type<const N: usize> {
 }
 
 impl<const N: usize> Trait for Type<N> {
-    type const CT: usize = N;
+    const CT: usize = core::direct_const_arg!(N);
 }
 
 fn func<const N: usize>() -> impl Trait<CT = { <Type<N> as Trait>::CT }> {

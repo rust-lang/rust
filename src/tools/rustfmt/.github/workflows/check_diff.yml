@@ -54,7 +54,7 @@ jobs:
 
     - name: Build check_diff binary
       working-directory: ./check_diff
-      run: cargo build --release
+      run: cargo build --release --locked
 
     - name: Run Diff Check
       working-directory: ./check_diff

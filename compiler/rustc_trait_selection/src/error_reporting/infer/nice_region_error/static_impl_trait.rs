@@ -3,7 +3,7 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
+use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, GenericBound, GenericParam, GenericParamKind, Item, ItemKind, Lifetime,
     LifetimeKind, LifetimeParamKind, MissingLifetimeKind, Node, TyKind,
@@ -128,8 +128,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             Some(anon_reg_sup.scope),
         );
 
-        let reported = err.emit();
-        Some(reported)
+        let guar = err.emit_err();
+        Some(guar)
     }
 }
 

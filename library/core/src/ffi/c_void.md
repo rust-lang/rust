@@ -13,4 +13,4 @@ compilers down to 1.1.0. After Rust 1.30.0, it was re-exported by
 this definition. For more information, please read [RFC 2521].
 
 [Nomicon]: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
-[RFC 2521]: https://github.com/rust-lang/rfcs/blob/master/text/2521-c_void-reunification.md
+[RFC 2521]: https://rust-lang.github.io/rfcs/2521-c_void-reunification.html

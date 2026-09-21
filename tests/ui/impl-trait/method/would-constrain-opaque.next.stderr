@@ -7,7 +7,7 @@ LL |         x.method();
    = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `Trait` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
-LL + use Trait;
+LL + use crate::Trait;
    |
 
 error[E0599]: no method named `method` found for reference `&_` in the current scope
@@ -19,7 +19,7 @@ LL |         x.method();
    = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `Trait` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
-LL + use Trait;
+LL + use crate::Trait;
    |
 
 error: aborting due to 2 previous errors

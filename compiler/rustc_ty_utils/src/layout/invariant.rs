@@ -1,9 +1,10 @@
 use std::assert_matches;
 
 use rustc_abi::{BackendRepr, FieldsShape, Scalar, Size, TagEncoding, Variants};
+use rustc_middle::ty;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
-use rustc_middle::{bug, ty};
+use rustc_span::bug;
 
 /// Enforce some basic invariants on layouts.
 pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {

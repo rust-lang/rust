@@ -10,6 +10,30 @@
 //! and <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_codegen_llvm/src/intrinsic.rs>,
 //! and for const evaluation in <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
 //!
+//! Intrinsics don't need a body. However, they optionally can have a body, which we call the
+//! "fallback body". This will be used by codegen backends that do not have a dedicated
+//! implementation of the intrinsic, making it easier to add new intrinsics for specific operations
+//! without having to implement them in each codegen backend. The fallback body obviously has to be
+//! a valid implementation of the documented specification of the intrinsic. In some cases, the
+//! fallback body will be *equivalent* to the specification. Note that this is a strong requirement:
+//! if the spec says "UB if input `x` is even", then a valid implementation can just ignore this and
+//! do whatever it wants in that case; an *equivalent* implementation needs to actually check this
+//! condition and trigger UB in that case (e.g. by using `hint::assert_unchecked()`). Similar, if
+//! the spec says "returns `x` or `y` non-deterministically", then an *equivalent* implementation
+//! must actually do non-deterministic choice and return either value (e.g. by invoking some other
+//! language operation that has the same non-determinism). Intrinsics with such a fallback body that
+//! is equivalent to the spec may be marked with `#[miri::intrinsic_fallback_is_spec]`; the fallback
+//! body will then also be used by Miri for UB checking. When in doubt, do not use this attribute or
+//! ask the Miri maintainers for advice.
+//!
+//! Intrinsics are, in general, language extensions. Therefore, t-lang should be involved whenever a
+//! new intrinsic is exposed to stable code. However, if an intrinsic is marked
+//! `#[miri::intrinsic_fallback_is_spec]` with a fallback body that only uses stable features (or if
+//! such a fallback body could be written, but for one reason or another the actual fallback body is
+//! different), and if it also does not make other promises that go beyond observable program
+//! behavior (such as steering the optimizer in a particular direction), then an intrinsic may be
+//! used without t-lang involvement.
+//!
 //! # Const intrinsics
 //!
 //! In order to make an intrinsic unstable usable at compile-time, copy the implementation from
@@ -19,9 +43,10 @@
 //! wg-const-eval.
 //!
 //! If an intrinsic is supposed to be used from a `const fn` with a `rustc_const_stable` attribute,
-//! `#[rustc_intrinsic_const_stable_indirect]` needs to be added to the intrinsic. Such a change requires
-//! T-lang approval, because it may bake a feature into the language that cannot be replicated in
-//! user code without compiler support.
+//! `#[rustc_intrinsic_const_stable_indirect]` needs to be added to the intrinsic. Such a change
+//! requires T-lang approval, because it may bake a feature into the language that cannot be
+//! replicated in user code without compiler support. The same exception as above applies for
+//! `#[miri::intrinsic_fallback_is_spec]` intrinsics.
 //!
 //! # Volatiles
 //!
@@ -129,8 +154,20 @@ pub const unsafe fn atomic_cxchgweak<
 /// Loads the current value of the pointer.
 /// `T` must be an integer or pointer type.
 ///
+/// # Safety
+///
+/// * If `VOLATILE` is `true`, this is equivalent to [Atomic::load_volatile].
+///   Refer to the documentation of that method for safety requirements.
+///
+/// * If `VOLATILE` is `false`, this is equivalent to [Atomic::from_ptr] followed
+///   by [Atomic::load]. Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `load` method. For example, [`AtomicBool::load`].
+///
+/// [Atomic::load_volatile]: AtomicI32::load_volatile
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::load]: AtomicI32::load
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
@@ -140,8 +177,20 @@ pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering, const VOLATI
 /// Stores the value at the specified memory location.
 /// `T` must be an integer or pointer type.
 ///
+/// # Safety
+///
+/// * If `VOLATILE` is `true`, this is equivalent to [Atomic::store_volatile].
+///   Refer to the documentation of that method for safety requirements.
+///
+/// * If `VOLATILE` is `false`, this is equivalent to [Atomic::from_ptr] followed
+///   by [Atomic::store]. Refer to the documentation of [Atomic::from_ptr] for safety requirements.
+///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `store` method. For example, [`AtomicBool::store`].
+///
+/// [Atomic::store_volatile]: AtomicI32::store_volatile
+/// [Atomic::from_ptr]: AtomicI32::from_ptr
+/// [Atomic::store]: AtomicI32::store
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
@@ -3009,6 +3058,22 @@ pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
 #[rustc_comptime]
 pub fn type_id_is_signed(_id: crate::any::TypeId) -> bool;
 
+/// Gets the length of the array represented by this `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::array_len`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_array_len(_id: crate::any::TypeId) -> usize;
+
+/// Gets the type of each element of the array or slice represented by this `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::element_ty`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_element_ty(_id: crate::any::TypeId) -> Option<crate::any::TypeId>;
+
 /// Gets the size of the type represented by this `TypeId`.
 ///
 /// The more user-friendly version of this intrinsic is [`core::any::TypeId::size`].
@@ -3101,6 +3166,15 @@ pub fn field_representing_type_name(_frt_type_id: crate::any::TypeId) -> &'stati
 #[rustc_comptime]
 pub fn field_representing_type_offset(_frt_type_id: crate::any::TypeId) -> usize;
 
+/// Given a `TypeId` that represents a function pointer returns an [`core::mem::type_info::FnPtr`].
+/// When called on something else this returns `None`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::function_ptr`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_function_ptr(_type_id: crate::any::TypeId) -> Option<crate::mem::type_info::FnPtr>;
+
 /// Checks whether this type is non-exhaustive.
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
@@ -3113,6 +3187,26 @@ pub fn non_exhaustive(_id: crate::any::TypeId) -> bool;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
 pub fn type_id_generics(_id: crate::any::TypeId) -> &'static [crate::mem::type_info::Generic];
+
+// FIXME(reflection): Pick a consistent naming scheme for the intrinsics. Right now we got
+// type_id_<something>, <something>_type_id and intrinsics not mentioning type_id at all.
+/// Given a `TypeId` that represents a pointer this returns the `TypeId` which that pointer
+/// points to. When called on anything else this returns None.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::points_to`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_points_to(_id: crate::any::TypeId) -> Option<crate::any::TypeId>;
+
+/// Given a `TypeId` that represents a pointer returns whether that pointer is mutable.
+/// When called on anything else this returns `false`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::points_mutably`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_points_mutably(_id: crate::any::TypeId) -> bool;
 
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
@@ -3587,7 +3681,8 @@ pub const fn maximumf128(x: f128, y: f128) -> f128 {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[miri::intrinsic_fallback_is_spec]
-pub const fn fabs<T: const bounds::FloatPrimitive>(x: T) -> T {
+#[rustc_do_not_const_check] // use built-in impl to avoid const-checks in the fallback body.
+pub const fn fabs<T: bounds::FloatPrimitive>(x: T) -> T {
     T::from_bits(x.to_bits() & !T::SIGN_MASK)
 }
 

@@ -9,9 +9,7 @@ pub(crate) fn target() -> Target {
     base.features = "+cmpxchg16b,+lahfsahf,+popcnt,+sse3,+sse4.1,+sse4.2,+ssse3".into();
     base.max_atomic_width = Some(128);
     base.stack_probes = StackProbeType::Inline;
-    base.supported_sanitizers =
-        SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK | SanitizerSet::SAFESTACK;
-    base.default_sanitizers = SanitizerSet::SAFESTACK;
+    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK;
     base.supports_xray = true;
 
     Target {

@@ -13,7 +13,7 @@
 struct ThreeTypes<T1, T2, T3>(T1, T2, T3);
 
 impl<T1, T2, T3: std::marker::ConstParamTy_> ThreeTypes<T1, T2, T3> {
-    type const INHERENT: [T3; 0] = [];
+    const INHERENT: [T3; 0] = core::direct_const_arg!([]);
 }
 
 struct Struct<const O: [u32; 0]>;

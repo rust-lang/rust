@@ -36,14 +36,12 @@ use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{Arch, Os};
 
 use crate::alloc_addresses::EvalContextExt;
-use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
 use crate::concurrency::data_race::{self, NaReadType, NaWriteType};
 use crate::concurrency::sync::SyncObj;
 use crate::concurrency::{
     AllocDataRaceHandler, GenmcCtx, GenmcEvalContextExt as _, GlobalDataRaceHandler, weak_memory,
 };
 use crate::helpers::is_no_core;
-use crate::shims::readiness::DelayedReadinessUpdates;
 use crate::*;
 
 /// First real-time signal.
@@ -433,15 +431,33 @@ pub struct PrimitiveLayouts<'tcx> {
     pub u128: TyAndLayout<'tcx>,
     pub usize: TyAndLayout<'tcx>,
     pub bool: TyAndLayout<'tcx>,
-    pub mut_raw_ptr: TyAndLayout<'tcx>,   // *mut ()
-    pub const_raw_ptr: TyAndLayout<'tcx>, // *const ()
+    pub unit_ptr_mut: TyAndLayout<'tcx>,   // *mut ()
+    pub unit_ptr_const: TyAndLayout<'tcx>, // *const ()
+    pub void_ptr_mut: TyAndLayout<'tcx>,   // *mut c_void
+    pub void_ptr_const: TyAndLayout<'tcx>, // *const c_void
+    pub fn_ptr: TyAndLayout<'tcx>,         // extern "C" fn()
 }
 
 impl<'tcx> PrimitiveLayouts<'tcx> {
     fn new(layout_cx: LayoutCx<'tcx>) -> Result<Self, &'tcx LayoutError<'tcx>> {
         let tcx = layout_cx.tcx();
-        let mut_raw_ptr = Ty::new_mut_ptr(tcx, tcx.types.unit);
-        let const_raw_ptr = Ty::new_imm_ptr(tcx, tcx.types.unit);
+
+        let unit_ptr_mut = Ty::new_mut_ptr(tcx, tcx.types.unit);
+        let unit_ptr_const = Ty::new_imm_ptr(tcx, tcx.types.unit);
+        // We fall back to `()` if the lang item is missing, so `no_core` works better with Miri.
+        let c_void = match tcx.lang_items().c_void() {
+            Some(c_void) => ty::Instance::mono(tcx, c_void).ty(tcx, layout_cx.typing_env),
+            None => tcx.types.unit,
+        };
+        let void_ptr_mut = Ty::new_mut_ptr(tcx, c_void);
+        let void_ptr_const = Ty::new_imm_ptr(tcx, c_void);
+
+        let sig_kind = ty::FnSigKind::default()
+            .set_abi(ExternAbi::C { unwind: false })
+            .set_safety(rustc_hir::Safety::Safe);
+        let fn_ptr =
+            Ty::new_fn_ptr(tcx, ty::Binder::dummy(tcx.mk_fn_sig([], tcx.types.unit, sig_kind)));
+
         Ok(Self {
             unit: layout_cx.layout_of(tcx.types.unit)?,
             i8: layout_cx.layout_of(tcx.types.i8)?,
@@ -457,8 +473,11 @@ impl<'tcx> PrimitiveLayouts<'tcx> {
             u128: layout_cx.layout_of(tcx.types.u128)?,
             usize: layout_cx.layout_of(tcx.types.usize)?,
             bool: layout_cx.layout_of(tcx.types.bool)?,
-            mut_raw_ptr: layout_cx.layout_of(mut_raw_ptr)?,
-            const_raw_ptr: layout_cx.layout_of(const_raw_ptr)?,
+            unit_ptr_mut: layout_cx.layout_of(unit_ptr_mut)?,
+            unit_ptr_const: layout_cx.layout_of(unit_ptr_const)?,
+            void_ptr_mut: layout_cx.layout_of(void_ptr_mut)?,
+            void_ptr_const: layout_cx.layout_of(void_ptr_const)?,
+            fn_ptr: layout_cx.layout_of(fn_ptr)?,
         })
     }
 
@@ -536,7 +555,7 @@ pub struct MiriMachine<'tcx> {
     pub(crate) dirs: shims::DirTable,
 
     /// Managing file descriptors whose readiness needs to be updated.
-    pub(crate) delayed_readiness_updates: Rc<DelayedReadinessUpdates>,
+    pub(crate) delayed_readiness_updates: Rc<shims::DelayedReadinessUpdates>,
 
     /// This machine's monotone clock.
     pub(crate) monotonic_clock: MonotonicClock,
@@ -551,7 +570,7 @@ pub struct MiriMachine<'tcx> {
     /// This has no effect at all, it is just tracked to produce the correct result
     /// in `sched_getaffinity`
     /// This will be `None` when running `#![no_core]` crates.
-    pub(crate) thread_cpu_affinity: Option<FxHashMap<ThreadId, CpuAffinityMask>>,
+    pub(crate) thread_cpu_affinity: Option<FxHashMap<ThreadId, shims::CpuAffinityMask>>,
 
     /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
     pub(crate) layouts: PrimitiveLayouts<'tcx>,
@@ -730,9 +749,9 @@ impl<'tcx> MiriMachine<'tcx> {
         let stack_size =
             if tcx.pointer_size().bits() < 32 { page_size * 4 } else { page_size * 16 };
         assert!(
-            usize::try_from(config.num_cpus).unwrap() <= cpu_affinity::MAX_CPUS,
+            usize::try_from(config.num_cpus).unwrap() <= shims::cpu_affinity::MAX_CPUS,
             "miri only supports up to {} CPUs, but {} were configured",
-            cpu_affinity::MAX_CPUS,
+            shims::cpu_affinity::MAX_CPUS,
             config.num_cpus
         );
         let threads = ThreadManager::new(config);
@@ -743,7 +762,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 let mut affinity = FxHashMap::default();
                 affinity.insert(
                     threads.active_thread(),
-                    CpuAffinityMask::new(&layout_cx, config.num_cpus),
+                    shims::CpuAffinityMask::new(&layout_cx, config.num_cpus),
                 );
                 Some(affinity)
             } else {
@@ -769,7 +788,7 @@ impl<'tcx> MiriMachine<'tcx> {
             isolated_op: config.isolated_op,
             validation: config.validation,
             fds: shims::FdTable::init(config.mute_stdout_stderr),
-            delayed_readiness_updates: Rc::new(DelayedReadinessUpdates::default()),
+            delayed_readiness_updates: Rc::new(shims::DelayedReadinessUpdates::default()),
             dirs: Default::default(),
             layouts,
             threads,

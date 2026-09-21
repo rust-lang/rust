@@ -14,6 +14,9 @@ struct Cli {
     /// Modify files that do not comply
     #[arg(long)]
     overwrite: bool,
+    /// This reflows file even when it complies (with one sentence per line)
+    #[arg(long)]
+    reflow_harder: bool,
     /// Applies to lines that are to be split
     #[arg(long, default_value_t = 100)]
     line_length_limit: usize,
@@ -24,7 +27,7 @@ static REGEX_IGNORE_END: LazyLock<Regex> =
 static REGEX_IGNORE_LINK_TARGETS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\[.+\]: ").unwrap());
 static REGEX_SPLIT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"([^\.\d\-\*]\.|[^r\~]\?|!)\s").unwrap());
+    LazyLock::new(|| Regex::new(r"([^\.\d\-]\.|[^r\~]\?|!)\s").unwrap());
 // list elements, numbered (1.) or not  (- and *)
 static REGEX_LIST_ENTRY: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*|\d\))\s+").unwrap());
@@ -45,7 +48,10 @@ fn main() -> Result<()> {
             continue;
         }
         let old = fs::read_to_string(&path)?;
-        let new = comply(&old);
+        let mut new = comply(&old);
+        if cli.reflow_harder {
+            new = lengthen_lines(&new, cli.line_length_limit)
+        }
         if new == old {
             compliant.push(path.clone());
         } else if cli.overwrite {
@@ -182,6 +188,28 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
             new_content[new_n] = format!("{line} {}", next_line.trim_start());
             new_content.remove(new_n + 1);
             skip_next = true;
+            continue;
+        }
+        const SEP: &str = ", ";
+        let indent = next_line.find(|ch: char| !ch.is_whitespace()).unwrap();
+        if next_line.contains(SEP) {
+            let (before_sep, after_sep) = next_line.split_once(SEP).unwrap();
+            if line.len() + before_sep.len() < limit - SEP.len() {
+                new_content[new_n] =
+                    format!("{line} {}{}", before_sep.trim_start(), SEP.trim_end());
+                new_n += 1;
+                new_content[new_n] = format!("{:indent$}{after_sep}", "");
+                skip_next = true;
+            }
+        } else if line.contains(SEP) {
+            let (before_sep, after_sep) = line.rsplit_once(SEP).unwrap();
+            if after_sep.len() + next_line.len() < limit {
+                new_content[new_n] = format!("{before_sep}{}", SEP.trim_end());
+                new_n += 1;
+                new_content[new_n] =
+                    format!("{:indent$}{after_sep} {}", "", next_line.trim_start());
+                skip_next = true;
+            }
         }
     }
     new_content.join("\n") + "\n"
@@ -325,15 +353,46 @@ fn should_pass() {
 }
 
 #[test]
-#[ignore]
-fn split_on_comma() {
+fn split_on_comma_of_current_line() {
+    let original = "
+Each derived value has a dependency, on other values, which could themselves be either base or
+derived.
+
+  Each derived value has a dependency, on other values, which could themselves be either base or
+  derived.
+";
+    let expected = "
+Each derived value has a dependency, on other values,
+which could themselves be either base or derived.
+
+  Each derived value has a dependency, on other values,
+  which could themselves be either base or derived.
+";
+    assert_eq!(expected, lengthen_lines(original, 100))
+}
+
+#[test]
+fn split_on_comma_of_next_line() {
     let original = "
 Because of canonicalization of regions and
 inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
+
+  Because of canonicalization of regions and
+  inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
 ";
     let expected = "
 Because of canonicalization of regions and inference variables,
 encountering a cycle doesn't mean that we would get an infinite proof tree.
+
+  Because of canonicalization of regions and inference variables,
+  encountering a cycle doesn't mean that we would get an infinite proof tree.
 ";
     assert_eq!(expected, lengthen_lines(original, 100))
+}
+
+#[test]
+fn should_split() {
+    let original = "the queries that we do, as well as the **query DAG**. The";
+    let expected = "the queries that we do, as well as the **query DAG**.\nThe\n";
+    assert_eq!(expected, comply(original));
 }

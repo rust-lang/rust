@@ -86,7 +86,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
         // and Deref, and this has benefits for const and the emitted MIR.
         let (kind, new_ty) =
             if let Some(ty) = self.state.cur_ty.builtin_deref(self.include_raw_pointers) {
-                debug_assert_eq!(ty, self.infcx.resolve_vars_if_possible(ty));
+                debug_assert_eq!(ty, self.infcx.deeply_resolve_ignoring_regions(ty));
                 (AutoderefKind::Builtin, ty)
             } else if let Some(ty) = self.overloaded_deref_ty(self.state.cur_ty) {
                 // The overloaded deref check already normalizes the pointee type.
@@ -123,7 +123,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             param_env,
             state: AutoderefSnapshot {
                 steps: vec![],
-                cur_ty: infcx.resolve_vars_if_possible(base_ty),
+                cur_ty: infcx.deeply_resolve_ignoring_regions(base_ty),
                 obligations: PredicateObligations::new(),
                 at_start: true,
                 reached_recursion_limit: false,
@@ -171,7 +171,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
         self.state.obligations.extend(obligations);
 
-        Some(self.infcx.resolve_vars_if_possible(normalized_ty))
+        Some(self.infcx.deeply_resolve_ignoring_regions(normalized_ty))
     }
 
     #[instrument(level = "debug", skip(self), ret)]

@@ -213,7 +213,7 @@ fn parse_compound_expr(expr: &str) -> Option<CompoundExpr> {
         if let Some(paren_pos) = after_prefix.find(')') {
             let builtin_name = &after_prefix[..paren_pos];
             let rest = &after_prefix[paren_pos + 1..]; // Skip the closing ) of the WRAP
-            // rest should now be "(args)"
+                                                       // rest should now be "(args)"
             if rest.starts_with('(') && rest.ends_with(')') {
                 let args_str = &rest[1..rest.len() - 1];
                 let args = parse_compound_args(args_str)?;

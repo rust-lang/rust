@@ -1,5 +1,8 @@
 // Tests `rustc --help` and similar invocations against snapshots and each other.
 
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 use run_make_support::{bare_rustc, diff, similar};
 
 fn main() {

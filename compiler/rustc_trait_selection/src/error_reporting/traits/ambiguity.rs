@@ -213,7 +213,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // ambiguous impls. The latter *ought* to be a
         // coherence violation, so we don't report it here.
 
-        let predicate = self.resolve_vars_if_possible(obligation.predicate);
+        let predicate = self.deeply_resolve_ignoring_regions(obligation.predicate);
         let span = obligation.cause.span;
         let mut long_ty_path = None;
 
@@ -266,7 +266,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 TypeAnnotationNeeded::E0282,
                                 false,
                             )
-                            .emit(),
+                            .emit_err(),
                         Some(e) => e,
                     };
                 }
@@ -711,7 +711,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut mentioned = vec![predicate];
         let mut mentioned_strs: Vec<String> = vec![];
         for &error in related {
-            let related_pred = self.resolve_vars_if_possible(error.obligation.predicate);
+            let related_pred = self.deeply_resolve_ignoring_regions(error.obligation.predicate);
             if mentioned.contains(&related_pred) {
                 continue;
             }
@@ -779,7 +779,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.note_obligation_cause(&mut err, &error.obligation);
             }
         }
-        err.emit()
+        err.emit_err()
     }
 
     /// The `impl`s and `where` clauses that could have satisfied `trait_pred`, when listing them

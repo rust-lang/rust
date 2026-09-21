@@ -9,8 +9,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::interpret::{PointerArithmetic, Scalar as ConstScalar};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::{bug, span_bug};
-use rustc_span::{Pos, Span, Symbol, sym};
+use rustc_session::Session;
+use rustc_session::config::Lto;
+use rustc_span::{Pos, Span, Symbol, bug, span_bug, sym};
 use rustc_target::asm::*;
 use rustc_target::spec::HasTargetSpec;
 use smallvec::SmallVec;
@@ -501,13 +502,13 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         }
 
         // Globally-enabled features that are already in the backend format.
-        let global_features = self.tcx.global_backend_features(()).iter().map(String::as_str);
+        let global_features = self.tcx.sess.global_backend_features.iter().map(String::as_str);
 
         // Features enabled on a particular instance, in the rust format.
         // These need to be translated to the LLVM format.
         let function_features: Vec<_> = extra_rust_target_features
             .iter()
-            .flat_map(|feat| llvm_util::to_llvm_features(self.tcx.sess, feat))
+            .flat_map(|feat| llvm_util::to_llvm_features(&self.tcx.sess.target, feat))
             .flat_map(|feat| feat.into_iter().map(|f| format!("+{f}")))
             .collect();
 
@@ -584,9 +585,20 @@ pub(crate) fn inline_asm_call<'ll>(
         assert!(catch_funclet.is_none());
         bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None, None)
     } else if let Some((catch, funclet)) = catch_funclet {
-        bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet, None)
+        bx.invoke(
+            fty,
+            None,
+            None,
+            v,
+            ReturnSlot::Direct,
+            inputs,
+            dest.unwrap(),
+            catch,
+            funclet,
+            None,
+        )
     } else {
-        bx.call(fty, None, None, v, inputs, None, None)
+        bx.call(fty, None, None, v, ReturnSlot::Direct, inputs, None, None)
     };
 
     // Store mark in a metadata node so we can map LLVM errors
@@ -594,28 +606,43 @@ pub(crate) fn inline_asm_call<'ll>(
     let key = "srcloc";
     let kind = bx.get_md_kind_id(key);
 
-    // `srcloc` contains one 64-bit integer for each line of assembly code,
-    // where the lower 32 bits hold the lo byte position and the upper 32 bits
-    // hold the hi byte position.
-    let mut srcloc = vec![];
-    if dia == llvm::AsmDialect::Intel && line_spans.len() > 1 {
-        // LLVM inserts an extra line to add the ".intel_syntax", so add
-        // a dummy srcloc entry for it.
-        //
-        // Don't do this if we only have 1 line span since that may be
-        // due to the asm template string coming from a macro. LLVM will
-        // default to the first srcloc for lines that don't have an
-        // associated srcloc.
-        srcloc.push(llvm::LLVMValueAsMetadata(bx.const_u64(0)));
+    if allow_raw_span_inline_asm_srcloc(bx.tcx.sess, bx.bitcode_needed) {
+        // `srcloc` contains one 64-bit integer for each line of assembly code,
+        // where the lower 32 bits hold the lo byte position and the upper 32 bits
+        // hold the hi byte position.
+        let mut srcloc = vec![];
+        if dia == llvm::AsmDialect::Intel && line_spans.len() > 1 {
+            // LLVM inserts an extra line to add the ".intel_syntax", so add
+            // a dummy srcloc entry for it.
+            //
+            // Don't do this if we only have 1 line span since that may be
+            // due to the asm template string coming from a macro. LLVM will
+            // default to the first srcloc for lines that don't have an
+            // associated srcloc.
+            srcloc.push(llvm::LLVMValueAsMetadata(bx.const_u64(0)));
+        }
+        srcloc.extend(line_spans.iter().map(|span| {
+            llvm::LLVMValueAsMetadata(
+                bx.const_u64(u64::from(span.lo().to_u32()) | (u64::from(span.hi().to_u32()) << 32)),
+            )
+        }));
+        bx.cx.set_metadata_node(call, kind, &srcloc);
     }
-    srcloc.extend(line_spans.iter().map(|span| {
-        llvm::LLVMValueAsMetadata(
-            bx.const_u64(u64::from(span.lo().to_u32()) | (u64::from(span.hi().to_u32()) << 32)),
-        )
-    }));
-    bx.cx.set_metadata_node(call, kind, &srcloc);
 
     Some(call)
+}
+
+/// Whenever inline assembly bitcode is built, its `srcloc` contains the raw span numbers
+/// as location cookies. This is problematic since that is nondeterministic when using
+/// the parallel frontend. Even without parallelism, the cookies are meaningless in another
+/// rustc session.
+///
+/// Discussion about replacing the cookies with something stable: rust-lang/rust#150451
+fn allow_raw_span_inline_asm_srcloc(sess: &Session, bitcode_needed: bool) -> bool {
+    // even for Lto::ThinLocal, where the bitcode isn't serialized into files, the changes in
+    // raw span positions would reflect in the LTO module hashes, which could lead to
+    // nondeterminism
+    sess.lto() == Lto::No && !bitcode_needed
 }
 
 /// If the register is an xmm/ymm/zmm register then return its index.
@@ -725,8 +752,13 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     // We use i32 as the type for discarded outputs
                     'w'
                 };
-                if class == 'x' && reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) {
-                    // LLVM doesn't recognize x30. use lr instead.
+
+                if class == 'x'
+                    && reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30)
+                    && llvm_util::get_version() < (23, 0, 0)
+                {
+                    // FIXME(llvm): LLVM <23 does not recognize `x30` as a register name.
+                    // This workaround can be removed when support for LLVM 22 is dropped.
                     "{lr}".to_string()
                 } else {
                     format!("{{{}{}}}", class, idx)
@@ -759,8 +791,12 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             } else if let Some(idx) = hexagon_vreg_pair_index(reg) {
                 // LLVM uses `wN` for Hexagon HVX vector pair registers.
                 format!("{{w{}}}", idx)
-            } else if reg == InlineAsmReg::Arm(ArmInlineAsmReg::r14) {
-                // LLVM doesn't recognize r14
+            } else if reg == InlineAsmReg::Arm(ArmInlineAsmReg::r14)
+                && llvm_util::get_version() < (23, 0, 0)
+            {
+                // FIXME(llvm): LLVM <23 does not recognize `r14` as a register name
+                // in inline assembly.
+                // This workaround can be removed when support for LLVM 22 is dropped.
                 "{lr}".to_string()
             } else if let InlineAsmReg::Sparc(reg) = reg
                 && let Some(num) = reg.dreg_number()

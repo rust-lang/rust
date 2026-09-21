@@ -12,10 +12,11 @@ impl<T> A for T {
 }
 
 trait B: A {
-    type const CONST: i32;
+    #[rustc_always_gca]
+    const CONST: i32;
 }
 impl<T> B for T {
-    type const CONST: i32 = 2;
+    const CONST: i32 = core::direct_const_arg!(2);
 }
 
 trait C: B {}

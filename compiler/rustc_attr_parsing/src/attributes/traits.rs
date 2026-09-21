@@ -8,7 +8,7 @@ use crate::attributes::{NoArgsAttributeParser, SingleAttributeParser};
 use crate::context::AcceptContext;
 use crate::parser::ArgParser;
 use crate::target_checking::AllowedTargets;
-use crate::target_checking::Policy::{Allow, Warn};
+use crate::target_checking::Policy::Allow;
 
 pub(crate) struct RustcSkipDuringMethodDispatchParser;
 impl SingleAttributeParser for RustcSkipDuringMethodDispatchParser {
@@ -63,12 +63,7 @@ impl NoArgsAttributeParser for RustcParenSugarParser {
 pub(crate) struct MarkerParser;
 impl NoArgsAttributeParser for MarkerParser {
     const PATH: &[Symbol] = &[sym::marker];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Trait),
-        Warn(Target::Field),
-        Warn(Target::Arm),
-        Warn(Target::MacroDef),
-    ]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const STABILITY: AttributeStability = unstable!(marker_trait_attr);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Marker;
 }

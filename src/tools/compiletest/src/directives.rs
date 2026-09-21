@@ -215,6 +215,10 @@ pub(crate) struct TestProps {
     pub(crate) disable_gdb_pretty_printers: bool,
     /// Compare the output by lines, rather than as a single string.
     pub(crate) compare_output_by_lines: bool,
+    /// Use CCI (`--read-doc-meta` and `--write-doc-meta`) merge mode.
+    pub(crate) use_rustdoc_cci_doc_meta_merge: bool,
+    /// Where the `//@ should-fail` instruction is present.
+    pub(crate) should_fail: bool,
 }
 
 mod directives {
@@ -262,6 +266,7 @@ mod directives {
     pub(crate) const MINICORE_COMPILE_FLAGS: &str = "minicore-compile-flags";
     pub(crate) const DISABLE_GDB_PRETTY_PRINTERS: &str = "disable-gdb-pretty-printers";
     pub(crate) const COMPARE_OUTPUT_BY_LINES: &str = "compare-output-by-lines";
+    pub(crate) const USE_RUSTDOC_CCI_DOC_META_MERGE: &str = "use-rustdoc-cci-doc-meta-merge";
 }
 
 impl TestProps {
@@ -319,6 +324,8 @@ impl TestProps {
             dont_require_annotations: Default::default(),
             disable_gdb_pretty_printers: false,
             compare_output_by_lines: false,
+            use_rustdoc_cci_doc_meta_merge: false,
+            should_fail: false,
         }
     }
 

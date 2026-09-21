@@ -12,8 +12,8 @@ struct UnusedImport<'tcx> {
     span: Span,
 }
 
-impl<'a, 'tcx> Diagnostic<'a, ()> for UnusedImport<'tcx> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a, 'tcx> Diagnostic<'a> for UnusedImport<'tcx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let Self { tcx, span } = self;
         if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
             Diag::new(dcx, level, format!("unused import: `{snippet}`"))

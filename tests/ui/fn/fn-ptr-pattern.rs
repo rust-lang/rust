@@ -42,6 +42,8 @@ fn semantics<F>(
     //~^ ERROR patterns aren't allowed in function pointer types
     restricted_pat6: fn(&true: ()),
     //~^ ERROR patterns aren't allowed in function pointer types
+
+    duplicate_names: fn(x: usize, x: usize),
 ) { }
 
 // Patterns are also syntactically rejected, but restricted patterns are not

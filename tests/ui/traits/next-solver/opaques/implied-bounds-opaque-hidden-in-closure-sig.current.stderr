@@ -15,7 +15,6 @@ note: required by a bound in `RequiresWf`
   --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:31:16
    |
 LL | struct RequiresWf<F>(F)
-   |        ---------- required by a bound in this tuple struct
 ...
 LL |     F::Output: Trait,
    |                ^^^^^ required by this bound in `RequiresWf`
@@ -35,7 +34,6 @@ note: required by a bound in `RequiresWf`
   --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:31:16
    |
 LL | struct RequiresWf<F>(F)
-   |        ---------- required by a bound in this struct
 ...
 LL |     F::Output: Trait,
    |                ^^^^^ required by this bound in `RequiresWf`
@@ -55,7 +53,6 @@ note: required by a bound in `RequiresWf`
   --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:31:16
    |
 LL | struct RequiresWf<F>(F)
-   |        ---------- required by a bound in this struct
 ...
 LL |     F::Output: Trait,
    |                ^^^^^ required by this bound in `RequiresWf`
@@ -75,7 +72,6 @@ note: required by a bound in `RequiresWf`
   --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:31:16
    |
 LL | struct RequiresWf<F>(F)
-   |        ---------- required by a bound in this struct
 ...
 LL |     F::Output: Trait,
    |                ^^^^^ required by this bound in `RequiresWf`

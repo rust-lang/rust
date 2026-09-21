@@ -13,6 +13,7 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 //@ needs-llvm-components: x86
+//@ ignore-backends: gcc
 
 use run_make_support::{bare_rustc, build_native_dynamic_lib, build_native_static_lib, run, rustc};
 

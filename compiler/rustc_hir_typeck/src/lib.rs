@@ -1,11 +1,11 @@
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(never_type))]
+#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
 #![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
 #![feature(option_into_flat_iter)]
 #![feature(option_reference_flattening)]
-#![feature(trim_prefix_suffix)]
 // tidy-alphabetical-end
 
 mod _match;
@@ -53,10 +53,9 @@ use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, TraitEngine,
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, FnSigKind, Ty, TyCtxt, Unnormalized};
-use rustc_middle::{bug, span_bug};
 use rustc_session::config;
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::{Span, bug, span_bug};
 use tracing::{debug, instrument};
 use typeck_root_ctxt::TypeckRootCtxt;
 
@@ -608,7 +607,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => err.with_span_label(span, format!("not a {expected}")),
         }
-        .emit()
+        .emit_err()
     }
 }
 
@@ -715,7 +714,7 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
             diag.note("some of the compiler flags provided by cargo are hidden");
         }
     }
-    diag.emit()
+    diag.emit_bug()
 }
 
 /// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]

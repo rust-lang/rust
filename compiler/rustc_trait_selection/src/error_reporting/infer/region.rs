@@ -8,14 +8,13 @@ use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, ParamName};
-use rustc_middle::bug;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{
     self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _, Upcast as _,
 };
-use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol, bug, kw, sym};
 use tracing::{debug, instrument};
 
 use super::ObligationCauseAsDiagArg;
@@ -73,10 +72,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     RegionResolutionError::ConcreteFailure(origin, sub, sup) => {
                         if sub.is_placeholder() || sup.is_placeholder() {
                             self.report_placeholder_failure(generic_param_scope, origin, sub, sup)
-                                .emit()
+                                .emit_err()
                         } else {
                             self.report_concrete_failure(generic_param_scope, origin, sub, sup)
-                                .emit()
+                                .emit_err()
                         }
                     }
 
@@ -105,7 +104,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 sub_r,
                                 sup_r,
                             )
-                            .emit()
+                            .emit_err()
                         } else if sup_r.is_placeholder() {
                             self.report_placeholder_failure(
                                 generic_param_scope,
@@ -113,7 +112,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 sub_r,
                                 sup_r,
                             )
-                            .emit()
+                            .emit_err()
                         } else {
                             self.report_sub_sup_conflict(
                                 generic_param_scope,
@@ -148,7 +147,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             sub_r,
                             sup_r,
                         )
-                        .emit()
+                        .emit_err()
                     }
 
                     RegionResolutionError::CannotNormalize(clause, origin) => {
@@ -157,7 +156,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.tcx
                             .dcx()
                             .struct_span_err(origin.span(), format!("cannot normalize `{clause}`"))
-                            .emit()
+                            .emit_err()
                     }
                 }
             };
@@ -430,7 +429,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 self.dcx().create_err(FulfillReqLifetime {
                     span,
-                    ty: self.resolve_vars_if_possible(ty),
+                    ty: self.deeply_resolve_ignoring_regions(ty),
                     note,
                 })
             }
@@ -495,7 +494,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
                 self.dcx().create_err(RefLongerThanData {
                     span,
-                    ty: self.resolve_vars_if_possible(ty),
+                    ty: self.deeply_resolve_ignoring_regions(ty),
                     notes: pointer_valid.into_iter().chain(data_valid).collect(),
                 })
             }
@@ -705,7 +704,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         sub: Region<'tcx>,
     ) -> ErrorGuaranteed {
         self.construct_generic_bound_failure(generic_param_scope, span, origin, bound_kind, sub)
-            .emit()
+            .emit_err()
     }
 
     pub fn construct_generic_bound_failure(
@@ -1052,7 +1051,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return if sub_region.is_error() | sup_region.is_error() {
                 err.delay_as_bug()
             } else {
-                err.emit()
+                err.emit_err()
             };
         }
 
@@ -1069,7 +1068,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
 
         self.note_region_origin(&mut err, &sub_origin);
-        if sub_region.is_error() | sup_region.is_error() { err.delay_as_bug() } else { err.emit() }
+        if sub_region.is_error() | sup_region.is_error() {
+            err.delay_as_bug()
+        } else {
+            err.emit_err()
+        }
     }
 
     fn report_inference_failure(&self, var_origin: RegionVariableOrigin<'tcx>) -> Diag<'_> {

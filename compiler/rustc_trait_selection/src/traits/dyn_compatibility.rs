@@ -16,7 +16,7 @@ use rustc_middle::ty::{
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
     Upcast, elaborate,
 };
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, kw, sym};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -361,7 +361,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
     let span = || item.ident(tcx).span;
 
     match item.kind {
-        ty::AssocKind::Const { name, is_type_const } => {
+        ty::AssocKind::Const { name } => {
             // We will permit type associated consts if they are explicitly mentioned in the
             // trait object type. We can't check this here, as here we only check if it is
             // guaranteed to not be possible.
@@ -371,7 +371,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
             if tcx.features().min_generic_const_args() {
                 if !tcx.generics_of(item.def_id).is_own_empty() {
                     errors.push(AssocConstViolation::Generic);
-                } else if !is_type_const && !tcx.features().generic_const_args() {
+                } else if !tcx.is_always_gca(item.def_id) && !tcx.features().generic_const_args() {
                     errors.push(AssocConstViolation::NonType);
                 }
 
@@ -403,7 +403,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
                     // Get an accurate span depending on the violation.
                     let span = match (&v, node) {
                         (MethodViolation::ReferencesSelfInput(Some(span)), _) => *span,
-                        (MethodViolation::UndispatchableReceiver(Some(span)), _) => *span,
+                        (MethodViolation::UndispatchableReceiver(Some((span, _))), _) => *span,
                         (MethodViolation::ReferencesImplTraitInTrait(span), _) => *span,
                         (MethodViolation::ReferencesSelfOutput, Some(node)) => {
                             node.fn_decl().map_or(item.ident(tcx).span, |decl| decl.output.span())
@@ -519,16 +519,40 @@ fn virtual_call_violations_for_method<'tcx>(
     // `Receiver: Unsize<Receiver[Self => dyn Trait]>`.
     if receiver_ty != tcx.types.self_param {
         if !receiver_is_dispatchable(tcx, method, receiver_ty) {
-            let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(sig, _),
+            let span_n_lt = if let Some(hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(sig, trait_fn),
                 ..
             })) = tcx.hir_get_if_local(method.def_id).as_ref()
             {
-                Some(sig.decl.inputs[0].span)
+                // If we have `self: &'a Ty`, get `'a`, so that we can suggest `&'a self`.
+                let lt = match sig.decl.inputs[0].kind {
+                    hir::TyKind::Ref(lt, _) if lt.ident.name == kw::UnderscoreLifetime => {
+                        sym::empty
+                    }
+                    hir::TyKind::Ref(lt, _) => lt.ident.name,
+                    _ => sym::empty,
+                };
+                // Get the `Span` for all of `self: Ty`, not just `Ty`.
+                match trait_fn {
+                    hir::TraitFn::Required([Some(name), ..])
+                        if name.span.eq_ctxt(sig.decl.inputs[0].span) =>
+                    {
+                        Some(name.span.to(sig.decl.inputs[0].span))
+                    }
+                    hir::TraitFn::Provided(body_id)
+                        if let body = tcx.hir_body(*body_id)
+                            && let Some(p) = body.params.get(0)
+                            && p.span.eq_ctxt(p.ty_span) =>
+                    {
+                        Some(p.span.to(p.ty_span))
+                    }
+                    _ => None,
+                }
+                .map(|sp| (sp, lt))
             } else {
                 None
             };
-            errors.push(MethodViolation::UndispatchableReceiver(span));
+            errors.push(MethodViolation::UndispatchableReceiver(span_n_lt));
         } else {
             // We confirm that the `receiver_is_dispatchable` is accurate later,
             // see `check_receiver_correct`. It should be kept in sync with this code.

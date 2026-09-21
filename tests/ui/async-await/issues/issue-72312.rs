@@ -8,7 +8,7 @@ struct Problem;
 impl Problem {
     pub async fn start(&self) {
         //~^ NOTE let's call
-        //~| NOTE `self` is a reference
+        //~| NOTE `self` is only valid
         require_static(async move {
             //~^ ERROR borrowed data escapes
             //~| NOTE `self` escapes

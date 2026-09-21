@@ -16,7 +16,6 @@ note: required by a bound in `needs_unit_item`
   --> $DIR/closure-arg-assoc-type-mismatch.rs:19:24
    |
 LL | fn needs_unit_item<F: Fn() -> S>(_f: F)
-   |    --------------- required by a bound in this function
 LL | where
 LL |     F::Output: MyTrait<Item = ()>,
    |                        ^^^^^^^^^ required by this bound in `needs_unit_item`
@@ -39,7 +38,6 @@ note: required by a bound in `needs_unit_item`
   --> $DIR/closure-arg-assoc-type-mismatch.rs:19:24
    |
 LL | fn needs_unit_item<F: Fn() -> S>(_f: F)
-   |    --------------- required by a bound in this function
 LL | where
 LL |     F::Output: MyTrait<Item = ()>,
    |                        ^^^^^^^^^ required by this bound in `needs_unit_item`
@@ -62,7 +60,6 @@ note: required by a bound in `needs_unit_item`
   --> $DIR/closure-arg-assoc-type-mismatch.rs:19:24
    |
 LL | fn needs_unit_item<F: Fn() -> S>(_f: F)
-   |    --------------- required by a bound in this function
 LL | where
 LL |     F::Output: MyTrait<Item = ()>,
    |                        ^^^^^^^^^ required by this bound in `needs_unit_item`

@@ -10,7 +10,7 @@ enum Enum<T> {
     Store(T),
 }
 
-type const _: Enum<()> = Enum::<()>::Unit;
-type const _: Enum<()> = Enum::<()>::Tuple();
+const _: Enum<()> = core::direct_const_arg!(Enum::<()>::Unit);
+const _: Enum<()> = core::direct_const_arg!(Enum::<()>::Tuple());
 
 fn main() {}

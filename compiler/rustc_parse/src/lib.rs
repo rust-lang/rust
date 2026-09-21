@@ -17,7 +17,7 @@ use rustc_ast as ast;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Diag, EmissionGuarantee, FatalError, PResult, pluralize};
+use rustc_errors::{Diag, FatalError, PResult, pluralize};
 pub use rustc_lexer::UNICODE_VERSION;
 use rustc_session::parse::ParseSess;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -160,16 +160,16 @@ pub fn new_parser_from_file<'a>(
         if let Some(sp) = sp {
             err.span(sp);
         }
-        err.emit()
+        err.emit_fatal()
     });
     new_parser_from_source_file(psess, source_file, strip_tokens)
 }
 
-pub fn utf8_error<E: EmissionGuarantee>(
+pub fn utf8_error(
     sm: &SourceMap,
     path: &str,
     sp: Option<Span>,
-    err: &mut Diag<'_, E>,
+    err: &mut Diag<'_>,
     utf8err: Utf8Error,
     contents: &[u8],
 ) {

@@ -18,6 +18,9 @@ note: required because it appears within the type `S`
    |
 LL | struct S {
    |        ^
+...
+LL |     c: [i32],
+   |     -------- required by this field
 
 error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
   --> $DIR/feature-gate-offset-of-slice.rs:25:5

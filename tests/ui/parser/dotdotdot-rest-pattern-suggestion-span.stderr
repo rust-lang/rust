@@ -48,11 +48,11 @@ LL - impl S { fn f(···>) }
 LL + impl S { fn f(..>) }
    |
 
-error: expected `:`, found `>`
+error: unexpected token: `>`
   --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:18
    |
 LL | impl S { fn f(···>) }
-   |                  ^ expected `:`
+   |                  ^ unexpected token after this
 
 error: expected one of `->`, `where`, or `{`, found `}`
   --> $DIR/dotdotdot-rest-pattern-suggestion-span.rs:8:21

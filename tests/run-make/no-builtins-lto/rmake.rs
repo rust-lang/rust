@@ -1,4 +1,6 @@
 //@ ignore-cross-compile
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 // The rlib produced by a no_builtins crate should be explicitly linked
 // during compilation, and as a result be present in the linker arguments.

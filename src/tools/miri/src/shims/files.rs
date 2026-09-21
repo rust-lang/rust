@@ -183,7 +183,7 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
 
     /// Returns the metadata for this FD, if available.
     /// This is either host metadata, or a non-file-backed-FD type.
-    /// The latter is for new represented as a string storing a `libc` name so we only
+    /// The latter is for now represented as a string storing the `libc` name of the mode so we only
     /// support that kind of metadata on Unix targets.
     fn metadata<'tcx>(&self) -> InterpResult<'tcx, Either<io::Result<fs::Metadata>, &'static str>> {
         throw_unsup_format!("obtaining metadata is only supported on file-backed file descriptors");

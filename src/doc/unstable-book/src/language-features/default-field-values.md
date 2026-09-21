@@ -6,7 +6,7 @@ The tracking issue for this feature is: [#132162]
 
 The RFC for this feature is: [#3681]
 
-[#3681]: https://github.com/rust-lang/rfcs/blob/master/text/3681-default-field-values.md
+[#3681]: https://rust-lang.github.io/rfcs/3681-default-field-values.html
 
 ------------------------
 

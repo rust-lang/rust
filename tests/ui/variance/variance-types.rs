@@ -1,5 +1,5 @@
-#![allow(dead_code)]
 #![feature(rustc_attrs)]
+#![feature(covariant_unsafe_cell)]
 
 use std::cell::Cell;
 
@@ -36,6 +36,21 @@ enum Enum<A,B,C> { //~ ERROR [A: +, B: -, C: o]
     Foo(Covariant<A>),
     Bar(Contravariant<B>),
     Zed(Covariant<C>,Contravariant<C>)
+}
+
+#[rustc_dump_variances]
+struct PhantomDataIsCovariant<A> { //~ ERROR [A: +]
+    t: std::marker::PhantomData<A>
+}
+
+#[rustc_dump_variances]
+struct UnsafeCellIsInvariant<A> { //~ ERROR [A: o]
+    t: std::cell::UnsafeCell<A>
+}
+
+#[rustc_dump_variances]
+struct CovariantUnsafeCellIsCovariant<A> { //~ ERROR [A: +]
+    t: std::cell::CovariantUnsafeCell<A>
 }
 
 pub fn main() { }

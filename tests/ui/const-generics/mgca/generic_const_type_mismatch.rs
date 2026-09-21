@@ -13,7 +13,7 @@ struct Foo<T> {
     field: T,
 }
 
-type const WRAP<T : ConstParamTy_> : T = Foo::<T>{field : 1};
+const WRAP<T: ConstParamTy_>: T = core::direct_const_arg!(Foo::<T> { field: 1 });
 //~^ ERROR: type annotations needed for the literal
 
 fn main() {}

@@ -1,4 +1,6 @@
-use compiler_builtins::mem::{memcmp, memcpy, memmove, memset, strlen};
+#![feature(optimize_attribute)]
+
+use compiler_builtins::mem::{memcmp, memcpy, memmove, memset, strlen, wchar_t};
 
 const WORD_SIZE: usize = core::mem::size_of::<usize>();
 
@@ -291,5 +293,87 @@ fn test_strlen() {
         assert_eq!(strlen(s.as_ptr()), 0);
         let s = c"hello, world!";
         assert_eq!(strlen(s.as_ptr()), 13);
+    }
+}
+
+/// Wrapper that prevents inlining the wcslen implementation into the test.
+///
+/// Inlining causes LLVM to pick up the wcslen pattern and generate a call to
+/// wcslen when optimizations are enabled. That causes a linker error for tests
+/// on platforms without wcslen (such as wasm). `optimize(none)` prevents this.
+#[inline(never)]
+#[optimize(none)]
+unsafe fn wcslen(p: *const wchar_t) -> usize {
+    unsafe { compiler_builtins::mem::wcslen(p) }
+}
+
+#[test]
+fn wide_string_length() {
+    let s: &[wchar_t] = &[0];
+    assert_eq!(unsafe { wcslen(s.as_ptr()) }, 0);
+
+    let s: &[wchar_t] = &[97, 98, 99, 0];
+    assert_eq!(unsafe { wcslen(s.as_ptr()) }, 3);
+}
+
+#[cfg(all(
+    target_arch = "arm",
+    not(any(target_vendor = "apple", target_env = "msvc"))
+))]
+mod aeabi_unaligned {
+    use compiler_builtins::arm::__aeabi_uread4::__aeabi_uread4;
+    use compiler_builtins::arm::__aeabi_uread8::__aeabi_uread8;
+    use compiler_builtins::arm::__aeabi_uwrite4::__aeabi_uwrite4;
+    use compiler_builtins::arm::__aeabi_uwrite8::__aeabi_uwrite8;
+
+    /// A buffer with distinct bytes so that any mixup in byte order or offset is detected.
+    const PATTERN: [u8; 16] = [
+        0x11, 0x48, 0x7f, 0xb6, 0xed, 0x24, 0x5b, 0x92, 0xc9, 0x00, 0x37, 0x6e, 0xa5, 0xdc, 0x13,
+        0x4a,
+    ];
+
+    #[test]
+    fn uread() {
+        let buf = PATTERN;
+        for offset in 0..8 {
+            let b = &buf[offset..];
+            let expected4 = u32::from_ne_bytes(*b.first_chunk::<4>().unwrap());
+            let expected8 = u64::from_ne_bytes(*b.first_chunk::<8>().unwrap());
+            unsafe {
+                assert_eq!(__aeabi_uread4(b.as_ptr()), expected4, "offset {offset}");
+                assert_eq!(__aeabi_uread8(b.as_ptr()), expected8, "offset {offset}");
+            }
+        }
+    }
+
+    #[test]
+    fn uwrite() {
+        let value4 = 0x8765_4321_u32;
+        let value8 = 0x0f1e_2d3c_4b5a_6978_u64;
+        for offset in 0..8 {
+            let mut buf = PATTERN;
+            let mut expected = PATTERN;
+            expected[offset..offset + 4].copy_from_slice(&value4.to_ne_bytes());
+            unsafe {
+                assert_eq!(
+                    __aeabi_uwrite4(value4, buf.as_mut_ptr().add(offset)),
+                    value4,
+                    "offset {offset}"
+                );
+            }
+            assert_eq!(buf, expected, "offset {offset}");
+
+            let mut buf = PATTERN;
+            let mut expected = PATTERN;
+            expected[offset..offset + 8].copy_from_slice(&value8.to_ne_bytes());
+            unsafe {
+                assert_eq!(
+                    __aeabi_uwrite8(value8, buf.as_mut_ptr().add(offset)),
+                    value8,
+                    "offset {offset}"
+                );
+            }
+            assert_eq!(buf, expected, "offset {offset}");
+        }
     }
 }

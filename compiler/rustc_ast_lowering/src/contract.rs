@@ -143,7 +143,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let req_span = self.mark_span_with_reason(
             rustc_span::DesugaringKind::Contract,
             lowered_req.span,
-            Some(Arc::clone(&self.allow_contracts)),
+            Some(Arc::clone(&crate::ALLOW_CONTRACTS)),
         );
         let precond = self.expr_call_lang_item_fn_mut(
             req_span,
@@ -161,7 +161,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let ens_span = self.mark_span_with_reason(
             rustc_span::DesugaringKind::Contract,
             ens_span,
-            Some(Arc::clone(&self.allow_contracts)),
+            Some(Arc::clone(&crate::ALLOW_CONTRACTS)),
         );
         let lowered_ens = self.lower_expr_mut(&ens);
         self.expr_call_lang_item_fn(

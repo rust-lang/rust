@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::expr_type_is_certain;
-use clippy_utils::{get_parent_expr, sym};
+use clippy_utils::{get_parent_expr, is_in_const_context, sym};
 use rustc_ast::AssignOpKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment};
@@ -28,7 +29,11 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'
     None
 }
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
+    if is_in_const_context(cx) && !msrv.meets(cx, msrvs::MUL_ADD_CONST) {
+        return;
+    }
+
     let (is_assign, op, lhs, rhs) = match &expr.kind {
         ExprKind::AssignOp(
             Spanned {

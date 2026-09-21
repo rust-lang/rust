@@ -77,6 +77,10 @@ impl Dir {
         Self::open(path, &opts)
     }
 
+    pub fn duplicate(&self) -> io::Result<Self> {
+        Ok(Self { path: self.path.clone() })
+    }
+
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
         File::open(&self.path.join(path), opts)
     }
@@ -102,7 +106,7 @@ impl Dir {
     }
 
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
-        remove_dir(path)
+        remove_dir(self.path.join(path))
     }
 }
 

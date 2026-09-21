@@ -5,5 +5,5 @@
 extern crate non_local_const;
 fn main() {
     let x = [(); non_local_const::N];
-    //~^ ERROR: use of `const` in the type system not defined as `type const`
+    //~^ ERROR: use of `const` in the type system not marked as direct
 }

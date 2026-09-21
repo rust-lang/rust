@@ -1,4 +1,7 @@
 //@ needs-rust-lld
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 use std::path::Path;
 
 use run_make_support::{path, rfs, rustc, rustc_minicore, wasmparser};

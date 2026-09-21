@@ -25,32 +25,8 @@
 // desugar va_arg early, hence we don't actually match Clang there.
 
 extern crate minicore;
+use minicore::ffi::VaList;
 use minicore::*;
-
-#[lang = "va_arg_safe"]
-pub unsafe trait VaArgSafe {}
-
-unsafe impl VaArgSafe for i32 {}
-unsafe impl VaArgSafe for i64 {}
-unsafe impl VaArgSafe for i128 {}
-unsafe impl VaArgSafe for f64 {}
-unsafe impl<T> VaArgSafe for *const T {}
-
-#[repr(transparent)]
-struct VaListInner {
-    ptr: *const c_void,
-}
-
-#[repr(transparent)]
-#[lang = "va_list"]
-pub struct VaList<'a> {
-    inner: VaListInner,
-    _marker: PhantomData<&'a mut ()>,
-}
-
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
@@ -109,7 +85,7 @@ unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
     // AARCH64_MSVC-NEXT: ldr d0, [x8], #8
     // AARCH64_MSVC-NEXT: str x8, [x0]
     // AARCH64_MSVC-NEXT: ret
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -172,7 +148,7 @@ unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
     // AARCH64_MSVC-NEXT: ldr w0, [x9], #8
     // AARCH64_MSVC-NEXT: str x9, [x8]
     // AARCH64_MSVC-NEXT: ret
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -236,7 +212,7 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // AARCH64_MSVC-NEXT: ldr x0, [x9], #8
     // AARCH64_MSVC-NEXT: str x9, [x8]
     // AARCH64_MSVC-NEXT: ret
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -319,7 +295,7 @@ unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
     // AARCH64_MSVC-NEXT: ldr x0, [x10], #16
     // AARCH64_MSVC-NEXT: str x10, [x8]
     // AARCH64_MSVC-NEXT: ret
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -329,5 +305,5 @@ unsafe extern "C" fn read_ptr(ap: &mut VaList<'_>) -> *const u8 {
     // AARCH64_MSVC: read_ptr = read_i64
     // ARM64EC_MSVC: "#read_ptr" = "#read_i64"
     // AARCH64_DARWIN-CHECK: _read_ptr = _read_i64
-    va_arg(ap)
+    ap.next_arg()
 }

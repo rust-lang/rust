@@ -213,25 +213,39 @@ impl<T, A: Allocator> IntoIter<T, A> {
         // Keep our `Drop` impl from dropping the elements and the allocator
         let mut this = ManuallyDrop::new(self);
 
-        // SAFETY: This allocation originally came from a `Vec`, so it passes
-        // all those checks. We have `this.buf` ≤ `this.ptr` ≤ `this.end`,
-        // so the `offset_from_unsigned`s below cannot wrap, and will produce a well-formed
-        // range. `end` ≤ `buf + cap`, so the range will be in-bounds.
-        // Taking `alloc` is ok because nothing else is going to look at it,
-        // since our `Drop` impl isn't going to run so there's no more code.
-        unsafe {
-            let buf = this.buf.as_ptr();
-            let initialized = if T::IS_ZST {
-                // All the pointers are the same for ZSTs, so it's fine to
-                // say that they're all at the beginning of the "allocation".
-                0..this.len()
-            } else {
-                this.ptr.offset_from_unsigned(this.buf)..this.end.offset_from_unsigned(buf)
-            };
-            let cap = this.cap;
-            let alloc = ManuallyDrop::take(&mut this.alloc);
-            VecDeque::from_contiguous_raw_parts_in(buf, initialized, cap, alloc)
-        }
+        let buf = this.buf.as_ptr();
+        let initialized = if T::IS_ZST || this.len() == 0 {
+            // All the pointers are the same for ZSTs, so it's fine to
+            // say that they're all at the beginning of the "allocation".
+            // For non-ZSTs, we have length 0, so we can choose the (empty)
+            // range to be at the start of the buffer.
+            //
+            // Due to `0` ≤ `this.len()` ≤ `this.cap`, the range is well-formed,
+            // and due to the argument above it spans exactly the elements of
+            // this iterator. Because `init.start` = `0`, it follows that either
+            // `init.start` < `cap` or `cap` = `init.start` = `0`; thus the range
+            // satisfies the requirements of `from_contiguous_raw_parts_in`.
+            0..this.len()
+        } else {
+            // SAFETY: `this.ptr` and `this.end` are created via offsets of `this.buf`,
+            // so they point to the same allocation. We have `this.buf` ≤ `this.ptr` ≤ `this.end`,
+            // so this cannot wrap, and will produce a well-formed range that spans exactly
+            // the elements of this iterator.
+            //
+            // Additionally, due to `end ≤ buf + cap`, we have `init.start` ≤ `init.end` ≤ `cap`.
+            // Due to the length check above, `init.start < cap`, so the range satisfies the
+            // requirements of `from_contiguous_raw_parts_in`.
+            unsafe { this.ptr.offset_from_unsigned(this.buf)..this.end.offset_from_unsigned(buf) }
+        };
+
+        let cap = this.cap;
+        // SAFETY: `this` is forgotten afterwards, so we can move out the allocator.
+        let alloc = unsafe { ManuallyDrop::take(&mut this.alloc) };
+
+        // SAFETY: This allocation originally came from a `Vec`, so it satisfies all
+        // requirements for the `buf` pointer with capacity `cap` allocated in `alloc`.
+        // Correctness of `initialized` was shown above.
+        unsafe { VecDeque::from_contiguous_raw_parts_in(buf, initialized, cap, alloc) }
     }
 }
 

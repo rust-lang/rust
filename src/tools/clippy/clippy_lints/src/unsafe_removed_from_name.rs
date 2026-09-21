@@ -52,8 +52,8 @@ fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext<'_>, span: Span) {
         },
         UseTreeKind::Simple(None) | UseTreeKind::Glob(_) => {},
         UseTreeKind::Nested { ref items, .. } => {
-            for (use_tree, _) in items {
-                check_use_tree(use_tree, cx, span);
+            for use_tree in items {
+                check_use_tree(&use_tree.inner, cx, span);
             }
         },
     }

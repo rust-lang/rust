@@ -8,7 +8,6 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
@@ -18,7 +17,7 @@ use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, Instance, ShimKind, SymbolName, Ty, TyCtxt,
 };
 use rustc_middle::util::Providers;
-use rustc_span::Span;
+use rustc_span::{Span, bug};
 use rustc_structures::CrateType;
 use rustc_symbol_mangling::{is_offload_kernel, mangle_internal_symbol};
 use rustc_target::spec::{Arch, Os, TlsModel};

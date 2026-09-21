@@ -9,6 +9,35 @@ or file new issues specifically to get help.
 All contributors are expected to follow our [Code of
 Conduct](CODE_OF_CONDUCT.md).
 
+
+## LLM policy
+
+rustfmt follows the same [LLM usage policy] as `rust-lang/rust`. Please read it before using LLM
+assistance when participating in `rust-lang/rustfmt`.
+
+[LLM usage policy]: https://forge.rust-lang.org/policies/llm-usage.html
+
+## Linting
+
+This project supports linting via
+[`clippy`](https://doc.rust-lang.org/stable/clippy/index.html). You can either
+run it directly, or use an integration through your editor.
+
+```
+# lint rustfmt-nightly (the package at the root of this repo)
+cargo clippy
+```
+
+To Lint a package outside of the root one you will need to do one of:
+
+```
+# pass the manifest path
+cargo clippy --manifest-path ./config_proc_macro/Config.toml
+# or run the command from within the package
+cd ./config_proc_macro
+cargo clippy
+```
+
 ## Test and file issues
 
 It would be really useful to have people use rustfmt on their projects and file
@@ -20,7 +49,7 @@ issues where it does something you don't expect.
 Having a strong test suite for a tool like this is essential. It is very easy
 to create regressions. Any tests you can add are very much appreciated.
 
-The tests can be run with `cargo test`. This does a number of things:
+The tests can be run with `cargo test --locked`. This does a number of things:
 * runs the unit tests for a number of internal functions;
 * makes sure that rustfmt run on every file in `./tests/source/` is equal to its
   associated file in `./tests/target/`; this catches

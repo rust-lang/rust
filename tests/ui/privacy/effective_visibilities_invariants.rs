@@ -2,9 +2,9 @@
 
 #![feature(staged_api)] //~ ERROR module has missing stability attribute
 
-pub mod m {} //~ ERROR module has missing stability attribute
+pub mod a {} //~ ERROR module has missing stability attribute
 
-pub mod m { //~ ERROR the name `m` is defined multiple times
+pub mod b {  //~ ERROR module has missing stability attribute
     mod inner {}
     type Inner = u8;
 }

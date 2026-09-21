@@ -18,7 +18,7 @@ error[E0521]: borrowed data escapes outside of function
 LL | fn inner(mut foo: &[u8]) {
    |          -------  - let's call the lifetime of this reference `'1`
    |          |
-   |          `foo` is a reference that is only valid in the function body
+   |          `foo` is only valid in the function body
 ...
 LL |     read_thing(read);
    |     ^^^^^^^^^^^^^^^^

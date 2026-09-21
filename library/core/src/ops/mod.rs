@@ -156,7 +156,7 @@ mod unsize;
 pub use self::arith::{Add, Div, Mul, Neg, Rem, Sub};
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 pub use self::arith::{AddAssign, DivAssign, MulAssign, RemAssign, SubAssign};
-#[unstable(feature = "async_fn_traits", issue = "none")]
+#[stable(feature = "async_closure", since = "1.85.0")]
 pub use self::async_function::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::bit::{BitAnd, BitOr, BitXor, Not, Shl, Shr};

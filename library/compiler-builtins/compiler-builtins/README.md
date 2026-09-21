@@ -39,6 +39,10 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md).
 - [x] arm/aeabi_memset.S
 - [x] arm/aeabi_uidivmod.S
 - [x] arm/aeabi_uldivmod.S
+- [x] arm/aeabi_uread4.S
+- [x] arm/aeabi_uread8.S
+- [x] arm/aeabi_uwrite4.S
+- [x] arm/aeabi_uwrite8.S
 - [ ] arm/chkstk.S
 - [ ] arm/divmodsi4.S (generic version is done)
 - [ ] arm/divsi3.S (generic version is done)

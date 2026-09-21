@@ -2,9 +2,9 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::attrs::{EiiDecl, EiiImpl, EiiImplResolution};
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
-use rustc_middle::bug;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::bug;
 
 // basically the map below but flattened out
 pub(crate) type EiiMapEncodedKeyValue = (DefId, (EiiDecl, Vec<(DefId, EiiImpl)>));

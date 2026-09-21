@@ -29,8 +29,7 @@ use rustc_middle::ty::{
     self, BoundVariableKind, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts,
     List, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{ErrorGuaranteed, kw, sym};
+use rustc_span::{ErrorGuaranteed, bug, kw, span_bug, sym};
 use tracing::{debug, instrument};
 
 use crate::BorrowckInferCtxt;
@@ -615,7 +614,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// that this region imposes on others. The methods in this file
     /// handle the part about dumping the inference context internal
     /// state.
-    pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diag<'_, ()>) {
+    pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diag<'_>) {
         match self.defining_ty {
             DefiningTy::Closure(def_id, args) => {
                 let v = with_no_trimmed_paths!(

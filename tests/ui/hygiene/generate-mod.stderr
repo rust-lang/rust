@@ -19,46 +19,46 @@ LL |     genmod!(FromOutside, Outer);
 error[E0425]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:19:18
    |
+LL | macro genmod_transparent() {
+...
 LL |         type A = FromOutside;
    |                  ^^^^^^^^^^^ not found in this scope
 ...
 LL |     genmod_transparent!();
    |     --------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `genmod_transparent` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:20:22
    |
+LL | macro genmod_transparent() {
+...
 LL |         type Inner = Outer;
    |                      ^^^^^ not found in this scope
 ...
 LL |     genmod_transparent!();
    |     --------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `genmod_transparent` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:28:18
    |
+LL | macro_rules! genmod_legacy { () => {
+...
 LL |         type A = FromOutside;
    |                  ^^^^^^^^^^^ not found in this scope
 ...
 LL |     genmod_legacy!();
    |     ---------------- in this macro invocation
-   |
-   = note: this error originates in the macro `genmod_legacy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:29:22
    |
+LL | macro_rules! genmod_legacy { () => {
+...
 LL |         type Inner = Outer;
    |                      ^^^^^ not found in this scope
 ...
 LL |     genmod_legacy!();
    |     ---------------- in this macro invocation
-   |
-   = note: this error originates in the macro `genmod_legacy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 6 previous errors
 

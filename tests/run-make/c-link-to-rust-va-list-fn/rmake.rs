@@ -8,6 +8,8 @@
 //@ ignore-sgx: (x86 machine code cannot be directly executed)
 //@ ignore-pauthtest: (it requires non-trivial compilation of c sources, and only supports dynamic
 //  linking, ignore the test).
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{cc, extra_c_flags, run, rustc, static_lib_name};
 

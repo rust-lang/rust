@@ -4,7 +4,7 @@ error[E0521]: borrowed data escapes outside of method
 LL |       pub async fn start(&self) {
    |                          -----
    |                          |
-   |                          `self` is a reference that is only valid in the method body
+   |                          `self` is only valid in the method body
    |                          let's call the lifetime of this reference `'1`
 ...
 LL | /         require_static(async move {

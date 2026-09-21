@@ -10,32 +10,8 @@
 // Check that the assembly that rustc generates matches what clang emits.
 
 extern crate minicore;
+use minicore::ffi::VaList;
 use minicore::*;
-
-#[lang = "va_arg_safe"]
-pub unsafe trait VaArgSafe {}
-
-unsafe impl VaArgSafe for i32 {}
-unsafe impl VaArgSafe for i64 {}
-unsafe impl VaArgSafe for i128 {}
-unsafe impl VaArgSafe for f64 {}
-unsafe impl<T> VaArgSafe for *const T {}
-
-#[repr(transparent)]
-struct VaListInner {
-    ptr: *const c_void,
-}
-
-#[repr(transparent)]
-#[lang = "va_list"]
-pub struct VaList<'a> {
-    inner: VaListInner,
-    _marker: PhantomData<&'a mut ()>,
-}
-
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
@@ -55,7 +31,7 @@ unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
     // CHECK-NEXT: stg %r0, 16(%r2)
     // CHECK-NEXT: ld %f0, 0(%r1)
     // CHECK-NEXT: br %r14
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -77,7 +53,7 @@ unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
     // CHECK-NEXT: stg %r0, 16(%r2)
     // CHECK-NEXT: lgf %r2, 0(%r1)
     // CHECK-NEXT: br %r14
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -98,7 +74,7 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // CHECK-NEXT: stg %r0, 16(%r2)
     // CHECK-NEXT: lg %r2, 0(%r1)
     // CHECK-NEXT: br %r14
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -123,11 +99,11 @@ unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
     // CHECK-NEXT: mvc 8(8,%r2), 8(%r1)
     // CHECK-NEXT: mvc 0(8,%r2), 0(%r1)
     // CHECK-NEXT: br %r14
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_ptr(ap: &mut VaList<'_>) -> *const u8 {
     // CHECK: read_ptr = read_i64
-    va_arg(ap)
+    ap.next_arg()
 }

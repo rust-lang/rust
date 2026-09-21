@@ -9,8 +9,9 @@ use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, DerivedTypeCodegenMethods, TypeMembershipCodegenMethods,
 };
+use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::{bug, ty};
+use rustc_span::bug;
 
 use crate::common::TypeReflection;
 use crate::context::{CodegenCx, new_array_type};
@@ -154,6 +155,14 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
             return self.context.new_c_type(CType::Float16);
         }
         bug!("unsupported float width 16")
+    }
+
+    fn type_f16b(&self) -> Type<'gcc> {
+        #[cfg(feature = "master")]
+        if self.supports_f16b_type {
+            return self.context.new_c_type(CType::BFloat16);
+        }
+        bug!("unsupported type bfloat16")
     }
 
     fn type_f32(&self) -> Type<'gcc> {

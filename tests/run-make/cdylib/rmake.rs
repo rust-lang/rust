@@ -9,6 +9,8 @@
 //     - `bar()` which implements basic addition.
 
 //@ ignore-cross-compile
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
 
 use run_make_support::{cc, cwd, dynamic_lib_name, is_windows_msvc, rfs, run, rustc};
 

@@ -6,10 +6,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::mir::*;
-use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::{DUMMY_SP, Spanned, sym};
+use rustc_span::{DUMMY_SP, Spanned, span_bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
@@ -55,14 +54,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Block { block: ast_block } => {
                 this.ast_block(destination, block, ast_block, source_info)
             }
-            ExprKind::Match { scrutinee, ref arms, .. } => this.match_expr(
-                destination,
-                block,
-                scrutinee,
-                arms,
-                expr_span,
-                this.thir[scrutinee].span,
-            ),
+            ExprKind::Match { scrutinee, ref arms, .. } => {
+                this.match_expr(destination, block, scrutinee, arms, expr_span)
+            }
             ExprKind::If { cond, then, else_opt, if_then_scope } => {
                 let then_span = this.thir[then].span;
                 let then_source_info = this.source_info(then_span);
@@ -303,9 +297,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     // Logic for `match`.
                     let scrutinee_span = this.thir.exprs[scrutinee].span;
-                    let scrutinee_place_builder = unpack!(
-                        body_block = this.lower_scrutinee(body_block, scrutinee, scrutinee_span)
-                    );
+                    let scrutinee_place_builder =
+                        unpack!(body_block = this.lower_scrutinee(body_block, scrutinee));
 
                     let match_start_span = match_span.shrink_to_lo().to(scrutinee_span);
 
@@ -477,7 +470,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         );
                         block.unit()
                     }
-                    _ => rustc_middle::bug!(),
+                    _ => rustc_span::bug!(),
                 }
             }
             ExprKind::Call { ty: _, fun, ref args, from_hir_call, fn_span } => {

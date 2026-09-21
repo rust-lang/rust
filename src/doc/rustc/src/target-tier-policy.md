@@ -4,6 +4,7 @@
 
 * [General](#general)
 * [Adding a new target](#adding-a-new-target)
+* [Promoting or demoting a target](#promoting-or-demoting-a-target)
 * [Tier 3 target policy](#tier-3-target-policy)
 * [Tier 2 target policy](#tier-2-target-policy)
   * [Tier 2 with host tools](#tier-2-with-host-tools)
@@ -139,6 +140,14 @@ support for the target in `cc` and `libc`.
 [rust_compiler_team]: https://www.rust-lang.org/governance/teams/compiler
 [`rust-lang/rust`]: https://github.com/rust-lang/rust
 [rustc_dev_guide_add_target]: https://rustc-dev-guide.rust-lang.org/building/new-target.html
+
+## Promoting or demoting a target
+
+Support for targets can vary during their lifespan (a target con be promoted because the support
+improves or can be demoted because lack of resources). Procedures for promoting and demoting targets
+are documented at our [Forge documentation site][forge].
+
+[forge]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#targets
 
 ## Tier 3 target policy
 

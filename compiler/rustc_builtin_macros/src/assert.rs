@@ -22,7 +22,7 @@ pub(crate) fn expand_assert<'cx>(
     let Assert { cond_expr, custom_message } = match parse_assert(cx, span, tts) {
         Ok(assert) => assert,
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             return ExpandResult::Ready(DummyResult::any(span, guar));
         }
     };

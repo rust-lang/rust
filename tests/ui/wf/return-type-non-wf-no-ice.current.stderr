@@ -8,7 +8,6 @@ note: required by a bound in `Foo`
   --> $DIR/return-type-non-wf-no-ice.rs:10:8
    |
 LL | pub struct Foo<T>(T)
-   |            --- required by a bound in this struct
 LL | where
 LL |     T: Iterator,
    |        ^^^^^^^^ required by this bound in `Foo`

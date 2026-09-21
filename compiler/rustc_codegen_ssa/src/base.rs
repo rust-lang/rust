@@ -28,13 +28,11 @@ use rustc_middle::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItem
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, PatternKind, Ty, TyCtxt, UintTy, Unnormalized};
-use rustc_middle::{bug, span_bug};
-use rustc_session::Session;
 use rustc_session::config::{self, EntryFnType};
-use rustc_span::{DUMMY_SP, Symbol};
+use rustc_span::{DUMMY_SP, Symbol, bug, span_bug};
 use rustc_structures::CrateType;
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::spec::{Arch, Os};
+use rustc_target::spec::{Arch, Os, Target as TargetSpec};
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
@@ -42,7 +40,7 @@ use tracing::{debug, info};
 use crate::assert_module_sources::CguReuse;
 use crate::back::link::are_upstream_rust_objects_already_included;
 use crate::back::write::{
-    ComputedLtoType, OngoingCodegen, compute_per_cgu_lto_type, start_async_codegen,
+    ComputedLtoType, ModuleConfig, OngoingCodegen, compute_per_cgu_lto_type, start_async_codegen,
     submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm,
 };
 use crate::common::{self, IntPredicate, RealPredicate, TypeKind};
@@ -52,7 +50,7 @@ use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{
     CachedModuleCodegen, CodegenLintLevelSpecs, CrateInfo, EiiLinkageImplInfo, EiiLinkageInfo,
-    ModuleCodegen, diagnostics, meth, mir,
+    ModuleCodegen, ModuleKind, diagnostics, meth, mir,
 };
 
 pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
@@ -373,8 +371,8 @@ pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 // Returns `true` if this session's target will use native wasm
 // exceptions. This means that the VM does the unwinding for
 // us
-pub fn wants_wasm_eh(sess: &Session) -> bool {
-    sess.target.is_like_wasm
+pub fn wants_wasm_eh(target: &TargetSpec) -> bool {
+    target.is_like_wasm
 }
 
 /// Returns `true` if this session's target will use SEH-based unwinding.
@@ -382,15 +380,15 @@ pub fn wants_wasm_eh(sess: &Session) -> bool {
 /// This is only true for MSVC targets, and even then the 64-bit MSVC target
 /// currently uses SEH-ish unwinding with DWARF info tables to the side (same as
 /// 64-bit MinGW) instead of "full SEH".
-pub fn wants_msvc_seh(sess: &Session) -> bool {
-    sess.target.is_like_msvc
+pub fn wants_msvc_seh(target: &TargetSpec) -> bool {
+    target.is_like_msvc
 }
 
 /// Returns `true` if this session's target requires the new exception
 /// handling LLVM IR instructions (catchpad / cleanuppad / ... instead
 /// of landingpad)
-pub(crate) fn wants_new_eh_instructions(sess: &Session) -> bool {
-    wants_wasm_eh(sess) || wants_msvc_seh(sess)
+pub(crate) fn wants_new_eh_instructions(target: &TargetSpec) -> bool {
+    wants_wasm_eh(target) || wants_msvc_seh(target)
 }
 
 pub(crate) fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
@@ -593,7 +591,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             )
         };
 
-        let result = bx.call(start_ty, None, None, start_fn, &args, None, instance);
+        let result =
+            bx.call(start_ty, None, None, start_fn, ReturnSlot::Direct, &args, None, instance);
         if cx.sess().target.os == Os::Uefi {
             bx.ret(result);
         } else {
@@ -762,7 +761,18 @@ pub fn codegen_crate<
         None
     };
 
-    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, allocator_module);
+    let no_builtins = find_attr!(tcx, crate, NoBuiltins);
+    let regular_module_config = ModuleConfig::new(ModuleKind::Regular, tcx, no_builtins);
+    let bitcode_needed = regular_module_config.bitcode_needed();
+    let allocator_module_config = ModuleConfig::new(ModuleKind::Allocator, tcx, no_builtins);
+
+    let ongoing_codegen = start_async_codegen(
+        backend.clone(),
+        tcx,
+        Arc::new(regular_module_config),
+        Arc::new(allocator_module_config),
+        allocator_module,
+    );
 
     // For better throughput during parallel processing by LLVM, we used to sort
     // CGUs largest to smallest. This would lead to better thread utilization
@@ -822,7 +832,8 @@ pub fn codegen_crate<
             let start_time = Instant::now();
 
             let pre_compiled_cgus = par_map(cgus, |(i, _)| {
-                let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
+                let module =
+                    backend.compile_codegen_unit(tcx, codegen_units[i].name(), bitcode_needed);
                 (i, IntoDynSyncSend(module))
             });
 
@@ -846,7 +857,7 @@ pub fn codegen_crate<
                     cgu.0
                 } else {
                     let start_time = Instant::now();
-                    let module = backend.compile_codegen_unit(tcx, cgu.name());
+                    let module = backend.compile_codegen_unit(tcx, cgu.name(), bitcode_needed);
                     total_codegen_time += start_time.elapsed();
                     module
                 };
@@ -1047,7 +1058,7 @@ impl CrateInfo {
         let n_crates = crates.len();
         let mut info = CrateInfo {
             target_cpu,
-            target_features: tcx.global_backend_features(()).clone(),
+            target_features: tcx.sess.global_backend_features.clone(),
             crate_types,
             exported_symbols,
             linked_symbols,

@@ -8,7 +8,7 @@ use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable};
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, bug, span_bug};
 use tracing::{debug, instrument};
 
 use crate::diagnostics;
@@ -579,8 +579,8 @@ impl<'tcx> Instance<'tcx> {
             tcx.def_kind(def_id),
             DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::Const { .. }
-                | DefKind::AssocConst { .. }
+                | DefKind::Const
+                | DefKind::AssocConst
                 | DefKind::AnonConst
                 | DefKind::Static { .. }
                 | DefKind::Ctor(_, CtorKind::Fn)

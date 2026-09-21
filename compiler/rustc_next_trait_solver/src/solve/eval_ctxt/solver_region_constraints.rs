@@ -2,7 +2,6 @@
 
 #[cfg(feature = "nightly")]
 use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
-use rustc_type_ir::ClauseKind::*;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::outlives::{Component, push_outlives_components};
 #[cfg(not(feature = "nightly"))]
@@ -12,8 +11,8 @@ use rustc_type_ir::region_constraint::{
     propagate_ambiguity,
 };
 use rustc_type_ir::{
-    AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, OutlivesClause, Region, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, UniverseIndex, max_universe,
+    AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, Region, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, UniverseIndex,
 };
 use tracing::{debug, instrument};
 
@@ -82,9 +81,6 @@ where
         t.visit_with(&mut reqs_builder);
         let reqs = reqs_builder.out;
 
-        let mut region_outlives_builder = TransitiveRelationBuilder::default();
-        let mut type_outlives = vec![];
-
         // If there are inference variables in type outlives then we may not be able
         // to elaborate to the full set of implied bounds right now. To avoid incorrectly
         // NoSolution'ing when lifting constraints to a lower universe due to no usable
@@ -102,25 +98,17 @@ where
 
         // FIXME(-Zassumptions-on-binders): we need to normalize here/somewhere
         // as we assume the type outlives assumptions only have rigid types :>
-        let clauses = rustc_type_ir::elaborate::elaborate(
-            self.cx(),
-            reqs.into_iter().filter_map(|goal| goal.predicate.as_clause()),
-        );
+        //
+        // `Assumptions::new` elaborates, restricts the clauses to `u` and picks out the
+        // outlives ones for us, so we just hand over everything the requirements gave us.
+        let clauses = reqs.into_iter().filter_map(|goal| goal.predicate.as_clause());
 
-        clauses.filter(move |clause| max_universe(&**self.delegate, *clause) == u).for_each(
-            |clause| match clause.kind().skip_binder() {
-                RegionOutlives(OutlivesClause(r1, r2)) => {
-                    assert!(clause.kind().no_bound_vars().is_some());
-                    region_outlives_builder.add(r1, r2);
-                }
-                TypeOutlives(p) => {
-                    type_outlives.push(clause.kind().map_bound(|_| p));
-                }
-                _ => (),
-            },
-        );
-
-        Some(Assumptions::new(type_outlives, region_outlives_builder.freeze()))
+        Some(Assumptions::new(
+            &**self.delegate,
+            clauses,
+            TransitiveRelationBuilder::default().freeze(),
+            u,
+        ))
     }
 
     #[instrument(level = "debug", skip(self), ret)]

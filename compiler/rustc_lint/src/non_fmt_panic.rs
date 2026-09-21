@@ -5,9 +5,9 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw};
-use rustc_middle::{bug, ty};
+use rustc_middle::ty;
 use rustc_parse_format::{ParseMode, Parser, Piece};
-use rustc_span::{InnerSpan, Span, Symbol, hygiene, sym};
+use rustc_span::{InnerSpan, Span, Symbol, bug, hygiene, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::diagnostics::{NonFmtPanicBraces, NonFmtPanicUnused};
@@ -96,8 +96,8 @@ struct PanicMessageNotLiteral<'a, 'tcx> {
     panic: Option<Symbol>,
 }
 
-impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for PanicMessageNotLiteral<'b, 'tcx> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a, 'b, 'tcx> Diagnostic<'a> for PanicMessageNotLiteral<'b, 'tcx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let Self { arg_span, symbol, span, arg_macro, cx, arg, panic } = self;
         let mut lint = Diag::new(dcx, level, "panic message is not a string literal")
             .with_arg("name", symbol)

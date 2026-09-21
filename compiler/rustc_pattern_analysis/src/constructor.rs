@@ -880,7 +880,7 @@ impl<Cx: PatCx> Constructor<Cx> {
             (Opaque(..), _) | (_, Opaque(..)) => false,
 
             _ => {
-                return Err(cx.bug(format_args!(
+                return Err(cx.delayed_bug(format_args!(
                     "trying to compare incompatible constructors {self:?} and {other:?}"
                 )));
             }

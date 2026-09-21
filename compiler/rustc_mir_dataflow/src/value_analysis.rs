@@ -5,7 +5,7 @@ use std::ops::Range;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
 use rustc_index::IndexVec;
-use rustc_index::bit_set::DenseBitSet;
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
@@ -1039,9 +1039,9 @@ pub fn iter_fields<'tcx>(
 }
 
 /// Returns all locals with projections that have their reference or address taken.
-pub fn excluded_locals(body: &Body<'_>) -> DenseBitSet<Local> {
+pub fn excluded_locals(body: &Body<'_>) -> GrowableBitSet<Local> {
     struct Collector {
-        result: DenseBitSet<Local>,
+        result: GrowableBitSet<Local>,
     }
 
     impl<'tcx> Visitor<'tcx> for Collector {
@@ -1054,7 +1054,7 @@ pub fn excluded_locals(body: &Body<'_>) -> DenseBitSet<Local> {
         }
     }
 
-    let mut collector = Collector { result: DenseBitSet::new_empty(body.local_decls.len()) };
+    let mut collector = Collector { result: GrowableBitSet::new_empty() };
     collector.visit_body(body);
     collector.result
 }

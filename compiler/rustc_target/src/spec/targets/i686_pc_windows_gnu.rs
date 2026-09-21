@@ -27,7 +27,7 @@ pub(crate) fn target() -> Target {
         metadata: TargetMetadata {
             description: Some("32-bit MinGW (Windows 10+)".into()),
             tier: Some(2),
-            host_tools: Some(true),
+            host_tools: Some(false),
             std: Some(true),
         },
         pointer_width: 32,

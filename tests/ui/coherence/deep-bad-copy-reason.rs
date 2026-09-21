@@ -9,6 +9,7 @@ pub struct ListS<T> {
     len: usize,
     data: [T; 0],
     opaque: OpaqueListContents,
+    //~^ NOTE required by this field
 }
 
 pub struct Interned<'a, T>(&'a T);

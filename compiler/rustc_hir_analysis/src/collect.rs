@@ -26,7 +26,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt};
+use rustc_hir::intravisit::{InferKind, Visitor};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node, PreciseCapturingArgKind, find_attr};
 use rustc_infer::infer::{InferCtxt, SolverRegionConstraint, TyCtxtInferExt};
 use rustc_infer::traits::{DynCompatibilityViolation, ObligationCause};
@@ -37,8 +37,8 @@ use rustc_middle::ty::{
     self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
     fold_regions,
 };
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::def_id::LocalModId;
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -319,7 +319,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             );
         }
 
-        diag.emit()
+        diag.emit_err()
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -491,11 +491,15 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn dcx(&self) -> DiagCtxtHandle<'_> {
-        self.tcx.dcx().taintable_handle(&self.tainted_by_errors)
+        self.tcx.dcx().into_taintable(&self.tainted_by_errors)
     }
 
     fn item_def_id(&self) -> LocalDefId {
         self.item_def_id
+    }
+
+    fn mod_id(&self) -> LocalModId {
+        self.tcx.parent_module_from_def_id(self.item_def_id)
     }
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
@@ -515,7 +519,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                     " + /* 'a */",
                     Applicability::HasPlaceholders,
                 )
-                .emit();
+                .emit_err();
             ty::Region::new_error(self.tcx(), guar)
         } else {
             // If we found elided lifetime during lowering of delegation parent or child
@@ -808,8 +812,8 @@ pub(super) fn check_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         msg: &'static str,
     }
 
-    impl<'a> Diagnostic<'a, ()> for ReprCIssue {
-        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+    impl<'a> Diagnostic<'a> for ReprCIssue {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
             let Self { msg } = self;
             Diag::new(dcx, level, msg)
                 .with_note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
@@ -1413,7 +1417,7 @@ fn recover_infer_ret_ty<'tcx>(
                      https://doc.rust-lang.org/book/ch13-01-closures.html",
         );
     }
-    let guar = diag.emit();
+    let guar = diag.emit_err();
 
     // If we return a dummy binder here, we can ICE later in borrowck when it encounters
     // `ReLateParam` regions (e.g. in a local type annotation) which weren't registered via the
@@ -1539,11 +1543,11 @@ pub fn suggest_impl_trait<'tcx>(
             );
             // FIXME(compiler-errors): We may benefit from resolving regions here.
             if ocx.try_evaluate_obligations().no_errors()
-                && let item_ty = infcx.resolve_vars_if_possible(item_ty)
+                && let item_ty = infcx.deeply_resolve_ignoring_regions(item_ty)
                 && let Some(item_ty) = item_ty.make_suggestable(infcx.tcx, false, None)
                 && let Some(sugg) = formatter(
                     infcx.tcx,
-                    infcx.resolve_vars_if_possible(args),
+                    infcx.deeply_resolve_ignoring_regions(args),
                     trait_def_id,
                     assoc_item_def_id,
                     item_ty,

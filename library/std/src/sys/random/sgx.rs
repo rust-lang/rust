@@ -3,46 +3,43 @@ use crate::arch::x86_64::{_rdrand16_step, _rdrand32_step, _rdrand64_step};
 const RETRIES: u32 = 10;
 
 fn fail() -> ! {
-    panic!("failed to generate random data");
+    rtabort!("failed to generate random data");
 }
 
 fn rdrand64() -> u64 {
-    unsafe {
-        let mut ret: u64 = 0;
-        for _ in 0..RETRIES {
-            if _rdrand64_step(&mut ret) == 1 {
-                return ret;
-            }
+    let mut ret: u64 = 0;
+    for _ in 0..RETRIES {
+        // SAFETY: the rdrand feature is enabled on SGX targets
+        if unsafe { _rdrand64_step(&mut ret) } == 1 {
+            return ret;
         }
-
-        fail();
     }
+
+    fail();
 }
 
 fn rdrand32() -> u32 {
-    unsafe {
-        let mut ret: u32 = 0;
-        for _ in 0..RETRIES {
-            if _rdrand32_step(&mut ret) == 1 {
-                return ret;
-            }
+    let mut ret: u32 = 0;
+    for _ in 0..RETRIES {
+        // SAFETY: the rdrand feature is enabled on SGX targets
+        if unsafe { _rdrand32_step(&mut ret) } == 1 {
+            return ret;
         }
-
-        fail();
     }
+
+    fail();
 }
 
 fn rdrand16() -> u16 {
-    unsafe {
-        let mut ret: u16 = 0;
-        for _ in 0..RETRIES {
-            if _rdrand16_step(&mut ret) == 1 {
-                return ret;
-            }
+    let mut ret: u16 = 0;
+    for _ in 0..RETRIES {
+        // SAFETY: the rdrand feature is enabled on SGX targets
+        if unsafe { _rdrand16_step(&mut ret) } == 1 {
+            return ret;
         }
-
-        fail();
     }
+
+    fail();
 }
 
 pub fn fill_bytes(bytes: &mut [u8]) {

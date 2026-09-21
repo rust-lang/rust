@@ -1,5 +1,4 @@
 //@ run-pass
-#![allow(improper_ctypes)]
 
 // Test a foreign function that accepts and returns a struct by value.
 
@@ -8,6 +7,7 @@
 // sizes, causing there to be padding in the last element.
 
 #[derive(Copy, Clone, PartialEq, Debug)]
+#[repr(C)]
 pub struct FiveU16s {
     one: u16,
     two: u16,

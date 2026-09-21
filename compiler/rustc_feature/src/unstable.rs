@@ -227,6 +227,8 @@ declare_features! (
     (unstable, anonymous_lifetime_in_impl_trait, "1.63.0", None),
     /// Allows checking whether or not the backend correctly supports unstable float types.
     (internal, cfg_target_has_reliable_f16_f128, "1.88.0", None),
+    /// Allows checking whether or not the backend correctly supports the unstable `f16b` type.
+    (internal, cfg_target_has_reliable_f16b, "CURRENT_RUSTC_VERSION", None),
     /// Allows checking whether or not the target might have thread support.
     (internal, cfg_target_has_threads, "1.99.0", None),
     /// Allows identifying the `compiler_builtins` crate.
@@ -247,6 +249,8 @@ declare_features! (
     (internal, lang_items, "1.0.0", None),
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
     (internal, link_cfg, "1.14.0", None),
+    /// Allows using `#[link_name="__enzyme_*"]`.
+    (internal, link_enzyme_intrinsics, "CURRENT_RUSTC_VERSION", None),
     /// Allows using `?Trait` trait bounds in more contexts.
     (internal, more_maybe_bounds, "1.82.0", None),
     /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
@@ -518,6 +522,8 @@ declare_features! (
     (unstable, f128, "1.78.0", Some(116909)),
     /// Allow using 16-bit (half precision) floating point numbers.
     (unstable, f16, "1.78.0", Some(116909)),
+    /// Allow using bfloat16 floating point numbers.
+    (unstable, f16b, "CURRENT_RUSTC_VERSION", Some(160630)),
     /// Allows the use of `#[ffi_const]` on foreign functions.
     (unstable, ffi_const, "1.45.0", Some(58328)),
     /// Allows the use of `#[ffi_pure]` on foreign functions.
@@ -603,12 +609,13 @@ declare_features! (
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.
     (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
+    /// Allows directly represented generic_const_args as the rhs of const items without the
+    /// `direct_const_arg!` macro.
+    (incomplete, macroless_const_item_generic_const_args, "CURRENT_RUSTC_VERSION", Some(162540)),
     /// Allows directly represented generic_const_args without the `direct_const_arg!` macro.
     (incomplete, macroless_generic_const_args, "1.99.0", Some(159006)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
-    /// Enable mgca `type const` syntax before expansion.
-    (incomplete, mgca_type_const_syntax, "1.95.0", Some(132980)),
     /// Allows additional const parameter types, such as [u8; 10] or user defined types.
     /// User defined types must not have fields more private than the type itself.
     (unstable, min_adt_const_params, "1.96.0", Some(154042)),
@@ -640,7 +647,7 @@ declare_features! (
     /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
     (unstable, naked_functions_target_feature, "1.86.0", Some(138568)),
     /// Allows providing names to parameters of `impl Fn` etc
-    (incomplete, named_fn_trait_parameters, "1.99.0", Some(158499)),
+    (unstable, named_fn_trait_parameters, "1.99.0", Some(158499)),
     /// Allows specifying the as-needed link modifier
     (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490)),
     /// Allow negative trait implementations.
@@ -854,5 +861,6 @@ pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
 pub const DEPENDENT_FEATURES: &[(Symbol, &[Symbol])] = &[
     (sym::generic_const_args, &[sym::min_generic_const_args]),
     (sym::macroless_generic_const_args, &[sym::min_generic_const_args]),
+    (sym::macroless_const_item_generic_const_args, &[sym::min_generic_const_args]),
     (sym::unsized_const_params, &[sym::adt_const_params]),
 ];

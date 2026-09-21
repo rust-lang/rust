@@ -86,10 +86,10 @@ pub trait Interner:
     type AnonConstId: SpecificDefId<Self>;
     type TraitAssocTyId: SpecificDefId<Self>
         + Into<Self::TraitAssocTermId>
-        + TryFrom<Self::TraitAssocTermId>;
+        + TryFrom<Self::TraitAssocTermId, Error: Debug>;
     type TraitAssocConstId: SpecificDefId<Self>
         + Into<Self::TraitAssocTermId>
-        + TryFrom<Self::TraitAssocTermId>;
+        + TryFrom<Self::TraitAssocTermId, Error: Debug>;
     type TraitAssocTermId: SpecificDefId<Self>;
     type OpaqueTyId: SpecificDefId<Self, Self::LocalOpaqueTyId>;
     type LocalOpaqueTyId: Copy
@@ -293,19 +293,6 @@ pub trait Interner:
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
-    fn alias_const_kind_from_def_id(
-        self,
-        def_id: Self::DefId,
-        inherent_args: ty::AliasConstInherentArgsKind,
-    ) -> ty::AliasConstKind<Self>;
-
-    // FIXME: remove in favor of explicit construction
-    fn alias_term_kind_from_def_id(
-        self,
-        def_id: Self::DefId,
-        inherent_args: ty::AliasConstInherentArgsKind,
-    ) -> ty::AliasTermKind<Self>;
-
     fn trait_ref_and_own_args_for_alias(
         self,
         def_id: Self::TraitAssocTermId,
@@ -414,6 +401,9 @@ pub trait Interner:
         self,
         impl_def_id: Self::ImplId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+
+    fn supertrait_def_ids(self, trait_def_id: Self::TraitId)
+    -> impl Iterator<Item = Self::TraitId>;
 
     fn impl_is_const(self, def_id: Self::ImplId) -> bool;
     fn fn_is_const(self, def_id: Self::FunctionId) -> bool;

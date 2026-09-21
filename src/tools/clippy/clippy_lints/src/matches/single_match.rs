@@ -90,7 +90,7 @@ fn report_single_pattern(
 ) {
     let lint = if els.is_some() { SINGLE_MATCH_ELSE } else { SINGLE_MATCH };
     let ctxt = expr.span.ctxt();
-    let note = |diag: &mut Diag<'_, ()>| {
+    let note = |diag: &mut Diag<'_>| {
         if contains_comments {
             diag.note("you might want to preserve the comments from inside the `match`");
         }

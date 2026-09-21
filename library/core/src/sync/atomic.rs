@@ -135,11 +135,10 @@
 //!   entirely, but the Linux targets [use the kernel] to assist (which comes
 //!   with a performance penalty). It's not until ARMv6K onwards that ARM CPUs
 //!   have support for load/store and Compare and Swap (CAS) atomics in hardware.
-//! * ARMv6-M and ARMv8-M baseline targets (`thumbv6m-*` and
-//!   `thumbv8m.base-*`) only provide `load` and `store` operations, and do
+//! * ARMv6-M targets (`thumbv6m-*`) only provide `load` and `store` operations, and do
 //!   not support Compare and Swap (CAS) operations, such as `swap`,
 //!   `fetch_add`, etc. Full CAS support is available on ARMv7-M and ARMv8-M
-//!   Mainline (`thumbv7m-*`, `thumbv7em*` and `thumbv8m.main-*`).
+//!   (`thumbv7m-*`, `thumbv7em*`, `thumbv8m.base-*` and `thumbv8m.main-*`).
 //!
 //! [use the kernel]: https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt
 //!
@@ -1513,7 +1512,7 @@ impl AtomicBool {
         Err(prev)
     }
 
-    /// Fetches the value, applies a function to it that it return a new value.
+    /// Fetches the value, and applies a function to it that returns a new value.
     /// The new value is stored and the old value is returned.
     ///
     /// See also: [`try_update`](`AtomicBool::try_update`).
@@ -2340,7 +2339,7 @@ impl<T> AtomicPtr<T> {
         Err(prev)
     }
 
-    /// Fetches the value, applies a function to it that it return a new value.
+    /// Fetches the value, and applies a function to it that returns a new value.
     /// The new value is stored and the old value is returned.
     ///
     /// See also: [`try_update`](`AtomicPtr::try_update`).
@@ -3811,7 +3810,7 @@ macro_rules! atomic_int {
                 Err(prev)
             }
 
-            /// Fetches the value, applies a function to it that it return a new value.
+            /// Fetches the value, and applies a function to it that returns a new value.
             /// The new value is stored and the old value is returned.
             ///
             #[doc = concat!("See also: [`try_update`](`", stringify!($atomic_type), "::try_update`).")]

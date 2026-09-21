@@ -84,6 +84,7 @@ where
         param_env: I::ParamEnv,
         span: I::Span,
     ) -> Self {
+        debug_assert!(infcx.next_trait_solver());
         SolverRelating {
             infcx,
             span,

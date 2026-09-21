@@ -34,6 +34,7 @@ use crate::back::profiling::{
 use crate::builder::SBuilder;
 use crate::builder::gpu_offload::scalar_width;
 use crate::common::AsCCharPtr;
+use crate::context::SimpleCx;
 use crate::diagnostics::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, ParseTargetMachineConfig,
     UnsupportedCompression, WithLlvmError, WriteBytecode,
@@ -41,7 +42,7 @@ use crate::diagnostics::{
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
 use crate::llvm::{self, DiagnosticInfo};
 use crate::type_::llvm_type_ptr;
-use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes, base, common, llvm_util};
+use crate::{LlvmCodegenBackend, ModuleLlvm, attributes, base, common, llvm_util};
 
 pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> ! {
     match llvm::last_error() {
@@ -100,18 +101,9 @@ fn write_output_file<'ll>(
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::WriteOutput { path: output }))
 }
 
-/// If `for_cfg` is `true` then we are creating this machine for the purpose of populating
-/// [`rustc_codegen_ssa::TargetConfig`] based on what LLVM actually enables in this configuration.
-/// `-Ctarget-feature` should be ignored in that case since it is already processed separately.
-pub(crate) fn create_informational_target_machine(
-    sess: &Session,
-    for_cfg: bool,
-) -> OwnedTargetMachine {
+pub(crate) fn create_informational_target_machine(sess: &Session) -> OwnedTargetMachine {
     let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
-    // Can't use query system here quite yet because this function is invoked before the query
-    // system/tcx is set up.
-    let features = llvm_util::global_llvm_features(sess, for_cfg);
-    target_machine_factory(sess, config::OptLevel::No, &features)(sess.dcx(), config)
+    target_machine_factory(sess, config::OptLevel::No)(sess.dcx(), config)
 }
 
 pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMachine {
@@ -129,11 +121,7 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
         Some(tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, mod_name));
     let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
 
-    target_machine_factory(
-        tcx.sess,
-        tcx.backend_optimization_level(()),
-        tcx.global_backend_features(()),
-    )(tcx.dcx(), config)
+    target_machine_factory(tcx.sess, tcx.backend_optimization_level(()))(tcx.dcx(), config)
 }
 
 fn to_llvm_opt_settings(cfg: config::OptLevel) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize) {
@@ -195,7 +183,6 @@ fn to_llvm_float_abi(float_abi: Option<FloatAbi>) -> llvm::FloatAbi {
 pub(crate) fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
-    target_features: &[String],
 ) -> TargetMachineFactoryFn<LlvmCodegenBackend> {
     // Self-profile timer for creating a _factory_.
     let _prof_timer = sess.prof.generic_activity("target_machine_factory");
@@ -212,12 +199,11 @@ pub(crate) fn target_machine_factory(
 
     let code_model = to_llvm_code_model(sess.code_model());
 
-    // This is used to set cfg_has_threads, so all logic must be in this method.
     let singlethread = sess.target.singlethread(&sess.internal_target_features);
 
     let triple = SmallCStr::new(&versioned_llvm_target(sess));
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
-    let features = CString::new(target_features.join(",")).unwrap();
+    let features = CString::new(sess.global_backend_features.join(",")).unwrap();
     let abi = SmallCStr::new(sess.target.llvm_abiname.desc());
     let trap_unreachable =
         sess.opts.unstable_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);
@@ -255,7 +241,7 @@ pub(crate) fn target_machine_factory(
         }
     };
 
-    let use_wasm_eh = wants_wasm_eh(sess);
+    let use_wasm_eh = wants_wasm_eh(&sess.target);
 
     let large_data_threshold = sess.opts.unstable_opts.large_data_threshold.unwrap_or(0);
 
@@ -612,6 +598,8 @@ pub(crate) unsafe fn llvm_optimize(
     let pgo_use_path = get_pgo_use_path(config);
     let pgo_sample_use_path = get_pgo_sample_use_path(config);
     let is_lto = opt_stage == llvm::OptStage::ThinLTO || opt_stage == llvm::OptStage::FatLTO;
+    let is_final_stage =
+        !matches!(opt_stage, llvm::OptStage::PreLinkFatLTO | llvm::OptStage::PreLinkThinLTO);
     let instr_profile_output_path = get_instr_profile_output_path(config);
     let sanitize_dataflow_abilist: Vec<_> = config
         .sanitizer_dataflow_abilist
@@ -840,7 +828,7 @@ pub(crate) unsafe fn llvm_optimize(
     // don't need any other artifacts from the previous run. We will embed this artifact into our
     // LLVM-IR host module, to create a `host.o` ObjectFile, which we will write to disk.
     // The last, not yet automated steps uses the `clang-linker-wrapper` to process `host.o`.
-    if !cgcx.target_is_like_gpu {
+    if !cgcx.target_is_like_gpu && is_final_stage {
         if let Some(device_path) = config
             .offload
             .iter()
@@ -866,10 +854,11 @@ pub(crate) unsafe fn llvm_optimize(
             // 2) Finalize host: lib.bc + device.bin -> host.o (host TM)
             // We create a full clone of our LLVM host module, since we will embed the device IR
             // into it, and this might break caching or incremental compilation otherwise.
-            let llmod2 = llvm::LLVMCloneModule(module.module_llvm.llmod());
             let ok = unsafe {
-                llvm::RustOffloadWrapper::get_instance()
-                    .llvm_rust_offload_embed_buffer_in_module(llmod2, device_bin_c.as_c_str())
+                llvm::RustOffloadWrapper::get_instance().llvm_rust_offload_embed_buffer_in_module(
+                    module.module_llvm.llmod(),
+                    device_bin_c.as_c_str(),
+                )
             };
             if !ok {
                 dcx.emit_err(crate::diagnostics::OffloadEmbedFailed);
@@ -878,7 +867,7 @@ pub(crate) unsafe fn llvm_optimize(
                 dcx,
                 module.module_llvm.tm.raw(),
                 config.no_builtins,
-                llmod2,
+                module.module_llvm.llmod(),
                 &out_obj,
                 None,
                 llvm::FileType::ObjectFile,
@@ -888,6 +877,16 @@ pub(crate) unsafe fn llvm_optimize(
             // We ignore cgcx.save_temps here and unconditionally always keep our `device.bin` artifact.
             // Otherwise, recompiling the host code would fail since we deleted that device artifact
             // in the previous host compilation, which would be confusing at best.
+
+            let ok = unsafe {
+                llvm::RustOffloadWrapper::get_instance().llvm_rust_offload_wrap_images(
+                    module.module_llvm.llmod(),
+                    device_bin_c.as_c_str(),
+                )
+            };
+            if !ok {
+                dcx.emit_err(crate::diagnostics::OffloadWrapImagesFailed);
+            }
         }
     }
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))

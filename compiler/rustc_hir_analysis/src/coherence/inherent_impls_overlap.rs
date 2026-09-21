@@ -91,7 +91,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                     )
                     .with_span_label(span, format!("duplicate definitions for `{ident}`"))
                     .with_span_label(*former, format!("other definition for `{ident}`"))
-                    .emit());
+                    .emit_err());
                 }
                 IndexEntry::Vacant(entry) => {
                     entry.insert(span);
@@ -142,7 +142,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                     traits::add_placeholder_note(&mut err);
                 }
 
-                res = Err(err.emit());
+                res = Err(err.emit_err());
             }
         }
         res

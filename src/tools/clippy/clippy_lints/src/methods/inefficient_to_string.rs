@@ -4,9 +4,9 @@ use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sym;
 use clippy_utils::ty::peel_and_count_ty_refs;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 

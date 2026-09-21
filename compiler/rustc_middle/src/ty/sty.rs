@@ -13,7 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, extension};
-use rustc_span::{DUMMY_SP, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, bug, kw, sym};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::walk::TypeWalker;
@@ -188,15 +188,9 @@ impl<'tcx> UpvarArgs<'tcx> {
     /// empty iterator is returned.
     #[inline]
     pub fn upvar_tys(self) -> &'tcx List<Ty<'tcx>> {
-        let tupled_tys = match self {
-            UpvarArgs::Closure(args) => args.as_closure().tupled_upvars_ty(),
-            UpvarArgs::Coroutine(args) => args.as_coroutine().tupled_upvars_ty(),
-            UpvarArgs::CoroutineClosure(args) => args.as_coroutine_closure().tupled_upvars_ty(),
-        };
-
-        match tupled_tys.kind() {
+        match self.tupled_upvars_ty().kind() {
             TyKind::Error(_) => ty::List::empty(),
-            TyKind::Tuple(..) => self.tupled_upvars_ty().tuple_fields(),
+            TyKind::Tuple(args) => args,
             TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
             ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
         }
@@ -646,12 +640,12 @@ impl<'tcx> Ty<'tcx> {
                 | DefKind::AssocTy
                 | DefKind::TyParam
                 | DefKind::Fn
-                | DefKind::Const { .. }
+                | DefKind::Const
                 | DefKind::ConstParam
                 | DefKind::Static { .. }
                 | DefKind::Ctor(..)
                 | DefKind::AssocFn
-                | DefKind::AssocConst { .. }
+                | DefKind::AssocConst
                 | DefKind::Macro(..)
                 | DefKind::ExternCrate
                 | DefKind::Use

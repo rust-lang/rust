@@ -1,5 +1,6 @@
 use rustc_abi::Integer;
 use rustc_const_eval::const_eval::mk_eval_cx_for_const_val;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::util::Discr;
@@ -44,6 +45,7 @@ struct SimplifyMatch<'tcx, 'a> {
     discr: &'a Operand<'tcx>,
     discr_local: Option<Local>,
     discr_ty: Ty<'tcx>,
+    borrowed_locals: Option<DenseBitSet<Local>>,
 }
 
 impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
@@ -228,7 +230,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
     /// ```
     /// This will simplify into a copy statement.
     fn unify_by_copy(
-        &self,
+        &mut self,
         dest: Place<'tcx>,
         rvals: &[(u128, &Rvalue<'tcx>)],
     ) -> Option<StatementKind<'tcx>> {
@@ -257,6 +259,20 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
         let ty::Adt(def, _) = dest_ty.ty.kind() else {
             return None;
         };
+
+        if copy_src_place.is_indirect() {
+            // If the src place is indirect, only permit generating the copy when the dest place is
+            // never borrowed.
+            let borrowed_locals = self
+                .borrowed_locals
+                .get_or_insert_with(|| rustc_mir_dataflow::impls::borrowed_locals(self.body));
+            if borrowed_locals.contains(dest.local) {
+                return None;
+            }
+        } else if copy_src_place.local == dest.local {
+            // Also forbid the case where the source and dest are fields of the same local
+            return None;
+        }
 
         for &(case, rvalue) in rvals.iter() {
             match rvalue {
@@ -385,6 +401,7 @@ fn simplify_match<'tcx>(
         discr,
         discr_local: None,
         discr_ty: discr.ty(body.local_decls(), tcx),
+        borrowed_locals: None,
     };
     let reachable_cases: Vec<_> =
         targets.iter().filter(|&(_, bb)| !body.basic_blocks[bb].is_empty_unreachable()).collect();

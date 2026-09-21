@@ -10,11 +10,14 @@ fn test_all_except_most_recent() {
         ((UNIX_EPOCH + Duration::new(2, 0), PathBuf::from("2")), None),
     ]);
     assert_eq!(
-        all_except_most_recent(input).into_items().map(|(path, _)| path).into_sorted_stable_ord(),
+        all_except_maybe_most_recent(input, true)
+            .into_items()
+            .map(|(path, _)| path)
+            .into_sorted_stable_ord(),
         vec![PathBuf::from("1"), PathBuf::from("2"), PathBuf::from("3"), PathBuf::from("4")]
     );
 
-    assert!(all_except_most_recent(UnordMap::default()).is_empty());
+    assert!(all_except_maybe_most_recent(UnordMap::default(), true).is_empty());
 }
 
 #[test]
@@ -74,4 +77,19 @@ fn test_find_source_directory_in_iter() {
         ),
         None
     );
+}
+
+#[test]
+fn test_replace_hard_link_with_copy_unshares_hard_link() {
+    let dir = rustc_fs_util::TempDirBuilder::new().tempdir_in(std::env::temp_dir()).unwrap();
+    let file = dir.path().join("file");
+    let link = dir.path().join("link");
+    std_fs::write(&file, b"original").unwrap();
+    std_fs::hard_link(&file, &link).unwrap();
+
+    replace_hard_link_with_copy(&link).unwrap();
+
+    std_fs::write(&file, b"changed").unwrap();
+    assert_eq!(std_fs::read(&link).unwrap(), b"original");
+    assert!(!link.with_added_extension("tmp").exists());
 }

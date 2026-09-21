@@ -174,8 +174,19 @@ LL | |     s.0.y = t;
    |
    = note: or maybe you should use `std::mem::replace`?
 
+error: this looks like you are swapping `u` and `v` manually
+  --> tests/ui/swap.rs:238:5
+   |
+LL | /     let temp = u;
+LL | |
+LL | |     u = v;
+LL | |     v = temp;
+   | |_____________^ help: try: `std::mem::swap(&mut u, &mut v);`
+   |
+   = note: or maybe you should use `std::mem::replace`?
+
 error: this looks like you are swapping elements of `test_slice!(foo)` manually
-  --> tests/ui/swap.rs:252:5
+  --> tests/ui/swap.rs:264:5
    |
 LL | /     let temp = test_slice!(foo)[0];
 LL | |
@@ -183,5 +194,5 @@ LL | |     test_slice!(foo)[0] = test_slice!(foo)[1];
 LL | |     test_slice!(foo)[1] = temp;
    | |_______________________________^ help: try: `test_slice!(foo).swap(0, 1);`
 
-error: aborting due to 18 previous errors
+error: aborting due to 19 previous errors
 

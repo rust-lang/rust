@@ -52,14 +52,15 @@ pub mod tests {
     #[no_mangle]
     pub extern "thiscall" fn f6(_: i32, _: i32, _: i32) {}
 
+    #[repr(C)]
     struct S1 {
         x1: i32,
     }
-    // regparm0: @f7(i32 noundef %_1, i32 noundef %_2, i32 noundef %_3, i32 noundef %_4)
-    // regparm1: @f7(i32 inreg noundef %_1, i32 noundef %_2, i32 noundef %_3, i32 noundef %_4)
-    // regparm2: @f7(i32 inreg noundef %_1, i32 inreg noundef %_2, i32 noundef %_3, i32 noundef %_4)
-    // regparm3: @f7(i32 inreg noundef %_1, i32 inreg noundef %_2, i32 inreg noundef %_3,
-    // regparm3-SAME: i32 noundef %_4)
+    // regparm0: @f7(i32 noundef %_1, i32 noundef %_2, ptr {{.*}} byval([4 x i8]) {{.*}} %_3, i32 noundef %_4)
+    // regparm1: @f7(i32 inreg noundef %_1, i32 noundef %_2, ptr {{.*}} byval([4 x i8]) {{.*}}  %_3, i32 noundef %_4)
+    // regparm2: @f7(i32 inreg noundef %_1, i32 inreg noundef %_2, ptr {{.*}} byval([4 x i8]) {{.*}} %_3, i32 noundef %_4)
+    // regparm3: @f7(i32 inreg noundef %_1, i32 inreg noundef %_2, ptr {{.*}} byval([4 x i8]) {{.*}} %_3,
+    // regparm3-SAME: i32 inreg noundef %_4)
     #[no_mangle]
     pub extern "C" fn f7(_: i32, _: i32, _: S1, _: i32) {}
 

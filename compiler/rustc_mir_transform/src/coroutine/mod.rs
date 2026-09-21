@@ -66,16 +66,16 @@ use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
-use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
+use rustc_index::bit_set::{BitMatrix, DenseBitSet};
 use rustc_index::{Idx, IndexVec, indexvec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{
     self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, ShimKind, Ty, TyCtxt,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::always_storage_live_locals;
 use rustc_span::def_id::DefId;
+use rustc_span::{bug, span_bug};
 use tracing::{debug, instrument};
 
 use crate::deref_separator::deref_finder;
@@ -172,7 +172,7 @@ struct SuspensionPoint<'tcx> {
     /// Which block to jump to if the coroutine is dropped in this state.
     drop: Option<BasicBlock>,
     /// Set of locals that have live storage while at this suspension point.
-    storage_liveness: GrowableBitSet<Local>,
+    storage_liveness: DenseBitSet<Local>,
 }
 
 struct TransformVisitor<'tcx> {
@@ -510,8 +510,8 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                     replace_base(&mut resume_arg, self.make_field(variant, idx, ty), self.tcx);
                 }
 
-                let storage_liveness: GrowableBitSet<Local> =
-                    self.storage_liveness[block].clone().unwrap().into();
+                let storage_liveness: DenseBitSet<Local> =
+                    self.storage_liveness[block].clone().unwrap();
 
                 for i in 0..self.always_live_locals.domain_size() {
                     let l = Local::new(i);
@@ -991,7 +991,7 @@ fn create_cases<'tcx>(
 
                 // Create StorageLive instructions for locals with live storage
                 for l in body.local_decls.indices() {
-                    let needs_storage_live = point.storage_liveness.contains(l)
+                    let needs_storage_live = point.storage_liveness.contains_loose(l)
                         && !transform.remap.contains(l)
                         && !transform.always_live_locals.contains(l);
                     if needs_storage_live {

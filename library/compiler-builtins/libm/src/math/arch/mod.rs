@@ -41,6 +41,14 @@ cfg_select_nofmt! {
             sqrtf16,
         };
     }
+    all(target_arch = "arm", target_abi_eabihf) => {
+        mod arm;
+
+        #[cfg(target_feature = "vfp2sp")]
+        pub use arm::sqrtf;
+        #[cfg(target_feature = "vfp2")]
+        pub use arm::sqrt;
+    }
     any(target_arch = "loongarch32", target_arch = "loongarch64") => {
         mod loongarch;
 

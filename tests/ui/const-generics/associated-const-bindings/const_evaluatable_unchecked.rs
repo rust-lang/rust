@@ -8,13 +8,18 @@
 #![allow(incomplete_features)]
 
 pub trait TraitA<T> {
-    type const K: u8 = 0;
+    #[rustc_always_gca]
+    const K: u8 = core::direct_const_arg!(0);
 }
 pub trait TraitB<T> {}
 
 impl<T> TraitA<T> for () {}
 impl<T> TraitB<T> for () where (): TraitA<T, K = 0> {}
 
-fn check<T>() where (): TraitB<T> {}
+fn check<T>()
+where
+    (): TraitB<T>,
+{
+}
 
 fn main() {}

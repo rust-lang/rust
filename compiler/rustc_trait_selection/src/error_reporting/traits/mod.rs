@@ -280,7 +280,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // roots, like `need_type_info` does when looking for the annotation source.
         let ambiguity_infer_var = |error: &FulfillmentError<'tcx>| match error.code {
             FulfillmentErrorCode::Ambiguity { overflow: None } => self
-                .ambiguity_term(self.resolve_vars_if_possible(error.obligation.predicate))
+                .ambiguity_term(self.deeply_resolve_ignoring_regions(error.obligation.predicate))
                 .and_then(|term| {
                     ty::GenericArg::from(term)
                         .walk()
@@ -425,7 +425,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     error.obligation.cause.span,
                     "higher-ranked lifetime bound could not be satisfied",
                 )
-                .emit(),
+                .emit_err(),
             FulfillmentErrorCode::Ambiguity { overflow: None } => {
                 self.maybe_report_ambiguity(&error.obligation, related)
             }
@@ -440,7 +440,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     expected_found.found,
                     *err,
                 )
-                .emit(),
+                .emit_err(),
             FulfillmentErrorCode::ConstEquate(ref expected_found, ref err) => {
                 let mut diag = self.report_mismatched_consts(
                     &error.obligation.cause,
@@ -463,7 +463,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         &mut Default::default(),
                     );
                 }
-                diag.emit()
+                diag.emit_err()
             }
             FulfillmentErrorCode::Cycle(ref cycle) => self.report_overflow_obligation_cycle(cycle),
         }

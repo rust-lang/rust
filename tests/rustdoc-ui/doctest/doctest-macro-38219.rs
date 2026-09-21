@@ -2,7 +2,7 @@
 
 //@ compile-flags:--test
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
-//@ should-fail
+//@ failure-status: 101
 
 /// ```
 /// fail

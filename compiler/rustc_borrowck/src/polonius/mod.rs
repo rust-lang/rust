@@ -38,9 +38,8 @@ mod dump;
 pub(crate) mod legacy;
 mod liveness_constraints;
 
-use std::collections::BTreeMap;
-
 use rustc_data_structures::fx::FxHashSet;
+use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::RegionVid;
@@ -54,6 +53,8 @@ use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
 use crate::region_infer::values::LivenessValues;
 use crate::universal_regions::UniversalRegions;
+
+pub(crate) type LiveRegionVariances = IndexVec<RegionVid, Option<ConstraintDirection>>;
 
 #[derive(Clone)]
 pub(crate) struct LiveLoans {
@@ -89,7 +90,7 @@ pub(crate) struct PoloniusContext {
 
     /// The expected edge direction per live region: the kind of directed edge we'll create as
     /// liveness constraints depends on the variance of types with respect to each contained region.
-    pub(crate) live_region_variances: BTreeMap<RegionVid, ConstraintDirection>,
+    pub(crate) live_region_variances: LiveRegionVariances,
 
     /// The regions that outlive free regions are used to distinguish relevant live locals from
     /// boring locals. A boring local is one whose type contains only such regions. Polonius
