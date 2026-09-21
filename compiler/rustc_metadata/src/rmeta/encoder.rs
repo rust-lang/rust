@@ -18,6 +18,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
+use rustc_index::Idx;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
