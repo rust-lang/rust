@@ -26,6 +26,7 @@ LL |     S.run(|| { 5u8; });
 note: required by a bound in `S::run`
   --> $DIR/closure-arg-trailing-semicolon.rs:25:15
    |
+LL | impl S {
 LL |     fn run<R: Bar>(&self, _: impl Fn() -> R) {}
    |               ^^^ required by this bound in `S::run`
 
@@ -147,7 +148,7 @@ note: required by a bound in `Callable::CALL`
 LL | trait Callable<T: Bar> {
    |                   ^^^ required by this bound in `Callable::CALL`
 LL |     const CALL: fn();
-   |           ---- required by a bound in this associated constant
+   |
 
 error: aborting due to 9 previous errors
 
