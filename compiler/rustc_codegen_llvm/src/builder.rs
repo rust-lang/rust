@@ -2078,18 +2078,11 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                     )
                 };
                 let ubsan_handler = self.declare_cfn(
-                    if is_recover {
-                        if is_minimal {
-                            "__ubsan_handle_cfi_check_fail_minimal"
-                        } else {
-                            "__ubsan_handle_cfi_check_fail"
-                        }
-                    } else {
-                        if is_minimal {
-                            "__ubsan_handle_cfi_check_fail_minimal_abort"
-                        } else {
-                            "__ubsan_handle_cfi_check_fail_abort"
-                        }
+                    match (is_minimal, is_recover) {
+                        (true, true) => "__ubsan_handle_cfi_check_fail_minimal",
+                        (true, false) => "__ubsan_handle_cfi_check_fail_minimal_abort",
+                        (false, true) => "__ubsan_handle_cfi_check_fail",
+                        (false, false) => "__ubsan_handle_cfi_check_fail_abort",
                     },
                     llvm::UnnamedAddr::Global,
                     fty,
