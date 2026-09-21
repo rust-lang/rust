@@ -125,6 +125,7 @@ LL |     fn foo() -> impl Iterator<Item = i32, Item = u32> {
 note: required by a bound in `Trait3::foo::{anon_assoc#0}`
   --> $DIR/duplicate-bound-err.rs:99:31
    |
+LL | trait Trait3 {
 LL |     fn foo() -> impl Iterator<Item = i32, Item = u32>;
    |                               ^^^^^^^^^^ required by this bound in `Trait3::foo::{anon_assoc#0}`
 

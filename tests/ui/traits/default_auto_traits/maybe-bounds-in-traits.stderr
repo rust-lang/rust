@@ -29,6 +29,8 @@ LL | struct NonLeakS;
 note: required by a bound in `Test1::Leak2`
   --> $DIR/maybe-bounds-in-traits.rs:58:9
    |
+LL |     trait Test1 {
+LL |         type Leak1 = LeakS;
 LL |         type Leak2 = NonLeakS;
    |         ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Test1::Leak2`
 

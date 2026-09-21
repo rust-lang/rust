@@ -10,6 +10,7 @@ LL |         self.build(further_commands)
 note: required by a bound in `Crash::build`
   --> $DIR/rpitit-fulfillment-error.rs:5:44
    |
+LL | trait Crash {
 LL |     fn build<'a>(&mut self, commands: impl Iterator + 'a) -> impl Iterator + 'a {
    |                                            ^^^^^^^^ required by this bound in `Crash::build`
 help: consider further restricting `Self`
