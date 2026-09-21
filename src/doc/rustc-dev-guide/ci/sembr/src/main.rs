@@ -14,6 +14,9 @@ struct Cli {
     /// Modify files that do not comply
     #[arg(long)]
     overwrite: bool,
+    /// This reflows file even when it complies (with one sentence per line)
+    #[arg(long)]
+    reflow_harder: bool,
     /// Applies to lines that are to be split
     #[arg(long, default_value_t = 100)]
     line_length_limit: usize,
@@ -45,7 +48,10 @@ fn main() -> Result<()> {
             continue;
         }
         let old = fs::read_to_string(&path)?;
-        let new = comply(&old);
+        let mut new = comply(&old);
+        if cli.reflow_harder {
+            new = lengthen_lines(&new, cli.line_length_limit)
+        }
         if new == old {
             compliant.push(path.clone());
         } else if cli.overwrite {
