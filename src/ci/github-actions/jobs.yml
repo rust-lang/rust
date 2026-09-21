@@ -695,8 +695,10 @@ auto:
 
   # x86_64-msvc is split into two jobs to run tests in parallel.
   - name: test-x86_64-msvc-1
+    # required to run LLDB 21. Update to 3.11 when upgrading to LLDB 22
+    required_python_version: '3.10'
     env:
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler --set build.lldb="C:/Program Files/LLVM/bin/lldb.exe"
       SCRIPT: make ci-msvc-py
     <<: *job-windows
 
