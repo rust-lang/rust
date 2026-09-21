@@ -12,7 +12,7 @@ LL |         fn eq(&self, _other: &(Foo, i32)) -> bool {
 help: change the parameter type to match the trait
    |
 LL -         fn eq(&self, _other: &(Foo, i32)) -> bool {
-LL +         fn eq(&self, _other: &(a::Bar, i32)) -> bool {
+LL +         fn eq(&self, _other: &(crate::a::Bar, i32)) -> bool {
    |
 
 error[E0053]: method `eq` has an incompatible type for trait
@@ -34,7 +34,7 @@ LL |         fn eq(&self, _other: &(Bar, i32)) -> bool {
 help: change the parameter type to match the trait
    |
 LL -         fn eq(&self, _other: &(Bar, i32)) -> bool {
-LL +         fn eq(&self, _other: &(b::Foo, i32)) -> bool {
+LL +         fn eq(&self, _other: &(crate::b::Foo, i32)) -> bool {
    |
 
 error: item does not constrain `a::Foo::{opaque#0}`

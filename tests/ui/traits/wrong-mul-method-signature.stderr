@@ -23,7 +23,7 @@ LL |     fn mul(self, s: f64) -> Vec2 {
 help: change the parameter type to match the trait
    |
 LL -     fn mul(self, s: f64) -> Vec2 {
-LL +     fn mul(self, s: Vec2) -> Vec2 {
+LL +     fn mul(self, s: crate::Vec2) -> Vec2 {
    |
 
 error[E0053]: method `mul` has an incompatible type for trait

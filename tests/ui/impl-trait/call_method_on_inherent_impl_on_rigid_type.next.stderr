@@ -7,7 +7,7 @@ LL |         x.my_debug();
    = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `MyDebug` which provides `my_debug` is implemented but not in scope; perhaps you want to import it
    |
-LL + use MyDebug;
+LL + use crate::MyDebug;
    |
 
 error: aborting due to 1 previous error

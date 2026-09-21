@@ -13,7 +13,7 @@ LL |     pub struct S;
    = help: items from traits can only be used if the trait is in scope
 help: trait `Foo` which provides `abc` is implemented but not in scope; perhaps you want to import it
    |
-LL + use m::Foo;
+LL + use crate::m::Foo;
    |
 
 error: aborting due to 1 previous error
