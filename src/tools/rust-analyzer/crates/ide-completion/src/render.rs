@@ -3547,6 +3547,56 @@ fn test() {
     }
 
     #[test]
+    fn trait_items_order() {
+        check_relevance(
+            r#"
+trait T{
+    fn a_optional() {}
+    fn b_required();
+}
+
+impl T for (){
+    $0
+}
+"#,
+            expect![[r#"
+                fn fn b_required()  [name+missing]
+                fn fn a_optional()  [name]
+            "#]],
+        );
+        check_relevance(
+            r#"
+trait T{
+    type Item;
+    fn optional() {}
+}
+impl T for (){
+    $0
+}
+"#,
+            expect![[r#"
+                ta type Item =  [name+missing]
+                fn fn optional()  [name]
+            "#]],
+        );
+        check_relevance(
+            r#"
+trait T{
+    const A: usize = 0;
+    const B: usize;
+}
+impl T for (){
+    $0
+}
+"#,
+            expect![[r#"
+                ct const B: usize =  [name+missing]
+                ct const A: usize =  [name]
+            "#]],
+        );
+    }
+
+    #[test]
     fn constructor_order_kind() {
         check_function_relevance(
             r#"
