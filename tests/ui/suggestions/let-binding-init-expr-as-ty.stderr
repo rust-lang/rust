@@ -180,13 +180,13 @@ LL +     let x = vec![];
 error: expected type, found associated function call
   --> $DIR/let-binding-init-expr-as-ty.rs:37:23
    |
+LL |     macro_rules! make {
+LL |         ($pat:pat) => {
 LL |             let $pat: Vec::new();
    |                       ^^^^^^^^^^
 ...
 LL |     make!(_);
    |     -------- in this macro invocation
-   |
-   = note: this error originates in the macro `make` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 15 previous errors
 

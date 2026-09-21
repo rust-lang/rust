@@ -1,6 +1,8 @@
 error[E0407]: method `method` is not a member of trait `Tr`
   --> $DIR/assoc_item_ctxt.rs:33:13
    |
+LL |     macro mac_trait_impl() {
+LL |         impl Tr for u8 {
 LL |             fn method() {}
    |             ^^^------^^^^^
    |             |  |
@@ -9,8 +11,6 @@ LL |             fn method() {}
 ...
 LL |     mac_trait_impl!();
    |     ----------------- in this macro invocation
-   |
-   = note: this error originates in the macro `mac_trait_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0046]: not all trait items implemented, missing: `method`
   --> $DIR/assoc_item_ctxt.rs:32:9
@@ -18,13 +18,12 @@ error[E0046]: not all trait items implemented, missing: `method`
 LL |         fn method();
    |         ------------ `method` from trait
 ...
+LL |     macro mac_trait_impl() {
 LL |         impl Tr for u8 {
    |         ^^^^^^^^^^^^^^ missing `method` in implementation
 ...
 LL |     mac_trait_impl!();
    |     ----------------- in this macro invocation
-   |
-   = note: this error originates in the macro `mac_trait_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 
