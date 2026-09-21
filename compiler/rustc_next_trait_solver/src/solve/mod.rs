@@ -85,16 +85,24 @@ fn equal_response_modulo_region_constraints<I: Interner>(
     a: &CanonicalResponse<I>,
     b: &CanonicalResponse<I>,
 ) -> bool {
-    let a_external_constraints = &*a.value.external_constraints;
-    let b_external_constraints = &*b.value.external_constraints;
+    let ExternalConstraintsData {
+        opaque_types: a_opaque_types,
+        normalization_nested_goals: a_normalization_nested_goals,
+        region_constraints: _,
+    } = &a.value.external_constraints;
+
+    let ExternalConstraintsData {
+        opaque_types: b_opaque_types,
+        normalization_nested_goals: b_normalization_nested_goals,
+        region_constraints: _,
+    } = &b.value.external_constraints;
 
     a.max_universe == b.max_universe
         && a.var_kinds == b.var_kinds
         && a.value.certainty == b.value.certainty
         && a.value.var_values == b.value.var_values
-        && a_external_constraints.opaque_types == b_external_constraints.opaque_types
-        && a_external_constraints.normalization_nested_goals
-            == b_external_constraints.normalization_nested_goals
+        && a_opaque_types == b_opaque_types
+        && a_normalization_nested_goals == b_normalization_nested_goals
 }
 
 impl<'a, D, I> EvalCtxt<'a, D>
@@ -352,10 +360,7 @@ where
             .iter()
             .all(|candidate| equal_response_modulo_region_constraints(&one, &candidate.result))
             && let Some(candidate) = candidates.iter().find(|candidate| {
-                let ExternalConstraintsData { ref region_constraints, .. } =
-                    *candidate.result.value.external_constraints;
-
-                region_constraints.is_empty()
+                candidate.result.value.external_constraints.region_constraints.is_empty()
             })
         {
             return Some((candidate.result, MergeCandidateInfo::EqualResponse));
