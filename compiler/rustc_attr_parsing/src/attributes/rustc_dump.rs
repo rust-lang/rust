@@ -1,5 +1,5 @@
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
-use rustc_attr_ir::{AttributeKind, RustcDumpLayoutKind};
+use rustc_attr_ir::{AttributeKind, RustcDumpLayoutKind, RustcDumpPtrauthDiscriminatorKind};
 use rustc_feature::AttributeStability;
 use rustc_span::{Span, Symbol, sym};
 
@@ -168,6 +168,56 @@ impl CombineAttributeParser for RustcDumpLayoutParser {
                             sym::homogeneous_aggregate,
                             sym::size,
                         ],
+                    );
+                    continue;
+                }
+            };
+            result.push(kind);
+        }
+        result
+    }
+}
+
+pub(crate) struct RustcDumpPtrauthDiscriminatorParser;
+
+impl CombineAttributeParser for RustcDumpPtrauthDiscriminatorParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_ptrauth_discriminator];
+
+    type Item = RustcDumpPtrauthDiscriminatorKind;
+
+    const CONVERT: ConvertFn<Self::Item> =
+        |items, _| AttributeKind::RustcDumpPtrauthDiscriminator(items);
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+
+    const TEMPLATE: AttributeTemplate = template!(List: &["encoding", "hash"]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
+    fn extend(
+        cx: &mut AcceptContext<'_, '_>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
+        let Some(items) = cx.expect_list(args, cx.attr_span) else {
+            return vec![];
+        };
+
+        let mut result = Vec::new();
+        for item in items.mixed() {
+            let Some(arg) = item.meta_item_no_args() else {
+                cx.adcx().expected_not_literal(item.span());
+                continue;
+            };
+            let Some(ident) = arg.ident() else {
+                cx.adcx().expected_identifier(arg.span());
+                return vec![];
+            };
+            let kind = match ident.name {
+                sym::ptrauth_encoding => RustcDumpPtrauthDiscriminatorKind::Encoding,
+                sym::ptrauth_hash => RustcDumpPtrauthDiscriminatorKind::Hash,
+                _ => {
+                    cx.adcx().expected_specific_argument(
+                        ident.span,
+                        &[sym::ptrauth_encoding, sym::ptrauth_hash],
                     );
                     continue;
                 }
