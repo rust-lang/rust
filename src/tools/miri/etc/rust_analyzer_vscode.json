@@ -25,4 +25,6 @@
         "--compile-time-deps",
         "--message-format=json",
     ],
+    // RA reports false errors due to <https://github.com/rust-lang/rust-analyzer/issues/19755>
+    "rust-analyzer.diagnostics.enable": false,
 }
