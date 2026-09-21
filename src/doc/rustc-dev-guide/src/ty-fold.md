@@ -7,8 +7,7 @@ to find any usages of the bound vars in order to replace them.
 Binders can wrap an arbitrary Rust type `T`, not just a `Ty`.
 So, how do we implement the `instantiate` methods on the `Early/Binder` types?
 
-The answer is a couple of traits: [`TypeFoldable`]
-and [`TypeFolder`].
+The answer is a couple of traits: [`TypeFoldable`] and [`TypeFolder`].
 
 - `TypeFoldable` is implemented by types that embed type information.
   It allows you to recursively process the contents of `TypeFoldable` and do stuff to them.
