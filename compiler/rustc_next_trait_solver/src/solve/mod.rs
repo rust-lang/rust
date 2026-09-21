@@ -85,24 +85,26 @@ fn equal_response_modulo_region_constraints<I: Interner>(
     a: &CanonicalResponse<I>,
     b: &CanonicalResponse<I>,
 ) -> bool {
-    let ExternalConstraintsData {
-        opaque_types: a_opaque_types,
-        normalization_nested_goals: a_normalization_nested_goals,
-        region_constraints: _,
-    } = &a.value.external_constraints;
+    let CanonicalResponse {
+        max_universe: a_max_universe,
+        var_kinds: a_var_kinds,
+        value:
+            Response {
+                var_values: a_var_values,
+                certainty: a_certainty,
+                external_constraints: a_external_constraints,
+            },
+    } = a;
 
-    let ExternalConstraintsData {
-        opaque_types: b_opaque_types,
-        normalization_nested_goals: b_normalization_nested_goals,
-        region_constraints: _,
-    } = &b.value.external_constraints;
+    let ExternalConstraintsData { region_constraints: _, opaque_types, normalization_nested_goals } =
+        &**a_external_constraints;
 
-    a.max_universe == b.max_universe
-        && a.var_kinds == b.var_kinds
-        && a.value.certainty == b.value.certainty
-        && a.value.var_values == b.value.var_values
-        && a_opaque_types == b_opaque_types
-        && a_normalization_nested_goals == b_normalization_nested_goals
+    a_max_universe == &b.max_universe
+        && a_var_kinds == &b.var_kinds
+        && a_var_values == &b.value.var_values
+        && a_certainty == &b.value.certainty
+        && opaque_types == &b.value.external_constraints.opaque_types
+        && normalization_nested_goals == &b.value.external_constraints.normalization_nested_goals
 }
 
 impl<'a, D, I> EvalCtxt<'a, D>
