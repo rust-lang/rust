@@ -229,8 +229,8 @@ Emacs provides support for rust-analyzer with project-local configuration
 through [Eglot](https://www.gnu.org/software/emacs/manual/html_node/eglot/).
 Steps for setting up Eglot with rust-analyzer can be [found
 here](https://rust-analyzer.github.io/manual.html#eglot).
-Having set up Emacs & Eglot for Rust development in general, you can run
-`./x setup editor` and select `emacs`,
+Having set up Emacs & Eglot for Rust development in general,
+you can run `./x setup editor` and select `emacs`,
 which will prompt you to create `.dir-locals.el` with the recommended configuration for Eglot.
 The recommended settings live at [`src/etc/rust_analyzer_eglot.el`].
 For more information on project-specific Eglot configuration, consult [the
@@ -288,8 +288,7 @@ You may need to use the pinned nightly version from `src/stage0`,
 but often the normal `nightly` channel will work.
 
 **Note** see [the section on vscode] for how to configure it with this real rustfmt `x` uses,
-and [the section on rustup] for how to setup `rustup`
-toolchain for your bootstrapped compiler
+and [the section on rustup] for how to setup `rustup` toolchain for your bootstrapped compiler
 
 **Note** This does _not_ allow you to build `rustc` with cargo directly.
 You still have to use `x` to work on the compiler or standard library,
@@ -333,8 +332,7 @@ old standard library can be re-used.
 If you are editing the compiler, this is often true: you haven't changed the standard library,
 after all.
 But sometimes, it's not true: for example, if you are editing the "metadata" part of the compiler,
-which controls how the compiler encodes types and other states
-into the `rlib` files,
+which controls how the compiler encodes types and other states into the `rlib` files,
 or if you are editing things that wind up in the metadata (such as the definition of the MIR).
 
 That is, you might get weird behavior from a compile when using `--keep-stage-std=1`,
@@ -389,8 +387,8 @@ Working on multiple branches in parallel can be a little annoying,
 since building the compiler on one branch will cause the old build and the incremental
 compilation cache to be overwritten.
 One solution would be to have multiple clones of the repository,
-but that would mean storing the Git metadata multiple
-times, and having to update each clone individually.
+but that would mean storing the Git metadata multiple times,
+and having to update each clone individually.
 
 Fortunately, Git has a better solution called [worktrees].
 This lets you create multiple "working trees", which all share the same Git database.
@@ -445,8 +443,8 @@ set up correctly.
 
 Note that when using nix on a not-NixOS distribution,
 it may be necessary to set **`build.patch-binaries-for-nix = true` in `bootstrap.toml`**.
-Bootstrap tries to detect whether it's running in nix and enable patching automatically, but this
-detection can have false negatives.
+Bootstrap tries to detect whether it's running in nix and enable patching automatically,
+but this detection can have false negatives.
 
 You can also use your nix shell to manage `bootstrap.toml`:
 
