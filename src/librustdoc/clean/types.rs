@@ -1062,6 +1062,11 @@ pub struct RenderedLink {
 pub(crate) struct Attributes {
     pub(crate) doc_strings: Vec<DocFragment>,
     pub(crate) other_attrs: ThinVec<hir::Attribute>,
+    /// The `DefId` the attribute is from, either the actual item or a re-exporting use item.
+    ///
+    /// We need this to properly resolve intra-doc links in deprecation notes on a reexport.
+    // FIXME: currently deprecation of a reexport does not show in the docs
+    pub(crate) other_attrs_src: ThinVec<Option<DefId>>,
 }
 
 impl Attributes {
@@ -1091,8 +1096,8 @@ impl Attributes {
         attrs: impl Iterator<Item = (&'a hir::Attribute, Option<DefId>)>,
         doc_only: bool,
     ) -> Attributes {
-        let (doc_strings, other_attrs) = attrs_to_doc_fragments(attrs, doc_only);
-        Attributes { doc_strings, other_attrs }
+        let (doc_strings, other_attrs, other_attrs_src) = attrs_to_doc_fragments(attrs, doc_only);
+        Attributes { doc_strings, other_attrs, other_attrs_src }
     }
 
     /// Combine all doc strings into a single value handling indentation and newlines as needed.
@@ -1128,9 +1133,11 @@ impl Attributes {
     }
 
     pub(crate) fn merge_with(&mut self, other: Self) {
-        let Self { doc_strings, other_attrs } = other;
+        let Self { doc_strings, other_attrs, other_attrs_src } = other;
         self.doc_strings.extend(doc_strings);
         self.other_attrs.extend(other_attrs);
+        self.other_attrs_src.extend(other_attrs_src);
+        assert_eq!(self.other_attrs.len(), self.other_attrs_src.len());
     }
 }
 
@@ -2518,7 +2525,7 @@ mod size_asserts {
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 8);
-    static_assert_size!(ItemInner, 144);
+    static_assert_size!(ItemInner, 152);
     static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 32);
     static_assert_size!(Type, 32);
