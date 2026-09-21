@@ -19,5 +19,4 @@ impl IsTrue for Assert<true> {}
 fn main() {
     let x: Arr<{usize::MAX}> = Arr {};
     //[full]~^ ERROR mismatched types
-    //[full]~| ERROR mismatched types
 }
