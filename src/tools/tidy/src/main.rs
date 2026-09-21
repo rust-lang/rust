@@ -102,6 +102,7 @@ fn main() {
         check!(rustdoc_css_themes, &librustdoc_path);
         check!(rustdoc_templates, &librustdoc_path);
         check!(rustdoc_json, &src_path);
+        check!(rustdoc_html_tests, &tests_path);
         check!(known_bug, &crashes_path);
         check!(unknown_revision, &tests_path);
 
