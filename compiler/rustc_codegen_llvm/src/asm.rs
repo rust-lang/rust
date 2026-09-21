@@ -752,8 +752,13 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     // We use i32 as the type for discarded outputs
                     'w'
                 };
-                if class == 'x' && reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) {
-                    // LLVM doesn't recognize x30. use lr instead.
+
+                if class == 'x'
+                    && reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30)
+                    && llvm_util::get_version() < (23, 0, 0)
+                {
+                    // FIXME(llvm): LLVM <23 does not recognize `x30` as a register name.
+                    // This workaround can be removed when support for LLVM 22 is dropped.
                     "{lr}".to_string()
                 } else {
                     format!("{{{}{}}}", class, idx)
@@ -786,8 +791,12 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             } else if let Some(idx) = hexagon_vreg_pair_index(reg) {
                 // LLVM uses `wN` for Hexagon HVX vector pair registers.
                 format!("{{w{}}}", idx)
-            } else if reg == InlineAsmReg::Arm(ArmInlineAsmReg::r14) {
-                // LLVM doesn't recognize r14
+            } else if reg == InlineAsmReg::Arm(ArmInlineAsmReg::r14)
+                && llvm_util::get_version() < (23, 0, 0)
+            {
+                // FIXME(llvm): LLVM <23 does not recognize `r14` as a register name
+                // in inline assembly.
+                // This workaround can be removed when support for LLVM 22 is dropped.
                 "{lr}".to_string()
             } else if let InlineAsmReg::Sparc(reg) = reg
                 && let Some(num) = reg.dreg_number()
