@@ -1026,8 +1026,16 @@ pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T,
 /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
 /// a size of `count * size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
-/// The volatile parameter is set to `true`, so it will not be optimized out
-/// unless size is equal to zero.
+/// # Safety
+///
+/// The safety requirements are consistent with [`copy`]
+/// while the read and write behaviors are volatile,
+/// which means it will not be optimized out unless `count` or `size_of::<T>`
+/// is equal to zero.
+/// dst and src can be overlapping,but src should be valid for
+/// reads, and dst should be valid for writes of `count * size_of::<T>()` bytes.
+///
+/// [`copy`]: ptr::copy
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
