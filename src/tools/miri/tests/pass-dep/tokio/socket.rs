@@ -1,5 +1,6 @@
 //@only-target: linux # We only support tokio on Linux
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};

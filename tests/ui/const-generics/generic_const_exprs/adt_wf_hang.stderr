@@ -8,7 +8,6 @@ note: required by a bound in `S`
   --> $DIR/adt_wf_hang.rs:11:5
    |
 LL | struct S<const N: U>()
-   |        - required by a bound in this struct
 LL | where
 LL |     S<{ U }>:;
    |     ^^^^^^^^ required by this bound in `S`

@@ -292,7 +292,7 @@ pub(super) fn check_item<'tcx>(
                         .struct_span_err(sp, "impls of auto traits cannot be default")
                         .with_span_labels(of_trait.defaultness_span, "default because of this")
                         .with_span_label(sp, "auto trait")
-                        .emit());
+                        .emit_err());
                 }
                 match header.polarity {
                     ty::ImplPolarity::Positive => {
@@ -312,7 +312,7 @@ pub(super) fn check_item<'tcx>(
                                 E0750,
                                 "negative impls cannot be default impls"
                             )
-                            .emit());
+                            .emit_err());
                         }
                     }
                 }
@@ -516,9 +516,14 @@ pub(crate) fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId)
                         b,
                     )
                 }
-                ty::ClauseKind::TypeOutlives(ty::OutlivesClause(a, b)) => {
-                    !ty_known_to_outlive(tcx, gat_def_id, param_env, &FxIndexSet::default(), a, b)
-                }
+                ty::ClauseKind::TypeOutlives(ty::OutlivesClause(a, b)) => !ty_known_to_outlive(
+                    tcx,
+                    gat_def_id,
+                    param_env,
+                    &FxIndexSet::default(),
+                    Unnormalized::new_wip(a),
+                    b,
+                ),
                 _ => bug!("Unexpected ClauseKind"),
             })
             .map(|clause| clause.to_string())
@@ -622,7 +627,14 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
         // reflected in a where clause on the GAT itself.
         for (ty, ty_idx) in &types {
             // In our example, requires that `Self: 'a`
-            if ty_known_to_outlive(tcx, item_def_id, param_env, wf_tys, *ty, *region_a) {
+            if ty_known_to_outlive(
+                tcx,
+                item_def_id,
+                param_env,
+                wf_tys,
+                Unnormalized::new_wip(*ty),
+                *region_a,
+            ) {
                 debug!(?ty_idx, ?region_a_idx);
                 debug!("required clause: {ty} must outlive {region_a}");
                 // Translate into the generic parameters of the GAT. In
@@ -893,7 +905,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
                     tcx.disabled_nightly_features(&mut diag, features);
                 }
 
-                Err(diag.emit())
+                Err(diag.emit_err())
             }
         }
     }
@@ -1768,7 +1780,7 @@ fn check_method_receiver<'tcx>(
                     ),
                 )
                 .with_help(msg!("consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`"))
-                .emit()
+                .emit_err()
             }
             None | Some(ArbitrarySelfTypesLevel::Basic)
                 if receiver_is_valid(
@@ -1792,7 +1804,7 @@ fn check_method_receiver<'tcx>(
                     ),
                 )
                 .with_help(msg!("consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`"))
-                .emit()
+                .emit_err()
             }
             _ =>
             // Report error; would not have worked with `arbitrary_self_types[_pointers]`.
@@ -2201,7 +2213,7 @@ fn report_bivariance<'tcx>(
         // Silence potentially redundant error, as the item had a parse error.
         diag.delay_as_bug()
     } else {
-        diag.emit()
+        diag.emit_err()
     }
 }
 
@@ -2391,7 +2403,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                                 );
                                 err.note(format!("it is a {ty}"));
                                 err.note(format!("and here it is `Debug`ged :3 {ty:?}"));
-                                r = Err(err.emit());
+                                r = Err(err.emit_err());
                             }
                         }
                     }

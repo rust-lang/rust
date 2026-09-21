@@ -409,16 +409,6 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     }
 }
 
-/// For debugging purposes, returns a pretty-printed string of the given points.
-pub(crate) fn pretty_print_points(
-    location_map: &DenseLocationMap,
-    points: impl IntoIterator<Item = PointIndex>,
-) -> String {
-    pretty_print_region_elements(
-        points.into_iter().map(|p| location_map.to_location(p)).map(RegionElement::Location),
-    )
-}
-
 /// For debugging purposes, returns a pretty-printed string of the given region elements.
 fn pretty_print_region_elements<'tcx>(
     elements: impl IntoIterator<Item = RegionElement<'tcx>>,

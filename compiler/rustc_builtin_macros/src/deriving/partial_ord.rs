@@ -124,73 +124,64 @@ fn cs_partial_cmp(
     //         ::core::cmp::PartialOrd::partial_cmp(&self.y, &other.y),
     //     cmp => cmp,
     // }
-    let expr = cs_fold(
-        // foldr nests the if-elses correctly, leaving the first field
-        // as the outermost one, and the last as the innermost.
-        false,
+    let expr = cs_foldr(
         cx,
         span,
         substr,
-        |cx, fold| match fold {
-            CsFold::Single(field) => {
-                let [other_expr] = &field.other_selflike_exprs[..] else {
-                    cx.dcx()
-                        .span_bug(field.span, "not exactly 2 arguments in `derive(PartialOrd)`");
-                };
-                let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
-                cx.expr_call_global(field.span, partial_cmp_path.clone(), args)
-            }
-            CsFold::Combine(span, mut expr1, expr2) => {
-                // When the item is an enum, this expands to
-                // ```
-                // match (expr2) {
-                //     Some(Ordering::Equal) => expr1,
-                //     cmp => cmp
-                // }
-                // ```
-                // where `expr2` is `partial_cmp(self_discr, other_discr)`, and `expr1` is a `match`
-                // against the enum variants. This means that we begin by comparing the enum discriminants,
-                // before either inspecting their contents (if they match), or returning
-                // the `cmp::Ordering` of comparing the enum discriminants.
-                // ```
-                // match partial_cmp(self_discr, other_discr) {
-                //     Some(Ordering::Equal) => match (self, other)  {
-                //         (Self::A(self_0), Self::A(other_0)) => partial_cmp(self_0, other_0),
-                //         (Self::B(self_0), Self::B(other_0)) => partial_cmp(self_0, other_0),
-                //         _ => Some(Ordering::Equal)
-                //     }
-                //     cmp => cmp
-                // }
-                // ```
-                // If we have any certain enum layouts, flipping this results in better codegen
-                // ```
-                // match (self, other) {
-                //     (Self::A(self_0), Self::A(other_0)) => partial_cmp(self_0, other_0),
-                //     _ => partial_cmp(self_discr, other_discr)
-                // }
-                // ```
-                // Reference: https://github.com/rust-lang/rust/pull/103659#issuecomment-1328126354
-
-                if !discr_then_data
-                    && let ExprKind::Match(_, arms, _) = &mut expr1.kind
-                    && let Some(last) = arms.last_mut()
-                    && let PatKind::Wild = last.pat.kind
-                {
-                    last.body = Some(expr2);
-                    expr1
-                } else {
-                    let eq_arm = cx.arm(
-                        span,
-                        cx.pat_some(span, cx.pat_path(span, equal_path.clone())),
-                        expr1,
-                    );
-                    let neq_arm =
-                        cx.arm(span, cx.pat_ident(span, test_id), cx.expr_ident(span, test_id));
-                    cx.expr_match(span, expr2, thin_vec![eq_arm, neq_arm])
-                }
-            }
-            CsFold::Fieldless => cx.expr_some(span, cx.expr_path(equal_path.clone())),
+        |field| {
+            let [other_expr] = &field.other_selflike_exprs[..] else {
+                cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(PartialOrd)`");
+            };
+            let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
+            cx.expr_call_global(field.span, partial_cmp_path.clone(), args)
         },
+        |span, mut expr1, expr2| {
+            // When the item is an enum, this expands to
+            // ```
+            // match (expr2) {
+            //     Some(Ordering::Equal) => expr1,
+            //     cmp => cmp
+            // }
+            // ```
+            // where `expr2` is `partial_cmp(self_discr, other_discr)`, and `expr1` is a `match`
+            // against the enum variants. This means that we begin by comparing the enum discriminants,
+            // before either inspecting their contents (if they match), or returning
+            // the `cmp::Ordering` of comparing the enum discriminants.
+            // ```
+            // match partial_cmp(self_discr, other_discr) {
+            //     Some(Ordering::Equal) => match (self, other)  {
+            //         (Self::A(self_0), Self::A(other_0)) => partial_cmp(self_0, other_0),
+            //         (Self::B(self_0), Self::B(other_0)) => partial_cmp(self_0, other_0),
+            //         _ => Some(Ordering::Equal)
+            //     }
+            //     cmp => cmp
+            // }
+            // ```
+            // If we have any certain enum layouts, flipping this results in better codegen
+            // ```
+            // match (self, other) {
+            //     (Self::A(self_0), Self::A(other_0)) => partial_cmp(self_0, other_0),
+            //     _ => partial_cmp(self_discr, other_discr)
+            // }
+            // ```
+            // Reference: https://github.com/rust-lang/rust/pull/103659#issuecomment-1328126354
+
+            if !discr_then_data
+                && let ExprKind::Match(_, arms, _) = &mut expr1.kind
+                && let Some(last) = arms.last_mut()
+                && let PatKind::Wild = last.pat.kind
+            {
+                last.body = Some(expr2);
+                expr1
+            } else {
+                let eq_arm =
+                    cx.arm(span, cx.pat_some(span, cx.pat_path(span, equal_path.clone())), expr1);
+                let neq_arm =
+                    cx.arm(span, cx.pat_ident(span, test_id), cx.expr_ident(span, test_id));
+                cx.expr_match(span, expr2, thin_vec![eq_arm, neq_arm])
+            }
+        },
+        || cx.expr_some(span, cx.expr_path(equal_path.clone())),
     );
     BlockOrExpr::new_expr(expr)
 }

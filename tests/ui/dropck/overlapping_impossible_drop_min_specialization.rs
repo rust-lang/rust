@@ -1,4 +1,7 @@
-//@ known-bug: #150387
+//@ check-pass
+
+// Regression test for #150387
+
 #![feature(min_specialization)]
 #![allow(dead_code)]
 
@@ -10,4 +13,5 @@ impl<T> Drop for Thing<T> where [T]: Sized {
 impl<T> Drop for Thing<T> where [T]: Sized {
     fn drop(&mut self) {}
 }
+
 fn main() {}

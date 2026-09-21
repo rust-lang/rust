@@ -2827,7 +2827,7 @@ fn deny_non_region_late_bound(
             format!("late-bound {what} parameter not allowed on {where_}"),
         );
 
-        let guar = diag.emit_unless_delay(!tcx.features().non_lifetime_binders() || !first);
+        let guar = diag.emit_err_unless_delay(!tcx.features().non_lifetime_binders() || !first);
 
         first = false;
         *arg = ResolvedArg::Error(guar);

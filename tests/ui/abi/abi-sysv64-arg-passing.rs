@@ -34,7 +34,6 @@
 // the sysv64 ABI on Windows.
 
 #[allow(dead_code)]
-#[allow(improper_ctypes)]
 
 #[cfg(target_arch = "x86_64")]
 mod tests {
@@ -87,6 +86,7 @@ mod tests {
     #[derive(Copy, Clone)]
     pub struct Quad { a: u64, b: u64, c: u64, d: u64 }
 
+    #[repr(C)]
     #[derive(Copy, Clone)]
     pub struct QuadFloats { a: f32, b: f32, c: f32, d: f32 }
 
@@ -113,6 +113,7 @@ mod tests {
         pub fn rust_dbg_extern_identity_u32(v: u32) -> u32;
         pub fn rust_dbg_extern_identity_u64(v: u64) -> u64;
         pub fn rust_dbg_extern_identity_double(v: f64) -> f64;
+        #[expect(improper_ctypes)]
         pub fn rust_dbg_extern_empty_struct(v1: ManyInts, e: Empty, v2: ManyInts);
         pub fn rust_dbg_extern_identity_TwoU8s(v: TwoU8s) -> TwoU8s;
         pub fn rust_dbg_extern_identity_TwoU16s(v: TwoU16s) -> TwoU16s;

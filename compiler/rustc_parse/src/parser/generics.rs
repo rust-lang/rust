@@ -119,7 +119,7 @@ impl<'a> Parser<'a> {
                     ": /* Type */".to_string(),
                     Applicability::HasPlaceholders,
                 );
-                let kind = TyKind::Err(err.emit());
+                let kind = TyKind::Err(err.emit_err());
                 let ty = self.mk_ty(span, kind);
                 Ok(GenericParam {
                     ident,

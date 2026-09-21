@@ -452,12 +452,12 @@ struct ImplTraitOvercapturesLint<'tcx> {
     suggestion: Option<AddPreciseCapturingForOvercapture>,
 }
 
-impl<'a> Diagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
+impl<'a> Diagnostic<'a> for ImplTraitOvercapturesLint<'_> {
     fn into_diag(
         self,
         dcx: rustc_errors::DiagCtxtHandle<'a>,
         level: rustc_errors::Level,
-    ) -> rustc_errors::Diag<'a, ()> {
+    ) -> rustc_errors::Diag<'a> {
         let mut diag = rustc_errors::Diag::new(
             dcx,
             level,

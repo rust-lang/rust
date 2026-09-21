@@ -96,7 +96,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Do not suggest the other syntax if we are in trait impl:
             // the desugaring would contain an associated type constraint.
             if !is_impl {
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     span,
                     "use parenthetical notation instead",
                     fn_trait_to_string(self.tcx(), trait_segment, true),
@@ -199,8 +199,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .visible_traits()
             .filter(|trait_def_id| {
                 let viz = tcx.visibility(*trait_def_id);
-                let def_id = self.item_def_id();
-                viz.is_accessible_from(def_id, tcx)
+                viz.is_accessible_from(self.mod_id(), tcx)
             })
             .collect();
 
@@ -315,7 +314,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 Applicability::MaybeIncorrect,
                             );
                         }
-                        return err.emit();
+                        return err.emit_err();
                     }
                 }
                 return self.dcx().emit_err(err);
@@ -535,7 +534,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 where_bounds.join(",\n"),
             ));
         }
-        err.emit()
+        err.emit_err()
     }
 
     pub(crate) fn report_missing_self_ty_for_resolved_path(
@@ -568,7 +567,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .map(|impl_def_id| tcx.impl_trait_header(impl_def_id))
                 .filter(|header| {
                     // Consider only accessible traits
-                    tcx.visibility(trait_def_id).is_accessible_from(self.item_def_id(), tcx)
+                    tcx.visibility(trait_def_id).is_accessible_from(self.mod_id(), tcx)
                         && header.polarity != ty::ImplPolarity::Negative
                 })
                 .map(|header| header.trait_ref.instantiate_identity().skip_norm_wip().self_ty())
@@ -682,7 +681,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 err.span_label(sp, format!("variant `{ident}` not found here"));
             }
 
-            err.emit()
+            err.emit_err()
         } else if let Err(reported) = self_ty.error_reported() {
             reported
         } else {
@@ -814,7 +813,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
         }
-        err.emit()
+        err.emit_err()
     }
 
     pub(crate) fn report_ambiguous_inherent_assoc_item(
@@ -831,7 +830,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         );
         err.span_label(name.span, format!("multiple `{name}` found"));
         self.note_ambiguous_inherent_assoc_item(&mut err, candidates, span);
-        err.emit()
+        err.emit_err()
     }
 
     // FIXME(fmease): Heavily adapted from `rustc_hir_typeck::method::suggest`. Deduplicate.
@@ -941,7 +940,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 "the associated {assoc_tag_str} was found for\n{type_candidates}{additional_types}",
             ));
             add_def_label(&mut err);
-            return err.emit();
+            return err.emit_err();
         }
 
         let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
@@ -1049,7 +1048,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             err.span_label(span, msg);
         }
         add_def_label(&mut err);
-        err.emit()
+        err.emit_err()
     }
 
     /// If there are any missing associated items, emit an error instructing the user to provide
@@ -1101,7 +1100,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     trait_ref.def_id(),
                     &violations,
                 )
-                .emit());
+                .emit_err());
             }
 
             names.entry(trait_ref).or_default().push(assoc_item.name());
@@ -1341,7 +1340,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        Err(err.emit())
+        Err(err.emit_err())
     }
 
     /// On ambiguous associated type, look for an associated function whose name matches the
@@ -1393,7 +1392,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     name,
                     Applicability::MaybeIncorrect,
                 )
-                .emit())
+                .emit_err())
         } else {
             Ok(())
         }
@@ -1478,7 +1477,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             err.span_label(span, format!("not allowed on {what}"));
         }
         generics_args_err_extend(self.tcx(), segments.into_iter(), &mut err, err_extend);
-        err.emit()
+        err.emit_err()
     }
 
     pub fn report_trait_object_addition_traits(
@@ -1521,7 +1520,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
              for more information on them, visit \
              <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>",
         );
-        err.emit()
+        err.emit_err()
     }
 
     pub fn report_trait_object_with_no_traits(
@@ -1716,7 +1715,7 @@ pub fn prohibit_assoc_item_constraint(
         }
     }
 
-    err.emit()
+    err.emit_err()
 }
 
 pub(crate) fn fn_trait_to_string(
@@ -2005,12 +2004,12 @@ pub(super) struct AmbiguityBetweenVariantAndAssocItem<'tcx> {
     pub(super) mode: super::LowerTypeRelativePathMode,
 }
 
-impl<'a, 'tcx> rustc_errors::Diagnostic<'a, ()> for AmbiguityBetweenVariantAndAssocItem<'tcx> {
+impl<'a, 'tcx> rustc_errors::Diagnostic<'a> for AmbiguityBetweenVariantAndAssocItem<'tcx> {
     fn into_diag(
         self,
         dcx: rustc_errors::DiagCtxtHandle<'a>,
         level: rustc_errors::Level,
-    ) -> Diag<'a, ()> {
+    ) -> Diag<'a> {
         let Self {
             variant_def_id,
             item_def_id,
@@ -2036,7 +2035,7 @@ impl<'a, 'tcx> rustc_errors::Diagnostic<'a, ()> for AmbiguityBetweenVariantAndAs
         could_refer_to(DefKind::Variant, variant_def_id, "");
         could_refer_to(mode.def_kind_for_diagnostics(), item_def_id, " also");
 
-        lint.span_suggestion(
+        lint.span_suggestion_verbose(
             span,
             "use fully-qualified syntax",
             format!("<{} as {}>::{}", self_ty, tcx.item_name(bound_def_id), segment_ident),

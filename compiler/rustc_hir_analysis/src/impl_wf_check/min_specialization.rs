@@ -281,7 +281,7 @@ fn check_duplicate_params<'tcx>(
         return Err(tcx
             .dcx()
             .struct_span_err(span, format!("specializing impl repeats parameter `{param}`"))
-            .emit());
+            .emit_err());
     }
     Ok(())
 }
@@ -430,7 +430,7 @@ fn check_specialization_on<'tcx>(
                             tcx.def_path_str(trait_ref.def_id),
                         ),
                     )
-                    .emit())
+                    .emit_err())
             }
         }
         ty::ClauseKind::Projection(ty::ProjectionClause { projection_term, term }) => Err(tcx
@@ -439,7 +439,7 @@ fn check_specialization_on<'tcx>(
                 span,
                 format!("cannot specialize on associated type `{projection_term} == {term}`",),
             )
-            .emit()),
+            .emit_err()),
         ty::ClauseKind::ConstArgHasType(..) => {
             // FIXME(min_specialization), FIXME(const_generics):
             // It probably isn't right to allow _every_ `ConstArgHasType` but I am somewhat unsure
@@ -454,7 +454,7 @@ fn check_specialization_on<'tcx>(
         _ => Err(tcx
             .dcx()
             .struct_span_err(span, format!("cannot specialize on predicate `{clause}`"))
-            .emit()),
+            .emit_err()),
     }
 }
 

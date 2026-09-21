@@ -898,7 +898,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             }
                         }
                         Err(err) => {
-                            let _guar = err.emit();
+                            err.emit();
                             fragment_kind.expect_from_annotatables(iter::once(item))
                         }
                     }
@@ -1068,7 +1068,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     err.span(span);
                 }
                 annotate_err_with_kind(&mut err, kind, span);
-                let guar = err.emit();
+                let guar = err.emit_err();
                 self.cx.macro_error_and_trace_macros_diag();
                 kind.dummy(span, guar)
             }
@@ -1748,22 +1748,10 @@ impl InvocationCollectorNode for ast::GenericParam {
         walk_flat_map_generic_param(collector, self)
     }
     fn as_target(&self) -> Target {
-        let mut has_default = false;
-        Target::GenericParam {
-            kind: match &self.kind {
-                rustc_ast::GenericParamKind::Lifetime => {
-                    rustc_attr_ir::target::GenericParamKind::Lifetime
-                }
-                rustc_ast::GenericParamKind::Type { default } => {
-                    has_default = default.is_some();
-                    rustc_attr_ir::target::GenericParamKind::Type
-                }
-                rustc_ast::GenericParamKind::Const { default, .. } => {
-                    has_default = default.is_some();
-                    rustc_attr_ir::target::GenericParamKind::Const
-                }
-            },
-            has_default,
+        match self.kind {
+            rustc_ast::GenericParamKind::Lifetime => Target::LifetimeParam,
+            rustc_ast::GenericParamKind::Type { .. } => Target::TypeParam,
+            rustc_ast::GenericParamKind::Const { .. } => Target::ConstParam,
         }
     }
 }

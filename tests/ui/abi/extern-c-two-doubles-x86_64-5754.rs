@@ -1,8 +1,8 @@
 // https://github.com/rust-lang/rust/issues/5754
 //@ build-pass
 #![allow(dead_code)]
-#![allow(improper_ctypes)]
 
+#[repr(C)]
 struct TwoDoubles {
     r: f64,
     i: f64

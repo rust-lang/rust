@@ -36,7 +36,7 @@ note: required because it appears within the type `Foo<T>`
   --> $DIR/pin-pattern.rs:11:8
    |
 LL | struct Foo<T>(T);
-   |        ^^^
+   |        ^^^    - required by this field
 help: consider restricting type parameter `T` with trait `Unpin`
    |
 LL | fn tuple_ref_pin_mut_pat_and_mut_of_tuple_pin_mut_ty<'a, T: std::marker::Unpin>(

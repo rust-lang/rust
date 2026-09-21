@@ -61,6 +61,8 @@ LL |     use std::i16::*;
 error: importing legacy numeric constants
   --> tests/ui/legacy_numeric_constants_unfixable.rs:22:17
    |
+LL | macro_rules! b {
+...
 LL |             use std::u32;
    |                 ^^^^^^^^
 ...
@@ -69,7 +71,6 @@ LL |     b!();
    |
    = help: remove this import
    = note: then `u32::<CONST>` will resolve to the respective associated constant
-   = note: this error originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: importing a legacy numeric constant
   --> tests/ui/legacy_numeric_constants_unfixable.rs:77:9

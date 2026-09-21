@@ -914,7 +914,7 @@ pub enum DynCompatibilityViolationSolution {
 }
 
 impl DynCompatibilityViolationSolution {
-    pub fn add_to<G>(self, err: &mut Diag<'_, G>) {
+    pub fn add_to(self, err: &mut Diag<'_>) {
         match self {
             DynCompatibilityViolationSolution::None => {}
             DynCompatibilityViolationSolution::AddSelfOrMakeSized {

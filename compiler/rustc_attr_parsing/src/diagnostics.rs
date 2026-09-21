@@ -1476,9 +1476,9 @@ pub(crate) enum AttributeParseErrorSuggestions {
 }
 
 impl<'a> AttributeParseError<'a> {
-    fn render_expected_specific_argument<G>(
+    fn render_expected_specific_argument(
         &self,
-        diag: &mut Diag<'_, G>,
+        diag: &mut Diag<'_>,
         possibilities: &[Symbol],
         strings: bool,
     ) {
@@ -1509,9 +1509,9 @@ impl<'a> AttributeParseError<'a> {
         }
     }
 
-    fn render_expected_specific_argument_list<G>(
+    fn render_expected_specific_argument_list(
         &self,
-        diag: &mut Diag<'_, G>,
+        diag: &mut Diag<'_>,
         possibilities: &[Symbol],
         strings: bool,
     ) {
@@ -1543,7 +1543,7 @@ impl<'a> AttributeParseError<'a> {
         }
     }
 
-    fn render_suggestions<G>(&self, diag: &mut Diag<'_, G>) {
+    fn render_suggestions(&self, diag: &mut Diag<'_>) {
         let description = self.description();
 
         match &self.suggestions {
@@ -1592,8 +1592,8 @@ impl AttributeParseErrorSuggestions {
     }
 }
 
-impl<'a, G> Diagnostic<'a, G> for AttributeParseError<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+impl<'a> Diagnostic<'a> for AttributeParseError<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let name = self.path.to_string();
 
         let description = self.description();
@@ -1604,7 +1604,7 @@ impl<'a, G> Diagnostic<'a, G> for AttributeParseError<'_> {
         match &self.reason {
             AttributeParseErrorReason::ExpectedStringLiteral { byte_string } => {
                 if let Some(start_point_span) = byte_string {
-                    diag.span_suggestion(
+                    diag.span_suggestion_short(
                         *start_point_span,
                         "consider removing the prefix",
                         "",

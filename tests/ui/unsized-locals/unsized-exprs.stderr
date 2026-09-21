@@ -9,7 +9,7 @@ note: required because it appears within the type `A<[u8]>`
   --> $DIR/unsized-exprs.rs:3:8
    |
 LL | struct A<X: ?Sized>(X);
-   |        ^
+   |        ^            - required by this field
 note: unsized values must be place expressions and cannot be put in temporaries
   --> $DIR/unsized-exprs.rs:19:22
    |
@@ -27,7 +27,7 @@ note: required because it appears within the type `A<[u8]>`
   --> $DIR/unsized-exprs.rs:3:8
    |
 LL | struct A<X: ?Sized>(X);
-   |        ^
+   |        ^            - required by this field
 note: unsized values must be place expressions and cannot be put in temporaries
   --> $DIR/unsized-exprs.rs:21:22
    |

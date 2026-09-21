@@ -87,7 +87,7 @@ fn enforce_trait_manually_implementable(
             err.code(E0328);
         }
 
-        return Err(err.emit());
+        return Err(err.emit_err());
     }
 
     if let ty::trait_def::TraitSpecializationKind::AlwaysApplicable = trait_def.specialization_kind
@@ -135,7 +135,7 @@ fn enforce_empty_impls_for_marker_traits(
         E0715,
         "impls for marker traits cannot contain items"
     )
-    .emit())
+    .emit_err())
 }
 
 /// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`].
@@ -239,7 +239,7 @@ fn check_object_overlap<'tcx>(
                             tcx.def_path_str(trait_def_id)
                         ),
                     )
-                    .emit());
+                    .emit_err());
                 }
             }
         }

@@ -48,13 +48,13 @@ impl<'a> DiagnosticDerive<'a> {
 
         // A lifetime of `'a` causes conflicts, but `_sess` is fine.
         structure.gen_impl(quote! {
-            gen impl<'_sess, G> rustc_errors::Diagnostic<'_sess, G> for @Self {
+            gen impl<'_sess> rustc_errors::Diagnostic<'_sess> for @Self {
                 #[track_caller]
                 fn into_diag(
                     self,
                     dcx: rustc_errors::DiagCtxtHandle<'_sess>,
                     level: rustc_errors::Level
-                ) -> rustc_errors::Diag<'_sess, G> {
+                ) -> rustc_errors::Diag<'_sess> {
                     #implementation
                 }
             }

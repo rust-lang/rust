@@ -26,7 +26,7 @@ note: required by a const generic parameter in `Foo::<N>::foo`
 LL | impl<const N: u32> Foo<N> {
    |      ^^^^^^^^^^^^ required by this const generic parameter in `Foo::<N>::foo`
 LL |     fn foo() -> Self {
-   |        --- required by a bound in this associated function
+   |
 help: consider giving `foo` an explicit type, where the value of const parameter `N` is specified
    |
 LL |     let foo: Foo<N> = Foo::foo();

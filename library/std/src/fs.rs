@@ -1869,6 +1869,28 @@ impl Dir {
     pub fn remove_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         self.inner.remove_dir(path.as_ref())
     }
+
+    /// Creates a new `Dir` instance that shares the same underlying directory handle
+    /// as the existing `Dir` instance.
+    ///
+    /// # Examples
+    ///
+    /// Creates two handles for a directory named `foo`:
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let dir_copy = dir.try_clone()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn try_clone(&self) -> io::Result<Self> {
+        Ok(Dir { inner: self.inner.duplicate()? })
+    }
 }
 
 impl AsInner<fs_imp::Dir> for Dir {

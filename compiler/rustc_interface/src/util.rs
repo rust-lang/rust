@@ -74,6 +74,9 @@ pub(crate) fn add_configuration(
     if target_config.has_reliable_f16_math {
         cfg.insert((sym::target_has_reliable_f16_math, None));
     }
+    if target_config.has_reliable_f16b {
+        cfg.insert((sym::target_has_reliable_f16b, None));
+    }
     if target_config.has_reliable_f128 {
         cfg.insert((sym::target_has_reliable_f128, None));
     }
@@ -161,7 +164,7 @@ fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
                         r#"`RUST_MIN_STACK` should be a number of bytes, but was "{s}""#,
                     ));
                     err.note("you can also unset `RUST_MIN_STACK` to use the default stack size");
-                    err.emit()
+                    err.emit_fatal()
                 })
             })
             // otherwise pick a consistent default
@@ -338,7 +341,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                     diag.help(
                         "try lowering `-Z threads` or checking the operating system's resource limits",
                     );
-                    diag.emit()
+                    diag.emit_fatal()
                 })
         })
     })
@@ -419,6 +422,7 @@ impl CodegenBackend for DummyCodegenBackend {
             internal_target_features,
             has_reliable_f16: true,
             has_reliable_f16_math: true,
+            has_reliable_f16b: true,
             has_reliable_f128: true,
             has_reliable_f128_math: true,
         }

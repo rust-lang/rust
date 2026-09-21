@@ -543,7 +543,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     }
 
     /// Builds the `expected 1 type argument / supplied 2 type arguments` message.
-    fn notify<G>(&self, err: &mut Diag<'_, G>) {
+    fn notify(&self, err: &mut Diag<'_>) {
         let (quantifier, bound) = self.get_quantifier_and_bound();
         let provided_args = self.num_provided_args();
 
@@ -595,7 +595,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest<G>(&self, err: &mut Diag<'_, G>) {
+    fn suggest(&self, err: &mut Diag<'_>) {
         debug!(
             "suggest(self.provided {:?}, self.gen_args.span(): {:?})",
             self.num_provided_args(),
@@ -623,7 +623,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// ```text
     /// type Map = HashMap<String>;
     /// ```
-    fn suggest_adding_args<G>(&self, err: &mut Diag<'_, G>) {
+    fn suggest_adding_args(&self, err: &mut Diag<'_>) {
         if self.gen_args.parenthesized != hir::GenericArgsParentheses::No {
             return;
         }
@@ -650,7 +650,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest_adding_lifetime_args<G>(&self, err: &mut Diag<'_, G>) {
+    fn suggest_adding_lifetime_args(&self, err: &mut Diag<'_>) {
         debug!("suggest_adding_lifetime_args(path_segment: {:?})", self.path_segment);
         let num_missing_args = self.num_missing_lifetime_args();
         let num_params_to_take = num_missing_args;
@@ -704,7 +704,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest_adding_type_and_const_args<G>(&self, err: &mut Diag<'_, G>) {
+    fn suggest_adding_type_and_const_args(&self, err: &mut Diag<'_>) {
         let num_missing_args = self.num_missing_type_or_const_args();
         let msg = format!("add missing {} argument{}", self.kind(), pluralize!(num_missing_args));
 
@@ -764,7 +764,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// ```compile_fail
     /// Into::into::<Option<_>>(42) // suggests considering `Into::<Option<_>>::into(42)`
     /// ```
-    fn suggest_moving_args_from_assoc_fn_to_trait<G>(&self, err: &mut Diag<'_, G>) {
+    fn suggest_moving_args_from_assoc_fn_to_trait(&self, err: &mut Diag<'_>) {
         let Some(trait_) = self.tcx.trait_of_assoc(self.def_id) else {
             return;
         };
@@ -817,9 +817,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path<G>(
+    fn suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(
         &self,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         qpath: &'tcx hir::QPath<'tcx>,
         msg: String,
         num_assoc_fn_excess_args: usize,
@@ -848,9 +848,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest_moving_args_from_assoc_fn_to_trait_for_method_call<G>(
+    fn suggest_moving_args_from_assoc_fn_to_trait_for_method_call(
         &self,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         trait_def_id: DefId,
         expr: &'tcx hir::Expr<'tcx>,
         msg: String,
@@ -904,7 +904,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// ```text
     /// type Map = HashMap<String, String, String, String>;
     /// ```
-    fn suggest_removing_args_or_generics<G>(&self, err: &mut Diag<'_, G>) {
+    fn suggest_removing_args_or_generics(&self, err: &mut Diag<'_>) {
         let num_provided_lt_args = self.num_provided_lifetime_args();
         let num_provided_type_const_args = self.num_provided_type_or_const_args();
         let unbound_assoc_items = self.get_unbound_associated_item();
@@ -920,7 +920,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         let remove_entire_generics = num_redundant_args >= self.gen_args.args.len();
 
-        let remove_lifetime_args = |err: &mut Diag<'_, _>| {
+        let remove_lifetime_args = |err: &mut Diag<'_>| {
             let mut lt_arg_spans = Vec::new();
             let mut found_redundant = false;
             for arg in self.gen_args.args {
@@ -955,7 +955,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             let msg_lifetimes =
                 format!("remove the lifetime argument{s}", s = pluralize!(num_redundant_lt_args));
 
-            err.span_suggestion(
+            err.span_suggestion_short(
                 span_redundant_lt_args,
                 msg_lifetimes,
                 "",
@@ -963,7 +963,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             );
         };
 
-        let remove_type_or_const_args = |err: &mut Diag<'_, _>| {
+        let remove_type_or_const_args = |err: &mut Diag<'_>| {
             let mut gen_arg_spans = Vec::new();
             let mut found_redundant = false;
             for arg in self.gen_args.args {
@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 s = pluralize!(num_redundant_gen_args),
             );
 
-            err.span_suggestion(
+            err.span_suggestion_short(
                 span_redundant_type_or_const_args,
                 msg_types_or_consts,
                 "",
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 // no code, which would trigger an `assert!` later. Ideally, we would do something a
                 // bit more principled. See closed PR #109082.
             } else {
-                err.span_suggestion(span, msg, "", Applicability::MaybeIncorrect);
+                err.span_suggestion_short(span, msg, "", Applicability::MaybeIncorrect);
             }
         } else if redundant_lifetime_args && redundant_type_or_const_args {
             remove_lifetime_args(err);
@@ -1096,7 +1096,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     }
 
     /// Builds the `type defined here` message.
-    fn show_definition<G>(&self, err: &mut Diag<'_, G>) {
+    fn show_definition(&self, err: &mut Diag<'_>) {
         let Some(def_span) = self.tcx.def_ident_span(self.def_id) else { return };
         if !self.tcx.sess.source_map().is_span_accessible(def_span) {
             return;
@@ -1143,7 +1143,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     }
 
     /// Add note if `impl Trait` is explicitly specified.
-    fn note_synth_provided<G>(&self, err: &mut Diag<'_, G>) {
+    fn note_synth_provided(&self, err: &mut Diag<'_>) {
         if !self.is_synth_provided() {
             return;
         }
@@ -1152,12 +1152,12 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     }
 }
 
-impl<'a, G> Diagnostic<'a, G> for WrongNumberOfGenericArgs<'_, '_> {
+impl<'a> Diagnostic<'a> for WrongNumberOfGenericArgs<'_, '_> {
     fn into_diag(
         self,
         dcx: rustc_errors::DiagCtxtHandle<'a>,
         level: rustc_errors::Level,
-    ) -> Diag<'a, G> {
+    ) -> Diag<'a> {
         let msg = self.create_error_message();
         let mut err = Diag::new(dcx, level, msg);
         err.code(E0107);

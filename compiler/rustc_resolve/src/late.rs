@@ -2018,7 +2018,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     },
                                 );
                                 self.point_at_impl_lifetimes(&mut err, i, lifetime.ident.span);
-                                err.emit()
+                                err.emit_err()
                             }
                         } else if self.diag_metadata.in_assoc_ty_binding {
                             // For associated type bindings, e.g.
@@ -2035,7 +2035,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                 &mut err,
                                 lifetime.ident.span,
                             );
-                            err.emit()
+                            err.emit_err()
                         } else {
                             self.r.dcx().emit_err(
                                 crate::diagnostics::ElidedAnonymousLifetimeReportError {
@@ -3211,7 +3211,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         .create_err(crate::diagnostics::UnderscoreLifetimeIsReserved {
                             span: param.ident.span,
                         })
-                        .emit_unless_delay(is_raw_underscore_lifetime);
+                        .emit_err_unless_delay(is_raw_underscore_lifetime);
                     // Record lifetime res, so lowering knows there is something fishy.
                     self.record_lifetime_err(param.id, guar);
                     continue;

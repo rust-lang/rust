@@ -22,19 +22,8 @@
 #![no_core]
 
 extern crate minicore;
+use minicore::ffi::VaList;
 use minicore::*;
-
-#[repr(transparent)]
-struct VaListInner {
-    ptr: *const c_void,
-}
-
-#[repr(transparent)]
-#[lang = "va_list"]
-pub struct VaList<'a> {
-    inner: VaListInner,
-    _marker: PhantomData<&'a mut ()>,
-}
 
 pub unsafe extern "C" fn test(_: i32, ap: ...) {}
 //~^ ERROR C-variadic function definitions on this target are unstable

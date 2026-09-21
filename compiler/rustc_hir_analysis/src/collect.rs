@@ -37,6 +37,7 @@ use rustc_middle::ty::{
     self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
     fold_regions,
 };
+use rustc_span::def_id::LocalModId;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -318,7 +319,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             );
         }
 
-        diag.emit()
+        diag.emit_err()
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -497,6 +498,10 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         self.item_def_id
     }
 
+    fn mod_id(&self) -> LocalModId {
+        self.tcx.parent_module_from_def_id(self.item_def_id)
+    }
+
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
         if let RegionInferReason::ObjectLifetimeDefault(sugg_sp) = reason {
             // FIXME: Account for trailing plus `dyn Trait+`, the need of parens in
@@ -514,7 +519,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                     " + /* 'a */",
                     Applicability::HasPlaceholders,
                 )
-                .emit();
+                .emit_err();
             ty::Region::new_error(self.tcx(), guar)
         } else {
             // If we found elided lifetime during lowering of delegation parent or child
@@ -807,8 +812,8 @@ pub(super) fn check_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         msg: &'static str,
     }
 
-    impl<'a> Diagnostic<'a, ()> for ReprCIssue {
-        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+    impl<'a> Diagnostic<'a> for ReprCIssue {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
             let Self { msg } = self;
             Diag::new(dcx, level, msg)
                 .with_note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
@@ -1412,7 +1417,7 @@ fn recover_infer_ret_ty<'tcx>(
                      https://doc.rust-lang.org/book/ch13-01-closures.html",
         );
     }
-    let guar = diag.emit();
+    let guar = diag.emit_err();
 
     // If we return a dummy binder here, we can ICE later in borrowck when it encounters
     // `ReLateParam` regions (e.g. in a local type annotation) which weren't registered via the

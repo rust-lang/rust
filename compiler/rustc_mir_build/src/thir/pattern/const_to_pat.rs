@@ -94,7 +94,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 err.span_label(self.tcx.def_span(def_id), msg!("constant defined here"));
             }
         }
-        Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()), extra: None })
+        Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit_err()), extra: None })
     }
 
     fn alias_to_pat(&mut self, alias_const: ty::AliasConst<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
@@ -224,7 +224,7 @@ impl<'tcx> ConstToPat<'tcx> {
 
         // Mark the pattern to indicate that it is the result of lowering a named
         // constant. This is used for diagnostics.
-        thir_pat.extra.get_or_insert_default().expanded_const = alias_const.kind.opt_def_id();
+        thir_pat.extra.get_or_insert_default().expanded_const = Some(alias_const.kind);
         thir_pat
     }
 

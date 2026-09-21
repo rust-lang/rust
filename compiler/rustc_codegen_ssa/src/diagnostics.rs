@@ -202,8 +202,8 @@ pub enum LinkRlibError {
 
 pub(crate) struct ThorinErrorWrapper(pub thorin::Error);
 
-impl<G> Diagnostic<'_, G> for ThorinErrorWrapper {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for ThorinErrorWrapper {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let build = |msg| Diag::new(dcx, level, msg);
         match self.0 {
             thorin::Error::ReadInput(_) => build(msg!("failed to read input file")),
@@ -334,8 +334,8 @@ pub(crate) struct LinkingFailed<'a> {
     pub sysroot_dir: PathBuf,
 }
 
-impl<G> Diagnostic<'_, G> for LinkingFailed<'_> {
-    fn into_diag(mut self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for LinkingFailed<'_> {
+    fn into_diag(mut self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag =
             Diag::new(dcx, level, msg!("linking with `{$linker_path}` failed: {$exit_status}"));
         diag.arg("linker_path", format!("{}", self.linker_path.display()));
@@ -463,8 +463,8 @@ pub(crate) struct LinkExeUnexpectedError;
 
 pub(crate) struct LinkExeStatusStackBufferOverrun;
 
-impl<'a, G> Diagnostic<'a, G> for LinkExeStatusStackBufferOverrun {
-    fn into_diag(self, dcx: rustc_errors::DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+impl<'a> Diagnostic<'a> for LinkExeStatusStackBufferOverrun {
+    fn into_diag(self, dcx: rustc_errors::DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(dcx, level, msg!("0xc0000409 is `STATUS_STACK_BUFFER_OVERRUN`"));
         diag.note(msg!(
             "this may have been caused by a program abort and not a stack buffer overrun"
@@ -695,7 +695,7 @@ pub(crate) struct StaticlibHideInternalSymbolsUnsupported {
 
 #[derive(Diagnostic)]
 #[diag(
-    "-Zstaticlib-rename-internal-symbols only supports ELF and Mach-O targets, but the target uses `{$binary_format}`"
+    "-Zstaticlib-rename-internal-symbols only supports ELF, Mach-O, and COFF targets, but the target uses `{$binary_format}`"
 )]
 pub(crate) struct StaticlibRenameInternalSymbolsUnsupported {
     pub binary_format: String,
@@ -1265,8 +1265,8 @@ pub(crate) struct TargetFeatureDisableOrEnable<'a> {
 #[help("add the missing features in a `target_feature` attribute")]
 pub(crate) struct MissingFeatures;
 
-impl<G> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for TargetFeatureDisableOrEnable<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(
             dcx,
             level,

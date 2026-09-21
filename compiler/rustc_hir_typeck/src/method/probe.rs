@@ -555,7 +555,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if raw_ptr_call {
                             err.span_label(span, "cannot call a method on a raw pointer with an unknown pointee type");
                         }
-                        err.emit()
+                        err.emit_err()
                     }
                     ty::Error(guar) => guar,
                     _ => bug!("unexpected bad final type in method autoderef"),
@@ -859,8 +859,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
             let container_id = item.container_id(self.tcx);
-            let def_scope =
-                self.tcx.adjust_ident_and_get_scope(name, container_id, self.body_def_id).1;
+            let def_scope = self.tcx.adjust_ident_and_get_scope(name, container_id, self.mod_id).1;
             item.visibility(self.tcx).is_accessible_from(def_scope, self.tcx)
         } else {
             true
@@ -1877,8 +1876,8 @@ impl<'tcx> Pick<'tcx> {
             span: Span,
         }
 
-        impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for ItemMaybeBeAddedToStd<'b, 'tcx> {
-            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        impl<'a, 'b, 'tcx> Diagnostic<'a> for ItemMaybeBeAddedToStd<'b, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
                 let Self { this, tcx, span } = self;
                 let def_kind = this.item.as_def_kind();
                 let mut lint = Diag::new(

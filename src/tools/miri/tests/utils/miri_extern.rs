@@ -23,7 +23,7 @@ extern "Rust" {
     /// considered leaking even if it still exists when the program terminates.
     ///
     /// `ptr` has to point to the beginning of an allocated block.
-    pub fn miri_static_root(ptr: *const u8);
+    pub fn miri_static_root(ptr: *const ());
 
     // Miri-provided extern function to get the amount of frames in the current backtrace.
     // The `flags` argument must be `0`.
@@ -48,15 +48,15 @@ extern "Rust" {
     pub fn miri_resolve_frame_names(
         ptr: *mut (),
         flags: u64,
-        name_buf: *mut u8,
-        filename_buf: *mut u8,
+        name_buf: *mut (),
+        filename_buf: *mut (),
     );
 
     /// Miri-provided extern function to begin unwinding with the given payload.
     ///
     /// This is internal and unstable and should not be used; we give it here
     /// just to be complete.
-    pub fn miri_start_unwind(payload: *mut u8) -> !;
+    pub fn miri_start_unwind(payload: *mut ()) -> !;
 
     /// Miri-provided extern function to get the internal unique identifier for the allocation that a pointer
     /// points to. If this pointer is invalid (not pointing to an allocation), interpretation will abort.
@@ -114,15 +114,15 @@ extern "Rust" {
     ///
     /// This is useful when no fundamental way of allocating memory is
     /// available, e.g. when using `no_std` + `alloc`.
-    pub fn miri_alloc(size: usize, align: usize) -> *mut u8;
+    pub fn miri_alloc(size: usize, align: usize) -> *mut ();
 
     /// Miri-provided extern function to deallocate memory.
-    pub fn miri_dealloc(ptr: *mut u8, size: usize, align: usize);
+    pub fn miri_dealloc(ptr: *mut (), size: usize, align: usize);
 
     /// Add the allocation that this pointer points to to the "tracked" allocations.
     /// This is equivalent to `-Zmiri-track-allic-id=<id>`, but also works if the ID is
     /// only known at runtime.
-    pub fn miri_track_alloc(ptr: *const u8);
+    pub fn miri_track_alloc(ptr: *const ());
 
     /// Convert a path from the host Miri runs on to the target Miri interprets.
     /// Performs conversion of path separators as needed.
