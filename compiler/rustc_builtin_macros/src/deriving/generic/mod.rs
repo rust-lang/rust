@@ -176,7 +176,7 @@
 
 use std::iter::once;
 use std::ops::Not;
-use std::{iter, vec};
+use std::vec;
 
 pub(crate) use Substructure::*;
 pub(crate) use rustc_ast as ast;
@@ -1061,46 +1061,33 @@ impl<'a> MethodDef<'a> {
 
         let selflike_args = self.get_selflike_args(cx, trait_);
 
-        let prefixes = iter::once("__self".to_string())
-            .chain((1..selflike_args.len()).map(|arg_count| format!("__arg{arg_count}")))
-            .collect::<Vec<String>>();
+        let prefixes: &[&str] = match selflike_args.len() {
+            1 => &["__self"],
+            2 => &["__self", "__arg1"],
+            _ => unreachable!(),
+        };
 
-        // Build a series of let statements mapping each selflike_arg
-        // to its discriminant value.
+        // Maps each selflike_arg to its discriminant value.
         //
-        // e.g. for `PartialEq::eq` builds two statements:
+        // e.g. for `PartialEq::eq` it builds:
         // ```
-        // let __self_discr = ::core::intrinsics::discriminant_value(self);
-        // let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        // ::core::intrinsics::discriminant_value(self); // self_expr
+        // ::core::intrinsics::discriminant_value(other); // other_selflike_expr
         // ```
-        let get_discr_pieces = || {
-            let discr_idents = prefixes
-                .iter()
-                .map(|name| Ident::from_str_and_span(&format!("{name}_discr"), span));
-
-            let mut discr_exprs =
-                discr_idents.clone().map(|ident| cx.expr_addr_of(span, cx.expr_ident(span, ident)));
-
+        let get_discr_field_info = || {
+            let mut discr_exprs = selflike_args.iter().map(|selflike_arg| {
+                let call = deriving::call_intrinsic(
+                    cx,
+                    span,
+                    sym::discriminant_value,
+                    thin_vec![selflike_arg.clone()],
+                );
+                cx.expr_addr_of(span, call)
+            });
             let self_expr = discr_exprs.next().unwrap();
             let other_selflike_expr = discr_exprs.next();
-            debug_assert!(discr_exprs.next().is_none());
 
-            let discr_field =
-                FieldInfo { span, name: None, self_expr, other_selflike_expr, maybe_scalar: true };
-
-            let discr_let_stmts: ThinVec<_> = iter::zip(discr_idents, &selflike_args)
-                .map(|(ident, selflike_arg)| {
-                    let variant_value = deriving::call_intrinsic(
-                        cx,
-                        span,
-                        sym::discriminant_value,
-                        thin_vec![selflike_arg.clone()],
-                    );
-                    cx.stmt_let(span, false, ident, variant_value)
-                })
-                .collect();
-
-            (discr_field, discr_let_stmts)
+            FieldInfo { span, name: None, self_expr, other_selflike_expr, maybe_scalar: true }
         };
 
         // There are some special cases involving fieldless enums where no
@@ -1113,11 +1100,12 @@ impl<'a> MethodDef<'a> {
                         // If the type is fieldless and the trait uses the discriminant and
                         // there are multiple variants, we need just an operation on
                         // the discriminant(s).
-                        let (discr_field, mut discr_let_stmts) = get_discr_pieces();
-                        let mut discr_check =
-                            self.call_substructure_method(cx, trait_, EnumDiscr(discr_field, None));
-                        discr_let_stmts.append(&mut discr_check.0);
-                        return BlockOrExpr(discr_let_stmts, discr_check.1);
+                        let discr_field = get_discr_field_info();
+                        return self.call_substructure_method(
+                            cx,
+                            trait_,
+                            EnumDiscr(discr_field, None),
+                        );
                     }
                     FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless => {
                         return self.call_substructure_method(
@@ -1226,16 +1214,14 @@ impl<'a> MethodDef<'a> {
         // to add a discriminant check operation before the match. Otherwise, the match
         // is enough.
         if unify_fieldless_variants && variants.len() > 1 {
-            let (discr_field, mut discr_let_stmts) = get_discr_pieces();
+            let discr_field = get_discr_field_info();
 
             // Combine a discriminant check with the match.
-            let mut discr_check_plus_match = self.call_substructure_method(
+            self.call_substructure_method(
                 cx,
                 trait_,
                 EnumDiscr(discr_field, Some(get_match_expr(selflike_args))),
-            );
-            discr_let_stmts.append(&mut discr_check_plus_match.0);
-            BlockOrExpr(discr_let_stmts, discr_check_plus_match.1)
+            )
         } else {
             BlockOrExpr(ThinVec::new(), Some(get_match_expr(selflike_args)))
         }
@@ -1249,7 +1235,7 @@ impl<'a> TraitDef<'a> {
         cx: &ExtCtxt<'_>,
         struct_path: ast::Path,
         struct_def: &'a VariantData,
-        prefixes: &[String],
+        prefixes: &[&str],
     ) -> ThinVec<ast::Pat> {
         prefixes
             .iter()
@@ -1323,7 +1309,7 @@ impl<'a> TraitDef<'a> {
         &self,
         cx: &ExtCtxt<'_>,
         struct_def: &'a VariantData,
-        prefixes: &[String],
+        prefixes: &[&str],
     ) -> Vec<FieldInfo> {
         self.create_fields(struct_def, |i, _struct_field, sp| {
             prefixes
