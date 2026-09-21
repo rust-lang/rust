@@ -1480,7 +1480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 _ if let Some((sp, msg, sugg)) = mut_var_suggestion => {
-                    err.span_suggestion(sp, msg, sugg, Applicability::MachineApplicable);
+                    err.span_suggestion_verbose(sp, msg, sugg, Applicability::MachineApplicable);
                 }
                 _ => {} // don't provide suggestions in other cases #55175
             }
