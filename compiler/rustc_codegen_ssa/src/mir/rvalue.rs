@@ -103,6 +103,29 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         true
     }
 
+    /// Resolve/canonicalize the src and dst types, treating a side that doesn't canonicalize to a
+    /// function pointer as a zero-discriminator raw value (matching Clang's treatment of raw
+    /// pointers in the analogous C code).
+    fn ptrauth_transmute_resign_info(
+        &self,
+        src_layout: TyAndLayout<'tcx>,
+        dst_layout: TyAndLayout<'tcx>,
+    ) -> Option<(TransmuteInfo<'tcx>, bool)> {
+        let src_semantic = self.ptrauth_canonicalize_fn_ptr_layout(src_layout);
+        let dst_semantic = self.ptrauth_canonicalize_fn_ptr_layout(dst_layout);
+
+        if src_semantic.is_none() && dst_semantic.is_none() {
+            return None;
+        }
+
+        let info = TransmuteInfo {
+            src_ty: src_semantic.map_or(src_layout.ty, |(ty, _)| ty),
+            dst_ty: dst_semantic.map_or(dst_layout.ty, |(ty, _)| ty),
+        };
+        let nullable = src_semantic.is_some_and(|(_, n)| n) || dst_semantic.is_some_and(|(_, n)| n);
+        Some((info, nullable))
+    }
+
     /// Lowers a transmute of an SSA operand while preserving pointer authentication semantics.
     /// When the source and destination are both, or transparently wrap, function pointer types
     /// with different type discriminators, the resulting pointer is re-signed.
@@ -121,20 +144,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return val;
         };
 
-        let src_semantic = self.ptrauth_canonicalize_fn_ptr_layout(operand.layout);
-        let dst_semantic = self.ptrauth_canonicalize_fn_ptr_layout(cast);
-
-        // Neither side is a function pointer - early return.
-        if src_semantic.is_none() && dst_semantic.is_none() {
+        let Some((info, nullable)) = self.ptrauth_transmute_resign_info(operand.layout, cast)
+        else {
             return val;
-        }
-
-        let info = TransmuteInfo {
-            src_ty: src_semantic.map_or(operand.layout.ty, |(ty, _)| ty),
-            dst_ty: dst_semantic.map_or(cast.ty, |(ty, _)| ty),
         };
-
-        let nullable = src_semantic.is_some_and(|(_, n)| n) || dst_semantic.is_some_and(|(_, n)| n);
 
         let ptr = if nullable {
             self.ptrauth_resign_transmuted_nullable_fn_ptr(bx, ptr, info)
@@ -142,7 +155,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.ptrauth_resign_transmuted_fn_ptr(bx, ptr, info)
         };
 
-        OperandValue::Immediate(ptr)
+        return OperandValue::Immediate(ptr);
     }
 
     /// Applies pointer-authentication type discriminator correction for a function pointer value
@@ -253,13 +266,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
 
                 ty::Adt(def, args)
-                    if self.cx.tcx().lang_items().option_type() == Some(def.did())
-                        // Only nullable-peel if `Option<T>` genuinely niche-optimized to a single
-                        // scalar, rejecting `Option<Option<T>>`.
-                        && matches!(layout.backend_repr, abi::BackendRepr::Scalar(_)) =>
+                    if def.is_enum()
+                        && def.variants().len() == 2
+                        && matches!(layout.backend_repr, abi::BackendRepr::Scalar(_))
+                        && let abi::Variants::Multiple {
+                            tag_encoding: abi::TagEncoding::Niche { untagged_variant, .. },
+                            ..
+                        } = layout.variants =>
                 {
+                    let variant = def.variant(untagged_variant);
+                    let [field] = &variant.fields.raw[..] else {
+                        return None;
+                    };
                     nullable = true;
-                    layout = self.cx.layout_of(args.type_at(0));
+                    let field_ty = self.cx.tcx().normalize_erasing_regions(
+                        self.cx.typing_env(),
+                        field.ty(self.cx.tcx(), args),
+                    );
+                    layout = self.cx.layout_of(field_ty);
                 }
 
                 _ => return None,
@@ -322,15 +346,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         src: OperandRef<'tcx, Bx::Value>,
         dst: PlaceRef<'tcx, Bx::Value>,
     ) {
-        if let (Some((src_ty, src_nullable)), Some((dst_ty, dst_nullable))) = (
-            self.ptrauth_canonicalize_fn_ptr_layout(src.layout),
-            self.ptrauth_canonicalize_fn_ptr_layout(dst.layout),
-        ) {
-            self.ptrauth_resign_fn_ptr(bx, src, dst, src_ty, dst_ty, src_nullable || dst_nullable);
+        let Some((info, nullable)) = self.ptrauth_transmute_resign_info(src.layout, dst.layout)
+        else {
+            src.store_with_annotation(bx, dst.val.with_type(src.layout));
             return;
-        }
-
-        src.store_with_annotation(bx, dst.val.with_type(src.layout));
+        };
+        self.ptrauth_resign_fn_ptr(bx, src, dst, info.src_ty, info.dst_ty, nullable);
     }
 
     fn is_entirely_uninit_const(&self, operand: &mir::Operand<'tcx>) -> bool {
