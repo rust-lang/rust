@@ -21,16 +21,20 @@ pub(crate) fn coroutine_hidden_types<'tcx>(
             .map_or_else(|| [].iter(), |l| l.field_tys.iter())
             .filter(|decl| !decl.ignore_for_traits)
             .map(|decl| {
-                let ty = fold_regions(tcx, decl.ty, |re, debruijn| {
-                    assert_eq!(re, tcx.lifetimes.re_erased);
-                    let var = ty::BoundVar::from_usize(vars.len());
-                    vars.push(ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon));
-                    ty::Region::new_bound(
-                        tcx,
-                        debruijn,
-                        ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon },
-                    )
-                });
+                let ty = fold_regions(
+                    tcx,
+                    decl.ty.instantiate_identity().skip_norm_wip(),
+                    |re, debruijn| {
+                        assert_eq!(re, tcx.lifetimes.re_erased);
+                        let var = ty::BoundVar::from_usize(vars.len());
+                        vars.push(ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon));
+                        ty::Region::new_bound(
+                            tcx,
+                            debruijn,
+                            ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon },
+                        )
+                    },
+                );
                 ty
             }),
     );
