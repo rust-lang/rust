@@ -24,7 +24,7 @@ static REGEX_IGNORE_END: LazyLock<Regex> =
 static REGEX_IGNORE_LINK_TARGETS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\[.+\]: ").unwrap());
 static REGEX_SPLIT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"([^\.\d\-\*]\.|[^r\~]\?|!)\s").unwrap());
+    LazyLock::new(|| Regex::new(r"([^\.\d\-]\.|[^r\~]\?|!)\s").unwrap());
 // list elements, numbered (1.) or not  (- and *)
 static REGEX_LIST_ENTRY: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*|\d\))\s+").unwrap());
@@ -385,7 +385,6 @@ encountering a cycle doesn't mean that we would get an infinite proof tree.
 }
 
 #[test]
-#[ignore]
 fn should_split() {
     let original = "the queries that we do, as well as the **query DAG**. The";
     let expected = "the queries that we do, as well as the **query DAG**.\nThe\n";
