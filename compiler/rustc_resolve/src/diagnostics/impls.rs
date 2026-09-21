@@ -326,7 +326,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        let guar = diag.emit();
+        let guar = diag.emit_err();
         if glob_error {
             self.glob_error = Some(guar);
         }
@@ -787,7 +787,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         span: Span,
         resolution_error: ResolutionError<'ra>,
     ) -> ErrorGuaranteed {
-        self.into_struct_error(span, resolution_error).emit()
+        self.into_struct_error(span, resolution_error).emit_err()
     }
 
     pub(crate) fn into_struct_error(
@@ -1460,7 +1460,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.dcx().create_err(diagnostics::ModuleOnly(span))
             }
         }
-        .emit()
+        .emit_err()
     }
 
     pub(crate) fn def_path_str(&self, mut def_id: DefId) -> String {

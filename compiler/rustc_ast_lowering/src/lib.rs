@@ -1751,7 +1751,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                 },
                                 feature,
                             )
-                            .emit();
+                            .emit_err();
                         hir::TyKind::Err(guar)
                     }
                     ImplTraitContext::Disallowed(position) => {

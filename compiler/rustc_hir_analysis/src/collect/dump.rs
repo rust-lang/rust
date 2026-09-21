@@ -103,7 +103,7 @@ pub(crate) fn clauses_and_item_bounds(tcx: TyCtxt<'_>) {
                     for bound in bounds {
                         diag.note(format!("{bound:?}"));
                     }
-                    diag.emit()
+                    diag.emit_err()
                 }
                 kind => tcx.dcx().span_delayed_bug(
                     tcx.def_span(id),

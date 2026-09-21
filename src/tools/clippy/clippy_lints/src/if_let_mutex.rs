@@ -66,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
             && let Some(arm_mutex) =
                 for_each_expr_without_closures((if_then, if_else), |e| mutex_lock_call(cx, ctxt, e, Some(op_mutex)))
         {
-            let diag = |diag: &mut Diag<'_, ()>| {
+            let diag = |diag: &mut Diag<'_>| {
                 diag.span_label(
                     op_mutex.span,
                     "this Mutex will remain locked for the entire `if let`-block...",

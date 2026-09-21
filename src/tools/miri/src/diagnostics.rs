@@ -572,7 +572,7 @@ fn report_msg<'tcx>(
         DiagLevel::Warning => Level::Warning,
         DiagLevel::Note => Level::Note,
     };
-    let mut err = Diag::<()>::new(tcx.sess.dcx(), level, title);
+    let mut err = Diag::new(tcx.sess.dcx(), level, title);
     err.span(span);
 
     // Show main message.

@@ -202,7 +202,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                             // hint that the ambiguity is in an opaque's hidden type rather than an
                             // ordinary local inference failure.
                             .with_note("cannot infer type of hidden type of opaque")
-                            .emit()
+                            .emit_err()
                     }
                 }
             };

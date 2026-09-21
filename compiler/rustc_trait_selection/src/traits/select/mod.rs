@@ -63,7 +63,7 @@ pub enum IntercrateAmbiguityCause<'tcx> {
 impl<'tcx> IntercrateAmbiguityCause<'tcx> {
     /// Emits notes when the overlap is caused by complex intercrate ambiguities.
     /// See #23980 for details.
-    pub fn add_intercrate_ambiguity_hint<G>(&self, err: &mut Diag<'_, G>) {
+    pub fn add_intercrate_ambiguity_hint(&self, err: &mut Diag<'_>) {
         err.note(self.intercrate_ambiguity_hint());
     }
 

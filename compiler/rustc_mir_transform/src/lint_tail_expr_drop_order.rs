@@ -523,7 +523,7 @@ struct LocalLabel<'a> {
 
 /// A custom `Subdiagnostic` implementation so that the notes are delivered in a specific order
 impl Subdiagnostic for LocalLabel<'_> {
-    fn add_to_diag<G>(self, diag: &mut rustc_errors::Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut rustc_errors::Diag<'_>) {
         diag.span_label(
             self.span,
             msg!(

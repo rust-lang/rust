@@ -70,7 +70,7 @@ fn generic_arg_mismatch_err(
                 add_braces_suggestion(arg, &mut err);
                 return err
                     .with_primary_message("unresolved item provided when a constant was expected")
-                    .emit();
+                    .emit_err();
             }
             Res::Def(DefKind::TyParam, src_def_id) => {
                 if let Some(param_local_id) = param.def_id.as_local() {
@@ -157,7 +157,7 @@ fn generic_arg_mismatch_err(
         }
     }
 
-    err.emit()
+    err.emit_err()
 }
 
 /// Lower generic arguments from the HIR to the [`rustc_middle::ty`] representation.
@@ -618,7 +618,7 @@ pub(crate) fn check_generic_arg_count(
                     gen_args,
                     def_id,
                 ))
-                .emit_unless_delay(all_params_are_binded || has_invalid_bound)
+                .emit_err_unless_delay(all_params_are_binded || has_invalid_bound)
         });
 
         Err(reported)
@@ -667,8 +667,8 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         msg: &'static str,
     }
 
-    impl<'a> Diagnostic<'a, ()> for LifetimeArgsIssue {
-        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+    impl<'a> Diagnostic<'a> for LifetimeArgsIssue {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
             let Self { msg } = self;
             Diag::new(dcx, level, msg)
         }
