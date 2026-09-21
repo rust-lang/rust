@@ -6,6 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::GenericBound::Trait;
 use rustc_hir::QPath::Resolved;
 use rustc_hir::WherePredicateKind::BoundPredicate;
+use rustc_hir::def::DefKind;
 use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -391,6 +392,89 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         outlives_suggestion.add_suggestion(self);
     }
 
+    /// Point at `'static` obligations from the item being called.
+    ///
+    /// ```text
+    /// error[E0521]: borrowed data escapes outside of function
+    ///   --> $DIR/static-impl-obligation.rs:163:9
+    ///    |
+    /// LL |     fn bar<'a>(x: &'a &'a u32) {
+    ///    |            --  - `x` is a reference that is only valid in the function body
+    ///    |            |
+    ///    |            lifetime `'a` defined here
+    /// LL |         let y: &dyn Foo = x;
+    /// LL |         y.hello();
+    ///    |         ^^^^^^^^^
+    ///    |         |
+    ///    |         `x` escapes the function body here
+    ///    |         argument requires that `'a` must outlive `'static`
+    ///    |
+    /// note: `'static` requirement for `<(dyn o::Foo + 'static)>::hello` introduced here
+    ///   --> $DIR/static-impl-obligation.rs:158:40
+    ///    |
+    /// LL |     impl dyn Foo + 'static where Self: 'static {
+    ///    |                                        ^^^^^^^ `'static` requirement introduced here
+    /// LL |         fn hello(&'static self) where Self: 'static {}
+    ///    |                                             ^^^^^^^ `'static` requirement introduced here
+    /// ```
+    fn explain_impl_static_obligation(
+        &self,
+        diag: &mut Diag<'_>,
+        ty: Ty<'tcx>,
+        outlived_fr: RegionVid,
+    ) {
+        let tcx = self.infcx.tcx;
+        if self.regioncx.to_error_region(outlived_fr) != Some(tcx.lifetimes.re_static) {
+            return;
+        }
+        let ty::FnDef(def_id, args) = ty.kind() else {
+            return;
+        };
+        let Ok(Some(instance)) = ty::Instance::try_resolve(
+            tcx,
+            self.infcx.typing_env(self.infcx.param_env),
+            *def_id,
+            self.infcx.deeply_resolve_ignoring_regions(args.no_bound_vars().unwrap()),
+        ) else {
+            return;
+        };
+        let def_id = instance.def_id();
+        let bounds =
+            tcx.clauses_of(def_id)
+                .instantiate(tcx, instance.args)
+                .into_iter()
+                .map(|(c, sp)| (c.skip_norm_wip().as_predicate(), sp))
+                .filter(|(pred, _)| match pred.kind().skip_binder() {
+                    ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
+                        ty::OutlivesClause(_, lt),
+                    ))
+                    | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(
+                        ty::OutlivesClause(_, lt),
+                    )) if lt.is_static() => true,
+                    _ => false,
+                })
+                .map(|(_, sp)| sp)
+                .collect::<Vec<Span>>();
+        if !bounds.is_empty() {
+            let mut multispan: MultiSpan = bounds.clone().into();
+            for span in bounds {
+                multispan.push_span_label(span, "lifetime requirement introduced here");
+            }
+            multispan.push_span_context(tcx.def_span(def_id).shrink_to_lo());
+            let parent = tcx.parent(def_id);
+            if let DefKind::Impl { .. } | DefKind::Trait = tcx.def_kind(parent) {
+                multispan.push_span_context(tcx.def_span(parent).shrink_to_lo());
+            }
+            diag.span_note(
+                multispan,
+                format!(
+                    "`'static` lifetime requirement from `{}` introduced here",
+                    tcx.def_path_str(def_id)
+                ),
+            );
+        }
+    }
+
     /// Report that `longer_fr: error_vid`, which doesn't hold,
     /// where `longer_fr` is a placeholder.
     fn report_erroneous_rvid_reaches_placeholder(
@@ -502,6 +586,10 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 db
             }
         };
+
+        if let ConstraintCategory::CallArgument(Some(ty)) = category {
+            self.explain_impl_static_obligation(&mut diag, ty, outlived_fr);
+        }
 
         match variance_info {
             ty::VarianceDiagInfo::None => {}
