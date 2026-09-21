@@ -1,12 +1,11 @@
 use crate::collections::HashSet;
 use crate::os::fd::AsRawFd;
-use crate::fs;
-use crate::io;
 use crate::os::unix::fs::MetadataExt;
 use crate::os::unix::process::{CommandExt, ExitStatusExt};
 use crate::panic::catch_unwind;
 use crate::process::Command;
 use crate::sys::AsInner;
+use crate::{fs, io};
 
 // Many of the other aspects of this situation, including heap alloc concurrency
 // safety etc., are tested in tests/ui/process/process-panic-after-fork.rs
