@@ -76,6 +76,9 @@ pub fn rustc_path() -> String {
 fn setup_common() -> Command {
     let mut cmd = Command::new(rustc_path());
     set_host_compiler_dylib_path(&mut cmd);
+    if let Ok(codegen_backend) = std::env::var("RUSTC_CODEGEN_BACKEND") {
+        cmd.arg(format!("-Zcodegen-backend={codegen_backend}"));
+    }
     cmd
 }
 

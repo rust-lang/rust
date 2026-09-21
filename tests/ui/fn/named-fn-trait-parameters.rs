@@ -15,52 +15,58 @@ fn allowed<F>(
 // Patterns are semantically rejected
 fn semantics<F>(
     pat1: impl Fn(1..3: bool),
-    //~^ ERROR expected type, found `1`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat2: impl Fn((x, y): (bool, bool)),
-    //~^ ERROR unexpected token: `:`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat3: impl Fn(Thing { a, b }: Thing),
-    //~^ ERROR expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat4: impl Fn(NoThing { a, b }: NoThing),
-    //~^ ERROR expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
+    //~| ERROR cannot find type `NoThing` in this scope
     pat5: impl Fn((((((x))))): bool),
-    //~^ ERROR unexpected token: `:`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
 
     self1: impl Fn(self),
-    //~^ ERROR unexpected `self` parameter in function
+    //~^ ERROR `self` parameter is only allowed in associated functions
     self2: impl Fn(self, self),
-    //~^ ERROR unexpected `self` parameter in function
+    //~^ ERROR `self` parameter is only allowed in associated functions
     //~| ERROR unexpected `self` parameter in function
     self3: impl Fn(bool, self),
     //~^ ERROR unexpected `self` parameter in function
 
-    // FIXME should be rejected
     restricted_pat1: impl Fn(mut x: ()),
+    //~^ ERROR patterns aren't allowed in parenthesized argument lists
     restricted_pat2: impl Fn(&x: ()),
+    //~^ ERROR patterns aren't allowed in parenthesized argument lists
     restricted_pat3: impl Fn(&&x: ()),
+    //~^ ERROR patterns aren't allowed in parenthesized argument lists
     restricted_pat4: impl Fn(false: ()),
+    //~^ ERROR patterns aren't allowed in parenthesized argument lists
     restricted_pat5: impl Fn(&_: ()),
+    //~^ ERROR patterns aren't allowed in parenthesized argument lists
     restricted_pat6: impl Fn(&true: ()),
+    //~^ ERROR patterns aren't allowed in parenthesized argument lists
+
+    duplicate_names: impl Fn(x: usize, x: usize),
 ) { }
 
 // Patterns are also syntactically rejected, but restricted patterns are not
 #[cfg(false)]
 fn syntax<F>(
     pat1: impl Fn(1..3: bool),
-    //~^ ERROR expected type, found `1`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat2: impl Fn((x, y): (bool, bool)),
-    //~^ ERROR unexpected token: `:`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat3: impl Fn(Thing { a, b }: Thing),
-    //~^ ERROR expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat4: impl Fn(NoThing { a, b }: NoThing),
-    //~^ ERROR expected one of `!`, `(`, `+`, `::`, or `<`, found `{`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
     pat5: impl Fn((((((x))))): bool),
-    //~^ ERROR unexpected token: `:`
+    //~^ ERROR patterns aren't allowed in parenthesized argument list
 
-    self1: impl Fn(self), // FIXME should be accepted
-    //~^ ERROR unexpected `self` parameter in function
+    self1: impl Fn(self),
     self2: impl Fn(self, self),
     //~^ ERROR unexpected `self` parameter in function
-    //~| ERROR unexpected `self` parameter in function
     self3: impl Fn(bool, self),
     //~^ ERROR unexpected `self` parameter in function
 

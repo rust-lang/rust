@@ -209,15 +209,15 @@ impl SingleComponentPathImports {
                     // keep track of `use {some_module, some_other_module};` usages
                     if let UseTreeKind::Nested { items, .. } = &use_tree.kind {
                         for tree in items {
-                            let segments = &tree.0.prefix.segments;
+                            let segments = &tree.inner.prefix.segments;
                             if segments.len() == 1
-                                && let UseTreeKind::Simple(None) = tree.0.kind
+                                && let UseTreeKind::Simple(None) = tree.inner.kind
                             {
                                 let name = segments[0].ident.name;
                                 if !macros.contains(&name) {
                                     single_use_usages.push(SingleUse {
                                         name,
-                                        span: tree.0.span(),
+                                        span: tree.inner.span(),
                                         item_id: item.id,
                                         can_suggest: false,
                                     });
@@ -237,7 +237,7 @@ impl SingleComponentPathImports {
                     // nested case such as `use self::{module1::Struct1, module2::Struct2}`
                     if let UseTreeKind::Nested { items, .. } = &use_tree.kind {
                         for tree in items {
-                            let segments = &tree.0.prefix.segments;
+                            let segments = &tree.inner.prefix.segments;
                             if !segments.is_empty() {
                                 imports_reused_with_self.push(segments[0].ident.name);
                             }

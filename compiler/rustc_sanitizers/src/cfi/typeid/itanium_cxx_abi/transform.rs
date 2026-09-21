@@ -8,14 +8,13 @@ use std::iter;
 
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{self as hir, find_attr};
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, AssocContainer, ExistentialPredicateStableCmpExt as _, Instance, IntTy, List, TraitRef,
     Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
     Unnormalized,
 };
-use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
+use rustc_span::{DUMMY_SP, bug};
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument};
 
@@ -246,24 +245,23 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
                 .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                 .map(move |assoc_item| {
                     super_poly_trait_ref.map_bound(|super_trait_ref| {
-                        let projection_term = ty::AliasTerm::new_from_def_id(
-                            tcx,
-                            assoc_item.def_id,
-                            super_trait_ref.args,
-                            ty::AliasConstInherentArgsKind::WithSelf,
-                        );
-                        let term = tcx.normalize_erasing_regions(
+                        let kind = if assoc_item.is_type() {
+                            ty::AliasTermKind::ProjectionTy { def_id: assoc_item.def_id }
+                        } else {
+                            ty::AliasTermKind::ProjectionConst { def_id: assoc_item.def_id }
+                        };
+                        let projection_term =
+                            ty::AliasTerm::new_from_args(tcx, kind, super_trait_ref.args);
+                        let term = projection_term.to_term(tcx, ty::IsRigid::No);
+                        let normalized_term = tcx.normalize_erasing_regions(
                             ty::TypingEnv::fully_monomorphized(),
-                            Unnormalized::new_wip(projection_term.to_term(tcx, ty::IsRigid::No)),
+                            Unnormalized::new_wip(term),
                         );
-                        debug!(
-                            "Projection {:?} -> {term}",
-                            projection_term.to_term(tcx, ty::IsRigid::No)
-                        );
+                        debug!("Projection {term} -> {normalized_term}");
                         ty::ExistentialPredicate::Projection(
                             ty::ExistentialProjection::erase_self_ty(
                                 tcx,
-                                ty::ProjectionClause { projection_term, term },
+                                ty::ProjectionClause { projection_term, term: normalized_term },
                             ),
                         )
                     })

@@ -72,7 +72,7 @@ pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
             parser.parse_crate_mod()
         })
         .unwrap_or_else(|parse_error| {
-            let guar: ErrorGuaranteed = parse_error.emit();
+            let guar: ErrorGuaranteed = parse_error.emit_err();
             guar.raise_fatal();
         });
 
@@ -285,6 +285,10 @@ fn configure_and_expand(
 
     if crate_types.contains(&CrateType::Sdylib) && !tcx.features().export_stable() {
         feature_err(sess, sym::export_stable, DUMMY_SP, "`sdylib` crate type is unstable").emit();
+    }
+
+    if is_proc_macro_crate && !sess.sanitizers().is_empty() {
+        sess.dcx().emit_err(diagnostics::CannotSanitizeProcMacro);
     }
 
     if is_proc_macro_crate && !sess.panic_strategy().unwinds() {
@@ -1053,13 +1057,13 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
 
 struct DiagCallback<'tcx> {
     callback: Box<
-        dyn for<'b> FnOnce(DiagCtxtHandle<'b>, Level, &dyn Any) -> Diag<'b, ()> + DynSend + DynSync,
+        dyn for<'b> FnOnce(DiagCtxtHandle<'b>, Level, &dyn Any) -> Diag<'b> + DynSend + DynSync,
     >,
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> Diagnostic<'a, ()> for DiagCallback<'tcx> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a, 'tcx> Diagnostic<'a> for DiagCallback<'tcx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         (self.callback)(dcx, level, self.tcx.sess)
     }
 }
@@ -1302,7 +1306,10 @@ pub(crate) fn start_codegen<'tcx>(
 
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
-    let metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
+    let metadata = match rustc_metadata::fs::encode_and_write_metadata(tcx) {
+        Ok(metadata) => metadata,
+        Err(guar) => guar.raise_fatal(),
+    };
 
     let is_host_metadata = tcx
         .sess

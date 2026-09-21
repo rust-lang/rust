@@ -4,6 +4,7 @@ error[E0282]: type annotations needed
 LL |     if false { is_trait(foo()) } else { Default::default() }
    |                ^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `is_trait`
    |
+   = note: cannot infer type of hidden type of opaque
 help: consider specifying the generic arguments
    |
 LL |     if false { is_trait::<T, U>(foo()) } else { Default::default() }

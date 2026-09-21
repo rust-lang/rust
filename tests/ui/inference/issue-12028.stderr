@@ -12,7 +12,7 @@ note: required by a bound in `StreamHash::input_stream`
 LL | trait StreamHash<H: StreamHasher>: Hash<H> {
    |                     ^^^^^^^^^^^^ required by this bound in `StreamHash::input_stream`
 LL |     fn input_stream(&self, stream: &mut H::S);
-   |        ------------ required by a bound in this associated function
+   |
 help: try using a fully qualified path to specify the expected types
    |
 LL -         self.input_stream(&mut stream);

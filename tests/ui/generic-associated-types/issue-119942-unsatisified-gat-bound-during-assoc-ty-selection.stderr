@@ -8,6 +8,7 @@ LL |     type Pointer<T> = dyn Deref<Target = T>;
 note: required by a bound in `PointerFamily::Pointer`
   --> $DIR/issue-119942-unsatisified-gat-bound-during-assoc-ty-selection.rs:4:5
    |
+LL | trait PointerFamily {
 LL |     type Pointer<T>: Deref<Target = T>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `PointerFamily::Pointer`
 help: consider relaxing the implicit `Sized` restriction

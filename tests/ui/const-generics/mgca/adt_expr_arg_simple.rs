@@ -11,7 +11,8 @@ use Option::Some;
 fn foo<const N: Option<u32>>() {}
 
 trait Trait {
-    type const ASSOC: u32;
+    #[rustc_always_gca]
+    const ASSOC: u32;
 }
 
 fn bar<T: Trait, const N: u32>() {

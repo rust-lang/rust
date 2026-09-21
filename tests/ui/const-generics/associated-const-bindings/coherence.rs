@@ -2,10 +2,11 @@
 #![expect(incomplete_features)]
 
 pub trait IsVoid {
-    type const IS_VOID: bool;
+    #[rustc_always_gca]
+    const IS_VOID: bool;
 }
 impl IsVoid for () {
-    type const IS_VOID: bool = true;
+    const IS_VOID: bool = core::direct_const_arg!(true);
 }
 
 pub trait Maybe {}

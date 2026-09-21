@@ -19,7 +19,7 @@ pub(crate) fn expand<'cx>(
     let item = match p.parse_test_binder_constraints() {
         Ok(expr) => expr,
         Err(diag) => {
-            let guar = diag.emit();
+            let guar = diag.emit_err();
             return ExpandResult::Ready(DummyResult::any(span, guar));
         }
     };

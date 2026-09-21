@@ -217,6 +217,8 @@ fn non_option_either(x: Opt<String>) {
     dbg!(&x);
 }
 
+fn issue_17664(#[allow(clippy::needless_pass_by_value)] sr: String) {}
+
 fn main() {
     // This should not cause an ICE either
     // https://github.com/rust-lang/rust-clippy/issues/3144

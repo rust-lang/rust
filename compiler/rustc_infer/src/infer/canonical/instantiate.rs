@@ -11,6 +11,7 @@ use rustc_middle::ty::{
     self, DelayedMap, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
+use rustc_type_ir::PredicateProxy;
 
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
 
@@ -124,7 +125,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for CanonicalInstantiator<'tcx> {
         }
     }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate<P: PredicateProxy<TyCtxt<'tcx>>>(&mut self, p: P) -> P {
         if p.has_type_flags(TypeFlags::HAS_CANONICAL_BOUND) { p.super_fold_with(self) } else { p }
     }
 

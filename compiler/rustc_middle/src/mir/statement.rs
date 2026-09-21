@@ -4,6 +4,7 @@ use std::fmt::Debug;
 use std::ops;
 
 use rustc_data_structures::outline;
+use rustc_span::bug;
 use thin_vec::ThinVec;
 use tracing::instrument;
 

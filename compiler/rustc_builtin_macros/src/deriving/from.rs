@@ -1,11 +1,11 @@
 use rustc_ast as ast;
 use rustc_ast::{ItemKind, Safety, VariantData};
 use rustc_errors::MultiSpan;
-use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
+use rustc_expand::base::{DummyResult, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
-use crate::deriving::generic::ty::{Bounds, Path, PathKind, Ty};
+use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::pathvec;
 use crate::diagnostics;
@@ -15,15 +15,10 @@ use crate::diagnostics;
 pub(crate) fn expand_deriving_from(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &ast::MetaItem,
-    annotatable: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
-    let Annotatable::Item(item) = &annotatable else {
-        cx.dcx().bug("derive(From) used on something else than an item");
-    };
-
     let err_span = || {
         let item_span = item.kind.ident().map(|ident| ident.span).unwrap_or(item.span);
         MultiSpan::from_spans(vec![span, item_span])
@@ -57,8 +52,7 @@ pub(crate) fn expand_deriving_from(
         Err(guar) => cx.ty(span, ast::TyKind::Err(guar)),
     });
 
-    let path =
-        Path::new_(pathvec!(convert::From), vec![Box::new(from_type.clone())], PathKind::Std);
+    let path = new_path(cx, span, pathvec!(convert::From), &[from_type.clone()]);
 
     // Generate code like this:
     //
@@ -79,7 +73,7 @@ pub(crate) fn expand_deriving_from(
         supports_unions: false,
         methods: smallvec![MethodDef {
             name: sym::from,
-            generics: Bounds { bounds: vec![] },
+            generics: cx.empty_generics(span),
             explicit_self: false,
             nonself_args: smallvec![(from_type, sym::value)],
             ret_ty: Ty::Self_,
@@ -94,8 +88,8 @@ pub(crate) fn expand_deriving_from(
                 };
 
                 let self_kw = Ident::new(kw::SelfUpper, span);
-                let expr: Box<ast::Expr> = match substructure.fields {
-                    SubstructureFields::StaticStruct(variant, _) => match variant {
+                let expr: Box<ast::Expr> = match substructure {
+                    StaticStruct(variant) => match variant {
                         // Self { field: value }
                         VariantData::Struct { .. } => cx.expr_struct_ident(
                             span,
@@ -127,5 +121,5 @@ pub(crate) fn expand_deriving_from(
         document: true,
     };
 
-    from_trait_def.expand(cx, mitem, annotatable, push);
+    from_trait_def.expand(cx, item, push);
 }

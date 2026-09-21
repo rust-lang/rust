@@ -238,7 +238,7 @@
    "fields": [
     {
      "name": "ptr",
-     "type": "core::ptr::unique::Unique<unsigned char>",
+     "type": "core::ptr::non_null::NonNull<unsigned char>",
      "offset": 8
     },
     {
@@ -254,25 +254,6 @@
    ],
    "generic_params": [
     "alloc::alloc::Global"
-   ]
-  },
-  "core::ptr::unique::Unique<unsigned char>": {
-   "size": 8,
-   "type_class": 16384,
-   "fields": [
-    {
-     "name": "pointer",
-     "type": "core::ptr::non_null::NonNull<unsigned char>",
-     "offset": 0
-    },
-    {
-     "name": "_marker",
-     "type": "core::marker::PhantomData<unsigned char>",
-     "offset": 8
-    }
-   ],
-   "generic_params": [
-    "unsigned char"
    ]
   },
   "core::ptr::non_null::NonNull<unsigned char>": {

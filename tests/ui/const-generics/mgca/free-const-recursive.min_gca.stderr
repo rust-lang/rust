@@ -1,0 +1,13 @@
+error[E0391]: cycle detected when computing the type-level value for `A`
+  --> $DIR/free-const-recursive.rs:11:1
+   |
+LL | const A: () = core::direct_const_arg!(A);
+   | ^^^^^^^^^^^
+   |
+   = note: ...which immediately requires computing the type-level value for `A` again
+   = note: cycle used when checking that `A` is well-formed
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

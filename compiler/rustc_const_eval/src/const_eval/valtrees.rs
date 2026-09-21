@@ -1,11 +1,11 @@
 use rustc_abi::{BackendRepr, FieldIdx, VariantIdx};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ValTreeCreationError};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::{bug, mir};
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, bug};
 use tracing::{debug, instrument, trace};
 
 use super::VALTREE_MAX_NODES;

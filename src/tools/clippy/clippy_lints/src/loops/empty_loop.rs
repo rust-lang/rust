@@ -2,7 +2,8 @@ use super::EMPTY_LOOP;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{is_in_panic_handler, is_no_std_crate};
 
-use rustc_hir::{Block, Expr, ItemKind, Node, find_attr};
+use rustc_attr_ir::find_attr;
+use rustc_hir::{Block, Expr, ItemKind, Node};
 use rustc_lint::LateContext;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, loop_block: &Block<'_>) {

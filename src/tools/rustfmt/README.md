@@ -134,8 +134,8 @@ language: rust
 before_script:
 - rustup component add rustfmt
 script:
-- cargo build
-- cargo test
+- cargo build --locked
+- cargo test --locked
 - cargo fmt --all -- --check
 ```
 
@@ -144,11 +144,11 @@ for more info.
 
 ## How to build and test
 
-`cargo build` to build.
+`cargo build --locked` to build.
 
-`cargo test` to run all tests.
+`cargo test --locked` to run all tests.
 
-To run rustfmt after this, use `cargo run --bin rustfmt -- filename`. See the
+To run rustfmt after this, use `cargo run --locked --bin rustfmt -- filename`. See the
 notes above on running rustfmt.
 
 

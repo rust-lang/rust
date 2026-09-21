@@ -4,7 +4,7 @@ use rustc_type_ir::data_structures::IndexMap;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
     self as ty, InferCtxtLike, Interner, PlaceholderConst, PlaceholderRegion, PlaceholderType,
-    Region, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    PredicateProxy, Region, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use tracing::debug;
 
@@ -183,7 +183,7 @@ where
         }
     }
 
-    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+    fn fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> P {
         if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
     }
 }
@@ -248,7 +248,7 @@ where
 
     fn fold_region(&mut self, r0: Region<I>) -> Region<I> {
         let r1 = match r0.kind() {
-            ty::ReVar(vid) => self.infcx.opportunistic_resolve_lt_var(vid),
+            ty::ReVar(vid) => self.infcx.shallow_resolve_region_var(vid),
             _ => r0,
         };
 

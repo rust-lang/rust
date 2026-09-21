@@ -4,7 +4,7 @@ use clippy_utils::is_lint_allowed;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_ast::ImplPolarity;
-use rustc_hir::attrs::LangItem;
+use rustc_attr_ir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{FieldDef, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};

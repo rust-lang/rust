@@ -4,7 +4,7 @@
 
 struct Thing<const N: usize>;
 
-type const A<const N: usize>: usize = N;
+const A<const N: usize>: usize = core::direct_const_arg!(N);
 
 fn f<const N: usize>() {
     let _: [u32; core::direct_const_arg!(_)] = [5; 5];

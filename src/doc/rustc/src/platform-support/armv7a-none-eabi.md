@@ -49,10 +49,10 @@ disabled as needed with `-C target-feature=(+/-)`.
 
 In general, the following four combinations are possible:
 
-- VFPv3-D16, target feature `+vfp3` and `-d32`
-- VFPv3-D32, target feature `+vfp3` and `+d32`
-- VFPv4-D16, target feature `+vfp4` and `-d32`
-- VFPv4-D32, target feature `+vfp4` and `+d32`
+- VFPv3-D16, target default
+- VFPv3-D32, target feature `+d32`
+- VFPv4-D16, llvm target feature `+vfp4d16`
+- VFPv4-D32, target feature `+vfp4`
 
 An Armv7-A processor may optionally include a NEON hardware unit which
 provides Single Instruction Multiple Data (SIMD) operations. The

@@ -434,7 +434,7 @@ fn expr_to_lit<'sess>(
                     let lit = MetaItemLit {
                         symbol: token_lit.symbol,
                         suffix: token_lit.suffix,
-                        kind: LitKind::Err(err.emit()),
+                        kind: LitKind::Err(err.emit_err()),
                         span: expr.span,
                     };
                     Ok(Some(lit))

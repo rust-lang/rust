@@ -1,14 +1,14 @@
-error: implementation of a `type const` must also be marked as `type const`
-  --> $DIR/type_const-only-in-trait.rs:11:5
+error: implementation of a `#[rustc_always_gca]` must have a `direct_const_arg!` RHS
+  --> $DIR/type_const-only-in-trait.rs:12:5
    |
 LL |     const NUM: usize = 42;
    |     ^^^^^^^^^^^^^^^^
    |
-note: trait declaration of const is marked as `type const`
-  --> $DIR/type_const-only-in-trait.rs:5:5
+note: trait declaration of const is marked as `#[rustc_always_gca]`
+  --> $DIR/type_const-only-in-trait.rs:6:5
    |
-LL |     type const NUM: usize;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |     const NUM: usize;
+   |     ^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

@@ -22,6 +22,7 @@ pub fn host_to_target_path(path: OsString) -> PathBuf {
     }
 }
 
+/// You probably want to use `prepare` instead to ensure that the file is fresh!
 pub fn tmp() -> PathBuf {
     let path =
         std::env::var_os("MIRI_TEMP").unwrap_or_else(|| std::env::temp_dir().into_os_string());

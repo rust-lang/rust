@@ -11,7 +11,7 @@ macro_rules! late_lint_methods {
             fn check_body_post(a: &rustc_hir::Body<'tcx>);
             fn check_crate();
             fn check_crate_post();
-            fn check_mod(a: &'tcx rustc_hir::Mod<'tcx>, b: rustc_hir::HirId);
+            fn check_mod(a: &'tcx rustc_hir::Mod<'tcx>, b: rustc_span::def_id::LocalModId);
             fn check_foreign_item(a: &'tcx rustc_hir::ForeignItem<'tcx>);
             fn check_item(a: &'tcx rustc_hir::Item<'tcx>);
             fn check_item_post(a: &'tcx rustc_hir::Item<'tcx>);

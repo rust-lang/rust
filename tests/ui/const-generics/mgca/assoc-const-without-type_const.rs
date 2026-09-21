@@ -6,9 +6,9 @@ pub trait Tr {
 }
 
 fn mk_array<T: Tr>(_x: T) -> [(); T::SIZE] {
-    //~^ ERROR: use of `const` in the type system not defined as `type const`
+    //~^ ERROR: use of `const` in the type system not marked as direct
     [(); T::SIZE]
-    //~^ ERROR: use of `const` in the type system not defined as `type const`
+    //~^ ERROR: use of `const` in the type system not marked as direct
 }
 
 fn main() {}

@@ -3,12 +3,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 extern size_t check_list_0(va_list ap);
 extern size_t check_list_1(va_list ap);
 extern size_t check_list_2(va_list ap);
 extern size_t check_list_copy_0(va_list ap);
 extern size_t check_list_i128(va_list ap);
+extern size_t check_list_f128(va_list ap);
 extern size_t check_varargs_0(int fixed, ...);
 extern size_t check_varargs_1(int fixed, ...);
 extern size_t check_varargs_2(int fixed, ...);
@@ -20,6 +22,9 @@ extern size_t run_test_variadic();
 extern size_t run_test_va_list_by_value();
 extern size_t run_test_va_list_by_pointer();
 extern size_t run_test_va_list_by_pointer_pointer();
+
+// Was the rust side compiled with f128 support?
+extern const int RUST_HAS_F128;
 
 int test_rust(size_t (*fn)(va_list), ...) {
     size_t ret = 0;
@@ -40,7 +45,41 @@ int main(int argc, char* argv[]) {
     assert(test_rust(check_list_copy_0, 6.28, 16, 'A', "Skip Me!", "Correct") == 0);
 
 #if defined(__SIZEOF_INT128__)
+
     assert(test_rust(check_list_i128, (__int128)-42, 0xAAAAAAAA, (unsigned __int128)-1) == 0);
+#endif
+
+    // Run the f128 test when __float128/_Float128 is defined or long double is IEEE f128.
+    // Use #define instead of typedef so that `#ifdef` can detect it.
+#if defined(__LDBL_MANT_DIG__) && __LDBL_MANT_DIG__ == 113
+#define f128 long double
+#elif defined(__SIZEOF_FLOAT128__)
+#ifdef __clang__
+#define f128 __float128
+#else
+#define f128 _Float128
+#endif
+#endif
+
+#ifdef f128
+    // construct f128::MAX.
+    union cvt128 {
+        struct {
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+            uint64_t hi, lo;
+#else
+            uint64_t lo, hi;
+#endif
+        } i;
+        f128 f;
+    };
+    union cvt128 f128_max;
+    f128_max.i.hi = 0x7ffeffffffffffff;
+    f128_max.i.lo = 0xffffffffffffffff;
+
+    if (RUST_HAS_F128) {
+        assert(test_rust(check_list_f128, (f128)-42.0, 0xAAAAAAAA, f128_max.f) == 0);
+    }
 #endif
 
     assert(check_varargs_0(0, 42, "Hello, World!") == 0);

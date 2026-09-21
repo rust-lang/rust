@@ -27,6 +27,9 @@ note: required because it appears within the type `Foo`
    |
 LL | struct Foo {
    |        ^^^
+LL |     x: u8,
+LL |     tail: A,
+   |     ------- required by this field
 note: required by an implicit `Sized` bound in `assert_sized`
   --> $DIR/extern-types-unsized.rs:19:17
    |
@@ -49,6 +52,9 @@ note: required because it appears within the type `Bar<A>`
    |
 LL | struct Bar<T: ?Sized> {
    |        ^^^
+LL |     x: u8,
+LL |     tail: T,
+   |     ------- required by this field
 note: required by an implicit `Sized` bound in `assert_sized`
   --> $DIR/extern-types-unsized.rs:19:17
    |
@@ -84,6 +90,9 @@ note: required because it appears within the type `Bar<A>`
    |
 LL | struct Bar<T: ?Sized> {
    |        ^^^
+LL |     x: u8,
+LL |     tail: T,
+   |     ------- required by this field
 note: required by an implicit `Sized` bound in `assert_sized`
   --> $DIR/extern-types-unsized.rs:19:17
    |

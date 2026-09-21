@@ -120,7 +120,7 @@ pub(crate) fn expand_include<'cx>(
     let path = match cx.sess.resolve_path(path.as_str(), sp) {
         Ok(path) => path,
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             return ExpandResult::Ready(DummyResult::any(sp, guar));
         }
     };
@@ -225,7 +225,7 @@ pub(crate) fn expand_include_str(
             Err(utf8err) => {
                 let mut err = cx.dcx().struct_span_err(sp, format!("`{path}` wasn't a utf-8 file"));
                 utf8_error(cx.source_map(), path.as_str(), None, &mut err, utf8err, &bytes[..]);
-                DummyResult::any(sp, err.emit())
+                DummyResult::any(sp, err.emit_err())
             }
         },
         Err(dummy) => dummy,
@@ -270,7 +270,7 @@ fn load_binary_file(
     let resolved_path = match cx.sess.resolve_path(original_path, macro_span) {
         Ok(path) => path,
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             return Err(DummyResult::any(macro_span, guar));
         }
     };
@@ -306,7 +306,7 @@ fn load_binary_file(
                     );
                 }
             }
-            let guar = err.emit();
+            let guar = err.emit_err();
             Err(DummyResult::any(macro_span, guar))
         }
     }

@@ -1,9 +1,7 @@
 //@compile-flags: -Zmiri-permissive-provenance
-#![feature(ptr_internals)]
 
 fn main() {
     into_raw();
-    into_unique();
     boxed_pair_to_vec();
 }
 
@@ -19,20 +17,6 @@ fn into_raw() {
         // Use original ptr again
         *(&mut *r) = 17;
         drop(Box::from_raw(r));
-    }
-}
-
-fn into_unique() {
-    unsafe {
-        let b = Box::new(4i32);
-        let u = Box::into_unique(b).0;
-
-        // "lose the tag"
-        let r = ((u.as_ptr() as usize) + 0) as *mut i32;
-        *(&mut *r) = 7;
-
-        // Use original ptr again.
-        drop(Box::from_raw(u.as_ptr()));
     }
 }
 

@@ -2,7 +2,6 @@ error[E0158]: constant pattern cannot depend on generic parameters
   --> $DIR/associated-const-type-parameter-pattern.rs:20:9
    |
 LL | pub trait Foo {
-   | -------------
 LL |     const X: EFoo;
    |     ------------- constant defined here
 ...
@@ -16,7 +15,6 @@ error[E0158]: constant pattern cannot depend on generic parameters
   --> $DIR/associated-const-type-parameter-pattern.rs:22:9
    |
 LL | pub trait Foo {
-   | -------------
 LL |     const X: EFoo;
    |     ------------- constant defined here
 ...
@@ -30,7 +28,6 @@ error[E0158]: constant pattern cannot depend on generic parameters
   --> $DIR/associated-const-type-parameter-pattern.rs:28:48
    |
 LL | pub trait Foo {
-   | -------------
 LL |     const X: EFoo;
    |     ------------- constant defined here
 ...
@@ -43,7 +40,6 @@ error[E0158]: constant pattern cannot depend on generic parameters
   --> $DIR/associated-const-type-parameter-pattern.rs:30:9
    |
 LL | pub trait Foo {
-   | -------------
 LL |     const X: EFoo;
    |     ------------- constant defined here
 ...

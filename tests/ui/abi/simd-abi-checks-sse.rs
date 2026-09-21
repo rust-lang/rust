@@ -9,7 +9,7 @@
 //@ dont-require-annotations: NOTE
 #![feature(no_core)]
 #![no_core]
-#![allow(improper_ctypes_definitions)]
+#![expect(improper_ctypes_definitions)]
 
 extern crate minicore;
 use minicore::simd::Simd;

@@ -16,7 +16,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefIdMap;
 use rustc_hir::definitions::{DefPathData, PerParentDisambiguatorsMap};
-use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
+use rustc_hir::intravisit::{self, InferKind, Visitor};
 use rustc_hir::{
     self as hir, AmbigArg, GenericArg, GenericParam, GenericParamKind, HirId, LifetimeKind, Node,
 };
@@ -25,9 +25,8 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor, Unnormalized};
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Ident, Span, bug, span_bug, sym};
 use tracing::{debug, debug_span, instrument};
 
 use crate::diagnostics;
@@ -2051,10 +2050,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 _ => None,
             },
             DefKind::AnonConst
-            | DefKind::AssocConst { .. }
+            | DefKind::AssocConst
             | DefKind::AssocFn
             | DefKind::Closure
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::ConstParam
             | DefKind::Ctor(..)
             | DefKind::ExternCrate
@@ -2828,7 +2827,7 @@ fn deny_non_region_late_bound(
             format!("late-bound {what} parameter not allowed on {where_}"),
         );
 
-        let guar = diag.emit_unless_delay(!tcx.features().non_lifetime_binders() || !first);
+        let guar = diag.emit_err_unless_delay(!tcx.features().non_lifetime_binders() || !first);
 
         first = false;
         *arg = ResolvedArg::Error(guar);

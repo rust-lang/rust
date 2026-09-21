@@ -2,6 +2,7 @@
 // typeck and codegen.
 
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
+use rustc_span::bug;
 
 use crate::mir;
 use crate::ty::{self, Ty};

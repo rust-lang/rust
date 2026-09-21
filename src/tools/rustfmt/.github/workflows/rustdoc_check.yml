@@ -23,4 +23,4 @@ jobs:
     - name: document rustfmt
       env:
         RUSTDOCFLAGS: --document-private-items --enable-index-page --show-type-layout --generate-link-to-definition -Zunstable-options -Dwarnings
-      run: cargo doc -Zskip-rustdoc-fingerprint --no-deps -p rustfmt-nightly -p rustfmt-config_proc_macro
+      run: cargo doc --locked -Zskip-rustdoc-fingerprint --no-deps -p rustfmt-nightly -p rustfmt-config_proc_macro

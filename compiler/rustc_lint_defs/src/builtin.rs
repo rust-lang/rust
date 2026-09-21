@@ -17,6 +17,7 @@ pub mod hardwired {
             // tidy-alphabetical-start
             AARCH64_SOFTFLOAT_NEON,
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
+            ALIGNED_FIELDS_IN_PACKED,
             AMBIGUOUS_ASSOCIATED_ITEMS,
             AMBIGUOUS_DERIVE_HELPERS,
             AMBIGUOUS_GLOB_IMPORTED_TRAITS,
@@ -54,6 +55,7 @@ pub mod hardwired {
             HIDDEN_GLOB_REEXPORTS,
             ILL_FORMED_ATTRIBUTE_INPUT,
             INCOMPLETE_INCLUDE,
+            INEFFECTIVE_UNSTABLE_REEXPORTS,
             INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
             INLINE_NO_SANITIZE,
             INVALID_DOC_ATTRIBUTES,
@@ -1266,9 +1268,9 @@ declare_lint! {
     /// See [RFC 401 (coercions)][rfc-401], [RFC 803 (type ascription)][rfc-803] and
     /// [RFC 3307 (remove type ascription)][rfc-3307] for historical context.
     ///
-    /// [rfc-401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
-    /// [rfc-803]: https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md
-    /// [rfc-3307]: https://github.com/rust-lang/rfcs/blob/master/text/3307-de-rfc-type-ascription.md
+    /// [rfc-401]: https://rust-lang.github.io/rfcs/0401-coercions.html
+    /// [rfc-803]: https://rust-lang.github.io/rfcs/0803-type-ascription.html
+    /// [rfc-3307]: https://rust-lang.github.io/rfcs/3307-de-rfc-type-ascription.html
     pub TRIVIAL_CASTS,
     Allow,
     "detects trivial casts which could be removed"
@@ -1301,9 +1303,9 @@ declare_lint! {
     /// See [RFC 401 (coercions)][rfc-401], [RFC 803 (type ascription)][rfc-803] and
     /// [RFC 3307 (remove type ascription)][rfc-3307] for historical context.
     ///
-    /// [rfc-401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
-    /// [rfc-803]: https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md
-    /// [rfc-3307]: https://github.com/rust-lang/rfcs/blob/master/text/3307-de-rfc-type-ascription.md
+    /// [rfc-401]: https://rust-lang.github.io/rfcs/0401-coercions.html
+    /// [rfc-803]: https://rust-lang.github.io/rfcs/0803-type-ascription.html
+    /// [rfc-3307]: https://rust-lang.github.io/rfcs/3307-de-rfc-type-ascription.html
     pub TRIVIAL_NUMERIC_CASTS,
     Allow,
     "detects trivial casts of numeric types which could be removed"
@@ -1348,7 +1350,7 @@ declare_lint! {
     /// Note that support for this is only available on the nightly channel.
     /// See [RFC 1977] for more details, as well as the [Cargo documentation].
     ///
-    /// [RFC 1977]: https://github.com/rust-lang/rfcs/blob/master/text/1977-public-private-dependencies.md
+    /// [RFC 1977]: https://rust-lang.github.io/rfcs/1977-public-private-dependencies.html
     /// [Cargo documentation]: https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#public-dependency
     pub EXPORTED_PRIVATE_DEPENDENCIES,
     Warn,
@@ -1791,7 +1793,7 @@ declare_lint! {
     /// that it produces. See [RFC 2115] for historical context, and [issue
     /// #44752] for more details.
     ///
-    /// [RFC 2115]: https://github.com/rust-lang/rfcs/blob/master/text/2115-argument-lifetimes.md
+    /// [RFC 2115]: https://rust-lang.github.io/rfcs/2115-argument-lifetimes.html
     /// [issue #44752]: https://github.com/rust-lang/rust/issues/44752
     pub SINGLE_USE_LIFETIMES,
     Allow,
@@ -2092,7 +2094,7 @@ declare_lint! {
     /// [`while let`]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#predicate-pattern-loops
     /// [`let`]: https://doc.rust-lang.org/reference/statements.html#let-statements
     /// [`loop`]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#infinite-loops
-    /// [RFC 2086]: https://github.com/rust-lang/rfcs/blob/master/text/2086-allow-if-let-irrefutables.md
+    /// [RFC 2086]: https://rust-lang.github.io/rfcs/2086-allow-if-let-irrefutables.html
     pub IRREFUTABLE_LET_PATTERNS,
     Warn,
     "detects irrefutable patterns in `if let` and `while let` statements"
@@ -2362,7 +2364,7 @@ declare_lint! {
     /// > fn render<'r>(_: Ref<'r, dyn std::fmt::Display + 'static>) {}
     /// > ```
     ///
-    /// [RFC 2093]: https://github.com/rust-lang/rfcs/blob/master/text/2093-infer-outlives.md
+    /// [RFC 2093]: https://rust-lang.github.io/rfcs/2093-infer-outlives.html
     /// [TOLD]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
     pub EXPLICIT_OUTLIVES_REQUIREMENTS,
     Allow,
@@ -2432,7 +2434,7 @@ declare_lint! {
     ///
     /// [issue #57644]: https://github.com/rust-lang/rust/issues/57644
     /// [type aliases]: https://doc.rust-lang.org/reference/items/type-aliases.html#type-aliases
-    /// [RFC 2338]: https://github.com/rust-lang/rfcs/blob/master/text/2338-type-alias-enum-variants.md
+    /// [RFC 2338]: https://rust-lang.github.io/rfcs/2338-type-alias-enum-variants.html
     /// [qualified path]: https://doc.rust-lang.org/reference/paths.html#qualified-paths
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub AMBIGUOUS_ASSOCIATED_ITEMS,
@@ -2641,7 +2643,7 @@ declare_lint! {
     /// [`unsafe fn`]: https://doc.rust-lang.org/reference/unsafe-functions.html
     /// [`unsafe` block]: https://doc.rust-lang.org/reference/expressions/block-expr.html#unsafe-blocks
     /// [unsafe]: https://doc.rust-lang.org/reference/unsafety.html
-    /// [RFC #2585]: https://github.com/rust-lang/rfcs/blob/master/text/2585-unsafe-block-in-unsafe-fn.md
+    /// [RFC #2585]: https://rust-lang.github.io/rfcs/2585-unsafe-block-in-unsafe-fn.html
     /// [issue #71668]: https://github.com/rust-lang/rust/issues/71668
     pub UNSAFE_OP_IN_UNSAFE_FN,
     Allow,
@@ -2814,6 +2816,39 @@ declare_lint! {
     pub USELESS_DEPRECATED,
     Deny,
     "detects deprecation attributes with no effect",
+}
+
+declare_lint! {
+    /// The `ineffective_unstable_reexports` lint detects `#[unstable]`
+    /// attributes on re-exports where the attribute does not make the
+    /// re-exported path unstable.
+    ///
+    /// ### Example
+    ///
+    #[cfg_attr(bootstrap, doc = "```rust,ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// #![feature(staged_api)]
+    /// #![stable(feature = "test", since = "1.0.0")]
+    ///
+    /// #[stable(feature = "test", since = "1.0.0")]
+    /// pub struct S;
+    ///
+    /// #[unstable(feature = "reexport", issue = "none")]
+    /// pub use self::S as T;
+    ///
+    /// fn main() {}
+    #[doc = "```"]
+    ///
+    #[cfg_attr(not(bootstrap), doc = "{{produces}}")]
+    ///
+    /// ### Explanation
+    ///
+    /// `#[unstable]` on a re-export does not make a stable path unstable
+    /// re-exports inside unstable modules are already on an unstable path
+    pub INEFFECTIVE_UNSTABLE_REEXPORTS,
+    Deny,
+    "detects ineffective `#[unstable]` attributes on re-exports",
+    @feature_gate = staged_api;
 }
 
 declare_lint! {
@@ -4041,8 +4076,9 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,ignore (needs CLI args, platform-specific)
-    /// #[warn(linker_messages)]
-    /// extern "C" {
+    /// #![warn(linker_messages)]
+    ///
+    /// unsafe extern "C" {
     ///   fn foo();
     /// }
     /// fn main () { unsafe { foo(); } }
@@ -4077,7 +4113,8 @@ declare_lint! {
     // Linker messages don't live up to the high standard people expect of rustc's errors.
     // Prevent `-D warnings` from applying to it.
     // It's still possible to pass `-D linker-messages` specifically.
-    ignore_deny_warnings
+    ignore_deny_warnings,
+    crate_level_only
 }
 
 declare_lint! {
@@ -4086,7 +4123,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,ignore (needs CLI args, platform-specific)
-    /// #[warn(linker_info)]
+    /// #![warn(linker_info)]
+    ///
     /// fn main () {}
     /// ```
     ///
@@ -4111,7 +4149,8 @@ declare_lint! {
     /// <https://github.com/rust-lang/rust/issues/136096>.
     pub LINKER_INFO,
     Allow,
-    "linker warnings known to be informational-only and not indicative of a problem"
+    "linker warnings known to be informational-only and not indicative of a problem",
+    crate_level_only
 }
 
 declare_lint! {
@@ -5789,4 +5828,33 @@ declare_lint! {
     Deny,
     "duplicate tools found in crate-level `#[register_tools]` directives",
     @feature_gate = register_tool;
+}
+
+declare_lint! {
+    /// The `aligned_fields_in_packed` lint detects fields with `align` representation hints
+    /// inside `repr(C)` types with `packed` representation hint.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #[repr(C, align(16))]
+    /// struct Aligned(i32);
+    ///
+    /// #[repr(C, packed)] // error!
+    /// struct Packed(Aligned);
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The behavior of this combination of hints is inconsistent across C compilers. The layout
+    /// computed for these types by Rust may thus not match the layout actually used by C.
+    /// Specifically, Rust always follows the GCC convention, which makes it incompatible with MSVC
+    /// for these types. This may change in the future for targets where GCC is not the default C
+    /// compiler.
+    pub ALIGNED_FIELDS_IN_PACKED,
+    Deny,
+    "`repr(C, align)` types nested inside `repr(C, packed)` types \
+    do not always have a C-compatible layout",
 }

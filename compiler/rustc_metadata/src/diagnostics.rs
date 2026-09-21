@@ -2,7 +2,7 @@ use std::io::Error;
 use std::path::{Path, PathBuf};
 
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, msg};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, msg};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
@@ -305,8 +305,8 @@ pub(crate) struct MultipleCandidates {
     pub candidates: Vec<PathBuf>,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for MultipleCandidates {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for MultipleCandidates {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(
             dcx,
             level,
@@ -418,9 +418,9 @@ pub(crate) struct InvalidMetadataFiles {
     pub crate_rejections: Vec<String>,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for InvalidMetadataFiles {
+impl Diagnostic<'_> for InvalidMetadataFiles {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(
             dcx,
             level,
@@ -450,9 +450,9 @@ pub(crate) struct CannotFindCrate {
     pub is_tier_3: bool,
 }
 
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
+impl Diagnostic<'_> for CannotFindCrate {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag =
             Diag::new(dcx, level, msg!("can't find crate for `{$crate_name}`{$add_info}"));
         diag.arg("crate_name", self.crate_name);

@@ -1,7 +1,9 @@
+use clippy_config::Conf;
+use clippy_utils::msrvs::Msrv;
 use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::{is_in_const_context, is_no_std_crate, sym};
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
+use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 
 mod custom_abs;
 mod expm1;
@@ -102,16 +104,24 @@ declare_clippy_lint! {
     "usage of sub-optimal floating point operations"
 }
 
-declare_lint_pass!(FloatingPointArithmetic => [IMPRECISE_FLOPS, SUBOPTIMAL_FLOPS]);
+impl_lint_pass!(FloatingPointArithmetic => [IMPRECISE_FLOPS, SUBOPTIMAL_FLOPS]);
+
+pub struct FloatingPointArithmetic {
+    msrv: Msrv,
+}
+
+impl FloatingPointArithmetic {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self { msrv: conf.msrv.into() }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        // All of these operations are currently not const and are in std.
-        if is_in_const_context(cx) {
-            return;
-        }
-
         if let ExprKind::MethodCall(path, receiver, args, _) = expr.kind {
+            if is_in_const_context(cx) {
+                return; // sqrt, powi, powf, ln, log: still not const
+            }
             let recv_ty = cx.typeck_results().expr_ty(receiver);
 
             if recv_ty.is_floating_point() && !is_no_std_crate(cx) && cx.ty_based_def(expr).opt_parent(cx).is_impl(cx) {
@@ -127,11 +137,11 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
         } else {
             if !is_no_std_crate(cx) {
                 expm1::check(cx, expr);
-                mul_add::check(cx, expr);
-                custom_abs::check(cx, expr);
                 log_division::check(cx, expr);
+                mul_add::check(cx, expr, self.msrv);
+                custom_abs::check(cx, expr, self.msrv);
             }
-            radians::check(cx, expr);
+            radians::check(cx, expr, self.msrv);
         }
     }
 }

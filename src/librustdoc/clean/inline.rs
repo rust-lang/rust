@@ -150,7 +150,7 @@ pub(crate) fn try_inline(
                 clean::StaticItem(build_static(cx, did, cx.tcx.is_mutable_static(did)))
             })
         }
-        Res::Def(DefKind::Const { .. }, did) => {
+        Res::Def(DefKind::Const, did) => {
             record_extern_fqn(cx, did, ItemType::Constant);
             cx.with_param_env(did, |cx| {
                 let ct = build_const_item(cx, did);
@@ -703,7 +703,7 @@ fn should_ignore_def_kind(kind: DefKind) -> bool {
             | DefKind::Variant
             | DefKind::Mod
             | DefKind::Static { .. }
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::Macro(_)
             | DefKind::Use
     )

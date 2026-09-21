@@ -4,14 +4,16 @@
 #![expect(incomplete_features)]
 
 trait Tr {
-    type const SIZE: usize;
+    #[rustc_always_gca]
+    const SIZE: usize;
 }
 
 struct T;
 
 impl Tr for T {
-    type const SIZE: usize;
+    const SIZE: usize;
     //~^ ERROR associated constant in `impl` without body
+    //~| ERROR implementation of a `#[rustc_always_gca]` must have a `direct_const_arg!` RHS
 }
 
 fn main() {}

@@ -47,7 +47,6 @@ note: required by a bound in `join`
   --> $DIR/issue-79636-1.rs:13:13
    |
 LL | fn join<MOuter, MInner, A>(outer: MOuter) -> MOuter::Wrapped<A>
-   |    ---- required by a bound in this function
 LL | where
 LL |     MOuter: Monad<Unwrapped = MInner>,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `join`

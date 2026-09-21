@@ -70,10 +70,5 @@ LL | |     );
    = note: the struct `Cell<T>` is invariant over the parameter `T`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-help: the following changes may resolve your lifetime errors
-   |
-   = help: add bound `'a: 'c`
-   = help: add bound `'b: 'c`
-
 error: aborting due to 2 previous errors
 

@@ -9,6 +9,7 @@ LL |         type Ty = Option<impl Sized>;
 note: required by a bound in `compare_ty::Trait::Ty`
   --> $DIR/in-assoc-type-unconstrained.rs:5:31
    |
+LL |     trait Trait {
 LL |         type Ty: IntoIterator<Item = ()>;
    |                               ^^^^^^^^^ required by this bound in `Trait::Ty`
 

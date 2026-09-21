@@ -6,7 +6,8 @@
 fn takes_array<const A: [u32; 3]>() {}
 
 trait Trait {
-    type const ASSOC: u32;
+    #[rustc_always_gca]
+    const ASSOC: u32;
 }
 
 fn generic_caller<T: Trait, const N: u32>() {

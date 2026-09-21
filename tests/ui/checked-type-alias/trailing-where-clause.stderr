@@ -15,7 +15,6 @@ note: required by a bound in `Alias`
   --> $DIR/trailing-where-clause.rs:8:13
    |
 LL | type Alias<T> = T
-   |      ----- required by a bound in this type alias
 LL | where
 LL |     String: From<T>;
    |             ^^^^^^^ required by this bound in `Alias`

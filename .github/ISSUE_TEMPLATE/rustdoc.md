@@ -36,7 +36,7 @@ For diagnostics, please provide a mockup of the desired output in a code block.
 <!--
 * rustdoc console output
 * browser screenshot of generated html
-* rustdoc json (prettify by running through `jq` or running thorugh an online formatter)
+* rustdoc json (prettify by running through `jq` or running through an online formatter)
 -->
 ```console
 <code>

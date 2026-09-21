@@ -4,7 +4,7 @@
 #![feature(generic_const_exprs)]
 #![expect(incomplete_features)]
 
-type const A: u8 = A;
-//~^ ERROR overflow normalizing the const alias `A`
+const A: u8 = core::direct_const_arg!(A);
+//~^ ERROR cycle detected when computing the type-level value for `A`
 
 fn main() {}

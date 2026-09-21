@@ -74,6 +74,7 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
     "//@ lldb",
     "//@ cdb",
     "//@ normalize-stderr",
+    "//@ revisions",
 ];
 
 fn generate_problems<'a>(
@@ -342,6 +343,11 @@ fn check_file_style(base_path: &Path, check: &mut RunningCheck, file: &Path, con
             });
 
     if contents.is_empty() {
+        // __init__.py files are expected to be empty in many cases. Early returning prevents
+        // extraneous errors (e.g. leading/trailing newline).
+        if file.file_name().is_some_and(|x| x == "__init__.py") {
+            return;
+        }
         check.error(format!("{}: empty file", file.display()));
     }
 

@@ -88,11 +88,22 @@ pub fn fmaf16(x: f16, y: f16, z: f16) -> f16 {
     // create a U21.43 fixed-point value. At the maximum exponent, there are five zeros before
     // the explicit leading 1 (intentional so this truncates to the final repr).
     if let Some(mshift) = mexp.checked_sub(5) {
-        debug_assert_eq!(
-            unbounded_shr_u64(m64, 64 - mshift),
-            0,
-            "data shifted out {m} {mshift}"
-        );
+        cfg_select_nofmt! {
+            feature = "compiler-builtins" => {
+                // Avoid formatting calls to `core` when building as compiler-builtins
+                debug_assert!(
+                    unbounded_shr_u64(m64, 64 - mshift) == 0,
+                    "data shifted out"
+                );
+            }
+            _ => {
+                debug_assert_eq!(
+                    unbounded_shr_u64(m64, 64 - mshift),
+                    0,
+                    "data shifted out {m} {mshift}"
+                );
+            }
+        }
         m64 <<= mshift;
     } else {
         // The lower few bits here would be on the order of 2^-43, which is too small to show up

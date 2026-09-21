@@ -1,7 +1,7 @@
 [relabel]
 allow-unauthenticated = [
     "A-*", "C-*", "D-*", "E-*", "I-*", "L-*", "P-*", "S-*", "T-*",
-    "good first issue", "beta-nominated"
+    "good first issue", "beta-nominated", "llm-assisted"
 ]
 
 # Allows shortcuts like `@rustbot ready`
@@ -98,7 +98,6 @@ users_on_vacation = [
     "Alexendoo",
     "y21",
     "ada4a",
-    "samueltardieu"
 ]
 
 [assign.owners]

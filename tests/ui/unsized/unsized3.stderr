@@ -59,6 +59,8 @@ note: required because it appears within the type `S<X>`
    |
 LL | struct S<X: ?Sized> {
    |        ^
+LL |     x: X,
+   |     ---- required by this field
 note: required by an implicit `Sized` bound in `f5`
   --> $DIR/unsized3.rs:24:7
    |
@@ -87,6 +89,8 @@ note: required because it appears within the type `S<X>`
    |
 LL | struct S<X: ?Sized> {
    |        ^
+LL |     x: X,
+   |     ---- required by this field
    = note: only the last element of a tuple may have a dynamically sized type
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
@@ -107,6 +111,8 @@ note: required because it appears within the type `S<X>`
    |
 LL | struct S<X: ?Sized> {
    |        ^
+LL |     x: X,
+   |     ---- required by this field
    = note: required because it appears within the type `({integer}, S<X>)`
    = note: tuples must have a statically known size to be initialized
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -130,6 +136,8 @@ note: required because it appears within the type `S<X>`
    |
 LL | struct S<X: ?Sized> {
    |        ^
+LL |     x: X,
+   |     ---- required by this field
    = note: required because it appears within the type `({integer}, S<X>)`
 note: required by an implicit `Sized` bound in `f5`
   --> $DIR/unsized3.rs:24:7

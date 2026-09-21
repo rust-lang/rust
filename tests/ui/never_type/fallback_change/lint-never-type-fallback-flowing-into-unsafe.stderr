@@ -102,6 +102,8 @@ LL |             S(marker::PhantomData).create_out_of_thin_air()
 error: never type fallback affects this call to an `unsafe` function
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:136:19
    |
+LL |     macro_rules! msg_send {
+LL |         () => {
 LL |             match send_message::<_ /* ?0 */>() {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
@@ -109,7 +111,6 @@ LL |         msg_send!();
    |         ----------- in this macro invocation
    |
    = help: specify the type explicitly
-   = note: this error originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: the type `!` does not permit zero-initialization
   --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:9:18

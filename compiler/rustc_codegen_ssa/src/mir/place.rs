@@ -3,12 +3,12 @@ use std::ops::Deref as _;
 use rustc_abi::{
     Align, BackendRepr, FieldIdx, FieldsShape, Size, TagEncoding, VariantIdx, Variants,
 };
+use rustc_middle::mir;
 use rustc_middle::mir::PlaceTy;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_middle::{bug, mir};
-use rustc_span::DUMMY_SP;
+use rustc_span::{DUMMY_SP, bug};
 use tracing::{debug, instrument};
 
 use super::operand::OperandValue;

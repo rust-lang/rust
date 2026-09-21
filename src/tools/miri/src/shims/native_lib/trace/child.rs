@@ -83,8 +83,7 @@ impl Supervisor {
                     .map(move |i| start.strict_add(i.strict_mul(page_size)))
             })
             .collect();
-        let raw_stack_ptr: *mut [u8; CALLBACK_STACK_SIZE] =
-            Box::leak(Box::new([0u8; CALLBACK_STACK_SIZE])).as_mut_ptr().cast();
+        let raw_stack_ptr: *mut [u8; CALLBACK_STACK_SIZE] = Box::into_raw(Box::new([0; _]));
         let stack_ptr = raw_stack_ptr.expose_provenance();
         let start_info = StartFfiInfo { page_ptrs, stack_ptr };
 

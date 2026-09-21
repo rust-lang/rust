@@ -1,4 +1,5 @@
 //@only-target: apple # `pthread_cond_timedwait_relative_np` is a non-standard extension
+//@run-native
 
 use std::time::Instant;
 
@@ -30,9 +31,13 @@ fn main() {
             libc::ETIMEDOUT
         );
         let elapsed_time = current_time.elapsed().as_millis();
-        // This is actually deterministic (since isolation remains enabled),
+        // In Miri this is actually deterministic (since isolation remains enabled),
         // but can change slightly with Rust updates.
-        assert!(90 <= elapsed_time && elapsed_time <= 110);
+        let upper_bound = if cfg!(miri) { 110 } else { 500 };
+        assert!(
+            100 <= elapsed_time && elapsed_time <= upper_bound,
+            "came back after {elapsed_time} ms"
+        );
 
         assert_eq!(libc::pthread_mutex_unlock(&mut mutex), 0);
         assert_eq!(libc::pthread_mutex_destroy(&mut mutex), 0);

@@ -2,8 +2,8 @@ use std::assert_matches;
 
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_middle::bug;
 use rustc_middle::ty::{self, CanonicalUserType, TyCtxt};
+use rustc_span::bug;
 use tracing::debug;
 
 /// Looks up the type associated with this hir-id and applies the

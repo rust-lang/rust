@@ -141,7 +141,7 @@ impl<const REPLACEMENT_ALLOWED: bool> DisallowedPath<REPLACEMENT_ALLOWED> {
         &self.path.node
     }
 
-    pub fn diag_amendment(&self, span: Span) -> impl FnOnce(&mut Diag<'_, ()>) {
+    pub fn diag_amendment(&self, span: Span) -> impl FnOnce(&mut Diag<'_>) {
         move |diag| {
             if let Some(replacement) = &self.replacement {
                 diag.span_suggestion(
@@ -841,8 +841,7 @@ impl SourceItemOrderingWithinModuleItemGroupings {
                         .map(|(x, _)| &**x)
                         .collect::<Vec<_>>();
                     let suggestion = find_closest_match(&grouping.node, &names)
-                        .map(|s| format!(" perhaps you meant `{s}`?"))
-                        .unwrap_or_default();
+                        .map_or_default(|s| format!(" perhaps you meant `{s}`?"));
                     let names = names.iter().map(|s| format!("`{s}`")).join(", ");
                     sess.dcx().span_err(grouping.span, format!(
                         "unknown ordering group: `{}` was not specified in `module-items-ordered-within-groupings`,{suggestion} expected one of: {names}",

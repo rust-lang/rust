@@ -1,14 +1,14 @@
-error: expected pattern, found `$`
+error: expected type, found `$`
   --> $DIR/issue-116781.rs:4:16
    |
 LL |     field: fn(($),),
-   |                ^ expected pattern
+   |                ^ expected type
 
-error: expected pattern, found `$`
+error: expected type, found `$`
   --> $DIR/issue-116781.rs:4:16
    |
 LL |     field: fn(($),),
-   |                ^ expected pattern
+   |                ^ expected type
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

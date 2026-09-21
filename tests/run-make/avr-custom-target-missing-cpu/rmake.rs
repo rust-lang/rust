@@ -2,6 +2,7 @@
 // Make sure that reports the normal missing-CPU diagnostic instead of ICEing
 //
 //@ needs-llvm-components: avr
+//@ ignore-backends: gcc
 
 use run_make_support::rustc;
 

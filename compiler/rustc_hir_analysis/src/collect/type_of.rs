@@ -2,13 +2,12 @@ use core::ops::ControlFlow;
 
 use rustc_errors::{Applicability, StashKey, Suggestions};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg, HirId};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_types_for_suggestion};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefiningScopeKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Ident, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, bug, span_bug};
 use tracing::instrument;
 
 use super::{HirPlaceholderCollector, ItemCtxt, bad_placeholder};
@@ -257,10 +256,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             GenericParamKind::Const { ty, .. } => {
                 let lowered_ty = icx.lower_ty(ty);
                 if !tcx.features().generic_const_parameter_types() && lowered_ty.has_param() {
-                    let guar = tcx
-                        .dcx()
-                        .create_err(ParamInTyOfConstParam { span: ty.span, ty: lowered_ty })
-                        .emit();
+                    let guar =
+                        tcx.dcx().emit_err(ParamInTyOfConstParam { span: ty.span, ty: lowered_ty });
                     Ty::new_error(tcx, guar)
                 } else {
                     lowered_ty
@@ -544,7 +541,7 @@ fn infer_placeholder_type<'tcx>(
                 }
             }
 
-            diag.emit()
+            diag.emit_err()
         });
     Ty::new_error(tcx, guar)
 }

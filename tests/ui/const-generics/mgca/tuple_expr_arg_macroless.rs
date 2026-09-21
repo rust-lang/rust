@@ -9,7 +9,8 @@
 #![expect(incomplete_features)]
 
 trait Trait {
-    type const ASSOC: u32;
+    #[rustc_always_gca]
+    const ASSOC: u32;
 }
 
 fn takes_tuple<const A: (u32, u32)>() {}

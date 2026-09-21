@@ -22,9 +22,8 @@ use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
-use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
-use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, bug, span_bug, sym};
 use rustc_structures::CrateType;
 use rustc_symbol_mangling::{
     mangle_internal_symbol, mangle_offload_export, symbol_name_for_instance_in_crate,
@@ -36,9 +35,7 @@ use tracing::debug;
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
-use crate::builder::gpu_offload::{
-    self, OffloadKernelDims, declare_omp_get_num_devices, register_offload,
-};
+use crate::builder::gpu_offload::{self, OffloadKernelDims, declare_omp_get_num_devices};
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::diagnostics::{
@@ -55,6 +52,12 @@ fn call_simple_intrinsic<'ll, 'tcx>(
     name: Symbol,
     args: &[OperandRef<'tcx, &'ll Value>],
 ) -> Option<&'ll Value> {
+    let llvm_version = crate::llvm_util::get_version();
+    // minimum/maximum were broken for f64/f128 before
+    // <https://github.com/llvm/llvm-project/commit/56385af687c3a7a1f67716fb3f819336789a8cab>.
+    // We use the fallback body there.
+    let fixed_minmax = llvm_version >= (23, 0, 0);
+
     let (base_name, type_params): (&'static str, &[&'ll Type]) = match name {
         sym::sqrtf16 => ("llvm.sqrt", &[bx.type_f16()]),
         sym::sqrtf32 => ("llvm.sqrt", &[bx.type_f32()]),
@@ -83,18 +86,14 @@ fn call_simple_intrinsic<'ll, 'tcx>(
 
         sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
         sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
-        // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
-        // when llvm/llvm-project#{139380,139381,140445} are fixed.
-        //sym::minimumf64 => ("llvm.minimum", &[bx.type_f64()]),
-        //sym::minimumf128 => ("llvm.minimum", &[cx.type_f128()]),
-        //
+        sym::minimumf64 if fixed_minmax => ("llvm.minimum", &[bx.type_f64()]),
+        sym::minimumf128 if fixed_minmax => ("llvm.minimum", &[bx.type_f128()]),
+
         sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
         sym::maximumf32 => ("llvm.maximum", &[bx.type_f32()]),
-        // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
-        // when llvm/llvm-project#{139380,139381,140445} are fixed.
-        //sym::maximumf64 => ("llvm.maximum", &[bx.type_f64()]),
-        //sym::maximumf128 => ("llvm.maximum", &[cx.type_f128()]),
-        //
+        sym::maximumf64 if fixed_minmax => ("llvm.maximum", &[bx.type_f64()]),
+        sym::maximumf128 if fixed_minmax => ("llvm.maximum", &[bx.type_f128()]),
+
         sym::copysignf16 => ("llvm.copysign", &[bx.type_f16()]),
         sym::copysignf32 => ("llvm.copysign", &[bx.type_f32()]),
         sym::copysignf64 => ("llvm.copysign", &[bx.type_f64()]),
@@ -231,11 +230,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
             sym::offload => {
                 if tcx.sess.opts.unstable_opts.offload.is_empty() {
-                    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutEnable);
+                    let _ = tcx.dcx().emit_err(OffloadWithoutEnable);
                 }
 
                 if tcx.sess.lto() != rustc_session::config::Lto::Fat {
-                    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutFatLTO);
+                    let _ = tcx.dcx().emit_err(OffloadWithoutFatLTO);
                 }
 
                 codegen_offload(self, tcx, instance, args);
@@ -245,7 +244,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             sym::offload_get_num_devices => {
                 let (fn_decl, fn_ty) = declare_omp_get_num_devices(self.cx);
 
-                let llval = self.call(fn_ty, None, None, fn_decl, &[], None, None);
+                let llval =
+                    self.call(fn_ty, None, None, fn_decl, ReturnSlot::Direct, &[], None, None);
 
                 return IntrinsicResult::Operand(OperandValue::Immediate(llval));
             }
@@ -337,6 +337,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     Primitive::Float(Float::F16) => {
                         bug!("the va_arg intrinsic does not support `f16`")
                     }
+                    Primitive::Float(Float::F16B) => {
+                        bug!("the va_arg intrinsic does not support `f16b`")
+                    }
                     Primitive::Float(Float::F32) => {
                         // c_double is actually f32 on avr.
                         if self.cx().sess().target.arch != Arch::Avr {
@@ -347,12 +350,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         // 64-bit floats are always OK.
                     }
                     Primitive::Float(Float::F128) => {
-                        // FIXME(f128) figure out whether we should support this.
-                        bug!("the va_arg intrinsic does not support `f128`")
+                        // Supported on some targets, especially where long double is IEEE f128.
                     }
                 }
 
-                emit_va_arg(self, args[0], result_layout.ty)
+                emit_va_arg(self, args[0], result_layout)
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
@@ -1354,13 +1356,13 @@ fn catch_unwind_intrinsic<'ll, 'tcx>(
 ) -> &'ll Value {
     if !bx.sess().panic_strategy().unwinds() {
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
-        bx.call(try_func_ty, None, None, try_func, &[data], None, None);
+        bx.call(try_func_ty, None, None, try_func, ReturnSlot::Direct, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
         bx.const_bool(false)
-    } else if wants_msvc_seh(bx.sess()) {
+    } else if wants_msvc_seh(&bx.sess().target) {
         codegen_msvc_try(bx, try_func, data, catch_func)
-    } else if wants_wasm_eh(bx.sess()) {
+    } else if wants_wasm_eh(&bx.sess().target) {
         codegen_wasm_try(bx, try_func, data, catch_func)
     } else {
         codegen_gnu_try(bx, try_func, data, catch_func)
@@ -1452,7 +1454,18 @@ fn codegen_msvc_try<'ll, 'tcx>(
         let ptr_align = bx.tcx().data_layout.pointer_align().abi;
         let slot = bx.alloca(ptr_size, ptr_align);
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
-        bx.invoke(try_func_ty, None, None, try_func, &[data], normal, catchswitch, None, None);
+        bx.invoke(
+            try_func_ty,
+            None,
+            None,
+            try_func,
+            ReturnSlot::Direct,
+            &[data],
+            normal,
+            catchswitch,
+            None,
+            None,
+        );
 
         bx.switch_to_block(normal);
         bx.ret(bx.const_bool(false));
@@ -1500,7 +1513,16 @@ fn codegen_msvc_try<'ll, 'tcx>(
         let funclet = bx.catch_pad(cs, &[tydesc, flags, slot]);
         let ptr = bx.load(bx.type_ptr(), slot, ptr_align);
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
-        bx.call(catch_ty, None, None, catch_func, &[data, ptr], Some(&funclet), None);
+        bx.call(
+            catch_ty,
+            None,
+            None,
+            catch_func,
+            ReturnSlot::Direct,
+            &[data, ptr],
+            Some(&funclet),
+            None,
+        );
         bx.catch_ret(&funclet, caught);
 
         // The flag value of 64 indicates a "catch-all".
@@ -1508,7 +1530,16 @@ fn codegen_msvc_try<'ll, 'tcx>(
         let flags = bx.const_i32(64);
         let null = bx.const_null(bx.type_ptr());
         let funclet = bx.catch_pad(cs, &[null, flags, null]);
-        bx.call(catch_ty, None, None, catch_func, &[data, null], Some(&funclet), None);
+        bx.call(
+            catch_ty,
+            None,
+            None,
+            catch_func,
+            ReturnSlot::Direct,
+            &[data, null],
+            Some(&funclet),
+            None,
+        );
         bx.catch_ret(&funclet, caught);
 
         bx.switch_to_block(caught);
@@ -1517,7 +1548,16 @@ fn codegen_msvc_try<'ll, 'tcx>(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
+    let ret = bx.call(
+        llty,
+        None,
+        None,
+        llfn,
+        ReturnSlot::Direct,
+        &[try_func, data, catch_func],
+        None,
+        None,
+    );
     ret
 }
 
@@ -1564,7 +1604,18 @@ fn codegen_wasm_try<'ll, 'tcx>(
         //   }
         //
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
-        bx.invoke(try_func_ty, None, None, try_func, &[data], normal, catchswitch, None, None);
+        bx.invoke(
+            try_func_ty,
+            None,
+            None,
+            try_func,
+            ReturnSlot::Direct,
+            &[data],
+            normal,
+            catchswitch,
+            None,
+            None,
+        );
 
         bx.switch_to_block(normal);
         bx.ret(bx.const_bool(false));
@@ -1580,7 +1631,16 @@ fn codegen_wasm_try<'ll, 'tcx>(
         let _sel = bx.call_intrinsic("llvm.wasm.get.ehselector", &[], &[funclet.cleanuppad()]);
 
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
-        bx.call(catch_ty, None, None, catch_func, &[data, ptr], Some(&funclet), None);
+        bx.call(
+            catch_ty,
+            None,
+            None,
+            catch_func,
+            ReturnSlot::Direct,
+            &[data, ptr],
+            Some(&funclet),
+            None,
+        );
         bx.catch_ret(&funclet, caught);
 
         bx.switch_to_block(caught);
@@ -1589,7 +1649,16 @@ fn codegen_wasm_try<'ll, 'tcx>(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
+    let ret = bx.call(
+        llty,
+        None,
+        None,
+        llfn,
+        ReturnSlot::Direct,
+        &[try_func, data, catch_func],
+        None,
+        None,
+    );
     ret
 }
 
@@ -1630,7 +1699,18 @@ fn codegen_gnu_try<'ll, 'tcx>(
         let data = llvm::get_param(bx.llfn(), 1);
         let catch_func = llvm::get_param(bx.llfn(), 2);
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
-        bx.invoke(try_func_ty, None, None, try_func, &[data], then, catch, None, None);
+        bx.invoke(
+            try_func_ty,
+            None,
+            None,
+            try_func,
+            ReturnSlot::Direct,
+            &[data],
+            then,
+            catch,
+            None,
+            None,
+        );
 
         bx.switch_to_block(then);
         bx.ret(bx.const_bool(false));
@@ -1648,13 +1728,22 @@ fn codegen_gnu_try<'ll, 'tcx>(
         bx.add_clause(vals, tydesc);
         let ptr = bx.extract_value(vals, 0);
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
-        bx.call(catch_ty, None, None, catch_func, &[data, ptr], None, None);
+        bx.call(catch_ty, None, None, catch_func, ReturnSlot::Direct, &[data, ptr], None, None);
         bx.ret(bx.const_bool(true));
     });
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(llty, None, None, llfn, &[try_func, data, catch_func], None, None);
+    let ret = bx.call(
+        llty,
+        None,
+        None,
+        llfn,
+        ReturnSlot::Direct,
+        &[try_func, data, catch_func],
+        None,
+        None,
+    );
     ret
 }
 
@@ -1752,18 +1841,18 @@ fn codegen_autodiff<'ll, 'tcx>(
 ) -> IntrinsicResult<'tcx, &'ll Value> {
     let tcx = bx.tcx;
     if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
-        let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutEnable);
+        let _ = tcx.dcx().emit_err(AutoDiffWithoutEnable);
     }
 
     let ct = tcx.crate_types();
     let lto = tcx.sess.lto();
     if ct.len() == 1 && ct.contains(&CrateType::Executable) {
         if lto != rustc_session::config::Lto::Fat {
-            let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutLto);
+            let _ = tcx.dcx().emit_err(AutoDiffWithoutLto);
         }
     } else {
         if lto != rustc_session::config::Lto::Fat && !tcx.sess.opts.cg.linker_plugin_lto.enabled() {
-            let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutLto);
+            let _ = tcx.dcx().emit_err(AutoDiffWithoutLto);
         }
     }
 
@@ -1898,7 +1987,6 @@ fn codegen_offload<'ll, 'tcx>(
             return;
         }
     };
-    register_offload(cx);
     let offload_data =
         gpu_offload::gen_define_handling(&cx, &metadata, target_symbol, offload_globals);
     gpu_offload::gen_call_handling(

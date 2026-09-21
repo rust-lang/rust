@@ -109,5 +109,17 @@ error: used import from `std` instead of `core`
 LL | fn issue13158_msrv_1_81(_: &dyn std::error::Error) {}
    |                                 ^^^ help: consider importing the item from `core`: `core`
 
-error: aborting due to 17 previous errors
+error: used import from `std` instead of `core`
+  --> tests/ui/std_instead_of_core.rs:127:9
+   |
+LL |     use std::ops::Bound as OpsBound;
+   |         ^^^ help: consider importing the item from `core`: `core`
+
+error: used import from `std` instead of `core`
+  --> tests/ui/std_instead_of_core.rs:129:9
+   |
+LL |     use std::ops::Bound::Unbounded;
+   |         ^^^ help: consider importing the item from `core`: `core`
+
+error: aborting due to 19 previous errors
 

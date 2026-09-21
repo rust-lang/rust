@@ -4,6 +4,7 @@ error[E0282]: type annotations needed
 LL |         self.bar.next().unwrap();
    |                  ^^^^
    |
+   = note: cannot infer type of hidden type of opaque
 help: try using a fully qualified path to specify the expected types
    |
 LL -         self.bar.next().unwrap();

@@ -19,7 +19,6 @@ use rustc_infer::infer::{
     BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
 };
 use rustc_infer::traits::{Obligation, ObligationCause, PredicateObligations};
-use rustc_middle::bug;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
@@ -32,7 +31,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::{Span, Spanned, sym};
+use rustc_span::{Span, Spanned, bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp, TypeOpOutput};
@@ -48,7 +47,7 @@ use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderI
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use crate::universal_regions::{DefiningTy, UniversalRegions};
-use crate::{BorrowCheckRootCtxt, BorrowckInferCtxt, DeferredClosureRequirements, path_utils};
+use crate::{BorrowckInferCtxt, DeferredClosureRequirements, path_utils};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -95,7 +94,6 @@ mod relate_tys;
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `location_map` -- map between MIR `Location` and `PointIndex`
 pub(crate) fn type_check<'tcx>(
-    root_cx: &BorrowCheckRootCtxt<'_, 'tcx>,
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
@@ -146,7 +144,6 @@ pub(crate) fn type_check<'tcx>(
 
     let mut deferred_closure_requirements = Default::default();
     let mut typeck = TypeChecker {
-        root_cx,
         infcx,
         last_span: body.span,
         body,
@@ -187,6 +184,7 @@ pub(crate) fn type_check<'tcx>(
         typeck.infcx.destructure_solver_region_constraints_for_borrowck(
             &mut converter,
             typeck.known_type_outlives_obligations,
+            typeck.region_bound_pairs,
             universal_region_relations.outlives.clone(),
         );
     }
@@ -227,7 +225,6 @@ enum FieldAccessError {
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
 struct TypeChecker<'a, 'tcx> {
-    root_cx: &'a BorrowCheckRootCtxt<'a, 'tcx>,
     infcx: &'a BorrowckInferCtxt<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,
@@ -2597,8 +2594,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let Some(src_field) = src_fields.iter().find(|f| f.name == dst_field.name) else {
                     continue;
                 };
-                let dst_ty = dst_field.ty(tcx, dst_args).skip_norm_wip();
-                let src_ty = src_field.ty(tcx, src_args).skip_norm_wip();
+                // These field types can still contain projections from the source or target type
+                // and normalize them before handing them to `NllTypeRelating`
+                let dst_ty = self.normalize(dst_field.ty(tcx, dst_args), location.to_locations());
+                let src_ty = self.normalize(src_field.ty(tcx, src_args), location.to_locations());
+
                 if let (
                     ty::Ref(src_region, _, Mutability::Mut),
                     ty::Ref(dst_region, _, Mutability::Not),
@@ -2712,7 +2712,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
         location: Location,
     ) -> ty::InstantiatedClauses<'tcx> {
-        let root_def_id = self.root_cx.root_def_id();
+        let root_def_id = self.infcx.root_def_id;
         // We will have to handle propagated closure requirements for this closure,
         // but need to defer this until the nested body has been fully borrow checked.
         self.deferred_closure_requirements.push((def_id, args, location.to_locations()));

@@ -1,7 +1,7 @@
 // `raw-dylib` is a Windows-specific attribute which emits idata sections for the items in the
 // attached extern block,
 // so they may be linked against without linking against an import library.
-// To learn more, read https://github.com/rust-lang/rfcs/blob/master/text/2627-raw-dylib-kind.md
+// To learn more, read https://rust-lang.github.io/rfcs/2627-raw-dylib-kind.html
 // This test uses this feature alongside `import_name_type`, which allows for customization
 // of how Windows symbols will be named. A sanity check of this feature is done by comparison
 // with expected output.

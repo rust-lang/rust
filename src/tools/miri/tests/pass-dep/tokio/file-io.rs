@@ -1,5 +1,6 @@
 //@compile-flags: -Zmiri-disable-isolation
 //@only-target: linux # We only support tokio on Linux
+//@run-native
 
 use std::fs::remove_file;
 

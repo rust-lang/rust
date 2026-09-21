@@ -1096,7 +1096,8 @@ where
             .auto_traits()
             .into_iter()
             .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
-                elaborate::supertrait_def_ids(self.cx(), principal_def_id)
+                self.cx()
+                    .supertrait_def_ids(principal_def_id)
                     .filter(|def_id| self.cx().trait_is_auto(*def_id))
             }))
             .collect();
@@ -1114,7 +1115,7 @@ where
                     return Ok(false);
                 }
                 match ecx.probe(|_| ProbeKind::ProjectionCompatibility).enter(|ecx| {
-                    let target_projection = ecx.resolve_vars_if_possible(target_projection);
+                    let target_projection = ecx.deeply_resolve_ignoring_regions(target_projection);
                     ecx.enter_forall_with_assumptions(
                         target_projection,
                         param_env,
@@ -1141,7 +1142,8 @@ where
                         let source_principal = upcast_principal.unwrap();
                         let target_principal = bound.rebind(target_principal);
                         // We might unify infer vars in previous iterations.
-                        let target_principal = ecx.resolve_vars_if_possible(target_principal);
+                        let target_principal =
+                            ecx.deeply_resolve_ignoring_regions(target_principal);
                         ecx.enter_forall_with_assumptions(
                             target_principal,
                             param_env,
@@ -1176,7 +1178,8 @@ where
                         };
 
                         // We might unify infer vars in previous iterations.
-                        let target_projection = ecx.resolve_vars_if_possible(target_projection);
+                        let target_projection =
+                            ecx.deeply_resolve_ignoring_regions(target_projection);
                         ecx.enter_forall_with_assumptions(
                             target_projection,
                             param_env,

@@ -174,7 +174,7 @@ fn check_result_large_err<'tcx>(
                 RESULT_LARGE_ERR,
                 hir_ty_span,
                 format!("the `Err`-variant returned from this {subject} is very large"),
-                |diag: &mut Diag<'_, ()>| {
+                |diag: &mut Diag<'_>| {
                     diag.span_label(hir_ty_span, format!("the `Err`-variant is at least {ty_size} bytes"));
                     diag.help(format!("try reducing the size of `{err_ty}`, for example by boxing large elements or replacing it with `Box<{err_ty}>`"));
                 },

@@ -12,12 +12,11 @@
 pub mod specialization_graph;
 
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_errors::Diag;
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::Obligation;
 use rustc_lint_defs::builtin::COHERENCE_LEAK_CHECK;
-use rustc_middle::bug;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
@@ -25,7 +24,7 @@ use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
     self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
 };
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug, sym};
 use specialization_graph::GraphExt;
 use tracing::{debug, instrument};
 
@@ -215,7 +214,7 @@ fn fulfill_implication<'tcx>(
 
     // Now resolve the *generic parameters* we built for the target earlier, replacing
     // the inference variables inside with whatever we got from fulfillment.
-    Ok(infcx.resolve_vars_if_possible(target_args))
+    Ok(infcx.deeply_resolve_ignoring_regions(target_args))
 }
 
 pub(super) fn specialization_enabled_in(tcx: TyCtxt<'_>, _: LocalCrate) -> bool {
@@ -514,7 +513,7 @@ fn report_negative_positive_conflict<'tcx>(
         cause.add_intercrate_ambiguity_hint(&mut diag);
     }
 
-    diag.emit()
+    diag.emit_err()
 }
 
 fn report_conflicting_impls<'tcx>(
@@ -528,11 +527,11 @@ fn report_conflicting_impls<'tcx>(
     // Work to be done after we've built the Diag. We have to define it now
     // because the lint emit methods don't return back the Diag that's passed
     // in.
-    fn decorate<'tcx, G: EmissionGuarantee>(
+    fn decorate<'tcx>(
         tcx: TyCtxt<'tcx>,
         overlap: &OverlapError<'tcx>,
         impl_span: Span,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
     ) {
         match tcx.span_of_impl(overlap.with_impl) {
             Ok(span) => {
@@ -595,7 +594,7 @@ fn report_conflicting_impls<'tcx>(
                 let mut err = tcx.dcx().struct_span_err(impl_span, msg());
                 err.code(E0119);
                 decorate(tcx, &overlap, impl_span, &mut err);
-                err.emit()
+                err.emit_err()
             } else {
                 tcx.dcx().span_delayed_bug(impl_span, "impl should have failed the orphan check")
             };

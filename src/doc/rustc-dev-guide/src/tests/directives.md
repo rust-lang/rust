@@ -240,8 +240,8 @@ See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for ig
 [remote testing]: running.md#running-tests-on-a-remote-machine
 [parallel frontend]: compiletest.md#parallel-frontend
 [compare modes]: ui.md#compare-modes
-[`x86_64-gnu-debug`]: https://github.com/rust-lang/rust/blob/ab3dba92db355b8d97db915a2dca161a117e959c/src/ci/docker/host-x86_64/x86_64-gnu-debug/Dockerfile#L32
-[`aarch64-gnu-debug`]: https://github.com/rust-lang/rust/blob/20c909ff9cdd88d33768a4ddb8952927a675b0ad/src/ci/docker/host-aarch64/aarch64-gnu-debug/Dockerfile#L32
+[`test-x86_64-gnu-debug`]: https://github.com/rust-lang/rust/blob/32d94cc9be3f6e6c3fa1deaea9e0ab93c4980dba/src/ci/docker/host-x86_64/test-x86_64-gnu-debug/Dockerfile#L32
+[`test-aarch64-gnu-debug`]: https://github.com/rust-lang/rust/blob/32d94cc9be3f6e6c3fa1deaea9e0ab93c4980dba/src/ci/docker/host-aarch64/test-aarch64-gnu-debug/Dockerfile#L32
 
 ### Affecting how tests are built
 

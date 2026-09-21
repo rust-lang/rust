@@ -20,6 +20,7 @@ impl AttributeKind {
             // tidy-alphabetical-start
             AllowInternalUnsafe(..) => Yes,
             AllowInternalUnstable(..) => Yes,
+            AlwaysGca => Yes,
             AutomaticallyDerived => Yes,
             CfgAttrTrace(..) => Yes,
             CfgTrace(..) => Yes,

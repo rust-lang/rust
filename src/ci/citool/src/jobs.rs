@@ -328,7 +328,7 @@ fn calculate_jobs(
                 }
                 if jobs.len() > MAX_TRY_JOBS_COUNT && !nolimit {
                     return Err(anyhow::anyhow!(
-                        "It is only possible to schedule up to {MAX_TRY_JOBS_COUNT} custom jobs, received {} custom jobs expanded from {} pattern(s)",
+                        "It is only possible to schedule up to {MAX_TRY_JOBS_COUNT} custom jobs, received {} custom jobs expanded from {} pattern(s). Use `@bors try jobs=... nolimit` to allow running an arbitrary number of try jobs.",
                         jobs.len(),
                         patterns.len()
                     ));

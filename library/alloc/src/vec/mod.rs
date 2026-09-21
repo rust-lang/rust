@@ -88,7 +88,7 @@ use core::{cmp, fmt, hint, intrinsics, ub_checks};
 
 #[stable(feature = "extract_if", since = "1.87.0")]
 pub use self::extract_if::ExtractIf;
-use crate::alloc::{Allocator, Global};
+use crate::alloc::{Allocator, AllocatorNightly, Global};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
@@ -762,8 +762,6 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```rust
-    /// #![feature(vec_from_fn)]
-    ///
     /// let vec = Vec::from_fn(5, |i| i);
     ///
     /// // indexes are:  0  1  2  3  4
@@ -783,8 +781,6 @@ impl<T> Vec<T> {
     /// The `Vec<T>` is generated in ascending index order, starting from the front
     /// and going towards the back, so you can use closures with mutable state:
     /// ```
-    /// #![feature(vec_from_fn)]
-    ///
     /// let mut state = 1;
     /// let a = Vec::from_fn(6, |_| { let x = state; state *= 2; x });
     ///
@@ -792,7 +788,7 @@ impl<T> Vec<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "vec_from_fn", issue = "149698")]
+    #[stable(feature = "vec_from_fn", since = "CURRENT_RUSTC_VERSION")]
     pub fn from_fn<F>(length: usize, f: F) -> Self
     where
         F: FnMut(usize) -> T,
@@ -2958,7 +2954,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "vec_peek_mut", issue = "122742")]
-    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T, A>> {
+    pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T, A>>
+    where
+        A: AllocatorNightly,
+    {
         PeekMut::new(self)
     }
 
@@ -3059,6 +3058,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A>
     where
+        A: AllocatorNightly,
         R: RangeBounds<usize>,
     {
         // Memory safety
@@ -4245,6 +4245,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "vec_splice", since = "1.21.0")]
     pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<'_, I::IntoIter, A>
     where
+        A: AllocatorNightly,
         R: RangeBounds<usize>,
         I: IntoIterator<Item = T>,
     {
@@ -4328,6 +4329,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "extract_if", since = "1.87.0")]
     pub fn extract_if<F, R>(&mut self, range: R, filter: F) -> ExtractIf<'_, T, F, A>
     where
+        A: AllocatorNightly,
         F: FnMut(&mut T) -> bool,
         R: RangeBounds<usize>,
     {

@@ -136,7 +136,7 @@ Thir {
             kind: Scope {
                 region_scope: Node(5),
                 hir_id: HirId(DefId(0:3 ~ main[26fd]::main).5),
-                // reference to expression 0 above
+                // reference to expression 2 above
                 value: e2,
             },
             ty: i32,

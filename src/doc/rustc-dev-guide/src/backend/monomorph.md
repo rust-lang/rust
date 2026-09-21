@@ -33,7 +33,7 @@ Take this example:
 
 ```rust
 fn banana() {
-   peach::<u64>();
+    peach::<u64>();
 }
 
 fn main() {
@@ -67,9 +67,9 @@ or more modules in Crate B.
 
 | Crate A function | Behavior |
 | - | - |
-| Non-generic function | Crate A function doesn't appear in any codegen units of Crate B |
-| Non-generic `#[inline]` function |  Crate A function appears within a single CGU  of Crate B, and exists even after post-inlining stage|
-| Generic function |  Regardless of inlining, all monomorphized (specialized) functions <br> from Crate A appear within a single codegen unit for Crate B. <br> The codegen unit exists even after the post inlining stage.|
+| Non-generic function | Crate A function doesn't appear in any codegen units of Crate B. |
+| Non-generic `#[inline]` function |  Crate A function appears within a single CGU  of Crate B. <br> The codegen unit exists even after the post inlining stage. |
+| Generic function |  Regardless of inlining, all monomorphized (specialized) functions <br> from Crate A appear within a single codegen unit for Crate B. <br> The codegen unit exists even after the post inlining stage. |
 | Generic `#[inline]` function |   - same - |
 
 For more details about the partitioner read the module level [documentation].

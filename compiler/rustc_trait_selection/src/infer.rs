@@ -31,13 +31,13 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-        let ty = self.resolve_vars_if_possible(ty);
+        let ty = self.deeply_resolve_ignoring_regions(ty);
         let copy_def_id = self.tcx.require_lang_item(LangItem::Copy, DUMMY_SP);
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id)
     }
 
     fn type_is_clone_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-        let ty = self.resolve_vars_if_possible(ty);
+        let ty = self.deeply_resolve_ignoring_regions(ty);
         let clone_def_id = self.tcx.require_lang_item(LangItem::Clone, DUMMY_SP);
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, clone_def_id)
     }
@@ -47,7 +47,7 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
-        let ty = self.resolve_vars_if_possible(ty);
+        let ty = self.deeply_resolve_ignoring_regions(ty);
         let use_cloned_def_id = self.tcx.require_lang_item(LangItem::UseCloned, DUMMY_SP);
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, use_cloned_def_id)
     }

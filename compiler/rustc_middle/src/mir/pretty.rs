@@ -6,6 +6,7 @@ use std::{fs, io};
 use rustc_abi::Size;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_hir::Constness;
+use rustc_span::bug;
 use tracing::trace;
 use ty::print::PrettyPrinter;
 
@@ -692,7 +693,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
     };
     match (kind, body.source.promoted) {
         (_, Some(_)) => write!(w, "const ")?, // promoteds are the closest to consts
-        (DefKind::Const { .. } | DefKind::AssocConst { .. }, _) => write!(w, "const ")?,
+        (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
         (DefKind::Static { safety: _, mutability: hir::Mutability::Not, nested: false }, _) => {
             write!(w, "static ")?
         }

@@ -83,6 +83,7 @@
 
 use core::clone::CloneToUninit;
 
+use crate::alloc::Allocator;
 use crate::borrow::{Borrow, Cow};
 use crate::collections::TryReserveError;
 use crate::error::Error;
@@ -1972,10 +1973,10 @@ impl From<PathBuf> for Box<Path> {
 }
 
 #[stable(feature = "more_box_slice_clone", since = "1.29.0")]
-impl Clone for Box<Path> {
+impl<A: Allocator + Clone> Clone for Box<Path, A> {
     #[inline]
     fn clone(&self) -> Self {
-        self.to_path_buf().into_boxed_path()
+        Box::clone_from_ref_in(&**self, Self::allocator(self).clone())
     }
 }
 
@@ -2752,7 +2753,6 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// #![feature(trim_prefix_suffix)]
     /// use std::path::Path;
     ///
     /// let path = Path::new("/test/haha/foo.txt");
@@ -2770,7 +2770,7 @@ impl Path {
     /// assert_eq!(path.trim_prefix("/haha"), path);
     /// ```
     #[must_use = "this returns the remaining path as a new path, without modifying the original"]
-    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
     pub fn trim_prefix<P>(&self, base: P) -> &Path
     where
         P: AsRef<Path>,
@@ -2983,7 +2983,8 @@ impl Path {
     #[must_use]
     #[inline]
     pub fn has_trailing_sep(&self) -> bool {
-        self.as_os_str().as_encoded_bytes().last().copied().is_some_and(is_sep_byte)
+        let comps = self.components();
+        self.as_os_str().as_encoded_bytes().last().copied().is_some_and(|b| comps.is_sep_byte(b))
     }
 
     /// Ensures that a path has a trailing [separator](MAIN_SEPARATOR),
@@ -3034,10 +3035,11 @@ impl Path {
     #[must_use]
     #[inline]
     pub fn trim_trailing_sep(&self) -> &Path {
+        let comps = self.components();
         if self.has_trailing_sep() && (!self.has_root() || self.parent().is_some()) {
             let mut bytes = self.inner.as_encoded_bytes();
             while let Some((last, init)) = bytes.split_last()
-                && is_sep_byte(*last)
+                && comps.is_sep_byte(*last)
             {
                 bytes = init;
             }

@@ -29,6 +29,8 @@
     rustc_attrs,
     decl_macro,
     f16,
+    f16b,
+    cfg_target_has_reliable_f16b,
     f128,
     repr_simd,
     transparent_unions,
@@ -79,6 +81,10 @@ impl<T: PointeeSized> LegacyReceiver for &mut T {}
 
 #[lang = "copy"]
 pub trait Copy: Sized {}
+
+pub trait From<T>: Sized {
+    fn from(value: T) -> Self;
+}
 
 #[lang = "bikeshed_guaranteed_no_drop"]
 pub trait BikeshedGuaranteedNoDrop {}
@@ -360,7 +366,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
-    pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
+    pub const unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
 
     #[rustc_nounwind]
     #[rustc_intrinsic]
@@ -392,7 +398,40 @@ pub mod hint {
 }
 
 pub mod num {
-    use super::Copy;
+    use super::{Copy, From, mem};
+
+    #[rustc_intrinsic]
+    const unsafe fn unchecked_shl<T: Copy, U: Copy>(value: T, shift: U) -> T;
+
+    #[cfg(target_has_reliable_f16b)]
+    #[allow(non_camel_case_types)]
+    #[lang = "f16b"]
+    #[repr(transparent)]
+    pub struct f16b(u16);
+
+    #[cfg(target_has_reliable_f16b)]
+    impl f16b {
+        #[inline]
+        pub const fn from_bits(bits: u16) -> Self {
+            unsafe { mem::transmute(bits) }
+        }
+
+        #[inline]
+        pub const fn to_bits(self) -> u16 {
+            unsafe { mem::transmute(self) }
+        }
+    }
+
+    #[cfg(target_has_reliable_f16b)]
+    impl Copy for f16b {}
+
+    #[cfg(target_has_reliable_f16b)]
+    impl From<f16b> for f32 {
+        #[inline]
+        fn from(value: f16b) -> Self {
+            unsafe { mem::transmute(unchecked_shl(value.to_bits() as u32, 16u32)) }
+        }
+    }
 
     #[repr(C)]
     #[lang = "complex"]
@@ -497,4 +536,105 @@ pub mod simd {
 
     pub type u8x16 = Simd<u8, 16>;
     pub type u64x2 = Simd<u8, 16>;
+}
+
+pub mod ffi {
+    use super::*;
+
+    #[repr(transparent)]
+    #[lang = "va_list"]
+    pub struct VaList<'a> {
+        inner: VaListInner,
+        _marker: PhantomCovariantLifetime<'a>,
+    }
+
+    #[rustc_intrinsic]
+    const unsafe fn va_arg<T>(ap: &mut VaList<'_>) -> T;
+
+    impl VaList<'_> {
+        pub unsafe fn next_arg<T>(&mut self) -> T {
+            va_arg(self)
+        }
+    }
+
+    #[repr(transparent)]
+    struct PhantomCovariantLifetime<'a>(PhantomCovariant<&'a ()>);
+
+    #[repr(transparent)]
+    struct PhantomCovariant<T>(PhantomData<fn() -> T>);
+
+    cfg_select! {
+        all(
+            target_arch = "aarch64",
+            not(target_vendor = "apple"),
+            not(target_os = "uefi"),
+            not(windows)
+        ) => {
+            #[repr(C)]
+            struct VaListInner {
+                stack: *const c_void,
+                gr_top: *const c_void,
+                vr_top: *const c_void,
+                gr_offs: i32,
+                vr_offs: i32,
+            }
+        }
+        all(target_arch = "powerpc", not(target_os = "uefi"), not(windows)) => {
+            #[repr(C)]
+            #[rustc_pass_indirectly_in_non_rustic_abis]
+            struct VaListInner {
+                gpr: u8,
+                fpr: u8,
+                reserved: u16,
+                overflow_arg_area: *const c_void,
+                reg_save_area: *const c_void,
+            }
+        }
+        target_arch = "s390x" => {
+            #[repr(C)]
+            #[rustc_pass_indirectly_in_non_rustic_abis]
+            struct VaListInner {
+                gpr: i64,
+                fpr: i64,
+                overflow_arg_area: *const c_void,
+                reg_save_area: *const c_void,
+            }
+        }
+        all(target_arch = "x86_64", not(target_os = "uefi"), not(windows)) => {
+            #[repr(C)]
+            #[rustc_pass_indirectly_in_non_rustic_abis]
+            struct VaListInner {
+                gp_offset: i32,
+                fp_offset: i32,
+                overflow_arg_area: *const c_void,
+                reg_save_area: *const c_void,
+            }
+        }
+        target_arch = "xtensa" => {
+            #[repr(C)]
+            #[rustc_pass_indirectly_in_non_rustic_abis]
+            struct VaListInner {
+                stk: *const i32,
+                reg: *const i32,
+                ndx: i32,
+            }
+        }
+
+        all(target_arch = "hexagon", target_env = "musl") => {
+            #[repr(C)]
+            #[rustc_pass_indirectly_in_non_rustic_abis]
+            struct VaListInner {
+                __current_saved_reg_area_pointer: *const c_void,
+                __saved_reg_area_end_pointer: *const c_void,
+                __overflow_area_pointer: *const c_void,
+            }
+        }
+
+        _ => {
+            #[repr(transparent)]
+            struct VaListInner {
+                ptr: *const c_void,
+            }
+        }
+    }
 }

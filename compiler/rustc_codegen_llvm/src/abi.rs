@@ -9,10 +9,11 @@ use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
+use rustc_middle::ty;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::{bug, ty};
 use rustc_session::{Session, config};
+use rustc_span::bug;
 use rustc_target::callconv::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, PassMode,
 };
@@ -158,6 +159,7 @@ impl LlvmType for Reg {
                     },
                     Primitive::Float(float) => match float {
                         Float::F16 => cx.type_f16(),
+                        Float::F16B => cx.type_f16b(),
                         Float::F32 => cx.type_f32(),
                         Float::F64 => cx.type_f64(),
                         Float::F128 => cx.type_f128(),

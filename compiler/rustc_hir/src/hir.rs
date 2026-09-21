@@ -35,7 +35,7 @@ use tracing::debug;
 
 use crate::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
-use crate::intravisit::{FnKind, VisitorExt};
+use crate::intravisit::FnKind;
 use crate::lints::DelayedLints;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash)]
@@ -2293,7 +2293,7 @@ impl Expr<'_> {
 
             // Type ascription inherits its place expression kind from its
             // operand. See:
-            // https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md#type-ascription-and-temporaries
+            // https://rust-lang.github.io/rfcs/0803-type-ascription.html#type-ascription-and-temporaries
             ExprKind::Type(ref e, _) => e.is_place_expr(allow_projections_from),
 
             // Unsafe binder cast preserves place-ness of the sub-expression.

@@ -1,3 +1,5 @@
+use rustc_span::bug;
+
 macro_rules! maybe_into_query_key {
     (DefId) => { impl $crate::query::IntoQueryKey<DefId> };
     (LocalDefId) => { impl $crate::query::IntoQueryKey<LocalDefId> };

@@ -4,10 +4,10 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::{self, InlineAsmOperand, START_BLOCK};
 use rustc_middle::mono::{MonoItemData, Visibility};
+use rustc_middle::ty;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, span_bug, ty};
-use rustc_span::sym;
+use rustc_span::{bug, span_bug, sym};
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::{Arch, BinaryFormat, Env, Os};
 
@@ -508,6 +508,9 @@ fn wasm_primitive(primitive: Primitive, ptr_type: &'static str) -> &'static str 
             Integer::I128 => "i64, i64",
         },
         Primitive::Float(float) => match float {
+            // This could probably use an f32 for WASM however has not been
+            // verified so leaving as a `bug!(...)` for now.
+            Float::F16B => bug!("`f16b` unsupported on wasm"),
             Float::F16 | Float::F32 => "f32",
             Float::F64 => "f64",
             Float::F128 => "i64, i64",

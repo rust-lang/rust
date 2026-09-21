@@ -261,7 +261,7 @@ LL |     u8,
    |     -- tuple struct has 5 fields
 ...
 LL |         M(1,
-   |         - ^
+   |           ^
 LL |           2,
    |           ^
 LL |           3,
@@ -290,7 +290,6 @@ LL |     u8,
    |     -- tuple struct has 5 fields
 ...
 LL |         M(
-   |         -
 LL |             1,
    |             ^
 LL |             2,

@@ -1,24 +1,24 @@
-error: use of `const` in the type system not defined as `type const`
+error: use of `const` in the type system not marked as direct
   --> $DIR/assoc-const-without-type_const.rs:8:35
    |
 LL | fn mk_array<T: Tr>(_x: T) -> [(); T::SIZE] {
    |                                   ^^^^^^^
    |
-help: add `type` before `const` for `Tr::SIZE`
+help: add `#[rustc_always_gca]` to the constant
    |
-LL |     type const SIZE: usize;
-   |     ++++
+LL |     #[rustc_always_gca] const SIZE: usize;
+   |     +++++++++++++++++++
 
-error: use of `const` in the type system not defined as `type const`
+error: use of `const` in the type system not marked as direct
   --> $DIR/assoc-const-without-type_const.rs:10:10
    |
 LL |     [(); T::SIZE]
    |          ^^^^^^^
    |
-help: add `type` before `const` for `Tr::SIZE`
+help: add `#[rustc_always_gca]` to the constant
    |
-LL |     type const SIZE: usize;
-   |     ++++
+LL |     #[rustc_always_gca] const SIZE: usize;
+   |     +++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

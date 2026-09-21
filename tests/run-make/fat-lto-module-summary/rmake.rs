@@ -1,3 +1,6 @@
+// FIXME: Once GCC backend is fixed, remove this `ignore-backends`.
+//@ ignore-backends: gcc
+
 use run_make_support::{llvm_bcanalyzer, rustc};
 
 fn main() {

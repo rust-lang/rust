@@ -121,7 +121,8 @@ macro_rules! hf128 {
 }
 
 /// Assert `F::biteq` with better messages.
-#[cfg(test)]
+#[allow(unused_macros)]
+#[cfg_attr(feature = "unstable-public-internals", macro_export)]
 macro_rules! assert_biteq {
     ($left:expr, $right:expr, $($tt:tt)*) => {{
         let l = $left;

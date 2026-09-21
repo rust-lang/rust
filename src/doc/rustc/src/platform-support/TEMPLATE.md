@@ -22,9 +22,12 @@ version of the OS or environment do they expect?
 Are there notable `#[target_feature(...)]` or `-C target-feature=` values that
 programs may wish to use?
 
-What calling convention does `extern "C"` use on the target?
+What calling convention does `extern "C"` use on the target? Where can the most
+up-to-date calling convention and ABI documentation be found? Please link to
+this information if publicly available.
 
-What format do binaries use by default? ELF, PE, something else?
+What format do binaries use by default? ELF, PE, something else? Provide links
+if the format is not standard.
 
 ## Building the target
 

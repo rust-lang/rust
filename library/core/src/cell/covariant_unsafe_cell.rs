@@ -170,14 +170,3 @@ impl<T: ?Sized> fmt::Debug for CovariantUnsafeCell<T> {
         f.debug_struct("CovariantUnsafeCell").finish_non_exhaustive()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn _covarience<'short, 'long: 'short>(
-        x: CovariantUnsafeCell<&'long ()>,
-    ) -> CovariantUnsafeCell<&'short ()> {
-        x
-    }
-}

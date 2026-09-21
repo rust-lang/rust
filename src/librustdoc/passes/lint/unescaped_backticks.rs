@@ -413,7 +413,7 @@ fn suggest_insertion(
     cx: &DocContext<'_>,
     item: &Item,
     dox: &str,
-    lint: &mut Diag<'_, ()>,
+    lint: &mut Diag<'_>,
     insert_index: usize,
     suggestion: char,
     message: &'static str,

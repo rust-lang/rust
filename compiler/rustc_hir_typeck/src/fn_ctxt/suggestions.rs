@@ -18,13 +18,12 @@ use rustc_hir::{
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::suggest_impl_trait;
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::span_bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_suggestion};
 use rustc_middle::ty::{
     self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
     suggest_constraining_type_params,
 };
-use rustc_span::{ExpnKind, Ident, MacroKind, Span, Spanned, Symbol, sym};
+use rustc_span::{ExpnKind, Ident, MacroKind, Span, Spanned, Symbol, span_bug, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
@@ -262,8 +261,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found_type: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
-        let expected = self.resolve_vars_if_possible(expected_type);
-        let found = self.resolve_vars_if_possible(found_type);
+        let expected = self.deeply_resolve_ignoring_regions(expected_type);
+        let found = self.deeply_resolve_ignoring_regions(found_type);
 
         if expected.references_error() || found.references_error() || expected.is_unit() {
             return false;
@@ -992,7 +991,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let found =
-            self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(found));
+            self.resolve_numeric_literals_with_default(self.deeply_resolve_ignoring_regions(found));
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()`, impl or closure).
         match &fn_decl.output {
@@ -1322,7 +1321,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !expected.is_unit() {
             return;
         }
-        let found = self.resolve_vars_if_possible(found);
+        let found = self.deeply_resolve_ignoring_regions(found);
 
         let innermost_loop = if self.is_loop(id) {
             Some(self.tcx.hir_node(id))
@@ -1761,7 +1760,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             provided_ty
         };
 
-        if !self.may_coerce(expected_ty, dummy_ty) {
+        if !self.may_coerce_except_never(expected_ty, dummy_ty) {
             return;
         }
         let msg = format!("use `{adt_name}::map_or` to deref inner value of `{adt_name}`");
@@ -1992,9 +1991,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => return false,
         };
-        if item.def_id == old_def_id
-            || !matches!(self.tcx.def_kind(item.def_id), DefKind::AssocConst { .. })
-        {
+        if item.def_id == old_def_id || self.tcx.def_kind(item.def_id) != DefKind::AssocConst {
             // Same item
             return false;
         }
@@ -2003,7 +2000,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if item_ty.has_param() {
             return false;
         }
-        if self.may_coerce(item_ty, expected_ty) {
+        // An unused associated const of type `!` may not have been evaluated yet. Do not
+        // suggest referring to it just because `!` can coerce to the expected type.
+        if self.may_coerce_except_never(item_ty, expected_ty) {
             err.span_suggestion_verbose(
                 segment.ident.span,
                 format!("try referring to the associated const `{capitalized_name}` instead",),
@@ -2286,14 +2285,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn is_field_suggestable(
-        &self,
-        field: &ty::FieldDef,
-        hir_id: HirId,
-        span: Span,
-    ) -> bool {
+    pub(crate) fn is_field_suggestable(&self, field: &ty::FieldDef, span: Span) -> bool {
         // The field must be visible in the containing module.
-        field.vis.is_accessible_from(self.tcx.parent_module(hir_id), self.tcx)
+        field.vis.is_accessible_from(self.mod_id, self.tcx)
             // The field must not be unstable.
             && !matches!(
                 self.tcx.eval_stability(field.did, None, rustc_span::DUMMY_SP, None),
@@ -2367,7 +2361,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             return false;
         };
-        if is_ctor || !self.may_coerce(args.type_at(0), expected) {
+        let inner_ty = args.type_at(0);
+
+        // For `Option<!>` where `Option<u32>` is expected, extracting `!` cannot produce
+        // an `Option<u32>`. Never-to-any coercion alone must not justify `.expect()` or `?`.
+        if is_ctor || !self.may_coerce_except_never(inner_ty, expected) {
             return false;
         }
 
@@ -2559,7 +2557,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && match expr.kind {
                     ExprKind::Path(QPath::Resolved(
                         None,
-                        Path { res: Res::Def(DefKind::Const { .. }, _), .. },
+                        Path { res: Res::Def(DefKind::Const, _), .. },
                     )) => true,
                     ExprKind::Call(
                         Expr {

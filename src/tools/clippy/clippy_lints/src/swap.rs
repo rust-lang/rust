@@ -1,8 +1,10 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::{snippet_indent, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, std_or_core, sym};
 use itertools::Itertools as _;
 
@@ -11,7 +13,7 @@ use rustc_hir::intravisit::{Visitor, walk_expr};
 
 use rustc_errors::Applicability;
 use rustc_hir::{AssignOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _, declare_lint_pass};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::ty;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Spanned, SyntaxContext};
@@ -73,11 +75,21 @@ declare_clippy_lint! {
     "manual swap of two variables"
 }
 
-declare_lint_pass!(Swap => [ALMOST_SWAPPED, MANUAL_SWAP]);
+impl_lint_pass!(Swap => [ALMOST_SWAPPED, MANUAL_SWAP]);
+
+pub struct Swap {
+    msrv: Msrv,
+}
+
+impl Swap {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self { msrv: conf.msrv.into() }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for Swap {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
-        check_manual_swap(cx, block);
+        check_manual_swap(cx, block, self.msrv);
         check_suspicious_swap(cx, block);
         check_xor_swap(cx, block);
     }
@@ -166,8 +178,8 @@ fn generate_swap_warning<'tcx>(
 }
 
 /// Implementation of the `MANUAL_SWAP` lint.
-fn check_manual_swap<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-    if is_in_const_context(cx) {
+fn check_manual_swap<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>, msrv: Msrv) {
+    if is_in_const_context(cx) && !msrv.meets(cx, msrvs::CONST_MEM_SWAP) {
         return;
     }
 

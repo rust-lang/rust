@@ -5,6 +5,7 @@
 //@ needs-llvm-components: aarch64 arm avr bpf csky hexagon loongarch m68k mips msp430 nvptx powerpc riscv sparc systemz webassembly x86
 // FIXME(jieyouxu): there has to be a better way to do this, without the needs-llvm-components it
 // will fail on LLVM built without all of the components listed above.
+//@ ignore-backends: gcc
 
 use run_make_support::bare_rustc;
 

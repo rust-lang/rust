@@ -1,10 +1,10 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Flags, GenericArgsRef, Region, RegionVid, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitor,
 };
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
 use super::DefiningUse;

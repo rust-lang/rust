@@ -67,8 +67,6 @@ impl<'tcx> Visitor<'tcx> for LifetimeVisitor<'tcx> {
 /// The second field of the vector's elements indicate if the lifetime is attached to a
 /// shared reference, a mutable reference, or neither.
 fn get_lifetimes<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Vec<(&'tcx Lifetime, Option<Mutability>, Span)> {
-    use hir::intravisit::VisitorExt as _;
-
     let mut visitor = LifetimeVisitor { result: Vec::new() };
     visitor.visit_ty_unambig(ty);
     visitor.result

@@ -38,7 +38,7 @@ pub struct Unique<T: PointeeSized> {
     // for dropck to understand that we logically own a `T`.
     //
     // For details, see:
-    // https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md#phantom-data
+    // https://rust-lang.github.io/rfcs/0769-sound-generic-drop.html#phantom-data
     _marker: PhantomData<T>,
 }
 

@@ -4,9 +4,9 @@ use clippy_utils::peel_blocks;
 use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_copy, should_call_clone_as_function};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_lint::LateContext;
 use rustc_middle::mir::{Mutability, Pinnedness};
@@ -90,6 +90,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                             hir::ExprKind::Call(call, [arg]) => {
                                 if let hir::ExprKind::Path(qpath) = call.kind
                                     && ident_eq(name, arg)
+                                    && cx.typeck_results().expr_ty(arg) == cx.typeck_results().expr_ty_adjusted(arg)
                                 {
                                     handle_path(cx, call, &qpath, e, recv);
                                 }

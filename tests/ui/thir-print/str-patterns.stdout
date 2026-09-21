@@ -46,7 +46,9 @@ Thir {
                 extra: Some(
                     PatExtra {
                         expanded_const: Some(
-                            DefId(0:4 ~ str_patterns[fc71]::CONSTANT),
+                            Free {
+                                def_id: DefId(0:4 ~ str_patterns[fc71]::CONSTANT),
+                            },
                         ),
                         ascriptions: [],
                     },

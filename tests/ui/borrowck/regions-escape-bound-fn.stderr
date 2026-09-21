@@ -6,7 +6,7 @@ LL |     let mut x: Option<&isize> = None;
 LL |     with_int(|y| x = Some(y));
    |               -  ^^^^^^^^^^^ `y` escapes the closure body here
    |               |
-   |               `y` is a reference that is only valid in the closure body
+   |               `y` is only valid in the closure body
 
 error: aborting due to 1 previous error
 

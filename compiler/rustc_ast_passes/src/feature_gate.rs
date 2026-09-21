@@ -190,13 +190,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ItemKind::TyAlias(ast::TyAlias { ty: Some(ty), .. }) => {
                 self.check_impl_trait(ty, false)
             }
-            ast::ItemKind::Const(ast::ConstItem {
-                kind: ast::ConstItemKind::TypeConst, ..
-            }) => {
-                // Make sure this is only allowed if the feature gate is enabled.
-                // #![feature(min_generic_const_args)]
-                gate!(self, min_generic_const_args, i.span, "top-level `type const` are unstable");
-            }
 
             _ => {}
         }
@@ -207,14 +200,28 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_foreign_item(&mut self, i: &'a ast::ForeignItem) {
         match i.kind {
             ast::ForeignItemKind::Fn(..) | ast::ForeignItemKind::Static(..) => {
-                let link_name = attr::first_attr_value_str_by_name(&i.attrs, sym::link_name);
-                let links_to_llvm = link_name.is_some_and(|val| val.as_str().starts_with("llvm."));
-                if links_to_llvm {
+                let symbol_name = if let Some(link_name) =
+                    attr::first_attr_value_str_by_name(&i.attrs, sym::link_name)
+                {
+                    link_name
+                } else {
+                    i.kind.ident().unwrap().name
+                };
+
+                let name = symbol_name.as_str();
+                if name.starts_with("llvm.") {
                     gate!(
                         self,
                         link_llvm_intrinsics,
                         i.span,
                         "linking to LLVM intrinsics is experimental"
+                    );
+                } else if name.starts_with("__enzyme_") {
+                    gate!(
+                        self,
+                        link_enzyme_intrinsics,
+                        i.span,
+                        "linking to Enzyme intrinsics is experimental"
                     );
                 }
             }
@@ -350,18 +357,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
                 false
             }
-            ast::AssocItemKind::Const(ast::ConstItem {
-                body,
-                kind: ast::ConstItemKind::TypeConst,
-                ..
-            }) => {
-                // Make sure this is only allowed if the feature gate is enabled.
-                // #![feature(min_generic_const_args)]
-                gate!(self, min_generic_const_args, i.span, "associated `type const` are unstable");
-                // Make sure associated `type const` defaults in traits are only allowed
-                // if the feature gate is enabled.
-                // #![feature(associated_type_defaults)]
-                if ctxt == AssocCtxt::Trait && body.is_some() {
+            ast::AssocItemKind::Const(ast::ConstItem { body: Some(_), .. }) => {
+                if ctxt == AssocCtxt::Trait && attr::contains_name(&i.attrs, sym::rustc_always_gca)
+                {
                     gate!(
                         self,
                         associated_type_defaults,
@@ -495,25 +493,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     // `associated_const_equality` will be stabilized as part of `min_generic_const_args`.
     for &span in spans.get(&sym::associated_const_equality).into_flat_iter() {
         gate!(visitor, min_generic_const_args, span, "associated const equality is incomplete");
-    }
-
-    // `mgca_type_const_syntax` is part of `min_generic_const_args` so if
-    // either or both are enabled we don't need to emit a feature error.
-    for &span in spans.get(&sym::mgca_type_const_syntax).into_flat_iter() {
-        if visitor.features.min_generic_const_args()
-            || visitor.features.mgca_type_const_syntax()
-            || span.allows_unstable(sym::min_generic_const_args)
-            || span.allows_unstable(sym::mgca_type_const_syntax)
-        {
-            continue;
-        }
-        feature_err(
-            visitor.sess,
-            sym::min_generic_const_args,
-            span,
-            "`type const` syntax is experimental",
-        )
-        .emit();
     }
 
     // Negative bounds are *super* internal. We require `-Zinternal-testing-features` *and*

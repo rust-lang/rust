@@ -22,7 +22,6 @@ use rustc_lint_defs::{
     FutureIncompatibleInfo, Lint, LintExpectationId, LintId, StableLintExpectationId,
     UnstableLintExpectationId,
 };
-use rustc_middle::bug;
 use rustc_middle::lint::{LevelSpec, StableLevelSpec, UnstableLevelSpec};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
@@ -32,7 +31,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, bug, sym};
 use tracing::debug;
 
 use self::TargetLint::*;
@@ -522,7 +521,7 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorate: impl for<'a> Diagnostic<'a, ()>,
+        decorate: impl for<'a> Diagnostic<'a>,
     );
 
     /// Emit a lint at `span` from a lint struct (some type that implements `Diagnostic`,
@@ -532,7 +531,7 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: S,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         self.opt_span_lint(lint, Some(span), decorator);
     }
@@ -596,7 +595,7 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorate: impl for<'a> Diagnostic<'a, ()>,
+        decorate: impl for<'a> Diagnostic<'a>,
     ) {
         let hir_id = self.last_node_with_lint_attrs;
 
@@ -623,7 +622,7 @@ impl LintContext for EarlyContext<'_> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         self.builder.opt_span_lint(lint, span.map(|s| s.into()), decorator)
     }

@@ -78,6 +78,7 @@ mod map_flatten;
 mod map_identity;
 mod map_or_identity;
 mod map_unwrap_or;
+mod map_unwrap_or_default;
 mod map_unwrap_or_else;
 mod map_with_unused_argument_over_ranges;
 mod mut_mutex_lock;
@@ -120,12 +121,14 @@ mod stable_sort_primitive;
 mod str_split;
 mod str_splitn;
 mod string_extend_chars;
+mod string_from_utf8_as_bytes;
 mod string_lit_chars_any;
 mod suspicious_command_arg_space;
 mod suspicious_map;
 mod suspicious_splitn;
 mod suspicious_to_owned;
 mod swap_with_temporary;
+mod trim_split_white_space;
 mod type_id_on_box;
 mod unbuffered_bytes;
 mod uninit_assumed_init;
@@ -2440,12 +2443,12 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `option.map(_).unwrap_or(_)` or `option.map(_).unwrap_or_else(_)` or
-    /// `result.map(_).unwrap_or_else(_)`.
+    /// Checks the usage of `map(_).unwrap_or(_)`, `map(_).unwrap_or_default()`
+    /// or `map(_).unwrap_or_else(_)` for `Option` and `Result` types.
     ///
     /// ### Why is this bad?
     /// Readability, these can be written more concisely (resp.) as
-    /// `option.map_or(_, _)`, `option.map_or_else(_, _)` and `result.map_or_else(_, _)`.
+    /// `map_or(_, _)`, `map_or_default(_)` or `map_or_else(_, _)`.
     ///
     /// ### Known problems
     /// The order of the arguments is not in execution order
@@ -2457,6 +2460,7 @@ declare_clippy_lint! {
     /// # fn some_function(foo: ()) -> usize { 1 }
     /// option.map(|a| a + 1).unwrap_or(0);
     /// option.map(|a| a > 10).unwrap_or(false);
+    /// result.map(|a| vec![a]).unwrap_or_default();
     /// result.map(|a| a + 1).unwrap_or_else(some_function);
     /// ```
     ///
@@ -2467,12 +2471,13 @@ declare_clippy_lint! {
     /// # fn some_function(foo: ()) -> usize { 1 }
     /// option.map_or(0, |a| a + 1);
     /// option.is_some_and(|a| a > 10);
+    /// result.map_or_default(|a| vec![a]);
     /// result.map_or_else(some_function, |a| a + 1);
     /// ```
     #[clippy::version = "1.45.0"]
     pub MAP_UNWRAP_OR,
     pedantic,
-    "using `.map(f).unwrap_or(a)` or `.map(f).unwrap_or_else(func)`, which are more succinctly expressed as `map_or(a, f)` or `map_or_else(a, f)`"
+    "using `.map(f).unwrap_or(a)`, `map(f).unwrap_or_default()` or `.map(f).unwrap_or_else(func)`, which are more succinctly expressed as `map_or(a, f)`, `map_or_default(f)` or `map_or_else(a, f)`"
 }
 
 declare_clippy_lint! {
@@ -3808,6 +3813,28 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Check if the string is transformed to byte array and casted back to string.
+    ///
+    /// ### Why is this bad?
+    /// It's unnecessary, the string can be used directly.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// &"Hello World!"[6..11];
+    /// ```
+    #[clippy::version = "1.50.0"]
+    pub STRING_FROM_UTF8_AS_BYTES,
+    complexity,
+    "casting string slices to byte slices and back"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for `<string_lit>.chars().any(|i| i == c)`.
     ///
     /// ### Why is this bad?
@@ -4042,6 +4069,27 @@ declare_clippy_lint! {
     pub SWAP_WITH_TEMPORARY,
     complexity,
     "detect swap with a temporary value"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Warns about calling `str::trim` (or variants) before `str::split_whitespace`.
+    ///
+    /// ### Why is this bad?
+    /// `split_whitespace` already ignores leading and trailing whitespace.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// " A B C ".trim().split_whitespace();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// " A B C ".split_whitespace();
+    /// ```
+    #[clippy::version = "1.62.0"]
+    pub TRIM_SPLIT_WHITESPACE,
+    style,
+    "using `str::trim()` or alike before `str::split_whitespace`"
 }
 
 declare_clippy_lint! {
@@ -5076,6 +5124,7 @@ impl_lint_pass!(Methods => [
     SOME_FILTER,
     STABLE_SORT_PRIMITIVE,
     STRING_EXTEND_CHARS,
+    STRING_FROM_UTF8_AS_BYTES,
     STRING_LIT_CHARS_ANY,
     STR_SPLIT_AT_NEWLINE,
     SUSPICIOUS_COMMAND_ARG_SPACE,
@@ -5084,6 +5133,7 @@ impl_lint_pass!(Methods => [
     SUSPICIOUS_SPLITN,
     SUSPICIOUS_TO_OWNED,
     SWAP_WITH_TEMPORARY,
+    TRIM_SPLIT_WHITESPACE,
     TYPE_ID_ON_BOX,
     UNBUFFERED_BYTES,
     UNINIT_ASSUMED_INIT,
@@ -5193,6 +5243,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 swap_with_temporary::check(cx, expr, func, args);
                 ip_constant::check(cx, expr, func, args);
                 clone_on_copy::check_function(cx, expr);
+                string_from_utf8_as_bytes::check_call(cx, expr, func, args);
                 unwrap_expect_used::check_call(
                     cx,
                     expr,
@@ -5897,6 +5948,7 @@ impl Methods {
                         },
                         Some((sym::map, m_recv, [arg], span, _)) => {
                             manual_is_variant_and::check_map_unwrap_or_default(cx, expr, m_recv, arg, span, self.msrv);
+                            map_unwrap_or_default::check(cx, expr, recv, m_recv, span, self.msrv);
                         },
                         Some((then_method @ (sym::then | sym::then_some), t_recv, [t_arg], _, _)) => {
                             obfuscated_if_else::check(
@@ -5997,7 +6049,9 @@ impl Methods {
                 (sym::map_or, [def, map]) => {
                     map_or_identity::check(cx, expr, recv, call_span, def, map);
                 },
-
+                (sym::split_whitespace, []) => {
+                    trim_split_white_space::check(cx, expr, recv, call_span);
+                },
                 (sym::to_string, []) => {
                     inefficient_to_string::check(cx, expr, recv, self.msrv);
                 },

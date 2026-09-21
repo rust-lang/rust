@@ -2,7 +2,7 @@ use std::ops::Bound;
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::NtPatKind::*;
-use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token};
+use rustc_ast::token::{self, IdentKind, MetaVarKind, Token};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
@@ -353,7 +353,7 @@ impl<'a> Parser<'a> {
             matches!(
                 &token.uninterpolate().kind,
                 token::FatArrow // e.g. `a | => 0,`.
-                | token::Ident(kw::If, token::IdentIsRaw::No) // e.g. `a | if expr`.
+                | token::Ident(kw::If, token::IdentKind::Normal) // e.g. `a | if expr`.
                 | token::Eq // e.g. `let a | = 0`.
                 | token::Semi // e.g. `let a |;`.
                 | token::Colon // e.g. `let a | :`.
@@ -842,7 +842,7 @@ impl<'a> Parser<'a> {
                     None => PatKind::Path(qself, path),
                 }
             }
-        } else if let Some((lt, IdentIsRaw::No)) = self.token.lifetime()
+        } else if let Some((lt, IdentKind::Normal)) = self.token.lifetime()
             // In pattern position, we're totally fine with using "next token isn't colon"
             // as a heuristic. We could probably just always try to recover if it's a lifetime,
             // because we never have `'a: label {}` in a pattern position anyways, but it does
@@ -1561,7 +1561,7 @@ impl<'a> Parser<'a> {
         self.bump();
         let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
             e.span_label(path.span, "while parsing the fields for this pattern");
-            let guar = e.emit();
+            let guar = e.emit_err();
             self.recover_stmt();
             // When recovering, pretend we had `Foo { .. }`, to avoid cascading errors.
             (ThinVec::new(), PatFieldsRest::Recovered(guar))
@@ -1936,17 +1936,15 @@ impl<'a> Parser<'a> {
             let subpat = if let Some(box_span) = is_box {
                 let prefix_span = box_span.until(boxed_span);
 
-                self.dcx()
-                    .create_err(diagnostics::BoxPatsRemoved {
-                        span: box_span,
-                        sugg_deref_macro_call: diagnostics::UseDerefMacro {
-                            field: Some((prefix_span, fieldname)),
-                            before: boxed_span.shrink_to_lo(),
-                            after: hi.shrink_to_hi(),
-                        },
-                        sugg_removal: prefix_span,
-                    })
-                    .emit();
+                self.dcx().emit_err(diagnostics::BoxPatsRemoved {
+                    span: box_span,
+                    sugg_deref_macro_call: diagnostics::UseDerefMacro {
+                        field: Some((prefix_span, fieldname)),
+                        before: boxed_span.shrink_to_lo(),
+                        after: hi.shrink_to_hi(),
+                    },
+                    sugg_removal: prefix_span,
+                });
 
                 self.mk_pat(lo.to(hi), PatKind::Deref(Box::new(fieldpat)))
             } else {
