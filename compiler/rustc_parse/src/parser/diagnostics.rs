@@ -1,7 +1,7 @@
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
 
-use ast::token::IdentIsRaw;
+use ast::token::IdentKind;
 use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
@@ -141,64 +141,6 @@ impl AttemptLocalParseRecovery {
     }
 }
 
-/// Information for emitting suggestions and recovering from
-/// C-style `i++`, `--i`, etc.
-#[derive(Debug, Copy, Clone)]
-struct IncDecRecovery {
-    /// Is this increment/decrement its own statement?
-    standalone: IsStandalone,
-    /// Is this an increment or decrement?
-    op: IncOrDec,
-    /// Is this pre- or postfix?
-    fixity: UnaryFixity,
-}
-
-/// Is an increment or decrement expression its own statement?
-#[derive(Debug, Copy, Clone)]
-enum IsStandalone {
-    /// It's standalone, i.e., its own statement.
-    Standalone,
-    /// It's a subexpression, i.e., *not* standalone.
-    Subexpr,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum IncOrDec {
-    Inc,
-    Dec,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum UnaryFixity {
-    Pre,
-    Post,
-}
-
-impl IncOrDec {
-    fn chr(&self) -> char {
-        match self {
-            Self::Inc => '+',
-            Self::Dec => '-',
-        }
-    }
-
-    fn name(&self) -> &'static str {
-        match self {
-            Self::Inc => "increment",
-            Self::Dec => "decrement",
-        }
-    }
-}
-
-impl std::fmt::Display for UnaryFixity {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Pre => write!(f, "prefix"),
-            Self::Post => write!(f, "postfix"),
-        }
-    }
-}
-
 /// Checks if the given `lookup` identifier is similar to any keyword symbol in `candidates`.
 ///
 /// This is a specialized version of [`Symbol::find_similar`] that constructs an error when a
@@ -209,22 +151,6 @@ fn find_similar_kw(lookup: Ident, candidates: &[Symbol]) -> Option<MisspelledKw>
         is_incorrect_case,
         span: lookup.span,
     })
-}
-
-struct MultiSugg {
-    msg: String,
-    patches: Vec<(Span, String)>,
-    applicability: Applicability,
-}
-
-impl MultiSugg {
-    fn emit(self, err: &mut Diag<'_>) {
-        err.multipart_suggestion(self.msg, self.patches, self.applicability);
-    }
-
-    fn emit_verbose(self, err: &mut Diag<'_>) {
-        err.multipart_suggestion(self.msg, self.patches, self.applicability);
-    }
 }
 
 /// SnapshotParser is used to create a snapshot of the parser
@@ -274,7 +200,7 @@ impl<'a> Parser<'a> {
     pub(super) fn expected_ident_found(
         &mut self,
         recover: bool,
-    ) -> PResult<'a, (Ident, IdentIsRaw)> {
+    ) -> PResult<'a, (Ident, IdentKind)> {
         let valid_follow = &[
             TokenKind::Eq,
             TokenKind::Colon,
@@ -302,11 +228,11 @@ impl<'a> Parser<'a> {
         let bad_token = self.token;
 
         // suggest prepending a keyword in identifier position with `r#`
-        let suggest_raw = if let Some((ident, IdentIsRaw::No)) = self.token.ident()
+        let suggest_raw = if let Some((ident, IdentKind::Normal)) = self.token.ident()
             && ident.is_raw_guess()
             && self.look_ahead(1, |t| valid_follow.contains(&t.kind))
         {
-            recovered_ident = Some((ident, IdentIsRaw::Yes));
+            recovered_ident = Some((ident, IdentKind::Raw));
 
             // `Symbol::to_string()` is different from `Symbol::into_diag_arg()`,
             // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
@@ -332,7 +258,7 @@ impl<'a> Parser<'a> {
         let help_cannot_start_number = self.is_lit_bad_ident().map(|(len, valid_portion)| {
             let (invalid, valid) = self.token.span.split_at(len as u32);
 
-            recovered_ident = Some((Ident::new(valid_portion, valid), IdentIsRaw::No));
+            recovered_ident = Some((Ident::new(valid_portion, valid), IdentKind::Normal));
 
             HelpIdentifierStartsWithNumber { num_span: invalid }
         });
@@ -351,7 +277,7 @@ impl<'a> Parser<'a> {
         if self.token == token::Lt {
             // Let's check if the previous token could denote the start of an item
             // whose kind can have generics.
-            if let Some((Ident { name, .. }, IdentIsRaw::No)) = self.prev_token.ident()
+            if let Some(Ident { name, .. }) = self.prev_token.non_raw_ident()
                 && let kw::Fn | kw::Type | kw::Struct | kw::Enum | kw::Union | kw::Trait = name
             {
                 match self.parse_generics() {
@@ -582,7 +508,7 @@ impl<'a> Parser<'a> {
             );
         }
 
-        if let Some((ident, IdentIsRaw::No)) = self.prev_token.ident()
+        if let Some(ident) = self.prev_token.non_raw_ident()
             && let "def" | "fun" | "func" | "function" = ident.name.as_str()
         {
             err.span_suggestion_short(
@@ -616,9 +542,9 @@ impl<'a> Parser<'a> {
         // positive for a `cr#` that wasn't intended to start a c-string literal, but identifying
         // that in the parser requires unbounded lookahead, so we only add a hint to the existing
         // error rather than replacing it entirely.
-        if ((self.prev_token == TokenKind::Ident(sym::character('c'), IdentIsRaw::No)
+        if ((self.prev_token == TokenKind::Ident(sym::character('c'), IdentKind::Normal)
             && matches!(&self.token.kind, TokenKind::Literal(token::Lit { kind: token::Str, .. })))
-            || (self.prev_token == TokenKind::Ident(sym::cr, IdentIsRaw::No)
+            || (self.prev_token == TokenKind::Ident(sym::cr, IdentKind::Normal)
                 && matches!(
                     &self.token.kind,
                     TokenKind::Literal(token::Lit { kind: token::Str, .. }) | token::Pound
@@ -683,7 +609,7 @@ impl<'a> Parser<'a> {
 
         if self.check_too_many_raw_str_terminators(&mut err) {
             if expected.contains(&TokenType::Semi) && self.eat(exp!(Semi)) {
-                let guar = err.emit();
+                let guar = err.emit_err();
                 return Ok(guar);
             } else {
                 return Err(err);
@@ -844,7 +770,7 @@ impl<'a> Parser<'a> {
                     Ok(next_attr) => next_attr,
                     Err(inner_err) => {
                         inner_err.cancel();
-                        return err.emit();
+                        return err.emit_err();
                     }
                 }
                 && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
@@ -856,7 +782,7 @@ impl<'a> Parser<'a> {
                     Ok(next_expr) => next_expr,
                     Err(inner_err) => {
                         inner_err.cancel();
-                        return err.emit();
+                        return err.emit_err();
                     }
                 };
                 // We have for sure
@@ -890,7 +816,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        err.emit()
+        err.emit_err()
     }
 
     fn check_too_many_raw_str_terminators(&mut self, err: &mut Diag<'_>) -> bool {
@@ -1015,7 +941,7 @@ impl<'a> Parser<'a> {
                     ],
                     Applicability::MaybeIncorrect,
                 );
-                let guar = err.emit();
+                let guar = err.emit_err();
                 self.eat_to_tokens(&[exp!(CloseBrace)]);
                 guar
             }
@@ -1032,7 +958,7 @@ impl<'a> Parser<'a> {
                     ],
                     Applicability::MaybeIncorrect,
                 );
-                err.emit()
+                err.emit_err()
             }
             _ if token.kind != token::OpenBrace => {
                 // We don't have a heuristic to correctly identify where the block
@@ -1249,7 +1175,7 @@ impl<'a> Parser<'a> {
                                 // The subsequent expression is valid. Mark
                                 // `expr` as erroneous and emit `e` now, but
                                 // return `Ok` so parsing can continue.
-                                let guar = e.emit();
+                                let guar = e.emit_err();
                                 *expr = self.mk_expr_err(expr.span.to(self.prev_token.span), guar);
                                 return Ok(guar);
                             }
@@ -1649,146 +1575,6 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    pub(super) fn recover_from_prefix_increment(
-        &mut self,
-        operand_expr: Box<Expr>,
-        op_span: Span,
-        start_stmt: bool,
-    ) -> PResult<'a, Box<Expr>> {
-        let standalone = if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr };
-        let kind = IncDecRecovery { standalone, op: IncOrDec::Inc, fixity: UnaryFixity::Pre };
-        self.recover_from_inc_dec(operand_expr, kind, op_span)
-    }
-
-    pub(super) fn recover_from_postfix_increment(
-        &mut self,
-        operand_expr: Box<Expr>,
-        op_span: Span,
-        start_stmt: bool,
-    ) -> PResult<'a, Box<Expr>> {
-        let kind = IncDecRecovery {
-            standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
-            op: IncOrDec::Inc,
-            fixity: UnaryFixity::Post,
-        };
-        self.recover_from_inc_dec(operand_expr, kind, op_span)
-    }
-
-    pub(super) fn recover_from_postfix_decrement(
-        &mut self,
-        operand_expr: Box<Expr>,
-        op_span: Span,
-        start_stmt: bool,
-    ) -> PResult<'a, Box<Expr>> {
-        let kind = IncDecRecovery {
-            standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
-            op: IncOrDec::Dec,
-            fixity: UnaryFixity::Post,
-        };
-        self.recover_from_inc_dec(operand_expr, kind, op_span)
-    }
-
-    fn recover_from_inc_dec(
-        &mut self,
-        base: Box<Expr>,
-        kind: IncDecRecovery,
-        op_span: Span,
-    ) -> PResult<'a, Box<Expr>> {
-        let mut err = self.dcx().struct_span_err(
-            op_span,
-            format!("Rust has no {} {} operator", kind.fixity, kind.op.name()),
-        );
-        err.span_label(op_span, format!("not a valid {} operator", kind.fixity));
-
-        let help_base_case = |mut err: Diag<'_, ErrorGuaranteed>, base| {
-            err.help(format!("use `{}= 1` instead", kind.op.chr()));
-            err.emit();
-            Ok(base)
-        };
-
-        // (pre, post)
-        let spans = match kind.fixity {
-            UnaryFixity::Pre => (op_span, base.span.shrink_to_hi()),
-            UnaryFixity::Post => (base.span.shrink_to_lo(), op_span),
-        };
-
-        match kind.standalone {
-            IsStandalone::Standalone => {
-                self.inc_dec_standalone_suggest(kind, spans).emit_verbose(&mut err)
-            }
-            IsStandalone::Subexpr => {
-                let Ok(base_src) = self.span_to_snippet(base.span) else {
-                    return help_base_case(err, base);
-                };
-                match kind.fixity {
-                    UnaryFixity::Pre => {
-                        self.prefix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
-                    }
-                    UnaryFixity::Post => {
-                        // won't suggest since we can not handle the precedences
-                        // for example: `a + b++` has been parsed (a + b)++ and we can not suggest here
-                        if !matches!(base.kind, ExprKind::Binary(_, _, _)) {
-                            self.postfix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
-                        }
-                    }
-                }
-            }
-        }
-        Err(err)
-    }
-
-    fn prefix_inc_dec_suggest(
-        &mut self,
-        base_src: String,
-        kind: IncDecRecovery,
-        (pre_span, post_span): (Span, Span),
-    ) -> MultiSugg {
-        MultiSugg {
-            msg: format!("use `{}= 1` instead", kind.op.chr()),
-            patches: vec![
-                (pre_span, "{ ".to_string()),
-                (post_span, format!(" {}= 1; {} }}", kind.op.chr(), base_src)),
-            ],
-            applicability: Applicability::MachineApplicable,
-        }
-    }
-
-    fn postfix_inc_dec_suggest(
-        &mut self,
-        base_src: String,
-        kind: IncDecRecovery,
-        (pre_span, post_span): (Span, Span),
-    ) -> MultiSugg {
-        let tmp_var = if base_src.trim() == "tmp" { "tmp_" } else { "tmp" };
-        MultiSugg {
-            msg: format!("use `{}= 1` instead", kind.op.chr()),
-            patches: vec![
-                (pre_span, format!("{{ let {tmp_var} = ")),
-                (post_span, format!("; {} {}= 1; {} }}", base_src, kind.op.chr(), tmp_var)),
-            ],
-            applicability: Applicability::HasPlaceholders,
-        }
-    }
-
-    fn inc_dec_standalone_suggest(
-        &mut self,
-        kind: IncDecRecovery,
-        (pre_span, post_span): (Span, Span),
-    ) -> MultiSugg {
-        let mut patches = Vec::new();
-
-        if !pre_span.is_empty() {
-            patches.push((pre_span, String::new()));
-        }
-
-        patches.push((post_span, format!(" {}= 1", kind.op.chr())));
-        MultiSugg {
-            msg: format!("use `{}= 1` instead", kind.op.chr()),
-            patches,
-            applicability: Applicability::MachineApplicable,
-        }
-    }
-
     /// Tries to recover from associated item paths like `[T]::AssocItem` / `(T, U)::AssocItem`.
     /// Attempts to convert the base expression/pattern/type into a type, parses the `::AssocItem`
     /// tail, and combines them into a `<Ty>::AssocItem` expression/pattern/type.
@@ -2048,7 +1834,7 @@ impl<'a> Parser<'a> {
                 "r#",
                 Applicability::MachineApplicable,
             );
-            let guar = err.emit();
+            let guar = err.emit_err();
             Ok(self.mk_expr_err(lo.to(hi), guar))
         } else {
             Err(self.expected_expression_found()) // The user isn't trying to invoke the try! macro
@@ -2095,7 +1881,7 @@ impl<'a> Parser<'a> {
         lo: Span,
         err: Diag<'a>,
     ) -> Box<Expr> {
-        let guar = err.emit();
+        let guar = err.emit_err();
         // Recover from parse error, callers expect the closing delim to be consumed.
         self.consume_block(open, close, ConsumeClosingDelim::Yes);
         self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err(guar))
@@ -2624,7 +2410,7 @@ impl<'a> Parser<'a> {
                         "=",
                         Applicability::MaybeIncorrect,
                     );
-                    let guar = err.emit();
+                    let guar = err.emit_err();
                     let value = self.mk_expr_err(start.to(expr.span), guar);
                     return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
                 } else if snapshot.token == token::Colon
@@ -2638,7 +2424,7 @@ impl<'a> Parser<'a> {
                         "::",
                         Applicability::MaybeIncorrect,
                     );
-                    let guar = err.emit();
+                    let guar = err.emit_err();
                     return Ok(GenericArg::Type(
                         self.mk_ty(start.to(expr.span), TyKind::Err(guar)),
                     ));
@@ -2690,7 +2476,7 @@ impl<'a> Parser<'a> {
             vec![(span.shrink_to_lo(), "{ ".to_string()), (span.shrink_to_hi(), " }".to_string())],
             Applicability::MaybeIncorrect,
         );
-        let guar = err.emit();
+        let guar = err.emit_err();
         let value = self.mk_expr_err(span, guar);
         GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
     }

@@ -661,7 +661,7 @@ pub struct PatExtra<'tcx> {
     ///
     /// This is used by some diagnostics for non-exhaustive matches, to map
     /// the pattern node back to the `DefId` of its original constant.
-    pub expanded_const: Option<DefId>,
+    pub expanded_const: Option<ty::AliasConstKind<'tcx>>,
 
     /// User-written types that must be preserved into MIR so that they can be
     /// checked.

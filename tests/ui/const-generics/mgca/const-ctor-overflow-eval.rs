@@ -7,12 +7,11 @@ struct U;
 
 #[derive(ConstParamTy, PartialEq, Eq)]
 //~^ ERROR overflow evaluating whether `S<U>` is well-formed
-//~| ERROR overflow evaluating whether `S<U>` is well-formed
-
 struct S<const N: U>()
 where
     S<{ U }>:;
 //~^ ERROR overflow evaluating whether `S<U>` is well-formed
+//~| ERROR overflow evaluating whether `S<U>` is well-formed
 //~| ERROR overflow evaluating whether `S<U>` is well-formed
 //~| ERROR overflow evaluating whether `S<U>` is well-formed
 

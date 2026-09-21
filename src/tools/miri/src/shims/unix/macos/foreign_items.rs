@@ -211,9 +211,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.eval_libc("MAXTHREADNAMESIZE").to_target_usize(this)?,
                     /* truncate */ false,
                 )? {
-                    ThreadNameResult::Ok => Scalar::from_u32(0),
-                    ThreadNameResult::NameTooLong => this.eval_libc("ENAMETOOLONG"),
-                    ThreadNameResult::ThreadNotFound => unreachable!(),
+                    ThreadNameResult::Ok => Scalar::from_i32(0),
+                    ThreadNameResult::NameTooLong => {
+                        // Testing on native systems indicates that the error is returned via errno.
+                        this.set_errno_and_return_neg1_i32(LibcError("ENAMETOOLONG"))?
+                    }
                 };
                 // Contrary to the manpage, `pthread_setname_np` on macOS still
                 // returns an integer indicating success.
@@ -237,10 +239,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.read_scalar(len)?,
                     /* truncate */ true,
                 )? {
-                    ThreadNameResult::Ok => Scalar::from_u32(0),
+                    ThreadNameResult::Ok => Scalar::from_i32(0),
                     // `NameTooLong` is possible when the buffer is zero sized,
-                    ThreadNameResult::NameTooLong => Scalar::from_u32(0),
-                    ThreadNameResult::ThreadNotFound => this.eval_libc("ESRCH"),
+                    ThreadNameResult::NameTooLong => Scalar::from_i32(0),
                 };
                 this.write_scalar(res, dest)?;
             }

@@ -177,7 +177,7 @@ pub(crate) fn emit_unescape_error(
 
                 foreign_escape_suggestion(&mut diag, (&ec, span), err_span);
             }
-            diag.emit()
+            diag.emit_err()
         }
         EscapeError::TooShortHexEscape => dcx.emit_err(UnescapeError::TooShortHexEscape(err_span)),
         EscapeError::InvalidCharInHexEscape | EscapeError::InvalidCharInUnicodeEscape => {
@@ -227,7 +227,7 @@ pub(crate) fn emit_unescape_error(
                     Applicability::MaybeIncorrect,
                 );
             }
-            err.emit()
+            err.emit_err()
         }
         EscapeError::OutOfRangeHexEscape => {
             let mut err = dcx.struct_span_err(err_span, "out of range hex escape");
@@ -247,7 +247,7 @@ pub(crate) fn emit_unescape_error(
                 ));
             }
 
-            err.emit()
+            err.emit_err()
         }
         EscapeError::LeadingUnderscoreUnicodeEscape => {
             let (c, span) = last_char();

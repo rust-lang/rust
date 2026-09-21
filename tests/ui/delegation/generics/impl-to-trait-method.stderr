@@ -40,8 +40,8 @@ LL |     trait Trait0 {}
 note: required by a bound in `Trait1::foo`
   --> $DIR/impl-to-trait-method.rs:11:19
    |
+LL |     trait Trait1<T> {
 LL |         fn foo<U>(&self)
-   |            --- required by a bound in this associated function
 ...
 LL |             Self: Trait0,
    |                   ^^^^^^ required by this bound in `Trait1::foo`

@@ -17,8 +17,7 @@ use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, std
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::{
-    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort, PResult,
-    TerminalUrl,
+    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, PResult, TerminalUrl,
 };
 use rustc_feature::UnstableFeatures;
 use rustc_macros::StableHash;
@@ -1844,11 +1843,7 @@ pub struct IncrCompSession {
     /// The directory containing all cached data. Cached data from a previous
     /// session can be read out of it and new data for the current session will
     /// be written into it.
-    pub session_directory: PathBuf,
-    /// `_lock_file` is never directly used, but its presence
-    /// alone has an effect, because the file will unlock when the session is
-    /// dropped.
-    pub _lock_file: flock::Lock,
+    pub session_directory: flock::LockedDir,
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
@@ -1880,7 +1875,7 @@ impl EarlyDiagCtxt {
         self.dcx.handle().fatal(msg)
     }
 
-    pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_, FatalAbort> {
+    pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_> {
         self.dcx.handle().struct_fatal(msg)
     }
 
@@ -1888,7 +1883,7 @@ impl EarlyDiagCtxt {
         self.dcx.handle().warn(msg)
     }
 
-    pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
+    pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_> {
         self.dcx.handle().struct_warn(msg)
     }
 }

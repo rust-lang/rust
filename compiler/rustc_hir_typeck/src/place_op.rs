@@ -92,8 +92,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MachineApplicable,
             );
         }
-        let reported = err.emit();
-        Some((Ty::new_error(self.tcx, reported), Ty::new_error(self.tcx, reported)))
+        let guar = err.emit_err();
+        Some((Ty::new_error(self.tcx, guar), Ty::new_error(self.tcx, guar)))
     }
 
     /// To type-check `base_expr[index_expr]`, we progressively autoderef

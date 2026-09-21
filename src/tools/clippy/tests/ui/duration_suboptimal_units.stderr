@@ -147,13 +147,14 @@ LL +     assert_eq!(Duration::from_hours(1), Duration::from_mins(6));
 error: constructing a `Duration` using a smaller unit when a larger unit would be more readable
   --> tests/ui/duration_suboptimal_units.rs:13:9
    |
+LL | macro_rules! mac {
+...
 LL |         Duration::from_secs(60 * 5)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     let dur = mac!(duration);
    |               -------------- in this macro invocation
    |
-   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: try using `Duration::from_mins`
    |
 LL -         Duration::from_secs(60 * 5)

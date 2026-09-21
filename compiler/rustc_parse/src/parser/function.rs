@@ -1,4 +1,3 @@
-use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, TokenKind};
@@ -176,7 +175,7 @@ impl<'a> Parser<'a> {
                     // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
                     // the AST for typechecking.
                     err.span_label(ident_span, "while parsing this `fn`");
-                    Ok(err.emit())
+                    Ok(err.emit_err())
                 } else if self.token == token::RArrow
                     && let Some(fn_params_end) = fn_params_end
                 {
@@ -332,13 +331,13 @@ impl<'a> Parser<'a> {
                     // Two qualifiers `$qual $qual` is enough, e.g. `async unsafe`.
                     || (
                         (
-                            t.is_non_raw_ident_where(|i|
+                            t.non_raw_ident().is_some_and(|i|
                                 quals.iter().any(|exp| exp.kw == i.name)
                                     // Rule out 2015 `const async: T = val`.
                                     && i.is_reserved()
                             )
                             || case == Case::Insensitive
-                                && t.is_non_raw_ident_where(|i| quals.iter().any(|exp| {
+                                && t.non_raw_ident().is_some_and(|i| quals.iter().any(|exp| {
                                     exp.kw.as_str() == i.name.as_str().to_lowercase()
                                 }))
                         )
@@ -701,7 +700,7 @@ impl<'a> Parser<'a> {
             p.recover_vcs_conflict_marker();
             let snapshot = p.create_snapshot_for_diagnostic();
             let param = p.parse_param_general(fn_parse_mode, first_param).or_else(|e| {
-                let guar = e.emit();
+                let guar = e.emit_err();
                 // When parsing a param failed, we should check to make the span of the param
                 // not contain '(' before it.
                 // For example when parsing `*mut Self` in function `fn oof(*mut Self)`.
@@ -777,7 +776,7 @@ impl<'a> Parser<'a> {
                         first_param,
                         fn_parse_mode,
                     ) {
-                        let guar = err.emit();
+                        let guar = err.emit_err();
                         let mut arg = dummy_arg(ident, guar);
                         arg.span = pat_span;
                         Ok((arg, Trailing::No, UsePreAttrPos::No))
@@ -852,12 +851,10 @@ impl<'a> Parser<'a> {
     /// Returns the parsed optional self parameter and whether a self shortcut was used.
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
         // Extract an identifier *after* having confirmed that the token is one.
-        let expect_self_ident = |this: &mut Self| match this.token.ident() {
-            Some((ident, IdentIsRaw::No)) => {
-                this.bump();
-                ident
-            }
-            _ => unreachable!(),
+        let expect_self_ident = |this: &mut Self| {
+            let ident = this.token.non_raw_ident().unwrap();
+            this.bump();
+            ident
         };
         // is lifetime `n` tokens ahead?
         let is_lifetime = |this: &Self, n| this.look_ahead(n, |t| t.is_lifetime());

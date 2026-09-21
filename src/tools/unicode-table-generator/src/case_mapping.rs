@@ -26,8 +26,8 @@
 //!
 //! Splitting the LUT into `L1Lut` and `L2Lut` means we do not need to store the
 //! upper 16 bits of every entry in the `L2Lut`, since every character stays
-//! within the same plane when case-mapped. This cuts the total size of the LUT
-//! in half.
+//! within the same plane when case-mapped (those that don't go into
+//! `l2_lut.exceptions`). This cuts the total size of the LUT in half.
 //!
 //! Storing the delta between the input codepoint and output codepoint in
 //! `singles` allows us to combine contiguous ranges which all map to codepoints
@@ -45,7 +45,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::ops::RangeInclusive;
 
-use crate::fmt_helpers::Hex;
+use crate::fmt_helpers::{CharEscape, Hex};
 use crate::{UnicodeData, fmt_list};
 
 pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [(String, usize); 4]) {
@@ -117,6 +117,9 @@ struct L2Lut {
 
     /// Keyed by bits 0..=15 of the code point, value is the lower 16-bits of the 2 or 3 code points that the char expands to.
     multis: Vec<(Hex<u16>, [Hex<u16>; 3])>,
+
+    /// Characters that get sent to a different plane when case-mapped.
+    exceptions: Vec<(Hex<u16>, [CharEscape; 3])>,
 }
 
 /// A compact encoding of a `Range<u16>` in only 4 bytes.
@@ -179,32 +182,46 @@ impl fmt::Debug for Range {
 
 impl L2Lut {
     fn size(&self) -> usize {
-        size_of_val(self.singles.as_slice()) + size_of_val(self.multis.as_slice())
+        size_of_val(self.singles.as_slice())
+            + size_of_val(self.multis.as_slice())
+            + size_of_val(self.exceptions.as_slice())
     }
 }
 
 impl fmt::Debug for L2Lut {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let singles = self.singles.as_slice();
+        let Self { singles, multis, exceptions } = self;
+
+        let singles = singles.as_slice();
         let singles = fmt::from_fn(|f| {
             write!(f, "&[ // {} entries, {} bytes", singles.len(), size_of_val(singles))?;
             write!(f, "{}]", fmt_list(singles))
         });
 
-        let multis = self.multis.as_slice();
+        let multis = multis.as_slice();
         let multis = fmt::from_fn(|f| {
             write!(f, "&[ // {} entries, {} bytes", multis.len(), size_of_val(multis))?;
             write!(f, "{}]", fmt_list(multis))
         });
 
-        f.debug_struct("L2Lut").field("singles", &singles).field("multis", &multis).finish()
+        let exceptions = exceptions.as_slice();
+        let exceptions = fmt::from_fn(|f| {
+            write!(f, "&[ // {} entries, {} bytes", exceptions.len(), size_of_val(exceptions))?;
+            write!(f, "{}]", fmt_list(exceptions))
+        });
+
+        f.debug_struct("L2Lut")
+            .field("singles", &singles)
+            .field("multis", &multis)
+            .field("exceptions", &exceptions)
+            .finish()
     }
 }
 
 fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, String, usize) {
     let mut l1_lut = L1Lut::default();
 
-    for (&input, &output) in data.iter() {
+    'outer: for (&input, &output) in data.iter() {
         assert!(input > 0x7f);
 
         let (input_high, input_low) = deconstruct(input);
@@ -222,14 +239,18 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, Strin
                 l2_lut.singles.push((range, delta));
             }
             _ => {
-                let output_lows = output.map(|output| {
-                    let (output_high, output_low) = deconstruct(output);
-                    assert_eq!(
-                        output_high, input_high,
-                        "Case-mapping a character should not change its plane"
-                    );
-                    Hex(output_low)
-                });
+                let mut output_lows = [Hex(0); 3];
+                for (i, out_char) in output.into_iter().enumerate() {
+                    let (output_high, output_low) = deconstruct(out_char);
+                    if output_high != input_high {
+                        l2_lut.exceptions.push((
+                            Hex(input_low),
+                            output.map(|c| char::try_from(c).unwrap()).map(CharEscape),
+                        ));
+                        continue 'outer;
+                    }
+                    output_lows[i] = Hex(output_low);
+                }
                 l2_lut.multis.push((Hex(input_low), output_lows));
             }
         }
@@ -297,6 +318,7 @@ struct L1Lut {
 struct L2Lut {
     singles: &'static [(Range, i16)],
     multis: &'static [(u16, [u16; 3])],
+    exceptions: &'static [(u16, [char; 3])],
 }
 
 #[derive(Copy, Clone)]
@@ -389,6 +411,12 @@ fn lookup(input: char, l1_lut: &L1Lut) -> Option<[char; 3]> {
         return Some(output);
     };
 
+    for &(key, output) in l2_lut.exceptions {
+        if key == input_low {
+            return Some(output)
+        }
+    }
+
     None
 }
 
@@ -398,6 +426,17 @@ pub fn to_lower(c: char) -> [char; 3] {
         return [c.to_ascii_lowercase(), '\0', '\0'];
     }
 
+    // The rest of Latin-1: À..=Þ (except ×) add 0x20, everything else maps to itself.
+    if c <= '\u{FF}' {
+        return match c {
+            '\u{C0}'..='\u{DE}' if c != '\u{D7}' => {
+                // SAFETY: U+00C0..=U+00DE plus 0x20 lands in U+00E0..=U+00FE.
+                [unsafe { char::from_u32_unchecked(c as u32 + 0x20) }, '\0', '\0']
+            }
+            _ => [c, '\0', '\0'],
+        };
+    }
+
     lookup(c, &LOWERCASE_LUT).unwrap_or([c, '\0', '\0'])
 }
 
@@ -405,6 +444,20 @@ pub fn to_upper(c: char) -> [char; 3] {
     // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[:Changes_When_Uppercased:]-[:ASCII:]&abb=on
     if c < '\u{B5}' {
         return [c.to_ascii_uppercase(), '\0', '\0'];
+    }
+    // The rest of Latin-1: µ maps to U+039C, ß expands to SS,
+    // à..=þ (except ÷) subtract 0x20, ÿ maps to U+0178.
+    if c <= '\u{FF}' {
+        return match c {
+            '\u{B5}' => ['\u{39C}', '\0', '\0'],
+            '\u{DF}' => ['S', 'S', '\0'],
+            '\u{E0}'..='\u{FE}' if c != '\u{F7}' => {
+                // SAFETY: U+00E0..=U+00FE minus 0x20 lands in U+00C0..=U+00DE.
+                [unsafe { char::from_u32_unchecked(c as u32 - 0x20) }, '\0', '\0']
+            }
+            '\u{FF}' => ['\u{178}', '\0', '\0'],
+            _ => [c, '\0', '\0'],
+        };
     }
 
     lookup(c, &UPPERCASE_LUT).unwrap_or([c, '\0', '\0'])

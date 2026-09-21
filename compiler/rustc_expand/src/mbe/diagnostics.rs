@@ -140,7 +140,7 @@ pub(super) fn failed_to_match_macro(
             }
         }
     }
-    let guar = err.emit();
+    let guar = err.emit_err();
     (sp, guar)
 }
 
@@ -497,7 +497,7 @@ pub(super) fn emit_frag_parse_err(
             }
         }
     }
-    e.emit()
+    e.emit_err()
 }
 
 pub(crate) fn annotate_err_with_kind(err: &mut Diag<'_>, kind: AstFragmentKind, span: Span) {

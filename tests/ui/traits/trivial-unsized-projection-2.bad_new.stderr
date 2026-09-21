@@ -15,12 +15,12 @@ note: required because it appears within the type `Tail`
   --> $DIR/trivial-unsized-projection-2.rs:17:8
    |
 LL | struct Tail([()]);
-   |        ^^^^
+   |        ^^^^ ---- required by this field
 note: required by a bound in `Bad::Assert`
   --> $DIR/trivial-unsized-projection-2.rs:14:15
    |
+LL | trait Bad {
 LL |     type Assert
-   |          ------ required by a bound in this associated type
 LL |     where
 LL |         Self: Sized;
    |               ^^^^^ required by this bound in `Bad::Assert`

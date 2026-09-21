@@ -10,11 +10,14 @@ fn test_all_except_most_recent() {
         ((UNIX_EPOCH + Duration::new(2, 0), PathBuf::from("2")), None),
     ]);
     assert_eq!(
-        all_except_most_recent(input).into_items().map(|(path, _)| path).into_sorted_stable_ord(),
+        all_except_maybe_most_recent(input, true)
+            .into_items()
+            .map(|(path, _)| path)
+            .into_sorted_stable_ord(),
         vec![PathBuf::from("1"), PathBuf::from("2"), PathBuf::from("3"), PathBuf::from("4")]
     );
 
-    assert!(all_except_most_recent(UnordMap::default()).is_empty());
+    assert!(all_except_maybe_most_recent(UnordMap::default(), true).is_empty());
 }
 
 #[test]

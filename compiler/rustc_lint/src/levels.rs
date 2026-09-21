@@ -26,6 +26,7 @@ use rustc_middle::lint::{
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
+use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::{AttrId, DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
@@ -190,7 +191,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
             hir::OwnerNode::ImplItem(item) => levels.visit_impl_item(item),
             hir::OwnerNode::Crate(mod_) => {
                 levels.add_id(hir::CRATE_HIR_ID);
-                levels.visit_mod(mod_, mod_.spans.inner_span, hir::CRATE_HIR_ID)
+                levels.visit_mod(mod_, mod_.spans.inner_span, CRATE_MOD_ID)
             }
             hir::OwnerNode::Synthetic => unreachable!(),
         },
@@ -959,12 +960,8 @@ where
             lint_from_cli: bool,
         }
 
-        impl<'a, 'b> Diagnostic<'a, ()> for UnknownLint<'b> {
-            fn into_diag(
-                self,
-                dcx: DiagCtxtHandle<'a>,
-                level: rustc_errors::Level,
-            ) -> Diag<'a, ()> {
+        impl<'a, 'b> Diagnostic<'a> for UnknownLint<'b> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: rustc_errors::Level) -> Diag<'a> {
                 let Self { sess, lint_id, feature, lint_from_cli } = self;
                 let mut lint = Diag::new(dcx, level, msg!("unknown lint: `{$name}`"))
                     .with_arg("name", lint_id.lint.name_lower())
@@ -1012,7 +1009,7 @@ where
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         let level_spec = self.lint_level_spec(lint);
         emit_lint_base(self.sess, lint, level_spec, span, decorator)
@@ -1023,14 +1020,14 @@ where
         &self,
         lint: &'static Lint,
         span: MultiSpan,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         let level_spec = self.lint_level_spec(lint);
         emit_lint_base(self.sess, lint, level_spec, Some(span), decorator);
     }
 
     #[track_caller]
-    pub fn emit_lint(&self, lint: &'static Lint, decorator: impl for<'a> Diagnostic<'a, ()>) {
+    pub fn emit_lint(&self, lint: &'static Lint, decorator: impl for<'a> Diagnostic<'a>) {
         let level_spec = self.lint_level_spec(lint);
         emit_lint_base(self.sess, lint, level_spec, None, decorator);
     }

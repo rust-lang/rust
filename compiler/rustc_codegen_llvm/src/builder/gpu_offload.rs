@@ -10,11 +10,12 @@ use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods, ReturnSl
 use rustc_middle::ty::offload_meta::{MappingFlags, OffloadMetadata, OffloadSize};
 use rustc_span::bug;
 
+use crate::attributes;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
+use crate::context::SimpleCx;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, Linkage, Type, Value};
-use crate::{SimpleCx, attributes};
 
 // LLVM kernel-independent globals required for offloading
 pub(crate) struct OffloadGlobals<'ll> {

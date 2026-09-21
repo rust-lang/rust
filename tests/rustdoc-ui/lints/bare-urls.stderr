@@ -364,5 +364,197 @@ help: use an automatic link instead
 LL | /// <https://bloob.blob>]
    |     +                  +
 
-error: aborting due to 30 previous errors
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:96:9
+   |
+LL | /// See https://example.com/test_.html
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See <https://example.com/test_.html>
+   |         +                              +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:100:9
+   |
+LL | /// See https://example.com/test._html
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See <https://example.com/test._html>
+   |         +                              +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:104:10
+   |
+LL | /// See _https://example.com/test.html_
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See _<https://example.com/test.html_>
+   |          +                              +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:108:9
+   |
+LL | /// See https://en.wikipedia.org/wiki/Rust_(programming_language)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See <https://en.wikipedia.org/wiki/Rust_(programming_language)>
+   |         +                                                         +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:112:10
+   |
+LL | /// See (http://example.com/(1(2)))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See (<http://example.com/(1(2))>)
+   |          +                         +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:116:12
+   |
+LL | /// See (1(http://example.com/1(2)))
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See (1(<http://example.com/1(2)>))
+   |            +                       +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:120:12
+   |
+LL | /// See (1(http://example.com/1(.)
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See (1(<http://example.com/1(.)>
+   |            +                       +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:124:9
+   |
+LL | /// See http://example.com/(1(2)))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See <http://example.com/(1(2))>)
+   |         +                         +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:128:9
+   |
+LL | /// See http://example.com/test(.
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See <http://example.com/test>(.
+   |         +                       +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:132:9
+   |
+LL | /// See http://example.com/test.(
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See <http://example.com/test>.(
+   |         +                       +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:136:9
+   |
+LL | /// See http://example.com/test).
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See <http://example.com/test>).
+   |         +                       +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:140:9
+   |
+LL | /// See http://example.com/test.)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// See <http://example.com/test>.)
+   |         +                       +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:149:5
+   |
+LL | /// https://foo.bar=a
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// <https://foo.bar>=a
+   |     +               +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:154:5
+   |
+LL | /// https://foo.bar#a or https://foo.bar?a
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// <https://foo.bar#a> or https://foo.bar?a
+   |     +                 +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:154:26
+   |
+LL | /// https://foo.bar#a or https://foo.bar?a
+   |                          ^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// https://foo.bar#a or <https://foo.bar?a>
+   |                          +                 +
+
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:161:5
+   |
+LL | /// https://example.com/_foo_/bar
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// <https://example.com/_foo_/bar>
+   |     +                             +
+
+error: aborting due to 46 previous errors
 
