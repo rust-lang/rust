@@ -8,10 +8,11 @@ use crate::spec::{
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         // It makes no sense to set "vec-extabi" here without also actually configuring LLVM to use
-        // that ABI. This needs a new target spec knob to control the relevant LLVM flag. If you are
-        // adding such a knob, make sure to also:
-        // - adjust the logic in `asm/powerpc.rs` to check that knob instead of checking `cfg_abi`.
-        // - adjust the logic in `spec/consistency.rs` to correlate that knob with `cfg_abi`.
+        // that ABI. Since https://github.com/llvm/llvm-project/pull/221670 this probably just needs
+        // `llvm_abiname` to be set properly. If you are doing that, make sure to also:
+        // - adjust the logic in `reserved_v20to31` in `asm/powerpc.rs` to allow the extra registers
+        //   to be used depending on `llvm_abiname`.
+        // - adjust the logic in `spec/consistency.rs` to correlate `llvm_abiname` with `cfg_abi`.
         cfg_abi: CfgAbi::VecDefault,
         code_model: Some(CodeModel::Large),
         cpu: "pwr7".into(),
