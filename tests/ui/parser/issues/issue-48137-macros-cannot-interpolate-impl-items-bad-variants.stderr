@@ -9,6 +9,8 @@ LL |     struct BadS;
 error: enum is not supported in `trait`s or `impl`s
   --> $DIR/issue-48137-macros-cannot-interpolate-impl-items-bad-variants.rs:5:9
    |
+LL | macro_rules! expand_to_enum {
+LL |     () => {
 LL |         enum BadE {}
    |         ^^^^^^^^^
 ...
@@ -16,7 +18,6 @@ LL |     expand_to_enum!();
    |     ----------------- in this macro invocation
    |
    = help: consider moving the enum out to a nearby module scope
-   = note: this error originates in the macro `expand_to_enum` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: struct is not supported in `trait`s or `impl`s
   --> $DIR/issue-48137-macros-cannot-interpolate-impl-items-bad-variants.rs:31:5
@@ -29,6 +30,8 @@ LL |     struct BadS;
 error: enum is not supported in `trait`s or `impl`s
   --> $DIR/issue-48137-macros-cannot-interpolate-impl-items-bad-variants.rs:5:9
    |
+LL | macro_rules! expand_to_enum {
+LL |     () => {
 LL |         enum BadE {}
    |         ^^^^^^^^^
 ...
@@ -36,7 +39,6 @@ LL |     expand_to_enum!();
    |     ----------------- in this macro invocation
    |
    = help: consider moving the enum out to a nearby module scope
-   = note: this error originates in the macro `expand_to_enum` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: struct is not supported in `extern` blocks
   --> $DIR/issue-48137-macros-cannot-interpolate-impl-items-bad-variants.rs:42:5
@@ -49,6 +51,8 @@ LL |     struct BadS;
 error: enum is not supported in `extern` blocks
   --> $DIR/issue-48137-macros-cannot-interpolate-impl-items-bad-variants.rs:5:9
    |
+LL | macro_rules! expand_to_enum {
+LL |     () => {
 LL |         enum BadE {}
    |         ^^^^^^^^^
 ...
@@ -56,7 +60,6 @@ LL |     expand_to_enum!();
    |     ----------------- in this macro invocation
    |
    = help: consider moving the enum out to a nearby module scope
-   = note: this error originates in the macro `expand_to_enum` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 6 previous errors
 

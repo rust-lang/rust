@@ -22,6 +22,8 @@ LL | pub(self) const _: () = {};
 warning: visibility qualifiers have no effect on `const _` declarations
   --> $DIR/unused-visibilities.rs:14:9
    |
+LL | macro_rules! foo {
+LL |     () => {
 LL |         pub const _: () = {};
    |         ^^^ help: remove the qualifier
 ...
@@ -29,7 +31,6 @@ LL | foo!();
    | ------ in this macro invocation
    |
    = note: `const _` does not declare a name, so there is nothing for the qualifier to apply to
-   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 3 warnings emitted
 

@@ -58,6 +58,8 @@ LL |     if item == t!(frohes_neu_Jahr).to_string() {
 error: this creates an owned instance just for comparison
   --> tests/ui/cmp_owned/with_suggestion.rs:141:51
    |
+LL |       macro_rules! all_comes_from_macro {
+...
 LL |                       let res = <$ty>::default() == "$def".to_string();
    |                                                     ^^^^^^^^^^^^^^^^^^ help: try: `"$def"`
 ...
@@ -65,8 +67,6 @@ LL | /     all_comes_from_macro! {
 LL | |         required_version: String, m!().to_string();
 LL | |     }
    | |_____- in this macro invocation
-   |
-   = note: this error originates in the macro `all_comes_from_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this creates an owned instance just for comparison
   --> tests/ui/cmp_owned/with_suggestion.rs:156:16

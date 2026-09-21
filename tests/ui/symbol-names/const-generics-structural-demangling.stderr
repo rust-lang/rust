@@ -127,35 +127,35 @@ LL | #[rustc_dump_symbol_name]
 error: symbol-name(_RMsd_CsCRATE_HASH_1cINtB<REF>_4Bar_KVNtB<REF>_3BarS1xh7b_s_1xt1000_EE)
   --> $DIR/const-generics-structural-demangling.rs:93:5
    |
+LL | macro duplicate_field_name_test($x:ident) {
+...
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | duplicate_field_name_test!(x);
    | ----------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `duplicate_field_name_test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: demangling(<c[HASH]::Bar_<{c[HASH]::Bar { x: 123u8, x: 4096u16 }}>>)
   --> $DIR/const-generics-structural-demangling.rs:93:5
    |
+LL | macro duplicate_field_name_test($x:ident) {
+...
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | duplicate_field_name_test!(x);
    | ----------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `duplicate_field_name_test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: demangling-alt(<c::Bar_<{c::Bar { x: 123, x: 4096 }}>>)
   --> $DIR/const-generics-structural-demangling.rs:93:5
    |
+LL | macro duplicate_field_name_test($x:ident) {
+...
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | duplicate_field_name_test!(x);
    | ----------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `duplicate_field_name_test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 24 previous errors
 

@@ -3,6 +3,8 @@ error: Undefined Behavior: calling a function with return type i32 passing retur
    |
 LL | unsafe extern "C" fn ctor() -> i32 {
    |                                ^^^ Undefined Behavior occurred here
+...
+LL | macro_rules! ctor {
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
@@ -16,7 +18,6 @@ LL |         static $ident: unsafe extern "C" fn() -> i32 = $ctor;
 ...
 LL | ctor! { CTOR = ctor }
    | --------------------- in this macro invocation
-   = note: this error originates in the macro `ctor` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

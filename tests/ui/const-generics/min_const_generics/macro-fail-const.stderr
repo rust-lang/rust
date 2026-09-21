@@ -7,10 +7,9 @@ LL | fn make_marker() -> impl Marker<gimme_a_const!(marker)> {
    |                                 this macro call doesn't expand to a type
    |                                 in this macro invocation
 ...
+LL |     macro_rules! gimme_a_const {
 LL |       ($rusty: ident) => {{ let $rusty = 3; *&$rusty }}
    |                           ^ expected type
-   |
-   = note: this error originates in the macro `gimme_a_const` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected type, found `{`
   --> $DIR/macro-fail-const.rs:16:27
@@ -21,10 +20,9 @@ LL |   Example::<gimme_a_const!(marker)>
    |             this macro call doesn't expand to a type
    |             in this macro invocation
 ...
+LL |     macro_rules! gimme_a_const {
 LL |       ($rusty: ident) => {{ let $rusty = 3; *&$rusty }}
    |                           ^ expected type
-   |
-   = note: this error originates in the macro `gimme_a_const` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0747]: type provided when a constant was expected
   --> $DIR/macro-fail-const.rs:5:33
