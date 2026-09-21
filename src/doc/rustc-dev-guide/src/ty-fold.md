@@ -11,7 +11,7 @@ The answer is a couple of traits: [`TypeFoldable`]
 and [`TypeFolder`].
 
 - `TypeFoldable` is implemented by types that embed type information.
-  It allows you to recursively process the contents of the `TypeFoldable` and do stuff to them.
+  It allows you to recursively process the contents of `TypeFoldable` and do stuff to them.
 - `TypeFolder` defines what you want to do with the types you encounter while processing the
   `TypeFoldable`.
 
@@ -75,7 +75,7 @@ impl TypeFoldable for MyFoldable {
 
 Notice that here,
 we implement `super_fold_with` to go over the fields of `MyFoldable` and call `fold_with` on *them*.
-That is, a folder may replace  `def_id` and `ty`, but not the whole `MyFoldable` struct.
+That is, a folder may replace `def_id` and `ty`, but not the whole `MyFoldable` struct.
 
 Here is another example to put things together: suppose we have a type like `Vec<Vec<X>>`.
 The `ty::Ty` would look like: `Adt(Vec, &[Adt(Vec, &[Param(X)])])`.
@@ -86,7 +86,7 @@ so we would descend one level and look at `Adt(Vec, &[Param(X)])`.
 There are still no substitutions to be made here, so we would descend again.
 Now we are looking at `Param(X)`, which can be substituted, so we replace it with `u32`.
 We can’t descend any more, so we are done,
-and  the overall result is `Adt(Vec, &[Adt(Vec, &[u32])])`.
+and the overall result is `Adt(Vec, &[Adt(Vec, &[u32])])`.
 
 One last thing to mention: often when folding over a `TypeFoldable`,
 we don’t want to change most things.
