@@ -16,8 +16,8 @@ The main test harness for testing the compiler itself is a tool called [compilet
 
 [compiletest] supports running different styles of tests,
 organized into *test suites*.
-A *test mode* may provide common presets/behavior for a set of *test
-suites*. [compiletest]-supported tests are located in the [`tests`] directory.
+A *test mode* may provide common presets/behavior for a set of *test suites*.
+[compiletest]-supported tests are located in the [`tests`] directory.
 
 The [Compiletest chapter][compiletest] goes into detail on how to use this tool.
 
