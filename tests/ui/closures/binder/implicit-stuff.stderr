@@ -33,12 +33,22 @@ error[E0637]: `&` without an explicit lifetime name cannot be used here
    |
 LL |     let _ = for<'a> |x: &()| -> &'a () { x };
    |                         ^ explicit lifetime name needed here
+   |
+help: consider using the `'a` lifetime
+   |
+LL |     let _ = for<'a> |x: &'a ()| -> &'a () { x };
+   |                          ++
 
 error[E0637]: `&` without an explicit lifetime name cannot be used here
   --> $DIR/implicit-stuff.rs:26:36
    |
 LL |     let _ = for<'a> |x: &'a ()| -> &() { x };
    |                                    ^ explicit lifetime name needed here
+   |
+help: consider using the `'a` lifetime
+   |
+LL |     let _ = for<'a> |x: &'a ()| -> &'a () { x };
+   |                                     ++
 
 error: implicit types in closure signatures are forbidden when `for<...>` is present
   --> $DIR/implicit-stuff.rs:5:21
