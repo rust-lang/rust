@@ -4173,10 +4173,24 @@ fn main() {
 }
 "#,
             expect![[r#"
-                ct INFINITY pub const INFINITY: f32 []
-                ct NEG_INFINITY pub const NEG_INFINITY: f32 []
+                ct INFINITY pub const INFINITY: f32 [type_could_unify]
+                ct NEG_INFINITY pub const NEG_INFINITY: f32 [type_could_unify]
                 ct INFINITY f32 [type_could_unify+requires_import+deprecated]
                 ct NEG_INFINITY f32 [type_could_unify+requires_import+deprecated]
+            "#]],
+        );
+        check_relevance(
+            r#"
+//- minicore: float_consts
+fn main() {
+    let x: f32 = f32::INF$0
+}
+"#,
+            expect![[r#"
+                ct INFINITY pub const INFINITY: f32 [type]
+                ct NEG_INFINITY pub const NEG_INFINITY: f32 [type]
+                ct INFINITY f32 [type+requires_import+deprecated]
+                ct NEG_INFINITY f32 [type+requires_import+deprecated]
             "#]],
         );
     }
