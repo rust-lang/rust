@@ -672,7 +672,7 @@ fn encode_ty<'tcx>(enc: &mut PtrauthEncoder, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
         ClangDiscTy::Bool | ClangDiscTy::Char | ClangDiscTy::Int => enc.push(b'i'),
 
         ClangDiscTy::Float(f) => match f.bit_width() {
-            16 => enc.push_str("Dh"),
+            16 => enc.push_str("DF16_"),
             32 => enc.push(b'f'),
             64 => enc.push(b'd'),
             128 => enc.push(b'g'),
