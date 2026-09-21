@@ -252,6 +252,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
         saved_locals,
         local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
         eligible_storage_live: DenseBitSet::new_empty(body.local_decls.len()),
+        last_recorded_storage_live: DenseBitSet::new_empty(body.local_decls.len()),
     };
 
     // Filter out:
@@ -296,6 +297,7 @@ struct StorageConflictVisitor<'a> {
     local_conflicts: BitMatrix<Local, Local>,
     // We keep this bitset as a buffer to avoid reallocating memory.
     eligible_storage_live: DenseBitSet<Local>,
+    last_recorded_storage_live: DenseBitSet<Local>,
 }
 
 impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage> for StorageConflictVisitor<'a> {
@@ -323,9 +325,14 @@ impl StorageConflictVisitor<'_> {
         self.eligible_storage_live.clone_from(state);
         self.eligible_storage_live.intersect(&**self.saved_locals);
 
+        if self.last_recorded_storage_live.superset(&self.eligible_storage_live) {
+            return;
+        }
+
         for local in self.eligible_storage_live.iter() {
             self.local_conflicts.union_row_with(&self.eligible_storage_live, local);
         }
+        std::mem::swap(&mut self.last_recorded_storage_live, &mut self.eligible_storage_live);
     }
 }
 
