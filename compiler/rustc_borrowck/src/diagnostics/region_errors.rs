@@ -439,7 +439,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             return;
         };
         let def_id = instance.def_id();
-        let bounds =
+        let mut bounds =
             tcx.clauses_of(def_id)
                 .instantiate(tcx, instance.args)
                 .into_iter()
@@ -455,6 +455,37 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 })
                 .map(|(_, sp)| sp)
                 .collect::<Vec<Span>>();
+
+        // Look at the receiver for `&'static self`, which introduces a `'static` obligation.
+        // ```
+        // impl Foo {
+        //     fn foo(&'static self) {}
+        //            ^^^^^^^^^^^^^
+        // ```
+        if let Some(recv) =
+            tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().inputs().skip_binder().get(0)
+            && let ty::Ref(region, _, _) = recv.kind()
+            && *region == tcx.lifetimes.re_static
+            && let Some(assoc) = tcx.opt_associated_item(def_id)
+            && assoc.is_method()
+        {
+            let def_span = tcx.def_span(def_id);
+            // We have a `&'static self` receiver.
+            if let Some(def_id) = def_id.as_local()
+                && let owner = tcx.expect_hir_owner_node(def_id)
+                && let Some(decl) = owner.fn_decl()
+                && let Some(ty) = decl.inputs.get(0)
+            {
+                // Point at the `&'static self` receiver.
+                bounds.push(ty.span);
+            } else if !bounds.iter().any(|sp| sp.overlaps(def_span)) {
+                // The method is not defined on the local crate, point at the signature instead of
+                // just the receiver as an approximation. We don't add it if there are already
+                // other spans with overlap with the def `Span`, as the other will be more specific.
+                bounds.push(def_span)
+            }
+        }
+
         if !bounds.is_empty() {
             let mut multispan: MultiSpan = bounds.clone().into();
             for span in bounds {
