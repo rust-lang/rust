@@ -1297,7 +1297,7 @@ fn start_executing_work<B: WriteBackendMethods>(
         incr_comp_session_dir: tcx
             .incr_comp_session
             .as_ref()
-            .map(|incr_comp_session| incr_comp_session.session_directory.clone()),
+            .map(|incr_comp_session| (&*incr_comp_session.session_directory).to_owned()),
         output_filenames: Arc::clone(tcx.output_filenames(())),
         module_config: regular_config,
         opt_level,
