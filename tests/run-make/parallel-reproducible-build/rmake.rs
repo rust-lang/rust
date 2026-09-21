@@ -12,6 +12,39 @@ fn main() {
     const TESTS: &[(&str, &[&str])] = &[
         ("static-muts-issue-140413", &["-Zthreads=50"]),
         ("derives-issue-129094", &["-Zthreads=16", "-Copt-level=3"]),
+        (
+            "async-fns-issue-162202",
+            &[
+                "-Zthreads=30",
+                "--crate-type=lib",
+                "--crate-name=test",
+                "-Ccodegen-units=1",
+                "-Zremap-cwd-prefix=reproducible_dir",
+                "--edition=2024",
+            ],
+        ),
+        (
+            "rpit-issue-162202",
+            &[
+                "-Zthreads=30",
+                "--crate-type=lib",
+                "--crate-name=test",
+                "-Ccodegen-units=1",
+                "-Zremap-cwd-prefix=reproducible_dir",
+                "--edition=2024",
+            ],
+        ),
+        (
+            "static-muts-lib-issue-162203",
+            &[
+                "-Zthreads=30",
+                "--edition=2024",
+                "-Zremap-cwd-prefix=reproducible_dir",
+                "--cap-lints=warn",
+                "-Ccodegen-units=1",
+                "-Clink-dead-code=true",
+            ],
+        ),
     ];
 
     for (file, args) in TESTS {
