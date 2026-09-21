@@ -633,10 +633,9 @@ impl<'a> DiagCtxtHandle<'a> {
     /// and [`StashKey`] as the key. Panics if the found diagnostic is an
     /// error.
     pub fn steal_non_err(self, span: Span, key: StashKey) -> Option<Diag<'a, ()>> {
-        // FIXME(#120456) - is `swap_remove` correct?
         let (diag, guar, _) =
             self.dcx.inner.borrow_mut().stashed_diagnostics.get_mut(&key).and_then(
-                |stashed_diagnostics| stashed_diagnostics.swap_remove(&span.with_parent(None)),
+                |stashed_diagnostics| stashed_diagnostics.shift_remove(&span.with_parent(None)),
             )?;
         assert!(!diag.is_error());
         assert!(guar.is_none());
@@ -656,9 +655,8 @@ impl<'a> DiagCtxtHandle<'a> {
     where
         F: FnMut(&mut Diag<'_>),
     {
-        // FIXME(#120456) - is `swap_remove` correct?
         let err = self.dcx.inner.borrow_mut().stashed_diagnostics.get_mut(&key).and_then(
-            |stashed_diagnostics| stashed_diagnostics.swap_remove(&span.with_parent(None)),
+            |stashed_diagnostics| stashed_diagnostics.shift_remove(&span.with_parent(None)),
         );
         err.map(|(err, guar, _)| {
             // The use of `::<ErrorGuaranteed>` is safe because level is `Level::Error`.
@@ -680,9 +678,8 @@ impl<'a> DiagCtxtHandle<'a> {
         key: StashKey,
         new_err: Diag<'_>,
     ) -> ErrorGuaranteed {
-        // FIXME(#120456) - is `swap_remove` correct?
         let old_err = self.dcx.inner.borrow_mut().stashed_diagnostics.get_mut(&key).and_then(
-            |stashed_diagnostics| stashed_diagnostics.swap_remove(&span.with_parent(None)),
+            |stashed_diagnostics| stashed_diagnostics.shift_remove(&span.with_parent(None)),
         );
         match old_err {
             Some((old_err, guar, _)) => {
@@ -1735,3 +1732,6 @@ pub enum TerminalUrl {
     Yes,
     Auto,
 }
+
+#[cfg(test)]
+mod tests;
