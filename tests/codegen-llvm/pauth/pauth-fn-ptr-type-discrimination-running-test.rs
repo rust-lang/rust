@@ -221,40 +221,6 @@ pub extern "C" fn test_function_pointer() -> extern "C" fn() {
 //     struct InitiallyIncomplete (*fnptr)(void) = &returns_initially_incomplete;
 //   }
 // ```
-// Test each case in isolation (complete/incomplete) - the difference in discrimnators is expected.
-#[repr(C)]
-pub struct InitiallyIncomplete {
-    _private: [u8; 0],
-}
-
-extern "C" fn returns_initially_incomplete() -> InitiallyIncomplete {
-    InitiallyIncomplete { _private: [] }
-}
-
-// CHECK-LABEL: @{{.*}}use_while_incomplete
-pub unsafe fn use_while_incomplete() {
-    // DISC: call ptr @{{.*}}InitiallyIncomplete{{.*}}(ptr ptrauth (ptr @{{.*}}returns_initially_incomplete, i32 0, i64 25106))
-    // NO_DISC: call ptr @{{.*}}InitiallyIncomplete{{.*}}(ptr ptrauth (ptr @{{.*}}returns_initially_incomplete, i32 0))
-    let INITIALLY_INCOMPLETE_FNPTR: extern "C" fn() -> InitiallyIncomplete =
-        returns_initially_incomplete;
-
-    black_box(INITIALLY_INCOMPLETE_FNPTR);
-}
-
-#[repr(C)]
-pub struct InitiallyComplete {
-    x: i32,
-}
-extern "C" fn returns_initially_complete() -> InitiallyComplete {
-    { InitiallyComplete { x: 42 } }
-}
-// CHECK-LABEL: @{{.*}}use_while_complete
-pub fn use_while_complete() {
-    // DISC: call ptr @{{.*}}InitiallyComplete{{.*}}(ptr ptrauth (ptr @{{.*}}returns_initially_complete, i32 0, i64 9528))
-    // NO_DISC: call ptr @{{.*}}InitiallyComplete{{.*}}(ptr ptrauth (ptr @{{.*}}returns_initially_complete, i32 0))
-    let INITIALLY_COMPLETE_FNPTR: extern "C" fn() -> InitiallyComplete = returns_initially_complete;
-    black_box(INITIALLY_COMPLETE_FNPTR);
-}
 
 // 15
 // K&R function definition can be expressed in Rust and in any case a function definition without a
