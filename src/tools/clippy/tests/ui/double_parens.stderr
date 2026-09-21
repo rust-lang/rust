@@ -40,13 +40,12 @@ LL |     assert_eq!(((1, 2)), (1, 2), "Error");
 error: unnecessary parentheses
   --> tests/ui/double_parens.rs:89:16
    |
+LL |     macro_rules! bar {
 LL |         () => {((100))}
    |                ^^^^^^^ help: remove them: `(100)`
 ...
 LL |     bar!();
    |     ------ in this macro invocation
-   |
-   = note: this error originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unnecessary parentheses
   --> tests/ui/double_parens.rs:96:5
@@ -69,35 +68,35 @@ LL |     x.dummy_method((vec![1, 2]));
 error: unnecessary parentheses
   --> tests/ui/double_parens.rs:110:21
    |
+LL |     macro_rules! double_parens{
+...
 LL |             let a = (());
    |                     ^^^^ help: remove them: `()`
 ...
 LL |         pub const E: InterruptMask = double_parens!((Self::OE), Self::BE, Self::PE, Self::FE);
    |                                      -------------------------------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `double_parens` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unnecessary parentheses
   --> tests/ui/double_parens.rs:112:21
    |
+LL |     macro_rules! double_parens{
+...
 LL |             let b = ((5));
    |                     ^^^^^ help: remove them: `(5)`
 ...
 LL |         pub const E: InterruptMask = double_parens!((Self::OE), Self::BE, Self::PE, Self::FE);
    |                                      -------------------------------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `double_parens` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unnecessary parentheses
   --> tests/ui/double_parens.rs:114:44
    |
+LL |     macro_rules! double_parens{
+...
 LL |             let c = std::convert::identity((5));
    |                                            ^^^ help: remove them: `5`
 ...
 LL |         pub const E: InterruptMask = double_parens!((Self::OE), Self::BE, Self::PE, Self::FE);
    |                                      -------------------------------------------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `double_parens` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 13 previous errors
 

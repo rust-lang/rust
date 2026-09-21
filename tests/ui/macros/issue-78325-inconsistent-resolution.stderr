@@ -1,17 +1,19 @@
 error: macro-expanded `extern crate` items cannot shadow names passed with `--extern`
   --> $DIR/issue-78325-inconsistent-resolution.rs:5:9
    |
+LL | macro_rules! define_other_core {
+LL |     ( ) => {
 LL |         extern crate std as core;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | define_other_core!();
    | -------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `define_other_core` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `core` is ambiguous
   --> $DIR/issue-78325-inconsistent-resolution.rs:11:5
    |
+LL | macro_rules! define_other_core {
+...
 LL |     core::panic!();
    |     ^^^^ ambiguous name
    |
@@ -26,11 +28,12 @@ LL |         extern crate std as core;
 LL | define_other_core!();
    | -------------------- in this macro invocation
    = help: use `crate::core` to refer to this crate unambiguously
-   = note: this error originates in the macro `define_other_core` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `core` is ambiguous
   --> $DIR/issue-78325-inconsistent-resolution.rs:12:7
    |
+LL | macro_rules! define_other_core {
+...
 LL |     ::core::panic!();
    |       ^^^^ ambiguous name
    |
@@ -44,7 +47,6 @@ LL |         extern crate std as core;
 ...
 LL | define_other_core!();
    | -------------------- in this macro invocation
-   = note: this error originates in the macro `define_other_core` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 
