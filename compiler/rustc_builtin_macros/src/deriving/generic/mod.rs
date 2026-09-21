@@ -498,7 +498,7 @@ impl<'a> TraitDef<'a> {
                     let body = if from_scratch || method_def.is_static() {
                         method_def.call_substructure_method(cx, span, StaticEnum(enum_def))
                     } else {
-                        method_def.expand_enum_method_body(cx, span, enum_def, *ident)
+                        method_def.expand_enum_method_body(cx, span, enum_def)
                     };
 
                     method_def.create_method(cx, span, body)
@@ -972,7 +972,6 @@ impl<'a> MethodDef<'a> {
         cx: &ExtCtxt<'_>,
         span: Span,
         enum_def: &'b EnumDef,
-        type_ident: Ident,
     ) -> BlockOrExpr {
         let variants = &enum_def.variants;
 
@@ -1065,7 +1064,8 @@ impl<'a> MethodDef<'a> {
                 let fields = create_struct_pattern_fields(span, cx, &variant.data, &prefixes);
 
                 let sp = variant.span.with_ctxt(span.ctxt());
-                let variant_path = cx.path(sp, vec![type_ident, variant.ident]);
+                let variant_path =
+                    cx.path(sp, vec![Ident::new(kw::SelfUpper, span), variant.ident]);
                 let mut subpats =
                     create_struct_patterns(span, cx, variant_path, &variant.data, &prefixes);
 
