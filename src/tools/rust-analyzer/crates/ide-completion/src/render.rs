@@ -516,13 +516,12 @@ fn render_resolution_path<'db>(
         ScopeDef::ModuleDef(ModuleDef::Const(konst)) => set_item_relevance(konst.ty(db)),
         ScopeDef::ModuleDef(ModuleDef::Static(stat)) => set_item_relevance(stat.ty(db)),
         ScopeDef::ModuleDef(ModuleDef::BuiltinType(bt)) => set_item_relevance(bt.ty(db)),
+        ScopeDef::ModuleDef(ModuleDef::TypeAlias(ta)) => set_item_relevance(ta.ty(db)),
         ScopeDef::ImplSelfType(imp) => set_item_relevance(imp.self_ty(db)),
         ScopeDef::GenericParam(_)
         | ScopeDef::Label(_)
         | ScopeDef::Unknown
-        | ScopeDef::ModuleDef(
-            ModuleDef::Trait(_) | ModuleDef::Module(_) | ModuleDef::TypeAlias(_),
-        ) => (),
+        | ScopeDef::ModuleDef(ModuleDef::Trait(_) | ModuleDef::Module(_)) => (),
     };
 
     item
@@ -1235,6 +1234,35 @@ fn func(input: Struct) { }
             expect![[r#"
                 st Self Self [type]
                 st Struct Struct [type]
+                sp Self Struct [type]
+                st Struct Struct [type]
+                ex Struct  [type]
+                lc self &Struct [local]
+                fn func(…) fn(Struct) []
+                me self.test() fn(&self) []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn set_type_alias_completion_info() {
+        check_relevance(
+            r#"
+//- /main.rs crate:main
+struct Struct;
+type Alias = Struct;
+
+impl Struct {
+    fn test(&self) {
+        func(Self$0);
+    }
+}
+fn func(input: Struct) { }
+"#,
+            expect![[r#"
+                st Self Self [type]
+                st Struct Struct [type]
+                ta Alias Struct [type]
                 sp Self Struct [type]
                 st Struct Struct [type]
                 ex Struct  [type]
@@ -2076,13 +2104,16 @@ fn main() { A$0 }
                     CompletionItem {
                         label: "A",
                         detail_left: None,
-                        detail_right: None,
+                        detail_right: Some(
+                            "i32",
+                        ),
                         source_range: 41..42,
                         delete: 41..42,
                         insert: "A",
                         kind: SymbolKind(
                             TypeAlias,
                         ),
+                        detail: "i32",
                         deprecated: true,
                         relevance: CompletionRelevance {
                             exact_name_match: false,
