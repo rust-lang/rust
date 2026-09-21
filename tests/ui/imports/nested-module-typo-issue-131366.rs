@@ -33,4 +33,14 @@ macro_rules! import {
 import!(collection);
 //~^ ERROR unresolved import `local::collection`
 
+mod accessible {
+    pub mod collections {
+        pub struct Item;
+    }
+    use collections as collection;
+}
+// The closer match is a private alias, so suggest the accessible module instead.
+use accessible::collectio::Item as AccessibleItem;
+//~^ ERROR unresolved import `accessible::collectio`
+
 fn main() {}

@@ -1033,6 +1033,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     Res::Def(k, _) => matches_kind(k),
                                     _ => false,
                                 },
+                                &|_| true,
                             ) && let Res::Def(kind, mut def_id) = suggestion.res
                             {
                                 if let DefKind::Ctor(_, _) = kind {
@@ -1603,6 +1604,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         ident: Ident,
         filter_fn: &impl Fn(Res) -> bool,
+        suggestion_filter: &impl Fn(&TypoSuggestion) -> bool,
     ) -> Option<TypoSuggestion> {
         let mut suggestions = Vec::new();
         self.add_scope_set_candidates(
@@ -1612,6 +1614,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ident.span,
             filter_fn,
         );
+
+        // Some candidates cannot be decided from the `Res` alone (e.g. they need
+        // re-resolution or visibility checks), filter them out before picking the
+        // best name match.
+        suggestions.retain(suggestion_filter);
 
         // Make sure error reporting is deterministic.
         suggestions.sort_by(|a, b| a.candidate.as_str().cmp(b.candidate.as_str()));
@@ -1965,6 +1972,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             parent_scope,
             ident,
             is_expected,
+            &|_| true,
         );
         self.add_typo_suggestion(err, suggestion, ident.span);
         self.detect_derive_attribute(err, ident, parent_scope, sugg_span);
@@ -3034,18 +3042,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 parent_scope,
                 ident,
                 &|res| matches!(res, Res::Def(DefKind::Mod | DefKind::Enum, _)),
-            )
-            && let Ok(binding) = self.cm().resolve_ident_in_module(
-                ModuleOrUniformRoot::Module(module),
-                Ident::new(candidate.candidate, ident.span),
-                TypeNS,
-                parent_scope,
-                None,
-                ignore_decl,
-                ignore_import,
-            )
-            && self.is_accessible_from(binding.vis(), parent_scope.module)
-        {
+                &|candidate| {
+                    self.cm()
+                        .resolve_ident_in_module(
+                            ModuleOrUniformRoot::Module(module),
+                            Ident::new(candidate.candidate, ident.span),
+                            TypeNS,
+                            parent_scope,
+                            None,
+                            ignore_decl,
+                            ignore_import,
+                        )
+                        .is_ok_and(|binding| {
+                            self.is_accessible_from(binding.vis(), parent_scope.module)
+                        })
+                },
+            ) {
             Some((
                 vec![(ident.span, Ident::new(candidate.candidate, ident.span).to_string())],
                 format!(
