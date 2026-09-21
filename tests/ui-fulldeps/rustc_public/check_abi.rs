@@ -110,7 +110,12 @@ fn check_primitive(abi: &ArgAbi) {
         panic!("Expected PassMode::Direct for char, got: {:?}", abi.mode);
     };
     // A char (32-bit) doesn't need sign/zero extension on most platforms.
+    #[cfg(not(any(target_arch = "loongarch64", target_arch = "riscv64")))]
     assert_eq!(attrs.arg_extension(), ArgExtension::None);
+    // However, LoongArch64 and RiscV64 ABIs require that 32-bit integers
+    // (signed or unsigned) are sign-extended when passed in registers.
+    #[cfg(any(target_arch = "loongarch64", target_arch = "riscv64"))]
+    assert_eq!(attrs.arg_extension(), ArgExtension::Sext);
     // Direct arguments are not pointers, so no pointee alignment.
     assert_eq!(attrs.pointee_align(), None);
     let layout = abi.layout.shape();
