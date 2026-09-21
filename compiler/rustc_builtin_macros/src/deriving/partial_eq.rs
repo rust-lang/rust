@@ -29,7 +29,6 @@ pub(crate) fn expand_deriving_partial_eq(
         // a second check here would lead to redundant error messages.
         supports_unions: true,
         methods: SmallVec::new(),
-        associated_types: SmallVec::new(),
         is_const: false,
         safety: Safety::Default,
         document: true,
@@ -57,7 +56,6 @@ pub(crate) fn expand_deriving_partial_eq(
         additional_bounds: SmallVec::new(),
         supports_unions: false,
         methods,
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

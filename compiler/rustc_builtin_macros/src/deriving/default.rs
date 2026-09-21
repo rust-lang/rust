@@ -49,7 +49,6 @@ pub(crate) fn expand_deriving_default(
                 }
             }),
         }],
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

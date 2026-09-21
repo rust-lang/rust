@@ -68,7 +68,6 @@ pub(crate) fn expand_deriving_clone(
             additional_bounds: bounds.clone(),
             supports_unions: true,
             methods: SmallVec::new(),
-            associated_types: SmallVec::new(),
             is_const,
             safety: Safety::Unsafe(DUMMY_SP),
             // `TrivialClone` is not part of an API guarantee, so it shouldn't
@@ -96,7 +95,6 @@ pub(crate) fn expand_deriving_clone(
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: substructure,
         }],
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

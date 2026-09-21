@@ -48,7 +48,6 @@ pub(crate) fn expand_deriving_hash(
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(hash_substructure),
         }],
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

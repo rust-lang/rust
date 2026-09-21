@@ -40,7 +40,6 @@ pub(crate) fn expand_deriving_eq(
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(cs_total_eq_assert),
         }],
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

@@ -39,7 +39,6 @@ pub(crate) fn expand_deriving_ord(
                 discr_then_data
             )),
         }],
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

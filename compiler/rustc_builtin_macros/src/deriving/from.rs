@@ -115,7 +115,6 @@ pub(crate) fn expand_deriving_from(
                 BlockOrExpr::new_expr(expr)
             }),
         }],
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

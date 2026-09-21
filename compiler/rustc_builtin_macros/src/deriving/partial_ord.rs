@@ -69,7 +69,6 @@ pub(crate) fn expand_deriving_partial_ord(
         additional_bounds: smallvec![],
         supports_unions: false,
         methods: smallvec![partial_cmp_def],
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

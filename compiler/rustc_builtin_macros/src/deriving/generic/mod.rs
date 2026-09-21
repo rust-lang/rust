@@ -220,8 +220,6 @@ pub(crate) struct TraitDef<'a> {
 
     pub methods: SmallVec<[MethodDef<'a>; 1]>,
 
-    pub associated_types: SmallVec<[(Ident, Ty); 1]>,
-
     pub is_const: bool,
 
     /// The safety of the `impl`.
@@ -573,28 +571,6 @@ impl<'a> TraitDef<'a> {
         methods: impl Iterator<Item = Box<ast::AssocItem>>,
         is_packed: bool,
     ) -> Box<ast::Item> {
-        // Transform associated types from `deriving::ty::Ty` into `ast::AssocItem`
-        let associated_types = self.associated_types.iter().map(|&(ident, ref type_def)| {
-            Box::new(ast::AssocItem {
-                id: ast::DUMMY_NODE_ID,
-                span: self.span,
-                vis: ast::Visibility {
-                    span: self.span.shrink_to_lo(),
-                    kind: ast::VisibilityKind::Inherited,
-                },
-                attrs: ast::AttrVec::new(),
-                kind: ast::AssocItemKind::Type(Box::new(ast::TyAlias {
-                    defaultness: ast::Defaultness::Implicit,
-                    ident,
-                    generics: Generics::default(),
-                    after_where_clause: ast::WhereClause::default(),
-                    bounds: ThinVec::new(),
-                    ty: Some(type_def.to_ty(cx, self.span)),
-                })),
-                tokens: None,
-            })
-        });
-
         let mut where_clause = ast::WhereClause::default();
         where_clause.span = generics.where_clause.span;
         let ctxt = self.span.ctxt();
@@ -809,7 +785,7 @@ impl<'a> TraitDef<'a> {
                 })),
                 constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
                 self_ty: self_type,
-                items: methods.chain(associated_types).collect(),
+                items: methods.collect(),
             }),
         )
     }

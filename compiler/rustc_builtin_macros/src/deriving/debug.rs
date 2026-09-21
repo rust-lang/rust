@@ -41,7 +41,6 @@ pub(crate) fn expand_deriving_debug(
                 item.kind.ident().unwrap()
             )),
         }],
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,
