@@ -1289,7 +1289,7 @@ impl<'a> Parser<'a> {
                 .with_help(
                     "use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead",
                 )
-                .emit();
+                .emit_err();
             ExprKind::Err(guar)
         } else {
             ExprKind::ConstBlock(anon_const)
@@ -1795,7 +1795,7 @@ impl<'a> Parser<'a> {
                 ";",
                 Applicability::MaybeIncorrect,
             );
-            return Some((lhs.span, err.emit()));
+            return Some((lhs.span, err.emit_err()));
         }
         None
     }

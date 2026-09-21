@@ -14,6 +14,7 @@ LL | trait Context {}
 note: required by a bound in `Foo::take`
   --> $DIR/ice-missing-field-fn-sig-method.rs:7:16
    |
+LL | impl Foo {
 LL |     fn take<T: Context>(&self, _: T) {}
    |                ^^^^^^^ required by this bound in `Foo::take`
 

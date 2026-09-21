@@ -265,7 +265,7 @@ fn make_format_args(
                                 }
                             }
                         }
-                        err.emit()
+                        err.emit_err()
                     }
                     Err(guar) => guar,
                 };
@@ -1156,7 +1156,7 @@ fn expand_format_args_impl<'cx>(
             }
         }
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             DummyResult::any(sp, guar)
         }
     })

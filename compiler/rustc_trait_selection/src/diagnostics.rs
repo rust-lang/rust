@@ -36,9 +36,9 @@ pub(crate) struct NegativePositiveConflict<'tcx> {
     pub positive_impl_span: Result<Span, Symbol>,
 }
 
-impl<G> Diagnostic<'_, G> for NegativePositiveConflict<'_> {
+impl Diagnostic<'_> for NegativePositiveConflict<'_> {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(
             dcx,
             level,
@@ -89,7 +89,7 @@ pub(crate) enum AdjustSignatureBorrow {
 }
 
 impl Subdiagnostic for AdjustSignatureBorrow {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         match self {
             AdjustSignatureBorrow::Borrow { to_borrow } => {
                 diag.arg("borrow_len", to_borrow.len());
@@ -437,8 +437,8 @@ pub(crate) enum RegionOriginNote<'a> {
 }
 
 impl Subdiagnostic for RegionOriginNote<'_> {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
-        let label_or_note = |diag: &mut Diag<'_, G>, span, msg: DiagMessage| {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
+        let label_or_note = |diag: &mut Diag<'_>, span, msg: DiagMessage| {
             let sub_count = diag.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = diag.children.iter().filter(|d| !d.span.is_dummy()).count();
             let span_is_primary = diag.span.primary_spans().iter().all(|&sp| sp == span);
@@ -532,7 +532,7 @@ pub(crate) enum LifetimeMismatchLabels {
 }
 
 impl Subdiagnostic for LifetimeMismatchLabels {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         match self {
             LifetimeMismatchLabels::InRet { param_span, ret_span, span, label_var1 } => {
                 diag.span_label(param_span, msg!("this parameter and the return type are declared with different lifetimes..."));
@@ -605,7 +605,7 @@ pub(crate) struct AddLifetimeParamsSuggestion<'a> {
 }
 
 impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let mut mk_suggestion = || {
             let Some(anon_reg) = self.tcx.is_suitable_region(self.generic_param_scope, self.sub)
             else {
@@ -789,7 +789,7 @@ pub(crate) struct IntroducesStaticBecauseUnmetLifetimeReq {
 }
 
 impl Subdiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
-    fn add_to_diag<G>(mut self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(mut self, diag: &mut Diag<'_>) {
         self.unmet_requirements.push_span_label(
             self.binding_span,
             msg!("introduces a `'static` lifetime requirement"),
@@ -1184,7 +1184,7 @@ pub(crate) struct ConsiderBorrowingParamHelp {
 }
 
 impl Subdiagnostic for ConsiderBorrowingParamHelp {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let mut type_param_span: MultiSpan = self.spans.clone().into();
         for &span in &self.spans {
             // Seems like we can't call f() here as Into<DiagMessage> is required
@@ -1661,7 +1661,7 @@ pub(crate) struct SuggestTuplePatternMany {
 }
 
 impl Subdiagnostic for SuggestTuplePatternMany {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.arg("path", self.path);
         let message = msg!("try wrapping the pattern in a variant of `{$path}`");
         diag.multipart_suggestions(
@@ -1907,7 +1907,7 @@ pub(crate) struct AddPreciseCapturingAndParams {
 }
 
 impl Subdiagnostic for AddPreciseCapturingAndParams {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.arg("new_lifetime", self.new_lifetime);
         diag.multipart_suggestion(
             msg!("add a `use<...>` bound to explicitly capture `{$new_lifetime}` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate"),
@@ -2047,7 +2047,7 @@ pub struct AddPreciseCapturingForOvercapture {
 }
 
 impl Subdiagnostic for AddPreciseCapturingForOvercapture {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let applicability = if self.apit_spans.is_empty() {
             Applicability::MachineApplicable
         } else {

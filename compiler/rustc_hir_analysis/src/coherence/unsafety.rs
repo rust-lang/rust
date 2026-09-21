@@ -49,7 +49,7 @@ pub(super) fn check_item(
                 "",
                 rustc_errors::Applicability::MachineApplicable,
             )
-            .emit());
+            .emit_err());
         }
 
         (Safety::Unsafe, _, Safety::Safe, Positive) => {
@@ -83,7 +83,7 @@ pub(super) fn check_item(
                 "unsafe ",
                 rustc_errors::Applicability::MaybeIncorrect,
             )
-            .emit());
+            .emit_err());
         }
 
         (Safety::Safe, Some(attr_name), Safety::Safe, Positive) => {
@@ -107,7 +107,7 @@ pub(super) fn check_item(
                 "unsafe ",
                 rustc_errors::Applicability::MaybeIncorrect,
             )
-            .emit());
+            .emit_err());
         }
 
         (_, _, Safety::Unsafe, Negative) => {

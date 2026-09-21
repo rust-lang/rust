@@ -138,7 +138,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         trait_pred.def_id(),
                         &violations,
                     )
-                    .emit();
+                    .emit_err();
                     return Ty::new_error(tcx, reported);
                 }
             }
@@ -578,8 +578,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             this: &'a dyn HirTyLowerer<'tcx>,
         }
 
-        impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for TraitObjectWithoutDyn<'b, 'tcx> {
-            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        impl<'a, 'b, 'tcx> Diagnostic<'a> for TraitObjectWithoutDyn<'b, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
                 let Self { span, hir_id, sugg, this } = self;
                 let mut lint =
                     Diag::new(dcx, level, "trait objects without an explicit `dyn` are deprecated");
@@ -665,7 +665,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 s1.append(s2);
                 sugg.cancel();
             }
-            Some(diag.emit())
+            Some(diag.emit_err())
         } else {
             tcx.emit_node_span_lint(
                 BARE_TRAIT_OBJECTS,
@@ -739,11 +739,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Make sure that we are in the condition to suggest the blanket implementation.
-    fn maybe_suggest_blanket_trait_impl<G>(
+    fn maybe_suggest_blanket_trait_impl(
         &self,
         span: Span,
         hir_id: hir::HirId,
-        diag: &mut Diag<'_, G>,
+        diag: &mut Diag<'_>,
     ) {
         let tcx = self.tcx();
         let parent_id = tcx.hir_get_parent_item(hir_id).def_id;
@@ -1084,6 +1084,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ),
                 typo,
                 Applicability::MaybeIncorrect,
+            );
+        } else {
+            diag.span_label(
+                segment.ident.span,
+                format!(
+                    "not an associated item of trait `{trait_name}`, so `{trait_name}` is \
+                    interpreted as a type",
+                    trait_name = tcx.item_name(trait_def_id),
+                ),
             );
         }
     }

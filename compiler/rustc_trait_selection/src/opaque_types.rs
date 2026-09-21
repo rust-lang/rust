@@ -51,7 +51,7 @@ impl<'tcx> NonDefiningUseReason<'tcx> {
                     .dcx()
                     .struct_span_err(span, "non-defining opaque type use in defining scope")
                     .with_span_note(spans, format!("{descr} used multiple times"))
-                    .emit()
+                    .emit_err()
             }
         }
     }
@@ -231,5 +231,5 @@ pub fn report_item_does_not_constrain_error<'tcx>(
             format!("this use of `{opaque_ty}` does not have unique universal generic arguments"),
         );
     }
-    err.emit()
+    err.emit_err()
 }

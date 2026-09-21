@@ -90,7 +90,7 @@ impl<'a> PatMigration<'a> {
         format!("cannot {verb1}{or_verb2} within an implicitly-borrowing pattern{in_rust_2024}")
     }
 
-    fn format_subdiagnostics<G>(self, diag: &mut Diag<'_, G>) {
+    fn format_subdiagnostics(self, diag: &mut Diag<'_>) {
         // Format and emit explanatory notes about default binding modes. Reversing the spans' order
         // means if we have nested spans, the innermost ones will be visited first.
         for (span, def_br_mutbl) in self.default_mode_labels.into_iter().rev() {

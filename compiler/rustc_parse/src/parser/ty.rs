@@ -527,7 +527,7 @@ impl<'a> Parser<'a> {
                 err.span_label(lo, "expected type");
                 return Ok(match self.maybe_recover_ref_ty_no_leading_ampersand(lt, lo, err) {
                     Ok(ref_ty) => ref_ty,
-                    Err(err) => TyKind::Err(err.emit()),
+                    Err(err) => TyKind::Err(err.emit_err()),
                 });
             }
 
@@ -791,7 +791,7 @@ impl<'a> Parser<'a> {
             .struct_span_err(span, "`typeof` is a reserved keyword but unimplemented")
             .with_note("consider replacing `typeof(...)` with an actual type")
             .with_code(E0516)
-            .emit();
+            .emit_err();
         Ok(TyKind::Err(guar))
     }
 
@@ -1155,7 +1155,7 @@ impl<'a> Parser<'a> {
             vec![(lo, String::new()), (hi, String::new())],
             Applicability::MachineApplicable,
         );
-        diag.emit()
+        diag.emit_err()
     }
 
     /// Emits an error if any trait bound modifiers were present.

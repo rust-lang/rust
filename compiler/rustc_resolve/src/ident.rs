@@ -1505,6 +1505,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 use ResolutionError::*;
                 let mut res_err = None;
 
+                let suggest_closure =
+                    !ribs.iter().any(|rib| matches!(rib.kind, RibKind::AssocItem));
+
                 for rib in ribs {
                     match rib.kind {
                         RibKind::Normal
@@ -1524,7 +1527,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 // we want certain other resolution errors (namely those
                                 // emitted for `ConstantItemRibKind` below) to take
                                 // precedence.
-                                res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem));
+                                res_err = Some((
+                                    span,
+                                    CannotCaptureDynamicEnvironmentInFnItem { suggest_closure },
+                                ));
                             }
                         }
                         RibKind::ConstantItem(_, item, requires_type) => {

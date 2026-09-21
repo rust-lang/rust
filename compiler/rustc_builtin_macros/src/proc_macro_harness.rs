@@ -231,12 +231,10 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 
         if !self.is_proc_macro_crate {
             let path = &attr.get_normal_item().path;
-            self.dcx
-                .create_err(diagnostics::AttributeOnlyUsableWithCrateType {
-                    span: path.span,
-                    path: &pprust::path_to_string(&attr.get_normal_item().path),
-                })
-                .emit();
+            self.dcx.emit_err(diagnostics::AttributeOnlyUsableWithCrateType {
+                span: path.span,
+                path: &pprust::path_to_string(&attr.get_normal_item().path),
+            });
             return;
         }
 

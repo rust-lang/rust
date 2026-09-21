@@ -137,6 +137,11 @@ impl abi::Float {
         use abi::Float::*;
         match *self {
             F16 => tcx.types.f16,
+            F16B => Ty::new_adt(
+                tcx,
+                tcx.adt_def(tcx.require_lang_item(LangItem::F16B, DUMMY_SP)),
+                ty::List::empty(),
+            ),
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
             F128 => tcx.types.f128,
@@ -1346,8 +1351,8 @@ pub enum FnAbiError<'tcx> {
     Layout(LayoutError<'tcx>),
 }
 
-impl<'a, 'b, G> Diagnostic<'a, G> for FnAbiError<'b> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+impl<'a, 'b> Diagnostic<'a> for FnAbiError<'b> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         match self {
             Self::Layout(e) => Diag::new(dcx, level, e.to_string()),
         }

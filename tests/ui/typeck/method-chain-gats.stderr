@@ -12,8 +12,8 @@ LL | fn fmap2<T, A, B, C>(input: T, f1: impl Fn(A) -> B, f2: impl Fn(B) -> C) ->
 note: required by a bound in `Functor::fmap`
   --> $DIR/method-chain-gats.rs:10:24
    |
+LL | trait Functor<A>: Base {
 LL |     fn fmap<B>(self, f: impl Fn(A) -> B) -> Self::Base<B>
-   |        ---- required by a bound in this associated function
 LL |     where
 LL |         Self::Base<B>: Functor<B>;
    |                        ^^^^^^^^^^ required by this bound in `Functor::fmap`

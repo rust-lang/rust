@@ -24,7 +24,6 @@ doc! {
 //@ hasraw - 'Inner comment'
 //@ !hasraw - '//! Inner comment'
 
-
 doc! {
     /** Outer block comment */
     mod Bar {
