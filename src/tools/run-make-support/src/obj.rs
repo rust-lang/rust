@@ -1,3 +1,5 @@
+//! Helpers for working with types from the [`object`] crate.
+
 use std::collections::BTreeSet;
 use std::path::Path;
 
