@@ -78,13 +78,12 @@ pub(super) fn generate<'tcx>(
             break 'deferred FxIndexSet::default();
         }
 
-        let free_regions: FxHashSet<RegionVid> =
-            typeck.universal_regions.universal_regions_iter().collect();
+        let free_regions = typeck.universal_regions.universal_regions_iter().collect();
         let (polonius_relevant, _) =
             compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
 
-        let boring: FxHashSet<Local> = boring_locals.iter().copied().collect();
-        let deferred: FxIndexSet<Local> =
+        let boring: FxHashSet<_> = boring_locals.iter().copied().collect();
+        let deferred =
             polonius_relevant.into_iter().filter(|local| boring.contains(local)).collect();
         typeck.polonius_context.as_mut().unwrap().boring_nll_locals = boring;
         deferred

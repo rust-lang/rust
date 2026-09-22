@@ -460,7 +460,10 @@ where
             // Relating types is always unproductive. If we were to map proof trees to
             // corecursive functions as explained in #136824, relating types never
             // introduces a constructor which could cause the recursion to be guarded.
-            GoalSource::TypeRelating => PathKind::Inductive,
+            //
+            // FIXME(-Znext-solver=coinductive): For now we treat all inductive cycles as
+            // `Unknown`. See the comment in `fn initial_provisional_result`.
+            GoalSource::TypeRelating => PathKind::Unknown,
             // These goal sources are likely unproductive and can be changed to
             // `PathKind::Inductive`. Keeping them as unknown until we're confident
             // about this and have an example where it is necessary.
