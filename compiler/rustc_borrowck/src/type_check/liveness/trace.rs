@@ -52,8 +52,8 @@ pub(super) fn trace<'tcx>(
 
     // The use map must also cover the deferred locals: their liveness is computed later, from
     // this same map, when the loan liveness traversal first reaches one of their regions.
-    let use_map_locals: Vec<Local> = relevant_live_locals.iter().chain(deferred).copied().collect();
-    let local_use_map = LocalUseMap::build(&use_map_locals, location_map, typeck.body);
+    let use_map_locals = relevant_live_locals.iter().chain(deferred).copied();
+    let local_use_map = LocalUseMap::build(use_map_locals, location_map, typeck.body);
     let comp = LivenessComputation::new(
         typeck.infcx,
         typeck.body,
