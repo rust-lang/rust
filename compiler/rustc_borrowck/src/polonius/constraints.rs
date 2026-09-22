@@ -60,7 +60,7 @@ pub(super) trait LivenessSource {
 /// The visitor interface when traversing a `LocalizedConstraintGraph`.
 pub(super) trait LocalizedConstraintGraphVisitor {
     /// Callback called when traversing a given `loan` encounters a localized `node` it hasn't
-    /// visited before.
+    /// visited before, and whether its region is live at that point.
     fn on_node_traversed(&mut self, _loan: BorrowIndex, _node: LocalizedNode, _is_live: bool) {}
 
     /// Callback called when discovering a new `successor` node for the `current_node`.
