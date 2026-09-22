@@ -1931,13 +1931,14 @@ impl Step for Sysroot {
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let compiler = self.compiler;
         let host_dir = builder.out.join(compiler.host);
+        let use_downloaded_rustc = compiler.stage != 0 && builder.download_rustc();
 
         let sysroot_dir = |stage| {
             if stage == 0 {
                 host_dir.join("stage0-sysroot")
             } else if self.force_recompile && stage == compiler.stage {
                 host_dir.join(format!("stage{stage}-test-sysroot"))
-            } else if builder.download_rustc() && compiler.stage != builder.top_stage {
+            } else if use_downloaded_rustc && compiler.stage != builder.top_stage {
                 host_dir.join("ci-rustc-sysroot")
             } else {
                 host_dir.join(format!("stage{stage}"))
@@ -1963,7 +1964,7 @@ impl Step for Sysroot {
         }
 
         // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
-        if builder.download_rustc() && compiler.stage != 0 {
+        if use_downloaded_rustc {
             assert_eq!(
                 builder.config.host_target, compiler.host,
                 "Cross-compiling is not yet supported with `download-rustc`",
@@ -2054,7 +2055,7 @@ impl Step for Sysroot {
         }
 
         // rustc-src component is already part of CI rustc's sysroot
-        if !builder.download_rustc() {
+        if !use_downloaded_rustc {
             let sysroot_lib_rustlib_rustcsrc = sysroot.join("lib/rustlib/rustc-src");
             t!(fs::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
             let sysroot_lib_rustlib_rustcsrc_rust = sysroot_lib_rustlib_rustcsrc.join("rust");

@@ -729,7 +729,7 @@ impl Step for Libdir {
         if !builder.config.dry_run() {
             // Avoid deleting the `rustlib/` directory we just copied (in `impl CommandLineStep for
             // Sysroot`).
-            if !builder.download_rustc() {
+            if self.compiler.stage == 0 || !builder.download_rustc() {
                 let sysroot_target_libdir = sysroot.join(self.target).join("lib");
                 builder.do_if_verbose(|| {
                     eprintln!(
