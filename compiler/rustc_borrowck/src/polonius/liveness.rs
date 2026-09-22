@@ -58,7 +58,7 @@ impl<'tcx> DeferredLocals<'tcx> {
         });
     }
 
-    /// For a given region, compute the liveness for the local containing it, if if is deferred.
+    /// For a given region, compute the liveness for the local containing it, if it is deferred.
     #[inline]
     pub(crate) fn compute_deferred_local(
         &mut self,
