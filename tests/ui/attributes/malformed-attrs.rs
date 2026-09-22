@@ -84,11 +84,11 @@
 //~^ ERROR malformed
 #[link]
 //~^ ERROR malformed
-//~| WARN attribute cannot be used on
+//~| ERROR attribute cannot be used on
 //~| WARN previously accepted
 #[link_name]
 //~^ ERROR malformed
-//~| WARN cannot be used on functions
+//~| ERROR cannot be used on functions
 //~| WARN previously accepted
 #[link_section]
 //~^ ERROR malformed
