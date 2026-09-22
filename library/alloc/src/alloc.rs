@@ -663,7 +663,6 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
 
 #[cfg(not(no_global_oom_handling))]
 #[doc(hidden)]
-#[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "none")]
 pub mod __alloc_error_handler {
     // called via generated `__rust_alloc_error_handler` if there is no
