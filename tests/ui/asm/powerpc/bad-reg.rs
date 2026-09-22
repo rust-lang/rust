@@ -71,19 +71,31 @@ fn f() {
         //[powerpc64,powerpc64le,aix64]~^^ ERROR type `i32` cannot be used with this register class
         asm!("/* {} */", out(vreg) _); // requires altivec
         //[powerpc,powerpcspe]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
-        // v20-v31 (vs52-vs63) are reserved on AIX with vec-default ABI (this ABI is not currently used in Rust's builtin AIX targets).
+        // v20-v31 (vs52-vs63) are reserved on AIX with vec-default ABI, the ABI we currently use for our AIX target.
         asm!("", out("v20") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("v21") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("v22") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("v23") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("v24") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("v25") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("v26") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("v27") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("v28") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("v29") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("v30") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("v31") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
 
         // vsreg
         asm!("", out("vs0") _); // always ok
@@ -111,19 +123,31 @@ fn f() {
         asm!("/* {} */", out(vsreg) _); // requires vsx
         //[powerpc,powerpcspe,powerpc64]~^ ERROR register class `vsreg` requires the `vsx` target feature
 
-        // v20-v31 (vs52-vs63) are reserved on AIX with vec-default ABI (this ABI is not currently used in Rust's builtin AIX targets).
+        // v20-v31 (vs52-vs63) are reserved on AIX with vec-default ABI, the ABI we currently use for our AIX target.
         asm!("", out("vs52") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("vs53") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("vs54") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("vs55") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("vs56") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("vs57") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("vs58") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("vs59") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("vs60") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("vs61") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("vs62") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
         asm!("", out("vs63") _);
+        //[aix64]~^ ERROR are reserved on vec-default ABI
 
         // Clobber-only registers
         // cr
@@ -303,28 +327,52 @@ fn f() {
         //~^ ERROR register `v19` conflicts with register `vs51`
         asm!("", out("vs52") _, out("v20") _);
         //~^ ERROR register `v20` conflicts with register `vs52`
+        //[aix64]~| ERROR are reserved on vec-default ABI
+        //[aix64]~| ERROR are reserved on vec-default ABI
         asm!("", out("vs53") _, out("v21") _);
         //~^ ERROR register `v21` conflicts with register `vs53`
+        //[aix64]~| ERROR are reserved on vec-default ABI
+        //[aix64]~| ERROR are reserved on vec-default ABI
         asm!("", out("vs54") _, out("v22") _);
         //~^ ERROR register `v22` conflicts with register `vs54`
+        //[aix64]~| ERROR are reserved on vec-default ABI
+        //[aix64]~| ERROR are reserved on vec-default ABI
         asm!("", out("vs55") _, out("v23") _);
         //~^ ERROR register `v23` conflicts with register `vs55`
+        //[aix64]~| ERROR are reserved on vec-default ABI
+        //[aix64]~| ERROR are reserved on vec-default ABI
         asm!("", out("vs56") _, out("v24") _);
         //~^ ERROR register `v24` conflicts with register `vs56`
+        //[aix64]~| ERROR are reserved on vec-default ABI
+        //[aix64]~| ERROR are reserved on vec-default ABI
         asm!("", out("vs57") _, out("v25") _);
         //~^ ERROR register `v25` conflicts with register `vs57`
+        //[aix64]~| ERROR are reserved on vec-default ABI
+        //[aix64]~| ERROR are reserved on vec-default ABI
         asm!("", out("vs58") _, out("v26") _);
         //~^ ERROR register `v26` conflicts with register `vs58`
+        //[aix64]~| ERROR are reserved on vec-default ABI
+        //[aix64]~| ERROR are reserved on vec-default ABI
         asm!("", out("vs59") _, out("v27") _);
         //~^ ERROR register `v27` conflicts with register `vs59`
+        //[aix64]~| ERROR are reserved on vec-default ABI
+        //[aix64]~| ERROR are reserved on vec-default ABI
         asm!("", out("vs60") _, out("v28") _);
         //~^ ERROR register `v28` conflicts with register `vs60`
+        //[aix64]~| ERROR are reserved on vec-default ABI
+        //[aix64]~| ERROR are reserved on vec-default ABI
         asm!("", out("vs61") _, out("v29") _);
         //~^ ERROR register `v29` conflicts with register `vs61`
+        //[aix64]~| ERROR are reserved on vec-default ABI
+        //[aix64]~| ERROR are reserved on vec-default ABI
         asm!("", out("vs62") _, out("v30") _);
         //~^ ERROR register `v30` conflicts with register `vs62`
+        //[aix64]~| ERROR are reserved on vec-default ABI
+        //[aix64]~| ERROR are reserved on vec-default ABI
         asm!("", out("vs63") _, out("v31") _);
         //~^ ERROR register `v31` conflicts with register `vs63`
+        //[aix64]~| ERROR are reserved on vec-default ABI
+        //[aix64]~| ERROR are reserved on vec-default ABI
 
         // powerpc-*spe target specific tests
         asm!("", out("spe_acc") _);
