@@ -399,7 +399,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     ///   --> $DIR/static-impl-obligation.rs:163:9
     ///    |
     /// LL |     fn bar<'a>(x: &'a &'a u32) {
-    ///    |            --  - `x` is a reference that is only valid in the function body
+    ///    |            --  - `x` is only valid in the function body
     ///    |            |
     ///    |            lifetime `'a` defined here
     /// LL |         let y: &dyn Foo = x;
@@ -409,13 +409,17 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     ///    |         `x` escapes the function body here
     ///    |         argument requires that `'a` must outlive `'static`
     ///    |
-    /// note: `'static` requirement for `<(dyn o::Foo + 'static)>::hello` introduced here
-    ///   --> $DIR/static-impl-obligation.rs:158:40
+    /// note: `'static` lifetime requirement from `<(dyn o::Foo + 'static)>::hello` introduced here
+    ///   --> $DIR/static-impl-obligation.rs:158:20
     ///    |
     /// LL |     impl dyn Foo + 'static where Self: 'static {
-    ///    |                                        ^^^^^^^ `'static` requirement introduced here
+    ///    |                    ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+    ///    |                    |
+    ///    |                    lifetime requirement introduced here
     /// LL |         fn hello(&'static self) where Self: 'static {}
-    ///    |                                             ^^^^^^^ `'static` requirement introduced here
+    ///    |                  ^^^^^^^^^^^^^              ^^^^^^^ lifetime requirement introduced here
+    ///    |                  |
+    ///    |                  lifetime requirement introduced here
     /// ```
     fn explain_impl_static_obligation(
         &self,
