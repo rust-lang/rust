@@ -152,6 +152,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-x86_64-apple-darwin",
     "ignore-x86_64-pc-windows-gnu",
     "ignore-x86_64-pc-windows-gnullvm",
+    "ignore-x86_64-pc-windows-msvc",
     "ignore-x86_64-unknown-linux-gnu",
     "incremental",
     "known-bug",
