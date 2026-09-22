@@ -3,6 +3,7 @@ use rustc_macros::StableHash;
 
 use crate::{Align, Float, HasDataLayout, Integer, Primitive, Size};
 
+/// The "kind" of backend type, which combined with a [`Size`] forms a [`Reg`].
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum RegKind {
@@ -31,6 +32,7 @@ impl RegKind {
     }
 }
 
+/// A combination of a [`RegKind`] and a [`Size`] that represents a builtin type in the backend.
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Reg {
