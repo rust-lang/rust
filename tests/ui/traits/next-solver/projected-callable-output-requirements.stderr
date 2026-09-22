@@ -1,0 +1,15 @@
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/projected-callable-output-requirements.rs:10:37
+   |
+LL | fn checked_alias<F: for<'a> Fn() -> Restricted<'a>>() {}
+   |                                     ^^^^^^^^^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/projected-callable-output-requirements.rs:21:34
+   |
+LL | fn projection<F: for<'a> Fn() -> <() as Family>::View<'a>>() {}
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0582`.

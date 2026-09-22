@@ -2820,6 +2820,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.opts.unstable_opts.assumptions_on_binders
     }
 
+    pub fn uses_solver_region_constraints(self) -> bool {
+        self.next_trait_solver_globally() || self.assumptions_on_binders()
+    }
+
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {
         self.opt_rpitit_info(def_id).is_some()
     }

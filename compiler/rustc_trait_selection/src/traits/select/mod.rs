@@ -954,7 +954,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
             }
-            ty::PredicateKind::NormalizesTo(..) => {
+            ty::PredicateKind::NormalizesTo(..) | ty::PredicateKind::BoundFromClause(..) => {
                 bug!("NormalizesTo is only used by the new solver")
             }
             ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),

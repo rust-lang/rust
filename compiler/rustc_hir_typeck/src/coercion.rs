@@ -1252,7 +1252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Result<ty::PolyFnSig<'tcx>, TypeError<'tcx>> {
         let tcx = self.tcx;
 
-        let &ty::FnDef(def_id, _) = fndef.kind() else {
+        let &ty::FnDef(def_id, args) = fndef.kind() else {
             unreachable!("`sig_for_fn_def_coercion` called with non-fndef: {:?}", fndef);
         };
 
@@ -1266,7 +1266,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Err(TypeError::ForceInlineCast);
         }
 
-        let sig = fndef.fn_sig(tcx);
+        let sig = tcx
+            .fn_sig_for_fn_traits(def_id)
+            .instantiate(tcx, args.no_bound_vars().unwrap())
+            .skip_norm_wip();
         let sig = if fn_attrs.safe_target_features {
             // Allow the coercion if the current function has all the features that would be
             // needed to call the coercee safely.

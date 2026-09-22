@@ -440,6 +440,10 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_alias_term(alias);
                 self.add_term(term);
             }
+            ty::PredicateKind::BoundFromClause(projection, predicate) => {
+                self.add_predicate(projection.as_predicate().kind());
+                self.add_predicate(predicate.kind());
+            }
             ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_sym)) => {}
             ty::PredicateKind::Ambiguous => {}
         }

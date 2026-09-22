@@ -179,6 +179,10 @@ where
         self.trait_def_id(cx)
     }
 
+    fn as_predicate(self, cx: I) -> I::Predicate {
+        self.upcast(cx)
+    }
+
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -208,22 +212,11 @@ where
         assumption: I::Clause,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> QueryResultOrRerunNonErased<I> {
-        let cx = ecx.cx();
         let projection_pred = assumption.as_projection_clause().unwrap();
         let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
         ecx.eq(goal.param_env, goal.predicate.alias, assumption_projection_pred.projection_term)?;
 
         ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term)?;
-
-        // Add GAT where clauses from the trait's definition
-        // FIXME: We don't need these, since these are the type's own WF obligations.
-        ecx.add_goals(
-            GoalSource::AliasWellFormed,
-            cx.own_clauses_of(goal.predicate.alias.expect_projection_def_id().into())
-                .iter_instantiated(cx, goal.predicate.alias.args)
-                .map(Unnormalized::skip_norm_wip)
-                .map(|clause| goal.with(cx, clause)),
-        )?;
 
         then(ecx)
     }

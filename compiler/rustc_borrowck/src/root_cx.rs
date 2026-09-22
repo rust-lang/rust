@@ -100,6 +100,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
     fn handle_opaque_type_uses(&mut self) {
         let mut per_body_info = Vec::new();
         for (def_id, input) in &mut self.collect_region_constraints_results {
+            Self::flush_solver_region_constraints(input);
             let (num_entries, opaque_types) = clone_and_resolve_opaque_types(
                 &input.infcx,
                 &input.universal_region_relations,
@@ -220,7 +221,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
             // and write its result into `propagated_borrowck_results`.
             if depends_on_opaques {
                 if def_id != self.root_def_id {
-                    let req = Self::compute_closure_requirements_modulo_opaques(&input);
+                    let req = Self::compute_closure_requirements_modulo_opaques(&mut input);
                     closure_requirements_modulo_opaques.insert(def_id, req);
                 }
                 self.collect_region_constraints_results.insert(def_id, input);
@@ -233,8 +234,9 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
     }
 
     fn compute_closure_requirements_modulo_opaques(
-        input: &CollectRegionConstraintsResult<'tcx>,
+        input: &mut CollectRegionConstraintsResult<'tcx>,
     ) -> Option<ClosureRegionRequirements<'tcx>> {
+        Self::flush_solver_region_constraints(input);
         compute_closure_requirements_modulo_opaques(
             &input.infcx,
             &input.body_owned,
@@ -242,6 +244,15 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
             &input.universal_region_relations,
             &input.constraints,
         )
+    }
+
+    fn flush_solver_region_constraints(input: &mut CollectRegionConstraintsResult<'tcx>) {
+        input.constraints.flush_solver_region_constraints(
+            &input.infcx,
+            &input.universal_region_relations,
+            &input.region_bound_pairs,
+            &input.known_type_outlives_obligations,
+        );
     }
 
     fn apply_closure_requirements(

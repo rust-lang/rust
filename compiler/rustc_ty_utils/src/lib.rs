@@ -18,6 +18,7 @@ mod assoc;
 mod common_traits;
 mod consts;
 mod diagnostics;
+mod fn_sig;
 mod implied_bounds;
 mod instance;
 mod layout;
@@ -33,6 +34,7 @@ pub fn provide(providers: &mut Providers) {
     assoc::provide(providers);
     common_traits::provide(providers);
     consts::provide(providers);
+    fn_sig::provide(providers);
     implied_bounds::provide(providers);
     layout::provide(providers);
     needs_drop::provide(providers);

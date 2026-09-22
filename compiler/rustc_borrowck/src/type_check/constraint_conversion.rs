@@ -67,7 +67,19 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(super) fn convert_all(&mut self, query_constraints: &QueryRegionConstraints<'tcx>) {
-        let QueryRegionConstraints { constraints, assumptions } = query_constraints;
+        let QueryRegionConstraints { constraints, assumptions, solver_region_constraints } =
+            query_constraints;
+        self.constraints.solver_region_constraints.extend(solver_region_constraints.iter().map(
+            |constraint| {
+                // A cached query can be instantiated at several MIR locations.
+                // Blame the operation which required this instance of its bounds.
+                if self.span.is_dummy() {
+                    constraint.clone()
+                } else {
+                    constraint.clone().without_spans().with_spans(self.span)
+                }
+            },
+        ));
         let assumptions =
             elaborate::elaborate_outlives_assumptions(self.infcx.tcx, assumptions.iter().copied());
 
@@ -118,6 +130,33 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 self.category,
                 &Default::default(),
             );
+        }
+        for alternatives in &closure_requirements.outlives_alternatives {
+            use ty::region_constraint::{And, LeafRegionConstraint, Or, RegionConstraint};
+            let alternatives = Or::new(alternatives.iter().map(|requirements| {
+                And::new(requirements.iter().map(|requirement| {
+                    let sub = closure_mapping[requirement.outlived_free_region];
+                    match requirement.subject {
+                        ClosureOutlivesSubject::Region(sup) => {
+                            LeafRegionConstraint::RegionOutlives(
+                                closure_mapping[sup],
+                                sub,
+                                requirement.blame_span,
+                            )
+                        }
+                        ClosureOutlivesSubject::Ty(subject) => {
+                            LeafRegionConstraint::PlaceholderTyOutlives(
+                                subject.instantiate(self.infcx.tcx, |vid| closure_mapping[vid]),
+                                sub,
+                                requirement.blame_span,
+                            )
+                        }
+                    }
+                }))
+            }));
+            self.constraints
+                .solver_region_constraints
+                .push(RegionConstraint::new_from_or(alternatives));
         }
         (self.category, self.span, self.from_closure) = backup;
     }
@@ -202,9 +241,10 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         generic_kind: GenericKind<'tcx>,
         region: ty::Region<'tcx>,
         verify_bound: VerifyBound<'tcx>,
+        span: Span,
     ) -> TypeTest<'tcx> {
         let lower_bound = self.to_region_vid(region);
-        TypeTest { generic_kind, lower_bound, span: self.span, verify_bound }
+        TypeTest { generic_kind, lower_bound, span, verify_bound }
     }
 
     fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> ty::RegionVid {
@@ -243,7 +283,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'b, 'tcx> {
+impl<'tcx> TypeOutlivesDelegate<'tcx> for ConstraintConversion<'_, 'tcx> {
     fn push_sub_region_constraint(
         &mut self,
         origin: SubregionOrigin<'tcx>,
@@ -258,14 +298,21 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
 
     fn push_verify(
         &mut self,
-        _origin: SubregionOrigin<'tcx>,
+        origin: SubregionOrigin<'tcx>,
         kind: GenericKind<'tcx>,
         a: ty::Region<'tcx>,
         bound: VerifyBound<'tcx>,
     ) {
         let kind = self.replace_placeholders_with_nll(kind);
         let bound = self.replace_placeholders_with_nll(bound);
-        let type_test = self.verify_to_type_test(kind, a, bound);
+        let type_test = self.verify_to_type_test(kind, a, bound, origin.span());
         self.add_type_test(type_test);
+    }
+
+    fn push_verify_bound(&mut self, origin: SubregionOrigin<'tcx>, bound: VerifyBound<'tcx>) {
+        let bound = self.replace_placeholders_with_nll(bound);
+        self.constraints.verify_bounds.push(
+            rustc_infer::infer::region_constraints::VerifyBoundCheck { span: origin.span(), bound },
+        );
     }
 }

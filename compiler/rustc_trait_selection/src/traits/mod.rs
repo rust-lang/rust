@@ -3,6 +3,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 
 pub mod auto_trait;
+pub mod bound_regions;
 pub(crate) mod coherence;
 pub mod const_evaluatable;
 mod dyn_compatibility;
@@ -528,7 +529,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     let elaborated_env = ty::ParamEnv::new(tcx, clauses.iter().copied());
     if !elaborated_env.has_aliases() {
-        return elaborated_env;
+        return outlives_bounds::elaborate_projection_outlives(tcx, &cause, elaborated_env);
     }
 
     // HACK: we are trying to normalize the param-env inside *itself*. The problem is that
@@ -568,13 +569,13 @@ pub fn normalize_param_env_or_error<'tcx>(
     // clauses here anyway. Keeping them here anyway because it seems safer.
     let outlives_env = non_outlives_clauses.iter().chain(&outlives_clauses).cloned();
     let outlives_env = ty::ParamEnv::new(tcx, outlives_env);
-    let outlives_clauses = do_normalize_clauses(tcx, cause, outlives_env, outlives_clauses);
+    let outlives_clauses = do_normalize_clauses(tcx, cause.clone(), outlives_env, outlives_clauses);
     debug!("normalize_param_env_or_error: outlives clauses={:?}", outlives_clauses);
 
     let mut clauses = non_outlives_clauses;
     clauses.extend(outlives_clauses);
     debug!("normalize_param_env_or_error: final clauses={:?}", clauses);
-    ty::ParamEnv::new(tcx, clauses)
+    outlives_bounds::elaborate_projection_outlives(tcx, &cause, ty::ParamEnv::new(tcx, clauses))
 }
 
 #[derive(Debug)]

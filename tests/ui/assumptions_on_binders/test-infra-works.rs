@@ -1,4 +1,4 @@
-//@ check-pass
+//@ check-fail
 //@ compile-flags: -Zassumptions-on-binders
 
 #![feature(test_binder_constraints, non_lifetime_binders)]
@@ -17,10 +17,9 @@ core::test_binder_constraints! {
     }
 }
 
-// FIXME(-Zassumptions-on-binders): this should be `impl<'b, 'c: 'b>`, not
-// `impl<'b, 'c: 'b + 'static>`, but OR isn't actually implemented yet
+// One satisfied alternative is enough to discharge the root constraint.
 core::test_binder_constraints! {
-    impl<'b, 'c: 'b + 'static> {
+    impl<'b, 'c: 'b> {
         forall<'a> where 'b: 'a {
             'c: 'a
         } expect {
@@ -45,14 +44,14 @@ trait Trait {
     type Assoc;
 }
 
-// FIXME(-Zassumptions-on-binders): this probably shouldn't compile, the exit for the top-level
-// `impl` should fail because the constraints asserted in `expect` should fail to prove true. Might
-// be https://github.com/rust-lang/project-assumptions-on-binders/issues/26
+// The top-level constraint must be checked after leaving the binder.
+// Regression for project-assumptions-on-binders#26.
 //
 // for<> syntax does direct insert into constraint storage
 core::test_binder_constraints! {
     impl<T: Trait> {
         forall<'a> {
+            //~^ ERROR unable to satisfy outlives constraints
             for<> T::Assoc: 'a
         } expect {
             or {
@@ -63,14 +62,14 @@ core::test_binder_constraints! {
     }
 }
 
-// FIXME(-Zassumptions-on-binders): this probably shouldn't compile, the exit for the top-level
-// `impl` should fail because the constraints asserted in `expect` should fail to prove true. Might
-// be https://github.com/rust-lang/project-assumptions-on-binders/issues/26
+// The top-level constraint must be checked after leaving the binder.
+// Regression for project-assumptions-on-binders#26.
 //
 // `where` syntax goes through the full clause destructuring and register_obligation pipeline
 core::test_binder_constraints! {
     impl<T: Trait> {
         forall<'a> {
+            //~^ ERROR unable to satisfy outlives constraints
             where T::Assoc: 'a
         } expect {
             or {

@@ -1,0 +1,14 @@
+error: unable to satisfy outlives constraints
+  --> $DIR/test-infra-works.rs:53:9
+   |
+LL |         forall<'a> {
+   |         ^^^^^^
+
+error: unable to satisfy outlives constraints
+  --> $DIR/test-infra-works.rs:71:9
+   |
+LL |         forall<'a> {
+   |         ^^^^^^
+
+error: aborting due to 2 previous errors
+

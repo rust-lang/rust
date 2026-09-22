@@ -1,0 +1,35 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/projected-callable-equality-wf-reject.rs:12:16
+   |
+LL | fn missing_lifetime<'a, T>()
+   |                     -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+LL | where
+LL |     T: Lending<View<'a> = ()>,
+   |                ^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: Lending<View<'a> = ()> + 'a,
+   |                               ++++
+
+error[E0277]: the trait bound `&'a (): Required` is not satisfied
+  --> $DIR/projected-callable-equality-wf-reject.rs:24:20
+   |
+LL |     T: Conditional<View<'a> = ()>,
+   |                    ^^^^^^^^^^^^^ the trait `Required` is not implemented for `&'a ()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/projected-callable-equality-wf-reject.rs:17:1
+   |
+LL | trait Required {}
+   | ^^^^^^^^^^^^^^
+note: required by a bound in `Conditional::View`
+  --> $DIR/projected-callable-equality-wf-reject.rs:19:33
+   |
+LL |     type View<'a> where &'a (): Required;
+   |                                 ^^^^^^^^ required by this bound in `Conditional::View`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0309.
+For more information about an error, try `rustc --explain E0277`.

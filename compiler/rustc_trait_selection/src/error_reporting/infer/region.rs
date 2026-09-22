@@ -87,6 +87,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             param_ty,
                             sub,
                         ),
+                    RegionResolutionError::CannotSatisfyConstraint(origin) => self
+                        .dcx()
+                        .struct_span_err(origin.span(), "unable to satisfy outlives constraints")
+                        .emit(),
 
                     RegionResolutionError::SubSupConflict(
                         _,
@@ -196,7 +200,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // the only thing in the list.
 
         let is_bound_failure = |e: &RegionResolutionError<'tcx>| match *e {
-            RegionResolutionError::GenericBoundFailure(..) => true,
+            RegionResolutionError::GenericBoundFailure(..)
+            | RegionResolutionError::CannotSatisfyConstraint(_) => true,
             RegionResolutionError::ConcreteFailure(..)
             | RegionResolutionError::SubSupConflict(..)
             | RegionResolutionError::UpperBoundUniverseConflict(..)
@@ -213,6 +218,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         errors.sort_by_key(|u| match *u {
             RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
+            RegionResolutionError::CannotSatisfyConstraint(ref origin) => origin.span(),
             RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _, _) => rvo.span(),
             RegionResolutionError::UpperBoundUniverseConflict(_, ref rvo, _, _, _) => rvo.span(),
             RegionResolutionError::CannotNormalize(_, ref sro) => sro.span(),

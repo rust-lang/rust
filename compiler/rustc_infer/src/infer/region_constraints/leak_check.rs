@@ -406,6 +406,10 @@ impl<'tcx> MiniGraph<'tcx> {
                         region_constraints.data().verifys[i].origin.span(),
                         "we never add verifications while doing higher-ranked things",
                     ),
+                    &AddVerifyBound(i) => span_bug!(
+                        region_constraints.data().verify_bounds[i].span,
+                        "we never add verifications while doing higher-ranked things",
+                    ),
                     &AddCombination(..) | &AddVar(..) => {}
                 }
             }

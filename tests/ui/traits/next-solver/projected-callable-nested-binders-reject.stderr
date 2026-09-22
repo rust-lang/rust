@@ -1,0 +1,27 @@
+error[E0582]: binding for associated type `Output` references lifetime `'b`, which does not appear in the trait input types
+  --> $DIR/projected-callable-nested-binders-reject.rs:12:55
+   |
+LL |     F: for<'a, 'b> Fn(for<'c> fn(T::View<'a, 'c>)) -> for<'d> fn(T::View<'b, 'd>),
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/projected-callable-nested-binders-reject.rs:19:51
+   |
+LL |     F: for<'a> Fn(for<'b> fn(T::View<'a, 'b>)) -> for<'c> fn(T::View<'c, 'a>),
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/projected-callable-nested-binders-reject.rs:27:12
+   |
+LL |         -> (for<'c> fn(T::View<'a, 'c>), &'a ()),
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/projected-callable-nested-binders-reject.rs:39:12
+   |
+LL |         -> for<'c, 'd> fn(T::View<'a, 'c, 'd>),
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0582`.

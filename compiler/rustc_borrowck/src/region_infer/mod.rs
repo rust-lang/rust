@@ -113,6 +113,7 @@ pub struct RegionInferenceContext<'tcx> {
 
     /// Type constraints that we check after solving.
     type_tests: Vec<TypeTest<'tcx>>,
+    verify_bounds: Vec<rustc_infer::infer::region_constraints::VerifyBoundCheck<'tcx>>,
 
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
@@ -230,6 +231,12 @@ impl fmt::Debug for TypeTest<'_> {
                     write!(f, "]")
                 }
                 VerifyBound::IsEmpty => write!(f, "Empty({lower:?})"),
+                VerifyBound::RegionOutlives(ty::OutlivesClause(sup, sub)) => {
+                    write!(f, "{sup:?}: {sub:?}")
+                }
+                VerifyBound::TypeOutlives { subject, region, bound } => {
+                    write!(f, "TypeOutlives({subject:?}, {region:?}, {bound:?})")
+                }
             }
         }
         write!(f, "TypeTest from {:?}[", self.span)?;
@@ -343,6 +350,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             outlives_constraints,
             scc_annotations,
             type_tests,
+            verify_bounds,
             liveness_constraints,
             universe_causes,
             placeholder_indices,
@@ -405,6 +413,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             universe_causes,
             scc_values,
             type_tests,
+            verify_bounds,
             universal_region_relations,
         }
     }
@@ -490,8 +499,27 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // eagerly erroing.
         let mut propagated_outlives_requirements =
             infcx.tcx.is_typeck_child(mir_def_id).then(Vec::new);
+        let mut outlives_alternatives = Vec::new();
 
         self.check_type_tests(infcx, propagated_outlives_requirements.as_mut(), &mut errors_buffer);
+        for check in &self.verify_bounds {
+            if !self.eval_verify_bound(
+                infcx,
+                infcx.tcx.types.unit,
+                self.universal_regions().fr_static,
+                &check.bound,
+            ) {
+                if propagated_outlives_requirements.is_some()
+                    && let Some(alternatives) =
+                        self.promote_verify_bound(infcx, &check.bound, check.span)
+                {
+                    outlives_alternatives.push(alternatives);
+                } else {
+                    errors_buffer
+                        .push(RegionErrorKind::BoundVerificationError { span: check.span });
+                }
+            }
+        }
 
         debug!(?errors_buffer);
         debug!(?propagated_outlives_requirements);
@@ -518,7 +546,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let propagated_outlives_requirements = propagated_outlives_requirements.unwrap_or_default();
 
-        if propagated_outlives_requirements.is_empty() {
+        if propagated_outlives_requirements.is_empty() && outlives_alternatives.is_empty() {
             (None, errors_buffer)
         } else {
             let num_external_vids = self.universal_regions().num_global_and_external_regions();
@@ -526,6 +554,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 Some(ClosureRegionRequirements {
                     num_external_vids,
                     outlives_requirements: propagated_outlives_requirements,
+                    outlives_alternatives,
                 }),
                 errors_buffer,
             )
@@ -809,6 +838,119 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         Some(ClosureOutlivesSubject::Ty(ClosureOutlivesSubjectTy::bind(tcx, ty)))
     }
 
+    fn promote_verify_bound(
+        &self,
+        infcx: &InferCtxt<'tcx>,
+        bound: &VerifyBound<'tcx>,
+        span: Span,
+    ) -> Option<Vec<Vec<ClosureOutlivesRequirement<'tcx>>>> {
+        if self.eval_verify_bound(
+            infcx,
+            infcx.tcx.types.unit,
+            self.universal_regions().fr_static,
+            bound,
+        ) {
+            return Some(vec![vec![]]);
+        }
+        match bound {
+            VerifyBound::AnyBound(bounds) => {
+                let alternatives: Vec<_> = bounds
+                    .iter()
+                    .filter_map(|bound| self.promote_verify_bound(infcx, bound, span))
+                    .flatten()
+                    .collect();
+                (!alternatives.is_empty()).then_some(alternatives)
+            }
+            VerifyBound::AllBounds(bounds) => {
+                let mut alternatives = vec![vec![]];
+                for bound in bounds {
+                    let next = self.promote_verify_bound(infcx, bound, span)?;
+                    alternatives = alternatives
+                        .into_iter()
+                        .flat_map(|prefix| {
+                            next.iter()
+                                .map(move |suffix| prefix.iter().chain(suffix).copied().collect())
+                        })
+                        .collect();
+                }
+                Some(alternatives)
+            }
+            VerifyBound::TypeOutlives { subject, region, bound } => {
+                let generic_kind = match *subject.kind() {
+                    ty::Param(param) => GenericKind::Param(param),
+                    ty::Placeholder(placeholder) => GenericKind::Placeholder(placeholder),
+                    ty::Alias(_, alias) => GenericKind::Alias(alias),
+                    _ => return None,
+                };
+                let mut requirements = Vec::new();
+                self.try_promote_type_test(
+                    infcx,
+                    &TypeTest {
+                        generic_kind,
+                        lower_bound: self.to_region_vid(*region),
+                        span,
+                        verify_bound: (**bound).clone(),
+                    },
+                    &mut requirements,
+                )
+                .then_some(vec![requirements])
+            }
+            VerifyBound::RegionOutlives(ty::OutlivesClause(sup, sub)) => {
+                let sup = self.to_region_vid(*sup);
+                let sub = self.to_region_vid(*sub);
+                let sup_scc = self.constraint_sccs.scc(sup);
+                let sub_scc = self.constraint_sccs.scc(sub);
+                let lower: FxIndexSet<_> = self
+                    .scc_values
+                    .universal_regions_outlived_by(sup_scc)
+                    .flat_map(|region| {
+                        self.universal_region_relations.non_local_lower_bounds(region)
+                    })
+                    .collect();
+                if lower.is_empty() {
+                    return None;
+                }
+                let upper: Vec<_> =
+                    if self.scc_values.placeholders_contained_in(sub_scc).next().is_some() {
+                        vec![vec![self.universal_regions().fr_static]]
+                    } else {
+                        self.scc_values
+                            .universal_regions_outlived_by(sub_scc)
+                            .map(|region| {
+                                self.universal_region_relations.non_local_upper_bounds(region)
+                            })
+                            .collect()
+                    };
+                let mut alternatives = vec![vec![]];
+                for upper in upper {
+                    let next: Vec<_> = lower
+                        .iter()
+                        .flat_map(|&sup| {
+                            upper.iter().map(move |&sub| ClosureOutlivesRequirement {
+                                subject: ClosureOutlivesSubject::Region(sup),
+                                outlived_free_region: sub,
+                                blame_span: span,
+                                category: ConstraintCategory::Boring,
+                            })
+                        })
+                        .collect();
+                    alternatives = alternatives
+                        .into_iter()
+                        .flat_map(|prefix| {
+                            next.iter().map(move |&requirement| {
+                                let mut requirements = prefix.clone();
+                                requirements.push(requirement);
+                                requirements
+                            })
+                        })
+                        .collect();
+                }
+                Some(alternatives)
+            }
+            VerifyBound::IfEq(_) | VerifyBound::IsEmpty | VerifyBound::OutlivedBy(_) => None,
+        }
+    }
+
     /// Like `universal_upper_bound`, but returns an approximation more suitable
     /// for diagnostics. If `r` contains multiple disjoint universal regions
     /// (e.g. 'a and 'b in `fn foo<'a, 'b> { ... }`, we pick the lower-numbered region.
@@ -893,6 +1035,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             VerifyBound::AllBounds(verify_bounds) => verify_bounds.iter().all(|verify_bound| {
                 self.eval_verify_bound(infcx, generic_ty, lower_bound, verify_bound)
             }),
+            VerifyBound::RegionOutlives(ty::OutlivesClause(sup, sub)) => {
+                self.eval_outlives(self.to_region_vid(*sup), self.to_region_vid(*sub))
+            }
+            VerifyBound::TypeOutlives { subject, region, bound } => {
+                self.eval_verify_bound(infcx, *subject, self.to_region_vid(*region), bound)
+            }
         }
     }
 

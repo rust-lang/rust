@@ -9,7 +9,7 @@ use rustc_data_structures::unify as ut;
 use rustc_index::IndexVec;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::ty::{self, ReBound, ReStatic, ReVar, Region, RegionVid, Ty, TyCtxt};
-use rustc_span::{bug, span_bug};
+use rustc_span::{Span, bug, span_bug};
 use tracing::{debug, instrument};
 
 use self::CombineMapType::*;
@@ -76,6 +76,13 @@ pub struct RegionConstraintData<'tcx> {
     /// An example is a `A <= B` where neither `A` nor `B` are
     /// inference variables.
     pub verifys: Vec<Verify<'tcx>>,
+    pub verify_bounds: Vec<VerifyBoundCheck<'tcx>>,
+}
+
+#[derive(Debug, Clone, TypeFoldable, TypeVisitable)]
+pub struct VerifyBoundCheck<'tcx> {
+    pub span: Span,
+    pub bound: VerifyBound<'tcx>,
 }
 
 /// Represents a constraint that influences the inference process.
@@ -254,6 +261,13 @@ pub enum VerifyBound<'tcx> {
     /// This is used when *some* bound in `B` is known to suffice, but
     /// we don't know which.
     AllBounds(Vec<VerifyBound<'tcx>>),
+
+    /// An outlives requirement between two existing regions.
+    /// Unlike `OutlivedBy`, this does not depend on the region being verified.
+    RegionOutlives(ty::RegionOutlivesClause<'tcx>),
+
+    /// An outlives alternative with its own subject and lower region.
+    TypeOutlives { subject: Ty<'tcx>, region: ty::Region<'tcx>, bound: Box<VerifyBound<'tcx>> },
 }
 
 /// This is a "conditional bound" that checks the result of inference
@@ -319,6 +333,7 @@ pub(crate) enum UndoLog<'tcx> {
 
     /// We added the given `verify`.
     AddVerify(usize),
+    AddVerifyBound(usize),
 
     /// We added a GLB/LUB "combination variable".
     AddCombination(CombineMapType, TwoRegions<'tcx>),
@@ -477,6 +492,12 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         let index = self.storage.data.verifys.len();
         self.storage.data.verifys.push(verify);
         self.undo_log.push(AddVerify(index));
+    }
+
+    pub(super) fn add_verify_bound(&mut self, check: VerifyBoundCheck<'tcx>) {
+        let index = self.storage.data.verify_bounds.len();
+        self.storage.data.verify_bounds.push(check);
+        self.undo_log.push(AddVerifyBound(index));
     }
 
     pub(super) fn make_eqregion(
@@ -820,16 +841,21 @@ impl<'tcx> VerifyBound<'tcx> {
             VerifyBound::IsEmpty => false,
             VerifyBound::AnyBound(bs) => bs.iter().any(|b| b.must_hold()),
             VerifyBound::AllBounds(bs) => bs.iter().all(|b| b.must_hold()),
+            VerifyBound::RegionOutlives(ty::OutlivesClause(sup, sub)) => {
+                sup.is_static() || sup == sub
+            }
+            VerifyBound::TypeOutlives { bound, .. } => bound.must_hold(),
         }
     }
 
     pub fn cannot_hold(&self) -> bool {
         match self {
-            VerifyBound::IfEq(..) => false,
+            VerifyBound::IfEq(..) | VerifyBound::RegionOutlives(_) => false,
             VerifyBound::IsEmpty => false,
             VerifyBound::OutlivedBy(_) => false,
             VerifyBound::AnyBound(bs) => bs.iter().all(|b| b.cannot_hold()),
             VerifyBound::AllBounds(bs) => bs.iter().any(|b| b.cannot_hold()),
+            VerifyBound::TypeOutlives { bound, .. } => bound.cannot_hold(),
         }
     }
 
@@ -848,8 +874,8 @@ impl<'tcx> RegionConstraintData<'tcx> {
     /// Returns `true` if this region constraint data contains no constraints, and `false`
     /// otherwise.
     pub fn is_empty(&self) -> bool {
-        let RegionConstraintData { constraints, verifys } = self;
-        constraints.is_empty() && verifys.is_empty()
+        let RegionConstraintData { constraints, verifys, verify_bounds } = self;
+        constraints.is_empty() && verifys.is_empty() && verify_bounds.is_empty()
     }
 }
 
@@ -867,6 +893,10 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for RegionConstraintStorage<'tcx> {
             AddVerify(index) => {
                 self.data.verifys.pop();
                 assert_eq!(self.data.verifys.len(), index);
+            }
+            AddVerifyBound(index) => {
+                self.data.verify_bounds.pop();
+                assert_eq!(self.data.verify_bounds.len(), index);
             }
             AddCombination(Glb, ref regions) => {
                 self.glbs.remove(regions);

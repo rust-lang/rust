@@ -1,0 +1,54 @@
+error[E0271]: type mismatch resolving `<fn(<T as Family>::View<'_>) -> <T as Family>::View<'_> {restricted::<'_, T>} as FnOnce<(<T as Family>::View<'a>,)>>::Output == <T as Family>::View<'a>`
+  --> $DIR/projected-callable-requirements-reject.rs:24:16
+   |
+LL |     apply::<T>(restricted::<T>);
+   |     ---------- ^^^^^^^^^^^^^^^ types differ
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `apply`
+  --> $DIR/projected-callable-requirements-reject.rs:21:56
+   |
+LL | fn apply<T: Family>(_: impl for<'a> Fn(T::View<'a>) -> T::View<'a>) {}
+   |                                                        ^^^^^^^^^^^ required by this bound in `apply`
+
+error[E0308]: mismatched types
+  --> $DIR/projected-callable-requirements-reject.rs:26:53
+   |
+LL |     let _: for<'a> fn(T::View<'a>) -> T::View<'a> = restricted::<T>;
+   |            --------------------------------------   ^^^^^^^^^^^^^^^ one type is more general than the other
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `for<'a> fn(<T as Family>::View<'a>) -> <T as Family>::View<'a>`
+                 found fn item `fn(<T as Family>::View<'_>) -> <T as Family>::View<'_> {restricted::<'_, T>}`
+
+error[E0271]: type mismatch resolving `<fn(<T as Family>::View<'static>) -> <T as Family>::View<'static> {copy::<'static, T>} as FnOnce<(<T as Family>::View<'a>,)>>::Output == <T as Family>::View<'a>`
+  --> $DIR/projected-callable-requirements-reject.rs:34:16
+   |
+LL |     apply::<T>(copy::<'static, T>);
+   |     ---------- ^^^^^^^^^^^^^^^^^^ types differ
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a bound in `apply`
+  --> $DIR/projected-callable-requirements-reject.rs:21:56
+   |
+LL | fn apply<T: Family>(_: impl for<'a> Fn(T::View<'a>) -> T::View<'a>) {}
+   |                                                        ^^^^^^^^^^^ required by this bound in `apply`
+
+error[E0308]: mismatched types
+  --> $DIR/projected-callable-requirements-reject.rs:36:53
+   |
+LL |     let _: for<'a> fn(T::View<'a>) -> T::View<'a> = copy::<'static, T>;
+   |            --------------------------------------   ^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `for<'a> fn(<_ as Family>::View<'a>) -> <_ as Family>::View<'a>`
+                 found fn item `fn(<_ as Family>::View<'static>) -> <_ as Family>::View<'static> {copy::<'static, T>}`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0271, E0308.
+For more information about an error, try `rustc --explain E0271`.

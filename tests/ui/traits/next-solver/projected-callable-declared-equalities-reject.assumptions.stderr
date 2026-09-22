@@ -1,0 +1,150 @@
+error[E0277]: the trait bound `u32: Identity` is not satisfied
+  --> $DIR/projected-callable-declared-equalities-reject.rs:17:18
+   |
+LL |     type Assoc = u32;
+   |                  ^^^ the trait `Identity` is not implemented for `u32`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/projected-callable-declared-equalities-reject.rs:8:1
+   |
+LL | trait Identity {
+   | ^^^^^^^^^^^^^^
+note: required by a bound in `Carrier::Assoc`
+  --> $DIR/projected-callable-declared-equalities-reject.rs:13:26
+   |
+LL |     type Assoc: Identity<Output = Self::Assoc>;
+   |                          ^^^^^^^^^^^^^^^^^^^^ required by this bound in `Carrier::Assoc`
+
+error[E0310]: the parameter type `U` may not live long enough
+  --> $DIR/projected-callable-declared-equalities-reject.rs:55:6
+   |
+LL | ) -> <T as ScopedIdentity<'static, &'static U>>::Output {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |      |
+   |      the parameter type `U` must be valid for the static lifetime...
+   |      ...so that a higher-ranked lifetime bound can be satisfied
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn missing_scope<C: Scoped<U, Assoc = T>, T, U: 'static>(
+   |                                               +++++++++
+
+error[E0310]: the parameter type `U` may not live long enough
+  --> $DIR/projected-callable-declared-equalities-reject.rs:55:6
+   |
+LL | ) -> <T as ScopedIdentity<'static, &'static U>>::Output {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |      |
+   |      the parameter type `U` must be valid for the static lifetime...
+   |      ...so that a higher-ranked lifetime bound can be satisfied
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL | fn missing_scope<C: Scoped<U, Assoc = T>, T, U: 'static>(
+   |                                               +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/projected-callable-declared-equalities-reject.rs:71:6
+   |
+LL | ) -> <T as ConditionalIdentity>::Output<'static> {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |      |
+   |      the parameter type `T` must be valid for the static lifetime...
+   |      ...so that a higher-ranked lifetime bound can be satisfied
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn missing_premise<C: Conditional<Assoc = T>, T: 'static>(
+   |                                                +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/projected-callable-declared-equalities-reject.rs:71:6
+   |
+LL | ) -> <T as ConditionalIdentity>::Output<'static> {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |      |
+   |      the parameter type `T` must be valid for the static lifetime...
+   |      ...so that a higher-ranked lifetime bound can be satisfied
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL | fn missing_premise<C: Conditional<Assoc = T>, T: 'static>(
+   |                                                +++++++++
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-declared-equalities-reject.rs:87:52
+   |
+LL | fn neither_alternative<C, D, T, U, V>(value: T) -> <T as ForRegion<'static>>::Output
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-declared-equalities-reject.rs:87:52
+   |
+LL | fn neither_alternative<C, D, T, U, V>(value: T) -> <T as ForRegion<'static>>::Output
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/projected-callable-declared-equalities-reject.rs:23:5
+   |
+LL | fn wrong_output<C: Carrier<Assoc = T>, T>(value: T) -> u32 {
+   |                                        -               --- expected `u32` because of return type
+   |                                        |
+   |                                        found this type parameter
+LL |     let output: <T as Identity>::Output = value;
+LL |     output
+   |     ^^^^^^ expected `u32`, found type parameter `T`
+   |
+   = note:        expected type `u32`
+           found type parameter `T`
+
+error[E0308]: mismatched types
+  --> $DIR/projected-callable-declared-equalities-reject.rs:32:5
+   |
+LL | fn different_value<C: Other<U, Assoc = T>, T, U>(value: T) -> <T as Identity>::Output {
+   |                                            -  -               ----------------------- expected `U` because of return type
+   |                                            |  |
+   |                                            |  expected type parameter
+   |                                            found type parameter
+LL |     value
+   |     ^^^^^ expected type parameter `U`, found type parameter `T`
+   |
+   = note: expected type parameter `U`
+              found type parameter `T`
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+   = note: the caller chooses a type for `U` which can be different from `T`
+
+error[E0308]: mismatched types
+  --> $DIR/projected-callable-declared-equalities-reject.rs:41:5
+   |
+LL | fn missing_equality<C: MissingEquality<Assoc = T>, T>(value: T) -> <T as Identity>::Output {
+   |                                                    -               ----------------------- expected `<T as Identity>::Output` because of return type
+   |                                                    |
+   |                                                    found this type parameter
+LL |     value
+   |     ^^^^^ expected associated type, found type parameter `T`
+   |
+   = note: expected associated type `<T as Identity>::Output`
+               found type parameter `T`
+help: consider restricting type parameter `T` with  `<Output = T>`
+   |
+LL | fn missing_equality<C: MissingEquality<Assoc = T>, T: <Output = T>>(value: T) -> <T as Identity>::Output {
+   |                                                     ++++++++++++++
+
+error: unable to satisfy outlives constraints
+  --> $DIR/projected-callable-declared-equalities-reject.rs:87:1
+   |
+LL | / fn neither_alternative<C, D, T, U, V>(value: T) -> <T as ForRegion<'static>>::Output
+...  |
+LL | |     C: Paths<U, Assoc = T>,
+LL | |     D: Paths<V, Assoc = T>,
+   | |___________________________^
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0310.
+For more information about an error, try `rustc --explain E0277`.

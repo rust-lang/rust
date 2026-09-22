@@ -2527,6 +2527,14 @@ pub(super) fn check_type_bounds<'tcx>(
         tcx.explicit_item_bounds(trait_ty.def_id)
             .iter_instantiated_copied(tcx, rebased_args)
             .map(Unnormalized::skip_norm_wip)
+            // The impl must satisfy the declaration's requirements even when
+            // an environment equality is used to normalize its associated type.
+            .chain(
+                tcx.clauses_of(trait_ty.def_id)
+                    .instantiate_own(tcx, rebased_args)
+                    .filter(|_| tcx.next_trait_solver_globally())
+                    .map(|(clause, span)| (clause.skip_norm_wip(), span)),
+            )
             .map(|(concrete_ty_bound, span)| {
                 debug!(?concrete_ty_bound);
                 traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)

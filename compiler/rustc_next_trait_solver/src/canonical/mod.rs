@@ -108,11 +108,8 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    let instantiation =
-        compute_query_response_instantiation_values(delegate, &original_values, &response, span);
-
     let Response { var_values, external_constraints, certainty } =
-        delegate.instantiate_canonical(response, instantiation);
+        instantiate_query_response(delegate, original_values, response, span);
 
     unify_query_var_values(delegate, &original_values, var_values, span);
 
@@ -120,19 +117,27 @@ where
         &*external_constraints;
 
     match region_constraints {
-        ExternalRegionConstraints::Old(r) => register_region_constraints(
-            delegate,
-            r.iter().map(|(c, vis)| {
-                // FIXME: We should revisit and consider removing this after *assumptions on
-                // binders* is available, like once we had done in the stabilization of
-                // `-Znext-solver=coherence`(#121848).
-                // We ignore constraints from the nested goals in leak check. This is to match with
-                // the old solver's behavior, which has separated evaluation and fulfillment, and
-                // the former doesn't consider outlives obligations from the later.
-                (*c, vis.and(VisibleForLeakCheck::No))
-            }),
-            span,
-        ),
+        ExternalRegionConstraints::Old(r)
+        | ExternalRegionConstraints::Combined { constraints: r, .. } => {
+            register_region_constraints(
+                delegate,
+                r.iter().map(|(c, vis)| {
+                    // FIXME: We should revisit and consider removing this after *assumptions on
+                    // binders* is available, like once we had done in the stabilization of
+                    // `-Znext-solver=coherence`(#121848).
+                    // We ignore constraints from the nested goals in leak check. This is to match with
+                    // the old solver's behavior, which has separated evaluation and fulfillment, and
+                    // the former doesn't consider outlives obligations from the later.
+                    (*c, vis.and(VisibleForLeakCheck::No))
+                }),
+                span,
+            );
+            if let ExternalRegionConstraints::Combined { solver_constraints, .. } =
+                region_constraints
+            {
+                delegate.register_solver_region_constraint(solver_constraints.clone(), span);
+            }
+        }
         ExternalRegionConstraints::NextGen(r) => {
             delegate.register_solver_region_constraint(r.clone(), span)
         }
@@ -140,6 +145,64 @@ where
     register_new_opaque_types(delegate, opaque_types, span);
 
     (normalization_nested_goals.clone(), certainty)
+}
+
+pub(super) fn instantiate_query_response<D, I>(
+    delegate: &D,
+    original_values: &[I::GenericArg],
+    response: CanonicalResponse<I>,
+    span: I::Span,
+) -> Response<I>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    let instantiation =
+        compute_query_response_instantiation_values(delegate, original_values, &response, span);
+    delegate.instantiate_canonical(response, instantiation)
+}
+
+pub(super) fn instantiate_responses_with_shared_values<D, I>(
+    delegate: &D,
+    original_values: &[I::GenericArg],
+    responses: &[CanonicalResponse<I>],
+    span: I::Span,
+) -> Vec<Response<I>>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    let first = responses[0];
+    let shared = responses.iter().all(|response| {
+        response.var_kinds == first.var_kinds
+            && response.max_universe == first.max_universe
+            && response.value.var_values == first.value.var_values
+    });
+    let responses: Vec<_> = if shared {
+        let values =
+            compute_query_response_instantiation_values(delegate, original_values, &first, span);
+        responses.iter().map(|&response| delegate.instantiate_canonical(response, values)).collect()
+    } else {
+        assert!(
+            responses.iter().all(|response| response.value.var_values.is_identity_modulo_regions())
+        );
+        responses
+            .iter()
+            .map(|&response| instantiate_query_response(delegate, original_values, response, span))
+            .collect()
+    };
+    // Type variables are instantiated freshly even for an identity response,
+    // to preserve their sub-roots. Reconnect them to their original inputs;
+    // region equalities remain conditional on this alternative being used.
+    for response in &responses {
+        for (&original, result) in iter::zip(original_values, response.var_values.var_values.iter())
+        {
+            if original.as_region().is_none() {
+                ResponseRelating::new(&**delegate, span).relate(original, result).unwrap();
+            }
+        }
+    }
+    responses
 }
 
 /// This returns the canonical variable values to instantiate the bound variables of
@@ -163,7 +226,7 @@ where
     let universes_created_in_query = response.max_universe.index();
     for _ in 0..universes_created_in_query {
         let new_universe = delegate.create_next_universe();
-        if delegate.cx().assumptions_on_binders() {
+        if delegate.cx().uses_solver_region_constraints() {
             // FIXME(-Zassumptions-on-binders): Remove this temporary workaround once
             // opaque types no longer escape query responses with query-created placeholders.
             // Region constraints involving query-created placeholders were handled inside

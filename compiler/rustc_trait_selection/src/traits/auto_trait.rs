@@ -892,6 +892,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
                 | ty::PredicateKind::NormalizesTo(..)
+                | ty::PredicateKind::BoundFromClause(..)
                 | ty::PredicateKind::DynCompatible(..)
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)

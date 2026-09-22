@@ -489,10 +489,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         //
         //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
         //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
+        let mut dependency_check =
+            super::bound_regions::LateBoundRegionCheck::projection(pred, span);
+        dependency_check.supertrait_span = Some(supertrait_span);
+        if dependency_check.needs_context(tcx) {
+            self.defer_late_bound_region_check(dependency_check);
+            return;
+        }
         let late_bound_in_projection_term =
             tcx.collect_constrained_late_bound_regions(pred.map_bound(|pred| pred.projection_term));
-        let late_bound_in_term =
-            tcx.collect_referenced_late_bound_regions(pred.map_bound(|pred| pred.term));
+        let late_bound_in_term = if tcx.next_trait_solver_globally() {
+            tcx.collect_output_late_bound_regions(
+                pred.map_bound(|pred| {
+                    pred.projection_term.args.iter().filter_map(|arg| arg.as_type()).collect()
+                }),
+                pred.map_bound(|pred| pred.term),
+            )
+        } else {
+            tcx.collect_referenced_late_bound_regions(pred.map_bound(|pred| pred.term))
+        };
         debug!(?late_bound_in_projection_term);
         debug!(?late_bound_in_term);
 

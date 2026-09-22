@@ -103,6 +103,8 @@ impl std::fmt::Debug for RegionErrors<'_> {
 pub(crate) enum RegionErrorKind<'tcx> {
     /// A generic bound failure for a type test (`T: 'a`).
     TypeTestError { type_test: TypeTest<'tcx> },
+    /// A solver outlives constraint could not be satisfied.
+    BoundVerificationError { span: Span },
 
     /// 'p outlives 'r, which does not hold. 'p is always a placeholder
     /// and 'r is some other region.
@@ -308,6 +310,11 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let mut outlives_suggestion = OutlivesSuggestionBuilder::default();
         for (nll_error, _) in nll_errors.into_iter() {
             match nll_error {
+                RegionErrorKind::BoundVerificationError { span } => {
+                    self.buffer_error(
+                        self.dcx().struct_span_err(span, "unable to satisfy outlives constraints"),
+                    );
+                }
                 RegionErrorKind::TypeTestError { type_test } => {
                     // Try to convert the lower-bound region into something named we can print for
                     // the user.
