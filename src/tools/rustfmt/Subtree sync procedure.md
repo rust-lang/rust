@@ -100,7 +100,7 @@ $ git merge upstream/main --no-ff
 ### 4. Bump the nightly toolchain version in the `rustfmt` repository
 
 Using the same latest nightly date (that you can obtain by inspecting `rustup check` output),
-manually edit `rust-toolchain`:
+manually edit `rust-toolchain.toml`:
 
 ```diff
  [toolchain]
