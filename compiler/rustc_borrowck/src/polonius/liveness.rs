@@ -86,7 +86,7 @@ impl<'tcx> DeferredLocals<'tcx> {
         // we can trace liveness for the local containing it.
         let by_region = &mut self.by_region;
         tcx.for_each_free_region(&local_ty, |region| {
-            // See note in [`VarianceExtractor::record_variance`].
+            // See note in `VarianceExtractor::record_variance`.
             if region.is_bound() || region.is_erased() {
                 return;
             }
