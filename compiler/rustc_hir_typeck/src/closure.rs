@@ -385,44 +385,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                // Don't infer a closure signature from a goal that names the closure type as this will
-                // (almost always) lead to occurs check errors later in type checking.
-                if self.next_trait_solver()
-                    && let Some(inferred_sig) = inferred_sig
-                {
-                    // In the new solver it is difficult to explicitly normalize the inferred signature as we
-                    // would have to manually handle universes and rewriting bound vars and placeholders back
-                    // and forth.
-                    //
-                    // Instead we take advantage of the fact that we relating an inference variable with an alias
-                    // will only instantiate the variable if the alias is rigid(*not quite). Concretely we:
-                    // - Create some new variable `?sig`
-                    // - Equate `?sig` with the unnormalized signature, e.g. `fn(<Foo<?x> as Trait>::Assoc)`
-                    // - Depending on whether `<Foo<?x> as Trait>::Assoc` is rigid, ambiguous or normalizeable,
-                    //   we will either wind up with `?sig=<Foo<?x> as Trait>::Assoc/?y/ConcreteTy` respectively.
-                    //
-                    // *: In cases where there are ambiguous aliases in the signature that make use of bound vars
-                    //    they will wind up present in `?sig` even though they are non-rigid.
-                    //
-                    //    This is a bit weird and means we may wind up discarding the goal due to it naming `expected_ty`
-                    //    even though the normalized form may not name `expected_ty`. However, this matches the existing
-                    //    behaviour of the old solver and would be technically a breaking change to fix.
-                    let generalized_fnptr_sig = self.next_ty_var(span);
-                    let inferred_fnptr_sig = Ty::new_fn_ptr(self.tcx, inferred_sig.sig);
-                    self.demand_eqtype(span, inferred_fnptr_sig, generalized_fnptr_sig);
-
-                    let resolved_sig = self.deeply_resolve_ignoring_regions(generalized_fnptr_sig);
-
-                    if resolved_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
-                        expected_sig = Some(ExpectedSig {
-                            cause_span: inferred_sig.cause_span,
-                            sig: resolved_sig.fn_sig(self.tcx),
-                        });
-                    }
-                } else {
-                    if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
-                        expected_sig = inferred_sig;
-                    }
+                if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
+                    expected_sig = inferred_sig;
                 }
             }
 
