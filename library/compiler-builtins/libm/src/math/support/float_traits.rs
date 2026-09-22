@@ -111,6 +111,9 @@ pub trait Float:
     /// A mask for the top bit of the significand, useful for NaN ops.
     const SIG_TOP_BIT: Self::Int;
 
+    /// The minimum subnormal number.
+    const TINY_BITS: Self::Int = Self::Int::ONE;
+
     /// Returns `self` transmuted to `Self::Int`
     fn to_bits(self) -> Self::Int;
 
@@ -240,6 +243,50 @@ pub trait Float:
         // or switch to something based on `llvm.canonicalize` (which has crashes,
         // <https://github.com/llvm/llvm-project/issues/32650>).
         self * Self::ONE
+    }
+
+    /// Increment by one ULP, saturating at infinity.
+    fn next_up(self) -> Self {
+        // FIXME: Replace with `next_up` from `core` once `libm` MSRV reaches 1.86.
+        let bits = self.to_bits();
+        if self.is_nan() || bits == Self::INFINITY.to_bits() {
+            return self;
+        }
+
+        let abs = self.abs().to_bits();
+        let next_bits = if abs == Self::Int::ZERO {
+            // Next up from 0 is the smallest subnormal
+            Self::TINY_BITS
+        } else if bits == abs {
+            // Positive: counting up is more positive
+            bits + Self::Int::ONE
+        } else {
+            // Negative: counting down is more positive
+            bits - Self::Int::ONE
+        };
+        Self::from_bits(next_bits)
+    }
+
+    /// Decrement by one ULP, saturating at negative infinity.
+    fn next_down(self) -> Self {
+        // FIXME: Replace with `next_down` from `core` once `libm` MSRV reaches 1.86.
+        let bits = self.to_bits();
+        if self.is_nan() || bits == Self::NEG_INFINITY.to_bits() {
+            return self;
+        }
+
+        let abs = self.abs().to_bits();
+        let next_bits = if abs == Self::Int::ZERO {
+            // Next up from 0 is the smallest negative subnormal
+            Self::TINY_BITS | Self::SIGN_MASK
+        } else if bits == abs {
+            // Positive: counting down is more negative
+            bits - Self::Int::ONE
+        } else {
+            // Negative: counting up is more negative
+            bits + Self::Int::ONE
+        };
+        Self::from_bits(next_bits)
     }
 }
 
