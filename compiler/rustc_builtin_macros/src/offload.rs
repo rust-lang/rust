@@ -1,4 +1,3 @@
-use rustc_ast::ast;
 use rustc_ast::token::{Delimiter, IdentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{DUMMY_NODE_ID, ast};
