@@ -843,26 +843,7 @@ pub(crate) unsafe fn llvm_optimize(
             } else if !device_pathbuf.exists() {
                 dcx.emit_err(crate::diagnostics::OffloadNonexistingPath);
             }
-            let host_path = cgcx.output_filenames.path(OutputType::Object);
-            let host_dir = host_path.parent().unwrap();
-            let out_obj = host_dir.join("host.o");
             let device_bin_c = path_to_c_string(device_pathbuf.as_path());
-
-            write_output_file(
-                dcx,
-                module.module_llvm.tm.raw(),
-                config.no_builtins,
-                module.module_llvm.llmod(),
-                &out_obj,
-                None,
-                llvm::FileType::ObjectFile,
-                prof,
-                true,
-            );
-            // We ignore cgcx.save_temps here and unconditionally always keep our `device.bin` artifact.
-            // Otherwise, recompiling the host code would fail since we deleted that device artifact
-            // in the previous host compilation, which would be confusing at best.
-
             let ok = unsafe {
                 llvm::RustOffloadWrapper::get_instance().llvm_rust_offload_wrap_images(
                     module.module_llvm.llmod(),
