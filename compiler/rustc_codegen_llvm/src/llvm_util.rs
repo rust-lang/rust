@@ -361,17 +361,9 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
             // do *not* consider the `-Ctarget-feature`s here (that's why we passed `for_cfg: true`
             // to `global_llvm_features` above) because that will be handled later in
             // `internal_target_features`.
-            if let Some(feat) = to_llvm_features(&sess.target, feature) {
-                // All the LLVM features this expands to must be enabled.
-                for llvm_feature in feat {
-                    let cstr = SmallCStr::new(llvm_feature);
-                    // `has_feature` is moderately expensive. On targets with many
-                    // features (e.g. x86) these calls take a non-trivial fraction of runtime
-                    // when compiling very small programs.
-                    if !mc_subtarget_info.has_feature(&cstr) {
-                        return false;
-                    }
-                }
+            if let Some(feat) = to_llvm_features(&sess.target, feature)
+                && mc_subtarget_info.has_features(feat)
+            {
                 true
             } else {
                 false
