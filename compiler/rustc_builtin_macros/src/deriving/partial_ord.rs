@@ -147,16 +147,8 @@ pub(crate) fn cmp_body(
     };
     let equal_path = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
 
-    // The basic case: a field expression for one or more selflike args. E.g.
-    // for `Ord::cmp` this is something like `Ord::cmp(&self.x, &other.x)`.
-    let single = |field: FieldInfo| {
-        let other_expr = field.other_selflike_expr.expect("not exactly 2 arguments in `derive`");
-        let args = thin_vec![field.self_expr, other_expr];
-        cx.expr_call_global(field.span, method_path.clone(), args)
-    };
-
-    // The combination of two field expressions. E.g. for `PartialEq::eq` this
-    // is something like `<field1 equality> && <field2 equality>`.
+    // The combination of two field expressions. E.g. for `Ord::cmp` this
+    // is something like `<field1 comparison> && <field2 comparison>`.
     let combine = |span, mut expr1: Box<Expr>, expr2| {
         // For `PartialOrd` (`Ord` works the same but without the `Some` wrapping),
         // when the item is an enum, this expands to
@@ -212,27 +204,27 @@ pub(crate) fn cmp_body(
 
     match substructure {
         EnumMatching(.., all_fields) | Struct(_, all_fields) => {
-            let mut fields = all_fields.into_iter();
-            let base_field = fields.next_back();
+            let op = |old, field: FieldInfo| {
+                // The basic case: a field expression for one or more selflike args. E.g.
+                // for `Ord::cmp` this is something like `Ord::cmp(&self.x, &other.x)`.
+                let other_expr =
+                    field.other_selflike_expr.expect("not exactly 2 arguments in `derive`");
+                let args = thin_vec![field.self_expr, other_expr];
+                let new = cx.expr_call_global(field.span, method_path.clone(), args);
+                match old {
+                    Some(old) => Some(combine(field.span, old, new)),
+                    None => Some(new),
+                }
+            };
 
-            let Some(base_field) = base_field else {
+            all_fields.into_iter().rfold(None, op).unwrap_or_else(|| {
                 // The fallback case for a struct or enum variant with no fields.
                 let mut expr = cx.expr_path(equal_path);
                 if is_partial_ord {
                     expr = cx.expr_some(span, expr)
                 };
-                return expr;
-            };
-
-            let base_expr = single(base_field);
-
-            let op = |old, field: FieldInfo| {
-                let span = field.span;
-                let new = single(field);
-                combine(span, old, new)
-            };
-
-            fields.rfold(base_expr, op)
+                expr
+            })
         }
         EnumDiscr(match_expr) => {
             let self_expr = cx.expr_addr_of(span, call_discriminant_value(cx, span, kw::SelfLower));
