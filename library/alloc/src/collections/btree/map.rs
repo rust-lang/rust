@@ -206,8 +206,11 @@ pub struct BTreeMap<
 unsafe impl<#[may_dangle] K, #[may_dangle] V, A: AllocatorClone> Drop for BTreeMap<K, V, A> {
     fn drop(&mut self) {
         if self.root.is_some() {
+            // ignore-tidy-undocumented-unsafe
             drop(unsafe { ptr::read(self) }.into_iter())
         } else {
+            // SAFETY: With no root there are no nodes to free, so only the allocator needs
+            // dropping. `self` is not used after this, and `alloc` is dropped only here.
             unsafe { ManuallyDrop::drop(&mut self.alloc) }
         }
     }
