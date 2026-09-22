@@ -1,8 +1,8 @@
-error[E0574]: expected struct, variant or union type, found trait `Trait`
+error[E0573]: expected type or enum variant, found trait `Trait`
   --> $DIR/issue-18986.rs:8:9
    |
-LL |         Trait { x: 42 } => ()
-   |         ^^^^^ not a struct, variant or union type
+LL |         Trait { x: 42 } => (),
+   |         ^^^^^ not a type or enum variant
    |
 help: consider importing this struct instead
    |
@@ -11,4 +11,4 @@ LL + use std::mem::type_info::Trait;
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0574`.
+For more information about this error, try `rustc --explain E0573`.
