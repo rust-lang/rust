@@ -2856,17 +2856,49 @@ rustc_queries! {
     // "Non-queries" are special dep kinds that are not queries.
     //-----------------------------------------------------------------------------
 
-    /// We use this for most things when incr. comp. is turned off.
+    /// Sentinel for an unused slot in a dense sequence of decoded dep-nodes.
+    ///
+    /// Dep-nodes are written to disk in non-sequential order, and the ID range
+    /// might have gaps due to IDs being allocated in per-thread chunks. Having a
+    /// sentinel makes it easier for the decoder to allocate a single dense vector
+    /// of Null nodes, and then decode the actual nodes into that vector.
     non_query Null
-    /// We use this to create a forever-red node.
+
+    /// The singleton always-red node, with index `DepNodeIndex::FOREVER_RED_NODE`.
+    ///
+    /// A node that depends on the always-red node is never able to skip execution
+    /// due to having marked all of its dependencies green.
+    ///
+    /// Used when query feeding would copy the dependencies of the enclosing query,
+    /// but the enclosing query has the `eval_always` modifier.
+    ///
+    /// (Conceptually, `eval_always` query nodes should also have a `Red` dependency,
+    /// but instead they are special-cased to avoid having to store one explicitly.)
     non_query Red
-    /// We use this to create a side effect node.
+
+    /// A "side-effect" node, e.g. emitting a diagnosting or recording that an
+    /// unstable feature was used.
+    ///
+    /// "Forcing" a side-effect node causes its side-effect to be replayed.
     non_query SideEffect
-    /// We use this to create the anon node with zero dependencies.
+
+    // "Anonymous tasks" are similar to queries, but their identity is based on a
+    // hash of their dep-graph dependencies, rather than a hash of a query key.
+
+    /// The singleton node with index `DepNodeIndex::SINGLETON_ZERO_DEPS_ANON_NODE`,
+    /// for anonymous tasks that didn't have any dep-graph dependencies.
     non_query AnonZeroDeps
+    /// Anonymous task for trait solving.
     non_query TraitSelect
+
+    // These special tasks are also similar to queries, and have an associated key.
+    // But they bypass the usual query system machinery for various reasons.
+
+    /// Special task for compiling a CGU.
     non_query CompileCodegenUnit
+    /// Special task for compiling a single `MonoItem`. Used by `rustc_codegen_cranelift`.
     non_query CompileMonoItem
+    /// Special task for emitting crate metadata.
     non_query Metadata
 }
 

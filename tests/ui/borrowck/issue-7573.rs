@@ -13,7 +13,7 @@ pub fn remove_package_from_database() {
     let mut lines_to_use: Vec<&CrateId> = Vec::new();
     //~^ NOTE `lines_to_use` declared here, outside of the closure body
     let push_id = |installed_id: &CrateId| {
-        //~^ NOTE `installed_id` is a reference that is only valid in the closure body
+        //~^ NOTE `installed_id` is only valid in the closure body
         lines_to_use.push(installed_id);
         //~^ ERROR borrowed data escapes outside of closure
         //~| NOTE `installed_id` escapes the closure body here

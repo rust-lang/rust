@@ -81,13 +81,13 @@ LL |     pub unsafe fn more_undocumented_unsafe() -> Self {
 error: unsafe function's docs are missing a `# Safety` section
   --> tests/ui/doc_unsafe.rs:138:9
    |
+LL | macro_rules! very_unsafe {
+LL |     () => {
 LL |         pub unsafe fn whee() {
    |         ^^^^^^^^^^^^^^^^^^^^
 ...
 LL | very_unsafe!();
    | -------------- in this macro invocation
-   |
-   = note: this error originates in the macro `very_unsafe` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 12 previous errors
 

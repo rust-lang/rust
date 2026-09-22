@@ -16,6 +16,8 @@ note: required because it appears within the type `Container`
    |
 LL | enum Container {
    |      ^^^^^^^^^
+LL |     WithNoSync(NoSync),
+   |                ------ required by this field
 note: required by a bound in `requires_sync`
   --> $DIR/enum-negative-sync-impl.rs:16:21
    |

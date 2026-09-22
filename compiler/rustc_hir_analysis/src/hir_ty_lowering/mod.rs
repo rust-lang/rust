@@ -48,7 +48,7 @@ use rustc_middle::ty::{
     const_lit_matches_ty, fold_regions,
 };
 use rustc_session::diagnostics::feature_err;
-use rustc_span::def_id::ModId;
+use rustc_span::def_id::{LocalModId, ModId};
 use rustc_span::{DUMMY_SP, Ident, Span, bug, kw, span_bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, FulfillmentError};
@@ -141,6 +141,9 @@ pub trait HirTyLowerer<'tcx> {
 
     /// Returns the [`LocalDefId`] of the overarching item whose constituents get lowered.
     fn item_def_id(&self) -> LocalDefId;
+
+    /// Returns the containing module.
+    fn mod_id(&self) -> LocalModId;
 
     /// Returns the region to use when a lifetime is omitted (and not elided).
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx>;
@@ -449,7 +452,7 @@ impl<'tcx> ForbidParamUsesFolder<'tcx> {
                 diag.help("alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item");
             }
         }
-        diag.emit()
+        diag.emit_err()
     }
 }
 
@@ -1715,7 +1718,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         span,
                         "inherent associated types are unstable",
                     )
-                    .emit());
+                    .emit_err());
                 }
                 ty::AssocTag::Fn => unreachable!(),
             }
@@ -1814,7 +1817,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Option<(ty::AssocItem, /*scope*/ ModId)> {
         let tcx = self.tcx();
 
-        let (ident, def_scope) = tcx.adjust_ident_and_get_scope(ident, scope, self.item_def_id());
+        let (ident, def_scope) = tcx.adjust_ident_and_get_scope(ident, scope, self.mod_id());
         // We have already adjusted the item name above, so compare with `.normalize_to_macros_2_0()`
         // instead of calling `filter_by_name_and_kind` which would needlessly normalize the
         // `ident` again and again.
@@ -1879,7 +1882,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         })
                     // Consider only accessible traits
                     && tcx.visibility(*trait_def_id)
-                        .is_accessible_from(self.item_def_id(), tcx)
+                        .is_accessible_from(self.mod_id(), tcx)
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
                             let header = tcx.impl_trait_header(impl_def_id);
@@ -2764,7 +2767,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         format!("`{}` does not have this field", variant_def.name),
                     );
                 }
-                return ty::Const::new_error(tcx, err.emit());
+                return ty::Const::new_error(tcx, err.emit_err());
             }
         }
 
@@ -2974,7 +2977,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let guar = self
                     .dcx()
                     .struct_span_err(span, "function items cannot be used as const args")
-                    .emit();
+                    .emit_err();
                 Const::new_error(tcx, guar)
             }
             // Exhaustive match to be clear about what exactly we're considering to be
@@ -3165,7 +3168,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     "only consts with a `direct_const_arg!` right-hand side may be used in types",
                 );
             }
-            Err(err.emit())
+            Err(err.emit_err())
         }
     }
 
@@ -3424,7 +3427,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             hir::TyKind::FieldOf(ty, hir::TyFieldPath { variant, field }) => self.lower_field_of(
                 self.lower_ty(ty),
-                self.item_def_id(),
+                self.mod_id(),
                 ty.span,
                 hir_ty.hir_id,
                 *variant,
@@ -3478,7 +3481,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn lower_field_of(
         &self,
         ty: Ty<'tcx>,
-        item_def_id: LocalDefId,
+        mod_id: LocalModId,
         ty_span: Span,
         hir_id: HirId,
         variant: Option<Ident>,
@@ -3498,7 +3501,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 field.span.shrink_to_lo(),
                                 "you might be missing a variant here: `Variant.`",
                             )
-                            .emit();
+                            .emit_err();
                         return Ty::new_error(tcx, err);
                     };
 
@@ -3509,9 +3512,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     {
                         res
                     } else {
-                        let err = dcx
-                            .create_err(NoVariantNamed { span: variant.span, ident: variant, ty })
-                            .emit();
+                        let err =
+                            dcx.emit_err(NoVariantNamed { span: variant.span, ident: variant, ty });
                         return Ty::new_error(tcx, err);
                     }
                 } else {
@@ -3528,8 +3530,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
                     (FIRST_VARIANT, def.non_enum_variant())
                 };
-                let (ident, def_scope) =
-                    tcx.adjust_ident_and_get_scope(field, def.did(), item_def_id);
+                let (ident, def_scope) = tcx.adjust_ident_and_get_scope(field, def.did(), mod_id);
                 if let Some((field_idx, field)) = variant
                     .fields
                     .iter_enumerated()
@@ -3550,8 +3551,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
                     Ty::new_field_representing_type(tcx, ty, variant_idx, field_idx)
                 } else {
-                    let err =
-                        dcx.create_err(NoFieldOnType { span: ident.span, field: ident, ty }).emit();
+                    let err = dcx.emit_err(NoFieldOnType { span: ident.span, field: ident, ty });
                     Ty::new_error(tcx, err)
                 }
             }
@@ -3559,8 +3559,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let index = match field.as_str().parse::<usize>() {
                     Ok(idx) => idx,
                     Err(_) => {
-                        let err =
-                            dcx.create_err(NoFieldOnType { span: field.span, field, ty }).emit();
+                        let err = dcx.emit_err(NoFieldOnType { span: field.span, field, ty });
                         return Ty::new_error(tcx, err);
                     }
                 };
@@ -3570,7 +3569,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 if tys.get(index).is_some() {
                     Ty::new_field_representing_type(tcx, ty, FIRST_VARIANT, index.into())
                 } else {
-                    let err = dcx.create_err(NoFieldOnType { span: field.span, field, ty }).emit();
+                    let err = dcx.emit_err(NoFieldOnType { span: field.span, field, ty });
                     Ty::new_error(tcx, err)
                 }
             }

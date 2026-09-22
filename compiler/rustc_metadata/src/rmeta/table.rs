@@ -140,16 +140,8 @@ macro_rules! defaulted_enum {
     }
 }
 
-// Workaround; need const traits to construct bitflags in a const
-macro_rules! const_macro_kinds {
-    ($($name:ident),+$(,)?) => (MacroKinds::from_bits_truncate($(MacroKinds::$name.bits())|+))
-}
-const MACRO_KINDS_ATTR_BANG: MacroKinds = const_macro_kinds!(ATTR, BANG);
-const MACRO_KINDS_DERIVE_BANG: MacroKinds = const_macro_kinds!(DERIVE, BANG);
-const MACRO_KINDS_DERIVE_ATTR: MacroKinds = const_macro_kinds!(DERIVE, ATTR);
-const MACRO_KINDS_DERIVE_ATTR_BANG: MacroKinds = const_macro_kinds!(DERIVE, ATTR, BANG);
 // Ensure that we get a compilation error if MacroKinds gets extended without updating metadata.
-const _: () = assert!(MACRO_KINDS_DERIVE_ATTR_BANG.is_all());
+const _: () = assert!(MacroKinds::DERIVE_ATTR_BANG.is_all());
 
 fixed_size_enum! {
     DefKind {
@@ -195,10 +187,10 @@ fixed_size_enum! {
         ( Macro(MacroKinds::BANG)                  )
         ( Macro(MacroKinds::ATTR)                  )
         ( Macro(MacroKinds::DERIVE)                )
-        ( Macro(MACRO_KINDS_ATTR_BANG)             )
-        ( Macro(MACRO_KINDS_DERIVE_ATTR)           )
-        ( Macro(MACRO_KINDS_DERIVE_BANG)           )
-        ( Macro(MACRO_KINDS_DERIVE_ATTR_BANG)      )
+        ( Macro(MacroKinds::ATTR_BANG)             )
+        ( Macro(MacroKinds::DERIVE_ATTR)           )
+        ( Macro(MacroKinds::DERIVE_BANG)           )
+        ( Macro(MacroKinds::DERIVE_ATTR_BANG)      )
         ( SyntheticCoroutineBody                   )
         ( TestBinderConstraints                    )
     } unreachable {

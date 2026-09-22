@@ -487,7 +487,7 @@ fn emit_orphan_check_error<'tcx>(
                 }
             }
 
-            diag.emit()
+            diag.emit_err()
         }
         traits::OrphanCheckErr::UncoveredTyParams(UncoveredTyParams { uncovered, local_ty }) => {
             let mut guar = None;

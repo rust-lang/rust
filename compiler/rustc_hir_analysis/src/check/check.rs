@@ -43,7 +43,7 @@ use crate::check::wfcheck::{
 use crate::collect::ItemCtxt;
 use crate::diagnostics;
 
-fn add_abi_diag_help<G>(abi: ExternAbi, diag: &mut Diag<'_, G>) {
+fn add_abi_diag_help(abi: ExternAbi, diag: &mut Diag<'_>) {
     if let ExternAbi::Cdecl { unwind } = abi {
         let c_abi = ExternAbi::C { unwind };
         diag.help(format!("use `extern {c_abi}` instead",));
@@ -62,8 +62,8 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
         abi: ExternAbi,
     }
 
-    impl<'a> Diagnostic<'a, ()> for UnsupportedCallingConventions {
-        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+    impl<'a> Diagnostic<'a> for UnsupportedCallingConventions {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
             let Self { abi } = self;
             let mut lint = Diag::new(
                 dcx,
@@ -557,7 +557,7 @@ fn sanity_check_found_hidden_type<'tcx>(
     } else {
         let span = tcx.def_span(key.def_id);
         let other = ty::ProvisionalHiddenType { ty: hidden_ty, span };
-        Err(ty.build_mismatch_error(&other, tcx)?.emit())
+        Err(ty.build_mismatch_error(&other, tcx)?.emit_err())
     }
 }
 
@@ -1606,6 +1606,8 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
             // bools
             match element_ty.kind() {
                 ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Bool => (),
+                // We need to treat a `bfloat` (`f16b`) as a primitive scalar
+                ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::F16B) => (),
                 _ => {
                     let mut err = tcx.dcx().struct_span_err(
                         span,
@@ -2060,7 +2062,7 @@ fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>)
     let mut i = 0;
     while i < discrs.len() {
         let var_i_idx = discrs[i].0;
-        let mut error: Option<Diag<'_, _>> = None;
+        let mut error: Option<Diag<'_>> = None;
 
         let mut o = i + 1;
         while o < discrs.len() {
@@ -2304,7 +2306,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
     if !label {
         err.span_label(span, "cannot resolve opaque type");
     }
-    err.emit()
+    err.emit_err()
 }
 
 pub(super) fn check_coroutine_obligations(

@@ -324,7 +324,7 @@ struct IfLetRescopeRewrite {
 }
 
 impl Subdiagnostic for IfLetRescopeRewrite {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let mut suggestions = vec![];
         for match_head in self.match_heads {
             match match_head {

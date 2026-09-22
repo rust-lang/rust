@@ -42,7 +42,7 @@ pub(crate) enum OverruledAttributeSub {
 }
 
 impl Subdiagnostic for OverruledAttributeSub {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         match self {
             OverruledAttributeSub::DefaultSource { id } => {
                 diag.note(msg!("`forbid` lint level is the default for {$id}"));
@@ -308,8 +308,8 @@ pub(crate) struct BuiltinMissingDebugImpl<'a> {
 }
 
 // Needed for def_path_str
-impl<'a> Diagnostic<'a, ()> for BuiltinMissingDebugImpl<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a> Diagnostic<'a> for BuiltinMissingDebugImpl<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let Self { tcx, def_id } = self;
         Diag::new(
             dcx,
@@ -368,8 +368,8 @@ pub(crate) struct BuiltinUngatedAsyncFnTrackCaller<'a> {
     pub session: &'a Session,
 }
 
-impl<'a> Diagnostic<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a> Diagnostic<'a> for BuiltinUngatedAsyncFnTrackCaller<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(dcx, level, "`#[track_caller]` on async functions is a no-op")
             .with_span_label(self.label, "this function will not propagate the caller location");
         rustc_session::diagnostics::add_feature_diagnostics(
@@ -412,8 +412,8 @@ pub(crate) struct BuiltinTypeAliasBounds<'hir> {
     pub ty: Option<&'hir hir::Ty<'hir>>,
 }
 
-impl<'a> Diagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a> Diagnostic<'a> for BuiltinTypeAliasBounds<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(dcx, level, if self.in_where_clause {
             msg!("where clauses on type aliases are not enforced")
         } else {
@@ -615,8 +615,8 @@ pub(crate) struct BuiltinUnpermittedTypeInit<'a> {
     pub tcx: TyCtxt<'a>,
 }
 
-impl<'a> Diagnostic<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a> Diagnostic<'a> for BuiltinUnpermittedTypeInit<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(dcx, level, self.msg)
             .with_arg("ty", self.ty)
             .with_span_label(self.label, msg!("this code causes undefined behavior when executed"));
@@ -638,7 +638,7 @@ pub(crate) struct BuiltinUnpermittedTypeInitSub {
 }
 
 impl Subdiagnostic for BuiltinUnpermittedTypeInitSub {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let mut err = self.err;
         loop {
             if let Some(span) = err.span {
@@ -689,7 +689,7 @@ pub(crate) struct BuiltinClashingExternSub<'a> {
 }
 
 impl Subdiagnostic for BuiltinClashingExternSub<'_> {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let mut expected_str = DiagStyledString::new();
         expected_str.push(self.expected.fn_sig(self.tcx).to_string(), false);
         let mut found_str = DiagStyledString::new();
@@ -1363,7 +1363,7 @@ pub(crate) struct NonBindingLetSub {
 }
 
 impl Subdiagnostic for NonBindingLetSub {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let can_suggest_binding = self.drop_fn_start_end.is_some() || !self.is_assign_desugar;
 
         if can_suggest_binding {
@@ -1639,8 +1639,8 @@ pub(crate) struct NonFmtPanicUnused {
 }
 
 // Used because of two suggestions based on one Option<Span>
-impl<'a> Diagnostic<'a, ()> for NonFmtPanicUnused {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a> Diagnostic<'a> for NonFmtPanicUnused {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(dcx, level, msg!(
             "panic message contains {$count ->
                 [one] an unused
@@ -1653,7 +1653,7 @@ impl<'a> Diagnostic<'a, ()> for NonFmtPanicUnused {
             .with_arg("count", self.count)
             .with_note(msg!("this message is not used as a format string when given without arguments, but will be in Rust 2021"));
         if let Some(span) = self.suggestion {
-            diag.span_suggestion(
+            diag.span_suggestion_verbose(
                 span.shrink_to_hi(),
                 msg!(
                     "add the missing {$count ->
@@ -1664,7 +1664,7 @@ impl<'a> Diagnostic<'a, ()> for NonFmtPanicUnused {
                 ", ...",
                 Applicability::HasPlaceholders,
             );
-            diag.span_suggestion(
+            diag.span_suggestion_verbose(
                 span.shrink_to_lo(),
                 msg!(r#"or add a "{"{"}{"}"}" format string to use the message literally"#),
                 "\"{}\", ",
@@ -1740,7 +1740,7 @@ pub(crate) enum NonSnakeCaseDiagSub {
 }
 
 impl Subdiagnostic for NonSnakeCaseDiagSub {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         match self {
             NonSnakeCaseDiagSub::Label { span } => {
                 diag.span_label(span, msg!("should have a snake_case name"));
@@ -1876,8 +1876,8 @@ pub(crate) enum NonLocalDefinitionsDiag {
     },
 }
 
-impl<'a> Diagnostic<'a, ()> for NonLocalDefinitionsDiag {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a> Diagnostic<'a> for NonLocalDefinitionsDiag {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(dcx, level, "");
         match self {
             NonLocalDefinitionsDiag::Impl {
@@ -1912,7 +1912,7 @@ impl<'a> Diagnostic<'a, ()> for NonLocalDefinitionsDiag {
                 if let Some(const_anon) = const_anon {
                     diag.note(msg!("items in an anonymous const item (`const _: () = {\"{\"} ... {\"}\"}`) are treated as in the same scope as the anonymous const's declaration for the purpose of this lint"));
                     if let Some(const_anon) = const_anon {
-                        diag.span_suggestion(
+                        diag.span_suggestion_verbose(
                             const_anon,
                             msg!("use a const-anon item to suppress this lint"),
                             "_",
@@ -2046,8 +2046,8 @@ pub(crate) struct DropTraitConstraintsDiag<'a> {
 }
 
 // Needed for def_path_str
-impl<'a> Diagnostic<'a, ()> for DropTraitConstraintsDiag<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a> Diagnostic<'a> for DropTraitConstraintsDiag<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         Diag::new(dcx, level, msg!("bounds on `{$clause}` are most likely incorrect, consider instead using `{$needs_drop}` to detect whether a type can be trivially dropped"))
             .with_arg("clause", self.clause)
             .with_arg("needs_drop", self.tcx.def_path_str(self.def_id))
@@ -2060,8 +2060,8 @@ pub(crate) struct DropGlue<'a> {
 }
 
 // Needed for def_path_str
-impl<'a> Diagnostic<'a, ()> for DropGlue<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a> Diagnostic<'a> for DropGlue<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         Diag::new(dcx, level, msg!("types that do not implement `Drop` can still have drop glue, consider instead using `{$needs_drop}` to detect whether a type is trivially dropped"))
             .with_arg("needs_drop", self.tcx.def_path_str(self.def_id))
     }
@@ -2514,8 +2514,8 @@ pub(crate) struct ImproperCTypes<'a> {
 }
 
 // Used because of the complexity of Option<DiagMessage>, DiagMessage, and Option<Span>
-impl<'a> Diagnostic<'a, ()> for ImproperCTypes<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a> Diagnostic<'a> for ImproperCTypes<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(
             dcx,
             level,
@@ -2691,8 +2691,8 @@ pub(crate) enum UnusedDefSuggestion {
 }
 
 // Needed because of def_path_str
-impl<'a> Diagnostic<'a, ()> for UnusedDef<'_, '_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a> Diagnostic<'a> for UnusedDef<'_, '_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag =
             Diag::new(dcx, level, msg!("unused {$pre}`{$def}`{$post} that must be used"))
                 .with_arg("pre", self.pre)
@@ -2778,8 +2778,8 @@ pub(crate) struct AsyncFnInTraitDiag {
     pub sugg: Option<Vec<(Span, String)>>,
 }
 
-impl<'a> Diagnostic<'a, ()> for AsyncFnInTraitDiag {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a> Diagnostic<'a> for AsyncFnInTraitDiag {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(
             dcx,
             level,
@@ -2924,8 +2924,8 @@ pub(crate) struct MismatchedLifetimeSyntaxes {
     pub suggestions: Vec<MismatchedLifetimeSyntaxesSuggestion>,
 }
 
-impl<'a, G> Diagnostic<'a, G> for MismatchedLifetimeSyntaxes {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+impl<'a> Diagnostic<'a> for MismatchedLifetimeSyntaxes {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let counts = self.inputs.len() + self.outputs.len();
         let message = match counts {
             LifetimeSyntaxCategories { hidden: 0, elided: 0, named: 0 } => {
@@ -3037,7 +3037,7 @@ impl MismatchedLifetimeSyntaxesSuggestion {
 }
 
 impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         use MismatchedLifetimeSyntaxesSuggestion::*;
 
         let style = |optional_alternative| {

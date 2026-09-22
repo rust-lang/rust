@@ -399,8 +399,8 @@ pub enum TargetDataLayoutError<'a> {
 }
 
 #[cfg(feature = "nightly")]
-impl<G> Diagnostic<'_, G> for TargetDataLayoutError<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for TargetDataLayoutError<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         match self {
             TargetDataLayoutError::InvalidAddressSpace { addr_space, err, cause } => {
                 Diag::new(dcx, level, msg!("invalid address space `{$addr_space}` for `{$cause}` in \"data-layout\": {$err}"))
@@ -1420,6 +1420,10 @@ impl Integer {
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Float {
     F16,
+    /// `f16b`. This is not a builtin type in Rust (it is exposed as a lang item),
+    /// but it is a builtin type in LLVM so needs to be explicitly represented
+    /// in the backend.
+    F16B,
     F32,
     F64,
     F128,
@@ -1431,6 +1435,7 @@ impl Float {
 
         match self {
             F16 => Size::from_bits(16),
+            F16B => Size::from_bits(16),
             F32 => Size::from_bits(32),
             F64 => Size::from_bits(64),
             F128 => Size::from_bits(128),
@@ -1442,7 +1447,7 @@ impl Float {
         let dl = cx.data_layout();
 
         AbiAlign::new(match self {
-            F16 => dl.f16_align,
+            F16 | F16B => dl.f16_align,
             F32 => dl.f32_align,
             F64 => dl.f64_align,
             F128 => dl.f128_align,
@@ -1454,6 +1459,7 @@ impl Float {
 
         match self {
             F16 => "f16",
+            F16B => "f16b",
             F32 => "f32",
             F64 => "f64",
             F128 => "f128",
@@ -2005,24 +2011,40 @@ impl BackendRepr {
     }
 }
 
+/// Describes the variants of a type.
 // NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
-    /// A type with no valid variants. Must be uninhabited.
+    /// The type has no valid variants. Must be uninhabited.
+    ///
+    /// This is the case for:
+    /// 1. enums with no inhabited variants
+    /// 2. the never type
     Empty,
 
-    /// Single enum variants, structs/tuples, unions, and all non-ADTs.
+    /// The type has a single valid variant.
+    ///
+    /// This is the case for:
+    /// 1. enums with a single inhabited variant
+    /// 2. structs, unions, and non-ADTs (except coroutines; see below),
+    ///    as those can't have multiple variants
     Single {
-        /// Always `0` for types that cannot have multiple variants.
+        /// - for case 1, this is the index of the inhabited variant
+        /// - for case 2, this is always `0` (a dummy value)
         index: VariantIdx,
     },
 
-    /// Enum-likes with more than one variant: each variant comes with
-    /// a *discriminant* (usually the same as the variant index but the user can
-    /// assign explicit discriminant values). That discriminant is encoded
-    /// as a *tag* on the machine. The layout of each variant is
-    /// a struct, and they all have space reserved for the tag.
+    /// The type has multiple valid variants.
+    ///
+    /// This is the case for:
+    /// 1. enums with multiple inhabited variants
+    /// 2. coroutines
+    ///
+    /// Each variant comes with a *discriminant* (usually the same as the
+    /// variant index but the user can assign explicit discriminant values).
+    /// That discriminant is encoded as a *tag* on the machine. The layout of
+    /// each variant is a struct, and they all have space reserved for the tag.
     /// For enums, the tag is the sole field of the layout.
     Multiple {
         tag: Scalar,

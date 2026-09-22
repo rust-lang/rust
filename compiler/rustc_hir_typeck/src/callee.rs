@@ -127,7 +127,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty: autoderef.final_ty(),
             });
             err.span_label(callee_expr.span, "you can create scalable vectors using intrinsics");
-            Ty::new_error(self.tcx, err.emit());
+            Ty::new_error(self.tcx, err.emit_err());
         }
 
         self.register_predicates(autoderef.into_obligations());
@@ -1069,7 +1069,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(span, label);
             }
         }
-        err.emit()
+        err.emit_err()
     }
 
     fn confirm_deferred_closure_call(

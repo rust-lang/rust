@@ -765,12 +765,15 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if let Some((did, item)) = self.lookup_doc_alias_name(path, source.namespace()) {
             let item_name = item.name;
             let suggestion_name = self.r.tcx.item_name(did);
-            err.span_suggestion(
+            err.span_suggestion_verbose(
                 item.span,
-                format!("`{suggestion_name}` has a name defined in the doc alias attribute as `{item_name}`"),
-                    suggestion_name,
-                    Applicability::MaybeIncorrect
-                );
+                format!(
+                    "`{suggestion_name}` has a name defined in the doc alias attribute as \
+                     `{item_name}`",
+                ),
+                suggestion_name,
+                Applicability::MaybeIncorrect,
+            );
 
             return (err, Vec::new());
         };
@@ -1217,7 +1220,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         err.note("constructor is not visible here due to private fields");
                     }
                 } else {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         call_span,
                         format!("try calling `{ident}` as a method"),
                         format!("self.{path_str}({args_snippet})"),
@@ -1511,7 +1514,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 ..
                             })) = source
                             {
-                                err.span_suggestion(
+                                err.span_suggestion_verbose(
                                     span,
                                     "use the similarly named label",
                                     label_ident.name,
@@ -1527,9 +1530,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 self.suggest_ident_hidden_by_hygiene(err, path, span);
                 // cannot find type in this scope
                 if let Some(correct) = Self::likely_rust_type(path) {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         span,
-                        "perhaps you intended to use this type",
+                        format!("you might have intended to use the `{correct}` primitive type"),
                         correct,
                         Applicability::MaybeIncorrect,
                     );
@@ -2517,7 +2520,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         // The span contains a type alias so we should be able to
                         // replace `type` with `trait`.
                         let snip = snip.replacen("type", "trait", 1);
-                        err.span_suggestion(span, msg, snip, Applicability::MaybeIncorrect);
+                        err.span_suggestion_verbose(span, msg, snip, Applicability::MaybeIncorrect);
                     } else {
                         err.span_help(span, msg);
                     }
@@ -3930,7 +3933,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             );
         }
 
-        err.emit()
+        err.emit_err()
     }
 
     fn suggest_introducing_lifetime(
@@ -4132,13 +4135,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         &self,
         lifetime_ref: &ast::Lifetime,
     ) -> ErrorGuaranteed {
-        self.r
-            .dcx()
-            .create_err(diagnostics::ParamInTyOfConstParam {
-                span: lifetime_ref.ident.span,
-                name: lifetime_ref.ident.name,
-            })
-            .emit()
+        self.r.dcx().emit_err(diagnostics::ParamInTyOfConstParam {
+            span: lifetime_ref.ident.span,
+            name: lifetime_ref.ident.name,
+        })
     }
 
     /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
@@ -4150,31 +4150,26 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         lifetime_ref: &ast::Lifetime,
     ) -> ErrorGuaranteed {
         match cause {
-            NoConstantGenericsReason::IsEnumDiscriminant => self
-                .r
-                .dcx()
-                .create_err(diagnostics::ParamInEnumDiscriminant {
+            NoConstantGenericsReason::IsEnumDiscriminant => {
+                self.r.dcx().emit_err(diagnostics::ParamInEnumDiscriminant {
                     span: lifetime_ref.ident.span,
                     name: lifetime_ref.ident.name,
                     param_kind: diagnostics::ParamKindInEnumDiscriminant::Lifetime,
                 })
-                .emit(),
+            }
             NoConstantGenericsReason::NonTrivialConstArg => {
                 assert!(!self.r.features.generic_const_exprs());
-                self.r
-                    .dcx()
-                    .create_err(diagnostics::ParamInNonTrivialAnonConst {
-                        span: lifetime_ref.ident.span,
-                        name: lifetime_ref.ident.name,
-                        param_kind: diagnostics::ParamKindInNonTrivialAnonConst::Lifetime,
-                        help: self.r.tcx.sess.is_nightly_build()
-                            && !self.r.features.min_generic_const_args(),
-                        is_gca: self.r.features.generic_const_args(),
-                        help_gca: self.r.features.generic_const_args(),
-                        help_suggest_gca: self.r.tcx.sess.is_nightly_build()
-                            && !self.r.features.generic_const_args(),
-                    })
-                    .emit()
+                self.r.dcx().emit_err(diagnostics::ParamInNonTrivialAnonConst {
+                    span: lifetime_ref.ident.span,
+                    name: lifetime_ref.ident.name,
+                    param_kind: diagnostics::ParamKindInNonTrivialAnonConst::Lifetime,
+                    help: self.r.tcx.sess.is_nightly_build()
+                        && !self.r.features.min_generic_const_args(),
+                    is_gca: self.r.features.generic_const_args(),
+                    help_gca: self.r.features.generic_const_args(),
+                    help_suggest_gca: self.r.tcx.sess.is_nightly_build()
+                        && !self.r.features.generic_const_args(),
+                })
             }
         }
     }
@@ -4199,7 +4194,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             lifetime_refs,
             function_param_lifetimes,
         );
-        err.emit()
+        err.emit_err()
     }
 
     fn add_missing_lifetime_specifiers_label<'a>(
@@ -4740,7 +4735,7 @@ pub(super) fn signal_lifetime_shadowing(
     )
     .with_span_label(orig.span, "first declared here")
     .with_span_label(shadower.span, format!("lifetime `{}` already in scope", orig.name))
-    .emit()
+    .emit_err()
 }
 
 struct LifetimeFinder<'ast> {

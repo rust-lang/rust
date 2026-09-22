@@ -662,7 +662,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     ///   --> $DIR/lifetime-bound-will-change-warning.rs:44:5
     ///    |
     /// LL | fn test2<'a>(x: &'a Box<Fn()+'a>) {
-    ///    |              - `x` is a reference that is only valid in the function body
+    ///    |              - `x` is only valid in the function body
     /// LL |     // but ref_obj will not, so warn.
     /// LL |     ref_obj(x)
     ///    |     ^^^^^^^^^^ `x` escapes the function body here
@@ -714,9 +714,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         if let Some((Some(fr_name), fr_span)) = fr_name_and_span {
             diag.span_label(
                 fr_span,
-                format!(
-                    "`{fr_name}` is a reference that is only valid in the {escapes_from} body",
-                ),
+                format!("`{fr_name}` is only valid in the {escapes_from} body"),
             );
 
             diag.span_label(*span, format!("`{fr_name}` escapes the {escapes_from} body here"));

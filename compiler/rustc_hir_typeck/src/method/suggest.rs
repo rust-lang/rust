@@ -352,7 +352,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     &mut sources,
                     Some(expr_span),
                 );
-                err.emit()
+                err.emit_err()
             }
 
             MethodError::PrivateMatch(kind, def_id, out_of_scope_traits) => {
@@ -374,7 +374,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 self.suggest_valid_traits(&mut err, item_name, out_of_scope_traits, true);
                 self.suggest_unwrapping_inner_self(&mut err, source, rcvr_ty, item_name);
-                err.emit()
+                err.emit_err()
             }
 
             MethodError::IllegalSizedBound { candidates, needs_mut, bound_span, self_expr } => {
@@ -471,7 +471,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                err.emit()
+                err.emit_err()
             }
 
             MethodError::ErrorReported(guar) => guar,
@@ -1360,7 +1360,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &static_candidates,
         )
         else {
-            return err.emit();
+            return err.emit_err();
         };
 
         let similar_candidate = no_match_data.similar_candidate;
@@ -1438,7 +1438,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_ident, expected);
         self.suggest_bounds_for_range_to_method(&mut err, source, item_ident);
-        err.emit()
+        err.emit_err()
     }
 
     fn set_not_found_span_label(
@@ -2836,8 +2836,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => None,
             });
         if let Some((field, field_ty)) = field_receiver {
-            let scope = tcx.parent_module_from_def_id(self.body_def_id);
-            let is_accessible = field.vis.is_accessible_from(scope, tcx);
+            let is_accessible = field.vis.is_accessible_from(self.mod_id, tcx);
 
             if is_accessible {
                 if let Some((what, _, _)) = self.extract_callable_info(field_ty) {
@@ -3124,7 +3123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => {}
             }
-            return Err(err.emit());
+            return Err(err.emit_err());
         }
         Ok(())
     }
@@ -3199,13 +3198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         return_type: Option<Ty<'tcx>>,
     ) {
         if let SelfSource::MethodCall(expr) = source {
-            let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
-            for fields in self.get_field_candidates_considering_privacy_for_diag(
-                span,
-                actual,
-                mod_id,
-                expr.hir_id,
-            ) {
+            for fields in self.get_field_candidates_considering_privacy_for_diag(span, actual) {
                 let call_expr = self.tcx.hir_expect_expr(self.tcx.parent_hir_id(expr.hir_id));
 
                 let lang_items = self.tcx.lang_items();
@@ -3240,8 +3233,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             },
                             candidate_field,
                             vec![],
-                            mod_id,
-                            expr.hir_id,
                         )
                     })
                     .map(|field_path| {
@@ -3991,11 +3982,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let parent_map = self.tcx.visible_parent_map(());
 
-        let scope = self.tcx.parent_module_from_def_id(self.body_def_id);
         let (accessible_candidates, inaccessible_candidates): (Vec<_>, Vec<_>) =
             candidates.into_iter().partition(|id| {
                 let vis = self.tcx.visibility(*id);
-                vis.is_accessible_from(scope, self.tcx)
+                vis.is_accessible_from(self.mod_id, self.tcx)
                     // Visibility alone does not make `fn_name::Trait` an importable path.
                     // We need to make sure all parent are modules, otherwise the path is not importable.
                     && std::iter::successors(self.tcx.opt_parent(*id), |&id| self.tcx.opt_parent(id))
@@ -4053,7 +4043,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let accessible_sugg = sugg(accessible_candidates, true);
         let inaccessible_sugg = sugg(inaccessible_candidates, false);
 
-        let (module, _, _) = self.tcx.hir_get_module(scope);
+        let (module, _) = self.tcx.hir_get_module(self.mod_id);
         let span = module.spans.inject_use_span;
         handle_candidates(accessible_sugg, inaccessible_sugg, span);
     }

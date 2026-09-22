@@ -18,12 +18,14 @@ note: required because it appears within the type `Port<()>`
   --> $DIR/rc-is-not-send.rs:7:8
    |
 LL | struct Port<T>(Rc<T>);
-   |        ^^^^
+   |        ^^^^    ----- required by this field
 note: required because it appears within the type `Foo`
   --> $DIR/rc-is-not-send.rs:10:8
    |
 LL | struct Foo {
    |        ^^^
+LL |     _x: Port<()>,
+   |     ------------ required by this field
 note: required because `x` is used within this closure
   --> $DIR/rc-is-not-send.rs:27:17
    |

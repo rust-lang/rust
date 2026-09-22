@@ -205,7 +205,7 @@ fn maybe_emit_suggestion<'tcx>(cx: &LateContext<'tcx>, suggestion: &ClampSuggest
     };
     let suggestion = format!("{assignment}{input}.clamp({min}, {max}){semicolon}");
     let msg = "clamp-like pattern without using clamp function";
-    let lint_builder = |d: &mut Diag<'_, ()>| {
+    let lint_builder = |d: &mut Diag<'_>| {
         d.span_suggestion(*span, "replace with clamp", suggestion, Applicability::MaybeIncorrect);
         if *is_float {
             d.note("clamp will panic if max < min, min.is_nan(), or max.is_nan()")

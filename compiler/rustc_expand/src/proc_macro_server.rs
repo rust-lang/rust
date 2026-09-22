@@ -228,31 +228,31 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                 tk::Question => op("?"),
                 tk::SingleQuote => op("'"),
 
-                tk::Ident(sym, is_raw) => trees.push(TokenTree::Ident(Ident {
+                tk::Ident(sym, kind) => trees.push(TokenTree::Ident(Ident {
                     sym,
-                    is_raw: matches!(is_raw, tk::IdentIsRaw::Yes),
+                    is_raw: matches!(kind, tk::IdentKind::Raw),
                     span,
                 })),
-                tk::NtIdent(ident, is_raw) => trees.push(TokenTree::Ident(Ident {
+                tk::NtIdent(ident, kind) => trees.push(TokenTree::Ident(Ident {
                     sym: ident.name,
-                    is_raw: matches!(is_raw, tk::IdentIsRaw::Yes),
+                    is_raw: matches!(kind, tk::IdentKind::Raw),
                     span: ident.span,
                 })),
 
-                tk::Lifetime(name, is_raw) => {
+                tk::Lifetime(name, kind) => {
                     let ident = rustc_span::Ident::new(name, span).without_first_quote();
                     trees.extend([
                         TokenTree::Punct(Punct { ch: b'\'', joint: true, span }),
                         TokenTree::Ident(Ident {
                             sym: ident.name,
-                            is_raw: matches!(is_raw, tk::IdentIsRaw::Yes),
+                            is_raw: matches!(kind, tk::IdentKind::Raw),
                             span,
                         }),
                     ]);
                 }
-                tk::NtLifetime(ident, is_raw) => {
+                tk::NtLifetime(ident, kind) => {
                     let stream =
-                        TokenStream::token_alone(tk::Lifetime(ident.name, is_raw), ident.span);
+                        TokenStream::token_alone(tk::Lifetime(ident.name, kind), ident.span);
                     trees.push(TokenTree::Group(Group {
                         delimiter: rustc_proc_macro::Delimiter::None,
                         stream: Some(stream),
@@ -274,7 +274,7 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                         escaped.extend(ch.escape_debug());
                     }
                     let stream = [
-                        tk::Ident(sym::doc, tk::IdentIsRaw::No),
+                        tk::Ident(sym::doc, tk::IdentKind::Normal),
                         tk::Eq,
                         tk::TokenKind::lit(tk::Str, Symbol::intern(&escaped), None),
                     ]
@@ -366,7 +366,8 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
                 rustc.psess().symbol_gallery.insert(sym, span);
-                smallvec![tokenstream::TokenTree::token_alone(tk::Ident(sym, is_raw.into()), span)]
+                let kind = if is_raw { tk::IdentKind::Raw } else { tk::IdentKind::Normal };
+                smallvec![tokenstream::TokenTree::token_alone(tk::Ident(sym, kind), span)]
             }
             TokenTree::Literal(self::Literal {
                 kind: self::LitKind::Integer,
@@ -559,8 +560,7 @@ impl server::Server for Rustc<'_, '_> {
 
     fn emit_diagnostic(&mut self, diagnostic: Diagnostic<Self::Span>) {
         let message = rustc_errors::DiagMessage::from(diagnostic.message);
-        let mut diag: Diag<'_, ()> =
-            Diag::new(self.psess().dcx(), diagnostic.level.to_internal(), message);
+        let mut diag = Diag::new(self.psess().dcx(), diagnostic.level.to_internal(), message);
         diag.span(MultiSpan::from_spans(diagnostic.spans));
         for child in diagnostic.children {
             diag.sub(child.level.to_internal(), child.message, MultiSpan::from_spans(child.spans));
@@ -625,7 +625,7 @@ impl server::Server for Rustc<'_, '_> {
         match &expr.kind {
             ast::ExprKind::Lit(token_lit) if token_lit.kind == tk::Bool => {
                 Ok(tokenstream::TokenStream::token_alone(
-                    tk::Ident(token_lit.symbol, tk::IdentIsRaw::No),
+                    tk::Ident(token_lit.symbol, tk::IdentKind::Normal),
                     expr.span,
                 ))
             }

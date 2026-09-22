@@ -32,8 +32,8 @@ pub use anstyle::{
 pub use codes::*;
 pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
-    BugAbort, Diag, DiagDecorator, DiagInner, DiagLocation, DiagStyledString, Diagnostic,
-    FatalAbort, StringPart, Subdiag, Subdiagnostic,
+    Diag, DiagDecorator, DiagInner, DiagLocation, DiagStyledString, Diagnostic, StringPart,
+    Subdiag, Subdiagnostic,
 };
 pub use diagnostic_impls::{
     DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
@@ -632,7 +632,7 @@ impl<'a> DiagCtxtHandle<'a> {
     /// Steal a previously stashed non-error diagnostic with the given `Span`
     /// and [`StashKey`] as the key. Panics if the found diagnostic is an
     /// error.
-    pub fn steal_non_err(self, span: Span, key: StashKey) -> Option<Diag<'a, ()>> {
+    pub fn steal_non_err(self, span: Span, key: StashKey) -> Option<Diag<'a>> {
         // FIXME(#120456) - is `swap_remove` correct?
         let (diag, guar, _) =
             self.dcx.inner.borrow_mut().stashed_diagnostics.get_mut(&key).and_then(
@@ -661,13 +661,12 @@ impl<'a> DiagCtxtHandle<'a> {
             |stashed_diagnostics| stashed_diagnostics.swap_remove(&span.with_parent(None)),
         );
         err.map(|(err, guar, _)| {
-            // The use of `::<ErrorGuaranteed>` is safe because level is `Level::Error`.
             assert_eq!(err.level, Error);
             assert!(guar.is_some());
-            let mut err = Diag::<ErrorGuaranteed>::new_diagnostic(self, err);
+            let mut err = Diag::new_diagnostic(self, err);
             modify_err(&mut err);
             assert_eq!(err.level, Error);
-            err.emit()
+            err.emit_err()
         })
     }
 
@@ -690,11 +689,11 @@ impl<'a> DiagCtxtHandle<'a> {
                 assert!(guar.is_some());
                 // Because `old_err` has already been counted, it can only be
                 // safely cancelled because the `new_err` supplants it.
-                Diag::<ErrorGuaranteed>::new_diagnostic(self, old_err).cancel();
+                Diag::new_diagnostic(self, old_err).cancel();
             }
             None => {}
         };
-        new_err.emit()
+        new_err.emit_err()
     }
 
     pub fn has_stashed_diagnostic(&self, span: Span, key: StashKey) -> bool {
@@ -952,13 +951,13 @@ impl<'a> DiagCtxtHandle<'a> {
 // functions create and emit a diagnostic all in one go.
 impl<'a> DiagCtxtHandle<'a> {
     #[track_caller]
-    pub fn struct_bug(self, msg: impl Into<Cow<'static, str>>) -> Diag<'a, BugAbort> {
+    pub fn struct_bug(self, msg: impl Into<Cow<'static, str>>) -> Diag<'a> {
         Diag::new(self, Bug, msg.into())
     }
 
     #[track_caller]
     pub fn bug(self, msg: impl Into<Cow<'static, str>>) -> ! {
-        self.struct_bug(msg).emit()
+        self.struct_bug(msg).emit_bug()
     }
 
     #[track_caller]
@@ -966,33 +965,33 @@ impl<'a> DiagCtxtHandle<'a> {
         self,
         span: impl Into<MultiSpan>,
         msg: impl Into<Cow<'static, str>>,
-    ) -> Diag<'a, BugAbort> {
+    ) -> Diag<'a> {
         self.struct_bug(msg).with_span(span)
     }
 
     #[track_caller]
     pub fn span_bug(self, span: impl Into<MultiSpan>, msg: impl Into<Cow<'static, str>>) -> ! {
-        self.struct_span_bug(span, msg.into()).emit()
+        self.struct_span_bug(span, msg.into()).emit_bug()
     }
 
     #[track_caller]
-    pub fn create_bug(self, bug: impl Diagnostic<'a, BugAbort>) -> Diag<'a, BugAbort> {
+    pub fn create_bug(self, bug: impl Diagnostic<'a>) -> Diag<'a> {
         bug.into_diag(self, Bug)
     }
 
     #[track_caller]
-    pub fn emit_bug(self, bug: impl Diagnostic<'a, BugAbort>) -> ! {
-        self.create_bug(bug).emit()
+    pub fn emit_bug(self, bug: impl Diagnostic<'a>) -> ! {
+        self.create_bug(bug).emit_bug()
     }
 
     #[track_caller]
-    pub fn struct_fatal(self, msg: impl Into<DiagMessage>) -> Diag<'a, FatalAbort> {
+    pub fn struct_fatal(self, msg: impl Into<DiagMessage>) -> Diag<'a> {
         Diag::new(self, Fatal, msg)
     }
 
     #[track_caller]
     pub fn fatal(self, msg: impl Into<DiagMessage>) -> ! {
-        self.struct_fatal(msg).emit()
+        self.struct_fatal(msg).emit_fatal()
     }
 
     #[track_caller]
@@ -1000,23 +999,23 @@ impl<'a> DiagCtxtHandle<'a> {
         self,
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagMessage>,
-    ) -> Diag<'a, FatalAbort> {
+    ) -> Diag<'a> {
         self.struct_fatal(msg).with_span(span)
     }
 
     #[track_caller]
     pub fn span_fatal(self, span: impl Into<MultiSpan>, msg: impl Into<DiagMessage>) -> ! {
-        self.struct_span_fatal(span, msg).emit()
+        self.struct_span_fatal(span, msg).emit_fatal()
     }
 
     #[track_caller]
-    pub fn create_fatal(self, fatal: impl Diagnostic<'a, FatalAbort>) -> Diag<'a, FatalAbort> {
+    pub fn create_fatal(self, fatal: impl Diagnostic<'a>) -> Diag<'a> {
         fatal.into_diag(self, Fatal)
     }
 
     #[track_caller]
-    pub fn emit_fatal(self, fatal: impl Diagnostic<'a, FatalAbort>) -> ! {
-        self.create_fatal(fatal).emit()
+    pub fn emit_fatal(self, fatal: impl Diagnostic<'a>) -> ! {
+        self.create_fatal(fatal).emit_fatal()
     }
 
     // FIXME: This method should be removed (every error should have an associated error code).
@@ -1027,7 +1026,7 @@ impl<'a> DiagCtxtHandle<'a> {
 
     #[track_caller]
     pub fn err(self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
-        self.struct_err(msg).emit()
+        self.struct_err(msg).emit_err()
     }
 
     #[track_caller]
@@ -1045,7 +1044,7 @@ impl<'a> DiagCtxtHandle<'a> {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagMessage>,
     ) -> ErrorGuaranteed {
-        self.struct_span_err(span, msg).emit()
+        self.struct_span_err(span, msg).emit_err()
     }
 
     #[track_caller]
@@ -1055,13 +1054,13 @@ impl<'a> DiagCtxtHandle<'a> {
 
     #[track_caller]
     pub fn emit_err(self, err: impl Diagnostic<'a>) -> ErrorGuaranteed {
-        self.create_err(err).emit()
+        self.create_err(err).emit_err()
     }
 
     /// Ensures that an error is printed. See [`Level::DelayedBug`].
     #[track_caller]
     pub fn delayed_bug(self, msg: impl Into<Cow<'static, str>>) -> ErrorGuaranteed {
-        Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg.into()).emit()
+        Diag::new(self, DelayedBug, msg.into()).emit_err()
     }
 
     /// Ensures that an error is printed. See [`Level::DelayedBug`].
@@ -1074,11 +1073,11 @@ impl<'a> DiagCtxtHandle<'a> {
         sp: impl Into<MultiSpan>,
         msg: impl Into<Cow<'static, str>>,
     ) -> ErrorGuaranteed {
-        Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg.into()).with_span(sp).emit()
+        Diag::new(self, DelayedBug, msg.into()).with_span(sp).emit_err()
     }
 
     #[track_caller]
-    pub fn struct_warn(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
+    pub fn struct_warn(self, msg: impl Into<DiagMessage>) -> Diag<'a> {
         Diag::new(self, Warning, msg)
     }
 
@@ -1092,7 +1091,7 @@ impl<'a> DiagCtxtHandle<'a> {
         self,
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagMessage>,
-    ) -> Diag<'a, ()> {
+    ) -> Diag<'a> {
         self.struct_warn(msg).with_span(span)
     }
 
@@ -1102,17 +1101,17 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     #[track_caller]
-    pub fn create_warn(self, warning: impl Diagnostic<'a, ()>) -> Diag<'a, ()> {
+    pub fn create_warn(self, warning: impl Diagnostic<'a>) -> Diag<'a> {
         warning.into_diag(self, Warning)
     }
 
     #[track_caller]
-    pub fn emit_warn(self, warning: impl Diagnostic<'a, ()>) {
+    pub fn emit_warn(self, warning: impl Diagnostic<'a>) {
         self.create_warn(warning).emit()
     }
 
     #[track_caller]
-    pub fn struct_note(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
+    pub fn struct_note(self, msg: impl Into<DiagMessage>) -> Diag<'a> {
         Diag::new(self, Note, msg)
     }
 
@@ -1126,7 +1125,7 @@ impl<'a> DiagCtxtHandle<'a> {
         self,
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagMessage>,
-    ) -> Diag<'a, ()> {
+    ) -> Diag<'a> {
         self.struct_note(msg).with_span(span)
     }
 
@@ -1136,22 +1135,22 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     #[track_caller]
-    pub fn create_note(self, note: impl Diagnostic<'a, ()>) -> Diag<'a, ()> {
+    pub fn create_note(self, note: impl Diagnostic<'a>) -> Diag<'a> {
         note.into_diag(self, Note)
     }
 
     #[track_caller]
-    pub fn emit_note(self, note: impl Diagnostic<'a, ()>) {
+    pub fn emit_note(self, note: impl Diagnostic<'a>) {
         self.create_note(note).emit()
     }
 
     #[track_caller]
-    pub fn struct_allow(self, msg: impl Into<DiagMessage>) -> Diag<'a, ()> {
+    pub fn struct_allow(self, msg: impl Into<DiagMessage>) -> Diag<'a> {
         Diag::new(self, Allow, msg)
     }
 
     #[track_caller]
-    pub fn struct_expect(self, msg: impl Into<DiagMessage>, id: LintExpectationId) -> Diag<'a, ()> {
+    pub fn struct_expect(self, msg: impl Into<DiagMessage>, id: LintExpectationId) -> Diag<'a> {
         Diag::new(self, Expect, msg).with_lint_id(id)
     }
 }
@@ -1550,19 +1549,19 @@ impl DelayedDiagInner {
     }
 }
 
-/// | Level        | is_error | emit return type | Top-level | Used in lints?
-/// | -----        | -------- | ---------------- | --------- | --------------
-/// | Bug          | yes      | BugAbort         | yes       | -
-/// | Fatal        | yes      | FatalAbort       | yes       | -
-/// | Error        | yes      | ErrorGuaranteed  | yes       | yes
-/// | DelayedBug   | yes      | ErrorGuaranteed  | yes       | -
-/// | ForceWarning | -        | ()               | yes       | lint-only
-/// | Warning      | -        | ()               | yes       | yes
-/// | Note         | -        | ()               | rare      | -
-/// | Help         | -        | ()               | don't use | -
-/// | FailureNote  | -        | ()               | rare      | -
-/// | Allow        | -        | ()               | yes       | lint-only
-/// | Expect       | -        | ()               | yes       | lint-only
+/// | Level        | is_error | usable emit fns  | Top-level | Used in lints?
+/// | -----        | -------- | ---------------  | --------- | --------------
+/// | Bug          | yes      | emit, emit_bug   | yes       | -
+/// | Fatal        | yes      | emit, emit_fatal | yes       | -
+/// | Error        | yes      | emit, emit_err   | yes       | yes
+/// | DelayedBug   | yes      | emit, emit_err   | yes       | -
+/// | ForceWarning | -        | emit             | yes       | lint-only
+/// | Warning      | -        | emit             | yes       | yes
+/// | Note         | -        | emit             | rare      | -
+/// | Help         | -        | emit             | don't use | -
+/// | FailureNote  | -        | emit             | rare      | -
+/// | Allow        | -        | emit             | yes       | lint-only
+/// | Expect       | -        | emit             | yes       | lint-only
 ///
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Encodable, Decodable)]
 pub enum Level {

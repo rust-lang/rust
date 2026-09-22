@@ -275,7 +275,7 @@ pub(crate) struct SuggestAnnotations {
     pub suggestions: Vec<SuggestAnnotation>,
 }
 impl Subdiagnostic for SuggestAnnotations {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         if self.suggestions.is_empty() {
             return;
         }
@@ -338,7 +338,7 @@ pub(crate) struct TypeMismatchFruTypo {
 }
 
 impl Subdiagnostic for TypeMismatchFruTypo {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.arg("expr", self.expr.as_deref().unwrap_or("NONE"));
 
         // Only explain that `a ..b` is a range if it's split up
@@ -360,7 +360,7 @@ impl Subdiagnostic for TypeMismatchFruTypo {
             );
         }
 
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             self.expr_span.shrink_to_hi(),
             msg!(
                 "to set the remaining fields{$expr ->
@@ -561,7 +561,7 @@ pub(crate) struct RemoveSemiForCoerce {
 }
 
 impl Subdiagnostic for RemoveSemiForCoerce {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let mut multispan: MultiSpan = self.semi.into();
         multispan.push_span_label(
             self.expr,
@@ -582,6 +582,14 @@ impl Subdiagnostic for RemoveSemiForCoerce {
             Applicability::MaybeIncorrect,
         );
     }
+}
+
+#[derive(Diagnostic)]
+#[diag("runtime values cannot be referenced in patterns", code = E0080)]
+pub(crate) struct NonConstPathInPattern {
+    #[primary_span]
+    #[label("references a runtime value")]
+    pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
@@ -704,9 +712,9 @@ pub(crate) struct BreakNonLoop<'a> {
     pub break_expr_span: Span,
 }
 
-impl<'a, G> Diagnostic<'_, G> for BreakNonLoop<'a> {
+impl<'a> Diagnostic<'_> for BreakNonLoop<'a> {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(dcx, level, msg!("`break` with value from a `{$kind}` loop"));
         diag.span(self.span);
         diag.code(E0571);
@@ -718,7 +726,7 @@ impl<'a, G> Diagnostic<'_, G> for BreakNonLoop<'a> {
         if let Some(head) = self.head {
             diag.span_label(head, msg!("you can't `break` with a value in a `{$kind}` loop"));
         }
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             self.span,
             msg!("use `break` on its own without a value inside this `{$kind}` loop"),
             self.suggestion,
@@ -736,7 +744,7 @@ impl<'a, G> Diagnostic<'_, G> for BreakNonLoop<'a> {
                     diag.downgrade_to_delayed_bug();
                 }
                 _ => {
-                    diag.span_suggestion(
+                    diag.span_suggestion_verbose(
                         self.break_expr_span,
                         msg!("alternatively, you might have meant to use the available loop label"),
                         label.ident,
@@ -906,7 +914,7 @@ pub(crate) enum CastUnknownPointerSub {
 }
 
 impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         match self {
             CastUnknownPointerSub::To(span) => {
                 let msg = msg!("needs more type information");
@@ -1202,9 +1210,9 @@ pub(crate) struct NakedFunctionsAsmBlock {
     pub non_asms: Vec<Span>,
 }
 
-impl<G> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
+impl Diagnostic<'_> for NakedFunctionsAsmBlock {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(
             dcx,
             level,
@@ -1249,7 +1257,7 @@ pub(crate) fn maybe_emit_plus_equals_diagnostic<'a>(
 
         err.span_label(assign_op.span, "cannot use `+=` in a let chain");
 
-        err.span_suggestion(
+        err.span_suggestion_short(
             assign_op.span,
             "you might have meant to compare with `==` instead of assigning with `+=`",
             "==",

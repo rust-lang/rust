@@ -1,6 +1,6 @@
 use diagnostics::make_errors_for_mismatched_closing_delims;
 use rustc_ast::ast::{self, AttrStyle};
-use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
+use rustc_ast::token::{self, CommentKind, Delimiter, IdentKind, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::{TEXT_FLOW_CONTROL_CHARS, contains_text_flow_control_chars};
 use rustc_errors::codes::*;
@@ -238,7 +238,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         self.dcx().emit_err(crate::diagnostics::CannotBeRawIdent { span, ident: sym });
                     }
                     self.psess.raw_identifier_spans.push(span);
-                    token::Ident(sym, IdentIsRaw::Yes)
+                    token::Ident(sym, IdentKind::Raw)
                 }
                 rustc_lexer::TokenKind::UnknownPrefix => {
                     self.report_unknown_prefix(start);
@@ -252,7 +252,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     let lifetime_name = self.str_from(start);
                     self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
                     let ident = Symbol::intern(lifetime_name);
-                    token::Lifetime(ident, IdentIsRaw::No)
+                    token::Lifetime(ident, IdentKind::Normal)
                 }
                 rustc_lexer::TokenKind::InvalidIdent
                     // Do not recover an identifier with emoji if the codepoint is a confusable
@@ -270,7 +270,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         .entry(sym)
                         .or_default()
                         .push(span);
-                    token::Ident(sym, IdentIsRaw::No)
+                    token::Ident(sym, IdentKind::Normal)
                 }
                 // split up (raw) c string literals to an ident and a string literal when edition <
                 // 2021.
@@ -337,7 +337,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                             .with_span(span)
                             .stash(span, StashKey::LifetimeIsChar);
                     }
-                    token::Lifetime(lifetime_name, IdentIsRaw::No)
+                    token::Lifetime(lifetime_name, IdentKind::Normal)
                 }
                 rustc_lexer::TokenKind::RawLifetime => {
                     self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
@@ -387,7 +387,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         // Make sure we mark this as a raw identifier.
                         self.psess.raw_identifier_spans.push(span);
 
-                        token::Lifetime(sym, IdentIsRaw::Yes)
+                        token::Lifetime(sym, IdentKind::Raw)
                     } else {
                         // Reset the state so we just lex the `'r`.
                         self.pos = start + BytePos(2);
@@ -407,7 +407,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                         );
 
                         let lifetime_name = nfc_normalize(self.str_from(start));
-                        token::Lifetime(lifetime_name, IdentIsRaw::No)
+                        token::Lifetime(lifetime_name, IdentKind::Normal)
                     }
                 }
                 rustc_lexer::TokenKind::Semi => token::Semi,
@@ -497,7 +497,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let sym = nfc_normalize(self.str_from(start));
         let span = self.mk_sp(start, self.pos);
         self.psess.symbol_gallery.insert(sym, span);
-        token::Ident(sym, IdentIsRaw::No)
+        token::Ident(sym, IdentKind::Normal)
     }
 
     /// Detect usages of Unicode codepoints changing the direction of the text on screen and loudly
@@ -970,7 +970,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     escaped_char(bad_char)
                 ),
             )
-            .emit()
+            .emit_fatal()
     }
 
     fn report_unterminated_raw_string(
@@ -1004,7 +1004,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             );
         }
 
-        err.emit()
+        err.emit_fatal()
     }
 
     fn report_unterminated_block_comment(&self, start: BytePos, doc_style: Option<DocStyle>) -> ! {
@@ -1050,7 +1050,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 );
         }
 
-        err.emit();
+        err.emit_fatal();
     }
 
     // RFC 3101 introduced the idea of (reserved) prefixes. As of Rust 2021,
