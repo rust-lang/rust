@@ -688,137 +688,140 @@ fn bench_dedup_slice_truncate(b: &mut Bencher, sz: usize) {
     });
 }
 
-// Measures performance of Vec::dedup on random data.
-fn bench_vec_dedup_random(b: &mut Bencher, sz: usize) {
-    let mut template = vec![0u32; sz];
-    b.bytes = size_of_val(template.as_slice()) as u64;
-    random_sorted_fill(0x43, &mut template);
-
-    let mut vec = template.clone();
-    b.iter(|| {
-        let vec = black_box(&mut vec);
-        vec.dedup();
-        black_box(vec.first());
-        let vec = black_box(vec);
-        vec.clear();
-        vec.extend_from_slice(&template);
-    });
+#[bench]
+fn bench_dedup_slice_truncate_100(b: &mut Bencher) {
+    bench_dedup_slice_truncate(b, 100);
+}
+#[bench]
+fn bench_dedup_slice_truncate_1000(b: &mut Bencher) {
+    bench_dedup_slice_truncate(b, 1000);
+}
+#[bench]
+fn bench_dedup_slice_truncate_10000(b: &mut Bencher) {
+    bench_dedup_slice_truncate(b, 10000);
+}
+#[bench]
+fn bench_dedup_slice_truncate_100000(b: &mut Bencher) {
+    bench_dedup_slice_truncate(b, 100000);
 }
 
-// Measures performance of Vec::dedup when there is no items removed
-fn bench_vec_dedup_none(b: &mut Bencher, sz: usize) {
-    let mut template = vec![0u32; sz];
-    b.bytes = size_of_val(template.as_slice()) as u64;
-    template.chunks_exact_mut(2).for_each(|w| {
-        w[0] = black_box(0);
-        w[1] = black_box(5);
-    });
+#[derive(Clone, Copy)]
+enum DedupDist {
+    Random,
+    None,
+    All,
+}
 
+fn bench_vec_dedup<T: Ord + Clone>(
+    b: &mut Bencher,
+    dist: DedupDist,
+    sz: usize,
+    make: impl Fn(u32) -> T,
+) {
+    let template: Vec<T> = match dist {
+        DedupDist::Random => {
+            let mut seeds = vec![0u32; sz];
+            random_sorted_fill(0x43, &mut seeds);
+            let mut v: Vec<T> = seeds.into_iter().map(make).collect();
+            v.sort();
+            v
+        }
+        DedupDist::None => {
+            (0..sz).map(|i| make(black_box(if i % 2 == 0 { 0 } else { 5 }))).collect()
+        }
+        DedupDist::All => (0..sz).map(|_| make(black_box(0))).collect(),
+    };
+    b.bytes = size_of_val(template.as_slice()) as u64;
     let mut vec = template.clone();
     b.iter(|| {
         let vec = black_box(&mut vec);
         vec.dedup();
         black_box(vec.first());
         // Unlike other benches of `dedup`
-        // this doesn't reinitialize vec
+        // `DedupDist::None` doesn't reinitialize vec
         // because we measure how efficient dedup is
         // when no memory written
+        if !matches!(dist, DedupDist::None) {
+            black_box(vec).clone_from(&template);
+        }
     });
 }
 
-// Measures performance of Vec::dedup when there is all items removed
-fn bench_vec_dedup_all(b: &mut Bencher, sz: usize) {
-    let mut template = vec![0u32; sz];
-    b.bytes = size_of_val(template.as_slice()) as u64;
-    template.iter_mut().for_each(|w| {
-        *w = black_box(0);
-    });
-
-    let mut vec = template.clone();
-    b.iter(|| {
-        let vec = black_box(&mut vec);
-        vec.dedup();
-        black_box(vec.first());
-        let vec = black_box(vec);
-        vec.clear();
-        vec.extend_from_slice(&template);
-    });
+fn dedup_gen_string<const LEN: usize>(x: u32) -> String {
+    const DIGITS: usize = 10;
+    let mut s = String::with_capacity(LEN);
+    s.extend(std::iter::repeat_n('p', LEN - DIGITS));
+    s.push_str(&format!("{x:0DIGITS$}"));
+    s
 }
 
-#[bench]
-fn bench_dedup_slice_truncate_100(b: &mut Bencher) {
-    bench_dedup_slice_truncate(b, 100);
-}
-#[bench]
-fn bench_dedup_random_100(b: &mut Bencher) {
-    bench_vec_dedup_random(b, 100);
+fn dedup_gen_wide(x: u32) -> [u64; 4] {
+    [x as u64, (x as u64) << 8, (x as u64) << 16, (x as u64) << 24]
 }
 
-#[bench]
-fn bench_dedup_none_100(b: &mut Bencher) {
-    bench_vec_dedup_none(b, 100);
+macro_rules! dedup_typed {
+    ($($name:ident: $gen:expr, $dist:ident, $sz:literal;)*) => {
+        $(
+            #[bench]
+            fn $name(b: &mut Bencher) {
+                bench_vec_dedup(b, DedupDist::$dist, $sz, $gen);
+            }
+        )*
+    };
 }
 
-#[bench]
-fn bench_dedup_all_100(b: &mut Bencher) {
-    bench_vec_dedup_all(b, 100);
-}
-
-#[bench]
-fn bench_dedup_slice_truncate_1000(b: &mut Bencher) {
-    bench_dedup_slice_truncate(b, 1000);
-}
-#[bench]
-fn bench_dedup_random_1000(b: &mut Bencher) {
-    bench_vec_dedup_random(b, 1000);
-}
-
-#[bench]
-fn bench_dedup_none_1000(b: &mut Bencher) {
-    bench_vec_dedup_none(b, 1000);
-}
-
-#[bench]
-fn bench_dedup_all_1000(b: &mut Bencher) {
-    bench_vec_dedup_all(b, 1000);
-}
-
-#[bench]
-fn bench_dedup_slice_truncate_10000(b: &mut Bencher) {
-    bench_dedup_slice_truncate(b, 10000);
-}
-#[bench]
-fn bench_dedup_random_10000(b: &mut Bencher) {
-    bench_vec_dedup_random(b, 10000);
-}
-
-#[bench]
-fn bench_dedup_none_10000(b: &mut Bencher) {
-    bench_vec_dedup_none(b, 10000);
-}
-
-#[bench]
-fn bench_dedup_all_10000(b: &mut Bencher) {
-    bench_vec_dedup_all(b, 10000);
-}
-
-#[bench]
-fn bench_dedup_slice_truncate_100000(b: &mut Bencher) {
-    bench_dedup_slice_truncate(b, 100000);
-}
-#[bench]
-fn bench_dedup_random_100000(b: &mut Bencher) {
-    bench_vec_dedup_random(b, 100000);
-}
-
-#[bench]
-fn bench_dedup_none_100000(b: &mut Bencher) {
-    bench_vec_dedup_none(b, 100000);
-}
-
-#[bench]
-fn bench_dedup_all_100000(b: &mut Bencher) {
-    bench_vec_dedup_all(b, 100000);
+dedup_typed! {
+    bench_dedup_random_100: |x| x, Random, 100;
+    bench_dedup_none_100: |x| x, None, 100;
+    bench_dedup_all_100: |x| x, All, 100;
+    bench_dedup_random_1000: |x| x, Random, 1000;
+    bench_dedup_none_1000: |x| x, None, 1000;
+    bench_dedup_all_1000: |x| x, All, 1000;
+    bench_dedup_random_10000: |x| x, Random, 10000;
+    bench_dedup_none_10000: |x| x, None, 10000;
+    bench_dedup_all_10000: |x| x, All, 10000;
+    bench_dedup_random_100000: |x| x, Random, 100000;
+    bench_dedup_none_100000: |x| x, None, 100000;
+    bench_dedup_all_100000: |x| x, All, 100000;
+    bench_dedup_string_short_random_100: dedup_gen_string::<10>, Random, 100;
+    bench_dedup_string_short_none_100: dedup_gen_string::<10>, None, 100;
+    bench_dedup_string_short_all_100: dedup_gen_string::<10>, All, 100;
+    bench_dedup_string_short_random_1000: dedup_gen_string::<10>, Random, 1000;
+    bench_dedup_string_short_none_1000: dedup_gen_string::<10>, None, 1000;
+    bench_dedup_string_short_all_1000: dedup_gen_string::<10>, All, 1000;
+    bench_dedup_string_short_random_10000: dedup_gen_string::<10>, Random, 10000;
+    bench_dedup_string_short_none_10000: dedup_gen_string::<10>, None, 10000;
+    bench_dedup_string_short_all_10000: dedup_gen_string::<10>, All, 10000;
+    bench_dedup_string_medium_random_100: dedup_gen_string::<64>, Random, 100;
+    bench_dedup_string_medium_none_100: dedup_gen_string::<64>, None, 100;
+    bench_dedup_string_medium_all_100: dedup_gen_string::<64>, All, 100;
+    bench_dedup_string_medium_random_1000: dedup_gen_string::<64>, Random, 1000;
+    bench_dedup_string_medium_none_1000: dedup_gen_string::<64>, None, 1000;
+    bench_dedup_string_medium_all_1000: dedup_gen_string::<64>, All, 1000;
+    bench_dedup_string_medium_random_10000: dedup_gen_string::<64>, Random, 10000;
+    bench_dedup_string_medium_none_10000: dedup_gen_string::<64>, None, 10000;
+    bench_dedup_string_medium_all_10000: dedup_gen_string::<64>, All, 10000;
+    bench_dedup_string_long_random_100: dedup_gen_string::<1024>, Random, 100;
+    bench_dedup_string_long_none_100: dedup_gen_string::<1024>, None, 100;
+    bench_dedup_string_long_all_100: dedup_gen_string::<1024>, All, 100;
+    bench_dedup_string_long_random_1000: dedup_gen_string::<1024>, Random, 1000;
+    bench_dedup_string_long_none_1000: dedup_gen_string::<1024>, None, 1000;
+    bench_dedup_string_long_all_1000: dedup_gen_string::<1024>, All, 1000;
+    bench_dedup_string_long_random_10000: dedup_gen_string::<1024>, Random, 10000;
+    bench_dedup_string_long_none_10000: dedup_gen_string::<1024>, None, 10000;
+    bench_dedup_string_long_all_10000: dedup_gen_string::<1024>, All, 10000;
+    bench_dedup_u8_random_1000: |x| x as u8, Random, 1000;
+    bench_dedup_u8_none_1000: |x| x as u8, None, 1000;
+    bench_dedup_u8_all_1000: |x| x as u8, All, 1000;
+    bench_dedup_u8_random_10000: |x| x as u8, Random, 10000;
+    bench_dedup_u8_none_10000: |x| x as u8, None, 10000;
+    bench_dedup_u8_all_10000: |x| x as u8, All, 10000;
+    bench_dedup_wide_random_1000: dedup_gen_wide, Random, 1000;
+    bench_dedup_wide_none_1000: dedup_gen_wide, None, 1000;
+    bench_dedup_wide_all_1000: dedup_gen_wide, All, 1000;
+    bench_dedup_wide_random_10000: dedup_gen_wide, Random, 10000;
+    bench_dedup_wide_none_10000: dedup_gen_wide, None, 10000;
+    bench_dedup_wide_all_10000: dedup_gen_wide, All, 10000;
 }
 
 #[bench]
