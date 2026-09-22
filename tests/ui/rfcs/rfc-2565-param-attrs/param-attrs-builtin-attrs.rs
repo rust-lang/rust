@@ -8,10 +8,14 @@ extern "C" {
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
         //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+        //~| WARN cannot be used on function params
+        //~| WARN previously accepted
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
         //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+        //~| WARN cannot be used on function params
+        //~| WARN previously accepted
     );
 }
 
@@ -24,10 +28,14 @@ type FnType = fn(
     //~^ ERROR documentation comments cannot be applied to function
     #[must_use]
     //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+    //~| WARN cannot be used on function params
+    //~| WARN previously accepted
     /// Baz
     //~^ ERROR documentation comments cannot be applied to function
     #[no_mangle] b: i32,
     //~^ ERROR allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+    //~| WARN cannot be used on function params
+    //~| WARN previously accepted
 );
 
 pub fn foo(

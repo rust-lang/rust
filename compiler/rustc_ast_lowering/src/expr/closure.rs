@@ -4,8 +4,8 @@ use rustc_hir::{HirId, Target, find_attr};
 use rustc_span::{Span, span_bug};
 
 use super::{LoweringContext, MoveExprState};
-use crate::FnDeclKind;
 use crate::diagnostics::{ClosureCannotBeStatic, CoroutineTooManyParameters};
+use crate::{DiscardParams, FnDeclKind};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     // Entry point for `ExprKind::Closure`. Plain closures go through
@@ -131,6 +131,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             binder,
             capture_clause,
             closure_id,
+            expr_hir_id,
             constness,
             movability,
             decl,
@@ -157,6 +158,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
+        closure_hir_id: HirId,
         constness: Const,
         movability: Movability,
         decl: &FnDecl,
@@ -203,7 +205,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
         // Lower outside new scope to preserve `is_in_loop_condition`.
-        let fn_decl = self.lower_fn_decl(decl, closure_id, FnDeclKind::Closure, None);
+        let fn_decl = self.lower_fn_decl(
+            decl,
+            closure_id,
+            closure_hir_id,
+            FnDeclKind::Closure,
+            None,
+            DiscardParams::No,
+        );
 
         let c = self.arena.alloc(hir::Closure {
             def_id: closure_def_id,
@@ -326,7 +335,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // We need to lower the declaration outside the new scope, because we
         // have to conserve the state of being inside a loop condition for the
         // closure argument types.
-        let fn_decl = self.lower_fn_decl(&decl, closure_id, FnDeclKind::Closure, None);
+        let fn_decl = self.lower_fn_decl(
+            &decl,
+            closure_id,
+            closure_hir_id,
+            FnDeclKind::Closure,
+            None,
+            DiscardParams::No,
+        );
 
         if let Const::Yes(span) = constness {
             self.dcx().span_err(span, "const coroutines are not supported");
