@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 
 // CHECK-LABEL: @drop_btree
-// CHECK-NOT: dying_next
+// CHECK-NOT: dealloc
 // CHECK: ret void
 #[no_mangle]
 pub fn drop_btree() {
