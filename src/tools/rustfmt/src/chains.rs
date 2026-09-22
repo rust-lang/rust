@@ -160,8 +160,8 @@ pub(crate) fn rewrite_chain(
 
 #[derive(Debug)]
 enum CommentPosition {
-    Back,
-    Top,
+    SameLine,
+    DifferentLine,
 }
 
 /// Information about an expression in a chain.
@@ -175,6 +175,8 @@ struct SubExpr {
 struct ChainItem {
     kind: ChainItemKind,
     tries: usize,
+    // The entire span of the chain item, including the leading dot and any comments, e.g.
+    // `.some_method(arg, arg)`, or  `. /* a comment */ my_attribute`.
     span: Span,
 }
 
@@ -193,10 +195,16 @@ enum ChainItemKind {
         ThinVec<Box<ast::Expr>>,
     ),
     StructField(symbol::Ident),
-    TupleField(symbol::Ident, bool),
+    /// Tuple field access like `foo.1`.
+    TupleField {
+        field: symbol::Ident,
+        /// Whether this is a nested tuple access, like `.2` in `foo.1.2`.
+        is_nested: bool,
+    },
     Await,
     Use,
     Yield,
+    /// A comment within a chain, e.g. `parent. item /* comment */.rest`.
     Comment(String, CommentPosition),
 }
 
@@ -206,7 +214,7 @@ impl ChainItemKind {
             ChainItemKind::Parent { expr, .. } => utils::is_block_expr(context, expr, reps),
             ChainItemKind::MethodCall(..)
             | ChainItemKind::StructField(..)
-            | ChainItemKind::TupleField(..)
+            | ChainItemKind::TupleField { .. }
             | ChainItemKind::Await
             | ChainItemKind::Use
             | ChainItemKind::Yield
@@ -214,13 +222,15 @@ impl ChainItemKind {
         }
     }
 
-    fn is_tup_field_access(expr: &ast::Expr) -> bool {
-        match expr.kind {
-            ast::ExprKind::Field(_, ref field) => {
-                field.name.as_str().chars().all(|c| c.is_digit(10))
-            }
+    fn is_tup_field_access_expr(expr: &ast::Expr) -> bool {
+        match &expr.kind {
+            ast::ExprKind::Field(_, right) => Self::is_tup_field_ident(right),
             _ => false,
         }
+    }
+
+    fn is_tup_field_ident(field: &symbol::Ident) -> bool {
+        field.name.as_str().chars().all(|c| c.is_ascii_digit())
     }
 
     fn from_ast(
@@ -228,47 +238,44 @@ impl ChainItemKind {
         expr: &ast::Expr,
         is_postfix_receiver: bool,
     ) -> (ChainItemKind, Span) {
-        let (kind, span) = match expr.kind {
-            ast::ExprKind::MethodCall(ref call) => {
-                let types = if let Some(ref generic_args) = call.seg.args {
-                    if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
-                        data.args
-                            .iter()
-                            .filter_map(|x| match x {
-                                ast::AngleBracketedArg::Arg(ref generic_arg) => {
-                                    Some(generic_arg.clone())
-                                }
-                                _ => None,
-                            })
-                            .collect::<Vec<_>>()
-                    } else {
-                        vec![]
-                    }
-                } else {
-                    vec![]
+        let (kind, span) = match &expr.kind {
+            ast::ExprKind::MethodCall(call) => {
+                let types = match call.seg.args.as_deref() {
+                    Some(ast::GenericArgs::AngleBracketed(data)) => data
+                        .args
+                        .iter()
+                        .filter_map(|x| match x {
+                            ast::AngleBracketedArg::Arg(generic_arg) => Some(generic_arg.clone()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>(),
+                    _ => vec![],
                 };
                 let span = mk_sp(call.receiver.span.hi(), expr.span.hi());
                 let kind = ChainItemKind::MethodCall(call.seg.clone(), types, call.args.clone());
                 (kind, span)
             }
-            ast::ExprKind::Field(ref nested, field) => {
-                let kind = if Self::is_tup_field_access(expr) {
-                    ChainItemKind::TupleField(field, Self::is_tup_field_access(nested))
+            ast::ExprKind::Field(nested, field) => {
+                let kind = if Self::is_tup_field_ident(field) {
+                    ChainItemKind::TupleField {
+                        field: *field,
+                        is_nested: Self::is_tup_field_access_expr(nested),
+                    }
                 } else {
-                    ChainItemKind::StructField(field)
+                    ChainItemKind::StructField(*field)
                 };
                 let span = mk_sp(nested.span.hi(), field.span.hi());
                 (kind, span)
             }
-            ast::ExprKind::Await(ref nested, _) => {
+            ast::ExprKind::Await(nested, _) => {
                 let span = mk_sp(nested.span.hi(), expr.span.hi());
                 (ChainItemKind::Await, span)
             }
-            ast::ExprKind::Use(ref nested, _) => {
+            ast::ExprKind::Use(nested, _) => {
                 let span = mk_sp(nested.span.hi(), expr.span.hi());
                 (ChainItemKind::Use, span)
             }
-            ast::ExprKind::Yield(ast::YieldKind::Postfix(ref nested)) => {
+            ast::ExprKind::Yield(ast::YieldKind::Postfix(nested)) => {
                 let span = mk_sp(nested.span.hi(), expr.span.hi());
                 (ChainItemKind::Yield, span)
             }
@@ -309,14 +316,14 @@ impl Rewrite for ChainItem {
                 Self::rewrite_method_call(segment.ident, types, exprs, self.span, context, shape)?
             }
             ChainItemKind::StructField(ident) => format!(".{}", rewrite_ident(context, ident)),
-            ChainItemKind::TupleField(ident, nested) => format!(
+            ChainItemKind::TupleField { field, is_nested } => format!(
                 "{}.{}",
-                if nested && context.config.style_edition() <= StyleEdition::Edition2021 {
+                if is_nested && context.config.style_edition() <= StyleEdition::Edition2021 {
                     " "
                 } else {
                     ""
                 },
-                rewrite_ident(context, ident)
+                rewrite_ident(context, field)
             ),
             ChainItemKind::Await => ".await".to_owned(),
             ChainItemKind::Use => ".use".to_owned(),
@@ -417,7 +424,7 @@ impl Chain {
             prev_span_end: &mut BytePos,
             children: &mut Vec<ChainItem>,
         ) {
-            let white_spaces: &[_] = &[' ', '\t'];
+            let white_spaces = &[' ', '\t'];
             if post_comment_snippet
                 .trim_matches(white_spaces)
                 .starts_with('\n')
@@ -430,7 +437,7 @@ impl Chain {
                 children.push(ChainItem::comment(
                     post_comment_span,
                     trimmed_snippet.trim().to_owned(),
-                    CommentPosition::Back,
+                    CommentPosition::SameLine,
                 ));
                 *prev_span_end = post_comment_span.hi();
             }
@@ -441,6 +448,8 @@ impl Chain {
         let mut prev_span_end = parent.span.hi();
         let mut iter = rev_children.into_iter().rev().peekable();
         if let Some(first_chain_item) = iter.peek() {
+            // `parent? /* maybe comment */ . /* maybe comment */ first_child`
+            //        ^------------------- ^ comment_span
             let comment_span = mk_sp(prev_span_end, first_chain_item.span.lo());
             let comment_snippet = context.snippet(comment_span);
             if !is_tries(comment_snippet.trim()) {
@@ -462,16 +471,14 @@ impl Chain {
             if handle_comment {
                 let pre_comment_span = mk_sp(prev_span_end, chain_item.span.lo());
                 let pre_comment_snippet = trim_tries(context.snippet(pre_comment_span));
-                let (pre_comment, _) = extract_pre_comment(&pre_comment_snippet);
-                match pre_comment {
-                    Some(ref comment) if !comment.is_empty() => {
+                if let (Some(pre_comment), _) = extract_pre_comment(&pre_comment_snippet) {
+                    if !pre_comment.is_empty() {
                         children.push(ChainItem::comment(
                             pre_comment_span,
-                            comment.to_owned(),
-                            CommentPosition::Top,
+                            pre_comment.to_owned(),
+                            CommentPosition::DifferentLine,
                         ));
                     }
-                    _ => (),
                 }
             }
 
@@ -505,7 +512,8 @@ impl Chain {
             is_postfix_receiver: false,
         }];
 
-        while let Some(subexpr) = Self::pop_expr_chain(subexpr_list.last().unwrap(), context) {
+        while let Some(subexpr) = Self::pop_expr_chain(&subexpr_list.last().unwrap().expr, context)
+        {
             subexpr_list.push(subexpr);
         }
 
@@ -514,20 +522,20 @@ impl Chain {
 
     // Returns the expression's subexpression, if it exists. When the subexpr
     // is a try! macro, we'll convert it to shorthand when the option is set.
-    fn pop_expr_chain(expr: &SubExpr, context: &RewriteContext<'_>) -> Option<SubExpr> {
-        match expr.expr.kind {
-            ast::ExprKind::MethodCall(ref call) => Some(SubExpr {
+    fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext<'_>) -> Option<SubExpr> {
+        match &expr.kind {
+            ast::ExprKind::MethodCall(call) => Some(SubExpr {
                 expr: Self::convert_try(&call.receiver, context),
                 is_postfix_receiver: true,
             }),
-            ast::ExprKind::Field(ref subexpr, _)
-            | ast::ExprKind::Await(ref subexpr, _)
-            | ast::ExprKind::Use(ref subexpr, _)
-            | ast::ExprKind::Yield(ast::YieldKind::Postfix(ref subexpr)) => Some(SubExpr {
+            ast::ExprKind::Field(subexpr, _)
+            | ast::ExprKind::Await(subexpr, _)
+            | ast::ExprKind::Use(subexpr, _)
+            | ast::ExprKind::Yield(ast::YieldKind::Postfix(subexpr)) => Some(SubExpr {
                 expr: Self::convert_try(subexpr, context),
                 is_postfix_receiver: true,
             }),
-            ast::ExprKind::Try(ref subexpr) => Some(SubExpr {
+            ast::ExprKind::Try(subexpr) => Some(SubExpr {
                 expr: Self::convert_try(subexpr, context),
                 is_postfix_receiver: false,
             }),
@@ -536,13 +544,9 @@ impl Chain {
     }
 
     fn convert_try(expr: &ast::Expr, context: &RewriteContext<'_>) -> ast::Expr {
-        match expr.kind {
-            ast::ExprKind::MacCall(ref mac) if context.config.use_try_shorthand() => {
-                if let Some(subexpr) = convert_try_mac(mac, context) {
-                    subexpr
-                } else {
-                    expr.clone()
-                }
+        match &expr.kind {
+            ast::ExprKind::MacCall(mac) if context.config.use_try_shorthand() => {
+                convert_try_mac(mac, context).unwrap_or(expr.clone())
             }
             _ => expr.clone(),
         }
@@ -568,8 +572,13 @@ impl Rewrite for Chain {
 
         formatter.format_root(&self.parent, context, shape)?;
         if let Some(result) = formatter.pure_root() {
-            return wrap_str(result, context.config.max_width(), shape)
-                .max_width_error(shape.width, self.parent.span);
+            return wrap_str(
+                result,
+                context.config.max_width(),
+                context.config.tab_spaces(),
+                shape,
+            )
+            .max_width_error(shape.width, self.parent.span);
         }
 
         let first = self.children.first().unwrap_or(&self.parent);
@@ -584,7 +593,13 @@ impl Rewrite for Chain {
         formatter.format_last_child(context, shape, child_shape)?;
 
         let result = formatter.join_rewrites(context, child_shape)?;
-        wrap_str(result, context.config.max_width(), shape).max_width_error(shape.width, full_span)
+        wrap_str(
+            result,
+            context.config.max_width(),
+            context.config.tab_spaces(),
+            shape,
+        )
+        .max_width_error(shape.width, full_span)
     }
 }
 
@@ -720,7 +735,7 @@ impl<'a> ChainFormatterShared<'a> {
     ) -> Result<(), RewriteError> {
         let last = self.children.last().unknown_error()?;
         let extendable = may_extend && last_line_extendable(&self.rewrites[0]);
-        let prev_last_line_width = last_line_width(&self.rewrites[0]);
+        let prev_last_line_width = last_line_width(&self.rewrites[0], context.config.tab_spaces());
 
         // Total of all items excluding the last.
         let almost_total = if extendable {
@@ -835,8 +850,10 @@ impl<'a> ChainFormatterShared<'a> {
 
         for (rewrite, chain_item) in iter {
             match chain_item.kind {
-                ChainItemKind::Comment(_, CommentPosition::Back) => result.push(' '),
-                ChainItemKind::Comment(_, CommentPosition::Top) => result.push_str(&connector),
+                ChainItemKind::Comment(_, CommentPosition::SameLine) => result.push(' '),
+                ChainItemKind::Comment(_, CommentPosition::DifferentLine) => {
+                    result.push_str(&connector)
+                }
                 _ => result.push_str(&connector),
             }
             result.push_str(rewrite);
@@ -960,7 +977,8 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
         let mut root_rewrite = parent.rewrite_result(context, parent_shape)?;
         let multiline = root_rewrite.contains('\n');
         self.offset = if multiline {
-            last_line_width(&root_rewrite).saturating_sub(shape.used_width())
+            last_line_width(&root_rewrite, context.config.tab_spaces())
+                .saturating_sub(shape.used_width())
         } else {
             trimmed_last_line_width(&root_rewrite)
         };
@@ -975,7 +993,12 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
                 .visual_indent(self.offset)
                 .sub_width(self.offset, item.span)?;
             let rewrite = item.rewrite_result(context, child_shape)?;
-            if filtered_str_fits(&rewrite, context.config.max_width(), shape) {
+            if filtered_str_fits(
+                &rewrite,
+                context.config.max_width(),
+                context.config.tab_spaces(),
+                shape,
+            ) {
                 root_rewrite.push_str(&rewrite);
             } else {
                 // We couldn't fit in at the visual indent, try the last
