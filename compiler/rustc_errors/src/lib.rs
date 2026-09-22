@@ -1018,7 +1018,6 @@ impl<'a> DiagCtxtHandle<'a> {
         self.create_fatal(fatal).emit_fatal()
     }
 
-    // FIXME: This method should be removed (every error should have an associated error code).
     #[track_caller]
     pub fn struct_err(self, msg: impl Into<DiagMessage>) -> Diag<'a> {
         Diag::new(self, Error, msg)
