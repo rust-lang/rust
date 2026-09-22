@@ -1320,7 +1320,9 @@ where
         // fixed and only regions are inferred, but not during typeck while hidden
         // types may still contain inference variables.
         if !opaque_types.is_empty() {
-            match self.typing_mode() {
+            let typing_mode = self.typing_mode();
+
+            match typing_mode {
                 // We're inferring regions of opaque types, but
                 // the type itself is already fully known, no way
                 // to leak the hidden type.
@@ -1337,7 +1339,9 @@ where
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen
                 | TypingMode::ErasedNotCoherence(MayBeErased) => {
-                    return self.forced_ambiguity(MaybeInfo::AMBIGUOUS);
+                    unreachable!(
+                        "we never add new uses to opaque types in typing mode {typing_mode:?}"
+                    );
                 }
             }
         }
