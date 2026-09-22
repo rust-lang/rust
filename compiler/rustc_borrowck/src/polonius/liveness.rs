@@ -10,6 +10,53 @@ use crate::region_infer::values::LivenessValues;
 use crate::type_check::liveness::LivenessComputation;
 use crate::universal_regions::UniversalRegions;
 
+/// The source of liveness information for a given region.
+pub(super) trait LivenessSource {
+    fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_>;
+}
+
+/// For a given region, the relevant liveness and variance information.
+pub(super) struct RegionLiveness<'a> {
+    pub(super) direction: ConstraintDirection,
+    live_points: Option<&'a IntervalSet<PointIndex>>,
+}
+
+impl<'a> RegionLiveness<'a> {
+    #[inline]
+    pub(super) fn new<'tcx>(
+        region: RegionVid,
+        live_region_variances: &LiveRegionVariances,
+        universal_regions: &UniversalRegions<'tcx>,
+        live_points: &'a SparseIntervalMatrix<RegionVid, PointIndex>,
+    ) -> Self {
+        // Universal regions propagate loans along the CFG, i.e. forwards only.
+        let is_universal_region = universal_regions.is_universal_region(region);
+
+        // Note: there currently are cases related to promoted and const generics, where we don't yet
+        // have variance information (possibly about temporary regions created when typeck sanitizes the
+        // promoteds). Until that is done, we conservatively fallback to maximizing reachability by
+        // adding a bidirectional edge here. This will not limit traversal whatsoever, and thus
+        // propagate liveness when needed.
+        //
+        // FIXME: add the missing variance information and remove this fallback bidirectional edge.
+        let direction = if is_universal_region {
+            ConstraintDirection::Forward
+        } else {
+            live_region_variances
+                .get(region)
+                .copied()
+                .flatten()
+                .unwrap_or(ConstraintDirection::Bidirectional)
+        };
+        let live_points = live_points.row(region);
+        Self { direction, live_points }
+    }
+
+    pub(super) fn is_live_at(&self, point: PointIndex) -> bool {
+        self.live_points.map_or(false, |points| points.contains(point))
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct DeferredLocals<'tcx> {
     /// For each region, the local whose liveness is deferred.
@@ -78,47 +125,5 @@ impl<'tcx> DeferredLocals<'tcx> {
         comp.compute(local, universal_regions, Some(live_region_variances), liveness, || {
             &drop_args
         });
-    }
-}
-
-/// For a given region, the relevant liveness and variance information.
-pub(super) struct RegionLiveness<'a> {
-    pub(super) direction: ConstraintDirection,
-    live_points: Option<&'a IntervalSet<PointIndex>>,
-}
-
-impl<'a> RegionLiveness<'a> {
-    #[inline]
-    pub(super) fn new<'tcx>(
-        region: RegionVid,
-        live_region_variances: &LiveRegionVariances,
-        universal_regions: &UniversalRegions<'tcx>,
-        live_points: &'a SparseIntervalMatrix<RegionVid, PointIndex>,
-    ) -> Self {
-        // Universal regions propagate loans along the CFG, i.e. forwards only.
-        let is_universal_region = universal_regions.is_universal_region(region);
-
-        // Note: there currently are cases related to promoted and const generics, where we don't yet
-        // have variance information (possibly about temporary regions created when typeck sanitizes the
-        // promoteds). Until that is done, we conservatively fallback to maximizing reachability by
-        // adding a bidirectional edge here. This will not limit traversal whatsoever, and thus
-        // propagate liveness when needed.
-        //
-        // FIXME: add the missing variance information and remove this fallback bidirectional edge.
-        let direction = if is_universal_region {
-            ConstraintDirection::Forward
-        } else {
-            live_region_variances
-                .get(region)
-                .copied()
-                .flatten()
-                .unwrap_or(ConstraintDirection::Bidirectional)
-        };
-        let live_points = live_points.row(region);
-        Self { direction, live_points }
-    }
-
-    pub(super) fn is_live_at(&self, point: PointIndex) -> bool {
-        self.live_points.map_or(false, |points| points.contains(point))
     }
 }

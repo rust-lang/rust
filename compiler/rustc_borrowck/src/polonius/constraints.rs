@@ -10,7 +10,7 @@ use crate::BorrowSet;
 use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
 use crate::polonius::ConstraintDirection;
-use crate::polonius::liveness::RegionLiveness;
+use crate::polonius::liveness::LivenessSource;
 use crate::type_check::Locations;
 
 /// A localized outlives constraint reifies the CFG location where the outlives constraint holds,
@@ -50,11 +50,6 @@ pub(super) struct LocalizedConstraintGraph {
     /// which we don't localize to avoid creating a lot of unnecessary edges in the graph. Some CFGs
     /// can be big, and we don't need to create such a physical edge for every point in the CFG.
     logical_edges: IndexVec<RegionVid, FxIndexSet<RegionVid>>,
-}
-
-/// The source of liveness information for a given region.
-pub(super) trait LivenessSource {
-    fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_>;
 }
 
 /// The visitor interface when traversing a `LocalizedConstraintGraph`.

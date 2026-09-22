@@ -55,7 +55,7 @@ pub(crate) use self::liveness_constraints::record_live_region_variance;
 use crate::constraints::OutlivesConstraint;
 use crate::dataflow::BorrowIndex;
 pub(crate) use crate::polonius::liveness::DeferredLocals;
-use crate::polonius::liveness::RegionLiveness;
+use crate::polonius::liveness::{LivenessSource, RegionLiveness};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::liveness::{LivenessComputation, LocalUseMap};
 use crate::universal_regions::UniversalRegions;
