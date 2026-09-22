@@ -444,7 +444,6 @@ pub fn rust_oom(layout: Layout) -> ! {
 
 #[cfg(not(test))]
 #[doc(hidden)]
-#[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "none")]
 pub mod __default_lib_allocator {
     use super::Layout;
