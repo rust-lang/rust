@@ -787,16 +787,18 @@ fn document_full_inner(
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         if let Some(doc_values) = item.opt_doc_values() {
-            if is_collapsible {
+            let close = if is_collapsible {
                 f.write_str(
                     "<details class=\"toggle top-doc\" open>\
                      <summary class=\"hideme\">\
                         <span>Expand description</span>\
                      </summary><div class=\"docblock\">",
                 )?;
+                "</div></details>"
             } else {
                 f.write_str("<div class=\"docblock\">")?;
-            }
+                "</div>"
+            };
             debug!("Doc block: {}\n", item.name.as_ref().map_or("[anonymous]", |nm| nm.as_str()));
             for (opt_item_id, content) in doc_values.iter() {
                 debug!("Doc fragment: =====\n{content}\n=====");
@@ -812,11 +814,7 @@ fn document_full_inner(
                 }
                 .write_into(&mut *f)?;
             }
-            if is_collapsible {
-                f.write_str("</div></details>")?;
-            } else {
-                f.write_str("</div>")?;
-            }
+            f.write_str(close)?;
         }
 
         let kind = match &item.kind {

@@ -133,28 +133,27 @@ impl ItemId {
             .iter()
             .filter_map(|ItemLink { link: s, link_text, page_id: id, fragment }| {
                 debug!(?id);
-                if let Ok(HrefInfo { mut url, .. }) = href_with_path_check(*id, cx, link_text) {
-                    debug!(?url);
-                    match fragment {
-                        Some(UrlFragment::Item(def_id)) => {
-                            write!(url, "{}", crate::html::format::fragment(*def_id, cx.tcx()))
-                                .unwrap();
-                        }
-                        Some(UrlFragment::UserWritten(raw)) => {
-                            url.push('#');
-                            url.push_str(raw);
-                        }
-                        None => {}
+                let Ok(HrefInfo { mut url, .. }) = href_with_path_check(*id, cx, link_text) else {
+                    return None;
+                };
+                debug!(?url);
+                match fragment {
+                    Some(UrlFragment::Item(def_id)) => {
+                        write!(url, "{}", crate::html::format::fragment(*def_id, cx.tcx()))
+                            .unwrap();
                     }
-                    Some(RenderedLink {
-                        original_text: s.clone(),
-                        new_text: link_text.clone(),
-                        tooltip: link_tooltip(*id, fragment, cx, Some(link_text)).to_string(),
-                        href: url,
-                    })
-                } else {
-                    None
+                    Some(UrlFragment::UserWritten(raw)) => {
+                        url.push('#');
+                        url.push_str(raw);
+                    }
+                    None => {}
                 }
+                Some(RenderedLink {
+                    original_text: s.clone(),
+                    new_text: link_text.clone(),
+                    tooltip: link_tooltip(*id, fragment, cx, Some(link_text)).to_string(),
+                    href: url,
+                })
             })
             .collect()
     }
