@@ -124,12 +124,10 @@ fn annotation_level_for_level(level: Level) -> annotate_snippets::level::Level<'
             annotate_snippets::Level::ERROR.with_name("error: internal compiler error")
         }
         Level::Fatal | Level::Error => annotate_snippets::level::ERROR,
-        Level::ForceWarning | Level::Warning => annotate_snippets::Level::WARNING,
+        Level::Warning(_) => annotate_snippets::Level::WARNING,
         Level::Note => annotate_snippets::Level::NOTE,
         Level::Help => annotate_snippets::Level::HELP,
         Level::FailureNote => annotate_snippets::Level::NOTE.no_name(),
-        Level::Allow => panic!("Should not call with Allow"),
-        Level::Expect => panic!("Should not call with Expect"),
     }
 }
 
