@@ -375,7 +375,6 @@ struct DiagCtxtInner {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum StashKey {
     ItemNoType,
-    UnderscoreForArrayLengths,
     EarlySyntaxWarning,
     CallIntoMethod,
     /// When an invalid lifetime e.g. `'2` should be reinterpreted
