@@ -6,6 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::{Expr, ExprKind, HirId, find_attr};
 use rustc_lint_defs::{declare_lint, declare_lint_pass, impl_lint_pass};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::{DUMMY_SP, Span, Symbol, bug, sym};

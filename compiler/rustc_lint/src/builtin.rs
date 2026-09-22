@@ -33,6 +33,7 @@ use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateO
 // Lints from rustc_lint_defs
 pub use rustc_lint_defs::builtin::*;
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw, impl_lint_pass};
+use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
