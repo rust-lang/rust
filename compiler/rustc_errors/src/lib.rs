@@ -325,8 +325,10 @@ struct DiagCtxtInner {
     emitted_diagnostic_codes: FxIndexSet<ErrCode>,
 
     /// This set contains a hash of every diagnostic that has been emitted by
-    /// this `DiagCtxt`. These hashes is used to avoid emitting the same error
-    /// twice.
+    /// this `DiagCtxt`. These hashes are used to avoid emitting the same error
+    /// twice. (Because we don't store the diagnostics themselves, two
+    /// different diagnostics with the same hash value will be considered
+    /// equivalent. Such collisions should be vanishingly rare...)
     emitted_diagnostics: FxHashSet<Hash128>,
 
     /// We only want to emit `recursion_depth_exceeding_limit` once per
@@ -1301,12 +1303,7 @@ impl DiagCtxtInner {
                 self.emitted_diagnostic_codes.insert(code);
             }
 
-            let already_emitted = {
-                let mut hasher = StableHasher::new();
-                diagnostic.hash(&mut hasher);
-                let diagnostic_hash = hasher.finish();
-                !self.emitted_diagnostics.insert(diagnostic_hash)
-            };
+            let already_emitted = !self.emitted_diagnostics.insert(diagnostic.dedup_hash());
 
             let is_error = diagnostic.is_error();
             let is_lint = diagnostic.is_lint.is_some();
