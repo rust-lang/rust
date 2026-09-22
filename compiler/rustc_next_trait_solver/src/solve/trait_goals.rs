@@ -1494,7 +1494,7 @@ where
     }
 
     /// Like `try_merge_candidates`, but returns `None` if there are multiple user-written
-    /// impls, or a user-written impl and a builtin impl, in which case we flounder.
+    /// impls, or a user-written impl and a builtin impl, in which case we bail with ambiguity.
     ///
     /// Candidates with equal responses can still come from conflicting impls, ex - two
     /// overlapping impls which both apply due to impossible where-clauses. We don't want
@@ -1532,14 +1532,18 @@ where
         }
     }
 
-    fn merge_impl_candidates_or_flounder(
+    fn merge_impl_candidates_or_bail_with_ambiguity(
         &mut self,
         trait_def_id: I::TraitId,
         candidates: &[Candidate<I>],
-    ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
+    ) -> (CanonicalResponse<I>, Option<TraitGoalProvenVia>) {
+        debug_assert!(candidates.iter().all(|c| matches!(
+            c.source,
+            CandidateSource::Impl(_) | CandidateSource::BuiltinImpl(_)
+        )));
         match self.try_merge_impl_candidates(trait_def_id, candidates) {
-            Some(response) => Ok((response, Some(TraitGoalProvenVia::Misc))),
-            None => self.flounder(candidates).map(|r| (r, None)),
+            Some(response) => (response, Some(TraitGoalProvenVia::Misc)),
+            None => (self.bail_with_ambiguity(candidates), None),
         }
     }
 
@@ -1550,9 +1554,16 @@ where
         mut candidates: Vec<Candidate<I>>,
         failed_candidate_info: FailedCandidateInfo,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
+        if candidates.is_empty() {
+            return Err(NoSolution);
+        }
+
         let candidate_preference_mode = CandidatePreferenceMode::compute(self.cx(), trait_def_id);
         if self.typing_mode().is_coherence() {
-            return self.merge_impl_candidates_or_flounder(trait_def_id, &candidates);
+            return Ok(match self.try_merge_impl_candidates(trait_def_id, &candidates) {
+                Some(response) => (response, Some(TraitGoalProvenVia::Misc)),
+                None => (self.bail_with_ambiguity(&candidates), None),
+            });
         }
 
         // We prefer trivial builtin candidates, i.e. builtin impls without any
@@ -1647,17 +1658,16 @@ where
         // is still reported as being proven-via the param-env so that rigid projections
         // operate correctly. Otherwise, drop all global where-bounds before merging the
         // remaining candidates.
-        let only_global_where_bounds = !candidates.is_empty()
-            && candidates
-                .iter()
-                .all(|c| matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::Global)));
+        let only_global_where_bounds = candidates
+            .iter()
+            .all(|c| matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::Global)));
         if only_global_where_bounds {
             Ok(self
                 .merge_candidates_or_bail_with_ambiguity(&candidates, TraitGoalProvenVia::ParamEnv))
         } else {
             candidates
                 .retain(|c| !matches!(c.source, CandidateSource::ParamEnv(ParamEnvSource::Global)));
-            self.merge_impl_candidates_or_flounder(trait_def_id, &candidates)
+            Ok(self.merge_impl_candidates_or_bail_with_ambiguity(trait_def_id, &candidates))
         }
     }
 
