@@ -39,6 +39,8 @@ pub(crate) mod legacy;
 mod liveness;
 mod liveness_constraints;
 
+use std::rc::Rc;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
@@ -141,7 +143,7 @@ impl<'tcx> PoloniusContext<'tcx> {
         universal_regions: &UniversalRegions<'tcx>,
         body: &Body<'tcx>,
         move_data: &MoveData<'tcx>,
-        location_map: &DenseLocationMap,
+        location_map: Rc<DenseLocationMap>,
         borrow_set: &BorrowSet<'tcx>,
     ) {
         // We don't need to prepare the graph (index NLL constraints, etc.) if we have no loans to
@@ -151,7 +153,7 @@ impl<'tcx> PoloniusContext<'tcx> {
             // on the lazy localized constraint graph to trace the liveness of loans, for the next
             // step in the chain (the NLL loan scope and active loans computations).
             let graph =
-                LocalizedConstraintGraph::new(liveness.location_map(), outlives_constraints);
+                LocalizedConstraintGraph::new(Rc::clone(&location_map), outlives_constraints);
 
             let local_use_map = self
                 .local_use_map
@@ -161,7 +163,7 @@ impl<'tcx> PoloniusContext<'tcx> {
                 std::mem::take(&mut self.deferred_locals_for_liveness);
             let mut live_loans = LiveLoans::new(location_map.num_points(), borrow_set.len());
             let comp =
-                LivenessComputation::new(infcx, body, location_map, move_data, &local_use_map);
+                LivenessComputation::new(infcx, body, &location_map, move_data, &local_use_map);
             let mut liveness_source = DeferredLivenessSource {
                 liveness,
                 live_region_variances: &mut self.live_region_variances,
@@ -190,7 +192,7 @@ struct DeferredLivenessSource<'a, 'tcx> {
     comp: LivenessComputation<'a, 'tcx>,
 }
 
-impl<'a> LivenessSource<'a> for DeferredLivenessSource<'a, '_> {
+impl<'a> LivenessSource for DeferredLivenessSource<'a, '_> {
     #[inline]
     fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_> {
         self.deferred_locals_for_liveness.compute_deferred_local(
@@ -207,10 +209,6 @@ impl<'a> LivenessSource<'a> for DeferredLivenessSource<'a, '_> {
             self.universal_regions,
             self.liveness.points(),
         )
-    }
-
-    fn location_map(&self) -> &'a DenseLocationMap {
-        self.comp.location_map
     }
 }
 
