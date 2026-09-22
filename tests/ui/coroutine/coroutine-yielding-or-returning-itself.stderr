@@ -19,7 +19,6 @@ note: required by a bound in `want_cyclic_coroutine_return`
   --> $DIR/coroutine-yielding-or-returning-itself.rs:10:36
    |
 LL | pub fn want_cyclic_coroutine_return<T>(_: T)
-   |        ---------------------------- required by a bound in this function
 LL |     where T: Coroutine<Yield = (), Return = T>
    |                                    ^^^^^^^^^^ required by this bound in `want_cyclic_coroutine_return`
 
@@ -44,7 +43,6 @@ note: required by a bound in `want_cyclic_coroutine_yield`
   --> $DIR/coroutine-yielding-or-returning-itself.rs:23:24
    |
 LL | pub fn want_cyclic_coroutine_yield<T>(_: T)
-   |        --------------------------- required by a bound in this function
 LL |     where T: Coroutine<Yield = T, Return = ()>
    |                        ^^^^^^^^^ required by this bound in `want_cyclic_coroutine_yield`
 

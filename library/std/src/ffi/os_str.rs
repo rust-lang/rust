@@ -5,6 +5,7 @@ mod tests;
 
 use core::clone::CloneToUninit;
 
+use crate::alloc::Allocator;
 use crate::borrow::{Borrow, Cow};
 use crate::collections::TryReserveError;
 use crate::hash::{Hash, Hasher};
@@ -1395,10 +1396,10 @@ impl From<OsString> for Box<OsStr> {
 }
 
 #[stable(feature = "more_box_slice_clone", since = "1.29.0")]
-impl Clone for Box<OsStr> {
+impl<A: Allocator + Clone> Clone for Box<OsStr, A> {
     #[inline]
     fn clone(&self) -> Self {
-        self.to_os_string().into_boxed_os_str()
+        Box::clone_from_ref_in(&**self, Self::allocator(self).clone())
     }
 }
 

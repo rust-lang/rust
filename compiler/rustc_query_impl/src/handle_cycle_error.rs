@@ -17,7 +17,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug};
 // Default cycle handler used for all queries that don't use the `handle_cycle_error` query
 // modifier.
 pub(crate) fn default(err: Diag<'_>) -> ! {
-    let guar = err.emit();
+    let guar = err.emit_err();
     guar.raise_fatal()
 }
 
@@ -207,7 +207,7 @@ pub(crate) fn layout_of<'tcx>(
         || create_cycle_error(tcx, &cycle, false),
     );
 
-    diag.emit().raise_fatal()
+    diag.emit_err().raise_fatal()
 }
 
 // item_and_field_ids should form a cycle where each field contains the
@@ -292,7 +292,7 @@ fn recursive_type_error(
         suggestion,
         Applicability::HasPlaceholders,
     )
-    .emit()
+    .emit_err()
 }
 
 fn find_item_ty_spans(

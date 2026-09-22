@@ -752,12 +752,12 @@ impl Options {
                 if !theme_file.is_file() {
                     dcx.struct_fatal(format!("invalid argument: \"{theme_s}\""))
                         .with_help("arguments to --theme must be files")
-                        .emit();
+                        .emit_fatal();
                 }
                 if theme_file.extension() != Some(OsStr::new("css")) {
                     dcx.struct_fatal(format!("invalid argument: \"{theme_s}\""))
                         .with_help("arguments to --theme must have a .css extension")
-                        .emit();
+                        .emit_fatal();
                 }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, dcx);
                 if !success {

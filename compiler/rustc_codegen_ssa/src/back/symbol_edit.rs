@@ -7,9 +7,10 @@
 use std::borrow::Cow;
 use std::mem;
 
+use object::read::coff::{CoffHeader, ImageSymbol as _};
 use object::read::elf::{SectionHeader as _, Sym as _};
 use object::read::macho::Nlist;
-use object::{Endianness, elf, macho};
+use object::{Endianness, elf, macho, pe};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 struct Patch {
@@ -57,6 +58,20 @@ pub(super) fn apply_edits<'a>(
             rename,
             mem::offset_of!(macho::Nlist32<Endianness>, n_type),
         ),
+        Some(object::File::Coff(f)) => coff_edit_impl(
+            data,
+            f.coff_header(),
+            hide,
+            rename,
+            coff_strip_underscore(f.coff_header()),
+        ),
+        Some(object::File::CoffBig(f)) => coff_edit_impl(
+            data,
+            f.coff_header(),
+            hide,
+            rename,
+            coff_strip_underscore(f.coff_header()),
+        ),
         _ => None,
     };
     match result {
@@ -84,8 +99,28 @@ pub(super) fn collect_internal_names(
         object::File::MachO32(_) => {
             macho_collect_impl::<macho::MachHeader32<Endianness>>(data, exported, out)
         }
+        object::File::Coff(f) => coff_collect_impl(
+            data,
+            f.coff_header(),
+            exported,
+            out,
+            coff_strip_underscore(f.coff_header()),
+        ),
+        object::File::CoffBig(f) => coff_collect_impl(
+            data,
+            f.coff_header(),
+            exported,
+            out,
+            coff_strip_underscore(f.coff_header()),
+        ),
         _ => {}
     }
+}
+
+/// Whether this machine's COFF ABI decorates external symbols with a leading `_`
+/// (i686 only).
+fn coff_strip_underscore(header: &impl CoffHeader) -> bool {
+    header.machine() == pe::IMAGE_FILE_MACHINE_I386
 }
 
 fn elf_collect_impl<Elf: object::read::elf::FileHeader<Endian = Endianness>>(
@@ -436,6 +471,125 @@ fn macho_rebuild_strtab(
     for entry in renames {
         let new_strx = rename_map[&entry.name];
         write_u32_at(&mut result, entry.name_field_offset, new_strx, endian);
+    }
+
+    Some(result)
+}
+
+// ---------------------------------------------------------------------------
+// COFF: single-pass collection + apply
+// ---------------------------------------------------------------------------
+
+fn coff_collect_impl<'data, Coff: CoffHeader>(
+    data: &'data [u8],
+    header: &'data Coff,
+    exported: &FxHashSet<String>,
+    out: &mut FxHashSet<String>,
+    strip_underscore: bool,
+) {
+    let Ok(symbols) = header.symbols(data) else { return };
+    let strings = symbols.strings();
+
+    for (_index, sym) in symbols.iter() {
+        let sclass = sym.storage_class();
+        if sclass != pe::IMAGE_SYM_CLASS_EXTERNAL && sclass != pe::IMAGE_SYM_CLASS_WEAK_EXTERNAL {
+            continue;
+        }
+        if sym.section_number() <= 0 {
+            continue;
+        }
+        let Ok(name_bytes) = sym.name(strings) else { continue };
+        let Ok(mut name) = str::from_utf8(name_bytes).map(String::from) else { continue };
+        if strip_underscore {
+            name = name.strip_prefix('_').unwrap_or(&name).to_string();
+        }
+        if !exported.contains(&name) {
+            out.insert(name);
+        }
+    }
+}
+
+fn coff_edit_impl<'data, Coff: CoffHeader>(
+    data: &'data [u8],
+    header: &'data Coff,
+    hide: bool,
+    rename: Option<&(FxHashSet<String>, &str)>,
+    strip_underscore: bool,
+) -> Option<Vec<u8>> {
+    // COFF has no visibility concept, so hiding is unsupported; the caller
+    // has already warned and does not request it.
+    assert!(!hide);
+
+    let pointer_to_symbol_table = header.pointer_to_symbol_table() as usize;
+    let number_of_symbols = header.number_of_symbols() as usize;
+    // ImageSymbol is 18 bytes; ImageSymbolEx (bigobj) is 20.
+    let sym_size = mem::size_of::<Coff::ImageSymbolBytes>();
+
+    let symbol_bytes_offset = pointer_to_symbol_table;
+    let strtab_base = pointer_to_symbol_table + number_of_symbols * sym_size;
+    if strtab_base > data.len() {
+        return None;
+    }
+
+    if data.len() < strtab_base + 4 {
+        return None;
+    }
+    let old_len =
+        u32::from_le_bytes(data[strtab_base..strtab_base + 4].try_into().unwrap()) as usize;
+    if strtab_base + old_len > data.len() {
+        return None;
+    }
+
+    let Ok(symbols) = header.symbols(data) else { return None };
+    let strings = symbols.strings();
+
+    let mut renames = Vec::new();
+    for (index, sym) in symbols.iter() {
+        let sclass = sym.storage_class();
+        if sclass != pe::IMAGE_SYM_CLASS_EXTERNAL && sclass != pe::IMAGE_SYM_CLASS_WEAK_EXTERNAL {
+            continue;
+        }
+        let Ok(name_bytes) = sym.name(strings) else { continue };
+        let Ok(name) = str::from_utf8(name_bytes) else { continue };
+        let check_name =
+            if strip_underscore { name.strip_prefix('_').unwrap_or(name) } else { name };
+        if rename.is_some_and(|(rename_set, _)| rename_set.contains(check_name)) {
+            renames.push(RenameEntry {
+                name_field_offset: symbol_bytes_offset + index.0 * sym_size,
+                name: name.to_string(),
+            });
+        }
+    }
+    if renames.is_empty() {
+        return None;
+    }
+    let suffix = rename.unwrap().1;
+
+    let mut new_strtab = Vec::new();
+    let mut map: FxHashMap<String, u32> = FxHashMap::default();
+    let mut sorted_names: Vec<&str> = renames.iter().map(|r| r.name.as_str()).collect();
+    sorted_names.sort();
+    sorted_names.dedup();
+    for name in &sorted_names {
+        let rel_offset = (old_len + new_strtab.len()) as u32;
+        new_strtab.extend_from_slice(name.as_bytes());
+        new_strtab.extend_from_slice(suffix.as_bytes());
+        new_strtab.push(0);
+        map.insert(name.to_string(), rel_offset);
+    }
+
+    let mut result = data.to_vec();
+    let new_len = (old_len + new_strtab.len()) as u32;
+    result[strtab_base..strtab_base + 4].copy_from_slice(&new_len.to_le_bytes());
+    result.extend_from_slice(&new_strtab);
+
+    // Long names are stored as all-zero name[0..4] plus the string table
+    // offset in name[4..8].
+    for r in &renames {
+        let rel = map[&r.name];
+        let field = &mut result[r.name_field_offset..r.name_field_offset + 8];
+        field[..4].fill(0);
+        field[4..].copy_from_slice(&rel.to_le_bytes());
     }
 
     Some(result)

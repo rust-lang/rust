@@ -392,9 +392,9 @@ pub(crate) struct NoMainErr {
     pub add_teach_note: bool,
 }
 
-impl<'a, G> Diagnostic<'a, G> for NoMainErr {
+impl<'a> Diagnostic<'a> for NoMainErr {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag =
             Diag::new(dcx, level, msg!("`main` function not found in crate `{$crate_name}`"));
         diag.span(DUMMY_SP);
@@ -458,9 +458,9 @@ pub(crate) struct DuplicateLangItem {
     pub(crate) duplicate: Duplicate,
 }
 
-impl<G> Diagnostic<'_, G> for DuplicateLangItem {
+impl Diagnostic<'_> for DuplicateLangItem {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let mut diag = Diag::new(
             dcx,
             level,

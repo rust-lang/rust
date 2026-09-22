@@ -114,12 +114,12 @@ pub(crate) struct Deprecated {
     pub since_kind: DeprecatedSinceKind,
 }
 
-impl<'a, G> rustc_errors::Diagnostic<'a, G> for Deprecated {
+impl<'a> rustc_errors::Diagnostic<'a> for Deprecated {
     fn into_diag(
         self,
         dcx: rustc_errors::DiagCtxtHandle<'a>,
         level: rustc_errors::Level,
-    ) -> Diag<'a, G> {
+    ) -> Diag<'a> {
         let Self { sub, kind, path, note, since_kind } = self;
         let mut diag = Diag::new(dcx, level, match &since_kind {
             DeprecatedSinceKind::InEffect => msg!(

@@ -20,10 +20,10 @@ pub(crate) struct SanitizerMemtagRequiresMte;
 
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
-impl<G> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for ParseTargetMachineConfig<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         // Reuse the formatted primary message from `LlvmError` without emitting it.
-        let diag: Diag<'_, ()> = self.0.into_diag(dcx, level);
+        let diag = self.0.into_diag(dcx, level);
         let (message, _) = diag.messages.first().expect("`LlvmError` with no message");
         let message = format_diag_message(message, &diag.args).into_owned();
         diag.cancel();
@@ -141,8 +141,8 @@ pub(crate) enum LlvmError<'a> {
 
 pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
 
-impl<G> Diagnostic<'_, G> for WithLlvmError<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for WithLlvmError<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         use LlvmError::*;
         let msg_with_llvm_err = match &self.0 {
             WriteOutput { .. } => msg!("could not write output to {$path}: {$llvm_err}"),

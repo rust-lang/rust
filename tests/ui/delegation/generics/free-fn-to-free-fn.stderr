@@ -27,7 +27,7 @@ LL |     pub fn bounds<T: Clone>(_: T) {}
    |                      ^^^^^ required by this bound in `bounds`
 ...
 LL | reuse to_reuse::bounds;
-   |                 ------ required by a bound in this function
+   |
 help: consider annotating `S` with `#[derive(Clone)]`
    |
 LL +     #[derive(Clone)]

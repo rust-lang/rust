@@ -744,7 +744,7 @@ pub trait DiagExt<T: LintContext> {
     fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str, applicability: Applicability);
 }
 
-impl<T: LintContext> DiagExt<T> for rustc_errors::Diag<'_, ()> {
+impl<T: LintContext> DiagExt<T> for rustc_errors::Diag<'_> {
     fn suggest_item_with_attr<D: Display + ?Sized>(
         &mut self,
         cx: &T,

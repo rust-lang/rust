@@ -223,11 +223,11 @@ pub(super) fn report<'tcx>(
             );
 
             mk(&mut err, span, frames);
-            let g = err.emit();
+            let guar = err.emit_err();
             let reported = if allowed_in_infallible {
-                ReportedErrorInfo::allowed_in_infallible(g)
+                ReportedErrorInfo::allowed_in_infallible(guar)
             } else {
-                ReportedErrorInfo::const_eval_error(g)
+                ReportedErrorInfo::const_eval_error(guar)
             };
             ErrorHandled::Reported(reported, span)
         }
@@ -243,7 +243,7 @@ pub(super) fn lint<'tcx, L>(
     lint: &'static rustc_lint_defs::Lint,
     decorator: impl FnOnce(Vec<diagnostics::FrameNote>) -> L,
 ) where
-    L: for<'a> rustc_errors::Diagnostic<'a, ()>,
+    L: for<'a> rustc_errors::Diagnostic<'a>,
 {
     let (span, frames) = get_span_and_frames(tcx, &machine.stack);
 

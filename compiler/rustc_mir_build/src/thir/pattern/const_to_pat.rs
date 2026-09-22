@@ -94,7 +94,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 err.span_label(self.tcx.def_span(def_id), msg!("constant defined here"));
             }
         }
-        Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()), extra: None })
+        Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit_err()), extra: None })
     }
 
     fn alias_to_pat(&mut self, alias_const: ty::AliasConst<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {

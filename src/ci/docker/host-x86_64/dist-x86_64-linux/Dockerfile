@@ -52,6 +52,10 @@ WORKDIR /tmp
 RUN mkdir /home/user
 COPY scripts/shared.sh /tmp/
 
+# GCC needs make >= 4
+COPY scripts/build-make.sh /tmp/
+RUN ./build-make.sh
+
 # Need at least GCC 5.1 to compile LLVM nowadays
 COPY scripts/build-gcc.sh /tmp/
 ENV GCC_VERSION=9.5.0

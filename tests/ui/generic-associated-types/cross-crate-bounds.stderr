@@ -7,6 +7,7 @@ LL |     type Bar = ();
 note: required by a bound in `foo_defn::Foo::Bar`
   --> $DIR/auxiliary/foo_defn.rs:4:15
    |
+LL | pub trait Foo {
 LL |     type Bar: AsRef<()>;
    |               ^^^^^^^^^ required by this bound in `Foo::Bar`
 

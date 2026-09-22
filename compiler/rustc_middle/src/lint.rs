@@ -285,7 +285,7 @@ fn explain_lint_level_source(
     lint: &'static Lint,
     level: Level,
     src: LintLevelSource,
-    err: &mut Diag<'_, ()>,
+    err: &mut Diag<'_>,
 ) {
     // Find the name of the lint group that contains the given lint.
     // Assumes the lint only belongs to one group.
@@ -382,7 +382,7 @@ fn explain_lint_level_source(
 /// - [`TyCtxt::emit_node_span_lint`]
 /// - `LintContext::opt_span_lint`
 #[track_caller]
-pub fn emit_lint_base<'a, D: Diagnostic<'a, ()> + 'a>(
+pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
     sess: &'a Session,
     lint: &'static Lint,
     level_spec: impl Into<LevelSpec>,
@@ -398,7 +398,7 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a, ()> + 'a>(
         level_spec: LevelSpec,
         span: Option<MultiSpan>,
         decorate: Box<
-            dyn FnOnce(rustc_errors::DiagCtxtHandle<'a>, rustc_errors::Level) -> Diag<'a, ()> + 'a,
+            dyn FnOnce(rustc_errors::DiagCtxtHandle<'a>, rustc_errors::Level) -> Diag<'a> + 'a,
         >,
     ) {
         let LevelSpec { level, lint_id, src } = level_spec;
@@ -484,7 +484,7 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a, ()> + 'a>(
         //    will be emitted if `can_emit_warnings` is true.
         let skip = err_level == rustc_errors::Level::Warning && !sess.dcx().can_emit_warnings();
 
-        let mut err: Diag<'_, ()> = if !skip {
+        let mut err: Diag<'_> = if !skip {
             decorate(sess.dcx(), err_level)
         } else {
             Diag::new(sess.dcx(), err_level, "")

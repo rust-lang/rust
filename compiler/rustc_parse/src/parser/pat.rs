@@ -1561,7 +1561,7 @@ impl<'a> Parser<'a> {
         self.bump();
         let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
             e.span_label(path.span, "while parsing the fields for this pattern");
-            let guar = e.emit();
+            let guar = e.emit_err();
             self.recover_stmt();
             // When recovering, pretend we had `Foo { .. }`, to avoid cascading errors.
             (ThinVec::new(), PatFieldsRest::Recovered(guar))
@@ -1936,17 +1936,15 @@ impl<'a> Parser<'a> {
             let subpat = if let Some(box_span) = is_box {
                 let prefix_span = box_span.until(boxed_span);
 
-                self.dcx()
-                    .create_err(diagnostics::BoxPatsRemoved {
-                        span: box_span,
-                        sugg_deref_macro_call: diagnostics::UseDerefMacro {
-                            field: Some((prefix_span, fieldname)),
-                            before: boxed_span.shrink_to_lo(),
-                            after: hi.shrink_to_hi(),
-                        },
-                        sugg_removal: prefix_span,
-                    })
-                    .emit();
+                self.dcx().emit_err(diagnostics::BoxPatsRemoved {
+                    span: box_span,
+                    sugg_deref_macro_call: diagnostics::UseDerefMacro {
+                        field: Some((prefix_span, fieldname)),
+                        before: boxed_span.shrink_to_lo(),
+                        after: hi.shrink_to_hi(),
+                    },
+                    sugg_removal: prefix_span,
+                });
 
                 self.mk_pat(lo.to(hi), PatKind::Deref(Box::new(fieldpat)))
             } else {

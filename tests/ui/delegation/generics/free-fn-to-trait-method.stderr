@@ -13,7 +13,7 @@ LL |         fn foo<U: Clone>(&self, t: T, u: U) where T: Copy {}
    |                                                      ^^^^ required by this bound in `bounds`
 ...
 LL | reuse bounds::Trait::foo as bounds;
-   |                             ------ required by a bound in this function
+   |
 help: consider annotating `S` with `#[derive(Copy)]`
    |
 LL +     #[derive(Copy)]
@@ -35,7 +35,7 @@ LL |         fn foo<U: Clone>(&self, t: T, u: U) where T: Copy {}
    |                   ^^^^^ required by this bound in `bounds`
 ...
 LL | reuse bounds::Trait::foo as bounds;
-   |                             ------ required by a bound in this function
+   |
 help: consider annotating `U` with `#[derive(Clone)]`
    |
 LL +     #[derive(Clone)]

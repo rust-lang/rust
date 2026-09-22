@@ -98,13 +98,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             trait_item_def_id,
                             &format!("`{}`", obligation.predicate),
                         )
-                        .emit();
+                        .emit_err();
                 }
 
                 // Report a const-param specific error
                 if let ObligationCauseCode::ConstParam(ty) = *obligation.cause.code().peel_derives()
                 {
-                    return self.report_const_param_not_wf(ty, &obligation).emit();
+                    return self.report_const_param_not_wf(ty, &obligation).emit_err();
                 }
 
                 let bound_predicate = obligation.predicate.kind();
@@ -374,7 +374,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             have_alt_message,
                         ) {
                             self.note_obligation_cause(&mut err, &obligation);
-                            return err.emit();
+                            return err.emit_err();
                         }
 
                         let ty_span = match leaf_trait_predicate.self_ty().skip_binder().kind() {
@@ -524,11 +524,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             &mut err,
                             leaf_trait_predicate,
                         ) {
-                            return err.emit();
+                            return err.emit_err();
                         }
 
                         if self.suggest_impl_trait(&mut err, &obligation, leaf_trait_predicate) {
-                            return err.emit();
+                            return err.emit_err();
                         }
 
                         if is_unsize {
@@ -632,7 +632,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 Some(sym::Debug | sym::Display)
                             )
                         {
-                            return err.emit();
+                            return err.emit_err();
                         }
 
                         err
@@ -828,7 +828,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         self.note_obligation_cause(&mut err, &obligation);
-        err.emit()
+        err.emit_err()
     }
 }
 
@@ -1078,7 +1078,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             );
             self.suggest_change_mut_ref_for_closure(&mut err, &obligation);
             self.note_obligation_cause(&mut err, &obligation);
-            return Some(err.emit());
+            return Some(err.emit_err());
         }
 
         // If the closure has captures, then perhaps the reason that the trait
@@ -1099,7 +1099,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 coro_kind,
             });
             self.note_obligation_cause(&mut err, &obligation);
-            return Some(err.emit());
+            return Some(err.emit_err());
         }
 
         None
@@ -1902,7 +1902,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             if mention_bounds {
                 self.note_obligation_cause(&mut diag, obligation);
             }
-            diag.emit()
+            diag.emit_err()
         })
     }
 
@@ -3994,7 +3994,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Note that with `feature(generic_const_exprs)` this case should not
                 // be reachable.
                 .with_note("this may fail depending on what value the parameter takes")
-                .emit();
+                .emit_err();
             return Err(guar);
         }
 

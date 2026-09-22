@@ -159,6 +159,7 @@ impl LlvmType for Reg {
                     },
                     Primitive::Float(float) => match float {
                         Float::F16 => cx.type_f16(),
+                        Float::F16B => cx.type_f16b(),
                         Float::F32 => cx.type_f32(),
                         Float::F64 => cx.type_f64(),
                         Float::F128 => cx.type_f128(),

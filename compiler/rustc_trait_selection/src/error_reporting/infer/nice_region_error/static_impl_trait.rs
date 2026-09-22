@@ -128,8 +128,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             Some(anon_reg_sup.scope),
         );
 
-        let reported = err.emit();
-        Some(reported)
+        let guar = err.emit_err();
+        Some(guar)
     }
 }
 

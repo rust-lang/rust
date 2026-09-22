@@ -179,7 +179,7 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
                         }
                     }
                     suggest_to_remove_or_use_generic(tcx, &mut diag, impl_def_id, param, true);
-                    res = Err(diag.emit());
+                    res = Err(diag.emit_err());
                 }
             }
             ty::GenericParamDefKind::Type { .. } | ty::GenericParamDefKind::Const { .. } => {
@@ -245,7 +245,7 @@ pub(crate) fn enforce_impl_non_lifetime_params_are_constrained(
             });
             diag.code(E0207);
             suggest_to_remove_or_use_generic(tcx, &mut diag, impl_def_id, &param, false);
-            res = Err(diag.emit());
+            res = Err(diag.emit_err());
         }
     }
     res

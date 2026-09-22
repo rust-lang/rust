@@ -89,13 +89,13 @@ pub fn parse_cfg_select(
     let mut branches = CfgSelectBranches::default();
 
     while p.token != token::Eof {
-        p.recover_from_outer_attributes("`cfg_select` branches").map_err(|e| e.emit())?;
+        p.recover_from_outer_attributes("`cfg_select` branches").map_err(|e| e.emit_err())?;
 
         if p.eat_keyword(exp!(Underscore)) {
             let underscore = p.prev_token;
-            p.expect(exp!(FatArrow)).map_err(|e| e.emit())?;
+            p.expect(exp!(FatArrow)).map_err(|e| e.emit_err())?;
 
-            let tts = p.parse_cfg_select_branch_rhs().map_err(|e| e.emit())?;
+            let tts = p.parse_cfg_select_branch_rhs().map_err(|e| e.emit_err())?;
             let span = underscore.span.to(p.token.span);
 
             match branches.wildcard {
@@ -110,7 +110,7 @@ pub fn parse_cfg_select(
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
                 AllowExprMetavar::Yes,
             )
-            .map_err(|diag| diag.emit())?;
+            .map_err(|diag| diag.emit_err())?;
             let cfg_span = meta.span();
             let cfg = AttributeParser::parse_single_args(
                 sess,
@@ -132,9 +132,9 @@ pub fn parse_cfg_select(
                 &AttributeTemplate::default(),
             )?;
 
-            p.expect(exp!(FatArrow)).map_err(|e| e.emit())?;
+            p.expect(exp!(FatArrow)).map_err(|e| e.emit_err())?;
 
-            let tts = p.parse_cfg_select_branch_rhs().map_err(|e| e.emit())?;
+            let tts = p.parse_cfg_select_branch_rhs().map_err(|e| e.emit_err())?;
             let span = cfg_span.to(p.token.span);
 
             match branches.wildcard {

@@ -3,9 +3,8 @@ use rustc_hir as hir;
 use rustc_hir::ItemKind;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitErrors};
-use rustc_middle::ty::relate::solver_relating::RelateExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -760,6 +759,9 @@ enum FieldRelation {
 // instantiating a field can expose projections. Each candidate relation uses a
 // fresh inference context, so failed checks cannot affect the next one; this
 // intentionally normalizes the fields for each check.
+//
+// FIXME(field_projections): This function should take `Unnormalized<Ty<'tcx>>` for
+// `source_ty` and `target_ty`.
 fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_did: LocalDefId,
@@ -785,7 +787,10 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
 
     match relation {
         FieldRelation::Equal => {
-            if infcx.relate(param_env, source_ty, ty::Variance::Invariant, target_ty, span).is_err()
+            if infcx
+                .at(&cause, param_env)
+                .relate(DefineOpaqueTypes::Yes, source_ty, ty::Variance::Invariant, target_ty)
+                .is_err()
             {
                 return false;
             }

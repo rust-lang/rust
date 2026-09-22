@@ -497,13 +497,11 @@ fn check_result(
         let span = find_attr!(tcx, did, TargetFeature{attr_span: span, ..} => *span)
             .unwrap_or_else(|| tcx.def_span(did));
 
-        tcx.dcx()
-            .create_err(diagnostics::TargetFeatureDisableOrEnable {
-                features,
-                span: Some(span),
-                missing_features: Some(diagnostics::MissingFeatures),
-            })
-            .emit();
+        tcx.dcx().emit_err(diagnostics::TargetFeatureDisableOrEnable {
+            features,
+            span: Some(span),
+            missing_features: Some(diagnostics::MissingFeatures),
+        });
     }
 }
 

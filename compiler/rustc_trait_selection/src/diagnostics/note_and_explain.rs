@@ -162,7 +162,7 @@ impl RegionExplanation<'_> {
 }
 
 impl Subdiagnostic for RegionExplanation<'_> {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let msg = msg!(
             "{$pref_kind ->
                 *[should_not_happen] [{$pref_kind}]

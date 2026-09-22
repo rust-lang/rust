@@ -104,7 +104,7 @@ impl RegionName {
         }
     }
 
-    pub(crate) fn highlight_region_name<G>(&self, diag: &mut Diag<'_, G>) {
+    pub(crate) fn highlight_region_name(&self, diag: &mut Diag<'_>) {
         match &self.source {
             RegionNameSource::NamedLateParamRegion(span)
             | RegionNameSource::NamedEarlyParamRegion(span) => {

@@ -160,16 +160,16 @@ pub fn new_parser_from_file<'a>(
         if let Some(sp) = sp {
             err.span(sp);
         }
-        err.emit()
+        err.emit_fatal()
     });
     new_parser_from_source_file(psess, source_file, strip_tokens)
 }
 
-pub fn utf8_error<G>(
+pub fn utf8_error(
     sm: &SourceMap,
     path: &str,
     sp: Option<Span>,
-    err: &mut Diag<'_, G>,
+    err: &mut Diag<'_>,
     utf8err: Utf8Error,
     contents: &[u8],
 ) {

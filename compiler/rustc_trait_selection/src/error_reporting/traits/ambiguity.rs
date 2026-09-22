@@ -266,7 +266,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 TypeAnnotationNeeded::E0282,
                                 false,
                             )
-                            .emit(),
+                            .emit_err(),
                         Some(e) => e,
                     };
                 }
@@ -779,7 +779,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.note_obligation_cause(&mut err, &error.obligation);
             }
         }
-        err.emit()
+        err.emit_err()
     }
 
     /// The `impl`s and `where` clauses that could have satisfied `trait_pred`, when listing them

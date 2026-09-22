@@ -207,8 +207,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             default_size: InlineAsmSize,
         }
 
-        impl<'a, 'b> Diagnostic<'a, ()> for FormattingSubRegisterArg<'b> {
-            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        impl<'a, 'b> Diagnostic<'a> for FormattingSubRegisterArg<'b> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
                 let Self {
                     expr_span,
                     idx,

@@ -9,7 +9,6 @@ note: required by a bound in `prove`
   --> $DIR/dont-drop-obligations-on-overflow-2.rs:18:23
    |
 LL | fn prove()
-   |    ----- required by a bound in this function
 LL | where
 LL |     for<'a> Tait<'a>: Sized,
    |                       ^^^^^ required by this bound in `prove`

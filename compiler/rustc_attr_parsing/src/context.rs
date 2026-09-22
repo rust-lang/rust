@@ -418,7 +418,7 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
     pub(crate) fn emit_lint(
         &mut self,
         lint: &'static Lint,
-        diagnostic: impl for<'x> Diagnostic<'x, ()> + DynSend + DynSync + 'static,
+        diagnostic: impl for<'x> Diagnostic<'x> + DynSend + DynSync + 'static,
         span: impl Into<MultiSpan>,
     ) {
         self.emit_lint_inner(
@@ -429,7 +429,7 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
     }
 
     pub(crate) fn emit_lint_with_sess<
-        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a, ()>
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a>
             + DynSend
             + DynSync
             + 'static,
@@ -895,9 +895,9 @@ pub enum ShouldEmit {
 impl ShouldEmit {
     pub(crate) fn emit_err(self, diag: Diag<'_>) -> ErrorGuaranteed {
         match self {
-            ShouldEmit::EarlyFatal { .. } if diag.level() == Level::DelayedBug => diag.emit(),
-            ShouldEmit::EarlyFatal { .. } => diag.upgrade_to_fatal().emit(),
-            ShouldEmit::ErrorsAndLints { .. } => diag.emit(),
+            ShouldEmit::EarlyFatal { .. } if diag.level() == Level::DelayedBug => diag.emit_err(),
+            ShouldEmit::EarlyFatal { .. } => diag.upgrade_to_fatal().emit_fatal(),
+            ShouldEmit::ErrorsAndLints { .. } => diag.emit_err(),
             ShouldEmit::Nothing => diag.delay_as_bug(),
         }
     }

@@ -20,8 +20,8 @@ LL |         let collection = std::iter::empty::<()>().map(|_| &());
 note: required by a bound in `FooMut::bar`
   --> $DIR/relate-bound-region-ice-144033.rs:8:33
    |
+LL | trait FooMut {
 LL |     fn bar<I>(self, _: I)
-   |        --- required by a bound in this associated function
 LL |     where
 LL |         for<'b> &'b I: Iterator<Item = &'b ()>;
    |                                 ^^^^^^^^^^^^^ required by this bound in `FooMut::bar`

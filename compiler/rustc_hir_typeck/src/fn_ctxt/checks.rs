@@ -693,7 +693,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         must be a tuple or unit type: {:?}",
                         type_errors,
                     )
-                    .emit();
+                    .emit_err();
                     Ty::new_error(self.tcx, guar)
                 }
             } else {
@@ -758,7 +758,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "cannot use call notation; the first type parameter \
                     for the function trait is neither a tuple nor unit"
                 )
-                .emit();
+                .emit_err();
 
                 Some(guar)
             } else if tuple_arguments.is_splatted() {
@@ -789,7 +789,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         )
                         .kind(),
                     )
-                    .emit();
+                    .emit_err();
 
                     Some(guar)
                 } else if formal_input_tys.len() != provided_args.len() {
@@ -803,7 +803,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         provided_args.len(),
                         if provided_args.len() == 1 { "was" } else { "were" },
                     )
-                    .emit();
+                    .emit_err();
 
                     Some(guar)
                 } else {
@@ -978,7 +978,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        err.emit()
+        err.emit_err()
     }
 
     fn suggest_ptr_null_mut(
@@ -1123,7 +1123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty.normalized.sort_string(self.tcx)
                 )
                 .with_span_label(path_span, "not a struct")
-                .emit(),
+                .emit_err(),
             })
         }
     }
@@ -2363,7 +2363,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
                         self.tuple_arguments,
                     );
                     self.suggest_confusable(&mut err);
-                    Some(err.emit())
+                    Some(err.emit_err())
                 } else {
                     None
                 }
@@ -2384,7 +2384,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
                     span: self.call_metadata.error_span,
                 });
                 self.arg_matching_ctxt.suggest_confusable(&mut err);
-                return Some(err.emit());
+                return Some(err.emit_err());
             }
         }
 
@@ -2440,7 +2440,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
                     *e,
                 );
                 self.arg_matching_ctxt.suggest_confusable(&mut err);
-                reported = Some(err.emit());
+                reported = Some(err.emit_err());
                 return false;
             }
             true
@@ -2522,7 +2522,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
             );
             self.arg_matching_ctxt.suggest_confusable(&mut err);
             self.detect_dotdot(&mut err, provided_ty, self.provided_args[provided_idx]);
-            return Some(err.emit());
+            return Some(err.emit_err());
         }
 
         None

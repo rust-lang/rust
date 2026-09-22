@@ -1116,7 +1116,7 @@ impl<'a> Parser<'a> {
             Err(err)
                 if self.is_expected_raw_ref_mut() && self.token_cursor.depth() == call_depth =>
             {
-                let guar = err.emit();
+                let guar = err.emit_err();
                 // Preserve the call expression so later passes can still diagnose the callee,
                 // while treating the malformed `&raw <expr>` argument as an error expression.
                 let args = self.recover_raw_ref_call_args(guar);
@@ -1179,25 +1179,23 @@ impl<'a> Parser<'a> {
                         {
                             err.cancel();
                             let type_str = pprust::path_to_string(&path);
-                            self.dcx()
-                                .create_err(crate::diagnostics::ParenthesesWithStructFields {
-                                    span,
-                                    braces_for_struct: crate::diagnostics::BracesForStructLiteral {
-                                        first: open_paren,
-                                        second: close_paren,
-                                        r#type: type_str.clone(),
-                                    },
-                                    no_fields_for_fn: crate::diagnostics::NoFieldsForFnCall {
-                                        r#type: type_str,
-                                        fields: fields
-                                            .into_iter()
-                                            .map(|field| field.span.until(field.expr.span))
-                                            .collect(),
-                                    },
-                                })
-                                .emit()
+                            self.dcx().emit_err(crate::diagnostics::ParenthesesWithStructFields {
+                                span,
+                                braces_for_struct: crate::diagnostics::BracesForStructLiteral {
+                                    first: open_paren,
+                                    second: close_paren,
+                                    r#type: type_str.clone(),
+                                },
+                                no_fields_for_fn: crate::diagnostics::NoFieldsForFnCall {
+                                    r#type: type_str,
+                                    fields: fields
+                                        .into_iter()
+                                        .map(|field| field.span.until(field.expr.span))
+                                        .collect(),
+                                },
+                            })
                         } else {
-                            err.emit()
+                            err.emit_err()
                         };
                         Ok(self.mk_expr_err(span, guar))
                     }
@@ -1718,7 +1716,7 @@ impl<'a> Parser<'a> {
                         "'",
                         Applicability::MaybeIncorrect,
                     )
-                    .emit()
+                    .emit_err()
             });
         let name = ident.without_first_quote().name;
         mk_lit_char(name, ident.span)
@@ -3057,7 +3055,7 @@ impl<'a> Parser<'a> {
                 Ok(arm) => arms.push(arm),
                 Err(e) => {
                     // Recover by skipping to the end of the block.
-                    let guar = e.emit();
+                    let guar = e.emit_err();
                     self.recover_stmt();
                     let span = lo.to(self.token.span);
                     if self.token == token::CloseBrace {
@@ -3655,16 +3653,12 @@ impl<'a> Parser<'a> {
             )?;
 
             let guar = if is_underscore_entry_point {
-                self.dcx()
-                    .create_err(crate::diagnostics::StructLiteralPlaceholderPath { span })
-                    .emit()
+                self.dcx().emit_err(crate::diagnostics::StructLiteralPlaceholderPath { span })
             } else {
-                self.dcx()
-                    .create_err(crate::diagnostics::StructLiteralWithoutPathLate {
-                        span: expr.span,
-                        suggestion_span: expr.span.shrink_to_lo(),
-                    })
-                    .emit()
+                self.dcx().emit_err(crate::diagnostics::StructLiteralWithoutPathLate {
+                    span: expr.span,
+                    suggestion_span: expr.span.shrink_to_lo(),
+                })
             };
 
             Ok(Some(self.mk_expr_err(expr.span, guar)))
@@ -3775,7 +3769,7 @@ impl<'a> Parser<'a> {
                         return Err(e);
                     }
 
-                    let guar = e.emit();
+                    let guar = e.emit_err();
                     if pth == kw::Async {
                         recovered_async = Some(guar);
                     }
@@ -3833,7 +3827,7 @@ impl<'a> Parser<'a> {
                     if !recover {
                         return Err(e);
                     }
-                    let guar = e.emit();
+                    let guar = e.emit_err();
                     if pth == kw::Async {
                         recovered_async = Some(guar);
                     } else if let Some(f) = field_ident(self, guar) {

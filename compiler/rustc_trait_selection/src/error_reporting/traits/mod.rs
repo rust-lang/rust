@@ -425,7 +425,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     error.obligation.cause.span,
                     "higher-ranked lifetime bound could not be satisfied",
                 )
-                .emit(),
+                .emit_err(),
             FulfillmentErrorCode::Ambiguity { overflow: None } => {
                 self.maybe_report_ambiguity(&error.obligation, related)
             }
@@ -440,7 +440,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     expected_found.found,
                     *err,
                 )
-                .emit(),
+                .emit_err(),
             FulfillmentErrorCode::ConstEquate(ref expected_found, ref err) => {
                 let mut diag = self.report_mismatched_consts(
                     &error.obligation.cause,
@@ -463,7 +463,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         &mut Default::default(),
                     );
                 }
-                diag.emit()
+                diag.emit_err()
             }
             FulfillmentErrorCode::Cycle(ref cycle) => self.report_overflow_obligation_cycle(cycle),
         }

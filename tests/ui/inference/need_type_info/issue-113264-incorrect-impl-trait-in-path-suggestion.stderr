@@ -10,6 +10,7 @@ LL |     (S {}).owo(None)
 note: required by a bound in `S::owo`
   --> $DIR/issue-113264-incorrect-impl-trait-in-path-suggestion.rs:6:35
    |
+LL | impl S {
 LL |     fn owo(&self, _: Option<&impl T>) {}
    |                                   ^ required by this bound in `S::owo`
 help: consider specifying a concrete type for the type parameter `T`

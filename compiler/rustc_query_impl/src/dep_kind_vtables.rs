@@ -7,11 +7,15 @@ use crate::incremental::promote_from_disk_inner;
 use crate::query_vtables::GetQueryVTable;
 
 /// [`DepKindVTable`] constructors for special dep kinds that aren't queries.
+///
+/// See the variants of [`DepKind`] (which are declared in [`rustc_middle::queries`])
+/// for documentation on individual dep kinds.
+///
+/// [`DepKind`]: rustc_middle::dep_graph::DepKind
 #[expect(non_snake_case, reason = "use non-snake case to avoid collision with query names")]
 mod non_query {
     use super::*;
 
-    // We use this for most things when incr. comp. is turned off.
     pub(crate) fn Null<'tcx>() -> DepKindVTable<'tcx> {
         DepKindVTable {
             is_eval_always: false,
@@ -23,7 +27,6 @@ mod non_query {
         }
     }
 
-    // We use this for the forever-red node.
     pub(crate) fn Red<'tcx>() -> DepKindVTable<'tcx> {
         DepKindVTable {
             is_eval_always: false,

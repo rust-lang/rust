@@ -10,6 +10,7 @@ LL |     Foo::bar(gen()); //<- Do not suggest `Foo::bar::<impl Clone>()`!
 note: required by a bound in `Foo::bar`
   --> $DIR/issue-86162-2.rs:8:20
    |
+LL | impl Foo {
 LL |     fn bar(x: impl Clone) {}
    |                    ^^^^^ required by this bound in `Foo::bar`
 help: consider specifying a concrete type for the type parameter `T`

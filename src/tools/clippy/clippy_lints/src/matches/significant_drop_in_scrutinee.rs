@@ -121,7 +121,7 @@ fn check<'tcx>(
     }
 }
 
-fn set_suggestion<'tcx>(diag: &mut Diag<'_, ()>, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, found: FoundSigDrop) {
+fn set_suggestion<'tcx>(diag: &mut Diag<'_>, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, found: FoundSigDrop) {
     let original = snippet(cx, found.found_span, "..");
     let trailing_indent = " ".repeat(indent_of(cx, found.found_span).unwrap_or(0));
 

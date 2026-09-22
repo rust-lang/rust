@@ -24,8 +24,8 @@ struct AmbiguousTraitMethodCall<'a, 'tcx> {
     edition: &'static str,
 }
 
-impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for AmbiguousTraitMethodCall<'b, 'tcx> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a, 'b, 'tcx> Diagnostic<'a> for AmbiguousTraitMethodCall<'b, 'tcx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let Self { segment_name, self_expr_span, pick, tcx, edition } = self;
         let mut lint = Diag::new(
             dcx,
@@ -91,8 +91,8 @@ struct AmbiguousTraitMethod<'a, 'tcx, 'fnctx> {
     this: &'a FnCtxt<'fnctx, 'tcx>,
 }
 
-impl<'a, 'c, 'tcx, 'fnctx> Diagnostic<'a, ()> for AmbiguousTraitMethod<'c, 'tcx, 'fnctx> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a, 'c, 'tcx, 'fnctx> Diagnostic<'a> for AmbiguousTraitMethod<'c, 'tcx, 'fnctx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let Self { segment, call_expr, self_expr, pick, args, edition, span, this } = self;
         let mut lint = Diag::new(
             dcx,
@@ -289,8 +289,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self_ty: Ty<'tcx>,
         }
 
-        impl<'a, 'b, 'fnctx, 'tcx> Diagnostic<'a, ()> for AmbiguousTraitAssocFunc<'b, 'fnctx, 'tcx> {
-            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        impl<'a, 'b, 'fnctx, 'tcx> Diagnostic<'a> for AmbiguousTraitAssocFunc<'b, 'fnctx, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
                 let Self { method_name, this, pick, span, expr_id, self_ty_span, self_ty } = self;
                 let mut lint = Diag::new(
                     dcx,

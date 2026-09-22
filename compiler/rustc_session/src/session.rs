@@ -17,8 +17,7 @@ use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, std
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::{
-    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort, PResult,
-    TerminalUrl,
+    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, PResult, TerminalUrl,
 };
 use rustc_feature::UnstableFeatures;
 use rustc_macros::StableHash;
@@ -1876,7 +1875,7 @@ impl EarlyDiagCtxt {
         self.dcx.handle().fatal(msg)
     }
 
-    pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_, FatalAbort> {
+    pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_> {
         self.dcx.handle().struct_fatal(msg)
     }
 
@@ -1884,7 +1883,7 @@ impl EarlyDiagCtxt {
         self.dcx.handle().warn(msg)
     }
 
-    pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
+    pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_> {
         self.dcx.handle().struct_warn(msg)
     }
 }

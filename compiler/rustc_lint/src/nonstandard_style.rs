@@ -484,10 +484,10 @@ struct NonUpperCaseGlobalGenerator<'a, F: FnOnce() -> NonUpperCaseGlobal<'a>> {
     callback: F,
 }
 
-impl<'a, 'b, F: FnOnce() -> NonUpperCaseGlobal<'b>> Diagnostic<'a, ()>
+impl<'a, 'b, F: FnOnce() -> NonUpperCaseGlobal<'b>> Diagnostic<'a>
     for NonUpperCaseGlobalGenerator<'b, F>
 {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let Self { callback } = self;
         callback().into_diag(dcx, level)
     }

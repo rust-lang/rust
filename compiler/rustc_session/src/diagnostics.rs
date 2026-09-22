@@ -95,7 +95,7 @@ pub fn feature_warn_issue(
 
 /// Adds the diagnostics for a feature to an existing error.
 /// Must be a language feature!
-pub fn add_feature_diagnostics<G>(err: &mut Diag<'_, G>, sess: &Session, feature: Symbol) {
+pub fn add_feature_diagnostics(err: &mut Diag<'_>, sess: &Session, feature: Symbol) {
     add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language, false, None);
 }
 
@@ -104,8 +104,8 @@ pub fn add_feature_diagnostics<G>(err: &mut Diag<'_, G>, sess: &Session, feature
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer
 /// `add_feature_diagnostics`.
-pub fn add_feature_diagnostics_for_issue<G>(
-    err: &mut Diag<'_, G>,
+pub fn add_feature_diagnostics_for_issue(
+    err: &mut Diag<'_>,
     sess: &Session,
     feature: Symbol,
     issue: GateIssue,
@@ -192,9 +192,9 @@ pub(crate) struct FeatureGateError {
     pub(crate) explain: DiagMessage,
 }
 
-impl<'a, G> Diagnostic<'a, G> for FeatureGateError {
+impl<'a> Diagnostic<'a> for FeatureGateError {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         Diag::new(dcx, level, self.explain).with_span(self.span).with_code(E0658)
     }
 }
@@ -578,7 +578,7 @@ pub fn report_lit_error(
     lit: token::Lit,
     span: Span,
 ) -> ErrorGuaranteed {
-    create_lit_error(psess, err, lit, span).emit()
+    create_lit_error(psess, err, lit, span).emit_err()
 }
 
 pub fn create_lit_error(psess: &ParseSess, err: LitError, lit: token::Lit, span: Span) -> Diag<'_> {

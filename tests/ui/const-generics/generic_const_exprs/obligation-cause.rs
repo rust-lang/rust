@@ -8,7 +8,6 @@ struct Is<const V: bool>;
 impl True for Is<true> {}
 
 fn g<T>()
-//~^ NOTE required by a bound in this
 where
     Is<{ std::mem::size_of::<T>() == 0 }>: True,
     //~^ NOTE required by a bound in `g`

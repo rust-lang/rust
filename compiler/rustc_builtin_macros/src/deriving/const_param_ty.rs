@@ -20,7 +20,6 @@ pub(crate) fn expand_deriving_const_param_ty(
         additional_bounds: smallvec![path_std!(cx, span, cmp::Eq)],
         supports_unions: false,
         methods: SmallVec::new(),
-        associated_types: SmallVec::new(),
         is_const,
         safety: Safety::Default,
         document: true,

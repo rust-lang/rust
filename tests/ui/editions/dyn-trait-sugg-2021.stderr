@@ -2,7 +2,7 @@ error[E0782]: expected a type, found a trait
   --> $DIR/dyn-trait-sugg-2021.rs:10:5
    |
 LL |     Foo::hi(123);
-   |     ^^^
+   |     ^^^  -- not an associated item of trait `Foo`, so `Foo` is interpreted as a type
    |
 help: you can add the `dyn` keyword if you want a trait object
    |

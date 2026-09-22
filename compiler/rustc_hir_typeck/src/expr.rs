@@ -439,7 +439,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .may_apply()
                         })
                 });
-                Ty::new_error(tcx, err.emit())
+                Ty::new_error(tcx, err.emit_err())
             }),
             hir::UnOp::Not => {
                 let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
@@ -1399,7 +1399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If the assignment expression itself is ill-formed, don't
         // bother emitting another error
-        err.emit_unless_delay(lhs_ty.references_error() || rhs_ty.references_error())
+        err.emit_err_unless_delay(lhs_ty.references_error() || rhs_ty.references_error())
     }
 
     pub(super) fn check_expr_let(
@@ -1619,7 +1619,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ),
                             )
                             .with_note("unsafe binders are the only valid output of wrap")
-                            .emit();
+                            .emit_err();
                         Ty::new_error(self.tcx, guar)
                     }
                 };
@@ -1657,7 +1657,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ),
                             )
                             .with_note("only an unsafe binder type can be unwrapped")
-                            .emit();
+                            .emit_err();
                         Ty::new_error(self.tcx, guar)
                     }
                 }
@@ -2699,7 +2699,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
             }
         }
-        err.emit()
+        err.emit_err()
     }
 
     fn available_field_names(
@@ -2929,7 +2929,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
             }
-            err.emit()
+            err.emit_err()
         };
 
         Ty::new_error(self.tcx(), guar)
@@ -3040,7 +3040,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             HelpUseLatestEdition::new().add_to_diag(&mut err);
         }
 
-        err.emit()
+        err.emit_err()
     }
 
     fn ban_private_field_access(
@@ -3066,7 +3066,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None,
             );
         }
-        err.emit()
+        err.emit_err()
     }
 
     fn ban_take_value_of_method(
@@ -3523,8 +3523,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                     }
 
-                    let reported = err.emit();
-                    Ty::new_error(self.tcx, reported)
+                    let guar = err.emit_err();
+                    Ty::new_error(self.tcx, guar)
                 }
             }
         }
@@ -3834,7 +3834,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.dcx()
                             .create_err(NoVariantNamed { span: ident.span, ident, ty: container })
                             .with_span_label(field.span, "variant not found")
-                            .emit_unless_delay(container.references_error());
+                            .emit_err_unless_delay(container.references_error());
                         break;
                     };
                     let Some(&subfield) = fields.next() else {
@@ -3866,7 +3866,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 enum_span: field.span,
                                 field_span: subident.span,
                             })
-                            .emit_unless_delay(container.references_error());
+                            .emit_err_unless_delay(container.references_error());
                         break;
                     };
 

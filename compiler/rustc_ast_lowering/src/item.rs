@@ -1759,12 +1759,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     if !self.tcx.is_descendant_of(parent_module, did) {
                         // If the restriction path is not an ancestor of the item,
                         // emit an error and recover by lowering the restriction to `Unrestricted`.
-                        self.dcx()
-                            .create_err(RestrictionAncestorOnly {
-                                span: path.span,
-                                kind: resolving_kind,
-                            })
-                            .emit();
+                        self.dcx().emit_err(RestrictionAncestorOnly {
+                            span: path.span,
+                            kind: resolving_kind,
+                        });
                         hir::RestrictionKind::Unrestricted
                     } else {
                         hir::RestrictionKind::Restricted(self.arena.alloc(hir::Path {

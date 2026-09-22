@@ -98,7 +98,7 @@ RUSTFLAGS="--emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=Host=$PWD/target/amdgcn
 In the final step, you can now run your binary
 
 ```
-LD_LIBRARY_PATH=$(rustc +nightly --print sysroot)/lib  ./target/x86_64-unknown-linux-gnu/release/binary-name
+./target/x86_64-unknown-linux-gnu/release/binary-name
 all checks passed!
 ```
 

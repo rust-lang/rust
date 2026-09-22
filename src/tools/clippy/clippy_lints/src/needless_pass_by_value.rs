@@ -203,7 +203,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 && !moved_vars.contains(&canonical_id)
             {
                 // Dereference suggestion
-                let sugg = |diag: &mut Diag<'_, ()>| {
+                let sugg = |diag: &mut Diag<'_>| {
                     if let ty::Adt(def, ..) = ty.kind()
                         && let Some(span) = cx.tcx.hir_span_if_local(def.did())
                         && type_allowed_to_implement_copy(

@@ -195,7 +195,7 @@ impl UnsafeCode {
         &self,
         cx: &EarlyContext<'_>,
         span: Span,
-        decorate: impl for<'a> Diagnostic<'a, ()>,
+        decorate: impl for<'a> Diagnostic<'a>,
     ) {
         // This comes from a macro that has `#[allow_internal_unsafe]`.
         if span.allows_unsafe() {

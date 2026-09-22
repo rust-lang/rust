@@ -2,7 +2,7 @@ error[E0782]: expected a type, found a trait
   --> $DIR/issue-111312.rs:10:5
    |
 LL |     HasNot::has();
-   |     ^^^^^^
+   |     ^^^^^^  --- not an associated item of trait `HasNot`, so `HasNot` is interpreted as a type
    |
 help: you can add the `dyn` keyword if you want a trait object
    |

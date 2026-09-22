@@ -2060,7 +2060,7 @@ impl SharedEmitterMain {
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(inner)) => {
                     assert_matches!(inner.level, Level::Error | Level::Warning | Level::Note);
-                    let mut err = Diag::<()>::new(sess.dcx(), inner.level, inner.msg);
+                    let mut err = Diag::new(sess.dcx(), inner.level, inner.msg);
                     if !inner.span.is_dummy() {
                         err.span(inner.span.span());
                     }

@@ -8,6 +8,7 @@ LL |     default type Member<'a> = Foo;
 note: required by a bound in `Family::Member`
   --> $DIR/issue-87429-specialization.rs:6:22
    |
+LL | trait Family {
 LL |     type Member<'a>: for<'b> PartialEq<Self::Member<'b>>;
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Family::Member`
 help: consider annotating `Foo` with `#[derive(PartialEq)]`

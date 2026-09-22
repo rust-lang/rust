@@ -467,9 +467,9 @@ pub(crate) struct MissingGenericParams {
 }
 
 // FIXME: This doesn't need to be a manual impl!
-impl<'a, G> Diagnostic<'a, G> for MissingGenericParams {
+impl<'a> Diagnostic<'a> for MissingGenericParams {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut err = Diag::new(
             dcx,
             level,
@@ -2069,8 +2069,8 @@ pub(crate) struct UncoveredTyParam<'tcx> {
     pub(crate) local_ty: Option<Ty<'tcx>>,
 }
 
-impl<G> Diagnostic<'_, G> for UncoveredTyParam<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for UncoveredTyParam<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let Self { param, local_ty } = self;
 
         let mut diag = Diag::new(dcx, level, "")

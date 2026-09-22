@@ -12,6 +12,7 @@ LL |     struct Something;
 note: required by a bound in `Main::main::{anon_assoc#0}`
   --> $DIR/issue-103052-2.rs:3:27
    |
+LL |     trait Main {
 LL |         fn main() -> impl std::process::Termination;
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Main::main::{anon_assoc#0}`
 

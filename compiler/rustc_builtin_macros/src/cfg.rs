@@ -46,7 +46,7 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
         AllowExprMetavar::Yes,
     )
-    .map_err(|diag| diag.emit())?;
+    .map_err(|diag| diag.emit_err())?;
     let cfg = AttributeParser::parse_single_args(
         cx.sess,
         span,

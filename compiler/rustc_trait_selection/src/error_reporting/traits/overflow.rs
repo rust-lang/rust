@@ -17,7 +17,7 @@ pub enum OverflowCause<'tcx> {
     TraitSolver(ty::Predicate<'tcx>),
 }
 
-pub fn suggest_new_overflow_limit<'tcx, G>(tcx: TyCtxt<'tcx>, err: &mut Diag<'_, G>) {
+pub fn suggest_new_overflow_limit<'tcx>(tcx: TyCtxt<'tcx>, err: &mut Diag<'_>) {
     let suggested_limit = match tcx.recursion_limit() {
         Limit(0) => Limit(2),
         limit => limit * 2,
@@ -46,7 +46,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> ! {
         let mut err = self.build_overflow_error(cause, span, suggest_increasing_limit);
         mutate(&mut err);
-        err.emit().raise_fatal();
+        err.emit_err().raise_fatal();
     }
 
     pub fn build_overflow_error(
@@ -190,6 +190,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             suggest_increasing_limit,
         );
         self.note_obligation_cause(&mut err, &obligation);
-        err.emit()
+        err.emit_err()
     }
 }

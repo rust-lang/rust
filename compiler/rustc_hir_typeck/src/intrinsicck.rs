@@ -126,11 +126,11 @@ fn check_transmute<'tcx>(
     );
     if from == to {
         err.note(format!("`{from}` does not have a fixed size"));
-        Err(err.emit())
+        Err(err.emit_err())
     } else {
         err.note(format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)));
         err.note(format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
-        Err(err.emit())
+        Err(err.emit_err())
     }
 }
 
@@ -144,15 +144,15 @@ fn check_offload<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let span = tcx.hir_span(hir_id);
     let ty::FnDef(kernel_def_id, kernel_args) = *kernel_ty.kind() else {
-        let err = tcx
+        let guar = tcx
             .sess
             .dcx()
             .struct_span_err(
                 span,
                 format!("expected a function item for the offload kernel, found `{}`", kernel_ty),
             )
-            .emit();
-        return Err(err);
+            .emit_err();
+        return Err(guar);
     };
 
     let kernel_sig =
@@ -160,19 +160,19 @@ fn check_offload<'tcx>(
     let kernel_sig = tcx.instantiate_bound_regions_with_erased(kernel_sig);
 
     let ty::Tuple(tuple_fields) = *args_ty.kind() else {
-        let err = tcx
+        let guar = tcx
             .sess
             .dcx()
             .struct_span_err(
                 span,
                 format!("expected a tuple for the offload arguments, found `{}`", args_ty),
             )
-            .emit();
-        return Err(err);
+            .emit_err();
+        return Err(guar);
     };
 
     if kernel_sig.inputs().len() != tuple_fields.len() {
-        let err = tcx
+        let guar = tcx
             .sess
             .dcx()
             .struct_span_err(
@@ -183,8 +183,8 @@ fn check_offload<'tcx>(
                     tuple_fields.len()
                 ),
             )
-            .emit();
-        return Err(err);
+            .emit_err();
+        return Err(guar);
     }
 
     let normalize = |ty| {
@@ -206,7 +206,7 @@ fn check_offload<'tcx>(
         let norm_input_ty = normalize(input_ty);
         let norm_arg_ty = normalize(arg_ty);
         if norm_input_ty != norm_arg_ty {
-            let err = tcx
+            let guar = tcx
                 .sess
                 .dcx()
                 .struct_span_err(
@@ -216,22 +216,22 @@ fn check_offload<'tcx>(
                         i, norm_input_ty, norm_arg_ty
                     ),
                 )
-                .emit();
-            result = Err(err);
+                .emit_err();
+            result = Err(guar);
         }
     }
 
     let norm_kernel_ret = normalize(kernel_sig.output());
     let norm_offload_ret = normalize(ret_ty);
     if norm_kernel_ret != norm_offload_ret {
-        let err = tcx.sess.dcx().struct_span_err(
+        let guar = tcx.sess.dcx().struct_span_err(
             span,
             format!(
                 "offload kernel return type mismatch: kernel returns `{}`, but offload call expects `{}`",
                 norm_kernel_ret, norm_offload_ret
             )
-        ).emit();
-        result = Err(err);
+        ).emit_err();
+        result = Err(guar);
     }
 
     result

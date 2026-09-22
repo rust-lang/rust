@@ -1953,7 +1953,7 @@ impl<'a> Parser<'a> {
                             this.bump(); // }
                             err.span_label(span, "while parsing this enum");
                             err.help(help);
-                            let guar = err.emit();
+                            let guar = err.emit_err();
                             (thin_vec![], Recovered::Yes(guar))
                         }
                     };
@@ -2129,7 +2129,7 @@ impl<'a> Parser<'a> {
                             ConsumeClosingDelim::No,
                         );
                         err.span_label(ident_span, format!("while parsing this {adt_ty}"));
-                        let guar = err.emit();
+                        let guar = err.emit_err();
                         recovered = Recovered::Yes(guar);
                         break;
                     }

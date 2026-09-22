@@ -34,8 +34,8 @@ LL |         self.bar(collection);
 note: required by a bound in `FooMut::bar`
   --> $DIR/iterator-item-suggest-no-ice.rs:7:24
    |
+LL | trait FooMut {
 LL |     fn bar<I>(&self, _: I)
-   |        --- required by a bound in this associated function
 LL |     where
 LL |         for<'b> &'b I: Iterator<Item = &'b ()>;
    |                        ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `FooMut::bar`

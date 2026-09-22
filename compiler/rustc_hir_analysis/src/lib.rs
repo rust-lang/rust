@@ -104,12 +104,10 @@ fn check_c_variadic_abi(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: ExternAbi,
     match abi.supports_c_variadic() {
         CVariadicStatus::Stable => {}
         CVariadicStatus::NotSupported => {
-            tcx.dcx()
-                .create_err(diagnostics::VariadicFunctionCompatibleConvention {
-                    span,
-                    convention: &format!("{abi}"),
-                })
-                .emit();
+            tcx.dcx().emit_err(diagnostics::VariadicFunctionCompatibleConvention {
+                span,
+                convention: &format!("{abi}"),
+            });
         }
         CVariadicStatus::Unstable { feature } => {
             if !tcx.features().enabled(feature) {

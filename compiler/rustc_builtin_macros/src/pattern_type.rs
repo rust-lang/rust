@@ -14,7 +14,7 @@ pub(crate) fn expand<'cx>(
     let (ty, pat) = match parse_pat_ty(cx, tts) {
         Ok(parsed) => parsed,
         Err(err) => {
-            return ExpandResult::Ready(DummyResult::any(sp, err.emit()));
+            return ExpandResult::Ready(DummyResult::any(sp, err.emit_err()));
         }
     };
 

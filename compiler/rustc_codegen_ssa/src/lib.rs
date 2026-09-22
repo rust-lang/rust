@@ -315,6 +315,9 @@ pub struct TargetConfig {
     pub has_reliable_f16: bool,
     /// Option for `cfg(target_has_reliable_f16_math)`, true if `f16` math calls work.
     pub has_reliable_f16_math: bool,
+    /// Option for `cfg(target_has_reliable_f16b)`, presently true if both the ABI
+    /// and LLVM version supports `f16b`.
+    pub has_reliable_f16b: bool,
     /// Option for `cfg(target_has_reliable_f128)`, true if `f128` basic arithmetic works.
     pub has_reliable_f128: bool,
     /// Option for `cfg(target_has_reliable_f128_math)`, true if `f128` math calls work.

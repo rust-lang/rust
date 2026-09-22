@@ -97,8 +97,8 @@ pub(crate) enum AssertLintKind {
     UnconditionalPanic,
 }
 
-impl<'a, P: std::fmt::Debug> Diagnostic<'a, ()> for AssertLint<P> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a, P: std::fmt::Debug> Diagnostic<'a> for AssertLint<P> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(
             dcx,
             level,
@@ -218,7 +218,7 @@ pub(crate) struct UnusedAssignOverwrite {
 }
 
 impl Subdiagnostic for UnusedAssignOverwrite {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.span_label(self.assigned_span, "this value is reassigned later and never used");
         diag.span_label(
             self.overwrite_span,
@@ -297,7 +297,7 @@ pub(crate) struct UnusedVariableStringInterp {
 }
 
 impl Subdiagnostic for UnusedVariableStringInterp {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.span_label(
             self.lit,
             msg!("you might have meant to use string interpolation in this string literal"),
@@ -338,8 +338,8 @@ pub(crate) struct MustNotSupend<'a, 'tcx> {
 }
 
 // Needed for def_path_str
-impl<'a> Diagnostic<'a, ()> for MustNotSupend<'_, '_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a> Diagnostic<'a> for MustNotSupend<'_, '_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(
             dcx,
             level,

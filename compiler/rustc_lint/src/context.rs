@@ -521,7 +521,7 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorate: impl for<'a> Diagnostic<'a, ()>,
+        decorate: impl for<'a> Diagnostic<'a>,
     );
 
     /// Emit a lint at `span` from a lint struct (some type that implements `Diagnostic`,
@@ -531,7 +531,7 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: S,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         self.opt_span_lint(lint, Some(span), decorator);
     }
@@ -595,7 +595,7 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorate: impl for<'a> Diagnostic<'a, ()>,
+        decorate: impl for<'a> Diagnostic<'a>,
     ) {
         let hir_id = self.last_node_with_lint_attrs;
 
@@ -622,7 +622,7 @@ impl LintContext for EarlyContext<'_> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         self.builder.opt_span_lint(lint, span.map(|s| s.into()), decorator)
     }

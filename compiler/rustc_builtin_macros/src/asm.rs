@@ -314,7 +314,7 @@ fn expand_preparsed_asm(
                 Ok(template_part) => template_part,
                 Err(err) => {
                     return ExpandResult::Ready(Err(match err {
-                        Ok((err, _)) => err.emit(),
+                        Ok((err, _)) => err.emit_err(),
                         Err(guar) => guar,
                     }));
                 }
@@ -407,7 +407,7 @@ fn expand_preparsed_asm(
             if let Some((label, span)) = err.secondary_label {
                 e.span_label(span_in_template(span), label);
             }
-            let guar = e.emit();
+            let guar = e.emit_err();
             return ExpandResult::Ready(Err(guar));
         }
 
@@ -481,12 +481,10 @@ fn expand_preparsed_asm(
                                 Some(&idx) => Some(idx),
                                 None => {
                                     let span = arg.position_span;
-                                    ecx.dcx()
-                                        .create_err(diagnostics::AsmNoMatchedArgumentName {
-                                            name: name.to_owned(),
-                                            span: span_in_template(span),
-                                        })
-                                        .emit();
+                                    ecx.dcx().emit_err(diagnostics::AsmNoMatchedArgumentName {
+                                        name: name.to_owned(),
+                                        span: span_in_template(span),
+                                    });
                                     None
                                 }
                             }
@@ -602,7 +600,7 @@ pub(super) fn expand_asm<'cx>(
             MacEager::expr(expr)
         }
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             DummyResult::any(sp, guar)
         }
     })
@@ -632,7 +630,7 @@ pub(super) fn expand_naked_asm<'cx>(
             MacEager::expr(expr)
         }
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             DummyResult::any(sp, guar)
         }
     })
@@ -665,7 +663,7 @@ pub(super) fn expand_global_asm<'cx>(
             }
         }
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             DummyResult::any(sp, guar)
         }
     })

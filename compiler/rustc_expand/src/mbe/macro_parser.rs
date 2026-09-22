@@ -713,13 +713,13 @@ impl TtParser {
 
     fn nt_parsing_error<R>(&self, loc: &MatcherLoc, err: Diag<'_>) -> ParseResult<R> {
         let &MatcherLoc::MetaVarDecl { span, kind, .. } = loc else { unreachable!() };
-        let guarantee = err
+        let guar = err
             .with_span_label(
                 span,
                 format!("while parsing argument for this `{kind}` macro fragment"),
             )
-            .emit();
-        ErrorReported(guarantee)
+            .emit_err();
+        ErrorReported(guar)
     }
 
     fn nameize<I: Iterator<Item = NamedMatch>>(

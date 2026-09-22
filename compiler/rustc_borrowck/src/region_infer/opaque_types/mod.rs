@@ -171,7 +171,7 @@ fn add_hidden_type<'tcx>(
             prev.span = prev.span.substitute_dummy(hidden_ty.span);
         } else {
             let (Ok(guar) | Err(guar)) =
-                prev.build_mismatch_error(&hidden_ty, tcx).map(|d| d.emit());
+                prev.build_mismatch_error(&hidden_ty, tcx).map(|d| d.emit_err());
             *prev = ty::DefinitionSiteHiddenType::new_error(tcx, guar);
         }
     } else {

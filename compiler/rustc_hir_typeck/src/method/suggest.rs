@@ -352,7 +352,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     &mut sources,
                     Some(expr_span),
                 );
-                err.emit()
+                err.emit_err()
             }
 
             MethodError::PrivateMatch(kind, def_id, out_of_scope_traits) => {
@@ -374,7 +374,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 self.suggest_valid_traits(&mut err, item_name, out_of_scope_traits, true);
                 self.suggest_unwrapping_inner_self(&mut err, source, rcvr_ty, item_name);
-                err.emit()
+                err.emit_err()
             }
 
             MethodError::IllegalSizedBound { candidates, needs_mut, bound_span, self_expr } => {
@@ -471,7 +471,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                err.emit()
+                err.emit_err()
             }
 
             MethodError::ErrorReported(guar) => guar,
@@ -1360,7 +1360,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &static_candidates,
         )
         else {
-            return err.emit();
+            return err.emit_err();
         };
 
         let similar_candidate = no_match_data.similar_candidate;
@@ -1438,7 +1438,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_ident, expected);
         self.suggest_bounds_for_range_to_method(&mut err, source, item_ident);
-        err.emit()
+        err.emit_err()
     }
 
     fn set_not_found_span_label(
@@ -3123,7 +3123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => {}
             }
-            return Err(err.emit());
+            return Err(err.emit_err());
         }
         Ok(())
     }

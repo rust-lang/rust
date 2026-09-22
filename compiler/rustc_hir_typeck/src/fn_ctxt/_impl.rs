@@ -57,8 +57,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             custom_note: Option<&'b str>,
         }
 
-        impl<'a, 'b, 'c> Diagnostic<'a, ()> for UnreachableItem<'b, 'c> {
-            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        impl<'a, 'b, 'c> Diagnostic<'a> for UnreachableItem<'b, 'c> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
                 let Self { kind, span, orig_span, custom_note } = self;
                 let msg = format!("unreachable {kind}");
                 Diag::new(dcx, level, msg.clone()).with_span_label(span, msg).with_span_label(
@@ -1301,8 +1301,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    let reported = err.emit();
-                    return (Ty::new_error(tcx, reported), res);
+                    let guar = err.emit_err();
+                    return (Ty::new_error(tcx, guar), res);
                 }
             }
         } else {
@@ -1563,7 +1563,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     TypeAnnotationNeeded::E0282,
                     true,
                 )
-                .emit()
+                .emit_err()
         });
         let err = Ty::new_error(self.tcx, guar);
         self.demand_suptype(sp, err, ty);
@@ -1589,7 +1589,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         TypeAnnotationNeeded::E0282,
                         true,
                     )
-                    .emit()
+                    .emit_err()
             });
             // FIXME: Infer `?ct = {const error}`?
             ty::Const::new_error(self.tcx, e)

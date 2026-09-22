@@ -970,7 +970,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     escaped_char(bad_char)
                 ),
             )
-            .emit()
+            .emit_fatal()
     }
 
     fn report_unterminated_raw_string(
@@ -1004,7 +1004,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             );
         }
 
-        err.emit()
+        err.emit_fatal()
     }
 
     fn report_unterminated_block_comment(&self, start: BytePos, doc_style: Option<DocStyle>) -> ! {
@@ -1050,7 +1050,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 );
         }
 
-        err.emit();
+        err.emit_fatal();
     }
 
     // RFC 3101 introduced the idea of (reserved) prefixes. As of Rust 2021,

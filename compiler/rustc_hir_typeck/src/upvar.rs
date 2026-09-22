@@ -1085,8 +1085,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             migration_message: String,
         }
 
-        impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for MigrationLint<'b, 'tcx> {
-            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        impl<'a, 'b, 'tcx> Diagnostic<'a> for MigrationLint<'b, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
                 let Self {
                     closure_def_id,
                     closure_drop_location_span,

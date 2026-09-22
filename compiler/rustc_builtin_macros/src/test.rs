@@ -414,7 +414,7 @@ fn not_testable_error(cx: &ExtCtxt<'_>, is_bench: bool, attr_sp: Span, item: Opt
         Some(ast::ItemKind::MacCall(_)) => Level::Warning,
         _ => Level::Error,
     };
-    let mut err = Diag::<()>::new(dcx, level, msg);
+    let mut err = Diag::new(dcx, level, msg);
     err.span(attr_sp);
     if let Some(item) = item {
         err.span_label(

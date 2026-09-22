@@ -60,16 +60,16 @@ pub struct OverlapResult<'tcx> {
     pub overflowing_predicates: Vec<ty::Predicate<'tcx>>,
 }
 
-pub fn add_placeholder_note<G>(err: &mut Diag<'_, G>) {
+pub fn add_placeholder_note(err: &mut Diag<'_>) {
     err.note(
         "this behavior recently changed as a result of a bug fix; \
          see rust-lang/rust#56105 for details",
     );
 }
 
-pub(crate) fn suggest_increasing_recursion_limit<'tcx, G>(
+pub(crate) fn suggest_increasing_recursion_limit<'tcx>(
     tcx: TyCtxt<'tcx>,
-    err: &mut Diag<'_, G>,
+    err: &mut Diag<'_>,
     overflowing_predicates: &[ty::Predicate<'tcx>],
 ) {
     for pred in overflowing_predicates {

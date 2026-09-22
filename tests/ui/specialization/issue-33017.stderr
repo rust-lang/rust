@@ -7,6 +7,7 @@ LL |     default type Output = Self;
 note: required by a bound in `UncheckedCopy::Output`
   --> $DIR/issue-33017.rs:8:31
    |
+LL | trait UncheckedCopy: Sized {
 LL |     type Output: From<Self> + Copy + Into<Self>;
    |                               ^^^^ required by this bound in `UncheckedCopy::Output`
 help: consider restricting type parameter `T` with trait `Copy`

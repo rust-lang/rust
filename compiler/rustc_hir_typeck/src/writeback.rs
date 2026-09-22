@@ -619,7 +619,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         guar
                     } else {
                         let (Ok(guar) | Err(guar)) =
-                            prev.build_mismatch_error(&hidden_type, tcx).map(|d| d.emit());
+                            prev.build_mismatch_error(&hidden_type, tcx).map(|d| d.emit_err());
                         guar
                     };
                     *entry = DefinitionSiteHiddenType::new_error(tcx, guar);
@@ -656,7 +656,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 .dcx()
                 .struct_span_err(span, "cannot resolve opaque type")
                 .with_code(E0720)
-                .emit();
+                .emit_err();
             self.typeck_results
                 .hidden_types
                 .insert(def_id, DefinitionSiteHiddenType::new_error(tcx, guar));
@@ -947,7 +947,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     TypeAnnotationNeeded::E0282,
                     false,
                 )
-                .emit()
+                .emit_err()
         }
     }
 

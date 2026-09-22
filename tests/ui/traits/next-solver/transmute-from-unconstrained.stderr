@@ -9,7 +9,6 @@ note: required by a bound in `assert_transmutable`
   --> $DIR/transmute-from-unconstrained.rs:13:9
    |
 LL | fn assert_transmutable<T>()
-   |    ------------------- required by a bound in this function
 LL | where
 LL |     (): std::mem::TransmuteFrom<T>,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `assert_transmutable`

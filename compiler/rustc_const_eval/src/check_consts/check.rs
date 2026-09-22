@@ -175,7 +175,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         let secondary_errors = mem::take(&mut self.secondary_errors);
         if self.error_emitted.is_none() {
             for error in secondary_errors {
-                self.error_emitted = Some(error.emit());
+                self.error_emitted = Some(error.emit_err());
             }
         } else {
             assert!(self.tcx.dcx().has_errors().is_some());
@@ -276,8 +276,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         match op.importance() {
             ops::DiagImportance::Primary => {
-                let reported = err.emit();
-                self.error_emitted = Some(reported);
+                let guar = err.emit_err();
+                self.error_emitted = Some(guar);
             }
 
             ops::DiagImportance::Secondary => {

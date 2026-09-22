@@ -12,7 +12,6 @@ note: required by a bound in `foo`
   --> $DIR/single-impl-candidate.rs:14:8
    |
 LL | fn foo<'a, T>(_t: T)
-   |    --- required by a bound in this function
 LL | where
 LL |     T: Into<&'a str>,
    |        ^^^^^^^^^^^^^ required by this bound in `foo`

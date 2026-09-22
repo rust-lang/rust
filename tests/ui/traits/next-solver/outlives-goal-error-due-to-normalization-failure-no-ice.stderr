@@ -13,7 +13,6 @@ note: required by a bound in `Z`
   --> $DIR/outlives-goal-error-due-to-normalization-failure-no-ice.rs:7:8
    |
 LL | trait Z<'a, T: ?Sized>
-   |       - required by a bound in this trait
 LL | where
 LL |     T: Z<'a, ()>,
    |        ^^^^^^^^^ required by this bound in `Z`

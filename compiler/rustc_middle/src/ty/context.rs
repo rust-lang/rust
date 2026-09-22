@@ -2609,7 +2609,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         let level_spec = self.lint_level_spec_at_node(lint, hir_id);
         emit_lint_base(self.sess, lint, level_spec, Some(span.into()), decorator)
@@ -2622,9 +2622,9 @@ impl<'tcx> TyCtxt<'tcx> {
         m.spans.inject_use_span.shrink_to_lo()
     }
 
-    pub fn disabled_nightly_features<G>(
+    pub fn disabled_nightly_features(
         self,
-        diag: &mut Diag<'_, G>,
+        diag: &mut Diag<'_>,
         features: impl IntoIterator<Item = (String, Symbol)>,
     ) {
         if !self.sess.is_nightly_build() {
@@ -2652,7 +2652,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         id: HirId,
-        decorator: impl for<'a> Diagnostic<'a, ()>,
+        decorator: impl for<'a> Diagnostic<'a>,
     ) {
         let level_spec = self.lint_level_spec_at_node(lint, id);
         emit_lint_base(self.sess, lint, level_spec, None, decorator);

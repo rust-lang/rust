@@ -9,8 +9,8 @@ LL |     let _ = <T as Bop>::Bar::default();
 note: required by a bound in `Bop::Bar`
   --> $DIR/assoc_type_bounds_sized_used.rs:7:15
    |
+LL | trait Bop {
 LL |     type Bar: Default
-   |          --- required by a bound in this associated type
 LL |     where
 LL |         Self: Sized;
    |               ^^^^^ required by this bound in `Bop::Bar`
@@ -35,8 +35,8 @@ LL |     let _ = <T as Bop>::Bar::default();
 note: required by a bound in `Bop::Bar`
   --> $DIR/assoc_type_bounds_sized_used.rs:7:15
    |
+LL | trait Bop {
 LL |     type Bar: Default
-   |          --- required by a bound in this associated type
 LL |     where
 LL |         Self: Sized;
    |               ^^^^^ required by this bound in `Bop::Bar`
@@ -61,8 +61,8 @@ LL |     let _ = <T as Bop>::Bar::default();
 note: required by a bound in `Bop::Bar`
   --> $DIR/assoc_type_bounds_sized_used.rs:7:15
    |
+LL | trait Bop {
 LL |     type Bar: Default
-   |          --- required by a bound in this associated type
 LL |     where
 LL |         Self: Sized;
    |               ^^^^^ required by this bound in `Bop::Bar`

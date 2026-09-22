@@ -724,7 +724,7 @@ pub fn check_function_signature<'tcx>(
                 false,
                 None,
             );
-            return Err(diag.emit());
+            return Err(diag.emit_err());
         }
     }
 

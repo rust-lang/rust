@@ -17,7 +17,6 @@ note: required by a bound in `test`
   --> $DIR/path-unsatisfied.rs:17:20
    |
 LL | fn test<T: Trait>()
-   |    ---- required by a bound in this function
 LL | where
 LL |     T::method(..): Send,
    |                    ^^^^ required by this bound in `test`

@@ -30,6 +30,7 @@ LL |     impl Tr for Hello {}
 note: required by a bound in `needs_deref::S::foo`
   --> $DIR/ownership-mismatch-on-arg.rs:13:39
    |
+LL |     impl S {
 LL |         fn foo<K: std::fmt::Debug, T: Tr>(&self, _v: T, _w: T, _k: K) {}
    |                                       ^^ required by this bound in `S::foo`
 
@@ -84,6 +85,7 @@ LL |     impl Tr for &Hello {}
 note: required by a bound in `needs_borrow::S::foo`
   --> $DIR/ownership-mismatch-on-arg.rs:36:19
    |
+LL |     impl S {
 LL |         fn foo<T: Tr, K: std::fmt::Debug>(&self, _v: T, _w: T, _k: K) {}
    |                   ^^ required by this bound in `S::foo`
 help: consider borrowing these argument

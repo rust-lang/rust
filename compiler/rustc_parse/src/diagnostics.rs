@@ -1537,9 +1537,9 @@ pub(crate) struct ExpectedIdentifier {
     pub help_cannot_start_number: Option<HelpIdentifierStartsWithNumber>,
 }
 
-impl<'a, G> Diagnostic<'a, G> for ExpectedIdentifier {
+impl<'a> Diagnostic<'a> for ExpectedIdentifier {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut add_token = true;
@@ -1603,9 +1603,9 @@ pub(crate) struct ExpectedSemi {
     pub sugg: ExpectedSemiSugg,
 }
 
-impl<'a, G> Diagnostic<'a, G> for ExpectedSemi {
+impl<'a> Diagnostic<'a> for ExpectedSemi {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut add_token = true;
@@ -2010,7 +2010,7 @@ pub(crate) struct FnTraitMissingParen {
 }
 
 impl Subdiagnostic for FnTraitMissingParen {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.span_label(self.span, msg!("`Fn` bounds require arguments in parentheses"));
         diag.span_suggestion_short(
             self.span.shrink_to_hi(),
@@ -3697,7 +3697,7 @@ pub(crate) struct UseDerefMacro {
 }
 
 impl Subdiagnostic for UseDerefMacro {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let Self { field, before, after } = self;
 
         let mut parts = Vec::new();
@@ -4355,7 +4355,7 @@ pub(crate) struct HiddenUnicodeCodepointsDiagLabels {
 }
 
 impl Subdiagnostic for HiddenUnicodeCodepointsDiagLabels {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         for (c, span) in self.spans {
             diag.span_label(span, format!("{c:?}"));
         }
@@ -4369,7 +4369,7 @@ pub(crate) enum HiddenUnicodeCodepointsDiagSub {
 
 // Used because of multiple multipart_suggestion and note
 impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         match self {
             HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
                 diag.multipart_suggestion_with_style(

@@ -156,7 +156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         actual: Ty<'tcx>,
         ti: &TopInfo<'tcx>,
     ) -> Result<(), ErrorGuaranteed> {
-        self.demand_eqtype_pat_diag(cause_span, expected, actual, ti).map_err(|err| err.emit())
+        self.demand_eqtype_pat_diag(cause_span, expected, actual, ti).map_err(|err| err.emit_err())
     }
 }
 
@@ -1161,7 +1161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     type between two end-points, you can use a guard.",
             );
         }
-        err.emit()
+        err.emit_err()
     }
 
     fn check_pat_ident(
@@ -1511,7 +1511,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if self.tcx.sess.teach(err.code.unwrap()) {
                 err.note(CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ);
             }
-            return Err(err.emit());
+            return Err(err.emit_err());
         }
         Ok(())
     }
@@ -2046,7 +2046,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        err.emit()
+        err.emit_err()
     }
 
     fn check_pat_tuple(
@@ -2216,7 +2216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Err(e)
                 } else {
                     i.emit();
-                    Err(u.emit())
+                    Err(u.emit_err())
                 }
             }
             (None, Some(u)) => {
@@ -2224,10 +2224,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     u.delay_as_bug();
                     Err(e)
                 } else {
-                    Err(u.emit())
+                    Err(u.emit_err())
                 }
             }
-            (Some(err), None) => Err(err.emit()),
+            (Some(err), None) => Err(err.emit_err()),
             (None, None) => {
                 self.error_tuple_variant_index_shorthand(variant, pat, fields)?;
                 result
@@ -2262,7 +2262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     format!("({})", self.get_suggested_tuple_struct_pattern(fields, variant)),
                     Applicability::MaybeIncorrect,
                 );
-                return Err(err.emit());
+                return Err(err.emit_err());
             }
         }
         Ok(())
@@ -2305,7 +2305,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
         .with_span_label(span, format!("multiple uses of `{ident}` in pattern"))
         .with_span_label(other_field, format!("first use of `{ident}`"))
-        .emit()
+        .emit_err()
     }
 
     fn error_inexistent_fields(
@@ -2459,7 +2459,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 format!("({sugg})"),
                 appl,
             );
-            return Err(err.emit());
+            return Err(err.emit_err());
         }
         Ok(())
     }
@@ -2568,8 +2568,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty: Ty<'tcx>,
         }
 
-        impl<'a, 'b, 'c, 'tcx> Diagnostic<'a, ()> for FieldsNotListed<'b, 'c, 'tcx> {
-            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        impl<'a, 'b, 'c, 'tcx> Diagnostic<'a> for FieldsNotListed<'b, 'c, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
                 let Self { pat_span, unmentioned_fields, joined_patterns, ty } = self;
                 Diag::new(dcx, level, "some fields are not explicitly listed")
                     .with_span_label(pat_span, format!("field{} {} not listed", rustc_errors::pluralize!(unmentioned_fields.len()), joined_patterns))
@@ -3015,7 +3015,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             self.dcx().struct_span_err(pat.span, err_msg)
         };
-        err.emit()
+        err.emit_err()
     }
 
     fn try_resolve_slice_ty_to_array_ty(
@@ -3212,7 +3212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             size,
         )
         .with_span_label(span, format!("expected {} element{}", size, pluralize!(size)))
-        .emit()
+        .emit_err()
     }
 
     fn error_scrutinee_with_rest_inconsistent_length(
@@ -3234,7 +3234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span,
             format!("pattern cannot match array of {} element{}", size, pluralize!(size),),
         )
-        .emit()
+        .emit_err()
     }
 
     fn error_scrutinee_unfixed_length(&self, span: Span) -> ErrorGuaranteed {
@@ -3244,7 +3244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             E0730,
             "cannot pattern-match on an array without a fixed length",
         )
-        .emit()
+        .emit_err()
     }
 
     fn error_expected_array_or_slice(

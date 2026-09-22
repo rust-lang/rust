@@ -609,7 +609,7 @@ impl<'a> Parser<'a> {
 
         if self.check_too_many_raw_str_terminators(&mut err) {
             if expected.contains(&TokenType::Semi) && self.eat(exp!(Semi)) {
-                let guar = err.emit();
+                let guar = err.emit_err();
                 return Ok(guar);
             } else {
                 return Err(err);
@@ -770,7 +770,7 @@ impl<'a> Parser<'a> {
                     Ok(next_attr) => next_attr,
                     Err(inner_err) => {
                         inner_err.cancel();
-                        return err.emit();
+                        return err.emit_err();
                     }
                 }
                 && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
@@ -782,7 +782,7 @@ impl<'a> Parser<'a> {
                     Ok(next_expr) => next_expr,
                     Err(inner_err) => {
                         inner_err.cancel();
-                        return err.emit();
+                        return err.emit_err();
                     }
                 };
                 // We have for sure
@@ -816,7 +816,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        err.emit()
+        err.emit_err()
     }
 
     fn check_too_many_raw_str_terminators(&mut self, err: &mut Diag<'_>) -> bool {
@@ -941,7 +941,7 @@ impl<'a> Parser<'a> {
                     ],
                     Applicability::MaybeIncorrect,
                 );
-                let guar = err.emit();
+                let guar = err.emit_err();
                 self.eat_to_tokens(&[exp!(CloseBrace)]);
                 guar
             }
@@ -958,7 +958,7 @@ impl<'a> Parser<'a> {
                     ],
                     Applicability::MaybeIncorrect,
                 );
-                err.emit()
+                err.emit_err()
             }
             _ if token.kind != token::OpenBrace => {
                 // We don't have a heuristic to correctly identify where the block
@@ -1175,7 +1175,7 @@ impl<'a> Parser<'a> {
                                 // The subsequent expression is valid. Mark
                                 // `expr` as erroneous and emit `e` now, but
                                 // return `Ok` so parsing can continue.
-                                let guar = e.emit();
+                                let guar = e.emit_err();
                                 *expr = self.mk_expr_err(expr.span.to(self.prev_token.span), guar);
                                 return Ok(guar);
                             }
@@ -1834,7 +1834,7 @@ impl<'a> Parser<'a> {
                 "r#",
                 Applicability::MachineApplicable,
             );
-            let guar = err.emit();
+            let guar = err.emit_err();
             Ok(self.mk_expr_err(lo.to(hi), guar))
         } else {
             Err(self.expected_expression_found()) // The user isn't trying to invoke the try! macro
@@ -1881,7 +1881,7 @@ impl<'a> Parser<'a> {
         lo: Span,
         err: Diag<'a>,
     ) -> Box<Expr> {
-        let guar = err.emit();
+        let guar = err.emit_err();
         // Recover from parse error, callers expect the closing delim to be consumed.
         self.consume_block(open, close, ConsumeClosingDelim::Yes);
         self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err(guar))
@@ -2410,7 +2410,7 @@ impl<'a> Parser<'a> {
                         "=",
                         Applicability::MaybeIncorrect,
                     );
-                    let guar = err.emit();
+                    let guar = err.emit_err();
                     let value = self.mk_expr_err(start.to(expr.span), guar);
                     return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
                 } else if snapshot.token == token::Colon
@@ -2424,7 +2424,7 @@ impl<'a> Parser<'a> {
                         "::",
                         Applicability::MaybeIncorrect,
                     );
-                    let guar = err.emit();
+                    let guar = err.emit_err();
                     return Ok(GenericArg::Type(
                         self.mk_ty(start.to(expr.span), TyKind::Err(guar)),
                     ));
@@ -2476,7 +2476,7 @@ impl<'a> Parser<'a> {
             vec![(span.shrink_to_lo(), "{ ".to_string()), (span.shrink_to_hi(), " }".to_string())],
             Applicability::MaybeIncorrect,
         );
-        let guar = err.emit();
+        let guar = err.emit_err();
         let value = self.mk_expr_err(span, guar);
         GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
     }

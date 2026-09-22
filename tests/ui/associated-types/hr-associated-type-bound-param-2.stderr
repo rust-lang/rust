@@ -10,7 +10,6 @@ note: required by a bound in `Z`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
    |
 LL | trait Z<'a, T: ?Sized>
-   |       - required by a bound in this trait
 ...
 LL |     for<'b> <T as Z<'b, u16>>::W: Clone,
    |                                   ^^^^^ required by this bound in `Z`
@@ -27,7 +26,6 @@ note: required by a bound in `Z`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
    |
 LL | trait Z<'a, T: ?Sized>
-   |       - required by a bound in this trait
 ...
 LL |     for<'b> <T as Z<'b, u16>>::W: Clone,
    |                                   ^^^^^ required by this bound in `Z`
@@ -44,7 +42,6 @@ note: required by a bound in `Z`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
    |
 LL | trait Z<'a, T: ?Sized>
-   |       - required by a bound in this trait
 ...
 LL |     for<'b> <T as Z<'b, u16>>::W: Clone,
    |                                   ^^^^^ required by this bound in `Z`
@@ -61,11 +58,13 @@ help: the trait `Clone` is implemented for `String`
 note: required by a bound in `Z::W`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
    |
+LL | trait Z<'a, T: ?Sized>
+...
 LL |     for<'b> <T as Z<'b, u16>>::W: Clone,
    |                                   ^^^^^ required by this bound in `Z::W`
 LL | {
 LL |     type W: ?Sized;
-   |          - required by a bound in this associated type
+   |
 
 error[E0277]: the trait bound `str: Clone` is not satisfied
   --> $DIR/hr-associated-type-bound-param-2.rs:10:9
@@ -79,7 +78,6 @@ note: required by a bound in `Z`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
    |
 LL | trait Z<'a, T: ?Sized>
-   |       - required by a bound in this trait
 ...
 LL |     for<'b> <T as Z<'b, u16>>::W: Clone,
    |                                   ^^^^^ required by this bound in `Z`
@@ -96,7 +94,6 @@ note: required by a bound in `Z`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
    |
 LL | trait Z<'a, T: ?Sized>
-   |       - required by a bound in this trait
 ...
 LL |     for<'b> <T as Z<'b, u16>>::W: Clone,
    |                                   ^^^^^ required by this bound in `Z`
@@ -112,11 +109,13 @@ help: the trait `Clone` is implemented for `String`
 note: required by a bound in `Z::h`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
    |
+LL | trait Z<'a, T: ?Sized>
+...
 LL |     for<'b> <T as Z<'b, u16>>::W: Clone,
    |                                   ^^^^^ required by this bound in `Z::h`
 ...
 LL |     fn h(&self, x: &T::W) {
-   |        - required by a bound in this associated function
+   |
 
 error: aborting due to 7 previous errors
 

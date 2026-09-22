@@ -555,7 +555,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if raw_ptr_call {
                             err.span_label(span, "cannot call a method on a raw pointer with an unknown pointee type");
                         }
-                        err.emit()
+                        err.emit_err()
                     }
                     ty::Error(guar) => guar,
                     _ => bug!("unexpected bad final type in method autoderef"),
@@ -1876,8 +1876,8 @@ impl<'tcx> Pick<'tcx> {
             span: Span,
         }
 
-        impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for ItemMaybeBeAddedToStd<'b, 'tcx> {
-            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        impl<'a, 'b, 'tcx> Diagnostic<'a> for ItemMaybeBeAddedToStd<'b, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
                 let Self { this, tcx, span } = self;
                 let def_kind = this.item.as_def_kind();
                 let mut lint = Diag::new(

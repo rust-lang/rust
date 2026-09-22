@@ -135,7 +135,7 @@ pub(crate) fn parse_check_cfg(sess: &Session, specs: Vec<String>) -> CheckCfg {
                     sess.dcx().struct_fatal(format!("invalid `--check-cfg` argument: `{s}`"));
                 diag.note($reason);
                 diag.note(VISIT);
-                diag.emit()
+                diag.emit_fatal()
             }};
             (in $arg:expr, $reason:expr) => {{
                 let mut diag =
@@ -154,7 +154,7 @@ pub(crate) fn parse_check_cfg(sess: &Session, specs: Vec<String>) -> CheckCfg {
 
                 diag.note($reason);
                 diag.note(VISIT);
-                diag.emit()
+                diag.emit_fatal()
             }};
         }
 

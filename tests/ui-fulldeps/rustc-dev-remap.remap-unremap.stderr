@@ -23,6 +23,8 @@ LL | impl<E> VisitorResult for Result<(), E> {
 note: required by a bound in `rustc_ast::visit::Visitor::Result`
   --> $COMPILER_DIR_REAL/rustc_ast/src/visit.rs:LL:COL
    |
+LL |         pub trait $Visitor<$($lt)?>: Sized $(${ignore($mut)} + MutVisitorResult<Result = ()>)? {
+...
 LL |                 type Result: VisitorResult = ();
    |                              ^^^^^^^^^^^^^ required by this bound in `Visitor::Result`
 ...
