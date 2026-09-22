@@ -10,10 +10,10 @@ LL |     let f = |x: &dyn TT| x.func();
    |              `x` is only valid in the closure body
    |
 note: `'static` lifetime requirement from `<(dyn TT + 'static)>::func` introduced here
-  --> $DIR/issue-78262.rs:7:1
+  --> $DIR/issue-78262.rs:7:6
    |
 LL | impl dyn TT {
-   | ^^^^^^^^^^^ lifetime requirement introduced here
+   |      ^^^^^^ `dyn Trait` introduces an implicit `'static` lifetime requirement
 LL |     fn func(&self) {}
    |
 

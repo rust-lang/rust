@@ -1,6 +1,6 @@
 //! Error reporting machinery for lifetime errors.
 
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, msg};
 use rustc_hir as hir;
 use rustc_hir::GenericBound::Trait;
@@ -457,6 +457,8 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 .map(|(_, sp)| sp)
                 .collect::<Vec<Span>>();
 
+        let mut labels = FxHashMap::default();
+
         let parent = tcx.parent(def_id);
         if let Some(rcvr) =
             tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().inputs().skip_binder().get(0)
@@ -495,12 +497,32 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 && *region == tcx.lifetimes.re_static
             {
                 // We have a call into a method of either `impl dyn Trait {}` or
-                // `impl dyn Trait + 'static {}`. We point at the whole def `Span` for now. We
-                // should instead point only at the `dyn Trait` with an explanation of where the
-                // `'static` obligation comes from, or only the `'static` when it is explicit.
-                let def_span = tcx.def_span(parent);
-                if !bounds.iter().any(|sp| sp.overlaps(def_span)) {
-                    bounds.push(def_span);
+                // `impl dyn Trait + 'static {}`.
+                if let Some(def_id) = parent.as_local()
+                    && let hir::OwnerNode::Item(item) = tcx.expect_hir_owner_node(def_id)
+                    && let hir::ItemKind::Impl(impl_) = item.kind
+                    && let hir::TyKind::TraitObject(_, tagged_ref) = impl_.self_ty.kind
+                {
+                    if tagged_ref.is_static() {
+                        // impl dyn Trait + 'static {
+                        //                  ^^^^^^^ lifetime requirement introduced here
+                        bounds.push(tagged_ref.pointer().ident.span);
+                    } else if tagged_ref.is_implicit() {
+                        // impl dyn Trait {
+                        //      ^^^^^^^^^ `dyn Trait` introduces an...
+                        bounds.push(impl_.self_ty.span);
+                        labels.insert(
+                            impl_.self_ty.span,
+                            "`dyn Trait` introduces an implicit `'static` lifetime requirement",
+                        );
+                    }
+                } else {
+                    // Non-local `impl`, we don't have a way to differentiate between `+ 'static`
+                    // and bare `dyn Trait`. We point at the whole def `Span` for now.
+                    let def_span = tcx.def_span(parent);
+                    if !bounds.iter().any(|sp| sp.overlaps(def_span)) {
+                        bounds.push(def_span);
+                    }
                 }
             }
         }
@@ -508,7 +530,8 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         if !bounds.is_empty() {
             let mut multispan: MultiSpan = bounds.clone().into();
             for span in bounds {
-                multispan.push_span_label(span, "lifetime requirement introduced here");
+                let label = labels.get(&span).unwrap_or(&"lifetime requirement introduced here");
+                multispan.push_span_label(span, *label);
             }
             multispan.push_span_context(tcx.def_span(def_id).shrink_to_lo());
             if let DefKind::Impl { .. } | DefKind::Trait = tcx.def_kind(parent) {

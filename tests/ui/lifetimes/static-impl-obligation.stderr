@@ -169,10 +169,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn a::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:4:5
+  --> $DIR/static-impl-obligation.rs:4:10
    |
 LL |     impl dyn Foo {
-   |     ^^^^^^^^^^^^ lifetime requirement introduced here
+   |          ^^^^^^^ `dyn Trait` introduces an implicit `'static` lifetime requirement
 LL |         fn hello(&self) {}
    |
 
@@ -191,10 +191,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn b::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:15:5
+  --> $DIR/static-impl-obligation.rs:15:10
    |
 LL |     impl dyn Foo {
-   |     ^^^^^^^^^^^^ lifetime requirement introduced here
+   |          ^^^^^^^ `dyn Trait` introduces an implicit `'static` lifetime requirement
 LL |         fn hello(&'static self) {}
    |                  ^^^^^^^^^^^^^ lifetime requirement introduced here
 
@@ -213,10 +213,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn c::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:26:5
+  --> $DIR/static-impl-obligation.rs:26:10
    |
 LL |     impl dyn Foo {
-   |     ^^^^^^^^^^^^ lifetime requirement introduced here
+   |          ^^^^^^^ `dyn Trait` introduces an implicit `'static` lifetime requirement
 LL |         fn hello(&'static self) where Self: 'static {}
    |                  ^^^^^^^^^^^^^              ^^^^^^^ lifetime requirement introduced here
    |                  |
@@ -237,10 +237,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn d::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:37:5
+  --> $DIR/static-impl-obligation.rs:37:10
    |
 LL |     impl dyn Foo {
-   |     ^^^^^^^^^^^^ lifetime requirement introduced here
+   |          ^^^^^^^ `dyn Trait` introduces an implicit `'static` lifetime requirement
 LL |         fn hello(&self) where Self: 'static {}
    |                                     ^^^^^^^ lifetime requirement introduced here
 
@@ -259,10 +259,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn e::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:48:5
+  --> $DIR/static-impl-obligation.rs:48:20
    |
 LL |     impl dyn Foo + 'static {
-   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime requirement introduced here
+   |                    ^^^^^^^ lifetime requirement introduced here
 LL |         fn hello(&self) {}
    |
 
@@ -281,10 +281,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn f::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:59:5
+  --> $DIR/static-impl-obligation.rs:59:20
    |
 LL |     impl dyn Foo + 'static {
-   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime requirement introduced here
+   |                    ^^^^^^^ lifetime requirement introduced here
 LL |         fn hello(&'static self) {}
    |                  ^^^^^^^^^^^^^ lifetime requirement introduced here
 
@@ -303,10 +303,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn g::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:70:5
+  --> $DIR/static-impl-obligation.rs:70:20
    |
 LL |     impl dyn Foo + 'static {
-   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime requirement introduced here
+   |                    ^^^^^^^ lifetime requirement introduced here
 LL |         fn hello(&'static self) where Self: 'static {}
    |                  ^^^^^^^^^^^^^              ^^^^^^^ lifetime requirement introduced here
    |                  |
@@ -327,10 +327,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn h::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:81:5
+  --> $DIR/static-impl-obligation.rs:81:20
    |
 LL |     impl dyn Foo + 'static {
-   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime requirement introduced here
+   |                    ^^^^^^^ lifetime requirement introduced here
 LL |         fn hello(&self) where Self: 'static {}
    |                                     ^^^^^^^ lifetime requirement introduced here
 
@@ -349,10 +349,12 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn i::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:92:30
+  --> $DIR/static-impl-obligation.rs:92:10
    |
 LL |     impl dyn Foo where Self: 'static {
-   |                              ^^^^^^^ lifetime requirement introduced here
+   |          ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |          |
+   |          `dyn Trait` introduces an implicit `'static` lifetime requirement
 LL |         fn hello(&self) {}
    |
 
@@ -371,10 +373,12 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn j::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:103:30
+  --> $DIR/static-impl-obligation.rs:103:10
    |
 LL |     impl dyn Foo where Self: 'static {
-   |                              ^^^^^^^ lifetime requirement introduced here
+   |          ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |          |
+   |          `dyn Trait` introduces an implicit `'static` lifetime requirement
 LL |         fn hello(&'static self) {}
    |                  ^^^^^^^^^^^^^ lifetime requirement introduced here
 
@@ -393,10 +397,12 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn k::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:114:30
+  --> $DIR/static-impl-obligation.rs:114:10
    |
 LL |     impl dyn Foo where Self: 'static {
-   |                              ^^^^^^^ lifetime requirement introduced here
+   |          ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |          |
+   |          `dyn Trait` introduces an implicit `'static` lifetime requirement
 LL |         fn hello(&'static self) where Self: 'static {}
    |                  ^^^^^^^^^^^^^              ^^^^^^^ lifetime requirement introduced here
    |                  |
@@ -417,10 +423,12 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn l::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:125:30
+  --> $DIR/static-impl-obligation.rs:125:10
    |
 LL |     impl dyn Foo where Self: 'static {
-   |                              ^^^^^^^ lifetime requirement introduced here
+   |          ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |          |
+   |          `dyn Trait` introduces an implicit `'static` lifetime requirement
 LL |         fn hello(&self) where Self: 'static {}
    |                                     ^^^^^^^ lifetime requirement introduced here
 
@@ -439,10 +447,12 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn m::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:136:40
+  --> $DIR/static-impl-obligation.rs:136:20
    |
 LL |     impl dyn Foo + 'static where Self: 'static {
-   |                                        ^^^^^^^ lifetime requirement introduced here
+   |                    ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |                    |
+   |                    lifetime requirement introduced here
 LL |         fn hello(&self) {}
    |
 
@@ -461,10 +471,12 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn n::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:147:40
+  --> $DIR/static-impl-obligation.rs:147:20
    |
 LL |     impl dyn Foo + 'static where Self: 'static {
-   |                                        ^^^^^^^ lifetime requirement introduced here
+   |                    ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |                    |
+   |                    lifetime requirement introduced here
 LL |         fn hello(&'static self) {}
    |                  ^^^^^^^^^^^^^ lifetime requirement introduced here
 
@@ -483,10 +495,12 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn o::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:158:40
+  --> $DIR/static-impl-obligation.rs:158:20
    |
 LL |     impl dyn Foo + 'static where Self: 'static {
-   |                                        ^^^^^^^ lifetime requirement introduced here
+   |                    ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |                    |
+   |                    lifetime requirement introduced here
 LL |         fn hello(&'static self) where Self: 'static {}
    |                  ^^^^^^^^^^^^^              ^^^^^^^ lifetime requirement introduced here
    |                  |
@@ -507,10 +521,12 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn p::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:169:40
+  --> $DIR/static-impl-obligation.rs:169:20
    |
 LL |     impl dyn Foo + 'static where Self: 'static {
-   |                                        ^^^^^^^ lifetime requirement introduced here
+   |                    ^^^^^^^             ^^^^^^^ lifetime requirement introduced here
+   |                    |
+   |                    lifetime requirement introduced here
 LL |         fn hello(&self) where Self: 'static {}
    |                                     ^^^^^^^ lifetime requirement introduced here
 
@@ -571,10 +587,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn s::Foo + 'static) as s::Trait>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:201:5
+  --> $DIR/static-impl-obligation.rs:201:20
    |
 LL |     impl Trait for dyn Foo {
-   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime requirement introduced here
+   |                    ^^^^^^^ `dyn Trait` introduces an implicit `'static` lifetime requirement
 LL |         fn hello(&self) {}
    |
 
