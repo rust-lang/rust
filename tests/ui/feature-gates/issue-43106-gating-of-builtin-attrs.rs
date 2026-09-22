@@ -1,36 +1,5 @@
-// This test enumerates as many compiler-builtin ungated attributes as
-// possible (that is, all the mutually compatible ones), and checks
-// that we get "expected" (*) warnings for each in the various weird
-// places that users might put them in the syntax.
-//
-// (*): The word "expected" is in quotes above because the cases where
-// warnings are and are not emitted might not match a user's intuition
-// nor the rustc developers' intent. I am really just trying to
-// capture today's behavior in a test, not so that it become enshrined
-// as the absolute behavior going forward, but rather so that we do
-// not change the behavior in the future without even being *aware* of
-// the change when it happens.
-//
-// At the time of authoring, the attributes here are listed in the
-// order that they occur in `librustc_feature`.
-//
-// Any builtin attributes that:
-//
-//  - are not stable, or
-//
-//  - could not be included here covering the same cases as the other
-//    attributes without raising an *error* from rustc (note though
-//    that warnings are of course expected)
-//
-// have their own test case referenced by filename in an inline
-// comment.
-//
-// The test feeds numeric inputs to each attribute that accepts them
-// without error. We do this for two reasons: (1.) to exercise how
-// inputs are handled by each, and (2.) to ease searching for related
-// occurrences in the source text.
-
-//@ check-pass
+// This is testing whether various builtin attributes signals an
+// error or warning when put in "weird" places.
 
 #![warn(unused_attributes, unknown_lints)]
 //~^ NOTE the lint level is defined here
@@ -69,17 +38,17 @@
 //~| WARN previously accepted
 //~| HELP can only be applied to
 //~| HELP remove the attribute
-#![link(name = "x")] //~ WARN attribute cannot be used on
+#![link(name = "x")] //~ ERROR attribute cannot be used on
 //~| WARN this was previously accepted
 //~| HELP can only be applied to foreign modules
 //~| HELP remove the attribute
 #![link_name = "1900"]
-//~^ WARN attribute cannot be used on
+//~^ ERROR attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
 //~| HELP remove the attribute
 #![link_section = ",1800"]
-//~^ WARN attribute cannot be used on
+//~^ ERROR attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
 //~| HELP remove the attribute
@@ -331,13 +300,13 @@ mod automatically_derived {
 }
 
 #[no_mangle]
-//~^ WARN attribute cannot be used on
+//~^ ERROR attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
 //~| HELP remove the attribute
 mod no_mangle {
     mod inner { #![no_mangle] }
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
@@ -345,32 +314,32 @@ mod no_mangle {
     #[no_mangle] fn f() { }
 
     #[no_mangle] struct S;
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
     #[no_mangle] type T = S;
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
     #[no_mangle] impl S { }
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
     trait Tr {
         #[no_mangle] fn foo();
-        //~^ WARN attribute cannot be used on
+        //~^ ERROR attribute cannot be used on
 //~| WARN previously accepted
         //~| HELP can be applied to
         //~| HELP remove the attribute
 
         #[no_mangle] fn bar() {}
-        //~^ WARN attribute cannot be used on
+        //~^ ERROR attribute cannot be used on
 //~| WARN previously accepted
         //~| HELP can be applied to
         //~| HELP remove the attribute
@@ -581,57 +550,57 @@ mod cold {
 }
 
 #[link_name = "1900"]
-//~^ WARN attribute cannot be used on
+//~^ ERROR attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
 //~| HELP remove the attribute
 mod link_name {
     #[link_name = "1900"]
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
     extern "C" { }
 
     mod inner { #![link_name="1900"] }
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
     #[link_name = "1900"] fn f() { }
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
     #[link_name = "1900"] struct S;
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
     #[link_name = "1900"] type T = S;
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
     #[link_name = "1900"] impl S { }
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 }
 
 #[link_section = ",1800"]
-//~^ WARN attribute cannot be used on
+//~^ ERROR attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
 //~| HELP remove the attribute
 mod link_section {
     mod inner { #![link_section=",1800"] }
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
@@ -639,31 +608,31 @@ mod link_section {
     #[link_section = ",1800"] fn f() { }
 
     #[link_section = ",1800"] struct S;
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR  attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
     #[link_section = ",1800"] type T = S;
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
     #[link_section = ",1800"] impl S { }
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
     #[link_section = ",1800"]
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
     trait Tr {
         #[link_section = ",1800"]
-        //~^ WARN attribute cannot be used on
+        //~^ ERROR attribute cannot be used on
         //~| WARN previously accepted
         //~| HELP can be applied to
         //~| HELP remove the attribute
@@ -691,44 +660,45 @@ mod link_section {
 // Note that this is a `check-pass` test, so it will never invoke the linker.
 
 #[link(name = "x")]
-//~^ WARN attribute cannot be used on
+//~^ ERROR attribute cannot be used on
 //~| WARN this was previously accepted
 //~| HELP can only be applied to foreign modules
 //~| HELP remove the attribute
 mod link {
     mod inner { #![link(name = "x")] }
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN this was previously accepted
     //~| HELP can only be applied to foreign modules
     //~| HELP remove the attribute
 
     #[link(name = "x")] fn f() { }
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN this was previously accepted
     //~| HELP can only be applied to foreign modules
     //~| HELP remove the attribute
 
     #[link(name = "x")] struct S;
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN this was previously accepted
     //~| HELP can only be applied to foreign modules
     //~| HELP remove the attribute
 
     #[link(name = "x")] type T = S;
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN this was previously accepted
     //~| HELP can only be applied to foreign modules
     //~| HELP remove the attribute
 
     #[link(name = "x")] impl S { }
-    //~^ WARN attribute cannot be used on
+    //~^ ERROR attribute cannot be used on
     //~| WARN this was previously accepted
     //~| HELP can only be applied to foreign modules
     //~| HELP remove the attribute
 
     #[link(name = "x")] extern "Rust" {}
-    //~^ WARN attribute should be applied to an `extern` block
+    //~^ ERROR attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
+    //~| NOTE `#[deny(harmful_unused_attributes)]` on by default
 }
 
 struct StructForDeprecated;

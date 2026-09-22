@@ -159,6 +159,7 @@ pub struct MissingEqNonExhaustive {
 #[derive(Debug, PartialEq)]
 pub struct MissingEqNonExhaustive1 {
     foo: u32,
+    #[expect(harmful_unused_attributes)]
     #[non_exhaustive]
     bar: String,
 }

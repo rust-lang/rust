@@ -6,7 +6,8 @@ use rustc_attr_ir::{AttrItem, Attribute, AttributeKind};
 use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
-    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES, USELESS_DEPRECATED,
+    HARMFUL_UNUSED_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    USELESS_DEPRECATED,
 };
 use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
@@ -22,6 +23,7 @@ use crate::{AttributeParser, ShouldEmit};
 pub(crate) enum AllowedTargets<'a> {
     AllowList(&'a [Policy]),
     AllowListWarnRest(&'a [Policy]),
+    AllowListDenyRest(&'a [Policy]),
     /// This is useful for argument-dependent target checking.
     /// If debug assertions are enabled,
     /// this emits a delayed bug if the `cx.check_target(...)` method is not called during attribute parsing.
@@ -31,6 +33,7 @@ pub(crate) enum AllowedTargets<'a> {
 pub(crate) enum AllowedResult {
     Allowed,
     Warn,
+    Deny,
     Error,
 }
 
@@ -44,6 +47,8 @@ impl AllowedTargets<'_> {
                     AllowedResult::Allowed
                 } else if list.contains(&Policy::Warn(target)) {
                     AllowedResult::Warn
+                } else if list.contains(&Policy::Deny(target)) {
+                    AllowedResult::Deny
                 } else {
                     AllowedResult::Error
                 }
@@ -55,8 +60,23 @@ impl AllowedTargets<'_> {
                     AllowedResult::Allowed
                 } else if list.contains(&Policy::Error(target)) {
                     AllowedResult::Error
+                } else if list.contains(&Policy::Deny(target)) {
+                    AllowedResult::Deny
                 } else {
                     AllowedResult::Warn
+                }
+            }
+            AllowedTargets::AllowListDenyRest(list) => {
+                if list.contains(&Policy::Allow(target))
+                    || list.contains(&Policy::AllowSilent(target))
+                {
+                    AllowedResult::Allowed
+                } else if list.contains(&Policy::Warn(target)) {
+                    AllowedResult::Warn
+                } else if list.contains(&Policy::Error(target)) {
+                    AllowedResult::Error
+                } else {
+                    AllowedResult::Deny
                 }
             }
             AllowedTargets::ManuallyChecked => unreachable!(),
@@ -65,13 +85,15 @@ impl AllowedTargets<'_> {
 
     pub(crate) fn allowed_targets(&self) -> Vec<Target> {
         match self {
-            AllowedTargets::AllowList(list) | AllowedTargets::AllowListWarnRest(list) => list,
+            AllowedTargets::AllowList(list)
+            | AllowedTargets::AllowListWarnRest(list)
+            | AllowedTargets::AllowListDenyRest(list) => list,
             AllowedTargets::ManuallyChecked => unreachable!(),
         }
         .iter()
         .filter_map(|target| match target {
             Policy::Allow(target) => Some(*target),
-            Policy::AllowSilent(_) | Policy::Warn(_) | Policy::Error(_) => None,
+            Policy::AllowSilent(_) | Policy::Warn(_) | Policy::Deny(_) | Policy::Error(_) => None,
         })
         .collect()
     }
@@ -88,6 +110,9 @@ pub(crate) enum Policy {
     /// Emits a FCW on this target.
     /// This is useful if the target was previously allowed but should not be.
     Warn(Target),
+    /// Emits a FCW on this target.
+    /// This is useful if the target was previously allowed but should not be.
+    Deny(Target),
     /// Emits an error on this target.
     Error(Target),
 }
@@ -152,7 +177,8 @@ impl<'sess> AttributeParser<'sess> {
             applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
             attribute_args: attribute_args.to_string(),
             help: Self::target_checking_help(attribute_args, cx),
-            previously_accepted: matches!(result, AllowedResult::Warn) && !is_diagnostic_attr,
+            previously_accepted: matches!(result, AllowedResult::Warn | AllowedResult::Deny)
+                && !is_diagnostic_attr,
             on_macro_call: matches!(cx.target, Target::MacroCall),
         };
 
@@ -178,6 +204,10 @@ impl<'sess> AttributeParser<'sess> {
 
                 let attr_span = cx.attr_span;
                 cx.emit_lint(lint, diag, attr_span);
+            }
+            AllowedResult::Deny => {
+                let attr_span = cx.attr_span;
+                cx.emit_lint(HARMFUL_UNUSED_ATTRIBUTES, diag, attr_span);
             }
             AllowedResult::Error => {
                 cx.dcx().emit_err(diag);

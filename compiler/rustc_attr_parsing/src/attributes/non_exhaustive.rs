@@ -13,10 +13,10 @@ impl NoArgsAttributeParser for NonExhaustiveParser {
         Allow(Target::Enum),
         Allow(Target::Struct),
         Allow(Target::Variant),
-        Warn(Target::Field),
-        Warn(Target::Arm),
-        Warn(Target::MacroDef),
-        Warn(Target::MacroCall),
+        Deny(Target::Field),
+        Deny(Target::Arm),
+        Deny(Target::MacroDef),
+        Deny(Target::MacroCall),
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NonExhaustive;

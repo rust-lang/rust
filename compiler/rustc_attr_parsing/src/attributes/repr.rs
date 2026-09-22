@@ -44,7 +44,7 @@ impl CombineAttributeParser for ReprParser {
                     Allow(Target::Struct),
                     Allow(Target::Enum),
                     Allow(Target::Union),
-                    Warn(Target::MacroCall),
+                    Deny(Target::MacroCall),
                 ]),
             );
 
@@ -75,7 +75,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
         ($arg: ident, $constructor: expr) => {{
             cx.check_target(
                 concat!("(", stringify!($arg), ")"),
-                &AllowedTargets::AllowList(&[Allow(Target::Enum), Warn(Target::MacroCall)]),
+                &AllowedTargets::AllowList(&[Allow(Target::Enum), Deny(Target::MacroCall)]),
             );
             cx.expect_no_args(param.args())?;
             Some($constructor)
@@ -90,7 +90,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
                     Allow(Target::Struct),
                     Allow(Target::Enum),
                     Allow(Target::Union),
-                    Warn(Target::MacroCall),
+                    Deny(Target::MacroCall),
                 ]),
             );
             let l = cx.expect_list(param.args(), param.span())?;
@@ -102,7 +102,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
                 &AllowedTargets::AllowList(&[
                     Allow(Target::Struct),
                     Allow(Target::Union),
-                    Warn(Target::MacroCall),
+                    Deny(Target::MacroCall),
                 ]),
             );
             match param.args() {
@@ -122,7 +122,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
                     Allow(Target::Struct),
                     Allow(Target::Enum),
                     Allow(Target::Union),
-                    Warn(Target::MacroCall),
+                    Deny(Target::MacroCall),
                 ]),
             );
             cx.expect_no_args(param.args())?;
@@ -135,7 +135,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
                     Allow(Target::Struct),
                     Allow(Target::Enum),
                     Allow(Target::Union),
-                    Warn(Target::MacroCall),
+                    Deny(Target::MacroCall),
                 ]),
             );
             cx.expect_no_args(param.args())?;
@@ -161,8 +161,8 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
                 &AllowedTargets::AllowList(&[
                     Allow(Target::Struct),
                     Allow(Target::Enum),
-                    Allow(Target::Union), // Feature gated in `rustc_attr_ir_analysis`
-                    Warn(Target::MacroCall),
+                    Allow(Target::Union), // Feature gated in `rustc_hir_analysis`
+                    Deny(Target::MacroCall),
                 ]),
             );
             cx.expect_no_args(param.args())?;
