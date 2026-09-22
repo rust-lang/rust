@@ -118,10 +118,21 @@ pub(crate) fn expand_kernel(
     );
 
     let device_item = {
-        let mut item =
+        let mut device_item_ecx =
             ecx.item(span, thin_vec![rustc_offload_kernel.clone()], ast::ItemKind::Fn(device_fn));
-        item.vis = vis.clone();
-        Annotatable::Item(item)
+        device_item_ecx.vis = vis.clone();
+
+        match &item {
+            Annotatable::Item(_) => Annotatable::Item(device_item_ecx),
+            Annotatable::Stmt(_) => Annotatable::Stmt(Box::new(ast::Stmt {
+                id: DUMMY_NODE_ID,
+                kind: ast::StmtKind::Item(device_item_ecx),
+                span,
+            })),
+            _ => {
+                unreachable!("item kind checked previously")
+            }
+        }
     };
 
     // unimplemented! body
@@ -179,23 +190,24 @@ pub(crate) fn expand_kernel(
     let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
     let inline_never = outer_normal_attr(&inline_never_attr, new_id, span);
 
-    let mut host_item_ecx =
-        ecx.item(span, thin_vec![rustc_offload_kernel, inline_never], ast::ItemKind::Fn(host_fn));
-    let host_item = match &item {
-        Annotatable::Item(_) => {
-            host_item_ecx.vis = vis;
-            Annotatable::Item(host_item_ecx)
-        }
-        Annotatable::Stmt(_) => {
-            host_item_ecx.vis = vis;
-            Annotatable::Stmt(Box::new(ast::Stmt {
+    let host_item = {
+        let mut host_item_ecx = ecx.item(
+            span,
+            thin_vec![rustc_offload_kernel, inline_never],
+            ast::ItemKind::Fn(host_fn),
+        );
+        host_item_ecx.vis = vis;
+
+        match &item {
+            Annotatable::Item(_) => Annotatable::Item(host_item_ecx),
+            Annotatable::Stmt(_) => Annotatable::Stmt(Box::new(ast::Stmt {
                 id: DUMMY_NODE_ID,
                 kind: ast::StmtKind::Item(host_item_ecx),
                 span,
-            }))
-        }
-        _ => {
-            unreachable!("item kind checked previously")
+            })),
+            _ => {
+                unreachable!("item kind checked previously")
+            }
         }
     };
 

@@ -1,3 +1,5 @@
+#![feature(prelude_import)]
+#![no_std]
 //@ only-nightly
 //@ revisions: host device
 
@@ -9,12 +11,15 @@
 //@[device] compile-flags: -Zunstable-options -Zoffload=Device
 
 #![feature(gpu_offload)]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
 
 use std::offload::offload_kernel;
 
 fn kernel() {
-    #[offload_kernel]
-    fn inner_kernel() {}
+    #[rustc_offload_kernel]
+    unsafe extern "gpu-kernel" fn inner_kernel() {}
 }
 
 fn main() {}
