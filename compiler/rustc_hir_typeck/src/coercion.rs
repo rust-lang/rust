@@ -1913,9 +1913,9 @@ impl<'tcx> CoerceMany<'tcx> {
                     );
                 }
 
-                let reported = err.emit_unless_delay(unsized_return);
+                let guar = err.emit_err_unless_delay(unsized_return);
 
-                self.final_ty = Some(Ty::new_error(fcx.tcx, reported));
+                self.final_ty = Some(Ty::new_error(fcx.tcx, guar));
             }
         }
     }

@@ -268,10 +268,11 @@ pub(crate) struct UnreachableLabelWithSimilarNameExists {
 
 #[derive(Diagnostic)]
 #[diag("can't capture dynamic environment in a fn item", code = E0434)]
-#[help("use the `|| {\"{\"} ... {\"}\"}` closure form instead")]
 pub(crate) struct CannotCaptureDynamicEnvironmentInFnItem {
     #[primary_span]
     pub(crate) span: Span,
+    #[help("use the `|| {\"{\"} ... {\"}\"}` closure form instead")]
+    pub(crate) suggest_closure: bool,
 }
 
 #[derive(Diagnostic)]
@@ -1380,7 +1381,7 @@ pub(crate) enum ItemWas {
 }
 
 impl Subdiagnostic for FoundItemConfigureOut {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         let mut multispan: MultiSpan = self.span.into();
         match self.item_was {
             ItemWas::BehindFeature { feature, span } => {
@@ -1522,8 +1523,8 @@ pub(crate) struct Ambiguity {
     pub is_error: bool,
 }
 
-impl<'a, G> Diagnostic<'a, G> for Ambiguity {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+impl<'a> Diagnostic<'a> for Ambiguity {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let Self {
             ident,
             ambig_vis,

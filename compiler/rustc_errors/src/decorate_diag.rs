@@ -13,7 +13,7 @@ pub struct DecorateDiagCompat(
     /// The third argument of the closure is a `Session`. However, due to the dependency tree,
     /// we don't have access to `rustc_session` here, so we downcast it when needed.
     pub  Box<
-        dyn for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &dyn Any) -> Diag<'a, ()>
+        dyn for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &dyn Any) -> Diag<'a>
             + DynSync
             + DynSend
             + 'static,
@@ -26,7 +26,7 @@ impl std::fmt::Debug for DecorateDiagCompat {
     }
 }
 
-impl<D: for<'a> Diagnostic<'a, ()> + DynSync + DynSend + 'static> From<D> for DecorateDiagCompat {
+impl<D: for<'a> Diagnostic<'a> + DynSync + DynSend + 'static> From<D> for DecorateDiagCompat {
     #[inline]
     fn from(d: D) -> Self {
         Self(Box::new(|dcx, level, _| d.into_diag(dcx, level)))
@@ -82,7 +82,7 @@ impl LintBuffer {
     }
 
     pub fn dyn_buffer_lint<
-        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSync + DynSend + 'static,
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a> + DynSync + DynSend + 'static,
     >(
         &mut self,
         lint: &'static Lint,
@@ -99,7 +99,7 @@ impl LintBuffer {
     }
 
     pub fn dyn_buffer_lint_any<
-        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &dyn Any) -> Diag<'a, ()>
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &dyn Any) -> Diag<'a>
             + DynSend
             + DynSync
             + 'static,

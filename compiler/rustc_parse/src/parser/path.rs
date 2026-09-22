@@ -1,6 +1,5 @@
 use std::mem;
 
-use ast::token::IdentIsRaw;
 use rustc_ast::token::{self, MetaVarKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
@@ -457,12 +456,13 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_path_segment_ident(&mut self) -> PResult<'a, Ident> {
-        match self.token.ident() {
-            Some((ident, IdentIsRaw::No)) if ident.is_path_segment_keyword() => {
-                self.bump();
-                Ok(ident)
-            }
-            _ => self.parse_ident(),
+        if let Some(ident) = self.token.non_raw_ident()
+            && ident.is_path_segment_keyword()
+        {
+            self.bump();
+            Ok(ident)
+        } else {
+            self.parse_ident()
         }
     }
 
@@ -626,7 +626,7 @@ impl<'a> Parser<'a> {
                 // When encountering severely malformed code where there are several levels of
                 // nested unclosed angle args (`f::<f::<f::<f::<...`), we avoid severe O(n^2)
                 // behavior by bailing out earlier (#117080).
-                e.emit().raise_fatal();
+                e.emit_err().raise_fatal();
             }
             Err(e) if is_first_invocation && self.unmatched_angle_bracket_count > 0 => {
                 self.angle_bracket_nesting -= 1;

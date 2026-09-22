@@ -314,7 +314,7 @@ fn run_passes_inner<'tcx>(
             for name in rest {
                 err.note(format!("pass `{name}` is also not declared in `PASS_NAMES`"));
             }
-            err.emit();
+            err.emit_bug();
         }
     }
 

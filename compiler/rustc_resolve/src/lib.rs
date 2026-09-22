@@ -274,7 +274,7 @@ enum ResolutionError<'ra> {
         message: String,
     },
     /// Error E0434: can't capture dynamic environment in a fn item.
-    CannotCaptureDynamicEnvironmentInFnItem,
+    CannotCaptureDynamicEnvironmentInFnItem { suggest_closure: bool },
     /// Error E0435: attempt to use a non-constant value in a constant.
     AttemptToUseNonConstantValueInConstant {
         ident: Ident,
@@ -1565,6 +1565,11 @@ pub struct Resolver<'ra, 'tcx> {
     // for APITs, so we don't want to leak details of resolution into these names.
     impl_trait_names: FxHashMap<NodeId, Symbol> = default::fx_hash_map(),
 
+    /// When enabled, after reporting every error we will `FatalError.raise()` to avoid advancing
+    /// to the next compiler stage. Only used when encountering resolution errors that cause lots of
+    /// unnecessary knock down errors.
+    raise_fatal_after_resolve: bool = false,
+
     /// Stores `#[diagnostic::on_unknown]` attributes placed on module declarations.
     on_unknown_data: FxHashMap<LocalDefId, OnUnknownData> = default::fx_hash_map(),
     features: &'tcx Features,
@@ -2098,6 +2103,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         // Don't mutate the cstore or stable crate id map from here on.
         self.tcx.untracked().freeze_cstore();
+        if self.raise_fatal_after_resolve {
+            rustc_errors::FatalError.raise();
+        }
     }
 
     fn traits_in_scope(
@@ -2431,7 +2439,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.pat_span_map.insert(node, span);
     }
 
-    fn is_accessible_from(&self, vis: Visibility<impl Into<DefId>>, module: Module<'ra>) -> bool {
+    fn is_accessible_from(&self, vis: Visibility<impl Into<ModId>>, module: Module<'ra>) -> bool {
         vis.is_accessible_from(module.nearest_parent_mod(), self.tcx)
     }
 

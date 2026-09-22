@@ -55,6 +55,17 @@ impl From<MacroKind> for MacroKinds {
 }
 
 impl MacroKinds {
+    // Constants to allow easy pattern-matching on any combination.
+    /// `ATTR | BANG`
+    pub const ATTR_BANG: MacroKinds = MacroKinds::ATTR.union(MacroKinds::BANG);
+    /// `DERIVE | BANG`
+    pub const DERIVE_BANG: MacroKinds = MacroKinds::DERIVE.union(MacroKinds::BANG);
+    /// `DERIVE | ATTR`
+    pub const DERIVE_ATTR: MacroKinds = MacroKinds::DERIVE.union(MacroKinds::ATTR);
+    /// `DERIVE | ATTR | BANG`
+    pub const DERIVE_ATTR_BANG: MacroKinds =
+        MacroKinds::DERIVE.union(MacroKinds::ATTR).union(MacroKinds::BANG);
+
     /// Convert the MacroKinds to a static string.
     ///
     /// This hardcodes all the possibilities, in order to return a static string.
@@ -64,10 +75,10 @@ impl MacroKinds {
             Self::BANG => "macro",
             Self::ATTR => "attribute macro",
             Self::DERIVE => "derive macro",
-            _ if self == (Self::ATTR | Self::BANG) => "attribute/function macro",
-            _ if self == (Self::DERIVE | Self::BANG) => "derive/function macro",
-            _ if self == (Self::ATTR | Self::DERIVE) => "attribute/derive macro",
-            _ if self.is_all() => "attribute/derive/function macro",
+            Self::ATTR_BANG => "attribute/function macro",
+            Self::DERIVE_BANG => "derive/function macro",
+            Self::DERIVE_ATTR => "attribute/derive macro",
+            Self::DERIVE_ATTR_BANG => "attribute/derive/function macro",
             _ if self.is_empty() => "useless macro",
             _ => unreachable!(),
         }

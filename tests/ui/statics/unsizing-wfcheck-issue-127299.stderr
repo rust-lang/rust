@@ -34,6 +34,8 @@ note: required because it appears within the type `Lint`
    |
 LL | pub struct Lint {
    |            ^^^^
+LL |     pub desc: &'static dyn Qux,
+   |     -------------------------- required by this field
    = note: required because it appears within the type `&'static Lint`
    = note: shared static variables must have a type that implements `Sync`
 

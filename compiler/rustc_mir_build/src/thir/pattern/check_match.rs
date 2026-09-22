@@ -1469,7 +1469,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     } else {
         err.help(msg);
     }
-    err.emit()
+    err.emit_err()
 }
 
 fn joined_uncovered_patterns<'p, 'tcx>(

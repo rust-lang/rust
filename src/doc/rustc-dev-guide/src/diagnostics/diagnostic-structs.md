@@ -93,8 +93,8 @@ In the end, the `Diagnostic` derive will generate an implementation of
 `Diagnostic` that looks like the following:
 
 ```rust,ignore
-impl<'a, G> Diagnostic<'a> for FieldAlreadyDeclared {
-    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+impl<'a> Diagnostic<'a> for FieldAlreadyDeclared {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(dcx, level, "field `{$field_name}` is already declared");
         diag.set_span(self.span);
         diag.span_label(

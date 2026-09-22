@@ -148,7 +148,7 @@ impl ParseSess {
     }
 
     pub fn dyn_buffer_lint<
-        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSync + DynSend + 'static,
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level) -> Diag<'a> + DynSync + DynSend + 'static,
     >(
         &self,
         lint: &'static Lint,
@@ -165,7 +165,7 @@ impl ParseSess {
     }
 
     pub fn dyn_buffer_lint_sess<
-        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a, ()>
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a>
             + DynSync
             + DynSend
             + 'static,

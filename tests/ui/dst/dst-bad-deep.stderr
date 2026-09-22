@@ -10,6 +10,8 @@ note: required because it appears within the type `Fat<[isize]>`
    |
 LL | struct Fat<T: ?Sized> {
    |        ^^^
+LL |     ptr: T
+   |     ------ required by this field
    = note: structs must have a statically known size to be initialized
 
 error: aborting due to 1 previous error

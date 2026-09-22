@@ -32,7 +32,7 @@ unsafe impl ::core::clone::TrivialClone for Empty { }
 #[automatically_derived]
 impl ::core::clone::Clone for Empty {
     #[inline]
-    fn clone(&self) -> Empty { *self }
+    fn clone(&self) -> Self { *self }
 }
 #[automatically_derived]
 impl ::core::marker::Copy for Empty { }
@@ -46,7 +46,7 @@ impl ::core::fmt::Debug for Empty {
 #[automatically_derived]
 impl ::core::default::Default for Empty {
     #[inline]
-    fn default() -> Empty { Empty }
+    fn default() -> Self { Empty }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Empty {
@@ -58,19 +58,14 @@ impl ::core::marker::StructuralPartialEq for Empty { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Empty {
     #[inline]
-    fn eq(&self, other: &Empty) -> bool { true }
+    fn eq(&self, other: &Self) -> bool { true }
 }
 #[automatically_derived]
-impl ::core::cmp::Eq for Empty {
-    #[inline]
-    #[doc(hidden)]
-    #[coverage(off)]
-    fn assert_fields_are_eq(&self) {}
-}
+impl ::core::cmp::Eq for Empty { }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Empty {
     #[inline]
-    fn partial_cmp(&self, other: &Empty)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ordering::Equal)
     }
@@ -78,7 +73,7 @@ impl ::core::cmp::PartialOrd for Empty {
 #[automatically_derived]
 impl ::core::cmp::Ord for Empty {
     #[inline]
-    fn cmp(&self, other: &Empty) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         ::core::cmp::Ordering::Equal
     }
 }
@@ -95,7 +90,7 @@ unsafe impl ::core::clone::TrivialClone for Point { }
 #[automatically_derived]
 impl ::core::clone::Clone for Point {
     #[inline]
-    fn clone(&self) -> Point {
+    fn clone(&self) -> Self {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
     }
@@ -113,7 +108,7 @@ impl ::core::fmt::Debug for Point {
 #[automatically_derived]
 impl ::core::default::Default for Point {
     #[inline]
-    fn default() -> Point {
+    fn default() -> Self {
         Point {
             x: ::core::default::Default::default(),
             y: ::core::default::Default::default(),
@@ -133,7 +128,7 @@ impl ::core::marker::StructuralPartialEq for Point { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Point {
     #[inline]
-    fn eq(&self, other: &Point) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.x == other.x && self.y == other.y
     }
 }
@@ -149,7 +144,7 @@ impl ::core::cmp::Eq for Point {
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Point {
     #[inline]
-    fn partial_cmp(&self, other: &Point)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
     }
@@ -157,7 +152,7 @@ impl ::core::cmp::PartialOrd for Point {
 #[automatically_derived]
 impl ::core::cmp::Ord for Point {
     #[inline]
-    fn cmp(&self, other: &Point) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         match ::core::cmp::Ord::cmp(&self.x, &other.x) {
             ::core::cmp::Ordering::Equal =>
                 ::core::cmp::Ord::cmp(&self.y, &other.y),
@@ -179,7 +174,7 @@ unsafe impl ::core::clone::TrivialClone for PackedPoint { }
 #[automatically_derived]
 impl ::core::clone::Clone for PackedPoint {
     #[inline]
-    fn clone(&self) -> PackedPoint {
+    fn clone(&self) -> Self {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
     }
@@ -197,7 +192,7 @@ impl ::core::fmt::Debug for PackedPoint {
 #[automatically_derived]
 impl ::core::default::Default for PackedPoint {
     #[inline]
-    fn default() -> PackedPoint {
+    fn default() -> Self {
         PackedPoint {
             x: ::core::default::Default::default(),
             y: ::core::default::Default::default(),
@@ -217,7 +212,7 @@ impl ::core::marker::StructuralPartialEq for PackedPoint { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for PackedPoint {
     #[inline]
-    fn eq(&self, other: &PackedPoint) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         ({ self.x }) == ({ other.x }) && ({ self.y }) == ({ other.y })
     }
 }
@@ -233,7 +228,7 @@ impl ::core::cmp::Eq for PackedPoint {
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for PackedPoint {
     #[inline]
-    fn partial_cmp(&self, other: &PackedPoint)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
     }
@@ -241,7 +236,7 @@ impl ::core::cmp::PartialOrd for PackedPoint {
 #[automatically_derived]
 impl ::core::cmp::Ord for PackedPoint {
     #[inline]
-    fn cmp(&self, other: &PackedPoint) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         match ::core::cmp::Ord::cmp(&{ self.x }, &{ other.x }) {
             ::core::cmp::Ordering::Equal =>
                 ::core::cmp::Ord::cmp(&{ self.y }, &{ other.y }),
@@ -257,7 +252,7 @@ unsafe impl ::core::clone::TrivialClone for TupleSingleField { }
 #[automatically_derived]
 impl ::core::clone::Clone for TupleSingleField {
     #[inline]
-    fn clone(&self) -> TupleSingleField {
+    fn clone(&self) -> Self {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
     }
@@ -275,14 +270,14 @@ impl ::core::fmt::Debug for TupleSingleField {
 #[automatically_derived]
 impl ::core::default::Default for TupleSingleField {
     #[inline]
-    fn default() -> TupleSingleField {
+    fn default() -> Self {
         TupleSingleField(::core::default::Default::default())
     }
 }
 #[automatically_derived]
 impl ::core::convert::From<u32> for TupleSingleField {
     #[inline]
-    fn from(value: u32) -> TupleSingleField { Self(value) }
+    fn from(value: u32) -> Self { Self(value) }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for TupleSingleField {
@@ -296,7 +291,7 @@ impl ::core::marker::StructuralPartialEq for TupleSingleField { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for TupleSingleField {
     #[inline]
-    fn eq(&self, other: &TupleSingleField) -> bool { self.0 == other.0 }
+    fn eq(&self, other: &Self) -> bool { self.0 == other.0 }
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for TupleSingleField {
@@ -310,7 +305,7 @@ impl ::core::cmp::Eq for TupleSingleField {
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for TupleSingleField {
     #[inline]
-    fn partial_cmp(&self, other: &TupleSingleField)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
     }
@@ -318,7 +313,7 @@ impl ::core::cmp::PartialOrd for TupleSingleField {
 #[automatically_derived]
 impl ::core::cmp::Ord for TupleSingleField {
     #[inline]
-    fn cmp(&self, other: &TupleSingleField) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         ::core::cmp::Ord::cmp(&self.0, &other.0)
     }
 }
@@ -332,7 +327,7 @@ unsafe impl ::core::clone::TrivialClone for SingleField { }
 #[automatically_derived]
 impl ::core::clone::Clone for SingleField {
     #[inline]
-    fn clone(&self) -> SingleField {
+    fn clone(&self) -> Self {
         let _: ::core::clone::AssertParamIsClone<bool>;
         *self
     }
@@ -350,14 +345,14 @@ impl ::core::fmt::Debug for SingleField {
 #[automatically_derived]
 impl ::core::default::Default for SingleField {
     #[inline]
-    fn default() -> SingleField {
+    fn default() -> Self {
         SingleField { foo: ::core::default::Default::default() }
     }
 }
 #[automatically_derived]
 impl ::core::convert::From<bool> for SingleField {
     #[inline]
-    fn from(value: bool) -> SingleField { Self { foo: value } }
+    fn from(value: bool) -> Self { Self { foo: value } }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for SingleField {
@@ -371,7 +366,7 @@ impl ::core::marker::StructuralPartialEq for SingleField { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for SingleField {
     #[inline]
-    fn eq(&self, other: &SingleField) -> bool { self.foo == other.foo }
+    fn eq(&self, other: &Self) -> bool { self.foo == other.foo }
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for SingleField {
@@ -385,7 +380,7 @@ impl ::core::cmp::Eq for SingleField {
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for SingleField {
     #[inline]
-    fn partial_cmp(&self, other: &SingleField)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
     }
@@ -393,7 +388,7 @@ impl ::core::cmp::PartialOrd for SingleField {
 #[automatically_derived]
 impl ::core::cmp::Ord for SingleField {
     #[inline]
-    fn cmp(&self, other: &SingleField) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         ::core::cmp::Ord::cmp(&self.foo, &other.foo)
     }
 }
@@ -416,7 +411,7 @@ unsafe impl ::core::clone::TrivialClone for Big { }
 #[automatically_derived]
 impl ::core::clone::Clone for Big {
     #[inline]
-    fn clone(&self) -> Big {
+    fn clone(&self) -> Self {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
     }
@@ -439,7 +434,7 @@ impl ::core::fmt::Debug for Big {
 #[automatically_derived]
 impl ::core::default::Default for Big {
     #[inline]
-    fn default() -> Big {
+    fn default() -> Self {
         Big {
             b1: ::core::default::Default::default(),
             b2: ::core::default::Default::default(),
@@ -471,7 +466,7 @@ impl ::core::marker::StructuralPartialEq for Big { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Big {
     #[inline]
-    fn eq(&self, other: &Big) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.b1 == other.b1 && self.b2 == other.b2 && self.b3 == other.b3 &&
                             self.b4 == other.b4 && self.b5 == other.b5 &&
                     self.b6 == other.b6 && self.b7 == other.b7 &&
@@ -490,7 +485,7 @@ impl ::core::cmp::Eq for Big {
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Big {
     #[inline]
-    fn partial_cmp(&self, other: &Big)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
     }
@@ -498,7 +493,7 @@ impl ::core::cmp::PartialOrd for Big {
 #[automatically_derived]
 impl ::core::cmp::Ord for Big {
     #[inline]
-    fn cmp(&self, other: &Big) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         match ::core::cmp::Ord::cmp(&self.b1, &other.b1) {
             ::core::cmp::Ordering::Equal =>
                 match ::core::cmp::Ord::cmp(&self.b2, &other.b2) {
@@ -550,7 +545,7 @@ impl ::core::marker::StructuralPartialEq for Reorder { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Reorder {
     #[inline]
-    fn eq(&self, other: &Reorder) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.b2 == other.b2 && self.b4 == other.b4 && self.b5 == other.b5 &&
                                         self.b6 == other.b6 && self.b7 == other.b7 &&
                                 self.b8 == other.b8 && self.b10 == other.b10 &&
@@ -561,7 +556,7 @@ impl ::core::cmp::PartialEq for Reorder {
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Reorder {
     #[inline]
-    fn partial_cmp(&self, other: &Reorder)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         match ::core::cmp::PartialOrd::partial_cmp(&self.b1, &other.b1) {
             ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
@@ -631,9 +626,7 @@ struct NonCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for NonCopy {
     #[inline]
-    fn clone(&self) -> NonCopy {
-        NonCopy(::core::clone::Clone::clone(&self.0))
-    }
+    fn clone(&self) -> Self { NonCopy(::core::clone::Clone::clone(&self.0)) }
 }
 
 // A packed struct that doesn't impl `Copy`, which means it gets the non-trivial
@@ -643,7 +636,7 @@ struct PackedNonCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for PackedNonCopy {
     #[inline]
-    fn clone(&self) -> PackedNonCopy {
+    fn clone(&self) -> Self {
         PackedNonCopy(::core::clone::Clone::clone(&{ self.0 }))
     }
 }
@@ -654,7 +647,7 @@ struct ManualCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for ManualCopy {
     #[inline]
-    fn clone(&self) -> ManualCopy {
+    fn clone(&self) -> Self {
         ManualCopy(::core::clone::Clone::clone(&self.0))
     }
 }
@@ -667,7 +660,7 @@ struct PackedManualCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for PackedManualCopy {
     #[inline]
-    fn clone(&self) -> PackedManualCopy {
+    fn clone(&self) -> Self {
         PackedManualCopy(::core::clone::Clone::clone(&{ self.0 }))
     }
 }
@@ -686,7 +679,7 @@ impl ::core::fmt::Debug for Unsized {
 #[automatically_derived]
 impl ::core::convert::From<[u32]> for Unsized {
     #[inline]
-    fn from(value: [u32]) -> Unsized { Self(value) }
+    fn from(value: [u32]) -> Self { Self(value) }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Unsized {
@@ -700,7 +693,7 @@ impl ::core::marker::StructuralPartialEq for Unsized { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Unsized {
     #[inline]
-    fn eq(&self, other: &Unsized) -> bool { self.0 == other.0 }
+    fn eq(&self, other: &Self) -> bool { self.0 == other.0 }
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Unsized {
@@ -714,7 +707,7 @@ impl ::core::cmp::Eq for Unsized {
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Unsized {
     #[inline]
-    fn partial_cmp(&self, other: &Unsized)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
     }
@@ -722,7 +715,7 @@ impl ::core::cmp::PartialOrd for Unsized {
 #[automatically_derived]
 impl ::core::cmp::Ord for Unsized {
     #[inline]
-    fn cmp(&self, other: &Unsized) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         ::core::cmp::Ord::cmp(&self.0, &other.0)
     }
 }
@@ -741,7 +734,7 @@ struct Generic<T: Trait, U> {
 impl<T: ::core::clone::Clone + Trait, U: ::core::clone::Clone>
     ::core::clone::Clone for Generic<T, U> where T::A: ::core::clone::Clone {
     #[inline]
-    fn clone(&self) -> Generic<T, U> {
+    fn clone(&self) -> Self {
         Generic {
             t: ::core::clone::Clone::clone(&self.t),
             ta: ::core::clone::Clone::clone(&self.ta),
@@ -767,7 +760,7 @@ impl<T: ::core::default::Default + Trait, U: ::core::default::Default>
     ::core::default::Default for Generic<T, U> where
     T::A: ::core::default::Default {
     #[inline]
-    fn default() -> Generic<T, U> {
+    fn default() -> Self {
         Generic {
             t: ::core::default::Default::default(),
             ta: ::core::default::Default::default(),
@@ -795,7 +788,7 @@ impl<T: ::core::cmp::PartialEq + Trait, U: ::core::cmp::PartialEq>
     ::core::cmp::PartialEq for Generic<T, U> where
     T::A: ::core::cmp::PartialEq {
     #[inline]
-    fn eq(&self, other: &Generic<T, U>) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.t == other.t && self.ta == other.ta && self.u == other.u
     }
 }
@@ -816,7 +809,7 @@ impl<T: ::core::cmp::PartialOrd + Trait, U: ::core::cmp::PartialOrd>
     ::core::cmp::PartialOrd for Generic<T, U> where
     T::A: ::core::cmp::PartialOrd {
     #[inline]
-    fn partial_cmp(&self, other: &Generic<T, U>)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         match ::core::cmp::PartialOrd::partial_cmp(&self.t, &other.t) {
             ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
@@ -834,7 +827,7 @@ impl<T: ::core::cmp::PartialOrd + Trait, U: ::core::cmp::PartialOrd>
 impl<T: ::core::cmp::Ord + Trait, U: ::core::cmp::Ord> ::core::cmp::Ord for
     Generic<T, U> where T::A: ::core::cmp::Ord {
     #[inline]
-    fn cmp(&self, other: &Generic<T, U>) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         match ::core::cmp::Ord::cmp(&self.t, &other.t) {
             ::core::cmp::Ordering::Equal =>
                 match ::core::cmp::Ord::cmp(&self.ta, &other.ta) {
@@ -860,7 +853,7 @@ impl<T: ::core::clone::Clone + ::core::marker::Copy + Trait,
     PackedGeneric<T, U> where T::A: ::core::clone::Clone +
     ::core::marker::Copy {
     #[inline]
-    fn clone(&self) -> PackedGeneric<T, U> {
+    fn clone(&self) -> Self {
         PackedGeneric(::core::clone::Clone::clone(&{ self.0 }),
             ::core::clone::Clone::clone(&{ self.1 }),
             ::core::clone::Clone::clone(&{ self.2 }))
@@ -887,7 +880,7 @@ impl<T: ::core::default::Default + Trait, U: ::core::default::Default>
     ::core::default::Default for PackedGeneric<T, U> where
     T::A: ::core::default::Default {
     #[inline]
-    fn default() -> PackedGeneric<T, U> {
+    fn default() -> Self {
         PackedGeneric(::core::default::Default::default(),
             ::core::default::Default::default(),
             ::core::default::Default::default())
@@ -916,7 +909,7 @@ impl<T: ::core::cmp::PartialEq + ::core::marker::Copy + Trait,
     for PackedGeneric<T, U> where T::A: ::core::cmp::PartialEq +
     ::core::marker::Copy {
     #[inline]
-    fn eq(&self, other: &PackedGeneric<T, U>) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         ({ self.0 }) == ({ other.0 }) && ({ self.1 }) == ({ other.1 }) &&
             ({ self.2 }) == ({ other.2 })
     }
@@ -940,7 +933,7 @@ impl<T: ::core::cmp::PartialOrd + ::core::marker::Copy + Trait,
     for PackedGeneric<T, U> where T::A: ::core::cmp::PartialOrd +
     ::core::marker::Copy {
     #[inline]
-    fn partial_cmp(&self, other: &PackedGeneric<T, U>)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         match ::core::cmp::PartialOrd::partial_cmp(&{ self.0 }, &{ other.0 })
             {
@@ -962,7 +955,7 @@ impl<T: ::core::cmp::Ord + ::core::marker::Copy + Trait, U: ::core::cmp::Ord +
     ::core::marker::Copy> ::core::cmp::Ord for PackedGeneric<T, U> where
     T::A: ::core::cmp::Ord + ::core::marker::Copy {
     #[inline]
-    fn cmp(&self, other: &PackedGeneric<T, U>) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         match ::core::cmp::Ord::cmp(&{ self.0 }, &{ other.0 }) {
             ::core::cmp::Ordering::Equal =>
                 match ::core::cmp::Ord::cmp(&{ self.1 }, &{ other.1 }) {
@@ -983,7 +976,7 @@ unsafe impl ::core::clone::TrivialClone for Enum0 { }
 #[automatically_derived]
 impl ::core::clone::Clone for Enum0 {
     #[inline]
-    fn clone(&self) -> Enum0 { *self }
+    fn clone(&self) -> Self { *self }
 }
 #[automatically_derived]
 impl ::core::marker::Copy for Enum0 { }
@@ -1006,14 +999,14 @@ impl ::core::marker::StructuralPartialEq for Enum0 { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Enum0 {
     #[inline]
-    fn eq(&self, other: &Enum0) -> bool { match *self {} }
+    fn eq(&self, other: &Self) -> bool { match *self {} }
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Enum0 { }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Enum0 {
     #[inline]
-    fn partial_cmp(&self, other: &Enum0)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         match *self {}
     }
@@ -1021,7 +1014,7 @@ impl ::core::cmp::PartialOrd for Enum0 {
 #[automatically_derived]
 impl ::core::cmp::Ord for Enum0 {
     #[inline]
-    fn cmp(&self, other: &Enum0) -> ::core::cmp::Ordering { match *self {} }
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering { match *self {} }
 }
 
 // A single-variant enum.
@@ -1033,7 +1026,7 @@ enum Enum1 {
 #[automatically_derived]
 impl ::core::clone::Clone for Enum1 {
     #[inline]
-    fn clone(&self) -> Enum1 {
+    fn clone(&self) -> Self {
         match self {
             Enum1::Single { x: __self_0 } =>
                 Enum1::Single { x: ::core::clone::Clone::clone(__self_0) },
@@ -1066,7 +1059,7 @@ impl ::core::marker::StructuralPartialEq for Enum1 { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Enum1 {
     #[inline]
-    fn eq(&self, other: &Enum1) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
                 __self_0 == __arg1_0,
@@ -1085,7 +1078,7 @@ impl ::core::cmp::Eq for Enum1 {
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Enum1 {
     #[inline]
-    fn partial_cmp(&self, other: &Enum1)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
     }
@@ -1093,7 +1086,7 @@ impl ::core::cmp::PartialOrd for Enum1 {
 #[automatically_derived]
 impl ::core::cmp::Ord for Enum1 {
     #[inline]
-    fn cmp(&self, other: &Enum1) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         match (self, other) {
             (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
                 ::core::cmp::Ord::cmp(__self_0, __arg1_0),
@@ -1110,7 +1103,7 @@ enum Fieldless1 {
 #[automatically_derived]
 impl ::core::clone::Clone for Fieldless1 {
     #[inline]
-    fn clone(&self) -> Fieldless1 { Fieldless1::A }
+    fn clone(&self) -> Self { Fieldless1::A }
 }
 #[automatically_derived]
 impl ::core::fmt::Debug for Fieldless1 {
@@ -1122,7 +1115,7 @@ impl ::core::fmt::Debug for Fieldless1 {
 #[automatically_derived]
 impl ::core::default::Default for Fieldless1 {
     #[inline]
-    fn default() -> Fieldless1 { Self::A }
+    fn default() -> Self { Self::A }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Fieldless1 {
@@ -1134,14 +1127,14 @@ impl ::core::marker::StructuralPartialEq for Fieldless1 { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Fieldless1 {
     #[inline]
-    fn eq(&self, other: &Fieldless1) -> bool { true }
+    fn eq(&self, other: &Self) -> bool { true }
 }
 #[automatically_derived]
 impl ::core::cmp::Eq for Fieldless1 { }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fieldless1 {
     #[inline]
-    fn partial_cmp(&self, other: &Fieldless1)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ordering::Equal)
     }
@@ -1149,7 +1142,7 @@ impl ::core::cmp::PartialOrd for Fieldless1 {
 #[automatically_derived]
 impl ::core::cmp::Ord for Fieldless1 {
     #[inline]
-    fn cmp(&self, other: &Fieldless1) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         ::core::cmp::Ordering::Equal
     }
 }
@@ -1168,7 +1161,7 @@ unsafe impl ::core::clone::TrivialClone for Fieldless { }
 #[automatically_derived]
 impl ::core::clone::Clone for Fieldless {
     #[inline]
-    fn clone(&self) -> Fieldless { *self }
+    fn clone(&self) -> Self { *self }
 }
 #[automatically_derived]
 impl ::core::marker::Copy for Fieldless { }
@@ -1187,7 +1180,7 @@ impl ::core::fmt::Debug for Fieldless {
 #[automatically_derived]
 impl ::core::default::Default for Fieldless {
     #[inline]
-    fn default() -> Fieldless { Self::A }
+    fn default() -> Self { Self::A }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Fieldless {
@@ -1202,7 +1195,7 @@ impl ::core::marker::StructuralPartialEq for Fieldless { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Fieldless {
     #[inline]
-    fn eq(&self, other: &Fieldless) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         __self_discr == __arg1_discr
@@ -1213,7 +1206,7 @@ impl ::core::cmp::Eq for Fieldless { }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fieldless {
     #[inline]
-    fn partial_cmp(&self, other: &Fieldless)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
     }
@@ -1221,7 +1214,7 @@ impl ::core::cmp::PartialOrd for Fieldless {
 #[automatically_derived]
 impl ::core::cmp::Ord for Fieldless {
     #[inline]
-    fn cmp(&self, other: &Fieldless) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr)
@@ -1246,7 +1239,7 @@ unsafe impl ::core::clone::TrivialClone for Mixed { }
 #[automatically_derived]
 impl ::core::clone::Clone for Mixed {
     #[inline]
-    fn clone(&self) -> Mixed {
+    fn clone(&self) -> Self {
         let _: ::core::clone::AssertParamIsClone<u32>;
         let _: ::core::clone::AssertParamIsClone<Option<u32>>;
         let _: ::core::clone::AssertParamIsClone<Option<i32>>;
@@ -1274,7 +1267,7 @@ impl ::core::fmt::Debug for Mixed {
 #[automatically_derived]
 impl ::core::default::Default for Mixed {
     #[inline]
-    fn default() -> Mixed { Self::P }
+    fn default() -> Self { Self::P }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Mixed {
@@ -1297,7 +1290,7 @@ impl ::core::marker::StructuralPartialEq for Mixed { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Mixed {
     #[inline]
-    fn eq(&self, other: &Mixed) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         __self_discr == __arg1_discr &&
@@ -1325,7 +1318,7 @@ impl ::core::cmp::Eq for Mixed {
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Mixed {
     #[inline]
-    fn partial_cmp(&self, other: &Mixed)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
     }
@@ -1333,7 +1326,7 @@ impl ::core::cmp::PartialOrd for Mixed {
 #[automatically_derived]
 impl ::core::cmp::Ord for Mixed {
     #[inline]
-    fn cmp(&self, other: &Mixed) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         match ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr) {
@@ -1372,7 +1365,7 @@ impl ::core::marker::StructuralPartialEq for ReorderEnum { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for ReorderEnum {
     #[inline]
-    fn eq(&self, other: &ReorderEnum) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         __self_discr == __arg1_discr &&
@@ -1392,7 +1385,7 @@ impl ::core::cmp::PartialEq for ReorderEnum {
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for ReorderEnum {
     #[inline]
-    fn partial_cmp(&self, other: &ReorderEnum)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
@@ -1432,7 +1425,7 @@ enum Fielded { X(u32), Y(bool), Z(Option<i32>), }
 #[automatically_derived]
 impl ::core::clone::Clone for Fielded {
     #[inline]
-    fn clone(&self) -> Fielded {
+    fn clone(&self) -> Self {
         match self {
             Fielded::X(__self_0) =>
                 Fielded::X(::core::clone::Clone::clone(__self_0)),
@@ -1478,7 +1471,7 @@ impl ::core::marker::StructuralPartialEq for Fielded { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Fielded {
     #[inline]
-    fn eq(&self, other: &Fielded) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         __self_discr == __arg1_discr &&
@@ -1507,7 +1500,7 @@ impl ::core::cmp::Eq for Fielded {
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for Fielded {
     #[inline]
-    fn partial_cmp(&self, other: &Fielded)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
     }
@@ -1515,7 +1508,7 @@ impl ::core::cmp::PartialOrd for Fielded {
 #[automatically_derived]
 impl ::core::cmp::Ord for Fielded {
     #[inline]
-    fn cmp(&self, other: &Fielded) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         match ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr) {
@@ -1540,7 +1533,7 @@ enum EnumGeneric<T, U> { One(T), Two(U), }
 impl<T: ::core::clone::Clone, U: ::core::clone::Clone> ::core::clone::Clone
     for EnumGeneric<T, U> {
     #[inline]
-    fn clone(&self) -> EnumGeneric<T, U> {
+    fn clone(&self) -> Self {
         match self {
             EnumGeneric::One(__self_0) =>
                 EnumGeneric::One(::core::clone::Clone::clone(__self_0)),
@@ -1591,7 +1584,7 @@ impl<T: ::core::cmp::PartialEq, U: ::core::cmp::PartialEq>
 impl<T: ::core::cmp::PartialEq, U: ::core::cmp::PartialEq>
     ::core::cmp::PartialEq for EnumGeneric<T, U> {
     #[inline]
-    fn eq(&self, other: &EnumGeneric<T, U>) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         __self_discr == __arg1_discr &&
@@ -1619,7 +1612,7 @@ impl<T: ::core::cmp::Eq, U: ::core::cmp::Eq> ::core::cmp::Eq for
 impl<T: ::core::cmp::PartialOrd, U: ::core::cmp::PartialOrd>
     ::core::cmp::PartialOrd for EnumGeneric<T, U> {
     #[inline]
-    fn partial_cmp(&self, other: &EnumGeneric<T, U>)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
@@ -1638,7 +1631,7 @@ impl<T: ::core::cmp::PartialOrd, U: ::core::cmp::PartialOrd>
 impl<T: ::core::cmp::Ord, U: ::core::cmp::Ord> ::core::cmp::Ord for
     EnumGeneric<T, U> {
     #[inline]
-    fn cmp(&self, other: &EnumGeneric<T, U>) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         match ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr) {
@@ -1667,7 +1660,7 @@ impl ::core::marker::StructuralPartialEq for NonCopyEnum { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for NonCopyEnum {
     #[inline]
-    fn eq(&self, other: &NonCopyEnum) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (NonCopyEnum::NonCopyField(__self_0),
                 NonCopyEnum::NonCopyField(__arg1_0)) => __self_0 == __arg1_0,
@@ -1691,7 +1684,7 @@ unsafe impl ::core::clone::TrivialClone for Union { }
 #[automatically_derived]
 impl ::core::clone::Clone for Union {
     #[inline]
-    fn clone(&self) -> Union {
+    fn clone(&self) -> Self {
         let _: ::core::clone::AssertParamIsCopy<Self>;
         *self
     }
@@ -1708,7 +1701,7 @@ unsafe impl ::core::clone::TrivialClone for FooCopyClone { }
 #[automatically_derived]
 impl ::core::clone::Clone for FooCopyClone {
     #[inline]
-    fn clone(&self) -> FooCopyClone {
+    fn clone(&self) -> Self {
         let _: ::core::clone::AssertParamIsClone<i32>;
         *self
     }
@@ -1721,7 +1714,7 @@ unsafe impl ::core::clone::TrivialClone for FooCloneCopy { }
 #[automatically_derived]
 impl ::core::clone::Clone for FooCloneCopy {
     #[inline]
-    fn clone(&self) -> FooCloneCopy {
+    fn clone(&self) -> Self {
         let _: ::core::clone::AssertParamIsClone<i32>;
         *self
     }
@@ -1736,7 +1729,7 @@ unsafe impl ::core::clone::TrivialClone for FooCopyAndClone { }
 #[automatically_derived]
 impl ::core::clone::Clone for FooCopyAndClone {
     #[inline]
-    fn clone(&self) -> FooCopyAndClone {
+    fn clone(&self) -> Self {
         let _: ::core::clone::AssertParamIsClone<i32>;
         *self
     }
@@ -1753,7 +1746,7 @@ impl ::core::marker::Copy for FooCloneAndCopy { }
 #[automatically_derived]
 impl ::core::clone::Clone for FooCloneAndCopy {
     #[inline]
-    fn clone(&self) -> FooCloneAndCopy {
+    fn clone(&self) -> Self {
         FooCloneAndCopy(::core::clone::Clone::clone(&self.0))
     }
 }
@@ -1762,7 +1755,7 @@ struct FooPartialOrdOrd(i32);
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for FooPartialOrdOrd {
     #[inline]
-    fn partial_cmp(&self, other: &FooPartialOrdOrd)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
     }
@@ -1770,7 +1763,7 @@ impl ::core::cmp::PartialOrd for FooPartialOrdOrd {
 #[automatically_derived]
 impl ::core::cmp::Ord for FooPartialOrdOrd {
     #[inline]
-    fn cmp(&self, other: &FooPartialOrdOrd) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         ::core::cmp::Ord::cmp(&self.0, &other.0)
     }
 }
@@ -1779,14 +1772,14 @@ struct FooOrdPartialOrd(i32);
 #[automatically_derived]
 impl ::core::cmp::Ord for FooOrdPartialOrd {
     #[inline]
-    fn cmp(&self, other: &FooOrdPartialOrd) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         ::core::cmp::Ord::cmp(&self.0, &other.0)
     }
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for FooOrdPartialOrd {
     #[inline]
-    fn partial_cmp(&self, other: &FooOrdPartialOrd)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
     }
@@ -1796,7 +1789,7 @@ struct FooOrdBeforePartialOrd(i32);
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for FooOrdBeforePartialOrd {
     #[inline]
-    fn partial_cmp(&self, other: &FooOrdBeforePartialOrd)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
     }
@@ -1804,7 +1797,7 @@ impl ::core::cmp::PartialOrd for FooOrdBeforePartialOrd {
 #[automatically_derived]
 impl ::core::cmp::Ord for FooOrdBeforePartialOrd {
     #[inline]
-    fn cmp(&self, other: &FooOrdBeforePartialOrd) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         ::core::cmp::Ord::cmp(&self.0, &other.0)
     }
 }
@@ -1814,14 +1807,14 @@ struct FooPartialOrdBeforeOrd(i32);
 #[automatically_derived]
 impl ::core::cmp::Ord for FooPartialOrdBeforeOrd {
     #[inline]
-    fn cmp(&self, other: &FooPartialOrdBeforeOrd) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         ::core::cmp::Ord::cmp(&self.0, &other.0)
     }
 }
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for FooPartialOrdBeforeOrd {
     #[inline]
-    fn partial_cmp(&self, other: &FooPartialOrdBeforeOrd)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::cmp::PartialOrd::partial_cmp(&self.0, &other.0)
     }
@@ -1831,7 +1824,7 @@ struct UnitStruct;
 #[automatically_derived]
 impl ::core::cmp::PartialOrd for UnitStruct {
     #[inline]
-    fn partial_cmp(&self, other: &UnitStruct)
+    fn partial_cmp(&self, other: &Self)
         -> ::core::option::Option<::core::cmp::Ordering> {
         ::core::option::Option::Some(::core::cmp::Ordering::Equal)
     }
@@ -1839,7 +1832,7 @@ impl ::core::cmp::PartialOrd for UnitStruct {
 #[automatically_derived]
 impl ::core::cmp::Ord for UnitStruct {
     #[inline]
-    fn cmp(&self, other: &UnitStruct) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
         ::core::cmp::Ordering::Equal
     }
 }

@@ -52,29 +52,23 @@ pub(crate) fn cs_cmp(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> 
     //         ::core::cmp::Ord::cmp(&self.y, &other.y),
     //     cmp => cmp,
     // }
-    let expr = cs_fold(
-        // foldr nests the if-elses correctly, leaving the first field
-        // as the outermost one, and the last as the innermost.
-        false,
+    let expr = cs_foldr(
         cx,
         span,
         substr,
-        |cx, fold| match fold {
-            CsFold::Single(field) => {
-                let [other_expr] = &field.other_selflike_exprs[..] else {
-                    cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
-                };
-                let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
-                cx.expr_call_global(field.span, cmp_path.clone(), args)
-            }
-            CsFold::Combine(span, expr1, expr2) => {
-                let eq_arm = cx.arm(span, cx.pat_path(span, equal_path.clone()), expr1);
-                let neq_arm =
-                    cx.arm(span, cx.pat_ident(span, test_id), cx.expr_ident(span, test_id));
-                cx.expr_match(span, expr2, thin_vec![eq_arm, neq_arm])
-            }
-            CsFold::Fieldless => cx.expr_path(equal_path.clone()),
+        |field| {
+            let [other_expr] = &field.other_selflike_exprs[..] else {
+                cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
+            };
+            let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
+            cx.expr_call_global(field.span, cmp_path.clone(), args)
         },
+        |span, expr1, expr2| {
+            let eq_arm = cx.arm(span, cx.pat_path(span, equal_path.clone()), expr1);
+            let neq_arm = cx.arm(span, cx.pat_ident(span, test_id), cx.expr_ident(span, test_id));
+            cx.expr_match(span, expr2, thin_vec![eq_arm, neq_arm])
+        },
+        || cx.expr_path(equal_path.clone()),
     );
     BlockOrExpr::new_expr(expr)
 }

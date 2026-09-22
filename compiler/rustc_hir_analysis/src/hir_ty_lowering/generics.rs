@@ -70,7 +70,7 @@ fn generic_arg_mismatch_err(
                 add_braces_suggestion(arg, &mut err);
                 return err
                     .with_primary_message("unresolved item provided when a constant was expected")
-                    .emit();
+                    .emit_err();
             }
             Res::Def(DefKind::TyParam, src_def_id) => {
                 if let Some(param_local_id) = param.def_id.as_local() {
@@ -97,12 +97,24 @@ fn generic_arg_mismatch_err(
             GenericArg::Type(hir::Ty { kind: hir::TyKind::Array(_, len), .. }),
             GenericParamDefKind::Const { .. },
         ) if tcx.type_of(param.def_id).skip_binder() == tcx.types.usize => {
+            err.span_label(arg.span(), "array type provided where a `usize` was expected");
             let snippet = sess.source_map().span_to_snippet(tcx.hir_span(len.hir_id));
             if let Ok(snippet) = snippet {
-                err.span_suggestion(
+                let sugg = if let hir::ConstArgKind::Anon(hir::AnonConst { body, .. }) = len.kind
+                    && let hir::ExprKind::Lit(..) = tcx.hir_body(*body).value.kind
+                {
+                    // We don't need to surround literals in braces when used as consts
+                    snippet
+                } else if let hir::ConstArgKind::Literal { .. } = len.kind {
+                    // We don't need to surround literals in braces when used as consts
+                    snippet
+                } else {
+                    format!("{{ {snippet} }}")
+                };
+                err.span_suggestion_verbose(
                     arg.span(),
-                    "array type provided where a `usize` was expected, try",
-                    format!("{{ {snippet} }}"),
+                    format!("you might have meant to use the array's length's value"),
+                    sugg,
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -145,7 +157,7 @@ fn generic_arg_mismatch_err(
         }
     }
 
-    err.emit()
+    err.emit_err()
 }
 
 /// Lower generic arguments from the HIR to the [`rustc_middle::ty`] representation.
@@ -606,7 +618,7 @@ pub(crate) fn check_generic_arg_count(
                     gen_args,
                     def_id,
                 ))
-                .emit_unless_delay(all_params_are_binded || has_invalid_bound)
+                .emit_err_unless_delay(all_params_are_binded || has_invalid_bound)
         });
 
         Err(reported)
@@ -655,8 +667,8 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         msg: &'static str,
     }
 
-    impl<'a> Diagnostic<'a, ()> for LifetimeArgsIssue {
-        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+    impl<'a> Diagnostic<'a> for LifetimeArgsIssue {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
             let Self { msg } = self;
             Diag::new(dcx, level, msg)
         }

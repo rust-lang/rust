@@ -1297,7 +1297,7 @@ fn start_executing_work<B: WriteBackendMethods>(
         incr_comp_session_dir: tcx
             .incr_comp_session
             .as_ref()
-            .map(|incr_comp_session| incr_comp_session.session_directory.clone()),
+            .map(|incr_comp_session| (&*incr_comp_session.session_directory).to_owned()),
         output_filenames: Arc::clone(tcx.output_filenames(())),
         module_config: regular_config,
         opt_level,
@@ -2060,7 +2060,7 @@ impl SharedEmitterMain {
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(inner)) => {
                     assert_matches!(inner.level, Level::Error | Level::Warning | Level::Note);
-                    let mut err = Diag::<()>::new(sess.dcx(), inner.level, inner.msg);
+                    let mut err = Diag::new(sess.dcx(), inner.level, inner.msg);
                     if !inner.span.is_dummy() {
                         err.span(inner.span.span());
                     }

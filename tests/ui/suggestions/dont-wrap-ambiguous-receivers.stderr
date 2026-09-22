@@ -10,9 +10,9 @@ LL |     banana::Chaenomeles.pick()
    = help: items from traits can only be used if the trait is in scope
 help: the following traits which provide `pick` are implemented but not in scope; perhaps you want to import one of them
    |
-LL + use banana::Apple;
+LL + use crate::banana::Apple;
    |
-LL + use banana::Peach;
+LL + use crate::banana::Peach;
    |
 
 error: aborting due to 1 previous error

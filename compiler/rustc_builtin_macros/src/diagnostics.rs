@@ -542,9 +542,9 @@ pub(crate) struct EnvNotDefinedWithUserMessage {
 }
 
 // Hand-written implementation to support custom user messages.
-impl<'a, G> Diagnostic<'a, G> for EnvNotDefinedWithUserMessage {
+impl<'a> Diagnostic<'a> for EnvNotDefinedWithUserMessage {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(dcx, level, self.msg_from_user.to_string());
         diag.span(self.span);
         diag
@@ -773,7 +773,7 @@ pub(crate) struct FormatUnusedArg {
 // Allow the singular form to be a subdiagnostic of the multiple-unused
 // form of diagnostic.
 impl Subdiagnostic for FormatUnusedArg {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.span_label(
             self.span,
             msg!(
@@ -957,8 +957,8 @@ pub(crate) struct AsmClobberNoReg {
     pub(crate) clobbers: Vec<Span>,
 }
 
-impl<'a, G> Diagnostic<'a, G> for AsmClobberNoReg {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+impl<'a> Diagnostic<'a> for AsmClobberNoReg {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         Diag::new(
             dcx,
             level,

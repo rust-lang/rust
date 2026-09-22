@@ -61,7 +61,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     {
                         last_unexpected_hidden_region =
                             Some((hidden_type.span, named_ty, named_key));
-                        diag.emit()
+                        diag.emit_err()
                     } else {
                         diag.delay_as_bug()
                     }

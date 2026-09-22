@@ -123,6 +123,8 @@ impl SocketAddr {
                 .map_or(len, |new_len| (new_len + SUN_PATH_OFFSET) as libc::socklen_t);
         }
 
+        len = len.min(size_of::<libc::sockaddr_un>() as libc::socklen_t);
+
         if len == 0 {
             // When there is a datagram from unnamed unix socket
             // linux returns zero bytes of address
