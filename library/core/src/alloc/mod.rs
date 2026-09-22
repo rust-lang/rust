@@ -148,7 +148,8 @@ impl fmt::Display for AllocError {
 ///
 /// Some of the methods require that a `layout` *fits* a memory block or vice versa. This means
 /// that the following conditions must hold:
-///  * the memory block must be *currently allocated* with alignment of [`layout.align()`], and
+///  * the memory block must be *currently allocated* by the allocator,
+///  * [`layout.align()`] must be the same as the alignment of the layout used to allocate the block, and
 ///  * [`layout.size()`] must fall in the range `min ..= max`, where:
 ///    - `min` is the size of the layout used to allocate the block, and
 ///    - `max` is the actual size returned from [`allocate`], [`allocate_zeroed`],
