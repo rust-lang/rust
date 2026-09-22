@@ -812,7 +812,7 @@ impl<'a> MethodDef<'a> {
 
         once(cx.expr_self(span))
             .chain(self.nonself_args.iter().filter_map(|(ty, name)| match ty {
-                Ref(Self_, _) => Some(cx.expr_ident(span, Ident::new(*name, span))),
+                Ref(Self_, _) => Some(cx.expr_ident_sym(span, *name)),
                 _ => None,
             }))
             .collect()

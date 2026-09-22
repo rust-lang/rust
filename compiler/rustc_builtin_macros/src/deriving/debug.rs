@@ -49,7 +49,7 @@ pub(crate) fn expand_deriving_debug(
 }
 
 fn formatter_ident(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
-    cx.expr_ident(span, Ident::new(sym::character('f'), span))
+    cx.expr_ident_sym(span, sym::character('f'))
 }
 
 fn show_substructure(
@@ -194,9 +194,9 @@ fn show_substructure(
         args.push(fmt);
         args.push(name);
         if is_struct {
-            args.push(cx.expr_ident(span, Ident::new(sym::names, span)));
+            args.push(cx.expr_ident_sym(span, sym::names));
         }
-        args.push(cx.expr_ident(span, Ident::new(sym::values, span)));
+        args.push(cx.expr_ident_sym(span, sym::values));
         let expr = cx.expr_call_global(span, fn_path_debug_internal, args);
 
         let mut stmts = ThinVec::with_capacity(2);

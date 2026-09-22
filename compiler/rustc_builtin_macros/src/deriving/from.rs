@@ -97,14 +97,14 @@ pub(crate) fn expand_deriving_from(
                             thin_vec![cx.field_imm(
                                 span,
                                 field.ident.unwrap(),
-                                cx.expr_ident(span, Ident::new(sym::value, span))
+                                cx.expr_ident_sym(span, sym::value)
                             )],
                         ),
                         // Self(value)
                         VariantData::Tuple(_, _) => cx.expr_call_ident(
                             span,
                             self_kw,
-                            thin_vec![cx.expr_ident(span, Ident::new(sym::value, span))],
+                            thin_vec![cx.expr_ident_sym(span, sym::value)],
                         ),
                         variant => {
                             cx.dcx().bug(format!("Invalid derive(From) ADT variant: {variant:?}"));

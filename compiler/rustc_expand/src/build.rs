@@ -310,6 +310,9 @@ impl<'a> ExtCtxt<'a> {
     pub fn expr_self(&self, span: Span) -> Box<ast::Expr> {
         self.expr_ident(span, Ident::new(kw::SelfLower, span))
     }
+    pub fn expr_ident_sym(&self, span: Span, sym: Symbol) -> Box<ast::Expr> {
+        self.expr_ident(span, Ident::new(sym, span))
+    }
 
     pub fn expr_macro_call(&self, span: Span, call: Box<ast::MacCall>) -> Box<ast::Expr> {
         self.expr(span, ast::ExprKind::MacCall(call))

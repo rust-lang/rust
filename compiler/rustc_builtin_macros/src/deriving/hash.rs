@@ -60,11 +60,8 @@ fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_
     let call_hash = |span, expr| {
         let strs = cx.std_path(&[sym::hash, sym::Hash, sym::hash]);
         let hash_path = cx.expr_path(cx.path_global(span, strs));
-        let expr = cx.expr_call(
-            span,
-            hash_path,
-            thin_vec![expr, cx.expr_ident(span, Ident::new(sym::state, span))],
-        );
+        let expr =
+            cx.expr_call(span, hash_path, thin_vec![expr, cx.expr_ident_sym(span, sym::state)]);
         cx.stmt_expr(expr)
     };
 
