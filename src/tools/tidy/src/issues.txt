@@ -966,7 +966,7 @@ ui/extern/issue-64655-extern-rust-must-allow-unwind.rs
 ui/extern/issue-80074.rs
 ui/extern/issue-95829.rs
 ui/feature-gates/issue-43106-gating-of-bench.rs
-ui/feature-gates/issue-43106-gating-of-builtin-attrs-error.rs
+ui/feature-gates/issue-43106-gating-of-builtin-attrs-2.rs
 ui/feature-gates/issue-43106-gating-of-builtin-attrs.rs
 ui/feature-gates/issue-43106-gating-of-deprecated.rs
 ui/feature-gates/issue-43106-gating-of-derive-2.rs
