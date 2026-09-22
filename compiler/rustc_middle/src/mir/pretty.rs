@@ -576,6 +576,7 @@ fn write_coroutine_layout<'tcx>(
         field_tys.iter_enumerated()
     {
         let ignore_for_traits = if *ignore_for_traits { " (ignored for traits)" } else { "" };
+        let ty = ty.instantiate_identity().skip_norm_wip();
         let indented_body = format!("{INDENT}{INDENT}field {field:?}: {ty}{ignore_for_traits};",);
         if options.include_extra_comments {
             writeln!(w, "{0:ALIGN$} // in {1}", indented_body, comment(tcx, *source_info))?;

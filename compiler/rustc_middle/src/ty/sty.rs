@@ -164,11 +164,9 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
         layout.variant_fields.iter().map(move |variant| {
             variant.iter().map(move |field| {
                 if tcx.is_async_drop_in_place_coroutine(def_id) {
-                    layout.field_tys[*field].ty
+                    layout.field_tys[*field].ty.instantiate_identity().skip_norm_wip()
                 } else {
-                    ty::EarlyBinder::bind(tcx, layout.field_tys[*field].ty)
-                        .instantiate(tcx, self.args)
-                        .skip_norm_wip()
+                    layout.field_tys[*field].ty.instantiate(tcx, self.args).skip_norm_wip()
                 }
             })
         })

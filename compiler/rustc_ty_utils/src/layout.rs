@@ -21,8 +21,8 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, AdtDef, CoroutineArgsExt, EarlyBinder, PseudoCanonicalInput, Ty, TyCtxt,
-    TypeVisitableExt, Unnormalized,
+    self, AdtDef, CoroutineArgsExt, PseudoCanonicalInput, Ty, TyCtxt, TypeVisitableExt,
+    Unnormalized,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, bug, sym};
@@ -571,9 +571,8 @@ fn layout_of_uncached<'tcx>(
                 .field_tys
                 .iter()
                 .map(|local| {
-                    let field_ty = EarlyBinder::bind(tcx, local.ty);
                     let uninit_ty =
-                        Ty::new_maybe_uninit(tcx, field_ty.instantiate(tcx, args).skip_norm_wip());
+                        Ty::new_maybe_uninit(tcx, local.ty.instantiate(tcx, args).skip_norm_wip());
                     cx.spanned_layout_of(uninit_ty, local.source_info.span)
                 })
                 .try_collect::<IndexVec<_, _>>()?;

@@ -3493,7 +3493,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 for &local in variant {
                     let decl = &coroutine_info.field_tys[local];
                     debug!(?decl);
-                    if ty_matches(ty::Binder::dummy(decl.ty)) && !decl.ignore_for_traits {
+                    let ty = decl.ty.instantiate_identity().skip_norm_wip();
+                    if ty_matches(ty::Binder::dummy(ty)) && !decl.ignore_for_traits {
                         interior_or_upvar_span = Some(CoroutineInteriorOrUpvar::Interior(
                             decl.source_info.span,
                             Some((source_info.span, from_awaited_ty)),

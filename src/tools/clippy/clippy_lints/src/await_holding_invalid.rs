@@ -212,7 +212,9 @@ impl<'tcx> LateLintPass<'tcx> for AwaitHolding {
 impl AwaitHolding {
     fn check_interior_types(&self, cx: &LateContext<'_>, coroutine: &CoroutineLayout<'_>) {
         for (ty_index, ty_cause) in coroutine.field_tys.iter_enumerated() {
-            if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
+            let ty = ty_cause.ty.instantiate_identity().skip_norm_wip();
+
+            if let rustc_middle::ty::Adt(adt, _) = ty.kind() {
                 let await_points = || {
                     coroutine
                         .variant_source_info
