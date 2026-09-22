@@ -95,9 +95,12 @@ pub trait TypeFoldable<I: Interner>: TypeVisitable<I> + Clone {
     /// `F::fold_ty`). This is where control transfers from `TypeFoldable`
     /// to `TypeFolder`.
     ///
-    /// Same as [`TypeFoldable::try_fold_with`], but not fallible. Make sure to keep
-    /// the behavior in sync across functions.
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self;
+    /// Same as [`TypeFoldable::try_fold_with`], but not fallible.
+    #[inline]
+    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        let Ok(v) = self.try_fold_with(InfallibleTypeFolder::from_mut(folder));
+        v
+    }
 }
 
 // This trait is implemented for types of interest.
@@ -116,7 +119,11 @@ pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
     /// A convenient alternative to `try_super_fold_with` for use with
     /// infallible folders. Do not override this method, to ensure coherence
     /// with `try_super_fold_with`.
-    fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self;
+    #[inline]
+    fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        let Ok(v) = self.try_super_fold_with(InfallibleTypeFolder::from_mut(folder));
+        v
+    }
 }
 
 /// This trait is implemented for every infallible folding traversal. There is
@@ -226,16 +233,67 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
     }
 }
 
+/// Changes a `TypeFolder` into a `FallibleTypeFolder` with `!` as the `Error`.
+/// This is used to implement `TypeFoldable::fold_with` based on `try_fold_with`.
+#[repr(transparent)]
+pub struct InfallibleTypeFolder<F>(F);
+
+impl<F> InfallibleTypeFolder<F> {
+    #[inline]
+    fn from_mut(f: &mut F) -> &mut InfallibleTypeFolder<F> {
+        // SAFETY: repr(transparent)
+        unsafe { mem::transmute(f) }
+    }
+}
+
+impl<F: TypeFolder<I>, I: Interner> FallibleTypeFolder<I> for InfallibleTypeFolder<F> {
+    type Error = Infallible;
+
+    #[inline]
+    fn cx(&self) -> I {
+        self.0.cx()
+    }
+
+    #[inline]
+    fn try_fold_binder<T>(&mut self, t: Binder<I, T>) -> Result<Binder<I, T>, Self::Error>
+    where
+        T: TypeFoldable<I>,
+    {
+        Ok(self.0.fold_binder(t))
+    }
+
+    #[inline]
+    fn try_fold_ty(&mut self, t: I::Ty) -> Result<I::Ty, Self::Error> {
+        Ok(self.0.fold_ty(t))
+    }
+
+    #[inline]
+    fn try_fold_region(&mut self, r: Region<I>) -> Result<Region<I>, Self::Error> {
+        Ok(self.0.fold_region(r))
+    }
+
+    #[inline]
+    fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Self::Error> {
+        Ok(self.0.fold_const(c))
+    }
+
+    #[inline]
+    fn try_fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> Result<P, Self::Error> {
+        Ok(self.0.fold_predicate(p))
+    }
+
+    #[inline]
+    fn try_fold_clauses(&mut self, c: I::Clauses) -> Result<I::Clauses, Self::Error> {
+        Ok(self.0.fold_clauses(c))
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Traversal implementations.
 
 impl<I: Interner, T: TypeFoldable<I>, U: TypeFoldable<I>> TypeFoldable<I> for (T, U) {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<(T, U), F::Error> {
         Ok((self.0.try_fold_with(folder)?, self.1.try_fold_with(folder)?))
-    }
-
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        (self.0.fold_with(folder), self.1.fold_with(folder))
     }
 }
 
@@ -252,10 +310,6 @@ impl<I: Interner, A: TypeFoldable<I>, B: TypeFoldable<I>, C: TypeFoldable<I>> Ty
             self.2.try_fold_with(folder)?,
         ))
     }
-
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        (self.0.fold_with(folder), self.1.fold_with(folder), self.2.fold_with(folder))
-    }
 }
 
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Option<T> {
@@ -265,10 +319,6 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Option<T> {
             None => None,
         })
     }
-
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        Some(self?.fold_with(folder))
-    }
 }
 
 impl<I: Interner, T: TypeFoldable<I>, E: TypeFoldable<I>> TypeFoldable<I> for Result<T, E> {
@@ -277,13 +327,6 @@ impl<I: Interner, T: TypeFoldable<I>, E: TypeFoldable<I>> TypeFoldable<I> for Re
             Ok(v) => Ok(v.try_fold_with(folder)?),
             Err(e) => Err(e.try_fold_with(folder)?),
         })
-    }
-
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        match self {
-            Ok(v) => Ok(v.fold_with(folder)),
-            Err(e) => Err(e.fold_with(folder)),
-        }
     }
 }
 
@@ -329,12 +372,6 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Arc<T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         fold_arc(self, |t| t.try_fold_with(folder))
     }
-
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        match fold_arc::<T, Infallible>(self, |t| Ok(t.fold_with(folder))) {
-            Ok(t) => t,
-        }
-    }
 }
 
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Box<T> {
@@ -342,20 +379,11 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Box<T> {
         *self = (*self).try_fold_with(folder)?;
         Ok(self)
     }
-
-    fn fold_with<F: TypeFolder<I>>(mut self, folder: &mut F) -> Self {
-        *self = (*self).fold_with(folder);
-        self
-    }
 }
 
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Vec<T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.into_iter().map(|t| t.try_fold_with(folder)).collect()
-    }
-
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        self.into_iter().map(|t| t.fold_with(folder)).collect()
     }
 }
 
@@ -363,29 +391,17 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for ThinVec<T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.into_iter().map(|t| t.try_fold_with(folder)).collect()
     }
-
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        self.into_iter().map(|t| t.fold_with(folder)).collect()
-    }
 }
 
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Box<[T]> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         Vec::from(self).try_fold_with(folder).map(Vec::into_boxed_slice)
     }
-
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        Vec::into_boxed_slice(Vec::from(self).fold_with(folder))
-    }
 }
 
 impl<I: Interner, T: TypeFoldable<I>, Ix: Idx> TypeFoldable<I> for IndexVec<Ix, T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.raw.try_fold_with(folder).map(IndexVec::from_raw)
-    }
-
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        IndexVec::from_raw(self.raw.fold_with(folder))
     }
 }
 
