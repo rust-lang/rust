@@ -3138,7 +3138,10 @@ impl<'db> GenericSubstitution<'db> {
         }
     }
 
-    pub fn types(&self, db: &'db dyn HirDatabase) -> Vec<(Symbol, Type<'db>)> {
+    fn types_impl(
+        &self,
+        db: &'db dyn HirDatabase,
+    ) -> impl Iterator<Item = (Ty<'db>, Option<Name>)> {
         let container = match self.def {
             GenericDefId::ConstId(id) => Some(id.lookup(db).container),
             GenericDefId::FunctionId(id) => Some(id.lookup(db).container),
@@ -3165,15 +3168,30 @@ impl<'db> GenericSubstitution<'db> {
             TypeOrConstParamData::TypeParamData(param) => Some(param.name.clone()),
             TypeOrConstParamData::ConstParamData(_) => None,
         });
-        self.subst
-            .types()
-            .zip(container_type_params.into_iter().flatten().chain(type_params))
+        self.subst.types().zip(container_type_params.into_iter().flatten().chain(type_params))
+    }
+
+    /// Returns type arguments with type parameter names.
+    pub fn types(&self, db: &'db dyn HirDatabase) -> Vec<(Symbol, Type<'db>)> {
+        self.types_impl(db)
             .filter_map(|(ty, name)| {
                 Some((
                     name?.symbol().clone(),
                     Type { ty: EarlyBinder::bind(ty), owner: self.owner },
                 ))
             })
+            .collect()
+    }
+
+    /// Returns all type arguments, including unnamed ones such as implicit `impl Trait` parameters.
+    ///
+    /// Unlike [`Self::types`], this does not filter out arguments that have no
+    /// corresponding type parameter name.
+    // Note: this method is not used by rust-analyzer itself as of writing, but is
+    // used by external tools, so please do not remove it even if it appears unused.
+    pub fn all_types(&self, db: &'db dyn HirDatabase) -> Vec<Type<'db>> {
+        self.types_impl(db)
+            .map(|(ty, _)| Type { ty: EarlyBinder::bind(ty), owner: self.owner })
             .collect()
     }
 }
