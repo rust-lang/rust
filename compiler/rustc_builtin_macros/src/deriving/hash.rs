@@ -1,11 +1,11 @@
 use rustc_ast::{Mutability, Safety};
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-use crate::deriving::path_std;
+use crate::deriving::{call_discriminant_value, path_std};
 
 pub(crate) fn expand_deriving_hash(
     cx: &ExtCtxt<'_>,
@@ -56,7 +56,7 @@ pub(crate) fn expand_deriving_hash(
     hash_trait_def.expand(cx, item, push);
 }
 
-fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
+fn hash_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let call_hash = |span, expr| {
         let strs = cx.std_path(&[sym::hash, sym::Hash, sym::hash]);
         let hash_path = cx.expr_path(cx.path_global(span, strs));
@@ -71,12 +71,14 @@ fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_
                 fields.into_iter().map(|field| call_hash(field.span, field.self_expr)).collect();
             (stmts, None)
         }
-        EnumDiscr(discr_field, match_expr) => {
-            assert!(discr_field.other_selflike_expr.is_none());
-            let stmts = thin_vec![call_hash(discr_field.span, discr_field.self_expr)];
+        EnumDiscr(match_expr) => {
+            let stmts = thin_vec![call_hash(
+                span,
+                cx.expr_addr_of(span, call_discriminant_value(cx, span, kw::SelfLower))
+            )];
             (stmts, match_expr)
         }
-        _ => cx.dcx().span_bug(trait_span, "unexpected substructure in `derive(Hash)`"),
+        _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Hash)`"),
     };
 
     BlockOrExpr::new_mixed(stmts, match_expr)

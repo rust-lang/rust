@@ -1,11 +1,11 @@
 use rustc_ast::{Expr, ItemKind, Safety, ast};
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-use crate::deriving::{path_std, pathvec};
+use crate::deriving::{call_discriminant_value, path_std, pathvec};
 
 pub(crate) fn expand_deriving_partial_ord(
     cx: &ExtCtxt<'_>,
@@ -234,8 +234,11 @@ pub(crate) fn cmp_body(
 
             fields.rfold(base_expr, op)
         }
-        EnumDiscr(discr_field, match_expr) => {
-            let discr_check_expr = single(discr_field);
+        EnumDiscr(match_expr) => {
+            let self_expr = cx.expr_addr_of(span, call_discriminant_value(cx, span, kw::SelfLower));
+            let other_expr = cx.expr_addr_of(span, call_discriminant_value(cx, span, sym::other));
+            let args = thin_vec![self_expr, other_expr];
+            let discr_check_expr = cx.expr_call_global(span, method_path, args);
             if let Some(match_expr) = match_expr {
                 combine(span, match_expr, discr_check_expr)
             } else {

@@ -297,10 +297,9 @@ pub(crate) enum Substructure<'a> {
     /// variant.
     EnumMatching(&'a ast::Variant, Vec<FieldInfo>),
 
-    /// The discriminant of an enum. The first field is a `FieldInfo` for the discriminants, as
-    /// if they were fields. The second field is the expression to combine the
+    /// The discriminant of an enum. The field is the expression to combine the
     /// discriminant expression with; it will be `None` if no match is necessary.
-    EnumDiscr(FieldInfo, Option<Box<Expr>>),
+    EnumDiscr(Option<Box<Expr>>),
 
     /// A static method where `Self` is a struct.
     StaticStruct(&'a ast::VariantData),
@@ -997,29 +996,6 @@ impl<'a> MethodDef<'a> {
             _ => unreachable!(),
         };
 
-        // Maps each selflike_arg to its discriminant value.
-        //
-        // e.g. for `PartialEq::eq` it builds:
-        // ```
-        // ::core::intrinsics::discriminant_value(self); // self_expr
-        // ::core::intrinsics::discriminant_value(other); // other_selflike_expr
-        // ```
-        let get_discr_field_info = || {
-            let mut discr_exprs = selflike_args.iter().map(|selflike_arg| {
-                let call = deriving::call_intrinsic(
-                    cx,
-                    span,
-                    sym::discriminant_value,
-                    thin_vec![selflike_arg.clone()],
-                );
-                cx.expr_addr_of(span, call)
-            });
-            let self_expr = discr_exprs.next().unwrap();
-            let other_selflike_expr = discr_exprs.next();
-
-            FieldInfo { span, name: None, self_expr, other_selflike_expr, maybe_scalar: true }
-        };
-
         // There are some special cases involving fieldless enums where no
         // match is necessary.
         let all_fieldless = variants.iter().all(|v| v.data.fields().is_empty());
@@ -1030,12 +1006,7 @@ impl<'a> MethodDef<'a> {
                         // If the type is fieldless and the trait uses the discriminant and
                         // there are multiple variants, we need just an operation on
                         // the discriminant(s).
-                        let discr_field = get_discr_field_info();
-                        return self.call_substructure_method(
-                            cx,
-                            span,
-                            EnumDiscr(discr_field, None),
-                        );
+                        return self.call_substructure_method(cx, span, EnumDiscr(None));
                     }
                     FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless => {
                         return self.call_substructure_method(cx, span, AllFieldlessEnum(enum_def));
@@ -1135,14 +1106,8 @@ impl<'a> MethodDef<'a> {
         // to add a discriminant check operation before the match. Otherwise, the match
         // is enough.
         if unify_fieldless_variants && variants.len() > 1 {
-            let discr_field = get_discr_field_info();
-
             // Combine a discriminant check with the match.
-            self.call_substructure_method(
-                cx,
-                span,
-                EnumDiscr(discr_field, Some(get_match_expr(selflike_args))),
-            )
+            self.call_substructure_method(cx, span, EnumDiscr(Some(get_match_expr(selflike_args))))
         } else {
             BlockOrExpr(ThinVec::new(), Some(get_match_expr(selflike_args)))
         }

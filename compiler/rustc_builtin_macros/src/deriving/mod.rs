@@ -87,6 +87,11 @@ fn call_intrinsic(
     cx.expr_call_global(span, path, args)
 }
 
+/// Constructs an expression that calls the `discriminant_value` intrinsic.
+fn call_discriminant_value(cx: &ExtCtxt<'_>, span: Span, arg: Symbol) -> Box<ast::Expr> {
+    call_intrinsic(cx, span, sym::discriminant_value, thin_vec![cx.expr_ident_sym(span, arg)])
+}
+
 /// Constructs an expression that calls the `unreachable` intrinsic.
 fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
     let call = call_intrinsic(cx, span, sym::unreachable, ThinVec::new());
