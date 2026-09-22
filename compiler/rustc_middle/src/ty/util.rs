@@ -377,7 +377,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         adt_did: LocalDefId,
         validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
-        impossible_self_ty: impl Fn(Self, LocalDefId) -> bool,
     ) -> Option<ty::Destructor> {
         let drop_trait = self.lang_items().drop_trait()?;
         self.ensure_result().coherent_trait(drop_trait).ok()?;
@@ -392,11 +391,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
             if validate(self, impl_did).is_err() {
                 // Already `ErrorGuaranteed`, no need to delay a span bug here.
-                continue;
-            }
-
-            if impossible_self_ty(self, adt_did) {
-                // The self ty is unnameable, so it can't be constructed in the first place.
                 continue;
             }
 
@@ -430,7 +424,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         adt_did: LocalDefId,
         validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
-        impossible_self_ty: impl Fn(Self, LocalDefId) -> bool,
     ) -> Option<ty::AsyncDestructor> {
         let async_drop_trait = self.lang_items().async_drop_trait()?;
         self.ensure_result().coherent_trait(async_drop_trait).ok()?;
@@ -445,11 +438,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
             if validate(self, impl_did).is_err() {
                 // Already `ErrorGuaranteed`, no need to delay a span bug here.
-                continue;
-            }
-
-            if impossible_self_ty(self, adt_did) {
-                // The self ty is unnameable, so it can't be constructed in the first place.
                 continue;
             }
 
