@@ -16,7 +16,7 @@ pub(crate) fn expand_deriving_ord(
 ) {
     let trait_def = TraitDef {
         span,
-        path: path_std!(cmp::Ord),
+        path: path_std!(cx, span, cmp::Ord),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
@@ -26,7 +26,7 @@ pub(crate) fn expand_deriving_ord(
             generics: cx.empty_generics(span),
             explicit_self: true,
             nonself_args: smallvec![(self_ref(), sym::other)],
-            ret_ty: Path(path_std!(cmp::Ordering)),
+            ret_ty: Path(path_std!(cx, span, cmp::Ordering)),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(cs_cmp),
@@ -57,10 +57,9 @@ pub(crate) fn cs_cmp(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> 
         span,
         substr,
         |field| {
-            let [other_expr] = &field.other_selflike_exprs[..] else {
-                cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
-            };
-            let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
+            let other_expr =
+                field.other_selflike_expr.expect("not exactly 2 arguments in `derive(Ord)`");
+            let args = thin_vec![field.self_expr, other_expr];
             cx.expr_call_global(field.span, cmp_path.clone(), args)
         },
         |span, expr1, expr2| {

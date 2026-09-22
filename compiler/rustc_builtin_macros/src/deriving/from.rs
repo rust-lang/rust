@@ -5,7 +5,7 @@ use rustc_expand::base::{DummyResult, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
-use crate::deriving::generic::ty::{Path, PathKind, Ty};
+use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::pathvec;
 use crate::diagnostics;
@@ -52,8 +52,7 @@ pub(crate) fn expand_deriving_from(
         Err(guar) => cx.ty(span, ast::TyKind::Err(guar)),
     });
 
-    let path =
-        Path::new_(pathvec!(convert::From), vec![Box::new(from_type.clone())], PathKind::Std);
+    let path = new_path(cx, span, pathvec!(convert::From), &[from_type.clone()]);
 
     // Generate code like this:
     //
@@ -89,8 +88,8 @@ pub(crate) fn expand_deriving_from(
                 };
 
                 let self_kw = Ident::new(kw::SelfUpper, span);
-                let expr: Box<ast::Expr> = match substructure.fields {
-                    SubstructureFields::StaticStruct(variant) => match variant {
+                let expr: Box<ast::Expr> = match substructure {
+                    StaticStruct(variant) => match variant {
                         // Self { field: value }
                         VariantData::Struct { .. } => cx.expr_struct_ident(
                             span,

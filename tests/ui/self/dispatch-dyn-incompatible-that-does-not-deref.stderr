@@ -1,20 +1,22 @@
 error[E0038]: the trait `Foo` is not dyn compatible
   --> $DIR/dispatch-dyn-incompatible-that-does-not-deref.rs:12:13
    |
-LL |     fn method(self: &W) {}
-   |                     -- help: consider changing method `method`'s `self` parameter to be `&self`: `&Self`
-...
 LL | fn test(x: &dyn Foo) {
    |             ^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/dispatch-dyn-incompatible-that-does-not-deref.rs:8:21
+  --> $DIR/dispatch-dyn-incompatible-that-does-not-deref.rs:8:15
    |
 LL | trait Foo: Deref<Target = W> {
    |       --- this trait is not dyn compatible...
 LL |     fn method(self: &W) {}
-   |                     ^^ ...because method `method`'s `self` parameter cannot be dispatched on
+   |               ^^^^^^^^ ...because method `method`'s `self` parameter cannot be dispatched on
+help: consider changing method `method`'s `self` parameter to be `&self`
+   |
+LL -     fn method(self: &W) {}
+LL +     fn method(&self) {}
+   |
 
 error[E0307]: invalid `self` parameter type: `&W`
   --> $DIR/dispatch-dyn-incompatible-that-does-not-deref.rs:8:21
