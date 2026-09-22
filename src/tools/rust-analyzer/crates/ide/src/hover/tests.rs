@@ -8746,6 +8746,158 @@ foo!(r"{$0aaaaa}");
 }
 
 #[test]
+fn hover_cfg_predicate() {
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0true)]
+fn test() {}
+"#,
+        expect![[r#"
+            *true*
+            cfg predicate evaluated: `true` (`true`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg(any($0true, false))]
+fn test() {}
+"#,
+        expect![[r#"
+            *true*
+            cfg predicate evaluated: `true` (`true`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg(any(true, $0false))]
+fn test() {}
+"#,
+        expect![[r#"
+            *false*
+            cfg predicate evaluated: `false` (`false`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0any(true, false))]
+fn test() {}
+"#,
+        expect![[r#"
+            *any*
+            cfg predicate evaluated: `true` (`any(true, false)`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0all(true, false))]
+fn test() {}
+"#,
+        expect![[r#"
+            *all*
+            cfg predicate evaluated: `false` (`all(true, false)`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0test)]
+fn test() {}
+"#,
+        expect![[r#"
+            *test*
+            cfg predicate evaluated: `true` (`test`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0opt_level = "2")]
+fn test() {}
+"#,
+        expect![[r#"
+            *opt_level*
+            cfg predicate evaluated: `true` (`opt_level = "2"`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0opt_level = "3")]
+fn test() {}
+"#,
+        expect![[r#"
+            *opt_level*
+            cfg predicate evaluated: `false` (`opt_level = "3"`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+macro_rules! identity { ($($t:tt)*) => { $($t)* }; }
+identity! {
+    #[cfg($0test)]
+    fn test() {}
+}
+"#,
+        expect![[r#"
+            *test*
+            cfg predicate evaluated: `true` (`test`)
+        "#]],
+    );
+    check(
+        r#"
+//- /lib1.rs crate:dep cfg:opt_level=3
+#[macro_export]
+macro_rules! expand_cfg { ($val:tt) => { #[cfg(opt_level = $val)] fn f(){} }; }
+//- /main.rs crate:bin deps:dep cfg:test,dbg=false,opt_level=2
+dep::expand_cfg!("$02");
+"#,
+        expect![[r#"
+            *"2"*
+            cfg predicate evaluated: `true` (`opt_level="2"`)
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn test() { cfg!($0opt_level = "2") }
+"#,
+        expect![[r#"
+            *opt_level*
+            cfg predicate evaluated: `true` (`opt_level="2"`)
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn test() { cfg!($0opt_level = "3") }
+"#,
+        expect![[r#"
+            *opt_level*
+            cfg predicate evaluated: `false` (`opt_level="3"`)
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn test() { cfg!(and(false, $0opt_level = "2")) }
+"#,
+        expect![[r#"
+            *opt_level*
+            cfg predicate evaluated: `true` (`opt_level="2"`)
+        "#]],
+    );
+}
+
+#[test]
 fn method_call_without_parens() {
     check(
         r#"
