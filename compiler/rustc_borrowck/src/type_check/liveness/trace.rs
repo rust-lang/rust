@@ -394,7 +394,7 @@ impl<'a, 'tcx> LivenessComputation<'a, 'tcx> {
         universal_regions: &UniversalRegions<'tcx>,
         live_region_variances: Option<&mut LiveRegionVariances>,
         liveness_constraints: &mut LivenessValues,
-        get_drop_args: impl FnOnce() -> &'drop_data Vec<GenericArg<'tcx>>,
+        get_drop_args: impl FnOnce() -> &'drop_data [GenericArg<'tcx>],
     ) where
         'tcx: 'drop_data,
     {
@@ -431,17 +431,16 @@ impl<'a, 'tcx> LivenessComputation<'a, 'tcx> {
         if !self.drop_live_at.is_empty() {
             let drop_data = get_drop_args();
 
-            // `drop_live_at` is using a DenseBitSet, but `make_all_regions_live`
-            // expects an IntervalSet. We thus convert between those two here.
-            // Using a `DenseBitSet` has better performance, but storing liveness
-            // as a dense matrix has worse performance. There's probably room here
-            // for some cleanup, but this works for now.
-            let mut drop_live_at: IntervalSet<PointIndex> =
-                IntervalSet::new(self.drop_live_at.domain_size());
-            for item in self.drop_live_at.iter() {
+            // `compute_drop_live_points_for` computes `drop_live_at` as a `DenseBitSet`, but
+            // `make_all_regions_live` expects an `IntervalSet`. We thus convert between those two
+            // here. Using a `DenseBitSet` has better performance, but storing liveness as a dense
+            // matrix has worse performance. There's probably room here for some cleanup, but this
+            // works for now.
+            let mut drop_live_at = IntervalSet::new(self.drop_live_at.domain_size());
+            for point in self.drop_live_at.iter() {
                 // We iterate the `drop_live_at` set from smallest to largest values, so
                 // we can use append to add things to the interval set at the end.
-                drop_live_at.append(item);
+                drop_live_at.append(point);
             }
 
             for &kind in drop_data {
