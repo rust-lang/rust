@@ -16,8 +16,8 @@ use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, BoxMarker, Breaks};
 use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
+use rustc_attr_ir::{AttrArgs, AttrItem, Attribute, AttributeKind, PrintAttribute};
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, PrintAttribute};
 use rustc_hir::{
     BindingMode, ByRef, ConstArg, ConstArgExprField, ConstArgKind, GenericArg, GenericBound,
     GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind,
@@ -72,12 +72,12 @@ impl PpAnn for &dyn rustc_hir::intravisit::HirTyCtxt<'_> {
 pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
-    attrs: &'a dyn Fn(HirId) -> &'a [hir::Attribute],
+    attrs: &'a dyn Fn(HirId) -> &'a [Attribute],
     ann: &'a (dyn PpAnn + 'a),
 }
 
 impl<'a> State<'a> {
-    fn attrs(&self, id: HirId) -> &'a [hir::Attribute] {
+    fn attrs(&self, id: HirId) -> &'a [Attribute] {
         (self.attrs)(id)
     }
 
@@ -86,7 +86,7 @@ impl<'a> State<'a> {
         expr.precedence(&has_attr)
     }
 
-    fn print_attrs(&mut self, attrs: &[hir::Attribute]) {
+    fn print_attrs(&mut self, attrs: &[Attribute]) {
         if attrs.is_empty() {
             return;
         }
@@ -99,9 +99,9 @@ impl<'a> State<'a> {
 
     /// Print a single attribute as if it has style `style`, disregarding the
     /// actual style of the attribute.
-    fn print_attribute_as_style(&mut self, attr: &hir::Attribute, style: ast::AttrStyle) {
+    fn print_attribute_as_style(&mut self, attr: &Attribute, style: ast::AttrStyle) {
         match &attr {
-            hir::Attribute::Unparsed(unparsed) => {
+            Attribute::Unparsed(unparsed) => {
                 self.maybe_print_comment(unparsed.span.lo());
                 match style {
                     ast::AttrStyle::Inner => self.word("#!["),
@@ -111,13 +111,13 @@ impl<'a> State<'a> {
                 self.word("]");
                 self.hardbreak()
             }
-            hir::Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {
+            Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {
                 self.word(rustc_ast_pretty::pprust::state::doc_comment_to_string(
                     *kind, style, *comment,
                 ));
                 self.hardbreak()
             }
-            hir::Attribute::Parsed(pa) => {
+            Attribute::Parsed(pa) => {
                 match style {
                     ast::AttrStyle::Inner => self.word("#![attr = "),
                     ast::AttrStyle::Outer => self.word("#[attr = "),
@@ -129,7 +129,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_attr_item(&mut self, item: &hir::AttrItem, span: Span) {
+    fn print_attr_item(&mut self, item: &AttrItem, span: Span) {
         let ib = self.ibox(0);
         let path = ast::Path {
             span,
@@ -146,21 +146,20 @@ impl<'a> State<'a> {
         };
 
         match &item.args {
-            hir::AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self
-                .print_mac_common(
-                    Some(MacHeader::Path(&path)),
-                    false,
-                    None,
-                    *delim,
-                    None,
-                    &tokens,
-                    true,
-                    span,
-                ),
-            hir::AttrArgs::Empty => {
+            AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self.print_mac_common(
+                Some(MacHeader::Path(&path)),
+                false,
+                None,
+                *delim,
+                None,
+                &tokens,
+                true,
+                span,
+            ),
+            AttrArgs::Empty => {
                 PrintState::print_path(self, &path, false, 0);
             }
-            hir::AttrArgs::Eq { eq_span: _, expr } => {
+            AttrArgs::Eq { eq_span: _, expr } => {
                 PrintState::print_path(self, &path, false, 0);
                 self.space();
                 self.word_space("=");
@@ -277,7 +276,7 @@ pub fn print_crate<'a>(
     krate: &hir::Mod<'_>,
     filename: FileName,
     input: String,
-    attrs: &'a dyn Fn(HirId) -> &'a [hir::Attribute],
+    attrs: &'a dyn Fn(HirId) -> &'a [Attribute],
     ann: &'a dyn PpAnn,
 ) -> String {
     let mut s = State {
@@ -311,7 +310,7 @@ where
     printer.s.eof()
 }
 
-pub fn attribute_to_string(ann: &dyn PpAnn, attr: &hir::Attribute) -> String {
+pub fn attribute_to_string(ann: &dyn PpAnn, attr: &Attribute) -> String {
     to_string(ann, |s| s.print_attribute_as_style(attr, ast::AttrStyle::Outer))
 }
 
