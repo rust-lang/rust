@@ -430,11 +430,22 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             .map(|bs| bs.iter().copied())
             .into_flat_iter();
 
+        let borrow_conflicts_with_place = |i| {
+            places_conflict(
+                self.tcx,
+                self.body,
+                self.borrow_set[i].borrowed_place,
+                place,
+                PlaceConflictBias::NoOverlap,
+            )
+        };
+
         // If the borrowed place is a local with no projections, all other borrows of this
         // local must conflict. This is purely an optimization so we don't have to call
         // `places_conflict` for every borrow.
         if place.projection.is_empty() {
             if !self.body.local_decls[place.local].is_ref_to_static() {
+                assert!(other_borrows_of_local.clone().all(borrow_conflicts_with_place));
                 state.kill_all(other_borrows_of_local);
             }
             return;
@@ -444,15 +455,8 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         // pair of array indices are not equal, so that when `places_conflict` returns true, we
         // will be assured that two places being compared definitely denotes the same sets of
         // locations.
-        let definitely_conflicting_borrows = other_borrows_of_local.filter(|&i| {
-            places_conflict(
-                self.tcx,
-                self.body,
-                self.borrow_set[i].borrowed_place,
-                place,
-                PlaceConflictBias::NoOverlap,
-            )
-        });
+        let definitely_conflicting_borrows =
+            other_borrows_of_local.filter(|&i| borrow_conflicts_with_place(i));
 
         state.kill_all(definitely_conflicting_borrows);
     }
