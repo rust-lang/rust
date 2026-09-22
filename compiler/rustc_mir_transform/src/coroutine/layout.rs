@@ -297,6 +297,9 @@ struct StorageConflictVisitor<'a> {
     local_conflicts: BitMatrix<Local, Local>,
     // We keep this bitset as a buffer to avoid reallocating memory.
     eligible_storage_live: DenseBitSet<Local>,
+    // The last live set whose conflicts were recorded. This is just a fast path:
+    // if the current live set is a subset, we can skip updating the conflict matrix
+    // since its conflicts have already been recorded.
     last_recorded_storage_live: DenseBitSet<Local>,
 }
 
