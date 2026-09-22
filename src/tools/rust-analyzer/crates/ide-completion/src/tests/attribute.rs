@@ -1115,6 +1115,16 @@ fn f() {}
                 ba little
             "#]],
         );
+        check(
+            r#"#[cfg(target_endian = "$0""#,
+            expect![[r#"
+                ba big
+                ba little
+            "#]],
+        );
+
+        check_edit("big", r#"#[cfg(target_endian = b$0"#, r#"#[cfg(target_endian = "big""#);
+        check_edit("big", r#"#[cfg(target_endian = "b$0""#, r#"#[cfg(target_endian = "big""#);
     }
 
     #[test]
