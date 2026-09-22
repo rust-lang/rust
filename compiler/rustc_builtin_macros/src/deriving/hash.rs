@@ -3,7 +3,6 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::{call_discriminant_value, path_std};
 
@@ -18,7 +17,7 @@ pub(crate) fn expand_deriving_hash(
 
     let typaram = Ident::new(sym::__H, span);
 
-    let arg = cx.path_ident(span, typaram);
+    let arg = cx.ty_path(cx.path_ident(span, typaram));
 
     let param = {
         let path = path_std!(cx, span, hash::Hasher);
@@ -42,8 +41,9 @@ pub(crate) fn expand_deriving_hash(
             name: sym::hash,
             generics,
             explicit_self: true,
-            nonself_args: smallvec![(Ref(Box::new(Path(arg)), Mutability::Mut), sym::state)],
-            ret_ty: Unit,
+            nonself_args: smallvec![(cx.ty_ref(span, arg, None, Mutability::Mut), sym::state)],
+            has_other_selflike_arg: false,
+            ret_ty: cx.ty_unit(span),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(hash_substructure),

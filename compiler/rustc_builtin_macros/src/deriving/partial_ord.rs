@@ -3,9 +3,8 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
-use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-use crate::deriving::{call_discriminant_value, path_std, pathvec};
+use crate::deriving::{call_discriminant_value, new_path, path_std, pathvec};
 
 pub(crate) fn expand_deriving_partial_ord(
     cx: &ExtCtxt<'_>,
@@ -14,8 +13,8 @@ pub(crate) fn expand_deriving_partial_ord(
     push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
-    let ordering_ty = Path(path_std!(cx, span, cmp::Ordering));
-    let ret_ty = Path(new_path(cx, span, pathvec!(option::Option), &[ordering_ty]));
+    let ordering_ty = cx.ty_path(path_std!(cx, span, cmp::Ordering));
+    let ret_ty = cx.ty_path(new_path(cx, span, pathvec!(option::Option), vec![ordering_ty]));
 
     // Order in which to perform matching
     let discr_then_data = discr_data_order(item);
@@ -54,7 +53,8 @@ pub(crate) fn expand_deriving_partial_ord(
         name: sym::partial_cmp,
         generics: cx.empty_generics(span),
         explicit_self: true,
-        nonself_args: smallvec![(self_ref(), sym::other)],
+        nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
+        has_other_selflike_arg: true,
         ret_ty,
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,

@@ -3,7 +3,6 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
 
-use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::partial_ord::{OrdlikeDerive, cmp_body, discr_data_order};
 use crate::deriving::path_std;
@@ -28,8 +27,9 @@ pub(crate) fn expand_deriving_ord(
             name: sym::cmp,
             generics: cx.empty_generics(span),
             explicit_self: true,
-            nonself_args: smallvec![(self_ref(), sym::other)],
-            ret_ty: Path(path_std!(cx, span, cmp::Ordering)),
+            nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
+            has_other_selflike_arg: true,
+            ret_ty: cx.ty_path(path_std!(cx, span, cmp::Ordering)),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(|cx, span, substr| cs_cmp(

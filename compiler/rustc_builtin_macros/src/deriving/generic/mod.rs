@@ -174,7 +174,6 @@
 //! )
 //! ```
 
-use std::iter::once;
 use std::ops::Not;
 use std::vec;
 
@@ -192,11 +191,8 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, respan, sym};
 pub(crate) use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
-use ty::{Ref, Self_, Ty};
 
 use crate::{deriving, diagnostics};
-
-pub(crate) mod ty;
 
 pub(crate) struct TraitDef<'a> {
     /// The span for the current #[derive(Foo)] header.
@@ -239,10 +235,13 @@ pub(crate) struct MethodDef<'a> {
     pub explicit_self: bool,
 
     /// Arguments other than the self argument.
-    pub nonself_args: SmallVec<[(Ty, Symbol); 1]>,
+    pub nonself_args: SmallVec<[(Box<ast::Ty>, Symbol); 1]>,
+
+    /// Whether this method has another arg of type `&self`.
+    pub has_other_selflike_arg: bool,
 
     /// Returns type
-    pub ret_ty: Ty,
+    pub ret_ty: Box<ast::Ty>,
 
     pub attributes: ast::AttrVec,
 
@@ -809,12 +808,12 @@ impl<'a> MethodDef<'a> {
     fn get_selflike_args(&self, cx: &ExtCtxt<'_>, span: Span) -> ThinVec<Box<Expr>> {
         assert!(self.explicit_self);
 
-        once(cx.expr_self(span))
-            .chain(self.nonself_args.iter().filter_map(|(ty, name)| match ty {
-                Ref(Self_, _) => Some(cx.expr_ident_sym(span, *name)),
-                _ => None,
-            }))
-            .collect()
+        let self_expr = cx.expr_self(span);
+        if self.has_other_selflike_arg {
+            thin_vec![self_expr, cx.expr_ident_sym(span, self.nonself_args[0].1)]
+        } else {
+            thin_vec![self_expr]
+        }
     }
 
     fn create_method(
@@ -841,16 +840,16 @@ impl<'a> MethodDef<'a> {
         let args = self_arg
             .into_iter()
             .chain(self.nonself_args.iter().map(|(ty, name)| {
-                let ast_ty = ty.to_ty(cx, span);
+                let ast_ty = ty.clone();
                 let ident = Ident::new(*name, span);
                 cx.param(span, ident, ast_ty)
             }))
             .collect();
 
-        let ret_type = if let Ty::Unit = &self.ret_ty {
+        let ret_type = if self.ret_ty.kind.is_unit() {
             ast::FnRetTy::Default(span)
         } else {
-            ast::FnRetTy::Ty(self.ret_ty.to_ty(cx, span))
+            ast::FnRetTy::Ty(self.ret_ty.clone())
         };
 
         let method_ident = Ident::new(self.name, span);

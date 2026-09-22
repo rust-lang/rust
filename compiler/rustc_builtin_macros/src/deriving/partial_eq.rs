@@ -3,7 +3,6 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
-use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::{call_discriminant_value, path_std};
 
@@ -41,8 +40,9 @@ pub(crate) fn expand_deriving_partial_eq(
         name: sym::eq,
         generics: cx.empty_generics(span),
         explicit_self: true,
-        nonself_args: smallvec![(self_ref(), sym::other)],
-        ret_ty: Path(cx.path_ident(span, Ident::new(sym::bool, span))),
+        nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
+        has_other_selflike_arg: true,
+        ret_ty: cx.ty_path(cx.path_ident(span, Ident::new(sym::bool, span))),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(get_substructure_equality_expr),

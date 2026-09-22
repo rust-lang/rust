@@ -125,6 +125,17 @@ impl<'a> ExtCtxt<'a> {
         self.ty(span, ast::TyKind::Ptr(self.ty_mt(ty, mutbl)))
     }
 
+    pub fn ty_unit(&self, span: Span) -> Box<ast::Ty> {
+        self.ty(span, ast::TyKind::Tup(ThinVec::new()))
+    }
+
+    pub fn ty_self(&self, span: Span) -> Box<ast::Ty> {
+        self.ty_path(self.path_ident(span, Ident::new(kw::SelfUpper, span)))
+    }
+    pub fn ty_self_ref(&self, span: Span) -> Box<ast::Ty> {
+        self.ty_ref(span, self.ty_self(span), None, ast::Mutability::Not)
+    }
+
     pub fn typaram(
         &self,
         span: Span,
