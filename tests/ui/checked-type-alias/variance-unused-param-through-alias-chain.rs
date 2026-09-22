@@ -1,6 +1,6 @@
-// Check that we look through a chain of free alias types when working out which item is actually
-// throwing an unused type parameter away. Free aliases aren't expanded by `type_of`, so naively
-// walking the aliased type would just find `T` handed to the next alias and give up.
+// A mention forwarded through free aliases still does not count as a use when the final type
+// ignores the parameter. The diagnostic should label the original mention even though the
+// intermediate aliases mention the parameter too.
 
 #![feature(checked_type_aliases)]
 
@@ -13,9 +13,9 @@ type Discard<T> = Ignores<T>;
 struct Wrap<T>(Forward<T>);
 //~^ ERROR type parameter `T` is never used
 
-// The same alias applied to different arguments is a different expansion. Treating `Id` as
-// already-expanded after `Id<u8>` would hide the `T` in `Id<T>` and make `Repeat` look like it
-// discards its parameter.
+// An alias can occur with different arguments in the same type. Here `Repeat` preserves its
+// parameter through `Id<T>`, so the enclosing struct uses `T` only recursively. The unrelated
+// `Id<u8>` must not hide that recursive use.
 type Id<T> = T;
 type Repeat<T> = (Id<u8>, Id<T>);
 

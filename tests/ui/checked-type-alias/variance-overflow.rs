@@ -19,10 +19,10 @@ struct First<T>(Second);
 type Second = Second; // diverging free alias type
 //~^ ERROR overflow normalizing the type alias `Second`
 
-// The same applies to the "unused type parameter" diagnostic, which expands free alias types to
-// work out which item is throwing the parameter away. Here the argument grows with every step, so
-// there's no repeated `(DefId, args)` pair to detect the divergence with -- only the recursion
-// limit inside `expand_free_alias_tys` stops it.
+// The same applies when a diverging alias mentions a type parameter. The argument grows with
+// every step, so there is no repeated `(DefId, args)` pair to detect the divergence with.
+// Variance inference must stop at the recursion limit, and reporting the unused parameter
+// must not restart the expansion.
 type Diverging<T> = Diverging<(T,)>;
 //~^ ERROR overflow normalizing the type alias `Diverging<
 

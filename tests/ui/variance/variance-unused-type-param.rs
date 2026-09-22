@@ -33,7 +33,7 @@ struct DoubleNothing<T> {
     s: SomeStruct<T>,
 }
 
-// The parameter is thrown away by `SomeStruct`, not by `Vec`, so that's what we should point at.
+// A mention nested inside another type argument still does not count as a use.
 struct NestedNothing<T> {
 //~^ ERROR parameter `T` is never used
     s: SomeStruct<Vec<T>>,
@@ -45,7 +45,7 @@ type Discard<T> = ();
 struct ThroughTypeAlias<T>(Discard<T>);
 //~^ ERROR parameter `T` is never used
 
-// Make sure we blame the right parameter of the type we point at.
+// Only the unused parameter should receive the diagnostic.
 struct SecondUnused<A, B> { a: A }
 //~^ ERROR parameter `B` is never used
 

@@ -69,7 +69,7 @@ LL | struct DoubleNothing<T> {
    |                      ^ unused type parameter
 LL |
 LL |     s: SomeStruct<T>,
-   |                   - `T` is named here, but `SomeStruct` does not use it
+   |                   - `T` is named here, but is not used in the type that wraps it
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
@@ -81,7 +81,7 @@ LL | struct NestedNothing<T> {
    |                      ^ unused type parameter
 LL |
 LL |     s: SomeStruct<Vec<T>>,
-   |                       - `T` is named here, but `SomeStruct` does not use it
+   |                       - `T` is named here, but is not used in the type that wraps it
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
    = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
@@ -99,7 +99,7 @@ error[E0392]: type parameter `T` is never used
   --> $DIR/variance-unused-type-param.rs:45:25
    |
 LL | struct ThroughTypeAlias<T>(Discard<T>);
-   |                         ^          - `T` is named here, but `Discard` does not use it
+   |                         ^          - `T` is named here, but is not used in the type that wraps it
    |                         |
    |                         unused type parameter
    |
@@ -119,7 +119,7 @@ error[E0392]: type parameter `T` is never used
   --> $DIR/variance-unused-type-param.rs:52:25
    |
 LL | struct UsesSecondUnused<T>(SecondUnused<u32, T>);
-   |                         ^                    - `T` is named here, but `SecondUnused` does not use it
+   |                         ^                    - `T` is named here, but is not used in the type that wraps it
    |                         |
    |                         unused type parameter
    |
@@ -130,7 +130,7 @@ error[E0392]: type parameter `T` is never used
   --> $DIR/variance-unused-type-param.rs:58:31
    |
 LL | struct ThroughForwardingAlias<T>(Forward<T>);
-   |                               ^          - `T` is named here, but `Forward` does not use it
+   |                               ^          - `T` is named here, but is not used in the type that wraps it
    |                               |
    |                               unused type parameter
    |
