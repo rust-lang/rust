@@ -5,7 +5,7 @@
       let mut _0: ();
   
       bb0: {
-          _1[_2] = passthrough_usize(copy _2) -> [return: bb1, unwind unreachable];
+          _1[_2] = identity::<usize>(copy _2) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
