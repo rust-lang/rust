@@ -807,3 +807,70 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         }
     }
 }
+
+impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
+    /// # Safety
+    /// - `self` must be the root.
+    /// - The tree shouldn't be accessed anymore.
+    pub(super) unsafe fn drop_tree<A: AllocatorClone>(self, alloc: A) {
+        struct DropGuard<K, V, A: AllocatorClone> {
+            node: Option<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>>,
+            alloc: A,
+        }
+
+        impl<K, V, A: AllocatorClone> Drop for DropGuard<K, V, A> {
+            fn drop(&mut self) {
+                if let Some(cur) = self.node.take() {
+                    let mut next =
+                        // SAFETY: When unwinding reached this guard, all kvs in cur
+                        // have already been dropped in `drop_kvs`, while the node itself has not
+                        // yet been deallocated.
+                        unsafe { deallocate_and_next_postorder_node(cur, self.alloc.clone()) };
+
+                    while let Some(node) = next {
+                        // SAFETY: Every node only calls the function once
+                        unsafe { node.drop_kvs() };
+                        next =
+                            // SAFETY: `drop_kvs()` above only dropped kvs and the node is still accessible,
+                            // and also each node is deallocated exactly once.
+                            unsafe { deallocate_and_next_postorder_node(node, self.alloc.clone()) }
+                    }
+                }
+            }
+        }
+        /// Deallocates `node` and returns the next node in postorder traversal
+        ///
+        /// # Safety
+        ///
+        /// The node must be initialized and all kvs in node must have already
+        /// been dropped or moved out. Also the node can't be touched anymore.
+        unsafe fn deallocate_and_next_postorder_node<K, V, A: AllocatorClone>(
+            node: NodeRef<marker::Dying, K, V, marker::LeafOrInternal>,
+            alloc: A,
+        ) -> Option<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>> {
+            // SAFETY: guaranteed by the caller
+            let parent = unsafe { node.deallocate_and_ascend(alloc) }?;
+
+            Some(match parent.right_kv() {
+                Ok(kv) => kv.right_edge().descend().first_leaf_edge().into_node().forget_type(),
+                Err(last_edge) => last_edge.into_node().forget_type(),
+            })
+        }
+
+        let node = self.first_leaf_edge().into_node().forget_type();
+        let mut guard = DropGuard { node: Some(node), alloc };
+        loop {
+            // SAFETY: all kvs of each node are dropped once
+            unsafe { guard.node.as_ref().unwrap().drop_kvs() };
+            // SAFETY: Nodes are deallocated in postorder, and each node is deallocated exactly once.
+            if let Some(next) = unsafe {
+                deallocate_and_next_postorder_node(guard.node.take().unwrap(), guard.alloc.clone())
+            } {
+                guard.node = Some(next);
+            } else {
+                guard.node = None;
+                return;
+            }
+        }
+    }
+}

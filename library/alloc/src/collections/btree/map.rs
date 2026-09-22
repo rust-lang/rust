@@ -205,8 +205,14 @@ pub struct BTreeMap<
 #[stable(feature = "btree_drop", since = "1.7.0")]
 unsafe impl<#[may_dangle] K, #[may_dangle] V, A: AllocatorClone> Drop for BTreeMap<K, V, A> {
     fn drop(&mut self) {
-        // ignore-tidy-undocumented-unsafe
-        drop(unsafe { ptr::read(self) }.into_iter())
+        if let Some(root) = self.root.take() {
+            // SAFETY: The tree won't be used after this point.
+            // The allocator has not been moved out and will be moved into `drop_tree`.
+            unsafe { root.into_dying().drop_tree(ManuallyDrop::take(&mut self.alloc)) };
+        } else {
+            // SAFETY: The allocator has not been moved out and won't be used after this point.
+            unsafe { ManuallyDrop::drop(&mut self.alloc) };
+        }
     }
 }
 
