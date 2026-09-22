@@ -18,8 +18,8 @@ use crate::lang_items::SolverTraitLangItem;
 use crate::region_constraint::RegionConstraint;
 use crate::search_graph::PathKind;
 use crate::{
-    self as ty, Canonical, CanonicalVarValues, CantBeErased, ConstVid, FloatVid, GenericArgKind,
-    InferConst, IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
+    self as ty, Canonical, CanonicalVarValues, CantBeErased, Const, ConstVid, FloatVid,
+    GenericArgKind, InferConst, IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
 };
 
 pub type CanonicalInputData<I> =
@@ -1090,7 +1090,7 @@ impl TyOrConstInferVar {
 
     /// Tries to extract an inference variable from a constant, returns `None`
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
-    fn maybe_from_const<I: Interner>(ct: I::Const) -> Option<Self> {
+    fn maybe_from_const<I: Interner>(ct: Const<I>) -> Option<Self> {
         match ct.kind() {
             ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
             _ => None,
