@@ -19,7 +19,7 @@ pub(crate) fn expand_deriving_eq(
 
     let trait_def = TraitDef {
         span,
-        path: path_std!(cmp::Eq),
+        path: path_std!(cx, span, cmp::Eq),
         skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
@@ -73,7 +73,7 @@ fn cs_total_eq_assert(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'
         }
     };
 
-    match substr.fields {
+    match substr {
         StaticStruct(vdata, ..) => {
             process_variant(vdata);
         }
