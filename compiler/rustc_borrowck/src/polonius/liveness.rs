@@ -1,10 +1,9 @@
 use rustc_index::IndexVec;
 use rustc_index::interval::{IntervalSet, SparseIntervalMatrix};
 use rustc_middle::mir::Local;
-use rustc_middle::ty::{GenericArg, RegionVid, Ty};
+use rustc_middle::ty::{GenericArg, RegionVid, Ty, TyCtxt};
 use rustc_mir_dataflow::points::PointIndex;
 
-use crate::BorrowckInferCtxt;
 use crate::polonius::{ConstraintDirection, LiveRegionVariances};
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::liveness::LivenessComputation;
@@ -71,14 +70,12 @@ pub(crate) struct DeferredLocals<'tcx> {
 impl<'tcx> DeferredLocals<'tcx> {
     pub(crate) fn defer_local(
         &mut self,
-        infcx: &BorrowckInferCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
         universal_regions: &UniversalRegions<'tcx>,
         local: Local,
         local_ty: Ty<'tcx>,
         dropck_kinds: &[GenericArg<'tcx>],
     ) {
-        let tcx = infcx.tcx;
-
         // We already have drop data for this local, because we need to register
         // region constraints eagerly. So, we'll store this so we don't need to
         // recompute.

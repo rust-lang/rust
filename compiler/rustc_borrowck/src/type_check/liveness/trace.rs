@@ -221,7 +221,7 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         // are *no* drops (which is relatively cheap).
         if deferred.contains(&local) && self.comp.local_use_map.drops(local).next().is_none() {
             deferred_locals.defer_local(
-                typeck.infcx,
+                typeck.infcx.tcx,
                 typeck.universal_regions,
                 local,
                 local_ty,
@@ -265,7 +265,7 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
 
         // Finally, we mark that this local is deferred, including the drop kinds.
         deferred_locals.defer_local(
-            typeck.infcx,
+            typeck.infcx.tcx,
             typeck.universal_regions,
             local,
             local_ty,
