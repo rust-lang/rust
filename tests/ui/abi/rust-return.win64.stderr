@@ -22,14 +22,18 @@ error: fn_abi_of(u128_ret) = FnAbi {
                        randomization_seed: $SEED,
                    },
                },
-               mode: Direct(
-                   ArgAttributes {
-                       regular: NoUndef,
+               mode: Indirect {
+                   attrs: ArgAttributes {
+                       regular: CapturesAddress | NoAlias | NonNull | NoUndef | NoFree,
                        arg_ext: None,
-                       pointee_size: Size(0 bytes),
-                       pointee_align: None,
+                       pointee_size: Size(16 bytes),
+                       pointee_align: Some(
+                           Align(16 bytes),
+                       ),
                    },
-               ),
+                   meta_attrs: None,
+                   on_stack: false,
+               },
            },
            c_variadic: false,
            fixed_count: 0,
@@ -76,20 +80,18 @@ error: fn_abi_of(scalar_pair_ret) = FnAbi {
                        randomization_seed: $SEED,
                    },
                },
-               mode: Pair(
-                   ArgAttributes {
-                       regular: NoUndef,
+               mode: Indirect {
+                   attrs: ArgAttributes {
+                       regular: CapturesNone | NoAlias | NonNull | NoUndef | NoFree,
                        arg_ext: None,
-                       pointee_size: Size(0 bytes),
-                       pointee_align: None,
+                       pointee_size: Size(16 bytes),
+                       pointee_align: Some(
+                           Align(8 bytes),
+                       ),
                    },
-                   ArgAttributes {
-                       regular: NoUndef,
-                       arg_ext: None,
-                       pointee_size: Size(0 bytes),
-                       pointee_align: None,
-                   },
-               ),
+                   meta_attrs: None,
+                   on_stack: false,
+               },
            },
            c_variadic: false,
            fixed_count: 0,
@@ -136,20 +138,18 @@ error: fn_abi_of(scalar_pair_ret2) = FnAbi {
                        randomization_seed: $SEED,
                    },
                },
-               mode: Pair(
-                   ArgAttributes {
-                       regular: NoUndef,
+               mode: Indirect {
+                   attrs: ArgAttributes {
+                       regular: CapturesNone | NoAlias | NonNull | NoUndef | NoFree,
                        arg_ext: None,
-                       pointee_size: Size(0 bytes),
-                       pointee_align: None,
+                       pointee_size: $SOME_SIZE,
+                       pointee_align: Some(
+                           Align(4 bytes),
+                       ),
                    },
-                   ArgAttributes {
-                       regular: NoUndef,
-                       arg_ext: None,
-                       pointee_size: Size(0 bytes),
-                       pointee_align: None,
-                   },
-               ),
+                   meta_attrs: None,
+                   on_stack: false,
+               },
            },
            c_variadic: false,
            fixed_count: 0,
