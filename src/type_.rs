@@ -235,6 +235,14 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         self.u16_type
     }
 
+    fn type_f16b(&self) -> Type<'gcc> {
+        #[cfg(feature = "master")]
+        if self.supports_f16b_type {
+            return self.context.new_c_type(CType::BFloat16);
+        }
+        bug!("unsupported type bfloat16")
+    }
+
     fn type_f32(&self) -> Type<'gcc> {
         #[cfg(feature = "master")]
         if self.supports_f32_type {
