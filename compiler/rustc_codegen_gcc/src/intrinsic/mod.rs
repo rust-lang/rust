@@ -317,6 +317,9 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             sym::breakpoint => {
                 unimplemented!();
             }
+            sym::codeview_annotation => {
+                return IntrinsicResult::Operand(OperandValue::ZeroSized);
+            }
             sym::va_arg => {
                 let va_list = args[0].immediate();
                 let gcc_type = self.immediate_backend_type(result.layout);
