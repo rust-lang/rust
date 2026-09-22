@@ -5,6 +5,7 @@
 //! optimal solution to the constraints. The final variance for each
 //! inferred is then written into the `variance_map` in the tcx.
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefIdMap;
 use rustc_middle::ty;
 use tracing::debug;
@@ -43,14 +44,24 @@ struct SolveContext<'a, 'tcx> {
 pub(crate) fn solve_constraints<'tcx>(
     constraints_cx: ConstraintContext<'_, 'tcx>,
 ) -> ty::CrateVariancesMap<'tcx> {
-    let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;
+    let ConstraintContext { terms_cx, mut constraints, .. } = constraints_cx;
 
+    let mut overridden_inferreds = FxHashSet::default();
     let mut solutions = vec![ty::Bivariant; terms_cx.inferred_terms.len()];
+    // prime the solutions for certain lang items which have hard-coded variance
     for (id, variances) in &terms_cx.lang_items {
         let InferredIndex(start) = terms_cx.inferred_starts[id];
         for (i, &variance) in variances.iter().enumerate() {
             solutions[start + i] = variance;
+            overridden_inferreds.insert(start + i);
         }
+    }
+
+    // ensure the solutions for overridden inferreds are never constrained by anything else
+    if !overridden_inferreds.is_empty() {
+        constraints.retain(|Constraint { inferred: InferredIndex(inferred), .. }| {
+            !overridden_inferreds.contains(inferred)
+        });
     }
 
     let mut solutions_cx = SolveContext { terms_cx, constraints, solutions };
