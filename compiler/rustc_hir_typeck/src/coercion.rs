@@ -1045,7 +1045,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         match b.kind() {
             ty::FnPtr(_, b_hdr) => {
                 let a_sig = self.sig_for_fn_def_coercion(a, Some(b_hdr.safety()))?;
-
+                // Okay so, what does this part of the code actually do? Lol!
+                // What is an inferok.
                 let InferOk { value: a_sig, mut obligations } =
                     self.normalize(self.cause.span.clone(), Unnormalized::new_wip(a_sig));
                 let a = Ty::new_fn_ptr(self.tcx, a_sig);
