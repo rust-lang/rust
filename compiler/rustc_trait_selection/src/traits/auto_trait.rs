@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_middle::ty::{Region, RegionVid};
+use rustc_middle::ty::{IncludeLocalImpls, Region, RegionVid};
 use rustc_span::DUMMY_SP;
 use tracing::debug;
 
@@ -212,7 +212,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         };
 
         let mut disqualifying_impl = None;
-        tcx.for_each_relevant_impl(trait_did, ty, |impl_def_id| {
+        tcx.for_each_relevant_impl(trait_did, ty, IncludeLocalImpls::Yes, |impl_def_id| {
             disqualifying_impl = Some(impl_def_id);
         });
         if let Some(impl_def_id) = disqualifying_impl {

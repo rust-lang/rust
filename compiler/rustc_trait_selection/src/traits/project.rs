@@ -1046,7 +1046,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                     );
                                     false
                                 }
-                                TypingMode::PostAnalysis | TypingMode::Codegen => {
+                                TypingMode::PostAnalysis
+                                | TypingMode::Codegen
+                                | TypingMode::IsolatedConst => {
                                     // NOTE(eddyb) inference variables can resolve to parameters, so
                                     // assume `poly_trait_ref` isn't monomorphic, if it contains any.
                                     let poly_trait_ref =

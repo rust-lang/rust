@@ -1883,7 +1883,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     // Consider only accessible traits
                     && tcx.visibility(*trait_def_id)
                         .is_accessible_from(self.mod_id(), tcx)
-                    && tcx.all_impls(*trait_def_id)
+                    && tcx.all_impls(*trait_def_id, ty::IncludeLocalImpls::Yes)
                         .any(|impl_def_id| {
                             let header = tcx.impl_trait_header(impl_def_id);
                             let trait_ref = header.trait_ref.instantiate(tcx, infcx.fresh_args_for_item(DUMMY_SP, impl_def_id)).skip_norm_wip();

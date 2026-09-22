@@ -610,6 +610,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.tcx().for_each_relevant_impl(
             obligation.predicate.def_id(),
             obligation.predicate.skip_binder().trait_ref.self_ty(),
+            self.typing_mode().include_local_impls(),
             |impl_def_id| {
                 // Before we create the generic parameters and everything, first
                 // consider a "quick reject". This avoids creating more types
@@ -760,7 +761,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // which may define impls for that type is either the crate defining the type
             // or the trait. This should be guaranteed by the orphan check.
             let mut has_impl = false;
-            self.tcx().for_each_relevant_impl(def_id, self_ty, |_| has_impl = true);
+            self.tcx().for_each_relevant_impl(
+                def_id,
+                self_ty,
+                self.typing_mode().include_local_impls(),
+                |_| has_impl = true,
+            );
             if !has_impl {
                 candidates.vec.push(AutoImplCandidate)
             }

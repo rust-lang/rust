@@ -11,6 +11,7 @@ use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, Node, QPath
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::ty::trait_def::IncludeLocalImpls;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::symbol::{Ident, kw};
@@ -335,7 +336,7 @@ impl UnconditionalRecursion {
         if self.default_impl_for_type.is_empty()
             && let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
         {
-            let impls = cx.tcx.trait_impls_of(default_trait_id);
+            let impls = cx.tcx.trait_impls_of((default_trait_id, IncludeLocalImpls::Yes));
             for (ty, impl_def_ids) in impls.non_blanket_impls() {
                 let Some(self_def_id) = ty.def() else { continue };
                 for &impl_def_id in impl_def_ids {

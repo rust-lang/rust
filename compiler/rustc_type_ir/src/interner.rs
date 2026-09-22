@@ -8,6 +8,8 @@ use rustc_ast_ir::visit::VisitorResult;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hash::StableHash;
 use rustc_index::bit_set::DenseBitSet;
+#[cfg(feature = "nightly")]
+use rustc_macros::StableHash;
 
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
@@ -24,6 +26,14 @@ use crate::{
     self as ty, AliasTermKind, BoundRegion, BoundVar, CanonicalParamEnvCache, DebruijnIndex,
     Region, RegionKind, RegionVid, TraitRef, search_graph,
 };
+
+// FIXME(scrabsha): find an appropriate place to move this.
+#[derive(Clone, Hash, Eq, PartialEq, Copy, Debug)]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
+pub enum IncludeLocalImpls {
+    Yes,
+    No,
+}
 
 /// The central trait in the shared abstraction layer, specifying all implementation-specific
 /// details for rustc and rust-analyzer.
@@ -282,6 +292,7 @@ pub trait Interner:
         def_id: Self::LocalOpaqueTyId,
     ) -> ty::EarlyBinder<Self, Self::Ty>;
     fn is_direct_const(self, alias: ty::AliasConstKind<Self>) -> bool;
+    fn is_isolated_const(self, def_id: Self::LocalDefId) -> bool;
     fn const_of_item(
         self,
         alias: ty::AliasConstKind<Self>,
@@ -462,11 +473,13 @@ pub trait Interner:
     fn for_each_relevant_impl<R: VisitorResult>(
         self,
         trait_ref: TraitRef<Self>,
+        include_local_impls: IncludeLocalImpls,
         f: impl FnMut(Self::ImplId) -> R,
     ) -> R;
     fn for_each_blanket_impl<R: VisitorResult>(
         self,
         trait_def_id: Self::TraitId,
+        include_local_impls: IncludeLocalImpls,
         f: impl FnMut(Self::ImplId) -> R,
     ) -> R;
 

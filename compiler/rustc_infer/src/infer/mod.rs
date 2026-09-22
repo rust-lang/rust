@@ -373,7 +373,8 @@ impl<'tcx> Drop for InferCtxt<'tcx> {
             | TypingMode::PostBorrowck { .. }
             | TypingMode::Reflection
             | TypingMode::PostAnalysis
-            | TypingMode::Codegen => {}
+            | TypingMode::Codegen
+            | TypingMode::IsolatedConst => {}
             // In erased mode, the opaque type storage is always empty
             TypingMode::ErasedNotCoherence(..) => {}
             TypingMode::PostTypeckUntilBorrowck { .. } => {
@@ -1201,7 +1202,8 @@ impl<'tcx> InferCtxt<'tcx> {
             | TypingMode::Reflection
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
-            | TypingMode::Codegen => false,
+            | TypingMode::Codegen
+            | TypingMode::IsolatedConst => false,
         }
     }
 
@@ -1689,7 +1691,8 @@ impl<'tcx> InferCtxt<'tcx> {
             | ty::TypingMode::PostBorrowck { .. }
             | ty::TypingMode::PostAnalysis
             | ty::TypingMode::Reflection
-            | ty::TypingMode::Codegen) => mode,
+            | ty::TypingMode::Codegen
+            | ty::TypingMode::IsolatedConst) => mode,
             ty::TypingMode::ErasedNotCoherence(MayBeErased) => unreachable!(),
         };
         ty::TypingEnv::new(param_env, typing_mode)

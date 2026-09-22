@@ -107,7 +107,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             | ty::TypingMode::PostTypeckUntilBorrowck { .. }
             | ty::TypingMode::PostBorrowck { .. }
             | ty::TypingMode::PostAnalysis
-            | ty::TypingMode::Codegen => {
+            | ty::TypingMode::Codegen
+            | ty::TypingMode::IsolatedConst => {
                 bug!()
             }
         };

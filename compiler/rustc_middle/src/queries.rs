@@ -116,8 +116,8 @@ use crate::ty::layout::ValidityRequirement;
 use crate::ty::print::PrintTraitRefExt;
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{
-    self, CrateInherentImpls, GenericArg, GenericArgsRef, LitToConstInput, PseudoCanonicalInput,
-    RequiredDepth, SizedTraitKind, Ty, TyCtxt, TyCtxtFeed,
+    self, CrateInherentImpls, GenericArg, GenericArgsRef, IncludeLocalImpls, LitToConstInput,
+    PseudoCanonicalInput, RequiredDepth, SizedTraitKind, Ty, TyCtxt, TyCtxtFeed,
 };
 use crate::{mir, thir};
 
@@ -1643,9 +1643,9 @@ rustc_queries! {
     }
 
     /// Given a trait `trait_id`, return all known `impl` blocks.
-    query trait_impls_of(trait_id: DefId) -> &'tcx ty::trait_def::TraitImpls {
+    query trait_impls_of(key: (DefId, IncludeLocalImpls)) -> &'tcx ty::trait_def::TraitImpls {
         arena_cache
-        desc { "finding trait impls of `{}`", tcx.def_path_str(trait_id) }
+        desc { "finding trait impls of `{}`", tcx.def_path_str(key.0) }
     }
 
     query specialization_graph_of(trait_id: DefId) -> Result<&'tcx specialization_graph::Graph, ErrorGuaranteed> {

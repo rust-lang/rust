@@ -29,6 +29,7 @@ use rustc_middle::ty::print::{
     PrintPolyTraitClauseExt, PrintPolyTraitRefExt as _, PrintTraitClauseExt as _,
     PrintTraitRefExt as _, with_forced_trimmed_paths,
 };
+use rustc_middle::ty::trait_def::IncludeLocalImpls;
 use rustc_middle::ty::{
     self, GenericArgKind, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
@@ -2123,7 +2124,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> Vec<ImplCandidate<'tcx>> {
         let mut candidates: Vec<_> = self
             .tcx
-            .all_impls(trait_pred.def_id())
+            .all_impls(trait_pred.def_id(), self.typing_mode_raw().include_local_impls())
             .filter_map(|def_id| {
                 let imp = self.tcx.impl_trait_header(def_id);
                 if imp.polarity != ty::ImplPolarity::Positive
@@ -2161,7 +2162,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let alternative_candidates = |def_id: DefId| {
             let mut impl_candidates: Vec<_> = self
                 .tcx
-                .all_impls(def_id)
+                .all_impls(def_id, self.typing_mode_raw().include_local_impls())
                 // ignore `do_not_recommend` items
                 .filter(|def_id| !self.tcx.do_not_recommend_impl(*def_id))
                 // Ignore automatically derived impls and `!Trait` impls.
@@ -2816,6 +2817,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             self.tcx.for_each_relevant_impl(
                 trait_def_id,
                 trait_pred.skip_binder().self_ty(),
+                self.typing_mode_raw().include_local_impls(),
                 |impl_def_id| {
                     let impl_trait_header = self.tcx.impl_trait_header(impl_def_id);
                     trait_impls
@@ -3460,7 +3462,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 obligation.cause.body_def_id,
             );
         } else if trait_def_id.is_local()
-            && self.tcx.trait_impls_of(trait_def_id).is_empty()
+            && self.tcx.trait_impls_of((trait_def_id, IncludeLocalImpls::Yes)).is_empty()
             && !self.tcx.trait_is_auto(trait_def_id)
             && !self.tcx.trait_is_alias(trait_def_id)
             && trait_predicate.polarity() == ty::ClausePolarity::Positive

@@ -11,8 +11,8 @@ use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
 use crate::solve::{TyOrConstInferVar, VisibleForLeakCheck};
 use crate::{
-    self as ty, Interner, PredicateProxy, Region, TyVid, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt,
+    self as ty, IncludeLocalImpls, Interner, PredicateProxy, Region, TyVid, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 
 mod private {
@@ -143,6 +143,9 @@ pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// layouts.
     Codegen,
 
+    /// During isolated const, forbid referring to traits defined in the current trait.
+    IsolatedConst,
+
     /// The typing modes above (except coherence) only differ in how they handle
     ///
     /// - Generators
@@ -203,6 +206,7 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
                 TypingMode::ErasedNotCoherence(MayBeErased),
                 TypingMode::ErasedNotCoherence(MayBeErased),
             ) => true,
+            (TypingMode::IsolatedConst, TypingMode::IsolatedConst) => true,
             (
                 TypingMode::Coherence
                 | TypingMode::Reflection
@@ -211,7 +215,8 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen
-                | TypingMode::ErasedNotCoherence(MayBeErased),
+                | TypingMode::ErasedNotCoherence(MayBeErased)
+                | TypingMode::IsolatedConst,
                 _,
             ) => false,
         }
@@ -235,7 +240,8 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
-            | TypingMode::ErasedNotCoherence(_) => false,
+            | TypingMode::ErasedNotCoherence(_)
+            | TypingMode::IsolatedConst => false,
         }
     }
 
@@ -253,7 +259,8 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
-            | TypingMode::ErasedNotCoherence(_) => false,
+            | TypingMode::ErasedNotCoherence(_)
+            | TypingMode::IsolatedConst => false,
         }
     }
 
@@ -271,7 +278,8 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             | TypingMode::Reflection
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
-            | TypingMode::Codegen => false,
+            | TypingMode::Codegen
+            | TypingMode::IsolatedConst => false,
         }
     }
 }
@@ -296,9 +304,26 @@ impl<I: Interner> TypingMode<I, MayBeErased> {
             TypingMode::PostAnalysis => TypingMode::PostAnalysis,
             TypingMode::Codegen => TypingMode::Codegen,
             TypingMode::Reflection => TypingMode::Reflection,
+            TypingMode::IsolatedConst => TypingMode::IsolatedConst,
             TypingMode::ErasedNotCoherence(MayBeErased) => panic!(
                 "Called `assert_not_erased` from a place that can be called by the trait solver in `TypingMode::ErasedNotCoherence`. `TypingMode` is `ErasedNotCoherence` in a place where that should be impossible"
             ),
+        }
+    }
+
+    /// For isolated consts, do not look at local impls.
+    /// Convenience helper to go from TypingMode::IsolatedConst to IncludeLocalImpls::No.
+    pub fn include_local_impls(self) -> IncludeLocalImpls {
+        match self {
+            TypingMode::Coherence
+            | TypingMode::Typeck { defining_opaque_types_and_generators: _ }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            | TypingMode::PostBorrowck { defined_opaque_types: _ }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen
+            | TypingMode::Reflection
+            | TypingMode::ErasedNotCoherence(_) => IncludeLocalImpls::Yes,
+            TypingMode::IsolatedConst => IncludeLocalImpls::No,
         }
     }
 }
@@ -310,9 +335,13 @@ impl<I: Interner> TypingMode<I, CantBeErased> {
     }
 
     pub fn typeck_for_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
-        TypingMode::Typeck {
-            defining_opaque_types_and_generators: cx
-                .opaque_types_and_coroutines_defined_by(body_def_id),
+        if cx.is_isolated_const(body_def_id) {
+            TypingMode::IsolatedConst
+        } else {
+            TypingMode::Typeck {
+                defining_opaque_types_and_generators: cx
+                    .opaque_types_and_coroutines_defined_by(body_def_id),
+            }
         }
     }
 
@@ -328,6 +357,9 @@ impl<I: Interner> TypingMode<I, CantBeErased> {
     }
 
     pub fn borrowck(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
+        if cx.is_isolated_const(body_def_id) {
+            return TypingMode::IsolatedConst;
+        }
         let defining_opaque_types = cx.opaque_types_defined_by(body_def_id);
         if defining_opaque_types.is_empty() {
             TypingMode::non_body_analysis()
@@ -337,11 +369,30 @@ impl<I: Interner> TypingMode<I, CantBeErased> {
     }
 
     pub fn post_borrowck_analysis(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
+        if cx.is_isolated_const(body_def_id) {
+            return TypingMode::IsolatedConst;
+        }
         let defined_opaque_types = cx.opaque_types_defined_by(body_def_id);
         if defined_opaque_types.is_empty() {
             TypingMode::non_body_analysis()
         } else {
             TypingMode::PostBorrowck { defined_opaque_types }
+        }
+    }
+
+    /// For isolated consts, do not look at local impls.
+    /// Convenience helper to go from TypingMode::IsolatedConst to IncludeLocalImpls::No.
+    pub fn include_local_impls(self) -> IncludeLocalImpls {
+        match self {
+            TypingMode::Coherence
+            | TypingMode::Typeck { defining_opaque_types_and_generators: _ }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            | TypingMode::PostBorrowck { defined_opaque_types: _ }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen
+            | TypingMode::Reflection
+            | TypingMode::ErasedNotCoherence(_) => IncludeLocalImpls::Yes,
+            TypingMode::IsolatedConst => IncludeLocalImpls::No,
         }
     }
 }
@@ -362,6 +413,7 @@ impl<I: Interner> From<TypingMode<I, CantBeErased>> for TypingMode<I, MayBeErase
             TypingMode::PostAnalysis => TypingMode::PostAnalysis,
             TypingMode::Codegen => TypingMode::Codegen,
             TypingMode::Reflection => TypingMode::Reflection,
+            TypingMode::IsolatedConst => TypingMode::IsolatedConst,
         }
     }
 }
@@ -630,6 +682,7 @@ where
         | TypingMode::Typeck { .. }
         | TypingMode::PostTypeckUntilBorrowck { .. }
         | TypingMode::Reflection
+        | TypingMode::IsolatedConst
         | TypingMode::PostBorrowck { .. }
         | TypingMode::PostAnalysis => infcx.cx().features().feature_bound_holds_in_crate(symbol),
         TypingMode::Codegen => true,

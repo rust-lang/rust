@@ -2,6 +2,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits;
+use rustc_middle::ty::trait_def::IncludeLocalImpls;
 use rustc_middle::ty::{self, TypingMode, Unnormalized, Upcast};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
@@ -30,7 +31,7 @@ pub(crate) fn synthesize_blanket_impls(
             continue;
         }
         // NOTE: doesn't use `for_each_relevant_impl` to avoid looking at anything besides blanket impls
-        let trait_impls = tcx.trait_impls_of(trait_def_id);
+        let trait_impls = tcx.trait_impls_of((trait_def_id, IncludeLocalImpls::Yes));
         'blanket_impls: for &impl_def_id in trait_impls.blanket_impls() {
             trace!("considering impl `{impl_def_id:?}` for trait `{trait_def_id:?}`");
 

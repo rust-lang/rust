@@ -45,7 +45,8 @@ fn retry_codegen_mode_with_postanalysis<'tcx, K: TypeVisitable<TyCtxt<'tcx>>, V>
         | ty::TypingMode::PostTypeckUntilBorrowck { .. }
         | ty::TypingMode::PostBorrowck { .. }
         | ty::TypingMode::Reflection
-        | ty::TypingMode::PostAnalysis => {}
+        | ty::TypingMode::PostAnalysis
+        | ty::TypingMode::IsolatedConst => {}
     }
 
     None
@@ -357,11 +358,19 @@ pub(crate) fn turn_into_const_value<'tcx>(
 #[instrument(skip(tcx), level = "debug")]
 pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>,
+    mut key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
     crate::assert_typing_mode(key.typing_env.typing_mode());
 
-    if let Some((value, _ty)) = tcx.trivial_const(key.value.instance.def_id()) {
+    let def_id = key.value.instance.def_id();
+
+    if matches!(tcx.def_kind(def_id), DefKind::Const { .. })
+        && rustc_hir::find_attr!(tcx, def_id, RustcIsolatedConst)
+    {
+        key.typing_env = ty::TypingEnv::isolated_const(tcx, key.value.instance.def_id());
+    }
+
+    if let Some((value, _ty)) = tcx.trivial_const(def_id) {
         return Ok(value);
     }
 

@@ -563,7 +563,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             vec!["Self".to_string()]
         } else {
             // Find all the types that have an `impl` for the trait.
-            tcx.all_impls(trait_def_id)
+            tcx.all_impls(trait_def_id, ty::IncludeLocalImpls::Yes)
                 .map(|impl_def_id| tcx.impl_trait_header(impl_def_id))
                 .filter(|header| {
                     // Consider only accessible traits
