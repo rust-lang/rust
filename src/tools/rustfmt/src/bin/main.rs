@@ -6,7 +6,6 @@ use io::Error as IoError;
 use thiserror::Error;
 
 use rustfmt_nightly as rustfmt;
-use tracing_subscriber::EnvFilter;
 
 use std::collections::HashMap;
 use std::env;
@@ -52,8 +51,20 @@ fn main() {
 }
 
 fn setup_tracing() {
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_env("RUSTFMT_LOG"))
+    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+    use tracing_tree::HierarchicalLayer;
+
+    let layer = HierarchicalLayer::default()
+        .with_writer(std::io::stderr)
+        .with_targets(true)
+        .with_bracketed_fields(true)
+        .with_indent_amount(2);
+
+    tracing_subscriber::registry()
+        .with(EnvFilter::from_env("RUSTFMT_LOG"))
+        .with(layer)
         .init();
 }
 
