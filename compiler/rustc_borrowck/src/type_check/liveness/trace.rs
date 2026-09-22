@@ -279,8 +279,8 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
     /// the function body only at certain nodes in the CFG.
     fn record_legacy_polonius_drop_facts(
         &mut self,
-        relevant_live_locals: &[Local],
-        deferred: &FxIndexSet<Local>,
+        nll_relevant_locals: &[Local],
+        deferred_polonius_relevant_locals: &FxIndexSet<Local>,
     ) {
         // This is *all wonky* because this used to call a shared
         // `add_drop_live_facts_for` function that was also used for regular
@@ -292,16 +292,15 @@ impl<'a, 'typeck, 'tcx> LivenessResults<'a, 'typeck, 'tcx> {
         // `add_drop_live_facts_for()` that make sense.
         let Some(facts) = self.typeck.polonius_facts.as_ref() else { return };
         let facts_to_add: Vec<_> = {
-            let relevant_live_locals: FxIndexSet<_> =
-                relevant_live_locals.iter().copied().collect();
+            let nll_relevant_locals: FxIndexSet<_> = nll_relevant_locals.iter().copied().collect();
 
             facts
                 .var_dropped_at
                 .iter()
                 .filter_map(|&(local, location_index)| {
                     let local_ty = self.comp.body.local_decls[local].ty;
-                    if relevant_live_locals.contains(&local)
-                        || deferred.contains(&local)
+                    if nll_relevant_locals.contains(&local)
+                        || deferred_polonius_relevant_locals.contains(&local)
                         || !local_ty.has_free_regions()
                     {
                         return None;
