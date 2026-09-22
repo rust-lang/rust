@@ -167,6 +167,14 @@ LL |         y.hello();
    |         |
    |         `x` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn a::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:4:5
+   |
+LL |     impl dyn Foo {
+   |     ^^^^^^^^^^^^ lifetime requirement introduced here
+LL |         fn hello(&self) {}
+   |
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/static-impl-obligation.rs:20:9
@@ -183,9 +191,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn b::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:16:18
+  --> $DIR/static-impl-obligation.rs:15:5
    |
 LL |     impl dyn Foo {
+   |     ^^^^^^^^^^^^ lifetime requirement introduced here
 LL |         fn hello(&'static self) {}
    |                  ^^^^^^^^^^^^^ lifetime requirement introduced here
 
@@ -204,9 +213,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn c::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:27:18
+  --> $DIR/static-impl-obligation.rs:26:5
    |
 LL |     impl dyn Foo {
+   |     ^^^^^^^^^^^^ lifetime requirement introduced here
 LL |         fn hello(&'static self) where Self: 'static {}
    |                  ^^^^^^^^^^^^^              ^^^^^^^ lifetime requirement introduced here
    |                  |
@@ -227,9 +237,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn d::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:38:37
+  --> $DIR/static-impl-obligation.rs:37:5
    |
 LL |     impl dyn Foo {
+   |     ^^^^^^^^^^^^ lifetime requirement introduced here
 LL |         fn hello(&self) where Self: 'static {}
    |                                     ^^^^^^^ lifetime requirement introduced here
 
@@ -246,6 +257,14 @@ LL |         y.hello();
    |         |
    |         `x` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn e::Foo + 'static)>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:48:5
+   |
+LL |     impl dyn Foo + 'static {
+   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime requirement introduced here
+LL |         fn hello(&self) {}
+   |
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/static-impl-obligation.rs:64:9
@@ -262,9 +281,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn f::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:60:18
+  --> $DIR/static-impl-obligation.rs:59:5
    |
 LL |     impl dyn Foo + 'static {
+   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime requirement introduced here
 LL |         fn hello(&'static self) {}
    |                  ^^^^^^^^^^^^^ lifetime requirement introduced here
 
@@ -283,9 +303,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn g::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:71:18
+  --> $DIR/static-impl-obligation.rs:70:5
    |
 LL |     impl dyn Foo + 'static {
+   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime requirement introduced here
 LL |         fn hello(&'static self) where Self: 'static {}
    |                  ^^^^^^^^^^^^^              ^^^^^^^ lifetime requirement introduced here
    |                  |
@@ -306,9 +327,10 @@ LL |         y.hello();
    |         argument requires that `'a` must outlive `'static`
    |
 note: `'static` lifetime requirement from `<(dyn h::Foo + 'static)>::hello` introduced here
-  --> $DIR/static-impl-obligation.rs:82:37
+  --> $DIR/static-impl-obligation.rs:81:5
    |
 LL |     impl dyn Foo + 'static {
+   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime requirement introduced here
 LL |         fn hello(&self) where Self: 'static {}
    |                                     ^^^^^^^ lifetime requirement introduced here
 
@@ -547,6 +569,14 @@ LL |         y.hello();
    |         |
    |         `x` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn s::Foo + 'static) as s::Trait>::hello` introduced here
+  --> $DIR/static-impl-obligation.rs:201:5
+   |
+LL |     impl Trait for dyn Foo {
+   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime requirement introduced here
+LL |         fn hello(&self) {}
+   |
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/static-impl-obligation.rs:276:9

@@ -13,6 +13,8 @@ LL |     err.is::<T>()
    |
 note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::is` introduced here
   --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
   ::: $SRC_DIR/core/src/error.rs:LL:COL
    |
    = note: lifetime requirement introduced here

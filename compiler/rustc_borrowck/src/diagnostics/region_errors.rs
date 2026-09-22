@@ -430,9 +430,10 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let ty::FnDef(def_id, args) = ty.kind() else {
             return;
         };
+        let typing_env = self.infcx.typing_env(self.infcx.param_env);
         let Ok(Some(instance)) = ty::Instance::try_resolve(
             tcx,
-            self.infcx.typing_env(self.infcx.param_env),
+            typing_env,
             *def_id,
             self.infcx.deeply_resolve_ignoring_regions(args.no_bound_vars().unwrap()),
         ) else {
@@ -456,33 +457,51 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 .map(|(_, sp)| sp)
                 .collect::<Vec<Span>>();
 
-        // Look at the receiver for `&'static self`, which introduces a `'static` obligation.
-        // ```
-        // impl Foo {
-        //     fn foo(&'static self) {}
-        //            ^^^^^^^^^^^^^
-        // ```
-        if let Some(recv) =
+        let parent = tcx.parent(def_id);
+        if let Some(rcvr) =
             tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().inputs().skip_binder().get(0)
-            && let ty::Ref(region, _, _) = recv.kind()
-            && *region == tcx.lifetimes.re_static
-            && let Some(assoc) = tcx.opt_associated_item(def_id)
-            && assoc.is_method()
         {
-            let def_span = tcx.def_span(def_id);
-            // We have a `&'static self` receiver.
-            if let Some(def_id) = def_id.as_local()
-                && let owner = tcx.expect_hir_owner_node(def_id)
-                && let Some(decl) = owner.fn_decl()
-                && let Some(ty) = decl.inputs.get(0)
+            // Look at the receiver for `&'static self`, which introduces a `'static` obligation.
+            // ```
+            // impl Foo {
+            //     fn foo(&'static self) {}
+            //            ^^^^^^^^^^^^^
+            // ```
+            if let ty::Ref(region, _, _) = rcvr.kind()
+                && *region == tcx.lifetimes.re_static
+                && let Some(assoc) = tcx.opt_associated_item(def_id)
+                && assoc.is_method()
             {
-                // Point at the `&'static self` receiver.
-                bounds.push(ty.span);
-            } else if !bounds.iter().any(|sp| sp.overlaps(def_span)) {
-                // The method is not defined on the local crate, point at the signature instead of
-                // just the receiver as an approximation. We don't add it if there are already
-                // other spans with overlap with the def `Span`, as the other will be more specific.
-                bounds.push(def_span)
+                let def_span = tcx.def_span(def_id);
+                // We have a `&'static self` receiver.
+                if let Some(def_id) = def_id.as_local()
+                    && let owner = tcx.expect_hir_owner_node(def_id)
+                    && let Some(decl) = owner.fn_decl()
+                    && let Some(ty) = decl.inputs.get(0)
+                {
+                    // Point at the `&'static self` receiver.
+                    bounds.push(ty.span);
+                } else if !bounds.iter().any(|sp| sp.overlaps(def_span)) {
+                    // The method is not defined on the local crate, point at the signature instead of
+                    // just the receiver as an approximation. We don't add it if there are already
+                    // other spans with overlap with the def `Span`, as the other will be more specific.
+                    bounds.push(def_span)
+                }
+            }
+
+            if let DefKind::Impl { .. } = tcx.def_kind(parent)
+                && let ty = tcx.type_of(parent).instantiate_identity().skip_norm_wip()
+                && let ty::Dynamic(_, region) = ty.kind()
+                && *region == tcx.lifetimes.re_static
+            {
+                // We have a call into a method of either `impl dyn Trait {}` or
+                // `impl dyn Trait + 'static {}`. We point at the whole def `Span` for now. We
+                // should instead point only at the `dyn Trait` with an explanation of where the
+                // `'static` obligation comes from, or only the `'static` when it is explicit.
+                let def_span = tcx.def_span(parent);
+                if !bounds.iter().any(|sp| sp.overlaps(def_span)) {
+                    bounds.push(def_span);
+                }
             }
         }
 
@@ -492,7 +511,6 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 multispan.push_span_label(span, "lifetime requirement introduced here");
             }
             multispan.push_span_context(tcx.def_span(def_id).shrink_to_lo());
-            let parent = tcx.parent(def_id);
             if let DefKind::Impl { .. } | DefKind::Trait = tcx.def_kind(parent) {
                 multispan.push_span_context(tcx.def_span(parent).shrink_to_lo());
             }
