@@ -17,6 +17,8 @@ use std::{debug_assert_matches, fmt, iter, mem};
 
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_crate_store::{CrateStoreDyn, Untracked};
 use rustc_data_structures::defer;
 use rustc_data_structures::fx::FxHashMap;
@@ -29,12 +31,11 @@ use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorState};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_attr};
+use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_lint_defs::Lint;
 use rustc_lint_defs::builtin::UNUSED_FEATURES;
@@ -990,7 +991,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Obtain all lang items of this crate and all dependencies (recursively)
-    pub fn lang_items(self) -> &'tcx rustc_hir::attrs::lang_items::LanguageItems {
+    pub fn lang_items(self) -> &'tcx rustc_attr_ir::lang_items::LanguageItems {
         self.get_lang_items(())
     }
 
