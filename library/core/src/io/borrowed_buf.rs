@@ -222,6 +222,14 @@ pub struct BorrowedCursor<'a, T> {
     borrowed_buf: NonNull<BorrowedBuf<'a, T>>,
 }
 
+// SAFETY: A `BorrowedCursor<'a, T>` is a unique borrow of a `BorrowedBuf<'a, T>`, which is a
+// `&'a mut [MaybeUninit<T>]` and two `Copy` fields. The `buf` raw pointer is used like
+// `&mut [MaybeUninit<T>]` so `T: Send` -> `Send` and  is: `T: Sync` -> `Sync`, and the
+// `borrowed_buf` only touches two `Copy` fields, without depending of `T`.
+unsafe impl<T: Send> Send for BorrowedCursor<'_, T> {}
+// SAFETY: See the `Send` impl above.
+unsafe impl<T: Sync> Sync for BorrowedCursor<'_, T> {}
+
 impl<T> Debug for BorrowedCursor<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let buf = BorrowedBufDebug {
