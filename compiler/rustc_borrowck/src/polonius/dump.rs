@@ -5,7 +5,7 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::pretty::{MirDumper, PassWhere, PrettyPrintMirOptions};
 use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
-use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use rustc_mir_dataflow::points::PointIndex;
 use rustc_session::config::MirIncludeSpans;
 
 use crate::borrow_set::BorrowSet;
@@ -32,7 +32,7 @@ struct CachedLivenessSource<'a, 'tcx> {
     liveness: &'a LivenessValues,
 }
 
-impl<'a, 'tcx> LivenessSource<'a> for CachedLivenessSource<'a, 'tcx> {
+impl<'a, 'tcx> LivenessSource for CachedLivenessSource<'a, 'tcx> {
     fn liveness_for_region(&mut self, region: RegionVid) -> RegionLiveness<'_> {
         RegionLiveness::new(
             region,
@@ -40,9 +40,6 @@ impl<'a, 'tcx> LivenessSource<'a> for CachedLivenessSource<'a, 'tcx> {
             self.universal_regions,
             self.liveness.points(),
         )
-    }
-    fn location_map(&self) -> &'a DenseLocationMap {
-        self.liveness.location_map()
     }
 }
 
