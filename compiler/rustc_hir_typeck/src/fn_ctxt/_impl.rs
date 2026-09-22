@@ -466,7 +466,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.register_infer_ok_obligations(
-            self.at(&self.misc(span), self.param_env).normalize(value),
+            self.infcx.normalize(value, self.param_env, &self.misc(span)),
         )
     }
 
