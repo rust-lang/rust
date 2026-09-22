@@ -2543,6 +2543,95 @@ fn test_into_iter_drop_leak_height_1() {
 }
 
 #[test]
+fn test_drop_map_elements_multi_level() {
+    for size in [1, MIN_INSERTS_HEIGHT_1, MIN_INSERTS_HEIGHT_2] {
+        let keys = Vec::from_iter((0..size).map(CrashTestDummy::new));
+        let vals = Vec::from_iter((0..size).map(CrashTestDummy::new));
+        let map = BTreeMap::from_iter(
+            (0..size).map(|i| (keys[i].spawn(Panic::Never), vals[i].spawn(Panic::Never))),
+        );
+
+        drop(map);
+
+        for i in 0..size {
+            assert_eq!(keys[i].dropped(), 1);
+            assert_eq!(vals[i].dropped(), 1);
+        }
+    }
+}
+
+#[test]
+fn test_drop_empty_map_allocator() {
+    use core::alloc::{AllocError, Allocator, AllocatorClone, Layout};
+    use core::cell::Cell;
+    use core::ptr::NonNull;
+
+    struct CountedAllocator<'a>(&'a Cell<usize>);
+
+    impl Clone for CountedAllocator<'_> {
+        fn clone(&self) -> Self {
+            Self(self.0)
+        }
+    }
+
+    impl Drop for CountedAllocator<'_> {
+        fn drop(&mut self) {
+            self.0.set(self.0.get() + 1);
+        }
+    }
+
+    unsafe impl Allocator for CountedAllocator<'_> {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            Global.allocate(layout)
+        }
+
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            unsafe { Global.deallocate(ptr, layout) }
+        }
+    }
+
+    unsafe impl AllocatorClone for CountedAllocator<'_> {}
+
+    let dropped = Cell::new(0);
+    let map = BTreeMap::<i32, i32, _>::new_in(CountedAllocator(&dropped));
+    assert!(map.root.is_none());
+
+    drop(map);
+
+    assert_eq!(dropped.get(), 1);
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_drop_map_elements_multi_level_panic() {
+    for size in [1, MIN_INSERTS_HEIGHT_1, MIN_INSERTS_HEIGHT_2] {
+        for panic_point in [0, size / 2, size - 1] {
+            for panic_in_key in [true, false] {
+                let keys = Vec::from_iter((0..size).map(CrashTestDummy::new));
+                let vals = Vec::from_iter((0..size).map(CrashTestDummy::new));
+                let map = BTreeMap::from_iter((0..size).map(|i| {
+                    let key_panic =
+                        if panic_in_key && i == panic_point { Panic::InDrop } else { Panic::Never };
+                    let val_panic = if !panic_in_key && i == panic_point {
+                        Panic::InDrop
+                    } else {
+                        Panic::Never
+                    };
+                    (keys[i].spawn(key_panic), vals[i].spawn(val_panic))
+                }));
+
+                catch_unwind(move || drop(map)).unwrap_err();
+
+                for i in 0..size {
+                    assert_eq!(keys[i].dropped(), 1);
+                    assert_eq!(vals[i].dropped(), 1);
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn test_into_keys() {
     let map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
     let keys = Vec::from_iter(map.into_keys());
