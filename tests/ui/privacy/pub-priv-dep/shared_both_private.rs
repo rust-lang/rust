@@ -26,6 +26,6 @@ pub fn leaks_priv() -> shared::Shared {
 }
 
 pub fn leaks_priv_reexport() -> reexport::Shared {
-    //~^ ERROR type `Shared` from private dependency 'shared' in public interface
+    //~^ ERROR type `Shared` from private dependency 'reexport' in public interface
     reexport::Shared
 }
