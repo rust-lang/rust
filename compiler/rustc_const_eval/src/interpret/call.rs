@@ -516,6 +516,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // *Before* pushing the new frame, determine whether the return destination is in memory.
         // Need to use `place_to_op` to be *sure* we get the mplace if there is one.
         let destination_mplace = self.place_to_op(destination)?.as_mplace_or_imm().left();
+        if destination_mplace.is_none() {
+            // Protection below clears in-memory destinations. Clear immediate destinations too,
+            // while we can still access the caller's locals. Evaluated arguments already hold
+            // copies of any immediate values, so this cannot affect argument passing.
+            self.write_uninit(destination)?;
+        }
 
         // Push the "raw" frame -- this leaves locals uninitialized.
         self.push_stack_frame_raw(instance, body, destination, cont)?;
