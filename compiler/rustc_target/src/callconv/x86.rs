@@ -287,8 +287,16 @@ where
             }
             _ => false, // anyway not passed via registers on x86
         };
+
+        // `x87_f80` is never stored in an SSE register, so the SSE ABI does not apply to it.
+        let is_x87_f80 = matches!(
+            fn_abi.ret.layout.backend_repr,
+            BackendRepr::Scalar(s) if s.primitive() == Primitive::Float(Float::X87F80)
+        );
+
         if has_float {
             if cx.target_spec().rustc_abi == Some(RustcAbi::X86Sse2)
+                && !is_x87_f80
                 && fn_abi.ret.layout.backend_repr.is_scalar()
                 && fn_abi.ret.layout.size.bits() <= 128
             {

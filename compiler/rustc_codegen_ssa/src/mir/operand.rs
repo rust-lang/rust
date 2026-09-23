@@ -240,7 +240,14 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         match layout.backend_repr {
             BackendRepr::Scalar(s @ abi::Scalar::Initialized { .. }) => {
                 let size = s.size(bx);
-                assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
+                // For `x87_f80` the primitive is 80 bits, but the field (after rounding up to
+                // the alignment) is 12 bytes (on 32-bit systems) or 16 bytes (64-bit).
+                // So we can't assert equality of size and layout.size.
+                assert_eq!(
+                    size.align_to(s.default_align(bx).abi),
+                    layout.size,
+                    "abi::Scalar is larger than its layout"
+                );
                 let val = read_scalar(offset, size, s, bx.immediate_backend_type(layout));
                 OperandRef { val: OperandValue::Immediate(val), layout, move_annotation: None }
             }

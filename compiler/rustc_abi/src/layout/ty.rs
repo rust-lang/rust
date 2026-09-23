@@ -351,7 +351,12 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         match primitive {
             Primitive::Int(integer, is_signed) => Some(Numeric::Int(integer, is_signed)),
             Primitive::Float(
-                float @ (Float::F16 | Float::F32 | Float::F64 | Float::F128 | Float::PpcF128),
+                float @ (Float::F16
+                | Float::F32
+                | Float::F64
+                | Float::X87F80
+                | Float::F128
+                | Float::PpcF128),
             ) => Some(Numeric::Float(float)),
             Primitive::Pointer(..) | Primitive::Float(Float::F16B) => None,
         }

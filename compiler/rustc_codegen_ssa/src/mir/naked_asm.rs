@@ -513,6 +513,7 @@ fn wasm_primitive(primitive: Primitive, ptr_type: &'static str) -> &'static str 
             Float::F16B => bug!("`f16b` unsupported on wasm"),
             Float::F16 | Float::F32 => "f32",
             Float::F64 => "f64",
+            Float::X87F80 => bug!("`x87_f80` unsupported on wasm"),
             Float::F128 => "i64, i64",
             Float::PpcF128 => bug!("`ppcf128` unsupported on wasm"),
         },

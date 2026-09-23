@@ -1,6 +1,6 @@
 use std::assert_matches;
 
-use rustc_abi::{BackendRepr, FieldsShape, Scalar, Size, TagEncoding, Variants};
+use rustc_abi::{BackendRepr, FieldsShape, Float, Primitive, Scalar, Size, TagEncoding, Variants};
 use rustc_middle::ty;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
@@ -93,6 +93,13 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
         *layout
     }
 
+    fn is_layout_x87_f80(layout: &TyAndLayout<'_>) -> bool {
+        matches!(
+            layout.backend_repr,
+            BackendRepr::Scalar(scalar) if scalar.primitive() == Primitive::Float(Float::X87F80)
+        )
+    }
+
     fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
         // Verify the ABI-mandated alignment and size for scalars.
         let align = layout.backend_repr.scalar_platform_align(cx);
@@ -104,12 +111,25 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 "alignment mismatch between ABI and layout in {layout:#?}"
             );
         }
+
+        // The x87_f80 primitive is 80 bits, but the field (after rounding up to the
+        // alignment) is 12 bytes (on 32-bit systems) or 16 bytes (64-bit).
+        let is_x87 = is_layout_x87_f80(layout);
+
         if let Some(size) = size {
-            assert_eq!(
-                layout.layout.size(),
-                size,
-                "size mismatch between ABI and layout in {layout:#?}"
-            );
+            if is_x87 {
+                assert_eq!(
+                    layout.layout.size(),
+                    size.align_to(align.unwrap()),
+                    "size mismatch between ABI and layout in {layout:#?}"
+                );
+            } else {
+                assert_eq!(
+                    layout.layout.size(),
+                    size,
+                    "size mismatch between ABI and layout in {layout:#?}"
+                );
+            }
         }
 
         // Verify per-ABI invariants
@@ -118,6 +138,10 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 // These must always be present for `Scalar` types.
                 let align = align.unwrap();
                 let size = size.unwrap();
+                if is_x87 {
+                    // The lang item wraps a byte array, so it is not a newtype of a scalar.
+                    return;
+                }
                 // Check that this matches the underlying field.
                 let inner = skip_newtypes(cx, layout);
                 assert!(
@@ -233,10 +257,18 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     Size::ZERO,
                     "`ScalarPair` first field at non-0 offset in {inner:#?}",
                 );
-                assert_eq!(
-                    field1.size, size1,
-                    "`ScalarPair` first field with bad size in {inner:#?}",
-                );
+                if is_layout_x87_f80(&field1) {
+                    assert_eq!(
+                        field1.size,
+                        size1.align_to(align1),
+                        "`ScalarPair` first field with bad size in {inner:#?}",
+                    );
+                } else {
+                    assert_eq!(
+                        field1.size, size1,
+                        "`ScalarPair` first field with bad size in {inner:#?}",
+                    );
+                }
                 assert_eq!(
                     field1.align.abi, align1,
                     "`ScalarPair` first field with bad align in {inner:#?}",
@@ -255,10 +287,18 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     b_offset, field2_offset,
                     "`ScalarPair` with inconsistent b_offset in {inner:#?}",
                 );
-                assert_eq!(
-                    field2.size, size2,
-                    "`ScalarPair` second field with bad size in {inner:#?}",
-                );
+                if is_layout_x87_f80(&field2) {
+                    assert_eq!(
+                        field2.size,
+                        size2.align_to(align2),
+                        "`ScalarPair` second field with bad size in {inner:#?}",
+                    );
+                } else {
+                    assert_eq!(
+                        field2.size, size2,
+                        "`ScalarPair` second field with bad size in {inner:#?}",
+                    );
+                }
                 assert_eq!(
                     field2.align.abi, align2,
                     "`ScalarPair` second field with bad align in {inner:#?}",
