@@ -2879,6 +2879,15 @@ impl Target {
         self.max_atomic_width.unwrap_or_else(|| self.pointer_width.into())
     }
 
+    /// Whether `f128` is the target's `long double` (aarch64's 128-bit `long double`,
+    /// i.e. binary128). False on Apple/Windows aarch64, where `long double` is 64-bit.
+    ///
+    /// FIXME: this should become a `long_double_type(...) -> rustc_abi::Float` query once
+    /// `Float` grows variants for x86 80-bit x87 and PowerPC `__ibm128`.
+    pub fn is_long_double_f128(&self) -> bool {
+        self.arch == Arch::AArch64 && !self.is_like_darwin && !self.is_like_windows
+    }
+
     /// Test target self-consistency and JSON encoding/decoding roundtrip.
     #[cfg(test)]
     fn test_target(mut self) {

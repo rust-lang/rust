@@ -472,6 +472,7 @@ pub(crate) fn encode_ty<'tcx>(
                 FloatTy::F64 => "d",
                 FloatTy::F128 => match tcx.sess.target.arch {
                     Arch::PowerPC | Arch::PowerPC64 => "u9__ieee128", // "g" is used for __ibm128
+                    _ if tcx.sess.target.is_long_double_f128() => "e",
                     _ => "g",
                 },
             });
