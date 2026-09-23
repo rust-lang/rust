@@ -872,7 +872,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 );
                 return self.context.new_call(self.location, fmodf128, &[a, b]);
             }
-            Some(float @ (abi::Float::F16B | abi::Float::PpcF128)) => {
+            Some(float @ (abi::Float::F16B | abi::Float::X87F80 | abi::Float::PpcF128)) => {
                 bug!("frem unsupported on {float:?}")
             }
             None => (),
@@ -2028,7 +2028,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 abi::Float::F32 => bx.cx().const_u32(bits as u32),
                 abi::Float::F64 => bx.cx().const_u64(bits as u64),
                 abi::Float::F128 => bx.cx().const_u128(bits),
-                abi::Float::F16B | abi::Float::PpcF128 => {
+                abi::Float::F16B | abi::Float::X87F80 | abi::Float::PpcF128 => {
                     bug!("unsupported float width {float_type:?}")
                 }
             };
@@ -2039,7 +2039,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             abi::Float::F32 => compute_clamp_bounds::<ieee::Single>(signed, int_width),
             abi::Float::F64 => compute_clamp_bounds::<ieee::Double>(signed, int_width),
             abi::Float::F128 => compute_clamp_bounds::<ieee::Quad>(signed, int_width),
-            abi::Float::F16B | abi::Float::PpcF128 => {
+            abi::Float::F16B | abi::Float::X87F80 | abi::Float::PpcF128 => {
                 bug!("unsupported float width {float_type:?}")
             }
         };

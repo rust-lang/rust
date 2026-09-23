@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use rustc_abi::Primitive::{Float, Int, Pointer};
-use rustc_abi::{Align, BackendRepr, FieldsShape, Scalar, Size, Variants};
+use rustc_abi::{Align, BackendRepr, FieldsShape, Scalar, Size, TyAbiInterface, Variants};
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
@@ -44,6 +44,11 @@ fn uncached_llvm_type<'a, 'tcx>(
             };
         }
         BackendRepr::Memory { .. } | BackendRepr::ScalarPair { .. } => {}
+    }
+
+    // Map `core::arch::{x86, x86_64}::x87_f80` to LLVM's `x86_fp80`.
+    if Ty::is_x87_f80_lang_item(layout, cx) {
+        return cx.type_x87_f80();
     }
 
     let name = match layout.ty.kind() {
