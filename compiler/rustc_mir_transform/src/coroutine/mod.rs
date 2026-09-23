@@ -461,8 +461,10 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 
     #[tracing::instrument(level = "trace", skip(self, stmt), ret)]
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
-        // Remove StorageLive and StorageDead statements for remapped locals
-        if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = stmt.kind
+        // Remove storage statements for remapped locals
+        if let StatementKind::StorageLive(l)
+        | StatementKind::StorageDead(l)
+        | StatementKind::StorageAlloc(l) = stmt.kind
             && self.remap.contains(l)
         {
             stmt.make_nop(true);
@@ -1296,6 +1298,7 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
 
             StatementKind::FakeRead(..)
             | StatementKind::SetDiscriminant { .. }
+            | StatementKind::StorageAlloc(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::AscribeUserType(..)

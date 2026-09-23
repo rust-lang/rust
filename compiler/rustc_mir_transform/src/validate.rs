@@ -309,6 +309,11 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     );
                 }
             }
+            StatementKind::StorageAlloc(_) => {
+                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(location, "`StorageAlloc` is only allowed in runtime MIR");
+                }
+            }
             StatementKind::SetDiscriminant { .. } => {
                 if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
@@ -1588,7 +1593,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::StorageLive(_)
+            StatementKind::StorageAlloc(_)
+            | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter

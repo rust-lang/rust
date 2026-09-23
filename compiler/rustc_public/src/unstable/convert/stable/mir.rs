@@ -173,6 +173,9 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
                 crate::mir::StatementKind::StorageLive(place.stable(tables, cx))
             }
 
+            mir::StatementKind::StorageAlloc(local) => {
+                crate::mir::StatementKind::StorageAlloc(local.stable(tables, cx))
+            }
             mir::StatementKind::StorageDead(place) => {
                 crate::mir::StatementKind::StorageDead(place.stable(tables, cx))
             }

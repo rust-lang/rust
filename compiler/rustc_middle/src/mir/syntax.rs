@@ -386,13 +386,28 @@ pub enum StatementKind<'tcx> {
     /// calling `StorageDead` again is a NOP.
     ///
     /// With `-Zmir-move-elimination`, `StorageLive` leaves locals live but unallocated. Storage is
-    /// allocated when a destination place directly based on the local is evaluated. See [RFC 3943].
+    /// allocated when a destination place directly based on the local is evaluated, or by
+    /// [`StorageAlloc`](StatementKind::StorageAlloc). See [RFC 3943].
     ///
     /// [RFC 3943]: https://github.com/rust-lang/rfcs/pull/3943
     StorageLive(Local),
 
     /// See `StorageLive` above.
     StorageDead(Local),
+
+    /// If the local is live but unallocated, allocates backing storage containing uninitialized
+    /// bytes for it. This has no effect if the local already has an allocation.
+    ///
+    /// Calling this on a dead local is UB.
+    ///
+    /// This only has an effect when `-Zmir-move-elimination` is enabled since that is the only way
+    /// to get a live-but-unallocated local. This can be used to ensure a local has storage without
+    /// writing a value, for example before taking its address. See [RFC 3943].
+    ///
+    /// This statement is only permitted in runtime MIR.
+    ///
+    /// [RFC 3943]: https://github.com/rust-lang/rfcs/pull/3943
+    StorageAlloc(Local),
 
     /// This statement exists to preserve a trace of a scrutinee matched against a wildcard binding.
     /// This is especially useful for `let _ = PLACE;` bindings that desugar to a single

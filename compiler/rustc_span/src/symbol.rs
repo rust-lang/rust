@@ -1368,6 +1368,7 @@ symbols! {
         mir_set_discriminant,
         mir_static,
         mir_static_mut,
+        mir_storage_alloc,
         mir_storage_dead,
         mir_storage_live,
         mir_tail_call,
