@@ -1,0 +1,24 @@
+- // MIR for `nrvo_unborrowed` before MoveElimination
++ // MIR for `nrvo_unborrowed` after MoveElimination
+  
+  fn nrvo_unborrowed() -> [u8; 8] {
+      let mut _0: [u8; 8];
+      let _1: [u8; 8];
+      scope 1 {
+-         debug buf => _1;
++         debug buf => _0;
+      }
+  
+      bb0: {
+-         StorageLive(_1);
+-         _1 = [const 1_u8; 8];
+-         _0 = move _1;
+-         StorageDead(_1);
++         nop;
++         _0 = [const 1_u8; 8];
++         nop;
++         nop;
+          return;
+      }
+  }
+  
