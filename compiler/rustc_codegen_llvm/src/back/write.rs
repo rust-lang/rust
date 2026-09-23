@@ -825,9 +825,7 @@ pub(crate) unsafe fn llvm_optimize(
 
     // This assumes that we previously compiled our kernels for a gpu target, which created a
     // `device.bin` artifact. The user is supposed to provide us with a path to this artifact, we
-    // don't need any other artifacts from the previous run. We will embed this artifact into our
-    // LLVM-IR host module, to create a `host.o` ObjectFile, which we will write to disk.
-    // The last, not yet automated steps uses the `clang-linker-wrapper` to process `host.o`.
+    // don't need any other artifacts from the previous run.
     if !cgcx.target_is_like_gpu && is_final_stage {
         if let Some(device_path) = config
             .offload
@@ -846,38 +844,7 @@ pub(crate) unsafe fn llvm_optimize(
             } else if !device_pathbuf.exists() {
                 dcx.emit_err(crate::diagnostics::OffloadNonexistingPath);
             }
-            let host_path = cgcx.output_filenames.path(OutputType::Object);
-            let host_dir = host_path.parent().unwrap();
-            let out_obj = host_dir.join("host.o");
             let device_bin_c = path_to_c_string(device_pathbuf.as_path());
-
-            // 2) Finalize host: lib.bc + device.bin -> host.o (host TM)
-            // We create a full clone of our LLVM host module, since we will embed the device IR
-            // into it, and this might break caching or incremental compilation otherwise.
-            let ok = unsafe {
-                llvm::RustOffloadWrapper::get_instance().llvm_rust_offload_embed_buffer_in_module(
-                    module.module_llvm.llmod(),
-                    device_bin_c.as_c_str(),
-                )
-            };
-            if !ok {
-                dcx.emit_err(crate::diagnostics::OffloadEmbedFailed);
-            }
-            write_output_file(
-                dcx,
-                module.module_llvm.tm.raw(),
-                config.no_builtins,
-                module.module_llvm.llmod(),
-                &out_obj,
-                None,
-                llvm::FileType::ObjectFile,
-                prof,
-                true,
-            );
-            // We ignore cgcx.save_temps here and unconditionally always keep our `device.bin` artifact.
-            // Otherwise, recompiling the host code would fail since we deleted that device artifact
-            // in the previous host compilation, which would be confusing at best.
-
             let ok = unsafe {
                 llvm::RustOffloadWrapper::get_instance().llvm_rust_offload_wrap_images(
                     module.module_llvm.llmod(),
