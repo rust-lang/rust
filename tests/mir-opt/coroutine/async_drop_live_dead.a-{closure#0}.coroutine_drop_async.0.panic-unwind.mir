@@ -96,7 +96,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb12: {
-        _10 = move _24;
+        _10 = copy _24;
         _9 = copy (_10.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
         goto -> bb11;
     }

@@ -162,7 +162,7 @@
 +     }
 + 
 +     bb24: {
-+         _12 = move _2;
++         _12 = copy _2;
 +         _11 = std::future::get_context::<'_, '_>(move _12) -> [return: bb23, unwind: bb16];
 +     }
 + 
@@ -198,7 +198,7 @@
 +     }
 + 
 +     bb31: {
-+         _19 = move _2;
++         _19 = copy _2;
 +         _18 = std::future::get_context::<'_, '_>(move _19) -> [return: bb30, unwind: bb16];
 +     }
 + 

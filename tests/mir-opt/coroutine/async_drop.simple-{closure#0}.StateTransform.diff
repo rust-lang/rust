@@ -184,7 +184,7 @@
       bb16: {
 -         StorageLive(_6);
 -         _6 = yield(const ()) -> [resume: bb14, drop: bb15];
-+         _18 = move _25;
++         _18 = copy _25;
 +         _17 = copy (_18.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb15;
       }
@@ -209,7 +209,7 @@
       }
   
 -     bb20: {
--         _11 = move _2;
+-         _11 = copy _2;
 -         _10 = std::future::get_context::<'_, '_>(move _11) -> [return: bb19, unwind: bb12];
 +     bb20 (cleanup): {
 +         discriminant((*_24)) = 2;
@@ -256,7 +256,7 @@
 -     }
 - 
 -     bb27: {
--         _18 = move _2;
+-         _18 = copy _2;
 -         _17 = std::future::get_context::<'_, '_>(move _18) -> [return: bb26, unwind: bb12];
 -     }
 - 
