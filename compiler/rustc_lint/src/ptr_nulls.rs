@@ -1,5 +1,6 @@
 use rustc_ast::LitKind;
-use rustc_hir::{BinOpKind, Expr, ExprKind, TyKind, find_attr};
+use rustc_attr_ir::find_attr;
+use rustc_hir::{BinOpKind, Expr, ExprKind, TyKind};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty::RawPtr;
 use rustc_span::{Span, sym};

@@ -7,16 +7,15 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 
+use rustc_attr_ir::{AttributeKind, EncodeCrossCrate, find_attr};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{par_for_each_in, par_join};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, EncodeCrossCrate};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
-use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::dependency_format::Linkage;
@@ -872,9 +871,9 @@ struct AnalyzeAttrState {
 /// visibility: this is a piece of data that can be computed once per defid, and not once per
 /// attribute. Some attributes would only be usable downstream if they are public.
 #[inline]
-fn analyze_attr(attr: &hir::Attribute, state: &mut AnalyzeAttrState) -> bool {
+fn analyze_attr(attr: &rustc_attr_ir::Attribute, state: &mut AnalyzeAttrState) -> bool {
     let mut should_encode = false;
-    if let hir::Attribute::Parsed(p) = attr
+    if let rustc_attr_ir::Attribute::Parsed(p) = attr
         && p.encode_cross_crate() == EncodeCrossCrate::No
     {
         // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
@@ -883,14 +882,14 @@ fn analyze_attr(attr: &hir::Attribute, state: &mut AnalyzeAttrState) -> bool {
     {
         // Lint attributes don't need to be encoded for downstream crates.
         // FIXME remove this when #152369 is re-merged
-    } else if let hir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
+    } else if let rustc_attr_ir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
         // We keep all doc comments reachable to rustdoc because they might be "imported" into
         // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
         // their own.
         if state.is_exported {
             should_encode = true;
         }
-    } else if let hir::Attribute::Parsed(AttributeKind::Doc(d)) = attr {
+    } else if let rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d)) = attr {
         should_encode = true;
         if d.hidden.is_some() {
             state.is_doc_hidden = true;

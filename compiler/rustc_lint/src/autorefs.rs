@@ -1,5 +1,6 @@
 use rustc_ast::{BorrowKind, UnOp};
-use rustc_hir::{Expr, ExprKind, Mutability, find_attr};
+use rustc_attr_ir::find_attr;
+use rustc_hir::{Expr, ExprKind, Mutability};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, DerefAdjustKind, OverloadedDeref,

@@ -76,9 +76,9 @@ use std::num::NonZero;
 
 pub use check::check_abi;
 use rustc_abi::VariantIdx;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{ErrorGuaranteed, pluralize, struct_span_code_err};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::DenseBitSet;
