@@ -434,7 +434,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     // Gate identifiers containing invalid Unicode codepoints that were recovered during lexing.
     sess.psess.bad_unicode_identifiers.with_lock(|identifiers| {
         for (ident, mut spans) in identifiers.drain(..) {
-            spans.sort();
+            spans.sort_by_key(|span| span.lo_hi());
             if ident == sym::ferris {
                 enum FerrisFix {
                     SnakeCase,

@@ -18,7 +18,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, bug, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, OrdSpan, Span, Symbol, bug, kw, sym};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::traits::{
     FulfillmentError, dyn_compatibility_violations_for_assoc_item,
@@ -943,22 +943,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return err.emit_err();
         }
 
-        let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
+        let mut bound_spans: SortedMap<OrdSpan, Vec<String>> = Default::default();
 
         let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
             let msg = format!("`{}`", if obligation.len() > 50 { quiet } else { obligation });
             match self_ty.kind() {
                 // Point at the type that couldn't satisfy the bound.
-                ty::Adt(def, _) => {
-                    bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
-                }
+                ty::Adt(def, _) => bound_spans
+                    .get_mut_or_insert_default(OrdSpan(tcx.def_span(def.did())))
+                    .push(msg),
                 // Point at the trait object that couldn't satisfy the bound.
                 ty::Dynamic(preds, _) => {
                     for pred in preds.iter() {
                         match pred.skip_binder() {
                             ty::ExistentialPredicate::Trait(tr) => {
                                 bound_spans
-                                    .get_mut_or_insert_default(tcx.def_span(tr.def_id))
+                                    .get_mut_or_insert_default(OrdSpan(tcx.def_span(tr.def_id)))
                                     .push(msg.clone());
                             }
                             ty::ExistentialPredicate::Projection(_)
@@ -969,7 +969,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // Point at the closure that couldn't satisfy the bound.
                 ty::Closure(def_id, _) => {
                     bound_spans
-                        .get_mut_or_insert_default(tcx.def_span(*def_id))
+                        .get_mut_or_insert_default(OrdSpan(tcx.def_span(*def_id)))
                         .push(format!("`{quiet}`"));
                 }
                 _ => {}
@@ -1034,7 +1034,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         );
 
         for (span, mut bounds) in bound_spans {
-            if !tcx.sess.source_map().is_span_accessible(span) {
+            if !tcx.sess.source_map().is_span_accessible(span.0) {
                 continue;
             }
             bounds.sort();
@@ -1045,7 +1045,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 [bounds @ .., last] => format!("doesn't satisfy {} or {last}", bounds.join(", ")),
                 [] => unreachable!(),
             };
-            err.span_label(span, msg);
+            err.span_label(span.0, msg);
         }
         add_def_label(&mut err);
         err.emit_err()
@@ -1315,7 +1315,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
             }
         }
-        suggestions.sort_by_key(|&(span, _)| span);
+        suggestions.sort_by_key(|&(span, _)| span.lo_hi());
         // There are cases where one bound points to a span within another bound's span, like when
         // you have code like the following (#115019), so we skip providing a suggestion in those
         // cases to avoid having a malformed suggestion.

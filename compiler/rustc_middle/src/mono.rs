@@ -15,7 +15,7 @@ use rustc_hir::ItemId;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_session::config::OptLevel;
-use rustc_span::{Span, Symbol};
+use rustc_span::{OrdSpan, Span, Symbol};
 use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
@@ -528,7 +528,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by span first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        struct ItemSortKey<'tcx>(Option<Span>, SymbolName<'tcx>);
+        struct ItemSortKey<'tcx>(Option<OrdSpan>, SymbolName<'tcx>);
 
         // We only want to take HirIds of user-defines instances into account.
         // The others don't matter for the codegen tests and can even make item
@@ -560,9 +560,9 @@ impl<'tcx> CodegenUnit<'tcx> {
         }
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
-                local_item_id(item)
-                    .map(|def_id| tcx.def_span(def_id).find_ancestor_not_from_macro())
-                    .flatten(),
+                local_item_id(item).and_then(|def_id| {
+                    tcx.def_span(def_id).find_ancestor_not_from_macro().map(OrdSpan)
+                }),
                 item.symbol_name(tcx),
             )
         }

@@ -499,7 +499,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             }
 
             if !errors_buffer.is_empty() {
-                errors_buffer.sort_by_key(|diag| diag.span.primary_span());
+                errors_buffer.sort_by_key(|diag| diag.span.primary_span().map(Span::lo_hi));
                 for err in errors_buffer {
                     err.emit();
                 }

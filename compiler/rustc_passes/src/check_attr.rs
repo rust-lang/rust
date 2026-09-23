@@ -1210,7 +1210,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if !reprs.is_empty() {
             let sorted_reprs = {
                 let mut to_sort = reprs.to_owned();
-                to_sort.sort_unstable();
+                to_sort.sort_unstable_by_key(|(attr, span)| (*attr, span.lo_hi()));
                 to_sort
             };
 

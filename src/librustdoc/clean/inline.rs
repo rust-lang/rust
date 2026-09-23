@@ -346,7 +346,7 @@ pub(super) fn build_function(cx: &mut DocContext<'_>, def_id: DefId) -> Box<clea
         // or due to the query calls, consider inserting the late-bound lifetime params
         // right after the last early-bound lifetime param followed by only sorting
         // the slice of lifetime params.
-        generics.params.sort_by_key(|param| cx.tcx.def_ident_span(param.def_id).unwrap());
+        generics.params.sort_by_key(|param| cx.tcx.def_ident_span(param.def_id).unwrap().lo_hi());
     }
 
     let decl = clean_poly_fn_sig(cx, Some(def_id), sig);

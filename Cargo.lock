@@ -4819,7 +4819,6 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "blake3",
- "derive-where",
  "indexmap",
  "itoa",
  "md-5",
