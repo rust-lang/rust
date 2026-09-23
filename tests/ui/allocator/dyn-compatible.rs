@@ -2,8 +2,6 @@
 
 // Check that `Allocator` is dyn-compatible, this allows for polymorphic allocators
 
-#![feature(allocator_api)]
-
 use std::alloc::{Allocator, System};
 
 fn ensure_dyn_compatible(_: &dyn Allocator) {}
