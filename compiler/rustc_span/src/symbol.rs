@@ -413,7 +413,6 @@ symbols! {
         alloc_layout,
         alloc_zeroed,
         allocator,
-        allocator_api,
         allocator_internals,
         allow,
         allow_fail,
