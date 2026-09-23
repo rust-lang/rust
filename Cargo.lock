@@ -4168,6 +4168,7 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
+ "rustc_attr_ir",
  "rustc_hir",
  "rustc_span",
 ]
@@ -4732,6 +4733,7 @@ dependencies = [
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_pretty",
+ "rustc_attr_ir",
  "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
@@ -4848,6 +4850,7 @@ dependencies = [
  "punycode",
  "rustc-demangle",
  "rustc_abi",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_hashes",
  "rustc_hir",
@@ -4947,8 +4950,8 @@ version = "0.0.0"
 dependencies = [
  "itertools",
  "rustc_abi",
+ "rustc_attr_ir",
  "rustc_data_structures",
- "rustc_hir",
  "rustc_middle",
  "rustc_span",
  "smallvec",
@@ -4961,6 +4964,7 @@ version = "0.0.0"
 dependencies = [
  "itertools",
  "rustc_abi",
+ "rustc_attr_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hashes",

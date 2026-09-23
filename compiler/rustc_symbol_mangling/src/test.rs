@@ -4,7 +4,8 @@
 //! def-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
-use rustc_hir::{CRATE_OWNER_ID, find_attr};
+use rustc_attr_ir::find_attr;
+use rustc_hir::CRATE_OWNER_ID;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{GenericArgs, Instance, TyCtxt};
 

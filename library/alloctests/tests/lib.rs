@@ -3,7 +3,7 @@
 #![deny(implicit_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(alloc_io)]
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 #![feature(binary_heap_drain_sorted)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(binary_heap_pop_if)]
