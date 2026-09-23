@@ -6,9 +6,9 @@
 
 use std::collections::BTreeMap;
 
-// CHECK-LABEL: @drop_btree
-// CHECK-NOT: dealloc
-// CHECK: ret void
+// CHECK-LABEL: @drop_btree(
+// CHECK-NEXT: {{.*}}:
+// CHECK-NEXT: ret void
 #[no_mangle]
 pub fn drop_btree() {
     let _ = BTreeMap::<(), ()>::new();
