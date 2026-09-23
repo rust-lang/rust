@@ -3289,7 +3289,7 @@ fn bar() {
             tt FromIterator
             tt IntoIterator
             tt Iterator
-            ta Result (use core::fmt::Result)
+            ta Result (use core::fmt::Result)     Result<(), Error>
             ev Err(…)                                        Err(E)
             ev None                                            None
             ev Ok(…)                                          Ok(T)
