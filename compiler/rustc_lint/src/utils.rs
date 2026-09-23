@@ -49,7 +49,7 @@ pub(crate) fn peel_casts<'tcx>(
 }
 
 /// Crate to use for rustfix / diagnostic paths that exist in both `std` and `core`. Returns `None` for `#![no_core]`.
-pub(crate) fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
+pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
     if find_attr!(cx.tcx, crate, NoCore) {
         None
     } else if find_attr!(cx.tcx, crate, NoStd) {
