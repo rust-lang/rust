@@ -211,7 +211,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     ///     r#"Bar { bar: 0x0000000a, another: "Hello World" }"#,
     /// );
     /// ```
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
     pub fn field_with<F>(&mut self, name: &str, value_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -429,7 +429,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     ///     r#"Foo(0x0000000a, "Hello World")"#,
     /// );
     /// ```
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
     pub fn field_with<F>(&mut self, value_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -660,7 +660,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     ///     "{[10, 11], {12, 13}}",
     /// );
     /// ```
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
     pub fn entry_with<F>(&mut self, entry_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -877,7 +877,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     ///     "[[10, 11], {12, 13}]",
     /// );
     /// ```
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
     pub fn entry_with<F>(&mut self, entry_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -1163,7 +1163,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///     r#"{entry A: 0x0000000a, entry B: 0x0000000b}"#,
     /// );
     /// ```
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
     pub fn key_with<F>(&mut self, key_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -1256,7 +1256,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///     r#"{entry A: 0x0000000a, entry B: 0x0000000b}"#,
     /// );
     /// ```
-    #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
     pub fn value_with<F>(&mut self, value_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
