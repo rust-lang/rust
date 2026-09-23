@@ -152,6 +152,63 @@ pub trait FileExt {
         io::default_read_buf(|b| self.seek_read(b, offset), buf)
     }
 
+    /// Seeks to a given position and reads the exact number of bytes required to fill `buf`.
+    ///
+    /// This is equivalent to the [`seek_read_exact`](FileExt::seek_read_exact) method, except
+    /// that it is passed a [`BorrowedCursor`] rather than `&mut [u8]` to allow use with
+    /// uninitialized buffers. The new data will be appended to any existing contents of `buf`.
+    ///
+    /// Reading beyond the end of the file will always succeed without reading any bytes.
+    ///
+    /// # Examples
+    ///
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
+    /// #![feature(core_io_borrowed_buf)]
+    /// #![feature(read_buf_at)]
+    /// #![feature(seek_read_exact_seek_write_all)]
+    ///
+    /// use std::io;
+    /// use std::io::BorrowedBuf;
+    /// use std::fs::File;
+    /// use std::mem::MaybeUninit;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut file = File::open("pi.txt")?;
+    ///
+    ///     // Read some bytes starting from offset 2
+    ///     let mut buf: [MaybeUninit<u8>; 10] = [MaybeUninit::uninit(); 10];
+    ///     let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+    ///     file.seek_read_buf_exact(buf.unfilled(), 2)?;
+    ///
+    ///     assert!(buf.filled().starts_with(b"1"));
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "seek_read_exact_seek_write_all", issue = "162868")]
+    fn seek_read_buf_exact(
+        &self,
+        mut buf: BorrowedCursor<'_, u8>,
+        mut offset: u64,
+    ) -> io::Result<()> {
+        while buf.capacity() > 0 {
+            let prev_written = buf.written();
+            match self.seek_read_buf(buf.reborrow(), offset) {
+                Ok(()) => {}
+                Err(e) if e.is_interrupted() => {}
+                Err(e) => return Err(e),
+            }
+            let n = buf.written() - prev_written;
+            offset += n as u64;
+            if n == 0 {
+                return Err(io::Error::READ_EXACT_EOF);
+            }
+        }
+        Ok(())
+    }
+
     /// Seeks to a given position and writes a number of bytes.
     ///
     /// Returns the number of bytes written.
