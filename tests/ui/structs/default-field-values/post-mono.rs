@@ -4,7 +4,7 @@
 #![feature(default_field_values)]
 
 struct Z<const X: usize> {
-    post_mono: usize = X / 0,
+    post_mono: usize = X / 0, //~ WARN
     //~^ ERROR attempt to divide `1_usize` by zero
 }
 

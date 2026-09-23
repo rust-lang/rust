@@ -125,6 +125,7 @@ pub mod hardwired {
             UNCONDITIONAL_PANIC,
             UNCONDITIONAL_RECURSION,
             UNCOVERED_PARAM_IN_PROJECTION,
+            UNEVALUATED_DEFAULT_FIELD_VALUE,
             UNEXPECTED_CFGS,
             UNFULFILLED_LINT_EXPECTATIONS,
             UNINHABITED_STATIC,
@@ -5982,4 +5983,38 @@ declare_lint! {
         report_in_deps: false,
     };
     crate_level_only
+}
+
+declare_lint! {
+    /// The `unevaluated_default_field_value` lint detects when a struct has a field with a default
+    /// value and has const parameters to be evaluated, meaning that checking that default for
+    /// correctness is delayed to *instantiation* (post-monomorphization), instead of happening
+    /// eagerly.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,no_run
+    /// #![feature(default_field_values)]
+    ///
+    /// struct Struct<const T: u8> {
+    ///     field: u8 = 100 + T, // the value won't be checked until `Struct` is constructed
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Const evaluation requires all values to be known. In the case of default field values, they
+    /// will get evaluated eagerly, but if there are any a const parameters, the evaluation of the
+    /// default will only occur when materializing a value of its owning struct.  For the example
+    /// above, if you wrote `let _: Struct<180> = Struct { .. };`, you would get a const evaluation
+    /// compile error.
+    ///
+    /// This inconsistency can be confusing, and surprising, because the fields *are* sometimes
+    /// evaluated eagerly.
+    pub UNEVALUATED_DEFAULT_FIELD_VALUE,
+    Warn,
+    r#"detects incompatible uses of `#[sanitize(realtime = "nonblocking")]` on async functions"#,
+    @feature_gate = default_field_values;
 }
