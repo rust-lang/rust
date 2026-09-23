@@ -57,8 +57,7 @@ mod thread_info;
         target_os = "illumos",
     )
 ))]
-mod imp {
-}
+mod imp {}
 
 // This is intentionally not enabled on iOS/tvOS/watchOS/visionOS, as it uses
 // several symbols that might lead to rejections from the App Store, namely
@@ -82,9 +81,7 @@ mod imp {
         target_os = "cygwin",
     ))
 ))]
-mod imp {
-}
+mod imp {}
 
 #[cfg(target_os = "cygwin")]
-mod imp {
-}
+mod imp {}
