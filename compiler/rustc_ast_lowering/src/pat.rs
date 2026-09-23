@@ -1,8 +1,9 @@
+use std::borrow::Cow;
+
 use rustc_ast::*;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{self as hir, Target};
-use rustc_span::hygiene::AllowInternalUnstable;
 use rustc_span::{DesugaringKind, Ident, Span, Spanned, respan, span_bug};
 
 use crate::diagnostics::{
@@ -481,7 +482,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::PatTyRange,
             span,
-            Some(AllowInternalUnstable::Static(crate::ALLOW_PATTERN_TYPE)),
+            Some(Cow::Borrowed(crate::ALLOW_PATTERN_TYPE)),
         );
         let anon_const = self.with_new_scopes(span, |this| {
             let def_id = this.local_def_id(e.id);
@@ -534,7 +535,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::PatTyRange,
             self.lower_span(span),
-            Some(AllowInternalUnstable::Static(crate::ALLOW_PATTERN_TYPE)),
+            Some(Cow::Borrowed(crate::ALLOW_PATTERN_TYPE)),
         );
         let span = self.lower_span(base_type);
 

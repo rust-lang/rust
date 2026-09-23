@@ -1,6 +1,7 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
+use std::borrow::Cow;
 use std::mem;
 use std::sync::Arc;
 
@@ -30,9 +31,7 @@ use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::ModId;
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{
-    self, AllowInternalUnstable, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind,
-};
+use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 
 use crate::Namespace::*;
@@ -239,7 +238,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                     ExpnKind::AstPass(pass),
                     call_site,
                     self.tcx.sess.edition(),
-                    AllowInternalUnstable::Static(features),
+                    Cow::Borrowed(features),
                     None,
                     parent_module,
                 ),

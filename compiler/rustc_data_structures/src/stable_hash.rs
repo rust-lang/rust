@@ -428,6 +428,13 @@ impl<T: ?Sized + StableHash> StableHash for ::std::sync::Arc<T> {
     }
 }
 
+impl<B: ?Sized + StableHash + ToOwned> StableHash for ::std::borrow::Cow<'_, B> {
+    #[inline]
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        (**self).stable_hash(hcx, hasher);
+    }
+}
+
 impl StableHash for str {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {

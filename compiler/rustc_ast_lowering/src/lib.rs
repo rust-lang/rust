@@ -38,6 +38,7 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
+use std::borrow::Cow;
 use std::mem;
 use std::sync::Arc;
 
@@ -71,7 +72,6 @@ use rustc_middle::middle::resolve::{
 use rustc_middle::queries::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::diagnostics::add_feature_diagnostics;
-use rustc_span::hygiene::AllowInternalUnstable;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span, span_bug};
 use smallvec::{SmallVec, smallvec};
@@ -378,11 +378,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.tcx.dcx()
     }
 
-    fn allow_gen_future(&self) -> AllowInternalUnstable {
+    fn allow_gen_future(&self) -> Cow<'static, [Symbol]> {
         if self.tcx.features().async_fn_track_caller() {
-            AllowInternalUnstable::Static(ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER)
+            Cow::Borrowed(ALLOW_GEN_FUTURE_WITH_ASYNC_FN_TRACK_CALLER)
         } else {
-            AllowInternalUnstable::Static(ALLOW_GEN_FUTURE)
+            Cow::Borrowed(ALLOW_GEN_FUTURE)
         }
     }
 }
@@ -1048,7 +1048,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &self,
         reason: DesugaringKind,
         span: Span,
-        allow_internal_unstable: Option<AllowInternalUnstable>,
+        allow_internal_unstable: Option<Cow<'static, [Symbol]>>,
     ) -> Span {
         self.tcx.with_stable_hashing_context(|hcx| {
             span.mark_with_reason(allow_internal_unstable, reason, span.edition(), hcx)
@@ -2089,10 +2089,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (opaque_ty_node_id, allowed_features) = match coro.kind {
             CoroutineKind::Async | CoroutineKind::Gen => (coro.return_impl_trait_id, None),
-            CoroutineKind::AsyncGen => (
-                coro.return_impl_trait_id,
-                Some(AllowInternalUnstable::Static(ALLOW_ASYNC_ITERATOR)),
-            ),
+            CoroutineKind::AsyncGen => {
+                (coro.return_impl_trait_id, Some(Cow::Borrowed(ALLOW_ASYNC_ITERATOR)))
+            }
         };
 
         let opaque_ty_span =

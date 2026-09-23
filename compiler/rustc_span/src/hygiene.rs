@@ -24,10 +24,9 @@
 // because getting it wrong can lead to nested `HygieneData::with` calls that
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::hash::Hash;
-use std::ops::Deref;
-use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -964,7 +963,7 @@ impl Span {
     /// allowed inside this span.
     pub fn mark_with_reason(
         self,
-        allow_internal_unstable: Option<AllowInternalUnstable>,
+        allow_internal_unstable: Option<Cow<'static, [Symbol]>>,
         reason: DesugaringKind,
         edition: Edition,
         hcx: impl StableHashCtxt,
@@ -975,49 +974,6 @@ impl Span {
         };
         let expn_id = LocalExpnId::fresh(expn_data, hcx);
         self.apply_mark(expn_id.to_expn_id(), Transparency::Transparent)
-    }
-}
-
-#[derive(Clone)]
-pub enum AllowInternalUnstable {
-    Static(&'static [Symbol]),
-    Dynamic(Arc<[Symbol]>),
-}
-
-impl Deref for AllowInternalUnstable {
-    type Target = [Symbol];
-
-    #[inline]
-    fn deref(&self) -> &[Symbol] {
-        match self {
-            AllowInternalUnstable::Static(s) => s,
-            AllowInternalUnstable::Dynamic(s) => s,
-        }
-    }
-}
-
-impl fmt::Debug for AllowInternalUnstable {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&**self, f)
-    }
-}
-
-impl StableHash for AllowInternalUnstable {
-    #[inline]
-    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        (**self).stable_hash(hcx, hasher);
-    }
-}
-
-impl<E: SpanEncoder> Encodable<E> for AllowInternalUnstable {
-    fn encode(&self, e: &mut E) {
-        (**self).encode(e);
-    }
-}
-
-impl<D: SpanDecoder> Decodable<D> for AllowInternalUnstable {
-    fn decode(d: &mut D) -> AllowInternalUnstable {
-        AllowInternalUnstable::Dynamic(Decodable::decode(d))
     }
 }
 
@@ -1063,7 +1019,7 @@ pub struct ExpnData {
     /// List of `#[unstable]`/feature-gated features that the macro is allowed to use
     /// internally without forcing the whole crate to opt-in
     /// to them.
-    pub allow_internal_unstable: Option<AllowInternalUnstable>,
+    pub allow_internal_unstable: Option<Cow<'static, [Symbol]>>,
     /// Edition of the crate in which the macro is defined.
     pub edition: Edition,
     /// The `DefId` of the macro being invoked,
@@ -1092,7 +1048,7 @@ impl ExpnData {
         parent: ExpnId,
         call_site: Span,
         def_site: Span,
-        allow_internal_unstable: Option<AllowInternalUnstable>,
+        allow_internal_unstable: Option<Cow<'static, [Symbol]>>,
         edition: Edition,
         macro_def_id: Option<DefId>,
         parent_module: Option<ModId>,
@@ -1147,7 +1103,7 @@ impl ExpnData {
         kind: ExpnKind,
         call_site: Span,
         edition: Edition,
-        allow_internal_unstable: AllowInternalUnstable,
+        allow_internal_unstable: Cow<'static, [Symbol]>,
         macro_def_id: Option<DefId>,
         parent_module: Option<ModId>,
     ) -> ExpnData {
