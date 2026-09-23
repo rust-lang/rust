@@ -7,8 +7,9 @@ use std::iter;
 use either::Either;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_index::IndexSlice;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir;
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{Spanned, bug, span_bug};
 use rustc_target::callconv::FnAbi;
@@ -17,9 +18,22 @@ use tracing::{info, instrument, trace};
 
 use super::{
     EnteredTraceSpan, FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine,
-    MemPlaceMeta, PlaceTy, Projectable, RetagMode, interp_ok, throw_ub, throw_unsup_format,
+    MemPlaceMeta, OpTy, PlaceTy, Projectable, Provenance, RetagMode, Scalar, interp_ok, throw_ub,
+    throw_unsup_format,
 };
 use crate::{enter_trace_span, util};
+
+/// An evaluated rvalue, with destination-dependent operations deferred until writing.
+enum EvaluatedRvalue<'tcx, Prov: Provenance> {
+    Use(OpTy<'tcx, Prov>, mir::WithRetag),
+    Immediate(ImmTy<'tcx, Prov>),
+    Ref(ImmTy<'tcx, Prov>, RetagMode),
+    RawPtr { val: ImmTy<'tcx, Prov>, needs_retag: bool },
+    Copy { op: OpTy<'tcx, Prov>, allow_transmute: bool },
+    Cast(OpTy<'tcx, Prov>, mir::CastKind, Ty<'tcx>),
+    Aggregate(mir::AggregateKind<'tcx>, IndexVec<FieldIdx, OpTy<'tcx, Prov>>),
+    Repeat(OpTy<'tcx, Prov>),
+}
 
 struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
     callee: FnVal<'tcx, M::ExtraFnVal>,
@@ -159,9 +173,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Evaluate an assignment statement.
-    ///
-    /// There is no separate `eval_rvalue` function. Instead, the code for handling each rvalue
-    /// type writes its results directly into the memory specified by the place.
     pub fn eval_rvalue_into_place(
         &mut self,
         rvalue: &mir::Rvalue<'tcx>,
@@ -171,63 +182,122 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // about for references, and the pointee must be sized so there's nothing to check for raw
         // pointers.
         let dest = self.eval_place(place, /* skip_validity_for_simple_deref */ true)?;
-        // FIXME: ensure some kind of non-aliasing between LHS and RHS?
-        // Also see https://github.com/rust-lang/rust/issues/68364.
+        let value = self.eval_rvalue(rvalue, dest.layout)?;
+        self.write_rvalue(value, dest)
+    }
 
+    /// Evaluate an rvalue, leaving destination-dependent operations for `write_rvalue`.
+    fn eval_rvalue(
+        &mut self,
+        rvalue: &mir::Rvalue<'tcx>,
+        layout: TyAndLayout<'tcx>,
+    ) -> InterpResult<'tcx, EvaluatedRvalue<'tcx, M::Provenance>> {
         use rustc_middle::mir::Rvalue::*;
-        match *rvalue {
-            ThreadLocalRef(did) => {
-                let ptr = M::thread_local_static_pointer(self, did)?;
-                self.write_pointer(ptr, &dest)?;
-            }
-
+        interp_ok(match *rvalue {
             Use(ref operand, with_retag) => {
-                // Avoid recomputing the layout
-                let op = self.eval_operand(operand, Some(dest.layout))?;
-                let mode = if with_retag.yes() { RetagMode::Default } else { RetagMode::None };
-                M::with_retag_mode(self, mode, |ecx| ecx.copy_op(&op, &dest))?;
+                EvaluatedRvalue::Use(self.eval_operand(operand, Some(layout))?, with_retag)
             }
-
-            CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
-
-            BinaryOp(bin_op, (ref left, ref right)) => {
-                let layout = util::binop_left_homogeneous(bin_op).then_some(dest.layout);
-                let left = self.read_immediate(&self.eval_operand(left, layout)?)?;
-                let layout = util::binop_right_homogeneous(bin_op).then_some(left.layout);
-                let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
-                let result = self.binary_op(bin_op, &left, &right)?;
-                assert_eq!(result.layout, dest.layout, "layout mismatch for result of {bin_op:?}");
-                self.write_immediate(*result, &dest)?;
-            }
-
-            UnaryOp(un_op, ref operand) => {
-                let layout = util::unop_homogeneous(un_op).then_some(dest.layout);
-                let val = self.read_immediate(&self.eval_operand(operand, layout)?)?;
-                let result = self.unary_op(un_op, &val)?;
-                assert_eq!(result.layout, dest.layout, "layout mismatch for result of {un_op:?}");
-                self.write_immediate(*result, &dest)?;
-            }
-
-            Aggregate(ref kind, ref operands) => {
-                self.write_aggregate(kind, operands, &dest)?;
-            }
-
-            Repeat(ref operand, _) => {
-                self.write_repeat(operand, &dest)?;
-            }
-
+            Repeat(ref operand, _) => EvaluatedRvalue::Repeat(self.eval_operand(operand, None)?),
             Ref(_, borrow_kind, place) => {
                 // `x = &*ptr` does not need a validity check on `ptr` because we will already
-                // check `x` below.
+                // check `x` when writing to the destination.
                 let src = self.eval_place(place, /* skip_validity_for_simple_deref */ true)?;
                 let place = self.force_allocation(&src)?;
-                let mut val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
-                // A fresh reference was created, make sure it gets retagged with the right mode.
+                let val = ImmTy::from_immediate(place.to_ref(self), layout);
                 let mode = if borrow_kind.is_two_phase_borrow() {
                     RetagMode::TwoPhase
                 } else {
                     RetagMode::Default
                 };
+                EvaluatedRvalue::Ref(val, mode)
+            }
+            RawPtr(kind, place) => {
+                let place_base_raw = place.is_indirect_first_projection()
+                    && self.frame().body.local_decls[place.local].ty.is_raw_ptr();
+                let src =
+                    self.eval_place(place, /* skip_validity_for_simple_deref */ false)?;
+                let place = self.force_allocation(&src)?;
+                let val = ImmTy::from_immediate(place.to_ref(self), layout);
+                // Retag unless the place was already raw or this is a "fake" raw borrow.
+                EvaluatedRvalue::RawPtr { val, needs_retag: !place_base_raw && !kind.is_fake() }
+            }
+            ThreadLocalRef(did) => {
+                let ptr = M::thread_local_static_pointer(self, did)?;
+                EvaluatedRvalue::Immediate(ImmTy::from_scalar(
+                    Scalar::from_maybe_pointer(ptr.into(), self),
+                    layout,
+                ))
+            }
+            Cast(kind, ref operand, ty) => {
+                let op = self.eval_operand(operand, None)?;
+                let ty = self.instantiate_from_current_frame_and_normalize_erasing_regions(ty)?;
+                EvaluatedRvalue::Cast(op, kind, ty)
+            }
+            BinaryOp(bin_op, (ref left, ref right)) => {
+                let operand_layout = util::binop_left_homogeneous(bin_op).then_some(layout);
+                let left = self.read_immediate(&self.eval_operand(left, operand_layout)?)?;
+                let operand_layout = util::binop_right_homogeneous(bin_op).then_some(left.layout);
+                let right = self.read_immediate(&self.eval_operand(right, operand_layout)?)?;
+                let result = self.binary_op(bin_op, &left, &right)?;
+                assert_eq!(result.layout, layout, "layout mismatch for result of {bin_op:?}");
+                EvaluatedRvalue::Immediate(result)
+            }
+            UnaryOp(un_op, ref operand) => {
+                let operand_layout = util::unop_homogeneous(un_op).then_some(layout);
+                let val = self.read_immediate(&self.eval_operand(operand, operand_layout)?)?;
+                let result = self.unary_op(un_op, &val)?;
+                assert_eq!(result.layout, layout, "layout mismatch for result of {un_op:?}");
+                EvaluatedRvalue::Immediate(result)
+            }
+            Discriminant(place) => {
+                let op = self.eval_place_to_op(place, None)?;
+                let variant = self.read_discriminant(&op)?;
+                EvaluatedRvalue::Immediate(self.discriminant_for_variant(op.layout.ty, variant)?)
+            }
+            Reborrow(_, mutability, place) => {
+                // Shared generic reborrows use `CoerceShared`: a bitwise copy into a
+                // distinct same-layout target ADT.
+                EvaluatedRvalue::Copy {
+                    op: self.eval_place_to_op(place, None)?,
+                    allow_transmute: mutability.is_not(),
+                }
+            }
+            Aggregate(ref kind, ref operands) => {
+                let operands = operands
+                    .iter()
+                    .map(|operand| self.eval_operand(operand, None))
+                    .collect::<InterpResult<'tcx, IndexVec<FieldIdx, _>>>()?;
+                EvaluatedRvalue::Aggregate((**kind).clone(), operands)
+            }
+            WrapUnsafeBinder(ref operand, _) => {
+                // Constructing an unsafe binder acts like a transmute
+                // since the operand's layout does not change.
+                EvaluatedRvalue::Copy {
+                    op: self.eval_operand(operand, None)?,
+                    allow_transmute: true,
+                }
+            }
+            CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
+        })
+    }
+
+    /// Write an evaluated rvalue, performing destination-dependent conversion and validation.
+    fn write_rvalue(
+        &mut self,
+        value: EvaluatedRvalue<'tcx, M::Provenance>,
+        dest: PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        // FIXME: ensure some kind of non-aliasing between LHS and RHS?
+        // Also see https://github.com/rust-lang/rust/issues/68364.
+
+        match value {
+            EvaluatedRvalue::Use(op, with_retag) => {
+                let mode = if with_retag.yes() { RetagMode::Default } else { RetagMode::None };
+                M::with_retag_mode(self, mode, |ecx| ecx.copy_op(&op, &dest))?;
+            }
+            EvaluatedRvalue::Immediate(val) => self.write_immediate(*val, &dest)?,
+            EvaluatedRvalue::Ref(mut val, mode) => {
+                // A fresh reference was created, make sure it gets retagged with the right mode.
                 M::with_retag_mode(self, mode, |ecx| {
                     // If validation is disabled, we still want to do this retag. This is because
                     // const-eval disables validation for performance reasons but wants to retag
@@ -238,71 +308,31 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             val = new_val;
                         }
                     }
-                    // Now do the actual write.
                     ecx.write_immediate(*val, &dest)
                 })?;
             }
-
-            Reborrow(_, mutability, place) => {
-                let op = self.eval_place_to_op(place, None)?;
-                if mutability.is_not() {
-                    // Shared generic reborrows use `CoerceShared`: a bitwise copy into a
-                    // distinct same-layout target ADT.
+            EvaluatedRvalue::RawPtr { mut val, needs_retag } => {
+                if needs_retag {
+                    val = M::with_retag_mode(self, RetagMode::Raw, |ecx| {
+                        interp_ok(M::retag_ptr_value(ecx, &val, val.layout.ty)?.unwrap_or(val))
+                    })?;
+                }
+                // Writing a raw pointer does not retag it during validation.
+                self.write_immediate(*val, &dest)?;
+            }
+            EvaluatedRvalue::Copy { op, allow_transmute } => {
+                if allow_transmute {
                     self.copy_op_allow_transmute(&op, &dest)?;
                 } else {
                     self.copy_op(&op, &dest)?;
                 }
             }
-
-            RawPtr(kind, place) => {
-                // Figure out whether this is an addr_of of an already raw place.
-                let place_base_raw = if place.is_indirect_first_projection() {
-                    let ty = self.frame().body.local_decls[place.local].ty;
-                    ty.is_raw_ptr()
-                } else {
-                    // Not a deref, and thus not raw.
-                    false
-                };
-
-                let src =
-                    self.eval_place(place, /* skip_validity_for_simple_deref */ false)?;
-                let place = self.force_allocation(&src)?;
-                let mut val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
-                if !place_base_raw && !kind.is_fake() {
-                    // If this was not already raw, it needs retagging -- except for "fake"
-                    // raw borrows whose defining property is that they do not get retagged.
-                    val = M::with_retag_mode(self, RetagMode::Raw, |ecx| {
-                        interp_ok(M::retag_ptr_value(ecx, &val, val.layout.ty)?.unwrap_or(val))
-                    })?;
-                }
-                // This writes a raw pointer so it will not do any retags.
-                self.write_immediate(*val, &dest)?;
+            EvaluatedRvalue::Cast(op, kind, ty) => self.cast(&op, kind, ty, &dest)?,
+            EvaluatedRvalue::Aggregate(kind, operands) => {
+                self.write_aggregate(&kind, &operands, &dest)?;
             }
-
-            Cast(cast_kind, ref operand, cast_ty) => {
-                let src = self.eval_operand(operand, None)?;
-                let cast_ty =
-                    self.instantiate_from_current_frame_and_normalize_erasing_regions(cast_ty)?;
-                self.cast(&src, cast_kind, cast_ty, &dest)?;
-            }
-
-            Discriminant(place) => {
-                let op = self.eval_place_to_op(place, None)?;
-                let variant = self.read_discriminant(&op)?;
-                let discr = self.discriminant_for_variant(op.layout.ty, variant)?;
-                self.write_immediate(*discr, &dest)?;
-            }
-
-            WrapUnsafeBinder(ref op, _ty) => {
-                // Constructing an unsafe binder acts like a transmute
-                // since the operand's layout does not change.
-                let op = self.eval_operand(op, None)?;
-                self.copy_op_allow_transmute(&op, &dest)?;
-            }
+            EvaluatedRvalue::Repeat(op) => self.write_repeat(&op, &dest)?,
         }
-
-        trace!("{:?}", self.dump_place(&dest));
-
         interp_ok(())
     }
 
@@ -311,7 +341,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn write_aggregate(
         &mut self,
         kind: &mir::AggregateKind<'tcx>,
-        operands: &IndexSlice<FieldIdx, mir::Operand<'tcx>>,
+        operands: &IndexSlice<FieldIdx, OpTy<'tcx, M::Provenance>>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         let (variant_index, variant_dest, active_field_index) = match *kind {
@@ -327,13 +357,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let [data, meta] = &operands.raw else {
                     bug!("{kind:?} should have 2 operands, had {operands:?}");
                 };
-                let data = self.eval_operand(data, None)?;
-                let data = self.read_pointer(&data)?;
-                let meta = self.eval_operand(meta, None)?;
+                let data = self.read_pointer(data)?;
                 let meta = if meta.layout.is_zst() {
                     MemPlaceMeta::None
                 } else {
-                    MemPlaceMeta::Meta(self.read_scalar(&meta)?)
+                    MemPlaceMeta::Meta(self.read_scalar(meta)?)
                 };
                 let ptr_imm = Immediate::new_pointer_with_meta(data, meta, self);
                 let ptr = ImmTy::from_immediate(ptr_imm, dest.layout);
@@ -348,9 +376,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         for (field_index, operand) in operands.iter_enumerated() {
             let field_index = active_field_index.unwrap_or(field_index);
             let field_dest = self.project_field(&variant_dest, field_index)?;
-            let op = self.eval_operand(operand, Some(field_dest.layout))?;
             // We validate manually below so we don't have to do it here.
-            self.copy_op_no_validate(&op, &field_dest, /*allow_transmute*/ false)?;
+            self.copy_op_no_validate(operand, &field_dest, /*allow_transmute*/ false)?;
         }
         self.write_discriminant(variant_index, dest)?;
         // Validate that the entire thing is valid, and reset padding that might be in between the
@@ -365,14 +392,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(())
     }
 
-    /// Repeats `operand` into the destination. `dest` must have array type, and that type
-    /// determines how often `operand` is repeated.
+    /// Repeats `src` into the destination. `dest` must have array type, and that type
+    /// determines how often `src` is repeated.
     fn write_repeat(
         &mut self,
-        operand: &mir::Operand<'tcx>,
+        src: &OpTy<'tcx, M::Provenance>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        let src = self.eval_operand(operand, None)?;
         assert!(src.layout.is_sized());
         let dest = self.force_allocation(&dest)?;
         let length = dest.len(self)?;
@@ -383,7 +409,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         } else {
             // Write the src to the first element.
             let first = self.project_index(&dest, 0)?;
-            self.copy_op(&src, &first)?;
+            self.copy_op(src, &first)?;
 
             // This is performance-sensitive code for big static/const arrays! So we
             // avoid writing each operand individually and instead just make many copies
