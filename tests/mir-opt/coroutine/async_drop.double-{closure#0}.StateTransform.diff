@@ -229,7 +229,7 @@
 -         _2 = move _7;
 -         StorageDead(_7);
 -         goto -> bb24;
-+         _19 = move _43;
++         _19 = copy _43;
 +         _18 = copy (_19.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb17;
       }
@@ -261,7 +261,7 @@
       }
   
 -     bb23: {
--         _12 = move _2;
+-         _12 = copy _2;
 -         _11 = std::future::get_context::<'_, '_>(move _12) -> [return: bb22, unwind: bb15];
 +     bb23 (cleanup): {
 +         nop;
@@ -315,9 +315,9 @@
       }
   
       bb30: {
--         _19 = move _2;
+-         _19 = copy _2;
 -         _18 = std::future::get_context::<'_, '_>(move _19) -> [return: bb29, unwind: bb15];
-+         _36 = move _43;
++         _36 = copy _43;
 +         _35 = copy (_36.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb29;
       }
@@ -407,7 +407,7 @@
 -     }
 - 
 -     bb43: {
--         _29 = move _2;
+-         _29 = copy _2;
 -         _28 = std::future::get_context::<'_, '_>(move _29) -> [return: bb42, unwind: bb36];
 -     }
 - 
@@ -443,7 +443,7 @@
 -     }
 - 
 -     bb50: {
--         _36 = move _2;
+-         _36 = copy _2;
 -         _35 = std::future::get_context::<'_, '_>(move _36) -> [return: bb49, unwind: bb36];
 -     }
 - 
