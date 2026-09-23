@@ -1,6 +1,8 @@
 #![allow(missing_docs, nonstandard_style)]
 
 use crate::io;
+#[cfg(target_os = "nuttx")]
+use crate::ptr::null;
 
 pub mod conf;
 #[cfg(target_os = "fuchsia")]
@@ -88,6 +90,35 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
         )))]
         'poll: {
             use crate::sys::io::errno;
+
+            #[cfg(target_os = "nuttx")]
+            let pfds: &mut [_] = &mut [
+                libc::pollfd {
+                    fd: 0,
+                    events: 0,
+                    revents: 0,
+                    arg: null(),
+                    cb: null(),
+                    r#priv: null(),
+                },
+                libc::pollfd {
+                    fd: 1,
+                    events: 0,
+                    revents: 0,
+                    arg: null(),
+                    cb: null(),
+                    r#priv: null(),
+                },
+                libc::pollfd {
+                    fd: 2,
+                    events: 0,
+                    revents: 0,
+                    arg: null(),
+                    cb: null(),
+                    r#priv: null(),
+                },
+            ];
+            #[cfg(not(target_os = "nuttx"))]
             let pfds: &mut [_] = &mut [
                 libc::pollfd { fd: 0, events: 0, revents: 0 },
                 libc::pollfd { fd: 1, events: 0, revents: 0 },
