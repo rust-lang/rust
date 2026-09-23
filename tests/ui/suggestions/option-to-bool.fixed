@@ -2,20 +2,20 @@
 //@ run-rustfix
 
 fn foo(x: Option<i32>) {
-    if true && x {}
+    if true && x.is_some() {}
     //~^ ERROR mismatched types
     //~| HELP use `Option::is_some` to test if the `Option` has a value
 
     let reference = &x;
-    if *reference {}
+    if (*reference).is_some() {}
     //~^ ERROR mismatched types
     //~| HELP use `Option::is_some` to test if the `Option` has a value
 
-    if &x {}
+    if (&x).is_some() {}
     //~^ ERROR mismatched types
     //~| HELP use `Option::is_some` to test if the `Option` has a value
 
-    if Value + Value {}
+    if (Value + Value).is_some() {}
     //~^ ERROR mismatched types
     //~| HELP use `Option::is_some` to test if the `Option` has a value
 }
