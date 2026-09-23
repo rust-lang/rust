@@ -122,6 +122,7 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug + std::fmt::Display {
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
     fn is_transparent(this: TyAndLayout<'a, Self>) -> bool;
     fn is_complex_number_lang_item(this: TyAndLayout<'a, Self>, cx: &C) -> bool;
+    fn is_x87_f80_lang_item(this: TyAndLayout<'a, Self>, cx: &C) -> bool;
     fn is_scalable_vector(this: TyAndLayout<'a, Self>) -> bool;
     /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
     fn is_pass_indirectly_in_non_rustic_abis_flag_set(this: TyAndLayout<'a, Self>) -> bool;
@@ -232,6 +233,17 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty::is_scalable_vector(self)
     }
 
+    /// Returns `true` if this type is the `x87_f80` lang item.
+    ///
+    /// Note that this function returns `false` for the `x87_f80_raw` lang item.
+    pub fn is_x87_f80<C>(self, cx: &C) -> bool
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        // A 1-ZST is never x87_f80.
+        Ty::is_x87_f80_lang_item(self.peel_transparent_wrappers_from_non_1zst(cx), cx)
+    }
+
     /// If this method returns `true`, then this type should always have a `PassMode` of
     /// `Indirect { mode: IndirectMode::Pointer, .. }` when being used as the argument type of a
     /// function with a non-Rustic ABI (this is true for structs annotated with the
@@ -339,6 +351,10 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
         let component = complex.field(cx, 0).peel_transparent_wrappers_from_non_1zst(cx);
 
+        if component.is_x87_f80(cx) {
+            return Some(Numeric::Float(Float::X87F80));
+        }
+
         let BackendRepr::Scalar(scalar) = component.backend_repr else {
             return None;
         };
@@ -353,6 +369,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             Primitive::Float(
                 float @ (Float::F16 | Float::F32 | Float::F64 | Float::F128 | Float::PpcF128),
             ) => Some(Numeric::Float(float)),
+            Primitive::Float(Float::X87F80) => None, // x87_f80_raw has incorrect alignment.
             Primitive::Pointer(..) | Primitive::Float(Float::F16B) => None,
         }
     }
