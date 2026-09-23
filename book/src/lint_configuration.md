@@ -1006,6 +1006,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`repeat_vec_with_capacity`](https://rust-lang.github.io/rust-clippy/main/index.html#repeat_vec_with_capacity)
 * [`same_item_push`](https://rust-lang.github.io/rust-clippy/main/index.html#same_item_push)
 * [`seek_from_current`](https://rust-lang.github.io/rust-clippy/main/index.html#seek_from_current)
+* [`swap_ptr_to_ref`](https://rust-lang.github.io/rust-clippy/main/index.html#swap_ptr_to_ref)
 * [`to_digit_is_some`](https://rust-lang.github.io/rust-clippy/main/index.html#to_digit_is_some)
 * [`transmute_ptr_to_ref`](https://rust-lang.github.io/rust-clippy/main/index.html#transmute_ptr_to_ref)
 * [`tuple_array_conversions`](https://rust-lang.github.io/rust-clippy/main/index.html#tuple_array_conversions)
