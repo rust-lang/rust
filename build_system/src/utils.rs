@@ -242,9 +242,9 @@ fn rustc_version_info_inner(
 }
 
 pub fn get_toolchain() -> Result<String, String> {
-    let content = match fs::read_to_string("rust-toolchain") {
+    let content = match fs::read_to_string("rust-toolchain.toml") {
         Ok(content) => content,
-        Err(_) => return Err("No `rust-toolchain` file found".to_string()),
+        Err(_) => return Err("No `rust-toolchain.toml` file found".to_string()),
     };
     match content
         .split('\n')
@@ -259,7 +259,7 @@ pub fn get_toolchain() -> Result<String, String> {
         .next()
     {
         Some(toolchain) => Ok(toolchain.to_string()),
-        None => Err("Couldn't find `channel` in `rust-toolchain` file".to_string()),
+        None => Err("Couldn't find `channel` in `rust-toolchain.toml` file".to_string()),
     }
 }
 
