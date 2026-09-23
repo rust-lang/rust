@@ -3010,10 +3010,10 @@ fn test_dir_clone() {
 }
 
 #[test]
-fn test_dir_metadata() {
+fn test_dir_self_metadata() {
     let tmpdir = tmpdir();
     let dir = check!(Dir::open(tmpdir.path()));
-    let metadata = check!(dir.metadata());
+    let metadata = check!(dir.self_metadata());
     assert!(metadata.is_dir());
 }
 
@@ -3103,7 +3103,7 @@ fn test_dir_open_dir() {
 }
 
 #[test]
-fn test_dir_metadata_at() {
+fn test_dir_metadata() {
     let tmpdir = tmpdir();
     let dir = check!(Dir::open(tmpdir.path()));
     check!(dir.create_dir("subdir"));
@@ -3112,16 +3112,16 @@ fn test_dir_metadata_at() {
     drop(check!(dir.open_file_with(&barpath, &OpenOptions::new().create(true).write(true))));
     check!(symlink_file(&tmpdir.join("subdir/bar.txt"), &tmpdir.join("link")));
 
-    let metadata = check!(dir.metadata_at(&barpath));
+    let metadata = check!(dir.metadata(&barpath));
     assert!(metadata.is_file());
-    let metadata = check!(dir.metadata_at("subdir"));
+    let metadata = check!(dir.metadata("subdir"));
     assert!(metadata.is_dir());
-    dir.metadata_at("does-not-exist").unwrap_err();
+    dir.metadata("does-not-exist").unwrap_err();
 
-    let metadata = check!(dir.metadata_at("link"));
+    let metadata = check!(dir.metadata("link"));
     assert!(metadata.is_file());
     assert!(!metadata.is_symlink());
-    let metadata = check!(dir.symlink_metadata_at("link"));
+    let metadata = check!(dir.symlink_metadata("link"));
     assert!(!metadata.is_file());
     assert!(metadata.is_symlink());
 }

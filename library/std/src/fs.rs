@@ -1637,6 +1637,8 @@ impl Dir {
 
     /// Queries metadata about the underlying directory.
     ///
+    /// This is equivalent to `dir.metadata(".")` but can be more efficient.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -1645,13 +1647,13 @@ impl Dir {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let dir = Dir::open("foo")?;
-    ///     let metadata = dir.metadata()?;
+    ///     let metadata = dir.self_metadata()?;
     ///     Ok(())
     /// }
     /// ```
     #[unstable(feature = "dirfd", issue = "120426")]
-    pub fn metadata(&self) -> io::Result<Metadata> {
-        self.inner.metadata().map(Metadata)
+    pub fn self_metadata(&self) -> io::Result<Metadata> {
+        self.inner.self_metadata().map(Metadata)
     }
 
     /// Attempts to open a file in read-only mode relative to this directory.
@@ -1897,7 +1899,7 @@ impl Dir {
     ///
     /// This function will traverse symbolic links to query information about the destination file.
     /// To query metadata about the path itself without following symbolic links, use
-    /// [`symlink_metadata_at`][Self::symlink_metadata_at].
+    /// [`symlink_metadata`][Self::symlink_metadata].
     ///
     /// # Examples
     ///
@@ -1907,13 +1909,13 @@ impl Dir {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let dir = Dir::open("foo")?;
-    ///     let metadata = dir.metadata_at("subdir/file.txt")?;
+    ///     let metadata = dir.metadata("subdir/file.txt")?;
     ///     Ok(())
     /// }
     /// ```
     #[unstable(feature = "dirfd", issue = "120426")]
-    pub fn metadata_at<P: AsRef<Path>>(&self, path: P) -> io::Result<Metadata> {
-        self.inner.metadata_at(path.as_ref()).map(Metadata)
+    pub fn metadata<P: AsRef<Path>>(&self, path: P) -> io::Result<Metadata> {
+        self.inner.metadata(path.as_ref()).map(Metadata)
     }
 
     /// Queries the file system to get information about a file, directory, etc. relative to this
@@ -1921,7 +1923,7 @@ impl Dir {
     ///
     /// This function will return the [`Metadata`] of the exact path without traversing symbolic
     /// links to a resolved destination file. Using this function on a path that is a file or
-    /// directory (not a symbolic link) will behave the same as [`metadata_at`][Self::metadata_at].
+    /// directory (not a symbolic link) will behave the same as [`metadata`][Self::metadata].
     ///
     /// # Examples
     ///
@@ -1931,13 +1933,13 @@ impl Dir {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let dir = Dir::open("foo")?;
-    ///     let metadata = dir.symlink_metadata_at("subdir/file.txt")?;
+    ///     let metadata = dir.symlink_metadata("subdir/file.txt")?;
     ///     Ok(())
     /// }
     /// ```
     #[unstable(feature = "dirfd", issue = "120426")]
-    pub fn symlink_metadata_at<P: AsRef<Path>>(&self, path: P) -> io::Result<Metadata> {
-        self.inner.symlink_metadata_at(path.as_ref()).map(Metadata)
+    pub fn symlink_metadata<P: AsRef<Path>>(&self, path: P) -> io::Result<Metadata> {
+        self.inner.symlink_metadata(path.as_ref()).map(Metadata)
     }
 }
 

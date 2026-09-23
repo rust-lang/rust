@@ -57,7 +57,7 @@ impl Dir {
             .map(File)
     }
 
-    pub fn metadata(&self) -> io::Result<FileAttr> {
+    pub fn self_metadata(&self) -> io::Result<FileAttr> {
         // Reuse the implementation for files, which should work for all FDs.
         let fd = self.0.as_raw_fd();
         let f = core::mem::ManuallyDrop::new(File(
@@ -89,14 +89,14 @@ impl Dir {
         run_path_with_cstr(path, &|path| self.remove_c(path, /* remove_dir */ true))
     }
 
-    pub fn metadata_at(&self, path: &Path) -> io::Result<FileAttr> {
+    pub fn metadata(&self, path: &Path) -> io::Result<FileAttr> {
         run_path_with_cstr(path, &|path| {
-            self.metadata_at_c(path, /* symlink_nofollow */ false)
+            self.metadata_c(path, /* symlink_nofollow */ false)
         })
     }
 
-    pub fn symlink_metadata_at(&self, path: &Path) -> io::Result<FileAttr> {
-        run_path_with_cstr(path, &|path| self.metadata_at_c(path, /* symlink_nofollow */ true))
+    pub fn symlink_metadata(&self, path: &Path) -> io::Result<FileAttr> {
+        run_path_with_cstr(path, &|path| self.metadata_c(path, /* symlink_nofollow */ true))
     }
 
     fn open_with_c(path: &CStr, opts: &OpenOptions) -> io::Result<Self> {
@@ -154,11 +154,7 @@ impl Dir {
         cvt(unsafe { mkdirat(self.0.as_raw_fd(), path.as_ptr(), 0o777) }).map(|_| ())
     }
 
-    pub(super) fn metadata_at_c(
-        &self,
-        path: &CStr,
-        symlink_nofollow: bool,
-    ) -> io::Result<FileAttr> {
+    pub(super) fn metadata_c(&self, path: &CStr, symlink_nofollow: bool) -> io::Result<FileAttr> {
         let fd = self.0.as_raw_fd();
         let flag = if symlink_nofollow { libc::AT_SYMLINK_NOFOLLOW } else { 0 };
 

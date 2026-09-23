@@ -1033,7 +1033,7 @@ impl DirEntry {
                 let dir_handle =
                     mem::ManuallyDrop::new(dir::Dir(unsafe { OwnedFd::from_raw_fd(fd) }));
 
-                dir_handle.metadata_at_c(&self.name, /* symlink_nofollow */ true)
+                dir_handle.metadata_c(&self.name, /* symlink_nofollow */ true)
             }
 
             // Fallback based on path

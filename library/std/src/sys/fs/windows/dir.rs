@@ -223,7 +223,7 @@ impl Dir {
         .io_result()
     }
 
-    pub fn metadata(&self) -> io::Result<FileAttr> {
+    pub fn self_metadata(&self) -> io::Result<FileAttr> {
         // Reuse the implementation for files, which should work for all handles.
         let handle = self.handle.as_raw_handle();
         let f = core::mem::ManuallyDrop::new(File {
@@ -233,14 +233,14 @@ impl Dir {
         f.file_attr()
     }
 
-    pub fn metadata_at(&self, path: &Path) -> io::Result<FileAttr> {
+    pub fn metadata(&self, path: &Path) -> io::Result<FileAttr> {
         let path = to_u16s_without_nul(path)?;
         // Same as the `stat` logic used for `fs::metadata`
-        match self.metadata_at_native(&path, ReparsePoint::Follow) {
+        match self.metadata_native(&path, ReparsePoint::Follow) {
             Err(err) if err.raw_os_error() == Some(c::ERROR_CANT_ACCESS_FILE as i32) => {
                 // Fallback to opening reparse points when following fails. Needed for UNIX domain
                 // sockets. See <https://github.com/rust-lang/rust/issues/109106>.
-                if let Ok(attrs) = self.metadata_at_native(&path, ReparsePoint::Open) {
+                if let Ok(attrs) = self.metadata_native(&path, ReparsePoint::Open) {
                     if !attrs.file_type().is_symlink() {
                         return Ok(attrs);
                     }
@@ -251,12 +251,12 @@ impl Dir {
         }
     }
 
-    pub fn symlink_metadata_at(&self, path: &Path) -> io::Result<FileAttr> {
+    pub fn symlink_metadata(&self, path: &Path) -> io::Result<FileAttr> {
         let path = to_u16s_without_nul(path)?;
-        self.metadata_at_native(&path, ReparsePoint::Open)
+        self.metadata_native(&path, ReparsePoint::Open)
     }
 
-    fn metadata_at_native(&self, path: &[u16], reparse: ReparsePoint) -> io::Result<FileAttr> {
+    fn metadata_native(&self, path: &[u16], reparse: ReparsePoint) -> io::Result<FileAttr> {
         let mut opts = OpenOptions::new();
         // the NT functions need at least c::FILE_READ_ATTRIBUTES
         opts.access_mode(c::FILE_READ_ATTRIBUTES);
