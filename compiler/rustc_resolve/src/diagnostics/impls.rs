@@ -3929,7 +3929,15 @@ pub(crate) fn import_candidates(
     );
 }
 
-type PathString<'a> = (String, &'a str, Option<Span>, &'a Option<String>, bool, bool);
+// type PathString<'a> = (String, &'a str, Option<Span>, &'a Option<String>, bool, bool);
+struct PathString<'a> {
+    path: String,
+    descr: &'a str,
+    span: Option<Span>,
+    note: &'a Option<String>,
+    via_import: bool,
+    exact_matched: bool,
+}
 
 /// When an entity with a given name is not available in scope, we search for
 /// entities with that name in all crates. This method allows outputting the
@@ -3955,42 +3963,54 @@ fn show_candidates(
     let mut accessible_path_strings: Vec<PathString<'_>> = Vec::new();
     let mut inaccessible_path_strings: Vec<PathString<'_>> = Vec::new();
 
-    candidates.iter().for_each(|c| {
-        if c.accessible {
-            // Don't suggest `#[doc(hidden)]` items from other crates
-            if c.doc_visible {
-                accessible_path_strings.push((
-                    pprust::path_to_string(&c.path),
-                    c.descr,
-                    c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
-                    &c.note,
-                    c.via_import,
-                    c.exact_matched,
-                ))
+    candidates.iter().for_each(
+        |ImportSuggestion {
+             did,
+             descr,
+             path,
+             accessible,
+             doc_visible,
+             via_import,
+             note,
+             is_stable: _,
+             exact_matched,
+         }| {
+            if *accessible {
+                // Don't suggest `#[doc(hidden)]` items from other crates
+                if *doc_visible {
+                    accessible_path_strings.push(PathString {
+                        path: pprust::path_to_string(path),
+                        descr,
+                        span: did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
+                        note,
+                        via_import: *via_import,
+                        exact_matched: *exact_matched,
+                    })
+                }
+            } else {
+                inaccessible_path_strings.push(PathString {
+                    path: pprust::path_to_string(path),
+                    descr,
+                    span: did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
+                    note,
+                    via_import: *via_import,
+                    exact_matched: *exact_matched,
+                })
             }
-        } else {
-            inaccessible_path_strings.push((
-                pprust::path_to_string(&c.path),
-                c.descr,
-                c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
-                &c.note,
-                c.via_import,
-                c.exact_matched,
-            ))
-        }
-    });
+        },
+    );
 
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
     for path_strings in [&mut accessible_path_strings, &mut inaccessible_path_strings] {
-        path_strings.sort_by(|a, b| a.0.cmp(&b.0));
-        path_strings.dedup_by(|a, b| a.0 == b.0);
+        path_strings.sort_by(|a, b| a.path.cmp(&b.path));
+        path_strings.dedup_by(|a, b| a.path == b.path);
         let core_path_strings =
-            path_strings.extract_if(.., |p| p.0.starts_with("core::")).collect::<Vec<_>>();
+            path_strings.extract_if(.., |p| p.path.starts_with("core::")).collect::<Vec<_>>();
         let std_path_strings =
-            path_strings.extract_if(.., |p| p.0.starts_with("std::")).collect::<Vec<_>>();
+            path_strings.extract_if(.., |p| p.path.starts_with("std::")).collect::<Vec<_>>();
         let foreign_crate_path_strings =
-            path_strings.extract_if(.., |p| !p.0.starts_with("crate::")).collect::<Vec<_>>();
+            path_strings.extract_if(.., |p| !p.path.starts_with("crate::")).collect::<Vec<_>>();
 
         // We list the `crate` local paths first.
         // Then we list the `std`/`core` paths.
@@ -4007,13 +4027,14 @@ fn show_candidates(
 
     if !accessible_path_strings.is_empty() {
         let (determiner, kind, s, name, through) =
-            if let [(name, descr, _, _, via_import, is_exact_match)] = &accessible_path_strings[..]
+            if let [PathString { path, descr, via_import, exact_matched, .. }] =
+                &accessible_path_strings[..]
             {
                 (
-                    if *is_exact_match { "this" } else { "this similarly named" },
+                    if *exact_matched { "this" } else { "this similarly named" },
                     *descr,
                     "",
-                    format!(" `{name}`"),
+                    format!(" `{path}`"),
                     if *via_import { " through its public re-export" } else { "" },
                 )
             } else {
@@ -4021,15 +4042,15 @@ fn show_candidates(
                 // instead of the more generic "items".
                 let kinds = accessible_path_strings
                     .iter()
-                    .map(|(_, descr, _, _, _, _)| *descr)
+                    .map(|PathString { descr, .. }| *descr)
                     .collect::<UnordSet<&str>>();
                 let kind = if let Some(kind) = kinds.get_only() { kind } else { "item" };
                 let s = if kind.ends_with('s') { "es" } else { "s" };
                 // we should only suggest case insensitive suggestion if no case sensitive match was found,
-                // so all the suggestion should have the same is_exact_match value.
+                // so all the suggestion should have the same exact_matched value.
 
                 (
-                    if accessible_path_strings[0].5 {
+                    if accessible_path_strings[0].exact_matched {
                         "one of these"
                     } else {
                         "one of these similarly named"
@@ -4051,7 +4072,7 @@ fn show_candidates(
             format!("consider importing {determiner} {kind}{s}{through}{instead}")
         };
 
-        for note in accessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
+        for note in accessible_path_strings.iter().flat_map(|cand| cand.note.as_ref()) {
             err.note(note.clone());
         }
 
@@ -4060,7 +4081,7 @@ fn show_candidates(
 
             for candidate in accessible_path_strings {
                 msg.push('\n');
-                msg.push_str(&candidate.0);
+                msg.push_str(&candidate.path);
             }
         };
 
@@ -4070,7 +4091,7 @@ fn show_candidates(
                     err.span_suggestions(
                         span,
                         msg,
-                        accessible_path_strings.into_iter().map(|a| a.0),
+                        accessible_path_strings.into_iter().map(|a| a.path),
                         Applicability::MaybeIncorrect,
                     );
                     return true;
@@ -4088,8 +4109,8 @@ fn show_candidates(
                 } else {
                     ""
                 };
-                candidate.0 =
-                    format!("{add_use}{}{append}{trailing}{additional_newline}", candidate.0);
+                candidate.path =
+                    format!("{add_use}{}{append}{trailing}{additional_newline}", candidate.path);
             }
 
             match mode {
@@ -4101,7 +4122,7 @@ fn show_candidates(
                     err.span_suggestions_with_style(
                         span,
                         msg,
-                        accessible_path_strings.into_iter().map(|a| a.0),
+                        accessible_path_strings.into_iter().map(|a| a.path),
                         Applicability::MaybeIncorrect,
                         SuggestionStyle::ShowAlways,
                     );
@@ -4132,16 +4153,16 @@ fn show_candidates(
     {
         let prefix =
             if let DiagMode::Pattern = mode { "you might have meant to match on " } else { "" };
-        if let [(name, descr, source_span, note, _, is_exact_match)] =
+        if let [PathString { path, descr, span, note, exact_matched, .. }] =
             &inaccessible_path_strings[..]
         {
             let msg = format!(
-                "{prefix}{}{descr} `{name}`{} exists but is inaccessible",
-                if *is_exact_match { "" } else { "similarly named " },
+                "{prefix}{}{descr} `{path}`{} exists but is inaccessible",
+                if *exact_matched { "" } else { "similarly named " },
                 if let DiagMode::Pattern = mode { ", which" } else { "" }
             );
 
-            if let Some(source_span) = source_span {
+            if let Some(source_span) = span {
                 let span = tcx.sess.source_map().guess_head_span(*source_span);
                 let mut multi_span = MultiSpan::from_span(span);
                 multi_span.push_span_label(span, "not accessible");
@@ -4155,12 +4176,12 @@ fn show_candidates(
         } else {
             let descr = inaccessible_path_strings
                 .iter()
-                .map(|&(_, descr, _, _, _, _)| descr)
+                .map(|PathString { descr, .. }| *descr)
                 .all_equal_value()
                 .unwrap_or("item");
             let plural_descr =
                 if descr.ends_with('s') { format!("{descr}es") } else { format!("{descr}s") };
-            let are_exact_matches = inaccessible_path_strings[0].5;
+            let are_exact_matches = inaccessible_path_strings[0].exact_matched;
             let mut msg = format!(
                 "{prefix}these {}{plural_descr} exist but are inaccessible",
                 if are_exact_matches { "" } else { "similarly named " },
@@ -4168,17 +4189,17 @@ fn show_candidates(
             let mut has_colon = false;
 
             let mut spans = Vec::new();
-            for (name, _, source_span, _, _, _) in &inaccessible_path_strings {
-                if let Some(source_span) = source_span {
-                    let span = tcx.sess.source_map().guess_head_span(*source_span);
-                    spans.push((name, span));
+            for PathString { path, span, .. } in &inaccessible_path_strings {
+                if let Some(span) = span {
+                    let span = tcx.sess.source_map().guess_head_span(*span);
+                    spans.push((path, span));
                 } else {
                     if !has_colon {
                         msg.push(':');
                         has_colon = true;
                     }
                     msg.push('\n');
-                    msg.push_str(name);
+                    msg.push_str(path);
                 }
             }
 
@@ -4187,7 +4208,7 @@ fn show_candidates(
                 multi_span.push_span_label(span, format!("`{name}`: not accessible"));
             }
 
-            for note in inaccessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
+            for note in inaccessible_path_strings.iter().flat_map(|cand| cand.note.as_ref()) {
                 err.note(note.clone());
             }
 
