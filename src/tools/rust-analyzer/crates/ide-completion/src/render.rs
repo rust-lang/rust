@@ -3129,6 +3129,32 @@ fn test() {
                 fn test() fn() []
             "#]],
         );
+        check_relevance(
+            r#"
+struct Matches;
+impl Matches {
+    fn opt_present(&self) -> bool {}
+}
+mod module {
+    pub fn max<T>(a: T, b: T) -> T {}
+    pub fn min<T>(a: T, b: T) -> T {}
+}
+use module::max;
+fn test(matches: &Matches) {
+    if m$0
+}
+"#,
+            expect![[r#"
+                ex false  [type]
+                ex true  [type]
+                lc matches &Matches [local]
+                st Matches Matches []
+                fn max(…) fn(T, T) -> T []
+                md module::  []
+                fn test(…) fn(&Matches) []
+                fn min(…) fn(T, T) -> T [requires_import]
+            "#]],
+        );
     }
 
     #[test]
