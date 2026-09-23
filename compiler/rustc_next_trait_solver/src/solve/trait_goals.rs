@@ -10,7 +10,7 @@ use rustc_type_ir::solve::{
     QueryResultOrRerunNonErased, RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind,
 };
 use rustc_type_ir::{
-    self as ty, CallerBoundsIterator, ClausePolarity, ExistentialPredicate, FieldInfo,
+    self as ty, CallerBoundsIterator, ExistentialPredicate, FieldInfo,
     IncludeSizedImplicitBounds, Interner, MayBeErased, Movability, Region, TraitClause, TraitRef,
     TypeVisitableExt as _, TypingMode, Unnormalized, Upcast as _, elaborate,
 };
@@ -137,39 +137,17 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> impl Iterator<Item = I::Clause> {
-        fn trait_def_id_matches<I: Interner>(
-            cx: I,
-            clause_def_id: I::TraitId,
-            goal_def_id: I::TraitId,
-            polarity: ClausePolarity,
-        ) -> bool {
-            clause_def_id == goal_def_id
-            // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
-            // check for a `MetaSized` supertrait being matched against a `Sized` assumption.
-            //
-            // `PointeeSized` bounds are syntactic sugar for a lack of bounds so don't need this.
-                || (polarity == ClausePolarity::Positive
-                    && cx.is_trait_lang_item(clause_def_id, SolverTraitLangItem::Sized)
-                    && cx.is_trait_lang_item(goal_def_id, SolverTraitLangItem::MetaSized))
-        }
-
         goal.param_env
             .caller_bounds()
             .trait_clauses(ecx.cx())
             .with_polarity(goal.predicate.polarity)
+            .for_trait(goal.predicate.def_id())
             .filter(move |trait_clause| {
-                trait_def_id_matches(
-                    ecx.cx(),
-                    trait_clause.def_id(),
-                    goal.predicate.def_id(),
-                    goal.predicate.polarity,
-                ) && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                     goal.predicate.trait_ref.args,
                     trait_clause.skip_binder().trait_ref.args,
                 )
             })
-            // TODO: allow using for_trait by elaborating the sized hierarchy
-            // .for_trait(goal.predicate.def_id())
             .interned()
             .iter()
     }
@@ -177,35 +155,11 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        goal_lang_item: Option<SolverTraitLangItem>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
-        fn trait_def_id_matches<I: Interner>(
-            cx: I,
-            clause_def_id: I::TraitId,
-            goal_def_id: I::TraitId,
-            polarity: ClausePolarity,
-            goal_lang_item: Option<SolverTraitLangItem>,
-        ) -> bool {
-            clause_def_id == goal_def_id
-            // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
-            // check for a `MetaSized` supertrait being matched against a `Sized` assumption.
-            //
-            // `PointeeSized` bounds are syntactic sugar for a lack of bounds so don't need this.
-                || (polarity == ClausePolarity::Positive
-                    && goal_lang_item == Some(SolverTraitLangItem::MetaSized)
-                    && cx.is_trait_lang_item(clause_def_id, SolverTraitLangItem::Sized))
-        }
-
         if let Some(trait_clause) = assumption.as_trait_clause()
             && trait_clause.polarity() == goal.predicate.polarity
-            && trait_def_id_matches(
-                ecx.cx(),
-                trait_clause.def_id(),
-                goal.predicate.def_id(),
-                goal.predicate.polarity,
-                goal_lang_item,
-            )
+            && trait_clause.def_id() == goal.predicate.def_id()
             && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                 goal.predicate.trait_ref.args,
                 trait_clause.skip_binder().trait_ref.args,
@@ -224,19 +178,6 @@ where
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> QueryResultOrRerunNonErased<I> {
         let trait_clause = assumption.as_trait_clause().unwrap();
-
-        // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
-        // check for a `Sized` subtrait when looking for `MetaSized`. `PointeeSized` bounds
-        // are syntactic sugar for a lack of bounds so don't need this.
-        // We don't need to check polarity, `fast_reject_assumption` already rejected non-`Positive`
-        // polarity `Sized` assumptions as matching non-`Positive` `MetaSized` goals.
-        if ecx.cx().is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::MetaSized)
-            && ecx.cx().is_trait_lang_item(trait_clause.def_id(), SolverTraitLangItem::Sized)
-        {
-            let meta_sized_clause =
-                trait_predicate_with_def_id(ecx.cx(), trait_clause, goal.predicate.def_id());
-            return Self::match_assumption(ecx, goal, meta_sized_clause, then);
-        }
 
         let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
         ecx.eq(goal.param_env, goal.predicate.trait_ref, assumption_trait_pred.trait_ref)?;
@@ -1011,25 +952,6 @@ where
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
-}
-
-/// Small helper function to change the `def_id` of a trait predicate - this is not normally
-/// something that you want to do, as different traits will require different args and so making
-/// it easy to change the trait is something of a footgun, but it is useful in the narrow
-/// circumstance of changing from `MetaSized` to `Sized`, which happens as part of the lazy
-/// elaboration of sizedness candidates.
-#[inline(always)]
-fn trait_predicate_with_def_id<I: Interner>(
-    cx: I,
-    clause: ty::Binder<I, ty::TraitClause<I>>,
-    did: I::TraitId,
-) -> I::Clause {
-    clause
-        .map_bound(|c| TraitClause {
-            trait_ref: TraitRef::new_from_args(cx, did, c.trait_ref.args),
-            polarity: c.polarity,
-        })
-        .upcast(cx)
 }
 
 impl<D, I> EvalCtxt<'_, D>

@@ -185,7 +185,7 @@ where
         goal: Goal<I, Self>,
     ) -> impl Iterator<Item = I::Clause> {
         goal.param_env.caller_bounds().non_trait_clauses().iter().filter(move |&assumption| {
-            match Self::fast_reject_assumption(ecx, goal, None, assumption) {
+            match Self::fast_reject_assumption(ecx, goal, assumption) {
                 Ok(()) => true,
                 Err(NoSolution) => false,
             }
@@ -195,7 +195,6 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        _goal_lang_item: Option<SolverTraitLangItem>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
         let alias_def_id = match goal.predicate.alias.kind {
