@@ -429,9 +429,12 @@ where
             // implied_bounds.insert(ty);
             let cause = ObligationCause::misc(span, def_id);
             let infcx = self.infcx;
-            match infcx
-                .deeply_normalize(Unnormalized::new_wip(ty), &mut *self.engine.borrow_mut(), param_env, &cause)
-            {
+            match infcx.deeply_normalize(
+                Unnormalized::new_wip(ty),
+                &mut *self.engine.borrow_mut(),
+                param_env,
+                &cause,
+            ) {
                 // Insert well-formed types, ignoring duplicates.
                 Ok(normalized) => drop(implied_bounds.insert(normalized)),
                 Err(normalization_errors) => errors.extend(normalization_errors),
@@ -456,8 +459,12 @@ where
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, Ty<'tcx>>,
     ) -> Result<Ty<'tcx>, ThinVec<E>> {
-        self.infcx
-            .structurally_normalize_ty(value, &mut *self.engine.borrow_mut(), param_env, cause)
+        self.infcx.structurally_normalize_ty(
+            value,
+            &mut *self.engine.borrow_mut(),
+            param_env,
+            cause,
+        )
     }
 
     pub fn structurally_normalize_const(
@@ -466,8 +473,12 @@ where
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, ty::Const<'tcx>>,
     ) -> Result<ty::Const<'tcx>, ThinVec<E>> {
-        self.infcx
-            .structurally_normalize_const(value, &mut *self.engine.borrow_mut(), param_env, cause)
+        self.infcx.structurally_normalize_const(
+            value,
+            &mut *self.engine.borrow_mut(),
+            param_env,
+            cause,
+        )
     }
 
     pub fn structurally_normalize_term(
@@ -476,7 +487,11 @@ where
         param_env: ty::ParamEnv<'tcx>,
         value: Unnormalized<'tcx, ty::Term<'tcx>>,
     ) -> Result<ty::Term<'tcx>, ThinVec<E>> {
-        self.infcx
-            .structurally_normalize_term(value, &mut *self.engine.borrow_mut(), param_env, cause)
+        self.infcx.structurally_normalize_term(
+            value,
+            &mut *self.engine.borrow_mut(),
+            param_env,
+            cause,
+        )
     }
 }

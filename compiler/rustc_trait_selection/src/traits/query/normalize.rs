@@ -45,7 +45,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// likely be removed as trait solver operations are already cached by the query
     /// system making this redundant.
     fn query_normalize<T>(
-        &self, 
+        &self,
         value: T,
         param_env: ty::ParamEnv<'tcx>,
         cause: ObligationCause<'tcx>,
@@ -103,7 +103,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let mut normalizer = QueryNormalizer {
             infcx: &self,
             cause: &cause,
-            param_env: param_env,
+            param_env,
             obligations: PredicateObligations::new(),
             cache: SsoHashMap::new(),
             anon_depth: 0,

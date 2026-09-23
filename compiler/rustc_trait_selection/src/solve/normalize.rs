@@ -17,7 +17,12 @@ use crate::solve::{Certainty, SolverDelegate};
 use crate::traits::{BoundVarReplacer, ScrubbedTraitError};
 
 /// see `normalize_with_universes`.
-pub fn normalize<'tcx, T>(infcx: &InferCtxt<'tcx>, value: Unnormalized<'tcx, T>, param_env: ty::ParamEnv<'tcx>, cause: &ObligationCause<'tcx>) -> Normalized<'tcx, T>
+pub fn normalize<'tcx, T>(
+    infcx: &InferCtxt<'tcx>,
+    value: Unnormalized<'tcx, T>,
+    param_env: ty::ParamEnv<'tcx>,
+    cause: &ObligationCause<'tcx>,
+) -> Normalized<'tcx, T>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {
@@ -35,7 +40,7 @@ fn normalize_with_universes<'tcx, T>(
     infcx: &InferCtxt<'tcx>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
-    param_env: ty::ParamEnv<'tcx>, 
+    param_env: ty::ParamEnv<'tcx>,
     cause: &ObligationCause<'tcx>,
 ) -> Normalized<'tcx, T>
 where
@@ -72,13 +77,17 @@ where
     if let Ok(value) = value.try_fold_with(&mut folder) {
         let obligations = stalled_goals
             .into_iter()
-            .map(|goal| {
-                Obligation::new(infcx.tcx, cause.clone(), goal.param_env, goal.predicate)
-            })
+            .map(|goal| Obligation::new(infcx.tcx, cause.clone(), goal.param_env, goal.predicate))
             .collect();
         Normalized { value, obligations }
     } else {
-        let mut replacer = ReplaceAliasWithInfer { infcx, obligations: Default::default(), universes, param_env, cause };
+        let mut replacer = ReplaceAliasWithInfer {
+            infcx,
+            obligations: Default::default(),
+            universes,
+            param_env,
+            cause,
+        };
         let value = original_value.fold_with(&mut replacer);
         Normalized { value, obligations: replacer.obligations }
     }
@@ -86,15 +95,14 @@ where
 
 struct ReplaceAliasWithInfer<'me, 'tcx> {
     infcx: &'me InferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>, 
+    param_env: ty::ParamEnv<'tcx>,
     cause: &'me ObligationCause<'tcx>,
     obligations: PredicateObligations<'tcx>,
     universes: Vec<Option<UniverseIndex>>,
-    
 }
 
 impl<'me, 'tcx> ReplaceAliasWithInfer<'me, 'tcx> {
-    fn term_to_infer(&mut self, alias_term: ty::AliasTerm<'tcx>, ) -> ty::Term<'tcx> {
+    fn term_to_infer(&mut self, alias_term: ty::AliasTerm<'tcx>) -> ty::Term<'tcx> {
         let infcx = self.infcx;
         let infer_term = infcx.next_term_var_of_alias_kind(alias_term, self.cause.span);
         let obligation = Obligation::new(
@@ -156,11 +164,8 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
         }
 
         if ct.has_escaping_bound_vars() {
-            let (replaced, ..) = BoundVarReplacer::replace_bound_vars(
-                self.infcx,
-                &mut self.universes,
-                alias_const,
-            );
+            let (replaced, ..) =
+                BoundVarReplacer::replace_bound_vars(self.infcx, &mut self.universes, alias_const);
             let _ = self.term_to_infer(replaced.into());
             ct
         } else {
@@ -224,14 +229,15 @@ pub fn deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals<'tc
     infcx: &InferCtxt<'tcx>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
-    param_env: ty::ParamEnv<'tcx>, 
+    param_env: ty::ParamEnv<'tcx>,
     cause: &ObligationCause<'tcx>,
 ) -> Result<(T, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), ThinVec<E>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {
-    let Normalized { value, obligations } = normalize_with_universes(infcx, value, universes, param_env, cause);
+    let Normalized { value, obligations } =
+        normalize_with_universes(infcx, value, universes, param_env, cause);
 
     let mut fulfill_cx = FulfillmentCtxt::new(infcx);
     for pred in obligations {
@@ -271,9 +277,9 @@ pub(crate) fn deeply_normalize_for_diagnostics<'tcx, T: TypeFoldable<TyCtxt<'tcx
 }
 
 /// A type folder struct.
-/// 
+///
 /// This is isomorphic to what was previously called `At`. This should remain
-/// specific to its use as a TypeFolder, and not expanded back into another 
+/// specific to its use as a TypeFolder, and not expanded back into another
 /// "God Object."
 struct DeeplyNormalizeForDiagnosticsFolder<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
