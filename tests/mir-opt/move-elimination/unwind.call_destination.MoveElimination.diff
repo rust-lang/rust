@@ -8,17 +8,22 @@
       let mut _3: *const u32;
   
       bb0: {
++         StorageLive(_1);
           _1 = const 0_u32;
++         StorageLive(_3);
           _3 = &raw const _1;
++         StorageDead(_3);
           _1 = opaque() -> [return: bb1, unwind: bb2];
       }
   
       bb1: {
           _0 = ();
++         StorageDead(_1);
           return;
       }
   
       bb2 (cleanup): {
++         StorageLive(_2);
           _2 = const 2_u32;
           _1 = move _2;
           resume;

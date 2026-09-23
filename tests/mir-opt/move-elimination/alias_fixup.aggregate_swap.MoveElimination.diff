@@ -41,15 +41,6 @@
 -         _7 = copy (_3.1: u8);
 -         StorageLive(_8);
 -         _8 = copy _7;
--         StorageLive(_9);
--         _9 = copy _6;
--         _3 = (move _8, move _9);
--         StorageDead(_9);
--         StorageDead(_8);
--         _0 = copy _3;
--         StorageDead(_7);
--         StorageDead(_6);
--         StorageDead(_3);
 +         nop;
 +         nop;
 +         nop;
@@ -59,6 +50,9 @@
 +         nop;
 +         nop;
 +         nop;
+          StorageLive(_9);
+-         _9 = copy _6;
+-         _3 = (move _8, move _9);
 +         _9 = copy (_0.0: u8);
 +         nop;
 +         nop;
@@ -72,6 +66,12 @@
 +         (_0.1: u8) = no_retag move _9;
 +         nop;
 +         StorageDead(_10);
+          StorageDead(_9);
+-         StorageDead(_8);
+-         _0 = copy _3;
+-         StorageDead(_7);
+-         StorageDead(_6);
+-         StorageDead(_3);
 +         nop;
 +         nop;
 +         nop;
