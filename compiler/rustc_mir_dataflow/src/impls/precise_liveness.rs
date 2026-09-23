@@ -46,13 +46,21 @@ use crate::points::{DenseLocationMap, PointIndex};
 use crate::{Analysis, GenKill, ResultsVisitor, visit_results};
 
 /// Visits locals that are implicitly allocated by a statement or terminator as
-/// part of destination place evaluation.
+/// part of destination place evaluation or `StorageAlloc`.
 pub struct VisitAllocatedLocalsWith<F>(pub F);
 
 impl<'tcx, F> Visitor<'tcx> for VisitAllocatedLocalsWith<F>
 where
     F: FnMut(Local, PlaceContext),
 {
+    fn visit_statement(&mut self, statement: &mir::Statement<'tcx>, location: Location) {
+        if let mir::StatementKind::StorageAlloc(local) = statement.kind {
+            (self.0)(local, PlaceContext::NonUse(NonUseContext::StorageAlloc));
+        } else {
+            self.super_statement(statement, location);
+        }
+    }
+
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _: Location) {
         match DefUse::for_place(*place, context) {
             DefUse::Def | DefUse::PartialWrite => (self.0)(place.local, context),
@@ -187,6 +195,9 @@ impl<'tcx> ResultsVisitor<'tcx, MaybeLiveLocals> for KillPointsVisitor<'_> {
             // Ignore non-uses.
             match ctxt {
                 PlaceContext::NonMutatingUse(_) | PlaceContext::MutatingUse(_) => {}
+                // We later specifically start a live range at StorageAlloc.
+                // Emit a kill point if it is never used after this.
+                PlaceContext::NonUse(NonUseContext::StorageAlloc) => {}
                 PlaceContext::NonUse(_) => return,
             }
 

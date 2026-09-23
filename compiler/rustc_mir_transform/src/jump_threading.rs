@@ -405,6 +405,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
             | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::StorageAlloc(_)
             | StatementKind::Nop => None,
         }
     }

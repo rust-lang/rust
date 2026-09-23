@@ -261,7 +261,8 @@ fn check_statement<'tcx>(
             check_operand(cx, count, span, body, msrv)
         },
         // These are all NOPs
-        StatementKind::StorageLive(_)
+        StatementKind::StorageAlloc(_)
+        | StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
         | StatementKind::AscribeUserType(..)
         | StatementKind::PlaceMention(..)

@@ -530,6 +530,7 @@ pub enum StatementKind {
     SetDiscriminant { place: Place, variant_index: VariantIdx },
     StorageLive(Local),
     StorageDead(Local),
+    StorageAlloc(Local),
     PlaceMention(Place),
     AscribeUserType { place: Place, projections: UserTypeProjection, variance: Variance },
     Coverage(Coverage),

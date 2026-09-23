@@ -172,7 +172,9 @@ macro_rules! make_mir_visitor {
                     StatementKind::SetDiscriminant { place, .. } => {
                         self.visit_place(place, PlaceContext::MUTATING, location);
                     }
-                    StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+                    StatementKind::StorageLive(local)
+                    | StatementKind::StorageDead(local)
+                    | StatementKind::StorageAlloc(local) => {
                         self.visit_local(local, PlaceContext::NON_USE, location);
                     }
                     StatementKind::AscribeUserType { place, projections, variance: _ } => {

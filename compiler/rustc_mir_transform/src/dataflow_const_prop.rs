@@ -162,6 +162,7 @@ impl<'tcx> Analysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 | StatementKind::PlaceMention(..)
                 | StatementKind::Coverage(..)
                 | StatementKind::BackwardIncompatibleDropHint { .. }
+                | StatementKind::StorageAlloc(_)
                 | StatementKind::AscribeUserType(..) => {}
             }
         }

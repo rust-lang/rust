@@ -143,7 +143,9 @@ impl<'tcx> Visitor<'tcx> for SingleUseConstsFinder {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match &statement.kind {
             // Storage markers are irrelevant to this.
-            StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => {}
+            StatementKind::StorageAlloc(_)
+            | StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_) => {}
             _ => self.super_statement(statement, location),
         }
     }
