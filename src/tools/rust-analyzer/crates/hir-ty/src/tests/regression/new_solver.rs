@@ -750,6 +750,20 @@ where
 }
 
 #[test]
+fn async_closure_hrtb_return_type() {
+    check_no_mismatches(
+        r#"
+//- minicore: async_fn
+fn take(_: impl for<'s> AsyncFn(&'s ()) -> &'s ()) {}
+
+fn f() {
+    take(async |s| s);
+}
+"#,
+    );
+}
+
+#[test]
 fn regression_19957() {
     // This test documents issue #19957: async-trait patterns incorrectly produce
     // type mismatches between Pin<Box<dyn Future>> and Pin<Box<impl Future>>.
