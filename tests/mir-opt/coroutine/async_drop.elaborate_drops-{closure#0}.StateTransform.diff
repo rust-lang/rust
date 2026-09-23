@@ -702,7 +702,7 @@
 -         StorageDead(_5);
 -         drop(_4) -> [return: bb49, unwind terminate(cleanup)];
 +     bb48: {
-+         _40 = move _183;
++         _40 = copy _183;
 +         _39 = copy (_40.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb47;
       }
@@ -796,7 +796,7 @@
       bb60: {
 -         _30 = discriminant(_29);
 -         switchInt(move _30) -> [0: bb53, 1: bb58, otherwise: bb59];
-+         _57 = move _183;
++         _57 = copy _183;
 +         _56 = copy (_57.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb59;
       }
@@ -808,7 +808,7 @@
       }
   
       bb62: {
--         _33 = move _2;
+-         _33 = copy _2;
 -         _32 = std::future::get_context::<'_, '_>(move _33) -> [return: bb61, unwind: bb54];
 +         nop;
 +         (((*_182) as variant#6).10: impl std::future::Future<Output = ()>) = async_drop_in_place::<{closure@$DIR/async_drop.rs:78:25: 78:27}>(copy (_59.0: &mut {closure@$DIR/async_drop.rs:78:25: 78:27})) -> [return: bb61, unwind: bb53];
@@ -860,7 +860,7 @@
       }
   
       bb69: {
--         _40 = move _2;
+-         _40 = copy _2;
 -         _39 = std::future::get_context::<'_, '_>(move _40) -> [return: bb68, unwind: bb54];
 +         StorageLive(_69);
 +         _0 = Poll::<()>::Pending;
@@ -886,7 +886,7 @@
       bb72: {
 -         _43 = &mut _26;
 -         _42 = Pin::<&mut {async closure@$DIR/async_drop.rs:86:27: 86:35}>::new_unchecked(move _43) -> [return: bb71, unwind: bb36];
-+         _74 = move _183;
++         _74 = copy _183;
 +         _73 = copy (_74.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb71;
       }
@@ -962,7 +962,7 @@
       }
   
       bb82: {
--         _50 = move _2;
+-         _50 = copy _2;
 -         _49 = std::future::get_context::<'_, '_>(move _50) -> [return: bb81, unwind: bb75];
 +         _88 = discriminant(_87);
 +         switchInt(move _88) -> [0: bb76, 1: bb81, otherwise: bb43];
@@ -978,7 +978,7 @@
 -         _2 = move _52;
 -         StorageDead(_52);
 -         goto -> bb90;
-+         _91 = move _183;
++         _91 = copy _183;
 +         _90 = copy (_91.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb83;
       }
@@ -1012,7 +1012,7 @@
       }
   
 -     bb89: {
--         _57 = move _2;
+-         _57 = copy _2;
 -         _56 = std::future::get_context::<'_, '_>(move _57) -> [return: bb88, unwind: bb75];
 +     bb89 (cleanup): {
 +         nop;
@@ -1067,7 +1067,7 @@
   
       bb96: {
 -         assert(const false, "`async fn` resumed after async drop") -> [success: bb96, unwind: bb95];
-+         _108 = move _183;
++         _108 = copy _183;
 +         _107 = copy (_108.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb95;
       }
@@ -1110,7 +1110,7 @@
       }
   
       bb102: {
--         _67 = move _2;
+-         _67 = copy _2;
 -         _66 = std::future::get_context::<'_, '_>(move _67) -> [return: bb101, unwind: bb95];
 +         assert(const false, "`async fn` resumed after async drop") -> [success: bb102, unwind: bb101];
       }
@@ -1158,13 +1158,13 @@
   
       bb108: {
 -         _70 = <impl Future<Output = ()> as Future>::poll(move _72, move _73) -> [return: bb107, unwind: bb95];
-+         _125 = move _183;
++         _125 = copy _183;
 +         _124 = copy (_125.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb107;
       }
   
       bb109: {
--         _74 = move _2;
+-         _74 = copy _2;
 -         _73 = std::future::get_context::<'_, '_>(move _74) -> [return: bb108, unwind: bb95];
 +         _126 = &mut (((*_182) as variant#14).6: impl std::future::Future<Output = ()>);
 +         _123 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _126) -> [return: bb108, unwind: bb101];
@@ -1249,7 +1249,7 @@
       bb120: {
 -         _81 = discriminant(_80);
 -         switchInt(move _81) -> [0: bb114, 1: bb119, otherwise: bb59];
-+         _142 = move _183;
++         _142 = copy _183;
 +         _141 = copy (_142.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb119;
       }
@@ -1261,7 +1261,7 @@
       }
   
       bb122: {
--         _84 = move _2;
+-         _84 = copy _2;
 -         _83 = std::future::get_context::<'_, '_>(move _84) -> [return: bb121, unwind: bb115];
 +         nop;
 +         (((*_182) as variant#16).5: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncStruct>(copy (_144.0: &mut AsyncStruct)) -> [return: bb121, unwind: bb113];
@@ -1313,7 +1313,7 @@
       }
   
       bb129: {
--         _91 = move _2;
+-         _91 = copy _2;
 -         _90 = std::future::get_context::<'_, '_>(move _91) -> [return: bb128, unwind: bb115];
 +         StorageLive(_154);
 +         _0 = Poll::<()>::Pending;
@@ -1338,7 +1338,7 @@
       bb132: {
 -         _94 = &mut _19;
 -         _93 = Pin::<&mut AsyncInt>::new_unchecked(move _94) -> [return: bb131, unwind: bb41];
-+         _159 = move _183;
++         _159 = copy _183;
 +         _158 = copy (_159.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb131;
       }
@@ -1413,7 +1413,7 @@
       }
   
       bb142: {
--         _101 = move _2;
+-         _101 = copy _2;
 -         _100 = std::future::get_context::<'_, '_>(move _101) -> [return: bb141, unwind: bb135];
 +         _173 = discriminant(_172);
 +         switchInt(move _173) -> [0: bb136, 1: bb141, otherwise: bb43];
@@ -1429,7 +1429,7 @@
 -         _2 = move _103;
 -         StorageDead(_103);
 -         goto -> bb150;
-+         _176 = move _183;
++         _176 = copy _183;
 +         _175 = copy (_176.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb143;
       }
@@ -1464,7 +1464,7 @@
       }
   
       bb149: {
--         _108 = move _2;
+-         _108 = copy _2;
 -         _107 = std::future::get_context::<'_, '_>(move _108) -> [return: bb148, unwind: bb135];
 +         StorageLive(_17);
 +         StorageLive(_23);
@@ -1582,7 +1582,7 @@
       }
   
       bb162: {
--         _118 = move _2;
+-         _118 = copy _2;
 -         _117 = std::future::get_context::<'_, '_>(move _118) -> [return: bb161, unwind: bb155];
 +         StorageLive(_137);
 +         _137 = move _183;
@@ -1635,7 +1635,7 @@
       }
   
       bb169: {
--         _125 = move _2;
+-         _125 = copy _2;
 -         _124 = std::future::get_context::<'_, '_>(move _125) -> [return: bb168, unwind: bb155];
 -     }
 - 
@@ -1700,7 +1700,7 @@
 -     }
 - 
 -     bb182: {
--         _135 = move _2;
+-         _135 = copy _2;
 -         _134 = std::future::get_context::<'_, '_>(move _135) -> [return: bb181, unwind: bb175];
 -     }
 - 
@@ -1736,7 +1736,7 @@
 -     }
 - 
 -     bb189: {
--         _142 = move _2;
+-         _142 = copy _2;
 -         _141 = std::future::get_context::<'_, '_>(move _142) -> [return: bb188, unwind: bb175];
 -     }
 - 
@@ -1801,7 +1801,7 @@
 -     }
 - 
 -     bb202: {
--         _152 = move _2;
+-         _152 = copy _2;
 -         _151 = std::future::get_context::<'_, '_>(move _152) -> [return: bb201, unwind: bb195];
 -     }
 - 
@@ -1837,7 +1837,7 @@
 -     }
 - 
 -     bb209: {
--         _159 = move _2;
+-         _159 = copy _2;
 -         _158 = std::future::get_context::<'_, '_>(move _159) -> [return: bb208, unwind: bb195];
 -     }
 - 
@@ -1902,7 +1902,7 @@
 -     }
 - 
 -     bb222: {
--         _169 = move _2;
+-         _169 = copy _2;
 -         _168 = std::future::get_context::<'_, '_>(move _169) -> [return: bb221, unwind: bb215];
 -     }
 - 
@@ -1938,7 +1938,7 @@
 -     }
 - 
 -     bb229: {
--         _176 = move _2;
+-         _176 = copy _2;
 -         _175 = std::future::get_context::<'_, '_>(move _176) -> [return: bb228, unwind: bb215];
 -     }
 - 

@@ -179,7 +179,7 @@
       }
   
       bb13: {
--         _10 = move _2;
+-         _10 = copy _2;
 -         _9 = std::future::get_context::<'_, '_>(move _10) -> [return: bb12, unwind: bb5];
 +         StorageLive(_22);
 +         _0 = Poll::<()>::Pending;
@@ -204,7 +204,7 @@
       bb16: {
 -         _13 = &mut (((*_3) as A).0: AsyncInt);
 -         _12 = Pin::<&mut AsyncInt>::new_unchecked(move _13) -> [return: bb15, unwind: bb2];
-+         _27 = move _61;
++         _27 = copy _61;
 +         _26 = copy (_27.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb15;
       }
@@ -280,7 +280,7 @@
       }
   
       bb26: {
--         _20 = move _2;
+-         _20 = copy _2;
 -         _19 = std::future::get_context::<'_, '_>(move _20) -> [return: bb25, unwind: bb19];
 +         _61 = move _35;
 +         StorageDead(_35);
@@ -323,7 +323,7 @@
       bb31: {
 -         _24 = discriminant(_23);
 -         switchInt(move _24) -> [0: bb17, 1: bb30, otherwise: bb10];
-+         _47 = move _61;
++         _47 = copy _61;
 +         _46 = copy (_47.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb30;
       }
@@ -335,7 +335,7 @@
       }
   
       bb33: {
--         _27 = move _2;
+-         _27 = copy _2;
 -         _26 = std::future::get_context::<'_, '_>(move _27) -> [return: bb32, unwind: bb19];
 +         nop;
 +         (((*_53) as variant#7).1: impl std::future::Future<Output = ()>) = <AsyncEnum as AsyncDrop>::drop(move _49) -> [return: bb32, unwind: bb24];
@@ -444,7 +444,7 @@
 -     }
 - 
 -     bb50: {
--         _40 = move _2;
+-         _40 = copy _2;
 -         _39 = std::future::get_context::<'_, '_>(move _40) -> [return: bb49, unwind: bb43];
 -     }
 - 
@@ -480,7 +480,7 @@
 -     }
 - 
 -     bb57: {
--         _47 = move _2;
+-         _47 = copy _2;
 -         _46 = std::future::get_context::<'_, '_>(move _47) -> [return: bb56, unwind: bb43];
 -     }
 - 
