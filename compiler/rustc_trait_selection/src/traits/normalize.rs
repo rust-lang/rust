@@ -33,7 +33,8 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &ObligationCause<'tcx>,
     ) -> InferOk<'tcx, T> {
         if self.next_trait_solver() {
-            let Normalized { value, obligations } = crate::solve::normalize(self, value, param_env, cause);
+            let Normalized { value, obligations } =
+                crate::solve::normalize(self, value, param_env, cause);
             InferOk { value, obligations }
         } else {
             let mut selcx = SelectionContext::new(self);

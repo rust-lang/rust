@@ -5047,8 +5047,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 [trait_pred.self_ty()],
             )
         });
-        let InferOk { value: projection_ty, .. } = self
-            .normalize(Unnormalized::new_wip(projection_ty), obligation.param_env, &obligation.cause);
+        let InferOk { value: projection_ty, .. } = self.normalize(
+            Unnormalized::new_wip(projection_ty),
+            obligation.param_env,
+            &obligation.cause,
+        );
 
         debug!(
             normalized_projection_type = ?self.deeply_resolve_ignoring_regions(projection_ty)

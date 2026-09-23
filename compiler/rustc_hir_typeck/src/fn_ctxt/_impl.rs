@@ -465,9 +465,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.register_infer_ok_obligations(
-            self.infcx.normalize(value, self.param_env, &self.misc(span)),
-        )
+        self.register_infer_ok_obligations(self.infcx.normalize(
+            value,
+            self.param_env,
+            &self.misc(span),
+        ))
     }
 
     pub(crate) fn require_type_meets(
@@ -1520,9 +1522,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We need to use a separate variable here as otherwise the temporary for
             // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
             // in a reentrant borrow, causing an ICE.
-            let result = self.at(&self.misc(sp), self.param_env).structurally_normalize_const(
+            let result = self.structurally_normalize_const(
                 Unnormalized::new_wip(ct),
                 &mut *self.fulfillment_cx.borrow_mut(),
+                self.param_env,
+                &self.misc(sp),
             );
             match result {
                 Ok(normalized_ct) => normalized_ct,

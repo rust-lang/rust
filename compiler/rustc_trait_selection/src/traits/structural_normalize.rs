@@ -77,7 +77,9 @@ impl<'tcx> InferCtxt<'tcx> {
 
             Ok(self.resolve_vars_if_possible(new_infer))
         } else {
-            Ok(self.normalize(term, param_env, cause).into_value_registering_obligations(&self, fulfill_cx))
+            Ok(self
+                .normalize(term, param_env, cause)
+                .into_value_registering_obligations(&self, fulfill_cx))
         }
     }
 }

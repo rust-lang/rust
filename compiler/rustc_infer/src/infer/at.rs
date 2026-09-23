@@ -129,7 +129,7 @@ impl<'tcx> InferCtxt<'tcx> {
         define_opaque_types: DefineOpaqueTypes,
         expected: T,
         actual: T,
-        param_env: ty::ParamEnv<'tcx>, 
+        param_env: ty::ParamEnv<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) -> InferResult<'tcx, ()>
     where
@@ -164,22 +164,15 @@ impl<'tcx> InferCtxt<'tcx> {
         define_opaque_types: DefineOpaqueTypes,
         expected: T,
         actual: T,
-        param_env: ty::ParamEnv<'tcx>, 
+        param_env: ty::ParamEnv<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) -> InferResult<'tcx, ()>
     where
         T: ToTrace<'tcx>,
     {
         if self.next_trait_solver {
-            NextSolverRelate::relate(
-                &self,
-                param_env,
-                expected,
-                ty::Covariant,
-                actual,
-                cause.span,
-            )
-            .map(|goals| self.goals_to_obligations_at(goals, cause))
+            NextSolverRelate::relate(&self, param_env, expected, ty::Covariant, actual, cause.span)
+                .map(|goals| self.goals_to_obligations_at(goals, cause))
         } else {
             let mut op = TypeRelating::new(
                 &self,
@@ -198,7 +191,7 @@ impl<'tcx> InferCtxt<'tcx> {
         define_opaque_types: DefineOpaqueTypes,
         expected: T,
         actual: T,
-        param_env: ty::ParamEnv<'tcx>, 
+        param_env: ty::ParamEnv<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) -> InferResult<'tcx, ()>
     where
@@ -220,30 +213,18 @@ impl<'tcx> InferCtxt<'tcx> {
         trace: TypeTrace<'tcx>,
         expected: T,
         actual: T,
-        param_env: ty::ParamEnv<'tcx>, 
+        param_env: ty::ParamEnv<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) -> InferResult<'tcx, ()>
     where
         T: Relate<TyCtxt<'tcx>>,
     {
         if self.next_trait_solver {
-            NextSolverRelate::relate(
-                &self,
-                param_env,
-                expected,
-                ty::Invariant,
-                actual,
-                cause.span,
-            )
-            .map(|goals| self.goals_to_obligations_at(goals, cause))
+            NextSolverRelate::relate(&self, param_env, expected, ty::Invariant, actual, cause.span)
+                .map(|goals| self.goals_to_obligations_at(goals, cause))
         } else {
-            let mut op = TypeRelating::new(
-                &self,
-                trace,
-                param_env,
-                define_opaque_types,
-                ty::Invariant,
-            );
+            let mut op =
+                TypeRelating::new(&self, trace, param_env, define_opaque_types, ty::Invariant);
             op.relate(expected, actual)?;
             Ok(InferOk { value: (), obligations: op.into_obligations() })
         }
@@ -255,7 +236,7 @@ impl<'tcx> InferCtxt<'tcx> {
         expected: T,
         variance: ty::Variance,
         actual: T,
-        param_env: ty::ParamEnv<'tcx>, 
+        param_env: ty::ParamEnv<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) -> InferResult<'tcx, ()>
     where
@@ -264,7 +245,9 @@ impl<'tcx> InferCtxt<'tcx> {
         match variance {
             ty::Covariant => self.sub_at(define_opaque_types, expected, actual, param_env, cause),
             ty::Invariant => self.eq_at(define_opaque_types, expected, actual, param_env, cause),
-            ty::Contravariant => self.sup_at(define_opaque_types, expected, actual, param_env, cause),
+            ty::Contravariant => {
+                self.sup_at(define_opaque_types, expected, actual, param_env, cause)
+            }
 
             // We could make this make sense but it's not readily
             // exposed and I don't feel like dealing with it. Note
@@ -280,7 +263,13 @@ impl<'tcx> InferCtxt<'tcx> {
     /// this can result in an error (e.g., if asked to compute LUB of
     /// u32 and i32), it is meaningful to call one of them the
     /// "expected type".
-    pub fn lub_at<T>(self, expected: T, actual: T, param_env: ty::ParamEnv<'tcx>, cause: &ObligationCause<'tcx>) -> InferResult<'tcx, T>
+    pub fn lub_at<T>(
+        self,
+        expected: T,
+        actual: T,
+        param_env: ty::ParamEnv<'tcx>,
+        cause: &ObligationCause<'tcx>,
+    ) -> InferResult<'tcx, T>
     where
         T: ToTrace<'tcx>,
     {
@@ -297,19 +286,14 @@ impl<'tcx> InferCtxt<'tcx> {
     fn goals_to_obligations_at(
         &self,
         goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
-        cause: &ObligationCause<'tcx>
+        cause: &ObligationCause<'tcx>,
     ) -> InferOk<'tcx, ()> {
         InferOk {
             value: (),
             obligations: goals
                 .into_iter()
                 .map(|goal| {
-                    Obligation::new(
-                        self.tcx,
-                        cause.clone(),
-                        goal.param_env,
-                        goal.predicate,
-                    )
+                    Obligation::new(self.tcx, cause.clone(), goal.param_env, goal.predicate)
                 })
                 .collect(),
         }
