@@ -5,6 +5,50 @@ use crate::mem::transmute;
 #[macro_use]
 mod macros;
 
+/// The x87 80-bit extended-precision floating-point type.
+#[lang = "x87_f80"]
+#[doc(alias = "long double")]
+#[doc(alias = "x86_fp80")]
+#[doc(alias = "__float80")]
+#[unstable(feature = "x87_f80", issue = "163982")]
+#[allow(non_camel_case_types)]
+#[doc(cfg(any(target_arch = "x86", target_arch = "x86_64")))]
+#[derive(Clone, Copy)]
+pub struct x87_f80([u8; 10]);
+
+#[unstable(feature = "x87_f80", issue = "163982")]
+impl crate::fmt::Debug for x87_f80 {
+    #[inline]
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        let mut bytes = [0u8; 16];
+        bytes[..10].copy_from_slice(&self.to_ne_bytes());
+        write!(f, "x87_f80({:#022x})", u128::from_le_bytes(bytes))
+    }
+}
+
+impl x87_f80 {
+    /// Returns the memory representation of this floating point number as a byte array in
+    /// native byte order.
+    #[unstable(feature = "x87_f80", issue = "163982")]
+    #[inline]
+    pub const fn to_ne_bytes(self) -> [u8; 10] {
+        // SAFETY: the first 10 bytes are initialized.
+        unsafe { *(&raw const self).cast::<[u8; 10]>() }
+    }
+
+    /// Creates a floating point value from its representation as a byte array in native endian.
+    #[unstable(feature = "x87_f80", issue = "163982")]
+    #[inline]
+    pub const fn from_ne_bytes(bytes: [u8; 10]) -> Self {
+        // SAFETY: we initialize the first 10 bytes, any bit pattern is valid.
+        unsafe {
+            let mut tmp = crate::mem::MaybeUninit::<Self>::uninit();
+            tmp.as_mut_ptr().cast::<[u8; 10]>().write(bytes);
+            tmp.assume_init()
+        }
+    }
+}
+
 types! {
     #![stable(feature = "simd_x86", since = "1.27.0")]
 
