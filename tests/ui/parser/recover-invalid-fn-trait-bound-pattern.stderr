@@ -1,0 +1,20 @@
+error: expected identifier, found keyword `fn`
+  --> $DIR/recover-invalid-fn-trait-bound-pattern.rs:3:22
+   |
+LL | struct Baz where U : fn(() : bool)
+   |                      ^^
+   |
+help: use `Fn` to refer to the trait (notice the capitalization)
+   |
+LL - struct Baz where U : fn(() : bool)
+LL + struct Baz where U : Fn(() : bool)
+   |
+
+error: expected `{` after struct name, found `<eof>`
+  --> $DIR/recover-invalid-fn-trait-bound-pattern.rs:3:34
+   |
+LL | struct Baz where U : fn(() : bool)
+   |                                  ^ expected `{` after struct name
+
+error: aborting due to 2 previous errors
+
