@@ -6,6 +6,9 @@ use std::path::PathBuf;
 
 use rustc_ast::ast::LitKind;
 use rustc_ast::{LitIntType, TraitObjectSyntax};
+use rustc_attr_ir::diagnostic::CustomDiagnostic;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
@@ -13,11 +16,9 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, StringPart, Sublevel, Suggestions,
     msg, pluralize, struct_span_code_err,
 };
-use rustc_hir::attrs::diagnostic::CustomDiagnostic;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, Node, expr_needs_parens, find_attr};
+use rustc_hir::{self as hir, Node, expr_needs_parens};
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{ImplSource, TraitErrors};

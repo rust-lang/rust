@@ -21,15 +21,15 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{AttributeKind, DocAttribute, find_attr};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::GateIssue;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
+use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin};
 // Lints from rustc_lint_defs
 pub use rustc_lint_defs::builtin::*;
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw, impl_lint_pass};
@@ -239,13 +239,13 @@ impl EarlyLintPass for UnsafeCode {
             }
 
             ast::ItemKind::MacroDef(..) => {
-                if let Some(hir::Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span))) =
-                    AttributeParser::parse_limited_sym(
-                        cx.builder.sess(),
-                        &it.attrs,
-                        &[sym::allow_internal_unsafe],
-                    )
-                {
+                if let Some(rustc_attr_ir::Attribute::Parsed(AttributeKind::AllowInternalUnsafe(
+                    span,
+                ))) = AttributeParser::parse_limited_sym(
+                    cx.builder.sess(),
+                    &it.attrs,
+                    &[sym::allow_internal_unsafe],
+                ) {
                     self.report_unsafe(cx, span, BuiltinUnsafe::AllowInternalUnsafe);
                 }
             }
@@ -307,12 +307,12 @@ pub struct MissingDoc;
 
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
-fn has_doc(attr: &hir::Attribute) -> bool {
-    if matches!(attr, hir::Attribute::Parsed(AttributeKind::DocComment { .. })) {
+fn has_doc(attr: &rustc_attr_ir::Attribute) -> bool {
+    if matches!(attr, rustc_attr_ir::Attribute::Parsed(AttributeKind::DocComment { .. })) {
         return true;
     }
 
-    if let hir::Attribute::Parsed(AttributeKind::Doc(d)) = attr
+    if let rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d)) = attr
         && matches!(d.as_ref(), DocAttribute { hidden: Some(..), .. })
     {
         return true;
@@ -1030,7 +1030,7 @@ declare_lint_pass!(
 );
 
 impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
-    fn check_attributes(&mut self, cx: &LateContext<'_>, attrs: &[hir::Attribute]) {
+    fn check_attributes(&mut self, cx: &LateContext<'_>, attrs: &[rustc_attr_ir::Attribute]) {
         if let Some(features) = find_attr!(attrs, Feature(features, _) => features) {
             for feature in features {
                 cx.emit_span_lint(UNSTABLE_FEATURES, feature.span, BuiltinUnstableFeatures);

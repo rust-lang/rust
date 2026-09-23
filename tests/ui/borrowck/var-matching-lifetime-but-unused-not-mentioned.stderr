@@ -11,6 +11,12 @@ LL |     consume(c);
    |     |
    |     `used_arg` escapes the function body here
    |     argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `consume` introduced here
+  --> $DIR/var-matching-lifetime-but-unused-not-mentioned.rs:5:15
+   |
+LL | fn consume<T: 'static>(_: T) {}
+   |               ^^^^^^^ lifetime requirement introduced here
 
 error: aborting due to 1 previous error
 

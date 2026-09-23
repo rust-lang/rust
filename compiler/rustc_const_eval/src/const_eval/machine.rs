@@ -4,10 +4,11 @@ use std::{fmt, mem};
 
 use rustc_abi::{Align, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::Mutability;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, CRATE_HIR_ID, find_attr};
+use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_lint_defs::builtin::LONG_RUNNING_CONST_EVAL;
 use rustc_middle::mir;
 use rustc_middle::mir::AssertMessage;
@@ -394,7 +395,7 @@ impl<'tcx> CompileTimeMachine<'tcx> {
     #[inline(always)]
     /// Find the first stack frame that is within the current crate, if any.
     /// Otherwise, return the crate's HirId
-    pub fn best_lint_scope(&self, tcx: TyCtxt<'tcx>) -> hir::HirId {
+    pub fn best_lint_scope(&self, tcx: TyCtxt<'tcx>) -> HirId {
         self.stack.iter().find_map(|frame| frame.lint_root(tcx)).unwrap_or(CRATE_HIR_ID)
     }
 }

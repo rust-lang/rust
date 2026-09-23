@@ -1,8 +1,8 @@
 //! Type-checking for the `#[rustc_intrinsic]` intrinsics that the compiler exposes.
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::DiagMessage;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
