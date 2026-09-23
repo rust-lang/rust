@@ -1,20 +1,20 @@
 error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected
   --> tests/fail/function_calls/arg_inplace_locals_alias_ret.rs:LL:CC
    |
-LL | fn callee(x: S) -> S {
-   |                    ^ Undefined Behavior occurred here
+LL | fn callee(x: i32) -> S {
+   |                      ^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: <TAG> was created here, as the root tag for ALLOC
   --> tests/fail/function_calls/arg_inplace_locals_alias_ret.rs:LL:CC
    |
-LL |             Call(_non_copy = callee(Move(_non_copy)), ReturnTo(after_call), UnwindContinue())
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             Call(_non_copy = callee(Move(_non_copy.0)), ReturnTo(after_call), UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: <TAG> is this argument
   --> tests/fail/function_calls/arg_inplace_locals_alias_ret.rs:LL:CC
    |
-LL | fn callee(x: S) -> S {
+LL | fn callee(x: i32) -> S {
    |           ^
    = note: stack backtrace:
            0: callee
