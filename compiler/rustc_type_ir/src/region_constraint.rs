@@ -9,6 +9,8 @@ use rustc_macros::StableHash_NoContext;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::{debug, instrument};
 
+use crate::Const;
+
 // Workaround for TransitiveRelation being in rustc_data_structures which isn't accessible on stable
 #[cfg(not(feature = "nightly"))]
 #[derive(Default, Clone, Debug)]
@@ -1227,7 +1229,7 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
         Ok(a)
     }
 
-    fn consts(&mut self, a: I::Const, b: I::Const) -> RelateResult<I, I::Const> {
+    fn consts(&mut self, a: Const<I>, b: Const<I>) -> RelateResult<I, Const<I>> {
         rustc_type_ir::relate::structurally_relate_consts(self, a, b)
     }
 

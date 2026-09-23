@@ -46,7 +46,7 @@ jobs:
         shell: bash
 
       - name: Build release binaries
-        run: cargo build --release
+        run: cargo build --release --locked
 
       - name: Build archive
         shell: bash

@@ -1,13 +1,15 @@
 use std::borrow::Cow;
 use std::fmt::{self, Debug};
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 use std::panic;
 use std::path::PathBuf;
 use std::thread::panicking;
 
 use rustc_ast::attr::version::RustcVersion;
-use rustc_error_messages::{DiagArgMap, DiagArgName, DiagArgValue, IntoDiagArg};
+use rustc_data_structures::stable_hash::StableHasher;
+use rustc_error_messages::{DiagArgMap, DiagArgName, IntoDiagArg};
+use rustc_hashes::Hash128;
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::{DUMMY_SP, Span, Spanned, Symbol};
@@ -305,46 +307,31 @@ impl DiagInner {
         }
     }
 
-    /// Fields used for Hash, and PartialEq trait.
-    fn keys(
-        &self,
-    ) -> (
-        &Level,
-        &[(DiagMessage, Style)],
-        &Option<ErrCode>,
-        &MultiSpan,
-        &[Subdiag],
-        &Suggestions,
-        Vec<(&DiagArgName, &DiagArgValue)>,
-        &Option<IsLint>,
-    ) {
-        (
-            &self.level,
-            &self.messages,
-            &self.code,
-            &self.span,
-            &self.children,
-            &self.suggestions,
-            self.args.iter().collect(),
-            // omit self.sort_span
-            &self.is_lint,
-            // omit self.emitted_at
-        )
-    }
-}
+    /// Hash used to determine if two diagnostics are the same. Used by
+    /// `DiagCtxtInner::emitted_diagnostics`. Some fields are ignored for the hash.
+    pub(crate) fn dedup_hash(&self) -> Hash128 {
+        // Deconstruct to ensure all fields are considered.
+        let DiagInner {
+            level,
+            messages,
+            code,
+            lint_id: _, // ignore
+            span,
+            children,
+            suggestions,
+            args,
+            sort_span: _, // ignore
+            is_lint,
+            long_ty_path: _, // ignore
+            emitted_at: _,   // ignore
+        } = self;
 
-impl Hash for DiagInner {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: Hasher,
-    {
-        self.keys().hash(state);
-    }
-}
+        let hashed_parts =
+            (level, messages, code, span, children, suggestions, args.as_slice(), is_lint);
 
-impl PartialEq for DiagInner {
-    fn eq(&self, other: &Self) -> bool {
-        self.keys() == other.keys()
+        let mut hasher = StableHasher::new();
+        hashed_parts.hash(&mut hasher);
+        hasher.finish()
     }
 }
 

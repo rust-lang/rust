@@ -89,7 +89,8 @@ use crate::{fmt, ops, range, slice, str};
 /// ```
 ///
 /// [str]: prim@str "str"
-#[derive(PartialEq, Eq, Hash)]
+#[derive(Hash)]
+#[derive_const(PartialEq, Eq)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 #[rustc_diagnostic_item = "cstr_type"]
 #[rustc_has_incoherent_inherent_impls]
@@ -658,8 +659,8 @@ impl CStr {
     #[must_use = "this does not display the `CStr`; \
                   it returns an object that can be displayed"]
     #[inline]
-    pub fn display(&self) -> impl fmt::Display {
-        crate::bstr::ByteStr::from_bytes(self.to_bytes())
+    pub fn display(&self) -> Display<'_> {
+        Display { c_str: self }
     }
 
     /// Returns the same string as a string slice `&CStr`.
@@ -691,7 +692,8 @@ impl PartialEq<&Self> for CStr {
 // because `c_char` is `i8` (not `u8`) on some platforms.
 // That is why this is implemented manually and not derived.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl PartialOrd for CStr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl PartialOrd for CStr {
     #[inline]
     fn partial_cmp(&self, other: &CStr) -> Option<Ordering> {
         self.to_bytes().partial_cmp(other.to_bytes())
@@ -699,7 +701,8 @@ impl PartialOrd for CStr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Ord for CStr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl Ord for CStr {
     #[inline]
     fn cmp(&self, other: &CStr) -> Ordering {
         self.to_bytes().cmp(other.to_bytes())
@@ -855,3 +858,41 @@ impl Iterator for Bytes<'_> {
 
 #[unstable(feature = "cstr_bytes", issue = "112115")]
 impl FusedIterator for Bytes<'_> {}
+
+/// Helper struct for safely printing a [`CStr`] with [`format!`] and `{}`.
+///
+/// A [`CStr`] might contain non-Unicode data. This `struct` implements the
+/// [`Display`] trait in a way that mitigates that. It is created by the
+/// [`display`](CStr::display) method on [`CStr`]. This may perform lossy
+/// conversion, depending on the platform. If you would like an implementation
+/// which escapes the [`CStr`] please use [`Debug`] instead.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cstr_display)]
+///
+/// let s = c"Hello, world!";
+/// println!("{}", s.display());
+/// ```
+///
+/// [`Display`]: fmt::Display
+/// [`format!`]: ../../../std/macro.format.html
+#[unstable(feature = "cstr_display", issue = "139984")]
+pub struct Display<'a> {
+    c_str: &'a CStr,
+}
+
+#[unstable(feature = "cstr_display", issue = "139984")]
+impl fmt::Debug for Display<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.c_str, f)
+    }
+}
+
+#[unstable(feature = "cstr_display", issue = "139984")]
+impl fmt::Display for Display<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(crate::bstr::ByteStr::from_bytes(self.c_str.to_bytes()), f)
+    }
+}

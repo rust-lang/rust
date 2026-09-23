@@ -2,7 +2,7 @@
 //@ compile-flags: -Cdebuginfo=2
 // fixes issue #94725
 
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 
 use std::alloc::{AllocError, Allocator, Layout};
 use std::ptr::NonNull;

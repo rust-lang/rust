@@ -1494,6 +1494,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
+        // FIXME(field_projections): We should not use `evaluate_obligation` in
+        // the trait solver. Doing so means we don't track overflow and cycles properly
+        // encountering query cycles instead.
         if let ty::Adt(def, args) = obligation.predicate.self_ty().skip_binder().kind()
             && let Some(FieldInfo { base, ty, .. }) =
                 def.field_representing_type_info(self.tcx(), args)

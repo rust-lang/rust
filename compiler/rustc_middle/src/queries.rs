@@ -53,6 +53,7 @@ use rustc_arena::TypedArena;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_attr_ir::diagnostic_items::DiagnosticItems;
 use rustc_attr_ir::lang_items::{LangItem, LanguageItems};
 use rustc_attr_ir::{CanonicalSymbols, EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_crate_store::{
@@ -1493,19 +1494,19 @@ rustc_queries! {
         cache_on_disk
     }
 
-    query lookup_stability(def_id: DefId) -> Option<hir::Stability> {
+    query lookup_stability(def_id: DefId) -> Option<rustc_attr_ir::Stability> {
         desc { "looking up stability of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk
         separate_provide_extern
     }
 
-    query lookup_const_stability(def_id: DefId) -> Option<hir::ConstStability> {
+    query lookup_const_stability(def_id: DefId) -> Option<rustc_attr_ir::ConstStability> {
         desc { "looking up const stability of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk
         separate_provide_extern
     }
 
-    query lookup_default_body_stability(def_id: DefId) -> Option<hir::DefaultBodyStability> {
+    query lookup_default_body_stability(def_id: DefId) -> Option<rustc_attr_ir::DefaultBodyStability> {
         desc { "looking up default body stability of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -2302,7 +2303,7 @@ rustc_queries! {
     }
 
     /// Returns all diagnostic items defined in all crates.
-    query all_diagnostic_items(_: ()) -> &'tcx rustc_hir::attrs::diagnostic_items::DiagnosticItems {
+    query all_diagnostic_items(_: ()) -> &'tcx DiagnosticItems {
         arena_cache
         eval_always
         desc { "calculating the diagnostic items map" }
@@ -2322,7 +2323,7 @@ rustc_queries! {
     }
 
     /// Returns the diagnostic items defined in a crate.
-    query diagnostic_items(_: CrateNum) -> &'tcx rustc_hir::attrs::diagnostic_items::DiagnosticItems {
+    query diagnostic_items(_: CrateNum) -> &'tcx DiagnosticItems {
         arena_cache
         desc { "calculating the diagnostic items map in a crate" }
         separate_provide_extern

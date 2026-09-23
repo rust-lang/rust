@@ -2,6 +2,7 @@ use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_span::bug;
 use tracing::trace;
 
+use crate::ty::consts::ConstExt;
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
 

@@ -1,7 +1,7 @@
 //@no-rustfix
 
 #![warn(clippy::vec_box)]
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 
 use std::alloc::{AllocError, Allocator, Layout};
 use std::ptr::NonNull;

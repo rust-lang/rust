@@ -82,19 +82,18 @@ impl Dir {
             return File::open(path, opts);
         }
         let path = to_u16s_without_nul(path)?;
-        self.open_file_native(&path, opts, false).map(|handle| File { handle })
+        self.open_file_native(&path, opts, c::FILE_NON_DIRECTORY_FILE).map(|handle| File { handle })
     }
 
     pub fn remove_file(&self, path: &Path) -> io::Result<()> {
         let path = to_u16s_without_nul(path)?;
-        self.remove_native(&path, false)
+        self.remove_native(&path, /* dir */ false)
     }
 
     pub fn rename(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
-        let is_dir = from.is_dir();
         let from = to_u16s_without_nul(from)?;
         let to = to_u16s_without_nul(to)?;
-        self.rename_native(&from, to_dir, &to, is_dir)
+        self.rename_native(&from, to_dir, &to)
     }
 
     pub fn create_dir(&self, path: &Path) -> io::Result<()> {
@@ -107,12 +106,12 @@ impl Dir {
 
     pub fn open_dir(&self, path: &Path, opts: &OpenOptions) -> io::Result<Self> {
         let path = to_u16s_without_nul(&path)?;
-        self.open_file_native(&path, &opts, true).map(|handle| Self { handle })
+        self.open_file_native(&path, &opts, c::FILE_DIRECTORY_FILE).map(|handle| Self { handle })
     }
 
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
         let path = to_u16s_without_nul(&path)?;
-        self.remove_native(&path, true)
+        self.remove_native(&path, /* dir */ true)
     }
 
     fn open_with_native(path: &WCStr, opts: &OpenOptions) -> io::Result<Self> {
@@ -140,29 +139,34 @@ impl Dir {
         }
     }
 
-    fn open_file_native(&self, path: &[u16], opts: &OpenOptions, dir: bool) -> io::Result<Handle> {
+    fn open_file_native(
+        &self,
+        path: &[u16],
+        opts: &OpenOptions,
+        create_opt: u32,
+    ) -> io::Result<Handle> {
         let name = UnicodeStrRef::from_slice(path);
         let object_attributes = c::OBJECT_ATTRIBUTES {
             RootDirectory: self.handle.as_raw_handle(),
             ObjectName: name.as_ptr().cast_mut(),
             ..c::OBJECT_ATTRIBUTES::with_length()
         };
-        let create_opt = if dir { c::FILE_DIRECTORY_FILE } else { c::FILE_NON_DIRECTORY_FILE };
         unsafe { nt_create_file(opts, &object_attributes, create_opt) }
     }
 
     fn remove_native(&self, path: &[u16], dir: bool) -> io::Result<()> {
         let mut opts = OpenOptions::new();
         opts.access_mode(c::DELETE);
-        let handle = self.open_file_native(path, &opts, dir)?;
+        let create_opt = if dir { c::FILE_DIRECTORY_FILE } else { c::FILE_NON_DIRECTORY_FILE };
+        let handle = self.open_file_native(path, &opts, create_opt)?;
         File::from_inner(handle).delete().io_result()
     }
 
-    fn rename_native(&self, from: &[u16], to_dir: &Self, to: &[u16], dir: bool) -> io::Result<()> {
+    fn rename_native(&self, from: &[u16], to_dir: &Self, to: &[u16]) -> io::Result<()> {
         let mut opts = OpenOptions::new();
         opts.access_mode(c::DELETE);
         opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
-        let handle = self.open_file_native(from, &opts, dir)?;
+        let handle = self.open_file_native(from, &opts, /* create_opt */ 0)?;
         // Calculate the layout of the `FILE_RENAME_INFORMATION` we pass to `NtSetInformationFile`
         // This is a dynamically sized struct so we need to get the position of the last field to calculate the actual size.
         const too_long_err: io::Error =

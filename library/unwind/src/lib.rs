@@ -204,11 +204,7 @@ unsafe extern "C" {}
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
 unsafe extern "C" {}
 
-#[cfg(all(target_os = "openbsd", target_arch = "sparc64"))]
-#[link(name = "gcc")]
-unsafe extern "C" {}
-
-#[cfg(all(target_os = "openbsd", not(target_arch = "sparc64")))]
+#[cfg(target_os = "openbsd")]
 #[link(name = "c++abi")]
 unsafe extern "C" {}
 

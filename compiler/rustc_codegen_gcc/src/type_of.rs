@@ -17,7 +17,7 @@ use rustc_target::callconv::{CastTarget, FnAbi};
 
 use crate::abi::{FnAbiGcc, FnAbiGccExt, GccType};
 use crate::context::CodegenCx;
-use crate::type_::struct_fields;
+use crate::type_::{struct_attributes, struct_fields};
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     fn type_from_unsigned_integer(&self, i: Integer) -> Type<'gcc> {
@@ -81,7 +81,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
                     layout.scalar_pair_element_gcc_type(cx, 0),
                     layout.scalar_pair_element_gcc_type(cx, 1),
                 ],
-                false,
+                &struct_attributes(false, Some(layout.align.abi)),
             );
         }
         BackendRepr::Memory { .. } => {}
@@ -129,11 +129,12 @@ fn uncached_gcc_type<'gcc, 'tcx>(
         FieldsShape::Primitive | FieldsShape::Union(_) => {
             let fill = cx.type_padding_filler(layout.size, layout.align.abi);
             let packed = false;
+            let attributes = struct_attributes(packed, Some(layout.align.abi));
             match name {
-                None => cx.type_struct(&[fill], packed),
+                None => cx.type_struct(&[fill], &attributes),
                 Some(ref name) => {
                     let gcc_type = cx.type_named_struct(name);
-                    cx.set_struct_body(gcc_type, &[fill], packed);
+                    cx.set_struct_body(gcc_type, &[fill], &attributes);
                     gcc_type.as_type()
                 }
             }
@@ -142,7 +143,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
         FieldsShape::Arbitrary { .. } => match name {
             None => {
                 let (gcc_fields, packed) = struct_fields(cx, layout);
-                cx.type_struct(&gcc_fields, packed)
+                cx.type_struct(&gcc_fields, &struct_attributes(packed, Some(layout.align.abi)))
             }
             Some(ref name) => {
                 let gcc_type = cx.type_named_struct(name);
@@ -240,7 +241,11 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
 
         if let Some((deferred_ty, layout)) = defer {
             let (fields, packed) = struct_fields(cx, layout);
-            cx.set_struct_body(deferred_ty, &fields, packed);
+            cx.set_struct_body(
+                deferred_ty,
+                &fields,
+                &struct_attributes(packed, Some(layout.align.abi)),
+            );
         }
 
         ty

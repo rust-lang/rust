@@ -136,6 +136,86 @@ impl Duration {
     #[unstable(feature = "duration_constants", issue = "57391")]
     pub const NANOSECOND: Duration = Duration::from_nanos(1);
 
+    /// The duration of one week.
+    ///
+    /// For this constant, one week is defined as 7 days, or 604,800 seconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// #![feature(duration_constructors)]
+    /// use std::time::Duration;
+    ///
+    /// let week = Duration::WEEK;
+    ///
+    /// assert_eq!(week, Duration::from_weeks(1));
+    /// assert_eq!(week.as_secs(), 604_800);
+    /// assert_eq!(week.subsec_nanos(), 0);
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    // Also, #[unstable(feature = "duration_constructors", issue = "120301")]
+    pub const WEEK: Duration = Duration::from_weeks(1);
+
+    /// The duration of one day.
+    ///
+    /// For this constant, one day is defined as 24 hours, or 86,400 seconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// #![feature(duration_constructors)]
+    /// use std::time::Duration;
+    ///
+    /// let day = Duration::DAY;
+    ///
+    /// assert_eq!(day, Duration::from_days(1));
+    /// assert_eq!(day.as_secs(), 86400);
+    /// assert_eq!(day.subsec_nanos(), 0);
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    // Also, #[unstable(feature = "duration_constructors", issue = "120301")]
+    pub const DAY: Duration = Duration::from_days(1);
+
+    /// The duration of one hour.
+    ///
+    /// For this constant, one hour is defined as 60 minutes, or 3,600 seconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// let hour = Duration::HOUR;
+    ///
+    /// assert_eq!(hour, Duration::from_hours(1));
+    /// assert_eq!(hour.as_secs(), 3600);
+    /// assert_eq!(hour.subsec_nanos(), 0);
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const HOUR: Duration = Duration::from_hours(1);
+
+    /// The duration of one minute.
+    ///
+    /// For this constant, one minute is defined as 60 seconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constants)]
+    /// use std::time::Duration;
+    ///
+    /// let minute = Duration::MINUTE;
+    ///
+    /// assert_eq!(minute, Duration::from_mins(1));
+    /// assert_eq!(minute.as_secs(), 60);
+    /// assert_eq!(minute.subsec_nanos(), 0);
+    /// ```
+    #[unstable(feature = "duration_constants", issue = "57391")]
+    pub const MINUTE: Duration = Duration::from_mins(1);
+
     /// A duration of zero time.
     ///
     /// # Examples

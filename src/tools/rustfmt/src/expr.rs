@@ -186,6 +186,12 @@ pub(crate) fn format_expr(
                     // not the `ast::Block` node we're about to rewrite. To prevent dropping inner
                     // attributes call `rewrite_block` directly.
                     // See https://github.com/rust-lang/rustfmt/issues/6158
+                    let shape = if context.config.style_edition() >= StyleEdition::Edition2027 {
+                        // Shrink the shape by `"const ".len()` before rewriting the block
+                        shape.offset_left(6, expr.span)?
+                    } else {
+                        shape
+                    };
                     rewrite_block(block, Some(&expr.attrs), opt_label, context, shape)?
                 }
                 _ => anon_const.rewrite_result(context, shape)?,
@@ -290,6 +296,7 @@ pub(crate) fn format_expr(
                 wrap_str(
                     context.snippet(expr.span).to_owned(),
                     context.config.max_width(),
+                    context.config.tab_spaces(),
                     shape,
                 )
                 .max_width_error(shape.width, expr.span)
@@ -544,7 +551,10 @@ fn rewrite_single_line_block(
     shape: Shape,
 ) -> RewriteResult {
     if let Some(block_expr) = stmt::Stmt::from_simple_block(context, block, attrs) {
-        let expr_shape = shape.offset_left(last_line_width(prefix), block_expr.span())?;
+        let expr_shape = shape.offset_left(
+            last_line_width(prefix, context.config.tab_spaces()),
+            block_expr.span(),
+        )?;
         let expr_str = block_expr.rewrite_result(context, expr_shape)?;
         let label_str = rewrite_label(context, label);
         let result = format!("{prefix}{label_str}{{ {expr_str} }}");
@@ -1033,7 +1043,8 @@ impl<'a> ControlFlow<'a> {
         };
 
         // 1 = space after keyword.
-        let offset = last_line_width(&keyword) + label_string.len() + 1;
+        let offset =
+            last_line_width(&keyword, context.config.tab_spaces()) + label_string.len() + 1;
 
         let pat_expr_string = match self.cond {
             Some(cond) => self.rewrite_pat_expr(context, cond, constr_shape, offset)?,
@@ -1108,10 +1119,13 @@ impl<'a> ControlFlow<'a> {
         };
 
         let used_width = if pat_expr_string.contains('\n') {
-            last_line_width(&pat_expr_string)
+            last_line_width(&pat_expr_string, context.config.tab_spaces())
         } else {
             // 2 = spaces after keyword and condition.
-            label_string.len() + last_line_width(&keyword) + pat_expr_string.len() + 2
+            label_string.len()
+                + last_line_width(&keyword, context.config.tab_spaces())
+                + pat_expr_string.len()
+                + 2
         };
 
         Ok((
@@ -1360,6 +1374,7 @@ pub(crate) fn rewrite_literal(
         _ => wrap_str(
             context.snippet(span).to_owned(),
             context.config.max_width(),
+            context.config.tab_spaces(),
             shape,
         )
         .max_width_error(shape.width, span),
@@ -1378,8 +1393,13 @@ fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) ->
         {
             return Ok(string_lit.to_owned());
         } else {
-            return wrap_str(string_lit.to_owned(), context.config.max_width(), shape)
-                .max_width_error(shape.width, span);
+            return wrap_str(
+                string_lit.to_owned(),
+                context.config.max_width(),
+                context.config.tab_spaces(),
+                shape,
+            )
+            .max_width_error(shape.width, span);
         }
     }
 
@@ -1420,6 +1440,7 @@ fn rewrite_int_lit(
                     token_lit.suffix.as_ref().map_or("", |s| s.as_str())
                 ),
                 context.config.max_width(),
+                context.config.tab_spaces(),
                 shape,
             )
             .max_width_error(shape.width, span);
@@ -1429,6 +1450,7 @@ fn rewrite_int_lit(
     wrap_str(
         context.snippet(span).to_owned(),
         context.config.max_width(),
+        context.config.tab_spaces(),
         shape,
     )
     .max_width_error(shape.width, span)
@@ -1447,6 +1469,7 @@ fn rewrite_float_lit(
         return wrap_str(
             context.snippet(span).to_owned(),
             context.config.max_width(),
+            context.config.tab_spaces(),
             shape,
         )
         .max_width_error(shape.width, span);
@@ -1495,6 +1518,7 @@ fn rewrite_float_lit(
             suffix.unwrap_or(""),
         ),
         context.config.max_width(),
+        context.config.tab_spaces(),
         shape,
     )
     .max_width_error(shape.width, span)
@@ -1719,7 +1743,7 @@ fn rewrite_index(
 ) -> RewriteResult {
     let expr_str = expr.rewrite_result(context, shape)?;
 
-    let offset = last_line_width(&expr_str) + 1;
+    let offset = last_line_width(&expr_str, context.config.tab_spaces()) + 1;
     let rhs_overhead = shape.rhs_overhead(context.config);
     let index_shape = if expr_str.contains('\n') {
         Shape::legacy(context.config.max_width(), shape.indent)
@@ -2246,11 +2270,12 @@ pub(crate) fn rewrite_assign_rhs_expr<R: Rewrite>(
     rhs_kind: &RhsAssignKind<'_>,
     rhs_tactics: RhsTactics,
 ) -> RewriteResult {
-    let last_line_width = last_line_width(lhs).saturating_sub(if lhs.contains('\n') {
-        shape.indent.width()
-    } else {
-        0
-    });
+    let last_line_width =
+        last_line_width(lhs, context.config.tab_spaces()).saturating_sub(if lhs.contains('\n') {
+            shape.indent.width()
+        } else {
+            0
+        });
     // 1 = space between operator and rhs.
     let orig_shape = shape.offset_left_opt(last_line_width + 1).unwrap_or(Shape {
         width: 0,
@@ -2347,7 +2372,12 @@ fn choose_rhs<R: Rewrite>(
 
             match (orig_rhs, new_rhs) {
                 (Ok(ref orig_rhs), Ok(ref new_rhs))
-                    if !filtered_str_fits(&new_rhs, context.config.max_width(), new_shape) =>
+                    if !filtered_str_fits(
+                        &new_rhs,
+                        context.config.max_width(),
+                        context.config.tab_spaces(),
+                        new_shape,
+                    ) =>
                 {
                     Ok(format!("{before_space_str}{orig_rhs}"))
                 }
