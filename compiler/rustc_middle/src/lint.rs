@@ -502,6 +502,9 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
             for (label_span, label) in span.span_labels_raw() {
                 err.span.push_span_diag(*label_span, label.clone());
             }
+            for span in span.span_context() {
+                err.span.push_span_context(*span);
+            }
         }
         if let Some(lint_id) = lint_id {
             err.lint_id(lint_id);

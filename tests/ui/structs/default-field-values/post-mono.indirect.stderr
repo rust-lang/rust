@@ -1,3 +1,17 @@
+warning: field `post_mono` has a default value that is only checked when a value of `Z` is constructed
+  --> $DIR/post-mono.rs:7:24
+   |
+LL | struct Z<const X: usize> {
+LL |     post_mono: usize = X / 0,
+   |                        ^^^^^ this can't be const-evaluated until use
+   |
+   = note: `#[warn(unevaluated_default_field_value)]` on by default
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[allow(unevaluated_default_field_value)]
+LL | struct Z<const X: usize> {
+   |
+
 error[E0080]: attempt to divide `1_usize` by zero
   --> $DIR/post-mono.rs:7:24
    |
@@ -24,6 +38,6 @@ note: the above error was encountered while instantiating `fn indirect::<1>`
 LL |     indirect::<1>();
    |     ^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.

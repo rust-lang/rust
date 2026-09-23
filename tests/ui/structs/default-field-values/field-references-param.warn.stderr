@@ -1,0 +1,59 @@
+warning: field `one` has a default value that is only checked when a value of `Z` is constructed
+  --> $DIR/field-references-param.rs:16:17
+   |
+LL | struct Z<const X: usize> {
+...
+LL |     one: W<X> = W::<X>::new(),
+   |                 ^^^^^^^^^^^^^ this can't be const-evaluated until use
+   |
+   = note: `#[warn(unevaluated_default_field_value)]` on by default
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[allow(unevaluated_default_field_value)]
+LL | struct Z<const X: usize> {
+   |
+
+warning: field `two` has a default value that is only checked when a value of `Z` is constructed
+  --> $DIR/field-references-param.rs:20:17
+   |
+LL | struct Z<const X: usize> {
+...
+LL |     two: W<X> = W::new(),
+   |                 ^^^^^^^^ this can't be const-evaluated until use
+   |
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[allow(unevaluated_default_field_value)]
+LL | struct Z<const X: usize> {
+   |
+
+warning: field `too_generic` has a default value that is only checked when a value of `Z` is constructed
+  --> $DIR/field-references-param.rs:23:26
+   |
+LL | struct Z<const X: usize> {
+...
+LL |     too_generic: usize = X + 1,
+   |                          ^^^^^ this can't be const-evaluated until use
+   |
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[allow(unevaluated_default_field_value)]
+LL | struct Z<const X: usize> {
+   |
+
+warning: field `direct` has a default value that is only checked when a value of `Z` is constructed
+  --> $DIR/field-references-param.rs:29:21
+   |
+LL | struct Z<const X: usize> {
+...
+LL |     direct: usize = X,
+   |                     ^ this can't be const-evaluated until use
+   |
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[allow(unevaluated_default_field_value)]
+LL | struct Z<const X: usize> {
+   |
+
+warning: 4 warnings emitted
+

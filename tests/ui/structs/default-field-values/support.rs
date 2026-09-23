@@ -43,8 +43,11 @@ pub struct Qux<A, const C: i32, X: const ConstDefault> {
     bat: i32 = <Qux<A, C, X> as T>::K, // Associated constant from explicit trait
     baq: i32 = Self::K, // Associated constant from implicit trait
     bay: i32 = C, // `const` parameter
+    //~^ WARN
     bak: Vec<A> = Vec::new(), // Associated constant function
+    //~^ WARN
     ban: X = X::value(), // Associated constant function from `const` trait parameter
+    //~^ WARN
 }
 
 impl<A, const C: i32, X: const ConstDefault> Qux<A, C, X> {

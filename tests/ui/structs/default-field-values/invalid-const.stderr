@@ -1,15 +1,55 @@
 error[E0080]: evaluation panicked: asdf
-  --> $DIR/invalid-const.rs:5:19
+  --> $DIR/invalid-const.rs:4:19
    |
 LL |     pub bax: u8 = panic!("asdf"),
    |                   ^^^^^^^^^^^^^^ evaluation of `Bat::bax::{constant#0}` failed here
 
 error[E0080]: attempt to compute `130_u8 + 130_u8`, which would overflow
+  --> $DIR/invalid-const.rs:6:19
+   |
+LL |     pub bat: u8 = 130 + 130,
+   |                   ^^^^^^^^^ evaluation of `Bat::bat::{constant#0}` failed here
+
+warning: field `bax` has a default value that is only checked when a value of `Baz` is constructed
   --> $DIR/invalid-const.rs:11:19
+   |
+LL | pub struct Baz<const C: u8> {
+LL |     pub bax: u8 = 130 + C,
+   |                   ^^^^^^^ this can't be const-evaluated until use
+   |
+   = note: `#[warn(unevaluated_default_field_value)]` on by default
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[allow(unevaluated_default_field_value)]
+LL | pub struct Baz<const C: u8> {
+   |
+
+error[E0080]: attempt to compute `130_u8 + 130_u8`, which would overflow
+  --> $DIR/invalid-const.rs:12:19
    |
 LL |     pub bat: u8 = 130 + 130,
    |                   ^^^^^^^^^ evaluation of `Baz::<C>::bat::{constant#0}` failed here
 
-error: aborting due to 2 previous errors
+warning: field `bap` has a default value that is only checked when a value of `Baz` is constructed
+  --> $DIR/invalid-const.rs:15:19
+   |
+LL | pub struct Baz<const C: u8> {
+...
+LL |     pub bap: u8 = C,
+   |                   ^ this can't be const-evaluated until use
+   |
+help: if this behavior is acceptable, allow the lint and preferably write a test relying on the default value
+   |
+LL + #[allow(unevaluated_default_field_value)]
+LL | pub struct Baz<const C: u8> {
+   |
+
+error[E0080]: evaluation panicked: asdf
+  --> $DIR/invalid-const.rs:16:19
+   |
+LL |     pub ban: u8 = panic!("asdf"),
+   |                   ^^^^^^^^^^^^^^ evaluation of `Baz::<C>::ban::{constant#0}` failed here
+
+error: aborting due to 4 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0080`.

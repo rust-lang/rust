@@ -22,7 +22,7 @@ pub struct Qux<const C: i32> {
     bar: S = Self::S,
     baz: i32 = foo(),
     bat: i32 = <Qux<{ C }> as T>::K,
-    bay: i32 = C,
+    bay: i32 = C, //~ WARN
 }
 
 pub struct Rak(i32 = 42); //~ ERROR default fields are not supported in tuple structs
