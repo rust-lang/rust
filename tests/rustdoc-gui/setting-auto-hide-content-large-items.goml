@@ -27,6 +27,7 @@ call-function: ("check-setting", {
 })
 
 // Now we change its value.
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 click: "#auto-hide-large-items"
 assert-local-storage: {"rustdoc-auto-hide-large-items": "false"}
 
@@ -40,6 +41,7 @@ call-function: ("check-setting", {
 })
 
 // And now we re-enable the setting.
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 click: "#auto-hide-large-items"
 assert-local-storage: {"rustdoc-auto-hide-large-items": "true"}
 

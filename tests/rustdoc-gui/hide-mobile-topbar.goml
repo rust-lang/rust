@@ -1,4 +1,7 @@
 // Checks sidebar resizing stays synced with the setting
+
+include: "utils.goml"
+
 go-to: "file://" + |DOC_PATH| + "/settings.html"
 set-window-size: (400, 600)
 
@@ -9,6 +12,7 @@ assert-property: ("#hide-sidebar", {"checked": "false"})
 assert-css: ("rustdoc-topbar", {"display": "flex"})
 
 // Toggle it
+call-function: ("change-settings-tab", {'tab_name': 'Navigation'})
 click: "#hide-sidebar"
 assert-property: ("#hide-sidebar", {"checked": "true"})
 assert-css: ("rustdoc-topbar", {"display": "none"})

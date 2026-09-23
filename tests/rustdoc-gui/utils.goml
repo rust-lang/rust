@@ -45,6 +45,18 @@ define-function: (
 )
 
 define-function: (
+    "change-settings-tab",
+    [tab_name],
+    block {
+        // In case it's not open yet, we open it.
+        call-function: ("open-settings-menu", {})
+        click: "#settings .tabs button[data-name='" + |tab_name| + "']"
+        // We ensure it worked.
+        wait-for: "#settings .tabs button[data-name='" + |tab_name| + "'].selected"
+    }
+)
+
+define-function: (
     "close-settings-menu",
     [],
     block {
@@ -67,8 +79,8 @@ define-function: (
     "switch-theme",
     [theme],
     block {
-        // Set the theme.
-        call-function: ("open-settings-menu", {})
+        // Open the settings menu.
+        call-function: ("change-settings-tab", {'tab_name': 'Appearance'})
         // Change the setting.
         click: "#theme-"+ |theme|
         call-function: ("close-settings-menu", {})
@@ -134,7 +146,7 @@ define-function: (
     "switch-line-numbers-setting",
     [expected_status],
     block {
-        call-function: ("open-settings-menu", {})
+        call-function: ("change-settings-tab", {'tab_name': 'Interface'})
         // We change the line numbers setting.
         click: "#line-numbers"
         call-function: ("close-settings-menu", {})

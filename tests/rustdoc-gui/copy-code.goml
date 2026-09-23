@@ -51,7 +51,7 @@ assert: |copy_height| > 0 && |copy_width| > 0
 assert-clipboard: ""
 
 // We make the line numbers appear.
-call-function: ("open-settings-menu", {})
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 click: "#line-numbers"
 wait-for-local-storage: {"rustdoc-line-numbers": "true" }
 

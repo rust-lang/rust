@@ -24,6 +24,7 @@ call-function: ("check-setting", {
 })
 
 // Now we change its value.
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 click: "#auto-hide-method-docs"
 assert-local-storage: {"rustdoc-auto-hide-method-docs": "true"}
 
@@ -37,6 +38,7 @@ call-function: ("check-setting", {
 })
 
 // And now we re-disable the setting.
+call-function: ("change-settings-tab", {'tab_name': 'Interface'})
 click: "#auto-hide-method-docs"
 assert-local-storage: {"rustdoc-auto-hide-method-docs": "false"}
 
