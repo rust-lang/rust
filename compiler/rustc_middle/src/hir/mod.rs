@@ -6,12 +6,13 @@ pub mod map;
 pub mod nested_filter;
 pub mod place;
 
+use rustc_attr_ir::Attribute;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalModId};
 use rustc_hir::lints::DelayedLints;

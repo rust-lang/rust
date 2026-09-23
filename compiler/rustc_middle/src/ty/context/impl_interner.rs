@@ -2,10 +2,10 @@
 
 use std::{debug_assert_matches, fmt};
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_span::{DUMMY_SP, Span, Symbol, bug};
