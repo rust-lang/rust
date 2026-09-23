@@ -1075,8 +1075,9 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// # Panics
     ///
-    /// `key` must be called before `value` and each call to `key` must be followed
-    /// by a corresponding call to `value`. Otherwise this method will panic.
+    /// `key` or `key_with` must be called before `value` or `value_with`, and each
+    /// `key` call must be followed by a corresponding `value` call. Otherwise this
+    /// method will panic.
     ///
     /// # Examples
     ///
@@ -1136,6 +1137,12 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// This method is equivalent to [`DebugMap::key`], but formats the
     /// key using a provided closure rather than by calling [`Debug::fmt`].
     ///
+    /// # Panics
+    ///
+    /// `key` or `key_with` must be called before `value` or `value_with`, and each
+    /// `key` call must be followed by a corresponding `value` call. Otherwise this
+    /// method will panic.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1179,8 +1186,9 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// # Panics
     ///
-    /// `key` must be called before `value` and each call to `key` must be followed
-    /// by a corresponding call to `value`. Otherwise this method will panic.
+    /// `key` or `key_with` must be called before `value` or `value_with`, and each
+    /// `key` call must be followed by a corresponding `value` call. Otherwise this
+    /// method will panic.
     ///
     /// # Examples
     ///
@@ -1228,6 +1236,12 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// This method is equivalent to [`DebugMap::value`], but formats the
     /// value using a provided closure rather than by calling [`Debug::fmt`].
+    ///
+    /// # Panics
+    ///
+    /// `key` or `key_with` must be called before `value` or `value_with`, and each
+    /// `key` call must be followed by a corresponding `value` call. Otherwise this
+    /// method will panic.
     ///
     /// # Examples
     ///
@@ -1359,8 +1373,9 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///
     /// # Panics
     ///
-    /// `key` must be called before `value` and each call to `key` must be followed
-    /// by a corresponding call to `value`. Otherwise this method will panic.
+    /// `key` or `key_with` must be called before `value` or `value_with`, and each
+    /// `key` call must be followed by a corresponding `value` call. Otherwise this
+    /// method will panic.
     ///
     /// # Examples
     ///
