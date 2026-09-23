@@ -145,6 +145,11 @@ impl abi::Float {
             ),
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
+            X87F80 => Ty::new_adt(
+                tcx,
+                tcx.adt_def(tcx.require_lang_item(LangItem::X87F80Raw, DUMMY_SP)),
+                ty::List::empty(),
+            ),
             F128 => tcx.types.f128,
             PpcF128 => Ty::new_adt(
                 tcx,
@@ -1254,6 +1259,12 @@ where
     fn is_complex_number_lang_item(this: TyAndLayout<'tcx>, cx: &C) -> bool {
         let Some(def) = this.ty.ty_adt_def() else { return false };
         cx.tcx().is_lang_item(def.did(), LangItem::Complex)
+    }
+
+    /// Is this type `core::arch::{x86, x86_64}::x87_f80`?
+    fn is_x87_f80_lang_item(this: TyAndLayout<'tcx>, cx: &C) -> bool {
+        let Some(def) = this.ty.ty_adt_def() else { return false };
+        cx.tcx().is_lang_item(def.did(), LangItem::X87F80)
     }
 
     fn is_scalable_vector(this: TyAndLayout<'tcx>) -> bool {

@@ -273,6 +273,12 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         bug!("unsupported ppcf128 type")
     }
 
+    fn type_x87_f80(&self) -> Type<'gcc> {
+        // FIXME(x87_f80): The GCC gcc_jit_types enum (which CType is based on) does not
+        // have __float80. It does have long double but it may not correspond to x87 f80.
+        bug!("unsupported x87_f80 type")
+    }
+
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {
         self.context.new_function_pointer_type(None, return_type, params, false)
     }

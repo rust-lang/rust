@@ -5,6 +5,88 @@ use crate::mem::transmute;
 #[macro_use]
 mod macros;
 
+/// The raw x87 80-bit extended-precision floating-point type.
+///
+/// This type has a size of 80 bits, and corresponds to the store size (what a load/store touches)
+/// of x87_f80. This is different to what LLVM calls the alloc size, the number of bytes used to
+/// calculate field offsets or the size of an alloca.
+///
+/// The `x87_f80` wrapper type below corresponds to the alloc size: it applies the target-specific
+/// alignment, raising the total size to 12 or 16.
+///
+/// NOTE: this type MUST NOT be used anywhere except in the x87_f80 wrapper below.
+#[cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), lang = "x87_f80_raw")] // for docs
+#[allow(non_camel_case_types)]
+#[doc(cfg(any(target_arch = "x86", target_arch = "x86_64")))]
+#[derive(Clone, Copy)]
+struct x87_f80_raw([u8; 10]);
+
+/// The x87 80-bit extended-precision floating-point type.
+#[cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), lang = "x87_f80")] // for docs
+#[doc(alias = "long double")]
+#[doc(alias = "x86_fp80")]
+#[doc(alias = "__float80")]
+#[unstable(feature = "x87_f80", issue = "163982")]
+#[allow(non_camel_case_types)]
+#[doc(cfg(any(target_arch = "x86", target_arch = "x86_64")))]
+#[derive(Clone, Copy)]
+pub struct x87_f80(x87_f80_raw);
+
+const _: () = assert!(
+    size_of::<x87_f80>()
+        == cfg_select! {
+            target_arch = "x86" => cfg_select! {
+                target_vendor = "apple" => 16,
+                target_env = "msvc" => 16,
+                _ => 12,
+            },
+            target_arch = "x86_64" => 16,
+            _ => size_of::<x87_f80>(), // for doc builds
+        }
+);
+
+const _: () = assert!(
+    align_of::<x87_f80>()
+        == cfg_select! {
+            target_arch = "x86" => cfg_select! {
+                target_vendor = "apple" => 16,
+                target_env = "msvc" => 16,
+                _ => 4,
+            },
+            target_arch = "x86_64" => 16,
+            _ => align_of::<x87_f80>(), // for doc builds
+        }
+);
+
+#[unstable(feature = "x87_f80", issue = "163982")]
+impl crate::fmt::Debug for x87_f80 {
+    #[inline]
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        let mut bytes = [0u8; 16];
+        bytes[..10].copy_from_slice(&self.to_ne_bytes());
+        write!(f, "x87_f80({:#022x})", u128::from_le_bytes(bytes))
+    }
+}
+
+impl x87_f80 {
+    /// Returns the memory representation of this floating point number as a byte array in
+    /// native byte order.
+    #[unstable(feature = "x87_f80", issue = "163982")]
+    #[inline]
+    pub const fn to_ne_bytes(self) -> [u8; 10] {
+        // SAFETY: the first 10 bytes are initialized.
+        unsafe { (&raw const self).cast::<[u8; 10]>().read() }
+    }
+
+    /// Creates a floating point value from its representation as a byte array in native endian.
+    #[unstable(feature = "x87_f80", issue = "163982")]
+    #[inline]
+    pub const fn from_ne_bytes(bytes: [u8; 10]) -> Self {
+        // SAFETY: any bit pattern is a valid `x87_f80_raw`.
+        Self(unsafe { crate::mem::transmute::<[u8; 10], x87_f80_raw>(bytes) })
+    }
+}
+
 types! {
     #![stable(feature = "simd_x86", since = "1.27.0")]
 
