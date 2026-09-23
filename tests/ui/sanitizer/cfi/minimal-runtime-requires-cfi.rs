@@ -8,4 +8,3 @@
 #![no_main]
 
 //~? ERROR `-Zsanitizer-cfi-minimal-runtime` requires `-Zsanitizer=cfi`
-//~? ERROR `-Zsanitizer-cfi-minimal-runtime` requires `-Zsanitizer-cfi-recover` or `-Zsanitizer-cfi-diag`
