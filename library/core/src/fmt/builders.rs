@@ -212,10 +212,11 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
-    pub fn field_with<F>(&mut self, name: &str, value_fmt: F) -> &mut Self
-    where
-        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    {
+    pub fn field_with(
+        &mut self,
+        name: &str,
+        value_fmt: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+    ) -> &mut Self {
         self.field(name, &DebugOnce(Cell::new(Some(value_fmt))))
     }
 
@@ -430,10 +431,11 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
-    pub fn field_with<F>(&mut self, value_fmt: F) -> &mut Self
-    where
-        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    {
+    pub fn field_with(
+        &mut self,
+        value_fmt: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+    ) -> &mut Self
+where {
         self.field(&DebugOnce(Cell::new(Some(value_fmt))))
     }
 
@@ -552,10 +554,7 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
         self.has_fields = true;
     }
 
-    fn entry_with<F>(&mut self, entry_fmt: F)
-    where
-        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    {
+    fn entry_with(&mut self, entry_fmt: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result) {
         self.entry(&DebugOnce(Cell::new(Some(entry_fmt))));
     }
 
@@ -661,10 +660,11 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
-    pub fn entry_with<F>(&mut self, entry_fmt: F) -> &mut Self
-    where
-        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    {
+    pub fn entry_with(
+        &mut self,
+        entry_fmt: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+    ) -> &mut Self
+where {
         self.inner.entry_with(entry_fmt);
         self
     }
@@ -878,10 +878,11 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
-    pub fn entry_with<F>(&mut self, entry_fmt: F) -> &mut Self
-    where
-        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    {
+    pub fn entry_with(
+        &mut self,
+        entry_fmt: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+    ) -> &mut Self
+where {
         self.inner.entry_with(entry_fmt);
         self
     }
@@ -1164,10 +1165,10 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
-    pub fn key_with<F>(&mut self, key_fmt: F) -> &mut Self
-    where
-        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    {
+    pub fn key_with(
+        &mut self,
+        key_fmt: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+    ) -> &mut Self {
         self.key(&DebugOnce(Cell::new(Some(key_fmt))))
     }
 
@@ -1257,10 +1258,10 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_closure_helpers", since = "CURRENT_RUSTC_VERSION")]
-    pub fn value_with<F>(&mut self, value_fmt: F) -> &mut Self
-    where
-        F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
-    {
+    pub fn value_with(
+        &mut self,
+        value_fmt: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+    ) -> &mut Self {
         self.value(&DebugOnce(Cell::new(Some(value_fmt))))
     }
 
