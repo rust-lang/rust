@@ -425,6 +425,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 // There are many unsafe functions taking pointers that don't dereference them.
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
+#![allow(safe_fn_direct_use_of_unsafe_op_on_args)]
 
 use crate::cmp::Ordering;
 use crate::intrinsics::const_eval_select;

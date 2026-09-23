@@ -176,6 +176,7 @@ pub impl(crate) const unsafe trait SliceIndex<T: ?Sized> {
 /// The methods `index` and `index_mut` panic if the index is out of bounds.
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+#[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
 const unsafe impl<T> SliceIndex<[T]> for usize {
     type Output = T;
 
@@ -191,6 +192,7 @@ const unsafe impl<T> SliceIndex<[T]> for usize {
 
     #[inline]
     #[rustc_no_writable]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut T> {
         if self < slice.len() {
             // SAFETY: `self` is checked to be in bounds.

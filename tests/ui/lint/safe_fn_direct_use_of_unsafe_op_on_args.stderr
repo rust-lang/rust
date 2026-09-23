@@ -1,0 +1,28 @@
+warning: call to an unsafe function on an argument of a safe function
+  --> $DIR/safe_fn_direct_use_of_unsafe_op_on_args.rs:4:23
+   |
+LL |     unsafe { let _ = *ptr; }
+   |                       ^^^ this code might cause undefined behavior when executed
+   |
+   = note: `#[warn(safe_fn_direct_use_of_unsafe_op_on_args)]` on by default
+
+warning: call to an unsafe function on an argument of a safe function
+  --> $DIR/safe_fn_direct_use_of_unsafe_op_on_args.rs:9:14
+   |
+LL |     unsafe { ptr.write(123); }
+   |              ^^^ this code might cause undefined behavior when executed
+
+warning: call to an unsafe function on an argument of a safe function
+  --> $DIR/safe_fn_direct_use_of_unsafe_op_on_args.rs:14:30
+   |
+LL |     unsafe { std::ptr::write(ptr, 123); }
+   |                              ^^^ this code might cause undefined behavior when executed
+
+warning: call to an unsafe function on an argument of a safe function
+  --> $DIR/safe_fn_direct_use_of_unsafe_op_on_args.rs:21:18
+   |
+LL |     unsafe { j = i.unchecked_add(1); }
+   |                  ^ this code might cause undefined behavior when executed
+
+warning: 4 warnings emitted
+

@@ -1007,6 +1007,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// assert_eq!(split.pop_front(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn split_off(&mut self, at: usize) -> LinkedList<T, A>
     where
         A: AllocatorClone,

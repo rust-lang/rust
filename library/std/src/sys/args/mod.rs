@@ -1,6 +1,7 @@
 //! Platform-dependent command line arguments abstraction.
 
 #![forbid(unsafe_op_in_unsafe_fn)]
+#![allow(safe_fn_direct_use_of_unsafe_op_on_args)]
 
 #[cfg(any(
     all(target_family = "unix", not(any(target_os = "espidf", target_os = "vita"))),

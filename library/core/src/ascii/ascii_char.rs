@@ -458,6 +458,7 @@ impl AsciiChar {
     /// or returns `None` if it's too large.
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub const fn from_u8(b: u8) -> Option<Self> {
         if b <= 127 {
             // SAFETY: Just checked that `b` is in-range
@@ -491,6 +492,7 @@ impl AsciiChar {
     /// If `d >= 10`, returns `None`.
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub const fn digit(d: u8) -> Option<Self> {
         if d < 10 {
             // SAFETY: Just checked it's in-range.

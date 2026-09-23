@@ -1563,6 +1563,7 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
     #[rustc_confusables("delete", "take")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn remove(&mut self, idx: usize) -> char {
         let ch = match self[idx..].chars().next() {
             Some(ch) => ch,
@@ -1765,6 +1766,7 @@ impl String {
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("set")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn insert(&mut self, idx: usize, ch: char) {
         assert!(self.is_char_boundary(idx));
 
@@ -1822,6 +1824,7 @@ impl String {
     #[track_caller]
     #[stable(feature = "insert_str", since = "1.16.0")]
     #[rustc_diagnostic_item = "string_insert_str"]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn insert_str(&mut self, idx: usize, string: &str) {
         assert!(self.is_char_boundary(idx));
 

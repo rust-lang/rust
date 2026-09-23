@@ -578,6 +578,7 @@ impl OsString {
     /// (as described in [`OsStr::slice_encoded_bytes`]).
     #[inline]
     #[unstable(feature = "os_string_truncate", issue = "133262")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn truncate(&mut self, len: usize) {
         if len <= self.len() {
             self.as_os_str().inner.check_public_boundary(len);
@@ -1061,6 +1062,7 @@ impl OsStr {
     /// Panics if `mid` is not on a valid boundary, or if it is past the end of the last code point of the string slice.
     /// For a non-panicking alternative see [`split_at_checked`][Self::split_at_checked].
     #[unstable(feature = "os_str_split_at", issue = "none")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn split_at(&self, mid: usize) -> (&OsStr, &OsStr) {
         self.inner.check_public_boundary(mid);
 
@@ -1081,6 +1083,7 @@ impl OsStr {
     /// - The start of a valid non-empty UTF-8 substring
     /// - Immediately follows a valid non-empty UTF-8 substring
     #[unstable(feature = "os_str_split_at", issue = "none")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn split_at_checked(&self, mid: usize) -> Option<(&OsStr, &OsStr)> {
         self.inner.try_check_public_boundary(mid)?;
 

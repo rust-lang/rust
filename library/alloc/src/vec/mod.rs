@@ -1801,6 +1801,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`clear`]: Vec::clear
     /// [`drain`]: Vec::drain
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn truncate(&mut self, len: usize) {
         // SAFETY: `BufWriter::flush_buf` assumes that this will not
         // de-initialize any elements of the spare capacity.
@@ -2246,6 +2247,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn swap_remove(&mut self, index: usize) -> T {
         #[cold]
         #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
@@ -2327,6 +2329,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "push_mut", since = "1.95.0")]
     #[track_caller]
     #[must_use = "if you don't need a reference to the value, use `Vec::insert` instead"]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn insert_mut(&mut self, index: usize, element: T) -> &mut T {
         #[cold]
         #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
@@ -2428,6 +2431,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[unstable(feature = "vec_try_remove", issue = "146954")]
     #[rustc_confusables("delete", "take", "remove")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub fn try_remove(&mut self, index: usize) -> Option<T> {
         let len = self.len();
         if index >= len {
@@ -3181,6 +3185,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[track_caller]
     pub fn split_off(&mut self, at: usize) -> Self
     where

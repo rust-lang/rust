@@ -905,6 +905,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[inline]
     #[track_caller]
     pub const fn swap(&mut self, a: usize, b: usize) {
@@ -2159,6 +2160,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "split_at_checked", since = "1.80.0")]
     #[rustc_const_stable(feature = "split_at_checked", since = "1.80.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[inline]
     #[must_use]
     pub const fn split_at_checked(&self, mid: usize) -> Option<(&[T], &[T])> {
@@ -2198,6 +2200,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "split_at_checked", since = "1.80.0")]
     #[rustc_const_stable(feature = "const_slice_split_at_mut", since = "1.83.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[inline]
     #[must_use]
     pub const fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut [T], &mut [T])> {
@@ -3898,6 +3901,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_rotate", since = "1.26.0")]
     #[rustc_const_stable(feature = "const_slice_rotate", since = "1.92.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub const fn rotate_left(&mut self, mid: usize) {
         assert!(mid <= self.len());
         let k = self.len() - mid;
@@ -3944,6 +3948,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_rotate", since = "1.26.0")]
     #[rustc_const_stable(feature = "const_slice_rotate", since = "1.92.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub const fn rotate_right(&mut self, k: usize) {
         assert!(k <= self.len());
         let mid = self.len() - k;
@@ -4368,6 +4373,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "copy_within", since = "1.37.0")]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     #[track_caller]
     pub fn copy_within<R: RangeBounds<usize>>(&mut self, src: R, dest: usize)
     where

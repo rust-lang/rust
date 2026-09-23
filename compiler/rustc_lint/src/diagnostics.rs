@@ -706,6 +706,13 @@ pub(crate) struct BuiltinDerefNullptr {
 }
 
 #[derive(Diagnostic)]
+#[diag("call to an unsafe function on an argument of a safe function")]
+pub(crate) struct BuiltinSafeFnDirectUseOfUnsafeOpOnArgs {
+    #[label("this code might cause undefined behavior when executed")]
+    pub label: Span,
+}
+
+#[derive(Diagnostic)]
 pub(crate) enum BuiltinSpecialModuleNameUsed {
     #[diag("found module declaration for lib.rs")]
     #[note("lib.rs is the root of this crate's library target")]

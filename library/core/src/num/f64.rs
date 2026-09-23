@@ -1362,6 +1362,7 @@ impl f64 {
     #[must_use]
     #[inline]
     #[allow(unnecessary_transmutes)]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub const fn from_bits(v: u64) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         // SAFETY: `u64` is a plain old datatype so we can always transmute from it.

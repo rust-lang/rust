@@ -167,6 +167,7 @@ impl Alignment {
     /// Note that `0` is not a power of two, nor a valid alignment.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
+    #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
     pub const fn new(align: usize) -> Option<Self> {
         if align.is_power_of_two() {
             // SAFETY: Just checked it only has one bit set

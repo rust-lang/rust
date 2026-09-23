@@ -17,6 +17,7 @@ unsafe extern "llvm-intrinsic" {
 #[inline]
 #[cfg_attr(test, assert_instr(adc))]
 #[stable(feature = "simd_x86_adx", since = "1.33.0")]
+#[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
 pub fn _addcarry_u32(c_in: u8, a: u32, b: u32, out: &mut u32) -> u8 {
     let (a, b) = unsafe { llvm_addcarry_u32(c_in, a, b) };
     *out = b;
@@ -44,6 +45,7 @@ pub fn _addcarryx_u32(c_in: u8, a: u32, b: u32, out: &mut u32) -> u8 {
 #[inline]
 #[cfg_attr(test, assert_instr(sbb))]
 #[stable(feature = "simd_x86_adx", since = "1.33.0")]
+#[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
 pub fn _subborrow_u32(c_in: u8, a: u32, b: u32, out: &mut u32) -> u8 {
     let (a, b) = unsafe { llvm_subborrow_u32(c_in, a, b) };
     *out = b;

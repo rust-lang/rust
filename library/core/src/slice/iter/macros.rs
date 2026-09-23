@@ -221,6 +221,7 @@ macro_rules! iterator {
             }
 
             #[inline]
+            #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
             fn nth(&mut self, n: usize) -> Option<$elem> {
                 if n >= len!(self) {
                     // This iterator is now empty.
@@ -445,6 +446,7 @@ macro_rules! iterator {
             }
 
             #[inline]
+            #[allow(safe_fn_direct_use_of_unsafe_op_on_args)]
             fn nth_back(&mut self, n: usize) -> Option<$elem> {
                 if n >= len!(self) {
                     // This iterator is now empty.
