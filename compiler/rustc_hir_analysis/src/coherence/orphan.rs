@@ -9,8 +9,8 @@ use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
     Unnormalized,
 };
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::{bug, span_bug};
 use rustc_trait_selection::traits::{
     self, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, UncoveredTyParams,
 };
@@ -333,7 +333,7 @@ fn orphan_check<'tcx>(
 
         let ocx = traits::ObligationCtxt::new(&infcx);
         let ty = ocx.normalize(&cause, ty::ParamEnv::empty(), Unnormalized::new_wip(user_ty));
-        let ty = infcx.resolve_vars_if_possible(ty);
+        let ty = infcx.deeply_resolve_ignoring_regions(ty);
         let errors = ocx.try_evaluate_obligations();
         if !errors.no_errors() {
             return Ok(user_ty);
@@ -377,7 +377,7 @@ fn orphan_check<'tcx>(
                         id_arg,
                     );
                 }
-                infcx.resolve_vars_if_possible(tys)
+                infcx.deeply_resolve_ignoring_regions(tys)
             });
             OrphanCheckErr::NonLocalInputType(tys)
         }

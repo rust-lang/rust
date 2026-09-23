@@ -13,7 +13,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::{self as hir, find_attr};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
-use rustc_span::sym;
+use rustc_span::{bug, span_bug, sym};
 use rustc_structures::Limit;
 use rustc_type_ir::PredicateProxy;
 use rustc_type_ir::solve::SizedTraitKind;
@@ -165,7 +165,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 | DefKind::AssocTy
                 | DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::AssocConst { .. }
+                | DefKind::AssocConst
                 | DefKind::Impl { .. },
                 def_id,
             ) => Some(def_id),
@@ -377,6 +377,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         adt_did: LocalDefId,
         validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
+        impossible_self_ty: impl Fn(Self, LocalDefId) -> bool,
     ) -> Option<ty::Destructor> {
         let drop_trait = self.lang_items().drop_trait()?;
         self.ensure_result().coherent_trait(drop_trait).ok()?;
@@ -391,6 +392,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
             if validate(self, impl_did).is_err() {
                 // Already `ErrorGuaranteed`, no need to delay a span bug here.
+                continue;
+            }
+
+            if impossible_self_ty(self, adt_did) {
+                // The self ty is unnameable, so it can't be constructed in the first place.
                 continue;
             }
 
@@ -424,6 +430,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         adt_did: LocalDefId,
         validate: impl Fn(Self, LocalDefId) -> Result<(), ErrorGuaranteed>,
+        impossible_self_ty: impl Fn(Self, LocalDefId) -> bool,
     ) -> Option<ty::AsyncDestructor> {
         let async_drop_trait = self.lang_items().async_drop_trait()?;
         self.ensure_result().coherent_trait(async_drop_trait).ok()?;
@@ -438,6 +445,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
             if validate(self, impl_did).is_err() {
                 // Already `ErrorGuaranteed`, no need to delay a span bug here.
+                continue;
+            }
+
+            if impossible_self_ty(self, adt_did) {
+                // The self ty is unnameable, so it can't be constructed in the first place.
                 continue;
             }
 
@@ -614,12 +626,12 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::AssocTy
             | DefKind::TyParam
             | DefKind::Fn
-            | DefKind::Const { .. }
+            | DefKind::Const
             | DefKind::ConstParam
             | DefKind::Static { .. }
             | DefKind::Ctor(_, _)
             | DefKind::AssocFn
-            | DefKind::AssocConst { .. }
+            | DefKind::AssocConst
             | DefKind::Macro(_)
             | DefKind::ExternCrate
             | DefKind::Use
@@ -1720,7 +1732,7 @@ pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Intrinsi
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id),
             must_be_overridden,
-            const_stable: find_attr!(tcx, def_id, RustcIntrinsicConstStableIndirect),
+            const_stable_indirect: find_attr!(tcx, def_id, RustcIntrinsicConstStableIndirect),
         })
     } else {
         None

@@ -4,15 +4,14 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint_defs::builtin::{REFINING_IMPL_TRAIT_INTERNAL, REFINING_IMPL_TRAIT_REACHABLE};
-use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_signature};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
 };
-use rustc_span::Span;
 use rustc_span::def_id::ModId;
+use rustc_span::{Span, span_bug};
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{ObligationCtxt, elaborate, normalize_param_env_or_error};
 
@@ -189,7 +188,9 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         return;
     }
     // Resolve any lifetime variables that may have been introduced during normalization.
-    let Ok((trait_bounds, impl_bounds)) = infcx.fully_resolve((trait_bounds, impl_bounds)) else {
+    let Ok((trait_bounds, impl_bounds)) =
+        infcx.deeply_resolve_via_region_graph((trait_bounds, impl_bounds))
+    else {
         // If resolution didn't fully complete, we cannot continue checking RPITIT refinement, and
         // delay a bug as the original code contains load-bearing errors.
         tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (resolution)");

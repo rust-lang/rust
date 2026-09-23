@@ -15,25 +15,26 @@ fn foo<T: ConstParamTy_, const N: usize, const M: [T; N]>() -> [T; N] {
 fn bar<const A: [u8; 2]>() {}
 
 trait Trait {
-    type const LEN: usize;
+    #[rustc_always_gca]
+    const LEN: usize;
 }
 
 struct S;
 impl Trait for S {
-    type const LEN: usize = 3;
+    const LEN: usize = core::direct_const_arg!(3);
 }
 
 fn baz<const A: [u8; <S as Trait>::LEN]>() {}
 
 fn main() {
     foo::<u8, 2, { [] }>();
-    //~^ ERROR: expected array with 2 elements, found 0 elements
+    //~^ ERROR: the constant `*b""` is not of type `[u8; 2]`
     foo::<u8, 2, { [0, 0, 0] }>();
-    //~^ ERROR: expected array with 2 elements, found 3 elements
+    //~^ ERROR: the constant `*b"\x00\x00\x00"` is not of type `[u8; 2]`
     bar::<{ [] }>();
-    //~^ ERROR: expected array with 2 elements, found 0 elements
+    //~^ ERROR: the constant `*b""` is not of type `[u8; 2]`
     bar::<{ [1, 2, 3] }>();
-    //~^ ERROR: expected array with 2 elements, found 3 elements
+    //~^ ERROR: the constant `*b"\x01\x02\x03"` is not of type `[u8; 2]`
     baz::<{ [42] }>();
-    //~^ ERROR: expected array with 3 elements, found 1 elements
+    //~^ ERROR: the constant `*b"*"` is not of type `[u8; 3]`
 }

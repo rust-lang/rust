@@ -211,9 +211,7 @@ macro_rules! size_and_align {
 macro_rules! size_and_align_expr {
     (minicore: $($x:tt),*; stmts: [$($s:tt)*] $($t:tt)*) => {
         {
-            #[allow(dead_code)]
-            #[allow(unused_must_use)]
-            #[allow(path_statements)]
+            #[allow(dead_code, unused_must_use, path_statements)]
             {
                 $($s)*
                 let val = { $($t)* };

@@ -74,11 +74,11 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::PerParentDisambiguatorState;
-use rustc_middle::bug;
 use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{self, MirDumper};
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::bug;
 
 pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     tcx: TyCtxt<'tcx>,

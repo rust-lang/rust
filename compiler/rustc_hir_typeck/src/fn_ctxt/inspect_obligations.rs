@@ -139,7 +139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         obligations_for_self_ty.retain_mut(|obligation| {
-            obligation.predicate = self.resolve_vars_if_possible(obligation.predicate);
+            obligation.predicate = self.deeply_resolve_ignoring_regions(obligation.predicate);
             !obligation.predicate.has_placeholders()
         });
         obligations_for_self_ty

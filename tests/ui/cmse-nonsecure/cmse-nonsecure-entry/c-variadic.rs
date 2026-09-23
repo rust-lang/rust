@@ -7,10 +7,8 @@
 #![no_core]
 
 extern crate minicore;
+use minicore::ffi::VaList;
 use minicore::*;
-
-#[lang = "va_list"]
-struct VaList(*mut u8);
 
 unsafe extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
     //~^ ERROR `...` is not supported for `extern "cmse-nonsecure-entry"` functions
@@ -20,6 +18,7 @@ unsafe extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
 async unsafe extern "cmse-nonsecure-entry" fn async_and_c_variadic(_: ...) {
     //~^ ERROR `...` is not supported for `extern "cmse-nonsecure-entry"` functions
     //~| ERROR functions cannot be both `async` and C-variadic
+    //~| ERROR hidden type for `impl Future<Output = ()>` captures lifetime that does not appear in bounds
 }
 
 // Async on its own is also not allowed.

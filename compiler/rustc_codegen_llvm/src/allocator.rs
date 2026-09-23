@@ -4,17 +4,18 @@ use rustc_ast::expand::allocator::{
     default_fn_name, global_fn_name,
 };
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
+use rustc_span::bug;
 use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::attributes::llfn_attrs_from_instance;
 use crate::builder::SBuilder;
+use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
 use crate::llvm::{self, FromGeneric, TRUE, Type};
-use crate::{SimpleCx, attributes, debuginfo};
+use crate::{attributes, debuginfo};
 
 pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,

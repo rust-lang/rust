@@ -12,11 +12,10 @@ use rustc_codegen_ssa::traits::{
     AsmBuilderMethods, AsmCodegenMethods, BaseTypeCodegenMethods, BuilderMethods,
     GlobalAsmOperandRef, InlineAsmOperandRef,
 };
-use rustc_middle::bug;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, bug};
 use rustc_target::asm::*;
 
 use crate::builder::Builder;

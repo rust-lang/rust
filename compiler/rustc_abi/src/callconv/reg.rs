@@ -16,6 +16,15 @@ pub enum RegKind {
     },
 }
 
+impl RegKind {
+    pub fn from_primitive(primitive: Primitive) -> Self {
+        match primitive {
+            Primitive::Int(..) | Primitive::Pointer(_) => RegKind::Integer,
+            Primitive::Float(_) => RegKind::Float,
+        }
+    }
+}
+
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Reg {
@@ -38,6 +47,7 @@ impl Reg {
     reg_ctor!(i64, Integer, 64);
     reg_ctor!(i128, Integer, 128);
 
+    reg_ctor!(f16, Float, 16);
     reg_ctor!(f32, Float, 32);
     reg_ctor!(f64, Float, 64);
     reg_ctor!(f128, Float, 128);

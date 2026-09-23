@@ -4,7 +4,8 @@
 #![allow(incomplete_features)]
 
 pub trait Tr<X> {
-    type const SIZE: usize;
+    #[rustc_always_gca]
+    const SIZE: usize;
 }
 
 fn mk_array<T: Tr<bool>>(_x: T) -> [(); <T as Tr<bool>>::SIZE] {

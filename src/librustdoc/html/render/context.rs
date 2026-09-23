@@ -296,19 +296,19 @@ impl<'tcx> Context<'tcx> {
                 &self.shared.style_files,
             )
         } else {
-            if let Some(&(ref names, ty)) = self.cache().paths.get(&it.item_id.expect_def_id())
-                && (self.current.len() + 1 != names.len()
-                    || self.current.iter().zip(names.iter()).any(|(a, b)| a != b))
+            if let Some(info) = self.cache().paths.get(&it.item_id.expect_def_id())
+                && (self.current.len() + 1 != info.parts.len()
+                    || self.current.iter().zip(info.parts.iter()).any(|(a, b)| a != b))
             {
                 // We checked that the redirection isn't pointing to the current file,
                 // preventing an infinite redirection loop in the generated
                 // documentation.
 
                 let path = fmt::from_fn(|f| {
-                    for name in &names[..names.len() - 1] {
+                    for name in &info.parts[..info.parts.len() - 1] {
                         write!(f, "{name}/")?;
                     }
-                    write!(f, "{}", print_ty_path(ty, names.last().unwrap().as_str()))
+                    write!(f, "{}", print_ty_path(info.ty, info.parts.last().unwrap().as_str()))
                 });
                 match self.shared.redirections {
                     Some(ref redirections) => {
@@ -320,7 +320,7 @@ impl<'tcx> Context<'tcx> {
                         let _ = write!(
                             current_path,
                             "{}",
-                            print_ty_path(ty, names.last().unwrap().as_str())
+                            print_ty_path(info.ty, info.parts.last().unwrap().as_str())
                         );
                         redirections.borrow_mut().insert(current_path, path.to_string());
                     }

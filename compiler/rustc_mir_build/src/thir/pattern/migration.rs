@@ -1,7 +1,7 @@
 //! Automatic migration of Rust 2021 patterns to a form valid in both Editions 2021 and 2024.
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan, pluralize};
+use rustc_errors::{Applicability, Diag, MultiSpan, pluralize};
 use rustc_hir::{BindingMode, ByRef, HirId, Mutability};
 use rustc_lint_defs::builtin::RUST_2024_INCOMPATIBLE_PAT;
 use rustc_middle::ty::{self, Rust2024IncompatiblePatInfo, TyCtxt};
@@ -90,7 +90,7 @@ impl<'a> PatMigration<'a> {
         format!("cannot {verb1}{or_verb2} within an implicitly-borrowing pattern{in_rust_2024}")
     }
 
-    fn format_subdiagnostics(self, diag: &mut Diag<'_, impl EmissionGuarantee>) {
+    fn format_subdiagnostics<G>(self, diag: &mut Diag<'_, G>) {
         // Format and emit explanatory notes about default binding modes. Reversing the spans' order
         // means if we have nested spans, the innermost ones will be visited first.
         for (span, def_br_mutbl) in self.default_mode_labels.into_iter().rev() {

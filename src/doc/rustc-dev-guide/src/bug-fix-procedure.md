@@ -101,7 +101,7 @@ declare_lint! {
     },
 }
 
-// 2. Add a decidacted lint pass for it.
+// 2. Add a dedicated lint pass for it.
 //    This step can be skipped if you emit the lint as part of an existing pass.
 
 #[derive(Default)]

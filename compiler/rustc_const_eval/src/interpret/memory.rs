@@ -14,9 +14,9 @@ use std::{assert_matches, fmt, ptr};
 use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_middle::bug;
 use rustc_middle::mir::display_allocation;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_span::bug;
 use tracing::{debug, instrument, trace};
 
 use super::{
@@ -910,6 +910,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // We check `tcx` last as that has to acquire a lock in `many-seeds` mode.
             // This also matches the order in `get_alloc_info`.
             || self.tcx.try_get_global_alloc(id).is_some()
+    }
+
+    /// Check whether an allocation contains provenance.
+    pub fn has_provenance_in_alloc(&self, id: AllocId) -> InterpResult<'tcx, bool> {
+        let alloc = self.get_alloc_raw(id)?;
+        interp_ok(!alloc.provenance().range_empty(alloc_range(Size::ZERO, alloc.size()), &self.tcx))
     }
 
     /// Obtain the size and alignment of an allocation, even if that allocation has

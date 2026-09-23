@@ -27,6 +27,8 @@ note: required because it appears within the type `MyTypeWUnsafe`
    |
 LL | struct MyTypeWUnsafe {
    |        ^^^^^^^^^^^^^
+LL |    t: UnsafeCell<u8>
+   |    ----------------- required by this field
 note: required by a bound in `is_sync`
   --> $DIR/typeck-default-trait-impl-negation-sync.rs:29:15
    |
@@ -49,6 +51,8 @@ note: required because it appears within the type `MyTypeManaged`
    |
 LL | struct MyTypeManaged {
    |        ^^^^^^^^^^^^^
+LL |    t: Managed
+   |    ---------- required by this field
 note: required by a bound in `is_sync`
   --> $DIR/typeck-default-trait-impl-negation-sync.rs:29:15
    |

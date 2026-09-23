@@ -1,8 +1,8 @@
 use core::ops::ControlFlow;
 
-use rustc_ast::visit::visit_opt;
+use rustc_ast::visit::{Visitor, visit_opt};
 use rustc_ast::{self as ast, EnumDef, Safety, VariantData, attr};
-use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
+use rustc_expand::base::{DummyResult, ExtCtxt};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use smallvec::SmallVec;
 use thin_vec::{ThinVec, thin_vec};
@@ -14,12 +14,11 @@ use crate::diagnostics;
 pub(crate) fn expand_deriving_default(
     cx: &ExtCtxt<'_>,
     span: Span,
-    mitem: &ast::MetaItem,
-    item: &Annotatable,
-    push: &mut dyn FnMut(Annotatable),
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
     is_const: bool,
 ) {
-    item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
+    DetectNonVariantDefaultAttr { cx }.visit_item(item);
 
     let trait_def = TraitDef {
         span,
@@ -30,7 +29,7 @@ pub(crate) fn expand_deriving_default(
         supports_unions: false,
         methods: smallvec![MethodDef {
             name: kw::Default,
-            generics: Bounds::empty(),
+            generics: cx.empty_generics(span),
             explicit_self: false,
             nonself_args: SmallVec::new(),
             ret_ty: Self_,
@@ -38,13 +37,15 @@ pub(crate) fn expand_deriving_default(
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(|cx, trait_span, substr| {
                 match substr.fields {
-                    StaticStruct(_, fields) => {
-                        default_struct_substructure(cx, trait_span, substr, fields)
+                    StaticStruct(variant_data) => {
+                        default_struct_substructure(cx, trait_span, substr, variant_data)
                     }
                     StaticEnum(enum_def) => {
-                        default_enum_substructure(cx, trait_span, enum_def, item.span())
+                        default_enum_substructure(cx, trait_span, enum_def, item.span)
                     }
-                    _ => cx.dcx().span_bug(trait_span, "method in `derive(Default)`"),
+                    _ => cx
+                        .dcx()
+                        .span_bug(trait_span, "unexpected substructure in `derive(Default)`"),
                 }
             }),
         }],
@@ -53,7 +54,7 @@ pub(crate) fn expand_deriving_default(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, item, push)
 }
 
 fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
@@ -65,28 +66,36 @@ fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
 fn default_struct_substructure(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
-    substr: &Substructure<'_>,
-    summary: &StaticFields<'_>,
+    substr: Substructure<'_>,
+    variant_data: &VariantData,
 ) -> BlockOrExpr {
-    let expr = match summary {
-        Unnamed(_, IsTuple::No) => cx.expr_ident(trait_span, substr.type_ident),
-        Unnamed(fields, IsTuple::Yes) => {
-            let exprs = fields.iter().map(|sp| default_call(cx, *sp)).collect();
+    let expr = match variant_data {
+        VariantData::Unit(_) => cx.expr_ident(trait_span, substr.type_ident),
+        VariantData::Tuple(fields, _) => {
+            let exprs = fields
+                .iter()
+                .map(|field| default_call(cx, field.span.with_ctxt(trait_span.ctxt())))
+                .collect();
             cx.expr_call_ident(trait_span, substr.type_ident, exprs)
         }
-        Named(fields) => {
+        VariantData::Struct { fields, .. } => {
             let default_fields = fields
                 .iter()
-                .map(|&(ident, span, default_val)| {
-                    let value = match default_val {
-                        // We use `Default::default()`.
-                        None => default_call(cx, span),
+                .map(|field| {
+                    let span = field.span.with_ctxt(trait_span.ctxt());
+                    let value = if let Some(extras) = &field.extras
+                        && let Some(default_val) = &extras.default
+                    {
                         // We use the field default const expression.
-                        Some(val) => {
-                            cx.expr(val.value.span, ast::ExprKind::ConstBlock(val.clone()))
-                        }
+                        cx.expr(
+                            default_val.value.span,
+                            ast::ExprKind::ConstBlock(default_val.clone()),
+                        )
+                    } else {
+                        // We use `Default::default()`.
+                        default_call(cx, span)
                     };
-                    cx.field_imm(span, ident, value)
+                    cx.field_imm(span, field.ident.unwrap(), value)
                 })
                 .collect();
             cx.expr_struct_ident(trait_span, substr.type_ident, default_fields)
@@ -308,7 +317,7 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, '
     }
 }
 
-fn has_a_default_variant(item: &Annotatable) -> bool {
+fn has_a_default_variant(item: &ast::Item) -> bool {
     struct HasDefaultAttrOnVariant;
 
     impl<'ast> rustc_ast::visit::Visitor<'ast> for HasDefaultAttrOnVariant {
@@ -323,5 +332,5 @@ fn has_a_default_variant(item: &Annotatable) -> bool {
         }
     }
 
-    item.visit_with(&mut HasDefaultAttrOnVariant).is_break()
+    HasDefaultAttrOnVariant.visit_item(item).is_break()
 }

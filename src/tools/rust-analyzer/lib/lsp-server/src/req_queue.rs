@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 use crate::{ErrorCode, Request, RequestId, Response, ResponseError};
 
@@ -12,8 +12,8 @@ pub struct ReqQueue<I, O> {
 impl<I, O> Default for ReqQueue<I, O> {
     fn default() -> ReqQueue<I, O> {
         ReqQueue {
-            incoming: Incoming { pending: HashMap::default() },
-            outgoing: Outgoing { next_id: 0, pending: HashMap::default() },
+            incoming: Incoming { pending: FxHashMap::default() },
+            outgoing: Outgoing { next_id: 0, pending: FxHashMap::default() },
         }
     }
 }
@@ -26,13 +26,13 @@ impl<I, O> ReqQueue<I, O> {
 
 #[derive(Debug)]
 pub struct Incoming<I> {
-    pending: HashMap<RequestId, I>,
+    pending: FxHashMap<RequestId, I>,
 }
 
 #[derive(Debug)]
 pub struct Outgoing<O> {
     next_id: i32,
-    pending: HashMap<RequestId, O>,
+    pending: FxHashMap<RequestId, O>,
 }
 
 impl<I> Incoming<I> {

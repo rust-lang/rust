@@ -11,11 +11,12 @@ mod out_of_scope {
             "subtrait"
         }
         type Assoc;
-        type const CONST: i32;
+        #[rustc_always_gca]
+        const CONST: i32;
     }
     impl<T> Subtrait for T {
         type Assoc = i16;
-        type const CONST: i32 = 2;
+        const CONST: i32 = core::direct_const_arg!(2);
     }
 }
 

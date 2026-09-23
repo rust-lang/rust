@@ -34,10 +34,9 @@ use rustc_middle::middle::resolve::{
 };
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::ty::{AssocTag, Visibility};
-use rustc_middle::{bug, span_bug};
 use rustc_session::config::ResolveDocLinks;
 use rustc_session::diagnostics::feature_err;
-use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Spanned, Symbol, kw, respan, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Spanned, Symbol, bug, kw, respan, span_bug, sym};
 use rustc_structures::CrateType;
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
@@ -604,11 +603,11 @@ impl PathSource<'_, '_, '_> {
                 res,
                 Res::Def(
                     DefKind::Ctor(_, CtorKind::Const | CtorKind::Fn)
-                        | DefKind::Const { .. }
+                        | DefKind::Const
                         | DefKind::Static { .. }
                         | DefKind::Fn
                         | DefKind::AssocFn
-                        | DefKind::AssocConst { .. }
+                        | DefKind::AssocConst
                         | DefKind::ConstParam,
                     _,
                 ) | Res::Local(..)
@@ -616,10 +615,7 @@ impl PathSource<'_, '_, '_> {
             ),
             PathSource::Pat => {
                 res.expected_in_unit_struct_pat()
-                    || matches!(
-                        res,
-                        Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, _)
-                    )
+                    || matches!(res, Res::Def(DefKind::Const | DefKind::AssocConst, _))
             }
             PathSource::TupleStruct(..) => res.expected_in_tuple_struct_pat(),
             PathSource::Struct(_) => matches!(
@@ -635,7 +631,7 @@ impl PathSource<'_, '_, '_> {
                     | Res::SelfTyAlias { .. }
             ),
             PathSource::TraitItem(ns, _) => match res {
-                Res::Def(DefKind::AssocConst { .. } | DefKind::AssocFn, _) if ns == ValueNS => true,
+                Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
                 _ => false,
             },
@@ -2853,8 +2849,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 }
             }
         } else if let UseTreeKind::Nested { items, .. } = &use_tree.kind {
-            for (use_tree, _) in items {
-                self.future_proof_import(use_tree);
+            for use_tree in items {
+                self.future_proof_import(&use_tree.inner);
             }
         }
     }
@@ -2996,7 +2992,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 generics,
                 ty,
                 body,
-                kind,
                 define_opaque,
                 defaultness: _,
             }) => {
@@ -3019,20 +3014,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         this.with_lifetime_rib(
                             LifetimeRibKind::elided(LifetimeRes::Static),
                             |this: &mut LateResolutionVisitor<'a, 'ast, 'ra, 'tcx>| {
-                                if *kind == ast::ConstItemKind::TypeConst
-                                    && !this.r.features.generic_const_parameter_types()
-                                {
-                                    this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
-                                        this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
-                                            this.with_lifetime_rib(
-                                                LifetimeRibKind::ConstParamTy,
-                                                |this| this.visit_ty(ty),
-                                            )
-                                        })
-                                    });
-                                } else {
-                                    this.visit_ty(ty);
-                                }
+                                this.visit_ty(ty)
                             },
                         );
 
@@ -3414,14 +3396,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
         match &item.kind {
-            AssocItemKind::Const(ast::ConstItem {
-                generics,
-                ty,
-                body,
-                kind,
-                define_opaque,
-                ..
-            }) => {
+            AssocItemKind::Const(ast::ConstItem { generics, ty, body, define_opaque, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::AssocItem,
@@ -3436,21 +3411,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             },
                             |this| {
                                 this.visit_generics(generics);
-                                if *kind == ConstItemKind::TypeConst
-                                    && !this.r.features.generic_const_parameter_types()
-                                {
-                                    this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
-                                        this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
-                                            this.with_lifetime_rib(
-                                                LifetimeRibKind::ConstParamTy,
-                                                |this| this.visit_ty(ty),
-                                            )
-                                        })
-                                    });
-                                } else {
-                                    this.visit_ty(ty);
-                                }
-
+                                this.visit_ty(ty);
                                 // Only impose the restrictions of `ConstRibKind` for an
                                 // actual constant expression in a provided default.
                                 //
@@ -3666,7 +3627,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 generics,
                 ty,
                 body,
-                kind,
                 define_opaque,
                 ..
             }) => {
@@ -3698,20 +3658,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                 );
 
                                 this.visit_generics(generics);
-                                if *kind == ConstItemKind::TypeConst
-                                    && !this.r.tcx.features().generic_const_parameter_types()
-                                {
-                                    this.with_rib(TypeNS, RibKind::ConstParamTy, |this| {
-                                        this.with_rib(ValueNS, RibKind::ConstParamTy, |this| {
-                                            this.with_lifetime_rib(
-                                                LifetimeRibKind::ConstParamTy,
-                                                |this| this.visit_ty(ty),
-                                            )
-                                        })
-                                    });
-                                } else {
-                                    this.visit_ty(ty);
-                                }
+                                this.visit_ty(ty);
                                 // We allow arbitrary const expressions inside of associated consts,
                                 // even if they are potentially not const evaluatable.
                                 //
@@ -3948,7 +3895,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         match (def_kind, kind) {
             (DefKind::AssocTy, AssocItemKind::Type(..))
             | (DefKind::AssocFn, AssocItemKind::Fn(..))
-            | (DefKind::AssocConst { .. }, AssocItemKind::Const(..))
+            | (DefKind::AssocConst, AssocItemKind::Const(..))
             | (DefKind::AssocFn, AssocItemKind::Delegation(..)) => {
                 self.r.record_partial_res(id, PartialRes::new(res));
                 return;
@@ -4570,7 +4517,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         match res {
             Res::SelfCtor(_) // See #70549.
             | Res::Def(
-                DefKind::Ctor(_, CtorKind::Const) | DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::ConstParam,
+                DefKind::Ctor(_, CtorKind::Const) | DefKind::Const  | DefKind::AssocConst  | DefKind::ConstParam,
                 _,
             ) if is_syntactic_ambiguity => {
                 // Disambiguate in favor of a unit struct/variant or constant pattern.
@@ -4581,8 +4528,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
             Res::Def(
                 DefKind::Ctor(..)
-                | DefKind::Const { .. }
-                | DefKind::AssocConst { .. }
+                | DefKind::Const
+                | DefKind::AssocConst
                 | DefKind::Static { .. },
                 _,
             ) => {
@@ -4606,7 +4553,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 None
             }
             Res::Def(DefKind::ConstParam, def_id) => {
-                // Same as for DefKind::Const { .. } above, but here, `binding` is `None`, so we
+                // Same as for DefKind::Const above, but here, `binding` is `None`, so we
                 // have to construct the error differently
                 self.report_error(
                     ident.span,
@@ -5459,6 +5406,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     } else {
                         self.resolve_expr(argument, None);
                     }
+                }
+            }
+            ExprKind::FormatArgs(ref args) => {
+                for arg in args.arguments.all_args() {
+                    // Keep the format context so recovery can add a named argument instead.
+                    let parent =
+                        matches!(arg.kind, FormatArgumentKind::Captured(_)).then_some(expr);
+                    self.resolve_expr(&arg.expr, parent);
                 }
             }
             ExprKind::Type(ref _type_expr, ref _ty) => {

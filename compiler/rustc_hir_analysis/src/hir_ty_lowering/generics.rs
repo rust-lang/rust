@@ -97,12 +97,24 @@ fn generic_arg_mismatch_err(
             GenericArg::Type(hir::Ty { kind: hir::TyKind::Array(_, len), .. }),
             GenericParamDefKind::Const { .. },
         ) if tcx.type_of(param.def_id).skip_binder() == tcx.types.usize => {
+            err.span_label(arg.span(), "array type provided where a `usize` was expected");
             let snippet = sess.source_map().span_to_snippet(tcx.hir_span(len.hir_id));
             if let Ok(snippet) = snippet {
-                err.span_suggestion(
+                let sugg = if let hir::ConstArgKind::Anon(hir::AnonConst { body, .. }) = len.kind
+                    && let hir::ExprKind::Lit(..) = tcx.hir_body(*body).value.kind
+                {
+                    // We don't need to surround literals in braces when used as consts
+                    snippet
+                } else if let hir::ConstArgKind::Literal { .. } = len.kind {
+                    // We don't need to surround literals in braces when used as consts
+                    snippet
+                } else {
+                    format!("{{ {snippet} }}")
+                };
+                err.span_suggestion_verbose(
                     arg.span(),
-                    "array type provided where a `usize` was expected, try",
-                    format!("{{ {snippet} }}"),
+                    format!("you might have meant to use the array's length's value"),
+                    sugg,
                     Applicability::MaybeIncorrect,
                 );
             }

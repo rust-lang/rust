@@ -18,16 +18,19 @@ impl Drop for Mutable {
     }
 }
 
-struct Mutable2 { // this one has drop glue but not a Drop impl
+struct Mutable2 { // this one has drop glue but not a direct Drop impl
     msg: &'static str,
     other: String,
 }
+
+struct WithFieldDrop { inner: Mutable } // no Drop on this type, but Mutable has one
 
 const ARRAY: [u8; 1] = [25];
 const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw_ptr: 2 as *mut u8 };
 const RAW_PTR: *mut u8 = 1 as *mut u8;
 const MUTABLE: Mutable = Mutable { msg: "" };
 const MUTABLE2: Mutable2 = Mutable2 { msg: "", other: String::new() };
+const WFD: WithFieldDrop = WithFieldDrop { inner: Mutable { msg: "" } };
 const VEC: Vec<i32> = Vec::new();
 const PTR: *mut () = 1 as *mut _;
 const PTR_TO_ARRAY: *mut [u32; 4] = 0x12345678 as _;
@@ -50,8 +53,9 @@ fn main() {
         *MY_STRUCT.raw_ptr = 0;
     }
 
-    MUTABLE.msg = "wow"; // no warning, because Drop observes the mutation
-    MUTABLE2.msg = "wow"; //~ WARN attempting to modify
+    MUTABLE.msg = "wow"; // no warning — Drop impl observes the mutation
+    MUTABLE2.msg = "wow"; // no warning — field String has drop glue (needs_drop = true)
+    WFD.inner.msg = "observed"; // no warning — Mutable's Drop observes the field mutation
     VEC.push(0); //~ WARN taking a mutable reference to a `const` item
 
     // Test that we don't warn when converting a raw pointer

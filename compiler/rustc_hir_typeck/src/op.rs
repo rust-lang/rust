@@ -8,13 +8,12 @@ use rustc_errors::{Applicability, Diag, struct_span_code_err};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, AssignOpKind, BinOpKind, Expr, ExprKind};
 use rustc_infer::traits::ObligationCauseCode;
-use rustc_middle::bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::{Span, Spanned, Symbol, sym};
+use rustc_span::{Span, Spanned, Symbol, bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, Obligation, ObligationCtxt};
 use tracing::debug;
@@ -221,7 +220,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr(lhs_expr)
             }
         };
-        let lhs_ty = self.resolve_vars_with_obligations(lhs_ty);
+        let lhs_ty = self.deeply_resolve_ignoring_regions_with_obligations(lhs_ty);
 
         // N.B., as we have not yet type-checked the RHS, we don't have the
         // type at hand. Make a variable to represent it. The whole reason
@@ -256,7 +255,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             },
         );
-        let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
+        let rhs_ty = self.deeply_resolve_ignoring_regions_with_obligations(rhs_ty);
 
         let return_ty = self.overloaded_binop_ret_ty(
             expr, lhs_expr, rhs_expr, op, expected, lhs_ty, result, rhs_ty,
@@ -979,7 +978,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 method.sig.output()
             }
             Err(errors) => {
-                let actual = self.resolve_vars_if_possible(operand_ty);
+                let actual = self.deeply_resolve_ignoring_regions(operand_ty);
                 let guar = actual.error_reported().err().unwrap_or_else(|| {
                     let mut file = None;
                     let ty_str = self.tcx.short_string(actual, &mut file);

@@ -1,8 +1,9 @@
 use hir::FnSig;
+use rustc_attr_ir::find_attr;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefIdSet;
-use rustc_hir::{self as hir, Attribute, QPath, find_attr};
+use rustc_hir::{self as hir, Attribute, QPath};
 use rustc_lint::unused::must_use::MustUsePath;
 use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::{self, Ty};

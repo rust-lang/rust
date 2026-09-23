@@ -141,64 +141,6 @@ impl AttemptLocalParseRecovery {
     }
 }
 
-/// Information for emitting suggestions and recovering from
-/// C-style `i++`, `--i`, etc.
-#[derive(Debug, Copy, Clone)]
-struct IncDecRecovery {
-    /// Is this increment/decrement its own statement?
-    standalone: IsStandalone,
-    /// Is this an increment or decrement?
-    op: IncOrDec,
-    /// Is this pre- or postfix?
-    fixity: UnaryFixity,
-}
-
-/// Is an increment or decrement expression its own statement?
-#[derive(Debug, Copy, Clone)]
-enum IsStandalone {
-    /// It's standalone, i.e., its own statement.
-    Standalone,
-    /// It's a subexpression, i.e., *not* standalone.
-    Subexpr,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum IncOrDec {
-    Inc,
-    Dec,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum UnaryFixity {
-    Pre,
-    Post,
-}
-
-impl IncOrDec {
-    fn chr(&self) -> char {
-        match self {
-            Self::Inc => '+',
-            Self::Dec => '-',
-        }
-    }
-
-    fn name(&self) -> &'static str {
-        match self {
-            Self::Inc => "increment",
-            Self::Dec => "decrement",
-        }
-    }
-}
-
-impl std::fmt::Display for UnaryFixity {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Pre => write!(f, "prefix"),
-            Self::Post => write!(f, "postfix"),
-        }
-    }
-}
-
 /// Checks if the given `lookup` identifier is similar to any keyword symbol in `candidates`.
 ///
 /// This is a specialized version of [`Symbol::find_similar`] that constructs an error when a
@@ -209,22 +151,6 @@ fn find_similar_kw(lookup: Ident, candidates: &[Symbol]) -> Option<MisspelledKw>
         is_incorrect_case,
         span: lookup.span,
     })
-}
-
-struct MultiSugg {
-    msg: String,
-    patches: Vec<(Span, String)>,
-    applicability: Applicability,
-}
-
-impl MultiSugg {
-    fn emit(self, err: &mut Diag<'_>) {
-        err.multipart_suggestion(self.msg, self.patches, self.applicability);
-    }
-
-    fn emit_verbose(self, err: &mut Diag<'_>) {
-        err.multipart_suggestion(self.msg, self.patches, self.applicability);
-    }
 }
 
 /// SnapshotParser is used to create a snapshot of the parser
@@ -337,66 +263,46 @@ impl<'a> Parser<'a> {
             HelpIdentifierStartsWithNumber { num_span: invalid }
         });
 
-        let err = ExpectedIdentifier {
+        let mut err = self.dcx().create_err(ExpectedIdentifier {
             span: bad_token.span,
             token: bad_token,
             suggest_raw,
             suggest_remove_comma,
             help_cannot_start_number,
-        };
-        let mut err = self.dcx().create_err(err);
+        });
 
-        // if the token we have is a `<`
-        // it *might* be a misplaced generic
-        // FIXME: could we recover with this?
+        // If the token we have is a `<` it *might* be a misplaced generic
+        // parameter list as in `fn <T>id(x: T) -> T { x }`.
+        // FIXME: Could we recover with this?
         if self.token == token::Lt {
-            // all keywords that could have generic applied
-            let valid_prev_keywords =
-                [kw::Fn, kw::Type, kw::Struct, kw::Enum, kw::Union, kw::Trait];
-
-            // If we've expected an identifier,
-            // and the current token is a '<'
-            // if the previous token is a valid keyword
-            // that might use a generic, then suggest a correct
-            // generic placement (later on)
-            let maybe_keyword = self.prev_token;
-            if valid_prev_keywords.into_iter().any(|x| maybe_keyword.is_keyword(x)) {
-                // if we have a valid keyword, attempt to parse generics
-                // also obtain the keywords symbol
+            // Let's check if the previous token could denote the start of an item
+            // whose kind can have generics.
+            if let Some((Ident { name, .. }, IdentIsRaw::No)) = self.prev_token.ident()
+                && let kw::Fn | kw::Type | kw::Struct | kw::Enum | kw::Union | kw::Trait = name
+            {
                 match self.parse_generics() {
-                    Ok(generic) => {
-                        if let TokenKind::Ident(symbol, _) = maybe_keyword.kind {
-                            let ident_name = symbol;
-                            // at this point, we've found something like
-                            // `fn <T>id`
-                            // and current token should be Ident with the item name (i.e. the function name)
-                            // if there is a `<` after the fn name, then don't show a suggestion, show help
-
-                            if !self.look_ahead(1, |t| *t == token::Lt)
-                                && let Ok(snippet) =
-                                    self.psess.source_map().span_to_snippet(generic.span)
-                            {
-                                err.multipart_suggestion(
-                                        format!("place the generic parameter name after the {ident_name} name"),
-                                        vec![
-                                            (self.token.span.shrink_to_hi(), snippet),
-                                            (generic.span, String::new())
-                                        ],
-                                        Applicability::MaybeIncorrect,
-                                    );
-                            } else {
-                                err.help(format!(
-                                    "place the generic parameter name after the {ident_name} name"
-                                ));
-                            }
+                    Ok(generics) => {
+                        if !self.look_ahead(1, |t| *t == token::Lt)
+                            && let Ok(snippet) =
+                                self.psess.source_map().span_to_snippet(generics.span)
+                        {
+                            err.multipart_suggestion(
+                                format!("place the generic parameter name after the {name} name"),
+                                vec![
+                                    (self.token.span.shrink_to_hi(), snippet),
+                                    (generics.span, String::new()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            err.help(format!(
+                                "place the generic parameter name after the {name} name"
+                            ));
                         }
                     }
-                    Err(err) => {
-                        // if there's an error parsing the generics,
-                        // then don't do a misplaced generics suggestion
-                        // and emit the expected ident error instead;
-                        err.cancel();
-                    }
+                    // It's unlikely that the user meant to write a generic parameter list.
+                    // Let's not show them errors specific to generics.
+                    Err(err) => err.cancel(),
                 }
             }
         }
@@ -602,15 +508,15 @@ impl<'a> Parser<'a> {
             );
         }
 
-        if let TokenKind::Ident(symbol, _) = &self.prev_token.kind {
-            if ["def", "fun", "func", "function"].contains(&symbol.as_str()) {
-                err.span_suggestion_short(
-                    self.prev_token.span,
-                    format!("write `fn` instead of `{symbol}` to declare a function"),
-                    "fn",
-                    Applicability::MachineApplicable,
-                );
-            }
+        if let Some((ident, IdentIsRaw::No)) = self.prev_token.ident()
+            && let "def" | "fun" | "func" | "function" = ident.name.as_str()
+        {
+            err.span_suggestion_short(
+                self.prev_token.span,
+                format!("write `fn` instead of `{}` to declare a function", ident.name),
+                "fn",
+                Applicability::MachineApplicable,
+            );
         }
 
         if let TokenKind::Ident(prev, _) = &self.prev_token.kind
@@ -1669,146 +1575,6 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    pub(super) fn recover_from_prefix_increment(
-        &mut self,
-        operand_expr: Box<Expr>,
-        op_span: Span,
-        start_stmt: bool,
-    ) -> PResult<'a, Box<Expr>> {
-        let standalone = if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr };
-        let kind = IncDecRecovery { standalone, op: IncOrDec::Inc, fixity: UnaryFixity::Pre };
-        self.recover_from_inc_dec(operand_expr, kind, op_span)
-    }
-
-    pub(super) fn recover_from_postfix_increment(
-        &mut self,
-        operand_expr: Box<Expr>,
-        op_span: Span,
-        start_stmt: bool,
-    ) -> PResult<'a, Box<Expr>> {
-        let kind = IncDecRecovery {
-            standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
-            op: IncOrDec::Inc,
-            fixity: UnaryFixity::Post,
-        };
-        self.recover_from_inc_dec(operand_expr, kind, op_span)
-    }
-
-    pub(super) fn recover_from_postfix_decrement(
-        &mut self,
-        operand_expr: Box<Expr>,
-        op_span: Span,
-        start_stmt: bool,
-    ) -> PResult<'a, Box<Expr>> {
-        let kind = IncDecRecovery {
-            standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
-            op: IncOrDec::Dec,
-            fixity: UnaryFixity::Post,
-        };
-        self.recover_from_inc_dec(operand_expr, kind, op_span)
-    }
-
-    fn recover_from_inc_dec(
-        &mut self,
-        base: Box<Expr>,
-        kind: IncDecRecovery,
-        op_span: Span,
-    ) -> PResult<'a, Box<Expr>> {
-        let mut err = self.dcx().struct_span_err(
-            op_span,
-            format!("Rust has no {} {} operator", kind.fixity, kind.op.name()),
-        );
-        err.span_label(op_span, format!("not a valid {} operator", kind.fixity));
-
-        let help_base_case = |mut err: Diag<'_, _>, base| {
-            err.help(format!("use `{}= 1` instead", kind.op.chr()));
-            err.emit();
-            Ok(base)
-        };
-
-        // (pre, post)
-        let spans = match kind.fixity {
-            UnaryFixity::Pre => (op_span, base.span.shrink_to_hi()),
-            UnaryFixity::Post => (base.span.shrink_to_lo(), op_span),
-        };
-
-        match kind.standalone {
-            IsStandalone::Standalone => {
-                self.inc_dec_standalone_suggest(kind, spans).emit_verbose(&mut err)
-            }
-            IsStandalone::Subexpr => {
-                let Ok(base_src) = self.span_to_snippet(base.span) else {
-                    return help_base_case(err, base);
-                };
-                match kind.fixity {
-                    UnaryFixity::Pre => {
-                        self.prefix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
-                    }
-                    UnaryFixity::Post => {
-                        // won't suggest since we can not handle the precedences
-                        // for example: `a + b++` has been parsed (a + b)++ and we can not suggest here
-                        if !matches!(base.kind, ExprKind::Binary(_, _, _)) {
-                            self.postfix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
-                        }
-                    }
-                }
-            }
-        }
-        Err(err)
-    }
-
-    fn prefix_inc_dec_suggest(
-        &mut self,
-        base_src: String,
-        kind: IncDecRecovery,
-        (pre_span, post_span): (Span, Span),
-    ) -> MultiSugg {
-        MultiSugg {
-            msg: format!("use `{}= 1` instead", kind.op.chr()),
-            patches: vec![
-                (pre_span, "{ ".to_string()),
-                (post_span, format!(" {}= 1; {} }}", kind.op.chr(), base_src)),
-            ],
-            applicability: Applicability::MachineApplicable,
-        }
-    }
-
-    fn postfix_inc_dec_suggest(
-        &mut self,
-        base_src: String,
-        kind: IncDecRecovery,
-        (pre_span, post_span): (Span, Span),
-    ) -> MultiSugg {
-        let tmp_var = if base_src.trim() == "tmp" { "tmp_" } else { "tmp" };
-        MultiSugg {
-            msg: format!("use `{}= 1` instead", kind.op.chr()),
-            patches: vec![
-                (pre_span, format!("{{ let {tmp_var} = ")),
-                (post_span, format!("; {} {}= 1; {} }}", base_src, kind.op.chr(), tmp_var)),
-            ],
-            applicability: Applicability::HasPlaceholders,
-        }
-    }
-
-    fn inc_dec_standalone_suggest(
-        &mut self,
-        kind: IncDecRecovery,
-        (pre_span, post_span): (Span, Span),
-    ) -> MultiSugg {
-        let mut patches = Vec::new();
-
-        if !pre_span.is_empty() {
-            patches.push((pre_span, String::new()));
-        }
-
-        patches.push((post_span, format!(" {}= 1", kind.op.chr())));
-        MultiSugg {
-            msg: format!("use `{}= 1` instead", kind.op.chr()),
-            patches,
-            applicability: Applicability::MachineApplicable,
-        }
-    }
-
     /// Tries to recover from associated item paths like `[T]::AssocItem` / `(T, U)::AssocItem`.
     /// Attempts to convert the base expression/pattern/type into a type, parses the `::AssocItem`
     /// tail, and combines them into a `<Ty>::AssocItem` expression/pattern/type.
@@ -2379,6 +2145,7 @@ impl<'a> Parser<'a> {
             target: match context {
                 FnContext::Trait => "methods without bodies",
                 FnContext::FunctionPtrType => "function pointer types",
+                FnContext::ParenthesizedArgumentList => "parenthesized argument list",
                 FnContext::Free => unreachable!("This method is not called in free functions, as patterns are always allowed there"),
                 FnContext::Impl => unreachable!("This method is not called in impls, as patterns are always allowed there"),
             },

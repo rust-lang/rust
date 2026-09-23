@@ -1463,8 +1463,8 @@ impl DeclaredIdents for Box<ast::Item> {
                     ast::UseTreeKind::Glob(_) => {}
                     ast::UseTreeKind::Simple(_) => idents.push(ut.ident()),
                     ast::UseTreeKind::Nested { items, .. } => {
-                        for (ut, _) in items {
-                            collect_use_tree_leaves(ut, idents);
+                        for tree in items {
+                            collect_use_tree_leaves(&tree.inner, idents);
                         }
                     }
                 }
@@ -1748,22 +1748,10 @@ impl InvocationCollectorNode for ast::GenericParam {
         walk_flat_map_generic_param(collector, self)
     }
     fn as_target(&self) -> Target {
-        let mut has_default = false;
-        Target::GenericParam {
-            kind: match &self.kind {
-                rustc_ast::GenericParamKind::Lifetime => {
-                    rustc_attr_ir::target::GenericParamKind::Lifetime
-                }
-                rustc_ast::GenericParamKind::Type { default } => {
-                    has_default = default.is_some();
-                    rustc_attr_ir::target::GenericParamKind::Type
-                }
-                rustc_ast::GenericParamKind::Const { default, .. } => {
-                    has_default = default.is_some();
-                    rustc_attr_ir::target::GenericParamKind::Const
-                }
-            },
-            has_default,
+        match self.kind {
+            rustc_ast::GenericParamKind::Lifetime => Target::LifetimeParam,
+            rustc_ast::GenericParamKind::Type { .. } => Target::TypeParam,
+            rustc_ast::GenericParamKind::Const { .. } => Target::ConstParam,
         }
     }
 }

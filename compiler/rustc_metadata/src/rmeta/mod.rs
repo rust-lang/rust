@@ -270,6 +270,7 @@ pub(crate) struct CrateRoot {
     stripped_cfg_items: LazyArray<StrippedCfgItem<DefIndex>>,
     diagnostic_items: LazyArray<(Symbol, DefIndex)>,
     canonical_symbols: LazyArray<(Symbol, DefIndex)>,
+    fake_doc_items: LazyArray<DefIndex>,
     native_libraries: LazyArray<NativeLib>,
     foreign_modules: LazyArray<ForeignModule>,
     traits: LazyArray<DefIndex>,

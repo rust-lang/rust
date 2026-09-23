@@ -5,11 +5,11 @@ use std::sync::atomic::Ordering;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir::attrs::OptimizeAttr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::bug;
 use rustc_middle::mir::{Body, MirDumper, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::OptLevel;
+use rustc_span::bug;
 use tracing::trace;
 
 use crate::lint::lint_body;
@@ -333,8 +333,10 @@ fn run_passes_inner<'tcx>(
                 continue;
             };
 
-            if is_optimization_stage(body, phase_change)
+            if body.phase == MirPhase::Runtime(RuntimePhase::PostCleanup)
+                && phase_change == Some(MirPhase::Runtime(RuntimePhase::Optimized))
                 && let Some(limit) = &tcx.sess.opts.unstable_opts.mir_opt_bisect_limit
+                && matches!(pass.policy(&ctx), PassPolicy::Optional { .. })
                 && limited_by_opt_bisect(
                     tcx,
                     tcx.def_path_debug_str(body.source.def_id()),
@@ -415,11 +417,6 @@ pub(super) fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tc
     if let Some(dumper) = MirDumper::new(tcx, body.phase.name(), body) {
         dumper.set_show_pass_num().set_disambiguator(&"after").dump_mir(body)
     }
-}
-
-fn is_optimization_stage(body: &Body<'_>, phase_change: Option<MirPhase>) -> bool {
-    body.phase == MirPhase::Runtime(RuntimePhase::PostCleanup)
-        && phase_change == Some(MirPhase::Runtime(RuntimePhase::Optimized))
 }
 
 fn limited_by_opt_bisect<'tcx, P>(

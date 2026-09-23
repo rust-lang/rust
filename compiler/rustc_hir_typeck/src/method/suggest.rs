@@ -25,7 +25,6 @@ use rustc_hir::{
     self as hir, ExprKind, HirId, Node, PathSegment, QPath, find_attr, is_range_literal,
 };
 use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
-use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::print::{
     PrintTraitRefExt as _, with_crate_prefix, with_forced_trimmed_paths,
@@ -34,8 +33,8 @@ use rustc_middle::ty::print::{
 use rustc_middle::ty::{self, GenericArgKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::{
-    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, Ident, MacroKind, Span, Symbol, edit_distance,
-    kw, sym,
+    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, Ident, MacroKind, Span, Symbol, bug,
+    edit_distance, kw, sym,
 };
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -426,12 +425,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         ));
                                     } else {
                                         msg += &format!(" but {} not reachable", pluralize!("is", suggs.len()));
-                                        err.span_suggestions(
-                                            span,
-                                            msg,
-                                            suggs,
-                                            Applicability::MaybeIncorrect,
-                                        );
+                                        err.help(format!("{msg}:\n{}", suggs.join("").trim_end()));
                                     }
                                 };
                             if accessible_sugg.is_empty() {
@@ -1252,7 +1246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         within_macro_span: Option<Span>,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx;
-        let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
+        let rcvr_ty = self.deeply_resolve_ignoring_regions(rcvr_ty);
 
         if let Err(guar) = rcvr_ty.error_reported() {
             return guar;
@@ -2254,7 +2248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         format!("{item_kind} `{item_name}` is available on `{prev_match}`"),
                     );
                 }
-                let rcvr_ty = self.resolve_vars_if_possible(
+                let rcvr_ty = self.deeply_resolve_ignoring_regions(
                     self.typeck_results
                         .borrow()
                         .expr_ty_adjusted_opt(rcvr_expr)
@@ -2842,8 +2836,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => None,
             });
         if let Some((field, field_ty)) = field_receiver {
-            let scope = tcx.parent_module_from_def_id(self.body_def_id);
-            let is_accessible = field.vis.is_accessible_from(scope, tcx);
+            let is_accessible = field.vis.is_accessible_from(self.mod_id, tcx);
 
             if is_accessible {
                 if let Some((what, _, _)) = self.extract_callable_info(field_ty) {
@@ -3205,13 +3198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         return_type: Option<Ty<'tcx>>,
     ) {
         if let SelfSource::MethodCall(expr) = source {
-            let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
-            for fields in self.get_field_candidates_considering_privacy_for_diag(
-                span,
-                actual,
-                mod_id,
-                expr.hir_id,
-            ) {
+            for fields in self.get_field_candidates_considering_privacy_for_diag(span, actual) {
                 let call_expr = self.tcx.hir_expect_expr(self.tcx.parent_hir_id(expr.hir_id));
 
                 let lang_items = self.tcx.lang_items();
@@ -3246,8 +3233,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             },
                             candidate_field,
                             vec![],
-                            mod_id,
-                            expr.hir_id,
                         )
                     })
                     .map(|field_path| {
@@ -3305,7 +3290,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let field_ty = field.ty(tcx, args).skip_norm_wip();
 
                         // Skip `_`, since that'll just lead to ambiguity.
-                        if self.resolve_vars_if_possible(field_ty).is_ty_var() {
+                        if self.deeply_resolve_ignoring_regions(field_ty).is_ty_var() {
                             return None;
                         }
 
@@ -3325,7 +3310,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Some(ret_ty) = self
                         .ret_coercion
                         .as_ref()
-                        .map(|c| self.resolve_vars_if_possible(c.borrow().expected_ty()))
+                        .map(|c| self.deeply_resolve_ignoring_regions(c.borrow().expected_ty()))
                         && let ty::Adt(kind, _) = ret_ty.kind()
                         && tcx.get_diagnostic_item(diagnostic_item) == Some(kind.did())
                     {
@@ -3881,7 +3866,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         return_type: Option<Ty<'tcx>>,
     ) {
         let Some(output_ty) = self.tcx.get_impl_future_output_ty(ty) else { return };
-        let output_ty = self.resolve_vars_if_possible(output_ty);
+        let output_ty = self.deeply_resolve_ignoring_regions(output_ty);
         let method_exists =
             self.method_exists_for_diagnostic(item_name, output_ty, call.hir_id, return_type);
         debug!("suggest_await_before_method: is_method_exist={}", method_exists);
@@ -3909,7 +3894,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
         if tcx.sess.source_map().is_multiline(sugg_span) {
-            err.span_label(sugg_span.with_hi(span.lo()), "");
+            err.span_context(sugg_span.with_hi(span.lo()));
         }
         if let Some(within_macro_span) = within_macro_span {
             err.span_label(within_macro_span, "due to this macro variable");
@@ -3997,11 +3982,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let parent_map = self.tcx.visible_parent_map(());
 
-        let scope = self.tcx.parent_module_from_def_id(self.body_def_id);
         let (accessible_candidates, inaccessible_candidates): (Vec<_>, Vec<_>) =
             candidates.into_iter().partition(|id| {
                 let vis = self.tcx.visibility(*id);
-                vis.is_accessible_from(scope, self.tcx)
+                vis.is_accessible_from(self.mod_id, self.tcx)
+                    // Visibility alone does not make `fn_name::Trait` an importable path.
+                    // We need to make sure all parent are modules, otherwise the path is not importable.
+                    && std::iter::successors(self.tcx.opt_parent(*id), |&id| self.tcx.opt_parent(id))
+                        .all(|id| self.tcx.def_kind(id) == DefKind::Mod)
             });
 
         let sugg = |candidates: Vec<_>, visible| {
@@ -4055,7 +4043,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let accessible_sugg = sugg(accessible_candidates, true);
         let inaccessible_sugg = sugg(inaccessible_candidates, false);
 
-        let (module, _, _) = self.tcx.hir_get_module(scope);
+        let (module, _) = self.tcx.hir_get_module(self.mod_id);
         let span = module.spans.inject_use_span;
         handle_candidates(accessible_sugg, inaccessible_sugg, span);
     }
@@ -4115,7 +4103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if suggs.len() == 1 {
                         err.help(msg);
                     } else {
-                        err.span_suggestions(span, msg, suggs, Applicability::MaybeIncorrect);
+                        err.help(format!("{msg}:\n{}", suggs.join("").trim_end()));
                     }
                 };
                 if accessible_sugg.is_empty() {

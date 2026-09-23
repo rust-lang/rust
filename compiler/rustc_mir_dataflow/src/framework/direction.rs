@@ -1,5 +1,5 @@
-use rustc_middle::bug;
 use rustc_middle::mir::{self, BasicBlock, Location, TerminatorEdges};
+use rustc_span::bug;
 
 use super::visitor::ResultsVisitor;
 use super::{Analysis, Effect, EffectIndex, SwitchTargetIndex};

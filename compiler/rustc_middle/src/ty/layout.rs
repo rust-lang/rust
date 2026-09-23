@@ -6,15 +6,13 @@ use rustc_abi::{
     PointerKind, Primitive, ReprFlags, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
     TyAbiInterface, VariantIdx, Variants,
 };
-use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
-};
+use rustc_errors::{Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, IntoDiagArg, Level};
 use rustc_hir as hir;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, Symbol, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, Symbol, bug, span_bug, sym};
 use rustc_structures::Limit;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
@@ -1198,6 +1196,10 @@ where
         matches!(this.ty.kind(), ty::Adt(..))
     }
 
+    fn is_enum(this: TyAndLayout<'tcx>) -> bool {
+        matches!(this.ty.kind(), ty::Adt(def, _) if def.is_enum())
+    }
+
     fn is_never(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Never)
     }
@@ -1344,7 +1346,7 @@ pub enum FnAbiError<'tcx> {
     Layout(LayoutError<'tcx>),
 }
 
-impl<'a, 'b, G: EmissionGuarantee> Diagnostic<'a, G> for FnAbiError<'b> {
+impl<'a, 'b, G> Diagnostic<'a, G> for FnAbiError<'b> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         match self {
             Self::Layout(e) => Diag::new(dcx, level, e.to_string()),

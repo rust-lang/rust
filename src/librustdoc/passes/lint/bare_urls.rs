@@ -2,14 +2,13 @@
 //! Suggests wrapping the link with angle brackets: `Go to <https://example.com/>.` to linkify it.
 
 use core::ops::Range;
+use std::mem;
 use std::sync::LazyLock;
 
 use regex::Regex;
 use rustc_errors::{Applicability, DiagDecorator};
 use rustc_hir::HirId;
-use rustc_resolve::rustdoc::pulldown_cmark::{
-    DefaultBrokenLinkCallback, Event, Tag, TextMergeWithOffset,
-};
+use rustc_resolve::rustdoc::pulldown_cmark::{Event, Parser, Tag};
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
 use tracing::trace;
 
@@ -56,20 +55,21 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
         );
     };
 
-    // pulldown-cmark can split a URL into multiple `Text` events while processing
-    // characters such as `_` according to CommonMark's emphasis rules.
-    // `TextMergeWithOffset` merges these events so we can check the complete URL.
-    let mut p = TextMergeWithOffset::<DefaultBrokenLinkCallback>::new_ext(dox, main_body_opts());
+    let mut p = Parser::new_ext(dox, main_body_opts()).into_offset_iter();
 
     while let Some((event, range)) = p.next() {
         match event {
             Event::Text(s) => find_raw_urls(cx, dox, &s, range, &report_diag),
             // We don't want to check the text inside code blocks or links.
             Event::Start(tag @ (Tag::CodeBlock(_) | Tag::Link { .. })) => {
-                let end = tag.to_end();
                 for (event, _) in p.by_ref() {
-                    if matches!(event, Event::End(tag) if tag == end) {
-                        break;
+                    match event {
+                        Event::End(end)
+                            if mem::discriminant(&end) == mem::discriminant(&tag.to_end()) =>
+                        {
+                            break;
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -83,12 +83,7 @@ static URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
         r"https?://",                          // url scheme
         r"([-a-zA-Z0-9@:%._\+~#=]{2,256}\.)+", // one or more subdomains
         r"[a-zA-Z]{2,63}",                     // root domain
-        // Match URL characters and balanced parenthesized segments, without
-        // consuming a trailing `)` that belongs to the surrounding prose.
-        r"\b(?:",
-        r"[-a-zA-Z0-9@:%_\+.~#?&/=]",
-        r"|\([-a-zA-Z0-9@:%_\+.~#?&/=]*\)",
-        r")*",
+        r"\b([-a-zA-Z0-9@:%_\+.~#?&/=]*)",     // optional query or url fragments
     ))
     .expect("failed to build regex")
 });

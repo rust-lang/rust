@@ -8,12 +8,11 @@ use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{PolyTraitRef, find_attr};
-use rustc_middle::bug;
 use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor, Upcast,
 };
-use rustc_span::{ErrorGuaranteed, Ident, Span, kw};
+use rustc_span::{ErrorGuaranteed, Ident, Span, bug, kw};
 use rustc_trait_selection::traits;
 use tracing::{debug, instrument};
 
@@ -477,12 +476,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 debug!(?alias_args);
 
-                ty::AliasTerm::new_from_def_id(
-                    tcx,
-                    assoc_item.def_id,
-                    alias_args,
-                    ty::AliasConstInherentArgsKind::WithSelf,
-                )
+                let kind = if let ty::AssocTag::Const = assoc_tag {
+                    ty::AliasTermKind::ProjectionConst { def_id: assoc_item.def_id }
+                } else {
+                    ty::AliasTermKind::ProjectionTy { def_id: assoc_item.def_id }
+                };
+                ty::AliasTerm::new_from_args(tcx, kind, alias_args)
             })
         };
 
@@ -561,18 +560,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             && !tcx.features().generic_const_args()
                         {
                             if tcx.features().min_generic_const_args() {
-                                let mut err = self.dcx().struct_span_err(
+                                let err = self.dcx().struct_span_err(
                                     constraint.span,
-                                    "use of trait associated const not defined as `type const`",
-                                );
-                                err.note(
-                                    "the declaration in the trait must begin with `type const` not just `const` alone",
+                                    "use of trait associated const not defined as `#[rustc_always_gca]`",
                                 );
                                 return Err(err.emit());
                             } else {
                                 let err = self.dcx().span_delayed_bug(
                                     constraint.span,
-                                    "use of trait associated const defined as `type const`",
+                                    "use of trait associated const defined as `#[rustc_always_gca]`",
                                 );
                                 return Err(err);
                             }
