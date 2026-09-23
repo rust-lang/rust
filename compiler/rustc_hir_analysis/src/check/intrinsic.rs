@@ -80,6 +80,10 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::black_box
         | sym::breakpoint
         | sym::bswap
+        | sym::btf_preserve_access_index
+        | sym::btf_preserve_field_byte_offset
+        | sym::btf_preserve_field_byte_size
+        | sym::btf_preserve_field_exists
         | sym::caller_location
         | sym::carrying_mul_add
         | sym::carryless_mul
@@ -811,6 +815,25 @@ pub(crate) fn check_intrinsic_type(
         sym::atomic_fence | sym::atomic_singlethreadfence => (0, 1, Vec::new(), tcx.types.unit),
 
         sym::return_address => (0, 0, vec![], Ty::new_imm_ptr(tcx, tcx.types.unit)),
+
+        // Experimental intrinsics for BPF Type Format (BTF) CO-RE relocations:
+        //
+        // https://docs.kernel.org/bpf/llvm_reloc.html#btf-co-re-relocations
+        sym::btf_preserve_access_index => (
+            1,
+            0,
+            vec![Ty::new_imm_ptr(tcx, tcx.types.unit), tcx.types.u32, tcx.types.u32],
+            Ty::new_imm_ptr(tcx, tcx.types.unit),
+        ),
+        sym::btf_preserve_field_byte_offset => {
+            (0, 0, vec![Ty::new_imm_ptr(tcx, tcx.types.unit)], tcx.types.usize)
+        }
+        sym::btf_preserve_field_byte_size => {
+            (0, 0, vec![Ty::new_imm_ptr(tcx, tcx.types.unit)], tcx.types.usize)
+        }
+        sym::btf_preserve_field_exists => {
+            (0, 0, vec![Ty::new_imm_ptr(tcx, tcx.types.unit)], tcx.types.bool)
+        }
 
         other => {
             tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });

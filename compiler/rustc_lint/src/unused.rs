@@ -196,7 +196,8 @@ trait UnusedDelimLint {
             | Yield(_)
             | Yeet(_)
             | Paren(_)
-            | Become(_) => true,
+            | Become(_)
+            | BtfFieldInfo(..) => true,
             Call(..) | MethodCall(_) | Let(..) | Field(..) | MacCall(_) | FormatArgs(_) => false,
             // `direct_const_arg!()` is invalid in function/method argument position.
             DirectConstArg(_) => false,

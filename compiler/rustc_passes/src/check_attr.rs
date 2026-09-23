@@ -242,6 +242,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::AllowInternalUnstable(..) => (),
             AttributeKind::AlwaysGca => (),
             AttributeKind::AutomaticallyDerived => (),
+            AttributeKind::BtfRelocatable(..) => (),
             AttributeKind::CfgAttrTrace(..) => (),
             AttributeKind::CfgTrace(..) => (),
             AttributeKind::CfiEncoding { .. } => (),

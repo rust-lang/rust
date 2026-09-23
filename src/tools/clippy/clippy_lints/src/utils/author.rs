@@ -716,6 +716,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             ExprKind::UnsafeBinderCast(..) => {
                 unimplemented!("unsafe binders are not implemented yet");
             },
+            ExprKind::BtfFieldInfo(kind, container, ref fields) => {
+                bind!(self, container, fields);
+                kind!("BtfFieldInfo({kind}, {container}, {fields})");
+            },
         }
     }
 

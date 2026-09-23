@@ -228,6 +228,9 @@ pub struct TypeckResults<'tcx> {
 
     /// Container types and field indices of `offset_of!` expressions
     offset_of_data: ItemLocalMap<Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
+
+    /// Container types and field indices of BTF field info expressions.
+    btf_field_info_data: ItemLocalMap<Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
 }
 
 impl<'tcx> TypeckResults<'tcx> {
@@ -261,6 +264,7 @@ impl<'tcx> TypeckResults<'tcx> {
             transmutes_to_check: Default::default(),
             offloads_to_check: Default::default(),
             offset_of_data: Default::default(),
+            btf_field_info_data: Default::default(),
         }
     }
 
@@ -595,6 +599,18 @@ impl<'tcx> TypeckResults<'tcx> {
         &mut self,
     ) -> LocalTableInContextMut<'_, Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.offset_of_data }
+    }
+
+    pub fn btf_field_info_data(
+        &self,
+    ) -> LocalTableInContext<'_, Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>> {
+        LocalTableInContext { hir_owner: self.hir_owner, data: &self.btf_field_info_data }
+    }
+
+    pub fn btf_field_info_data_mut(
+        &mut self,
+    ) -> LocalTableInContextMut<'_, Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>> {
+        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.btf_field_info_data }
     }
 }
 

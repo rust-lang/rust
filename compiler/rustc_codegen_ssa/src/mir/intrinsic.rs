@@ -1,4 +1,4 @@
-use rustc_abi::{Align, FieldIdx, WrappingRange};
+use rustc_abi::{Align, FieldIdx, VariantIdx, WrappingRange};
 use rustc_middle::mir::SourceInfo;
 use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -174,6 +174,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta, span);
                 OperandValue::Immediate(llalign)
             }
+
             sym::vtable_size | sym::vtable_align => {
                 let vtable = args[0].immediate();
                 let idx = match name {
@@ -596,6 +597,37 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::cold_path => {
                 // This is a no-op. The intrinsic is just a hint to the optimizer.
                 OperandValue::ZeroSized
+            }
+
+            // Experimental intrinsics for BPF Type Format (BTF) CO-RE relocations:
+            //
+            // https://docs.kernel.org/bpf/llvm_reloc.html#btf-co-re-relocations
+            sym::btf_preserve_access_index => {
+                let base = args[0].immediate();
+                let Some(variant) = bx.const_to_opt_uint(args[1].immediate()) else {
+                    span_bug!(span, "BTF variant index is not a constant")
+                };
+                let Some(field) = bx.const_to_opt_uint(args[2].immediate()) else {
+                    span_bug!(span, "BTF field index is not a constant")
+                };
+                OperandValue::Immediate(bx.btf_preserve_access_index(
+                    base,
+                    fn_args.type_at(0),
+                    VariantIdx::from_u32(variant as u32),
+                    FieldIdx::from_u32(field as u32),
+                ))
+            }
+            sym::btf_preserve_field_byte_offset => {
+                let field = args[0].immediate();
+                OperandValue::Immediate(bx.btf_preserve_field_byte_offset(field))
+            }
+            sym::btf_preserve_field_byte_size => {
+                let field = args[0].immediate();
+                OperandValue::Immediate(bx.btf_preserve_field_byte_size(field))
+            }
+            sym::btf_preserve_field_exists => {
+                let field = args[0].immediate();
+                OperandValue::Immediate(bx.btf_preserve_field_exists(field))
             }
 
             _ => {

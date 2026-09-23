@@ -13,9 +13,9 @@ use rustc_ast::util::parser::{AssocOp, ExprPrecedence, Fixity, prec_let_scrutine
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AssignOp, AssignOpKind, AttrStyle, AttrVec, BinOp, BinOpKind,
-    BlockCheckMode, CaptureBy, ClosureBinder, CoroutineKind, DUMMY_NODE_ID, Expr, ExprField,
-    ExprKind, FnDecl, FnRetTy, ForLoop, Guard, Label, MacCall, MetaItemLit, Movability, Param,
-    RangeLimits, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
+    BlockCheckMode, BtfRelocKind, CaptureBy, ClosureBinder, CoroutineKind, DUMMY_NODE_ID, Expr,
+    ExprField, ExprKind, FnDecl, FnRetTy, ForLoop, Guard, Label, MacCall, MetaItemLit, Movability,
+    Param, RangeLimits, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
@@ -1891,6 +1891,21 @@ impl<'a> Parser<'a> {
                 sym::unwrap_binder => {
                     Some(this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Unwrap)?)
                 }
+                sym::btf_field_byte_offset => Some(this.parse_expr_btf_field_info(
+                    lo,
+                    ident.as_str(),
+                    BtfRelocKind::ByteOffset,
+                )?),
+                sym::btf_field_byte_size => Some(this.parse_expr_btf_field_info(
+                    lo,
+                    ident.as_str(),
+                    BtfRelocKind::ByteSize,
+                )?),
+                sym::btf_field_exists => Some(this.parse_expr_btf_field_info(
+                    lo,
+                    ident.as_str(),
+                    BtfRelocKind::Exists,
+                )?),
                 _ => None,
             })
         })
@@ -1931,6 +1946,31 @@ impl<'a> Parser<'a> {
 
     /// Built-in macro for `offset_of!` expressions.
     pub(crate) fn parse_expr_offset_of(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
+        let (container, fields) = self.parse_ty_and_field_path("offset_of", "field and variant")?;
+        let span = lo.to(self.token.span);
+        Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields)))
+    }
+
+    /// Built-in macro for
+    /// [BPF Type Format (BTF) CO-RE relocations][btf-relocations].
+    ///
+    /// [btf-relocations]: https://docs.kernel.org/bpf/llvm_reloc.html#btf-co-re-relocations
+    pub(crate) fn parse_expr_btf_field_info(
+        &mut self,
+        lo: Span,
+        name: &str,
+        kind: BtfRelocKind,
+    ) -> PResult<'a, Box<Expr>> {
+        let (container, fields) = self.parse_ty_and_field_path(name, "field")?;
+        let span = lo.to(self.token.span);
+        Ok(self.mk_expr(span, ExprKind::BtfFieldInfo(kind, container, fields)))
+    }
+
+    fn parse_ty_and_field_path(
+        &mut self,
+        name: &str,
+        path_element_description: &str,
+    ) -> PResult<'a, (Box<Ty>, ThinVec<Ident>)> {
         let container = self.parse_ty()?;
         self.expect(exp!(Comma))?;
 
@@ -1939,9 +1979,9 @@ impl<'a> Parser<'a> {
 
         if let Err(mut e) = self.expect_one_of(&[], &[exp!(CloseParen)]) {
             if trailing_comma {
-                e.note("unexpected third argument to offset_of");
+                e.note(format!("unexpected third argument to {name}"));
             } else {
-                e.note("offset_of expects dot-separated field and variant names");
+                e.note(format!("{name} expects dot-separated {path_element_description} names"));
             }
             e.emit();
         }
@@ -1953,8 +1993,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let span = lo.to(self.token.span);
-        Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields)))
+        Ok((container, fields))
     }
 
     /// Built-in macro for type ascription expressions.
@@ -4359,6 +4398,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::FormatArgs(_)
             | ExprKind::Err(_)
             | ExprKind::DirectConstArg(_)
+            | ExprKind::BtfFieldInfo(..)
             | ExprKind::Dummy => {
                 // These would forbid any let expressions they contain already.
             }

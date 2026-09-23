@@ -174,7 +174,8 @@ impl<'a> Sugg<'a> {
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Match(_, _,
                 MatchSource::AwaitDesugar | MatchSource::TryDesugar(_) | MatchSource::FormatArgs
-            ) => Sugg::NonParen(get_snippet(expr.span)),
+            )
+            | ExprKind::BtfFieldInfo(..) => Sugg::NonParen(get_snippet(expr.span)),
             ExprKind::DropTemps(inner) => Self::hir_from_snippet(cx, inner, get_snippet),
             ExprKind::Assign(lhs, rhs, _) => {
                 Sugg::BinOp(AssocOp::Assign, get_snippet(lhs.span), get_snippet(rhs.span))
@@ -251,7 +252,8 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::DirectConstArg(..)
             | ast::ExprKind::Err(_)
             | ast::ExprKind::Dummy
-            | ast::ExprKind::UnsafeBinderCast(..) => Sugg::NonParen(snippet(expr.span)),
+            | ast::ExprKind::UnsafeBinderCast(..)
+            | ast::ExprKind::BtfFieldInfo(..) => Sugg::NonParen(snippet(expr.span)),
             ast::ExprKind::Range(ref lhs, ref rhs, limits) => Sugg::BinOp(
                 AssocOp::Range(limits),
                 lhs.as_ref().map_or("".into(), |lhs| snippet(lhs.span)),

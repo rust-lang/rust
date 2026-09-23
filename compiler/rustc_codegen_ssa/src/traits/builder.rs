@@ -372,6 +372,28 @@ pub trait BuilderMethods<'a, 'tcx>:
         self.inbounds_gep(self.cx().type_i8(), ptr, &[offset])
     }
 
+    // Experimental intrinsics for BPF Type Format (BTF) CO-RE relocations:
+    //
+    // https://docs.kernel.org/bpf/llvm_reloc.html#btf-co-re-relocations
+    fn btf_preserve_access_index(
+        &mut self,
+        _base: Self::Value,
+        _container_ty: Ty<'tcx>,
+        _variant: rustc_abi::VariantIdx,
+        _field: rustc_abi::FieldIdx,
+    ) -> Self::Value {
+        self.tcx().dcx().fatal("the selected codegen backend does not support BTF relocations")
+    }
+    fn btf_preserve_field_byte_offset(&mut self, _field: Self::Value) -> Self::Value {
+        self.tcx().dcx().fatal("the selected codegen backend does not support BTF relocations")
+    }
+    fn btf_preserve_field_byte_size(&mut self, _field: Self::Value) -> Self::Value {
+        self.tcx().dcx().fatal("the selected codegen backend does not support BTF relocations")
+    }
+    fn btf_preserve_field_exists(&mut self, _field: Self::Value) -> Self::Value {
+        self.tcx().dcx().fatal("the selected codegen backend does not support BTF relocations")
+    }
+
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     /// Produces the same value as [`Self::trunc`] (and defaults to that),
     /// but is UB unless the *zero*-extending the result can reproduce `val`.

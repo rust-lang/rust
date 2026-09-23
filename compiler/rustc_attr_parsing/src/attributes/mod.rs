@@ -38,6 +38,7 @@ mod prelude;
 pub(crate) mod allow_unstable;
 pub(crate) mod autodiff;
 pub(crate) mod body;
+pub(crate) mod btf_relocatable;
 pub(crate) mod cfg;
 pub(crate) mod cfg_select;
 pub(crate) mod cfi_encoding;
