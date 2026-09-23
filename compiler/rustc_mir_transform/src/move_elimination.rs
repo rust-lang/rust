@@ -213,9 +213,10 @@ impl<'tcx> Visitor<'tcx> for UnprojectableLocals {
     }
 
     fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
-        // Storage markers are removed.
-        if let PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead) =
-            context
+        // Storage markers are removed, and StorageAlloc is rewritten explicitly.
+        if let PlaceContext::NonUse(
+            NonUseContext::StorageLive | NonUseContext::StorageDead | NonUseContext::StorageAlloc,
+        ) = context
         {
             return;
         }
@@ -575,6 +576,14 @@ impl<'tcx> MutVisitor<'tcx> for PlaceUpdater<'_, 'tcx> {
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         match statement.kind {
+            // Rewrite StorageAlloc to the base local of the remapped place.
+            StatementKind::StorageAlloc(ref mut local) => {
+                if let Some(place) = self.remapped_locals[*local] {
+                    *local = place.local;
+                }
+                return;
+            }
+
             // Remove storage lifetime markers. These are rebuilt from liveness
             // information later. Also, since we've preserved StorageDead in
             // unwind paths until now, we will want to remove those since they
@@ -654,6 +663,10 @@ impl<'tcx> Analysis<'tcx> for InitializedBeforeUse {
         location: Location,
     ) {
         // In backward order, process writes before reads.
+        if let StatementKind::StorageAlloc(local) = statement.kind {
+            state.gen_(local);
+            return;
+        }
         VisitPlacesWith(|place: Place<'tcx>, context| {
             if matches!(DefUse::for_place(place, context), DefUse::Def | DefUse::PartialWrite) {
                 state.gen_(place.local);

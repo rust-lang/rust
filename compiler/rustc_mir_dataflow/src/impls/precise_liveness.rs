@@ -22,7 +22,8 @@ use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::visit::{
-    MutatingUseContext, NonMutatingUseContext, PlaceContext, VisitPlacesWith, Visitor,
+    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, VisitPlacesWith,
+    Visitor,
 };
 use rustc_middle::mir::{self, BasicBlock, Local, Location, MirDumper, PassWhere, Place};
 use rustc_middle::ty::TyCtxt;
@@ -122,6 +123,9 @@ impl<'tcx> ResultsVisitor<'tcx, MaybeLiveLocals> for KillPointsVisitor<'_> {
             // Ignore non-uses.
             match ctxt {
                 PlaceContext::NonMutatingUse(_) | PlaceContext::MutatingUse(_) => {}
+                // We later specifically start a live range at StorageAlloc.
+                // Emit a kill point if it is never used after this.
+                PlaceContext::NonUse(NonUseContext::StorageAlloc) => {}
                 PlaceContext::NonUse(_) => return,
             }
 
@@ -228,11 +232,15 @@ impl<'tcx> Analysis<'tcx> for PreciseLiveness<'_> {
         .visit_statement(statement, location);
 
         // Gen destination places.
-        VisitPlacesWith(|place: Place<'tcx>, ctxt| match DefUse::for_place(place, ctxt) {
-            DefUse::Def | DefUse::PartialWrite => state.gen_(place.local),
-            DefUse::Use | DefUse::NonUse => {}
-        })
-        .visit_statement(statement, location);
+        if let mir::StatementKind::StorageAlloc(local) = statement.kind {
+            state.gen_(local);
+        } else {
+            VisitPlacesWith(|place: Place<'tcx>, ctxt| match DefUse::for_place(place, ctxt) {
+                DefUse::Def | DefUse::PartialWrite => state.gen_(place.local),
+                DefUse::Use | DefUse::NonUse => {}
+            })
+            .visit_statement(statement, location);
+        }
 
         // Apply kill points at this statement: if a variable is dead then it
         // doesn't need storage.
@@ -459,13 +467,17 @@ pub fn liveness_matrix<'tcx>(
             }
 
             // Gen destination places.
-            VisitPlacesWith(|place: Place<'tcx>, ctxt| match DefUse::for_place(place, ctxt) {
-                DefUse::Def | DefUse::PartialWrite => {
-                    builder.gen_(place.local, point, SplitPointEffect::Late)
-                }
-                DefUse::Use | DefUse::NonUse => {}
-            })
-            .visit_statement(statement, location);
+            if let mir::StatementKind::StorageAlloc(local) = statement.kind {
+                builder.gen_(local, point, SplitPointEffect::Late);
+            } else {
+                VisitPlacesWith(|place: Place<'tcx>, ctxt| match DefUse::for_place(place, ctxt) {
+                    DefUse::Def | DefUse::PartialWrite => {
+                        builder.gen_(place.local, point, SplitPointEffect::Late)
+                    }
+                    DefUse::Use | DefUse::NonUse => {}
+                })
+                .visit_statement(statement, location);
+            }
 
             // Kill any dead destination places: they will only appear at the
             // late point of the statement they are generated in, which is

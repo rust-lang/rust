@@ -590,6 +590,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.storage_live_dyn(local, MemPlaceMeta::None)
     }
 
+    /// Ensure that a live local has an allocation.
+    pub fn storage_alloc(&mut self, local: mir::Local) -> InterpResult<'tcx> {
+        match self.frame().locals[local].value {
+            LocalValue::Dead => throw_ub!(DeadLocal),
+            LocalValue::Live(_) => interp_ok(()),
+        }
+    }
+
     pub fn storage_dead(&mut self, local: mir::Local) -> InterpResult<'tcx> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
         trace!("{:?} is now dead", local);

@@ -571,6 +571,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         StatementKind::Assign(_)
                         | StatementKind::FakeRead(_)
                         | StatementKind::SetDiscriminant { .. }
+                        | StatementKind::StorageAlloc(_)
                         | StatementKind::StorageLive(_)
                         | StatementKind::StorageDead(_)
                         | StatementKind::AscribeUserType(_, _)

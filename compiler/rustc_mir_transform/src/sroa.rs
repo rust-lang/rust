@@ -130,7 +130,9 @@ fn escaping_locals<'tcx>(
         fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
             match statement.kind {
                 // Storage statements are expanded in run_pass.
-                StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => return,
+                StatementKind::StorageLive(..)
+                | StatementKind::StorageDead(..)
+                | StatementKind::StorageAlloc(..) => return,
                 _ => self.super_statement(statement, location),
             }
         }
@@ -320,6 +322,15 @@ impl<'tcx, 'll> MutVisitor<'tcx> for ReplacementVisitor<'tcx, 'll> {
                 if let Some(final_locals) = self.replacements.place_fragments(l.into()) {
                     for (_, _, fl) in final_locals {
                         self.patch.add_statement(location, StatementKind::StorageDead(fl));
+                    }
+                    statement.make_nop(true);
+                }
+                return;
+            }
+            StatementKind::StorageAlloc(l) => {
+                if let Some(final_locals) = self.replacements.place_fragments(l.into()) {
+                    for (_, _, fl) in final_locals {
+                        self.patch.add_statement(location, StatementKind::StorageAlloc(fl));
                     }
                     statement.make_nop(true);
                 }
