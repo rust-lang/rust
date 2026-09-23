@@ -5,6 +5,79 @@ use crate::mem::transmute;
 #[macro_use]
 mod macros;
 
+/// The x87 80-bit extended-precision floating-point type.
+///
+/// FIXME: extend the documentation.
+#[doc(alias = "long double")]
+#[doc(alias = "x86_fp80")]
+#[doc(alias = "__float80")]
+#[unstable(feature = "x87_f80", issue = "163982")]
+#[allow(non_camel_case_types)]
+#[doc(cfg(any(target_arch = "x86", target_arch = "x86_64")))]
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+pub struct x87_f80(crate::num::imp::x87_f80::x87_f80);
+
+const _: () = assert!(
+    size_of::<x87_f80>()
+        == cfg_select! {
+            target_arch = "x86" => cfg_select! {
+                target_vendor = "apple" => 16,
+                target_env = "msvc" => 16,
+                _ => 12,
+            },
+            target_arch = "x86_64" => 16,
+            _ => size_of::<x87_f80>(), // for doc builds
+        }
+);
+
+const _: () = assert!(
+    align_of::<x87_f80>()
+        == cfg_select! {
+            target_arch = "x86" => cfg_select! {
+                target_vendor = "apple" => 16,
+                target_env = "msvc" => 16,
+                _ => 4,
+            },
+            target_arch = "x86_64" => 16,
+            _ => align_of::<x87_f80>(), // for doc builds
+        }
+);
+
+#[unstable(feature = "x87_f80", issue = "163982")]
+impl crate::fmt::Debug for x87_f80 {
+    #[inline]
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        let mut bytes = [0u8; 16];
+        bytes[..10].copy_from_slice(&self.to_ne_bytes());
+        write!(f, "x87_f80({:#022x})", u128::from_le_bytes(bytes))
+    }
+}
+
+impl x87_f80 {
+    /// Returns the memory representation of this floating point number as a byte array in
+    /// native byte order.
+    #[unstable(feature = "x87_f80", issue = "163982")]
+    #[inline]
+    pub const fn to_ne_bytes(self) -> [u8; 10] {
+        // SAFETY: the first 10 bytes are initialized.
+        unsafe { (&raw const self).cast::<[u8; 10]>().read() }
+    }
+
+    /// Creates a floating point value from its representation as a byte array in native endian.
+    #[unstable(feature = "x87_f80", issue = "163982")]
+    #[inline]
+    pub const fn from_ne_bytes(bytes: [u8; 10]) -> Self {
+        // SAFETY: we initialize the first 10 bytes, the remaining bytes remain uninitialized.
+        // That is exactly the layout of x87_f80.
+        unsafe {
+            let mut this = crate::mem::MaybeUninit::<x87_f80>::uninit();
+            this.as_mut_ptr().cast::<[u8; 10]>().write(bytes);
+            this.assume_init()
+        }
+    }
+}
+
 types! {
     #![stable(feature = "simd_x86", since = "1.27.0")]
 
