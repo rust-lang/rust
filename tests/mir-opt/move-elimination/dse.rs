@@ -19,7 +19,9 @@ pub fn dse_guard() {
     // CHECK-LABEL: fn dse_guard(
     // CHECK: debug a => [[a:_.*]];
     // CHECK: debug b => [[b:_.*]];
+    // CHECK: StorageLive([[b]]);
     // CHECK: [[b]] = make_fields(const 0_u8)
+    // CHECK: StorageLive([[a]]);
     // CHECK: [[a]] = make_fields(const 1_u8)
     // CHECK: observe(move
     // CHECK: [[b]] = move [[a]]
